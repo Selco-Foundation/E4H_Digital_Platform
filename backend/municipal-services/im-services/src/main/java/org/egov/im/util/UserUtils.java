@@ -2,10 +2,10 @@ package org.egov.im.util;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
-import org.egov.common.contract.request.Role;
 import org.egov.common.utils.MultiStateInstanceUtil;
 import org.egov.im.config.IMConfiguration;
 import org.egov.im.repository.ServiceRequestRepository;
+import org.egov.im.web.models.Role;
 import org.egov.im.web.models.User;
 import org.egov.im.web.models.user.UserDetailResponse;
 import org.egov.tracer.model.CustomException;

@@ -1,37 +1,23 @@
 package org.egov.im.validator;
 
 import com.jayway.jsonpath.JsonPath;
-import org.egov.common.contract.request.RequestInfo;
+import lombok.RequiredArgsConstructor;
 import org.egov.im.config.IMConfiguration;
 import org.egov.im.repository.IMRepository;
-import org.egov.im.util.HRMSUtil;
 import org.egov.im.web.models.*;
 import org.egov.tracer.model.CustomException;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
-import org.springframework.util.StringUtils;
 
 import java.util.*;
 
 import static org.egov.im.util.IMConstants.*;
 
+@RequiredArgsConstructor
 @Component
 public class ServiceRequestValidator {
-
-
-    private IMConfiguration config;
-
-    private IMRepository repository;
-
-    private HRMSUtil hrmsUtil;
-
-    @Autowired
-    public ServiceRequestValidator(IMConfiguration config, IMRepository repository, HRMSUtil hrmsUtil) {
-        this.config = config;
-        this.repository = repository;
-        this.hrmsUtil = hrmsUtil;
-    }
+    private final IMConfiguration config;
+    private final IMRepository repository;
 
 
     /**
@@ -42,9 +28,7 @@ public class ServiceRequestValidator {
     public void validateCreate(IncidentRequest request, Object mdmsData){
         Map<String,String> errorMap = new HashMap<>();
         validateUserData(request,errorMap);
-        //validateSource(request.getService().getSource());
         validateMDMS(request, mdmsData);
-        //validateDepartment(request, mdmsData);
         if(!errorMap.isEmpty())
             throw new CustomException(errorMap);
     }
@@ -59,9 +43,6 @@ public class ServiceRequestValidator {
 
         String id = request.getIncident().getId();
         String tenantId = request.getIncident().getTenantId();
-        //validateSource(request.getService().getSource());
-        //validateMDMS(request, mdmsData);
-        //validateDepartment(request, mdmsData);
         validateReOpen(request);
         RequestSearchCriteria criteria = RequestSearchCriteria.builder().ids(Collections.singleton(id)).tenantId(tenantId).build();
         criteria.setIsPlainSearch(false);
@@ -82,24 +63,10 @@ public class ServiceRequestValidator {
     private void validateUserData(IncidentRequest request,Map<String, String> errorMap){
 
         RequestInfo requestInfo = request.getRequestInfo();
-        String accountId = request.getIncident().getAccountId();
-
-        /*if(requestInfo.getUserInfo().getType().equalsIgnoreCase(USERTYPE_CITIZEN)
-            && StringUtils.isEmpty(accountId)){
-            errorMap.put("INVALID_REQUEST","AccountId cannot be null");
-        }
-        else if(requestInfo.getUserInfo().getType().equalsIgnoreCase(USERTYPE_CITIZEN)
-                && !StringUtils.isEmpty(accountId)
-                && !accountId.equalsIgnoreCase(requestInfo.getUserInfo().getUuid())){
-            errorMap.put("INVALID_ACCOUNTID","The accountId is different from the user logged in");
-        }*/
-
         if(requestInfo.getUserInfo().getType().equalsIgnoreCase(USERTYPE_EMPLOYEE)){
             User reporter = request.getIncident().getReporter();
             if(reporter == null)
                 errorMap.put("INVALID_REQUEST","Reporter object cannot be null");
-//            else if(reporter.getMobileNumber()==null || reporter.getName()==null)
-//                errorMap.put("INVALID_REQUEST","Name and Mobile Number is mandatory in reporter object");
         }
 
     }
@@ -260,20 +227,6 @@ public class ServiceRequestValidator {
             throw new CustomException("INVALID SEARCH","Search on ids is not allowed");
 
     }
-
-    /**
-     * Validates if the source is in the given list configures in application properties
-     * @param source
-     */
-//    private void validateSource(String source){
-//
-//        List<String> allowedSourceStr = Arrays.asList(config.getAllowedSource().split(","));
-//
-//        if(!allowedSourceStr.contains(source))
-//            throw new CustomException("INVALID_SOURCE","The source: "+source+" is not valid");
-//
-//    }
-
 
     public void validatePlainSearch(RequestSearchCriteria criteria) {
         if(CollectionUtils.isEmpty(criteria.getTenantIds())){

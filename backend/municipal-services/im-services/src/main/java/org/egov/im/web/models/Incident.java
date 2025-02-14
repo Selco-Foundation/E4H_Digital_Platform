@@ -10,10 +10,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.Builder;
-
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 
 /**
@@ -39,9 +35,7 @@ public class Incident   {
         @SafeHtml
         @JsonProperty("incidentSubType")
         private String incidentSubType = null;
-		
-		
-		
+
 	    @SafeHtml
 	    @JsonProperty("reporterType")
 	    private String reporterType = null;
@@ -79,7 +73,7 @@ public class Incident   {
         private String applicationStatus = null;
 
         @JsonProperty("reporter")
-        private User reporter = null; 
+        private User reporter = null;
         
     	@SafeHtml
     	@JsonProperty("district")

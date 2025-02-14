@@ -1,7 +1,7 @@
 package org.egov.im.util;
 
-import org.egov.common.contract.request.RequestInfo;
 import org.egov.common.contract.response.ResponseInfo;
+import org.egov.im.web.models.RequestInfo;
 import org.springframework.stereotype.Component;
 
 @Component

@@ -6,6 +6,7 @@ import org.egov.common.contract.response.ResponseInfo;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -32,7 +33,5 @@ public class BusinessServiceResponse {
         this.businessServices.add(businessServiceItem);
         return this;
     }
-
-
 
 }

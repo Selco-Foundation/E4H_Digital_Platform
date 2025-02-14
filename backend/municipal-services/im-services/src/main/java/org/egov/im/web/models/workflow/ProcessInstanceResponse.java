@@ -36,7 +36,7 @@ public class ProcessInstanceResponse {
     private List<ProcessInstance> processInstances;
 
 
-    public ProcessInstanceResponse addProceInstanceItem(ProcessInstance proceInstanceItem) {
+    public ProcessInstanceResponse addProcessInstanceItem(ProcessInstance proceInstanceItem) {
         if (this.processInstances == null) {
             this.processInstances = new ArrayList<>();
         }

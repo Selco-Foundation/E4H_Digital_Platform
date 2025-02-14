@@ -1,15 +1,15 @@
 package org.egov.im.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.egov.common.contract.request.RequestInfo;
-import org.egov.common.contract.request.User;
 import org.egov.im.config.IMConfiguration;
 import org.egov.im.repository.ServiceRequestRepository;
 import org.egov.im.web.models.*;
 import org.egov.im.web.models.workflow.*;
 import org.egov.tracer.model.CustomException;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
 import java.util.*;
@@ -17,27 +17,15 @@ import java.util.stream.Collectors;
 
 import static org.egov.im.util.IMConstants.*;
 
-@org.springframework.stereotype.Service
+@RequiredArgsConstructor
+@Service
+@Slf4j
 public class WorkflowService {
 
-    private IMConfiguration imConfiguration;
-
-    private ServiceRequestRepository repository;
-
-    private ObjectMapper mapper;
-
-    private NotificationService notificationService;
-
-
-    @Autowired
-    public WorkflowService(IMConfiguration imConfiguration,
-                           ServiceRequestRepository repository,
-                           ObjectMapper mapper, NotificationService notificationService) {
-        this.imConfiguration = imConfiguration;
-        this.repository = repository;
-        this.mapper = mapper;
-        this.notificationService = notificationService;
-    }
+    private final IMConfiguration imConfiguration;
+    private final ServiceRequestRepository repository;
+    private final ObjectMapper mapper;
+    private final UserService userService;
 
     /*
      *
@@ -71,7 +59,8 @@ public class WorkflowService {
      * */
     public String updateWorkflowStatus(IncidentRequest incidentRequest) {
         ProcessInstance processInstance = getProcessInstanceForIM(incidentRequest);
-        ProcessInstanceRequest workflowRequest = new ProcessInstanceRequest(incidentRequest.getRequestInfo(), Collections.singletonList(processInstance));
+        ProcessInstanceRequest workflowRequest = new ProcessInstanceRequest(
+                incidentRequest.getRequestInfo(), Collections.singletonList(processInstance));
         State state = callWorkFlow(workflowRequest);
         incidentRequest.getIncident().setApplicationStatus(state.getApplicationStatus());
         return state.getApplicationStatus();
@@ -123,11 +112,13 @@ public class WorkflowService {
                 serviceRequestIds.add(pgrEntity.getIncident().getIncidentId());
             });
 
-            RequestInfoWrapper requestInfoWrapper = RequestInfoWrapper.builder().requestInfo(requestInfo).build();
+            RequestInfoWrapper requestInfoWrapper
+                    = RequestInfoWrapper.builder()
+                    .requestInfo(requestInfo)
+                    .build();
 
             StringBuilder searchUrl = getprocessInstanceSearchURL(tenantId, StringUtils.join(serviceRequestIds, ','));
             Object result = repository.fetchResult(searchUrl, requestInfoWrapper);
-
 
             ProcessInstanceResponse processInstanceResponse = null;
             try {
@@ -136,14 +127,16 @@ public class WorkflowService {
                 throw new CustomException("PARSING ERROR", "Failed to parse response of workflow processInstance search");
             }
 
-            if (CollectionUtils.isEmpty(processInstanceResponse.getProcessInstances()) || processInstanceResponse.getProcessInstances().size() != serviceRequestIds.size())
+            if (CollectionUtils.isEmpty(processInstanceResponse.getProcessInstances())
+                    || processInstanceResponse.getProcessInstances().size() != serviceRequestIds.size())
                 throw new CustomException("WORKFLOW_NOT_FOUND", "The workflow object is not found");
 
-            Map<String, Workflow> businessIdToWorkflow = getWorkflow(processInstanceResponse.getProcessInstances());
+            Map<String, Workflow> businessIdToWorkflow
+                    = getWorkflow(Objects.requireNonNull(processInstanceResponse.getProcessInstances()));
 
-            tenantSpecificWrappers.forEach(pgrEntity -> {
-                pgrEntity.setWorkflow(businessIdToWorkflow.get(pgrEntity.getIncident().getIncidentId()));
-            });
+            tenantSpecificWrappers.forEach(pgrEntity -> pgrEntity.setWorkflow(businessIdToWorkflow.get(pgrEntity
+                    .getIncident()
+                    .getIncidentId())));
 
             enrichedServiceWrappers.addAll(tenantSpecificWrappers);
         }
@@ -178,7 +171,7 @@ public class WorkflowService {
         if (request.getWorkflow().getAction().equalsIgnoreCase("RESOLVE")
                 || request.getWorkflow().getAction().equalsIgnoreCase("REJECT")) {
             workflow.setAssignes(null);
-            Map<String, String> reassigneeDetails = notificationService.getHRMSEmployee(request, "COMPLAINANT");
+            Map<String, String> reassigneeDetails = userService.getHRMSEmployee(request, "COMPLAINANT");
             List<String> assignee = Arrays.asList(reassigneeDetails.get("employeeUUID"));
             workflow.setAssignes(assignee);
         }
@@ -224,7 +217,7 @@ public class WorkflowService {
                     .action(processInstance.getAction())
                     .assignes(userIds)
                     .comments(processInstance.getComment())
-                    .verificationDocuments(processInstance.getDocuments())
+                    .verificationDocuments((processInstance.getDocuments()))
                     .build();
 
             businessIdToWorkflow.put(processInstance.getBusinessId(), workflow);

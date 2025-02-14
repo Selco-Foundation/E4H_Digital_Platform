@@ -1,24 +1,23 @@
 package org.egov.im.service;
 
-import org.egov.common.contract.request.RequestInfo;
 import org.egov.im.config.IMConfiguration;
 import org.egov.im.repository.IdGenRepository;
 import org.egov.im.util.IMUtils;
 import org.egov.im.web.models.*;
 import org.egov.im.web.models.Idgen.IdResponse;
+import org.egov.im.web.models.workflow.Workflow;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
-import org.springframework.util.StringUtils;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 import static org.egov.im.util.IMConstants.USERTYPE_CITIZEN;
 
-@org.springframework.stereotype.Service
+@Service
 public class EnrichmentService {
 
 
@@ -41,7 +40,7 @@ public class EnrichmentService {
 
     /**
      * Enriches the create request with auditDetails. uuids and custom ids from idGen service
-     * @param serviceRequest The create request
+     * @param incidentRequest The create request
      */
     public void enrichCreateRequest(IncidentRequest incidentRequest){
 
@@ -84,7 +83,7 @@ public class EnrichmentService {
 
     /**
      * Enriches the update request (updates the lastModifiedTime in auditDetails0
-     * @param serviceRequest The update request
+     * @param incidentRequest The update request
      */
     public void enrichUpdateRequest(IncidentRequest incidentRequest){
 

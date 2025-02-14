@@ -12,9 +12,6 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.Builder;
 
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 
 /**
@@ -65,17 +62,12 @@ public class Incident   {
         @JsonProperty("tenantId")
         private String tenantId = null;
 
-
-        
         @JsonProperty("citizen")
         private User citizen = null;
-
 
         @CharacterConstraint(size = 600)
         @JsonProperty("additionalDetail")
         private Object additionalDetail = null;
-
-
 
         @JsonProperty("auditDetails")
         private AuditDetails auditDetails = null;

@@ -5,16 +5,11 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
-import org.egov.common.contract.request.RequestInfo;
 import org.egov.im.service.IMService;
-import org.egov.im.service.NotificationService;
+import org.egov.im.service.NotificationServiceV2;
 import org.egov.im.util.IMConstants;
-import org.egov.im.web.models.IMEscalationRequest;
-import org.egov.im.web.models.Incident;
-import org.egov.im.web.models.IncidentRequest;
-import org.egov.im.web.models.IncidentWrapper;
-import org.egov.im.web.models.RequestSearchCriteria;
-import org.egov.im.web.models.Workflow;
+import org.egov.im.web.models.*;
+import org.egov.im.web.models.workflow.Workflow;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -30,7 +25,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class NotificationConsumer {
     @Autowired
-    NotificationService notificationService;
+	NotificationServiceV2 notificationService;
 
     @Autowired
     private ObjectMapper mapper;
@@ -81,7 +76,7 @@ public class NotificationConsumer {
 		RequestSearchCriteria criteria = new RequestSearchCriteria();
 			criteria.setTenantId(processInstanceRequest.getImEscalationInstance().get(0).getTenantId());
 			criteria.setIncidentId(processInstanceRequest.getImEscalationInstance().get(0).getBusinessId());
-			incidents = imService.search(requestInfo,criteria);
+			incidents = imService.search(requestInfo, criteria);
 			log.info("exiting Search function2");
 
 			log.debug("BPA Received: " + processInstanceRequest.getImEscalationInstance().get(0).getBusinessId());

@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 import io.swagger.annotations.ApiModel;
 import lombok.*;
-import org.egov.common.contract.request.RequestInfo;
+import org.egov.im.web.models.workflow.Workflow;
 import org.springframework.validation.annotation.Validated;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -35,6 +35,4 @@ public class IncidentRequest   {
         @Valid
         @JsonProperty("workflow")
         private Workflow workflow = null;
-
-
 }

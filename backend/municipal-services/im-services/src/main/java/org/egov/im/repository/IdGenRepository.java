@@ -1,11 +1,10 @@
 package org.egov.im.repository;
 
-
-import org.egov.common.contract.request.RequestInfo;
 import org.egov.im.config.IMConfiguration;
 import org.egov.im.web.models.Idgen.IdGenerationRequest;
 import org.egov.im.web.models.Idgen.IdGenerationResponse;
 import org.egov.im.web.models.Idgen.IdRequest;
+import org.egov.im.web.models.RequestInfo;
 import org.egov.tracer.model.CustomException;
 import org.egov.tracer.model.ServiceCallException;
 import org.springframework.beans.factory.annotation.Autowired;
