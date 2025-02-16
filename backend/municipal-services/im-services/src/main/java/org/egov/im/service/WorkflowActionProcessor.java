@@ -3,8 +3,7 @@ package org.egov.im.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.im.service.factory.WorkflowActionFactory;
-import org.egov.im.service.handler.NotificationContext;
-import org.egov.im.service.handler.WorkflowActionHandler;
+import org.egov.im.service.handler.notification.NotificationContext;
 import org.egov.im.web.models.IncidentRequest;
 import org.springframework.stereotype.Component;
 
@@ -13,8 +12,8 @@ import org.springframework.stereotype.Component;
 @Slf4j
 public class WorkflowActionProcessor {
 
-    private final UserService userService;
     private final WorkflowActionFactory workflowActionFactory;
+    private  final UserService userService;
 
     /**
      * constructs the Incident condition using status and action respectively,

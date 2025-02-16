@@ -3,9 +3,10 @@ package org.egov.im.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.im.config.IMConfiguration;
-import org.egov.im.service.handler.NotificationContext;
+import org.egov.im.service.handler.notification.NotificationContext;
 import org.egov.im.util.NotificationUtil;
 import org.egov.im.web.models.IncidentRequest;
+import org.egov.im.web.models.IncidentWrapper;
 import org.egov.im.web.models.Notification.SMSRequest;
 import org.egov.tracer.model.CustomException;
 import org.springframework.stereotype.Service;
@@ -15,8 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import static org.egov.im.util.IMConstants.CITIZEN;
-import static org.egov.im.util.IMConstants.EMPLOYEE;
+import static org.egov.im.util.IMConstants.*;
 
 @Slf4j
 @Service
@@ -25,8 +25,8 @@ public class NotificationServiceV2 {
 
     private final NotificationUtil notificationUtil;
     private final WorkflowActionProcessor workflowActionProcessor;
+    private  final WorkflowMessageProcessor workflowMessageProcessor;
     private final IMConfiguration config;
-    private final CustomMessageBuilderService customMessageBuilder;
 
     public void process(IncidentRequest request, String topic) {
         try {
@@ -40,9 +40,17 @@ public class NotificationServiceV2 {
                 throw new CustomException("SMS_DISABLED", "SMS is disabled");
             }
 
+            //get notification context
             NotificationContext notificationContext = workflowActionProcessor.processWorkflow(request);
+
+            //get localization
+            String localizationMessage
+                    = notificationUtil.getLocalizationMessages(tenantId, request.getRequestInfo(), IM_MODULE);
+            log.info("localized message: {}", localizationMessage);
+
+            //get final message
             Map<String, List<String>> finalMessage
-                    = customMessageBuilder.getFinalMessage(request, topic, applicationStatus);
+                    = workflowMessageProcessor.process(request, localizationMessage, topic);
 
             if(finalMessage.isEmpty()) {
                 log.error("FINAL MESSAGE: unable to construct final message");

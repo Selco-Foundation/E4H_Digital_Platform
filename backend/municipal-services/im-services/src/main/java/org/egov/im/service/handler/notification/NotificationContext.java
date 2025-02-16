@@ -1,4 +1,4 @@
-package org.egov.im.service.handler;
+package org.egov.im.service.handler.notification;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;

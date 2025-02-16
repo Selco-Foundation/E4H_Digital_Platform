@@ -1,24 +1,22 @@
-package org.egov.im.service.handler;
+package org.egov.im.service.handler.notification;
 
-
-import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import org.egov.im.service.UserService;
 import org.egov.im.service.WorkflowService;
 import org.egov.im.util.IMConstants;
 import org.egov.im.web.models.IncidentRequest;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
 
 import static org.egov.im.util.IMConstants.IM_WF_RESOLVE;
+import static org.egov.im.util.IMConstants.REJECT;
 
-@Component("CLOSED_AFTER_RESOLUTION_CLOSE")
+@Component("PENDINGFORASSIGNMENT_REOPEN")
 @RequiredArgsConstructor
-public class ClosedAfterResolutionCloseHandler implements WorkflowActionHandler {
+public class PendingForAssignmentImfWfReopenHandler implements WorkflowActionHandler {
 
-    private  WorkflowService workflowService;
+    private final WorkflowService workflowService;
 
     @Override
     public NotificationContext handle(IncidentRequest request, UserService userService) {
@@ -30,6 +28,9 @@ public class ClosedAfterResolutionCloseHandler implements WorkflowActionHandler 
 
         String employeeMobileNumber
                 = userService.getAssignerMobileNumber(request, IM_WF_RESOLVE, url);
+
+        if(employeeMobileNumber == null)
+            employeeMobileNumber = userService.getAssignerMobileNumber(request, REJECT, url);
 
         Map<String, String> citizenMobileNumber
                 = userService.getHRMSEmployee(request, IMConstants.ROLE_COMPLAINANT);

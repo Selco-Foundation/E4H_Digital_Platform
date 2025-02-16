@@ -22,7 +22,7 @@ import static org.egov.im.util.IMConstants.*;
 @Component
 @RequiredArgsConstructor
 @Slf4j
-public class CustomMessageBuilderService {
+public class MessageBuilderService {
 
     private final NotificationUtil notificationUtil;
     private final UserService userService;
@@ -77,7 +77,7 @@ public class CustomMessageBuilderService {
             }
 
             if (messageForEmployee == null) {
-                log.info("No message Found For Employee On Topic : {}",  topic);
+                log.info("No message Found For Employee On Topic : {}", topic);
                 message.put(EMPLOYEE, Collections.emptyList());
                 return message;
             }
@@ -109,8 +109,6 @@ public class CustomMessageBuilderService {
 
             if (messageForCitizen.contains("{emp_name}"))
                 messageForCitizen = messageForCitizen.replace("{emp_name}", reassigneeDetails.get("employeeName"));
-            //messageForEmployee = messageForEmployee.replace("{emp_name}",fetchUserByUUID(request.getWorkflow().getAssignes().get(0), request.getRequestInfo(), request.getIncident().getTenantId()).getName());
-
             if (messageForEmployee.contains("{ao_designation}")) {
                 String localisationMessageForPlaceholder
                         = notificationUtil.getLocalizationMessages(request.getIncident().getTenantId(), request.getRequestInfo(), COMMON_MODULE);
@@ -164,7 +162,7 @@ public class CustomMessageBuilderService {
                     = notificationUtil.getCustomizedMsg(
                     request.getWorkflow().getAction(), applicationStatus, EMPLOYEE, localizationMessage);
             if (messageForEmployee == null) {
-                log.info("No message Found For Employee On Topic: {}",  topic);
+                log.info("No message Found For Employee On Topic: {}", topic);
                 return Collections.emptyMap();
             }
 
@@ -313,7 +311,7 @@ public class CustomMessageBuilderService {
             if (messageForEmployee.contains("{ulb}")) {
                 String localisationMessageForPlaceholder
                         = notificationUtil.getLocalizationMessages(
-                                request.getIncident().getTenantId(), request.getRequestInfo(), COMMON_MODULE);
+                        request.getIncident().getTenantId(), request.getRequestInfo(), COMMON_MODULE);
                 String localisedULB
                         = notificationUtil.getCustomizedMsgForPlaceholder(localisationMessageForPlaceholder,
                         incidentWrapper.getIncident().getDistrict());
@@ -361,15 +359,15 @@ public class CustomMessageBuilderService {
             messageForEmployee = messageForEmployee.replace("{download_link}", config.getMobileDownloadLink());
         }
 
-
         if (messageForCRM != null) {
             messageForCRM = messageForCRM.replace("{ticket_type}", incidentWrapper.getIncident().getIncidentType());
             messageForCRM = messageForCRM.replace("{incidentId}", incidentWrapper.getIncident().getIncidentId());
             messageForCRM = messageForCRM.replace("{date}", date.format(formatter));
             messageForCRM = messageForCRM.replace("{download_link}", config.getMobileDownloadLink());
         }
-        if (messageForCitizen != null)
+        if (messageForCitizen != null) {
             message.put(CITIZEN, List.of(messageForCitizen));
+        }
         message.put(EMPLOYEE, Collections.singletonList(messageForEmployee));
         if (messageForCRM != null)
             message.put(CRM, List.of(messageForCRM));

@@ -1,4 +1,5 @@
-package org.egov.im.service.handler;
+package org.egov.im.service.handler.notification;
+
 
 import lombok.RequiredArgsConstructor;
 import org.egov.im.service.UserService;
@@ -9,13 +10,13 @@ import org.springframework.stereotype.Component;
 
 import java.util.Map;
 
-import static org.egov.im.util.IMConstants.ASSIGN;
+import static org.egov.im.util.IMConstants.IM_WF_RESOLVE;
 
-@Component("PENDINGATVENDOR_ASSIGN")
+@Component("CLOSEDAFTERRESOLUTION_CLOSE")
 @RequiredArgsConstructor
-public class PendingAtVendorAssignHandler implements WorkflowActionHandler {
+public class ClosedAfterResolutionCloseHandler implements WorkflowActionHandler {
 
-    private  final WorkflowService workflowService;
+    private  WorkflowService workflowService;
 
     @Override
     public NotificationContext handle(IncidentRequest request, UserService userService) {
@@ -25,15 +26,15 @@ public class PendingAtVendorAssignHandler implements WorkflowActionHandler {
         final StringBuilder url = workflowService.getprocessInstanceSearchURL(tenantId, incidentId);
         url.append("&").append("history=true");
 
-        Map<String, String> employeeMobileNumber
+        String employeeMobileNumber
+                = userService.getAssignerMobileNumber(request, IM_WF_RESOLVE, url);
+
+        Map<String, String> citizenMobileNumber
                 = userService.getHRMSEmployee(request, IMConstants.ROLE_COMPLAINANT);
 
-        String citizenMobileNumber
-                = userService.getAssigneeMobileNumber(request, ASSIGN, url);
-
         return new NotificationContext(
-                employeeMobileNumber.get("employeeMobile"),
-                citizenMobileNumber,
+                employeeMobileNumber,
+                citizenMobileNumber.get("employeeMobile"),
                 null);
     }
 }
