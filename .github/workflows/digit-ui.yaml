@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - develop
+      - main
     paths:
       - 'frontend/micro-ui/**'
   workflow_dispatch:
@@ -10,7 +11,7 @@ on:
 
 jobs:
   docker_image-build:
-    if: (github.event_name == 'push' && (startsWith(github.ref, 'refs/heads/develop')))
+    if: (github.event_name == 'push' && (startsWith(github.ref, 'refs/heads/develop') || startsWith(github.ref, 'refs/heads/main')))
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
