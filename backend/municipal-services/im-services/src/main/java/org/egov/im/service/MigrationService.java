@@ -4,25 +4,24 @@ package org.egov.im.service;
 import lombok.extern.slf4j.Slf4j;
 
 import org.apache.commons.lang3.StringUtils;
-import org.egov.common.contract.request.User;
 import org.egov.im.config.IMConfiguration;
 import org.egov.im.producer.Producer;
 import org.egov.im.util.MigrationUtils;
 import org.egov.im.web.models.*;
 import org.egov.im.web.models.AuditDetails;
+import org.egov.im.web.models.Incident;
 import org.egov.im.web.models.imV1.*;
 import org.egov.im.web.models.imV1.Service;
 import org.egov.im.web.models.imV1.ServiceResponse;
 import org.egov.im.web.models.workflow.*;
-import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
-import org.springframework.util.ObjectUtils;
 
 import jakarta.annotation.PostConstruct;
+
 import java.util.*;
 
 import static org.egov.im.util.IMConstants.IMAGE_DOCUMENT_TYPE;
@@ -30,13 +29,12 @@ import static org.egov.im.util.IMConstants.IM_BUSINESSSERVICE;
 import static org.egov.im.util.IMConstants.IM_MODULENAME;
 
 @ConditionalOnProperty(
-        value="migration.enabled",
+        value = "migration.enabled",
         havingValue = "true",
         matchIfMissing = false)
 @Component
 @Slf4j
 public class MigrationService {
-
 
     @Value("${im.statelevel.tenantid}")
     private String statelevelTenantIdForMigration;
@@ -50,7 +48,7 @@ public class MigrationService {
     @Autowired
     private IMConfiguration config;
 
-    private Map<String,String> statusToUUIDMap;
+    private Map<String, String> statusToUUIDMap;
 
     private Map<String, Long> serviceCodeToSLA;
 
@@ -83,28 +81,22 @@ public class MigrationService {
     };
 
     @PostConstruct
-    private void setStatusToUUIDMap(){
+    private void setStatusToUUIDMap() {
         this.statusToUUIDMap = migrationUtils.getStatusToUUIDMap(statelevelTenantIdForMigration);
         this.serviceCodeToSLA = migrationUtils.getServiceCodeToSLAMap(statelevelTenantIdForMigration);
     }
 
 
-
-
     /**
-     *
      * Comment actions has to be added in workflow
      * Active field has to be added
      * Media contains the complete url path instead of fileStoreId
-     *
-     *
+     * <p>
+     * <p>
      * Data Assumptions:
      * All records have actionHistory
      * Is AuditDetails of old address different from service auditDetails
      * Every citizen and employee has uuid
-     *
-     *
-     *
      */
 
     /*
@@ -174,7 +166,6 @@ public class MigrationService {
      */
     private Map<String, Object> transform(List<Service> servicesV1, List<ActionHistory> actionHistories, Map<Long, String> idToUuidMap) {
 
-
         Map<String, List<ActionInfo>> idToActionMap = new HashMap<>();
 
         for (ActionHistory actionHistory : actionHistories) {
@@ -188,7 +179,7 @@ public class MigrationService {
         }
 
         // Temporary for testing
-        List<org.egov.im.web.models.Incident> incidents = new LinkedList<>();
+        List<Incident> incidents = new LinkedList<>();
         List<ProcessInstance> workflowResponse = new LinkedList<>();
 
         for (Service serviceV1 : servicesV1) {
@@ -201,7 +192,7 @@ public class MigrationService {
 
             List<ProcessInstance> workflows = new LinkedList<>();
 
-            org.egov.im.web.models.Incident incident = transformService(serviceV1, idToUuidMap);
+            Incident incident = transformService(serviceV1, idToUuidMap);
 
             actionInfos.forEach(actionInfo -> {
                 ProcessInstance workflow = transformAction(actionInfo, idToUuidMap, actionUuidToSlaMap);
@@ -214,8 +205,13 @@ public class MigrationService {
             IncidentRequest incidentRequest = IncidentRequest.builder().incident(incident).build();
             //log.info("Pushing service request: " + serviceRequest);
             /*#################### TEMPORARY FOR TESTING, REMOVE THE COMMENTS*/
-               producer.push(tenantId,config.getBatchCreateTopic(),incidentRequest);
-               producer.push(tenantId,config.getBatchWorkflowSaveTopic(),processInstanceRequest);
+            try {
+                producer.push(tenantId, config.getBatchCreateTopic(), incidentRequest);
+                producer.push(tenantId, config.getBatchWorkflowSaveTopic(), processInstanceRequest);
+            } catch (Exception e) {
+                log.error("Error while pushing messages to Kafka. TenantId: {}, Error: {}", tenantId, e.getMessage());
+                throw new RuntimeException("Failed to process migration for tenant: " + tenantId, e);
+            }
 
             // Temporary for testing
             incidents.add(incident);
@@ -228,12 +224,10 @@ public class MigrationService {
         response.put("Workflows:", workflowResponse);
 
         return response;
-
-
     }
 
 
-    private org.egov.im.web.models.Incident transformService(Service serviceV1, Map<Long, String> idToUuidMap) {
+    private Incident transformService(Service serviceV1, Map<Long, String> idToUuidMap) {
 
         String tenantId = serviceV1.getTenantId();
         String incidentType = serviceV1.getIssueType();
@@ -245,10 +239,10 @@ public class MigrationService {
 
         Map<String, Object> additionalDetailMap = new HashMap<>();
 
-        if(!StringUtils.isEmpty(feedback))
+        if (!StringUtils.isEmpty(feedback))
             additionalDetailMap.put("feedback", feedback);
 
-        if(!StringUtils.isEmpty(addressInService))
+        if (!StringUtils.isEmpty(addressInService))
             additionalDetailMap.put("address", addressInService);
 
 
@@ -258,14 +252,14 @@ public class MigrationService {
          */
 
         String accountId = null;
-        if(serviceV1.getAccountId() != null)
+        if (serviceV1.getAccountId() != null)
             accountId = idToUuidMap.get(Long.parseLong(serviceV1.getAccountId()));
 
         AuditDetails auditDetails = serviceV1.getAuditDetails();
 
         // Setting uuid in place of id in auditDetails
         auditDetails.setCreatedBy(idToUuidMap.get(Long.parseLong(auditDetails.getCreatedBy())));
-        auditDetails.setLastModifiedBy(auditDetails.getLastModifiedBy() != null ? idToUuidMap.get(Long.parseLong(auditDetails.getLastModifiedBy())):"NOT_SPECIFIED");
+        auditDetails.setLastModifiedBy(auditDetails.getLastModifiedBy() != null ? idToUuidMap.get(Long.parseLong(auditDetails.getLastModifiedBy())) : "NOT_SPECIFIED");
 
         Object attributes = serviceV1.getAttributes();
 
@@ -274,7 +268,7 @@ public class MigrationService {
          */
         //GeoLocation geoLocation = GeoLocation.builder().longitude(longitutude).latitude(latitude).build();
         //log.info("Address details: " + serviceV1.getAddressDetail());
-        org.egov.im.web.models.Address address = null;
+        Address address = new Address();
         //address.setGeoLocation(geoLocation);
         address.setTenantId(tenantId);
 
@@ -282,7 +276,7 @@ public class MigrationService {
 
         // ACTIVE FLAG NEEDS TO BE ACCOUNTED FOR BELOW FOR POPULATING v2 POJO --->
 
-        org.egov.im.web.models.Incident incident = org.egov.im.web.models.Incident.builder()
+        Incident incident = Incident.builder()
                 .id(UUID.randomUUID().toString())
                 .tenantId(tenantId)
                 .accountId(accountId)
@@ -292,14 +286,12 @@ public class MigrationService {
                 .auditDetails(auditDetails)
                 .build();
 
-        if(!CollectionUtils.isEmpty(additionalDetailMap))
+        if (!CollectionUtils.isEmpty(additionalDetailMap))
             incident.setAdditionalDetail(additionalDetailMap);
 
 //        if (org.apache.commons.lang3.StringUtils.isNumeric(rating)) {
 //        	incident.setRating(Integer.parseInt(rating));
 //        }
-
-
 
 
         return incident;
@@ -310,7 +302,7 @@ public class MigrationService {
      * No auditDetails in address
      * Geolocation will be enriched in service transform as that data is available there
      *
-     * @param addressV1
+     * @param actionInfo
      * @return
      */
 //    private org.egov.im.web.models.Address transformAddress(Address addressV1) {
@@ -333,8 +325,6 @@ public class MigrationService {
 //        return address;
 //
 //    }
-
-
     private ProcessInstance transformAction(ActionInfo actionInfo, Map<Long, String> idToUuidMap, Map<String, Long> actionUuidToSlaMap) {
 
         String uuid = actionInfo.getUuid();
@@ -351,7 +341,6 @@ public class MigrationService {
         String comments = actionInfo.getComment();
         List<String> fileStoreIds = actionInfo.getMedia();
         String stateUUID = statusToUUIDMap.get(oldToNewStatus.get(status));
-
 
         State state = State.builder().uuid(stateUUID).state(oldToNewStatus.get(status)).build();
 
@@ -388,14 +377,13 @@ public class MigrationService {
         assigner.setUuid(idToUuidMap.get(Long.parseLong(createdBy)));
         workflow.setAssigner(assigner);
 
-
         // Setting the images uploaded in workflow document
         if (!CollectionUtils.isEmpty(fileStoreIds)) {
             List<Document> documents = new LinkedList<>();
             for (String fileStoreId : fileStoreIds) {
 
-                if(!StringUtils.isEmpty(fileStoreId) && !fileStoreId.equalsIgnoreCase("null")
-                    && fileStoreId.length()<=64){
+                if (!StringUtils.isEmpty(fileStoreId) && !fileStoreId.equalsIgnoreCase("null")
+                        && fileStoreId.length() <= 64) {
                     Document document = Document.builder()
                             .documentType(IMAGE_DOCUMENT_TYPE)
                             .fileStoreId(fileStoreId)
@@ -410,22 +398,22 @@ public class MigrationService {
         return workflow;
     }
 
-    private Map<String, Long> getActionUUidToSLAMap(List<ActionInfo> actionInfos, String serviceCode){
+    private Map<String, Long> getActionUUidToSLAMap(List<ActionInfo> actionInfos, String serviceCode) {
 
         Map<String, Long> uuidTOSLAMap = new HashMap<>();
 
-        if(CollectionUtils.isEmpty(actionInfos))
+        if (CollectionUtils.isEmpty(actionInfos))
             return uuidTOSLAMap;
 
         actionInfos.sort(Comparator.comparing(ActionInfo::getWhen));
         int totalCount = actionInfos.size();
 
-        uuidTOSLAMap.put(actionInfos.get(0).getUuid(), (serviceCodeToSLA.get(serviceCode)!=null)?serviceCodeToSLA.get(serviceCode):432000000l);
+        uuidTOSLAMap.put(actionInfos.get(0).getUuid(), (serviceCodeToSLA.get(serviceCode) != null) ? serviceCodeToSLA.get(serviceCode) : 432000000l);
 
-        for(int i = 1; i < totalCount; i++){
+        for (int i = 1; i < totalCount; i++) {
 
             ActionInfo actionInfo = actionInfos.get(i);
-            ActionInfo previousActionInfo = actionInfos.get(i-1);
+            ActionInfo previousActionInfo = actionInfos.get(i - 1);
             Long timeSpent = actionInfo.getWhen() - previousActionInfo.getWhen();
             Long slaLeft = uuidTOSLAMap.get(previousActionInfo.getUuid()) - timeSpent;
             uuidTOSLAMap.put(actionInfo.getUuid(), slaLeft);

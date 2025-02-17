@@ -4,19 +4,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jayway.jsonpath.JsonPath;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.egov.common.contract.request.RequestInfo;
-import org.egov.common.contract.request.Role;
-import org.egov.common.contract.request.User;
 import org.egov.common.utils.MultiStateInstanceUtil;
 import org.egov.im.config.IMConfiguration;
 import org.egov.im.repository.ServiceRequestRepository;
 import org.egov.im.util.HRMSUtil;
 import org.egov.im.util.MDMSUtils;
 import org.egov.im.util.NotificationUtil;
+import org.egov.im.web.models.*;
 import org.egov.im.web.models.Notification.*;
-import org.egov.im.web.models.IncidentRequest;
-import org.egov.im.web.models.IncidentWrapper;
-import org.egov.im.web.models.RequestInfoWrapper;
 import org.egov.im.web.models.workflow.ProcessInstance;
 import org.egov.im.web.models.workflow.ProcessInstanceResponse;
 import org.egov.tracer.model.CustomException;
@@ -437,7 +432,7 @@ public class NotificationService {
 
 //            if(defaultMessage.contains("{status}"))
 //                defaultMessage = defaultMessage.replace("{status}", localisedStatus);
-//            
+//
             if (messageForEmployee.contains("{emp_name}"))
                 messageForEmployee = messageForEmployee.replace("{emp_name}", request.getRequestInfo().getUserInfo() != null ? request.getRequestInfo().getUserInfo().getName() : processInstance.getAssigner().getName());
             if (messageForCitizen.contains("{emp_name}"))

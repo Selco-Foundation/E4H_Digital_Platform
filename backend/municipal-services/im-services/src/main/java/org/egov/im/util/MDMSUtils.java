@@ -1,9 +1,9 @@
 package org.egov.im.util;
 
-import org.egov.common.contract.request.RequestInfo;
+import org.egov.im.web.models.MdmsCriteriaReq;
+import org.egov.im.web.models.RequestInfo;
 import org.egov.mdms.model.MasterDetail;
 import org.egov.mdms.model.MdmsCriteria;
-import org.egov.mdms.model.MdmsCriteriaReq;
 import org.egov.mdms.model.ModuleDetail;
 import org.egov.im.config.IMConfiguration;
 import org.egov.im.repository.ServiceRequestRepository;
@@ -40,8 +40,7 @@ public class MDMSUtils {
         RequestInfo requestInfo = request.getRequestInfo();
         String tenantId = request.getIncident().getTenantId();
         MdmsCriteriaReq mdmsCriteriaReq = getMDMSRequest(requestInfo,tenantId);
-        Object result = serviceRequestRepository.fetchResult(getMdmsSearchUrl(), mdmsCriteriaReq);
-        return result;
+        return serviceRequestRepository.fetchResult(getMdmsSearchUrl(), mdmsCriteriaReq);
     }
 
 
@@ -60,9 +59,10 @@ public class MDMSUtils {
         MdmsCriteria mdmsCriteria = MdmsCriteria.builder().moduleDetails(moduleDetails).tenantId(tenantId)
                 .build();
 
-        MdmsCriteriaReq mdmsCriteriaReq = MdmsCriteriaReq.builder().mdmsCriteria(mdmsCriteria)
-                .requestInfo(requestInfo).build();
-        return mdmsCriteriaReq;
+        return MdmsCriteriaReq.builder()
+                .mdmsCriteria(mdmsCriteria)
+                .requestInfo(requestInfo)
+                .build();
     }
 
 

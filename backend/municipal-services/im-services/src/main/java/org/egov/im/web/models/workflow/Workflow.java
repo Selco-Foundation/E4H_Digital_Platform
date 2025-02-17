@@ -1,4 +1,4 @@
-package org.egov.im.web.models;
+package org.egov.im.web.models.workflow;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.annotations.ApiModel;
@@ -6,6 +6,7 @@ import io.swagger.annotations.ApiModel;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.egov.im.web.models.Document;
 import org.hibernate.validator.constraints.SafeHtml;
 import org.springframework.validation.annotation.Validated;
 import jakarta.validation.Valid;
@@ -29,38 +30,38 @@ import lombok.Builder;
 @NoArgsConstructor
 @Builder
 public class Workflow   {
-        @SafeHtml
-        @JsonProperty("action")
-        private String action = null;
+    @SafeHtml
+    @JsonProperty("action")
+    private String action = null;
 
-        @JsonProperty("assignes")
-        @Valid
-        private List<String> assignes = null;
+    @JsonProperty("assignes")
+    @Valid
+    private List<String> assignes = null;
 
-        @SafeHtml
-        @JsonProperty("comments")
-        private String comments = null;
+    @SafeHtml
+    @JsonProperty("comments")
+    private String comments = null;
 
-        @JsonProperty("verificationDocuments")
-        @Valid
-        private List<Document> verificationDocuments = null;
+    @JsonProperty("verificationDocuments")
+    @Valid
+    private List<Document> verificationDocuments = null;
 
 
-        public Workflow addAssignesItem(String assignesItem) {
-            if (this.assignes == null) {
+    public Workflow addAssignesItem(String assignesItem) {
+        if (this.assignes == null) {
             this.assignes = new ArrayList<>();
-            }
+        }
         this.assignes.add(assignesItem);
         return this;
-        }
+    }
 
-        public Workflow addVarificationDocumentsItem(Document verificationDocumentsItem) {
-            if (this.verificationDocuments == null) {
+    public Workflow addVarificationDocumentsItem(Document verificationDocumentsItem) {
+        if (this.verificationDocuments == null) {
             this.verificationDocuments = new ArrayList<>();
-            }
+        }
         this.verificationDocuments.add(verificationDocumentsItem);
         return this;
-        }
+    }
 
 }
 

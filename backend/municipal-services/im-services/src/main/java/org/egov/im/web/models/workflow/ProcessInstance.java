@@ -10,7 +10,7 @@ import jakarta.validation.constraints.Size;
 
 import org.egov.im.web.models.AuditDetails;
 import org.egov.im.web.models.Document;
-import org.egov.common.contract.request.User;
+import org.egov.im.web.models.User;
 import org.springframework.validation.annotation.Validated;
 
 import com.fasterxml.jackson.annotation.JsonProperty;

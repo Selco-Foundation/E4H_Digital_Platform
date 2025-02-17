@@ -8,9 +8,8 @@ import org.egov.im.util.IMConstants;
 import org.egov.im.web.models.IncidentWrapper;
 import org.egov.im.web.models.RequestSearchCriteria;
 import org.egov.im.web.models.Incident;
-import org.egov.im.web.models.Workflow;
+import org.egov.im.web.models.workflow.Workflow;
 import org.egov.tracer.model.CustomException;
-import org.egov.common.exception.InvalidTenantIdException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -53,7 +52,6 @@ public class IMRepository {
      */
     public List<IncidentWrapper> getIncidentWrappers(RequestSearchCriteria criteria){
         List<Incident> incidents = getIncidents(criteria);
-        List<String> serviceRequestids = incidents.stream().map(Incident::getIncidentId).collect(Collectors.toList());
         Map<String, Workflow> idToWorkflowMap = new HashMap<>();
         List<IncidentWrapper> serviceWrappers = new ArrayList<>();
 

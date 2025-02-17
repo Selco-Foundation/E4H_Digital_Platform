@@ -166,6 +166,6 @@ public class IMConstants {
 
     public static final String DEPARTMENT = "department";
 
-
+    public static final String ROLE_COMPLAINANT = "COMPLAINANT";
 
 }

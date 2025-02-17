@@ -1,13 +1,8 @@
 package org.egov.im.web.models;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
-import org.egov.common.contract.request.User;
 import org.springframework.validation.annotation.Validated;
 
 import com.fasterxml.jackson.annotation.JsonProperty;

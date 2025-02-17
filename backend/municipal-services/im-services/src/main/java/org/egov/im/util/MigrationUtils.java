@@ -4,16 +4,16 @@ package org.egov.im.util;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jayway.jsonpath.JsonPath;
 import lombok.extern.slf4j.Slf4j;
-import org.egov.common.contract.request.RequestInfo;
-import org.egov.mdms.model.MdmsCriteriaReq;
+import org.egov.im.web.models.MdmsCriteriaReq;
+import org.egov.im.web.models.RequestInfo;
+import org.egov.im.web.models.User;
+import org.egov.im.web.models.workflow.State;
 import org.egov.im.config.IMConfiguration;
 import org.egov.im.repository.ServiceRequestRepository;
 import org.egov.im.web.models.RequestInfoWrapper;
-import org.egov.im.web.models.User;
 import org.egov.im.web.models.user.UserDetailResponse;
 import org.egov.im.web.models.user.UserSearchRequest;
 import org.egov.im.web.models.workflow.BusinessServiceResponse;
-import org.egov.im.web.models.workflow.State;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -21,7 +21,6 @@ import org.springframework.util.CollectionUtils;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static org.egov.im.util.IMConstants.*;
@@ -49,9 +48,6 @@ public class MigrationUtils {
         this.repository = repository;
         this.mdmsUtils = mdmsUtils;
     }
-
-
-
 
 
     public Map<Long, String> getIdtoUUIDMap(List<String> ids) {
@@ -86,9 +82,7 @@ public class MigrationUtils {
     }
 
 
-
-
-    public Map<String,String> getStatusToUUIDMap(String tenantId) {
+    public Map<String, String> getStatusToUUIDMap(String tenantId) {
         StringBuilder url = getSearchURLWithParams(tenantId, IM_BUSINESSSERVICE);
         RequestInfoWrapper requestInfoWrapper = RequestInfoWrapper.builder().requestInfo(new RequestInfo()).build();
         Object result = repository.fetchResult(url, requestInfoWrapper);
@@ -102,37 +96,33 @@ public class MigrationUtils {
         if (CollectionUtils.isEmpty(response.getBusinessServices()))
             throw new CustomException("BUSINESSSERVICE_NOT_FOUND", "The businessService " + IM_BUSINESSSERVICE + " is not found");
 
-        Map<String,String> statusToUUIDMap = response.getBusinessServices().get(0).getStates().stream()
-                .collect(Collectors.toMap(State::getState,State::getUuid));
-
-        return statusToUUIDMap;
+        return response.getBusinessServices().get(0).getStates().stream()
+                .collect(Collectors.toMap(State::getState, State::getUuid));
     }
 
 
-    public Map<String,Long> getServiceCodeToSLAMap(String tenantId) {
+    public Map<String, Long> getServiceCodeToSLAMap(String tenantId) {
 
         Map<String, Long> serviceCodeToSLA = new HashMap<>();
 
-        MdmsCriteriaReq mdmsCriteriaReq = mdmsUtils.getMDMSRequest(new RequestInfo(),tenantId);
+        MdmsCriteriaReq mdmsCriteriaReq = mdmsUtils.getMDMSRequest(new RequestInfo(), tenantId);
         Object result = repository.fetchResult(mdmsUtils.getMdmsSearchUrl(), mdmsCriteriaReq);
         List<Map<String, Object>> res = new LinkedList<>();
 
 
-        try{
-            res = JsonPath.read(result,MDMS_DATA_JSONPATH);
-        }
-        catch (Exception e){
-            throw new CustomException("JSONPATH_ERROR","Failed to parse mdms response");
+        try {
+            res = JsonPath.read(result, MDMS_DATA_JSONPATH);
+        } catch (Exception e) {
+            throw new CustomException("JSONPATH_ERROR", "Failed to parse mdms response");
         }
 
-        for(Map<String, Object> map : res){
-            Long SLA = TimeUnit.HOURS.toMillis((Integer)map.get(MDMS_DATA_SLA_KEYWORD));
-            serviceCodeToSLA.put((String)map.get(MDMS_DATA_SERVICE_CODE_KEYWORD), SLA);
+        for (Map<String, Object> map : res) {
+            Long SLA = TimeUnit.HOURS.toMillis((Integer) map.get(MDMS_DATA_SLA_KEYWORD));
+            serviceCodeToSLA.put((String) map.get(MDMS_DATA_SERVICE_CODE_KEYWORD), SLA);
         }
 
         return serviceCodeToSLA;
     }
-
 
 
     private StringBuilder getSearchURLWithParams(String tenantId, String businessService) {
