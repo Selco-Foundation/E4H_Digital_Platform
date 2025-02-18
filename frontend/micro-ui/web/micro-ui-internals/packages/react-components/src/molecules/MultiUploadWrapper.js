@@ -44,7 +44,7 @@ const checkIfAllValidFiles = (files, otherFilesLength, videoFilesLength, regex, 
         return [[{ valid: false, name: files[0]?.name?.substring(0, 15), error: t(`FILE_LIMIT_EXCEEDED`).replace("{}", `${maxFilesAllowed}`) }], true];
     }
     if (videoFilesLength && specificFileConstraint?.maxFiles && (uploadedVideos + videoFilesLength > specificFileConstraint.maxFiles)) {
-        return [[{ valid: false, name: files[0]?.name?.substring(0, 15), error: t(`FILE_LIMIT_EXCEEDED`).replace("{}", `${specificFileConstraint.maxFiles}`) }], true];
+        return [[{ valid: false, name: files[0]?.name?.substring(0, 15), error: t(`VIDEO_FILE_LIMIT_EXCEEDED`).replace("{}", `${specificFileConstraint.maxFiles}`) }], true];
     }   
     // Adding a check for fileSize > maxSize
     // const maxSizeInBytes = maxSize * 1000000
@@ -74,7 +74,6 @@ const MultiUploadWrapper = ({ t, module = "PGR", tenantId = Digit.ULBService.get
     const [enableButton, setEnableButton] = useState(true)
 
     const uploadMultipleFiles = (state, payload) => {
-        console.debug(payload)
         const { files, fileStoreIds } = payload;
         const filesData = Array.from(files)
         const newUploads = filesData?.map((file, index) => [file.name, { file, fileStoreId: fileStoreIds[index] }])
