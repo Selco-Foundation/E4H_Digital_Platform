@@ -4,7 +4,6 @@ on:
     branches:
       - develop
       - main
-      - hrms-image-build
     paths:
       - 'backend/business-services/egov-hrms/**'
   workflow_dispatch:
@@ -12,7 +11,7 @@ on:
 
 jobs:
   docker_image-build:
-#    if: (github.event_name == 'push' && (startsWith(github.ref, 'refs/heads/develop') || startsWith(github.ref, 'refs/heads/main')))
+    if: (github.event_name == 'push' && (startsWith(github.ref, 'refs/heads/develop') || startsWith(github.ref, 'refs/heads/main')))
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -50,5 +49,5 @@ jobs:
       - name: Build and Push Docker image for hrms-Service-DB
         run: |
           docker build  -t selcohub/hrms-db:${{ env.VERSION }}-${{ env.commit_hash }} -f  Dockerfile .
-          docker push selcohub/im-services-db:${{ env.VERSION }}-${{ env.commit_hash }}
+          docker push selcohub/hrms-db:${{ env.VERSION }}-${{ env.commit_hash }}
         working-directory: backend/business-services/egov-hrms/src/main/resources/db
