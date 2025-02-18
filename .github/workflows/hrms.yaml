@@ -1,0 +1,53 @@
+name: HRMS Image Build workflow
+on:
+  push:
+    branches:
+      - develop
+      - main
+    paths:
+      - 'backend/business-services/egov-hrms/**'
+  workflow_dispatch:
+  workflow_call:
+
+jobs:
+  docker_image-build:
+    if: (github.event_name == 'push' && (startsWith(github.ref, 'refs/heads/develop') || startsWith(github.ref, 'refs/heads/main')))
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Docker
+        uses: docker/setup-buildx-action@v2
+
+      - name: Set Version from Branch
+        id: set_version
+        run: |
+          if [[ "${GITHUB_REF}" == refs/heads/* ]]; then
+            # Use branch name as version, replacing '/' with '-'
+            VERSION=${GITHUB_REF#refs/heads/}
+            VERSION=$(echo "${VERSION}" | sed 's|/|-|g')
+          else
+            VERSION="latest"  # Default version if not a tag or branch
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Git commit_hash for service
+        run: |
+          commit_hash=$(git log -1 --pretty=format:%H -- backend/business-services/egov-hrms)
+          echo "commit_hash=$commit_hash" >> $GITHUB_ENV
+
+      # Login to Docker Container Registry
+      - name: Login to Docker Container Registry
+        run: docker login -u selcohub -p ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and Push Docker image for hrms-Service
+        run: |
+          docker build --build-arg WORK_DIR="backend/business-services/egov-hrms" -t selcohub/hrms:${{ env.VERSION }}-${{ env.commit_hash }} -f build/maven/Dockerfile .
+          docker push selcohub/hrms:${{ env.VERSION }}-${{ env.commit_hash }}
+
+      - name: Build and Push Docker image for hrms-Service-DB
+        run: |
+          docker build  -t selcohub/hrms-db:${{ env.VERSION }}-${{ env.commit_hash }} -f  Dockerfile .
+          docker push selcohub/hrms-db:${{ env.VERSION }}-${{ env.commit_hash }}
+        working-directory: backend/business-services/egov-hrms/src/main/resources/db
