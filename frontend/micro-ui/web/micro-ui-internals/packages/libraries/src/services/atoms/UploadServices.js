@@ -18,7 +18,7 @@ export const UploadServices = {
     return Axios(config);
   },
 
-  MultipleFilesStorage: async (module, filesData, tenantId) => {
+  MultipleFilesStorage: async (module, filesData, tenantId, isVideo = false) => {
     const formData = new FormData();
     const filesArray = Array.from(filesData)
     filesArray?.forEach((fileData, index) => fileData ? formData.append("file", fileData, fileData.name) : null);
@@ -27,7 +27,7 @@ export const UploadServices = {
     let tenantInfo=window?.globalConfigs?.getConfig("ENABLE_SINGLEINSTANCE")?`?tenantId=${tenantId}`:"";
     var config = {
       method: "post",
-      url:`${Urls.FileStore}${tenantInfo}`, 
+      url: isVideo ? `${Urls.VideoFileUpload}${tenantInfo}` : `${Urls.FileStore}${tenantInfo}`,
       data: formData,
       headers: { 'Content-Type': 'multipart/form-data',"auth-token": Digit.UserService.getUser().access_token },
     };

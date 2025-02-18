@@ -13,6 +13,7 @@ const Urls = {
   pgr_update: `/pgr-services/v2/request/_update`,
   filter_data: `https://run.mocky.io/v3/597a50a0-90e5-4a45-b82e-8a2186b760bd`,
   FileStore: "/filestore/v1/files",
+  VideoFileUpload: "/im-services/v2/video/upload",
 
   im_search: `/im-services/v2/request/_search`,
   im_update: `/im-services/v2/request/_update`,

@@ -8,9 +8,9 @@ import {
   ImageUploadHandler,
   Toast,
   TextInput,
-  MultiUploadWrapper,
   UploadFile,
   CardLabel,
+  MultiUploadWrapper,
 } from "@selco/digit-ui-react-components";
 import { useRouteMatch, useHistory } from "react-router-dom";
 import { useQueryClient } from "react-query";
@@ -18,6 +18,7 @@ import { FormComposer } from "../../../components/FormComposer";
 import { createComplaint } from "../../../redux/actions/index";
 import { Loader, Header } from "@selco/digit-ui-react-components";
 import { Link } from "react-router-dom";
+// import { MultiUploadWrapper } from "./MultiUploadWrapper";
 
 export const CreateComplaint = ({ parentUrl }) => {
   const { t } = useTranslation();
@@ -30,6 +31,7 @@ export const CreateComplaint = ({ parentUrl }) => {
   const [showToast, setShowToast] = useState(null);
   const [uploadedFile, setUploadedFile] = useState([]);
   const [uploadedImages, setUploadedImagesIds] = useState(null);
+  const specificFileConstraint = { type: "video", maxSize: 100, maxFiles: 5 };
   const [district, setDistrict] = useState(null);
   const [block, setBlock] = useState(null);
   const [error, setError] = useState(null);
@@ -555,15 +557,16 @@ export const CreateComplaint = ({ parentUrl }) => {
                 module="Incident"
                 tenantId={tenantId}
                 getFormState={(e) => getData(e)}
-                allowedFileTypesRegex={/(jpg|jpeg|png|image)$/i}
-                allowedMaxSizeInMB={5}
-                maxFilesAllowed={3}
+                allowedFileTypesRegex={/(jpg|jpeg|png|image|mp4|mov|avi|wmv|video)$/i}
+                allowedMaxSizeInMB={50}
+                maxFilesAllowed={5}
                 disabled={disbaledUpload}
                 ulb={Digit.SessionStorage.get("Employee.tenantId") !== "pg" ? Digit.SessionStorage.get("Employee.tenantId") : healthcentre?.code}
-                acceptFiles={".png, .image, .jpg, .jpeg"}
+                acceptFiles={".png, .image, .jpg, .jpeg, .mp4, .avi, .mov, .wmv"}
+                specificFileConstraint={specificFileConstraint}
               />
               {/* <ImageUploadHandler tenantId={tenant} uploadedImages={uploadedImages} onPhotoChange={handleUpload} disabled={disbaled}/> */}
-              <div style={{ marginLeft: "20px", marginTop: "10px", fontSize: "12px" }}>{t("CS_IMAGE_BASED_FILES_ARE_ACCEPTED")}</div>
+              <div style={{ marginLeft: "20px", marginTop: "10px", fontSize: "12px" }}>{t("CS_IMAGE_VIDEO_BASED_FILES_ARE_ACCEPTED")}</div>
             </div>
           ),
         },
