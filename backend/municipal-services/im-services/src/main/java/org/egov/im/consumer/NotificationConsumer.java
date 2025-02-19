@@ -10,7 +10,6 @@ import org.egov.im.service.IMService;
 import org.egov.im.service.NotificationService;
 import org.egov.im.util.IMConstants;
 import org.egov.im.web.models.IMEscalationRequest;
-import org.egov.im.web.models.Incident;
 import org.egov.im.web.models.IncidentRequest;
 import org.egov.im.web.models.IncidentWrapper;
 import org.egov.im.web.models.RequestSearchCriteria;

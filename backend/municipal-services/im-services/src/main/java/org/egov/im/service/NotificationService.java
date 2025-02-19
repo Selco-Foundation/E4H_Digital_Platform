@@ -446,7 +446,8 @@ public class NotificationService {
 
 
         if (incidentWrapper.getIncident().getApplicationStatus().equalsIgnoreCase(PENDINGFORASSIGNMENT) && incidentWrapper.getWorkflow().getAction().equalsIgnoreCase(IM_WF_SENDBACK)) {
-            messageForEmployee = notificationUtil.getCustomizedMsg(request.getWorkflow().getAction(), applicationStatus, EMPLOYEE, localizationMessage);
+            messageForEmployee
+                    = notificationUtil.getCustomizedMsg(request.getWorkflow().getAction(), applicationStatus, EMPLOYEE, localizationMessage);
             if (messageForEmployee == null) {
                 log.info("No message Found For Employee On Topic : " + topic);
                 return null;
@@ -565,6 +566,7 @@ public class NotificationService {
             messageForEmployee = messageForEmployee.replace("{ticket_type}", incidentWrapper.getIncident().getIncidentType());
             messageForEmployee = messageForEmployee.replace("{incidentId}", incidentWrapper.getIncident().getIncidentId());
             messageForEmployee = messageForEmployee.replace("{date}", date.format(formatter));
+            messageForEmployee = messageForEmployee.replace("{dropDownValue}", request.getWorkflow().getSendBackReason().getReason());
             messageForEmployee = messageForEmployee.replace("{download_link}", config.getMobileDownloadLink());
         }
 
