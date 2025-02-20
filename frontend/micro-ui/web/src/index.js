@@ -2,9 +2,9 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import { initLibraries } from "@egovernments/digit-ui-libraries";
 import "./index.css";
-import "@selco/selco-css";
 import App from './App';
 import { TLCustomisations } from './Customisations/tl/TLCustomisation';
+
 
 initLibraries();
 

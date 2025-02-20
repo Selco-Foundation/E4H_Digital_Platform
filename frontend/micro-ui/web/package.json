@@ -13,8 +13,7 @@
     "micro-ui-internals/packages/modules/core",
     "micro-ui-internals/packages/modules/im",
     "micro-ui-internals/packages/modules/dss",
-    "micro-ui-internals/packages/modules/hrms",
-    "micro-ui-internals/packages/css"
+    "micro-ui-internals/packages/modules/hrms"
   ],
   "homepage": "/digit-ui",
   "dependencies": {
