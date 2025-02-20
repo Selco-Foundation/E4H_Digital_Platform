@@ -250,10 +250,6 @@ const UploadFile = (props) => {
           accept={props.accept}
           disabled={props.disabled}
           onChange={(e) => {
-            const files = Array.from(e.target.files);
-            if (props.setUploadedFileType && files.length) {
-              props.setUploadedFileType(files[0].type);
-            }
             props.onUpload(e);
           }}
           onClick={(event) => {
