@@ -76,7 +76,12 @@ const MultiUploadWrapper = ({ t, module = "PGR", tenantId = Digit.ULBService.get
     const uploadMultipleFiles = (state, payload) => {
         const { files, fileStoreIds } = payload;
         const filesData = Array.from(files)
-        const newUploads = filesData?.map((file, index) => [file.name, { file, fileStoreId: fileStoreIds[index] }])
+        const newUploads = filesData
+        .map((file, index) => {
+            const fileStoreId = fileStoreIds[index];
+            return fileStoreId ? [file.name, { file, fileStoreId }] : null;
+        })
+        .filter(Boolean);
         return [...state, ...newUploads]
     }
 
@@ -102,74 +107,122 @@ const MultiUploadWrapper = ({ t, module = "PGR", tenantId = Digit.ULBService.get
     const [state, dispatch] = useReducer(uploadReducer, [...setuploadedstate])
     
     const onUploadMultipleFiles = async (e) => {
-        console.log("onUploadMultipleFiles")
-        e.preventDefault()
-        setEnableButton(false)
-        setFileErrors([])
-        const files = Array.from(e.target.files);
+      console.log("onUploadMultipleFiles");
+      e.preventDefault();
+      setEnableButton(false);
+      setFileErrors([]);
+      const files = Array.from(e.target.files);
 
-        if (!files.length) return;
+      if (!files.length) return;
 
-        // Separate files before uploading
-        const videoFiles = [];
-        const otherFiles = [];
-        const fileIndexMap = {}; // Stores index mapping
+      // Separate files before uploading
+      const videoFiles = [];
+      const otherFiles = [];
+      const fileIndexMap = {}; // Stores index mapping
 
-        files.forEach((file, index) => {
-            if (file.type.startsWith("video/")) {
-                videoFiles.push(file);
-                fileIndexMap[file.name] = index;
-            } else {
-                otherFiles.push(file);
-                fileIndexMap[file.name] = index;
-            }
-        });
-        
-        const [validationMsg, error] = checkIfAllValidFiles(files, otherFiles.length, videoFiles.length, allowedFileTypesRegex, allowedMaxSizeInMB, t, maxFilesAllowed, state, specificFileConstraint);
-        
-        if (error) {
-            setFileErrors(validationMsg);
-            setEnableButton(true);
-            return;
+      files.forEach((file, index) => {
+        if (file.type.startsWith("video/")) {
+          videoFiles.push(file);
+          fileIndexMap[file.name] = index;
+        } else {
+          otherFiles.push(file);
+          fileIndexMap[file.name] = index;
         }
-    
-        try {
-            let tenant = ulb || Digit.SessionStorage.get("Employee.tenantId");
-    
-            const uploadPromises = [];
-    
-            if (otherFiles.length > 0) {
-                uploadPromises.push(Digit.UploadServices.MultipleFilesStorage(module, otherFiles, tenant));
-            }
-            if (videoFiles.length > 0) {
-                uploadPromises.push(Digit.UploadServices.MultipleFilesStorage(module, videoFiles, tenant, true));
-            }
-    
-            // Wait for all uploads to complete
-            const responses = await Promise.all(uploadPromises);
-    
-            // Collect fileStore IDs and maintain order
-            const fileStoreIds = new Array(files.length).fill(null);
-            let responseIndex = 0;
-    
-            responses.forEach(response => {
-                response?.data?.files.forEach((fileId, i) => {
-                    const fileName = responseIndex === 0 ? otherFiles[i]?.name : videoFiles[i]?.name;
-                    if (fileName in fileIndexMap) {
-                        fileStoreIds[fileIndexMap[fileName]] = fileId;
-                    }
-                });
-                responseIndex++;
+      });
+
+      const [validationMsg, error] = checkIfAllValidFiles(
+        files,
+        otherFiles.length,
+        videoFiles.length,
+        allowedFileTypesRegex,
+        allowedMaxSizeInMB,
+        t,
+        maxFilesAllowed,
+        state,
+        specificFileConstraint
+      );
+
+      if (error) {
+        setFileErrors(validationMsg);
+        setEnableButton(true);
+        return;
+      }
+
+      try {
+        let tenant = ulb || Digit.SessionStorage.get("Employee.tenantId");
+
+        const uploadPromises = [];
+
+        if (otherFiles.length > 0) {
+          uploadPromises.push(
+            Digit.UploadServices.MultipleFilesStorage(module, otherFiles, tenant).then((res) => ({
+              fileType: "other",
+              response: res,
+            }))
+          );
+        }
+        if (videoFiles.length > 0) {
+          uploadPromises.push(
+            Digit.UploadServices.MultipleFilesStorage(module, videoFiles, tenant, true).then((res) => ({
+              fileType: "video",
+              response: res,
+            }))
+          );
+        }
+
+        const results = await Promise.allSettled(uploadPromises);
+
+        // Collect fileStore IDs and maintain order
+        const fileStoreIds = new Array(files.length).fill(null);
+
+        const errorMessages = [];
+        let videoUploadFailed = false;
+        let otherUploadFailed = false;
+
+        results.forEach((result) => {
+          if (result.status === "fulfilled") {
+            const { fileType, response } = result.value;
+            const uploadedFiles = fileType === "other" ? otherFiles : videoFiles;
+
+            response?.data?.files.forEach((fileId, i) => {
+              const fileName = uploadedFiles[i]?.name;
+              if (fileName in fileIndexMap) {
+                fileStoreIds[fileIndexMap[fileName]] = fileId;
+              }
             });
-    
-            setEnableButton(true);
-            dispatch({ type: FILES_UPLOADED, payload: { files: e.target.files, fileStoreIds } });
-    
-        } catch (err) {
-            console.error("File upload error:", err);
-            setEnableButton(true);
+          } else {
+            console.error("File upload failed:", result.reason);
+
+            const failedUrl = result.reason?.config?.url || result.reason?.response?.config?.url || "";
+            if (failedUrl.includes("video")) {
+              videoUploadFailed = true;
+            } else {
+              otherUploadFailed = true;
+            }
+          }
+        });
+
+        // Generate specific error messages
+        if (videoUploadFailed && otherUploadFailed) {
+          errorMessages.push({ valid: false, name: "", error: t("BOTH_VIDEO_AND_IMAGE_UPLOAD_FAILED") });
+        } else if (videoUploadFailed) {
+          errorMessages.push({ valid: false, name: "", error: t("VIDEO_UPLOAD_FAILED") });
+        } else if (otherUploadFailed) {
+          errorMessages.push({ valid: false, name: "", error: t("IMAGE_UPLOAD_FAILED") });
         }
-    }
+
+        // Set errors if any failed uploads exist
+        if (errorMessages.length > 0) {
+          setFileErrors(errorMessages);
+        }
+
+        setEnableButton(true);
+        dispatch({ type: FILES_UPLOADED, payload: { files: e.target.files, fileStoreIds } });
+      } catch (err) {
+        console.error("File upload error:", err);
+        setEnableButton(true);
+      }
+    };
 
     useEffect(() => getFormState(state), [state])
 

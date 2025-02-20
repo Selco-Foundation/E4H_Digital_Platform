@@ -791,7 +791,7 @@ export const ComplaintDetails = (props) => {
       {imagesToShowBelowComplaintDetails?.thumbs ? (
         <div>
         <CardLabel style={{marginTop:'18px', fontWeight:'bolder'}}>{t("CS_TICKET_ADDITIONAL_DETAILS")}</CardLabel>
-        <DisplayPhotos srcs={imagesToShowBelowComplaintDetails?.fullImage} onClick={(source, index) => zoomImageWrapper(source, index)} />
+        <DisplayPhotos srcs={[...imagesToShowBelowComplaintDetails?.fullImage, ...imagesToShowBelowComplaintDetails?.videos]} onClick={(source, index) => zoomImageWrapper(source, index)} />
         </div>
       ) : null}
       <BreakLine />

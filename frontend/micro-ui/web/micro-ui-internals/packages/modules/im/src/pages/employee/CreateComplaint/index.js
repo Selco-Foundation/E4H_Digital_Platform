@@ -309,15 +309,6 @@ export const CreateComplaint = ({ parentUrl }) => {
     const { key } = subType;
     //const complaintType = key;
 
-    let uploadImages = [];
-    if (uploadedFile !== null) {
-      uploadImages = uploadedFile?.map((url) => ({
-        documentType: "PHOTO",
-        fileStoreId: url?.fileStoreId,
-        documentUid: "",
-        additionalDetails: {},
-      }));
-    }
     const formData = {
       ...data,
       complaintType,
@@ -328,7 +319,6 @@ export const CreateComplaint = ({ parentUrl }) => {
       healthcentre,
       reporterName,
       uploadedFile,
-      uploadImages,
       tenantId: healthcentre?.code,
     };
     await dispatch(createComplaint(formData));
@@ -562,7 +552,7 @@ export const CreateComplaint = ({ parentUrl }) => {
                 maxFilesAllowed={5}
                 disabled={disbaledUpload}
                 ulb={Digit.SessionStorage.get("Employee.tenantId") !== "pg" ? Digit.SessionStorage.get("Employee.tenantId") : healthcentre?.code}
-                acceptFiles={".png, .image, .jpg, .jpeg, .mp4, .avi, .mov, .wmv"}
+                acceptFiles={".png, .image, .jpg, .jpeg, .mp4, .avi, .mov, .wmv, video/*"}
                 specificFileConstraint={specificFileConstraint}
               />
               {/* <ImageUploadHandler tenantId={tenant} uploadedImages={uploadedImages} onPhotoChange={handleUpload} disabled={disbaled}/> */}
