@@ -10,7 +10,6 @@ import org.egov.im.producer.Producer;
 import org.egov.im.repository.ServiceRequestRepository;
 import org.egov.im.web.models.Notification.EventRequest;
 import org.egov.im.web.models.Notification.SMSRequest;
-import org.json.JSONArray;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -89,7 +88,14 @@ public class NotificationUtil {
     public String getCustomizedMsg(String action, String applicationStatus, String roles, String localizationMessage) {
         StringBuilder notificationCode = new StringBuilder();
 
-        notificationCode.append("IM_").append(roles.toUpperCase()).append("_").append(action.toUpperCase()).append("_").append(applicationStatus.toUpperCase()).append("_SMS_MESSAGE");
+        notificationCode
+                .append("IM_")
+                .append(roles.toUpperCase())
+                .append("_")
+                .append(action.toUpperCase())
+                .append("_")
+                .append(applicationStatus.toUpperCase())
+                .append("_SMS_MESSAGE");
 
         String path = "$..messages[?(@.code==\"{}\")].message";
         path = path.replace("{}", notificationCode);

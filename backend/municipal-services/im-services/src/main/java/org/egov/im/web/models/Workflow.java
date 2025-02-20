@@ -45,6 +45,8 @@ public class Workflow   {
         @Valid
         private List<Document> verificationDocuments = null;
 
+        @JsonProperty("sendBackReason")
+        private SendBackReason sendBackReason;
 
         public Workflow addAssignesItem(String assignesItem) {
             if (this.assignes == null) {
