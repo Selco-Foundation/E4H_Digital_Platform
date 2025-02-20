@@ -4,17 +4,36 @@ import cloneDeep from "lodash/cloneDeep";
 
 const getThumbnails = async (ids, tenantId, documents = []) => {
   tenantId = window.location.href.includes("/obps/") || window.location.href.includes("/pt/") ? Digit.ULBService.getStateId() : tenantId;
-  
-    const res = await Digit.UploadServices.Filefetch(ids, tenantId);
-    if (res.data.fileStoreIds && res.data.fileStoreIds.length !== 0) {
-      return {
-        thumbs: res.data.fileStoreIds.map((o) => o.url.split(",")[3] || o.url.split(",")[0]),
-        images: res.data.fileStoreIds.map((o) => Digit.Utils.getFileUrl(o.url))
-      };
-    } else {
-      return null;
-    }
-  
+
+  const res = await Digit.UploadServices.Filefetch(ids, tenantId);
+
+  if (res.data.fileStoreIds && res.data.fileStoreIds.length !== 0) {
+    // Create a Map to store file URLs by fileStoreId
+    const urlMap = new Map(res.data.fileStoreIds.map((file) => [file.id, file.url]));
+
+    // Separate images and videos based on documentType (matching by fileStoreId)
+    const images = [];
+    const videos = [];
+
+    documents.forEach((doc) => {
+      const fileUrl = urlMap.get(doc.fileStoreId);
+      if (fileUrl) {
+        if (doc.documentType.toLowerCase().startsWith("video")) {
+          videos.push(Digit.Utils.getFileUrl(fileUrl));
+        } else {
+          images.push(Digit.Utils.getFileUrl(fileUrl));
+        }
+      }
+    });
+
+    return {
+      thumbs: Array.from(urlMap.values()).map((url) => url.split(",")[3] || url.split(",")[0]),
+      images,
+      videos,
+    };
+  } else {
+    return null;
+  }
 };
 
 const makeCommentsSubsidariesOfPreviousActions = async (wf) => {
@@ -272,7 +291,7 @@ export const WorkflowService = {
             rating: instance?.rating,
             wfComment: instance?.wfComments.map(e => e?.comment),
             wfDocuments: instance?.documents,
-            thumbnailsToShow: { thumbs: instance?.thumbnailsToShow?.thumbs, fullImage: instance?.thumbnailsToShow?.images },
+            thumbnailsToShow: { thumbs: instance?.thumbnailsToShow?.thumbs, fullImage: instance?.thumbnailsToShow?.images, videos: instance?.thumbnailsToShow?.videos },
             assignes: instance.assignes,
             caption: instance.assignes ? instance.assignes.map((assignee) => ({ name: assignee.name, mobileNumber: assignee.mobileNumber })) : null,
             auditDetails: {

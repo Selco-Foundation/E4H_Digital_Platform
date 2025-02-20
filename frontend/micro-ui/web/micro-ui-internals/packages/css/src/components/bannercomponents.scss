@@ -89,21 +89,17 @@
 }
 
 .photos-wrap {
-  max-width: 640px;
-  @apply flex pt-md;
+  max-width: 900px;
+  @apply flex flex-wrap pt-md gap-4;
 
-  img {
-    width: calc(33% - 9.333px);
-    margin-right: 14px;
-  }
-
-  svg {
-    width: calc(33% - 9.333px);
-    margin-right: 14px;
-  }
-
+  img,
+  svg,
   .last {
-    width: calc(33% - 9.333px);
+    width: 165px;
+  }
+
+  @media (max-width: 475px) {
+    justify-content: center;
   }
 }
 

@@ -7,7 +7,6 @@ export const Complaint = {
     block,
     reporterName,
     complaintType,
-    uploadImages,
     subType,
     healthcentre,
     healthCareType,
@@ -44,10 +43,13 @@ export const Complaint = {
         //: uploadedImages
       },
     };
-    if (uploadImages !== null) {
+    if (uploadedFile !== null) {
       defaultData.workflow = {
         ...defaultData.workflow,
-        verificationDocuments: uploadImages,
+        verificationDocuments: uploadedFile.map((file) => ({
+          ...file,
+          documentType: file.documentType.toLowerCase().startsWith("video") ? "VIDEO" : "PHOTO",
+        })),
       };
     }
 
@@ -100,7 +102,6 @@ export const Complaint = {
     };
 
     Object.entries(reasonMap).forEach(([key, data]) => {
-
       if (data) {
         complaintDetails.workflow[key] = data.value;
         if (!complaintDetails.incident.additionalDetail[key]) {
