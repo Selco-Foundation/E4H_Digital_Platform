@@ -13,12 +13,15 @@ RUN yarn add @selco/digit-ui-module-dss
 
 
 ARG WORK_DIR
+ARG PUBLIC_PATH
 
 WORKDIR /app
 
 ENV NODE_OPTIONS "--max-old-space-size=8192"
 
 ENV GENERATE_SOURCEMAP "false"
+
+ENV PUBLIC_PATH ${PUBLIC_PATH}
  
 COPY ${WORK_DIR} .
 
