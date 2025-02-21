@@ -162,13 +162,13 @@ return setError("")
 
   function onSelect(val) {
     setTouched(true); // Set touched to true when an option is selected
+    setSelectedOption(val);
+    setDropdownStatus(false);
+    setFilterVal("")
     if (val !== selectedOption || props.allowMultiselect) {
       props.select(val);
-      setSelectedOption(val);
-      setDropdownStatus(false);
       setError(""); // Clear error on valid selection
     } else {
-      setSelectedOption(val);
       setforceSet(forceSet + 1);
     }
   }
