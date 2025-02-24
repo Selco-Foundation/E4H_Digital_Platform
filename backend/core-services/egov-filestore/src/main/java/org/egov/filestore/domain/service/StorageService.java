@@ -173,5 +173,11 @@ public class StorageService {
 				+ "/" + calendar.get(Calendar.DATE) + "/";
 	}
 
+	public org.springframework.core.io.Resource getHlsFiles(
+			String fileStoreId, String quality, String fileName) throws IOException {
+        String filePath = String.format("%s/hls/%s/%s", fileStoreId, quality, fileName);
+		return artifactRepository.findHLS(filePath);
+	}
+
 	
 }
