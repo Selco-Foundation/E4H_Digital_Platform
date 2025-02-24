@@ -20,6 +20,8 @@ const SearchComplaint = ({ onSearch, type, onClose, searchParams }) => {
     sortedPhcMenu=phcMenus.sort((a, b) => a.name.localeCompare(b.name));
   }
   const [mobileNo, setMobileNo] = useState(searchParams?.search?.mobileNumber || "");
+  const [viewportHeight, setViewportHeight] = useState(window.innerHeight);
+  const bottomPosition = window.innerHeight - viewportHeight;
   const { register, errors, handleSubmit, reset } = useForm();
   const { t } = useTranslation();
  
@@ -76,6 +78,28 @@ if(Digit.SessionStorage.get("Employee.tenantId") !== "pg" ? Digit.SessionStorage
  
 }
 },[])
+
+  useEffect(() => {
+    const handleResize = () => {
+      // Update the viewport height when the keyboard opens/closes
+      setViewportHeight(window.visualViewport ? window.visualViewport.height : window.innerHeight);
+    };
+
+    // Add event listeners for viewport resize
+    window.addEventListener("resize", handleResize);
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", handleResize);
+    }
+
+    // Cleanup event listeners
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener("resize", handleResize);
+      }
+    };
+  }, []);
+
   function setPhcTypeFunction(value) {
     setPhcType(value);
   }
@@ -126,7 +150,7 @@ if(Digit.SessionStorage.get("Employee.tenantId") !== "pg" ? Digit.SessionStorage
           </div>
         </div>
         {type === "mobile" && (
-          <ActionBar>
+          <ActionBar style={{bottom: `${bottomPosition}px`}}>
             <SubmitBar label="Search" submit={true} />
           </ActionBar>
         )}
