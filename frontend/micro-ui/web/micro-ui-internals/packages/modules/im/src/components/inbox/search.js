@@ -72,7 +72,7 @@ const SearchComplaint = ({ onSearch, type, onClose, searchParams }) => {
       let empTenant = Digit.SessionStorage.get("Employee.tenantId");
       let filtered = Digit.SessionStorage.get("IM_TENANTS").filter((abc) => abc.code == empTenant);
 
-      if (!filtered?.[0].code === "pg") {
+      if (filtered?.[0].code !== "pg") {
         setPhcTypeFunction(filtered?.[0]);
       }
     }
