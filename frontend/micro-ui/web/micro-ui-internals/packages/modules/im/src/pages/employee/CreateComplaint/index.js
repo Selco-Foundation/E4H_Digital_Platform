@@ -251,6 +251,7 @@ export const CreateComplaint = ({ parentUrl }) => {
         ...item,
         key: item?.name,
         name: t(item?.name),
+        code: item?.code,
         centreTypeKey: item?.centreType,
         centreType: t(item?.centreType),
       }));
