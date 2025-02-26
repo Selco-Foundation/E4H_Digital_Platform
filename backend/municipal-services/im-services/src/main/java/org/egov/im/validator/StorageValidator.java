@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.tika.Tika;
+import org.apache.tika.io.TikaInputStream;
 import org.egov.im.config.IMConfiguration;
 import org.egov.tracer.model.CustomException;
 import org.springframework.stereotype.Component;
@@ -55,7 +56,7 @@ public class StorageValidator {
 		String detectedFormat;
 		Tika tika = new Tika();
 		try {
-			detectedFormat = tika.detect(inputStream);
+			detectedFormat = tika.detect(TikaInputStream.get(inputStream));
 		} catch (IOException e) {
 			throw new CustomException("EG_FILESTORE_PARSING_ERROR",
 					String.format("Error parsing the uploaded video file: %s", e.getMessage()));
