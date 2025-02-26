@@ -1,6 +1,7 @@
 import React from "react";
 import PropTypes from "prop-types";
 import { PDFSvg } from "./svgindex";
+import ReactPlayer from "react-player";
 
 const ImageOrPDFIcon = ({ source, index, last = false, onClick }) => {
   if (source.includes(".xlsx")) {
@@ -37,10 +38,14 @@ const videoIcon="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQACWAJYAAD/4gogSUNDX1BS
     );
   } else if (fileType.startsWith("video")) {
     return (
-      <video key={index} width="150px" height="100px" controls style={{ cursor: "pointer", marginRight: "10px" }}>
-        <source src={source} type={fileType} />
-        Your browser does not support the video tag.
-      </video>
+      <ReactPlayer
+        key={index}
+        url={source}
+        controls
+        width="150px"
+        height="100px"
+        style={{ cursor: "pointer", marginRight: "10px" }}
+      />
     );
   }
   return (
