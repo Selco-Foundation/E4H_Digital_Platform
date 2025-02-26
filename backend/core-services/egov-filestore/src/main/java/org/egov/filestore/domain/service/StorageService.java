@@ -136,7 +136,7 @@ public class StorageService {
 				artifact.setThumbnailImages(mapOfImagesAndPaths);
 			}
 
-		} catch (IOException e) {
+		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			log.error("EG_FILESTORE_INPUT_ERROR", e);
 			throw new CustomException("EG_FILESTORE_INPUT_ERROR", "Failed to read input stream from multipart file");
@@ -171,12 +171,6 @@ public class StorageService {
 	private String getFolderName(String module, String tenantId, Calendar calendar) {
 		return tenantId + "/" + module + "/" + calendar.getDisplayName(Calendar.MONTH, Calendar.LONG, Locale.ENGLISH)
 				+ "/" + calendar.get(Calendar.DATE) + "/";
-	}
-
-	public org.springframework.core.io.Resource getHlsFiles(
-			String fileStoreId, String quality, String fileName) throws IOException {
-        String filePath = String.format("%s/hls/%s/%s", fileStoreId, quality, fileName);
-		return artifactRepository.findHLS(filePath);
 	}
 
 	
