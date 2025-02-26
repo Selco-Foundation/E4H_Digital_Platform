@@ -1,5 +1,7 @@
 package org.egov.filestore.utils;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 
 import org.egov.common.contract.request.RequestInfo;
@@ -10,6 +12,7 @@ import org.springframework.stereotype.Component;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.multipart.MultipartFile;
 
 @Component
 @Slf4j
@@ -47,4 +50,11 @@ public class StorageUtil {
 		artifact.setLastModifiedTime(System.currentTimeMillis());
 	}*/
 
+	public File convertMultipartFileToFile(MultipartFile multipartFile) throws IOException {
+		File file = new File(System.getProperty("java.io.tmpdir") + "/" + multipartFile.getOriginalFilename());
+		try (FileOutputStream fos = new FileOutputStream(file)) {
+			fos.write(multipartFile.getBytes());
+		}
+		return file;
+	}
 }

@@ -65,9 +65,6 @@ public class StorageService {
 	private Boolean useNumbers;
 
 
-	
-	
-
 	@Autowired
 	public StorageService(ArtifactRepository artifactRepository, IdGeneratorService idGeneratorService,
 			FileStoreConfig fileStoreConfig, StorageValidator storageValidator, FileStoreConfig configs, MinioConfig minioConfig) {

@@ -20,10 +20,12 @@ import javax.imageio.ImageIO;
 import io.minio.PutObjectArgs;
 import io.minio.errors.*;
 import org.apache.commons.io.FilenameUtils;
+import org.checkerframework.checker.units.qual.A;
 import org.egov.filestore.config.FileStoreConfig;
 import org.egov.filestore.domain.model.FileLocation;
 import org.egov.filestore.persistence.entity.Artifact;
 import org.egov.filestore.repository.CloudFilesManager;
+import org.egov.filestore.repository.VideoRepository;
 import org.egov.filestore.repository.impl.CloudFileMgrUtils;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -56,6 +58,9 @@ public class MinioRepository implements CloudFilesManager {
 	@Autowired
 	private FileStoreConfig fileStoreConfig;
 
+	@Autowired
+	private VideoRepository videoRepository;
+
 	@Override
 	public void saveFiles(List<org.egov.filestore.domain.model.Artifact> artifacts) {
 
@@ -66,8 +71,12 @@ public class MinioRepository implements CloudFilesManager {
 			int index = completeName.indexOf('/');
 			String fileNameWithPath = completeName.substring(index + 1, completeName.length());
 			push(artifact.getMultipartFile(), fileNameWithPath);
-
-			if (artifact.getThumbnailImages() != null && !artifact.getThumbnailImages().isEmpty())
+            try {
+                videoRepository.uploadAndProcess(artifact.getMultipartFile());
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            if (artifact.getThumbnailImages() != null && !artifact.getThumbnailImages().isEmpty())
 				pushThumbnailImages(artifact);
 
 			fileLocation.setFileSource(minioConfig.getSource());
