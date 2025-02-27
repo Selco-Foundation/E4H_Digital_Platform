@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useHistory } from "react-router-dom";
 import Background from "../../../components/Background";
 import Header from "../../../components/Header";
+import ForgotPassword from "../ForgotPasswordPopup/ForgotPassword";
 
 /* set employee details to enable backward compatiable */
 const setEmployeeDetail = (userObject, token) => {
@@ -33,6 +34,7 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
   const { stateInfo } = storeData || {};
   const [user, setUser] = useState(null);
   const [showToast, setShowToast] = useState(null);
+  const [popup, setPopup] = useState(false)
   const [disable, setDisable] = useState(false);
 
   const history = useHistory();
@@ -170,6 +172,20 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
       >
         <Header />
       </FormComposer>
+      <div style={{ textAlign: "center", marginTop: "1rem" }}>
+        <button
+          onClick={() => setPopup(true)}
+          style={{
+            color: "blue",
+            textDecoration: "underline",
+            cursor: "pointer",
+          }}
+        >
+          {t("CORE_COMMON_FORGOT_PASSWORD")}
+        </button>
+
+        {popup && <ForgotPassword setPopup={setPopup} />}
+      </div>
       <div style={{textAlign:"center",marginBottom:"10px"}}>
         <img className="bannerLogo" src={"https://selco-assets.s3.ap-south-1.amazonaws.com/powered-by-nhm-ka.png"} alt="Selco Foundation" style={{border:"0px",marginLeft:"15px"}} />
         <img className="bannerLogo" src={"https://selco-assets.s3.ap-south-1.amazonaws.com/powered-by-ka_govt.svg"} alt="Selco Foundation" style={{border:"0px"}}/>
