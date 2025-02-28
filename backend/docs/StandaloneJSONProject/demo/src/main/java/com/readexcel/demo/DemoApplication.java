@@ -51,7 +51,7 @@ import com.readexcel.demo.entity.jurisdiction.Jurisdictions;
 public class DemoApplication{
 	public static void main(String[] args) {
 		try {
-			FileInputStream fis=new FileInputStream("C:/Users/Administrator/SELCO/StandaloneJSONProject/demo/src/main/resources/config.properties");
+			FileInputStream fis=new FileInputStream("/home/beehyv/pasam/Devops/Selco/E4H_Digital_Platform/backend/docs/StandaloneJSONProject/demo/src/main/resources/config.properties");
 			Properties prop=new Properties();
 			prop.load(fis);
 			String query_url=prop.getProperty("url");
@@ -104,7 +104,7 @@ public class DemoApplication{
 private static void writeExcel() {
 	System.out.println("inside writeExcel");
 	try {
-	FileInputStream fis=new FileInputStream("C:/Users/Administrator/SELCO/StandaloneJSONProject/demo/src/main/resources/config.properties");
+	FileInputStream fis=new FileInputStream("/home/beehyv/pasam/Devops/Selco/E4H_Digital_Platform/backend/docs/StandaloneJSONProject/demo/src/main/resources/config.properties");
 	Properties prop=new Properties();
 	prop.load(fis);
 	String outputExcel=prop.getProperty("outexcel");
@@ -152,7 +152,7 @@ public static List<JsonResponse> testing() {
 	List<JsonResponse> jsonList=new ArrayList<JsonResponse>();
 	JsonResponse json=null;
 	try {
-		FileInputStream fis=new FileInputStream("C:/Users/Administrator/SELCO/StandaloneJSONProject/demo/src/main/resources/config.properties");
+		FileInputStream fis=new FileInputStream("/home/beehyv/pasam/Devops/Selco/E4H_Digital_Platform/backend/docs/StandaloneJSONProject/demo/src/main/resources/config.properties");
 		Properties prop=new Properties();
 		prop.load(fis);
 		String inputExcel=prop.getProperty("inexcel");
