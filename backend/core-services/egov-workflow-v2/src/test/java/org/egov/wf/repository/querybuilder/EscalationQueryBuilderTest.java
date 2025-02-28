@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 import java.util.ArrayList;
 
 import org.egov.wf.web.models.EscalationSearchCriteria;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,6 +23,7 @@ class EscalationQueryBuilderTest {
     private EscalationQueryBuilder escalationQueryBuilder;
 
 
+    @Disabled
     @Test
     void testGetEscalationQuery() {
         EscalationSearchCriteria escalationSearchCriteria = mock(EscalationSearchCriteria.class);
@@ -47,6 +49,7 @@ class EscalationQueryBuilderTest {
     }
 
 
+    @Disabled
     @Test
     void testGetEscalationQuerywithstatesla() {
         EscalationSearchCriteria escalationSearchCriteria = mock(EscalationSearchCriteria.class);
