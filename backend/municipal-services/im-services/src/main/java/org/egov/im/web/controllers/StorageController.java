@@ -3,6 +3,7 @@ package org.egov.im.web.controllers;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.im.service.StorageService;
+import org.egov.im.web.models.ProcessingContext;
 import org.egov.im.web.models.storage.StorageResponse;
 import org.egov.tracer.model.CustomException;
 import org.springframework.web.bind.annotation.*;
@@ -29,7 +30,13 @@ public class StorageController {
         log.info("Received upload request for jurisdiction: {}, module: {}, tag: {} with file count: {}",
                 tenantId, module, tag, files.size());
         try {
-            return storageService.save(files, module, tag, tenantId, requestInfo);
+            ProcessingContext context = ProcessingContext.builder()
+                    .requestInfo(requestInfo)
+                    .tag(tag)
+                    .tenantId(tenantId)
+                    .module(module)
+                    .build();
+            return storageService.save(files, context);
         } catch (IOException e) {
             throw new CustomException("ERROR_UPLOADING_TO_FILESTORE", e.getMessage());
         }

@@ -12,6 +12,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 @RequiredArgsConstructor
@@ -36,15 +37,15 @@ public class StorageValidator {
             try {
                 validateVideoContentType(file.getInputStream(), extension);
             } catch (IOException e) {
-                throw new RuntimeException(e);
+                throw new CustomException("Error validating", e.getMessage());
             }
             validateInputContentType(file, extension);
-			validateVideoSize(file);
 		});
 	}
 	
 	private void validateFileExtension(String extension) {
-		if(!fileStoreConfig.getAllowedFormatsMap().containsKey(extension)) {
+		Map<String, List<String>> fileExtension = fileStoreConfig.getAllowedFormatsMap();
+		if(!fileExtension.containsKey(extension)) {
 			throw new CustomException("EG_FILESTORE_INVALID_INPUT",
 					String.format("Invalid input provided for file :  %s , please upload any of the allowed formats : ",
 							fileStoreConfig.getAllowedKeySet()));
@@ -76,17 +77,17 @@ public class StorageValidator {
 		}
 	}
 
-	private void validateVideoSize(MultipartFile file) {
-		String contentType = file.getContentType();
-
-		if (contentType != null && contentType.startsWith("video/")) {
-			long maxSizeInBytes = fileStoreConfig.getMaxVideoSizeInMB() * 1024 * 1024; // Convert MB to Bytes
-			long fileSizeInBytes = file.getSize();
-
-			if (fileSizeInBytes > maxSizeInBytes) {
-				throw new CustomException("EG_FILESTORE_VIDEO_SIZE_EXCEEDED",
-						"File size exceeds the allowed limit of " + fileStoreConfig.getMaxVideoSizeInMB() + "MB.");
-			}
-		}
-	}
+//	private void validateVideoSize(MultipartFile file) {
+//		String contentType = file.getContentType();
+//
+//		if (contentType != null && contentType.startsWith("video/")) {
+//			long maxSizeInBytes = fileStoreConfig.getMaxVideoSizeInMB() * 1024 * 1024; // Convert MB to Bytes
+//			long fileSizeInBytes = file.getSize();
+//
+//			if (fileSizeInBytes > maxSizeInBytes) {
+//				throw new CustomException("EG_FILESTORE_VIDEO_SIZE_EXCEEDED",
+//						"File size exceeds the allowed limit of " + fileStoreConfig.getMaxVideoSizeInMB() + "MB.");
+//			}
+//		}
+//	}
 }
