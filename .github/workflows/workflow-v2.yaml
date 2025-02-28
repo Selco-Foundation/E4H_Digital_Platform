@@ -5,8 +5,8 @@ on:
       - develop
       - main
       - workflow-v2-driver-update
-    paths:
-      - 'backend/core-services/egov-workflow-v2/**'
+#    paths:
+#      - 'backend/core-services/egov-workflow-v2/**'
   workflow_dispatch:
   workflow_call:
 
@@ -44,7 +44,7 @@ jobs:
 
       - name: Build and Push Docker image for workflow-v2
         run: |
-          docker build --build-arg WORK_DIR="backend/core-services/egov-workflow-v2" -t selcohub/egov-workflow-v2:${{ env.VERSION }}-${{ env.commit_hash }} -f build/maven/Dockerfile .
+          docker build --build-arg WORK_DIR="backend/core-services/egov-workflow-v2" -t selcohub/egov-workflow-v2:${{ env.VERSION }}-${{ env.commit_hash }} -f build/maven-java8/Dockerfile .
           docker push selcohub/egov-workflow-v2:${{ env.VERSION }}-${{ env.commit_hash }}
 
       - name: Build and Push Docker image for workflow-v2_DB
