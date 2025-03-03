@@ -23,6 +23,7 @@ public class StorageUtil {
     private final IMConfiguration configuration;
     private final ServiceRequestRepository serviceRequestRepository;
 
+
     /**
      * Calls File-store service to store files and returns list of file ids
      * @param filesToStore
@@ -40,13 +41,37 @@ public class StorageUtil {
     }
 
     /**
-     * Returns the url for file-storage upload endpoint
+     * Calls File-store service to store files and returns list of file ids
+     * @param filesToStore
      *
+     * @return storage response from filestore service
+     * @throws IOException
+     */
+    public StorageResponse uploadToHLSFileStorage(List<MultipartFile> filesToStore,
+                                               ProcessingContext context) throws IOException {
+
+        final String URL = getFileStoreURL(configuration.getFileStoreHlsUploadEndpoint()).toString();
+        log.info("uploading to filestore service at {}", URL);
+        return serviceRequestRepository.uploadFiles(
+                filesToStore, context, URL);
+    }
+
+    /**
+     * Returns the url for file-storage upload endpoint
      * @return url for filestore upload endpoint
      */
     public StringBuilder getFileStoreURL() {
         return new StringBuilder().append(configuration.getFileStoreHost())
                 .append(configuration.getFileStoreUploadEndpoint());
+    }
+
+    /**
+     * Returns the url for file-storage upload endpoint
+     * @return url for filestore upload endpoint
+     */
+    public StringBuilder getFileStoreURL(String endPoint) {
+        return new StringBuilder().append(configuration.getFileStoreHost())
+                .append(endPoint);
     }
 
 
@@ -55,8 +80,8 @@ public class StorageUtil {
      * @return the fetched file as a Resource
      */
     public Resource getFile(String tenantId, String fileStoreId) {
-        ResponseEntity<Resource> response = serviceRequestRepository
-                .fetchFile(getFileStoreURL().toString(), tenantId, fileStoreId);
+        ResponseEntity<Resource> response =
+                serviceRequestRepository.fetchFile(getFileStoreURL().toString(), tenantId, fileStoreId);
         if (response.getStatusCode().is2xxSuccessful()) {
             return response.getBody();
         }

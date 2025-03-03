@@ -131,7 +131,8 @@ public class InboxServiceV2 {
         Map<String, Object> finalQueryBody = queryBuilder.getESQuery(inboxRequest, Boolean.TRUE);
         try {
             String q = mapper.writeValueAsString(finalQueryBody);
-            log.info("Query: "+q);
+            String cleanedQuery = q.replace("\\\"\\\"", "\"\"");
+            log.info("Query: {}", cleanedQuery);
         }
         catch (Exception e){
             e.printStackTrace();
