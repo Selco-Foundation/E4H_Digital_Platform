@@ -44,7 +44,7 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
 
 
     @Override
-    public Map<String, Object> getESQuery(InboxRequest inboxRequest, Boolean isPaginationRequired) {
+    public Map<String, Object> getESQuery(InboxRequest inboxRequest, Boolean isPaginationRequired, Boolean isSLA) {
 
         InboxQueryConfiguration configuration = mdmsUtil.getConfigFromMDMS(
                 inboxRequest.getInbox().getTenantId(),
@@ -89,7 +89,7 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
         innerBoolClause.put(MUST_KEY, mustClauseList);
 
         //add filter for inbox SLA
-        if (inboxRequest.getInbox().getModuleSearchCriteria().containsKey("nearingSLA")) {
+        if (inboxRequest.getInbox().getModuleSearchCriteria().containsKey("nearingSLA") && isSLA) {
             Map<String, Object> runTimeMappings = new HashMap<>();
             Map<String, Object> slaComparison = generateSLAComparison(System.currentTimeMillis());
             runTimeMappings.put("sla_comparison", slaComparison);
@@ -104,17 +104,16 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
         slaComparison.put("type", "long");
 
         Map<String, Object> script = new HashMap<>();
-        String scriptSource = "\"\"" +
+        String scriptSource =
                 "long sla = doc.containsKey('Data.currentProcessInstance.businesssServiceSla') " +
-                "&& doc['Data.currentProcessInstance.businesssServiceSla'].size() > 0 " +
-                "? doc['Data.currentProcessInstance.businesssServiceSla'].value : 0; " +
+                        "&& doc['Data.currentProcessInstance.businesssServiceSla'].size() > 0 " +
+                        "? doc['Data.currentProcessInstance.businesssServiceSla'].value : 0; " +
 
-                "long createdTime = doc.containsKey('Data.currentProcessInstance.auditDetails.createdTime') " +
-                "&& doc['Data.currentProcessInstance.auditDetails.createdTime'].size() > 0 " +
-                "? doc['Data.currentProcessInstance.auditDetails.createdTime'].value : 0; " +
+                        "long createdTime = doc.containsKey('Data.currentProcessInstance.auditDetails.createdTime') " +
+                        "&& doc['Data.currentProcessInstance.auditDetails.createdTime'].size() > 0 " +
+                        "? doc['Data.currentProcessInstance.auditDetails.createdTime'].value : 0; " +
 
-                "emit(sla - (createdTime + params.currentTime));" +
-                "\"\"";
+                        "emit(sla - (createdTime + params.currentTime));";
 
         script.put("source", scriptSource);
 
@@ -305,7 +304,7 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
 
     @Override
     public Map<String, Object> getStatusCountQuery(InboxRequest inboxRequest) {
-        Map<String, Object> baseEsQuery = getESQuery(inboxRequest, Boolean.FALSE);
+        Map<String, Object> baseEsQuery = getESQuery(inboxRequest, Boolean.FALSE, Boolean.FALSE);
         appendStatusCountAggsNode(baseEsQuery);
         log.info("status query====", baseEsQuery);
         return baseEsQuery;
@@ -313,7 +312,7 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
 
     @Override
     public Map<String, Object> getNearingSlaCountQuery(InboxRequest inboxRequest, Long businessServiceSla) {
-        Map<String, Object> baseEsQuery = getESQuery(inboxRequest, Boolean.FALSE);
+        Map<String, Object> baseEsQuery = getESQuery(inboxRequest, Boolean.FALSE, Boolean.FALSE);
         Long currenTimeInMillis = System.currentTimeMillis();
         Long lteParam = currenTimeInMillis;
         Long slotLimit = businessServiceSla - 40 * (businessServiceSla / 100);

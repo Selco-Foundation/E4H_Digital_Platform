@@ -15,7 +15,7 @@ public interface QueryBuilderInterface{
      * @param inboxRequest
      * @return
      */
-    public Map<String, Object> getESQuery(InboxRequest inboxRequest, Boolean isPaginationRequired);
+    public Map<String, Object> getESQuery(InboxRequest inboxRequest, Boolean isPaginationRequired, Boolean isSLA);
 
 
     /**
