@@ -130,3 +130,220 @@
   justify-content: center;
   align-items: center !important;
 }
+
+.video-container, .video-controls, .video-timer, .video-options, 
+.video-options button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.video-container{
+  width: 98%;
+  user-select: none;
+  overflow: hidden;
+  max-width: 900px;
+  border-radius: 5px;
+  background: #000;
+  aspect-ratio: 16 / 9;
+  position: relative;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+.video-container.fullscreen{
+  max-width: 100%;
+  width: 100%;
+  height: 100vh;
+  border-radius: 0px;
+}
+.video-wrapper{
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 1;
+  opacity: 0;
+  bottom: -15px;
+  transition: all 0.08s ease;
+}
+.video-container.show-controls .video-wrapper{
+  opacity: 1;
+  bottom: 0;
+  transition: all 0.13s ease;
+}
+.video-wrapper::before{
+  content: "";
+  bottom: 0;
+  width: 100%;
+  z-index: -1;
+  position: absolute;
+  height: calc(100% + 35px);
+  pointer-events: none;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent);
+}
+.video-timeline{
+  height: 7px;
+  width: 100%;
+  cursor: pointer;
+}
+.video-timeline .progress-area{
+  height: 3px;
+  position: relative;
+  background: rgba(255, 255, 255, 0.6);
+}
+.progress-area span{
+  position: absolute;
+  top: -25px;
+  font-size: 13px;
+  color: #fff;
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+.progress-area .progress-bar{
+  width: 0%;
+  height: 100%;
+  position: relative;
+  background: #2289ff;
+}
+.progress-bar::before{
+  content: "";
+  right: 0;
+  top: 50%;
+  height: 13px;
+  width: 13px;
+  position: absolute;
+  border-radius: 50%;
+  background: #2289ff;
+  transform: translateY(-50%);
+}
+.video-wrapper .video-controls{
+  padding: 5px 20px 10px;
+}
+.video-controls .video-options{
+  width: 100%;
+}
+.video-controls .video-options:first-child{
+  justify-content: flex-start;
+}
+.video-controls .video-options:last-child{
+  justify-content: flex-end;
+}
+.video-options button{
+  height: 40px;
+  width: 40px;
+  font-size: 19px;
+  border: none;
+  cursor: pointer;
+  background: none;
+  color: #efefef;
+  border-radius: 3px;
+  transition: all 0.3s ease;
+}
+.video-options button:hover{
+  color: #fff;
+}
+.video-options button:active{
+  transform: scale(0.9);
+}
+.video-options input{
+  height: 4px;
+  margin-left: 3px;
+  max-width: 75px;
+  accent-color: #0078FF;
+}
+.video-options .video-timer{
+  color: #efefef;
+  margin-left: 15px;
+  font-size: 14px;
+}
+.video-timer .separator{
+  margin: 0 5px;
+  font-size: 16px;
+  font-family: "Open sans";
+}
+.settings-content {
+  position: relative;
+}
+
+.settings-menu,
+.speed-options,
+.quality-options {
+  position: absolute;
+  left: -40px;
+  bottom: 40px;
+  width: 120px;
+  list-style: none;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+  padding: 5px 0;
+  transition: opacity 0.13s ease;
+}
+
+.settings-menu li,
+.speed-options li,
+.quality-options li {
+  padding: 5px 10px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.1s ease;
+}
+
+.settings-menu li:hover,
+.speed-options li:hover,
+.quality-options li:hover {
+  background: #dfdfdf;
+}
+
+.settings-menu li.active,
+.speed-options li.active,
+.quality-options li.active {
+  background-color: blue;
+  color: white;
+  font-weight: bold;
+}
+.video-container video{
+  width: 100%;
+}
+.video-container svg {
+  width: 24px !important;
+  height: 24px !important;
+}
+@media screen and (max-width: 540px) {
+  .video-wrapper .video-controls{
+    padding: 3px 10px 7px;
+  }
+  .video-options input, .progress-area span{
+    display: none!important;
+  }
+  .video-options button{
+    height: 30px;
+    width: 30px;
+    font-size: 17px;
+  }
+  .video-options .video-timer{
+    margin-left: 5px;
+  }
+  .video-timer .separator{
+    font-size: 14px;
+    margin: 0 2px;
+  }
+  .video-options button :where(i, span) {
+    line-height: 30px;
+  }
+  .video-options button span{
+    font-size: 21px;
+  }
+  .video-options .video-timer, .progress-area span, .settings-menu li{
+    font-size: 12px;
+  }
+  .settings-content .settings-menu{
+    width: 75px;
+    left: -30px;
+    bottom: 30px;
+  }
+  .settings-menu li{
+    margin: 1px 0;
+    padding: 3px 0 3px 10px;
+  }
+  .right .pic-in-pic{
+    display: none;
+  }
+}
