@@ -2,6 +2,7 @@ package org.egov.im.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.egov.im.config.IMConfiguration;
 import org.egov.im.util.StorageUtil;
 import org.egov.im.validator.StorageValidator;
 import org.egov.im.web.models.ProcessingContext;

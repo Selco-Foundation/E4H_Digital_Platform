@@ -38,7 +38,8 @@ public class FFmpegCommandGenerator {
                                       String preset,
                                       int crf,
                                       String resolution,
+                                      String audioBitRate,
                                       String outputFilePath) {
-        return String.format(OPTIMIZED_COMMAND, inputFilePath, preset, crf, resolution, outputFilePath);
+        return String.format(OPTIMIZED_COMMAND, inputFilePath, preset, crf, resolution, audioBitRate, outputFilePath);
     }
 }
