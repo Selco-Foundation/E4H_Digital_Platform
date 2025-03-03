@@ -32,7 +32,7 @@ public class VideoUtil {
         return 8000000; // for higher resolutions
     }
 
-    public MultipartFile convertFileToMultipartFile(File file) {
+    public MultipartFile convertFileToMultipartFile(File file, String path) {
         byte[] fileContent;
         try {
             fileContent = Files.readAllBytes(file.toPath());
@@ -45,8 +45,8 @@ public class VideoUtil {
 
             return ByteArrayMultipartFile.builder()
                     .content(fileContent)
-                    .name(file.getName())
-                    .originalFilename(file.getName())
+                    .name(String.format("%s/%s", path, file.getName()))
+                    .originalFilename(String.format("%s/%s", path, file.getName()))
                     .contentType(contentType)
                     .build();
         } catch (IOException e) {

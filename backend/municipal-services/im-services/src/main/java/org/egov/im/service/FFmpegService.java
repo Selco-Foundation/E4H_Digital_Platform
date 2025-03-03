@@ -10,13 +10,17 @@ import org.egov.im.web.models.ProcessingContext;
 import org.egov.tracer.model.CustomException;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -32,30 +36,34 @@ public class FFmpegService {
     @Async
     public CompletableFuture<Void> processQuality(
             ProcessingContext context, String inputPath, Path outputPath, VideoQualityConfig videoQuality) {
-        try {
-            Path path = directoryUtil.createDirectory(String.format("%s/%s/hls/%s",
-                    outputPath.toString(), context.getVideoId(), videoQuality.getLabel()));
 
-            String file = String.format("%s/playlist.m3u8", path);
-            String command = videoQuality.isOriginal()
-                    ? fFmpegCommandGenerator.getBaseCommand(inputPath, file)
-                    : fFmpegCommandGenerator.getOptimizedCommand(inputPath,
-                    "veryfast", videoQuality.getCrf(), videoQuality.getResolution(), file);
+        Path path = directoryUtil.createDirectory(String.format("%s/%s/hls/%s",
+                outputPath.toString(), context.getVideoId(), videoQuality.getLabel()));
 
-            log.info("Executing FFmpeg command for {}: {}", videoQuality.getLabel(), command);
-            ffMpegExecutor.executeCommand(command);
+        String file = String.format("%s/playlist.m3u8", path);
+        String command = videoQuality.isOriginal()
+                ? fFmpegCommandGenerator.getBaseCommand(inputPath, file)
+                : fFmpegCommandGenerator.getOptimizedCommand(inputPath,
+                "veryfast", videoQuality.getCrf(), videoQuality.getResolution(), videoQuality.getAudioBitRate(), file);
 
-            // Upload to MinIO
-            storageUtil.uploadToFileStorage(
-                    List.of(videoUtil.convertFileToMultipartFile(path.resolve(file).toFile())), context);
+        log.info("Executing FFmpeg command for {}: {}", videoQuality.getLabel(), command);
+        ffMpegExecutor.executeCommand(command);
 
-            log.info("Successfully processed and uploaded {} quality", videoQuality.getLabel());
+        String baseFileName = path.toString().split("output")[1];
 
-            return CompletableFuture.completedFuture(null);
+        try (Stream<Path> fileStream = Files.list(path)) {
+            List<MultipartFile> multipartFiles = fileStream
+                    .map(f ->  videoUtil.convertFileToMultipartFile(f.toFile(), baseFileName))
+                    .toList();
+
+            storageUtil.uploadToHLSFileStorage(multipartFiles, context);
+
         } catch (IOException e) {
-            log.error("Error processing quality {}: {}", videoQuality.getLabel(), e.getMessage(), e);
-            throw new CustomException("Error pushing to MinIO", e.getMessage());
+            throw new CustomException("Error listing files in directory", "Failed to list files: " + e.getMessage());
         }
+        log.info("Successfully processed and uploaded {} quality", videoQuality.getLabel());
+
+        return CompletableFuture.completedFuture(null);
     }
 
 
@@ -92,9 +100,11 @@ public class FFmpegService {
             Files.writeString(masterPath, masterPlaylist.toString());
             File masterPlaylistFile = masterPath.toFile();
 
+            log.info("master path: {}", masterPath);
+
             // Upload master playlist to storage
-            storageUtil.uploadToFileStorage(
-                    List.of(videoUtil.convertFileToMultipartFile(masterPlaylistFile)), context);
+            storageUtil.uploadToHLSFileStorage(
+                    List.of(videoUtil.convertFileToMultipartFile(masterPlaylistFile, masterPath.toString())), context);
 
             log.info("Successfully created and uploaded master playlist: {}", masterPlaylistPath);
         } catch (IOException e) {

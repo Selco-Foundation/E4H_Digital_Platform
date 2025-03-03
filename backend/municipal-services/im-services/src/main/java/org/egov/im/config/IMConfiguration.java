@@ -246,6 +246,9 @@ public class IMConfiguration {
     @Value("${egov.filestore.host}")
     private String fileStoreHost;
 
+    @Value("${egov.filestore.hls.upload.endpoint}")
+    private String fileStoreHlsUploadEndpoint;
+
     @Value("${egov.filestore.upload.endpoint}")
     private String fileStoreUploadEndpoint;
 
