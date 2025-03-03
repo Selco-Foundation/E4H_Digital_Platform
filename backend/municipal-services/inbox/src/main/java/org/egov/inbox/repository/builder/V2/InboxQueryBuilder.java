@@ -89,7 +89,7 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
         innerBoolClause.put(MUST_KEY, mustClauseList);
 
         //add filter for inbox SLA
-        if (inboxRequest.getInbox().getModuleSearchCriteria().containsKey("sla")) {
+        if (inboxRequest.getInbox().getModuleSearchCriteria().containsKey("nearingSLA")) {
             Map<String, Object> runTimeMappings = new HashMap<>();
             Map<String, Object> slaComparison = generateSLAComparison(System.currentTimeMillis());
             runTimeMappings.put("sla_comparison", slaComparison);
