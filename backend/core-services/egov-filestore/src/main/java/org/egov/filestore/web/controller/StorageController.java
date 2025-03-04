@@ -28,12 +28,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseBody;
-import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 @Slf4j
@@ -148,4 +143,34 @@ public class StorageController {
         final List<String> fileStoreIds = hlsStorageService.save(files, module, tag, tenantId, reqInfo);
         return getStorageResponse(fileStoreIds, tenantId);
     }
+
+    @GetMapping("{fileStoreId}/hls/{quality}/{filename}")
+    public ResponseEntity<Resource> getHlsChunk(
+            @PathVariable String fileStoreId,
+            @PathVariable String quality,
+            @PathVariable String filename,
+            @RequestParam("tenantId") String tenantId) {
+
+        try {
+            org.egov.filestore.domain.model.Resource resource =
+                    storageService.retrieve(fileStoreId, quality, filename, tenantId);
+
+            if (resource == null) {
+                return ResponseEntity.notFound().build();
+            }
+
+            String fileName = resource.getFileName()
+                    .substring(resource.getFileName().lastIndexOf('/') + 1);
+
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileName + "\"")
+                    .header(HttpHeaders.CONTENT_TYPE, resource.getContentType())
+                    .body(resource.getResource());
+
+        } catch (Exception e) {
+            log.error("Error retrieving HLS chunk: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
 }
