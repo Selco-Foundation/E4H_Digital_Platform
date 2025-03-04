@@ -1,8 +1,11 @@
 package org.egov.filestore.persistence.repository;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.egov.common.contract.request.RequestInfo;
@@ -135,5 +138,31 @@ public class ArtifactRepository {
 
 	public List<Artifact> getByTenantIdAndFileStoreIdList(String tenantId, List<String> fileStoreIds) {
 		return fileStoreJpaRepository.findByTenantIdAndFileStoreIdList(tenantId, fileStoreIds);
+	}
+
+
+	public Resource findByPath(FileLocation fileLocation) {
+		MinioRepository repo = (MinioRepository) cloudFilesManager;
+		org.springframework.core.io.Resource resource = repo.read(fileLocation);
+
+		return Optional.ofNullable(resource)
+				.map(res -> {
+					try {
+						Path filePath = res.getFile().toPath();
+						String contentType = Files.probeContentType(filePath);
+						long fileSize = res.getFile().length();
+
+						return new Resource(
+								contentType,
+								fileLocation.getFileName(),
+								res,
+								fileLocation.getTenantId(),
+								String.format("%d bytes", fileSize)
+						);
+					} catch (IOException e) {
+						throw new CustomException("Error fetching file from bucket", e.getMessage());
+					}
+				})
+				.orElse(null);
 	}
 }

@@ -57,7 +57,7 @@ public class ArtifactMapper {
 
                 // Generate file name
                 String fileName = isHLS
-                        ? String.format("%s%s", folderName, originalFileName)
+                        ? String.format("%s%s", getFolderNameForVideo(tenantId), originalFileName)
                         : folderName + System.currentTimeMillis() + getRandomFileSuffix(originalFileName);
 
                 // Generate file location
@@ -134,6 +134,15 @@ public class ArtifactMapper {
                 tenantId,
                 module,
                 calendar.get(Calendar.DATE));
+    }
+
+    /**
+     * Generates a folder name based on module and tenant.
+     */
+    private String getFolderNameForVideo(String tenantId) {
+        return String.format("%s/%s/",
+                minioConfig.getBucketName(),
+                tenantId);
     }
 
     /**

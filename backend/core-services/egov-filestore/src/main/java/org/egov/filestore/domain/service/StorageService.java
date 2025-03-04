@@ -6,9 +6,9 @@ import java.util.Map;
 
 import lombok.RequiredArgsConstructor;
 import org.egov.common.contract.request.RequestInfo;
-import org.egov.filestore.config.Properties;
 import org.egov.filestore.domain.model.Artifact;
 import org.egov.filestore.domain.model.FileInfo;
+import org.egov.filestore.domain.model.FileLocation;
 import org.egov.filestore.domain.model.Resource;
 import org.egov.filestore.persistence.repository.ArtifactRepository;
 import org.egov.filestore.repository.CloudFilesManager;
@@ -30,7 +30,6 @@ public class StorageService {
 
 	private final ArtifactRepository artifactRepository;
 	private final ArtifactMapper artifactMapper;
-	private  final Properties props;
 
 	public List<String> save(
 			List<MultipartFile> filesToStore, String module, String tag, String tenantId, RequestInfo requestInfo) {
@@ -55,6 +54,21 @@ public class StorageService {
 
 	public Resource retrieve(String fileStoreId, String tenantId) throws IOException {
 		return artifactRepository.find(fileStoreId, tenantId);
+	}
+
+	public Resource retrieve(String fileStoreId, String quality, String fileName, String tenantId)  {
+		String fileSource = String.format("%s/%s/hls/%s",
+				tenantId,
+				fileStoreId,
+				quality);
+
+		FileLocation fileLocation = FileLocation.builder()
+				.fileStoreId(fileName)
+				.fileName(fileSource)
+				.tenantId(tenantId)
+				.build();
+
+		return artifactRepository.findByPath(fileLocation);
 	}
 
 	
