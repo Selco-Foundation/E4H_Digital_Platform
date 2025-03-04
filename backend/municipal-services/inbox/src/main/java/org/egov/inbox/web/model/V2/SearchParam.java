@@ -38,7 +38,9 @@ public class SearchParam {
         
         WILDCARD("WILDCARD"),
 
-        SLA_COMPARE("SLA_COMPARE");
+        SLA_COMPARE("SLA_COMPARE"),
+
+        MULTI_MATCH("MULTI_MATCH");
 
 
         private String value;
