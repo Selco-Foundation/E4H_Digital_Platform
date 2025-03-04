@@ -223,6 +223,7 @@ public class MinioRepository implements CloudFilesManager {
 					fileLocation.getFileName().length());
 
 			try {
+				log.info("retrieving file from s3: {}/{}/{}", minioConfig.getBucketName(), fileName, f.getName());
 				minioClient.getObject(minioConfig.getBucketName(), fileName, f.getName());
 			} catch (InvalidKeyException | ErrorResponseException | IllegalArgumentException |
                      InsufficientDataException | InternalException | InvalidBucketNameException |
