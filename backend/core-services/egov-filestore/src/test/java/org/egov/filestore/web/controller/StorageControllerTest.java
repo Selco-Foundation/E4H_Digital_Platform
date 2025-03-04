@@ -8,6 +8,7 @@ import java.util.List;
 
 import org.egov.filestore.domain.model.FileInfo;
 import org.egov.filestore.domain.model.Resource;
+import org.egov.filestore.domain.service.HLSStorageService;
 import org.egov.filestore.domain.service.StorageService;
 import org.egov.filestore.utils.StorageUtil;
 import org.egov.filestore.web.contract.GetFilesByTagResponse;
@@ -39,6 +40,9 @@ class StorageControllerTest {
 
     @MockBean
     private StorageUtil storageUtil;
+
+    @MockBean
+    private HLSStorageService hlsStorageService;
 
     @Test
     void testGetFile() throws Exception {
