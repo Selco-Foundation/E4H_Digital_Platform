@@ -51,4 +51,4 @@ jobs:
         run: |
           docker build  -t selcohub/egov-filestore-db:${{ env.VERSION }}-${{ env.commit_hash }} -f  Dockerfile .
           docker push selcohub/egov-filestore-db:${{ env.VERSION }}-${{ env.commit_hash }}
-        working-directory: backend/core-services/eegov-filestore/src/main/resources/db
+        working-directory: backend/core-services/egov-filestore/src/main/resources/db
