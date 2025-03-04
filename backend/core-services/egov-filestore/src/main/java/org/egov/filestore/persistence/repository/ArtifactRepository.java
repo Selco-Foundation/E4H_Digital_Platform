@@ -32,8 +32,6 @@ public class ArtifactRepository {
 	@Value("${source.azure.blob}")
 	private String azureBlobSource;
 
-	
-
 	public ArtifactRepository(FileStoreJpaRepository fileStoreJpaRepository) {
 
 		this.fileStoreJpaRepository = fileStoreJpaRepository;

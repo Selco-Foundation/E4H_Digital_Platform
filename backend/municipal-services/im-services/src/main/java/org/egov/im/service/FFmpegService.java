@@ -2,11 +2,12 @@ package org.egov.im.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.egov.im.settings.VideoQualityConfig;
+import org.egov.im.settings.VideoQualitySettings;
 import org.egov.im.util.DirectoryUtil;
 import org.egov.im.util.StorageUtil;
 import org.egov.im.util.VideoUtil;
 import org.egov.im.web.models.ProcessingContext;
+import org.egov.im.web.models.storage.StorageResponse;
 import org.egov.tracer.model.CustomException;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
@@ -16,10 +17,8 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Slf4j
@@ -35,7 +34,7 @@ public class FFmpegService {
 
     @Async
     public CompletableFuture<Void> processQuality(
-            ProcessingContext context, String inputPath, Path outputPath, VideoQualityConfig videoQuality) {
+            ProcessingContext context, String inputPath, Path outputPath, VideoQualitySettings videoQuality) {
 
         Path path = directoryUtil.createDirectory(String.format("%s/%s/hls/%s",
                 outputPath.toString(), context.getVideoId(), videoQuality.getLabel()));
@@ -67,28 +66,21 @@ public class FFmpegService {
     }
 
 
-    public void createMasterPlaylist(List<VideoQualityConfig> qualities,
-                                     ProcessingContext context,
-                                     Path outputPath) {
+    public StorageResponse createMasterPlaylist(List<VideoQualitySettings> qualities,
+                                                ProcessingContext context,
+                                                Path outputPath) {
+
+        directoryUtil.createDirectory(String.format("%s/%s/hls",
+                outputPath.toString(), context.getVideoId()));
+
         log.info("Creating master playlist for videoId: {}", context.getVideoId());
 
         StringBuilder masterPlaylist = new StringBuilder("#EXTM3U\n");
 
-        for (VideoQualityConfig quality : qualities) {
+        for (VideoQualitySettings quality : qualities) {
             String playlistPath = quality.getLabel() + "/playlist.m3u8";
-            if (quality.isOriginal()) {
-                // Fetch original stream info
-                String streamInfo = videoUtil.getOriginalStreamInfo(context, outputPath, quality.getLabel());
-
-                if (streamInfo == null || streamInfo.isBlank()) {
-                    log.warn("No original stream info available for videoId: {}", context.getVideoId());
-                    throw new CustomException("MASTER_PLAYLIST_ERROR", "Missing original stream info");
-                }
-                masterPlaylist.append(streamInfo);
-            } else {
                 masterPlaylist.append(String.format("#EXT-X-STREAM-INF:BANDWIDTH=%d,RESOLUTION=%s%n%s%n",
                         quality.getBitRate(), quality.getResolution(), playlistPath));
-            }
             log.debug("Added quality {} ({}) to master playlist: {}",
                     quality.getLabel(), quality.getResolution(), playlistPath);
         }
@@ -102,11 +94,14 @@ public class FFmpegService {
 
             log.info("master path: {}", masterPath);
 
-            // Upload master playlist to storage
-            storageUtil.uploadToHLSFileStorage(
-                    List.of(videoUtil.convertFileToMultipartFile(masterPlaylistFile, masterPath.toString())), context);
+            String resolveBasePath = videoUtil.pathExtractor(masterPlaylistPath.toString(), "output");
 
-            log.info("Successfully created and uploaded master playlist: {}", masterPlaylistPath);
+            //convert to multiPathFile
+            MultipartFile multipartFile = videoUtil.convertFileToMultipartFile(masterPlaylistFile, resolveBasePath);
+
+            // Upload master playlist to storage
+            return storageUtil.uploadToHLSFileStorage(List.of(multipartFile), context);
+
         } catch (IOException e) {
             log.error("Error creating master playlist for videoId: {}", context.getVideoId(), e);
             throw new CustomException("MASTER_PLAYLIST_ERROR", "Failed to write master playlist");
