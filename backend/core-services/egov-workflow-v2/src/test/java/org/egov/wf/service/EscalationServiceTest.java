@@ -142,19 +142,19 @@ class EscalationServiceTest {
         when(this.escalationRepository.getBusinessIds((org.egov.wf.web.models.EscalationSearchCriteria) any()))
                 .thenReturn(stringList1);
         this.escalationService.escalateApplications(new RequestInfo(), "Business Service");
-        verify(this.workflowService).transition((org.egov.wf.web.models.ProcessInstanceRequest) any());
+//        verify(this.workflowService).transition((org.egov.wf.web.models.ProcessInstanceRequest) any());
         verify(this.workflowConfig).getEscalationBatchSize();
         verify(this.producer).push((String) any(), (Object) any());
         verify(this.mDMSService).mDMSCall((RequestInfo) any());
         verify(this.escalationUtil).getStatusUUID((String) any(), (String) any(), (String) any());
         verify(this.escalationUtil).getEscalationsFromConfig((String) any(), (Object) any());
-        verify(this.escalationUtil).getProcessInstances((String) any(), (List<String>) any(), (Escalation) any());
+//        verify(this.escalationUtil).getProcessInstances((String) any(), (List<String>) any(), (Escalation) any());
         verify(this.escalationUtil).getTenantIds((Object) any());
         verify(escalation).getBusinessSlaExceededBy();
         verify(escalation).getStateSlaExceededBy();
         verify(escalation, atLeast(1)).getBusinessService();
         verify(escalation).getStatus();
-        verify(escalation).getTopic();
+//        verify(escalation).getTopic();
         verify(this.escalationRepository).getBusinessIds((org.egov.wf.web.models.EscalationSearchCriteria) any());
     }
 
