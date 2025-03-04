@@ -58,11 +58,12 @@ public class StorageService {
 
 	public Resource retrieve(String fileStoreId, String quality, String fileName, String tenantId)  {
 		// tenantId was intentionally added teice as a hack , as this wil be trimmed out down the line
-		String fileSource = String.format("%s/%s/%s/hls/%s",
+		String fileSource = String.format("%s/%s/%s/hls/%s/%s",
 				tenantId,
 				tenantId,
 				fileStoreId,
-				quality);
+				quality,
+				fileName);
 
 		FileLocation fileLocation = FileLocation.builder()
 				.fileStoreId(fileName)
