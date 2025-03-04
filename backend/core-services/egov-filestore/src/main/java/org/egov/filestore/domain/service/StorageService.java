@@ -57,7 +57,9 @@ public class StorageService {
 	}
 
 	public Resource retrieve(String fileStoreId, String quality, String fileName, String tenantId)  {
-		String fileSource = String.format("%s/%s/hls/%s",
+		//tenant id intentionally added twice, ass this will be trimmed out down the line
+		String fileSource = String.format("%S/%s/%s/hls/%s",
+				tenantId,
 				tenantId,
 				fileStoreId,
 				quality);
