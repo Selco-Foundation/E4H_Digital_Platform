@@ -57,7 +57,7 @@ public class ArtifactMapper {
 
                 // Generate file name
                 String fileName = isHLS
-                        ? String.format("%s%s%s", folderName, System.currentTimeMillis(), originalFileName)
+                        ? String.format("%s%s", folderName, originalFileName)
                         : folderName + System.currentTimeMillis() + getRandomFileSuffix(originalFileName);
 
                 // Generate file location
