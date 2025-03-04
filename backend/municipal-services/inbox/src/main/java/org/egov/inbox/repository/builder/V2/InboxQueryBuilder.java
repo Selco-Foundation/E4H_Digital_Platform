@@ -418,7 +418,7 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
             }
             innerTermClause.put(addDataPathToSearchParamKey(key, nameToPathMap), comparatorMap);
             return rangeClause;
-        }else if (operator.equals(SearchParam.Operator.SLA_COMPARE)) {
+        } else if (operator.equals(SearchParam.Operator.SLA_COMPARE)) {
             Map<String, Object> rangeClause = new HashMap<>();
             rangeClause.put("range", new HashMap<>());
             Map<String, Object> innerTermClause = (Map<String, Object>) rangeClause.get("range");
@@ -426,6 +426,15 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
             comparatorMap.put("sla_comparison", params.get(key));
             innerTermClause.put(addDataPathToSearchParamKey(key, nameToPathMap), comparatorMap);
             return rangeClause;
+        } else if (operator.equals(SearchParam.Operator.MULTI_MATCH)) {
+            String searchValue = params.get("search").toString();
+            Map<String, Object> multiMatch = new HashMap<>();
+            multiMatch.put("query", searchValue);
+            multiMatch.put("fields", nameToPathMap.get("search").split(","));
+            multiMatch.put("fuzziness", 2);
+            Map<String, Object> parent = new HashMap<>();
+            parent.put("multi_match", multiMatch);
+            return parent;
         } else
             throw new CustomException(ErrorConstants.INVALID_OPERATOR_DATA, " Unsupported Operator : " + operator);
 
