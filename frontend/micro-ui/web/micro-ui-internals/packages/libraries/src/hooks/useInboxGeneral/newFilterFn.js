@@ -5,7 +5,7 @@ export const filterFunctions = {
     const searchFilters = {};
     const workflowFilters = {};
 
-    const { applicationNumber, mobileNumber, limit, offset, sortBy, sortOrder, total, applicationStatus, services, incidentType, phcType, assignee } = filtersArg || {};
+    const { applicationNumber, mobileNumber, limit, offset, sortBy, sortOrder, total, applicationStatus, services, incidentType, phcType, assignee, nearingSLA } = filtersArg || {};
 
     if (filtersArg?.IncidentWrappers) {
       searchFilters.applicationNumber = filtersArg?.incidentId;
@@ -48,6 +48,7 @@ export const filterFunctions = {
       workflowFilters.businessService = services;
     }
     searchFilters["tenantId"] = Digit.ULBService.getCurrentTenantId();
+    searchFilters["nearingSLA"] = nearingSLA;
     //searchFilters["sortOrder"] = "DESC";
    // searchFilters["creationReason"] = ["CREATE", "MUTATION", "UPDATE"];
     workflowFilters["moduleName"] = "Incident";

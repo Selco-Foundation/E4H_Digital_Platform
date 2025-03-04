@@ -14,6 +14,7 @@ const Inbox = () => {
   const [pageSize, setPageSize] = useState(10);
   const [totalRecords, setTotalRecords] = useState(0);
   const userRoles = Digit.SessionStorage.get("User")?.info?.roles || [];
+  const {nearingSLA} = Digit.Hooks.useQueryParams();
   const isCodePresent = (array, codeToCheck) =>{
     return array.some(item => item.code === codeToCheck);
   }
@@ -72,7 +73,8 @@ const Inbox = () => {
     tenant = searchParams?.search?.phcType
   }
   let isMobile = Digit.Utils.browser.isMobile();
-  let { data: complaints, isLoading } =isMobile? Digit.Hooks.pgr.useInboxData({ ...searchParams, offset: pageOffset, limit: pageSize  }):Digit.Hooks.pgr.useInboxData({ ...searchParams,offset: pageOffset, limit: pageSize }) ;
+  const allSearchParams = { ...searchParams, ...(nearingSLA==="1" && {nearingSLA: true})};
+  let { data: complaints, isLoading } =isMobile? Digit.Hooks.pgr.useInboxData({...allSearchParams, offset: pageOffset, limit: pageSize  }):Digit.Hooks.pgr.useInboxData({ ...allSearchParams, offset: pageOffset, limit: pageSize }) ;
   useEffect(()=>{
     if(complaints!==undefined && complaints.combinedRes.length!==0){
       const total=complaints.total
