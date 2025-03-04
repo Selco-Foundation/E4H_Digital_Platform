@@ -68,7 +68,6 @@ public class ServiceRequestRepository {
         body.add("module", context.getModule());
         body.add("tag", context.getTag());
         body.add("requestInfo", context.getRequestInfo());
-        body.add("fileStoreId", context.getVideoId());
         HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
         try {
             ResponseEntity<StorageResponse> responseEntity =

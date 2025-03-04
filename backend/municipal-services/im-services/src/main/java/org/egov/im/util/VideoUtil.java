@@ -1,8 +1,9 @@
 package org.egov.im.util;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.egov.im.settings.VideoQualityConfig;
-import org.egov.im.web.models.ProcessingContext;
+import org.egov.im.settings.VideoQualityFactory;
+import org.egov.im.settings.VideoQualitySettings;
 import org.egov.tracer.model.CustomException;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
@@ -13,13 +14,17 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+@RequiredArgsConstructor
 @Slf4j
 @Component
 public class VideoUtil {
+
+    private final VideoQualityFactory videoQualityFactory;
 
     public int getBandwidthForResolution(int width, int height) {
         // Estimate bandwidth based on resolution
@@ -97,7 +102,7 @@ public class VideoUtil {
 
 
     // Determines which resolutions to create based on the original resolution
-    public List<VideoQualityConfig> determineQualityLevels(String[] dimensions) {
+    public List<VideoQualitySettings> determineQualityLevels(String[] dimensions) {
         if (dimensions == null || dimensions.length < 2) {
             log.error("Could not determine input video dimensions");
             return List.of();
@@ -114,15 +119,17 @@ public class VideoUtil {
             return List.of();
         }
 
-        List<VideoQualityConfig> qualityLevels = new ArrayList<>(5);
+        List<VideoQualitySettings> qualityLevels = new ArrayList<>(5);
 
-        if (height >= 1080) qualityLevels.add(VideoQualityConfig.FHD_1080P);
-        if (height >= 720)  qualityLevels.add(VideoQualityConfig.HD_720P);
-        if (height >= 480)  qualityLevels.add(VideoQualityConfig.SD_480P);
-        if (height >= 240)  qualityLevels.add(VideoQualityConfig.LOW_240P);
-        if (height >= 144)  qualityLevels.add(VideoQualityConfig.LOWEST_144P);
+        if (height >= 1080) qualityLevels.add(videoQualityFactory.getQualitySettings("FHD_1080P"));
+        if (height >= 720)  qualityLevels.add(videoQualityFactory.getQualitySettings("HD_720P"));
+        if (height >= 480)  qualityLevels.add(videoQualityFactory.getQualitySettings("SD_480P"));
+        if (height >= 240)  qualityLevels.add(videoQualityFactory.getQualitySettings("LOW_240P"));
+        if (height >= 144)  qualityLevels.add(videoQualityFactory.getQualitySettings("LOWEST_144P"));
 
-        qualityLevels.add(VideoQualityConfig.ORIGINAL); //adds the original
+        //set original video quality
+        qualityLevels.add(VideoQualitySettings.of(String.format("%sx%s", width, height),
+                "original", 0, "192k", true));
 
         log.info("Determined quality levels for input video ({}x{}): {}", width, height, qualityLevels);
         return qualityLevels;
@@ -131,22 +138,28 @@ public class VideoUtil {
     /**
      * Generates the #EXT-X-STREAM-INF entry for the original quality.
      */
-    public String getOriginalStreamInfo(ProcessingContext context, Path outputPath, String label) {
-        String originalPlaylistPath
-                = outputPath.resolve(String.format("%s/hls/%s/playlist.m3u8", context.getVideoId(), label))
-                .toString();
-        String[] dimensions = getVideoDimensions(originalPlaylistPath);
+    public String getOriginalStreamInfo(String[] dimensions) {
 
         if (dimensions != null && dimensions.length == 2) {
             int width = Integer.parseInt(dimensions[0]);
             int height = Integer.parseInt(dimensions[1]);
             int bandwidth = getBandwidthForResolution(width, height);
             return String.format("#EXT-X-STREAM-INF:BANDWIDTH=%d,RESOLUTION=%dx%d%n%s", bandwidth, width, height,
-                    String.format("%s/%s",label, "playlist.m3u8"));
+                    String.format("original/%s","playlist.m3u8"));
         }
 
         // Default fallback for unknown resolution
         return "#EXT-X-STREAM-INF:BANDWIDTH=8000000,RESOLUTION=1920x1080%n";
+    }
+
+    public String pathExtractor(String fullPath, String indexPath) {
+            Path path = Paths.get(fullPath);
+            int outputIndex = path.toString().indexOf(indexPath);
+
+            if (outputIndex != -1) {
+                return String.format("/%s",path.subpath(path.getNameCount() - 3, path.getNameCount() - 1));
+            }
+            throw new IllegalArgumentException("Invalid path: 'output/' not found");
     }
 
 }
