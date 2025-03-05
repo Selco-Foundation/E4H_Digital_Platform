@@ -66,7 +66,7 @@ public class StorageService {
 				fileName);
 
 		FileLocation fileLocation = FileLocation.builder()
-				.fileStoreId(fileName)
+				.fileStoreId(fileSource)
 				.fileName(fileSource)
 				.tenantId(tenantId)
 				.build();
