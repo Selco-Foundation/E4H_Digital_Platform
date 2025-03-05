@@ -1,10 +1,6 @@
 package org.egov.filestore.domain.model;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 @AllArgsConstructor
 @Getter
@@ -16,6 +12,7 @@ public class FileLocation {
     private String module;
     private String tag;
     private String tenantId;
+    @With
     private String fileName;
     private String fileSource;
 }

@@ -217,13 +217,18 @@ public class MinioRepository implements CloudFilesManager {
 
 		Resource resource = null;
 		File f = new File(fileLocation.getFileStoreId());
+		File parentDir = f.getParentFile();
+		if (parentDir != null && !parentDir.exists()) {
+				parentDir.mkdirs(); // Create the directory (and any missing parent directories)
+		}
 
 		if (fileLocation.getFileSource() == null || fileLocation.getFileSource().equals(minioConfig.getSource())) {
 			String fileName = fileLocation.getFileName().substring(fileLocation.getFileName().indexOf('/') + 1,
 					fileLocation.getFileName().length());
 
 			try {
-				minioClient.getObject(minioConfig.getBucketName(), fileName, f.getName());
+				log.info("retrieving file from s3: {}/{}/{}", minioConfig.getBucketName(), fileName, f.getName());
+				minioClient.getObject(minioConfig.getBucketName(), fileName, f.getAbsolutePath());
 			} catch (InvalidKeyException | ErrorResponseException | IllegalArgumentException |
                      InsufficientDataException | InternalException | InvalidBucketNameException |
                      InvalidResponseException | NoSuchAlgorithmException | XmlParserException | IOException |

@@ -4,9 +4,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.egov.im.web.models.ProcessingContext;
 import org.egov.im.web.models.storage.StorageResponse;
 import org.egov.tracer.model.ServiceCallException;
 import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.Resource;
 import org.springframework.http.*;
 import org.springframework.stereotype.Repository;
 import org.springframework.util.LinkedMultiValueMap;
@@ -14,6 +16,7 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.IOException;
 import java.util.List;
@@ -42,11 +45,9 @@ public class ServiceRequestRepository {
     }
 
     public StorageResponse uploadFiles(List<MultipartFile> files,
-                                       String tenantId,
-                                       String module,
-                                       String tag,
-                                       String requestInfo,
+                                       ProcessingContext context,
                                        String url) throws IOException {
+
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.MULTIPART_FORM_DATA);
 
@@ -63,10 +64,10 @@ public class ServiceRequestRepository {
                 body.add("file", fileResource);
             }
         }
-        body.add("tenantId", tenantId);
-        body.add("module", module);
-        body.add("tag", tag);
-        body.add("requestInfo", requestInfo);
+        body.add("tenantId", context.getTenantId());
+        body.add("module", context.getModule());
+        body.add("tag", context.getTag());
+        body.add("requestInfo", context.getRequestInfo());
         HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
         try {
             ResponseEntity<StorageResponse> responseEntity =
@@ -84,4 +85,21 @@ public class ServiceRequestRepository {
             throw new ServiceCallException("File upload failed: " + e.getMessage());
         }
     }
+
+    public ResponseEntity<Resource> fetchFile(String baseUrl, String tenantId, String fileStoreId) {
+        String url = UriComponentsBuilder.fromHttpUrl(baseUrl + "/id")
+                .queryParam("tenantId", tenantId)
+                .queryParam("fileStoreId", fileStoreId)
+                .toUriString();
+
+        log.info("fetching file from {} ", url);
+
+        return restTemplate.exchange(
+                url,
+                HttpMethod.GET,
+                null,
+                Resource.class
+        );
+    }
+
 }

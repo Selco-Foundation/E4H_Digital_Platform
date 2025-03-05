@@ -11,9 +11,11 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Import;
+import org.springframework.scheduling.annotation.EnableAsync;
 
 import java.util.TimeZone;
 
+@EnableAsync
 @SpringBootApplication
 @ComponentScan(basePackages = { "org.egov.im", "org.egov.im.web.controllers" , "org.egov.im.config"})
 @Import({TracerConfiguration.class, MultiStateInstanceUtil.class})
@@ -30,9 +32,12 @@ public class IMApp{
                     .setTimeZone(TimeZone.getTimeZone(timeZone));
         }
 
+
         public static void main(String[] args) throws Exception {
             SpringApplication.run(IMApp.class, args);
         }
+
+
 
 
     }

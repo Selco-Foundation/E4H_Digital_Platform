@@ -28,13 +28,15 @@ public class ValidatorDefaultImplementation implements SearchCriteriaValidatorIn
 
     @Override
     public void validateSearchCriteria(InboxRequest inboxRequest) {
-        InboxQueryConfiguration config = mdmsUtil.getConfigFromMDMS(inboxRequest.getInbox().getTenantId(), inboxRequest.getInbox().getProcessSearchCriteria().getModuleName());
+        InboxQueryConfiguration config = mdmsUtil.getConfigFromMDMS(
+                inboxRequest.getInbox().getTenantId(), inboxRequest.getInbox().getProcessSearchCriteria().getModuleName());
         
         Map<String, Boolean> isMandatoryMap = new HashMap<>();
         
         config.getAllowedSearchCriteria().forEach(
                 searchParam -> {
-                    isMandatoryMap.put(searchParam.getName(), ObjectUtils.isEmpty(searchParam.getIsMandatory()) ? Boolean.FALSE : searchParam.getIsMandatory());
+                    isMandatoryMap.put(searchParam.getName(), ObjectUtils.isEmpty(searchParam.getIsMandatory())
+                            ? Boolean.FALSE : searchParam.getIsMandatory());
                 }
         );
 

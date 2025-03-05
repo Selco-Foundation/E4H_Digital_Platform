@@ -36,7 +36,11 @@ public class SearchParam {
 
         LTE("LTE"), 
         
-        WILDCARD("WILDCARD");
+        WILDCARD("WILDCARD"),
+
+        SLA_COMPARE("SLA_COMPARE"),
+
+        MULTI_MATCH("MULTI_MATCH");
 
 
         private String value;

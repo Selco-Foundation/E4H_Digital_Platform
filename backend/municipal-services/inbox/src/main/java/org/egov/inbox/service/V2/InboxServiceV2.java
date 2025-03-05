@@ -128,10 +128,10 @@ public class InboxServiceV2 {
 //        if(CollectionUtils.isEmpty(inboxRequest.getInbox().getProcessSearchCriteria().getStatus())){
 //            return new ArrayList<>();
 //        }
-        Map<String, Object> finalQueryBody = queryBuilder.getESQuery(inboxRequest, Boolean.TRUE);
+        Map<String, Object> finalQueryBody = queryBuilder.getESQuery(inboxRequest, Boolean.TRUE, Boolean.TRUE);
         try {
             String q = mapper.writeValueAsString(finalQueryBody);
-            log.info("Query: "+q);
+            log.info("Query: {}", q);
         }
         catch (Exception e){
             e.printStackTrace();
@@ -172,7 +172,12 @@ public class InboxServiceV2 {
 
     public Integer getTotalApplicationCount(InboxRequest inboxRequest, String indexName){
 
-        Map<String, Object> finalQueryBody = queryBuilder.getESQuery(inboxRequest, Boolean.FALSE);
+        Map<String, Object> finalQueryBody = queryBuilder.getESQuery(inboxRequest, Boolean.FALSE, Boolean.FALSE);
+        try {
+            log.info(mapper.writeValueAsString(finalQueryBody));
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
         StringBuilder uri = getURI(indexName, COUNT_PATH);
         Map<String, Object> response = (Map<String, Object>) serviceRequestRepository.fetchESResult(uri, finalQueryBody);
         Integer totalCount = 0;
