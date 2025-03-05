@@ -30,7 +30,6 @@ import DateRange from "./molecules/DateRange";
 import DateRangeNew from "./molecules/DateRangeNew";
 import DateWrap from "./atoms/DateWrap";
 import DisplayPhotos from "./atoms/DisplayPhotos";
-import DisplayVideos from "./atoms/DisplayVideos";
 import Dropdown from "./atoms/Dropdown";
 import SearchableDropdown from "./atoms/SearchableDropdown";
 import EllipsisMenu from "./atoms/EllipsisMenu";
@@ -329,7 +328,6 @@ export {
   LastRow,
   MediaRow,
   DisplayPhotos,
-  DisplayVideos,
   ConnectingCheckPoints,
   CheckPoint,
   Rating,

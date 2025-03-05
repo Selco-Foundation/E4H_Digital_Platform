@@ -280,6 +280,8 @@ export const WorkflowService = {
         roles: action.state?.actions?.map((action) => action.roles).join(","),
       }));
 
+      console.debug(processInstances)
+
       if (processInstances.length > 0) {
         const TLEnrichedWithWorflowData = await makeCommentsSubsidariesOfPreviousActions(processInstances)
         let timeline = TLEnrichedWithWorflowData.map((instance, ind) => {

@@ -29,6 +29,7 @@ const PlayerControls = ({
   bitrateOptions,
   selectedBitrate,
   changeBitrate,
+  handleFullscreen,
 }) => {
   const progressRef = useRef(null);
   const settingsRef = useRef(null);
@@ -131,14 +132,6 @@ const PlayerControls = ({
 
     document.addEventListener("mousemove", onMouseMove);
     document.addEventListener("mouseup", onMouseUp);
-  };
-
-  const handleFullscreen = () => {
-    if (document.fullscreenElement) {
-      document.exitFullscreen();
-    } else {
-      document.documentElement.requestFullscreen();
-    }
   };
 
   const handlePip = () => setPip(true);
@@ -245,7 +238,7 @@ const PlayerControls = ({
                     className={option.bitrate === selectedBitrate ? "active" : ""}
                     onClick={() => handleQualityChange(option.bitrate)}
                   >
-                    {option.bitrate / 1000}kbps
+                    {option.resolution}
                   </li>
                 ))}
               </ul>
@@ -254,7 +247,7 @@ const PlayerControls = ({
           <button className="pic-in-pic" onClick={handlePip} aria-label="Picture in Picture Mode">
             <PiPIcon />
           </button>
-          <button className="fullscreen" onClick={handleFullscreen} aria-label="Fullscreen">
+          <button className="fullscreen" onClick={() => handleFullscreen()} aria-label="Fullscreen">
             <FullscreenIcon />
           </button>
         </li>

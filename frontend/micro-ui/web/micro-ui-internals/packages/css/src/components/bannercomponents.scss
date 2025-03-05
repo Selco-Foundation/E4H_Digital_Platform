@@ -302,6 +302,13 @@
 .video-container video{
   width: 100%;
 }
+
+.video-container video::-webkit-media-controls-panel {
+  top: auto !important;
+  position: static !important;
+  width: auto !important;
+}
+
 .video-container svg {
   width: 24px !important;
   height: 24px !important;

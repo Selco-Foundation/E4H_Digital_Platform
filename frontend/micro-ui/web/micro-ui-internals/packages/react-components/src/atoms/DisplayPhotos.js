@@ -1,9 +1,10 @@
-import React from "react";
+import React, { useRef } from "react";
 import PropTypes from "prop-types";
 import { PDFSvg } from "./svgindex";
 import ReactPlayer from "react-player";
+import HlsPlayer from "./VideoPlayer/HlsPlayer";
 
-const ImageOrPDFIcon = ({ source, index, last = false, onClick }) => {
+const ImageOrPDFIcon = ({ source, index, last = false, onClick,  activeVideoRef}) => {
   if (source.includes(".xlsx")) {
     console.log("source", source);
   }
@@ -36,16 +37,21 @@ const videoIcon="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQACWAJYAAD/4gogSUNDX1BS
         </a>
       </div>
     );
-  } else if (fileType.startsWith("video")) {
+  } else if (fileType.startsWith("video") || source.includes(".m3u8")) {
+    
     return (
-      <ReactPlayer
-        key={index}
-        url={source}
-        controls
-        width="150px"
-        height="100px"
-        style={{ cursor: "pointer", marginRight: "10px" }}
-      />
+      <div style={{ height: "360px", width: "auto", aspectRatio: "16/9", maxWidth: "100%" }}>
+      <h2>Video Player with HLS & MP4 Fallback</h2>
+      <HlsPlayer src={source} activeVideoRef={activeVideoRef} />
+    </div>
+      // <ReactPlayer
+      //   key={index}
+      //   url={source}
+      //   controls
+      //   width="150px"
+      //   height="100px"
+      //   style={{ cursor: "pointer", marginRight: "10px" }}
+      // />
     );
   }
   return (
@@ -69,10 +75,11 @@ const videoIcon="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQACWAJYAAD/4gogSUNDX1BS
 };
 
 const DisplayPhotos = (props) => {
+  const activeVideoRef = useRef(null);
   return (
     <div className="photos-wrap" style={{ ...props.style, maxWidth: "auto" }}>
       {props.srcs.map((source, index) => {
-        return <ImageOrPDFIcon key={index} {...{ source, index, ...props }} last={++index !== props.srcs.length ? false : true} />;
+        return <ImageOrPDFIcon key={index} {...{ source, index, ...props }} activeVideoRef={activeVideoRef} last={++index !== props.srcs.length ? false : true} />;
       })}
     </div>
   );

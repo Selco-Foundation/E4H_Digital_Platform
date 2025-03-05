@@ -371,7 +371,8 @@ export const CreateComplaint = ({ parentUrl }) => {
         file = newArr.map((e) => {
           const newFile = {
             documentType: e?.file?.type.includes(".sheet") ? ".xlsx" : e?.file?.type.includes(".document") ? ".docs" : e?.file?.type,
-            fileStoreId: e?.fileStoreId?.fileStoreId,
+            fileStoreId: e?.fileStoreId?.masterFileStoreId,
+            masterFileStoreId: e?.fileStoreId?.masterFileStoreId,
             documentUid: "",
             additionalDetails: {},
           };
@@ -385,17 +386,25 @@ export const CreateComplaint = ({ parentUrl }) => {
       // additionalDetails: {},
       // };
 
-      const filterFileStoreIds = file.map((item) => item.fileStoreId);
+      const filterFileStoreIds = file.map((item) => item.masterFileStoreId);
+      const filteredMasterFilestoreIds = file.map((item) => item.masterFileStoreId)
+      console.debug("master", file, filteredMasterFilestoreIds)
 
       // Use a Set to remove duplicates and filter the documents array
       const seen = new Set();
+      const seenMaster = new Set();
       const filteredDocuments = file.filter((document) => {
-        if (filterFileStoreIds.includes(document.fileStoreId) && !seen.has(document.fileStoreId)) {
-          seen.add(document.fileStoreId);
+        if (filterFileStoreIds.includes(document.masterFileStoreId) && !seen.has(document.masterFileStoreId)) {
+          seen.add(document.masterFileStoreId);
+          // if(filteredMasterFilestoreIds.includes(document.masterFileStoreId) && !seenMaster.has(document.masterFileStoreId)) {
+          //   seenMaster.add(document.masterFileStoreId)
+          // }
           return true;
         }
         return false;
       });
+
+      console.debug(filteredDocuments)
 
       setUploadedFile(filteredDocuments);
       //arr && setFile(arr.file);

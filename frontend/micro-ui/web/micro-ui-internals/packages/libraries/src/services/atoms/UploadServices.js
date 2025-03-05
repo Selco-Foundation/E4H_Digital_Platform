@@ -36,6 +36,7 @@ export const UploadServices = {
   },
 
   Filefetch: async (filesArray, tenantId) => {
+    console.debug("fh")
     let tenantInfo=window?.globalConfigs?.getConfig("ENABLE_SINGLEINSTANCE")?`?tenantId=${tenantId}`:"";
     var config = {
       method: "get",
