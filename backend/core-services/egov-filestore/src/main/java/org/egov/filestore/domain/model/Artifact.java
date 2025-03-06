@@ -23,6 +23,9 @@ public class Artifact {
     private FileLocation fileLocation;
     
     private Map<String, BufferedImage> thumbnailImages;
+
+    @With
+    private boolean isInsertable;
     
     private String createdBy;
 
