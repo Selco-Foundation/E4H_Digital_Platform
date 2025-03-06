@@ -227,7 +227,7 @@ public class MinioRepository implements CloudFilesManager {
 					fileLocation.getFileName().length());
 
 			try {
-				log.info("retrieving file from s3: {}/{}/{}", minioConfig.getBucketName(), fileName, f.getName());
+				log.info("retrieving file from s3: {}/{}", minioConfig.getBucketName(), fileName);
 				minioClient.getObject(minioConfig.getBucketName(), fileName, f.getAbsolutePath());
 			} catch (InvalidKeyException | ErrorResponseException | IllegalArgumentException |
                      InsufficientDataException | InternalException | InvalidBucketNameException |
@@ -238,11 +238,8 @@ public class MinioRepository implements CloudFilesManager {
 				map.put("ERROR_MINIO_DOWNLOAD",
 						"An error has occured while trying to download image from filestore system .");
 				throw new CustomException(map);
-
 			}
-
 			resource = new FileSystemResource(Paths.get(f.getPath()).toFile());
-
 		}
 		return resource;
 	}

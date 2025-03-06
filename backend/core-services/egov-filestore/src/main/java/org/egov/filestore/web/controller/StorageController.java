@@ -144,11 +144,11 @@ public class StorageController {
         return getStorageResponse(fileStoreIds, tenantId);
     }
 
-    @GetMapping("{fileStoreId}/hls/{quality}/{filename}")
+    @GetMapping("get-hls")
     public ResponseEntity<Resource> getHlsChunk(
-            @PathVariable String fileStoreId,
-            @PathVariable String quality,
-            @PathVariable String filename,
+            @RequestParam String fileStoreId,
+            @RequestParam String quality,
+            @RequestParam String filename,
             @RequestParam("tenantId") String tenantId) {
 
         try {

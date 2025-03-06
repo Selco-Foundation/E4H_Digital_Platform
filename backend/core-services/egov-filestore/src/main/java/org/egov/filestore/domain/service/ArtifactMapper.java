@@ -73,6 +73,11 @@ public class ArtifactMapper {
                         .fileLocation(fileLocation)
                         .build();
 
+                //make video chunks not insertable or
+                artifact = !originalFileName.endsWith(".ts") && !originalFileName.endsWith("playlist.m3u8")
+                        ? artifact.withInsertable(true)
+                        : artifact;
+
                 // Validate artifact
                 storageValidator.validate(artifact);
 
