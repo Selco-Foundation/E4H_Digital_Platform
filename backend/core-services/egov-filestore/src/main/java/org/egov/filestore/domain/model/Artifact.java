@@ -5,7 +5,6 @@ import lombok.*;
 import java.awt.image.BufferedImage;
 import java.util.Map;
 
-import org.egov.common.contract.request.RequestInfo;
 import org.springframework.web.multipart.MultipartFile;
 
 @AllArgsConstructor

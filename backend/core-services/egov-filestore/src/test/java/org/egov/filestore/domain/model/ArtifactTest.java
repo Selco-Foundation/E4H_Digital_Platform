@@ -49,7 +49,7 @@ class ArtifactTest {
 
         FileLocation fileLocation = new FileLocation("42", "Module", "Tag", "42", "foo.txt", "File Source");
 
-        Artifact actualArtifact = new Artifact("Not all who wander are lost", multipartFile, fileLocation, new HashMap<>(),
+        Artifact actualArtifact = new Artifact("Not all who wander are lost", multipartFile, fileLocation, new HashMap<>(), true,
                 "Jan 1, 2020 8:00am GMT+0100", "Jan 1, 2020 9:00am GMT+0100", 1L, 1L);
         actualArtifact.setCreatedBy("Jan 1, 2020 8:00am GMT+0100");
         actualArtifact.setCreatedTime(1L);
