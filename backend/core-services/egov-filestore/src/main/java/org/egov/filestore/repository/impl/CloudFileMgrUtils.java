@@ -2,7 +2,6 @@ package org.egov.filestore.repository.impl;
 
 import java.awt.image.BufferedImage;
 import java.io.InputStream;
-import java.util.Arrays;
 import java.util.Base64;
 import java.util.Base64.Encoder;
 import java.util.Date;
@@ -44,7 +43,7 @@ public class CloudFileMgrUtils {
 	 * stored in small, medium and large formats along with the original image. This
 	 * is to facililate fasters searches on the app
 	 * 
-	 * @param file
+	 * @param inputStream
 	 * @param fileName
 	 * @return
 	 */
@@ -55,7 +54,6 @@ public class CloudFileMgrUtils {
 		BufferedImage mediumImg = null;
 		BufferedImage smallImg = null;
 		try {
-			
 			BufferedImage originalImage = ImageIO.read(inputStream);
 			
 			if (null == originalImage) {
@@ -102,9 +100,8 @@ public class CloudFileMgrUtils {
 	 * Check -
 	 * https://docs.microsoft.com/en-us/azure/storage/blobs/storage-dotnet-shared-access-signature-part-2
 	 * 
-	 * @param resourceUri
-	 * @param keyName
-	 * @param key
+	 * @param absolutePath
+	 * @param azureBlobClient
 	 * @return
 	 */
 	public String generateSASToken(CloudBlobClient azureBlobClient, String absolutePath) {

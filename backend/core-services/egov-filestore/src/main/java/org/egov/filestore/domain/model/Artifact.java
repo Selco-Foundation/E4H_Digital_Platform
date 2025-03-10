@@ -5,7 +5,6 @@ import lombok.*;
 import java.awt.image.BufferedImage;
 import java.util.Map;
 
-import org.egov.common.contract.request.RequestInfo;
 import org.springframework.web.multipart.MultipartFile;
 
 @AllArgsConstructor
@@ -23,6 +22,9 @@ public class Artifact {
     private FileLocation fileLocation;
     
     private Map<String, BufferedImage> thumbnailImages;
+
+    @With
+    private boolean isInsertable;
     
     private String createdBy;
 

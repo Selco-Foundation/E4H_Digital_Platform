@@ -19,7 +19,6 @@ import org.springframework.web.multipart.MultipartFile;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 @RequiredArgsConstructor
@@ -74,6 +73,11 @@ public class ArtifactMapper {
                         .fileLocation(fileLocation)
                         .build();
 
+                //make video chunks not insertable or
+                artifact = !originalFileName.endsWith(".ts") && !originalFileName.endsWith("playlist.m3u8")
+                        ? artifact.withInsertable(true)
+                        : artifact;
+
                 // Validate artifact
                 storageValidator.validate(artifact);
 
@@ -112,7 +116,7 @@ public class ArtifactMapper {
     private void setThumbnailImages(Artifact artifact) {
         try {
             String inputStreamAsString = artifact.getFileContentInString();
-            InputStream ipStreamForImg = IOUtils.toInputStream(inputStreamAsString, StandardCharsets.UTF_8);
+            InputStream ipStreamForImg = IOUtils.toInputStream(inputStreamAsString, fileStoreConfig.getImageCharsetType());
 
             Map<String, BufferedImage> thumbnails = util.createVersionsOfImage(ipStreamForImg,
                     extractFileName(artifact.getFileLocation().getFileName()));
@@ -146,10 +150,11 @@ public class ArtifactMapper {
     }
 
     /**
-     * Checks if an artifact is an image.
+     * Checks if an artifact is an image.s
      */
     private boolean isImageFile(Artifact artifact) {
-        return fileStoreConfig.getImageFormats().contains(FilenameUtils.getExtension(artifact.getMultipartFile().getOriginalFilename()));
+        return fileStoreConfig.getImageFormats()
+                .contains(FilenameUtils.getExtension(artifact.getMultipartFile().getOriginalFilename()));
     }
 
     /**
