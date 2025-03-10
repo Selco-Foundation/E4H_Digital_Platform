@@ -3,7 +3,7 @@ import ReactPlayer from "react-player";
 import PlayerControls from "./PlayerControls";
 import Hls from "hls.js";
 
-const HlsPlayer = ({ src, activeVideoRef }) => {
+const HlsPlayer = ({ src, originalSrc, fileStoreId, activeVideoRef }) => {
   const playerRef = useRef(null);
   const containerRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -14,56 +14,135 @@ const HlsPlayer = ({ src, activeVideoRef }) => {
   const [duration, setDuration] = useState(0);
   const [pip, setPip] = useState(false);
   const [bitrateOptions, setBitrateOptions] = useState([]);
-  const [selectedBitrate, setSelectedBitrate] = useState(null);
+  const [selectedBitrate, setSelectedBitrate] = useState("Auto");
   const [hlsInstance, setHlsInstance] = useState(null);
 
-  // ✅ Manually Attach HLS.js and Modify Chunk URLs
+  // Reference to store the explicitly requested quality level
+  const requestedLevelRef = useRef(-1);
+
   useEffect(() => {
-    const attachHls = () => {
+    const attachHls = async () => {
+      if (!Hls.isSupported()) return;
+
       const video = containerRef.current?.querySelector("video");
-      if (!video || !Hls.isSupported()) return;
+      if (!video) return;
+
+      const baseDomain = process.env.REACT_APP_PROXY_ASSETS || "https://default-domain.com";
+      const tenantMatch = src.match(/\/(pg(?:\.[^/]*)?)\//);
+      const tenantId = tenantMatch ? tenantMatch[1] : "default-tenant";
 
       const hls = new Hls({
+        autoStartLoad: true,
+        startLevel: -1,
+
         xhrSetup: (xhr, url) => {
-          console.debug("Original Chunk URL:", url);
+          if (url.endsWith(".m3u8")) {
+            // Handle manifest URLs
+            const qualityMatch = url.match(/\/hls\/(\d+p)\//);
+            const quality = qualityMatch ? qualityMatch[1] : "original";
 
-          // ✅ Modify the chunk URL dynamically
-          let modifiedUrl = url;
-          if (!url.includes("SignedHeaders")) {
-            modifiedUrl =
-              url.replace("https://selco-dev.s3.ap-south-1.amazonaws.com/pg.bagalkot", "https://e4h-dev.selcofoundation.org/filestore/v1/files") +
-              "?tenantId=pg.bagalkot";
+            const modifiedUrl = `${baseDomain}/filestore/v1/files/get-hls?tenantId=${tenantId}&fileStoreId=${fileStoreId}&filename=playlist.m3u8&quality=${quality}`;
+            console.debug("Modified Manifest URL:", modifiedUrl);
+            xhr.open("GET", modifiedUrl, true);
+          } else if (url.endsWith(".ts")) {
+            // Extract .ts filename
+            const tsFilename = url.split("/").pop();
+
+            // Use the requested level (which changes immediately when user selects a quality)
+            let quality = "original";
+            const requestedLevel = requestedLevelRef.current;
+
+            // If auto mode is explicitly selected
+            if (requestedLevel === -1) {
+              // Use the level HLS.js has adaptively selected
+              const loadLevel = hls.loadLevel !== -1 ? hls.loadLevel : hls.currentLevel;
+              const autoLevel = loadLevel !== -1 && hls.levels[loadLevel] ? hls.levels[loadLevel] : hls.levels[0];
+
+              if (autoLevel) {
+                quality = `${autoLevel.height}p`;
+              }
+            } else if (requestedLevel >= 0 && hls.levels[requestedLevel]) {
+              // For manual quality selection, use the explicitly selected level
+              quality = `${hls.levels[requestedLevel].height}p`;
+
+              // If this is the highest quality, use "original"
+              const maxLevel = hls.levels.reduce((max, level) => (level.height > max.height ? level : max), { height: 0 });
+
+              if (hls.levels[requestedLevel].height === maxLevel.height) {
+                quality = "original";
+              }
+            }
+
+            console.debug(
+              "TS Request Quality:",
+              quality,
+              "Requested Level:",
+              requestedLevel,
+              "HLS Current Level:",
+              hls.currentLevel,
+              "HLS Load Level:",
+              hls.loadLevel
+            );
+
+            const modifiedTsUrl = `${baseDomain}/filestore/v1/files/get-hls?tenantId=${tenantId}&fileStoreId=${fileStoreId}&filename=${tsFilename}&quality=${quality}`;
+            console.debug("Modified TS Chunk URL:", modifiedTsUrl);
+            xhr.open("GET", modifiedTsUrl, true);
           }
-
-          // ✅ Set Custom Headers
-          xhr.setRequestHeader("Authorization", window.localStorage.getItem("token"));
-          xhr.open("GET", modifiedUrl, true);
-          console.debug("Modified Chunk URL:", modifiedUrl);
         },
       });
 
       hls.loadSource(src);
       hls.attachMedia(video);
 
-      // ✅ Fetch Available Bitrates
+      // Monitor fragment loading to ensure we're using the correct quality
+      hls.on(Hls.Events.FRAG_LOADING, (event, data) => {
+        console.debug("Loading fragment for level:", data.frag.level, "Requested level:", requestedLevelRef.current);
+      });
+
+      // Update the UI when quality changes
+      hls.on(Hls.Events.LEVEL_SWITCHED, (event, data) => {
+        const currentLevel = data.level;
+        console.debug("Level switched to:", currentLevel);
+
+        if (requestedLevelRef.current === -1) {
+          setSelectedBitrate("Auto");
+        } else if (hls.levels[currentLevel]) {
+          setSelectedBitrate(`${hls.levels[currentLevel].height}p`);
+        }
+      });
+
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        const bitrates = hls.levels.map((level, index) => ({
+        if (hls.levels.length === 0) {
+          console.warn("No quality levels detected! Make sure you're loading a master playlist.");
+        }
+
+        const levels = hls.levels.map((level, index) => ({
           id: index,
           bitrate: level.bitrate,
           resolution: level.height ? `${level.height}p` : "Auto",
         }));
-        console.debug("Available Bitrates:", bitrates);
-        setBitrateOptions(bitrates);
+
+        setBitrateOptions([{ id: -1, bitrate: "Auto", resolution: "Auto" }, ...levels]);
+
+        // Start with Auto quality by default
+        hls.nextLevel = -1;
+        requestedLevelRef.current = -1;
+        setSelectedBitrate("Auto");
+      });
+
+      // Monitor level loading to debug issues
+      hls.on(Hls.Events.LEVEL_LOADING, (event, data) => {
+        console.debug("Loading level:", data.level);
       });
 
       setHlsInstance(hls);
     };
 
     setTimeout(attachHls, 500);
-    return () => hlsInstance?.destroy();
-  }, [src]);
 
-  // ✅ Handle Play/Pause Tracking
+    return () => hlsInstance?.destroy();
+  }, [src, fileStoreId]);
+
   const handleVideoPlay = () => {
     let videoElement = playerRef.current?.getInternalPlayer();
     if (!videoElement || !(videoElement instanceof HTMLVideoElement)) {
@@ -74,39 +153,9 @@ const HlsPlayer = ({ src, activeVideoRef }) => {
     if (activeVideoRef.current && activeVideoRef.current !== videoElement) {
       activeVideoRef.current.pause();
     }
-
     activeVideoRef.current = videoElement;
   };
 
-  // ✅ Handle Player Ready Event
-  // const handleReady = (player) => {
-  //   const internalPlayer = playerRef.current?.getInternalPlayer("hls");
-  //   if (internalPlayer) {
-  //     setHlsInstance(internalPlayer);
-
-  //     if (internalPlayer.levels?.length > 0) {
-  //       const bitrates = internalPlayer.levels.map((level, index) => ({
-  //         id: index,
-  //         bitrate: level.bitrate,
-  //       }));
-  //       setBitrateOptions(bitrates);
-  //       return;
-  //     }
-
-  //     internalPlayer.on(Hls.Events.MANIFEST_PARSED, (_, data) => {
-  //       if (data?.levels) {
-  //         const bitrates = data.levels.map((level, index) => ({
-  //           id: index,
-  //           bitrate: level.bitrate,
-  //           resolution: `${level.width}x${level.height}`,
-  //         }));
-  //         setBitrateOptions(bitrates);
-  //       }
-  //     });
-  //   }
-  // };
-
-  // ✅ Handle Fullscreen Toggle
   const handleFullscreen = () => {
     if (containerRef.current) {
       if (document.fullscreenElement) {
@@ -117,16 +166,36 @@ const HlsPlayer = ({ src, activeVideoRef }) => {
     }
   };
 
-  // ✅ Handle Bitrate Change
-  const changeBitrate = (bitrate) => {
+  const changeBitrate = (option) => {
     if (hlsInstance) {
-      const levelIndex = bitrate !== null ? hlsInstance.levels.findIndex((level) => level.bitrate === bitrate) : -1;
-      hlsInstance.currentLevel = levelIndex;
-      setSelectedBitrate(bitrate);
+      // Immediately update our requested level reference
+      requestedLevelRef.current = option.id;
+
+      // Set the level in HLS.js
+      // For auto mode, use nextLevel = -1 (cannot set autoLevelEnabled directly)
+      if (option.id === -1) {
+        // Enable auto mode by setting nextLevel to -1
+        hlsInstance.nextLevel = -1;
+        console.debug("Enabled automatic level selection");
+      } else {
+        // For manual selection, set both nextLevel and loadLevel
+        hlsInstance.nextLevel = option.id;
+        console.debug("Set manual quality level:", option.id);
+      }
+
+      // Force a reload of the current segment at the new quality level
+      try {
+        const currentTime = playerRef.current?.getCurrentTime() || 0;
+        hlsInstance.startLoad(Math.floor(currentTime));
+      } catch (error) {
+        console.error("Error reloading stream:", error);
+      }
+
+      setSelectedBitrate(option.resolution);
+      console.debug("Quality changed to:", option.resolution, "Level ID:", option.id);
     }
   };
 
-  // ✅ Track Play/Pause State
   useEffect(() => {
     const attachEventListeners = () => {
       setTimeout(() => {
@@ -161,14 +230,13 @@ const HlsPlayer = ({ src, activeVideoRef }) => {
         pip={pip}
         width="100%"
         height="100%"
-        // onReady={handleReady}
         onProgress={({ played }) => setPlayed(played)}
         onDuration={setDuration}
         onDisablePIP={() => setPip(false)}
         onPlay={handleVideoPlay}
         config={{
           file: {
-            forceHLS: true, // ✅ Forces HLS but lets our manual HLS instance handle it
+            forceHLS: true,
           },
         }}
       />
@@ -189,6 +257,7 @@ const HlsPlayer = ({ src, activeVideoRef }) => {
         selectedBitrate={selectedBitrate}
         changeBitrate={changeBitrate}
         handleFullscreen={handleFullscreen}
+        originalSrc={originalSrc}
       />
     </div>
   );

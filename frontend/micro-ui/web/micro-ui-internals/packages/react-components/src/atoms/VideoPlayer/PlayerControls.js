@@ -30,6 +30,7 @@ const PlayerControls = ({
   selectedBitrate,
   changeBitrate,
   handleFullscreen,
+  originalSrc,
 }) => {
   const progressRef = useRef(null);
   const settingsRef = useRef(null);
@@ -155,11 +156,13 @@ const PlayerControls = ({
   const handlePlaybackSpeed = (speed) => {
     setPlaybackRate(speed);
     setShowPlaybackSpeedOptions(false);
+    setShowSettingsMenu(false);
   };
 
   const handleQualityChange = (bitrate) => {
     changeBitrate(bitrate);
     setShowQualityOptions(false);
+    setShowSettingsMenu(false);
   };
 
   const formatTime = (seconds) => {
@@ -219,6 +222,9 @@ const PlayerControls = ({
               <ul className="settings-menu">
                 <li onClick={togglePlaybackSpeedOptions}>Playback Speed</li>
                 <li onClick={toggleQualityOptions}>Quality</li>
+                <li>
+                  <a href={originalSrc}>Download</a>
+                </li>
               </ul>
             )}
             {showPlaybackSpeedOptions && (
@@ -233,11 +239,7 @@ const PlayerControls = ({
             {showQualityOptions && (
               <ul className="quality-options">
                 {bitrateOptions.map((option) => (
-                  <li
-                    key={option.id}
-                    className={option.bitrate === selectedBitrate ? "active" : ""}
-                    onClick={() => handleQualityChange(option.bitrate)}
-                  >
+                  <li key={option.id} className={option.bitrate === selectedBitrate ? "active" : ""} onClick={() => handleQualityChange(option)}>
                     {option.resolution}
                   </li>
                 ))}

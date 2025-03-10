@@ -12,7 +12,6 @@ export const Complaint = {
     healthCareType,
     tenantId,
   }) => {
-    console.debug(uploadedFile)
     const tenantIdNew = tenantId;
     let mobileNumber = JSON.parse(sessionStorage.getItem("Digit.User"))?.value?.info?.mobileNumber;
     var serviceDefs = await Digit.MDMSService.getServiceDefs(tenantIdNew, "Incident");
@@ -49,7 +48,11 @@ export const Complaint = {
         ...defaultData.workflow,
         verificationDocuments: uploadedFile.map((file) => ({
           ...file,
-          documentType: file.documentType.toLowerCase().startsWith("video") ? "VIDEO" : "PHOTO",
+          documentType: file.documentType.toLowerCase().startsWith("video")
+            ? "VIDEO"
+            : file.documentType.toLowerCase().startsWith("image")
+            ? "PHOTO"
+            : file.documentType,
         })),
       };
     }
