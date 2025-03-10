@@ -39,7 +39,6 @@ import { Close } from "../../Icons";
 import { useTranslation } from "react-i18next";
 import { isError, useQueryClient } from "react-query";
 import StarRated from "../../components/timelineInstances/StarRated";
-import DisplayVideos from "@selco/digit-ui-react-components/src/atoms/DisplayVideos";
 
 const MapView = (props) => {
   return (
@@ -817,7 +816,6 @@ export const ComplaintDetails = (props) => {
             <CardLabel style={{ marginTop: "18px", fontWeight: "bolder" }}>{t("CS_TICKET_ADDITIONAL_DETAILS")}</CardLabel>
             <DisplayPhotos srcs={imagesToShowBelowComplaintDetails?.fullImage || []} onClick={(source, index) => zoomImageWrapper(source, index)} />
             <DisplayPhotos srcs={imagesToShowBelowComplaintDetails?.videos || []} />
-            {/* <DisplayVideos srcs={imagesToShowBelowComplaintDetails?.videos || []} /> */}
           </div>
         ) : null}
         <BreakLine />
