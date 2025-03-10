@@ -5,8 +5,8 @@ on:
       - develop
       - main
       - multi-tenant-image-test
-    paths:
-      - 'frontend/micro-ui/**'
+#    paths:
+#      - 'frontend/micro-ui/**'
   workflow_dispatch:
   workflow_call:
 
