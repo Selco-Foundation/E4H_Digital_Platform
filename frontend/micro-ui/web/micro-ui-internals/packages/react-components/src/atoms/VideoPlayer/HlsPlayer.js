@@ -27,7 +27,7 @@ const HlsPlayer = ({ src, originalSrc, fileStoreId, activeVideoRef }) => {
       const video = containerRef.current?.querySelector("video");
       if (!video) return;
 
-      const baseDomain = process.env.REACT_APP_PROXY_ASSETS || "https://default-domain.com";
+      // const baseDomain = process.env.REACT_APP_PROXY_ASSETS || "";
       const tenantMatch = src.match(/\/(pg(?:\.[^/]*)?)\//);
       const tenantId = tenantMatch ? tenantMatch[1] : "default-tenant";
 
@@ -41,8 +41,8 @@ const HlsPlayer = ({ src, originalSrc, fileStoreId, activeVideoRef }) => {
             const qualityMatch = url.match(/\/hls\/(\d+p)\//);
             const quality = qualityMatch ? qualityMatch[1] : "original";
 
-            const modifiedUrl = `${baseDomain}/filestore/v1/files/get-hls?tenantId=${tenantId}&fileStoreId=${fileStoreId}&filename=playlist.m3u8&quality=${quality}`;
-            console.debug("Modified Manifest URL:", modifiedUrl);
+            const modifiedUrl = `/filestore/v1/files/get-hls?tenantId=${tenantId}&fileStoreId=${fileStoreId}&filename=playlist.m3u8&quality=${quality}`;
+            // console.debug("Modified Manifest URL:", modifiedUrl);
             xhr.open("GET", modifiedUrl, true);
           } else if (url.endsWith(".ts")) {
             // Extract .ts filename
@@ -73,19 +73,19 @@ const HlsPlayer = ({ src, originalSrc, fileStoreId, activeVideoRef }) => {
               }
             }
 
-            console.debug(
-              "TS Request Quality:",
-              quality,
-              "Requested Level:",
-              requestedLevel,
-              "HLS Current Level:",
-              hls.currentLevel,
-              "HLS Load Level:",
-              hls.loadLevel
-            );
+            // console.debug(
+            //   "TS Request Quality:",
+            //   quality,
+            //   "Requested Level:",
+            //   requestedLevel,
+            //   "HLS Current Level:",
+            //   hls.currentLevel,
+            //   "HLS Load Level:",
+            //   hls.loadLevel
+            // );
 
-            const modifiedTsUrl = `${baseDomain}/filestore/v1/files/get-hls?tenantId=${tenantId}&fileStoreId=${fileStoreId}&filename=${tsFilename}&quality=${quality}`;
-            console.debug("Modified TS Chunk URL:", modifiedTsUrl);
+            const modifiedTsUrl = `/filestore/v1/files/get-hls?tenantId=${tenantId}&fileStoreId=${fileStoreId}&filename=${tsFilename}&quality=${quality}`;
+            // console.debug("Modified TS Chunk URL:", modifiedTsUrl);
             xhr.open("GET", modifiedTsUrl, true);
           }
         },
@@ -96,13 +96,13 @@ const HlsPlayer = ({ src, originalSrc, fileStoreId, activeVideoRef }) => {
 
       // Monitor fragment loading to ensure we're using the correct quality
       hls.on(Hls.Events.FRAG_LOADING, (event, data) => {
-        console.debug("Loading fragment for level:", data.frag.level, "Requested level:", requestedLevelRef.current);
+        // console.debug("Loading fragment for level:", data.frag.level, "Requested level:", requestedLevelRef.current);
       });
 
       // Update the UI when quality changes
       hls.on(Hls.Events.LEVEL_SWITCHED, (event, data) => {
         const currentLevel = data.level;
-        console.debug("Level switched to:", currentLevel);
+        // console.debug("Level switched to:", currentLevel);
 
         if (requestedLevelRef.current === -1) {
           setSelectedBitrate("Auto");
@@ -131,9 +131,9 @@ const HlsPlayer = ({ src, originalSrc, fileStoreId, activeVideoRef }) => {
       });
 
       // Monitor level loading to debug issues
-      hls.on(Hls.Events.LEVEL_LOADING, (event, data) => {
-        console.debug("Loading level:", data.level);
-      });
+      // hls.on(Hls.Events.LEVEL_LOADING, (event, data) => {
+      //   console.debug("Loading level:", data.level);
+      // });
 
       setHlsInstance(hls);
     };
@@ -171,17 +171,7 @@ const HlsPlayer = ({ src, originalSrc, fileStoreId, activeVideoRef }) => {
       // Immediately update our requested level reference
       requestedLevelRef.current = option.id;
 
-      // Set the level in HLS.js
-      // For auto mode, use nextLevel = -1 (cannot set autoLevelEnabled directly)
-      if (option.id === -1) {
-        // Enable auto mode by setting nextLevel to -1
-        hlsInstance.nextLevel = -1;
-        console.debug("Enabled automatic level selection");
-      } else {
-        // For manual selection, set both nextLevel and loadLevel
-        hlsInstance.nextLevel = option.id;
-        console.debug("Set manual quality level:", option.id);
-      }
+      hlsInstance.nextLevel = option.id;
 
       // Force a reload of the current segment at the new quality level
       try {
@@ -192,7 +182,7 @@ const HlsPlayer = ({ src, originalSrc, fileStoreId, activeVideoRef }) => {
       }
 
       setSelectedBitrate(option.resolution);
-      console.debug("Quality changed to:", option.resolution, "Level ID:", option.id);
+      // console.debug("Quality changed to:", option.resolution, "Level ID:", option.id);
     }
   };
 
