@@ -366,41 +366,41 @@ export const CreateComplaint = ({ parentUrl }) => {
   };
   function selectfile(arr, newArr) {
     let file = [];
-    if (arr) {
-      if (newArr.length > 0) {
-        file = newArr.map((e) => {
-          const newFile = {
-            documentType: e?.file?.type.includes(".sheet") ? ".xlsx" : e?.file?.type.includes(".document") ? ".docs" : e?.file?.type,
-            fileStoreId: e?.fileStoreId?.fileStoreId,
-            documentUid: "",
-            additionalDetails: {},
-          };
-          return newFile;
-        });
-      }
-      // const newFile={
-      // documentType: e?.file?.type.includes(".sheet") ? ".xlsx": e?.file?.type.includes(".document")? ".docs": e?.file?.type,
-      // fileStoreId: e?.fileStoreId?.fileStoreId,
-      // documentUid: "",
-      // additionalDetails: {},
-      // };
+    let videoCount = 0;
 
-      const filterFileStoreIds = file.map((item) => item.fileStoreId);
+    if (arr && newArr.length > 0) {
+      file = newArr.flatMap((e) => {
+        if (!e?.file || !e?.fileStoreId) return [];
 
-      // Use a Set to remove duplicates and filter the documents array
-      const seen = new Set();
-      const filteredDocuments = file.filter((document) => {
-        if (filterFileStoreIds.includes(document.fileStoreId) && !seen.has(document.fileStoreId)) {
-          seen.add(document.fileStoreId);
-          return true;
+        const { file, fileStoreId } = e;
+        const { type } = file;
+
+        const documentType = type.includes(".sheet") ? ".xlsx" : type.includes(".document") ? ".docs" : type;
+
+        if (type.includes("video")) {
+          videoCount++;
+          const videoUid = `video${videoCount}`;
+          return [
+            { fileStoreId: fileStoreId.masterFileStoreId, documentUid: videoUid, documentType: "HLS", additionalDetails: {} },
+            { fileStoreId: fileStoreId.fileStoreId, documentUid: videoUid, documentType, additionalDetails: {} },
+          ];
         }
-        return false;
+
+        return [{ fileStoreId: fileStoreId.fileStoreId, documentUid: "", documentType, additionalDetails: {} }];
       });
 
-      setUploadedFile(filteredDocuments);
-      //arr && setFile(arr.file);
+      // Remove Duplicates Efficiently Using Set()
+      const seen = new Set();
+      file = file.filter((doc) => {
+        if (!doc.fileStoreId || seen.has(doc.fileStoreId)) return false;
+        seen.add(doc.fileStoreId);
+        return true;
+      });
+
+      setUploadedFile(file);
     }
   }
+
   useEffect(() => {
     if (dataState.newArr && dataState.mappedArray) {
       selectfile(dataState.newArr, dataState.mappedArray);

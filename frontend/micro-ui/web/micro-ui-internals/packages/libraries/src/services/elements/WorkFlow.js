@@ -13,13 +13,24 @@ const getThumbnails = async (ids, tenantId, documents = []) => {
 
     // Separate images and videos based on documentType (matching by fileStoreId)
     const images = [];
-    const videos = [];
+    const videos = new Map();
 
     documents.forEach((doc) => {
       const fileUrl = urlMap.get(doc.fileStoreId);
       if (fileUrl) {
-        if (doc.documentType.toLowerCase().startsWith("video")) {
-          videos.push(Digit.Utils.getFileUrl(fileUrl));
+        if (doc.documentType === "HLS" || doc.documentType.toLowerCase().startsWith("video")) {
+          const videoKey = doc.documentUid;
+
+          if (!videos.has(videoKey)) {
+            videos.set(videoKey, { master: null, original: null, fileStoreId: null });
+          }
+
+          if (doc.documentType === "HLS") {
+            videos.get(videoKey).master = Digit.Utils.getFileUrl(fileUrl);
+          } else {
+            videos.get(videoKey).fileStoreId = doc.fileStoreId;
+            videos.get(videoKey).original = Digit.Utils.getFileUrl(fileUrl);
+          }
         } else {
           images.push(Digit.Utils.getFileUrl(fileUrl));
         }
@@ -29,7 +40,7 @@ const getThumbnails = async (ids, tenantId, documents = []) => {
     return {
       thumbs: Array.from(urlMap.values()).map((url) => url.split(",")[3] || url.split(",")[0]),
       images,
-      videos,
+      videos: Array.from(videos.values()),
     };
   } else {
     return null;
