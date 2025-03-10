@@ -68,8 +68,8 @@ const TLCaption = ({ data, comments }) => {
       <p>{data?.name}</p>
       <p>{data?.mobileNumber}</p>
       {data?.source && <p>{t("ES_COMMON_FILED_VIA_" + data?.source.toUpperCase())}</p>}
-      {comments?.map((e) => (
-        <div className="TLComments">
+      {comments?.map((e, index) => (
+        <div key={index} className="TLComments">
           <h3>{t("WF_COMMON_COMMENTS")}</h3>
           <p style={{ overflowX: "scroll" }}>{e}</p>
         </div>
