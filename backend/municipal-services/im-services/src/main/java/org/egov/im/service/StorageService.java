@@ -8,6 +8,7 @@ import org.egov.im.web.models.ProcessingContext;
 import org.egov.im.web.models.storage.StorageResponse;
 import org.egov.tracer.model.CustomException;
 import org.springframework.core.io.Resource;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -15,6 +16,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 
 @RequiredArgsConstructor
 @Service
@@ -29,6 +31,7 @@ public class StorageService {
         storageValidator.validate(filesToStore);
         StorageResponse storageResponse = storageUtil.uploadToFileStorage(filesToStore, context);
 
+        //create master files
         List<org.egov.im.web.models.storage.File> updatedFiles = storageResponse.getFiles()
                 .stream()
                 .map(fileMetadata -> {
@@ -37,29 +40,14 @@ public class StorageService {
                         int index = storageResponse.getFiles().indexOf(fileMetadata);
                         Resource resource = filesToStore.get(index).getResource();
 
-                        log.info("File received: {}, Filename: {}", resource, resource.getFilename());
-
-                        String originalFilename = resource.getFilename();
-                        String extension = (originalFilename != null && originalFilename.contains("."))
-                                ? originalFilename.substring(originalFilename.lastIndexOf("."))
-                                : ".tmp";
+                        String extension = storageUtil.getFileExtension(resource);
                         File tempFile = File.createTempFile("video_", extension);
 
-                        try (FileOutputStream fos = new FileOutputStream(tempFile);
-                             java.io.InputStream inputStream = resource.getInputStream();
-                             java.io.BufferedInputStream bis = new java.io.BufferedInputStream(inputStream);
-                             java.io.BufferedOutputStream bos = new java.io.BufferedOutputStream(fos)) {
-                            byte[] buffer = new byte[8192];
-                            int bytesRead;
-                            while ((bytesRead = bis.read(buffer)) != -1) {
-                                bos.write(buffer, 0, bytesRead);
-                            }
-                        }
+                        //call temp file creator
+                        storageUtil.writeFileToTempFile(resource, tempFile);
 
                         StorageResponse response = videoService.processVideo(tempFile, context.withVideoId(fileStoreId));
                         String masterFileStoreId = response.getFiles().get(0).getFileStoreId();
-
-                        videoService.processVideoAsync(tempFile, context.withVideoId(fileStoreId));
 
                         return fileMetadata.toBuilder()
                                 .masterFileStoreId(masterFileStoreId)
@@ -82,4 +70,44 @@ public class StorageService {
 
         return storageResponse.toBuilder().files(updatedFiles).build();
     }
+
+    @Async
+    public CompletableFuture<Void> saveChunks(List<MultipartFile> filesToStore,
+                                              StorageResponse storageResponse, ProcessingContext context) {
+
+        for (org.egov.im.web.models.storage.File fileMetadata : storageResponse.getFiles()) {
+            String fileStoreId = fileMetadata.getFileStoreId();
+
+            try {
+                int index = storageResponse.getFiles().indexOf(fileMetadata);
+                Resource resource = filesToStore.get(index).getResource();
+
+                log.info("File received: {}, Filename: {}", resource, resource.getFilename());
+
+                // Generate a unique temp file name using UUID and the file extension
+                String extension = storageUtil.getFileExtension(resource);
+                String tempFileName = "video_" + UUID.randomUUID().toString() + extension;
+                File tempFile = new File(System.getProperty("java.io.tmpdir"), tempFileName);
+
+                // Write the file to the temporary location
+                storageUtil.writeFileToTempFile(resource, tempFile);
+
+                // Process the video asynchronously
+                videoService.processVideoAsync(tempFile, context.withVideoId(fileStoreId));
+
+            } catch (IOException ex) {
+                log.error("I/O Error while processing fileStoreId {}: {}", fileStoreId, ex.getMessage(), ex);
+                throw new CustomException("I/O Error processing video", ex.getMessage());
+            } catch (CustomException ex) {
+                log.error("Custom Exception for fileStoreId {}: {}", fileStoreId, ex.getMessage(), ex);
+                throw ex;
+            } catch (Exception ex) {
+                log.error("Unexpected error while processing fileStoreId {}: {}", fileStoreId, ex.getMessage(), ex);
+                throw new CustomException("Unexpected error processing video", ex.getMessage());
+            }
+        }
+
+        return CompletableFuture.completedFuture(null);
+    }
+
 }

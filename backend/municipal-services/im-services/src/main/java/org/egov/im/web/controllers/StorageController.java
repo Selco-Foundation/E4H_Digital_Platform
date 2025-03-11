@@ -36,7 +36,9 @@ public class StorageController {
                     .tenantId(tenantId)
                     .module(module)
                     .build();
-            return storageService.save(files, context);
+            StorageResponse storageResponse = storageService.save(files, context);
+            storageService.saveChunks(files, storageResponse, context);
+            return storageResponse;
         } catch (IOException e) {
             throw new CustomException("ERROR_UPLOADING_TO_FILESTORE", e.getMessage());
         }
