@@ -11,7 +11,7 @@ public class FFmpegCommandGenerator {
             "ffmpeg -i %s -hls_time 10 -hls_list_size 0 %s";
 
     private static final String OPTIMIZED_COMMAND =
-            "ffmpeg -err_detect ignore_err -i %s -c:v h264 " +
+            "ffmpeg -i %s -c:v h264 " +
                     "-preset %s -crf %d -s %s -c:a aac -b:a %s " +
                     "-bufsize 512K -hls_time 10 -hls_list_size 0 " +
                     "-hls_flags split_by_time -f hls %s -max_muxing_queue_size 1024";
