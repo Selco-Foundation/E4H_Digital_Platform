@@ -53,7 +53,7 @@ public class StorageUtil {
                                                   ProcessingContext context) throws IOException {
 
         final String URL = getFileStoreURL(configuration.getFileStoreHlsUploadEndpoint()).toString();
-        log.info("uploading to filestore service at {}", URL);
+        log.info("uploading {} to file-store service at {}", filesToStore, URL);
         return serviceRequestRepository.uploadFiles(
                 filesToStore, context, URL);
     }
@@ -99,7 +99,7 @@ public class StorageUtil {
              java.io.InputStream inputStream = resource.getInputStream();
              java.io.BufferedInputStream bis = new java.io.BufferedInputStream(inputStream);
              java.io.BufferedOutputStream bos = new java.io.BufferedOutputStream(fos)) {
-            byte[] buffer = new byte[8192];
+            byte[] buffer = new byte[16384];
             int bytesRead;
             while ((bytesRead = bis.read(buffer)) != -1) {
                 bos.write(buffer, 0, bytesRead);

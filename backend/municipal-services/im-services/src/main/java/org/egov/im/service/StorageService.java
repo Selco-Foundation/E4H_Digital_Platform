@@ -86,7 +86,7 @@ public class StorageService {
 
                 // Generate a unique temp file name using UUID and the file extension
                 String extension = storageUtil.getFileExtension(resource);
-                String tempFileName = "video_" + UUID.randomUUID().toString() + extension;
+                String tempFileName = "video_" + UUID.randomUUID() + extension;
                 File tempFile = new File(System.getProperty("java.io.tmpdir"), tempFileName);
 
                 // Write the file to the temporary location

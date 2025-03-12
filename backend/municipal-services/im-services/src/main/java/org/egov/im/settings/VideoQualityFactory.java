@@ -20,7 +20,7 @@ public class VideoQualityFactory {
         addQuality("LOW_240P", VideoQualitySettings.of("426x240", "240p", 28, "96k", false));
         addQuality("SD_480P", VideoQualitySettings.of("854x480", "480p", 26, "128k", false));
         addQuality("HD_720P", VideoQualitySettings.of("1280x720", "720p", 23, "160k", false));
-        addQuality("FHD_1080P", VideoQualitySettings.of("1920x1080", "1080p", 20, "192k", false));
+        addQuality("FHD_1080P", VideoQualitySettings.of("1920x1080", "1080p", 23, "192k", false));
     }
 
     private static void addQuality(String name, VideoQualitySettings quality) {
