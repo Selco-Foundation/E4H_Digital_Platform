@@ -16,14 +16,14 @@ public class AsyncConfig implements AsyncConfigurer {
     public Executor getAsyncExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
 
-        int availableProcessors = Runtime.getRuntime().availableProcessors();
+        int availableProcessors = 2;//Runtime.getRuntime().availableProcessors();
 
         log.info("Available processor: {}", availableProcessors);
 
         // Set core pool size to the number of available processors
         executor.setCorePoolSize(availableProcessors);
 
-        executor.setMaxPoolSize(availableProcessors);
+        executor.setMaxPoolSize(availableProcessors * 2);
 
         executor.setQueueCapacity(availableProcessors);
 
