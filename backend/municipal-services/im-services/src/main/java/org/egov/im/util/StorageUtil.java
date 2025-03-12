@@ -12,10 +12,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
+import java.nio.file.Path;
 import java.util.List;
+import java.util.UUID;
 
 @RequiredArgsConstructor
 @Component
@@ -93,13 +93,22 @@ public class StorageUtil {
         throw new CustomException("Error fetching file", fileStoreId);
     }
 
-    // write file to a temporary location
-    public void writeFileToTempFile(Resource resource, File tempFile) throws IOException {
-        try (FileOutputStream fos = new FileOutputStream(tempFile);
-             java.io.InputStream inputStream = resource.getInputStream();
-             java.io.BufferedInputStream bis = new java.io.BufferedInputStream(inputStream);
-             java.io.BufferedOutputStream bos = new java.io.BufferedOutputStream(fos)) {
-            byte[] buffer = new byte[16384];
+    public void writeFileToTempFile(Resource resource, Path tempFile) throws IOException {
+        File newFile = tempFile.toFile();
+
+        // Check if the file does not exist
+        if (!newFile.exists()) {
+            log.warn("The file {} does not exist. creating file", newFile.getAbsolutePath());
+            boolean fileCreated = newFile.createNewFile();
+            log.info("file created: {}", fileCreated );
+            //  throw new CustomException("File does not exist:",  newFile.getAbsolutePath());
+        }
+
+        try (FileOutputStream fos = new FileOutputStream(newFile);
+             InputStream inputStream = resource.getInputStream();
+             BufferedInputStream bis = new BufferedInputStream(inputStream);
+             BufferedOutputStream bos = new BufferedOutputStream(fos)) {
+            byte[] buffer = new byte[16384];  // 16KB buffer for reading and writing
             int bytesRead;
             while ((bytesRead = bis.read(buffer)) != -1) {
                 bos.write(buffer, 0, bytesRead);
@@ -113,5 +122,14 @@ public class StorageUtil {
         return (originalFilename != null && originalFilename.contains("."))
                 ? originalFilename.substring(originalFilename.lastIndexOf("."))
                 : ".tmp";
+    }
+
+
+    // file extension
+    public File createTempFile(File tempDir, Resource resource) {
+        String extension =  getFileExtension(resource);
+        // Create custom temp file using the pre-initialized temp directory
+        String uniqueFileName = String.format("%s_%s%s", "video", UUID.randomUUID(), extension);
+        return new File(tempDir, uniqueFileName);
     }
 }

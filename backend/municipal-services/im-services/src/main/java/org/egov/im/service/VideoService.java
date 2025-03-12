@@ -1,6 +1,5 @@
 package org.egov.im.service;
 
-import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.im.settings.VideoQualitySettings;
@@ -54,8 +53,11 @@ public class VideoService {
 
         } catch (Exception e) {
             log.error("Error processing video for videoId: {}", context.getVideoId(), e);
-            cleanupTemporaryFiles(context.getVideoId(), inputFile, outputPath);
+            //cleanupTemporaryFiles(context.getVideoId(), inputFile, outputPath);
             throw new CustomException("VIDEO_PROCESSING_ERROR", "Failed to process video: " + e.getMessage());
+        } finally {
+            log.info("Successfully processed all master files for videoId: {}", context.getVideoId());
+            //cleanupTemporaryFiles(context.getVideoId(), inputFile,  outputPath);
         }
     }
 
@@ -75,12 +77,12 @@ public class VideoService {
                         )
                 )
                 .thenRun(() -> {
-                    log.info("Successfully processed all video qualities for videoId: {}", context.getVideoId());
-                    cleanupTemporaryFiles(context.getVideoId(), inputFile, outputPath);
+                    log.info("Successfully processed all chunks qualities for videoId: {}", context.getVideoId());
+                   // cleanupTemporaryFiles(context.getVideoId(), inputFile, outputPath);
                 })
                 .exceptionally(ex -> {
                     log.error("Error processing video asynchronously for videoId: {}", context.getVideoId(), ex);
-                    cleanupTemporaryFiles(context.getVideoId(), inputFile,  outputPath);
+                  //  cleanupTemporaryFiles(context.getVideoId(), inputFile,  outputPath);
                     return null;
                 });
     }
@@ -112,7 +114,7 @@ public class VideoService {
         log.info("deleting temporary files");
         if(tempFile.exists()) {
             boolean deleted = tempFile.delete();
-            log.info("temp file: {} deleted", tempFile.getName());
+            log.info("temp file: {} deleted: {}", tempFile.getName(), deleted);
         }
 
         log.info("Cleaning up temporary files for videoId: {}", videoId);
