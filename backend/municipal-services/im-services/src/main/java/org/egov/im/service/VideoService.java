@@ -54,7 +54,7 @@ public class VideoService {
 
         } catch (Exception e) {
             log.error("Error processing video for videoId: {}", context.getVideoId(), e);
-            cleanupTemporaryFiles(context.getVideoId(), outputPath);
+            cleanupTemporaryFiles(context.getVideoId(), inputFile, outputPath);
             throw new CustomException("VIDEO_PROCESSING_ERROR", "Failed to process video: " + e.getMessage());
         }
     }
@@ -76,11 +76,11 @@ public class VideoService {
                 )
                 .thenRun(() -> {
                     log.info("Successfully processed all video qualities for videoId: {}", context.getVideoId());
-                    cleanupTemporaryFiles(context.getVideoId(), outputPath);
+                    cleanupTemporaryFiles(context.getVideoId(), inputFile, outputPath);
                 })
                 .exceptionally(ex -> {
                     log.error("Error processing video asynchronously for videoId: {}", context.getVideoId(), ex);
-                    cleanupTemporaryFiles(context.getVideoId(), outputPath);
+                    cleanupTemporaryFiles(context.getVideoId(), inputFile,  outputPath);
                     return null;
                 });
     }
@@ -108,7 +108,13 @@ public class VideoService {
     /**
      * Cleans up temporary files after processing.
      */
-    private void cleanupTemporaryFiles(String videoId, Path outputPath) {
+    private void cleanupTemporaryFiles(String videoId, File tempFile,  Path outputPath) {
+        log.info("deleting temporary files");
+        if(tempFile.exists()) {
+            boolean deleted = tempFile.delete();
+            log.info("temp file: {} deleted", tempFile.getName());
+        }
+
         log.info("Cleaning up temporary files for videoId: {}", videoId);
         Path videoDirectory = outputPath.resolve(videoId);
 

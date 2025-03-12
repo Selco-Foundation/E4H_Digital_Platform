@@ -36,8 +36,12 @@ public class StorageController {
                     .tenantId(tenantId)
                     .module(module)
                     .build();
+            log.info("start processing master files");
             StorageResponse storageResponse = storageService.save(files, context);
+            log.info("done creating master files: {}", storageResponse);
+            log.info("start processing chunks:");
             storageService.saveChunks(files, storageResponse, context);
+            log.info("done processing chunks:");
             return storageResponse;
         } catch (IOException e) {
             throw new CustomException("ERROR_UPLOADING_TO_FILESTORE", e.getMessage());

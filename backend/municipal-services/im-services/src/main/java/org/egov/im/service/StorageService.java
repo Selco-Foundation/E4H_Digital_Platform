@@ -88,6 +88,7 @@ public class StorageService {
                 String extension = storageUtil.getFileExtension(resource);
                 String tempFileName = "video_" + UUID.randomUUID() + extension;
                 File tempFile = new File(System.getProperty("java.io.tmpdir"), tempFileName);
+                tempFile.deleteOnExit();
 
                 // Write the file to the temporary location
                 storageUtil.writeFileToTempFile(resource, tempFile);
