@@ -256,13 +256,17 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
       actionSaveOnSubmit={() => {
         if (selectedAction === "REJECT" && !selectedRejectReason) {
           setError(t("CS_MANDATORY_REJECT_REASON"));
-        } else if (selectedAction === "REJECT" && !comments) {
-          setError(t("CS_MANDATORY_COMMENTS"));
         } else if (selectedAction === "SENDBACK" && !selectedSendBackReason) {
           setError(t("CS_MANDATORY_SENDBACK_REASON"));
         } else if (selectedAction === "SENDBACK" && selectedSendBackReason?.additionalInputs?.[0].type === "radio" && !selectedSendBackSubReason) {
           setError(t("CS_MANDATORY_SENDBACK_SUBREASON"));
-        } else if (selectedAction === "SENDBACK" && selectedSendBackReason?.additionalInputs?.[0].type === "textarea" && !comments) {
+        } else if (
+          ["SENDBACK", "REJECT"].includes(selectedAction) &&
+          (selectedAction === "SENDBACK"
+            ? selectedSendBackReason?.additionalInputs?.[0].type === "textarea"
+            : selectedRejectReason?.additionalInputs?.[0].type === "textarea") &&
+          !comments
+        ) {
           setError(t("CS_MANDATORY_COMMENTS"));
         } else if (selectedAction === "REOPEN" && selectedReopenReason === null) {
           setError(t("CS_REOPEN_REASON_MANDATORY"));
@@ -342,7 +346,8 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
         ) : null}
         {selectedAction !== "SENDBACK" || selectedSendBackReason?.additionalInputs?.[0].type === "textarea" ? (
           <>
-            {selectedAction !== "ASSIGN" && selectedAction !== "REOPEN" ? (
+            {(selectedAction !== "ASSIGN" && selectedAction !== "REOPEN") &&
+            (selectedAction === "REJECT" && selectedRejectReason?.additionalInputs?.[0].type === "textarea") ? (
               <CardLabel>{t("CS_COMMON_EMPLOYEE_COMMENTS")}*</CardLabel>
             ) : (
               <CardLabel>{t("CS_COMMON_EMPLOYEE_COMMENTS")}</CardLabel>
