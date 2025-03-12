@@ -14,8 +14,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 @RequiredArgsConstructor
@@ -29,10 +30,12 @@ public class StorageService {
 
     private File tempDir;
 
+    private static final String INPUT_DIR = "input";
+
     @PostConstruct
     private void initTempFile() {
-        String customTempDir = "/tmp/ffmpeg";
-        tempDir = new File(customTempDir);
+        Path customTempDir = Paths.get(System.getProperty("user.dir"), INPUT_DIR);
+        tempDir = new File(customTempDir.toAbsolutePath().toString());
         if (!tempDir.exists()) {
             tempDir.mkdirs();  // Ensure directory exists
             log.info("Created temporary directory at: {}", customTempDir);
@@ -54,13 +57,10 @@ public class StorageService {
                         int index = storageResponse.getFiles().indexOf(fileMetadata);
                         Resource resource = filesToStore.get(index).getResource();
 
-                        String extension = storageUtil.getFileExtension(resource);
-                        // Create custom temp file using the pre-initialized temp directory
-                        String uniqueFileName = String.format("%s_%s%s", "video", UUID.randomUUID(), extension);
-                        File tempFile = new File(tempDir, uniqueFileName);
+                        File tempFile = storageUtil.createTempFile(tempDir, resource);
 
                         // Call temp file creator (write file to temp location)
-                        storageUtil.writeFileToTempFile(resource, tempFile);
+                        storageUtil.writeFileToTempFile(resource, tempFile.toPath());
 
                         // Process the video synchronously and return response
                         StorageResponse response = videoService.processVideo(tempFile, context.withVideoId(fileStoreId));
@@ -101,12 +101,10 @@ public class StorageService {
 
                 log.info("File received: {}, Filename: {}", resource, resource.getFilename());
 
-                // Use the initialized temp directory from PostConstruct
-                String extension = storageUtil.getFileExtension(resource);
-                File tempFile = File.createTempFile(String.format("%s_%s", "video_", UUID.randomUUID()), extension, tempDir);
+                File tempFile = storageUtil.createTempFile(tempDir, resource);
 
                 // Write the file to the temporary location
-                storageUtil.writeFileToTempFile(resource, tempFile);
+                storageUtil.writeFileToTempFile(resource, tempFile.toPath());
 
                 // Process the video asynchronously
                 videoService.processVideoAsync(tempFile, context.withVideoId(fileStoreId));
