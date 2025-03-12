@@ -84,11 +84,16 @@ public class StorageService {
 
                 log.info("File received: {}, Filename: {}", resource, resource.getFilename());
 
-                // Generate a unique temp file name using UUID and the file extension
+                // Custom temp directory
+                String customTempDir = "/tmp/ffmpeg";
+                File tempDir = new File(customTempDir);
+                if (!tempDir.exists()) {
+                    tempDir.mkdirs();  // Ensure directory exists
+                }
+
                 String extension = storageUtil.getFileExtension(resource);
                 String tempFileName = "video_" + UUID.randomUUID() + extension;
-                File tempFile = new File(System.getProperty("java.io.tmpdir"), tempFileName);
-                tempFile.deleteOnExit();
+                File tempFile = new File(tempDir, tempFileName);
 
                 // Write the file to the temporary location
                 storageUtil.writeFileToTempFile(resource, tempFile);
