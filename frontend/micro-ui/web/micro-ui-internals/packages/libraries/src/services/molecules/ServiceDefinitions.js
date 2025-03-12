@@ -28,7 +28,7 @@ export const GetServiceDefinitions = {
     const response = await GetServiceDefinitions.get(stateCode);
     await Promise.all(
       response.map((def) => {
-        if (!Menu.find((e) => e.key === def.menuPath)) {
+        if (!def.deprecated && !Menu.find((e) => e.key === def.menuPath)) {
           def.menuPath === ""
             ? Menu.push({
                 name: t("SERVICEDEFS.OTHERS"),
@@ -47,7 +47,7 @@ export const GetServiceDefinitions = {
   getSubMenu: async (tenantId, selectedType, t) => {
     const fetchServiceDefs = await GetServiceDefinitions.get(tenantId);
     return fetchServiceDefs
-      .filter((def) => def.menuPath === selectedType.key)
+      .filter((def) => !def.deprecated && def.menuPath === selectedType.key)
       .map((id) => ({
         key: id.serviceCode,
         name: t("SERVICEDEFS." + id.serviceCode.toUpperCase()),
