@@ -11,10 +11,10 @@ public class FFmpegCommandGenerator {
             "ffmpeg -i %s -hls_time 10 -hls_list_size 0 %s -loglevel info -report";
 
     private static final String OPTIMIZED_COMMAND =
-            "ffmpeg -i %s -c:v h264 " +
-                    "-preset %s -crf %d -s %s -c:a aac -b:a %s " +
-                    "-bufsize 512K -hls_time 10 -hls_list_size 0 " +
-                    "-hls_flags split_by_time -f hls %s -max_muxing_queue_size 1024 -loglevel info -report";
+            "ffmpeg -i %s -max_muxing_queue_size 2048 -loglevel debug -report -c:v libx264 " +
+                    "-preset %s -crf %d -s %s -c:a aac -b:a %s -maxrate 1500K " +
+                    "-bufsize 1024K -hls_time 10 -hls_list_size 0 " +
+                    "-hls_flags split_by_time -f hls %s";
 
     /**
      * Generates an FFmpeg command for HLS conversion (original quality, no resizing).
