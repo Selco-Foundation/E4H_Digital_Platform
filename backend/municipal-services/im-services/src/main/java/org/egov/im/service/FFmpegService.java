@@ -41,8 +41,8 @@ public class FFmpegService {
 
         String file = String.format("%s/playlist.m3u8", path);
         String command = videoQuality.isOriginal()
-                ? fFmpegCommandGenerator.getBaseCommand(inputPath, file)
-                : fFmpegCommandGenerator.getOptimizedCommand(inputPath,
+                ? fFmpegCommandGenerator.getBaseCommand(inputPath,2,  file)
+                : fFmpegCommandGenerator.getOptimizedCommand(inputPath, 2,
                 "veryfast", videoQuality.getCrf(), videoQuality.getResolution(), videoQuality.getAudioBitRate(), file);
 
         log.info("Executing FFmpeg command for {}: {}", videoQuality.getLabel(), command);

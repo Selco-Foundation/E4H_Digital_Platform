@@ -8,10 +8,10 @@ import org.springframework.stereotype.Component;
 public class FFmpegCommandGenerator {
 
     private static final String BASE_COMMAND =
-            "ffmpeg -i %s -hls_time 10 -hls_list_size 0 %s";
+            "ffmpeg -i %s -threads %d -hls_time 10 -hls_list_size 0 %s";
 
     private static final String OPTIMIZED_COMMAND =
-            "ffmpeg -i %s -c:v h264 " +
+            "ffmpeg -i %s -threads %d -c:v h264 " +
                     "-preset %s -crf %d -s %s -c:a aac -b:a %s " +
                     "-bufsize 512K -hls_time 10 -hls_list_size 0 " +
                     "-hls_flags split_by_time -f hls %s -max_muxing_queue_size 1024";
@@ -23,8 +23,8 @@ public class FFmpegCommandGenerator {
      * @param outputFilePath The output path for the HLS playlist.
      * @return The formatted FFmpeg command string.
      */
-    public String getBaseCommand(String inputFilePath, String outputFilePath) {
-        return String.format(BASE_COMMAND, inputFilePath, outputFilePath);
+    public String getBaseCommand(String inputFilePath, int threads,  String outputFilePath) {
+        return String.format(BASE_COMMAND, inputFilePath, threads, outputFilePath);
     }
 
     /**
@@ -38,11 +38,12 @@ public class FFmpegCommandGenerator {
      * @return The formatted FFmpeg command string.
      */
     public String getOptimizedCommand(String inputFilePath,
+                                      int threads,
                                       String preset,
                                       int crf,
                                       String resolution,
                                       String audioBitRate,
                                       String outputFilePath) {
-        return String.format(OPTIMIZED_COMMAND, inputFilePath, preset, crf, resolution, audioBitRate, outputFilePath);
+        return String.format(OPTIMIZED_COMMAND, inputFilePath, threads, preset, crf, resolution, audioBitRate, outputFilePath);
     }
 }
