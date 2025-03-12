@@ -1,5 +1,6 @@
 package org.egov.im.service;
 
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.im.util.StorageUtil;
@@ -17,7 +18,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
-
 @RequiredArgsConstructor
 @Service
 @Slf4j
@@ -27,11 +27,25 @@ public class StorageService {
     private final StorageUtil storageUtil;
     private final VideoService videoService;
 
+    private File tempDir;
+
+    @PostConstruct
+    private void initTempFile() {
+        String customTempDir = "/tmp/ffmpeg";
+        tempDir = new File(customTempDir);
+        if (!tempDir.exists()) {
+            tempDir.mkdirs();  // Ensure directory exists
+            log.info("Created temporary directory at: {}", customTempDir);
+        } else {
+            log.info("Temporary directory already exists at: {}", customTempDir);
+        }
+    }
+
     public StorageResponse save(List<MultipartFile> filesToStore, ProcessingContext context) throws IOException {
         storageValidator.validate(filesToStore);
         StorageResponse storageResponse = storageUtil.uploadToFileStorage(filesToStore, context);
 
-        //create master files
+        // Create master files
         List<org.egov.im.web.models.storage.File> updatedFiles = storageResponse.getFiles()
                 .stream()
                 .map(fileMetadata -> {
@@ -41,11 +55,14 @@ public class StorageService {
                         Resource resource = filesToStore.get(index).getResource();
 
                         String extension = storageUtil.getFileExtension(resource);
-                        File tempFile = File.createTempFile("video_", extension);
+                        // Create custom temp file using the pre-initialized temp directory
+                        String uniqueFileName = String.format("%s_%s%s", "video", UUID.randomUUID(), extension);
+                        File tempFile = new File(tempDir, uniqueFileName);
 
-                        //call temp file creator
+                        // Call temp file creator (write file to temp location)
                         storageUtil.writeFileToTempFile(resource, tempFile);
 
+                        // Process the video synchronously and return response
                         StorageResponse response = videoService.processVideo(tempFile, context.withVideoId(fileStoreId));
                         String masterFileStoreId = response.getFiles().get(0).getFileStoreId();
 
@@ -84,16 +101,9 @@ public class StorageService {
 
                 log.info("File received: {}, Filename: {}", resource, resource.getFilename());
 
-                // Custom temp directory
-                String customTempDir = "/tmp/ffmpeg";
-                File tempDir = new File(customTempDir);
-                if (!tempDir.exists()) {
-                    tempDir.mkdirs();  // Ensure directory exists
-                }
-
+                // Use the initialized temp directory from PostConstruct
                 String extension = storageUtil.getFileExtension(resource);
-                String tempFileName = "video_" + UUID.randomUUID() + extension;
-                File tempFile = new File(tempDir, tempFileName);
+                File tempFile = File.createTempFile(String.format("%s_%s", "video_", UUID.randomUUID()), extension, tempDir);
 
                 // Write the file to the temporary location
                 storageUtil.writeFileToTempFile(resource, tempFile);
@@ -115,5 +125,4 @@ public class StorageService {
 
         return CompletableFuture.completedFuture(null);
     }
-
 }
