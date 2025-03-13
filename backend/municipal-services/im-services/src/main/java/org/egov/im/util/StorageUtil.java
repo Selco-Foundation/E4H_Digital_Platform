@@ -13,7 +13,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.*;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
@@ -74,7 +76,11 @@ public class StorageUtil {
      * @return url for filestore upload endpoint
      */
     public StringBuilder getFileStoreURL(String endPoint) {
-        return new StringBuilder().append(configuration.getFileStoreHost())
+        String host = configuration.getFileStoreHost();
+        if(configuration.getFileStoreHost().endsWith("/")) {
+             host = configuration.getFileStoreHost().substring(0, configuration.getFileStoreHost().length() - 1);
+        }
+        return new StringBuilder().append(host)
                 .append(endPoint);
     }
 
