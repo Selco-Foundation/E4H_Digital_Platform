@@ -13,7 +13,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.*;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
@@ -74,7 +76,11 @@ public class StorageUtil {
      * @return url for filestore upload endpoint
      */
     public StringBuilder getFileStoreURL(String endPoint) {
-        return new StringBuilder().append(configuration.getFileStoreHost())
+        String host = configuration.getFileStoreHost();
+        if(configuration.getFileStoreHost().endsWith("/")) {
+            host = configuration.getFileStoreHost().replace("/", "");
+        }
+        return new StringBuilder().append(host)
                 .append(endPoint);
     }
 
@@ -131,5 +137,46 @@ public class StorageUtil {
         // Create custom temp file using the pre-initialized temp directory
         String uniqueFileName = String.format("%s_%s%s", "video", UUID.randomUUID(), extension);
         return new File(tempDir, uniqueFileName);
+    }
+
+
+    /**
+     * Cleans up temporary files after processing.
+     */
+    public void cleanupTemporaryFiles(String videoId, File tempFile, Path outputPath) {
+        log.info("deleting temporary files");
+        if(tempFile.exists()) {
+            boolean deleted = tempFile.delete();
+            log.info("temp file: {} deleted: {}", tempFile.getName(), deleted);
+        }
+
+        log.info("Cleaning up temporary files for videoId: {}", videoId);
+        Path videoDirectory = outputPath.resolve(videoId);
+
+        try {
+            if (Files.exists(videoDirectory)) {
+                Files.walk(videoDirectory)
+                        .sorted(Comparator.reverseOrder())
+                        .forEach(path -> {
+                            try {
+                                Files.delete(path);
+                                log.debug("Deleted: {}", path);
+                            } catch (IOException e) {
+                                log.warn("Failed to delete: {}", path, e);
+                            }
+                        });
+            }
+
+            // Delete master playlist
+            Path masterPlaylist = outputPath.resolve(videoId + "_master.m3u8");
+            if (Files.exists(masterPlaylist)) {
+                Files.delete(masterPlaylist);
+                log.debug("Deleted master playlist: {}", masterPlaylist);
+            }
+
+            log.info("Cleanup completed for videoId: {}", videoId);
+        } catch (IOException e) {
+            log.error("Error during cleanup for videoId: {}", videoId, e);
+        }
     }
 }
