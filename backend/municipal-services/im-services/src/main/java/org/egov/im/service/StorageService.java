@@ -89,15 +89,10 @@ public class StorageService {
     }
 
     @Async
-    public CompletableFuture<Void> saveChunks(List<MultipartFile> filesToStore,
-                                              StorageResponse storageResponse, ProcessingContext context) {
-
-        for (org.egov.im.web.models.storage.File fileMetadata : storageResponse.getFiles()) {
-            String fileStoreId = fileMetadata.getFileStoreId();
-
+    public CompletableFuture<Void> saveChunks(String fileStoreId,
+                                              Resource resource, ProcessingContext context) {
             try {
-                int index = storageResponse.getFiles().indexOf(fileMetadata);
-                Resource resource = filesToStore.get(index).getResource();
+
 
                 log.info("File received: {}, Filename: {}", resource, resource.getFilename());
 
@@ -119,8 +114,6 @@ public class StorageService {
                 log.error("Unexpected error while processing fileStoreId {}: {}", fileStoreId, ex.getMessage(), ex);
                 throw new CustomException("Unexpected error processing video", ex.getMessage());
             }
-        }
-
         return CompletableFuture.completedFuture(null);
     }
 }

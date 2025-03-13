@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.im.settings.VideoQualitySettings;
 import org.egov.im.util.DirectoryUtil;
+import org.egov.im.util.StorageUtil;
 import org.egov.im.util.VideoUtil;
 import org.egov.im.web.models.ProcessingContext;
 
@@ -11,6 +12,7 @@ import org.egov.im.web.models.storage.StorageResponse;
 import org.egov.tracer.model.CustomException;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.IOException;
@@ -28,6 +30,7 @@ public class VideoService {
     private final VideoUtil videoUtil;
     private final FFmpegService fFmpegService;
     private final DirectoryUtil directoryUtil;
+    private final StorageUtil storageUtil;
 
     private static final String OUTPUT_DIR = "output";
 
@@ -46,18 +49,21 @@ public class VideoService {
             List<VideoQualitySettings> qualities = videoUtil.determineQualityLevels(originalDimensions);
 
             // Create the master playlist
-            StorageResponse storageResponse = fFmpegService.createMasterPlaylist(qualities, context, outputPath);
+            MultipartFile multipartFile = fFmpegService.createMasterPlaylist(qualities, context, outputPath);
+
+            // Upload master playlist to storage
+            StorageResponse storageResponse = storageUtil.uploadToHLSFileStorage(List.of(multipartFile), context);
             log.info("Successfully created and uploaded master playlist: {}", storageResponse);
 
             return storageResponse; // Returns immediately without waiting for async processing
 
         } catch (Exception e) {
             log.error("Error processing video for videoId: {}", context.getVideoId(), e);
-            //cleanupTemporaryFiles(context.getVideoId(), inputFile, outputPath);
+            cleanup(context, inputFile, outputPath);
             throw new CustomException("VIDEO_PROCESSING_ERROR", "Failed to process video: " + e.getMessage());
         } finally {
             log.info("Successfully processed all master files for videoId: {}", context.getVideoId());
-            //cleanupTemporaryFiles(context.getVideoId(), inputFile,  outputPath);
+            cleanup(context, inputFile, outputPath);
         }
     }
 
@@ -69,22 +75,76 @@ public class VideoService {
 
         return CompletableFuture.supplyAsync(() -> getVideoDimensions(inputFile))
                 .thenApply(videoUtil::determineQualityLevels)
-                .thenCompose(qualities ->
-                        CompletableFuture.allOf(qualities.stream()
-                                        .map(quality -> fFmpegService.processQuality(context,
-                                                inputFile.getAbsolutePath(), outputPath, quality))
-                                        .toArray(CompletableFuture[]::new)
-                        )
-                )
+                .thenCompose(qualities -> processQualitiesInParallel(context, inputFile, outputPath, qualities))
                 .thenRun(() -> {
-                    log.info("Successfully processed all chunks qualities for videoId: {}", context.getVideoId());
-                   // cleanupTemporaryFiles(context.getVideoId(), inputFile, outputPath);
+                    log.info("processed all chunk qualities for videoId: {}", context.getVideoId());
+                    cleanup(context, inputFile, outputPath);
                 })
-                .exceptionally(ex -> {
-                    log.error("Error processing video asynchronously for videoId: {}", context.getVideoId(), ex);
-                  //  cleanupTemporaryFiles(context.getVideoId(), inputFile,  outputPath);
-                    return null;
-                });
+                .exceptionally(ex -> handleProcessingError(context, inputFile, outputPath, ex));
+    }
+
+    private CompletableFuture<Void> processQualitiesInParallel(ProcessingContext context, File inputFile, Path outputPath, List<VideoQualitySettings> qualities) {
+        log.info("Processing videoId: {} and qualities: {}", context.getVideoId(), qualities);
+
+        // Process each quality in parallel
+        List<CompletableFuture<String>> processingFutures = qualities.stream()
+                .map(quality -> fFmpegService.processQuality(context, inputFile.getAbsolutePath(), outputPath, quality))
+                .toList();
+
+        // Wait for all processing futures to complete
+        return CompletableFuture.allOf(processingFutures.toArray(new CompletableFuture[0]))
+                .thenApply(v -> uploadProcessedFiles(context, outputPath, processingFutures));
+    }
+
+    private Void uploadProcessedFiles(ProcessingContext context, Path outputPath, List<CompletableFuture<String>> processingFutures) {
+        log.info("Completed all quality processing, uploading.");
+
+        try {
+            List<String> results = processingFutures.stream()
+                    .map(CompletableFuture::join)
+                    .toList();
+
+            List<Path> files = results.stream()
+                    .flatMap(result -> {
+                        try {
+                            Path directoryPath = outputPath.resolve(String.format("%s%s", outputPath.toAbsolutePath(),result));
+                            return Files.list(directoryPath);
+                        } catch (IOException e) {
+                            throw new CustomException(String.format("Failed to list files in directory for result: %s ", result), e.getMessage());
+                        }
+                    })
+                    .toList();
+
+            // Convert files to MultipartFile using their corresponding result
+            List<MultipartFile> multipartFiles = files.stream()
+                    .map(file -> {
+                        // Use the file name or path to derive the quality result
+                        Path filePath = file.toAbsolutePath();
+                        String resolvedPath =
+                                String.format("%s/%s", context.getVideoId(), videoUtil.pathExtractor(filePath.toString(), OUTPUT_DIR));
+                        return videoUtil.convertFileToMultipartFile(file.toFile(), resolvedPath);
+                    })
+                    .toList();
+
+            // Upload files to HLS storage
+            storageUtil.uploadToHLSFileStorage(multipartFiles, context);
+
+        } catch (RuntimeException | IOException e) {
+            log.error("Error uploading processed files: {}", e.getMessage(), e);
+            throw new CustomException("Error",e.getMessage());
+        }
+
+        return null;
+    }
+
+    private void cleanup(ProcessingContext context, File inputFile, Path outputPath) {
+        storageUtil.cleanupTemporaryFiles(context.getVideoId(), inputFile, outputPath);
+    }
+
+    private Void handleProcessingError(ProcessingContext context, File inputFile, Path outputPath, Throwable ex) {
+        log.error("Error processing video asynchronously for videoId: {}", context.getVideoId(), ex);
+        storageUtil.cleanupTemporaryFiles(context.getVideoId(), inputFile, outputPath);
+        return null;  // Ensure CompletableFuture chain is not broken
     }
 
 
@@ -105,46 +165,6 @@ public class VideoService {
             throw new CustomException("INVALID_DIMENSIONS", "Unable to retrieve video dimensions");
         }
         return dimensions;
-    }
-
-    /**
-     * Cleans up temporary files after processing.
-     */
-    private void cleanupTemporaryFiles(String videoId, File tempFile,  Path outputPath) {
-        log.info("deleting temporary files");
-        if(tempFile.exists()) {
-            boolean deleted = tempFile.delete();
-            log.info("temp file: {} deleted: {}", tempFile.getName(), deleted);
-        }
-
-        log.info("Cleaning up temporary files for videoId: {}", videoId);
-        Path videoDirectory = outputPath.resolve(videoId);
-
-        try {
-            if (Files.exists(videoDirectory)) {
-                Files.walk(videoDirectory)
-                        .sorted(Comparator.reverseOrder())
-                        .forEach(path -> {
-                            try {
-                                Files.delete(path);
-                                log.debug("Deleted: {}", path);
-                            } catch (IOException e) {
-                                log.warn("Failed to delete: {}", path, e);
-                            }
-                        });
-            }
-
-            // Delete master playlist
-            Path masterPlaylist = outputPath.resolve(videoId + "_master.m3u8");
-            if (Files.exists(masterPlaylist)) {
-                Files.delete(masterPlaylist);
-                log.debug("Deleted master playlist: {}", masterPlaylist);
-            }
-
-            log.info("Cleanup completed for videoId: {}", videoId);
-        } catch (IOException e) {
-            log.error("Error during cleanup for videoId: {}", videoId, e);
-        }
     }
 }
 

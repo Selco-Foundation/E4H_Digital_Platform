@@ -157,7 +157,7 @@ public class VideoUtil {
             int outputIndex = path.toString().indexOf(indexPath);
 
             if (outputIndex != -1) {
-                return String.format("/%s",path.subpath(path.getNameCount() - 3, path.getNameCount() - 1));
+                return String.format("%s",path.subpath(path.getNameCount() - 3, path.getNameCount() - 1));
             }
             throw new IllegalArgumentException("Invalid path: 'output/' not found");
     }

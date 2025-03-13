@@ -4,10 +4,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.im.settings.VideoQualitySettings;
 import org.egov.im.util.DirectoryUtil;
-import org.egov.im.util.StorageUtil;
 import org.egov.im.util.VideoUtil;
 import org.egov.im.web.models.ProcessingContext;
-import org.egov.im.web.models.storage.StorageResponse;
 import org.egov.tracer.model.CustomException;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
@@ -19,7 +17,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.stream.Stream;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -30,10 +27,9 @@ public class FFmpegService {
     private final FFmpegCommandGenerator fFmpegCommandGenerator;
     private final VideoUtil videoUtil;
     private final DirectoryUtil directoryUtil;
-    private final StorageUtil storageUtil;
 
     @Async
-    public CompletableFuture<Void> processQuality(
+    public CompletableFuture<String> processQuality(
             ProcessingContext context, String inputPath, Path outputPath, VideoQualitySettings videoQuality) {
 
         Path path = directoryUtil.createDirectory(String.format("%s/%s/hls/%s",
@@ -50,23 +46,13 @@ public class FFmpegService {
 
         String baseFileName = path.toString().split("output")[1];
 
-        try (Stream<Path> fileStream = Files.list(path)) {
-            List<MultipartFile> multipartFiles = fileStream
-                    .map(f ->  videoUtil.convertFileToMultipartFile(f.toFile(), baseFileName))
-                    .toList();
+        log.info("Successfully processed quality: {}", videoQuality.getLabel());
 
-            storageUtil.uploadToHLSFileStorage(multipartFiles, context);
-
-        } catch (IOException e) {
-            throw new CustomException("Error listing files in directory", "Failed to list files: " + e.getMessage());
-        }
-        log.info("Successfully processed and uploaded {} quality", videoQuality.getLabel());
-
-        return CompletableFuture.completedFuture(null);
+        return CompletableFuture.completedFuture(baseFileName);
     }
 
 
-    public StorageResponse createMasterPlaylist(List<VideoQualitySettings> qualities,
+    public MultipartFile createMasterPlaylist(List<VideoQualitySettings> qualities,
                                                 ProcessingContext context,
                                                 Path outputPath) {
 
@@ -97,10 +83,7 @@ public class FFmpegService {
             String resolveBasePath = videoUtil.pathExtractor(masterPlaylistPath.toString(), "output");
 
             //convert to multiPathFile
-            MultipartFile multipartFile = videoUtil.convertFileToMultipartFile(masterPlaylistFile, resolveBasePath);
-
-            // Upload master playlist to storage
-            return storageUtil.uploadToHLSFileStorage(List.of(multipartFile), context);
+            return videoUtil.convertFileToMultipartFile(masterPlaylistFile, resolveBasePath);
 
         } catch (IOException e) {
             log.error("Error creating master playlist for videoId: {}", context.getVideoId(), e);
