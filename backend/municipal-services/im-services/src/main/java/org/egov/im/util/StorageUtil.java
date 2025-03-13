@@ -78,7 +78,7 @@ public class StorageUtil {
     public StringBuilder getFileStoreURL(String endPoint) {
         String host = configuration.getFileStoreHost();
         if(configuration.getFileStoreHost().endsWith("/")) {
-            host = configuration.getFileStoreHost().replace("/", "");
+            host = configuration.getFileStoreHost().substring(0, configuration.getFileStoreHost().length() - 1);
         }
         return new StringBuilder().append(host)
                 .append(endPoint);
