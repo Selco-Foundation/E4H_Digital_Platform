@@ -21,6 +21,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Stream;
 
 @Slf4j
 @Service
@@ -61,9 +62,6 @@ public class VideoService {
             log.error("Error processing video for videoId: {}", context.getVideoId(), e);
             cleanup(context, inputFile, outputPath);
             throw new CustomException("VIDEO_PROCESSING_ERROR", "Failed to process video: " + e.getMessage());
-        } finally {
-            log.info("Successfully processed all master files for videoId: {}", context.getVideoId());
-            cleanup(context, inputFile, outputPath);
         }
     }
 
@@ -83,59 +81,50 @@ public class VideoService {
                 .exceptionally(ex -> handleProcessingError(context, inputFile, outputPath, ex));
     }
 
-    private CompletableFuture<Void> processQualitiesInParallel(ProcessingContext context, File inputFile, Path outputPath, List<VideoQualitySettings> qualities) {
+    private CompletableFuture<Void> processQualitiesInParallel(
+            ProcessingContext context, File inputFile, Path outputPath, List<VideoQualitySettings> qualities) {
         log.info("Processing videoId: {} and qualities: {}", context.getVideoId(), qualities);
 
-        // Process each quality in parallel
-        List<CompletableFuture<String>> processingFutures = qualities.stream()
-                .map(quality -> fFmpegService.processQuality(context, inputFile.getAbsolutePath(), outputPath, quality))
+        List<CompletableFuture<Void>> uploadFutures = qualities.stream()
+                .map(quality -> fFmpegService.processQuality(context, inputFile.getAbsolutePath(), outputPath, quality)
+                        .thenCompose(outputFilePath ->
+                                uploadProcessedFile(context, outputPath, outputFilePath)))
                 .toList();
 
-        // Wait for all processing futures to complete
-        return CompletableFuture.allOf(processingFutures.toArray(new CompletableFuture[0]))
-                .thenApply(v -> uploadProcessedFiles(context, outputPath, processingFutures));
+        return CompletableFuture.allOf(uploadFutures.toArray(new CompletableFuture[0]));
     }
 
-    private Void uploadProcessedFiles(ProcessingContext context, Path outputPath, List<CompletableFuture<String>> processingFutures) {
-        log.info("Completed all quality processing, uploading.");
+    private CompletableFuture<Void> uploadProcessedFile(ProcessingContext context, Path outputPath, String outputFilePath) {
+        return CompletableFuture.runAsync(() -> {
+            try {
+                log.info("Uploading processed file: {} for videoId: {}", outputFilePath, context.getVideoId());
 
-        try {
-            List<String> results = processingFutures.stream()
-                    .map(CompletableFuture::join)
-                    .toList();
+                Path directoryPath = outputPath.resolve(String.format("%s%s", outputPath, outputFilePath));
 
-            List<Path> files = results.stream()
-                    .flatMap(result -> {
-                        try {
-                            Path directoryPath = outputPath.resolve(String.format("%s%s", outputPath.toAbsolutePath(),result));
-                            return Files.list(directoryPath);
-                        } catch (IOException e) {
-                            throw new CustomException(String.format("Failed to list files in directory for result: %s ", result), e.getMessage());
-                        }
-                    })
-                    .toList();
+                List<Path> files;
+                try (Stream<Path> fileStream = Files.list(directoryPath)) {
+                    files = fileStream.toList();
+                }
 
-            // Convert files to MultipartFile using their corresponding result
-            List<MultipartFile> multipartFiles = files.stream()
-                    .map(file -> {
-                        // Use the file name or path to derive the quality result
-                        Path filePath = file.toAbsolutePath();
-                        String resolvedPath =
-                                String.format("%s/%s", context.getVideoId(), videoUtil.pathExtractor(filePath.toString(), OUTPUT_DIR));
-                        return videoUtil.convertFileToMultipartFile(file.toFile(), resolvedPath);
-                    })
-                    .toList();
+                // Convert files to MultipartFile and upload
+                List<MultipartFile> multipartFiles = files.stream()
+                        .map(file -> {
+                            String resolvedPath =
+                                    String.format("%s/%s", context.getVideoId(), videoUtil.pathExtractor(file.toString(), OUTPUT_DIR));
+                            return videoUtil.convertFileToMultipartFile(file.toFile(), resolvedPath);
+                        })
+                        .toList();
 
-            // Upload files to HLS storage
-            storageUtil.uploadToHLSFileStorage(multipartFiles, context);
+                // Upload files to HLS storage
+                storageUtil.uploadToHLSFileStorage(multipartFiles, context);
 
-        } catch (RuntimeException | IOException e) {
-            log.error("Error uploading processed files: {}", e.getMessage(), e);
-            throw new CustomException("Error",e.getMessage());
-        }
-
-        return null;
+            } catch (IOException e) {
+                log.error("Error uploading processed files: {}", e.getMessage(), e);
+                throw new CustomException("Error uploading files", e.getMessage());
+            }
+        });
     }
+
 
     private void cleanup(ProcessingContext context, File inputFile, Path outputPath) {
         storageUtil.cleanupTemporaryFiles(context.getVideoId(), inputFile, outputPath);

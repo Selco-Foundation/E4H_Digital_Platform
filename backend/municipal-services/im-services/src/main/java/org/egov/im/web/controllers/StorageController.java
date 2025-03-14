@@ -3,14 +3,14 @@ package org.egov.im.web.controllers;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.im.service.StorageService;
+import org.egov.im.util.StorageUtil;
 import org.egov.im.web.models.ProcessingContext;
-import org.egov.im.web.models.storage.File;
 import org.egov.im.web.models.storage.StorageResponse;
 import org.egov.tracer.model.CustomException;
-import org.springframework.core.io.Resource;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -22,6 +22,7 @@ import java.util.concurrent.CompletableFuture;
 public class StorageController {
 
     private final StorageService storageService;
+    private final StorageUtil storageUtil;
 
     @PostMapping(value = "upload")
     public StorageResponse storeFiles(@RequestParam("file") List<MultipartFile> files,
@@ -41,22 +42,27 @@ public class StorageController {
                     .module(module)
                     .build();
 
+            //crete temp files
+            List<java.io.File> tempFiles = storageService.createTempFiles(files);
+            StorageResponse storageResponse = storageService.saveOriginalFileToS3(files, context);
+
             log.info("Start processing master files");
-            StorageResponse storageResponse = storageService.save(files, context);
+            storageResponse = storageService.save(storageResponse, tempFiles, context);
             log.info("Done creating master files: {}", storageResponse);
 
             log.info("Start processing chunks asynchronously");
 
             // Process chunks asynchronously without waiting for completion
             for (int index = 0; index < storageResponse.getFiles().size(); index++) {
-                File fileMetadata = storageResponse.getFiles().get(index);
-                Resource resource = files.get(index).getResource();
+                org.egov.im.web.models.storage.File fileMetadata = storageResponse.getFiles().get(index);
+                File file = tempFiles.get(index);
+               // File resource = files.get(index);
                 String fileStoreId = fileMetadata.getFileStoreId();
 
                 // Submit each chunk processing task asynchronously
                 CompletableFuture.runAsync(() -> {
                     try {
-                        storageService.saveChunks(fileStoreId, resource, context);
+                        storageService.saveChunks(fileStoreId, file, context);
                     } catch (Exception ex) {
                         log.error("Error processing chunks for fileStoreId: {}", fileStoreId, ex);
                     }
@@ -66,7 +72,7 @@ public class StorageController {
             log.info("Chunk processing tasks submitted. Returning response immediately.");
             return storageResponse;
 
-        } catch (IOException e) {
+        } catch (Exception e) {
             throw new CustomException("ERROR_UPLOADING_TO_FILESTORE", e.getMessage());
         }
     }
