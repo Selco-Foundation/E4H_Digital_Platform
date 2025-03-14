@@ -14,6 +14,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.*;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.List;
@@ -77,7 +78,7 @@ public class StorageUtil {
      */
     public StringBuilder getFileStoreURL(String endPoint) {
         String host = configuration.getFileStoreHost();
-        if(configuration.getFileStoreHost().endsWith("/")) {
+        if (configuration.getFileStoreHost().endsWith("/")) {
             host = configuration.getFileStoreHost().substring(0, configuration.getFileStoreHost().length() - 1);
         }
         return new StringBuilder().append(host)
@@ -100,27 +101,47 @@ public class StorageUtil {
     }
 
     public void writeFileToTempFile(Resource resource, Path tempFile) throws IOException {
-        File newFile = tempFile.toFile();
+        try {
+            File newFile = tempFile.toFile();
 
-        // Check if the file does not exist
-        if (!newFile.exists()) {
-            log.warn("The file {} does not exist. creating file", newFile.getAbsolutePath());
-            boolean fileCreated = newFile.createNewFile();
-            log.info("file created: {}", fileCreated );
-            //  throw new CustomException("File does not exist:",  newFile.getAbsolutePath());
-        }
-
-        try (FileOutputStream fos = new FileOutputStream(newFile);
-             InputStream inputStream = resource.getInputStream();
-             BufferedInputStream bis = new BufferedInputStream(inputStream);
-             BufferedOutputStream bos = new BufferedOutputStream(fos)) {
-            byte[] buffer = new byte[16384];  // 16KB buffer for reading and writing
-            int bytesRead;
-            while ((bytesRead = bis.read(buffer)) != -1) {
-                bos.write(buffer, 0, bytesRead);
+            // Check if the file does not exist
+            if (!newFile.exists()) {
+                log.warn("The file {} does not exist. Creating file.", newFile.getAbsolutePath());
+                boolean fileCreated = newFile.createNewFile();
+                if (!fileCreated) {
+                    // If the file cannot be created, throw a custom exception
+                    log.error("Failed to create the file {}", newFile.getAbsolutePath());
+                    throw new CustomException("Failed to create the file: ",  newFile.getAbsolutePath());
+                }
+                log.info("File created: {}", newFile.getAbsolutePath());
             }
+
+            // Writing file contents
+            try (FileOutputStream fos = new FileOutputStream(newFile);
+                 InputStream inputStream = resource.getInputStream();
+                 BufferedInputStream bis = new BufferedInputStream(inputStream);
+                 BufferedOutputStream bos = new BufferedOutputStream(fos)) {
+                byte[] buffer = new byte[16384];  // 16KB buffer for reading and writing
+                int bytesRead;
+                while ((bytesRead = bis.read(buffer)) != -1) {
+                    bos.write(buffer, 0, bytesRead);
+                }
+            }
+        } catch (NoSuchFileException ex) {
+            log.error("Error processing temporary file. File not found: {}", tempFile.toAbsolutePath(), ex);
+            throw new CustomException(
+                    String.format("ERROR_PROCESSING_TEMP_FILE: File not found - %s ",tempFile.toAbsolutePath()), ex.getMessage());
+        } catch (IOException ex) {
+            log.error("I/O error while processing file: {}", tempFile.toAbsolutePath(), ex);
+            throw new CustomException(
+                    String.format("ERROR_PROCESSING_TEMP_FILE: I/O error %s- ", tempFile.toAbsolutePath()), ex.getMessage());
+        } catch (Exception ex) {
+            log.error("Unexpected error while processing file: {}", tempFile.toAbsolutePath(), ex);
+            throw new CustomException(
+                    String.format("Unexpected error while processing file: %s", tempFile.toAbsolutePath()), ex.getMessage());
         }
     }
+
 
     // file extension
     public String getFileExtension(Resource resource) {
@@ -133,7 +154,7 @@ public class StorageUtil {
 
     // file extension
     public File createTempFile(File tempDir, Resource resource) {
-        String extension =  getFileExtension(resource);
+        String extension = getFileExtension(resource);
         // Create custom temp file using the pre-initialized temp directory
         String uniqueFileName = String.format("%s_%s%s", "video", UUID.randomUUID(), extension);
         return new File(tempDir, uniqueFileName);
@@ -145,7 +166,7 @@ public class StorageUtil {
      */
     public void cleanupTemporaryFiles(String videoId, File tempFile, Path outputPath) {
         log.info("deleting temporary files");
-        if(tempFile.exists()) {
+        if (tempFile.exists()) {
             boolean deleted = tempFile.delete();
             log.info("temp file: {} deleted: {}", tempFile.getName(), deleted);
         }

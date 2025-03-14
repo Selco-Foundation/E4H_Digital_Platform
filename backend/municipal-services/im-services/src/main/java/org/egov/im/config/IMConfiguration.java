@@ -252,4 +252,7 @@ public class IMConfiguration {
     @Value("${egov.filestore.upload.endpoint}")
     private String fileStoreUploadEndpoint;
 
+    @Value("${ffprobe.path}")
+    private String ffprobePath;
+
 }

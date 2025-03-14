@@ -2,6 +2,7 @@ package org.egov.im.util;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.egov.im.config.IMConfiguration;
 import org.egov.im.settings.VideoQualityFactory;
 import org.egov.im.settings.VideoQualitySettings;
 import org.egov.tracer.model.CustomException;
@@ -25,6 +26,7 @@ import java.util.List;
 public class VideoUtil {
 
     private final VideoQualityFactory videoQualityFactory;
+    private final IMConfiguration config;
 
     public int getBandwidthForResolution(int width, int height) {
         // Estimate bandwidth based on resolution
@@ -34,7 +36,7 @@ public class VideoUtil {
         if (pixels <= 854 * 480) return 1500000;
         if (pixels <= 1280 * 720) return 3000000;
         if (pixels <= 1920 * 1080) return 6000000;
-        return 8000000; // for higher resolutions
+        return 8000000;
     }
 
     public MultipartFile convertFileToMultipartFile(File file, String path) {
@@ -60,7 +62,7 @@ public class VideoUtil {
     }
 
     public String[] getVideoDimensions(String videoPath) {
-        final String FFPROBE_PATH = "/usr/bin/ffprobe";
+        final String FFPROBE_PATH = config.getFfprobePath();
 
         List<String> command = List.of(
                 FFPROBE_PATH, "-v", "error", "-select_streams", "v:0",
