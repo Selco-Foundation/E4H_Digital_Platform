@@ -11,7 +11,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
@@ -43,11 +42,16 @@ public class StorageController {
                     .build();
 
             //crete temp files
-            List<java.io.File> tempFiles = storageService.createTempFiles(files);
-            StorageResponse storageResponse = storageService.saveOriginalFileToS3(files, context);
+            CompletableFuture<List<java.io.File>> tempFiles = storageService.createTempFiles(files);
+            CompletableFuture<StorageResponse> storageResponsePromise =
+                    storageService.saveOriginalFileToS3(files, context);
+
+            //blocking call - waits for temp files to be created before proceeding
+            List<File> resolveTempFiles = tempFiles.join();
 
             log.info("Start processing master files");
-            storageResponse = storageService.save(storageResponse, tempFiles, context);
+            StorageResponse storageResponse =
+                    storageService.createAndSaveMasterFiles(storageResponsePromise, resolveTempFiles, context);
             log.info("Done creating master files: {}", storageResponse);
 
             log.info("Start processing chunks asynchronously");
@@ -55,20 +59,12 @@ public class StorageController {
             // Process chunks asynchronously without waiting for completion
             for (int index = 0; index < storageResponse.getFiles().size(); index++) {
                 org.egov.im.web.models.storage.File fileMetadata = storageResponse.getFiles().get(index);
-                File file = tempFiles.get(index);
-               // File resource = files.get(index);
+                File file = resolveTempFiles.get(index);
                 String fileStoreId = fileMetadata.getFileStoreId();
 
                 // Submit each chunk processing task asynchronously
-                CompletableFuture.runAsync(() -> {
-                    try {
-                        storageService.saveChunks(fileStoreId, file, context);
-                    } catch (Exception ex) {
-                        log.error("Error processing chunks for fileStoreId: {}", fileStoreId, ex);
-                    }
-                });
+                storageService.createAndSaveChunks(fileStoreId, file, context);
             }
-
             log.info("Chunk processing tasks submitted. Returning response immediately.");
             return storageResponse;
 

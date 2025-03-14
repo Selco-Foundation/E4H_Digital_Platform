@@ -10,6 +10,7 @@ import org.egov.tracer.model.ServiceCallException;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.*;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Repository;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
@@ -21,6 +22,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 @RequiredArgsConstructor
 @Repository
@@ -44,9 +46,10 @@ public class ServiceRequestRepository {
         return response;
     }
 
-    public StorageResponse uploadFiles(List<MultipartFile> files,
-                                       ProcessingContext context,
-                                       String url) throws IOException {
+    @Async
+    public CompletableFuture<StorageResponse> uploadFiles(List<MultipartFile> files,
+                                                         ProcessingContext context,
+                                                         String url) throws IOException {
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.MULTIPART_FORM_DATA);
@@ -76,7 +79,7 @@ public class ServiceRequestRepository {
                 throw new ServiceCallException(String.format("File upload failed with status: %s",
                         responseEntity.getStatusCode()));
             }
-            return responseEntity.getBody();
+            return CompletableFuture.completedFuture(responseEntity.getBody());
         } catch (HttpClientErrorException e) {
             log.error("File upload failed: {}", e.getResponseBodyAsString());
             throw new ServiceCallException(e.getResponseBodyAsString());
