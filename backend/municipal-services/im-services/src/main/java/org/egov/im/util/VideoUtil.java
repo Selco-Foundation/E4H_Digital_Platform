@@ -7,7 +7,6 @@ import org.egov.im.settings.VideoQualityFactory;
 import org.egov.im.settings.VideoQualitySettings;
 import org.egov.im.web.models.ProcessingContext;
 import org.egov.tracer.model.CustomException;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -21,7 +20,6 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
 
 @RequiredArgsConstructor
@@ -159,33 +157,6 @@ public class VideoUtil {
                 "original", 0, "192k", true));
 
         log.info("Determined quality levels for input video ({}x{}): {}", width, height, qualityLevels);
-        return qualityLevels;
-    }
-
-    public List<VideoQualitySettings> determineOriginalQualityLevels(String[] dimensions) {
-        if (dimensions == null || dimensions.length < 2) {
-            log.error("Could not determine original video dimensions");
-            return List.of();
-        }
-
-        int width;
-        int height;
-
-        try {
-            width = Integer.parseInt(dimensions[0]);
-            height = Integer.parseInt(dimensions[1]);
-        } catch (NumberFormatException e) {
-            log.error("Invalid video dimensions format: {}", Arrays.toString(dimensions), e);
-            return List.of();
-        }
-
-        List<VideoQualitySettings> qualityLevels = new ArrayList<>(5);
-
-        //set original video quality
-        qualityLevels.add(VideoQualitySettings.of(String.format("%sx%s", width, height),
-                "original", 0, "192k", true));
-
-        log.info("Determined quality levels for original input video ({}x{}): {}", width, height, qualityLevels);
         return qualityLevels;
     }
 
