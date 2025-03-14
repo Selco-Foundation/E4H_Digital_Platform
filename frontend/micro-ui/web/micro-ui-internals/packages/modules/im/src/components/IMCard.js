@@ -91,7 +91,7 @@ console.log("propsForCSR",propsForCSR,Digit.Utils.didEmployeeHasRole("COMPLAINT"
         {
             count: total?.nearingSlaCount,
             label: t("TOTAL_NEARING_SLA"),
-            link: `/digit-ui/employee/im/inbox?nearlingSLA=1`
+            link: `/digit-ui/employee/im/inbox?nearingSLA=1`
         }
     ],
     links: [

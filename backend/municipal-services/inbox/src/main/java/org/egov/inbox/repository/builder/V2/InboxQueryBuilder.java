@@ -113,7 +113,7 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
                         "&& doc['Data.currentProcessInstance.auditDetails.createdTime'].size() > 0 " +
                         "? doc['Data.currentProcessInstance.auditDetails.createdTime'].value : 0; " +
 
-                        "emit(sla - (createdTime + params.currentTime));";
+                        "emit(sla + createdTime - params.currentTime);";
 
         script.put("source", scriptSource);
 
