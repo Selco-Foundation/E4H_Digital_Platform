@@ -20,11 +20,11 @@ public class AsyncConfig implements AsyncConfigurer {
         int availableProcessors = Runtime.getRuntime().availableProcessors();
         log.info("Available processors: {}", availableProcessors);
 
-        executor.setCorePoolSize(availableProcessors * 2);
+        executor.setCorePoolSize(availableProcessors);
 
-        executor.setMaxPoolSize(availableProcessors * 4);
+        executor.setMaxPoolSize(availableProcessors * 2);
 
-        executor.setQueueCapacity(availableProcessors * 20);
+        executor.setQueueCapacity(availableProcessors * 5);
 
         executor.setThreadNamePrefix("AsyncIOExecutor-");
 
