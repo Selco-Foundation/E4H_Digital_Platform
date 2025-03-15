@@ -20,7 +20,6 @@ import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
 
 @RequiredArgsConstructor
@@ -39,8 +38,7 @@ public class StorageUtil {
      * @return storage response from filestore service
      * @throws IOException
      */
-    @Async
-    public CompletableFuture<StorageResponse> uploadToFileStorage(List<MultipartFile> filesToStore,
+    public StorageResponse uploadToFileStorage(List<MultipartFile> filesToStore,
                                                                   ProcessingContext context) throws IOException {
 
         final String URL = getFileStoreURL().toString();
@@ -56,8 +54,7 @@ public class StorageUtil {
      * @return storage response from filestore service
      * @throws IOException
      */
-    @Async
-    public CompletableFuture<StorageResponse> uploadToHLSFileStorage(List<MultipartFile> filesToStore,
+    public StorageResponse uploadToHLSFileStorage(List<MultipartFile> filesToStore,
                                                                      ProcessingContext context) throws IOException {
 
         final String URL = getFileStoreURL(configuration.getFileStoreHlsUploadEndpoint()).toString();
@@ -170,55 +167,104 @@ public class StorageUtil {
      * Cleans up temporary files after processing.
      */
     @Async
-    public CompletableFuture<Void> cleanupTemporaryFiles(String videoId, File tempFile, Path outputPath) {
+    public void cleanupTemporaryFiles(String videoId, File tempFile, Path outputPath) {
         log.info("Deleting temporary files for videoId: {}", videoId);
 
         Path videoDirectory = outputPath.resolve(videoId);
 
-        // Check if video directory exists and delete temp file if it exists
-        if (Files.exists(videoDirectory) || Files.exists(tempFile.toPath())) {
-            if (tempFile.exists()) {
-                try {
-                    Files.delete(tempFile.toPath());
-                    log.debug("Deleted temp file: {}", tempFile);
-                } catch (IOException e) {
-                    log.warn("Failed to delete temp file: {}", tempFile, e);
-                }
+        // Clean up the temporary files
+        cleanTempFile(tempFile);
+
+        // Clean up video directory if it exists
+        cleanVideoDirectory(videoDirectory);
+
+        // Delete master playlist if it exists
+        deleteMasterPlaylist(videoId, outputPath);
+
+        log.info("Cleanup completed for videoId: {}", videoId);
+    }
+
+    /**
+     * Deletes the temp file if it exists.
+     */
+    private void cleanTempFile(File tempFile) {
+        if (tempFile.exists()) {
+            try {
+                Files.delete(tempFile.toPath());
+                log.debug("Deleted temp file: {}", tempFile);
+            } catch (IOException e) {
+                log.warn("Failed to delete temp file: {}", tempFile, e);
             }
+        }
+    }
 
-            log.info("Cleaning up temporary files for videoId: {}", videoId);
-
-            // Delete all files and subdirectories in reverse order
+    /**
+     * Deletes all files and subdirectories in the video directory in reverse order.
+     */
+    private void cleanVideoDirectory(Path videoDirectory) {
+        if (Files.exists(videoDirectory)) {
             try (Stream<Path> paths = Files.walk(videoDirectory)) {
                 paths.sorted(Comparator.reverseOrder()) // Sorting paths in reverse order
-                        .forEach(path -> {
-                            try {
-                                Files.delete(path);
-                                log.debug("Deleted: {}", path);
-                            } catch (IOException e) {
-                                log.warn("Failed to delete: {}", path, e);
-                            }
-                        });
+                        .forEach(path -> deleteFile(path));
             } catch (IOException e) {
-                log.warn("Error walking through video directory for videoId: {}", videoId, e);
-            }
-
-            // Delete master playlist if it exists
-            Path masterPlaylist = outputPath.resolve(videoId + "_master.m3u8");
-            try {
-                if (Files.exists(masterPlaylist)) {
-                    Files.delete(masterPlaylist);
-                    log.debug("Deleted master playlist: {}", masterPlaylist);
-                }
-            } catch (IOException e) {
-                log.warn("Failed to delete master playlist: {}", masterPlaylist, e);
+                log.warn("Error walking through video directory: {}", videoDirectory, e);
             }
         } else {
             log.warn("Video directory does not exist: {}", videoDirectory);
         }
-
-        log.info("Cleanup completed for videoId: {}", videoId);
-        return CompletableFuture.completedFuture(null);
     }
+
+    /**
+     * Deletes the given file and logs the result.
+     */
+    private void deleteFile(Path path) {
+        try {
+            Files.delete(path);
+            log.debug("Deleted: {}", path);
+        } catch (IOException e) {
+            log.warn("Failed to delete: {}", path, e);
+        }
+    }
+
+    /**
+     * Deletes the master playlist if it exists.
+     */
+    private void deleteMasterPlaylist(String videoId, Path outputPath) {
+        Path masterPlaylist = outputPath.resolve(videoId + "_master.m3u8");
+        try {
+            if (Files.exists(masterPlaylist)) {
+                Files.delete(masterPlaylist);
+                log.debug("Deleted master playlist: {}", masterPlaylist);
+            }
+        } catch (IOException e) {
+            log.warn("Failed to delete master playlist: {}", masterPlaylist, e);
+        }
+    }
+
+    /**
+     * Deletes all files in the provided list.
+     * Logs a message for each file deleted and handles any deletion errors.
+     */
+    public void deleteFiles(List<File> files) {
+        if (files == null || files.isEmpty()) {
+            log.warn("No files to delete.");
+            return;
+        }
+
+        for (File file : files) {
+            try {
+                if (file.exists()) {
+                    Files.delete(file.toPath());
+                    log.debug("Deleted file: {}", file.getAbsolutePath());
+                } else {
+                    log.warn("File does not exist: {}", file.getAbsolutePath());
+                }
+            } catch (IOException e) {
+                log.warn("Failed to delete file: {}", file.getAbsolutePath(), e);
+            }
+        }
+    }
+
+
 
 }

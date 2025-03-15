@@ -18,7 +18,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
+
 @RequiredArgsConstructor
 @Service
 @Slf4j
@@ -44,10 +44,10 @@ public class StorageService {
         }
     }
 
-    public CompletableFuture<StorageResponse> saveOriginalFileToS3(List<MultipartFile> filesToStore, ProcessingContext context) {
+    public StorageResponse saveOriginalFileToS3(List<MultipartFile> filesToStore, ProcessingContext context) {
         storageValidator.validate(filesToStore);
         try {
-            CompletableFuture<StorageResponse> storageResponse = storageUtil.uploadToFileStorage(filesToStore, context);
+            StorageResponse storageResponse = storageUtil.uploadToFileStorage(filesToStore, context);
             log.info("file store response: {}", storageResponse);
             return storageResponse;
         } catch (IOException e) {
@@ -55,21 +55,21 @@ public class StorageService {
         }
     }
 
-    public StorageResponse createAndSaveMasterFiles(CompletableFuture<StorageResponse> storageResponse, List<File> filesToStore, ProcessingContext context) {
+    public StorageResponse createAndSaveMasterFiles(StorageResponse storageResponse, List<File> filesToStore, ProcessingContext context) {
         // Create master files
-        List<org.egov.im.web.models.storage.File> updatedFiles = storageResponse.join().getFiles()
+        List<org.egov.im.web.models.storage.File> updatedFiles = storageResponse.getFiles()
                 .stream()
                 .map(fileMetadata -> {
                     String fileStoreId = fileMetadata.getFileStoreId();
                     try {
-                        int index = storageResponse.join().getFiles().indexOf(fileMetadata);
+                        int index = storageResponse.getFiles().indexOf(fileMetadata);
                         File tempFile = filesToStore.get(index);
 
                         // Process the video synchronously and return response
-                        CompletableFuture<StorageResponse> response =
+                        StorageResponse response =
                                 videoService.processVideo(tempFile, context.withVideoId(fileStoreId));
 
-                        String masterFileStoreId = response.join().getFiles().get(0).getFileStoreId();
+                        String masterFileStoreId = response.getFiles().get(0).getFileStoreId();
 
                         return fileMetadata.toBuilder()
                                 .masterFileStoreId(masterFileStoreId)
@@ -86,29 +86,27 @@ public class StorageService {
                 })
                 .toList();
 
-        return storageResponse.join().toBuilder().files(updatedFiles).build();
+        return storageResponse.toBuilder().files(updatedFiles).build();
     }
 
     @Async
-    public CompletableFuture<Void> createAndSaveChunks(String fileStoreId,
-                                                       File resource, ProcessingContext context) {
-            try {
-                log.info("File received: {}, Filename: {}", resource, resource.getName());
-                // Process the video asynchronously
-                videoService.processVideoAsync(resource, context.withVideoId(fileStoreId));
+    public void createAndSaveChunks(String fileStoreId,
+                                    File resource, ProcessingContext context) {
+        try {
+            log.info("File received: {}, Filename: {}", resource, resource.getName());
+            // Process the video asynchronously
+            videoService.processVideoAsync(resource, context.withVideoId(fileStoreId));
 
-            } catch (CustomException ex) {
-                log.error("Custom Exception for fileStoreId {}: {}", fileStoreId, ex.getMessage(), ex);
-                throw ex;
-            } catch (Exception ex) {
-                log.error("Unexpected error while processing fileStoreId {}: {}", fileStoreId, ex.getMessage(), ex);
-                throw new CustomException("Unexpected error processing video", ex.getMessage());
-            }
-        return CompletableFuture.completedFuture(null);
+        } catch (CustomException ex) {
+            log.error("Custom Exception for fileStoreId {}: {}", fileStoreId, ex.getMessage(), ex);
+            throw ex;
+        } catch (Exception ex) {
+            log.error("Unexpected error while processing fileStoreId {}: {}", fileStoreId, ex.getMessage(), ex);
+            throw new CustomException("Unexpected error processing video", ex.getMessage());
+        }
     }
 
-    @Async
-    public CompletableFuture<List<File>> createTempFiles(List<MultipartFile> files) {
+    public List<File> createTempFiles(List<MultipartFile> files) {
         List<File> tempFiles = new ArrayList<>();
         files.forEach(file -> {
             try {
@@ -118,10 +116,10 @@ public class StorageService {
                 tempFiles.add(tempFile);
             } catch (IOException e) {
                 log.error("Error processing file: {}", file.getOriginalFilename(), e);
-                throw  new CustomException("ERROR_CREATING_TEMP_FILES", e.getMessage());
+                throw new CustomException("ERROR_CREATING_TEMP_FILES", e.getMessage());
             }
         });
-        return CompletableFuture.completedFuture(tempFiles);
+        return tempFiles;
     }
 
 }
