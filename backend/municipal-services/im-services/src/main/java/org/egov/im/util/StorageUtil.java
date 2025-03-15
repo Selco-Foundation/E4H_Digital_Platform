@@ -9,6 +9,7 @@ import org.egov.im.web.models.storage.StorageResponse;
 import org.egov.tracer.model.CustomException;
 import org.springframework.core.io.Resource;
 import org.springframework.http.ResponseEntity;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -19,6 +20,8 @@ import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.stream.Stream;
 
 @RequiredArgsConstructor
 @Component
@@ -36,8 +39,9 @@ public class StorageUtil {
      * @return storage response from filestore service
      * @throws IOException
      */
-    public StorageResponse uploadToFileStorage(List<MultipartFile> filesToStore,
-                                               ProcessingContext context) throws IOException {
+    @Async
+    public CompletableFuture<StorageResponse> uploadToFileStorage(List<MultipartFile> filesToStore,
+                                                                  ProcessingContext context) throws IOException {
 
         final String URL = getFileStoreURL().toString();
         log.info("uploading to filestore service at {}", URL);
@@ -52,8 +56,9 @@ public class StorageUtil {
      * @return storage response from filestore service
      * @throws IOException
      */
-    public StorageResponse uploadToHLSFileStorage(List<MultipartFile> filesToStore,
-                                                  ProcessingContext context) throws IOException {
+    @Async
+    public CompletableFuture<StorageResponse> uploadToHLSFileStorage(List<MultipartFile> filesToStore,
+                                                                     ProcessingContext context) throws IOException {
 
         final String URL = getFileStoreURL(configuration.getFileStoreHlsUploadEndpoint()).toString();
         log.info("uploading {} to file-store service at {}", filesToStore, URL);
@@ -111,7 +116,7 @@ public class StorageUtil {
                 if (!fileCreated) {
                     // If the file cannot be created, throw a custom exception
                     log.error("Failed to create the file {}", newFile.getAbsolutePath());
-                    throw new CustomException("Failed to create the file: ",  newFile.getAbsolutePath());
+                    throw new CustomException("Failed to create the file: ", newFile.getAbsolutePath());
                 }
                 log.info("File created: {}", newFile.getAbsolutePath());
             }
@@ -130,7 +135,7 @@ public class StorageUtil {
         } catch (NoSuchFileException ex) {
             log.error("Error processing temporary file. File not found: {}", tempFile.toAbsolutePath(), ex);
             throw new CustomException(
-                    String.format("ERROR_PROCESSING_TEMP_FILE: File not found - %s ",tempFile.toAbsolutePath()), ex.getMessage());
+                    String.format("ERROR_PROCESSING_TEMP_FILE: File not found - %s ", tempFile.toAbsolutePath()), ex.getMessage());
         } catch (IOException ex) {
             log.error("I/O error while processing file: {}", tempFile.toAbsolutePath(), ex);
             throw new CustomException(
@@ -164,20 +169,28 @@ public class StorageUtil {
     /**
      * Cleans up temporary files after processing.
      */
-    public void cleanupTemporaryFiles(String videoId, File tempFile, Path outputPath) {
-        log.info("deleting temporary files");
-        if (tempFile.exists()) {
-            boolean deleted = tempFile.delete();
-            log.info("temp file: {} deleted: {}", tempFile.getName(), deleted);
-        }
+    @Async
+    public CompletableFuture<Void> cleanupTemporaryFiles(String videoId, File tempFile, Path outputPath) {
+        log.info("Deleting temporary files for videoId: {}", videoId);
 
-        log.info("Cleaning up temporary files for videoId: {}", videoId);
         Path videoDirectory = outputPath.resolve(videoId);
 
-        try {
-            if (Files.exists(videoDirectory)) {
-                Files.walk(videoDirectory)
-                        .sorted(Comparator.reverseOrder())
+        // Check if video directory exists and delete temp file if it exists
+        if (Files.exists(videoDirectory) || Files.exists(tempFile.toPath())) {
+            if (tempFile.exists()) {
+                try {
+                    Files.delete(tempFile.toPath());
+                    log.debug("Deleted temp file: {}", tempFile);
+                } catch (IOException e) {
+                    log.warn("Failed to delete temp file: {}", tempFile, e);
+                }
+            }
+
+            log.info("Cleaning up temporary files for videoId: {}", videoId);
+
+            // Delete all files and subdirectories in reverse order
+            try (Stream<Path> paths = Files.walk(videoDirectory)) {
+                paths.sorted(Comparator.reverseOrder()) // Sorting paths in reverse order
                         .forEach(path -> {
                             try {
                                 Files.delete(path);
@@ -186,18 +199,26 @@ public class StorageUtil {
                                 log.warn("Failed to delete: {}", path, e);
                             }
                         });
+            } catch (IOException e) {
+                log.warn("Error walking through video directory for videoId: {}", videoId, e);
             }
 
-            // Delete master playlist
+            // Delete master playlist if it exists
             Path masterPlaylist = outputPath.resolve(videoId + "_master.m3u8");
-            if (Files.exists(masterPlaylist)) {
-                Files.delete(masterPlaylist);
-                log.debug("Deleted master playlist: {}", masterPlaylist);
+            try {
+                if (Files.exists(masterPlaylist)) {
+                    Files.delete(masterPlaylist);
+                    log.debug("Deleted master playlist: {}", masterPlaylist);
+                }
+            } catch (IOException e) {
+                log.warn("Failed to delete master playlist: {}", masterPlaylist, e);
             }
-
-            log.info("Cleanup completed for videoId: {}", videoId);
-        } catch (IOException e) {
-            log.error("Error during cleanup for videoId: {}", videoId, e);
+        } else {
+            log.warn("Video directory does not exist: {}", videoDirectory);
         }
+
+        log.info("Cleanup completed for videoId: {}", videoId);
+        return CompletableFuture.completedFuture(null);
     }
+
 }

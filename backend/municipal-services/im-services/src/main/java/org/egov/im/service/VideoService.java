@@ -15,12 +15,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Slf4j
@@ -32,10 +31,11 @@ public class VideoService {
     private final FFmpegService fFmpegService;
     private final DirectoryUtil directoryUtil;
     private final StorageUtil storageUtil;
+    private final VideoQualityProcessor videoQualityProcessor;
 
     private static final String OUTPUT_DIR = "output";
 
-    public StorageResponse processVideo(File inputFile, ProcessingContext context) {
+    public CompletableFuture<StorageResponse> processVideo(File inputFile, ProcessingContext context) {
         log.info("Starting video processing for videoId: {}", context.getVideoId());
 
         Path outputPath = prepareOutputDirectory();
@@ -52,11 +52,23 @@ public class VideoService {
             // Create the master playlist
             MultipartFile multipartFile = fFmpegService.createMasterPlaylist(qualities, context, outputPath);
 
+            VideoQualitySettings originalSettings = qualities.stream()
+                    .filter(VideoQualitySettings::isOriginal).findFirst()
+                    .orElseThrow();
+
+            List<MultipartFile > multipartFiles = videoQualityProcessor.processQuality(context, inputFile, outputPath, originalSettings);
+
+            List<MultipartFile> listForUpload = Stream.concat(
+                    multipartFiles.stream(),
+                    Stream.of(multipartFile))
+                    .toList();
+
             // Upload master playlist to storage
-            StorageResponse storageResponse = storageUtil.uploadToHLSFileStorage(List.of(multipartFile), context);
+            CompletableFuture<StorageResponse> storageResponse =
+                    storageUtil.uploadToHLSFileStorage(listForUpload, context);
             log.info("Successfully created and uploaded master playlist: {}", storageResponse);
 
-            return storageResponse; // Returns immediately without waiting for async processing
+            return storageResponse;
 
         } catch (Exception e) {
             log.error("Error processing video for videoId: {}", context.getVideoId(), e);
@@ -73,58 +85,18 @@ public class VideoService {
 
         return CompletableFuture.supplyAsync(() -> getVideoDimensions(inputFile))
                 .thenApply(videoUtil::determineQualityLevels)
-                .thenCompose(qualities -> processQualitiesInParallel(context, inputFile, outputPath, qualities))
+                .thenApply(qualities -> qualities.stream()
+                        .filter(quality -> Boolean.FALSE.equals(quality.isOriginal()))
+                        .toList())
+                .thenCompose(filteredQualities ->
+                        videoQualityProcessor.processQualitiesInParallel(context, inputFile, outputPath, filteredQualities))
                 .thenRun(() -> {
                     log.info("processed all chunk qualities for videoId: {}", context.getVideoId());
                     cleanup(context, inputFile, outputPath);
                 })
                 .exceptionally(ex -> handleProcessingError(context, inputFile, outputPath, ex));
+
     }
-
-    private CompletableFuture<Void> processQualitiesInParallel(
-            ProcessingContext context, File inputFile, Path outputPath, List<VideoQualitySettings> qualities) {
-        log.info("Processing videoId: {} and qualities: {}", context.getVideoId(), qualities);
-
-        List<CompletableFuture<Void>> uploadFutures = qualities.stream()
-                .map(quality -> fFmpegService.processQuality(context, inputFile.getAbsolutePath(), outputPath, quality)
-                        .thenCompose(outputFilePath ->
-                                uploadProcessedFile(context, outputPath, outputFilePath)))
-                .toList();
-
-        return CompletableFuture.allOf(uploadFutures.toArray(new CompletableFuture[0]));
-    }
-
-    private CompletableFuture<Void> uploadProcessedFile(ProcessingContext context, Path outputPath, String outputFilePath) {
-        return CompletableFuture.runAsync(() -> {
-            try {
-                log.info("Uploading processed file: {} for videoId: {}", outputFilePath, context.getVideoId());
-
-                Path directoryPath = outputPath.resolve(String.format("%s%s", outputPath, outputFilePath));
-
-                List<Path> files;
-                try (Stream<Path> fileStream = Files.list(directoryPath)) {
-                    files = fileStream.toList();
-                }
-
-                // Convert files to MultipartFile and upload
-                List<MultipartFile> multipartFiles = files.stream()
-                        .map(file -> {
-                            String resolvedPath =
-                                    String.format("%s/%s", context.getVideoId(), videoUtil.pathExtractor(file.toString(), OUTPUT_DIR));
-                            return videoUtil.convertFileToMultipartFile(file.toFile(), resolvedPath);
-                        })
-                        .toList();
-
-                // Upload files to HLS storage
-                storageUtil.uploadToHLSFileStorage(multipartFiles, context);
-
-            } catch (IOException e) {
-                log.error("Error uploading processed files: {}", e.getMessage(), e);
-                throw new CustomException("Error uploading files", e.getMessage());
-            }
-        });
-    }
-
 
     private void cleanup(ProcessingContext context, File inputFile, Path outputPath) {
         storageUtil.cleanupTemporaryFiles(context.getVideoId(), inputFile, outputPath);

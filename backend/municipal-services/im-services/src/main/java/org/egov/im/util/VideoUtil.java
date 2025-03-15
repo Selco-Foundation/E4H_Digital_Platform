@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.egov.im.config.IMConfiguration;
 import org.egov.im.settings.VideoQualityFactory;
 import org.egov.im.settings.VideoQualitySettings;
+import org.egov.im.web.models.ProcessingContext;
 import org.egov.tracer.model.CustomException;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
@@ -19,6 +20,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Stream;
 
 @RequiredArgsConstructor
 @Slf4j
@@ -61,6 +63,28 @@ public class VideoUtil {
         }
     }
 
+
+    public List<MultipartFile> convertToMultipartFiles(ProcessingContext context, Path outputPath, String outputFilePath){
+
+        Path directoryPath = outputPath.resolve(String.format("%s%s", outputPath, outputFilePath));
+        List<Path> files;
+        try (Stream<Path> fileStream = Files.list(directoryPath)) {
+            files = fileStream.toList();
+
+        // Convert files to MultipartFile and upload
+            return files.stream()
+                .map(file -> {
+                    String resolvedPath =
+                            String.format("%s/%s", context.getVideoId(), pathExtractor(file.toString(), "output"));
+                    return convertFileToMultipartFile(file.toFile(), resolvedPath);
+                })
+                .toList();
+
+        } catch (IOException e) {
+            throw new CustomException("Error converting files to multipart file", e.getMessage());
+        }
+    }
+
     public String[] getVideoDimensions(String videoPath) {
         final String FFPROBE_PATH = config.getFfprobePath();
 
@@ -100,7 +124,6 @@ public class VideoUtil {
         log.warn("No video dimensions found for {}", videoPath);
         return new String[]{"0", "0"}; // Default return value
     }
-
 
 
     // Determines which resolutions to create based on the original resolution
