@@ -12,7 +12,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 
 @RequiredArgsConstructor
 @RestController
@@ -32,6 +31,8 @@ public class StorageController {
 
         log.info("Received upload request for jurisdiction: {}, module: {}, tag: {} with file count: {}",
                 tenantId, module, tag, files.size());
+
+        List<java.io.File> tempFiles = null;
         try {
             // Build the processing context
             ProcessingContext context = ProcessingContext.builder()
@@ -42,24 +43,21 @@ public class StorageController {
                     .build();
 
             //crete temp files
-            CompletableFuture<List<java.io.File>> tempFiles = storageService.createTempFiles(files);
-            CompletableFuture<StorageResponse> storageResponsePromise =
+            tempFiles = storageService.createTempFiles(files);
+            StorageResponse storageResponse =
                     storageService.saveOriginalFileToS3(files, context);
 
-            //blocking call - waits for temp files to be created before proceeding
-            List<File> resolveTempFiles = tempFiles.join();
-
             log.info("Start processing master files");
-            StorageResponse storageResponse =
-                    storageService.createAndSaveMasterFiles(storageResponsePromise, resolveTempFiles, context);
-            log.info("Done creating master files: {}", storageResponse);
+            storageResponse =
+                    storageService.createAndSaveMasterFiles(storageResponse, tempFiles, context);
 
+            log.info("Done creating master files: {}", storageResponse);
             log.info("Start processing chunks asynchronously");
 
             // Process chunks asynchronously without waiting for completion
             for (int index = 0; index < storageResponse.getFiles().size(); index++) {
                 org.egov.im.web.models.storage.File fileMetadata = storageResponse.getFiles().get(index);
-                File file = resolveTempFiles.get(index);
+                File file = tempFiles.get(index);
                 String fileStoreId = fileMetadata.getFileStoreId();
 
                 // Submit each chunk processing task asynchronously
@@ -69,6 +67,9 @@ public class StorageController {
             return storageResponse;
 
         } catch (Exception e) {
+            log.error("ERROR_UPLOADING_TO_FILESTORE: {}", e.getMessage());
+            log.info("deleting all temporary files ");
+            storageUtil.deleteFiles(tempFiles);
             throw new CustomException("ERROR_UPLOADING_TO_FILESTORE", e.getMessage());
         }
     }

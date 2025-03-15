@@ -7,7 +7,6 @@ import org.egov.im.util.DirectoryUtil;
 import org.egov.im.util.VideoUtil;
 import org.egov.im.web.models.ProcessingContext;
 import org.egov.tracer.model.CustomException;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -16,7 +15,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -28,8 +26,7 @@ public class FFmpegService {
     private final VideoUtil videoUtil;
     private final DirectoryUtil directoryUtil;
 
-    @Async
-    public CompletableFuture<String> processQuality(
+    public String processQuality(
             ProcessingContext context, String inputPath, Path outputPath, VideoQualitySettings videoQuality) {
 
         Path path = directoryUtil.createDirectory(String.format("%s/%s/hls/%s",
@@ -48,7 +45,7 @@ public class FFmpegService {
 
         log.info("Successfully processed quality: {}", videoQuality.getLabel());
 
-        return CompletableFuture.completedFuture(baseFileName);
+        return baseFileName;
     }
 
 

@@ -18,8 +18,6 @@ import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Slf4j
@@ -32,10 +30,12 @@ public class VideoService {
     private final DirectoryUtil directoryUtil;
     private final StorageUtil storageUtil;
     private final VideoQualityProcessor videoQualityProcessor;
+    private final VideoUploaderService uploaderService;
+
 
     private static final String OUTPUT_DIR = "output";
 
-    public CompletableFuture<StorageResponse> processVideo(File inputFile, ProcessingContext context) {
+    public StorageResponse processVideo(File inputFile, ProcessingContext context) {
         log.info("Starting video processing for videoId: {}", context.getVideoId());
 
         Path outputPath = prepareOutputDirectory();
@@ -56,19 +56,15 @@ public class VideoService {
                     .filter(VideoQualitySettings::isOriginal).findFirst()
                     .orElseThrow();
 
-            List<MultipartFile > multipartFiles = videoQualityProcessor.processQuality(context, inputFile, outputPath, originalSettings);
+            List<MultipartFile > multipartFiles =
+                    videoQualityProcessor.processQuality(context, inputFile, outputPath, originalSettings);
 
             List<MultipartFile> listForUpload = Stream.concat(
                     multipartFiles.stream(),
                     Stream.of(multipartFile))
                     .toList();
 
-            // Upload master playlist to storage
-            CompletableFuture<StorageResponse> storageResponse =
-                    storageUtil.uploadToHLSFileStorage(listForUpload, context);
-            log.info("Successfully created and uploaded master playlist: {}", storageResponse);
-
-            return storageResponse;
+            return uploaderService.uploadProcessedFile(context, listForUpload);
 
         } catch (Exception e) {
             log.error("Error processing video for videoId: {}", context.getVideoId(), e);
@@ -78,36 +74,45 @@ public class VideoService {
     }
 
     @Async
-    public CompletableFuture<Void> processVideoAsync(File inputFile, ProcessingContext context) {
+    public void processVideoAsync(File inputFile, ProcessingContext context) {
         log.info("Starting async processing for videoId: {}", context.getVideoId());
 
         Path outputPath = prepareOutputDirectory();
+        String[] dimensions = getVideoDimensions(inputFile);
 
-        return CompletableFuture.supplyAsync(() -> getVideoDimensions(inputFile))
-                .thenApply(videoUtil::determineQualityLevels)
-                .thenApply(qualities -> qualities.stream()
-                        .filter(quality -> Boolean.FALSE.equals(quality.isOriginal()))
-                        .toList())
-                .thenCompose(filteredQualities ->
-                        videoQualityProcessor.processQualitiesInParallel(context, inputFile, outputPath, filteredQualities))
-                .thenRun(() -> {
-                    log.info("processed all chunk qualities for videoId: {}", context.getVideoId());
-                    cleanup(context, inputFile, outputPath);
-                })
-                .exceptionally(ex -> handleProcessingError(context, inputFile, outputPath, ex));
+        List<VideoQualitySettings> qualities = videoUtil.determineQualityLevels(dimensions);
 
+        List<VideoQualitySettings> filteredQualities = qualities.stream()
+                .filter(quality -> Boolean.FALSE.equals(quality.isOriginal()))  // Filter non-original qualities
+                .toList();
+
+        try {
+           List<MultipartFile> multipartFiles =
+                   videoQualityProcessor.processQuality(context, inputFile, outputPath, filteredQualities);
+
+            log.info("Finished processing qualities for videoId: {}", context.getVideoId());
+
+            uploaderService.uploadProcessedFile(context, multipartFiles);
+
+            log.info("Processed all chunk qualities for videoId: {}", context.getVideoId());
+
+            // Cleanup after processing
+            cleanup(context, inputFile, outputPath);
+
+        } catch (Exception ex) {
+            log.error("Error during video processing for videoId: {}", context.getVideoId(), ex);
+            handleProcessingError(context, inputFile, outputPath, ex); // Handle the error if needed
+        }
     }
 
     private void cleanup(ProcessingContext context, File inputFile, Path outputPath) {
         storageUtil.cleanupTemporaryFiles(context.getVideoId(), inputFile, outputPath);
     }
 
-    private Void handleProcessingError(ProcessingContext context, File inputFile, Path outputPath, Throwable ex) {
+    private void handleProcessingError(ProcessingContext context, File inputFile, Path outputPath, Throwable ex) {
         log.error("Error processing video asynchronously for videoId: {}", context.getVideoId(), ex);
         storageUtil.cleanupTemporaryFiles(context.getVideoId(), inputFile, outputPath);
-        return null;  // Ensure CompletableFuture chain is not broken
     }
-
 
     /**
      * Prepares the output directory.
