@@ -56,12 +56,12 @@ public class VideoService {
                     .filter(VideoQualitySettings::isOriginal).findFirst()
                     .orElseThrow();
 
-            List<MultipartFile > multipartFiles =
+            List<MultipartFile> multipartFiles =
                     videoQualityProcessor.processQuality(context, inputFile, outputPath, originalSettings);
 
             List<MultipartFile> listForUpload = Stream.concat(
-                    multipartFiles.stream(),
-                    Stream.of(multipartFile))
+                            multipartFiles.stream(),
+                            Stream.of(multipartFile))
                     .toList();
 
             return uploaderService.uploadProcessedFile(context, listForUpload);
@@ -87,25 +87,26 @@ public class VideoService {
                 .toList();
 
         try {
-           List<MultipartFile> multipartFiles =
-                   videoQualityProcessor.processQuality(context, inputFile, outputPath, filteredQualities);
+            for (VideoQualitySettings qualitySettings : filteredQualities) {
+                List<MultipartFile> multipartFiles =
+                        videoQualityProcessor.processQuality(context, inputFile, outputPath, qualitySettings);
 
-            log.info("Finished processing qualities for videoId: {}", context.getVideoId());
+                log.info("Finished processing qualities for videoId: {}", context.getVideoId());
 
-            uploaderService.uploadProcessedFile(context, multipartFiles);
+                uploaderService.uploadProcessedFile(context, multipartFiles);
 
-            log.info("Processed all chunk qualities for videoId: {}", context.getVideoId());
-
+                log.info("Processed all chunk qualities for videoId: {}", context.getVideoId());
+            }
             // Cleanup after processing
             cleanup(context, inputFile, outputPath);
-
         } catch (Exception ex) {
             log.error("Error during video processing for videoId: {}", context.getVideoId(), ex);
-            handleProcessingError(context, inputFile, outputPath, ex); // Handle the error if needed
+            handleProcessingError(context, inputFile, outputPath, ex);
         }
     }
 
     private void cleanup(ProcessingContext context, File inputFile, Path outputPath) {
+        log.info("start cleaning...");
         storageUtil.cleanupTemporaryFiles(context.getVideoId(), inputFile, outputPath);
     }
 
