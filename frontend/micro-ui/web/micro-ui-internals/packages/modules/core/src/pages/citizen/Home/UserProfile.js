@@ -344,12 +344,12 @@ const UserProfile = ({ stateCode, userType, cityDetails }) => {
           <BreadCrumb
             crumbs={[
               {
-                path: "/digit-ui/employee",
+                path: `/${window.contextPath}/employee`,
                 content: t("ES_COMMON_HOME"),
                 show: true,
               },
               {
-                path: "/digit-ui/employee/user/profile",
+                path: `/${window.contextPath}/employee/user/profile`,
                 
                 show: url.includes("/user/profile"),
               },

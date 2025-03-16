@@ -17,7 +17,7 @@ const LanguageSelection = () => {
   };
 
   const handleSubmit = (event) => {
-    history.push("/digit-ui/employee/user/login");
+    history.push(`/${window.contextPath}/employee/user/login`);
   };
 
   if (isLoading) return null;
