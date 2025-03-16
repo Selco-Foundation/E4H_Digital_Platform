@@ -42,7 +42,7 @@ export const ComplaintCard = ({ data, onFilterChange, onSearch, serviceRequestId
       </Card>
     );
   } else if (data && data?.length > 0) {
-    result = <DetailsCard data={data} serviceRequestIdKey={serviceRequestIdKey} linkPrefix={"/digit-ui/employee/im/complaint/details/" + data["Ticket No"] + "/" + data["TenantID"]} />;
+    result = <DetailsCard data={data} serviceRequestIdKey={serviceRequestIdKey} linkPrefix={`/${window.contextPath}/employee/im/complaint/details/` + data["Ticket No"] + "/" + data["TenantID"]} />;
   } else {
     result = (
       <Card style={{ marginTop: 20 }}>

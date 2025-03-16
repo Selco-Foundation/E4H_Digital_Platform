@@ -29,11 +29,11 @@ export const DigitApp = ({ stateCode, modules, appTenants, logoUrl, initData ,de
     if (!pathname?.includes("dss")) {
       Digit.SessionStorage.del("DSS_FILTERS");
     }
-    if (pathname?.toString() === "/digit-ui/employee") {
+    if (pathname?.toString() === `/${window.contextPath}/employee`) {
       Digit.SessionStorage.del("SEARCH_APPLICATION_DETAIL");
       Digit.SessionStorage.del("WS_EDIT_APPLICATION_DETAILS");
     }
-    if (pathname?.toString() === "/digit-ui/citizen" || pathname?.toString() === "/digit-ui/employee") {
+    if (pathname?.toString() === `/${window.contextPath}/citizen` || pathname?.toString() === `/${window.contextPath}/employee`) {
       Digit.SessionStorage.del("WS_DISCONNECTION");
     }
   }, [pathname]);
@@ -66,14 +66,14 @@ export const DigitApp = ({ stateCode, modules, appTenants, logoUrl, initData ,de
   };
   return (
     <Switch>
-      <Route path="/digit-ui/employee">
+      <Route path={`/${window.contextPath}/employee`}>
         <EmployeeApp {...commonProps} />
       </Route>
-      <Route path="/digit-ui/citizen">
+      <Route path={`/${window.contextPath}/citizen`}>
         <CitizenApp {...commonProps} />
       </Route>
       <Route>
-        <Redirect to="/digit-ui/employee" />
+        <Redirect to={`/${window.contextPath}/employee`} />
       </Route>
     </Switch>
   );

@@ -112,7 +112,7 @@ const NavItemHeader = props => {
             return (
               <NavLink
                 key={key}
-                to={item?.to?.includes("digit-ui") ? item?.to : "/employee/" + item?.to}
+                to={item?.to?.includes(window.contextPath) ? item?.to : "/employee/" + item?.to}
                 className="custom-link"
                 activeClassName="actions"
                 style={{marginLeft:"40px", marginTop:"10px",color:"#7a2829"}}

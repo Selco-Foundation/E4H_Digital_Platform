@@ -61,7 +61,7 @@ const DesktopInbox = ({
           return (
             <div>
               <span className="link">
-                <Link to={"/digit-ui/employee/im/complaint/details/" + row.original["incidentId"] + "/" + row.original["tenantId"]} style={{color:"#7a2829"}}>{row.original["incidentId"]}</Link>
+                <Link to={`/${window.contextPath}/employee/im/complaint/details/` + row.original["incidentId"] + "/" + row.original["tenantId"]} style={{color:"#7a2829"}}>{row.original["incidentId"]}</Link>
               </span>
              
             </div>

@@ -18,11 +18,11 @@ import Search from "./SearchApp";
 import StaticDynamicCard from "./StaticDynamicComponent/StaticDynamicCard";
 
 const sidebarHiddenFor = [
-  "digit-ui/citizen/register/name",
-  "/digit-ui/citizen/select-language",
-  "/digit-ui/citizen/select-location",
-  "/digit-ui/citizen/login",
-  "/digit-ui/citizen/register/otp",
+  `${window.contextPath}/citizen/register/name`,
+  `/${window.contextPath}/citizen/select-language`,
+  `/${window.contextPath}/citizen/select-location`,
+  `/${window.contextPath}/citizen/login`,
+  `/${window.contextPath}/citizen/register/otp`,
 ];
 
 const getTenants = (codes, tenants) => {
@@ -121,7 +121,7 @@ const Home = ({
                   isInfo={code === "OBPS" ? true : false}
                 />
               )}
-              {/* <Links key={index} matchPath={`/digit-ui/citizen/${code.toLowerCase()}`} userType={"citizen"} /> */}
+              {/* <Links key={index} matchPath={`/${window.contextPath}/citizen/${code.toLowerCase()}`} userType={"citizen"} /> */}
             </div>
             <StaticDynamicCard moduleCode={code?.toUpperCase()} />
           </div>

@@ -21,7 +21,7 @@ const ChangePasswordComponent = ({ config: propsConfig, t }) => {
       return;
     }
     Digit.UserService.setUser(user);
-    const redirectPath = location.state?.from || "/digit-ui/employee";
+    const redirectPath = location.state?.from || `/${window.contextPath}/employee`;
     history.replace(redirectPath);
   }, [user]);
 
@@ -69,7 +69,7 @@ const ChangePasswordComponent = ({ config: propsConfig, t }) => {
   };
 
   const navigateToLogin = () => {
-    history.replace("/digit-ui/employee/user/login");
+    history.replace(`/${window.contextPath}/employee/user/login`);
   };
 
   const [username, password, confirmPassword] = propsConfig.inputs;
