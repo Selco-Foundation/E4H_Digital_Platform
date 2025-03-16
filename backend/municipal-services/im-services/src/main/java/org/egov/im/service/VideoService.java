@@ -52,19 +52,7 @@ public class VideoService {
             // Create the master playlist
             MultipartFile multipartFile = fFmpegService.createMasterPlaylist(qualities, context, outputPath);
 
-            VideoQualitySettings originalSettings = qualities.stream()
-                    .filter(VideoQualitySettings::isOriginal).findFirst()
-                    .orElseThrow();
-
-            List<MultipartFile> multipartFiles =
-                    videoQualityProcessor.processQuality(context, inputFile, outputPath, originalSettings);
-
-            List<MultipartFile> listForUpload = Stream.concat(
-                            multipartFiles.stream(),
-                            Stream.of(multipartFile))
-                    .toList();
-
-            return uploaderService.uploadProcessedFile(context, listForUpload);
+            return uploaderService.uploadProcessedFile(context, List.of(multipartFile));
 
         } catch (Exception e) {
             log.error("Error processing video for videoId: {}", context.getVideoId(), e);
@@ -82,12 +70,8 @@ public class VideoService {
 
         List<VideoQualitySettings> qualities = videoUtil.determineQualityLevels(dimensions);
 
-        List<VideoQualitySettings> filteredQualities = qualities.stream()
-                .filter(quality -> Boolean.FALSE.equals(quality.isOriginal()))  // Filter non-original qualities
-                .toList();
-
         try {
-            for (VideoQualitySettings qualitySettings : filteredQualities) {
+            for (VideoQualitySettings qualitySettings : qualities) {
                 List<MultipartFile> multipartFiles =
                         videoQualityProcessor.processQuality(context, inputFile, outputPath, qualitySettings);
 
