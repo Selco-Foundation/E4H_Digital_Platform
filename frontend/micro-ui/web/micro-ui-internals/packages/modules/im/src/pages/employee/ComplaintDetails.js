@@ -774,7 +774,7 @@ export const ComplaintDetails = (props) => {
   return (
     <React.Fragment>
       <div style={{ color: "#9e1b32", marginBottom: "10px", textAlign: "right", marginRight: "15px" }}>
-        <Link to={`/digit-ui/employee/im/inbox`}>{t("CS_COMMON_BACK")}</Link>
+        <Link to={`/${window.contextPath}/employee/im/inbox`}>{t("CS_COMMON_BACK")}</Link>
       </div>
       <Card>
         <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>

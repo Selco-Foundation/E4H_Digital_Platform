@@ -125,7 +125,7 @@ const ReceiptInbox = ({ parentRoute, businessService = "receipts", initialStates
           searchParams={searchParams}
           sortParams={sortParams}
           totalRecords={totalRecords}
-          linkPrefix={'/digit-ui/employee/receipts/details/'}
+          linkPrefix={`/${window.contextPath}/employee/receipts/details/`}
           filterComponent={filterComponent}
         />
       );

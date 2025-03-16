@@ -26,7 +26,7 @@ const DesktopInbox = ({ tableConfig, filterComponent, ...props }) => {
         Cell: ({ row }) => {
           return (
             <span className="link">
-              <Link  style={{color:"#7a2829"}} to={ `/digit-ui/employee/hrms/details/${row.original.tenantId}/${row.original.code}`}>{row.original.code}</Link>
+              <Link  style={{color:"#7a2829"}} to={ `/${window.contextPath}/employee/hrms/details/${row.original.tenantId}/${row.original.code}`}>{row.original.code}</Link>
             </span>
           );
         },
@@ -149,7 +149,7 @@ const DesktopInbox = ({ tableConfig, filterComponent, ...props }) => {
             allLinks={[
               {
                 text: "HR_COMMON_CREATE_EMPLOYEE_HEADER",
-                link:  `/digit-ui/employee/hrms/create`,
+                link:  `/${window.contextPath}/employee/hrms/create`,
                 businessService: "hrms",
                 roles: ["HRMS_ADMIN"],
               },

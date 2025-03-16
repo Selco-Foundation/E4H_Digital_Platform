@@ -577,7 +577,7 @@ export const CreateComplaint = ({ parentUrl }) => {
       </style>
       <div style={{ color: "#9e1b32", marginBottom: "10px", textAlign: "right", marginRight: "0px" }}>
         <div style={{ marginRight: "15px" }}>
-          <Link to={`/digit-ui/employee`}>{t("CS_COMMON_BACK")}</Link>
+          <Link to={`/${window.contextPath}/employee`}>{t("CS_COMMON_BACK")}</Link>
         </div>
       </div>
       <FormComposer heading={t("")} config={config} onSubmit={wrapperSubmit} isDisabled={!canSubmit && !submitted} label={t("FILE_INCIDENT")} />

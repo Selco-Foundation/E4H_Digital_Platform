@@ -28,8 +28,8 @@ const IMCard = () => {
   }, [isFetching]);
 
   const allLinks = [
-    { text: t("ES_IM_INBOX"), link: "/digit-ui/employee/im/inbox" },
-    { text: t("ES_IM_NEW_COMPLAINT"), link: "/digit-ui/employee/im/incident/create", accessTo: ["COMPLAINANT"] },
+    { text: t("ES_IM_INBOX"), link: `/${window.contextPath}/employee/im/inbox` },
+    { text: t("ES_IM_NEW_COMPLAINT"), link: `/${window.contextPath}/employee/im/incident/create`, accessTo: ["COMPLAINANT"] },
   ];
 
   if (!Digit.Utils.pgrAccess()) {
@@ -72,7 +72,7 @@ const IMCard = () => {
   let propsForCSR =[
     {
       label: t("ES_IM_NEW_INCIDENT"),
-      link: `/digit-ui/employee/im/incident/create`,
+      link: `/${window.contextPath}/employee/im/incident/create`,
       role: "COMPLAINANT" || "EMPLOYEE"
     }
   ]
@@ -86,18 +86,18 @@ console.log("propsForCSR",propsForCSR,Digit.Utils.didEmployeeHasRole("COMPLAINT"
         {
             count: isLoading ? "-" : total?.totalCount,
             label: t("TOTAL_IM"),
-            link: `/digit-ui/employee/im/inbox`
+            link: `/${window.contextPath}/employee/im/inbox`
         },
         {
             count: total?.nearingSlaCount,
             label: t("TOTAL_NEARING_SLA"),
-            link: `/digit-ui/employee/im/inbox?nearingSLA=1`
+            link: `/${window.contextPath}/employee/im/inbox?nearingSLA=1`
         }
     ],
     links: [
     {
         label: t("ES_IM_INBOX"),
-        link: `/digit-ui/employee/im/inbox`
+        link: `/${window.contextPath}/employee/im/inbox`
     },
     ...propsForCSR
     ]

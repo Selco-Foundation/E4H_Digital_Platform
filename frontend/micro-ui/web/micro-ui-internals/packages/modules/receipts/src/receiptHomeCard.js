@@ -22,14 +22,14 @@ const ReceiptsCard = () => {
       {
         count: isLoading ? "-" : data?.Count,
         label: t("CR_TOTAL_RECEIPTS"),
-        link: `/digit-ui/employee/receipts/inbox`,
+        link: `/${window.contextPath}/employee/receipts/inbox`,
       },
     ],
     links: [
       {
         count: isLoading ? "-" : data?.Count,
         label: t("CR_SEARCH_COMMON_HEADER"),
-        link: `/digit-ui/employee/receipts/inbox`,
+        link: `/${window.contextPath}/employee/receipts/inbox`,
       },
     ],
   };
