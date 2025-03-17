@@ -32,6 +32,6 @@ public class HLSStorageService {
         List<Artifact> artifacts =
                 artifactMapper.mapHLSArtifact(filesToStore, module, tag, tenantId);
 
-        return this.artifactRepository.save(artifacts, requestInfo);
+        return this.artifactRepository.saveHLS(artifacts, requestInfo);
     }
 }

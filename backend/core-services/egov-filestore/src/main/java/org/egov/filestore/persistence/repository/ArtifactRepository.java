@@ -14,6 +14,7 @@ import org.egov.filestore.domain.model.FileInfo;
 import org.egov.filestore.domain.model.FileLocation;
 import org.egov.filestore.domain.model.Resource;
 import org.egov.filestore.persistence.entity.Artifact;
+import org.egov.filestore.repository.CloudFileManagerV2;
 import org.egov.filestore.repository.CloudFilesManager;
 import org.egov.filestore.repository.impl.AzureBlobStorageImpl;
 import org.egov.filestore.repository.impl.minio.MinioRepository;
@@ -31,6 +32,9 @@ public class ArtifactRepository {
     @Autowired
     private CloudFilesManager cloudFilesManager;
 
+    @Autowired
+    private CloudFileManagerV2 cloudFileManagerV2;
+
     @Value("${isAzureStorageEnabled}")
     private Boolean isAzureStorageEnabled;
 
@@ -43,7 +47,18 @@ public class ArtifactRepository {
     }
 
     public List<String> save(List<org.egov.filestore.domain.model.Artifact> artifacts, RequestInfo requestInfo) {
-       cloudFilesManager.saveFiles(artifacts);
+        cloudFilesManager.saveFiles(artifacts);
+        List<Artifact> artifactEntities = new ArrayList<>();
+        artifacts.forEach(artifact -> artifactEntities.add(mapToEntity(artifact, requestInfo)));
+        return fileStoreJpaRepository.saveAll(artifactEntities).stream()
+                .map(Artifact::getFileStoreId)
+                .toList();
+    }
+
+
+    public List<String> saveHLS(
+            List<org.egov.filestore.domain.model.Artifact> artifacts, RequestInfo requestInfo) {
+        cloudFileManagerV2.saveFiles(artifacts);
         List<Artifact> artifactEntities = new ArrayList<>();
         artifacts.forEach(artifact -> {
             if (artifact.isInsertable() && artifact.getFileLocation().getFileStoreId() != null) {
