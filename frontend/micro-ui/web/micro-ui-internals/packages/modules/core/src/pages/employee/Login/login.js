@@ -8,8 +8,6 @@ import ForgotPassword from "../ForgotPasswordPopup/ForgotPassword";
 
 /* set employee details to enable backward compatiable */
 const setEmployeeDetail = (userObject, token) => {
-  
-
   //console.log("userObject1", userObject)
   let locale = JSON.parse(sessionStorage.getItem("Digit.locale"))?.value || "en_IN";
   localStorage.setItem("Employee.tenant-id", userObject?.tenantId);
@@ -25,16 +23,16 @@ const setEmployeeDetail = (userObject, token) => {
 
 const Login = ({ config: propsConfig, t, isDisabled }) => {
   const { data: cities, isLoading } = Digit.Hooks.useTenants();
-  let  sortedCities=[];
-  if (cities !== null&& cities!==undefined) {  
-    sortedCities=cities.sort((a, b) => a.i18nKey.localeCompare(b.i18nKey));
+  let sortedCities = [];
+  if (cities !== null && cities !== undefined) {
+    sortedCities = cities.sort((a, b) => a.i18nKey.localeCompare(b.i18nKey));
   }
   const { data: storeData, isLoading: isStoreLoading } = Digit.Hooks.useStore.getInitData();
- // console.log("storeData", storeData)
+  // console.log("storeData", storeData)
   const { stateInfo } = storeData || {};
   const [user, setUser] = useState(null);
   const [showToast, setShowToast] = useState(null);
-  const [popup, setPopup] = useState(false)
+  const [popup, setPopup] = useState(false);
   const [disable, setDisable] = useState(false);
 
   const history = useHistory();
@@ -57,7 +55,7 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
     }
 
     /*  RAIN-6489 Logic to navigate to National DSS home incase user has only one role [NATADMIN]*/
-    if (user?.info?.roles && user?.info?.roles?.length > 0 &&  user?.info?.roles?.every((e) => e.code === "NATADMIN")) {
+    if (user?.info?.roles && user?.info?.roles?.length > 0 && user?.info?.roles?.every((e) => e.code === "NATADMIN")) {
       redirectPath = "/digit-ui/employee/dss/landing/NURT_DASHBOARD";
     }
     /*  RAIN-6489 Logic to navigate to National DSS home incase user has only one role [NATADMIN]*/
@@ -97,7 +95,7 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
   };
 
   const onForgotPassword = () => {
-    sessionStorage.getItem("User") && sessionStorage.removeItem("User")
+    sessionStorage.getItem("User") && sessionStorage.removeItem("User");
     history.push("/digit-ui/employee/user/forgot-password");
   };
 
@@ -153,45 +151,60 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
       <div className="employeeBackbuttonAlign">
         <BackButton variant="white" style={{ borderBottom: "none" }} />
       </div>
-      <div style={{backgroundColor:"white"}}>
-      <FormComposer
-        onSubmit={onLogin}
-        isDisabled={isDisabled || disable}
-        noBoxShadow
-        inline
-        submitInForm
-        config={config}
-        label={propsConfig.texts.submitButtonLabel}
-        secondaryActionLabel={propsConfig.texts.secondaryButtonLabel}
-        onSecondayActionClick={onForgotPassword}
-        heading={propsConfig.texts.header}
-        headingStyle={{ textAlign: "center" }}
-        cardStyle={isMobile?{ margin: "auto",minWidth:"300px" } :{ margin: "auto",minWidth:"400px" }}
-        className="loginFormStyleEmployee"
-        buttonStyle={{ maxWidth: "100%", width: "100%", backgroundColor:"#7a2829" }}
-      >
-        <Header />
-      </FormComposer>
-      <div style={{ textAlign: "center", marginTop: "1rem" }}>
-        <button
-          onClick={() => setPopup(true)}
-          style={{
-            color: "blue",
-            textDecoration: "underline",
-            cursor: "pointer",
-          }}
+      <div style={{ backgroundColor: "white" }}>
+        <FormComposer
+          onSubmit={onLogin}
+          isDisabled={isDisabled || disable}
+          noBoxShadow
+          inline
+          submitInForm
+          config={config}
+          label={propsConfig.texts.submitButtonLabel}
+          secondaryActionLabel={propsConfig.texts.secondaryButtonLabel}
+          onSecondayActionClick={onForgotPassword}
+          heading={propsConfig.texts.header}
+          headingStyle={{ textAlign: "center" }}
+          cardStyle={isMobile ? { margin: "auto", minWidth: "300px" } : { margin: "auto", minWidth: "400px" }}
+          className="loginFormStyleEmployee"
+          buttonStyle={{ maxWidth: "100%", width: "100%", backgroundColor: "#7a2829" }}
         >
-          {t("CORE_COMMON_FORGOT_PASSWORD")}
-        </button>
+          <Header />
+        </FormComposer>
+        <div style={{ textAlign: "center", marginTop: "1rem" }}>
+          <button
+            onClick={() => setPopup(true)}
+            style={{
+              color: "blue",
+              textDecoration: "underline",
+              cursor: "pointer",
+            }}
+          >
+            {t("CORE_COMMON_FORGOT_PASSWORD")}
+          </button>
 
-        {popup && <ForgotPassword setPopup={setPopup} />}
+          {popup && <ForgotPassword setPopup={setPopup} />}
+        </div>
+        <div style={{ display: "flex", justifyContent: "center", margin: "1rem auto" }}>
+          <img
+            className="bannerLogo"
+            src={"https://selco-assets.s3.ap-south-1.amazonaws.com/powered-by-nhm-ka.png"}
+            alt="Selco Foundation"
+            style={{ border: "0px", marginLeft: "15px" }}
+          />
+          <img
+            className="bannerLogo"
+            src={"https://selco-assets.s3.ap-south-1.amazonaws.com/powered-by-ka_govt.svg"}
+            alt="Selco Foundation"
+            style={{ border: "0px" }}
+          />
+          <img
+            className="bannerLogo"
+            src={"https://selco-assets.s3.ap-south-1.amazonaws.com/logo.png"}
+            alt="Selco Foundation"
+            style={{ border: "0px" }}
+          />
+        </div>
       </div>
-      <div style={{display: "flex", justifyContent: "center", marginBottom:"10px"}}>
-        <img className="bannerLogo" src={"https://selco-assets.s3.ap-south-1.amazonaws.com/powered-by-nhm-ka.png"} alt="Selco Foundation" style={{border:"0px",marginLeft:"15px"}} />
-        <img className="bannerLogo" src={"https://selco-assets.s3.ap-south-1.amazonaws.com/powered-by-ka_govt.svg"} alt="Selco Foundation" style={{border:"0px"}}/>
-        <img className="bannerLogo" src={"https://selco-assets.s3.ap-south-1.amazonaws.com/logo.png"} alt="Selco Foundation" style={{border:"0px"}} />
-        </div>
-        </div>
       {showToast && <Toast error={true} label={t(showToast)} onClose={closeToast} />}
       <div className="employee-login-home-footer" style={{ backgroundColor: "unset" }}>
         <img
