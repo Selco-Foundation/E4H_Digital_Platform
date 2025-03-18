@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.filestore.domain.model.FileInfo;
@@ -19,21 +20,19 @@ import org.egov.filestore.repository.CloudFilesManager;
 import org.egov.filestore.repository.impl.AzureBlobStorageImpl;
 import org.egov.filestore.repository.impl.minio.MinioRepository;
 import org.egov.tracer.model.CustomException;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class ArtifactRepository {
 
-    private FileStoreJpaRepository fileStoreJpaRepository;
+    private final FileStoreJpaRepository fileStoreJpaRepository;
 
-    @Autowired
-    private CloudFilesManager cloudFilesManager;
+    private final CloudFilesManager cloudFilesManager;
 
-    @Autowired
-    private CloudFileManagerV2 cloudFileManagerV2;
+    private final CloudFileManagerV2 cloudFileManagerV2;
 
     @Value("${isAzureStorageEnabled}")
     private Boolean isAzureStorageEnabled;
@@ -41,10 +40,6 @@ public class ArtifactRepository {
     @Value("${source.azure.blob}")
     private String azureBlobSource;
 
-    public ArtifactRepository(FileStoreJpaRepository fileStoreJpaRepository) {
-
-        this.fileStoreJpaRepository = fileStoreJpaRepository;
-    }
 
     public List<String> save(List<org.egov.filestore.domain.model.Artifact> artifacts, RequestInfo requestInfo) {
         cloudFilesManager.saveFiles(artifacts);
