@@ -34,7 +34,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import io.minio.MinioClient;
-import io.minio.PutObjectOptions;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -76,41 +75,30 @@ public class MinioRepository implements CloudFilesManager {
 		});
 	}
 
-	
-
 	private void push(MultipartFile multipartFile, String fileNameWithPath) {
-		try {
-			InputStream is = multipartFile.getInputStream();
-			long contentLength = multipartFile.getSize();
+		try (InputStream is = multipartFile.getInputStream()) {
+			long fileSize = multipartFile.getSize(); // Use the size directly from MultipartFile
 
-			/*PutObjectOptions putObjectOptions = new PutObjectOptions(contentLength, PutObjectOptions.MAX_PART_SIZE);
-			putObjectOptions.setContentType(multipartFile.getContentType());
-			minioClient.putObject(minioConfig.getBucketName(), fileNameWithPath, is, putObjectOptions);*/
-
-			long fileSize = is.available();
-			PutObjectArgs.Builder putObjectArgsBuilder = PutObjectArgs.builder()
+			// Build the PutObjectArgs for MinIO upload
+			PutObjectArgs putObjectArgs = PutObjectArgs.builder()
 					.bucket(minioConfig.getBucketName())
 					.object(fileNameWithPath)
-					.stream(is, fileSize, -1) // Set part size to -1 for auto detection
-					.contentType(multipartFile.getContentType()); // Change this as per your file's content type
+					.stream(is, fileSize, -1) // -1 for auto-detection of part size
+					.contentType(multipartFile.getContentType()) // Set content type from MultipartFile
+					.build();
 
-			// If the file is larger than 5 MB, set the part size explicitly (5 * 1024 * 1024 bytes)
-			/*if (fileSize > 5 * 1024 * 1024) {
-				putObjectArgsBuilder.  .partSize(5 * 1024 * 1024);
-			}*/
+			log.info("Uploading file: {} to MinIO bucket: {}", fileNameWithPath, minioConfig.getBucketName());
+			minioClient.putObject(putObjectArgs);
 
-			minioClient.putObject(putObjectArgsBuilder.build());
+			log.debug("Upload successful for file: {}", fileNameWithPath);
 
-
-
-			log.debug("Upload Successful");
-
-		} catch (MinioException | InvalidKeyException | IllegalArgumentException | NoSuchAlgorithmException
-				| IOException e) {
-			log.error("Error occurred: ", e);
-			throw new RuntimeException(ERROR_IN_CONFIGURATION);
+		} catch (MinioException | InvalidKeyException | IllegalArgumentException | NoSuchAlgorithmException e) {
+			log.error("Error occurred while uploading file: {}", fileNameWithPath, e);
+			throw new CustomException(ERROR_IN_CONFIGURATION, e.getMessage());
+		} catch (IOException e) {
+			log.error("IOException occurred while reading or uploading file: {}", fileNameWithPath, e);
+			throw new CustomException("IOEXCEPTION", e.getMessage());
 		}
-
 	}
 
 	private void push(InputStream is, long contentLength, String contentType, String fileNameWithPath) {

@@ -26,7 +26,7 @@ public class StorageService {
 	private final CloudFilesManager cloudFilesManager;
 
 	private static final String UPLOAD_MESSAGE =
-			"Received upload request for  module: %s, tag: %s with file count: %s";
+			"Received upload request for  module: {}, tag: {} with file count: {}";
 
 	private final ArtifactRepository artifactRepository;
 	private final ArtifactMapper artifactMapper;
