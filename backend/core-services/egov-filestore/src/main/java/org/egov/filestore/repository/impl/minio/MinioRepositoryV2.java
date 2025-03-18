@@ -12,6 +12,7 @@ import org.egov.filestore.utils.StorageUtil;
 import org.egov.tracer.model.CustomException;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -43,7 +44,11 @@ public class MinioRepositoryV2 implements CloudFileManagerV2 {
                 String originalFilename = artifact.getFileLocation().getFileName();
 
                 try {
-                    pushWithRetry(Path.of(fileSource), originalFilename, properties.getVideoUploadRetry());
+                    pushWithRetry(Path.of(fileSource),
+                            artifact.getMultipartFile().getContentType(),
+                            originalFilename,
+                            properties.getVideoUploadRetry());
+
                 } catch (Exception e) {
                     log.error("Error uploading file: {}", originalFilename, e);
                 }
@@ -57,14 +62,15 @@ public class MinioRepositoryV2 implements CloudFileManagerV2 {
         }
     }
 
-    private void pushWithRetry(Path file, String fileNameWithPath, int retriesLeft) {
+    private void pushWithRetry(Path file, String contentType, String fileNameWithPath, int retriesLeft) {
         try (InputStream is = Files.newInputStream(file)) {
             long fileSize = Files.size(file);
+
             PutObjectArgs.Builder putObjectArgsBuilder = PutObjectArgs.builder()
                     .bucket(minioConfig.getBucketName())
                     .object(fileNameWithPath)
                     .stream(is, fileSize, -1) // Set part size to -1 for auto detection
-                    .contentType(Files.probeContentType(file));
+                    .contentType(contentType);
 
             log.info("Writing file: {} to S3", String.format("%s/%s", minioConfig.getBucketName(), fileNameWithPath));
             minioClient.putObject(putObjectArgsBuilder.build());
@@ -79,7 +85,7 @@ public class MinioRepositoryV2 implements CloudFileManagerV2 {
                     Thread.currentThread().interrupt();
                     throw new CustomException("INTERRUPTED", "Thread interrupted during retry delay: " + ie.getMessage());
                 }
-                pushWithRetry(file, fileNameWithPath, retriesLeft - 1);
+                pushWithRetry(file, contentType, fileNameWithPath, retriesLeft - 1);
             } else {
                 log.error("Max retries reached for file: {}", fileNameWithPath, e);
                 throw new CustomException("EOFEXCEPTION", "End of file reached unexpectedly after retries: " + e.getMessage());
