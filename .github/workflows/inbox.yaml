@@ -4,14 +4,13 @@ on:
     branches:
       - develop
       - main
-#    paths:
-#      - 'backend/municipal-services/inbox/**'
+    paths:
+      - 'backend/municipal-services/inbox/**'
   workflow_dispatch:
   workflow_call:
 
 jobs:
   docker_image-build:
-#    if: (github.event_name == 'push' && (startsWith(github.ref, 'refs/heads/develop') || startsWith(github.ref, 'refs/heads/main')))
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
