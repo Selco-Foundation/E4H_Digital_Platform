@@ -5,6 +5,10 @@ import org.egov.filestore.domain.model.FileLocation;
 import org.egov.filestore.persistence.entity.Artifact;
 import org.egov.tracer.model.CustomException;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -13,8 +17,14 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+@ExtendWith(MockitoExtension.class)
 class ArtifactRepositoryTest {
 
+    @Mock
+    FileStoreJpaRepository fileStoreJpaRepository;
+
+    @InjectMocks
+    private ArtifactRepository artifactRepository;
 
     @Test
     void testFind() throws IOException {
@@ -31,17 +41,15 @@ class ArtifactRepositoryTest {
         artifact.setModule("Module");
         artifact.setTag("Tag");
         artifact.setTenantId("42");
-        FileStoreJpaRepository fileStoreJpaRepository = mock(FileStoreJpaRepository.class);
         when(fileStoreJpaRepository.findByFileStoreIdAndTenantId((String) any(), (String) any())).thenReturn(artifact);
-        assertNull((new ArtifactRepository(fileStoreJpaRepository)).find("File Store Id", "42"));
+        assertNull((artifactRepository).find("File Store Id", "42"));
         verify(fileStoreJpaRepository).findByFileStoreIdAndTenantId((String) any(), (String) any());
     }
 
     @Test
     void testFindByTag() {
-        FileStoreJpaRepository fileStoreJpaRepository = mock(FileStoreJpaRepository.class);
         when(fileStoreJpaRepository.findByTagAndTenantId((String) any(), (String) any())).thenReturn(new ArrayList<>());
-        assertTrue((new ArtifactRepository(fileStoreJpaRepository)).findByTag("foo", "foo").isEmpty());
+        assertTrue((artifactRepository).findByTag("foo", "foo").isEmpty());
         verify(fileStoreJpaRepository).findByTagAndTenantId((String) any(), (String) any());
     }
 
@@ -63,9 +71,8 @@ class ArtifactRepositoryTest {
 
         ArrayList<Artifact> artifactList = new ArrayList<>();
         artifactList.add(artifact);
-        FileStoreJpaRepository fileStoreJpaRepository = mock(FileStoreJpaRepository.class);
         when(fileStoreJpaRepository.findByTagAndTenantId((String) any(), (String) any())).thenReturn(artifactList);
-        List<FileInfo> actualFindByTagResult = (new ArtifactRepository(fileStoreJpaRepository)).findByTag("foo", "foo");
+        List<FileInfo> actualFindByTagResult = (artifactRepository).findByTag("foo", "foo");
         assertEquals(1, actualFindByTagResult.size());
         FileInfo getResult = actualFindByTagResult.get(0);
         assertEquals("text/plain", getResult.getContentType());
@@ -113,9 +120,8 @@ class ArtifactRepositoryTest {
         ArrayList<Artifact> artifactList = new ArrayList<>();
         artifactList.add(artifact1);
         artifactList.add(artifact);
-        FileStoreJpaRepository fileStoreJpaRepository = mock(FileStoreJpaRepository.class);
         when(fileStoreJpaRepository.findByTagAndTenantId((String) any(), (String) any())).thenReturn(artifactList);
-        List<FileInfo> actualFindByTagResult = (new ArtifactRepository(fileStoreJpaRepository)).findByTag("foo", "foo");
+        List<FileInfo> actualFindByTagResult = artifactRepository.findByTag("foo", "foo");
         assertEquals(2, actualFindByTagResult.size());
         FileInfo getResult = actualFindByTagResult.get(0);
         assertEquals("42", getResult.getTenantId());
@@ -142,10 +148,9 @@ class ArtifactRepositoryTest {
 
     @Test
     void testFindByTagErrorCase() {
-        FileStoreJpaRepository fileStoreJpaRepository = mock(FileStoreJpaRepository.class);
         when(fileStoreJpaRepository.findByTagAndTenantId((String) any(), (String) any()))
                 .thenThrow(new CustomException("Code", "An error occurred"));
-        assertThrows(CustomException.class, () -> (new ArtifactRepository(fileStoreJpaRepository)).findByTag("foo", "foo"));
+        assertThrows(CustomException.class, () -> artifactRepository.findByTag("foo", "foo"));
         verify(fileStoreJpaRepository).findByTagAndTenantId((String) any(), (String) any());
     }
 
@@ -186,9 +191,8 @@ class ArtifactRepositoryTest {
 
         ArrayList<Artifact> artifactList = new ArrayList<>();
         artifactList.add(artifact);
-        FileStoreJpaRepository fileStoreJpaRepository = mock(FileStoreJpaRepository.class);
         when(fileStoreJpaRepository.findByTagAndTenantId((String) any(), (String) any())).thenReturn(artifactList);
-        List<FileInfo> actualFindByTagResult = (new ArtifactRepository(fileStoreJpaRepository)).findByTag("foo", "foo");
+        List<FileInfo> actualFindByTagResult = artifactRepository.findByTag("foo", "foo");
         assertEquals(1, actualFindByTagResult.size());
         FileInfo getResult = actualFindByTagResult.get(0);
         assertEquals("text/plain", getResult.getContentType());
@@ -224,12 +228,11 @@ class ArtifactRepositoryTest {
 
     @Test
     void testGetByTenantIdAndFileStoreIdList() {
-        FileStoreJpaRepository fileStoreJpaRepository = mock(FileStoreJpaRepository.class);
         ArrayList<Artifact> artifactList = new ArrayList<>();
         when(fileStoreJpaRepository.findByTenantIdAndFileStoreIdList((String) any(), (List<String>) any()))
                 .thenReturn(artifactList);
-        ArtifactRepository artifactRepository = new ArtifactRepository(fileStoreJpaRepository);
-        List<Artifact> actualByTenantIdAndFileStoreIdList = artifactRepository.getByTenantIdAndFileStoreIdList("foo",
+        List<Artifact> actualByTenantIdAndFileStoreIdList =
+                artifactRepository.getByTenantIdAndFileStoreIdList("foo",
                 new ArrayList<>());
         assertSame(artifactList, actualByTenantIdAndFileStoreIdList);
         assertTrue(actualByTenantIdAndFileStoreIdList.isEmpty());
@@ -238,10 +241,8 @@ class ArtifactRepositoryTest {
 
     @Test
     void testGetByTenantIdAndFileStoreIdListCustomException() {
-        FileStoreJpaRepository fileStoreJpaRepository = mock(FileStoreJpaRepository.class);
         when(fileStoreJpaRepository.findByTenantIdAndFileStoreIdList((String) any(), (List<String>) any()))
                 .thenThrow(new CustomException("Code", "An error occurred"));
-        ArtifactRepository artifactRepository = new ArtifactRepository(fileStoreJpaRepository);
         assertThrows(CustomException.class,
                 () -> artifactRepository.getByTenantIdAndFileStoreIdList("foo", new ArrayList<>()));
         verify(fileStoreJpaRepository).findByTenantIdAndFileStoreIdList((String) any(), (List<String>) any());
