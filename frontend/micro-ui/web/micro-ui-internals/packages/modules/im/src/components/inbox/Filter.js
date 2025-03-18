@@ -9,6 +9,7 @@ let wfQuery = {};
 
 const Filter = (props) => {
   let { uuid } = Digit.UserService.getUser().info;
+  const stateTenantId = Digit.ULBService.getStateId();
   const { searchParams } = props;
   const { t } = useTranslation();
   const isAssignedToMe = searchParams?.filters?.wfFilters?.assignee && searchParams?.filters?.wfFilters?.assignee[0]?.code ? true : false;
@@ -38,7 +39,7 @@ useEffect(() => setSelectedAssigned(isCodePresent(Digit.SessionStorage.get("User
       applicationStatus: [],
     }
   );
-  let healthcareTenant = Digit.SessionStorage.get("Tenants").filter(item => item.code !== "pg")
+  let healthcareTenant = Digit.SessionStorage.get("Tenants").filter(item => item.code !== stateTenantId)
 
   const [wfFilters, setWfFilters] = useState(
     isCodePresent(Digit.SessionStorage.get("User")?.info?.roles, "COMPLAINT_RESOLVER") ? searchParams?.filters?.wfFilters:searchParams?.filters?.wfFilters?.["assignee"]?.[{"code":""}] || isCodePresent(Digit.SessionStorage.get("User")?.info?.roles, "COMPLAINT_RESOLVER") ? {
@@ -75,7 +76,7 @@ const convertedData = Digit.SessionStorage.get("IM_TENANTS").map(item => ({
   name: item.label,
   code: item.value
 }));
-const healthcareMenu=Digit.SessionStorage.get("Employee.tenantId") !== "pg" ? Digit.SessionStorage.get("Tenants") : Digit.SessionStorage.get("Employee.tenantId") == "pg" ? isCodePresent(Digit.SessionStorage.get("User")?.info?.roles, "COMPLAINT_RESOLVER")?  healthcareTenant: Digit.SessionStorage.get("IM_TENANTS").filter((item) => item.code !=="pg"): Digit.SessionStorage.get("IM_TENANTS").filter((item) => item.code !=="pg")
+const healthcareMenu=Digit.SessionStorage.get("Employee.tenantId") !== stateTenantId ? Digit.SessionStorage.get("Tenants") : Digit.SessionStorage.get("Employee.tenantId") == stateTenantId ? isCodePresent(Digit.SessionStorage.get("User")?.info?.roles, "COMPLAINT_RESOLVER")?  healthcareTenant: Digit.SessionStorage.get("IM_TENANTS").filter((item) => item.code !==stateTenantId): Digit.SessionStorage.get("IM_TENANTS").filter((item) => item.code !==stateTenantId)
 const translatedPhcMenu=healthcareMenu.map(item=>({
   ...item,
   code: t(item?.code),

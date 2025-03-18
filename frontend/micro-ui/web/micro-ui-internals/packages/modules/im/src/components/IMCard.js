@@ -5,6 +5,7 @@ import { EmployeeModuleCard } from "@selco/digit-ui-react-components";
 
 
 const IMCard = () => {
+  const stateTenantId = Digit.ULBService.getStateId();
   const { t } = useTranslation();
   const [total, setTotal] = useState("-");
   
@@ -52,10 +53,10 @@ const IMCard = () => {
           return ulb.tenantId
         })
         const uniqueTenant = Array.from(new Set(tenantCode))
-        const codes = uniqueTenant.filter(item => item !== "pg")
+        const codes = uniqueTenant.filter(item => item !== stateTenantId)
           .map(item => item)
           .join(',');
-        tenantId = tenantId == "pg" ? codes : tenantId
+        tenantId = tenantId == stateTenantId ? codes : tenantId
       }
       // let response = await Digit.PGRService.count(tenantId, {});
       // if (response?.count) {

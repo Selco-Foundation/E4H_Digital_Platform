@@ -9,6 +9,7 @@ import { Link } from "react-router-dom";
 const Inbox = () => {
   const { t } = useTranslation();
   let tenantId = Digit.ULBService.getCurrentTenantId();
+  const stateTenantId = Digit.ULBService.getStateId();
   const { uuid } = Digit.UserService.getUser().info;
   const [pageOffset, setPageOffset] = useState(0);
   const [pageSize, setPageSize] = useState(10);
@@ -28,9 +29,9 @@ const Inbox = () => {
       {
         tenantId= searchParams?.filters?.pgrQuery?.phcType
       }
-      else if (isCodePresent(userRoles, "COMPLAINT_RESOLVER") && (!searchParams?.filters?.pgrQuery || searchParams?.filters?.pgrfilters?.phcType.length ==0) && Digit.SessionStorage.get("Employee.tenantId") == "pg")
+      else if (isCodePresent(userRoles, "COMPLAINT_RESOLVER") && (!searchParams?.filters?.pgrQuery || searchParams?.filters?.pgrfilters?.phcType.length ==0) && Digit.SessionStorage.get("Employee.tenantId") == stateTenantId)
       {
-        const codes = Digit.SessionStorage.get("Tenants").filter(item => item.code !== "pg")
+        const codes = Digit.SessionStorage.get("Tenants").filter(item => item.code !== stateTenantId)
         .map(item => item.code)
         .join(',');
         tenantId = codes
