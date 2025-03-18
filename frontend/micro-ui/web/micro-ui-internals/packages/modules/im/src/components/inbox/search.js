@@ -7,20 +7,21 @@ export const isCodePresent = (array, codeToCheck) => {
 };
 const SearchComplaint = ({ onSearch, type, onClose, searchParams }) => {
   const [complaintNo, setComplaintNo] = useState(searchParams?.search?.serviceRequestId || "");
-  let healthcareTenant = Digit.SessionStorage.get("Tenants").filter((item) => item.code !== "pg");
+  const stateTenantId = Digit.ULBService.getStateId();
+  let healthcareTenant = Digit.SessionStorage.get("Tenants").filter((item) => item.code !== stateTenantId);
   const [phcType, setPhcType] = useState();
 
   const state = Digit.ULBService.getStateId();
   const { isMdmsLoading, data: mdmsData } = Digit.Hooks.pgr.useMDMS(state, "Incident", ["District", "Block"]);
   const { data: phcMenu } = Digit.Hooks.pgr.useMDMS(state, "tenant", ["tenants"]);
   const phcMenus =
-    Digit.SessionStorage.get("Employee.tenantId") !== "pg"
+    Digit.SessionStorage.get("Employee.tenantId") !== stateTenantId
       ? Digit.SessionStorage.get("Tenants")
-      : Digit.SessionStorage.get("Employee.tenantId") == "pg"
+      : Digit.SessionStorage.get("Employee.tenantId") == stateTenantId
       ? isCodePresent(Digit.SessionStorage.get("User")?.info?.roles, "COMPLAINT_RESOLVER")
         ? healthcareTenant
-        : Digit.SessionStorage.get("IM_TENANTS").filter((item) => item.code !== "pg")
-      : Digit.SessionStorage.get("IM_TENANTS").filter((item) => item.code !== "pg");
+        : Digit.SessionStorage.get("IM_TENANTS").filter((item) => item.code !== stateTenantId)
+      : Digit.SessionStorage.get("IM_TENANTS").filter((item) => item.code !== stateTenantId);
   let sortedPhcMenu = [];
   if (phcMenus.length > 0) {
     sortedPhcMenu = phcMenus.sort((a, b) => a.name.localeCompare(b.name));
@@ -68,11 +69,11 @@ const SearchComplaint = ({ onSearch, type, onClose, searchParams }) => {
     setComplaintNo(e.target.value);
   }
   useEffect(() => {
-    if (Digit.SessionStorage.get("Employee.tenantId") !== "pg" ? Digit.SessionStorage.get("Tenants") : Digit.SessionStorage.get("IM_TENANTS")) {
+    if (Digit.SessionStorage.get("Employee.tenantId") !== stateTenantId ? Digit.SessionStorage.get("Tenants") : Digit.SessionStorage.get("IM_TENANTS")) {
       let empTenant = Digit.SessionStorage.get("Employee.tenantId");
       let filtered = Digit.SessionStorage.get("IM_TENANTS").filter((abc) => abc.code == empTenant);
 
-      if (filtered?.[0].code !== "pg") {
+      if (filtered?.[0].code !== stateTenantId) {
         setPhcTypeFunction(filtered?.[0]);
       }
     }
