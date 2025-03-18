@@ -39,6 +39,7 @@ import { Close } from "../../Icons";
 import { useTranslation } from "react-i18next";
 import { isError, useQueryClient } from "react-query";
 import StarRated from "../../components/timelineInstances/StarRated";
+import { useLocation } from "react-router-dom/cjs/react-router-dom.min";
 
 const MapView = (props) => {
   return (
@@ -116,7 +117,7 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
 
   //   }, [file]);
   useEffect(() => {
-    if (selectedAction === "REJECT") {
+    if (selectedAction === "REJECT" || selectedAction === "SENDBACK") {
       const uuid = JSON.parse(sessionStorage.getItem("Digit.User"))?.value?.info?.uuid;
       let name = JSON.parse(sessionStorage.getItem("Digit.User"))?.value?.info?.name;
       setSelectedEmployee({ name, uuid });
@@ -346,8 +347,10 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
         ) : null}
         {selectedAction !== "SENDBACK" || selectedSendBackReason?.additionalInputs?.[0].type === "textarea" ? (
           <>
-            {(selectedAction !== "ASSIGN" && selectedAction !== "REOPEN") &&
-            (selectedAction === "REJECT" && selectedRejectReason?.additionalInputs?.[0].type === "textarea") ? (
+            {selectedAction !== "ASSIGN" &&
+            selectedAction !== "REOPEN" &&
+            selectedAction === "REJECT" &&
+            selectedRejectReason?.additionalInputs?.[0].type === "textarea" ? (
               <CardLabel>{t("CS_COMMON_EMPLOYEE_COMMENTS")}*</CardLabel>
             ) : (
               <CardLabel>{t("CS_COMMON_EMPLOYEE_COMMENTS")}</CardLabel>
@@ -401,7 +404,7 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
 };
 
 export const ComplaintDetails = (props) => {
-  let { id } = useParams();
+  let { incidentId, tenantId } = useParams();
   const { t } = useTranslation();
   const [fullscreen, setFullscreen] = useState(false);
   const [imageZoom, setImageZoom] = useState(null);
@@ -409,6 +412,7 @@ export const ComplaintDetails = (props) => {
   const iPadMaxWidth = 1024;
   const iPadMinWidth = 768;
   const isMobile = window.Digit.Utils.browser.isMobile();
+  const location = useLocation();
   const [isIpadView, setIsIpadView] = React.useState(window.innerWidth <= iPadMaxWidth && window.innerWidth >= iPadMinWidth);
   const onResize = () => {
     if (window.innerWidth <= iPadMaxWidth && window.innerWidth >= iPadMinWidth) {
@@ -431,7 +435,7 @@ export const ComplaintDetails = (props) => {
   const [toast, setToast] = useState(false);
   const [error, setError] = useState("");
   //console.log("error111", error)
-  const tenantId = Digit.ULBService.getCurrentTenantId();
+  // const tenantId = Digit.ULBService.getCurrentTenantId();
   const tenant =
     Digit.SessionStorage.get("Employee.tenantId") == "pg"
       ? Digit.SessionStorage.get("IM_TENANTS")
@@ -439,11 +443,15 @@ export const ComplaintDetails = (props) => {
           .join(",")
       : Digit.SessionStorage.get("Employee.tenantId");
 
-  const { isLoading, complaintDetails, revalidate: revalidateComplaintDetails } = Digit.Hooks.pgr.useComplaintDetails({ tenant, id });
+  const { isLoading, complaintDetails, revalidate: revalidateComplaintDetails } = Digit.Hooks.pgr.useComplaintDetails({
+    tenantId: tenant,
+    id: incidentId,
+  });
+  console.debug(complaintDetails);
 
   const workflowDetails = Digit.Hooks.useWorkflowDetails({
-    tenant: id.split("/")[1],
-    id: id.split("/")[0],
+    tenantId: tenantId,
+    id: incidentId,
     moduleCode: "Incident",
     role: "EMPLOYEE",
   });
@@ -736,8 +744,22 @@ export const ComplaintDetails = (props) => {
           </>
         );
       }
-    } else if (checkpoint.status === "CLOSEDAFTERRESOLUTION") {
-      return <TLCaption data={""} comments={checkpoint?.wfComment} />;
+    } else if (checkpoint.status === "RESOLVED") {
+      return (
+        <>
+          {complaintDetails.workflow.action === "RATE" ? (
+            <StarRated text={t("Your Rating")} rating={complaintDetails.audit.rating} />
+          ) : (
+            currentLoginUser === workflowDetails?.data?.processInstances?.at(-1)?.assigner?.uuid && (
+              <div>
+                <span className="link">
+                  <Link to={`/digit-ui/employee/im/complaint/feedback/${incidentId}/${tenantId}`}>Rate</Link>
+                </span>
+              </div>
+            )
+          )}
+        </>
+      );
     }
     // return (checkpoint.caption && checkpoint.caption.length !== 0) || checkpoint?.wfComment?.length > 0 ? <TLCaption data={checkpoint?.caption?.[0]} comments={checkpoint?.wfComment} /> : null;
     return (

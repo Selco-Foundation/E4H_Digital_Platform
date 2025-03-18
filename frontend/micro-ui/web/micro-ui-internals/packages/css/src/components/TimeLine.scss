@@ -55,6 +55,14 @@
   }
 }
 
+span.link {
+  @apply text-primary-main cursor-pointer;
+
+  :hover {
+    @apply text-primary-dark;
+  }
+}
+
 @screen dt{
   .TLComments{
     width: 360px;

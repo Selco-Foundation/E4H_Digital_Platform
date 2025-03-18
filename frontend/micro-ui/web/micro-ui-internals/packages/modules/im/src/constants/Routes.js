@@ -2,7 +2,7 @@ export const PGR_BASE = "/digit-ui/pgr/citizen/";
 
 const CREATE_COMPLAINT_PATH = "/create-complaint/";
 const REOPEN_COMPLAINT_PATH = "/reopen/";
-import { PGR_EMPLOYEE_COMPLAINT_DETAILS, PGR_EMPLOYEE_CREATE_COMPLAINT } from "./Employee";
+import { PGR_EMPLOYEE_COMPLAINT_DETAILS, PGR_EMPLOYEE_COMPLAINT_FEEDBACK, PGR_EMPLOYEE_CREATE_COMPLAINT } from "./Employee";
 
 export const PgrRoutes = {
   ComplaintsPage: "/complaints",
@@ -29,6 +29,7 @@ export const PgrRoutes = {
 export const Employee = {
   Inbox: "/inbox",
   ComplaintDetails: PGR_EMPLOYEE_COMPLAINT_DETAILS,
+  ComplaintFeedback: PGR_EMPLOYEE_COMPLAINT_FEEDBACK,
   CreateComplaint: PGR_EMPLOYEE_CREATE_COMPLAINT,
   Response: "/incident/response",
   Home: "/digit-ui/employee",
