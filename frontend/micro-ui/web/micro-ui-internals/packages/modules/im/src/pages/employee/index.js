@@ -16,7 +16,7 @@ const Complaint = () => {
   const match = useRouteMatch();
   const { t } = useTranslation();
   console.log("matchurl", match.url)
-  const match1="/digit-ui/employee/pgr"
+  const match1=`/${window.contextPath}/employee/pgr`
   console.log("match1", match1)
   const breadcrumConfig = {
     home: {
@@ -45,7 +45,7 @@ const Complaint = () => {
     setPopup(true);
   }
 
-  let location = "/digit-ui/employee/im/incident/create";
+  let location = `/${window.contextPath}/employee/im/incident/create`;
 
   const CreateComplaint = Digit?.ComponentRegistryService?.getComponent('PGRCreateComplaintEmp');
   const ComplaintDetails = Digit?.ComponentRegistryService?.getComponent('PGRComplaintDetails');

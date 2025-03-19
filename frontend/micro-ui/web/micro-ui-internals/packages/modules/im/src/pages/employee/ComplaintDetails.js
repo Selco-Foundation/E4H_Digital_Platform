@@ -427,13 +427,11 @@ export const ComplaintDetails = (props) => {
       });
     };
   }, []);
-  // const [actionCalled, setActionCalled] = useState(false);
   const [toast, setToast] = useState(false);
   const [error, setError] = useState("");
-  //console.log("error111", error)
-  const tenantId = Digit.ULBService.getCurrentTenantId();
+  const stateTenantId = Digit.ULBService.getStateId();
   const tenant =
-    Digit.SessionStorage.get("Employee.tenantId") == "pg"
+    Digit.SessionStorage.get("Employee.tenantId") === stateTenantId
       ? Digit.SessionStorage.get("IM_TENANTS")
           .map((item) => item.code)
           .join(",")
@@ -774,7 +772,7 @@ export const ComplaintDetails = (props) => {
   return (
     <React.Fragment>
       <div style={{ color: "#9e1b32", marginBottom: "10px", textAlign: "right", marginRight: "15px" }}>
-        <Link to={`/digit-ui/employee/im/inbox`}>{t("CS_COMMON_BACK")}</Link>
+        <Link to={`/${window.contextPath}/employee/im/inbox`}>{t("CS_COMMON_BACK")}</Link>
       </div>
       <Card>
         <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
