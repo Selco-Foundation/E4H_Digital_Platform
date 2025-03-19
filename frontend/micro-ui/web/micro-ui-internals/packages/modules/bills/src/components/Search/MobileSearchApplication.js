@@ -131,8 +131,8 @@ const MobileSearchApplication = ({ Controller, register, control, t, reset, prev
                 <span className="link">
                   <Link
                     to={{
-                     // pathname: `/digit-ui/citizen/payment/collect/${original?.["businessService"]}/${original?.["consumerCode"]}/tenantId=${original?.["tenantId"]}?workflow=mcollect`,
-                     pathname: `/digit-ui/employee/payment/collect/${original?.["businessService"]}/${
+                     // pathname: `/${window.contextPath}/citizen/payment/collect/${original?.["businessService"]}/${original?.["consumerCode"]}/tenantId=${original?.["tenantId"]}?workflow=mcollect`,
+                     pathname: `/${window.contextPath}/employee/payment/collect/${original?.["businessService"]}/${
                       original?.["consumerCode"]?.includes("WS") || original?.["consumerCode"]?.includes("SW")
                         ? encodeURIComponent(original?.["consumerCode"], "/", "+")
                         : original?.["consumerCode"]
@@ -152,7 +152,7 @@ const MobileSearchApplication = ({ Controller, register, control, t, reset, prev
                 <span className="link">
                   <Link
                     to={{
-                      pathname: `/digit-ui/employee/payment/collect/${original?.["businessService"]}/${
+                      pathname: `/${window.contextPath}/employee/payment/collect/${original?.["businessService"]}/${
                         original?.["consumerCode"]?.includes("WS") || original?.["consumerCode"]?.includes("SW")
                           ? encodeURIComponent(original?.["consumerCode"], "/", "+")
                           : original?.["consumerCode"]

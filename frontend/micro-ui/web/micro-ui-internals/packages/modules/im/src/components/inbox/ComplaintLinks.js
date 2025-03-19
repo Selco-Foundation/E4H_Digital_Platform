@@ -7,7 +7,7 @@ const ComplaintsLink = ({ isMobile, data }) => {
   const { t } = useTranslation();
 
   const allLinks = [
-    { text: "ES_IM_NEW_INCIDENT", link: "/digit-ui/employee/im/incident/create", accessTo: ["COMPLAINANT"] },
+    { text: "ES_IM_NEW_INCIDENT", link: `/${window.contextPath}/employee/im/incident/create`, accessTo: ["COMPLAINANT"] },
     // { text: "Reports", link: "/employee" },
     // { text: "Dashboard", link: "/employee" },
   ];

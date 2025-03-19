@@ -23,7 +23,7 @@ const TopBar = ({
   const { pathname } = useLocation();
 
   // const showHaburgerorBackButton = () => {
-  //   if (pathname === "/digit-ui/citizen" || pathname === "/digit-ui/citizen/" || pathname === "/digit-ui/citizen/select-language") {
+  //   if (pathname === `/${window.contextPath}/citizen` || pathname === `/${window.contextPath}/citizen/` || pathname === `/${window.contextPath}/citizen/select-language`) {
   //     return <Hamburger handleClick={toggleSidebar} />;
   //   } else {
   //     return <BackButton className="top-back-btn" />;

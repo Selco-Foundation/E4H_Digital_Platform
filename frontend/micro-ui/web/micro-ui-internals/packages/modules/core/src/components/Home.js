@@ -35,7 +35,7 @@ export const processLinkData = (newData, code, t) => {
     const roleBasedLoginRoutes = [
       {
         role: "FSM_DSO",
-        from: "/digit-ui/citizen/fsm/dso-dashboard",
+        from: `/${window.contextPath}/citizen/fsm/dso-dashboard`,
         dashoardLink: "CS_LINK_DSO_DASHBOARD",
         loginLink: "CS_LINK_LOGIN_DSO",
       },
@@ -49,7 +49,7 @@ export const processLinkData = (newData, code, t) => {
         });
       else
         newObj?.links?.push({
-          link: "/digit-ui/citizen/login",
+          link: `/${window.contextPath}/citizen/login`,
           state: { role: "FSM_DSO", from },
           i18nKey: t(loginLink),
         });

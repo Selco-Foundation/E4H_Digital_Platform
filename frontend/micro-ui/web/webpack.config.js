@@ -34,7 +34,7 @@ module.exports = {
   output: {
     filename: "[name]-[contenthash].bundle.js",
     path: path.resolve(__dirname, "build"),
-    publicPath: "/digit-ui/"
+    publicPath: process.env.PUBLIC_PATH || "/digit-ui/"
   },
   optimization: {
     splitChunks: {

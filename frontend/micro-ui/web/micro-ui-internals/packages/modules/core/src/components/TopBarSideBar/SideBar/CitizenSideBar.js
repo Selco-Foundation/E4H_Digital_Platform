@@ -94,14 +94,14 @@ export const CitizenSideBar = ({ isOpen, isMobile = false, toggleSidebar, onLogo
   const { isLoading, data } = Digit.Hooks.useAccessControl();
   const tenantId = Digit.ULBService.getCurrentTenantId();
   const showProfilePage = () => {
-    const redirectUrl = isEmployee ? "/digit-ui/employee/user/profile" : "/digit-ui/citizen/user/profile";
+    const redirectUrl = isEmployee ? `/${window.contextPath}/employee/user/profile` : `/${window.contextPath}/citizen/user/profile`;
     history.push(redirectUrl);
     closeSidebar();
   };
   const redirectToLoginPage = () => {
     // localStorage.clear();
     // sessionStorage.clear();
-    history.push("/digit-ui/citizen/login");
+    history.push(`/${window.contextPath}/citizen/login`);
     closeSidebar();
   };
   if (islinkDataLoading || isLoading) {
@@ -157,7 +157,7 @@ export const CitizenSideBar = ({ isOpen, isMobile = false, toggleSidebar, onLogo
       ?.map((key) => {
         if (linkData[key][0]?.sidebar === "digit-ui-links")
           menuItems.splice(1, 0, {
-            type: linkData[key][0]?.sidebarURL?.includes("digit-ui") ? "link" : "external-link",
+            type: linkData[key][0]?.sidebarURL?.includes(window.contextPath) ? "link" : "external-link",
             text: t(`ACTION_TEST_${Digit.Utils.locale.getTransformedLocale(key)}`),
             links: linkData[key],
             icon: linkData[key][0]?.leftIcon,

@@ -26,10 +26,10 @@ const EmployeeApp = ({ path, url, userType }) => {
       <React.Fragment>
         <div className="ground-container">
           <p className="breadcrumb" style={{ marginLeft: mobileView ? "2vw" : "revert" }}>
-            <Link to="/digit-ui/employee" style={{ cursor: "pointer", color: "#666" }}>
+            <Link to={`/${window.contextPath}/employee`} style={{ cursor: "pointer", color: "#666" }}>
               {t("ES_COMMON_HOME")}
             </Link>{" "}
-            / <span>{location.pathname === "/digit-ui/employee/receipts/inbox" ? t("CR_COMMON_HEADER") : t("CR_COMMON_HEADER")}</span>
+            / <span>{location.pathname === `/${window.contextPath}/employee/receipts/inbox` ? t("CR_COMMON_HEADER") : t("CR_COMMON_HEADER")}</span>
           </p>
           <PrivateRoute
             path={`${path}/inbox`}
