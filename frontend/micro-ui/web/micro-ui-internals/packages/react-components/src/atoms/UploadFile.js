@@ -4,6 +4,7 @@ import { Close } from "./svgindex";
 import { useTranslation } from "react-i18next";
 import RemoveableTag from "./RemoveableTag";
 import { DeleteBtn } from "./svgindex";
+import { Loader } from "./Loader";
 const getRandomId = () => {
   return Math.floor((Math.random() || 1) * 139);
 };
@@ -207,10 +208,19 @@ const UploadFile = (props) => {
         <div style={extraStyles ? extraStyles?.containerStyles : null}>
           <ButtonSelector
             theme="border"
-            label={t("CS_COMMON_CHOOSE_FILE")}
+            label={
+              props?.isUploading ? (
+                <div className="upload-loader-container">
+                  <Loader /> Uploading...
+                </div>
+              ) : (
+                t("CS_COMMON_CHOOSE_FILE")
+              )
+            }
             style={{
               ...(extraStyles ? extraStyles?.buttonStyles : {}),
               ...(!props.enableButton ? { opacity: 0.5 } : {}),
+              width: "unset",
               minHeight: "0px",
               maxHeight: "none",
               backgroundColor: "#7a2829",
@@ -226,7 +236,7 @@ const UploadFile = (props) => {
               </div>
             );
           })}
-          {props?.uploadedFiles?.length === 0 && <h2 className="file-upload-status">{props.message}</h2>}
+          {!props?.isUploading && props?.uploadedFiles?.length === 0 && <h2 className="file-upload-status">{props.message}</h2>}
         </div>
         <input
           className={props.disabled ? "disabled" : "" + "input-mirror-selector-button"}
