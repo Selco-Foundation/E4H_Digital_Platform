@@ -4,7 +4,7 @@ import UploadFile from "../atoms/UploadFile"
 const displayError = ({ t, error, name }, customErrorMsg) => (
     <span style={{ display: 'flex', flexDirection: 'column' }}>
         <div className="validation-error">{customErrorMsg ? t(customErrorMsg) : t(error)}</div>
-        <div className="validation-error">{customErrorMsg ? '' : `${t('ES_COMMON_DOC_FILENAME')} : ${name} ...`}</div>
+        {/* <div className="validation-error">{customErrorMsg ? '' : `${t('ES_COMMON_DOC_FILENAME')} : ${name} ...`}</div> */}
     </span>
 )
 
@@ -66,9 +66,10 @@ const checkIfAllValidFiles = (files, otherFilesLength, videoFilesLength, regex, 
 }
 
 // can use react hook form to set validations @neeraj-egov
-const MultiUploadWrapper = ({ t, module = "PGR", tenantId = Digit.ULBService.getStateId(), getFormState, requestSpecifcFileRemoval, extraStyleName = "", setuploadedstate = [], showHintBelow, hintText, allowedFileTypesRegex = /(.*?)(jpg|jpeg|webp|aif|png|image|pdf|msword|xlsx|openxmlformats-officedocument)$/i, allowedMaxSizeInMB = 10, acceptFiles = "image/*, .jpg, .jpeg, .webp, .aif, .png, .image, .pdf, .msword, .openxmlformats-officedocument, .dxf", maxFilesAllowed, customClass="", customErrorMsg,containerStyles ,disabled,ulb, specificFileConstraint}) => {
+const MultiUploadWrapper = ({ t, module = "PGR", tenantId = Digit.ULBService.getStateId(), onUploadStatusChange, getFormState, requestSpecifcFileRemoval, extraStyleName = "", setuploadedstate = [], showHintBelow, hintText, allowedFileTypesRegex = /(.*?)(jpg|jpeg|webp|aif|png|image|pdf|msword|xlsx|openxmlformats-officedocument)$/i, allowedMaxSizeInMB = 10, acceptFiles = "image/*, .jpg, .jpeg, .webp, .aif, .png, .image, .pdf, .msword, .openxmlformats-officedocument, .dxf", maxFilesAllowed, customClass="", customErrorMsg,containerStyles ,disabled,ulb, specificFileConstraint}) => {
     const FILES_UPLOADED = "FILES_UPLOADED"
     const TARGET_FILE_REMOVAL = "TARGET_FILE_REMOVAL"
+    const [isUploading, setIsUploading] = useState(false)
 
     const [fileErrors, setFileErrors] = useState([]);
     const [enableButton, setEnableButton] = useState(true)
@@ -148,6 +149,7 @@ const MultiUploadWrapper = ({ t, module = "PGR", tenantId = Digit.ULBService.get
         return;
       }
 
+      setIsUploading(true)
       try {
         let tenant = ulb || Digit.SessionStorage.get("Employee.tenantId");
 
@@ -155,20 +157,29 @@ const MultiUploadWrapper = ({ t, module = "PGR", tenantId = Digit.ULBService.get
 
         if (otherFiles.length > 0) {
           uploadPromises.push(
-            Digit.UploadServices.MultipleFilesStorage(module, otherFiles, tenant).then((res) => ({
-              fileType: "other",
-              response: res,
-            }))
+            Digit.UploadServices.MultipleFilesStorage(module, otherFiles, tenant)
+              .then((res) => ({
+                fileType: "other",
+                response: res,
+              }))
+              .catch((err) => {
+                throw { fileType: "other", error: err };
+              })
           );
         }
+        
         if (videoFiles.length > 0) {
           uploadPromises.push(
-            Digit.UploadServices.MultipleFilesStorage(module, videoFiles, tenant, true).then((res) => ({
-              fileType: "video",
-              response: res,
-            }))
+            Digit.UploadServices.MultipleFilesStorage(module, videoFiles, tenant, true)
+              .then((res) => ({
+                fileType: "video",
+                response: res,
+              }))
+              .catch((err) => {
+                throw { fileType: "video", error: err };
+              })
           );
-        }
+        }        
 
         const results = await Promise.allSettled(uploadPromises);
 
@@ -193,8 +204,7 @@ const MultiUploadWrapper = ({ t, module = "PGR", tenantId = Digit.ULBService.get
           } else {
             console.error("File upload failed:", result.reason);
 
-            const failedUrl = result.reason?.config?.url || result.reason?.response?.config?.url || "";
-            if (failedUrl.includes("video")) {
+            if (result?.reason?.fileType === "video") {
               videoUploadFailed = true;
             } else {
               otherUploadFailed = true;
@@ -215,16 +225,20 @@ const MultiUploadWrapper = ({ t, module = "PGR", tenantId = Digit.ULBService.get
         if (errorMessages.length > 0) {
           setFileErrors(errorMessages);
         }
-
-        setEnableButton(true);
         dispatch({ type: FILES_UPLOADED, payload: { files: e.target.files, fileStoreIds } });
       } catch (err) {
         console.error("File upload error:", err);
+      } finally {
+        setIsUploading(false)
         setEnableButton(true);
       }
     };
 
     useEffect(() => getFormState(state), [state])
+
+    useEffect(() => {
+      if (onUploadStatusChange) onUploadStatusChange(isUploading);
+    }, [isUploading]);
 
     useEffect(() => {
         requestSpecifcFileRemoval ? dispatch({ type: TARGET_FILE_REMOVAL, payload: requestSpecifcFileRemoval }) : null
@@ -233,6 +247,7 @@ const MultiUploadWrapper = ({ t, module = "PGR", tenantId = Digit.ULBService.get
     return (
         <div style={containerStyles}>
             <UploadFile
+                isUploading={isUploading}
                 onUpload={(e) => onUploadMultipleFiles(e)}
                 removeTargetedFile={(fileDetailsData) => dispatch({ type: TARGET_FILE_REMOVAL, payload: fileDetailsData })}
                 uploadedFiles={state}
