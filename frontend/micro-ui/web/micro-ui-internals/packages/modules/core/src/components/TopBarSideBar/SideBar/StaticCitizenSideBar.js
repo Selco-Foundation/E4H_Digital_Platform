@@ -127,10 +127,10 @@ const StaticCitizenSideBar = ({ linkData, islinkDataLoading }) => {
   const redirectToLoginPage = () => {
     // localStorage.clear();
     // sessionStorage.clear();
-    history.push("/digit-ui/citizen/login");
+    history.push(`/${window.contextPath}/citizen/login`);
   };
   const showProfilePage = () => {
-    history.push("/digit-ui/citizen/user/profile");
+    history.push(`/${window.contextPath}/citizen/user/profile`);
   };
   const tenantId = Digit.ULBService.getCitizenCurrentTenant();
   const filteredTenantContact = storeData?.tenants.filter((e) => e.code === tenantId)[0]?.contactNumber || storeData?.tenants[0]?.contactNumber;
@@ -213,7 +213,7 @@ const StaticCitizenSideBar = ({ linkData, islinkDataLoading }) => {
     ?.map((key) => {
       if (linkData[key][0]?.sidebar === "digit-ui-links") {
         menuItems.splice(1, 0, {
-          type: linkData[key][0]?.sidebarURL?.includes("digit-ui") ? "link" : "external-link",
+          type: linkData[key][0]?.sidebarURL?.includes(window.contextPath) ? "link" : "external-link",
           text: t(`ACTION_TEST_${Digit.Utils.locale.getTransformedLocale(key)}`),
           links: linkData[key],
           icon: linkData[key][0]?.leftIcon,

@@ -32,7 +32,7 @@ const DetailsCard = ({ data, serviceRequestIdKey, linkPrefix, handleSelect, sele
           return (
             <Link
               key={itemIndex}
-              to={window.location.href.includes("im/inbox") ? "/digit-ui/employee/im/complaint/details/" + incidentId + "/" + object["TenantID"]
+              to={window.location.href.includes("im/inbox") ? `/${window.contextPath}/employee/im/complaint/details/` + incidentId + "/" + object["TenantID"]
                 : isTwoDynamicPrefix
                   ?
                   `${linkPrefix}${typeof serviceRequestIdKey === "function"

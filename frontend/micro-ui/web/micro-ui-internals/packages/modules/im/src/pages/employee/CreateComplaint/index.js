@@ -1,27 +1,19 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useDispatch } from "react-redux";
-import { Controller, useForm } from "react-hook-form";
 import {
-  DatePicker,
   Dropdown,
-  ImageUploadHandler,
-  Toast,
-  TextInput,
-  UploadFile,
-  CardLabel,
   MultiUploadWrapper,
 } from "@selco/digit-ui-react-components";
 import { useRouteMatch, useHistory } from "react-router-dom";
 import { useQueryClient } from "react-query";
 import { FormComposer } from "../../../components/FormComposer";
 import { createComplaint } from "../../../redux/actions/index";
-import { Loader, Header } from "@selco/digit-ui-react-components";
 import { Link } from "react-router-dom";
-// import { MultiUploadWrapper } from "./MultiUploadWrapper";
 
 export const CreateComplaint = ({ parentUrl }) => {
   const { t } = useTranslation();
+  const stateTenantId = Digit.ULBService.getStateId();
   const [healthCareType, setHealthCareType] = useState();
   const [healthcentre, setHealthCentre] = useState();
   const [blockMenu, setBlockMenu] = useState([]);
@@ -47,8 +39,6 @@ export const CreateComplaint = ({ parentUrl }) => {
   const [disbaled, setDisable] = useState(true);
   const [disbaledUpload, setDisableUpload] = useState(true);
   const [phcMenuNew, setPhcMenu] = useState([]);
-  const dropdownRefs = useRef([]); // Create refs array for dropdowns
-  const [errors, setErrors] = useState(Array(6).fill(""));
   const [subType, setSubType] = useState(JSON?.parse(sessionStorage.getItem("subType")) || {});
   const [dataState, setDataState] = useState({ newArr: [], mappedArray: [] });
   let sortedSubMenu = [];
@@ -83,7 +73,7 @@ export const CreateComplaint = ({ parentUrl }) => {
   }
   const state = Digit.ULBService.getStateId();
   const [selectTenant, setSelectTenant] = useState(Digit.SessionStorage.get("Employee.tenantId") || null);
-  const { isMdmsLoading, data: mdmsData } = Digit.Hooks.pgr.useMDMS(state, "Incident", ["District", "Block"]);
+  const { data: mdmsData } = Digit.Hooks.pgr.useMDMS(state, "Incident", ["District", "Block"]);
   const { data: phcMenu } = Digit.Hooks.pgr.useMDMS(state, "tenant", ["tenants"]);
   let blockNew = mdmsData?.Incident?.Block;
 
@@ -114,7 +104,7 @@ export const CreateComplaint = ({ parentUrl }) => {
   useEffect(() => {
     let tenants = Digit.SessionStorage.get("Employee.tenantId");
     setSelectTenant(tenants);
-    if (selectTenant !== "pg") {
+    if (selectTenant !== stateTenantId) {
       ticketTypeRef?.current?.validate();
       ticketSubTypeRef?.current?.validate();
     } else {
@@ -123,7 +113,7 @@ export const CreateComplaint = ({ parentUrl }) => {
   }, []);
 
   useEffect(async () => {
-    if (selectTenant && selectTenant !== "pg") {
+    if (selectTenant && selectTenant !== stateTenantId) {
       let tenant = Digit.SessionStorage.get("IM_TENANTS");
       const selectedTenantData = tenant.find((item) => item.code === selectTenant);
       const selectedDistrict = {
@@ -173,7 +163,6 @@ export const CreateComplaint = ({ parentUrl }) => {
     })();
   }, [file]);
   const dispatch = useDispatch();
-  const match = useRouteMatch();
   const history = useHistory();
   const serviceDefinitions = Digit.GetServiceDefinitions;
   const client = useQueryClient();
@@ -244,9 +233,7 @@ export const CreateComplaint = ({ parentUrl }) => {
     setHealthCentre({});
     setHealthCareType({});
     setPhcSubTypeMenu([]);
-    if (selectTenant && selectTenant !== "pg") {
-      const block = blockNew?.find((item) => item?.name.toUpperCase() === selectedBlock?.codeNew.split(".")[1].toUpperCase());
-
+    if (selectTenant && selectTenant !== stateTenantId) {
       const phcMenuType = phcMenu?.tenant?.tenants.filter((centre) => centre?.city?.blockCode === selectedBlock?.codeNew);
       const translatedPhcMenu = phcMenuType?.map((item) => ({
         ...item,
@@ -285,19 +272,6 @@ export const CreateComplaint = ({ parentUrl }) => {
   const handlePhcSubType = async (value) => {
     setHealthCareType(value);
   };
-  // const selectedDistrict = (value) => {
-  //   setDistrict(value);
-  //   setBlockMenu([value]);
-  // };
-  async function selectFile(e) {
-    setFile(e.target.files[0]);
-  }
-  const handleUpload = (ids) => {
-    if (disbaled) {
-      setShowToast({ key: true, label: "PLEASE_SELECT_PHC_TYPE" });
-    }
-    setUploadedImagesIds(ids);
-  };
 
   const wrapperSubmit = (data) => {
     const abc = handleButtonClick();
@@ -308,8 +282,6 @@ export const CreateComplaint = ({ parentUrl }) => {
   };
   const onSubmit = async (data) => {
     if (!canSubmit) return;
-    const { key } = subType;
-    //const complaintType = key;
 
     const formData = {
       ...data,
@@ -423,7 +395,7 @@ export const CreateComplaint = ({ parentUrl }) => {
               id="name"
               selected={district}
               select={handleDistrictChange}
-              disable={selectTenant && selectTenant !== "pg" ? true : false}
+              disable={selectTenant && selectTenant !== stateTenantId ? true : false}
               required={true}
             />
           ),
@@ -442,7 +414,7 @@ export const CreateComplaint = ({ parentUrl }) => {
               id="name"
               selected={block}
               select={handleBlockChange}
-              disable={selectTenant && selectTenant !== "pg" ? true : false}
+              disable={selectTenant && selectTenant !== stateTenantId ? true : false}
               required={true}
             />
           ),
@@ -460,7 +432,7 @@ export const CreateComplaint = ({ parentUrl }) => {
               id="healthCentre"
               selected={healthcentre}
               select={selectedHealthCentre}
-              disable={selectTenant && selectTenant !== "pg" ? true : false}
+              disable={selectTenant && selectTenant !== stateTenantId ? true : false}
               required={true}
             />
           ),
@@ -478,7 +450,7 @@ export const CreateComplaint = ({ parentUrl }) => {
               id="healthcaretype"
               selected={healthCareType}
               select={handlePhcSubType}
-              disable={selectTenant && selectTenant !== "pg" ? true : false}
+              disable={selectTenant && selectTenant !== stateTenantId ? true : false}
               required={true}
             />
           ),
@@ -554,7 +526,7 @@ export const CreateComplaint = ({ parentUrl }) => {
                 allowedMaxSizeInMB={50}
                 maxFilesAllowed={5}
                 disabled={disbaledUpload}
-                ulb={Digit.SessionStorage.get("Employee.tenantId") !== "pg" ? Digit.SessionStorage.get("Employee.tenantId") : healthcentre?.code}
+                ulb={Digit.SessionStorage.get("Employee.tenantId") !== stateTenantId ? Digit.SessionStorage.get("Employee.tenantId") : healthcentre?.code}
                 acceptFiles={".png, .image, .jpg, .jpeg, .mp4, .avi, .mov, .wmv, video/*"}
                 specificFileConstraint={specificFileConstraint}
               />
@@ -579,7 +551,7 @@ export const CreateComplaint = ({ parentUrl }) => {
       </style>
       <div style={{ color: "#9e1b32", marginBottom: "10px", textAlign: "right", marginRight: "0px" }}>
         <div style={{ marginRight: "15px" }}>
-          <Link to={`/digit-ui/employee`}>{t("CS_COMMON_BACK")}</Link>
+          <Link to={`/${window.contextPath}/employee`}>{t("CS_COMMON_BACK")}</Link>
         </div>
       </div>
       <FormComposer heading={t("")} config={config} onSubmit={wrapperSubmit} isDisabled={!canSubmit && !submitted} label={t("FILE_INCIDENT")} />

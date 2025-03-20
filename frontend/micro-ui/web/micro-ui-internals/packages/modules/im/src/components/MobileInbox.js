@@ -17,12 +17,12 @@ const MobileInbox = ({ data, onFilterChange, onSearch, isLoading, searchParams }
   const localizedData = data?.combinedRes?.map(({ tenantId,phcType, incidentType, incidentId, incidentSubType, sla, status, taskOwner }) => ({
     [t("CS_COMMON_TICKET_NO")]: 
     incidentId && (typeof incidentId === "string" || typeof incidentId === "number") ? (
-      <Link to={`/digit-ui/employee/im/complaint/details/${incidentId}/${tenantId}`} style={{ color: "#7a2829" }}>
+      <Link to={`/${window.contextPath}/employee/im/complaint/details/${incidentId}/${tenantId}`} style={{ color: "#7a2829" }}>
         {incidentId}
       </Link>
     ) : (
       incidentId?.toString() ? (
-        <Link to={`/digit-ui/employee/im/complaint/details/${incidentId.toString()}/${tenantId}`} style={{ color: "#7a2829" }}>
+        <Link to={`/${window.contextPath}/employee/im/complaint/details/${incidentId.toString()}/${tenantId}`} style={{ color: "#7a2829" }}>
           {incidentId.toString()}
         </Link>
       ) : ""

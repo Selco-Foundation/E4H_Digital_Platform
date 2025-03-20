@@ -155,7 +155,7 @@ const SearchApplication = ({ showTable, showLoader, isLoading, tenantId, t, onSu
     []
   );
   const getActionItem = (status, row) => {
-    if (window.location.href.includes("/digit-ui/employee/bills/group-bill")) {
+    if (window.location.href.includes(`/${window.contextPath}/employee/bills/group-bill`)) {
       return null;
     }
     switch (status) {
@@ -165,7 +165,7 @@ const SearchApplication = ({ showTable, showLoader, isLoading, tenantId, t, onSu
             <span className="link">
               <Link
                 to={{
-                  pathname: `/digit-ui/employee/payment/collect/${row.original?.["businessService"]}/${
+                  pathname: `/${window.contextPath}/employee/payment/collect/${row.original?.["businessService"]}/${
                     row.original?.["consumerCode"]?.includes("WS") || row.original?.["consumerCode"]?.includes("SW")
                       ? encodeURIComponent(row.original?.["consumerCode"], "/", "+")
                       : row.original?.["consumerCode"]
@@ -186,7 +186,7 @@ const SearchApplication = ({ showTable, showLoader, isLoading, tenantId, t, onSu
             <span className="link">
               <Link
                 to={{
-                  pathname: `/digit-ui/employee/payment/collect/${row.original?.["businessService"]}/${
+                  pathname: `/${window.contextPath}/employee/payment/collect/${row.original?.["businessService"]}/${
                     row.original?.["consumerCode"]?.includes("WS") || row.original?.["consumerCode"]?.includes("SW")
                       ? encodeURIComponent(row.original?.["consumerCode"], "/", "+")
                       : row.original?.["consumerCode"]
