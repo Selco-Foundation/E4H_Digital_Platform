@@ -40,12 +40,27 @@ const checkIfAllValidFiles = (files, otherFilesLength, videoFilesLength, regex, 
     const uploadedOthers = state.filter(f => !f[1].file.type.startsWith("video/")).length;
 
     // Validate count separately for videos & others
-    if (otherFilesLength && maxFilesAllowed && (uploadedOthers + otherFilesLength > maxFilesAllowed)) {
-        return [[{ valid: false, name: files[0]?.name?.substring(0, 15), error: t(`FILE_LIMIT_EXCEEDED`).replace("{}", `${maxFilesAllowed}`) }], true];
+    const fileLimitErrors = [];
+
+    if (otherFilesLength && maxFilesAllowed && uploadedOthers + otherFilesLength > maxFilesAllowed) {
+      fileLimitErrors.push({
+        valid: false,
+        name: "",
+        error: t(`FILE_LIMIT_EXCEEDED`).replace("{}", `${maxFilesAllowed}`),
+      });
     }
-    if (videoFilesLength && specificFileConstraint?.maxFiles && (uploadedVideos + videoFilesLength > specificFileConstraint.maxFiles)) {
-        return [[{ valid: false, name: files[0]?.name?.substring(0, 15), error: t(`VIDEO_FILE_LIMIT_EXCEEDED`).replace("{}", `${specificFileConstraint.maxFiles}`) }], true];
-    }   
+    if (videoFilesLength && specificFileConstraint?.maxFiles && uploadedVideos + videoFilesLength > specificFileConstraint.maxFiles) {
+      fileLimitErrors.push({
+        valid: false,
+        name: "",
+        error: t(`VIDEO_FILE_LIMIT_EXCEEDED`).replace("{}", `${specificFileConstraint.maxFiles}`),
+      });
+    }
+
+    if (fileLimitErrors.length) {
+      return [fileLimitErrors, true];
+    }
+  
     // Adding a check for fileSize > maxSize
     // const maxSizeInBytes = maxSize * 1000000
     // if(files?.some(file => file.size > maxSizeInBytes)){
@@ -234,6 +249,13 @@ const MultiUploadWrapper = ({ t, module = "PGR", tenantId = Digit.ULBService.get
       }
     };
 
+    const groupedErrors = fileErrors.reduce((acc, { valid, name, error }) => {
+      if (!valid) {
+        acc[error] = acc[error] ? [...acc[error], name] : [name];
+      }
+      return acc;
+    }, {});
+
     useEffect(() => getFormState(state), [state])
 
     useEffect(() => {
@@ -265,10 +287,15 @@ const MultiUploadWrapper = ({ t, module = "PGR", tenantId = Digit.ULBService.get
                 enableButton={enableButton}
                 ulb={ulb}
             />
-            <span style={{ display: 'flex' }}>
-                {fileErrors.length ? fileErrors.map(({ valid, name, type, size, error }) => (
-                    valid ? null : displayError({ t, error, name }, customErrorMsg)
-                )) : null}
+            <span style={{ display: "flex", flexDirection: "column" }}>
+              {Object.entries(groupedErrors).map(([error, names]) => (
+                <span key={error} style={{ display: "flex", flexDirection: "column" }}>
+                  <div className="validation-error">{customErrorMsg ? t(customErrorMsg) : t(error)}</div>
+                  {names.some((name) => name) && (
+                    <div className="validation-error">{`${t("ES_COMMON_DOC_FILENAME")} : ${names.filter((name) => name).join(", ")}`}</div>
+                  )}
+                </span>
+              ))}
             </span>
         </div>)
 }
