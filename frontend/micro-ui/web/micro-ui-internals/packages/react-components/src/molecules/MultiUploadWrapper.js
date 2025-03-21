@@ -1,13 +1,6 @@
 import React, { useEffect, useReducer, useState } from "react";
 import UploadFile from "../atoms/UploadFile";
 
-const displayError = ({ t, error, name }, customErrorMsg) => (
-  <span style={{ display: "flex", flexDirection: "column" }}>
-    <div className="validation-error">{customErrorMsg ? t(customErrorMsg) : t(error)}</div>
-    {/* <div className="validation-error">{customErrorMsg ? '' : `${t('ES_COMMON_DOC_FILENAME')} : ${name} ...`}</div> */}
-  </span>
-);
-
 const fileValidationStatus = (file, regex, maxSize, t, specificFileConstraint) => {
   if (file?.type.includes(specificFileConstraint?.type)) {
     maxSize = specificFileConstraint.maxSize;
