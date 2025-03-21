@@ -255,4 +255,6 @@ public class IMConfiguration {
     @Value("${ffprobe.path}")
     private String ffprobePath;
 
+    @Value("${ffmpeg.cpulimitpercentage}")
+    private String ffmpegCpuLimitPercentage;
 }
