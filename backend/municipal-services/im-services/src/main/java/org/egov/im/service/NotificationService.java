@@ -2,7 +2,6 @@ package org.egov.im.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jayway.jsonpath.JsonPath;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.common.contract.request.Role;
@@ -454,7 +453,7 @@ public class NotificationService {
                     System.currentTimeMillis(),
                     request.getIncident().getIncidentId(),
                     request.getWorkflow().getSendBackReason().getReason()
-                    );
+            );
             if (messageForEmployee == null) {
                 log.info("No message Found For Employee On Topic : " + topic);
                 return null;
@@ -479,7 +478,8 @@ public class NotificationService {
                 return null;
             }
 
-            ProcessInstance processInstance = getEmployeeName(incidentWrapper.getIncident().getTenantId(), incidentWrapper.getIncident().getIncidentId(), request.getRequestInfo(), IM_WF_RESOLVE);
+            ProcessInstance processInstance =
+                    getEmployeeName(incidentWrapper.getIncident().getTenantId(), incidentWrapper.getIncident().getIncidentId(), request.getRequestInfo(), IM_WF_RESOLVE);
 
 //            if(defaultMessage.contains("{status}"))
 //                defaultMessage = defaultMessage.replace("{status}", localisedStatus);
@@ -490,6 +490,21 @@ public class NotificationService {
 
             if (messageForEmployee.contains("{emp_name}"))
                 messageForEmployee = messageForEmployee.replace("{emp_name}", processInstance.getAssignes().get(0).getName());
+
+            if (messageForEmployee.contains("ticket_id"))
+                messageForEmployee = messageForEmployee.replace("{ticket_id}", incidentWrapper.getIncident().getIncidentId());
+
+            if (messageForEmployee.contains("{survey_link}")) {
+                String hyerplink = String.format("%s/%s/%s/%s/%s",
+                        config.getDigitUIHost(),
+                        config.getDigitUITenant().get(tenantId),
+                        config.getDigitUIFeedback(),
+                        tenantId,
+                        tenantId);
+
+                log.info("derived survey hyperlink link: {} for tenant {}", hyerplink, tenantId);
+                messageForEmployee = messageForEmployee.replace("{survey_link}", hyerplink);
+            }
         }
 
         /**
