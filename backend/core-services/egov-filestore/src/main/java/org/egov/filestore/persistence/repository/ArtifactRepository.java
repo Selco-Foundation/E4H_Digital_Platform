@@ -18,6 +18,7 @@ import org.egov.filestore.persistence.entity.Artifact;
 import org.egov.filestore.repository.CloudFileManagerV2;
 import org.egov.filestore.repository.CloudFilesManager;
 import org.egov.filestore.repository.impl.AzureBlobStorageImpl;
+import org.egov.filestore.repository.impl.minio.MinioConfig;
 import org.egov.filestore.repository.impl.minio.MinioRepository;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Value;
@@ -29,10 +30,10 @@ import org.springframework.stereotype.Service;
 public class ArtifactRepository {
 
     private final FileStoreJpaRepository fileStoreJpaRepository;
-
     private final CloudFilesManager cloudFilesManager;
-
     private final CloudFileManagerV2 cloudFileManagerV2;
+    private final MinioConfig minioConfig;
+
 
     @Value("${isAzureStorageEnabled}")
     private Boolean isAzureStorageEnabled;
@@ -57,6 +58,8 @@ public class ArtifactRepository {
         List<Artifact> artifactEntities = new ArrayList<>();
         artifacts.forEach(artifact -> {
             if (artifact.isInsertable() && artifact.getFileLocation().getFileStoreId() != null) {
+                artifact = artifact.withFileLocation(artifact.getFileLocation()
+                        .withFileName(String.format("%s/%s", minioConfig.getBucketName(), artifact.getFileLocation().getFileName())));
                 artifactEntities.add(mapToEntity(artifact, requestInfo));
             }
         });
