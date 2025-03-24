@@ -12,7 +12,6 @@ import org.egov.filestore.utils.StorageUtil;
 import org.egov.tracer.model.CustomException;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.InputStream;
