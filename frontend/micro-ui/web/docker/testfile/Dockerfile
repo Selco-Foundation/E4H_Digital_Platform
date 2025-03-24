@@ -21,12 +21,12 @@ ENV NODE_OPTIONS "--max-old-space-size=8192"
 
 ENV GENERATE_SOURCEMAP "false"
 
-ENV PUBLIC_PATH ${PUBLIC_PATH}
- 
+ENV PUBLIC_PATH=${PUBLIC_PATH}
+
 COPY ${WORK_DIR} .
 
 RUN ls -lah
- 
+
 #RUN node web/envs.js
 
 RUN cd web/ \
@@ -34,7 +34,7 @@ RUN cd web/ \
     &&  ./install-deps.sh \
     && yarn install \
     && yarn build:webpack
- 
+
 FROM nginx:mainline-alpine
 
 #FROM ghcr.io/egovernments/nginx:mainline-alpine
@@ -42,7 +42,7 @@ FROM nginx:mainline-alpine
 ENV WORK_DIR=/var/web/digit-ui
 
 RUN mkdir -p ${WORK_DIR}
- 
+
 COPY --from=build /app/web/build ${WORK_DIR}/
 
 COPY --from=build /app/web/docker/nginx.conf /etc/nginx/conf.d/default.conf

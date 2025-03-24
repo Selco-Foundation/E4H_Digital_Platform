@@ -49,7 +49,7 @@ const BillCancelModal = ({ t, action, tenantId, closeModal, submitAction, applic
   }, [data]);
 
   function submit(data) {
-    history.replace("/digit-ui/employee/receipts/response", {
+    history.replace(`/${window.contextPath}/employee/receipts/response`, {
       paymentWorkflow: {
         action: "CANCEL",
         additionalDetails: { ...data.otherDetails, selectedReasonMessage: t(`CR_REASON_${selectedReason.code}`) },

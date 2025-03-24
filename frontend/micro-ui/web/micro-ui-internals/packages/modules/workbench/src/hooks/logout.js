@@ -40,9 +40,9 @@ export const logoutV1 = async () => {
     window.localStorage.clear();
     window.sessionStorage.clear();
     if (userType === "citizen") {
-      window.location.replace("/digit-ui/citizen");
+      window.location.replace(`/${window.contextPath}/citizen`);
     } else {
-      window.location.replace("/digit-ui/employee/user/language-selection");
+      window.location.replace(`/${window.contextPath}/employee/user/language-selection`);
     }
   }
 };
