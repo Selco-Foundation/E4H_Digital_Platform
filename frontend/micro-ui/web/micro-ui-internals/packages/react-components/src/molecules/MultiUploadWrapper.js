@@ -10,17 +10,16 @@ const fileValidationStatus = (file, regex, maxSize, t, specificFileConstraint) =
   const status = { valid: true, name: file?.name?.substring(0, 15), error: "" };
   if (!file) return;
 
-  if (!regex.test(file.type) && file.size / 1024 / 1024 > maxSize) {
+  const invalidType = !regex.test(file.type) || !regex.test(fileExtention);
+  const fileTooLarge = file.size / 1024 / 1024 > maxSize;
+
+  if (invalidType && fileTooLarge) {
     status.valid = false;
     status.error = t(`NOT_SUPPORTED_FILE_TYPE_AND_FILE_SIZE_EXCEEDED_5MB`);
-  }
-
-  if (!regex.test(fileExtention)) {
+  } else if (invalidType) {
     status.valid = false;
     status.error = t(`NOT_SUPPORTED_FILE_TYPE`);
-  }
-
-  if (file.size / 1024 / 1024 > maxSize) {
+  } else if (fileTooLarge) {
     status.valid = false;
     status.error = t(`FILE_SIZE_EXCEEDED`).replace("{}", `${maxSize}`);
   }
@@ -120,7 +119,6 @@ const MultiUploadWrapper = ({
   const removeFile = (state, payload) => {
     const __indexOfItemToDelete = state.findIndex((e) => e[1].fileStoreId.fileStoreId === payload.fileStoreId.fileStoreId);
     const mutatedState = state.filter((e, index) => index !== __indexOfItemToDelete);
-    setFileErrors([]);
     return [...mutatedState];
   };
 
@@ -287,7 +285,10 @@ const MultiUploadWrapper = ({
       <UploadFile
         isUploading={isUploading}
         onUpload={(e) => onUploadMultipleFiles(e)}
-        removeTargetedFile={(fileDetailsData) => dispatch({ type: TARGET_FILE_REMOVAL, payload: fileDetailsData })}
+        removeTargetedFile={(fileDetailsData) => {
+          setFileErrors([]);
+          dispatch({ type: TARGET_FILE_REMOVAL, payload: fileDetailsData });
+        }}
         uploadedFiles={state}
         multiple={true}
         showHintBelow={showHintBelow}
