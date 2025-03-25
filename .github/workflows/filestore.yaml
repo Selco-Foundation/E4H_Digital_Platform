@@ -4,13 +4,19 @@ on:
     branches:
       - develop
       - main
+    tags:
+      - 'v*'
     paths:
       - 'backend/core-services/egov-filestore/**'
   workflow_dispatch:
   workflow_call:
+permissions:
+  security-events: write
+  contents: read
 
 jobs:
   docker_image-build:
+    if: (github.event_name == 'push' && (startsWith(github.ref, 'refs/heads/develop') || startsWith(github.ref, 'refs/heads/main') || startsWith(github.ref, 'refs/tags/v'))) || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
