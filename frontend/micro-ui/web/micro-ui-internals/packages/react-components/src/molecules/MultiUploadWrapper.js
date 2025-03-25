@@ -10,16 +10,17 @@ const fileValidationStatus = (file, regex, maxSize, t, specificFileConstraint) =
   const status = { valid: true, name: file?.name?.substring(0, 15), error: "" };
   if (!file) return;
 
-  const invalidType = !regex.test(file.type) || !regex.test(fileExtention);
-  const fileTooLarge = file.size / 1024 / 1024 > maxSize;
-
-  if (invalidType && fileTooLarge) {
+  if (!regex.test(file.type) && file.size / 1024 / 1024 > maxSize) {
     status.valid = false;
     status.error = t(`NOT_SUPPORTED_FILE_TYPE_AND_FILE_SIZE_EXCEEDED_5MB`);
-  } else if (invalidType) {
+  }
+
+  if (!regex.test(fileExtention)) {
     status.valid = false;
     status.error = t(`NOT_SUPPORTED_FILE_TYPE`);
-  } else if (fileTooLarge) {
+  }
+
+  if (file.size / 1024 / 1024 > maxSize) {
     status.valid = false;
     status.error = t(`FILE_SIZE_EXCEEDED`).replace("{}", `${maxSize}`);
   }
