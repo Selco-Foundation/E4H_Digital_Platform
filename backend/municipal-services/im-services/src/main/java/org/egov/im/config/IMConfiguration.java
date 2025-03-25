@@ -252,4 +252,16 @@ public class IMConfiguration {
     @Value("${egov.filestore.upload.endpoint}")
     private String fileStoreUploadEndpoint;
 
+    @Value("${ffprobe.path}")
+    private String ffprobePath;
+
+    @Value("${digit.ui.host}")
+    private String digitUIHost;
+
+    @Value("${digit.ui.feedback}")
+    private String digitUIFeedback;
+
+    @Value("#{${digit.ui.tenant}}")
+    private Map<String, String> digitUITenant;
+
 }

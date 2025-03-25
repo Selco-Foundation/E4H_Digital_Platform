@@ -1,11 +1,11 @@
-name: workflow-v2 Image Build workflow
+name: Nagaland-UI Image Build workflow
 on:
   push:
     branches:
       - develop
       - main
     paths:
-      - 'backend/core-services/egov-workflow-v2/**'
+      - 'frontend/micro-ui/**'
   workflow_dispatch:
   workflow_call:
 
@@ -19,6 +19,9 @@ jobs:
       - name: Setup Docker
         uses: docker/setup-buildx-action@v2
 
+      # Login to Docker Container Registry
+      - name: Login to Docker Container Registry
+        run: docker login -u selcohub -p ${{ secrets.DOCKER_PASSWORD }}
       - name: Set Version from Branch
         id: set_version
         run: |
@@ -30,26 +33,16 @@ jobs:
             VERSION="latest"  # Default version if not a tag or branch
           fi
           echo "VERSION=$VERSION" >> $GITHUB_ENV
-
       - name: Git commit_hash for service
         run: |
-          commit_hash=$(git log -1 --pretty=format:%H -- backend/core-services/egov-workflow-v2)
+          commit_hash=$(git log -1 --pretty=format:%H -- frontend/micro-ui)
           echo "commit_hash=$commit_hash" >> $GITHUB_ENV
 
-      # Login to Docker Container Registry
-      - name: Login to Docker Container Registry
-        run: docker login -u selcohub -p ${{ secrets.DOCKER_PASSWORD }}
-
-      - name: Build and Push Docker image for workflow-v2
+      - name: Build and Push Docker image for Nagaland-ui
         run: |
-          docker build --build-arg WORK_DIR="backend/core-services/egov-workflow-v2" -t selcohub/egov-workflow-v2:${{ env.VERSION }}-${{ env.commit_hash }} -f build/maven-java8/Dockerfile .
-          docker push selcohub/egov-workflow-v2:${{ env.VERSION }}-${{ env.commit_hash }}
-
-      - name: Build and Push Docker image for workflow-v2_DB
-        run: |
-          docker build  -t selcohub/egov-workflow-v2-db:${{ env.VERSION }}-${{ env.commit_hash }} -f  Dockerfile .
-          docker push selcohub/egov-workflow-v2-db:${{ env.VERSION }}-${{ env.commit_hash }}
-        working-directory: backend/core-services/egov-workflow-v2/src/main/resources/db
+          docker build --build-arg PUBLIC_PATH="/nagaland-ui/"  -t selcohub/nagaland-ui:${{ env.VERSION }}-${{ env.commit_hash }} -f  web/docker/testfile/Dockerfile .
+          docker push selcohub/nagaland-ui:${{ env.VERSION }}-${{ env.commit_hash }}
+        working-directory: frontend/micro-ui
 
   Workflow_Trigger:
     if: startsWith(github.ref, 'refs/heads/develop')

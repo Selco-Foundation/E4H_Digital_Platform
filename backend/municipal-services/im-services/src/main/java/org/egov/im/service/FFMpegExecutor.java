@@ -16,10 +16,8 @@ public class FFMpegExecutor {
         log.debug("Executing command: {}", command);
         Process process = null;
         try {
-            // Execute the command
             process = Runtime.getRuntime().exec(command);
 
-            // Capture standard output and error streams
             StringBuilder output = new StringBuilder();
             StringBuilder error = new StringBuilder();
 
@@ -48,10 +46,9 @@ public class FFMpegExecutor {
                 log.error("Command error output: {}", error.toString());
             }
 
-            // Check for failure based on exit code
             if (exitCode != 0) {
                 log.error("Command failed with exit code: {}. Command: {}", exitCode, command);
-                log.error("Error details: {}", error.toString());  // Include error output from the command
+                log.error("Error details: {}", error.toString());
                 throw new CustomException("Command failed:",
                         String.format("Command failed with exit code: %d. Error details: %s", exitCode, error));
             }
@@ -61,7 +58,7 @@ public class FFMpegExecutor {
             log.error("IOException while executing command: {}. Error: {}", command, e.getMessage(), e);
             throw new CustomException(String.format("IOException while executing command: %s", command), e.getMessage());
         } catch (InterruptedException e) {
-            Thread.currentThread().interrupt(); // Preserve interruption status
+            Thread.currentThread().interrupt();
             log.error("Thread was interrupted while executing command: {}", command, e);
             throw new CustomException(String.format("Thread was interrupted while executing command: %s", command), e.getMessage());
         } catch (Exception e) {
@@ -69,7 +66,7 @@ public class FFMpegExecutor {
             throw new CustomException(String.format("Error executing command: %s", command), e.getMessage());
         } finally {
             if (process != null) {
-                process.destroy();  // Clean up the process if it exists
+                process.destroy();
             }
         }
     }

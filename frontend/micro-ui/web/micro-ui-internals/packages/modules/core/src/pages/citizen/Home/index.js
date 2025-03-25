@@ -29,8 +29,8 @@ const Home = () => {
 
   if (!tenantId) {
     Digit.SessionStorage.get("locale") === null
-      ? history.push(`/digit-ui/citizen/select-language`)
-      : history.push(`/digit-ui/citizen/select-location`);
+      ? history.push(`/${window.contextPath}/citizen/select-language`)
+      : history.push(`/${window.contextPath}/citizen/select-location`);
   }
 
   const appBannerWebObj = uiHomePage?.appBannerDesktop;

@@ -2,8 +2,10 @@ package org.egov.im.util;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.egov.im.config.IMConfiguration;
 import org.egov.im.settings.VideoQualityFactory;
 import org.egov.im.settings.VideoQualitySettings;
+import org.egov.im.web.models.ProcessingContext;
 import org.egov.tracer.model.CustomException;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
@@ -18,6 +20,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Stream;
 
 @RequiredArgsConstructor
 @Slf4j
@@ -25,6 +28,7 @@ import java.util.List;
 public class VideoUtil {
 
     private final VideoQualityFactory videoQualityFactory;
+    private final IMConfiguration config;
 
     public int getBandwidthForResolution(int width, int height) {
         // Estimate bandwidth based on resolution
@@ -34,7 +38,7 @@ public class VideoUtil {
         if (pixels <= 854 * 480) return 1500000;
         if (pixels <= 1280 * 720) return 3000000;
         if (pixels <= 1920 * 1080) return 6000000;
-        return 8000000; // for higher resolutions
+        return 8000000;
     }
 
     public MultipartFile convertFileToMultipartFile(File file, String path) {
@@ -59,8 +63,30 @@ public class VideoUtil {
         }
     }
 
+
+    public List<MultipartFile> convertToMultipartFiles(ProcessingContext context, Path outputPath, String outputFilePath){
+
+        Path directoryPath = outputPath.resolve(String.format("%s%s", outputPath, outputFilePath));
+        List<Path> files;
+        try (Stream<Path> fileStream = Files.list(directoryPath)) {
+            files = fileStream.toList();
+
+        // Convert files to MultipartFile and upload
+            return files.stream()
+                .map(file -> {
+                    String resolvedPath =
+                            String.format("%s/%s", context.getVideoId(), pathExtractor(file.toString(), "output"));
+                    return convertFileToMultipartFile(file.toFile(), resolvedPath);
+                })
+                .toList();
+
+        } catch (IOException e) {
+            throw new CustomException("Error converting files to multipart file", e.getMessage());
+        }
+    }
+
     public String[] getVideoDimensions(String videoPath) {
-        final String FFPROBE_PATH = "/usr/bin/ffprobe";
+        final String FFPROBE_PATH = config.getFfprobePath();
 
         List<String> command = List.of(
                 FFPROBE_PATH, "-v", "error", "-select_streams", "v:0",
@@ -98,7 +124,6 @@ public class VideoUtil {
         log.warn("No video dimensions found for {}", videoPath);
         return new String[]{"0", "0"}; // Default return value
     }
-
 
 
     // Determines which resolutions to create based on the original resolution
@@ -157,7 +182,7 @@ public class VideoUtil {
             int outputIndex = path.toString().indexOf(indexPath);
 
             if (outputIndex != -1) {
-                return String.format("/%s",path.subpath(path.getNameCount() - 3, path.getNameCount() - 1));
+                return String.format("%s",path.subpath(path.getNameCount() - 3, path.getNameCount() - 1));
             }
             throw new IllegalArgumentException("Invalid path: 'output/' not found");
     }

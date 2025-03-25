@@ -18,7 +18,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
+
 @RequiredArgsConstructor
 @Service
 @Slf4j
@@ -44,10 +44,18 @@ public class StorageService {
         }
     }
 
-    public StorageResponse save(List<MultipartFile> filesToStore, ProcessingContext context) throws IOException {
+    public StorageResponse saveOriginalFileToS3(List<MultipartFile> filesToStore, ProcessingContext context) {
         storageValidator.validate(filesToStore);
-        StorageResponse storageResponse = storageUtil.uploadToFileStorage(filesToStore, context);
+        try {
+            StorageResponse storageResponse = storageUtil.uploadToFileStorage(filesToStore, context);
+            log.info("file store response: {}", storageResponse);
+            return storageResponse;
+        } catch (IOException e) {
+            throw new CustomException("Error saving original file to S3", e.getMessage());
+        }
+    }
 
+    public StorageResponse createAndSaveMasterFiles(StorageResponse storageResponse, List<File> filesToStore, ProcessingContext context) {
         // Create master files
         List<org.egov.im.web.models.storage.File> updatedFiles = storageResponse.getFiles()
                 .stream()
@@ -55,24 +63,17 @@ public class StorageService {
                     String fileStoreId = fileMetadata.getFileStoreId();
                     try {
                         int index = storageResponse.getFiles().indexOf(fileMetadata);
-                        Resource resource = filesToStore.get(index).getResource();
-
-                        File tempFile = storageUtil.createTempFile(tempDir, resource);
-
-                        // Call temp file creator (write file to temp location)
-                        storageUtil.writeFileToTempFile(resource, tempFile.toPath());
+                        File tempFile = filesToStore.get(index);
 
                         // Process the video synchronously and return response
-                        StorageResponse response = videoService.processVideo(tempFile, context.withVideoId(fileStoreId));
+                        StorageResponse response =
+                                videoService.processVideo(tempFile, context.withVideoId(fileStoreId));
+
                         String masterFileStoreId = response.getFiles().get(0).getFileStoreId();
 
                         return fileMetadata.toBuilder()
                                 .masterFileStoreId(masterFileStoreId)
                                 .build();
-
-                    } catch (IOException ex) {
-                        log.error("I/O Error while processing fileStoreId {}: {}", fileStoreId, ex.getMessage(), ex);
-                        throw new CustomException("I/O Error processing video", ex.getMessage());
 
                     } catch (CustomException ex) {
                         log.error("Custom Exception for fileStoreId {}: {}", fileStoreId, ex.getMessage(), ex);
@@ -89,38 +90,36 @@ public class StorageService {
     }
 
     @Async
-    public CompletableFuture<Void> saveChunks(List<MultipartFile> filesToStore,
-                                              StorageResponse storageResponse, ProcessingContext context) {
+    public void createAndSaveChunks(String fileStoreId,
+                                    File resource, ProcessingContext context) {
+        try {
+            log.info("File received: {}, Filename: {}", resource, resource.getName());
+            // Process the video asynchronously
+            videoService.processVideoAsync(resource, context.withVideoId(fileStoreId));
 
-        for (org.egov.im.web.models.storage.File fileMetadata : storageResponse.getFiles()) {
-            String fileStoreId = fileMetadata.getFileStoreId();
-
-            try {
-                int index = storageResponse.getFiles().indexOf(fileMetadata);
-                Resource resource = filesToStore.get(index).getResource();
-
-                log.info("File received: {}, Filename: {}", resource, resource.getFilename());
-
-                File tempFile = storageUtil.createTempFile(tempDir, resource);
-
-                // Write the file to the temporary location
-                storageUtil.writeFileToTempFile(resource, tempFile.toPath());
-
-                // Process the video asynchronously
-                videoService.processVideoAsync(tempFile, context.withVideoId(fileStoreId));
-
-            } catch (IOException ex) {
-                log.error("I/O Error while processing fileStoreId {}: {}", fileStoreId, ex.getMessage(), ex);
-                throw new CustomException("I/O Error processing video", ex.getMessage());
-            } catch (CustomException ex) {
-                log.error("Custom Exception for fileStoreId {}: {}", fileStoreId, ex.getMessage(), ex);
-                throw ex;
-            } catch (Exception ex) {
-                log.error("Unexpected error while processing fileStoreId {}: {}", fileStoreId, ex.getMessage(), ex);
-                throw new CustomException("Unexpected error processing video", ex.getMessage());
-            }
+        } catch (CustomException ex) {
+            log.error("Custom Exception for fileStoreId {}: {}", fileStoreId, ex.getMessage(), ex);
+            throw ex;
+        } catch (Exception ex) {
+            log.error("Unexpected error while processing fileStoreId {}: {}", fileStoreId, ex.getMessage(), ex);
+            throw new CustomException("Unexpected error processing video", ex.getMessage());
         }
-
-        return CompletableFuture.completedFuture(null);
     }
+
+    public List<File> createTempFiles(List<MultipartFile> files) {
+        List<File> tempFiles = new ArrayList<>();
+        files.forEach(file -> {
+            try {
+                Resource resource = file.getResource();
+                File tempFile = storageUtil.createTempFile(tempDir, resource);
+                storageUtil.writeFileToTempFile(resource, tempFile.toPath());
+                tempFiles.add(tempFile);
+            } catch (IOException e) {
+                log.error("Error processing file: {}", file.getOriginalFilename(), e);
+                throw new CustomException("ERROR_CREATING_TEMP_FILES", e.getMessage());
+            }
+        });
+        return tempFiles;
+    }
+
 }

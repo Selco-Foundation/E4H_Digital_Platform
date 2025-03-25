@@ -8,11 +8,11 @@ import org.springframework.stereotype.Component;
 public class FFmpegCommandGenerator {
 
     private static final String BASE_COMMAND =
-            "ffmpeg -i %s -hls_time 10 -hls_list_size 0 %s -loglevel info -report";
+            "ffmpeg -i %s -hls_time 10 -hls_list_size 0 %s";
 
     private static final String OPTIMIZED_COMMAND =
-            "ffmpeg -i %s -max_muxing_queue_size 2048 -loglevel debug -report -c:v libx264 " +
-                    "-preset %s -crf %d -s %s -c:a aac -b:a %s -maxrate 1500K " +
+            "ffmpeg -i %s -max_muxing_queue_size 2048 -c:v libx264 -preset %s " +
+                    "-crf %d -s %s -c:a aac -b:a %s -maxrate 1500K " +
                     "-bufsize 1024K -hls_time 10 -hls_list_size 0 " +
                     "-hls_flags split_by_time -f hls %s";
 

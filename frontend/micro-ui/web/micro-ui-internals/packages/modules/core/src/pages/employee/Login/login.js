@@ -48,21 +48,21 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
     Digit.UserService.setUser(user);
     setEmployeeDetail(user?.info, user?.access_token);
 
-    let redirectPath = sessionStorage.getItem("redirectAfterLogin") || "/digit-ui/employee";
+    let redirectPath = sessionStorage.getItem("redirectAfterLogin") || `/${window.contextPath}/employee`;
     sessionStorage.removeItem("redirectAfterLogin");
 
     /* logic to redirect back to same screen where we left off  */
     if (window?.location?.href?.includes("from=")) {
-      redirectPath = decodeURIComponent(window?.location?.href?.split("from=")?.[1]) || "/digit-ui/employee";
+      redirectPath = decodeURIComponent(window?.location?.href?.split("from=")?.[1]) || `/${window.contextPath}/employee`;
     }
 
     /*  RAIN-6489 Logic to navigate to National DSS home incase user has only one role [NATADMIN]*/
-    if (user?.info?.roles && user?.info?.roles?.length > 0 && user?.info?.roles?.every((e) => e.code === "NATADMIN")) {
-      redirectPath = "/digit-ui/employee/dss/landing/NURT_DASHBOARD";
+    if (user?.info?.roles && user?.info?.roles?.length > 0 &&  user?.info?.roles?.every((e) => e.code === "NATADMIN")) {
+      redirectPath = `/${window.contextPath}/employee/dss/landing/NURT_DASHBOARD`;
     }
     /*  RAIN-6489 Logic to navigate to National DSS home incase user has only one role [NATADMIN]*/
     if (user?.info?.roles && user?.info?.roles?.length > 0 && user?.info?.roles?.every((e) => e.code === "STADMIN")) {
-      redirectPath = "/digit-ui/employee/dss/landing/home";
+      redirectPath = `/${window.contextPath}/employee/dss/landing/home`;
     }
 
     history.replace(redirectPath);
@@ -97,7 +97,7 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
   };
 
   const onForgotPassword = () => {
-    sessionStorage.getItem("User") && sessionStorage.removeItem("User");
+    sessionStorage.getItem("User") && sessionStorage.removeItem("User")
     history.push("/digit-ui/employee/user/forgot-password");
   };
 
@@ -184,27 +184,12 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
             {t("CORE_COMMON_FORGOT_PASSWORD")}
           </button>
 
-          {popup && <ForgotPassword setPopup={setPopup} />}
-        </div>
-        <div style={{ display: "flex", justifyContent: "center", marginBottom: "10px" }}>
-          <img
-            className="bannerLogo"
-            src={"https://selco-assets.s3.ap-south-1.amazonaws.com/powered-by-nhm-ka.png"}
-            alt="Selco Foundation"
-            style={{ border: "0px", marginLeft: "15px" }}
-          />
-          <img
-            className="bannerLogo"
-            src={"https://selco-assets.s3.ap-south-1.amazonaws.com/powered-by-ka_govt.svg"}
-            alt="Selco Foundation"
-            style={{ border: "0px" }}
-          />
-          <img
-            className="bannerLogo"
-            src={"https://selco-assets.s3.ap-south-1.amazonaws.com/logo.png"}
-            alt="Selco Foundation"
-            style={{ border: "0px" }}
-          />
+        {popup && <ForgotPassword setPopup={setPopup} />}
+      </div>
+      <div style={{display: "flex", justifyContent: "center", marginBottom:"10px"}}>
+        <img className="bannerLogo" src={"https://selco-assets.s3.ap-south-1.amazonaws.com/powered-by-nhm-ka.png"} alt="Selco Foundation" style={{border:"0px",marginLeft:"15px"}} />
+        <img className="bannerLogo" src={"https://selco-assets.s3.ap-south-1.amazonaws.com/powered-by-ka_govt.svg"} alt="Selco Foundation" style={{border:"0px"}}/>
+        <img className="bannerLogo" src={"https://selco-assets.s3.ap-south-1.amazonaws.com/logo.png"} alt="Selco Foundation" style={{border:"0px"}} />
         </div>
       </div>
       {showToast && <Toast error={true} label={t(showToast)} onClose={closeToast} />}

@@ -7,10 +7,10 @@ const useInboxData = (searchParams,tenantIdNew) => {
   let serviceIds = [];
   const inboxTotal=sessionStorage.getItem("inboxTotal");
   let commonFilters = { start: 1, end: 10 };
-  const { limit, offset } = searchParams;
+  const { limit, offset, nearingSLA } = searchParams;
   sessionStorage.setItem("limit", JSON.stringify(limit));
   sessionStorage.setItem("offset", JSON.stringify(offset));
-  let appFilters = { ...commonFilters, ...searchParams?.filters?.pgrQuery, ...searchParams?.search, limit, offset };
+  let appFilters = { ...commonFilters, ...searchParams?.filters?.pgrQuery, ...searchParams?.search, limit, offset, nearingSLA };
   sessionStorage.setItem("appFilters", JSON.stringify(appFilters));
   sessionStorage.setItem("searchParams", JSON.stringify(searchParams));
   let wfFilters

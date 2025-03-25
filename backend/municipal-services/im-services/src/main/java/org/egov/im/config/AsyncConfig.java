@@ -8,6 +8,7 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ThreadPoolExecutor;
 
+
 @Slf4j
 @Configuration
 public class AsyncConfig implements AsyncConfigurer {
@@ -16,22 +17,32 @@ public class AsyncConfig implements AsyncConfigurer {
     public Executor getAsyncExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
 
-        int availableProcessors = 2;// Runtime.getRuntime().availableProcessors();
+        int availableProcessors = 2;
+        log.info("Available processors: {}", availableProcessors);
 
-        log.info("Available processor: {}", availableProcessors);
-
-        // Set core pool size to the number of available processors
         executor.setCorePoolSize(availableProcessors);
 
         executor.setMaxPoolSize(availableProcessors * 2);
 
-        executor.setQueueCapacity(availableProcessors);
+        executor.setQueueCapacity(availableProcessors * 5);
 
-        executor.setThreadNamePrefix("AsyncExecutor-");
+        executor.setThreadNamePrefix("AsyncIOExecutor-");
 
         executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
 
-        // Initialize the executor
+        executor.setTaskDecorator(runnable -> () -> {
+            log.info("Task started on thread: {}", Thread.currentThread().getName());
+
+            try {
+                runnable.run();
+            } catch (Exception ex) {
+                log.error("Error executing task on thread: {}", Thread.currentThread().getName(), ex);
+                throw ex;
+            } finally {
+                log.info("Task completed on thread: {}", Thread.currentThread().getName());
+            }
+        });
+
         executor.initialize();
 
         return executor;

@@ -9,11 +9,13 @@ import { Link } from "react-router-dom";
 const Inbox = () => {
   const { t } = useTranslation();
   let tenantId = Digit.ULBService.getCurrentTenantId();
+  const stateTenantId = Digit.ULBService.getStateId();
   const { uuid } = Digit.UserService.getUser().info;
   const [pageOffset, setPageOffset] = useState(0);
   const [pageSize, setPageSize] = useState(10);
   const [totalRecords, setTotalRecords] = useState(0);
   const userRoles = Digit.SessionStorage.get("User")?.info?.roles || [];
+  const {nearingSLA} = Digit.Hooks.useQueryParams();
   const isCodePresent = (array, codeToCheck) =>{
     return array.some(item => item.code === codeToCheck);
   }
@@ -27,9 +29,9 @@ const Inbox = () => {
       {
         tenantId= searchParams?.filters?.pgrQuery?.phcType
       }
-      else if (isCodePresent(userRoles, "COMPLAINT_RESOLVER") && (!searchParams?.filters?.pgrQuery || searchParams?.filters?.pgrfilters?.phcType.length ==0) && Digit.SessionStorage.get("Employee.tenantId") == "pg")
+      else if (isCodePresent(userRoles, "COMPLAINT_RESOLVER") && (!searchParams?.filters?.pgrQuery || searchParams?.filters?.pgrfilters?.phcType.length ==0) && Digit.SessionStorage.get("Employee.tenantId") == stateTenantId)
       {
-        const codes = Digit.SessionStorage.get("Tenants").filter(item => item.code !== "pg")
+        const codes = Digit.SessionStorage.get("Tenants").filter(item => item.code !== stateTenantId)
         .map(item => item.code)
         .join(',');
         tenantId = codes
@@ -72,7 +74,8 @@ const Inbox = () => {
     tenant = searchParams?.search?.phcType
   }
   let isMobile = Digit.Utils.browser.isMobile();
-  let { data: complaints, isLoading } =isMobile? Digit.Hooks.pgr.useInboxData({ ...searchParams, offset: pageOffset, limit: pageSize  }):Digit.Hooks.pgr.useInboxData({ ...searchParams,offset: pageOffset, limit: pageSize }) ;
+  const allSearchParams = { ...searchParams, ...(nearingSLA==="1" && {nearingSLA: true})};
+  let { data: complaints, isLoading } =isMobile? Digit.Hooks.pgr.useInboxData({...allSearchParams, offset: pageOffset, limit: pageSize  }):Digit.Hooks.pgr.useInboxData({ ...allSearchParams, offset: pageOffset, limit: pageSize }) ;
   useEffect(()=>{
     if(complaints!==undefined && complaints.combinedRes.length!==0){
       const total=complaints.total
@@ -90,7 +93,7 @@ const Inbox = () => {
           <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
           <Header>{t("ES_COMMON_INBOX")}</Header>
           <div style={{color:"#9e1b32", marginBottom:'10px', textAlign:"right", marginRight:"15px"}}>
-              <Link to={`/digit-ui/employee`}>{t("CS_COMMON_BACK")}</Link>
+              <Link to={`/${window.contextPath}/employee`}>{t("CS_COMMON_BACK")}</Link>
           </div> 
           </div>
           <DesktopInbox

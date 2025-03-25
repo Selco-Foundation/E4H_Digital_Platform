@@ -20,7 +20,7 @@ const ButtonSelector = (props) => {
       form={props.formId}
       onClick={props.onSubmit}
       disabled={props.isDisabled}
-      style={props.style ? {...props.style,height:"3rem", paddingLeft:isMobile && language==="ka_IN" ? "10px":"24px", paddingRight:isMobile && language==="ka_IN" ? "10px":"24px"} : null}
+      style={props.style ? {...props.style,height:"3rem", paddingLeft:isMobile ? "10px":"24px", paddingRight:isMobile ? "10px":"24px"} : null}
     >
       <h2 style={{ ...props?.textStyles, ...{ width: "100%",margin:"auto" } }}>{props.label}</h2>
     </button>
