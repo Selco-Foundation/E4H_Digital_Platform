@@ -14,10 +14,10 @@ public class FFmpegCommandGenerator {
     private final IMConfiguration config;
 
     private static final String BASE_COMMAND =
-            "nice -n 19 cpulimit -l %s -- ffmpeg -i %s -hls_time 10 -hls_list_size 0 %s";
+            "nice -n 19 cpulimit -f -l %s -- ffmpeg -i %s -hls_time 10 -hls_list_size 0 %s";
 
     private static final String OPTIMIZED_COMMAND =
-            "nice -n 19 cpulimit -l %s -- ffmpeg -i %s -max_muxing_queue_size 2048 -c:v libx264 -preset %s " +
+            "nice -n 19 cpulimit -f -l %s -- ffmpeg -i %s -max_muxing_queue_size 2048 -c:v libx264 -preset %s " +
                     "-crf %d -s %s -c:a aac -b:a %s -maxrate 1500K " +
                     "-bufsize 1024K -hls_time 10 -hls_list_size 0 " +
                     "-hls_flags split_by_time -f hls %s";
