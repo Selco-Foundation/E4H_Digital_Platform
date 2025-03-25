@@ -254,39 +254,42 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
           : t("CS_COMMON_SENDbACK")
       }
       actionSaveOnSubmit={() => {
-        if (selectedAction === "REJECT" && !selectedRejectReason) {
-          setError(t("CS_MANDATORY_REJECT_REASON"));
-        } else if (selectedAction === "SENDBACK" && !selectedSendBackReason) {
-          setError(t("CS_MANDATORY_SENDBACK_REASON"));
-        } else if (selectedAction === "SENDBACK" && selectedSendBackReason?.additionalInputs?.[0].type === "radio" && !selectedSendBackSubReason) {
-          setError(t("CS_MANDATORY_SENDBACK_SUBREASON"));
-        } else if (
+        const isTextareaAction =
           ["SENDBACK", "REJECT"].includes(selectedAction) &&
           (selectedAction === "SENDBACK"
             ? selectedSendBackReason?.additionalInputs?.[0].type === "textarea"
-            : selectedRejectReason?.additionalInputs?.[0].type === "textarea") &&
-          !comments
-        ) {
-          setError(t("CS_MANDATORY_COMMENTS"));
-        } else if (selectedAction === "REOPEN" && selectedReopenReason === null) {
-          setError(t("CS_REOPEN_REASON_MANDATORY"));
-        } else if (selectedAction === "ASSIGN" && selectedEmployee === null) {
-          setError(t("CS_ASSIGNEE_MANDATORY"));
-        } else if (selectedAction === "RESOLVE" && !comments) {
-          setError(t("CS_MANDATORY_COMMENTS"));
-        } else if (selectedAction === "RESOLVE" && uploadedFile.length === 0) {
-          setError(t("CS_MANDATORY_FILE_UPLOAD"));
-        } else {
-          onAssign(
-            selectedEmployee,
-            comments,
-            uploadedFile,
-            selectedReopenReason,
-            selectedRejectReason,
-            selectedSendBackReason,
-            selectedSendBackSubReason
-          );
+            : selectedRejectReason?.additionalInputs?.[0].type === "textarea");
+
+        const isCommentsMandatory = (isTextareaAction || selectedAction === "RESOLVE") && !comments.trim();
+
+        const validations = [
+          { condition: selectedAction === "REJECT" && !selectedRejectReason, message: "CS_MANDATORY_REJECT_REASON" },
+          { condition: selectedAction === "SENDBACK" && !selectedSendBackReason, message: "CS_MANDATORY_SENDBACK_REASON" },
+          {
+            condition: selectedAction === "SENDBACK" && selectedSendBackReason?.additionalInputs?.[0].type === "radio" && !selectedSendBackSubReason,
+            message: "CS_MANDATORY_SENDBACK_SUBREASON",
+          },
+          { condition: isCommentsMandatory, message: "CS_MANDATORY_COMMENTS" },
+          { condition: selectedAction === "REOPEN" && selectedReopenReason === null, message: "CS_REOPEN_REASON_MANDATORY" },
+          { condition: selectedAction === "ASSIGN" && selectedEmployee === null, message: "CS_ASSIGNEE_MANDATORY" },
+          { condition: selectedAction === "RESOLVE" && uploadedFile.length === 0, message: "CS_MANDATORY_FILE_UPLOAD" },
+        ];
+
+        const error = validations.find(({ condition }) => condition);
+        if (error) {
+          setError(t(error.message));
+          return;
         }
+
+        onAssign(
+          selectedEmployee,
+          comments,
+          uploadedFile,
+          selectedReopenReason,
+          selectedRejectReason,
+          selectedSendBackReason,
+          selectedSendBackSubReason
+        );
       }}
       error={error}
       setError={setError}
@@ -346,8 +349,9 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
         ) : null}
         {selectedAction !== "SENDBACK" || selectedSendBackReason?.additionalInputs?.[0].type === "textarea" ? (
           <>
-            {(selectedAction !== "ASSIGN" && selectedAction !== "REOPEN") &&
-            (selectedAction === "REJECT" && selectedRejectReason?.additionalInputs?.[0].type === "textarea") ? (
+            {selectedAction !== "ASSIGN" &&
+            selectedAction !== "REOPEN" &&
+            !(selectedAction === "REJECT" && selectedRejectReason?.additionalInputs?.[0].type !== "textarea") ? (
               <CardLabel>{t("CS_COMMON_EMPLOYEE_COMMENTS")}*</CardLabel>
             ) : (
               <CardLabel>{t("CS_COMMON_EMPLOYEE_COMMENTS")}</CardLabel>
@@ -714,7 +718,7 @@ export const ComplaintDetails = (props) => {
                 {checkpoint?.wfComment?.map((e, index) => (
                   <div key={`comment-${index}`} className="TLComments">
                     <h3>{t("WF_COMMON_COMMENTS")}</h3>
-                    <p>{e}</p>
+                    <p style={{ overflowX: "scroll" }}>{e}</p>
                   </div>
                 ))}
               </div>

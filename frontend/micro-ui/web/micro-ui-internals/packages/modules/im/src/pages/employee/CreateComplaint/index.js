@@ -23,6 +23,7 @@ export const CreateComplaint = ({ parentUrl }) => {
   const [showToast, setShowToast] = useState(null);
   const [uploadedFile, setUploadedFile] = useState([]);
   const [uploadedImages, setUploadedImagesIds] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
   const specificFileConstraint = { type: "video", maxSize: 100, maxFiles: 5 };
   const [district, setDistrict] = useState(null);
   const [block, setBlock] = useState(null);
@@ -167,12 +168,12 @@ export const CreateComplaint = ({ parentUrl }) => {
   const client = useQueryClient();
 
   useEffect(() => {
-    if (complaintType?.key && subType?.key && healthCareType?.code && healthcentre?.code && district?.key && block.key) {
+    if (complaintType?.key && subType?.key && healthCareType?.code && healthcentre?.code && district?.key && block.key && !isUploading) {
       setSubmitValve(true);
     } else {
       setSubmitValve(false);
     }
-  }, [complaintType, subType, healthcentre, healthCareType, district, block]);
+  }, [complaintType, subType, healthcentre, healthCareType, district, block, isUploading]);
   async function selectedType(value) {
     setDisableUpload(false);
     if (value.key !== complaintType.key) {
@@ -519,7 +520,8 @@ export const CreateComplaint = ({ parentUrl }) => {
                 t={t}
                 module="Incident"
                 tenantId={tenantId}
-                getFormState={(e) => getData(e)}
+                getFormState={(state, loading) => getData(state, loading)}
+                onUploadStatusChange={setIsUploading}
                 allowedFileTypesRegex={/(jpg|jpeg|png|image|mp4|mov|avi|wmv|video)$/i}
                 allowedMaxSizeInMB={50}
                 maxFilesAllowed={5}
