@@ -20,6 +20,10 @@ const LanguageSelection = () => {
     history.push(`/${window.contextPath}/employee/user/login`);
   };
 
+  if(languages?.length === 1) {
+    handleSubmit()
+  }
+
   if (isLoading) return null;
 
   return (
@@ -61,19 +65,19 @@ const LanguageSelection = () => {
         <div style={{ display: "flex", justifyContent: "center", marginTop: "10px" }}>
           <img
             className="bannerLogo"
-            src={"https://selco-assets.s3.ap-south-1.amazonaws.com/powered-by-nhm-ka.png"}
+            src={window?.globalConfigs?.getConfig("STATE_NHM_LOGO")}
             alt="Selco Foundation"
             style={{ border: "0px", marginLeft: "15px" }}
           />
           <img
             className="bannerLogo"
-            src={"https://selco-assets.s3.ap-south-1.amazonaws.com/powered-by-ka_govt.svg"}
+            src={window?.globalConfigs?.getConfig("STATE_GOVT_LOGO")}
             alt="Selco Foundation"
             style={{ border: "0px" }}
           />
           <img
             className="bannerLogo"
-            src={"https://selco-assets.s3.ap-south-1.amazonaws.com/logo.png"}
+            src={window?.globalConfigs?.getConfig("SELCO_LOGO")}
             alt="Selco Foundation"
             style={{ border: "0px" }}
           />

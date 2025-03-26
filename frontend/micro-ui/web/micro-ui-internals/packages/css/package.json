@@ -1,6 +1,6 @@
 {
   "name": "@selco/selco-css",
-  "version": "1.8.18",
+  "version": "1.8.19",
   "license": "MIT",
   "main": "dist/index.css",
   "author": "Jagankumar <jagan.kumar@egov.org.in>",

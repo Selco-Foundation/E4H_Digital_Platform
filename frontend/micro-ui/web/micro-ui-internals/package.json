@@ -69,7 +69,7 @@
   "dependencies": {
     "@egovernments/digit-ui-react-components": "1.8.0",
     "@selco/digit-ui-react-components": "1.8.0",
-    "@selco/selco-css": "1.8.18",
+    "@selco/selco-css": "1.8.19",
     "hls.js": "^1.5.20",
     "lodash": "4.17.21",
     "microbundle-crl": "0.13.11",

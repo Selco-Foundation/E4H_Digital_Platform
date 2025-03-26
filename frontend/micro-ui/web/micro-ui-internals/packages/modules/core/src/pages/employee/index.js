@@ -36,6 +36,7 @@ const EmployeeApp = ({
   const location = useLocation();
   const showLanguageChange = location?.pathname?.includes("language-selection");
   const isUserProfile = userScreensExempted.some((url) => location?.pathname?.includes(url));
+  const bgImageUrl = window?.globalConfigs?.getConfig("BG_IMAGE");
   useEffect(() => {
     Digit.UserService.setType("employee");
   }, []);
@@ -60,13 +61,15 @@ const EmployeeApp = ({
           )}
           <div
             className={isUserProfile ? "grounded-container" : "loginContainer"}
-            style={
-              isUserProfile
+            style={{
+              '--bg-image-url': `url(${bgImageUrl})`,
+              ...(isUserProfile
                 ? !isMobile
                   ? { backgroundColor: "#225670", marginLeft: "40px", paddingTop: "100px" }
                   : { backgroundColor: "#225670", paddingTop: "100px" }
                 : { backgroundColor: "#225670" }
-            }
+              )
+            }}
           >
             <Switch>
               <Route path={`${path}/user/login`}>
@@ -126,19 +129,19 @@ const EmployeeApp = ({
             >
               <img
                 className="bannerLogo"
-                src={"https://selco-assets.s3.ap-south-1.amazonaws.com/powered-by-nhm-ka.png"}
+                src={window?.globalConfigs?.getConfig("STATE_NHM_LOGO")}
                 alt="Selco Foundation"
                 style={{ height: "3rem", width: "3rem", cursor: "pointer", marginRight: "15px", marginLeft: "15px" }}
               />
               <img
                 className="bannerLogo"
-                src={"https://selco-assets.s3.ap-south-1.amazonaws.com/powered-by-ka_govt.svg"}
+                src={window?.globalConfigs?.getConfig("STATE_GOVT_LOGO")}
                 alt="Selco Foundation"
                 style={{ height: "3rem", width: "3rem", cursor: "pointer", marginRight: "15px" }}
               />
               <img
                 className="bannerLogo"
-                src={"https://selco-assets.s3.ap-south-1.amazonaws.com/logo.png"}
+                src={window?.globalConfigs?.getConfig("SELCO_LOGO")}
                 alt="Selco Foundation"
                 style={{ height: "3rem", cursor: "pointer", width: "3rem", marginRight: "15px" }}
               />

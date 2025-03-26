@@ -95,6 +95,7 @@ const Sidebar = ({ data }) => {
   const [selectedChildLevelOne, setSelectedChildLevelOne] = useState(null);
   const [showDialog, setShowDialog] = useState(false);
   const [subNav, setSubNav] = useState(false);
+  const crmHelplineNumber = window?.globalConfigs?.getConfig("CRM_HELPLINE_NUMBER") || "9876543210";
 
   const IconsObject = {
     home: <HomeIcon />,
@@ -449,7 +450,7 @@ const Sidebar = ({ data }) => {
             <Phone />
               <div data-tip="React-tooltip" data-for={`jk-side-$}`} style={{display:"flex",flexDirection:"column"}}>
                 <span>{t("CS_COMMON_HELPLINE")} </span>
-                <span>{"6362222593"} </span>
+                <span>{crmHelplineNumber} </span>
               </div>
             </div>
             {/* <div> {item.links && subnav ? <ArrowVectorDown /> : item.links ? <ArrowForward /> : null} </div> */}
