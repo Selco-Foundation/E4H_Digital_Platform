@@ -58,9 +58,9 @@ const PoweredBy = () => (
    {" "}
 
         <div style={{textAlign:"center",marginTop:"10px"}}>
-        <img className="bannerLogo" src={"https://selco-assets.s3.ap-south-1.amazonaws.com/powered-by-nhm-ka.png"} alt="Selco Foundation" style={{border:"0px",height:"1.2rem"}} />
-        <img className="bannerLogo" src={"https://selco-assets.s3.ap-south-1.amazonaws.com/powered-by-ka_govt.svg"} alt="Selco Foundation" style={{border:"0px",height:"1.2rem"}}/>
-        <img className="bannerLogo" src={"https://selco-assets.s3.ap-south-1.amazonaws.com/logo.png"} alt="Selco Foundation" style={{border:"0px",height:"1.2rem"}} />
+        <img className="bannerLogo" src={window?.globalConfigs?.getConfig("STATE_NHM_LOGO")} alt="Selco Foundation" style={{border:"0px",height:"1.2rem"}} />
+        <img className="bannerLogo" src={window?.globalConfigs?.getConfig("STATE_GOVT_LOGO")} alt="Selco Foundation" style={{border:"0px",height:"1.2rem"}}/>
+        <img className="bannerLogo" src={window?.globalConfigs?.getConfig("SELCO_LOGO")} alt="Selco Foundation" style={{border:"0px",height:"1.2rem"}} />
         </div>
         <img
       alt="Powered by DIGIT"
