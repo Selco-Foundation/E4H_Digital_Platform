@@ -67,7 +67,7 @@
   }
 
   .loginContainer {
-    background: linear-gradient(#06263e, #1d70b85c), url(https://selco-assets.s3.ap-south-1.amazonaws.com/bg.jpg);
+    background: linear-gradient(#06263e, #1d70b85c), var(--bg-image-url);
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
