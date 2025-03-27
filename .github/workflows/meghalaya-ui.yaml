@@ -22,10 +22,12 @@ jobs:
       # Login to Docker Container Registry
       - name: Login to Docker Container Registry
         run: docker login -u selcohub -p ${{ secrets.DOCKER_PASSWORD }}
-      - name: Set Version from Branch
+      - name: Set Version from Tag or Branch
         id: set_version
         run: |
-          if [[ "${GITHUB_REF}" == refs/heads/* ]]; then
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/}  # Use tag name for version
+          elif [[ "${GITHUB_REF}" == refs/heads/* ]]; then
             # Use branch name as version, replacing '/' with '-'
             VERSION=${GITHUB_REF#refs/heads/}
             VERSION=$(echo "${VERSION}" | sed 's|/|-|g')

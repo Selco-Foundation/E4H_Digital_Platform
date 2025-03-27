@@ -1,16 +1,22 @@
-name: Nagaland-UI Image Build workflow
+name: Odisha-UI Image Build workflow
 on:
   push:
     branches:
       - develop
       - main
+    tags:
+      - 'v*'
     paths:
       - 'frontend/micro-ui/**'
   workflow_dispatch:
   workflow_call:
+permissions:
+  security-events: write
+  contents: read
 
 jobs:
   docker_image-build:
+    if: (github.event_name == 'push' && (startsWith(github.ref, 'refs/heads/develop') || startsWith(github.ref, 'refs/heads/main') || startsWith(github.ref, 'refs/tags/v'))) || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -40,10 +46,10 @@ jobs:
           commit_hash=$(git log -1 --pretty=format:%H -- frontend/micro-ui)
           echo "commit_hash=$commit_hash" >> $GITHUB_ENV
 
-      - name: Build and Push Docker image for Nagaland-ui
+      - name: Build and Push Docker image for Odisha-ui
         run: |
-          docker build --build-arg PUBLIC_PATH="/nagaland-ui/"  -t selcohub/nagaland-ui:${{ env.VERSION }}-${{ env.commit_hash }} -f  web/docker/testfile/Dockerfile .
-          docker push selcohub/nagaland-ui:${{ env.VERSION }}-${{ env.commit_hash }}
+          docker build --build-arg PUBLIC_PATH="/odisha-ui/"  -t selcohub/odisha-ui:${{ env.VERSION }}-${{ env.commit_hash }} -f  web/docker/testfile/Dockerfile .
+          docker push selcohub/odisha-ui:${{ env.VERSION }}-${{ env.commit_hash }}
         working-directory: frontend/micro-ui
 
   Workflow_Trigger:
