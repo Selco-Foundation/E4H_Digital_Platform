@@ -522,16 +522,16 @@ export const CreateComplaint = ({ parentUrl }) => {
                 tenantId={tenantId}
                 getFormState={(state, loading) => getData(state, loading)}
                 onUploadStatusChange={setIsUploading}
-                allowedFileTypesRegex={/(jpg|jpeg|png|image|mp4|mov|avi|wmv|video)$/i}
+                allowedFileTypesRegex={/(jpg|jpeg|png|image)$/i}
                 allowedMaxSizeInMB={50}
                 maxFilesAllowed={5}
                 disabled={disbaledUpload}
                 ulb={Digit.SessionStorage.get("Employee.tenantId") !== stateTenantId ? Digit.SessionStorage.get("Employee.tenantId") : healthcentre?.code}
-                acceptFiles={".png, .image, .jpg, .jpeg, .mp4, .avi, .mov, .wmv, video/*"}
+                acceptFiles={".png, .image, .jpg, .jpeg"}
                 specificFileConstraint={specificFileConstraint}
               />
               {/* <ImageUploadHandler tenantId={tenant} uploadedImages={uploadedImages} onPhotoChange={handleUpload} disabled={disbaled}/> */}
-              <div style={{ marginLeft: "20px", marginTop: "10px", fontSize: "12px" }}>{t("CS_IMAGE_VIDEO_BASED_FILES_ARE_ACCEPTED")}</div>
+              <div style={{ marginLeft: "20px", marginTop: "10px", fontSize: "12px" }}>{t("CS_IMAGE_BASED_FILES_ARE_ACCEPTED")}</div>
             </div>
           ),
         },
