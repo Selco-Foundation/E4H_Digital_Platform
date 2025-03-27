@@ -28,7 +28,6 @@ jobs:
       # Login to Docker Container Registry
       - name: Login to Docker Container Registry
         run: docker login -u selcohub -p ${{ secrets.DOCKER_PASSWORD }}
-      - name: Set Version from Branch
       - name: Set Version from Tag or Branch
         id: set_version
         run: |
