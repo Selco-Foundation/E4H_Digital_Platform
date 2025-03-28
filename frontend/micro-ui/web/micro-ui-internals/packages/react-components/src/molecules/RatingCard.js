@@ -31,7 +31,7 @@ const RatingCard = ({ config, onSelect, t }) => {
       return (
         <React.Fragment key={index}>
           <CardLabel>{t(input.label)}</CardLabel>
-          <Rating starStyles={input.starStyles} currentRating={rating} maxRating={input.maxRating} onFeedback={(e, ref, i) => feedback(e, ref, i)} />
+          <Rating styles={input.styles} starStyles={input.starStyles} currentRating={rating} maxRating={input.maxRating} onFeedback={(e, ref, i) => feedback(e, ref, i)} />
           {input?.error}
         </React.Fragment>
       );

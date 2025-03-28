@@ -45,6 +45,9 @@ public class Workflow   {
         @Valid
         private List<Document> verificationDocuments = null;
 
+        @JsonProperty("rating")
+        private Integer rating = null;
+
         @JsonProperty("sendBackReason")
         private SendBackReason sendBackReason;
 

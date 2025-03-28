@@ -58,7 +58,7 @@
 span.link {
   @apply text-primary-main cursor-pointer;
 
-  :hover {
+  &:hover {
     @apply text-primary-dark;
   }
 }

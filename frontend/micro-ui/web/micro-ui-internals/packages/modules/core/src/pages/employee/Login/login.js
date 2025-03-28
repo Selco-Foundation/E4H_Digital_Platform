@@ -48,8 +48,7 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
     Digit.UserService.setUser(user);
     setEmployeeDetail(user?.info, user?.access_token);
 
-    let redirectPath = sessionStorage.getItem("redirectAfterLogin") || `/${window.contextPath}/employee`;
-    sessionStorage.removeItem("redirectAfterLogin");
+    let redirectPath = `/${window.contextPath}/employee`;
 
     /* logic to redirect back to same screen where we left off  */
     if (window?.location?.href?.includes("from=")) {

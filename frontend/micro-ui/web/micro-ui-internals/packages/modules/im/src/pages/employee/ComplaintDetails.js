@@ -33,13 +33,12 @@ import {
   MultiUploadWrapper,
   RadioButtons,
 } from "@selco/digit-ui-react-components";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 
 import { Close } from "../../Icons";
 import { useTranslation } from "react-i18next";
 import { isError, useQueryClient } from "react-query";
 import StarRated from "../../components/timelineInstances/StarRated";
-import { useLocation } from "react-router-dom/cjs/react-router-dom.min";
 
 const MapView = (props) => {
   return (
@@ -90,8 +89,8 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
   );
   const employeeData = useEmployeeData
     ? useEmployeeData.map((departmentData) => {
-        return { heading: departmentData.department, options: departmentData.employees };
-      })
+      return { heading: departmentData.department, options: departmentData.employees };
+    })
     : null;
 
   const [selectedEmployee, setSelectedEmployee] = useState(null);
@@ -227,14 +226,14 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
             selectedAction === "ASSIGN" || selectedAction === "REASSIGN"
               ? t("CS_ACTION_ASSIGN_TICKET")
               : selectedAction === "REJECT"
-              ? t("CS_ACTION_REJECT_TICKET")
-              : selectedAction === "REOPEN"
-              ? t("CS_COMMON_REOPEN")
-              : selectedAction === "RESOLVE"
-              ? t("CS_COMMON_RESOLVE")
-              : selectedAction === "CLOSE"
-              ? t("CS_COMMON_CLOSE")
-              : t("CS_COMMON_SENDBACK")
+                ? t("CS_ACTION_REJECT_TICKET")
+                : selectedAction === "REOPEN"
+                  ? t("CS_COMMON_REOPEN")
+                  : selectedAction === "RESOLVE"
+                    ? t("CS_COMMON_RESOLVE")
+                    : selectedAction === "CLOSE"
+                      ? t("CS_COMMON_CLOSE")
+                      : t("CS_COMMON_SENDBACK")
           }
         />
       }
@@ -245,14 +244,14 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
         selectedAction === "ASSIGN" || selectedAction === "REASSIGN"
           ? t("CS_COMMON_ASSIGN")
           : selectedAction === "REJECT"
-          ? t("CS_COMMON_REJECT")
-          : selectedAction === "REOPEN"
-          ? t("CS_ACTION_REOPEN")
-          : selectedAction === "RESOLVE"
-          ? t("CS_COMMON_RESOLVE_BUTTON")
-          : selectedAction === "CLOSE"
-          ? t("CS_COMMON_CLOSE")
-          : t("CS_COMMON_SENDbACK")
+            ? t("CS_COMMON_REJECT")
+            : selectedAction === "REOPEN"
+              ? t("CS_ACTION_REOPEN")
+              : selectedAction === "RESOLVE"
+                ? t("CS_COMMON_RESOLVE_BUTTON")
+                : selectedAction === "CLOSE"
+                  ? t("CS_COMMON_CLOSE")
+                  : t("CS_COMMON_SENDbACK")
       }
       actionSaveOnSubmit={() => {
         const isTextareaAction =
@@ -351,8 +350,8 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
         {selectedAction !== "SENDBACK" || selectedSendBackReason?.additionalInputs?.[0].type === "textarea" ? (
           <>
             {selectedAction !== "ASSIGN" &&
-            selectedAction !== "REOPEN" &&
-            !(selectedAction === "REJECT" && selectedRejectReason?.additionalInputs?.[0].type !== "textarea") ? (
+              selectedAction !== "REOPEN" &&
+              !(selectedAction === "REJECT" && selectedRejectReason?.additionalInputs?.[0].type !== "textarea") ? (
               <CardLabel>{t("CS_COMMON_EMPLOYEE_COMMENTS")}*</CardLabel>
             ) : (
               <CardLabel>{t("CS_COMMON_EMPLOYEE_COMMENTS")}</CardLabel>
@@ -439,8 +438,8 @@ export const ComplaintDetails = (props) => {
   const tenant =
     Digit.SessionStorage.get("Employee.tenantId") === stateTenantId
       ? Digit.SessionStorage.get("IM_TENANTS")
-          .map((item) => item.code)
-          .join(",")
+        .map((item) => item.code)
+        .join(",")
       : Digit.SessionStorage.get("Employee.tenantId");
 
   const { isLoading, complaintDetails, revalidate: revalidateComplaintDetails } = Digit.Hooks.pgr.useComplaintDetails({
@@ -690,8 +689,8 @@ export const ComplaintDetails = (props) => {
       mobileNumber: checkpoint?.assigner?.mobileNumber,
       ...(checkpoint.status === "COMPLAINT_FILED" && complaintDetails?.audit
         ? {
-            source: complaintDetails.audit.source,
-          }
+          source: complaintDetails.audit.source,
+        }
         : {}),
     };
     const isFirstPendingForAssignment = arr.length - (index + 1) === 1 ? true : false;
@@ -744,16 +743,19 @@ export const ComplaintDetails = (props) => {
           </>
         );
       }
-    } else if (checkpoint.status === "RESOLVED") {
+    } else if (checkpoint.status === "CLOSEDAFTERRESOLUTION") {
       return (
         <>
           {complaintDetails.workflow.action === "RATE" ? (
-            <StarRated text={t("Your Rating")} rating={complaintDetails.audit.rating} />
+            <div className="TLComments">
+              <h3>{t("CS_COMPLAINT_RATING")}</h3>
+              <StarRated rating={complaintDetails.workflow.rating} />
+            </div>
           ) : (
-            currentLoginUser === workflowDetails?.data?.processInstances?.at(-1)?.assigner?.uuid && (
+            currentLoginUser === workflowDetails?.data?.processInstances?.[workflowDetails.data.processInstances.length - 1]?.assigner?.uuid && (
               <div>
                 <span className="link">
-                  <Link to={`/digit-ui/employee/im/complaint/feedback/${incidentId}/${tenantId}`}>Rate</Link>
+                  <Link to={`/${window.contextPath}/employee/im/complaint/feedback/${incidentId}/${tenantId}`}>Rate</Link>
                 </span>
               </div>
             )
