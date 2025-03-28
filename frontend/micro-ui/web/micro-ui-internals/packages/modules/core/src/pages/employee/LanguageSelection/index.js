@@ -8,7 +8,7 @@ const LanguageSelection = () => {
   const { data: storeData, isLoading } = Digit.Hooks.useStore.getInitData();
   const { t } = useTranslation();
   const history = useHistory()
-  const from = decodeURIComponent(window?.location?.href?.split("from=")?.[1]) || "";
+  // const from = decodeURIComponent(window?.location?.href?.split("from=")?.[1]) || "";
   const { languages, stateInfo } = storeData || {};
   const selectedLanguage = Digit.StoreData.getCurrentLanguage();
   const [selected, setselected] = useState(selectedLanguage);
@@ -24,13 +24,13 @@ const LanguageSelection = () => {
   });
 
   const handleSubmit = (event) => {
-    history.push(getNavigationConfig(from));
+    history.push(loginURL);
   };
 
   if (languages?.length === 1) {
     return (
       <Redirect
-        to={getNavigationConfig(from)}
+        to={loginURL}
       />
     );
   }
