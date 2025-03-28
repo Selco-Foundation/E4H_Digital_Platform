@@ -573,7 +573,9 @@ public class NotificationService {
             messageForEmployee = messageForEmployee.replace("{ticket_type}", incidentWrapper.getIncident().getIncidentType());
             messageForEmployee = messageForEmployee.replace("{incidentId}", incidentWrapper.getIncident().getIncidentId());
             messageForEmployee = messageForEmployee.replace("{date}", date.format(formatter));
-            messageForEmployee = messageForEmployee.replace("{dropDownValue}", request.getWorkflow().getSendBackReason().getReason());
+            if(request.getWorkflow() != null && request.getWorkflow().getSendBackReason() != null) {
+                messageForEmployee = messageForEmployee.replace("{dropDownValue}", request.getWorkflow().getSendBackReason().getReason());
+            }
             messageForEmployee = messageForEmployee.replace("{download_link}", config.getMobileDownloadLink());
         }
 
