@@ -33,7 +33,7 @@ import {
   MultiUploadWrapper,
   RadioButtons,
 } from "@selco/digit-ui-react-components";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 
 import { Close } from "../../Icons";
 import { useTranslation } from "react-i18next";
@@ -89,8 +89,8 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
   );
   const employeeData = useEmployeeData
     ? useEmployeeData.map((departmentData) => {
-        return { heading: departmentData.department, options: departmentData.employees };
-      })
+      return { heading: departmentData.department, options: departmentData.employees };
+    })
     : null;
 
   const [selectedEmployee, setSelectedEmployee] = useState(null);
@@ -116,7 +116,7 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
 
   //   }, [file]);
   useEffect(() => {
-    if (selectedAction === "REJECT") {
+    if (selectedAction === "REJECT" || selectedAction === "SENDBACK") {
       const uuid = JSON.parse(sessionStorage.getItem("Digit.User"))?.value?.info?.uuid;
       let name = JSON.parse(sessionStorage.getItem("Digit.User"))?.value?.info?.name;
       setSelectedEmployee({ name, uuid });
@@ -226,14 +226,14 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
             selectedAction === "ASSIGN" || selectedAction === "REASSIGN"
               ? t("CS_ACTION_ASSIGN_TICKET")
               : selectedAction === "REJECT"
-              ? t("CS_ACTION_REJECT_TICKET")
-              : selectedAction === "REOPEN"
-              ? t("CS_COMMON_REOPEN")
-              : selectedAction === "RESOLVE"
-              ? t("CS_COMMON_RESOLVE")
-              : selectedAction === "CLOSE"
-              ? t("CS_COMMON_CLOSE")
-              : t("CS_COMMON_SENDBACK")
+                ? t("CS_ACTION_REJECT_TICKET")
+                : selectedAction === "REOPEN"
+                  ? t("CS_COMMON_REOPEN")
+                  : selectedAction === "RESOLVE"
+                    ? t("CS_COMMON_RESOLVE")
+                    : selectedAction === "CLOSE"
+                      ? t("CS_COMMON_CLOSE")
+                      : t("CS_COMMON_SENDBACK")
           }
         />
       }
@@ -244,14 +244,14 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
         selectedAction === "ASSIGN" || selectedAction === "REASSIGN"
           ? t("CS_COMMON_ASSIGN")
           : selectedAction === "REJECT"
-          ? t("CS_COMMON_REJECT")
-          : selectedAction === "REOPEN"
-          ? t("CS_ACTION_REOPEN")
-          : selectedAction === "RESOLVE"
-          ? t("CS_COMMON_RESOLVE_BUTTON")
-          : selectedAction === "CLOSE"
-          ? t("CS_COMMON_CLOSE")
-          : t("CS_COMMON_SENDbACK")
+            ? t("CS_COMMON_REJECT")
+            : selectedAction === "REOPEN"
+              ? t("CS_ACTION_REOPEN")
+              : selectedAction === "RESOLVE"
+                ? t("CS_COMMON_RESOLVE_BUTTON")
+                : selectedAction === "CLOSE"
+                  ? t("CS_COMMON_CLOSE")
+                  : t("CS_COMMON_SENDbACK")
       }
       actionSaveOnSubmit={() => {
         const isTextareaAction =
@@ -350,8 +350,8 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
         {selectedAction !== "SENDBACK" || selectedSendBackReason?.additionalInputs?.[0].type === "textarea" ? (
           <>
             {selectedAction !== "ASSIGN" &&
-            selectedAction !== "REOPEN" &&
-            !(selectedAction === "REJECT" && selectedRejectReason?.additionalInputs?.[0].type !== "textarea") ? (
+              selectedAction !== "REOPEN" &&
+              !(selectedAction === "REJECT" && selectedRejectReason?.additionalInputs?.[0].type !== "textarea") ? (
               <CardLabel>{t("CS_COMMON_EMPLOYEE_COMMENTS")}*</CardLabel>
             ) : (
               <CardLabel>{t("CS_COMMON_EMPLOYEE_COMMENTS")}</CardLabel>
@@ -405,7 +405,7 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
 };
 
 export const ComplaintDetails = (props) => {
-  let { id } = useParams();
+  let { incidentId, tenantId } = useParams();
   const { t } = useTranslation();
   const [fullscreen, setFullscreen] = useState(false);
   const [imageZoom, setImageZoom] = useState(null);
@@ -413,6 +413,7 @@ export const ComplaintDetails = (props) => {
   const iPadMaxWidth = 1024;
   const iPadMinWidth = 768;
   const isMobile = window.Digit.Utils.browser.isMobile();
+  const location = useLocation();
   const [isIpadView, setIsIpadView] = React.useState(window.innerWidth <= iPadMaxWidth && window.innerWidth >= iPadMinWidth);
   const onResize = () => {
     if (window.innerWidth <= iPadMaxWidth && window.innerWidth >= iPadMinWidth) {
@@ -437,15 +438,18 @@ export const ComplaintDetails = (props) => {
   const tenant =
     Digit.SessionStorage.get("Employee.tenantId") === stateTenantId
       ? Digit.SessionStorage.get("IM_TENANTS")
-          .map((item) => item.code)
-          .join(",")
+        .map((item) => item.code)
+        .join(",")
       : Digit.SessionStorage.get("Employee.tenantId");
 
-  const { isLoading, complaintDetails, revalidate: revalidateComplaintDetails } = Digit.Hooks.pgr.useComplaintDetails({ tenant, id });
+  const { isLoading, complaintDetails, revalidate: revalidateComplaintDetails } = Digit.Hooks.pgr.useComplaintDetails({
+    tenantId: tenant,
+    id: incidentId,
+  });
 
   const workflowDetails = Digit.Hooks.useWorkflowDetails({
-    tenant: id.split("/")[1],
-    id: id.split("/")[0],
+    tenantId: tenantId,
+    id: incidentId,
     moduleCode: "Incident",
     role: "EMPLOYEE",
   });
@@ -684,8 +688,8 @@ export const ComplaintDetails = (props) => {
       mobileNumber: checkpoint?.assigner?.mobileNumber,
       ...(checkpoint.status === "COMPLAINT_FILED" && complaintDetails?.audit
         ? {
-            source: complaintDetails.audit.source,
-          }
+          source: complaintDetails.audit.source,
+        }
         : {}),
     };
     const isFirstPendingForAssignment = arr.length - (index + 1) === 1 ? true : false;
@@ -739,7 +743,24 @@ export const ComplaintDetails = (props) => {
         );
       }
     } else if (checkpoint.status === "CLOSEDAFTERRESOLUTION") {
-      return <TLCaption data={""} comments={checkpoint?.wfComment} />;
+      return (
+        <>
+          {complaintDetails.workflow.action === "RATE" ? (
+            <div className="TLComments">
+              <h3>{t("CS_COMPLAINT_RATING")}</h3>
+              <StarRated rating={complaintDetails.workflow.rating} />
+            </div>
+          ) : (
+            currentLoginUser === workflowDetails?.data?.processInstances?.[workflowDetails.data.processInstances.length - 1]?.assigner?.uuid && (
+              <div>
+                <span className="link">
+                  <Link to={`/${window.contextPath}/employee/im/complaint/feedback/${incidentId}/${tenantId}`}>Rate</Link>
+                </span>
+              </div>
+            )
+          )}
+        </>
+      );
     }
     // return (checkpoint.caption && checkpoint.caption.length !== 0) || checkpoint?.wfComment?.length > 0 ? <TLCaption data={checkpoint?.caption?.[0]} comments={checkpoint?.wfComment} /> : null;
     return (

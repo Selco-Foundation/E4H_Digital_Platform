@@ -87,6 +87,9 @@ public class ProcessInstance {
     @JsonProperty("assigner")
     private User assigner = null;
 
+    @JsonProperty("rating")
+    private Integer rating = null;
+
     @JsonProperty("auditDetails")
     private AuditDetails auditDetails = null;
 

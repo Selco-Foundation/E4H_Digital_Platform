@@ -191,6 +191,10 @@ public class WorkflowService {
         processInstance.setDocuments(request.getWorkflow().getVerificationDocuments());
         processInstance.setComment(workflow.getComments());
 
+        if(request.getWorkflow().getAction().equalsIgnoreCase("RATE")) {
+            processInstance.setRating(workflow.getRating());
+        }
+
         if (!CollectionUtils.isEmpty(workflow.getAssignes())) {
             List<User> users = new ArrayList<>();
 
@@ -224,6 +228,7 @@ public class WorkflowService {
                     .action(processInstance.getAction())
                     .assignes(userIds)
                     .comments(processInstance.getComment())
+                    .rating(processInstance.getRating())
                     .verificationDocuments(processInstance.getDocuments())
                     .build();
 

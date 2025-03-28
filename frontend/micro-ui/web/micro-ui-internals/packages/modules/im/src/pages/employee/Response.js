@@ -9,12 +9,24 @@ const GetActionMessage = ({ action }) => {
   const { t } = useTranslation();
   if (action === "REOPEN") {
     return t(`CS_COMMON_COMPLAINT_REOPENED`);
+  } else if (action === "RATE") {
+    return t(`CS_COMMON_COMPLAINT_RATED`);
   } else {
     return t(`CS_COMMON_COMPLAINT_SUBMITTED`);
   }
 };
 
+const GetCardTextMessage = ({ action }) => {
+  const { t } = useTranslation();
+  if (action === "RATE") {
+    return t("ES_COMMON_RATED_COMPLAINT_TEXT");
+  } else {
+    return t("ES_COMMON_TRACK_COMPLAINT_TEXT");
+  }
+};
+
 const BannerPicker = ({ response }) => {
+  const { t } = useTranslation();
   console.log("response", response)
     const { complaints } = response;
 
@@ -40,7 +52,7 @@ sessionStorage.removeItem("subType");
   return (
     <Card>
       {appState.complaints.response && <BannerPicker response={appState} />}
-      <CardText>{t("ES_COMMON_TRACK_COMPLAINT_TEXT")}</CardText>
+      <CardText>{GetCardTextMessage(appState?.complaints?.response?.IncidentWrappers[0]?.workflow)}</CardText>
       <Link to={`/${window.contextPath}/employee`}>
         <SubmitBar label={t("CORE_COMMON_GO_TO_HOME")} />
       </Link>
