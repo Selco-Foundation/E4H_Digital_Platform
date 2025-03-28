@@ -184,12 +184,27 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
             {t("CORE_COMMON_FORGOT_PASSWORD")}
           </button>
 
-        {popup && <ForgotPassword setPopup={setPopup} />}
-      </div>
-      <div style={{display: "flex", justifyContent: "center", marginBottom:"10px"}}>
-        <img className="bannerLogo" src={"https://selco-assets.s3.ap-south-1.amazonaws.com/powered-by-nhm-ka.png"} alt="Selco Foundation" style={{border:"0px",marginLeft:"15px"}} />
-        <img className="bannerLogo" src={"https://selco-assets.s3.ap-south-1.amazonaws.com/powered-by-ka_govt.svg"} alt="Selco Foundation" style={{border:"0px"}}/>
-        <img className="bannerLogo" src={"https://selco-assets.s3.ap-south-1.amazonaws.com/logo.png"} alt="Selco Foundation" style={{border:"0px"}} />
+          {popup && <ForgotPassword setPopup={setPopup} />}
+        </div>
+        <div style={{ display: "flex", justifyContent: "center", margin: "1rem auto" }}>
+          <img
+            className="bannerLogo"
+            src={window?.globalConfigs?.getConfig("STATE_NHM_LOGO")}
+            alt="Selco Foundation"
+            style={{ border: "0px", marginLeft: "15px" }}
+          />
+          <img
+            className="bannerLogo"
+            src={window?.globalConfigs?.getConfig("STATE_GOVT_LOGO")}
+            alt="Selco Foundation"
+            style={{ border: "0px" }}
+          />
+          <img
+            className="bannerLogo"
+            src={window?.globalConfigs?.getConfig("SELCO_LOGO")}
+            alt="Selco Foundation"
+            style={{ border: "0px" }}
+          />
         </div>
       </div>
       {showToast && <Toast error={true} label={t(showToast)} onClose={closeToast} />}
