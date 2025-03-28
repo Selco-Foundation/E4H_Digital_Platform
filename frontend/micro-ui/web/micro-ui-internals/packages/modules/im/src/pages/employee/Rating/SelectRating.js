@@ -16,9 +16,9 @@ const SelectRating = ({ parentRoute, complaintDetails }) => {
     dispatch(updateComplaints(complaintData));
   }, [dispatch]);
 
-  const navigateToResponsePage = () => {
+  const navigateToResponsePage = useCallback(() => {
     history.push(`${parentRoute}/incident/response`);
-  };
+  }, [history, parentRoute]);
 
   const handleRatingSubmit = useCallback((data) => {
     if (!complaintDetails || data.rating <= 0) {

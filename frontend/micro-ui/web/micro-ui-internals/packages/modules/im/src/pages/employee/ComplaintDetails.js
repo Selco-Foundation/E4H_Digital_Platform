@@ -446,7 +446,6 @@ export const ComplaintDetails = (props) => {
     tenantId: tenant,
     id: incidentId,
   });
-  console.debug(complaintDetails);
 
   const workflowDetails = Digit.Hooks.useWorkflowDetails({
     tenantId: tenantId,

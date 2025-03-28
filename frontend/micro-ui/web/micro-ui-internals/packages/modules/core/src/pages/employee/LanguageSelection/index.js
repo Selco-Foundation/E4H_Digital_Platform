@@ -18,20 +18,19 @@ const LanguageSelection = () => {
   };
   const loginURL = `/${window.contextPath}/employee/user/login`
 
+  const getNavigationConfig = (from) => ({
+    pathname: loginURL,
+    search: from ? `?from=${encodeURIComponent(from)}` : "",
+  });
+
   const handleSubmit = (event) => {
-    history.push({
-      pathname: loginURL,
-      search: from ? `?from=${encodeURIComponent(from)}` : "",
-    });
+    history.push(getNavigationConfig(from));
   };
 
   if (languages?.length === 1) {
     return (
       <Redirect
-        to={{
-          pathname: loginURL,
-          search: from ? `?from=${encodeURIComponent(from)}` : "",
-        }}
+        to={getNavigationConfig(from)}
       />
     );
   }

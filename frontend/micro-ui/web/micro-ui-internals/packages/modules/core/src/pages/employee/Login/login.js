@@ -47,7 +47,6 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
     if (user?.info?.roles?.length > 0) user.info.roles = filteredRoles;
     Digit.UserService.setUser(user);
     setEmployeeDetail(user?.info, user?.access_token);
-
     let redirectPath = `/${window.contextPath}/employee`;
 
     /* logic to redirect back to same screen where we left off  */
@@ -97,7 +96,7 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
 
   const onForgotPassword = () => {
     sessionStorage.getItem("User") && sessionStorage.removeItem("User")
-    history.push("/digit-ui/employee/user/forgot-password");
+    history.push(`/${window.contextPath}/employee/user/forgot-password`);
   };
 
   const [userId, password, city] = propsConfig.inputs;
