@@ -48,7 +48,7 @@ jobs:
 
       - name: Build and Push Docker image for Odisha-ui
         run: |
-          docker build --build-arg PUBLIC_PATH="/odisha-ui/"  -t selcohub/odisha-ui:${{ env.VERSION }}-${{ env.commit_hash }} -f  web/docker/testfile/Dockerfile .
+          docker build --build-arg PUBLIC_PATH="/odisha/"  -t selcohub/odisha-ui:${{ env.VERSION }}-${{ env.commit_hash }} -f  web/docker/testfile/Dockerfile .
           docker push selcohub/odisha-ui:${{ env.VERSION }}-${{ env.commit_hash }}
         working-directory: frontend/micro-ui
 
