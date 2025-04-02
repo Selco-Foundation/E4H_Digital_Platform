@@ -73,19 +73,18 @@ public class InboxServiceV2 {
         List<Role> roles = inboxRequest.getRequestInfo().getUserInfo().getRoles();
         List<String> tenantIds = roles.stream().filter(role -> role.getCode().equals("COMPLAINT_RESOLVER"))
                 .map(role -> role.getTenantId()).collect(Collectors.toList());
-        boolean isVendor = tenantIds.size() > 0;
+        boolean isVendor = !tenantIds.isEmpty();
 
         Object tenantIdFromRequest = inboxRequest.getInbox().getModuleSearchCriteria().get("tenantId");
 
-        if (isVendor) {
-            if (tenantIdFromRequest instanceof String) {
-                Set<String> tenantsFromRequest = new HashSet<>(
-                    Arrays.asList(((String) tenantIdFromRequest).split("\\.")));
+        if (isVendor && tenantIdFromRequest instanceof String) {
+            Set<String> tenantsFromRequest = new HashSet<>(
+                Arrays.asList(((String) tenantIdFromRequest).split("\\.")));
 
-                if (tenantsFromRequest.size() == 1) {
-                    inboxRequest.getInbox().getModuleSearchCriteria().put("tenantId", tenantIds);
-                }
+            if (tenantsFromRequest.size() == 1) {
+                inboxRequest.getInbox().getModuleSearchCriteria().put("tenantId", tenantIds);
             }
+        
         }
 
         InboxQueryConfiguration inboxQueryConfiguration = mdmsUtil.getConfigFromMDMS(
@@ -95,28 +94,14 @@ public class InboxServiceV2 {
                 inboxQueryConfiguration);
         List<Inbox> items = getInboxItems(inboxRequest, inboxQueryConfiguration.getIndex());
         enrichProcessInstanceInInboxItems(items);
-        // Integer totalCount =
-        // CollectionUtils.isEmpty(inboxRequest.getInbox().getProcessSearchCriteria().getStatus())
-        // ? 0 : getTotalApplicationCount(inboxRequest,
-        // inboxQueryConfiguration.getIndex());
-        // List<HashMap<String, Object>> statusCountMap =
-        // CollectionUtils.isEmpty(inboxRequest.getInbox().getProcessSearchCriteria().getStatus())
-        // ? new ArrayList<>() : getStatusCountMap(inboxRequest,
-        // inboxQueryConfiguration.getIndex());
-        // Integer nearingSlaCount =
-        // CollectionUtils.isEmpty(inboxRequest.getInbox().getProcessSearchCriteria().getStatus())
-        // ? 0 : getApplicationsNearingSlaCount(inboxRequest,
-        // inboxQueryConfiguration.getIndex());
 
         Integer totalCount = getTotalApplicationCount(inboxRequest, inboxQueryConfiguration.getIndex());
         List<HashMap<String, Object>> statusCountMap = getStatusCountMap(inboxRequest,
                 inboxQueryConfiguration.getIndex());
         Integer nearingSlaCount = getApplicationsNearingSlaCount(inboxRequest, inboxQueryConfiguration.getIndex());
 
-        InboxResponse inboxResponse = InboxResponse.builder().items(items).totalCount(totalCount)
+        return InboxResponse.builder().items(items).totalCount(totalCount)
                 .statusMap(statusCountMap).nearingSlaCount(nearingSlaCount).build();
-
-        return inboxResponse;
     }
 
     private void hashParamsWhereverRequiredBasedOnConfiguration(Map<String, Object> moduleSearchCriteria, InboxQueryConfiguration inboxQueryConfiguration) {
