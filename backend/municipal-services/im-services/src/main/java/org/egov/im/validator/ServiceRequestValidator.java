@@ -10,7 +10,6 @@ import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
-import org.springframework.util.StringUtils;
 
 import java.util.*;
 
@@ -177,25 +176,25 @@ public class ServiceRequestValidator {
      *
      * @param request
      */
-    private void validateAssignees(IncidentRequest request){
-      String[] assignableActions = {ASSIGN.toLowerCase(),SENDBACK.toLowerCase()};
-        if(!request.getWorkflow().getAction().equalsIgnoreCase(ASSIGN) || !request.getWorkflow().getAction().equalsIgnoreCase(SENDBACK))
-            return;
+    private void validateAssignees(IncidentRequest request) {
+        Workflow workflow = request.getWorkflow();
 
-        Incident incident = request.getIncident();
-        RequestInfo requestInfo = request.getRequestInfo();
-        Long lastModifiedTime = incident.getAuditDetails().getLastModifiedTime();
-
-        if(requestInfo.getUserInfo().getType().equalsIgnoreCase(USERTYPE_CITIZEN)){
-            if(!requestInfo.getUserInfo().getUuid().equalsIgnoreCase(incident.getAccountId()))
-                throw new CustomException("INVALID_ACTION","Not authorized to re-open the complain");
+        if (workflow == null) {
+            throw new IllegalStateException("Workflow cannot be null");
         }
 
-        if(System.currentTimeMillis()-lastModifiedTime > config.getComplainMaxIdleTime())
-            throw new CustomException("INVALID_ACTION","Complaint is closed");
+        String action = workflow.getAction();
 
+        if ("RESOLVE".equalsIgnoreCase(action) ||
+                "REJECT".equalsIgnoreCase(action) ||
+                "SENDBACK".equalsIgnoreCase(action)) {
+            return;
+        }
+
+        if (workflow.getAssignes() == null || workflow.getAssignes().isEmpty()) {
+            throw new IllegalStateException("Assignee(s) must be provided for action: " + action);
+        }
     }
-
 
     /**
      *

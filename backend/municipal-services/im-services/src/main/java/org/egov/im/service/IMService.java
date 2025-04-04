@@ -1,6 +1,7 @@
 package org.egov.im.service;
 
 
+import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.request.RequestInfo;
 
 import org.egov.im.config.IMConfiguration;
@@ -18,6 +19,7 @@ import org.springframework.util.CollectionUtils;
 import java.util.*;
 
 @org.springframework.stereotype.Service
+@Slf4j
 public class IMService {
 
     private EnrichmentService enrichmentService;
@@ -61,6 +63,27 @@ public class IMService {
      * @return
      */
     public IncidentRequest create(IncidentRequest request){
+        log.info("Received Create IncidentRequest with the following details:\n" +
+                        "➡️ Incident ID: {}\n" +
+                        "➡️ Incident Type: {}\n" +
+                        "➡️ Sub Type: {}\n" +
+                        "➡️ Action: {}\n" +
+                        "➡️ Assigned To: {}\n" +
+                        "➡️ Application Status: {}\n" +
+                        "➡️ Tenant ID: {}\n" +
+                        "➡️ Submitted By: {} ({})\n" +
+                        "➡️ Timestamp: {}\n",
+                request.getIncident().getIncidentId(),
+                request.getIncident().getIncidentType(),
+                request.getIncident().getIncidentSubType(),
+                request.getWorkflow().getAction(),
+                request.getWorkflow().getAssignes(),
+                request.getIncident().getApplicationStatus(),
+                request.getIncident().getTenantId(),
+                request.getRequestInfo().getUserInfo().getName(),
+                request.getRequestInfo().getUserInfo().getMobileNumber(),
+                request.getIncident().getAuditDetails().getCreatedTime()
+        );
         String tenantId = request.getIncident().getTenantId();
         Object mdmsData = mdmsUtils.mDMSCall(request);
         validator.validateCreate(request, mdmsData);
@@ -123,6 +146,29 @@ public class IMService {
      * @return
      */
     public IncidentRequest update(IncidentRequest request){
+        log.info("Received Update IncidentRequest with the following details:\n" +
+                        "➡️ Incident ID: {}\n" +
+                        "➡️ Incident Type: {}\n" +
+                        "➡️ Sub Type: {}\n" +
+                        "➡️ Action: {}\n" +
+                        "➡️ Assigned To: {}\n" +
+                        "➡️ Application Status: {}\n" +
+                        "➡️ Tenant ID: {}\n" +
+                        "➡️ Submitted By: {} ({})\n" +
+                        "➡️ Timestamp: {}\n",
+                request.getIncident().getIncidentId(),
+                request.getIncident().getIncidentType(),
+                request.getIncident().getIncidentSubType(),
+                request.getWorkflow().getAction(),
+                request.getWorkflow().getAssignes(),
+                request.getIncident().getApplicationStatus(),
+                request.getIncident().getTenantId(),
+                request.getRequestInfo().getUserInfo().getName(),
+                request.getRequestInfo().getUserInfo().getMobileNumber(),
+                request.getIncident().getAuditDetails().getCreatedTime()
+        );
+
+
         String tenantId = request.getIncident().getTenantId();
         Object mdmsData = mdmsUtils.mDMSCall(request);
         validator.validateUpdate(request, mdmsData);
