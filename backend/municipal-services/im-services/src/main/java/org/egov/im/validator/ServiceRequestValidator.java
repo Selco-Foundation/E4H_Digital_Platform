@@ -62,6 +62,7 @@ public class ServiceRequestValidator {
         //validateSource(request.getService().getSource());
         //validateMDMS(request, mdmsData);
         //validateDepartment(request, mdmsData);
+        validateAssignees(request);
         validateReOpen(request);
         RequestSearchCriteria criteria = RequestSearchCriteria.builder().ids(Collections.singleton(id)).tenantId(tenantId).build();
         criteria.setIsPlainSearch(false);
@@ -172,6 +173,28 @@ public class ServiceRequestValidator {
 //            throw new CustomException(errorMap);
 //
 //    }
+    /**
+     *
+     * @param request
+     */
+    private void validateAssignees(IncidentRequest request){
+      String[] assignableActions = {ASSIGN.toLowerCase(),SENDBACK.toLowerCase()};
+        if(!request.getWorkflow().getAction().equalsIgnoreCase(ASSIGN) || !request.getWorkflow().getAction().equalsIgnoreCase(SENDBACK))
+            return;
+
+        Incident incident = request.getIncident();
+        RequestInfo requestInfo = request.getRequestInfo();
+        Long lastModifiedTime = incident.getAuditDetails().getLastModifiedTime();
+
+        if(requestInfo.getUserInfo().getType().equalsIgnoreCase(USERTYPE_CITIZEN)){
+            if(!requestInfo.getUserInfo().getUuid().equalsIgnoreCase(incident.getAccountId()))
+                throw new CustomException("INVALID_ACTION","Not authorized to re-open the complain");
+        }
+
+        if(System.currentTimeMillis()-lastModifiedTime > config.getComplainMaxIdleTime())
+            throw new CustomException("INVALID_ACTION","Complaint is closed");
+
+    }
 
 
     /**
