@@ -27,10 +27,9 @@ public class MDMSControllerV2 {
     /**
      * Request handler for serving create requests
      * @param mdmsRequest
-     * @param schemaCode
      * @return
      */
-    @RequestMapping(value="_create", method = RequestMethod.POST)
+    @PostMapping(value="/_create")
     public ResponseEntity<MdmsResponseV2> create(@Valid @RequestBody MdmsRequest mdmsRequest) {
         List<Mdms> masterDataList = mdmsServiceV2.create(mdmsRequest);
         return new ResponseEntity<>(ResponseUtil.getMasterDataV2Response(mdmsRequest.getRequestInfo(), masterDataList), HttpStatus.ACCEPTED);
@@ -41,7 +40,7 @@ public class MDMSControllerV2 {
      * @param masterDataSearchCriteria
      * @return
      */
-    @RequestMapping(value="_search", method = RequestMethod.POST, produces = { "application/json; charset=utf-8" })
+    @PostMapping(value="_search", produces = { "application/json; charset=utf-8" })
     public ResponseEntity<MdmsResponseV2> search(@Valid @RequestBody MdmsCriteriaReqV2 masterDataSearchCriteria) {
         List<Mdms> masterDataList = mdmsServiceV2.search(masterDataSearchCriteria);
         return new ResponseEntity<>(ResponseUtil.getMasterDataV2Response(RequestInfo.builder().build(), masterDataList), HttpStatus.OK);
@@ -53,7 +52,7 @@ public class MDMSControllerV2 {
      * @param schemaCode
      * @return
      */
-    @RequestMapping(value="_update/{schemaCode}", method = RequestMethod.POST)
+    @PostMapping(value="_update/{schemaCode}")
     public ResponseEntity<MdmsResponseV2> update(@Valid @RequestBody MdmsRequest mdmsRequest, @PathVariable("schemaCode") String schemaCode) {
         List<Mdms> masterDataList = mdmsServiceV2.update(mdmsRequest);
         return new ResponseEntity<>(ResponseUtil.getMasterDataV2Response(mdmsRequest.getRequestInfo(), masterDataList), HttpStatus.ACCEPTED);
