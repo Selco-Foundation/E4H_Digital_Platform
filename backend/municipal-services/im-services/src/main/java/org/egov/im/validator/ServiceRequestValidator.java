@@ -23,13 +23,13 @@ public class ServiceRequestValidator {
 
     private IMRepository repository;
 
-    private HRMSUtil hrmsUtil;
+    private static final Set<String> ACTIONS_REQUIRING_ASSIGNEE = Set.of("ASSIGN", "CLOSE");
+
 
     @Autowired
-    public ServiceRequestValidator(IMConfiguration config, IMRepository repository, HRMSUtil hrmsUtil) {
+    public ServiceRequestValidator(IMConfiguration config, IMRepository repository) {
         this.config = config;
         this.repository = repository;
-        this.hrmsUtil = hrmsUtil;
     }
 
 
@@ -177,23 +177,13 @@ public class ServiceRequestValidator {
      * @param request
      */
     private void validateAssignees(IncidentRequest request) {
-        Workflow workflow = request.getWorkflow();
+        String action = request.getWorkflow().getAction();
 
-        if (workflow == null) {
-            throw new IllegalStateException("Workflow cannot be null");
-        }
+        if (ACTIONS_REQUIRING_ASSIGNEE.contains(action.toUpperCase()) &&
+                (request.getWorkflow().getAssignes() == null || request.getWorkflow().getAssignes().isEmpty())) {
+                throw new IllegalStateException("Assignee(s) required for action: " + action);
+            }
 
-        String action = workflow.getAction();
-
-        if ("RESOLVE".equalsIgnoreCase(action) ||
-                "REJECT".equalsIgnoreCase(action) ||
-                "SENDBACK".equalsIgnoreCase(action)) {
-            return;
-        }
-
-        if (workflow.getAssignes() == null || workflow.getAssignes().isEmpty()) {
-            throw new IllegalStateException("Assignee(s) must be provided for action: " + action);
-        }
     }
 
     /**
