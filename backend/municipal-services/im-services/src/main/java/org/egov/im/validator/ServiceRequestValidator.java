@@ -23,7 +23,7 @@ public class ServiceRequestValidator {
 
     private IMRepository repository;
 
-    private static final Set<String> ACTIONS_REQUIRING_ASSIGNEE = Set.of("ASSIGN", "CLOSE");
+    private static final Set<String> ACTIONS_REQUIRING_ASSIGNEE = Set.of("ASSIGN", "RESOLVE", "REJECT");
 
 
     @Autowired
