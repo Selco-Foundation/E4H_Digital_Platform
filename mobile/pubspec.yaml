@@ -1,0 +1,75 @@
+name: selco
+description: "A new Flutter project."
+
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <=4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+  collection: ^1.18.0
+  auto_route: ^8.3.0
+  drift: ^2.18.0
+  drift_db_viewer: ^2.1.0
+  digit_ui_components: ^0.0.2-dev.14
+  freezed_annotation: ^2.4.1
+  json_annotation: ^4.9.0
+  flutter_bloc: ^8.1.5
+  recase: ^4.1.0
+  flutter_dotenv: ^5.1.0
+  connectivity_plus: ^6.0.3
+  flutter_keyboard_visibility: ^5.4.1
+  flutter_localizations:
+    sdk: flutter
+  fluttertoast: ^8.2.8
+  isar: ^3.1.0+1
+  isar_flutter_libs: ^3.1.0+1
+  digit_data_model: ^1.0.6
+  digit_dss: ^1.0.4
+  shared_preferences: ^2.2.3
+  flutter_secure_storage: ^9.2.2
+  dart_mappable: ^4.2.2
+  reactive_forms: ^17.0.0
+  pin_input_text_field: ^4.5.2
+
+dependency_overrides:
+  camera_android_camerax: ^0.5.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^4.0.0
+  auto_route_generator: ^8.0.0
+  build_runner: ^2.4.11
+  freezed: ^2.5.2
+  drift_dev: ^2.18.0
+  json_serializable: ^6.8.0
+  dart_mappable_builder:
+    git:
+      url: https://github.com/egovernments/health-campaign-field-worker-app/
+      ref: master
+      path: ./packages/dart_mappable_builder
+  patch_package: ^0.0.8
+  isar_generator: ^3.1.0+1
+
+flutter:
+  assets:
+    - ./
+    - .env
+    - assets/images/
+
+  fonts:
+    - family: Roboto
+      fonts:
+        - asset: assets/fonts/Roboto/Roboto-Regular.ttf
+    - family: RobotoCondensed
+      fonts:
+        - asset: assets/fonts/Roboto/RobotoCondensed-Regular.ttf
+  uses-material-design: true
