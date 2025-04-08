@@ -7,6 +7,7 @@ import 'package:selco/pages/login.dart';
 import 'package:selco/pages/select_asset_type.dart';
 import 'package:selco/pages/select_health_facility.dart';
 import 'package:selco/pages/setup_new_password.dart';
+import 'package:selco/pages/specification.dart';
 import 'package:selco/pages/unauthenticated.dart';
 import 'package:selco/pages/welcome.dart';
 import 'package:selco/router/routes.dart';
@@ -44,6 +45,8 @@ class AppRouter extends _$AppRouter {
                 path: Routes.selectHealthFacility),
             AutoRoute(
                 page: SelectAssetTypeRoute.page, path: Routes.selectAssetType),
+            AutoRoute(
+                page: SpecificationRoute.page, path: Routes.specification),
           ],
         ),
       ];
