@@ -1,26 +1,21 @@
-import 'package:digit_ui_components/enum/app_enums.dart';
+import 'package:auto_route/auto_route.dart';
+import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
-import 'package:digit_ui_components/theme/spacers.dart';
-import 'package:digit_ui_components/widgets/atoms/digit_button.dart';
 import 'package:digit_ui_components/widgets/atoms/digit_stepper.dart';
-import 'package:digit_ui_components/widgets/atoms/digit_text_form_input.dart';
-import 'package:digit_ui_components/widgets/atoms/labelled_fields.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
-import 'package:digit_ui_components/widgets/scrollable_content.dart';
 import 'package:flutter/material.dart';
-import 'package:selco/router/app_router.dart';
 import 'package:selco/widgets/header/back_navigation_help_header.dart';
 import 'package:selco/widgets/navigation/navbar.dart';
 
 @RoutePage()
-class SpecificationPage extends StatefulWidget {
-  const SpecificationPage({super.key});
+class AssetTypeDetailPage extends StatefulWidget {
+  const AssetTypeDetailPage({super.key});
 
   @override
-  State<SpecificationPage> createState() => _SpecificationPageState();
+  State<AssetTypeDetailPage> createState() => _AssetTypeDetailPageState();
 }
 
-class _SpecificationPageState extends State<SpecificationPage> {
+class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -42,8 +37,7 @@ class _SpecificationPageState extends State<SpecificationPage> {
                     label: 'Next',
                     type: DigitButtonType.primary,
                     size: DigitButtonSize.large,
-                    onPressed: () =>
-                        context.router.push(const AssetTypeDetailRoute()),
+                    onPressed: () {},
                   ),
                 ]),
             children: [
@@ -57,7 +51,7 @@ class _SpecificationPageState extends State<SpecificationPage> {
                       height: spacer8,
                       width: MediaQuery.of(context).size.width,
                       child: DigitStepper(
-                        activeIndex: 1,
+                        activeIndex: 2,
                         stepperList: [
                           StepperData(
                             onStepTap: () {},
@@ -74,57 +68,64 @@ class _SpecificationPageState extends State<SpecificationPage> {
                     const SizedBox(height: spacer4),
                     DigitCard(children: [
                       Text(
-                        'Inverter Specifications',
+                        'Inverter Details',
                         style: textTheme.headingXl
                             .copyWith(color: theme.colorTheme.primary.primary2),
                       ),
                       LabeledField(
-                        label: 'System',
+                        label: 'Count',
+                        labelStyle: textTheme.headingS
+                            .copyWith(color: theme.colorTheme.text.primary),
+                        capitalizedFirstLetter: false,
+                        child: const DigitDropdown(items: [
+                          DropdownItem(name: '1', code: '1'),
+                          DropdownItem(name: '2', code: '2'),
+                          DropdownItem(name: '3', code: '3')
+                        ]),
+                      ),
+                      LabeledField(
+                        label: 'Warranty Start Date',
+                        labelStyle: textTheme.headingS
+                            .copyWith(color: theme.colorTheme.text.primary),
+                        capitalizedFirstLetter: false,
+                        child: DigitDateFormInput(
+                          controller: TextEditingController(),
+                          initialValue: 'Default Today Date',
+                          isDisabled: true,
+                        ),
+                      ),
+                      LabeledField(
+                        label: 'Warranty Duration',
+                        labelStyle: textTheme.headingS
+                            .copyWith(color: theme.colorTheme.text.primary),
+                        capitalizedFirstLetter: false,
+                        child: const DigitDropdown(items: [
+                          DropdownItem(name: '15 Years', code: '15'),
+                          DropdownItem(name: '16 Years', code: '16'),
+                          DropdownItem(name: '17 Years', code: '17')
+                        ]),
+                      ),
+                      LabeledField(
+                        label: 'Brand',
+                        labelStyle: textTheme.headingS
+                            .copyWith(color: theme.colorTheme.text.primary),
+                        capitalizedFirstLetter: false,
+                        child: const DigitDropdown(items: [
+                          DropdownItem(name: 'Brand 1', code: '1'),
+                          DropdownItem(name: 'Brand 2', code: '2'),
+                          DropdownItem(name: 'Brand 3', code: '3')
+                        ]),
+                      ),
+                      LabeledField(
+                        label: 'Model Number',
                         labelStyle: textTheme.headingS
                             .copyWith(color: theme.colorTheme.text.primary),
                         capitalizedFirstLetter: false,
                         child: DigitTextFormInput(
                           controller: TextEditingController(),
-                          isDisabled: true,
-                          initialValue: 'AC',
-                          keyboardType: TextInputType.none,
+                          innerLabel: 'SR45934295',
+                          keyboardType: TextInputType.text,
                         ),
-                      ),
-                      Row(
-                        children: [
-                          Expanded(
-                            flex: 3,
-                            child: LabeledField(
-                              label: 'Total Capacity',
-                              labelStyle: textTheme.headingS.copyWith(
-                                  color: theme.colorTheme.text.primary),
-                              capitalizedFirstLetter: false,
-                              child: DigitTextFormInput(
-                                keyboardType: TextInputType.none,
-                                controller: TextEditingController(),
-                                isDisabled: true,
-                                initialValue: '1',
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: spacer6),
-                          Expanded(
-                            flex: 1,
-                            child: LabeledField(
-                              label: 'Unit',
-                              labelStyle: textTheme.headingS.copyWith(
-                                  color: theme.colorTheme.text.primary),
-                              capitalizedFirstLetter: false,
-                              child: DigitTextFormInput(
-                                controller: TextEditingController(),
-                                isDisabled: true,
-                                initialValue: 'KvA',
-                                keyboardType: TextInputType.text,
-                                onChange: (value) {},
-                              ),
-                            ),
-                          ),
-                        ],
                       ),
                     ])
                   ],

@@ -15,6 +15,12 @@ abstract class _$AppRouter extends RootStackRouter {
 
   @override
   final Map<String, PageFactory> pagesMap = {
+    AssetTypeDetailRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const AssetTypeDetailPage(),
+      );
+    },
     EnterOtpRoute.name: (routeData) {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
@@ -82,6 +88,20 @@ abstract class _$AppRouter extends RootStackRouter {
       );
     },
   };
+}
+
+/// generated route for
+/// [AssetTypeDetailPage]
+class AssetTypeDetailRoute extends PageRouteInfo<void> {
+  const AssetTypeDetailRoute({List<PageRouteInfo>? children})
+      : super(
+          AssetTypeDetailRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'AssetTypeDetailRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
 }
 
 /// generated route for
