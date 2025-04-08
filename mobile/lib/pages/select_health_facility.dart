@@ -1,9 +1,9 @@
-import 'package:auto_route/auto_route.dart';
 import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:digit_ui_components/widgets/atoms/digit_divider.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:flutter/material.dart';
+import 'package:selco/router/app_router.dart';
 import 'package:selco/widgets/header/back_navigation_help_header.dart';
 import 'package:selco/widgets/navigation/navbar.dart';
 import 'package:selco/widgets/progress_indicator/progress_indicator.dart';
@@ -71,6 +71,8 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
                         ),
                         const SizedBox(height: spacer8),
                         InstallationReportCard(
+                          onPress: () =>
+                              context.router.push(const SelectAssetTypeRoute()),
                           title: 'Something',
                           dateAssigned: DateTime(2024, 1, 25),
                           status: 'Pending Installation',
@@ -95,6 +97,7 @@ class InstallationReportCard extends StatelessWidget {
   final String? status;
   final DateTime? dateAssigned;
   final String? solutionDocPath;
+  final Function()? onPress;
 
   const InstallationReportCard({
     super.key,
@@ -102,13 +105,14 @@ class InstallationReportCard extends StatelessWidget {
     this.status,
     this.dateAssigned,
     this.solutionDocPath,
+    this.onPress,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final textTheme = theme.digitTextTheme(context);
-    return DigitCard(children: [
+    return DigitCard(onPressed: onPress, children: [
       Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
