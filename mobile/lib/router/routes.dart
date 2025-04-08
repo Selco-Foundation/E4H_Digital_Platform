@@ -9,4 +9,5 @@ class Routes {
   static const selectHealthFacility = 'select-health-facility';
   static const selectAssetType = 'select-asset-type';
   static const specification = 'specification';
+  static const assetTypeDetail = 'asset-type-detail';
 }
