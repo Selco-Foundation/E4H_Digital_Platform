@@ -63,6 +63,12 @@ abstract class _$AppRouter extends RootStackRouter {
         child: const SetupNewPasswordPage(),
       );
     },
+    SpecificationRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const SpecificationPage(),
+      );
+    },
     UnauthenticatedRouteWrapper.name: (routeData) {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
@@ -186,6 +192,20 @@ class SetupNewPasswordRoute extends PageRouteInfo<void> {
         );
 
   static const String name = 'SetupNewPasswordRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [SpecificationPage]
+class SpecificationRoute extends PageRouteInfo<void> {
+  const SpecificationRoute({List<PageRouteInfo>? children})
+      : super(
+          SpecificationRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'SpecificationRoute';
 
   static const PageInfo<void> page = PageInfo<void>(name);
 }
