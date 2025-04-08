@@ -7,4 +7,5 @@ class Routes {
   static const home = 'home';
   static const installationReport = 'installation-report';
   static const selectHealthFacility = 'select-health-facility';
+  static const selectAssetType = 'select-asset-type';
 }

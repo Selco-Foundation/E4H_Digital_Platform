@@ -4,6 +4,7 @@ import 'package:selco/pages/forgot_password.dart';
 import 'package:selco/pages/home.dart';
 import 'package:selco/pages/installation_report_home.dart';
 import 'package:selco/pages/login.dart';
+import 'package:selco/pages/select_asset_type.dart';
 import 'package:selco/pages/select_health_facility.dart';
 import 'package:selco/pages/setup_new_password.dart';
 import 'package:selco/pages/unauthenticated.dart';
@@ -40,7 +41,9 @@ class AppRouter extends _$AppRouter {
                 path: Routes.installationReport),
             AutoRoute(
                 page: SelectHealthFacilityRoute.page,
-                path: Routes.selectHealthFacility)
+                path: Routes.selectHealthFacility),
+            AutoRoute(
+                page: SelectAssetTypeRoute.page, path: Routes.selectAssetType),
           ],
         ),
       ];

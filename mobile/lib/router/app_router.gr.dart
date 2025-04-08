@@ -45,6 +45,12 @@ abstract class _$AppRouter extends RootStackRouter {
         child: const LoginPage(),
       );
     },
+    SelectAssetTypeRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const SelectAssetTypePage(),
+      );
+    },
     SelectHealthFacilityRoute.name: (routeData) {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
@@ -138,6 +144,20 @@ class LoginRoute extends PageRouteInfo<void> {
         );
 
   static const String name = 'LoginRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [SelectAssetTypePage]
+class SelectAssetTypeRoute extends PageRouteInfo<void> {
+  const SelectAssetTypeRoute({List<PageRouteInfo>? children})
+      : super(
+          SelectAssetTypeRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'SelectAssetTypeRoute';
 
   static const PageInfo<void> page = PageInfo<void>(name);
 }
