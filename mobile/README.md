@@ -1,4 +1,4 @@
-# digit_assignment
+# SELCO UI
 
 A new Flutter project.
 
