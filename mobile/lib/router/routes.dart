@@ -6,4 +6,5 @@ class Routes {
   static const setUpNewPassword = 'setup-new-password';
   static const home = 'home';
   static const installationReport = 'installation-report';
+  static const selectHealthFacility = 'select-health-facility';
 }

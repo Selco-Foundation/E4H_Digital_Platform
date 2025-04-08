@@ -1,8 +1,8 @@
-import 'package:auto_route/annotations.dart';
 import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:flutter/material.dart';
+import 'package:selco/router/app_router.dart';
 import 'package:selco/widgets/header/back_navigation_help_header.dart';
 import 'package:selco/widgets/navigation/navbar.dart';
 
@@ -52,18 +52,22 @@ class _InstallationReportPageState extends State<InstallationReportPage> {
                   ),
                 ),
                 const SizedBox(height: spacer6),
-                const ReportCard(
+                ReportCard(
+                  onPress: () =>
+                      context.router.push(const SelectHealthFacilityRoute()),
                   icon: Icons.note_add,
                   heading: 'New Report',
                   description:
                       'View list of assigned health facilities, search for health facility and create installation report',
                 ),
-                const ReportCard(
+                ReportCard(
+                  onPress: () {},
                   icon: Icons.menu,
                   heading: 'Inbox',
                   description: 'View reports that have been approved/rejected',
                 ),
-                const ReportCard(
+                ReportCard(
+                  onPress: () {},
                   icon: Icons.assignment_turned_in,
                   heading: 'Submitted Reports',
                   description: 'View reports that have been submitted',
@@ -82,12 +86,14 @@ class ReportCard extends StatelessWidget {
   final IconData icon;
   final String heading;
   final String description;
+  final onPress;
 
   const ReportCard({
     super.key,
     required this.icon,
     required this.heading,
     required this.description,
+    required this.onPress,
   });
 
   @override
@@ -98,7 +104,7 @@ class ReportCard extends StatelessWidget {
     return SizedBox(
       height: 3 * spacer11,
       child: DigitCard(
-        onPressed: () {},
+        onPressed: onPress,
         margin: const EdgeInsets.only(bottom: spacer4),
         children: [
           Column(
