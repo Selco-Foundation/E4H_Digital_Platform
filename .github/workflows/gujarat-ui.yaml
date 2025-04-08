@@ -1,4 +1,4 @@
-name: Odisha-UI Image Build workflow
+name: Gujarat-UI Image Build workflow
 on:
   push:
     branches:
@@ -46,10 +46,10 @@ jobs:
           commit_hash=$(git log -1 --pretty=format:%H -- frontend/micro-ui)
           echo "commit_hash=$commit_hash" >> $GITHUB_ENV
 
-      - name: Build and Push Docker image for Odisha-ui
+      - name: Build and Push Docker image for Gujarat-ui
         run: |
-          docker build --build-arg PUBLIC_PATH="/odisha/"  -t selcohub/odisha-ui:${{ env.VERSION }}-${{ env.commit_hash }} -f  web/docker/testfile/Dockerfile .
-          docker push selcohub/odisha-ui:${{ env.VERSION }}-${{ env.commit_hash }}
+          docker build --build-arg PUBLIC_PATH="/gujarat/"  -t selcohub/gujarat-ui:${{ env.VERSION }}-${{ env.commit_hash }} -f  web/docker/testfile/Dockerfile .
+          docker push selcohub/gujarat-ui:${{ env.VERSION }}-${{ env.commit_hash }}
         working-directory: frontend/micro-ui
 
 #  Workflow_Trigger:
