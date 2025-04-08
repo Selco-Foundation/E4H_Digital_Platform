@@ -45,6 +45,12 @@ abstract class _$AppRouter extends RootStackRouter {
         child: const LoginPage(),
       );
     },
+    SelectHealthFacilityRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const SelectHealthFacilityPage(),
+      );
+    },
     SetupNewPasswordRoute.name: (routeData) {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
@@ -132,6 +138,20 @@ class LoginRoute extends PageRouteInfo<void> {
         );
 
   static const String name = 'LoginRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [SelectHealthFacilityPage]
+class SelectHealthFacilityRoute extends PageRouteInfo<void> {
+  const SelectHealthFacilityRoute({List<PageRouteInfo>? children})
+      : super(
+          SelectHealthFacilityRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'SelectHealthFacilityRoute';
 
   static const PageInfo<void> page = PageInfo<void>(name);
 }
