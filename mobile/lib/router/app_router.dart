@@ -1,4 +1,5 @@
 import 'package:auto_route/auto_route.dart';
+import 'package:selco/pages/add_new_asset.dart';
 import 'package:selco/pages/asset_type_detail.dart';
 import 'package:selco/pages/enter_otp.dart';
 import 'package:selco/pages/forgot_password.dart';
@@ -50,6 +51,7 @@ class AppRouter extends _$AppRouter {
                 page: SpecificationRoute.page, path: Routes.specification),
             AutoRoute(
                 page: AssetTypeDetailRoute.page, path: Routes.assetTypeDetail),
+            AutoRoute(page: AddNewAssetRoute.page, path: Routes.addNewAsset),
           ],
         ),
       ];
