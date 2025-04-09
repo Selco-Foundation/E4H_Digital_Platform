@@ -72,8 +72,6 @@ public class ProcessInstance {
     @JsonProperty("state")
     private State state;
 
-    private String notificationAction;
-
     @Size(max=1024)
     @JsonProperty("comment")
     @Pattern(regexp = "^[a-zA-Z0-9!@#.,/:; ()&']*$")
