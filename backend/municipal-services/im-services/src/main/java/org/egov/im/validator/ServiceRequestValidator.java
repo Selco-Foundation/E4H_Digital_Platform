@@ -10,6 +10,7 @@ import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
+import org.springframework.util.StringUtils;
 
 import java.util.*;
 
@@ -23,13 +24,13 @@ public class ServiceRequestValidator {
 
     private IMRepository repository;
 
-    private static final Set<String> ACTIONS_REQUIRING_ASSIGNEE = Set.of("ASSIGN", "RESOLVE", "REJECT");
-
+    private HRMSUtil hrmsUtil;
 
     @Autowired
-    public ServiceRequestValidator(IMConfiguration config, IMRepository repository) {
+    public ServiceRequestValidator(IMConfiguration config, IMRepository repository, HRMSUtil hrmsUtil) {
         this.config = config;
         this.repository = repository;
+        this.hrmsUtil = hrmsUtil;
     }
 
 
@@ -61,7 +62,6 @@ public class ServiceRequestValidator {
         //validateSource(request.getService().getSource());
         //validateMDMS(request, mdmsData);
         //validateDepartment(request, mdmsData);
-        validateAssignees(request);
         validateReOpen(request);
         RequestSearchCriteria criteria = RequestSearchCriteria.builder().ids(Collections.singleton(id)).tenantId(tenantId).build();
         criteria.setIsPlainSearch(false);
@@ -172,19 +172,7 @@ public class ServiceRequestValidator {
 //            throw new CustomException(errorMap);
 //
 //    }
-    /**
-     *
-     * @param request
-     */
-    private void validateAssignees(IncidentRequest request) {
-        String action = request.getWorkflow().getAction();
 
-        if (ACTIONS_REQUIRING_ASSIGNEE.contains(action.toUpperCase()) &&
-                (request.getWorkflow().getAssignes() == null || request.getWorkflow().getAssignes().isEmpty())) {
-                throw new IllegalStateException("Assignee(s) required for action: " + action);
-            }
-
-    }
 
     /**
      *
