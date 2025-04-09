@@ -10,4 +10,5 @@ class Routes {
   static const selectAssetType = 'select-asset-type';
   static const specification = 'specification';
   static const assetTypeDetail = 'asset-type-detail';
+  static const addNewAsset = 'add-new-asset';
 }

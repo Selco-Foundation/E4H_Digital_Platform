@@ -1,9 +1,9 @@
-import 'package:auto_route/auto_route.dart';
 import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:digit_ui_components/widgets/atoms/digit_stepper.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:flutter/material.dart';
+import 'package:selco/router/app_router.dart';
 import 'package:selco/widgets/header/back_navigation_help_header.dart';
 import 'package:selco/widgets/navigation/navbar.dart';
 
@@ -37,7 +37,8 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
                     label: 'Next',
                     type: DigitButtonType.primary,
                     size: DigitButtonSize.large,
-                    onPressed: () {},
+                    onPressed: () =>
+                        context.router.push(const AddNewAssetRoute()),
                   ),
                 ]),
             children: [
