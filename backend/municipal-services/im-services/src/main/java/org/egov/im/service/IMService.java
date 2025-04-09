@@ -63,23 +63,26 @@ public class IMService {
      * @return
      */
     public IncidentRequest create(IncidentRequest request){
-        log.info("Received Create Incident Request with the following details:\n" +
+        log.info("Received Create IncidentRequest with the following details:\n" +
                         "➡️ Incident ID: {}\n" +
                         "➡️ Incident Type: {}\n" +
                         "➡️ Sub Type: {}\n" +
                         "➡️ Action: {}\n" +
                         "➡️ Assigned To: {}\n" +
                         "➡️ Application Status: {}\n" +
-                        "➡️ Tenant ID: {}\n",
+                        "➡️ Tenant ID: {}\n" +
+                        "➡️ Submitted By: {} ({})\n" +
+                        "➡️ Timestamp: {}\n",
                 request.getIncident().getIncidentId(),
                 request.getIncident().getIncidentType(),
                 request.getIncident().getIncidentSubType(),
                 request.getWorkflow().getAction(),
-                request.getWorkflow().getAssignes() != null && !request.getWorkflow().getAssignes().isEmpty()
-                        ? String.join(", ", request.getWorkflow().getAssignes())
-                        : "No assignee",
+                request.getWorkflow().getAssignes(),
                 request.getIncident().getApplicationStatus(),
-                request.getIncident().getTenantId()
+                request.getIncident().getTenantId(),
+                request.getRequestInfo().getUserInfo().getName(),
+                request.getRequestInfo().getUserInfo().getMobileNumber(),
+                request.getIncident().getAuditDetails().getCreatedTime()
         );
         String tenantId = request.getIncident().getTenantId();
         Object mdmsData = mdmsUtils.mDMSCall(request);
