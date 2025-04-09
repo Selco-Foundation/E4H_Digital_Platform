@@ -1,6 +1,8 @@
 package org.egov.im.config;
 
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -261,7 +263,15 @@ public class IMConfiguration {
     @Value("${digit.ui.feedback}")
     private String digitUIFeedback;
 
-    @Value("#{${digit.ui.tenant}}")
-    private Map<String, String> digitUITenant;
+    @Value("${digit.ui.tenant}")
+    private String digitUiTenantJson;
+
+    private Map<String, List<String>> digitUITenant;
+
+    @PostConstruct
+    public void init() throws JsonProcessingException {
+        ObjectMapper mapper = new ObjectMapper();
+        digitUITenant = mapper.readValue(digitUiTenantJson, new TypeReference<>() {});
+    }
 
 }
