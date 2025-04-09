@@ -10,6 +10,7 @@ import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
+import org.springframework.util.StringUtils;
 
 import java.util.*;
 
@@ -61,7 +62,6 @@ public class ServiceRequestValidator {
         //validateSource(request.getService().getSource());
         //validateMDMS(request, mdmsData);
         //validateDepartment(request, mdmsData);
-        validateAssignees(request);
         validateReOpen(request);
         RequestSearchCriteria criteria = RequestSearchCriteria.builder().ids(Collections.singleton(id)).tenantId(tenantId).build();
         criteria.setIsPlainSearch(false);
@@ -172,29 +172,7 @@ public class ServiceRequestValidator {
 //            throw new CustomException(errorMap);
 //
 //    }
-    /**
-     *
-     * @param request
-     */
-    private void validateAssignees(IncidentRequest request) {
-        Workflow workflow = request.getWorkflow();
 
-        if (workflow == null) {
-            throw new IllegalStateException("Workflow cannot be null");
-        }
-
-        String action = workflow.getAction();
-
-        if ("RESOLVE".equalsIgnoreCase(action) ||
-                "REJECT".equalsIgnoreCase(action) ||
-                "SENDBACK".equalsIgnoreCase(action)) {
-            return;
-        }
-
-        if (workflow.getAssignes() == null || workflow.getAssignes().isEmpty()) {
-            throw new IllegalStateException("Assignee(s) must be provided for action: " + action);
-        }
-    }
 
     /**
      *
