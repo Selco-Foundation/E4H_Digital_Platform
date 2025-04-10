@@ -116,7 +116,7 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
 
   //   }, [file]);
   useEffect(() => {
-    if (selectedAction === "REJECT" || selectedAction === "SENDBACK") {
+    if (selectedAction === "REJECT") {
       const uuid = JSON.parse(sessionStorage.getItem("Digit.User"))?.value?.info?.uuid;
       let name = JSON.parse(sessionStorage.getItem("Digit.User"))?.value?.info?.name;
       setSelectedEmployee({ name, uuid });
