@@ -1,0 +1,81 @@
+{
+  "tenantId": "in",
+  "module": "data-ingestion",
+  "VendorIngestionSchema": {
+    "columns": [
+      {
+        "name": "Country Boundary Code",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "Vendor Name",
+        "type": "string",
+        "required": true,
+        "pattern": "^[a-zA-Z\\s]+$"
+      },
+      {
+        "name": "Vendor Code",
+        "type": "string",
+        "required": true,
+        "pattern": "^[a-zA-Z\\s]+$"
+      },
+      {
+        "name": "Vendor Type",
+        "type": "string",
+        "required": true,
+        "mdmsSource": {
+          "module": "organization",
+          "master": "VendorType",
+          "path": "$.type",
+          "filterType": "ONE_OF"
+        }
+      },
+      {
+        "name": "Vendor Subtype",
+        "type": "string",
+        "required": false
+      },
+      {
+        "name": "Identifier Type",
+        "type": "string",
+        "required": true,
+        "mdmsSource": {
+          "module": "common-masters",
+          "master": "OrgTaxIdentifier",
+          "path": "$.code",
+          "filterType": "ONE_OF"
+        }
+      },
+      {
+        "name": "Identifier Value",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "HQ Address",
+        "type": "string",
+        "required": true,
+        "pattern": "^[a-zA-Z\\s]+$"
+      },
+      {
+        "name": "Pincode",
+        "type": "string",
+        "pattern": "^[0-9]{6}$",
+        "required": true
+      },
+      {
+        "name": "PoC Phone",
+        "type": "string",
+        "pattern": "^\\d{10}$",
+        "required": true
+      },
+      {
+        "name": "PoC Name",
+        "type": "string",
+        "required": true,
+        "pattern": "^[a-zA-Z\\s]+$"
+      }
+    ]
+  }
+}
