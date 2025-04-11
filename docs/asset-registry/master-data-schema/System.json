@@ -1,0 +1,14 @@
+{
+  "tenantId": "pg",
+  "module": "asset",
+  "System": [
+    {
+      "code": "AC_OFF_GRID",
+      "name": "AC Off Grid"
+    },
+    {
+      "code": "DC",
+      "name": "DC"
+    }
+  ]
+}

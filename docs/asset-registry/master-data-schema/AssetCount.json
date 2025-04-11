@@ -1,0 +1,9 @@
+{
+  "tenantId": "pg",
+  "module": "asset",
+  "AssetCount": [
+    { "asset_type_code": "INVERTER", "min": 1, "max": 5 },
+    { "asset_type_code": "BATTERY", "min": 1, "max": 25 },
+    { "asset_type_code": "PANEL", "min": 1, "max": 20 }
+  ]
+}
