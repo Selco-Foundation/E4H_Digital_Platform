@@ -2,9 +2,12 @@ package org.egov.im.web.controllers;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.egov.im.config.IMConfiguration;
+import org.egov.im.producer.Producer;
 import org.egov.im.service.StorageService;
 import org.egov.im.util.StorageUtil;
 import org.egov.im.web.models.ProcessingContext;
+import org.egov.im.web.models.storage.StorageProcessingContext;
 import org.egov.im.web.models.storage.StorageResponse;
 import org.egov.tracer.model.CustomException;
 import org.springframework.web.bind.annotation.*;
@@ -20,6 +23,8 @@ import java.util.List;
 public class StorageController {
 
     private final StorageService storageService;
+    private final Producer producer;
+    private final IMConfiguration configuration;
     private final StorageUtil storageUtil;
 
     @PostMapping(value = "upload")
@@ -51,26 +56,23 @@ public class StorageController {
             storageResponse =
                     storageService.createAndSaveMasterFiles(storageResponse, tempFiles, context);
 
+            StorageProcessingContext storageProcessingContext = StorageProcessingContext.builder()
+                    .storageResponse(storageResponse)
+                    .context(context)
+                    .build();
+
             log.info("Done creating master files: {}", storageResponse);
-            log.info("Start processing chunks asynchronously");
+            producer.push(tenantId, configuration.getVideoProcessorTopic(),storageProcessingContext);
+            log.info("Pushed storage response to kafka topic.");
 
-            // Process chunks asynchronously without waiting for completion
-            for (int index = 0; index < storageResponse.getFiles().size(); index++) {
-                org.egov.im.web.models.storage.File fileMetadata = storageResponse.getFiles().get(index);
-                File file = tempFiles.get(index);
-                String fileStoreId = fileMetadata.getFileStoreId();
-
-                // Submit each chunk processing task asynchronously
-                storageService.createAndSaveChunks(fileStoreId, file, context);
-            }
-            log.info("Chunk processing tasks submitted. Returning response immediately.");
             return storageResponse;
 
         } catch (Exception e) {
             log.error("ERROR_UPLOADING_TO_FILESTORE: {}", e.getMessage());
+            throw new CustomException("ERROR_UPLOADING_TO_FILESTORE", e.getMessage());
+        }finally {
             log.info("deleting all temporary files ");
             storageUtil.deleteFiles(tempFiles);
-            throw new CustomException("ERROR_UPLOADING_TO_FILESTORE", e.getMessage());
         }
     }
 }
