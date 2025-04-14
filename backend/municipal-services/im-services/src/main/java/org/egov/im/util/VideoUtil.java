@@ -5,7 +5,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.egov.im.config.IMConfiguration;
 import org.egov.im.settings.VideoQualityFactory;
 import org.egov.im.settings.VideoQualitySettings;
-import org.egov.im.web.models.ProcessingContext;
 import org.egov.tracer.model.CustomException;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
@@ -20,7 +19,6 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Stream;
 
 @RequiredArgsConstructor
 @Slf4j
@@ -63,27 +61,6 @@ public class VideoUtil {
         }
     }
 
-
-    public List<MultipartFile> convertToMultipartFiles(ProcessingContext context, Path outputPath, String outputFilePath){
-
-        Path directoryPath = outputPath.resolve(String.format("%s%s", outputPath, outputFilePath));
-        List<Path> files;
-        try (Stream<Path> fileStream = Files.list(directoryPath)) {
-            files = fileStream.toList();
-
-        // Convert files to MultipartFile and upload
-            return files.stream()
-                .map(file -> {
-                    String resolvedPath =
-                            String.format("%s/%s", context.getVideoId(), pathExtractor(file.toString(), "output"));
-                    return convertFileToMultipartFile(file.toFile(), resolvedPath);
-                })
-                .toList();
-
-        } catch (IOException e) {
-            throw new CustomException("Error converting files to multipart file", e.getMessage());
-        }
-    }
 
     public String[] getVideoDimensions(String videoPath) {
         final String FFPROBE_PATH = config.getFfprobePath();
@@ -160,22 +137,6 @@ public class VideoUtil {
         return qualityLevels;
     }
 
-    /**
-     * Generates the #EXT-X-STREAM-INF entry for the original quality.
-     */
-    public String getOriginalStreamInfo(String[] dimensions) {
-
-        if (dimensions != null && dimensions.length == 2) {
-            int width = Integer.parseInt(dimensions[0]);
-            int height = Integer.parseInt(dimensions[1]);
-            int bandwidth = getBandwidthForResolution(width, height);
-            return String.format("#EXT-X-STREAM-INF:BANDWIDTH=%d,RESOLUTION=%dx%d%n%s", bandwidth, width, height,
-                    String.format("original/%s","playlist.m3u8"));
-        }
-
-        // Default fallback for unknown resolution
-        return "#EXT-X-STREAM-INF:BANDWIDTH=8000000,RESOLUTION=1920x1080%n";
-    }
 
     public String pathExtractor(String fullPath, String indexPath) {
             Path path = Paths.get(fullPath);
