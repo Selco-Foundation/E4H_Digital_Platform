@@ -1,0 +1,16 @@
+{
+  "tenantId": "pg",
+  "module": "facility",
+  "FacilityType": [
+    {
+      "active": true,
+      "code": "PHC",
+      "name": "Primary Health Centre"
+    },
+    {
+      "active": true,
+      "code": "SC",
+      "name": "Sub Centre"
+    }
+  ]
+}

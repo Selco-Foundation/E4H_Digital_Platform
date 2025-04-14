@@ -15,7 +15,6 @@ box DIGIT Services #lightgray
 participant "MDMS Service" as M #lightgreen
 participant "IDGen Service" as IDG #lightgreen
 participant "Boundary Service" as BS #lightgreen
-participant "Workflow Service" as W #lightgreen
 participant PersisterSvc as P #lightgreen
 Database PostgreSQL as DB #gray
 end box
@@ -28,29 +27,21 @@ FS -> M++: Fetch MDMS data for:\n- facility_type\n- facility_category\n- facilit
 return master data
 
 FS -> FS: validate facility fields using master data
+alt facility validation failed
+  FS -> FUI: return 400 : Bad Request
+  destroy FS
+else facility validation passed
+  FS -> BS++: Validate facility boundary
+  return boundary validation result
+  
+  FS -> IDG++: Generate facility_id
+  return facility_id
 
-FS -> BS++: Validate facility boundary
-return boundary validation result
+  FS -> FS: enrich data
 
-FS -> IDG++: Generate facility_id
-return facility_id
-
-FS -> FS: enrich data
-
-FS -> W++: initiate facility create workflow
-return workflow status: INITIATED
-
-' Removed Kafka
-' FS -> K++: push facility payload to topic 'facility-create'
-' return
-
-FS -> P++: Persist facility data  ' Direct call to PersisterSvc (Separate Dev Effort, To be Implemented)
-return
-
-return 201 : Facility Created
-
-' Removed Kafka consumption
-' P -> K: consume facility-create topic
-P -> DB: insert facility records
-
+  FS -> P++: Persist facility data  ' Direct call to PersisterSvc (Separate Dev Effort, To be Implemented)
+  P -> DB: insert facility records
+  P -> FS: return success 
+  FS -> FUI: return 201 : Facility Created
+end
 @enduml

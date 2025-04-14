@@ -1,0 +1,11 @@
+{
+  "tenantId": "pg",
+  "module": "facility",
+  "FacilityCategory": [
+    {
+      "active": true,
+      "code": "HEALTH",
+      "name": "Health"
+    }
+  ]
+}
