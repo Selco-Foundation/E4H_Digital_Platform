@@ -12,15 +12,15 @@ const SelectRating = ({ parentRoute, complaintDetails }) => {
 
   const [submitError, setSubmitError] = useState(false)
 
-  const handleComplaintUpdate = useCallback((complaintData) => {
-    dispatch(updateComplaints(complaintData));
+  const handleComplaintUpdate = useCallback(async (complaintData) => {
+    await dispatch(updateComplaints(complaintData));
   }, [dispatch]);
 
   const navigateToResponsePage = useCallback(() => {
     history.push(`${parentRoute}/incident/response`);
   }, [history, parentRoute]);
 
-  const handleRatingSubmit = useCallback((data) => {
+  const handleRatingSubmit = useCallback(async (data) => {
     if (!complaintDetails || data.rating <= 0) {
       setSubmitError(true);
       return;
@@ -36,7 +36,7 @@ const SelectRating = ({ parentRoute, complaintDetails }) => {
       }
     };
     
-    handleComplaintUpdate(updatedComplaintDetails);
+    await handleComplaintUpdate(updatedComplaintDetails);
     navigateToResponsePage();
     
     setSubmitError(false);

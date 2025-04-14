@@ -6,6 +6,7 @@ import { Loader } from "@selco/digit-ui-react-components";
 const ComplaintFeedback = ({ parentRoute }) => {
     const { incidentId, tenantId } = useParams();
     const [isEligible, setIsEligible] = useState(false);
+    const [hasCheckedEligibility, setHasCheckedEligibility] = useState(false);
 
     const { isLoading, complaintDetails } = Digit.Hooks.pgr.useComplaintDetails({
         tenantId,
@@ -23,13 +24,15 @@ const ComplaintFeedback = ({ parentRoute }) => {
         if (
             isAssignedByCurrentUser && 
             complaintStatus === "CLOSEDAFTERRESOLUTION" && 
-            latestAction === "RATE"
+            latestAction === "CLOSE"
         ) {
             setIsEligible(true);
         }
+
+        setHasCheckedEligibility(true);
     }, [isLoading, complaintDetails]);
 
-    if (isLoading) {
+    if (isLoading || !hasCheckedEligibility) {
         return <Loader />;
     }
 
