@@ -86,7 +86,7 @@ const NavBar = ({ open, toggleSidebar, profileItem, menuItems, onClose, Footer, 
 
     if (item.type === "external-link") {
       return (
-        <a href={item.link} style={{textDecoration:"none"}}>
+        <a href={item.link} style={{ textDecoration: "none" }}>
           <Item />
         </a>
       );
@@ -95,13 +95,13 @@ const NavBar = ({ open, toggleSidebar, profileItem, menuItems, onClose, Footer, 
       if (item.link.indexOf(`/${window?.contextPath}`) === -1 && isEmployee) {
         const getOrigin = window.location.origin;
         return (
-          <a href={getOrigin + "/employee/" + item.link} style={{textDecoration:"none"}}>
+          <a href={getOrigin + "/employee/" + item.link} style={{ textDecoration: "none" }}>
             <Item />
           </a>
         );
       }
       return (
-        <Link to={item.link} style={{textDecoration:"none"}}>
+        <Link to={item.link} style={{ textDecoration: "none" }}>
           <Item />
         </Link>
       );
@@ -118,7 +118,7 @@ const NavBar = ({ open, toggleSidebar, profileItem, menuItems, onClose, Footer, 
   const renderSearch = () => {
     return (
       <div className="sidebar-list">
-        <div className="submenu-container" style={{marginBottom:"0px"}}>
+        <div className="submenu-container" style={{ marginBottom: "0px" }}>
           <div className="sidebar-link">
             <div className="actions">
               <SearchIcon className="icon" />
@@ -127,7 +127,7 @@ const NavBar = ({ open, toggleSidebar, profileItem, menuItems, onClose, Footer, 
                 type="text"
                 placeholder={t(`ACTION_TEST_SEARCH`)}
                 name="search"
-                style={{marginLeft:"5px", fontSize:"16px"}}
+                style={{ marginLeft: "5px", fontSize: "16px" }}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -176,21 +176,22 @@ const NavBar = ({ open, toggleSidebar, profileItem, menuItems, onClose, Footer, 
         >
           {profileItem}
           <img className="bannerLogo" src={"https://selco-assets.s3.ap-south-1.amazonaws.com/TwoClr_horizontal_4X.png"} alt="Selco Foundation" style={{
-  height: '40px',
-  width: '100px',
-  textAlign: 'center',
-  marginRight: '70px',
-  marginLeft: '70px',
-  marginTop: '-30px',
-  marginBottom: '-30px'
-}} />
+            height: '40px',
+            width: '100px',
+            textAlign: 'center',
+            marginRight: '70px',
+            marginLeft: '70px',
+            marginTop: '-30px',
+            marginBottom: '-30px'
+          }} />
           <div className="drawer-list">
-           <div style={{marginTop:"10px"}}>
-            {menuItems?.map((item, index) => (
-              <div className={`sidebar-list ${pathname === item.link ? "active" : ""}`} key={index}>
-                <MenuItem item={item} />
-              </div>
-            ))}
+            {/* {isEmployee ? renderSearch() : null} */}
+            <div style={{ marginTop: "10px" }}>
+              {menuItems?.map((item, index) => (
+                <div className={`sidebar-list ${pathname === item.link ? "active" : ""}`} key={index}>
+                  <MenuItem item={item} />
+                </div>
+              ))}
             </div>
             <div className={`sidebar-list`}>
               <div className="side-bar-footer">{Footer}</div>

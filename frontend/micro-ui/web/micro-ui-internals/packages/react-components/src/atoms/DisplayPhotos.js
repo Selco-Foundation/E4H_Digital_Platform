@@ -51,10 +51,10 @@ const ImageOrPDFIcon = ({ source, index, last = false, onClick, activeVideoRef }
         source.includes(".xlsx") || source.includes(".docx") || source.includes(".doc")
           ? dataUrl
           : source.includes(".mp3")
-          ? mp3Icon
-          : source.includes(".mp4")
-          ? videoIcon
-          : source
+            ? mp3Icon
+            : source.includes(".mp4")
+              ? videoIcon
+              : source
       }
       style={{ cursor: "pointer" }}
       {...(last ? { className: "last" } : {})}
@@ -69,16 +69,14 @@ const DisplayPhotos = (props) => {
   return (
     <div className="photos-wrap" style={{ ...props.style, maxWidth: "auto" }}>
       {props.srcs.map((source, index) => {
-        return (
-          <ImageOrPDFIcon
-            key={index}
-            source={source}
-            index={index}
-            {...props}
-            activeVideoRef={activeVideoRef}
-            last={++index !== props.srcs.length ? false : true}
-          />
-        );
+        return <ImageOrPDFIcon
+          key={index}
+          source={source}
+          index={index}
+          {...props}
+          activeVideoRef={activeVideoRef}
+          last={++index !== props.srcs.length ? false : true}
+        />
       })}
     </div>
   );
