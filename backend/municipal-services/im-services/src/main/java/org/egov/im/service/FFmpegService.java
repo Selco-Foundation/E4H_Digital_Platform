@@ -21,37 +21,13 @@ import java.util.List;
 @Component
 public class FFmpegService {
 
-    private final FFMpegExecutor ffMpegExecutor;
-    private final FFmpegCommandGenerator fFmpegCommandGenerator;
     private final VideoUtil videoUtil;
     private final DirectoryUtil directoryUtil;
 
-    public String processQuality(
-            ProcessingContext context, String inputPath, Path outputPath, VideoQualitySettings videoQuality) {
-
-        Path path = directoryUtil.createDirectory(String.format("%s/%s/hls/%s",
-                outputPath.toString(), context.getVideoId(), videoQuality.getLabel()));
-
-        String file = String.format("%s/playlist.m3u8", path);
-        String command = videoQuality.isOriginal()
-                ? fFmpegCommandGenerator.getBaseCommand(inputPath, file)
-                : fFmpegCommandGenerator.getOptimizedCommand(inputPath,
-                "veryfast", videoQuality.getCrf(), videoQuality.getResolution(), videoQuality.getAudioBitRate(), file);
-
-        log.info("Executing FFmpeg command for {}: {}", videoQuality.getLabel(), command);
-        ffMpegExecutor.executeCommand(command);
-
-        String baseFileName = path.toString().split("output")[1];
-
-        log.info("Successfully processed quality: {}", videoQuality.getLabel());
-
-        return baseFileName;
-    }
-
 
     public MultipartFile createMasterPlaylist(List<VideoQualitySettings> qualities,
-                                                ProcessingContext context,
-                                                Path outputPath) {
+                                              ProcessingContext context,
+                                              Path outputPath) {
 
         directoryUtil.createDirectory(String.format("%s/%s/hls",
                 outputPath.toString(), context.getVideoId()));
@@ -62,8 +38,8 @@ public class FFmpegService {
 
         for (VideoQualitySettings quality : qualities) {
             String playlistPath = quality.getLabel() + "/playlist.m3u8";
-                masterPlaylist.append(String.format("#EXT-X-STREAM-INF:BANDWIDTH=%d,RESOLUTION=%s%n%s%n",
-                        quality.getBitRate(), quality.getResolution(), playlistPath));
+            masterPlaylist.append(String.format("#EXT-X-STREAM-INF:BANDWIDTH=%d,RESOLUTION=%s%n%s%n",
+                    quality.getBitRate(), quality.getResolution(), playlistPath));
             log.debug("Added quality {} ({}) to master playlist: {}",
                     quality.getLabel(), quality.getResolution(), playlistPath);
         }

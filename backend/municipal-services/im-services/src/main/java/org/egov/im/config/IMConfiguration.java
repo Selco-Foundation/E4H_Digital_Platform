@@ -125,6 +125,8 @@ public class IMConfiguration {
     @Value("${im.search.max.limit}")
     private Integer maxLimit;
 
+    @Value(("${im.kafka.process.video.topic}"))
+    private String videoProcessorTopic;
 
     //MDMS
     @Value("${egov.mdms.host}")

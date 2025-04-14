@@ -76,17 +76,6 @@ public class WorkflowService {
         incidentRequest.getIncident().setApplicationStatus(updatedProcessInstance.getState().getApplicationStatus());
         return updatedProcessInstance;
     }
-
-
-    public void validateAssignee(IncidentRequest incidentRequest) {
-        /*
-         * Call HRMS service and validate of the assignee belongs to same department
-         * as the employee assigning it
-         *
-         * */
-
-    }
-
     /**
      * Creates url for search based on given tenantId and businessservices
      *

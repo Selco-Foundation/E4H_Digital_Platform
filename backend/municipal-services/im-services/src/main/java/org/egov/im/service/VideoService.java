@@ -10,7 +10,6 @@ import org.egov.im.web.models.ProcessingContext;
 
 import org.egov.im.web.models.storage.StorageResponse;
 import org.egov.tracer.model.CustomException;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -18,7 +17,6 @@ import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.stream.Stream;
 
 @Slf4j
 @Service
@@ -29,7 +27,6 @@ public class VideoService {
     private final FFmpegService fFmpegService;
     private final DirectoryUtil directoryUtil;
     private final StorageUtil storageUtil;
-    private final VideoQualityProcessor videoQualityProcessor;
     private final VideoUploaderService uploaderService;
 
 
@@ -61,41 +58,8 @@ public class VideoService {
         }
     }
 
-    @Async
-    public void processVideoAsync(File inputFile, ProcessingContext context) {
-        log.info("Starting async processing for videoId: {}", context.getVideoId());
-
-        Path outputPath = prepareOutputDirectory();
-        String[] dimensions = getVideoDimensions(inputFile);
-
-        List<VideoQualitySettings> qualities = videoUtil.determineQualityLevels(dimensions);
-
-        try {
-            for (VideoQualitySettings qualitySettings : qualities) {
-                List<MultipartFile> multipartFiles =
-                        videoQualityProcessor.processQuality(context, inputFile, outputPath, qualitySettings);
-
-                log.info("Finished processing qualities for videoId: {}", context.getVideoId());
-
-                uploaderService.uploadProcessedFile(context, multipartFiles);
-
-                log.info("Processed all chunk qualities for videoId: {}", context.getVideoId());
-            }
-            // Cleanup after processing
-            cleanup(context, inputFile, outputPath);
-        } catch (Exception ex) {
-            log.error("Error during video processing for videoId: {}", context.getVideoId(), ex);
-            handleProcessingError(context, inputFile, outputPath, ex);
-        }
-    }
-
     private void cleanup(ProcessingContext context, File inputFile, Path outputPath) {
         log.info("start cleaning...");
-        storageUtil.cleanupTemporaryFiles(context.getVideoId(), inputFile, outputPath);
-    }
-
-    private void handleProcessingError(ProcessingContext context, File inputFile, Path outputPath, Throwable ex) {
-        log.error("Error processing video asynchronously for videoId: {}", context.getVideoId(), ex);
         storageUtil.cleanupTemporaryFiles(context.getVideoId(), inputFile, outputPath);
     }
 

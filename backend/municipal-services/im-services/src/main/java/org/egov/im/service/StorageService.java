@@ -89,23 +89,6 @@ public class StorageService {
         return storageResponse.toBuilder().files(updatedFiles).build();
     }
 
-    @Async
-    public void createAndSaveChunks(String fileStoreId,
-                                    File resource, ProcessingContext context) {
-        try {
-            log.info("File received: {}, Filename: {}", resource, resource.getName());
-            // Process the video asynchronously
-            videoService.processVideoAsync(resource, context.withVideoId(fileStoreId));
-
-        } catch (CustomException ex) {
-            log.error("Custom Exception for fileStoreId {}: {}", fileStoreId, ex.getMessage(), ex);
-            throw ex;
-        } catch (Exception ex) {
-            log.error("Unexpected error while processing fileStoreId {}: {}", fileStoreId, ex.getMessage(), ex);
-            throw new CustomException("Unexpected error processing video", ex.getMessage());
-        }
-    }
-
     public List<File> createTempFiles(List<MultipartFile> files) {
         List<File> tempFiles = new ArrayList<>();
         files.forEach(file -> {

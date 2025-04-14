@@ -190,14 +190,6 @@ public class IMService {
     }
 
 
-	public Map<String, Integer> getDynamicData(String tenantId) {
-		
-		Map<String,Integer> dynamicData = repository.fetchDynamicData(tenantId);
-
-		return dynamicData;
-	}
-
-
 	public int getComplaintTypes() {
 		
 		return Integer.valueOf(config.getComplaintTypes());
