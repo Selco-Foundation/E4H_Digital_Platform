@@ -479,6 +479,27 @@ export const ComplaintDetails = (props) => {
     complaintDetails.details.CS_COMPLAINT_DETAILS_TICKET_NO = complaintDetails?.details?.CS_COMPLAINT_DETAILS_TICKET_NO.split("/")[0];
   }
 
+  const timeline = workflowDetails?.data?.timeline || [];
+
+  let filteredTimeline = timeline;
+
+  // check if timeline has a CLOSEDAFTERRESOLUTION with action RATE
+  const closeAfterResolutionActions = timeline.filter(cp => cp.status === "CLOSEDAFTERRESOLUTION");
+  const hasRated = closeAfterResolutionActions.some(cp => cp.performedAction === "RATE");
+
+  if (hasRated) {
+    // Find the RATE checkpoint (assumed to be the latest)
+    const rateCheckpoint = closeAfterResolutionActions.find(cp => cp.performedAction === "RATE");
+
+    // Keep only the RATE one and filter out older CLOSE with same status
+    filteredTimeline = timeline.filter(cp => {
+      // Keep everything else OR the RATE checkpoint
+      if (cp === rateCheckpoint) return true;
+      if (cp.status === "CLOSEDAFTERRESOLUTION" && cp.performedAction === "CLOSE") return false;
+      return true;
+    });
+  }
+
   useEffect(() => {
     if (workflowDetails) {
       const { data: { timeline: complaintTimelineData } = {} } = workflowDetails;
@@ -857,7 +878,7 @@ export const ComplaintDetails = (props) => {
             ) : (
               <ConnectingCheckPoints>
                 {workflowDetails?.data?.timeline &&
-                  workflowDetails?.data?.timeline.map((checkpoint, index, arr) => {
+                  filteredTimeline.map((checkpoint, index, arr) => {
                     return (
                       <React.Fragment key={index}>
                         <CheckPoint
