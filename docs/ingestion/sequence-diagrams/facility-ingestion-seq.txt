@@ -54,7 +54,13 @@ note left of MDMSSvc
       {
         "name": "Type of HC",
         "type": "string",
-        "required": true
+        "required": true,
+        "mdmsSource": {
+          "module": "facility",
+          "master": "FacilityType",
+          "path": "$.code",
+          "filterType": "ONE_OF"
+        }
       },
       { "name": "HFR ID", "type": "string", "required": false },
       { "name": "NIN ID", "type": "string", "required": false },
