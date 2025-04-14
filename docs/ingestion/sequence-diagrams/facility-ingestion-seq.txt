@@ -5,6 +5,7 @@ actor "E4H Admin" as Admin
 participant "Data Ingestion Service" as IngestionSvc
 participant "MDMS Service" as MDMSSvc
 participant "Facility Service" as FacilitySvc
+participant "Boundary Service" as BoundarySvc
 
 skinparam sequenceMessageAlign center
 
@@ -23,7 +24,14 @@ activate MDMSSvc #LightBlue
 note left of MDMSSvc
   {
     "columns": [
-      { "name": "Country", "type": "string", "required": false },
+      { "name": "Country", "type": "string", "required": false,
+        "mdmsSource": {
+          "module": "common-masters",
+          "master": "CountryInfo",
+          "path": "$.name",
+          "filterType": "ONE_OF"
+        }
+ },
       { "name": "State", "type": "string", "required": false },
       { "name": "District", "type": "string", "required": false },
       { "name": "Block", "type": "string", "required": false },
@@ -33,7 +41,8 @@ note left of MDMSSvc
         "required": true,
         "svcSource": {
           "key": "boundaryCode",
-          "filterType": "ONE_OF"
+          "filterType": "ONE_OF",
+          "path": "$"
         }
       },
       {
@@ -87,56 +96,53 @@ note left of MDMSSvc
     ]
   }
 end note
-MDMSSvc --> Script : Return: response
+MDMSSvc --> IngestionSvc : Return: response
 deactivate MDMSSvc #LightBlue
-note right of Script
+note right of IngestionSvc
   columns = response.columns
   columnDataSourceMap = {};
 end note
 
 loop for column in columns
   alt "mdmsSource" in column
-    Script -> MDMSSvc : Request: { module: column["mdmsSource"].module, master: column["mdmsSource"].master }
+    IngestionSvc -> MDMSSvc : Request: { module: column["mdmsSource"].module, master: column["mdmsSource"].master }
     activate MDMSSvc #LightBlue
     note right of MDMSSvc
-      example: {
-          "tenantId": "in",
-          "moduleName": "common-masters",
-          "OrgTaxIdentifier": [
-            {
-              "code": "PAN",
-              "description": "PAN",
-              "active": true
-            },
-            {
-              "code": "GSTIN",
-              "description": "GSTIN",
-              "active": true
-            }
-          ]
-        }
+      {
+        "code": "IN",
+        "name": "India"
+      }
     end note
-    MDMSSvc --> Script : Return: response
-    note right of Script
+    MDMSSvc --> IngestionSvc : Return: response
+    note right of IngestionSvc
       //# transform function//
       //# returns {values: List, filterType: string}//
       columnDataSourceMap[column.name] = transform(response, column) 
     end note
     deactivate MDMSSvc #LightBlue
   end
+  alt "svcSource" in column and svcSource == "boundaryCode"
+    IngestionSvc -> BoundarySvc : getAllBoundaryCodes /*TO BE IMPLEMENTED*/
+    BoundarySvc --> IngestionSvc : Return response
+    note right of IngestionSvc
+      //# transform function//
+      //# returns {values: List, filterType: string}//
+      columnDataSourceMap[column.name] = transform(response, column) 
+    end note
+  end
 end
 
-note right of Script #LightYellow
+note right of IngestionSvc #LightYellow
   **Phase 1: Synchronous Validations**
   Validate rows using schema and fetched data.
 end note
 
-Script -> Script : **Perform Synchronous Validations**
-note right of Script
+IngestionSvc -> IngestionSvc : **Perform Synchronous Validations**
+note right of IngestionSvc
   hasError = False
 end note
 loop for column in df.columns
-  note right of Script
+  note right of IngestionSvc
     if column.required:
       is_required_mask = df[column.name].isna()
       if is_require_mask.any():
@@ -156,27 +162,26 @@ loop for column in df.columns
   end note
 end
 alt hasError
-  Script -> Script : Prepare Excel with "status" and "error" column
+  IngestionSvc -> IngestionSvc : Prepare Excel with "status" and "error" column
 else no error
-  note right of Script #LightYellow
+  note right of IngestionSvc #LightYellow
     **Phase 2: Vendor Creation**
     Create Vendors; track row statuses.
   end note
   loop for index, row in df.iterrows()
-  Script -> Script : Create Vendor Request from row
-  Script -> OrganisationSvc : **Create Vendor** \n Request:`/org-services/organisation/v1/_create`
-  activate OrganisationSvc #MediumPurple
-  OrganisationSvc --> Script : Return: `status` (Success/Fail, ID, Error)
-  deactivate OrganisationSvc #MediumPurple
-  note right of Script
+  IngestionSvc -> IngestionSvc : Create Facility Request from row
+  IngestionSvc -> FacilitySvc : **Create Facility** \n Request:`/facility/v2/facility/create`
+  activate FacilitySvc #MediumPurple
+  FacilitySvc --> IngestionSvc : Return: `status` (Success/Fail, ID, Error)
+  deactivate FacilitySvc #MediumPurple
+  note right of IngestionSvc
     df.loc[index, "status"] = response.status
     if response.status == "fail":
       df.loc[index, "error"] = response.errorMsg
   end note
   end
-  Script -> Script : Prepare Excel with "status" and "error" column
+  IngestionSvc -> IngestionSvc : Prepare Excel with "status" and "error" column
 end
-  Script --> Admin : Return: Annotated Excel
-  deactivate Script
+  IngestionSvc --> Admin : Return: Annotated Excel
+  deactivate IngestionSvc
 @enduml
-
