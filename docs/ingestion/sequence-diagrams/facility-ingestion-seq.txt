@@ -165,8 +165,8 @@ alt hasError
   IngestionSvc -> IngestionSvc : Prepare Excel with "status" and "error" column
 else no error
   note right of IngestionSvc #LightYellow
-    **Phase 2: Vendor Creation**
-    Create Vendors; track row statuses.
+    **Phase 2: Facility Creation**
+    Create Facilities; track row statuses.
   end note
   loop for index, row in df.iterrows()
   IngestionSvc -> IngestionSvc : Create Facility Request from row
