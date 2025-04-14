@@ -5,27 +5,32 @@
     {
       "asset_type_code": "INVERTER",
       "code": "GROWATT",
-      "name": "Growatt"
+      "name": "Growatt",
+      "active": true
     },
     {
       "asset_type_code": "INVERTER",
       "code": "SUNGROW",
-      "name": "Sungrow"
+      "name": "Sungrow",
+      "active": true
     },
     {
       "asset_type_code": "BATTERY",
       "code": "PYLON_TECH",
-      "name": "Pylontech"
+      "name": "Pylontech",
+      "active": true
     },
     {
       "asset_type_code": "BATTER",
       "code": "SOLAR_EDGE",
-      "name": "SolarEdge"
+      "name": "SolarEdge",
+      "active": true
     },
     {
       "asset_type_code": "PANEL",
       "code": "ENPHASE_ENERGY",
-      "name": "Enphase Energy"
+      "name": "Enphase Energy",
+      "active": true
     }
   ]
 }

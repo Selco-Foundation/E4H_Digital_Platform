@@ -2,32 +2,167 @@
   "tenantId": "pg",
   "module": "asset",
   "WarrantyDuration": [
-    { "asset_type_code": "INVERTER", "duration": "P1Y", "format": "ISO-8601" },
-    { "asset_type_code": "INVERTER", "duration": "P3Y", "format": "ISO-8601" },
-    { "asset_type_code": "INVERTER", "duration": "P5Y", "format": "ISO-8601" },
-    { "asset_type_code": "INVERTER", "duration": "P7Y", "format": "ISO-8601" },
-    { "asset_type_code": "INVERTER", "duration": "P10Y", "format": "ISO-8601" },
-    { "asset_type_code": "INVERTER", "duration": "P12Y", "format": "ISO-8601" },
-    { "asset_type_code": "INVERTER", "duration": "P15Y", "format": "ISO-8601" },
-    { "asset_type_code": "INVERTER", "duration": "P20Y", "format": "ISO-8601" },
-    { "asset_type_code": "INVERTER", "duration": "P25Y", "format": "ISO-8601" },
-    { "asset_type_code": "BATTERY", "duration": "P1Y", "format": "ISO-8601" },
-    { "asset_type_code": "BATTERY", "duration": "P3Y", "format": "ISO-8601" },
-    { "asset_type_code": "BATTERY", "duration": "P5Y", "format": "ISO-8601" },
-    { "asset_type_code": "BATTERY", "duration": "P7Y", "format": "ISO-8601" },
-    { "asset_type_code": "BATTERY", "duration": "P10Y", "format": "ISO-8601" },
-    { "asset_type_code": "BATTERY", "duration": "P12Y", "format": "ISO-8601" },
-    { "asset_type_code": "BATTERY", "duration": "P15Y", "format": "ISO-8601" },
-    { "asset_type_code": "BATTERY", "duration": "P20Y", "format": "ISO-8601" },
-    { "asset_type_code": "BATTERY", "duration": "P25Y", "format": "ISO-8601" },
-    { "asset_type_code": "PANEL", "duration": "P1Y", "format": "ISO-8601" },
-    { "asset_type_code": "PANEL", "duration": "P3Y", "format": "ISO-8601" },
-    { "asset_type_code": "PANEL", "duration": "P5Y", "format": "ISO-8601" },
-    { "asset_type_code": "PANEL", "duration": "P7Y", "format": "ISO-8601" },
-    { "asset_type_code": "PANEL", "duration": "P10Y", "format": "ISO-8601" },
-    { "asset_type_code": "PANEL", "duration": "P12Y", "format": "ISO-8601" },
-    { "asset_type_code": "PANEL", "duration": "P15Y", "format": "ISO-8601" },
-    { "asset_type_code": "PANEL", "duration": "P20Y", "format": "ISO-8601" },
-    { "asset_type_code": "PANEL", "duration": "P25Y", "format": "ISO-8601" }
+    {
+      "active": true,
+      "asset_type_code": "INVERTER",
+      "duration": "P1Y",
+      "format": "ISO-8601"
+    },
+    {
+      "active": true,
+      "asset_type_code": "INVERTER",
+      "duration": "P3Y",
+      "format": "ISO-8601"
+    },
+    {
+      "active": true,
+      "asset_type_code": "INVERTER",
+      "duration": "P5Y",
+      "format": "ISO-8601"
+    },
+    {
+      "active": true,
+      "asset_type_code": "INVERTER",
+      "duration": "P7Y",
+      "format": "ISO-8601"
+    },
+    {
+      "active": true,
+      "asset_type_code": "INVERTER",
+      "duration": "P10Y",
+      "format": "ISO-8601"
+    },
+    {
+      "active": true,
+      "asset_type_code": "INVERTER",
+      "duration": "P12Y",
+      "format": "ISO-8601"
+    },
+    {
+      "active": true,
+      "asset_type_code": "INVERTER",
+      "duration": "P15Y",
+      "format": "ISO-8601"
+    },
+    {
+      "active": true,
+      "asset_type_code": "INVERTER",
+      "duration": "P20Y",
+      "format": "ISO-8601"
+    },
+    {
+      "active": true,
+      "asset_type_code": "INVERTER",
+      "duration": "P25Y",
+      "format": "ISO-8601"
+    },
+    {
+      "active": true,
+      "asset_type_code": "BATTERY",
+      "duration": "P1Y",
+      "format": "ISO-8601"
+    },
+    {
+      "active": true,
+      "asset_type_code": "BATTERY",
+      "duration": "P3Y",
+      "format": "ISO-8601"
+    },
+    {
+      "active": true,
+      "asset_type_code": "BATTERY",
+      "duration": "P5Y",
+      "format": "ISO-8601"
+    },
+    {
+      "active": true,
+      "asset_type_code": "BATTERY",
+      "duration": "P7Y",
+      "format": "ISO-8601"
+    },
+    {
+      "active": true,
+      "asset_type_code": "BATTERY",
+      "duration": "P10Y",
+      "format": "ISO-8601"
+    },
+    {
+      "active": true,
+      "asset_type_code": "BATTERY",
+      "duration": "P12Y",
+      "format": "ISO-8601"
+    },
+    {
+      "active": true,
+      "asset_type_code": "BATTERY",
+      "duration": "P15Y",
+      "format": "ISO-8601"
+    },
+    {
+      "active": true,
+      "asset_type_code": "BATTERY",
+      "duration": "P20Y",
+      "format": "ISO-8601"
+    },
+    {
+      "active": true,
+      "asset_type_code": "BATTERY",
+      "duration": "P25Y",
+      "format": "ISO-8601"
+    },
+    {
+      "active": true,
+      "asset_type_code": "PANEL",
+      "duration": "P1Y",
+      "format": "ISO-8601"
+    },
+    {
+      "active": true,
+      "asset_type_code": "PANEL",
+      "duration": "P3Y",
+      "format": "ISO-8601"
+    },
+    {
+      "active": true,
+      "asset_type_code": "PANEL",
+      "duration": "P5Y",
+      "format": "ISO-8601"
+    },
+    {
+      "active": true,
+      "asset_type_code": "PANEL",
+      "duration": "P7Y",
+      "format": "ISO-8601"
+    },
+    {
+      "active": true,
+      "asset_type_code": "PANEL",
+      "duration": "P10Y",
+      "format": "ISO-8601"
+    },
+    {
+      "active": true,
+      "asset_type_code": "PANEL",
+      "duration": "P12Y",
+      "format": "ISO-8601"
+    },
+    {
+      "active": true,
+      "asset_type_code": "PANEL",
+      "duration": "P15Y",
+      "format": "ISO-8601"
+    },
+    {
+      "active": true,
+      "asset_type_code": "PANEL",
+      "duration": "P20Y",
+      "format": "ISO-8601"
+    },
+    {
+      "active": true,
+      "asset_type_code": "PANEL",
+      "duration": "P25Y",
+      "format": "ISO-8601"
+    }
   ]
 }

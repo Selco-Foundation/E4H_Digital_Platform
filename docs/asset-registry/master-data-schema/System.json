@@ -4,11 +4,13 @@
   "System": [
     {
       "code": "AC_OFF_GRID",
-      "name": "AC Off Grid"
+      "name": "AC Off Grid",
+      "active": true
     },
     {
       "code": "DC",
-      "name": "DC"
+      "name": "DC",
+      "active": true
     }
   ]
 }
