@@ -10,37 +10,53 @@ const SelectRating = ({ parentRoute, complaintDetails }) => {
   const dispatch = useDispatch();
   const history = useHistory();
 
-  const [submitError, setSubmitError] = useState(false)
+  const [submitError, setSubmitError] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleComplaintUpdate = useCallback(async (complaintData) => {
-    await dispatch(updateComplaints(complaintData));
-  }, [dispatch]);
+  const handleComplaintUpdate = useCallback(
+    async (complaintData) => {
+      await dispatch(updateComplaints(complaintData));
+    },
+    [dispatch]
+  );
 
   const navigateToResponsePage = useCallback(() => {
     history.push(`${parentRoute}/incident/response`);
   }, [history, parentRoute]);
 
-  const handleRatingSubmit = useCallback(async (data) => {
-    if (!complaintDetails || data.rating <= 0) {
-      setSubmitError(true);
-      return;
-    }
-
-    const updatedComplaintDetails = {
-      ...complaintDetails,
-      workflow: {
-        action: "RATE",
-        comments: data.comments,
-        rating: data.rating,
-        verificationDocuments: [],
+  const handleRatingSubmit = useCallback(
+    async (data) => {
+      if (!complaintDetails || !(data.rating > 0)) {
+        setSubmitError(true);
+        return;
       }
-    };
-    
-    await handleComplaintUpdate(updatedComplaintDetails);
-    navigateToResponsePage();
-    
-    setSubmitError(false);
-  }, [complaintDetails, handleComplaintUpdate, navigateToResponsePage]);
+
+      if (isSubmitting) return;
+      setIsSubmitting(true);
+      setSubmitError(false);
+
+      const updatedComplaintDetails = {
+        ...complaintDetails,
+        workflow: {
+          action: "RATE",
+          comments: data.comments,
+          rating: data.rating,
+          verificationDocuments: [],
+        },
+      };
+
+      try {
+        await handleComplaintUpdate(updatedComplaintDetails);
+        navigateToResponsePage();
+      } catch (error) {
+        console.error("Error submitting rating:", error);
+        setSubmitError(true);
+      } finally {
+        setIsSubmitting(false);
+      }
+    },
+    [complaintDetails, handleComplaintUpdate, navigateToResponsePage, isSubmitting]
+  );
 
   const config = {
     texts: {
@@ -52,9 +68,9 @@ const SelectRating = ({ parentRoute, complaintDetails }) => {
         type: "rate",
         maxRating: 5,
         label: "",
-        styles: { marginLeft: 'auto', marginRight: 'auto' },
+        styles: { marginLeft: "auto", marginRight: "auto" },
         starStyles: { cursor: "pointer", marginRight: "unset" },
-        error: submitError ? <CardLabelError>{t("CS_FEEDBACK_ENTER_RATING_ERROR")}</CardLabelError> : null
+        error: submitError ? <CardLabelError>{t("CS_FEEDBACK_ENTER_RATING_ERROR")}</CardLabelError> : null,
       },
       {
         type: "textarea",
@@ -63,12 +79,8 @@ const SelectRating = ({ parentRoute, complaintDetails }) => {
       },
     ],
   };
-  return (
-    <RatingCard 
-      config={config} 
-      t={t} 
-      onSelect={handleRatingSubmit} 
-    />
-  );
+
+  return <RatingCard config={config} t={t} onSelect={handleRatingSubmit} />;
 };
+
 export default SelectRating;

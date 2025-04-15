@@ -33,7 +33,7 @@ const Complaint = () => {
     },
     complaintDetails: {
       content: t("CS_PGR_COMPLAINT_DETAILS"),
-      path: match.url + Employee.ComplaintDetails + "incidentId/:tenantId",
+      path: match.url + Employee.ComplaintDetails + ":incidentId/:tenantId",
     },
     feedback: {
       content: t("CS_PGR_FEEDBACK"),
