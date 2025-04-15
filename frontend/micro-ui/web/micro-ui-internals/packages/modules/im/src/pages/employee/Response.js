@@ -16,12 +16,16 @@ const GetActionMessage = ({ action }) => {
   }
 };
 
-const GetCardTextMessage = ({ action }) => {
+const GetCardTextMessage = (workflow) => {
   const { t } = useTranslation();
-  if (action === "RATE") {
-    return t("ES_COMMON_RATED_COMPLAINT_TEXT");
-  } else {
-    return t("ES_COMMON_TRACK_COMPLAINT_TEXT");
+
+  const action = workflow?.action;
+
+  switch (action) {
+    case "RATE":
+      return t("ES_COMMON_RATED_COMPLAINT_TEXT");
+    default:
+      return t("ES_COMMON_TRACK_COMPLAINT_TEXT");
   }
 };
 

@@ -17,12 +17,12 @@ const ComplaintFeedback = ({ parentRoute }) => {
         if (isLoading) return;
 
         const currentLoginUser = JSON.parse(sessionStorage.getItem("Digit.User"))?.value?.info?.uuid;
-        const isAssignedByCurrentUser = currentLoginUser === complaintDetails?.incident?.reporter?.uuid;
+        const isReportedByCurrentUser = currentLoginUser === complaintDetails?.incident?.reporter?.uuid;
         const complaintStatus = complaintDetails?.incident?.applicationStatus;
         const latestAction = complaintDetails?.workflow?.action;
 
         if (
-            isAssignedByCurrentUser && 
+            isReportedByCurrentUser && 
             complaintStatus === "CLOSEDAFTERRESOLUTION" && 
             latestAction === "CLOSE"
         ) {
