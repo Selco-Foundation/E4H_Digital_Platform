@@ -919,14 +919,21 @@ export const ComplaintDetails = (props) => {
         />
       ) : null}
       {toast && assignResponse && assignResponse?.IncidentWrappers && <Toast label={t(`CS_ACTION_${selectedAction}_TEXT`)} onClose={closeToast} />}
-      {!workflowDetails?.isLoading && workflowDetails?.data?.nextActions?.length > 0 && currentOwner === currentLoginUser && (
-        <ActionBar style={{ marginLeft: isIpadView ? "250px" : "none" }}>
-          {displayMenu && workflowDetails?.data?.nextActions ? (
-            <Menu options={workflowDetails?.data?.nextActions.map((action) => action.action)} t={t} onSelect={onActionSelect} />
-          ) : null}
-          <SubmitBar label={t("WF_TAKE_ACTION")} onSubmit={() => setDisplayMenu(!displayMenu)} />
-        </ActionBar>
-      )}
+      {!isLoading &&
+        complaintDetails?.incident?.applicationStatus !== "CLOSEDAFTERRESOLUTION" &&
+        workflowDetails?.data?.nextActions?.length > 0 &&
+        currentOwner === currentLoginUser && (
+          <ActionBar style={{ marginLeft: isIpadView ? "250px" : "none" }}>
+            {displayMenu && workflowDetails?.data?.nextActions ? (
+              <Menu
+                options={workflowDetails?.data?.nextActions.map((action) => action.action)}
+                t={t}
+                onSelect={onActionSelect}
+              />
+            ) : null}
+            <SubmitBar label={t("WF_TAKE_ACTION")} onSubmit={() => setDisplayMenu(!displayMenu)} />
+          </ActionBar>
+        )}
       {error && error[0].message && <Toast error={error[0].message} label={error[0].message} onClose={closeToast} />}
     </React.Fragment>
   );
