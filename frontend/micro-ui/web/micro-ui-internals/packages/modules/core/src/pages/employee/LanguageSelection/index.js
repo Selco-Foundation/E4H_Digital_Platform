@@ -1,13 +1,15 @@
 import { Card, CustomButton, SubmitBar } from "@selco/digit-ui-react-components";
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Redirect, useHistory } from "react-router-dom";
+import { Redirect, useHistory, useLocation } from "react-router-dom";
 import Background from "../../../components/Background";
 
 const LanguageSelection = () => {
   const { data: storeData, isLoading } = Digit.Hooks.useStore.getInitData();
   const { t } = useTranslation();
   const history = useHistory()
+  const location = useLocation()
+  const fromParam = new URLSearchParams(location.search).get('from');
   const { languages, stateInfo } = storeData || {};
   const selectedLanguage = Digit.StoreData.getCurrentLanguage();
   const [selected, setselected] = useState(selectedLanguage);
@@ -17,12 +19,21 @@ const LanguageSelection = () => {
   };
   const loginURL = `/${window.contextPath}/employee/user/login`
 
+  const getNavigationConfig = (from) => ({
+    pathname: loginURL,
+    search: fromParam ? `?from=${encodeURIComponent(fromParam)}` : "",
+  });
+
   const handleSubmit = (event) => {
-    history.push(loginURL)
+    history.push(getNavigationConfig(fromParam));
   };
 
-  if(languages?.length === 1) {
-    return <Redirect to={loginURL} />;
+  if (languages?.length === 1) {
+    return (
+      <Redirect
+        to={getNavigationConfig(fromParam)}
+      />
+    );
   }
 
   if (isLoading) return null;

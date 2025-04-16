@@ -33,7 +33,7 @@ import {
   MultiUploadWrapper,
   RadioButtons,
 } from "@selco/digit-ui-react-components";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 
 import { Close } from "../../Icons";
 import { useTranslation } from "react-i18next";
@@ -89,8 +89,8 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
   );
   const employeeData = useEmployeeData
     ? useEmployeeData.map((departmentData) => {
-        return { heading: departmentData.department, options: departmentData.employees };
-      })
+      return { heading: departmentData.department, options: departmentData.employees };
+    })
     : null;
 
   const [selectedEmployee, setSelectedEmployee] = useState(null);
@@ -226,14 +226,14 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
             selectedAction === "ASSIGN" || selectedAction === "REASSIGN"
               ? t("CS_ACTION_ASSIGN_TICKET")
               : selectedAction === "REJECT"
-              ? t("CS_ACTION_REJECT_TICKET")
-              : selectedAction === "REOPEN"
-              ? t("CS_COMMON_REOPEN")
-              : selectedAction === "RESOLVE"
-              ? t("CS_COMMON_RESOLVE")
-              : selectedAction === "CLOSE"
-              ? t("CS_COMMON_CLOSE")
-              : t("CS_COMMON_SENDBACK")
+                ? t("CS_ACTION_REJECT_TICKET")
+                : selectedAction === "REOPEN"
+                  ? t("CS_COMMON_REOPEN")
+                  : selectedAction === "RESOLVE"
+                    ? t("CS_COMMON_RESOLVE")
+                    : selectedAction === "CLOSE"
+                      ? t("CS_COMMON_CLOSE")
+                      : t("CS_COMMON_SENDBACK")
           }
         />
       }
@@ -244,14 +244,14 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
         selectedAction === "ASSIGN" || selectedAction === "REASSIGN"
           ? t("CS_COMMON_ASSIGN")
           : selectedAction === "REJECT"
-          ? t("CS_COMMON_REJECT")
-          : selectedAction === "REOPEN"
-          ? t("CS_ACTION_REOPEN")
-          : selectedAction === "RESOLVE"
-          ? t("CS_COMMON_RESOLVE_BUTTON")
-          : selectedAction === "CLOSE"
-          ? t("CS_COMMON_CLOSE")
-          : t("CS_COMMON_SENDbACK")
+            ? t("CS_COMMON_REJECT")
+            : selectedAction === "REOPEN"
+              ? t("CS_ACTION_REOPEN")
+              : selectedAction === "RESOLVE"
+                ? t("CS_COMMON_RESOLVE_BUTTON")
+                : selectedAction === "CLOSE"
+                  ? t("CS_COMMON_CLOSE")
+                  : t("CS_COMMON_SENDbACK")
       }
       actionSaveOnSubmit={() => {
         const isTextareaAction =
@@ -350,8 +350,8 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
         {selectedAction !== "SENDBACK" || selectedSendBackReason?.additionalInputs?.[0].type === "textarea" ? (
           <>
             {selectedAction !== "ASSIGN" &&
-            selectedAction !== "REOPEN" &&
-            !(selectedAction === "REJECT" && selectedRejectReason?.additionalInputs?.[0].type !== "textarea") ? (
+              selectedAction !== "REOPEN" &&
+              !(selectedAction === "REJECT" && selectedRejectReason?.additionalInputs?.[0].type !== "textarea") ? (
               <CardLabel>{t("CS_COMMON_EMPLOYEE_COMMENTS")}*</CardLabel>
             ) : (
               <CardLabel>{t("CS_COMMON_EMPLOYEE_COMMENTS")}</CardLabel>
@@ -405,7 +405,7 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
 };
 
 export const ComplaintDetails = (props) => {
-  let { id } = useParams();
+  let { incidentId, tenantId } = useParams();
   const { t } = useTranslation();
   const [fullscreen, setFullscreen] = useState(false);
   const [imageZoom, setImageZoom] = useState(null);
@@ -413,6 +413,7 @@ export const ComplaintDetails = (props) => {
   const iPadMaxWidth = 1024;
   const iPadMinWidth = 768;
   const isMobile = window.Digit.Utils.browser.isMobile();
+  const location = useLocation();
   const [isIpadView, setIsIpadView] = React.useState(window.innerWidth <= iPadMaxWidth && window.innerWidth >= iPadMinWidth);
   const onResize = () => {
     if (window.innerWidth <= iPadMaxWidth && window.innerWidth >= iPadMinWidth) {
@@ -437,15 +438,18 @@ export const ComplaintDetails = (props) => {
   const tenant =
     Digit.SessionStorage.get("Employee.tenantId") === stateTenantId
       ? Digit.SessionStorage.get("IM_TENANTS")
-          .map((item) => item.code)
-          .join(",")
+        .map((item) => item.code)
+        .join(",")
       : Digit.SessionStorage.get("Employee.tenantId");
 
-  const { isLoading, complaintDetails, revalidate: revalidateComplaintDetails } = Digit.Hooks.pgr.useComplaintDetails({ tenant, id });
+  const { isLoading, complaintDetails, revalidate: revalidateComplaintDetails } = Digit.Hooks.pgr.useComplaintDetails({
+    tenantId: tenant,
+    id: incidentId,
+  });
 
   const workflowDetails = Digit.Hooks.useWorkflowDetails({
-    tenant: id.split("/")[1],
-    id: id.split("/")[0],
+    tenantId: tenantId,
+    id: incidentId,
     moduleCode: "Incident",
     role: "EMPLOYEE",
   });
@@ -473,6 +477,27 @@ export const ComplaintDetails = (props) => {
   }
   if (complaintDetails) {
     complaintDetails.details.CS_COMPLAINT_DETAILS_TICKET_NO = complaintDetails?.details?.CS_COMPLAINT_DETAILS_TICKET_NO.split("/")[0];
+  }
+
+  const timeline = workflowDetails?.data?.timeline || [];
+
+  let filteredTimeline = timeline;
+
+  // check if timeline has a CLOSEDAFTERRESOLUTION with action RATE
+  const closeAfterResolutionActions = timeline.filter(cp => cp.status === "CLOSEDAFTERRESOLUTION");
+  const hasRated = closeAfterResolutionActions.some(cp => cp.performedAction === "RATE");
+
+  if (hasRated) {
+    // Find the RATE checkpoint (assumed to be the latest)
+    const rateCheckpoint = closeAfterResolutionActions.find(cp => cp.performedAction === "RATE");
+
+    // Keep only the RATE one and filter out older CLOSE with same status
+    filteredTimeline = timeline.filter(cp => {
+      // Keep everything else OR the RATE checkpoint
+      if (cp === rateCheckpoint) return true;
+      if (cp.status === "CLOSEDAFTERRESOLUTION" && cp.performedAction === "CLOSE") return false;
+      return true;
+    });
   }
 
   useEffect(() => {
@@ -684,8 +709,8 @@ export const ComplaintDetails = (props) => {
       mobileNumber: checkpoint?.assigner?.mobileNumber,
       ...(checkpoint.status === "COMPLAINT_FILED" && complaintDetails?.audit
         ? {
-            source: complaintDetails.audit.source,
-          }
+          source: complaintDetails.audit.source,
+        }
         : {}),
     };
     const isFirstPendingForAssignment = arr.length - (index + 1) === 1 ? true : false;
@@ -739,7 +764,24 @@ export const ComplaintDetails = (props) => {
         );
       }
     } else if (checkpoint.status === "CLOSEDAFTERRESOLUTION") {
-      return <TLCaption data={""} comments={checkpoint?.wfComment} />;
+      return (
+        <>
+          {complaintDetails.workflow.action === "RATE" ? (
+            <div className="TLComments">
+              <h3>{t("CS_COMPLAINT_RATING")}</h3>
+              <StarRated rating={complaintDetails.workflow.rating} />
+            </div>
+          ) : (
+            currentLoginUser === workflowDetails?.data?.processInstances?.[workflowDetails.data.processInstances.length - 1]?.assigner?.uuid && (
+              <div>
+                <span className="link">
+                  <Link to={`/${window.contextPath}/employee/im/complaint/feedback/${incidentId}/${tenantId}`}>Rate</Link>
+                </span>
+              </div>
+            )
+          )}
+        </>
+      );
     }
     // return (checkpoint.caption && checkpoint.caption.length !== 0) || checkpoint?.wfComment?.length > 0 ? <TLCaption data={checkpoint?.caption?.[0]} comments={checkpoint?.wfComment} /> : null;
     return (
@@ -836,7 +878,7 @@ export const ComplaintDetails = (props) => {
             ) : (
               <ConnectingCheckPoints>
                 {workflowDetails?.data?.timeline &&
-                  workflowDetails?.data?.timeline.map((checkpoint, index, arr) => {
+                  filteredTimeline.map((checkpoint, index, arr) => {
                     return (
                       <React.Fragment key={index}>
                         <CheckPoint
@@ -877,14 +919,21 @@ export const ComplaintDetails = (props) => {
         />
       ) : null}
       {toast && assignResponse && assignResponse?.IncidentWrappers && <Toast label={t(`CS_ACTION_${selectedAction}_TEXT`)} onClose={closeToast} />}
-      {!workflowDetails?.isLoading && workflowDetails?.data?.nextActions?.length > 0 && currentOwner === currentLoginUser && (
-        <ActionBar style={{ marginLeft: isIpadView ? "250px" : "none" }}>
-          {displayMenu && workflowDetails?.data?.nextActions ? (
-            <Menu options={workflowDetails?.data?.nextActions.map((action) => action.action)} t={t} onSelect={onActionSelect} />
-          ) : null}
-          <SubmitBar label={t("WF_TAKE_ACTION")} onSubmit={() => setDisplayMenu(!displayMenu)} />
-        </ActionBar>
-      )}
+      {!isLoading &&
+        complaintDetails?.incident?.applicationStatus !== "CLOSEDAFTERRESOLUTION" &&
+        workflowDetails?.data?.nextActions?.length > 0 &&
+        currentOwner === currentLoginUser && (
+          <ActionBar style={{ marginLeft: isIpadView ? "250px" : "none" }}>
+            {displayMenu && workflowDetails?.data?.nextActions ? (
+              <Menu
+                options={workflowDetails?.data?.nextActions.map((action) => action.action)}
+                t={t}
+                onSelect={onActionSelect}
+              />
+            ) : null}
+            <SubmitBar label={t("WF_TAKE_ACTION")} onSubmit={() => setDisplayMenu(!displayMenu)} />
+          </ActionBar>
+        )}
       {error && error[0].message && <Toast error={error[0].message} label={error[0].message} onClose={closeToast} />}
     </React.Fragment>
   );
