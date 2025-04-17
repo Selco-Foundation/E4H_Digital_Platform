@@ -13,6 +13,11 @@ const LanguageSelection = () => {
   const { languages, stateInfo } = storeData || {};
   const selectedLanguage = Digit.StoreData.getCurrentLanguage();
   const [selected, setselected] = useState(selectedLanguage);
+
+  const nhmLogo = window?.globalConfigs?.getConfig("STATE_NHM_LOGO");
+  const govtLogo = window?.globalConfigs?.getConfig("STATE_GOVT_LOGO");
+  const selcoLogo = window?.globalConfigs?.getConfig("SELCO_LOGO");
+
   const handleChangeLanguage = (language) => {
     setselected(language.value);
     Digit.LocalizationService.changeLanguage(language.value, stateInfo.code);
@@ -75,24 +80,30 @@ const LanguageSelection = () => {
         </div>
         <SubmitBar style={{ width: "100%" }} label={t(`CORE_COMMON_CONTINUE`)} onSubmit={handleSubmit} />
         <div style={{ display: "flex", justifyContent: "center", marginTop: "10px" }}>
-          <img
-            className="bannerLogo"
-            src={window?.globalConfigs?.getConfig("STATE_NHM_LOGO")}
-            alt="Selco Foundation"
-            style={{ border: "0px", marginLeft: "15px" }}
-          />
-          <img
-            className="bannerLogo"
-            src={window?.globalConfigs?.getConfig("STATE_GOVT_LOGO")}
-            alt="Selco Foundation"
-            style={{ border: "0px" }}
-          />
-          <img
-            className="bannerLogo"
-            src={window?.globalConfigs?.getConfig("SELCO_LOGO")}
-            alt="Selco Foundation"
-            style={{ border: "0px" }}
-          />
+          {nhmLogo && (
+            <img
+              className="bannerLogo"
+              src={nhmLogo}
+              alt="State NHM Logo"
+              style={{ border: "0px", marginRight: "unset", paddingRight: "unset" }}
+            />
+          )}
+          {govtLogo && (
+            <img
+              className="bannerLogo"
+              src={govtLogo}
+              alt="State Govt Logo"
+              style={{ border: "0px", marginRight: "unset", paddingRight: "unset" }}
+            />
+          )}
+          {selcoLogo && (
+            <img
+              className="bannerLogo"
+              src={selcoLogo}
+              alt="Selco Foundation"
+              style={{ border: "0px", marginRight: "unset", paddingRight: "unset" }}
+            />
+          )}
         </div>
       </Card>
       <div className="EmployeeLoginFooter">

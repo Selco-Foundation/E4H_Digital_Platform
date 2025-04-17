@@ -39,6 +39,11 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
   const location = useLocation();
   // const getUserType = () => "EMPLOYEE" || Digit.UserService.getType();
   const isMobile = window.Digit.Utils.browser.isMobile();
+
+  const nhmLogo = window?.globalConfigs?.getConfig("STATE_NHM_LOGO");
+  const govtLogo = window?.globalConfigs?.getConfig("STATE_GOVT_LOGO");
+  const selcoLogo = window?.globalConfigs?.getConfig("SELCO_LOGO");
+
   useEffect(() => {
     if (!user) {
       return;
@@ -59,7 +64,7 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
     }
 
     /*  RAIN-6489 Logic to navigate to National DSS home incase user has only one role [NATADMIN]*/
-    if (user?.info?.roles && user?.info?.roles?.length > 0 &&  user?.info?.roles?.every((e) => e.code === "NATADMIN")) {
+    if (user?.info?.roles && user?.info?.roles?.length > 0 && user?.info?.roles?.every((e) => e.code === "NATADMIN")) {
       redirectPath = `/${window.contextPath}/employee/dss/landing/NURT_DASHBOARD`;
     }
     /*  RAIN-6489 Logic to navigate to National DSS home incase user has only one role [NATADMIN]*/
@@ -189,24 +194,30 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
           {popup && <ForgotPassword setPopup={setPopup} />}
         </div>
         <div style={{ display: "flex", justifyContent: "center", margin: "1rem auto" }}>
-          <img
-            className="bannerLogo"
-            src={window?.globalConfigs?.getConfig("STATE_NHM_LOGO")}
-            alt="Selco Foundation"
-            style={{ border: "0px", marginLeft: "15px" }}
-          />
-          <img
-            className="bannerLogo"
-            src={window?.globalConfigs?.getConfig("STATE_GOVT_LOGO")}
-            alt="Selco Foundation"
-            style={{ border: "0px" }}
-          />
-          <img
-            className="bannerLogo"
-            src={window?.globalConfigs?.getConfig("SELCO_LOGO")}
-            alt="Selco Foundation"
-            style={{ border: "0px" }}
-          />
+          {nhmLogo && (
+            <img
+              className="bannerLogo"
+              src={nhmLogo}
+              alt="State NHM Logo"
+              style={{ border: "0px", marginRight: "unset", paddingRight: "unset" }}
+            />
+          )}
+          {govtLogo && (
+            <img
+              className="bannerLogo"
+              src={govtLogo}
+              alt="State Govt Logo"
+              style={{ border: "0px", marginRight: "unset", paddingRight: "unset" }}
+            />
+          )}
+          {selcoLogo && (
+            <img
+              className="bannerLogo"
+              src={selcoLogo}
+              alt="Selco Foundation"
+              style={{ border: "0px", marginRight: "unset", paddingRight: "unset" }}
+            />
+          )}
         </div>
       </div>
       {showToast && <Toast error={true} label={t(showToast)} onClose={closeToast} />}

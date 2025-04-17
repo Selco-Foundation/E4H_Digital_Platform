@@ -37,6 +37,10 @@ const EmployeeApp = ({
   const showLanguageChange = location?.pathname?.includes("language-selection");
   const isUserProfile = userScreensExempted.some((url) => location?.pathname?.includes(url));
   const bgImageUrl = window?.globalConfigs?.getConfig("BG_IMAGE");
+  const nhmLogo = window?.globalConfigs?.getConfig("STATE_NHM_LOGO");
+  const govtLogo = window?.globalConfigs?.getConfig("STATE_GOVT_LOGO");
+  const selcoLogo = window?.globalConfigs?.getConfig("SELCO_LOGO");
+
   useEffect(() => {
     Digit.UserService.setType("employee");
   }, []);
@@ -123,28 +127,34 @@ const EmployeeApp = ({
             <div
               style={
                 window.location.href.includes("/im/inbox")
-                  ? { display: "flex", justifyContent: "center", marginBottom: "15px", marginTop: "10px" }
-                  : { display: "flex", justifyContent: "center", marginBottom: "58px", marginTop: "-26px" }
+                  ? { display: "flex", justifyContent: "center", gap: "1rem", marginBottom: "15px", marginTop: "10px" }
+                  : { display: "flex", justifyContent: "center", gap: "1rem", marginBottom: "58px", marginTop: "-26px" }
               }
             >
-              <img
-                className="bannerLogo"
-                src={window?.globalConfigs?.getConfig("STATE_NHM_LOGO")}
-                alt="Selco Foundation"
-                style={{ height: "3rem", width: "3rem", cursor: "pointer", marginRight: "15px", marginLeft: "15px" }}
-              />
-              <img
-                className="bannerLogo"
-                src={window?.globalConfigs?.getConfig("STATE_GOVT_LOGO")}
-                alt="Selco Foundation"
-                style={{ height: "3rem", width: "3rem", cursor: "pointer", marginRight: "15px" }}
-              />
-              <img
-                className="bannerLogo"
-                src={window?.globalConfigs?.getConfig("SELCO_LOGO")}
-                alt="Selco Foundation"
-                style={{ height: "3rem", cursor: "pointer", width: "3rem", marginRight: "15px" }}
-              />
+              {nhmLogo && (
+                <img
+                  className="bannerLogo"
+                  src={nhmLogo}
+                  alt="State NHM Logo"
+                  style={{ height: "3rem", width: "3rem", cursor: "pointer", marginRight: "unset", paddingRight: "unset" }}
+                />
+              )}
+              {govtLogo && (
+                <img
+                  className="bannerLogo"
+                  src={govtLogo}
+                  alt="State Govt Logo"
+                  style={{ height: "3rem", width: "3rem", cursor: "pointer", marginRight: "unset", paddingRight: "unset" }}
+                />
+              )}
+              {selcoLogo && (
+                <img
+                  className="bannerLogo"
+                  src={selcoLogo}
+                  alt="Selco Foundation"
+                  style={{ height: "3rem", cursor: "pointer", width: "3rem", marginRight: "unset", paddingRight: "unset" }}
+                />
+              )}
             </div>
             <div
               className="employee-home-footer"
