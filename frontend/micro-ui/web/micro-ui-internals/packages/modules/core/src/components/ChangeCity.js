@@ -66,6 +66,7 @@ const ChangeCity = (prop) => {
     <div style={prop?.mobileView ? {color: "#767676",width:"100%"} : {width:"300px"}}>
       <Dropdown
         option={sortSelectCityData}
+        optionCardStyles={{ display: "unset" }}
         selected={sortSelectCityData.find((cityValue) => cityValue.value === dropDownData?.value)}
         optionKey={"label"}
         select={handleChangeCity}
