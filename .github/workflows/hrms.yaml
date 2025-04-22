@@ -7,7 +7,7 @@ on:
     tags:
       - 'v*'
     paths:
-      - 'backend/business-services/egov-hrms/**'
+      - 'backend/e4h-services/egov-hrms/**'
   workflow_dispatch:
   workflow_call:
 permissions:
@@ -41,7 +41,7 @@ jobs:
 
       - name: Git commit_hash for service
         run: |
-          commit_hash=$(git log -1 --pretty=format:%H -- backend/business-services/egov-hrms)
+          commit_hash=$(git log -1 --pretty=format:%H -- backend/e4h-services/egov-hrms)
           echo "commit_hash=$commit_hash" >> $GITHUB_ENV
 
       # Login to Docker Container Registry
@@ -50,14 +50,14 @@ jobs:
 
       - name: Build and Push Docker image for hrms-Service
         run: |
-          docker build --build-arg WORK_DIR="backend/business-services/egov-hrms" -t selcohub/hrms:${{ env.VERSION }}-${{ env.commit_hash }} -f build/maven/Dockerfile .
+          docker build --build-arg WORK_DIR="backend/e4h-services/egov-hrms" -t selcohub/hrms:${{ env.VERSION }}-${{ env.commit_hash }} -f build/maven/Dockerfile .
           docker push selcohub/hrms:${{ env.VERSION }}-${{ env.commit_hash }}
 
       - name: Build and Push Docker image for hrms-Service-DB
         run: |
           docker build  -t selcohub/hrms-db:${{ env.VERSION }}-${{ env.commit_hash }} -f  Dockerfile .
           docker push selcohub/hrms-db:${{ env.VERSION }}-${{ env.commit_hash }}
-        working-directory: backend/business-services/egov-hrms/src/main/resources/db
+        working-directory: backend/e4h-services/egov-hrms/src/main/resources/db
 
   Workflow_Trigger:
     if: startsWith(github.ref, 'refs/heads/develop')

@@ -7,7 +7,7 @@ on:
     tags:
       - 'v*'
     paths:
-      - 'backend/municipal-services/inbox/**'
+      - 'backend/e4h-services/inbox/**'
   workflow_dispatch:
   workflow_call:
 permissions:
@@ -41,7 +41,7 @@ jobs:
 
       - name: Git commit_hash for service
         run: |
-          commit_hash=$(git log -1 --pretty=format:%H -- backend/municipal-services/inbox)
+          commit_hash=$(git log -1 --pretty=format:%H -- backend/e4h-services/inbox)
           echo "commit_hash=$commit_hash" >> $GITHUB_ENV
 
       # Login to Docker Container Registry
@@ -50,7 +50,7 @@ jobs:
 
       - name: Build and Push Docker image for inbox
         run: |
-          docker build --build-arg WORK_DIR="backend/municipal-services/inbox" -t selcohub/inbox:${{ env.VERSION }}-${{ env.commit_hash }} -f build/maven-java8/Dockerfile .
+          docker build --build-arg WORK_DIR="backend/e4h-services/inbox" -t selcohub/inbox:${{ env.VERSION }}-${{ env.commit_hash }} -f build/maven-java8/Dockerfile .
           docker push selcohub/inbox:${{ env.VERSION }}-${{ env.commit_hash }}
 
   Workflow_Trigger:
