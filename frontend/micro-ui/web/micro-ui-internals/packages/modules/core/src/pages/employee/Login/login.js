@@ -40,9 +40,7 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
   // const getUserType = () => "EMPLOYEE" || Digit.UserService.getType();
   const isMobile = window.Digit.Utils.browser.isMobile();
 
-  const nhmLogo = window?.globalConfigs?.getConfig("STATE_NHM_LOGO");
-  const govtLogo = window?.globalConfigs?.getConfig("STATE_GOVT_LOGO");
-  const selcoLogo = window?.globalConfigs?.getConfig("SELCO_LOGO");
+  const logos = window?.globalConfigs?.getConfig("LOGO_LIST") || [];
 
   useEffect(() => {
     if (!user) {
@@ -194,30 +192,19 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
           {popup && <ForgotPassword setPopup={setPopup} />}
         </div>
         <div style={{ display: "flex", justifyContent: "center", margin: "1rem auto" }}>
-          {nhmLogo && (
+          {logos.map((logo, index) => (
             <img
+              key={index}
               className="bannerLogo"
-              src={nhmLogo}
-              alt="State NHM Logo"
-              style={{ border: "0px", marginRight: "unset", paddingRight: "unset" }}
+              src={logo.url}
+              alt={logo.alt}
+              style={{
+                border: "0px",
+                marginRight: "unset",
+                paddingRight: "unset",
+              }}
             />
-          )}
-          {govtLogo && (
-            <img
-              className="bannerLogo"
-              src={govtLogo}
-              alt="State Govt Logo"
-              style={{ border: "0px", marginRight: "unset", paddingRight: "unset" }}
-            />
-          )}
-          {selcoLogo && (
-            <img
-              className="bannerLogo"
-              src={selcoLogo}
-              alt="Selco Foundation"
-              style={{ border: "0px", marginRight: "unset", paddingRight: "unset" }}
-            />
-          )}
+          ))}
         </div>
       </div>
       {showToast && <Toast error={true} label={t(showToast)} onClose={closeToast} />}

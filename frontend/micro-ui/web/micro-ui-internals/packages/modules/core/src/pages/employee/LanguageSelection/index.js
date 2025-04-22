@@ -14,9 +14,7 @@ const LanguageSelection = () => {
   const selectedLanguage = Digit.StoreData.getCurrentLanguage();
   const [selected, setselected] = useState(selectedLanguage);
 
-  const nhmLogo = window?.globalConfigs?.getConfig("STATE_NHM_LOGO");
-  const govtLogo = window?.globalConfigs?.getConfig("STATE_GOVT_LOGO");
-  const selcoLogo = window?.globalConfigs?.getConfig("SELCO_LOGO");
+  const logos = window?.globalConfigs?.getConfig("LOGO_LIST") || [];
 
   const handleChangeLanguage = (language) => {
     setselected(language.value);
@@ -80,30 +78,19 @@ const LanguageSelection = () => {
         </div>
         <SubmitBar style={{ width: "100%" }} label={t(`CORE_COMMON_CONTINUE`)} onSubmit={handleSubmit} />
         <div style={{ display: "flex", justifyContent: "center", marginTop: "10px" }}>
-          {nhmLogo && (
+          {logos.map((logo, index) => (
             <img
+              key={index}
               className="bannerLogo"
-              src={nhmLogo}
-              alt="State NHM Logo"
-              style={{ border: "0px", marginRight: "unset", paddingRight: "unset" }}
+              src={logo.url}
+              alt={logo.alt}
+              style={{
+                border: "0px",
+                marginRight: "unset",
+                paddingRight: "unset",
+              }}
             />
-          )}
-          {govtLogo && (
-            <img
-              className="bannerLogo"
-              src={govtLogo}
-              alt="State Govt Logo"
-              style={{ border: "0px", marginRight: "unset", paddingRight: "unset" }}
-            />
-          )}
-          {selcoLogo && (
-            <img
-              className="bannerLogo"
-              src={selcoLogo}
-              alt="Selco Foundation"
-              style={{ border: "0px", marginRight: "unset", paddingRight: "unset" }}
-            />
-          )}
+          ))}
         </div>
       </Card>
       <div className="EmployeeLoginFooter">
