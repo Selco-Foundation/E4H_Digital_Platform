@@ -13,6 +13,9 @@ const LanguageSelection = () => {
   const { languages, stateInfo } = storeData || {};
   const selectedLanguage = Digit.StoreData.getCurrentLanguage();
   const [selected, setselected] = useState(selectedLanguage);
+
+  const logos = window?.globalConfigs?.getConfig("LOGO_LIST") || [];
+
   const handleChangeLanguage = (language) => {
     setselected(language.value);
     Digit.LocalizationService.changeLanguage(language.value, stateInfo.code);
@@ -75,24 +78,19 @@ const LanguageSelection = () => {
         </div>
         <SubmitBar style={{ width: "100%" }} label={t(`CORE_COMMON_CONTINUE`)} onSubmit={handleSubmit} />
         <div style={{ display: "flex", justifyContent: "center", marginTop: "10px" }}>
-          <img
-            className="bannerLogo"
-            src={window?.globalConfigs?.getConfig("STATE_NHM_LOGO")}
-            alt="Selco Foundation"
-            style={{ border: "0px", marginLeft: "15px" }}
-          />
-          <img
-            className="bannerLogo"
-            src={window?.globalConfigs?.getConfig("STATE_GOVT_LOGO")}
-            alt="Selco Foundation"
-            style={{ border: "0px" }}
-          />
-          <img
-            className="bannerLogo"
-            src={window?.globalConfigs?.getConfig("SELCO_LOGO")}
-            alt="Selco Foundation"
-            style={{ border: "0px" }}
-          />
+          {logos.map((logo, index) => (
+            <img
+              key={index}
+              className="bannerLogo"
+              src={logo.url}
+              alt={logo.alt}
+              style={{
+                border: "0px",
+                marginRight: "unset",
+                paddingRight: "unset",
+              }}
+            />
+          ))}
         </div>
       </Card>
       <div className="EmployeeLoginFooter">
