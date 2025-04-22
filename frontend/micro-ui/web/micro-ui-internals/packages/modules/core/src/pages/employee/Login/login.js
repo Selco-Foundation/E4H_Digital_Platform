@@ -38,6 +38,9 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
   const history = useHistory();
   // const getUserType = () => "EMPLOYEE" || Digit.UserService.getType();
   const isMobile = window.Digit.Utils.browser.isMobile();
+
+  const logos = window?.globalConfigs?.getConfig("LOGO_LIST") || [];
+
   useEffect(() => {
     if (!user) {
       return;
@@ -185,24 +188,19 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
           {popup && <ForgotPassword setPopup={setPopup} />}
         </div>
         <div style={{ display: "flex", justifyContent: "center", margin: "1rem auto" }}>
-          <img
-            className="bannerLogo"
-            src={window?.globalConfigs?.getConfig("STATE_NHM_LOGO")}
-            alt="Selco Foundation"
-            style={{ border: "0px", marginLeft: "15px" }}
-          />
-          <img
-            className="bannerLogo"
-            src={window?.globalConfigs?.getConfig("STATE_GOVT_LOGO")}
-            alt="Selco Foundation"
-            style={{ border: "0px" }}
-          />
-          <img
-            className="bannerLogo"
-            src={window?.globalConfigs?.getConfig("SELCO_LOGO")}
-            alt="Selco Foundation"
-            style={{ border: "0px" }}
-          />
+          {logos.map((logo, index) => (
+            <img
+              key={index}
+              className="bannerLogo"
+              src={logo.url}
+              alt={logo.alt}
+              style={{
+                border: "0px",
+                marginRight: "unset",
+                paddingRight: "unset",
+              }}
+            />
+          ))}
         </div>
       </div>
       {showToast && <Toast error={true} label={t(showToast)} onClose={closeToast} />}
