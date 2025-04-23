@@ -350,11 +350,13 @@ public class InboxServiceV2 {
             Long businessServiceSla = businessServiceSlaMap.get(businessService);
             //inboxRequest.getInbox().getProcessSearchCriteria().setStatus(businessServiceVsUuidsBasedOnSearchCriteria.get(businessService));
             Map<String, Object> finalQueryBody = queryBuilder.getNearingSlaCountQuery(inboxRequest, businessServiceSla);
-            StringBuilder uri = getURI(indexName, COUNT_PATH);
+            StringBuilder uri = getURI(indexName, SEARCH_PATH);
             Map<String, Object> response = (Map<String, Object>) serviceRequestRepository.fetchESResult(uri, finalQueryBody);
             Integer currentCount = 0;
-            if(response.containsKey(COUNT_CONSTANT)){
-                currentCount = (Integer) response.get(COUNT_CONSTANT);
+            if(response.containsKey(HITS)){
+                Map<String, Object> map = (Map<String, Object>)(response).get(HITS);
+                Map<String, Object> totals = (Map<String, Object>) map.get("total");
+                currentCount = (Integer) totals.get("value");
             }else{
                 throw new CustomException("INBOX_COUNT_ERR", "Error occurred while executing ES count query");
             }
