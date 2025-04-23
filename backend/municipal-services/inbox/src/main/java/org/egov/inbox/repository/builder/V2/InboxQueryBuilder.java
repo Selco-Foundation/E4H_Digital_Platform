@@ -1,14 +1,7 @@
 package org.egov.inbox.repository.builder.V2;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.stream.Collectors;
+import java.util.*;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import org.egov.inbox.util.ErrorConstants;
 import org.egov.inbox.util.MDMSUtil;
 import org.egov.inbox.web.model.InboxRequest;
@@ -25,7 +18,6 @@ import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.jayway.jsonpath.JsonPath;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -312,28 +304,79 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
 
     @Override
     public Map<String, Object> getNearingSlaCountQuery(InboxRequest inboxRequest, Long businessServiceSla) {
-        Map<String, Object> baseEsQuery = getESQuery(inboxRequest, Boolean.FALSE, Boolean.FALSE);
-        Long currenTimeInMillis = System.currentTimeMillis();
-        Long lteParam = currenTimeInMillis;
-        Long slotLimit = businessServiceSla - 40 * (businessServiceSla / 100);
-        Long gteParam = currenTimeInMillis - slotLimit;
+        // 1. Compute timestamps
+        long currentTime = System.currentTimeMillis();
+        // 40% “warning window” at end of SLA
+        long slotLimit = businessServiceSla - (businessServiceSla * 70 / 100);
 
-        appendNearingSlaCountClause(baseEsQuery, gteParam, lteParam);
-        log.info("+++++++++++++++NEARING SLA QUERY+++++++++++++++++", baseEsQuery);
-        return baseEsQuery;
+        // 2. Build the top-level map in insertion order
+        Map<String, Object> esQuery = new LinkedHashMap<>();
+
+
+        // 3. runtime_mappings block
+        Map<String, Object> script = new LinkedHashMap<>();
+        script.put("source",
+                "long sla = doc.containsKey('Data.currentProcessInstance.businesssServiceSla') && " +
+                        "doc['Data.currentProcessInstance.businesssServiceSla'].size() > 0 ? " +
+                        "doc['Data.currentProcessInstance.businesssServiceSla'].value : 0; " +
+                        "long createdTime = doc.containsKey('Data.currentProcessInstance.auditDetails.createdTime') && " +
+                        "doc['Data.currentProcessInstance.auditDetails.createdTime'].size() > 0 ? " +
+                        "doc['Data.currentProcessInstance.auditDetails.createdTime'].value : 0; " +
+                        "emit(sla + createdTime - params.currentTime);"
+        );
+        script.put("params", Collections.singletonMap("currentTime", currentTime));
+
+        Map<String, Object> slaComparison = new LinkedHashMap<>();
+        slaComparison.put("type", "long");
+        slaComparison.put("script", script);
+
+        esQuery.put("runtime_mappings",
+                Collections.singletonMap("sla_comparison", slaComparison)
+        );
+
+        // 4. query.bool.must clauses
+        List<Map<String, Object>> must = new ArrayList<>();
+
+        // wildcard on tenantId
+        must.add(Collections.singletonMap("wildcard",
+                Collections.singletonMap("Data.incident.tenantId.keyword",
+                        "*" + inboxRequest.getInbox()
+                                .getProcessSearchCriteria()
+                                .getTenantId() + "*")
+        ));
+
+        // range on our runtime field
+        must.add(Collections.singletonMap("range",
+                Collections.singletonMap("sla_comparison",
+                        Collections.singletonMap("lte", slotLimit)))
+        );
+
+        esQuery.put("query",
+                Collections.singletonMap("bool",
+                        Collections.singletonMap("must", must)
+                )
+        );
+
+        // 5. _source filtering
+        esQuery.put("_source", Arrays.asList(
+                "Data.incident",
+                "Data.tenantId",
+                "Data.auditDetails",
+                "Data.currentProcessInstance"
+        ));
+
+        // 6. sort order
+        esQuery.put("sort", Collections.singletonList(
+                Collections.singletonMap(
+                        "Data.incident.auditDetails.createdTime",
+                        Collections.singletonMap("order", "DESC")
+                )
+        ));
+
+        log.info("+++++++++++++++ NEARING SLA SEARCH QUERY +++++++++++++++\n{}", esQuery);
+        return esQuery;
     }
 
-    private void appendNearingSlaCountClause(Map<String, Object> baseEsQuery, Long gteParam, Long lteParam) {
-        List mustClause = JsonPath.read(baseEsQuery, "$.query.bool.must");
-        Map<String, Object> rangeObject = new HashMap<>();
-        Map<String, Object> rangeClause = new HashMap<>();
-        rangeClause.put("gte", gteParam);
-        rangeClause.put("lte", lteParam);
-        rangeObject.put("Data.auditDetails.lastModifiedTime", rangeClause);
-        HashMap<String, Object> rangeMap = new HashMap<>();
-        rangeMap.put("range", rangeObject);
-        mustClause.add(rangeMap);
-    }
 
     private void appendStatusCountAggsNode(Map<String, Object> baseEsQuery) {
         Map<String, Object> aggsNode = new HashMap<>();
