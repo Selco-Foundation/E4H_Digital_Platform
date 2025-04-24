@@ -1,0 +1,162 @@
+import json
+from json import JSONDecodeError
+from typing import Dict, Any, Optional
+
+from pydantic import ValidationError
+
+from app.schemas.plain_access_object import PlainAccessRequest
+from app.schemas.request_info import RequestInfo
+from app.schemas.user import User
+from app.schemas.vendor_ingestion_shema_response import VendorIngestionSchemaResponse, MDMS, ResponseInfo, \
+    MDMSDataSource, MDMSColumn, MDMSData, MDMSAuditDetails
+
+
+def request_info_from_json(json_str: str) -> RequestInfo:
+    """
+    Parses a JSON string and constructs a RequestInfo object.  Handles
+    nested objects (PlainAccessRequest, User) correctly.
+
+    Args:
+        json_str: The JSON string to parse.
+
+    Returns:
+        A RequestInfo object, or None if the input is invalid.
+    """
+    try:
+        data: Dict[str, Any] = json.loads(json_str)
+        def extract_nested(data: Dict[str, Any], key: str, class_type):
+            if key in data and data[key] is not None:
+                nested_data = data[key]
+                if isinstance(nested_data, dict):
+                  return class_type(**nested_data)
+                else:
+                   return None
+            return None
+
+        plain_access_request_data = extract_nested(data, 'plain_access_request', PlainAccessRequest)
+        user_info_data = extract_nested(data, 'user_info', User)
+        request_info = RequestInfo.builder() \
+            .api_id(data.get('api_id')) \
+            .ver(data.get('ver')) \
+            .ts(data.get('ts')) \
+            .action(data.get('action')) \
+            .did(data.get('did')) \
+            .key(data.get('key')) \
+            .msg_id(data.get('msg_id')) \
+            .auth_token(data.get('auth_token')) \
+            .correlation_id(data.get('correlation_id')) \
+            .plain_access_request(plain_access_request_data) \
+            .user_info(user_info_data) \
+            .build()
+        return request_info
+
+    except json.JSONDecodeError as e:
+        print(f"Error: Invalid JSON: {e}")
+        raise
+    except Exception as e:
+        print(f"Error: An unexpected error occurred: {e}")
+        raise
+
+
+def convert_json_to_object(json_str: str) -> Optional[VendorIngestionSchemaResponse]:
+    """
+    Converts a JSON string to a VendorIngestionSchemaResponse object,
+    handling nested objects.
+
+    Args:
+        json_str: The JSON string to convert.
+
+    Returns:
+        A VendorIngestionSchemaResponse object if the conversion is successful,
+        None otherwise.
+    """
+    try:
+        data: Dict[str, Any] = json.loads(json_str)
+
+        # Extract ResponseInfo
+        response_info_data = None
+        if 'ResponseInfo' in data and isinstance(data['ResponseInfo'], dict):
+            try:
+                response_info_data = ResponseInfo(**data['ResponseInfo'])
+            except ValidationError as e:
+                print(f"Validation Error for ResponseInfo: {e}")
+                # Provide default or None
+
+        # Process mdms list
+        mdms_objects = []
+        if 'mdms' in data and isinstance(data['mdms'], list):
+            for item in data['mdms']:
+                if not isinstance(item, dict):
+                    continue
+
+                try:
+                    # Process data field if it exists
+                    if 'data' in item and isinstance(item['data'], dict):
+                        data_dict = item['data']
+
+                        # Process columns if they exist
+                        columns_list = []
+                        if 'columns' in data_dict and isinstance(data_dict['columns'], list):
+                            for col in data_dict['columns']:
+                                if not isinstance(col, dict):
+                                    continue
+
+                                # Process mdmsSource if it exists
+                                if 'mdmsSource' in col and isinstance(col['mdmsSource'], dict):
+                                    try:
+                                        col['mdmsSource'] = MDMSDataSource(**col['mdmsSource'])
+                                    except ValidationError:
+                                        col['mdmsSource'] = None
+
+                                try:
+                                    columns_list.append(MDMSColumn(**col))
+                                except ValidationError:
+                                    # Skip invalid column
+                                    pass
+
+                            data_dict['columns'] = columns_list if columns_list else None
+                        else:
+                            data_dict['columns'] = None
+
+                        try:
+                            item['data'] = MDMSData(**data_dict)
+                        except ValidationError:
+                            item['data'] = None
+
+                    # Process auditDetails if it exists
+                    if 'auditDetails' in item and isinstance(item['auditDetails'], dict):
+                        try:
+                            item['auditDetails'] = MDMSAuditDetails(**item['auditDetails'])
+                        except ValidationError:
+                            item['auditDetails'] = None
+
+                    # Create MDMS object
+                    mdms_obj = MDMS(**item)
+                    mdms_objects.append(mdms_obj)
+                except ValidationError as e:
+                    print(f"Validation Error for MDMS item: {e}")
+                    # Skip invalid item
+
+        # Create response object with proper field names
+        try:
+            return VendorIngestionSchemaResponse(
+                response_info=response_info_data,
+                mdms=mdms_objects if mdms_objects else None
+            )
+        except ValidationError as e:
+            print(f"Validation Error when creating response object: {e}")
+            # Try with explicit field names matching the class definition
+            return VendorIngestionSchemaResponse(**{
+                "ResponseInfo": response_info_data,
+                "mdms": mdms_objects if mdms_objects else None
+            })
+
+    except json.JSONDecodeError as e:
+        print(f"Error: Invalid JSON string. Details: {e}")
+        return None
+    except ValidationError as e:
+        print(f"Error: Data validation failed. Details: {e}")
+        return None
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+        return None
