@@ -122,7 +122,7 @@ public class BoundaryRepositoryImpl implements BoundaryRepository {
 
         if (c.getCodes() != null) {
             sql.append(" AND b.parentBoundaryCode = ? ");
-            params.add(c.getCodes().getFirst());
+            params.add(c.getCodes().get(0));
         }
         if (c.getBoundaryType() != null) {
             sql.append(" AND b.boundaryType = ? ");
