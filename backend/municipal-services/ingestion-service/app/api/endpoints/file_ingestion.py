@@ -1,4 +1,4 @@
-from fastapi import APIRouter, File, Form, UploadFile, HTTPException, Response
+from fastapi import APIRouter, File, Form, UploadFile, HTTPException, Response, Depends
 from fastapi.responses import FileResponse
 import tempfile
 import os
@@ -7,8 +7,12 @@ from datetime import datetime
 from app.core.logging import AppLogger
 from app.ingest.excel_data_loader import ExcelDataLoader
 from app.ingest.excel_data_writer import ExcelDataWriter
+from app.ingest.facility_template_service import FacilityTemplateService
 from app.processor.factory.vendor_data_processor_factory import VendorDataProcessorFactory
+from app.schemas.request_info import RequestInfo
+from app.utils.file_utils import FileUtils
 from app.utils.organization_service_client import OrganizationServiceClient
+from app.utils.convertor import request_info_from_json
 
 router = APIRouter()
 logger = AppLogger().get_logger()
@@ -25,9 +29,10 @@ async def upload_vendors_excel_sheet(
         vendor_file: UploadFile = File(description="Excel file containing vendor data and boundary codes"),
         vendor_sheet_name: str = Form(default="Vendor Input", description="Name of the sheet containing vendor data"),
         boundary_sheet_name: str = Form(default="Boundary Code", description="Name of the sheet containing boundary codes"),
+        request_info: str = Form(default= RequestInfo)
 ):
     input_temp_file = None
-    output_temp_file = None
+    request_info = request_info_from_json(request_info)
 
     try:
         input_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
@@ -50,10 +55,8 @@ async def upload_vendors_excel_sheet(
             vendor_sheet=vendor_sheet_name,
             boundary_sheet=boundary_sheet_name,
             mdms_url=mdms_url,
-            org_service_url=org_service_url
+            request_info=request_info
         )
-
-        # Process the data
         vendors = processor.process_data()
 
         if org_service_url and vendors:
@@ -108,3 +111,48 @@ async def upload_vendors_excel_sheet(
     finally:
         if input_temp_file and os.path.exists(input_temp_file.name):
             os.unlink(input_temp_file.name)
+
+
+@router.get('/getFacilityIngestionTemplate',
+            summary='Generate facility ingestion template Excel file with schema and boundary codes',
+            response_description="Returns Excel template with facility schema and boundary codes")
+async def get_facility_ingestion_template(
+        facility_service: FacilityTemplateService = Depends(),
+        file_utils: FileUtils = Depends(),
+):
+    try:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_filename = f"facility_ingestion_template_{timestamp}.xlsx"
+
+        output_file_path = file_utils.create_temp_file(suffix=".xlsx")
+        try:
+            facility_schema = await facility_service.get_facility_schema()
+            boundary_data = await facility_service.get_boundary_data()
+        except Exception as e:
+            logger.error(f"Error fetching data from external services: {e}")
+            file_utils.cleanup_temp_file(output_file_path)
+            raise HTTPException(status_code=502, detail=f"External service error: {str(e)}")
+
+        # Generate the Excel file
+        try:
+            facility_service.generate_template_file(
+                output_path=output_file_path,
+                facility_schema=facility_schema,
+                boundary_data=boundary_data
+            )
+            logger.info(f"Successfully created facility ingestion template at {output_file_path}")
+        except Exception as e:
+            logger.error(f"Error generating template file: {e}")
+            file_utils.cleanup_temp_file(output_file_path)
+            raise HTTPException(status_code=500, detail=f"Template generation error: {str(e)}")
+
+        # Return the file as a response
+        return FileResponse(
+            path=output_file_path,
+            filename=output_filename,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+
+    except Exception as e:
+        logger.error(f"Unhandled error in get_facility_ingestion_template: {e}")
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")

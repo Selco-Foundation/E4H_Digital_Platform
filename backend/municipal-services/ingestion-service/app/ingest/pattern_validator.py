@@ -3,17 +3,15 @@ from typing import List
 import pandas as pd
 
 from app.ingest.service.validator import Validator
-from app.schemas.column_schema import ColumnSchema
+from app.schemas.vendor_ingestion_shema_response import MDMSColumn
 
 
 class PatternValidator(Validator):
-    def __init__(self, columns: List[ColumnSchema]):
+    def __init__(self, columns: List[MDMSColumn]):
         self.pattern_columns = [col for col in columns if col.pattern]
 
     def validate(self, data: pd.DataFrame) -> pd.DataFrame:
         result_df = data.copy()
-        result_df["status"] = result_df.get("status", None)
-        result_df["error"] = result_df.get("error", "")
 
         for col_schema in self.pattern_columns:
             col_name = col_schema.name
@@ -28,5 +26,5 @@ class PatternValidator(Validator):
                 result_df.loc[pattern_mask, "error"] = result_df.loc[pattern_mask, "error"].astype(
                     str) + f"'{col_name}' doesn't match the pattern: {pattern}. "
                 result_df.loc[pattern_mask, "status"] = "fail"
-
+            print(result_df.head(2))
         return result_df

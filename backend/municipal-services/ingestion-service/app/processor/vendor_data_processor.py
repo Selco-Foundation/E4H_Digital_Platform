@@ -23,33 +23,26 @@ class VendorDataProcessor:
         if not self.data_loader.load_data():
             return []
 
-        # Get the dataframe from the loader
         if isinstance(self.data_loader, ExcelDataLoader):
             vendor_df = self.data_loader.get_vendor_data()
+            print(vendor_df.head(2))
         else:
             print("Data loader is not compatible")
             return []
 
-        # Filter failed records if status column exists
-        if "status" in vendor_df.columns:
-            vendor_df = vendor_df[vendor_df["status"] == "fail"].copy()
-
-        # Initialize status and error columns
         vendor_df["status"] = None
         vendor_df["error"] = ""
 
-        # Run all validators
         has_error = False
         for validator in self.validators:
             vendor_df = validator.validate(vendor_df)
             if (vendor_df["status"] == "fail").any():
                 has_error = True
 
-        # Collect validation errors
         self.validation_errors = []
         for idx, row in vendor_df[vendor_df["status"] == "fail"].iterrows():
             self.validation_errors.append({
-                'row': idx + 2,  # +2 because Excel is 1-indexed and has a header row
+                'row': idx + 2,
                 'vendor_name': row.get('Vendor Name (Mandatory)', 'Unknown'),
                 'errors': [row.get('error', '')]
             })
@@ -64,17 +57,17 @@ class VendorDataProcessor:
                 vendor = Vendor(
                     country_boundary_code=str(row.get('Country Boundary Code', '')).strip() if not pd.isna(
                         row.get('Country Boundary Code', None)) else None,
-                    vendor_name=str(row.get('Vendor Name (Mandatory)', '')).strip(),
-                    vendor_code=str(row.get('Vendor Code (Mandatory)', '')).strip(),
-                    vendor_type=str(row.get('Vendor Type (Mandatory)', '')).strip(),
-                    vendor_subtype=str(row.get('Vendor Subtype ', '')).strip() if not pd.isna(
-                        row.get('Vendor Subtype ', None)) else None,
-                    identifier_type=str(row.get('Identifier Type (Mandatory)', '')).strip(),
-                    identifier_value=str(row.get('Identifier Value (Mandatory)', '')).strip(),
-                    hq_address=str(row.get('HQ Address (Mandatory)', '')).strip(),
-                    pincode=str(row.get('Pincode (Mandatory)', '')).strip(),
-                    poc_phone=str(row.get('PoC Phone (Mandatory)', '')).strip(),
-                    poc_name=str(row.get('PoC Name (Mandatory)', '')).strip()
+                    vendor_name=str(row.get('Vendor Name', '')).strip(),
+                    vendor_code=str(row.get('Vendor Code', '')).strip(),
+                    vendor_type=str(row.get('Vendor Type', '')).strip(),
+                    vendor_subtype=str(row.get('Vendor Subtype', '')).strip() if not pd.isna(
+                        row.get('Vendor Subtype', None)) else None,
+                    identifier_type=str(row.get('Identifier Type', '')).strip(),
+                    identifier_value=str(row.get('Identifier Value', '')).strip(),
+                    hq_address=str(row.get('HQ Address', '')).strip(),
+                    pincode=str(row.get('Pincode', '')).strip(),
+                    poc_phone=str(row.get('PoC Phone', '')).strip(),
+                    poc_name=str(row.get('PoC Name', '')).strip()
                 )
                 self.vendors.append(vendor)
             except Exception as e:
