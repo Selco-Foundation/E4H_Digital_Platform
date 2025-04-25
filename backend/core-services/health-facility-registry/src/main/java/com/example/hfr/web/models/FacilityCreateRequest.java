@@ -1,12 +1,13 @@
-package com.example.hfr.model;
+package com.example.hfr.web.models;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.annotation.Generated;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
+import lombok.Setter;
 import org.openapitools.jackson.nullable.JsonNullable;
 
-import javax.annotation.Generated;
-import javax.validation.Valid;
-import javax.validation.constraints.*;
 import java.util.Arrays;
 import java.util.Objects;
 
@@ -14,12 +15,13 @@ import java.util.Objects;
  * FacilityCreateRequest
  */
 
+@Setter
 @Generated(value = "org.openapitools.codegen.languages.SpringCodegen", date = "2025-04-24T16:00:58.522282987+05:30[Asia/Kolkata]", comments = "Generator version: 7.4.0")
 public class FacilityCreateRequest {
 
     private FacilityAssessmentCreateRequestRequestInfo requestInfo;
 
-    private JsonNullable<Object> facilities = JsonNullable.<Object>undefined();
+    private Facility facilities;
 
     public FacilityCreateRequest() {
         super();
@@ -61,15 +63,6 @@ public class FacilityCreateRequest {
         return requestInfo;
     }
 
-    public void setRequestInfo(FacilityAssessmentCreateRequestRequestInfo requestInfo) {
-        this.requestInfo = requestInfo;
-    }
-
-    public FacilityCreateRequest facilities(Object facilities) {
-        this.facilities = JsonNullable.of(facilities);
-        return this;
-    }
-
     /**
      * Get facilities
      *
@@ -78,30 +71,8 @@ public class FacilityCreateRequest {
 
     @Schema(name = "facilities", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     @JsonProperty("facilities")
-    public JsonNullable<Object> getFacilities() {
+    public Facility getFacility() {
         return facilities;
-    }
-
-    public void setFacilities(JsonNullable<Object> facilities) {
-        this.facilities = facilities;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (o == null || getClass() != o.getClass()) {
-            return false;
-        }
-        FacilityCreateRequest facilityCreateRequest = (FacilityCreateRequest) o;
-        return Objects.equals(this.requestInfo, facilityCreateRequest.requestInfo) &&
-                equalsNullable(this.facilities, facilityCreateRequest.facilities);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(requestInfo, hashCodeNullable(facilities));
     }
 
     @Override

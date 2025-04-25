@@ -1,13 +1,13 @@
-package com.example.hfr.model;
+package com.example.hfr.web.models;
 
-import com.example.hfr.model.Jsonb;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.annotation.Generated;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Size;
 
-import javax.annotation.Generated;
-import javax.validation.Valid;
-import javax.validation.constraints.*;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -30,7 +30,7 @@ public class FacilityUpdateRequestFacilityUpdate {
 
     private FacilityAddress address;
 
-    private Jsonb additionalDetails = null;
+    private Map<String, Object> additionalDetails = null;
 
     public FacilityUpdateRequestFacilityUpdate tenantId(String tenantId) {
         this.tenantId = tenantId;
@@ -158,7 +158,7 @@ public class FacilityUpdateRequestFacilityUpdate {
         this.address = address;
     }
 
-    public FacilityUpdateRequestFacilityUpdate additionalDetails(Jsonb additionalDetails) {
+    public FacilityUpdateRequestFacilityUpdate additionalDetails(Map<String, Object> additionalDetails) {
         this.additionalDetails = additionalDetails;
         return this;
     }
@@ -171,11 +171,11 @@ public class FacilityUpdateRequestFacilityUpdate {
     @Valid
     @Schema(name = "additionalDetails", description = "Extra details to be added as key value attribute pairs as needed. To be used only post release by implementation teams for customization requirements. Not to be used to store UI values etc..", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     @JsonProperty("additionalDetails")
-    public Jsonb getAdditionalDetails() {
+    public Map<String, Object> getAdditionalDetails() {
         return additionalDetails;
     }
 
-    public void setAdditionalDetails(Jsonb additionalDetails) {
+    public void setAdditionalDetails(Map<String, Object> additionalDetails) {
         this.additionalDetails = additionalDetails;
     }
 

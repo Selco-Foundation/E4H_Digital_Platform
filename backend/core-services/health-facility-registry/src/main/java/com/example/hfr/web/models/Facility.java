@@ -1,14 +1,15 @@
-package com.example.hfr.model;
+package com.example.hfr.web.models;
 
-import com.example.hfr.model.Jsonb;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonValue;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.annotation.Generated;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Size;
 
-import javax.annotation.Generated;
-import javax.validation.Valid;
-import javax.validation.constraints.*;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -34,9 +35,9 @@ public class Facility {
     private String facilityOwnership;
     private FacilityRegionEnum facilityRegion;
     private FacilityAddress address;
-    private Jsonb facilityDetails = null;
+    private Map<String, Object> facilityDetails = null;
     private String wfStatus;
-    private Jsonb additionalDetails = null;
+    private Map<String, Object> additionalDetails = null;
     private Boolean isActive;
 
     public Facility tenantId(String tenantId) {
@@ -229,7 +230,7 @@ public class Facility {
         this.address = address;
     }
 
-    public Facility facilityDetails(Jsonb facilityDetails) {
+    public Facility facilityDetails(Map<String, Object> facilityDetails) {
         this.facilityDetails = facilityDetails;
         return this;
     }
@@ -242,11 +243,11 @@ public class Facility {
     @Valid
     @Schema(name = "facility_details", description = "A store of key value pairs per facility type. The exact set of key value pairs will be specific to the facility type. The schema can be defined as a master schema. Code should validate the payload against the appropriate schema as per the facility type.", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     @JsonProperty("facility_details")
-    public Jsonb getFacilityDetails() {
+    public Map<String, Object> getFacilityDetails() {
         return facilityDetails;
     }
 
-    public void setFacilityDetails(Jsonb facilityDetails) {
+    public void setFacilityDetails(Map<String, Object> facilityDetails) {
         this.facilityDetails = facilityDetails;
     }
 
@@ -271,7 +272,7 @@ public class Facility {
         this.wfStatus = wfStatus;
     }
 
-    public Facility additionalDetails(Jsonb additionalDetails) {
+    public Facility additionalDetails(Map<String, Object> additionalDetails) {
         this.additionalDetails = additionalDetails;
         return this;
     }
@@ -284,11 +285,11 @@ public class Facility {
     @Valid
     @Schema(name = "additionalDetails", description = "Extra details to be added as key value attribute pairs as needed. To be used only post release by implementation teams for customization requirements. Not to be used to store UI values etc..", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     @JsonProperty("additionalDetails")
-    public Jsonb getAdditionalDetails() {
+    public Map<String, Object> getAdditionalDetails() {
         return additionalDetails;
     }
 
-    public void setAdditionalDetails(Jsonb additionalDetails) {
+    public void setAdditionalDetails(Map<String, Object> additionalDetails) {
         this.additionalDetails = additionalDetails;
     }
 

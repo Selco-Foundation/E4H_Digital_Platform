@@ -5,7 +5,7 @@
  */
 package com.example.hfr.api;
 
-import com.example.hfr.model.*;
+import com.example.hfr.web.models.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;

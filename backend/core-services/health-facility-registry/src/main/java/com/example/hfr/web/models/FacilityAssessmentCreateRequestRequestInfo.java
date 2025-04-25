@@ -1,12 +1,13 @@
-package com.example.hfr.model;
+package com.example.hfr.web.models;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.annotation.Generated;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
-import javax.annotation.Generated;
-import javax.validation.Valid;
-import javax.validation.constraints.*;
 import java.util.Objects;
 
 /**

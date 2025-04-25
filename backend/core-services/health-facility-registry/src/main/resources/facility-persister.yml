@@ -1,0 +1,29 @@
+serviceMaps:
+  serviceName: facility-service
+  mappings:
+    - version: 1.0
+      description: Persists facility data
+      fromTopic: save-facility
+      isTransaction: true
+      queryMaps:
+        - query: INSERT INTO facility (facility_id, tenant_id, facility_name, facility_type, facility_category, facility_ownership, facility_region, facility_details, address, wf_status, additional_details, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+          basePath: $.facilities
+          jsonMaps:
+            - jsonPath: $.facilities.facility_id
+            - jsonPath: $.facilities.tenant_id
+            - jsonPath: $.facilities.facility_name
+            - jsonPath: $.facilities.facility_type
+            - jsonPath: $.facilities.facility_category
+            - jsonPath: $.facilities.facility_ownership
+            - jsonPath: $.facilities.facility_region
+            - jsonPath: $.facilities.facility_details
+              type: JSON
+              dbType: JSONB
+            - jsonPath: $.facilities.address
+              type: JSON
+              dbType: JSONB
+            - jsonPath: $.facilities.wf_status
+            - jsonPath: $.facilities.additional_details
+              type: JSON
+              dbType: JSONB
+            - jsonPath: $.facilities.is_active
