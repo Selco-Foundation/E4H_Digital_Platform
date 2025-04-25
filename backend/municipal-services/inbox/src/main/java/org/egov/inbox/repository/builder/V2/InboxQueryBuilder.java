@@ -351,6 +351,14 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
                         Collections.singletonMap("lte", slotLimit)))
         );
 
+        Map<String, Object> moduleSearchCriteria = inboxRequest.getInbox().getModuleSearchCriteria();
+        if (moduleSearchCriteria != null && moduleSearchCriteria.get("assignee") != null) {
+            String assignee = moduleSearchCriteria.get("assignee").toString();
+            must.add(Collections.singletonMap("term",
+                    Collections.singletonMap("Data.currentProcessInstance.assignes.uuid.keyword", assignee)
+            ));
+        }
+
         esQuery.put("query",
                 Collections.singletonMap("bool",
                         Collections.singletonMap("must", must)
