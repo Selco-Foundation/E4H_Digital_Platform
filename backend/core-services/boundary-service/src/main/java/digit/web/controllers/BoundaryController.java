@@ -1,5 +1,6 @@
 package digit.web.controllers;
 
+import digit.service.BoundaryRelationshipService;
 import digit.service.BoundaryService;
 import digit.web.models.*;
 import org.egov.common.contract.request.RequestInfo;
@@ -10,6 +11,8 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 @Controller
@@ -17,10 +20,12 @@ import java.util.List;
 public class BoundaryController {
 
     private final BoundaryService boundaryService;
+    private final BoundaryRelationshipService boundaryRelationshipService;
 
     @Autowired
-    public BoundaryController(BoundaryService boundaryService) {
+    public BoundaryController(BoundaryService boundaryService, BoundaryRelationshipService boundaryRelationshipService) {
         this.boundaryService = boundaryService;
+        this.boundaryRelationshipService = boundaryRelationshipService;
     }
 
     /**
@@ -58,20 +63,33 @@ public class BoundaryController {
     }
 
     @GetMapping("/getAllBoundaries")
-    public ResponseEntity<PaginatedBoundaryResponse> getAllBoundaries(
-            @RequestParam(required = false) List<String> parentBoundaryCodes,
-            @RequestParam(required = false) String boundaryType,
+    public ResponseEntity<List<FlatBoundaryResponse>> getAllBoundaries(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam String tenantId,
+            @RequestParam String hierarchyType,
+            @RequestBody RequestInfo requestInfo) {
 
-        BoundarySearchCriteria criteria = new BoundarySearchCriteria();
-        criteria.setCodes(parentBoundaryCodes);
-        criteria.setBoundaryType(boundaryType);
-        criteria.setOffset(page * size);
-        criteria.setLimit(size);
+        BoundaryRelationshipSearchCriteria criteria = new BoundaryRelationshipSearchCriteria();
+        criteria.setTenantId(tenantId);
+        criteria.setHierarchyType(hierarchyType);
+        criteria.setIncludeChildren(true); // ensure full depth
 
-        PaginatedBoundaryResponse response = boundaryService.getAllBoundaries(criteria);
-        return new ResponseEntity<>(response, HttpStatus.OK);
+        BoundarySearchResponse response = boundaryRelationshipService.getBoundaryRelationships(criteria, requestInfo);
+
+        List<FlatBoundaryResponse> flatList = new ArrayList<>();
+        for (HierarchyRelation tenantBoundary : response.getTenantBoundary()) {
+            for (EnrichedBoundary country : tenantBoundary.getBoundary()) {
+                boundaryService.buildFlatHierarchy(country, flatList, new ArrayList<>());
+            }
+        }
+
+        // Paginate
+        int start = page * size;
+        int end = Math.min(start + size, flatList.size());
+        List<FlatBoundaryResponse> paginated = (start < flatList.size()) ? flatList.subList(start, end) : Collections.emptyList();
+
+        return ResponseEntity.ok(paginated);
     }
 
 
