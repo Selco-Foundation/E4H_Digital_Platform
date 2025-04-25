@@ -10,6 +10,7 @@ import org.egov.common.contract.response.ResponseInfo;
 import org.egov.common.utils.ResponseInfoUtil;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -92,9 +93,26 @@ public class BoundaryService {
         return boundaryResponse;
     }
 
-    public PaginatedBoundaryResponse getAllBoundaries(BoundarySearchCriteria criteria) {
-        return repository.getPaginatedBoundaries(criteria);
+
+    public void buildFlatHierarchy(EnrichedBoundary boundary, List<FlatBoundaryResponse> result, List<String> path) {
+        path.add(boundary.getCode());
+
+        if (boundary.getChildren() == null || boundary.getChildren().isEmpty()) {
+            FlatBoundaryResponse flat = new FlatBoundaryResponse();
+            flat.setCountry(getOrNull(path, 0));
+            flat.setState(getOrNull(path, 1));
+            flat.setDistrict(getOrNull(path, 2));
+            flat.setBlock(getOrNull(path, 3));
+            flat.setCode(boundary.getCode());
+            result.add(flat);
+        } else {
+            for (EnrichedBoundary child : boundary.getChildren()) {
+                buildFlatHierarchy(child, result, new ArrayList<>(path));
+            }
+        }
     }
 
-
+    private String getOrNull(List<String> list, int index) {
+        return index < list.size() ? list.get(index) : null;
+    }
 }
