@@ -2,14 +2,12 @@ import React, { useEffect, useState } from "react";
 import PropTypes from "prop-types";
 import { CameraSvg } from "./svgindex";
 import { DeleteBtn } from "./svgindex";
-import Toast from "./Toast";
-import { useTranslation } from "react-i18next";
+
 const MiniUpload = (props) => {
-  console.log("MiniUpload",props)
   return (
     <div className="upload-img-container">
       <CameraSvg className="upload-camera-img" />
-      <input type="file" id="upload" accept="image/*"style={{marginLeft: `calc(-50% - 23px)`}} onChange={(e) => props.onUpload(e)} />
+      <input type="file" id="upload" accept="image/*" style={{ marginLeft: `calc(-50% - 23px)` }} onChange={(e) => props.onUpload(e)} />
     </div>
   );
 };
@@ -17,16 +15,16 @@ const MiniUpload = (props) => {
 const UploadImages = (props) => {
   const [error, setError] = useState("");
   const { t } = useTranslation();
-  const UploadImagesNew = (e) =>{
-    console.log("UploadImagesNewUploadImagesNewUploadImagesNew",props)
-    if(props.disabled)
-    {
+
+  const UploadImagesNew = (e) => {
+    console.log("UploadImagesNewUploadImagesNewUploadImagesNew", props);
+    if (props.disabled) {
       setError(t("SET_PHC_TYPE"));
+    } else {
+      props.onUpload(e);
     }
-    else {
-      props.onUpload(e)
-    }
-  }
+  };
+
   if (props.thumbnails && props.thumbnails.length > 0) {
     return (
       <div className="multi-upload-wrap">
@@ -44,11 +42,11 @@ const UploadImages = (props) => {
   } else {
     return (
       <div>
-      {error && <Toast error={true} label={error} onClose={() => setError(null)} />}
-      <div className="upload-wrap" onClick={(e) => UploadImagesNew(e)}>
-        <CameraSvg />
-        <input type="file" id="upload" accept="image/*" onChange={(e) => UploadImagesNew(e)} disabled={props.disabled}/>
-      </div>
+        {error && <Toast error={true} label={error} onClose={() => setError(null)} />}
+        <div className="upload-wrap" onClick={(e) => UploadImagesNew(e)}>
+          <CameraSvg />
+          <input type="file" id="upload" accept="image/*" onChange={(e) => UploadImagesNew(e)} disabled={props.disabled} />
+        </div>
       </div>
     );
   }
