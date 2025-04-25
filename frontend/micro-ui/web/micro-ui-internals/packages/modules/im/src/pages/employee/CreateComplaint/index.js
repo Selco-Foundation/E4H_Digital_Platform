@@ -523,7 +523,7 @@ export const CreateComplaint = ({ parentUrl }) => {
                 getFormState={(state, loading) => getData(state, loading)}
                 onUploadStatusChange={setIsUploading}
                 allowedFileTypesRegex={/(jpg|jpeg|png|image)$/i}
-                allowedMaxSizeInMB={50}
+                allowedMaxSizeInMB={10}
                 maxFilesAllowed={5}
                 disabled={disbaledUpload}
                 ulb={Digit.SessionStorage.get("Employee.tenantId") !== stateTenantId ? Digit.SessionStorage.get("Employee.tenantId") : healthcentre?.code}
