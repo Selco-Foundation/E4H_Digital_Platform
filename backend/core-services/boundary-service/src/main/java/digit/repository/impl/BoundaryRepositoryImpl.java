@@ -10,17 +10,11 @@ import digit.repository.rowmapper.BoundaryEntityRowMapper;
 import digit.web.models.Boundary;
 import digit.web.models.BoundaryRequest;
 import digit.web.models.BoundarySearchCriteria;
-import digit.web.models.PaginatedBoundaryResponse;
 import lombok.extern.slf4j.Slf4j;
-import org.jetbrains.annotations.NotNull;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.ResultSetExtractor;
 import org.springframework.stereotype.Repository;
 import org.springframework.web.client.RestTemplate;
 
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -107,59 +101,6 @@ public class BoundaryRepositoryImpl implements BoundaryRepository {
         // return the set of codes from the boundary entities
         return boundaryList.stream().map(Boundary::getCode).collect(Collectors.toSet());
 
-    }
-
-    public PaginatedBoundaryResponse getPaginatedBoundaries(BoundarySearchCriteria c) {
-        List<Object> params = new ArrayList<>();
-        StringBuilder sql = new StringBuilder()
-                .append("SELECT ")
-                .append("  b.id, b.tenantid, b.code, b.geometry, b.additionaldetails, ")
-                .append("  b.createdtime, b.createdby, b.lastmodifiedtime, b.lastmodifiedby, ")
-                .append("  COUNT(*) OVER() AS total_count ")
-                .append("FROM boundary b ")
-                .append("WHERE b.tenantid = ? ");
-        params.add(c.getTenantId());
-
-        if (c.getCodes() != null) {
-            sql.append(" AND b.parentBoundaryCode = ? ");
-            params.add(c.getCodes().get(0));
-        }
-        if (c.getBoundaryType() != null) {
-            sql.append(" AND b.boundaryType = ? ");
-            params.add(c.getBoundaryType());
-        }
-
-        sql.append(" LIMIT ? OFFSET ?");
-        params.add(c.getLimit());
-        params.add(c.getOffset());
-
-        return jdbcTemplate.query(
-                sql.toString(),
-                params.toArray(),
-                rs -> {
-                    List<Boundary> list = new ArrayList<>();
-                    int total = 0;
-                    while (rs.next()) {
-                        if (total == 0) {
-                            total = rs.getInt("total_count");
-                        }
-                        list.add(boundaryEntityRowMapper.mapRow(rs, rs.getRow()));
-                    }
-                    int totalPages = total == 0
-                            ? 0
-                            : (int) Math.ceil((double) total / c.getLimit());
-                    int currentPage = c.getOffset() / c.getLimit();
-
-                    return PaginatedBoundaryResponse.builder()
-                            .responseInfo(/* populate your ResponseInfo here */ null)
-                            .boundary(list)
-                            .page(currentPage)
-                            .size(c.getLimit())
-                            .totalElements((long) total)
-                            .totalPages(totalPages)
-                            .build();
-                }
-        );
     }
 
 

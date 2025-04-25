@@ -9,7 +9,6 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.ResultSetExtractor;
 import org.springframework.stereotype.Component;
 
-import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -55,27 +54,4 @@ public class BoundaryEntityRowMapper implements ResultSetExtractor<List<Boundary
         return boundaryList;
     }
 
-    public Boundary mapRow(ResultSet rs, int rowNum) throws SQLException {
-        try {
-            Boundary b = Boundary.builder()
-                    .id(rs.getString("id"))
-                    .tenantId(rs.getString("tenantid"))
-                    .code(rs.getString("code"))
-                    .geometry(mapper.readTree(rs.getString("geometry")))
-                    .additionalDetails(mapper.readTree(rs.getString("additionaldetails")))
-                    .build();
-
-            AuditDetails audit = AuditDetails.builder()
-                    .createdTime(rs.getLong("createdtime"))
-                    .createdBy(rs.getString("createdby"))
-                    .lastModifiedTime(rs.getLong("lastmodifiedtime"))
-                    .lastModifiedBy(rs.getString("lastmodifiedby"))
-                    .build();
-            b.setAuditDetails(audit);
-
-            return b;
-        } catch (IOException e) {
-            throw new SQLException("Failed to parse JSONB column into JsonNode", e);
-        }
-    }
 }

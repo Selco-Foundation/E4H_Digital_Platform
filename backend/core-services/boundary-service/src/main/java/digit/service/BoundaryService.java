@@ -93,10 +93,6 @@ public class BoundaryService {
         return boundaryResponse;
     }
 
-    public PaginatedBoundaryResponse getAllBoundaries(BoundarySearchCriteria criteria) {
-        return repository.getPaginatedBoundaries(criteria);
-    }
-
 
     public void buildFlatHierarchy(EnrichedBoundary boundary, List<FlatBoundaryResponse> result, List<String> path) {
         path.add(boundary.getCode());
