@@ -26,8 +26,7 @@ class _HomePageState extends State<HomePage> {
       {
         'icon': Icons.text_snippet_outlined,
         'label': 'Installation Report',
-        'onPressed': () =>
-            context.router.replace(const InstallationReportRoute()),
+        'onPressed': () => context.router.push(const InstallationReportRoute()),
       },
       {
         'icon': Icons.autorenew,
@@ -47,11 +46,8 @@ class _HomePageState extends State<HomePage> {
             showBackNavigation: false,
             showHelp: true,
           ),
-          footer: const Padding(
-            padding: EdgeInsets.only(bottom: spacer2),
-            child: PoweredByDigit(
-              version: '',
-            ),
+          footer: const PoweredByDigit(
+            version: '',
           ),
           slivers: [
             SliverPadding(
@@ -104,7 +100,6 @@ class _HomePageState extends State<HomePage> {
   }
 
   double _calculateAspectRatio(double screenWidth) {
-    // Adjust these values based on your design needs
     const baseWidth = 375; // Design reference width
     const baseHeight = 170; // Design reference height
     return (screenWidth / 2) / (baseHeight * (screenWidth / baseWidth));

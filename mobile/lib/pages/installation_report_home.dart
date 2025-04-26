@@ -1,10 +1,12 @@
+import 'package:badges/badges.dart' as badges;
 import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:flutter/material.dart';
-import 'package:selco/router/app_router.dart';
-import 'package:selco/widgets/header/back_navigation_help_header.dart';
-import 'package:selco/widgets/navigation/navbar.dart';
+
+import '../router/app_router.dart';
+import '../widgets/header/back_navigation_help_header.dart';
+import '../widgets/navigation/navbar.dart';
 
 @RoutePage()
 class InstallationReportPage extends StatefulWidget {
@@ -23,27 +25,22 @@ class _InstallationReportPageState extends State<InstallationReportPage> {
     final textTheme = theme.digitTextTheme(context);
 
     return Scaffold(
-      backgroundColor: DigitTheme.instance.colorScheme.surface,
       appBar: const Navbar(),
       body: ScrollableContent(
+        footer: const PoweredByDigit(version: ''),
         backgroundColor: theme.colorTheme.generic.background,
-        header: const BackNavigationHelpHeaderWidget(
-          showBackNavigation: true,
-          showHelp: true,
-        ),
-        footer: const Padding(
-          padding: EdgeInsets.only(bottom: spacer2),
-          child: PoweredByDigit(
-            version: '',
-          ),
-        ),
         children: [
+          const BackNavigationHelpHeaderWidget(
+            showHelp: true,
+            showBackNavigation: true,
+          ),
+          const SizedBox(height: spacer3),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: spacer4),
+            padding: const EdgeInsets.symmetric(
+                horizontal: spacer4, vertical: spacer1),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: spacer6),
                 Text(
                   'Installation Report',
                   textAlign: TextAlign.start,
@@ -51,31 +48,30 @@ class _InstallationReportPageState extends State<InstallationReportPage> {
                     color: const DigitColors().light.primary2,
                   ),
                 ),
-                const SizedBox(height: spacer6),
+                const SizedBox(height: spacer4),
                 ReportCard(
                   onPress: () =>
                       context.router.push(const SelectHealthFacilityRoute()),
-                  icon: Icons.note_add,
+                  icon: Icons.add_box_outlined,
                   heading: 'New Report',
                   description:
                       'View list of assigned health facilities, search for health facility and create installation report',
                 ),
                 ReportCard(
                   onPress: () {},
-                  icon: Icons.menu,
+                  icon: Icons.toc,
                   heading: 'Inbox',
                   description: 'View reports that have been approved/rejected',
                 ),
                 ReportCard(
                   onPress: () {},
-                  icon: Icons.assignment_turned_in,
+                  icon: Icons.assignment_late,
                   heading: 'Submitted Reports',
                   description: 'View reports that have been submitted',
                 ),
-                const SizedBox(height: spacer4),
               ],
             ),
-          ),
+          )
         ],
       ),
     );
@@ -86,7 +82,7 @@ class ReportCard extends StatelessWidget {
   final IconData icon;
   final String heading;
   final String description;
-  final onPress;
+  final Function() onPress;
 
   const ReportCard({
     super.key,
@@ -103,34 +99,54 @@ class ReportCard extends StatelessWidget {
 
     return SizedBox(
       height: 3 * spacer11,
-      child: DigitCard(
-        onPressed: onPress,
-        margin: const EdgeInsets.only(bottom: spacer4),
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(icon, color: const DigitColors().light.alertError),
-                  const SizedBox(width: 8),
-                  Text(
-                    heading,
-                    style: textTheme.headingM.copyWith(
-                      color: const DigitColors().light.primary2,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: spacer2),
+        child: DigitCard(
+          onPressed: onPress,
+          margin: const EdgeInsets.only(bottom: spacer1),
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      icon,
+                      color: const DigitColors().light.alertError,
+                      size: spacer8,
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                description,
-                style: textTheme.bodyS
-                    .copyWith(color: const DigitColors().light.textSecondary),
-              ),
-            ],
-          ),
-        ],
+                    const SizedBox(width: spacer2),
+                    Text(
+                      heading,
+                      style: textTheme.headingL.copyWith(
+                        color: const DigitColors().light.primary2,
+                      ),
+                    ),
+                    const Spacer(),
+                    badges.Badge(
+                      badgeStyle: badges.BadgeStyle(
+                        shape: badges.BadgeShape.square,
+                        badgeColor: theme.colorTheme.alert.error,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: spacer3, vertical: spacer1),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      badgeContent: Text('05',
+                          style: textTheme.bodyS
+                              .copyWith(color: theme.colorTheme.paper.primary)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: spacer3),
+                Text(
+                  description,
+                  style: textTheme.bodyS
+                      .copyWith(color: const DigitColors().light.textPrimary),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
