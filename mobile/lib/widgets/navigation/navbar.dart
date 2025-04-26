@@ -1,12 +1,14 @@
 import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:flutter/material.dart';
-import 'package:selco/utils/asset_images.dart';
-import 'package:selco/utils/extensions.dart';
-import 'package:selco/utils/i18_key_constants.dart' as i18;
+
+import '../../utils/asset_images.dart';
+import '../../utils/extensions.dart';
+import '../../utils/i18_key_constants.dart' as i18;
 
 class Navbar extends StatelessWidget implements PreferredSizeWidget {
-  const Navbar({super.key});
+  final bool showMenu;
+  const Navbar({super.key, this.showMenu = true});
 
   @override
   Size get preferredSize => const Size.fromHeight(spacer12);
@@ -18,10 +20,12 @@ class Navbar extends StatelessWidget implements PreferredSizeWidget {
     return AppBar(
       foregroundColor: theme.colorTheme.paper.primary,
       backgroundColor: theme.colorTheme.primary.primary2,
-      leading: IconButton(
-        icon: const Icon(Icons.menu, color: Colors.white, size: spacer6),
-        onPressed: () {},
-      ),
+      leading: showMenu
+          ? IconButton(
+              icon: const Icon(Icons.menu, color: Colors.white, size: spacer6),
+              onPressed: () {},
+            )
+          : null,
       title: Row(
         mainAxisAlignment: MainAxisAlignment.start,
         children: [
