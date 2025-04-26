@@ -61,10 +61,10 @@ packages:
     dependency: transitive
     description:
       name: attendance_management
-      sha256: "6b7c39aba4f4c26340daee8dcb8fde3823a28e3fae6065fd3abf3ed90d3c74c5"
+      sha256: "976d2b2f7c7c79bf8f05647a4138b66dab9017316697222223d888273a95f96a"
       url: "https://pub.dev"
     source: hosted
-    version: "1.0.4+1"
+    version: "1.0.4+2"
   auto_route:
     dependency: "direct main"
     description:
@@ -366,26 +366,26 @@ packages:
     dependency: "direct main"
     description:
       name: digit_data_model
-      sha256: bcb6c328a75df1442672e39c0dbae32bc9cb067a07a581bded672d2b748957b9
+      sha256: b106a59eda1f6864e0652d668c0c70492d948cdd94e49b2fcc6b707c8918b006
       url: "https://pub.dev"
     source: hosted
-    version: "1.0.6"
+    version: "1.0.6+3"
   digit_dss:
     dependency: "direct main"
     description:
       name: digit_dss
-      sha256: a58aae4c9ad5fe58562706fd5a83419c3fca316821ccc38e249189663e8a0f20
+      sha256: e1a541a5360413ed903ee77af580faf93623160aa5e7143e8bc1d0ec44dd980b
       url: "https://pub.dev"
     source: hosted
-    version: "1.0.4"
+    version: "1.0.4+1"
   digit_ui_components:
     dependency: "direct main"
     description:
       name: digit_ui_components
-      sha256: "80f3770380963d7ec5fde6be1b67cde8ceb63dec5fc68ae51b70d4ad2278c7dd"
+      sha256: "764292c02746fa372ce93ea4d67f3941cdfa5197a552a33d586ce01aa44650f1"
       url: "https://pub.dev"
     source: hosted
-    version: "0.0.2-dev.15"
+    version: "0.2.1+1"
   dio:
     dependency: "direct main"
     description:
