@@ -3,7 +3,7 @@
 // ignore_for_file: type=lint
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
-part of 'request_info.dart';
+part of 'request_info_model.dart';
 
 // **************************************************************************
 // FreezedGenerator
@@ -13,6 +13,167 @@ T _$identity<T>(T value) => value;
 
 final _privateConstructorUsedError = UnsupportedError(
     'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models');
+
+RequestInfoMapperModel _$RequestInfoMapperModelFromJson(
+    Map<String, dynamic> json) {
+  return _RequestInfoMapperModel.fromJson(json);
+}
+
+/// @nodoc
+mixin _$RequestInfoMapperModel {
+  RequestInfoModel? get requestInfo => throw _privateConstructorUsedError;
+
+  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
+  @JsonKey(ignore: true)
+  $RequestInfoMapperModelCopyWith<RequestInfoMapperModel> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class $RequestInfoMapperModelCopyWith<$Res> {
+  factory $RequestInfoMapperModelCopyWith(RequestInfoMapperModel value,
+          $Res Function(RequestInfoMapperModel) then) =
+      _$RequestInfoMapperModelCopyWithImpl<$Res, RequestInfoMapperModel>;
+  @useResult
+  $Res call({RequestInfoModel? requestInfo});
+
+  $RequestInfoModelCopyWith<$Res>? get requestInfo;
+}
+
+/// @nodoc
+class _$RequestInfoMapperModelCopyWithImpl<$Res,
+        $Val extends RequestInfoMapperModel>
+    implements $RequestInfoMapperModelCopyWith<$Res> {
+  _$RequestInfoMapperModelCopyWithImpl(this._value, this._then);
+
+  // ignore: unused_field
+  final $Val _value;
+  // ignore: unused_field
+  final $Res Function($Val) _then;
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? requestInfo = freezed,
+  }) {
+    return _then(_value.copyWith(
+      requestInfo: freezed == requestInfo
+          ? _value.requestInfo
+          : requestInfo // ignore: cast_nullable_to_non_nullable
+              as RequestInfoModel?,
+    ) as $Val);
+  }
+
+  @override
+  @pragma('vm:prefer-inline')
+  $RequestInfoModelCopyWith<$Res>? get requestInfo {
+    if (_value.requestInfo == null) {
+      return null;
+    }
+
+    return $RequestInfoModelCopyWith<$Res>(_value.requestInfo!, (value) {
+      return _then(_value.copyWith(requestInfo: value) as $Val);
+    });
+  }
+}
+
+/// @nodoc
+abstract class _$$RequestInfoMapperModelImplCopyWith<$Res>
+    implements $RequestInfoMapperModelCopyWith<$Res> {
+  factory _$$RequestInfoMapperModelImplCopyWith(
+          _$RequestInfoMapperModelImpl value,
+          $Res Function(_$RequestInfoMapperModelImpl) then) =
+      __$$RequestInfoMapperModelImplCopyWithImpl<$Res>;
+  @override
+  @useResult
+  $Res call({RequestInfoModel? requestInfo});
+
+  @override
+  $RequestInfoModelCopyWith<$Res>? get requestInfo;
+}
+
+/// @nodoc
+class __$$RequestInfoMapperModelImplCopyWithImpl<$Res>
+    extends _$RequestInfoMapperModelCopyWithImpl<$Res,
+        _$RequestInfoMapperModelImpl>
+    implements _$$RequestInfoMapperModelImplCopyWith<$Res> {
+  __$$RequestInfoMapperModelImplCopyWithImpl(
+      _$RequestInfoMapperModelImpl _value,
+      $Res Function(_$RequestInfoMapperModelImpl) _then)
+      : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? requestInfo = freezed,
+  }) {
+    return _then(_$RequestInfoMapperModelImpl(
+      requestInfo: freezed == requestInfo
+          ? _value.requestInfo
+          : requestInfo // ignore: cast_nullable_to_non_nullable
+              as RequestInfoModel?,
+    ));
+  }
+}
+
+/// @nodoc
+@JsonSerializable()
+class _$RequestInfoMapperModelImpl implements _RequestInfoMapperModel {
+  const _$RequestInfoMapperModelImpl({this.requestInfo});
+
+  factory _$RequestInfoMapperModelImpl.fromJson(Map<String, dynamic> json) =>
+      _$$RequestInfoMapperModelImplFromJson(json);
+
+  @override
+  final RequestInfoModel? requestInfo;
+
+  @override
+  String toString() {
+    return 'RequestInfoMapperModel(requestInfo: $requestInfo)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$RequestInfoMapperModelImpl &&
+            (identical(other.requestInfo, requestInfo) ||
+                other.requestInfo == requestInfo));
+  }
+
+  @JsonKey(ignore: true)
+  @override
+  int get hashCode => Object.hash(runtimeType, requestInfo);
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$RequestInfoMapperModelImplCopyWith<_$RequestInfoMapperModelImpl>
+      get copyWith => __$$RequestInfoMapperModelImplCopyWithImpl<
+          _$RequestInfoMapperModelImpl>(this, _$identity);
+
+  @override
+  Map<String, dynamic> toJson() {
+    return _$$RequestInfoMapperModelImplToJson(
+      this,
+    );
+  }
+}
+
+abstract class _RequestInfoMapperModel implements RequestInfoMapperModel {
+  const factory _RequestInfoMapperModel({final RequestInfoModel? requestInfo}) =
+      _$RequestInfoMapperModelImpl;
+
+  factory _RequestInfoMapperModel.fromJson(Map<String, dynamic> json) =
+      _$RequestInfoMapperModelImpl.fromJson;
+
+  @override
+  RequestInfoModel? get requestInfo;
+  @override
+  @JsonKey(ignore: true)
+  _$$RequestInfoMapperModelImplCopyWith<_$RequestInfoMapperModelImpl>
+      get copyWith => throw _privateConstructorUsedError;
+}
 
 RequestInfoModel _$RequestInfoModelFromJson(Map<String, dynamic> json) {
   return _RequestInfoModel.fromJson(json);
@@ -28,6 +189,8 @@ mixin _$RequestInfoModel {
   String? get key => throw _privateConstructorUsedError;
   String? get msgId => throw _privateConstructorUsedError;
   String? get authToken => throw _privateConstructorUsedError;
+  UserRequestModel? get userInfo => throw _privateConstructorUsedError;
+  String? get tenantId => throw _privateConstructorUsedError;
 
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
   @JsonKey(ignore: true)
@@ -49,7 +212,11 @@ abstract class $RequestInfoModelCopyWith<$Res> {
       String? did,
       String? key,
       String? msgId,
-      String? authToken});
+      String? authToken,
+      UserRequestModel? userInfo,
+      String? tenantId});
+
+  $UserRequestModelCopyWith<$Res>? get userInfo;
 }
 
 /// @nodoc
@@ -73,6 +240,8 @@ class _$RequestInfoModelCopyWithImpl<$Res, $Val extends RequestInfoModel>
     Object? key = freezed,
     Object? msgId = freezed,
     Object? authToken = freezed,
+    Object? userInfo = freezed,
+    Object? tenantId = freezed,
   }) {
     return _then(_value.copyWith(
       apiId: freezed == apiId
@@ -107,7 +276,27 @@ class _$RequestInfoModelCopyWithImpl<$Res, $Val extends RequestInfoModel>
           ? _value.authToken
           : authToken // ignore: cast_nullable_to_non_nullable
               as String?,
+      userInfo: freezed == userInfo
+          ? _value.userInfo
+          : userInfo // ignore: cast_nullable_to_non_nullable
+              as UserRequestModel?,
+      tenantId: freezed == tenantId
+          ? _value.tenantId
+          : tenantId // ignore: cast_nullable_to_non_nullable
+              as String?,
     ) as $Val);
+  }
+
+  @override
+  @pragma('vm:prefer-inline')
+  $UserRequestModelCopyWith<$Res>? get userInfo {
+    if (_value.userInfo == null) {
+      return null;
+    }
+
+    return $UserRequestModelCopyWith<$Res>(_value.userInfo!, (value) {
+      return _then(_value.copyWith(userInfo: value) as $Val);
+    });
   }
 }
 
@@ -127,7 +316,12 @@ abstract class _$$RequestInfoModelImplCopyWith<$Res>
       String? did,
       String? key,
       String? msgId,
-      String? authToken});
+      String? authToken,
+      UserRequestModel? userInfo,
+      String? tenantId});
+
+  @override
+  $UserRequestModelCopyWith<$Res>? get userInfo;
 }
 
 /// @nodoc
@@ -149,6 +343,8 @@ class __$$RequestInfoModelImplCopyWithImpl<$Res>
     Object? key = freezed,
     Object? msgId = freezed,
     Object? authToken = freezed,
+    Object? userInfo = freezed,
+    Object? tenantId = freezed,
   }) {
     return _then(_$RequestInfoModelImpl(
       apiId: freezed == apiId
@@ -183,6 +379,14 @@ class __$$RequestInfoModelImplCopyWithImpl<$Res>
           ? _value.authToken
           : authToken // ignore: cast_nullable_to_non_nullable
               as String?,
+      userInfo: freezed == userInfo
+          ? _value.userInfo
+          : userInfo // ignore: cast_nullable_to_non_nullable
+              as UserRequestModel?,
+      tenantId: freezed == tenantId
+          ? _value.tenantId
+          : tenantId // ignore: cast_nullable_to_non_nullable
+              as String?,
     ));
   }
 }
@@ -199,7 +403,9 @@ class _$RequestInfoModelImpl implements _RequestInfoModel {
       this.did,
       this.key,
       this.msgId,
-      this.authToken});
+      this.authToken,
+      this.userInfo,
+      this.tenantId});
 
   factory _$RequestInfoModelImpl.fromJson(Map<String, dynamic> json) =>
       _$$RequestInfoModelImplFromJson(json);
@@ -220,10 +426,14 @@ class _$RequestInfoModelImpl implements _RequestInfoModel {
   final String? msgId;
   @override
   final String? authToken;
+  @override
+  final UserRequestModel? userInfo;
+  @override
+  final String? tenantId;
 
   @override
   String toString() {
-    return 'RequestInfoModel(apiId: $apiId, ver: $ver, ts: $ts, action: $action, did: $did, key: $key, msgId: $msgId, authToken: $authToken)';
+    return 'RequestInfoModel(apiId: $apiId, ver: $ver, ts: $ts, action: $action, did: $did, key: $key, msgId: $msgId, authToken: $authToken, userInfo: $userInfo, tenantId: $tenantId)';
   }
 
   @override
@@ -239,13 +449,17 @@ class _$RequestInfoModelImpl implements _RequestInfoModel {
             (identical(other.key, key) || other.key == key) &&
             (identical(other.msgId, msgId) || other.msgId == msgId) &&
             (identical(other.authToken, authToken) ||
-                other.authToken == authToken));
+                other.authToken == authToken) &&
+            (identical(other.userInfo, userInfo) ||
+                other.userInfo == userInfo) &&
+            (identical(other.tenantId, tenantId) ||
+                other.tenantId == tenantId));
   }
 
   @JsonKey(ignore: true)
   @override
-  int get hashCode => Object.hash(
-      runtimeType, apiId, ver, ts, action, did, key, msgId, authToken);
+  int get hashCode => Object.hash(runtimeType, apiId, ver, ts, action, did, key,
+      msgId, authToken, userInfo, tenantId);
 
   @JsonKey(ignore: true)
   @override
@@ -271,7 +485,9 @@ abstract class _RequestInfoModel implements RequestInfoModel {
       final String? did,
       final String? key,
       final String? msgId,
-      final String? authToken}) = _$RequestInfoModelImpl;
+      final String? authToken,
+      final UserRequestModel? userInfo,
+      final String? tenantId}) = _$RequestInfoModelImpl;
 
   factory _RequestInfoModel.fromJson(Map<String, dynamic> json) =
       _$RequestInfoModelImpl.fromJson;
@@ -292,6 +508,10 @@ abstract class _RequestInfoModel implements RequestInfoModel {
   String? get msgId;
   @override
   String? get authToken;
+  @override
+  UserRequestModel? get userInfo;
+  @override
+  String? get tenantId;
   @override
   @JsonKey(ignore: true)
   _$$RequestInfoModelImplCopyWith<_$RequestInfoModelImpl> get copyWith =>

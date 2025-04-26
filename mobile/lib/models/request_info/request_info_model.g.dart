@@ -1,10 +1,25 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'request_info.dart';
+part of 'request_info_model.dart';
 
 // **************************************************************************
 // JsonSerializableGenerator
 // **************************************************************************
+
+_$RequestInfoMapperModelImpl _$$RequestInfoMapperModelImplFromJson(
+        Map<String, dynamic> json) =>
+    _$RequestInfoMapperModelImpl(
+      requestInfo: json['requestInfo'] == null
+          ? null
+          : RequestInfoModel.fromJson(
+              json['requestInfo'] as Map<String, dynamic>),
+    );
+
+Map<String, dynamic> _$$RequestInfoMapperModelImplToJson(
+        _$RequestInfoMapperModelImpl instance) =>
+    <String, dynamic>{
+      'requestInfo': instance.requestInfo,
+    };
 
 _$RequestInfoModelImpl _$$RequestInfoModelImplFromJson(
         Map<String, dynamic> json) =>
@@ -17,6 +32,10 @@ _$RequestInfoModelImpl _$$RequestInfoModelImplFromJson(
       key: json['key'] as String?,
       msgId: json['msgId'] as String?,
       authToken: json['authToken'] as String?,
+      userInfo: json['userInfo'] == null
+          ? null
+          : UserRequestModel.fromJson(json['userInfo'] as Map<String, dynamic>),
+      tenantId: json['tenantId'] as String?,
     );
 
 Map<String, dynamic> _$$RequestInfoModelImplToJson(
@@ -37,5 +56,7 @@ Map<String, dynamic> _$$RequestInfoModelImplToJson(
   writeNotNull('key', instance.key);
   writeNotNull('msgId', instance.msgId);
   writeNotNull('authToken', instance.authToken);
+  writeNotNull('userInfo', instance.userInfo);
+  writeNotNull('tenantId', instance.tenantId);
   return val;
 }
