@@ -29,8 +29,7 @@ class AppSharedPreferences {
 
   bool get isFirstLaunch => sharedPreferences.getBool(isFirstLaunchKey) ?? true;
 
-  String? get getSelectedLocale =>
-      sharedPreferences.getString(userSelectedLocale);
+  String? get getSelectedLocale => sharedPreferences.getString(userSelectedLocale);
 
   Future<void> appLaunchedFirstTime() async {
     await sharedPreferences.setBool(
@@ -45,4 +44,5 @@ class AppSharedPreferences {
       localeString,
     );
   }
+
 }

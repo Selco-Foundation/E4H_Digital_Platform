@@ -1,7 +1,6 @@
-import 'package:selco/data/local_store/nosql/localization.dart';
 import 'package:flutter/material.dart';
 import 'package:isar/isar.dart';
-import 'package:path_provider/path_provider.dart';
+import 'package:selco/utils/utils.dart';
 
 final scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
 
@@ -11,10 +10,16 @@ class Constants {
   static final Constants _instance = Constants._();
 
   Constants._() {
-    _isar = openIsar();
+    // _isar = openIsar();
   }
   factory Constants() {
     return _instance;
+  }
+
+  Future initialize(version) async {
+    await initializeAllMappers();
+    //setInitialDataOfPackages();
+    // await _initializeIsar(version);
   }
 
   Future<Isar> get isar {
@@ -25,16 +30,9 @@ class Constants {
     return _version;
   }
 
-  Future<Isar> openIsar() async {
+  Future openIsar() async {
     if (Isar.instanceNames.isEmpty) {
-      final directory = await getApplicationDocumentsDirectory();
-
-      return await Isar.open(
-        [LocalizationWrapperSchema],
-        name: 'HCM',
-        inspector: true,
-        directory: directory.path,
-      );
+      return await Future.value(Isar.getInstance());
     } else {
       return await Future.value(Isar.getInstance());
     }
