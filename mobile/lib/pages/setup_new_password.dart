@@ -7,6 +7,9 @@ import 'package:selco/router/app_router.dart';
 import 'package:selco/utils/extensions.dart';
 import 'package:selco/utils/i18_key_constants.dart' as i18;
 
+import '../widgets/button/footer_button.dart';
+import '../widgets/navigation/navbar.dart';
+
 @RoutePage()
 class SetupNewPasswordPage extends StatefulWidget {
   const SetupNewPasswordPage({super.key});
@@ -37,32 +40,23 @@ class _SetupNewPasswordPageState extends State<SetupNewPasswordPage> {
     final textTheme = theme.digitTextTheme(context);
 
     return Scaffold(
-      appBar: AppBar(
-        foregroundColor: theme.colorTheme.paper.primary,
-        backgroundColor: theme.colorTheme.primary.primary2,
-      ),
+      appBar: const Navbar(showMenu: false, showLeading: false),
       body: ReactiveFormBuilder(
         form: buildForm,
         builder: (context, form, child) {
           return ScrollableContent(
+            enableFixedDigitButton: true,
             backgroundColor: theme.colorTheme.generic.background,
-            footer: DigitCard(
-              margin: const EdgeInsets.only(top: spacer2),
-              children: [
-                DigitButton(
-                  mainAxisSize: MainAxisSize.max,
-                  label: context.translate(i18.common.coreCommonSave),
-                  type: DigitButtonType.primary,
-                  size: DigitButtonSize.large,
-                  onPressed: () {
-                    form.markAllAsTouched();
-                    if (!form.valid) return;
+            footer: FooterButton(
+              showSuffixIcon: false,
+              text: context.translate(i18.common.coreCommonSave),
+              onPress: () {
+                form.markAllAsTouched();
+                if (!form.valid) return;
 
-                    FocusManager.instance.primaryFocus?.unfocus();
-                    context.router.replace(const LoginRoute());
-                  },
-                ),
-              ],
+                FocusManager.instance.primaryFocus?.unfocus();
+                context.router.replace(const LoginRoute());
+              },
             ),
             children: [
               DigitCard(
