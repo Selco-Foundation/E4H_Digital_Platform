@@ -7,13 +7,18 @@ import 'package:flutter/material.dart';
 class FooterButton extends StatelessWidget {
   final String text;
   final Function() onPress;
-  const FooterButton({super.key, required this.text, required this.onPress});
+  final bool showSuffixIcon;
+  const FooterButton(
+      {super.key,
+      required this.text,
+      required this.onPress,
+      this.showSuffixIcon = true});
 
   @override
   Widget build(BuildContext context) {
     return DigitCard(margin: const EdgeInsets.only(top: spacer2), children: [
       DigitButton(
-        suffixIcon: Icons.arrow_forward_outlined,
+        suffixIcon: showSuffixIcon ? Icons.arrow_forward_outlined : null,
         mainAxisSize: MainAxisSize.max,
         label: text,
         type: DigitButtonType.primary,
