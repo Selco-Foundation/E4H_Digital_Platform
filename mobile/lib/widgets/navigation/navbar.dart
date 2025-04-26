@@ -8,7 +8,8 @@ import '../../utils/i18_key_constants.dart' as i18;
 
 class Navbar extends StatelessWidget implements PreferredSizeWidget {
   final bool showMenu;
-  const Navbar({super.key, this.showMenu = true});
+  final bool showLeading;
+  const Navbar({super.key, this.showMenu = true, this.showLeading = true});
 
   @override
   Size get preferredSize => const Size.fromHeight(spacer12);
@@ -18,6 +19,7 @@ class Navbar extends StatelessWidget implements PreferredSizeWidget {
     final theme = Theme.of(context);
     final textTheme = theme.digitTextTheme(context);
     return AppBar(
+      automaticallyImplyLeading: showLeading,
       foregroundColor: theme.colorTheme.paper.primary,
       backgroundColor: theme.colorTheme.primary.primary2,
       leading: showMenu

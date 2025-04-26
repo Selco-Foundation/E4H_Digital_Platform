@@ -1,7 +1,5 @@
-import 'package:digit_ui_components/enum/app_enums.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:digit_ui_components/theme/spacers.dart';
-import 'package:digit_ui_components/widgets/atoms/digit_button.dart';
 import 'package:digit_ui_components/widgets/atoms/input_wrapper.dart';
 import 'package:digit_ui_components/widgets/atoms/labelled_fields.dart';
 import 'package:digit_ui_components/widgets/atoms/reactive_fields.dart';
@@ -13,6 +11,9 @@ import 'package:reactive_forms/reactive_forms.dart';
 import 'package:selco/router/app_router.dart';
 import 'package:selco/utils/extensions.dart';
 import 'package:selco/utils/i18_key_constants.dart' as i18;
+import 'package:selco/widgets/button/footer_button.dart';
+
+import '../widgets/navigation/navbar.dart';
 
 @RoutePage()
 class ForgotPasswordPage extends StatefulWidget {
@@ -29,42 +30,21 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   final FocusNode pinFocusNode = FocusNode();
 
   @override
-  void initState() {
-    super.initState();
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final textTheme = theme.digitTextTheme(context);
 
     return Scaffold(
-      appBar: AppBar(
-        foregroundColor: theme.colorTheme.paper.primary,
-        backgroundColor: theme.colorTheme.primary.primary2,
-      ),
+      appBar: const Navbar(showMenu: false, showLeading: false),
       body: ScrollableContent(
+        enableFixedDigitButton: true,
         backgroundColor: theme.colorTheme.generic.background,
-        footer:
-            DigitCard(margin: const EdgeInsets.only(top: spacer2), children: [
-          DigitButton(
-            suffixIcon: Icons.arrow_forward_outlined,
-            mainAxisSize: MainAxisSize.max,
-            label: context.translate(
-              i18.common.coreCommonNext,
-            ),
-            type: DigitButtonType.primary,
-            size: DigitButtonSize.large,
-            onPressed: () {
-              context.router.replace(const EnterOtpRoute());
-            },
-          ),
-        ]),
+        footer: FooterButton(
+          text: i18.common.coreCommonNext,
+          onPress: () {
+            context.router.replace(const EnterOtpRoute());
+          },
+        ),
         children: [
           ReactiveFormBuilder(
             form: buildForm,
