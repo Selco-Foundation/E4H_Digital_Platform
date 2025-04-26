@@ -41,7 +41,7 @@ class _LoginPageState extends State<LoginPage> {
     final textTheme = theme.digitTextTheme(context);
 
     return Scaffold(
-      appBar: const Navbar(showMenu: false),
+      appBar: const Navbar(showMenu: false, showLeading: false),
       body: ScrollableContent(
         backgroundColor: theme.colorTheme.generic.background,
         footer: const Padding(
