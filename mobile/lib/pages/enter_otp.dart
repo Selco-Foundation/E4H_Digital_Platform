@@ -4,9 +4,12 @@ import 'package:digit_ui_components/widgets/atoms/digit_otp.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:flutter/material.dart';
 import 'package:reactive_forms/reactive_forms.dart';
-import 'package:selco/router/app_router.dart';
-import 'package:selco/utils/extensions.dart';
-import 'package:selco/utils/i18_key_constants.dart' as i18;
+
+import '../router/app_router.dart';
+import '../utils/extensions.dart';
+import '../utils/i18_key_constants.dart' as i18;
+import '../widgets/button/footer_button.dart';
+import '../widgets/navigation/navbar.dart';
 
 @RoutePage()
 class EnterOtpPage extends StatefulWidget {
@@ -33,26 +36,17 @@ class _EnterOtpPageState extends State<EnterOtpPage> {
     final textTheme = theme.digitTextTheme(context);
 
     return Scaffold(
-      appBar: AppBar(
-        foregroundColor: theme.colorTheme.paper.primary,
-        backgroundColor: theme.colorTheme.primary.primary2,
-      ),
+      appBar: const Navbar(showMenu: false, showLeading: false),
       body: ScrollableContent(
+        enableFixedDigitButton: true,
         backgroundColor: theme.colorTheme.generic.background,
-        footer:
-            DigitCard(margin: const EdgeInsets.only(top: spacer2), children: [
-          DigitButton(
-            mainAxisSize: MainAxisSize.max,
-            label: context.translate(
-              i18.common.coreCommonSubmit,
-            ),
-            type: DigitButtonType.primary,
-            size: DigitButtonSize.large,
-            onPressed: () {
-              context.router.replace(const SetupNewPasswordRoute());
-            },
-          ),
-        ]),
+        footer: FooterButton(
+          showSuffixIcon: false,
+          text: i18.common.coreCommonSubmit,
+          onPress: () {
+            context.router.replace(const SetupNewPasswordRoute());
+          },
+        ),
         children: [
           ReactiveFormBuilder(
             form: buildForm,
@@ -60,7 +54,6 @@ class _EnterOtpPageState extends State<EnterOtpPage> {
               return DigitCard(
                   margin: const EdgeInsets.all(spacer2),
                   children: [
-                    SizedBox(width: MediaQuery.of(context).size.width),
                     Text(
                       context.translate(
                         i18.forgotPassword.otpVerfication,
