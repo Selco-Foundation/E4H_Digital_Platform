@@ -1,4 +1,3 @@
-import 'package:selco/blocs/localization/app_localization.dart';
 import 'package:digit_ui_components/digit_components.dart';
 import 'package:flutter/material.dart';
 
@@ -24,7 +23,8 @@ extension ContextExt on BuildContext {
 
 extension LocalizationExtension on BuildContext {
   String translate(String key) {
-    final localization = AppLocalizations.of(this);
-    return localization?.translate(key) ?? key;
+    //final localization = AppLocalizations.of(this);
+    return //localization?.translate(key) ??
+        key;
   }
 }
