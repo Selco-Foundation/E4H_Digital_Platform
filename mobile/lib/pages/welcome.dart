@@ -3,11 +3,12 @@ import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:digit_ui_components/widgets/atoms/digit_divider.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:flutter/material.dart';
-import 'package:selco/router/app_router.dart';
-import 'package:selco/utils/asset_images.dart';
-import 'package:selco/utils/extensions.dart';
-import 'package:selco/utils/i18_key_constants.dart' as i18;
-import 'package:selco/widgets/navigation/navbar.dart';
+
+import '../router/app_router.dart';
+import '../utils/asset_images.dart';
+import '../utils/i18_key_constants.dart' as i18;
+import '../widgets/button/footer_button.dart';
+import '../widgets/navigation/navbar.dart';
 
 @RoutePage()
 class WelcomePage extends StatefulWidget {
@@ -21,26 +22,19 @@ class _WelcomePageState extends State<WelcomePage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
-      appBar: const Navbar(),
+      appBar: const Navbar(showMenu: false),
       body: ScrollableContent(
+        enableFixedDigitButton: true,
         backgroundColor: theme.colorTheme.generic.background,
-        footer:
-            DigitCard(margin: const EdgeInsets.only(top: spacer2), children: [
-          DigitButton(
-            suffixIcon: Icons.arrow_forward_outlined,
-            mainAxisSize: MainAxisSize.max,
-            label: context.translate(i18.common.proceed),
-            type: DigitButtonType.primary,
-            size: DigitButtonSize.large,
-            onPressed: () {
+        footer: FooterButton(
+            text: i18.common.proceed,
+            onPress: () {
               context.router.replace(const LoginRoute());
-            },
-          ),
-        ]),
+            }),
         children: const [
           Expanded(
             child: WelcomeContent(),
-          )
+          ),
         ],
       ),
     );
@@ -101,71 +95,63 @@ class WelcomeContent extends StatelessWidget {
 
     return Padding(
       padding:
-          const EdgeInsets.symmetric(vertical: spacer5, horizontal: spacer3),
+          const EdgeInsets.symmetric(vertical: spacer4, horizontal: spacer2),
       child: DigitCard(
-        // padding: const EdgeInsets.all(spacer4),
         children: [
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text('Welcome!',
-                  style: textTheme.headingL
+                  style: textTheme.headingXl
                       .copyWith(color: const DigitColors().light.primary2)),
               const SizedBox(height: spacer3),
               Text(
                 'Through this application you will be able to:',
-                style: textTheme.bodyS,
+                style: textTheme.bodyL,
               ),
-              ...menuItems.map(
-                (item) => Container(
-                  margin: const EdgeInsets.symmetric(vertical: spacer5),
-                  child: Column(
+              ...menuItems.map((item) => Column(
                     children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Image.asset(
-                            item.imagePath,
-                            height: 90,
-                            width: 90,
-                          ),
-                          const SizedBox(width: spacer6),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(item.title,
-                                    style: textTheme.headingS.copyWith(
-                                        color: const DigitColors()
-                                            .light
-                                            .primary2)),
-                                const SizedBox(height: spacer1),
-                                Padding(
-                                  padding:
-                                      const EdgeInsets.only(right: spacer7),
-                                  child: Text(
-                                    item.description,
-                                    style: textTheme.headingXS.copyWith(
-                                        color: const DigitColors()
-                                            .light
-                                            .textSecondary),
-                                  ),
-                                ),
-                              ],
+                      Container(
+                        padding: const EdgeInsets.symmetric(vertical: spacer5),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Image.asset(
+                              item.imagePath,
+                              height: spacer12 * 2,
+                              width: spacer12 * 2,
                             ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(
-                        height: spacer5,
+                            const SizedBox(width: spacer6),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(item.title,
+                                      style: textTheme.headingS.copyWith(
+                                          color: DigitColors().light.primary2)),
+                                  const SizedBox(height: spacer3),
+                                  Padding(
+                                    padding:
+                                        const EdgeInsets.only(right: spacer7),
+                                    child: Text(
+                                      item.description,
+                                      style: textTheme.headingXS.copyWith(
+                                          color: const DigitColors()
+                                              .light
+                                              .textSecondary),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                       const DigitDivider(
                         dividerType: DividerType.small,
-                      )
+                      ),
                     ],
-                  ),
-                ),
-              ),
+                  )),
             ],
           ),
         ],
