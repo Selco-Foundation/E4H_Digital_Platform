@@ -70,7 +70,7 @@ public class FacilityCreateRequest {
      */
 
     @Schema(name = "facilities", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
-    @JsonProperty("facilities")
+    @JsonProperty("facility")
     public Facility getFacility() {
         return facility;
     }

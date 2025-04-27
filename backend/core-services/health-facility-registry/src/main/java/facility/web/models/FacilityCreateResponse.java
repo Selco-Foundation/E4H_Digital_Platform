@@ -68,18 +68,6 @@ public class FacilityCreateResponse {
         return this;
     }
 
-    /**
-     * Get facilities
-     *
-     * @return facilities
-     */
-    @Valid
-    @Schema(name = "facilities", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
-    @JsonProperty("facilities")
-    public List<@Valid Facility> getFacilities() {
-        return facilities;
-    }
-
     public void setFacilities(List<@Valid Facility> facilities) {
         this.facilities = facilities;
     }
