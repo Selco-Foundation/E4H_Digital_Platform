@@ -1,4 +1,4 @@
-package com.example.hfr.api;
+package facility.api;
 
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.web.context.request.NativeWebRequest;

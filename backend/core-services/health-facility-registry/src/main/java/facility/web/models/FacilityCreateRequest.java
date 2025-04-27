@@ -1,4 +1,4 @@
-package com.example.hfr.web.models;
+package facility.web.models;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -21,7 +21,7 @@ public class FacilityCreateRequest {
 
     private FacilityAssessmentCreateRequestRequestInfo requestInfo;
 
-    private Facility facilities;
+    private Facility facility;
 
     public FacilityCreateRequest() {
         super();
@@ -72,7 +72,7 @@ public class FacilityCreateRequest {
     @Schema(name = "facilities", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     @JsonProperty("facilities")
     public Facility getFacility() {
-        return facilities;
+        return facility;
     }
 
     @Override
@@ -80,7 +80,7 @@ public class FacilityCreateRequest {
         StringBuilder sb = new StringBuilder();
         sb.append("class FacilityCreateRequest {\n");
         sb.append("    requestInfo: ").append(toIndentedString(requestInfo)).append("\n");
-        sb.append("    facilities: ").append(toIndentedString(facilities)).append("\n");
+        sb.append("    facilities: ").append(toIndentedString(facility)).append("\n");
         sb.append("}");
         return sb.toString();
     }

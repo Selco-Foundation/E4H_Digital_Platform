@@ -1,8 +1,8 @@
-package com.example.hfr.repository;
+package facility.repository;
 
 
-import com.example.hfr.kafka.Producer;
-import com.example.hfr.web.models.FacilityCreateRequest;
+import facility.kafka.Producer;
+import facility.web.models.FacilityCreateRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Repository;

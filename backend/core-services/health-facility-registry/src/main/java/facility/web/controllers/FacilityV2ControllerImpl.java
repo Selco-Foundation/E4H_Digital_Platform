@@ -1,9 +1,9 @@
-package com.example.hfr.web.controllers;
+package facility.web.controllers;
 
-import com.example.hfr.api.FacilityV2Controller;
-import com.example.hfr.service.FacilityService;
-import com.example.hfr.web.models.Facility;
-import com.example.hfr.web.models.FacilityCreateRequest;
+import facility.api.FacilityV2Controller;
+import facility.service.FacilityService;
+import facility.web.models.Facility;
+import facility.web.models.FacilityCreateRequest;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;

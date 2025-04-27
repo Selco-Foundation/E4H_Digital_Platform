@@ -1,4 +1,4 @@
-package com.example.hfr.web.models;
+package facility.web.models;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -6,35 +6,31 @@ import jakarta.annotation.Generated;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Objects;
 
 /**
- * FacilityAssessmentCreateRequest
+ * FacilityUpdateRequest
  */
 
 @Generated(value = "org.openapitools.codegen.languages.SpringCodegen", date = "2025-04-24T16:00:58.522282987+05:30[Asia/Kolkata]", comments = "Generator version: 7.4.0")
-public class FacilityAssessmentCreateRequest {
+public class FacilityUpdateRequest {
 
     private FacilityAssessmentCreateRequestRequestInfo requestInfo;
 
-    @Valid
-    private List<@Valid FacilityAssessment> assessments = new ArrayList<>();
+    private FacilityUpdateRequestFacilityUpdate facilityUpdate;
 
-    public FacilityAssessmentCreateRequest() {
+    public FacilityUpdateRequest() {
         super();
     }
 
     /**
      * Constructor with only required parameters
      */
-    public FacilityAssessmentCreateRequest(FacilityAssessmentCreateRequestRequestInfo requestInfo, List<@Valid FacilityAssessment> assessments) {
+    public FacilityUpdateRequest(FacilityAssessmentCreateRequestRequestInfo requestInfo) {
         this.requestInfo = requestInfo;
-        this.assessments = assessments;
     }
 
-    public FacilityAssessmentCreateRequest requestInfo(FacilityAssessmentCreateRequestRequestInfo requestInfo) {
+    public FacilityUpdateRequest requestInfo(FacilityAssessmentCreateRequestRequestInfo requestInfo) {
         this.requestInfo = requestInfo;
         return this;
     }
@@ -56,34 +52,25 @@ public class FacilityAssessmentCreateRequest {
         this.requestInfo = requestInfo;
     }
 
-    public FacilityAssessmentCreateRequest assessments(List<@Valid FacilityAssessment> assessments) {
-        this.assessments = assessments;
-        return this;
-    }
-
-    public FacilityAssessmentCreateRequest addAssessmentsItem(FacilityAssessment assessmentsItem) {
-        if (this.assessments == null) {
-            this.assessments = new ArrayList<>();
-        }
-        this.assessments.add(assessmentsItem);
+    public FacilityUpdateRequest facilityUpdate(FacilityUpdateRequestFacilityUpdate facilityUpdate) {
+        this.facilityUpdate = facilityUpdate;
         return this;
     }
 
     /**
-     * Get assessments
+     * Get facilityUpdate
      *
-     * @return assessments
+     * @return facilityUpdate
      */
-    @NotNull
     @Valid
-    @Schema(name = "assessments", requiredMode = Schema.RequiredMode.REQUIRED)
-    @JsonProperty("assessments")
-    public List<@Valid FacilityAssessment> getAssessments() {
-        return assessments;
+    @Schema(name = "FacilityUpdate", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+    @JsonProperty("FacilityUpdate")
+    public FacilityUpdateRequestFacilityUpdate getFacilityUpdate() {
+        return facilityUpdate;
     }
 
-    public void setAssessments(List<@Valid FacilityAssessment> assessments) {
-        this.assessments = assessments;
+    public void setFacilityUpdate(FacilityUpdateRequestFacilityUpdate facilityUpdate) {
+        this.facilityUpdate = facilityUpdate;
     }
 
     @Override
@@ -94,22 +81,22 @@ public class FacilityAssessmentCreateRequest {
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        FacilityAssessmentCreateRequest facilityAssessmentCreateRequest = (FacilityAssessmentCreateRequest) o;
-        return Objects.equals(this.requestInfo, facilityAssessmentCreateRequest.requestInfo) &&
-                Objects.equals(this.assessments, facilityAssessmentCreateRequest.assessments);
+        FacilityUpdateRequest facilityUpdateRequest = (FacilityUpdateRequest) o;
+        return Objects.equals(this.requestInfo, facilityUpdateRequest.requestInfo) &&
+                Objects.equals(this.facilityUpdate, facilityUpdateRequest.facilityUpdate);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(requestInfo, assessments);
+        return Objects.hash(requestInfo, facilityUpdate);
     }
 
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        sb.append("class FacilityAssessmentCreateRequest {\n");
+        sb.append("class FacilityUpdateRequest {\n");
         sb.append("    requestInfo: ").append(toIndentedString(requestInfo)).append("\n");
-        sb.append("    assessments: ").append(toIndentedString(assessments)).append("\n");
+        sb.append("    facilityUpdate: ").append(toIndentedString(facilityUpdate)).append("\n");
         sb.append("}");
         return sb.toString();
     }

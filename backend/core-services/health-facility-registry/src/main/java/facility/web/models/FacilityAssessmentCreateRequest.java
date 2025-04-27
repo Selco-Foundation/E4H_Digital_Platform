@@ -1,4 +1,4 @@
-package com.example.hfr.web.models;
+package facility.web.models;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -6,31 +6,35 @@ import jakarta.annotation.Generated;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 /**
- * FacilityUpdateRequest
+ * FacilityAssessmentCreateRequest
  */
 
 @Generated(value = "org.openapitools.codegen.languages.SpringCodegen", date = "2025-04-24T16:00:58.522282987+05:30[Asia/Kolkata]", comments = "Generator version: 7.4.0")
-public class FacilityUpdateRequest {
+public class FacilityAssessmentCreateRequest {
 
     private FacilityAssessmentCreateRequestRequestInfo requestInfo;
 
-    private FacilityUpdateRequestFacilityUpdate facilityUpdate;
+    @Valid
+    private List<@Valid FacilityAssessment> assessments = new ArrayList<>();
 
-    public FacilityUpdateRequest() {
+    public FacilityAssessmentCreateRequest() {
         super();
     }
 
     /**
      * Constructor with only required parameters
      */
-    public FacilityUpdateRequest(FacilityAssessmentCreateRequestRequestInfo requestInfo) {
+    public FacilityAssessmentCreateRequest(FacilityAssessmentCreateRequestRequestInfo requestInfo, List<@Valid FacilityAssessment> assessments) {
         this.requestInfo = requestInfo;
+        this.assessments = assessments;
     }
 
-    public FacilityUpdateRequest requestInfo(FacilityAssessmentCreateRequestRequestInfo requestInfo) {
+    public FacilityAssessmentCreateRequest requestInfo(FacilityAssessmentCreateRequestRequestInfo requestInfo) {
         this.requestInfo = requestInfo;
         return this;
     }
@@ -52,25 +56,34 @@ public class FacilityUpdateRequest {
         this.requestInfo = requestInfo;
     }
 
-    public FacilityUpdateRequest facilityUpdate(FacilityUpdateRequestFacilityUpdate facilityUpdate) {
-        this.facilityUpdate = facilityUpdate;
+    public FacilityAssessmentCreateRequest assessments(List<@Valid FacilityAssessment> assessments) {
+        this.assessments = assessments;
+        return this;
+    }
+
+    public FacilityAssessmentCreateRequest addAssessmentsItem(FacilityAssessment assessmentsItem) {
+        if (this.assessments == null) {
+            this.assessments = new ArrayList<>();
+        }
+        this.assessments.add(assessmentsItem);
         return this;
     }
 
     /**
-     * Get facilityUpdate
+     * Get assessments
      *
-     * @return facilityUpdate
+     * @return assessments
      */
+    @NotNull
     @Valid
-    @Schema(name = "FacilityUpdate", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
-    @JsonProperty("FacilityUpdate")
-    public FacilityUpdateRequestFacilityUpdate getFacilityUpdate() {
-        return facilityUpdate;
+    @Schema(name = "assessments", requiredMode = Schema.RequiredMode.REQUIRED)
+    @JsonProperty("assessments")
+    public List<@Valid FacilityAssessment> getAssessments() {
+        return assessments;
     }
 
-    public void setFacilityUpdate(FacilityUpdateRequestFacilityUpdate facilityUpdate) {
-        this.facilityUpdate = facilityUpdate;
+    public void setAssessments(List<@Valid FacilityAssessment> assessments) {
+        this.assessments = assessments;
     }
 
     @Override
@@ -81,22 +94,22 @@ public class FacilityUpdateRequest {
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        FacilityUpdateRequest facilityUpdateRequest = (FacilityUpdateRequest) o;
-        return Objects.equals(this.requestInfo, facilityUpdateRequest.requestInfo) &&
-                Objects.equals(this.facilityUpdate, facilityUpdateRequest.facilityUpdate);
+        FacilityAssessmentCreateRequest facilityAssessmentCreateRequest = (FacilityAssessmentCreateRequest) o;
+        return Objects.equals(this.requestInfo, facilityAssessmentCreateRequest.requestInfo) &&
+                Objects.equals(this.assessments, facilityAssessmentCreateRequest.assessments);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(requestInfo, facilityUpdate);
+        return Objects.hash(requestInfo, assessments);
     }
 
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        sb.append("class FacilityUpdateRequest {\n");
+        sb.append("class FacilityAssessmentCreateRequest {\n");
         sb.append("    requestInfo: ").append(toIndentedString(requestInfo)).append("\n");
-        sb.append("    facilityUpdate: ").append(toIndentedString(facilityUpdate)).append("\n");
+        sb.append("    assessments: ").append(toIndentedString(assessments)).append("\n");
         sb.append("}");
         return sb.toString();
     }

@@ -1,4 +1,4 @@
-package com.example.hfr.web.models;
+package facility.web.models;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;

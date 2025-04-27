@@ -1,10 +1,9 @@
-package com.example.hfr.service;
+package facility.service;
 
 
-import com.example.hfr.repository.FacilityRepository;
-import com.example.hfr.web.models.Facility;
-import com.example.hfr.web.models.FacilityAddress;
-import com.example.hfr.web.models.FacilityCreateRequest;
+import facility.repository.FacilityRepository;
+import facility.web.models.Facility;
+import facility.web.models.FacilityCreateRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
@@ -44,25 +43,16 @@ public class FacilityService {
         Facility facility = request.getFacility();
         String tenantId = facility.getTenantId();
 
-        // 1. MDMS validation
+        //TODO 1. MDMS validation
         validateAgainstMDMS(facility, tenantId);
-
-        // 2. Boundary validation
-        validateBoundary(facility.getAddress(), tenantId);
 
         // 3. Generate facility ID if not set
         if (facility.getFacilityId() == null) {
-            UUID generatedId = generateFacilityId(tenantId);
-            facility.setFacilityId(generatedId);
+            facility.setFacilityId(generateFacilityId(tenantId));
         }
 
-        // 4. Enrich data
-        if (facility.getWfStatus() == null) {
-            facility.setWfStatus("CREATED");
-        }
-        if (facility.getIsActive() == null) {
-            facility.setIsActive(true);
-        }
+        if (facility.getWfStatus() == null) facility.setWfStatus("CREATED");
+        if (facility.getIsActive() == null) facility.setIsActive(true);
 
         // 5. Push to Kafka via Persister
         facilityRepository.pushCreateFacility(request);
@@ -129,32 +119,37 @@ public class FacilityService {
         return codes;
     }
 
-
-    private void validateBoundary(FacilityAddress address, String tenantId) {
-        if (address == null || address.getCity() == null) return;
-
-        String url = boundaryHost + boundaryPath + "?tenantId=" + tenantId + "&hierarchyTypeCode=ADMIN";
-
-        ResponseEntity<Object> response = restTemplate.postForEntity(url, new HashMap<>(), Object.class);
-        // TODO: Extract list of valid boundaries and check if address.getCity() is valid
-    }
-
     private UUID generateFacilityId(String tenantId) {
-        Map<String, Object> idGenRequest = Map.of(
-                "RequestInfo", new HashMap<>(),  // Add actual RequestInfo if needed
-                "idRequests", List.of(Map.of(
-                        "tenantId", tenantId,
-                        "idName", "facility.id",
-                        "format", "[tenantId]/FAC/[SEQ_FAC]",
-                        "count", 1
-                ))
+        Map<String, Object> requestInfo = new HashMap<>(); // Use real RequestInfo if available
+
+        Map<String, Object> idRequest = Map.of(
+                "idName", "facility.id",
+                "tenantId", tenantId,
+                "format", "",
+                "count", 1
+        );
+
+        Map<String, Object> payload = Map.of(
+                "RequestInfo", requestInfo,
+                "idRequests", List.of(idRequest)
         );
 
         String url = idgenHost + idgenPath;
 
-        ResponseEntity<Map> response = restTemplate.postForEntity(url, idGenRequest, Map.class);
-        List<Map<String, String>> ids = (List<Map<String, String>>) ((Map) response.getBody().get("idResponses")).get("id");
-        return UUID.fromString(ids.get(0).get("id")); // Adjust based on actual structure
+        ResponseEntity<Map> response = restTemplate.postForEntity(url, payload, Map.class);
+
+        if (!response.getStatusCode().is2xxSuccessful()) {
+            throw new RuntimeException("Failed to generate Facility ID");
+        }
+
+        Map<String, Object> body = response.getBody();
+        List<Map<String, Object>> idResponses = (List<Map<String, Object>>) body.get("idResponses");
+
+        if (idResponses.isEmpty() || idResponses.get(0).get("id") == null) {
+            throw new IllegalArgumentException("IDGen returned empty ID");
+        }
+
+        return UUID.fromString((String) idResponses.get(0).get("id"));
     }
 }
 
