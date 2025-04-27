@@ -41,7 +41,7 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
           showSuffixIcon: false,
           text: i18.common.coreCommonSave,
           onPress: () {
-            // context.router.push(const AssetSummaryRoute());
+            context.router.push(const DataSaveSuccessRoute());
           },
         ),
         children: [

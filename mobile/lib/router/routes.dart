@@ -13,4 +13,5 @@ class Routes {
   static const addNewAsset = 'add-new-asset';
   static const mediaUpload = 'media-upload';
   static const assetSummary = 'asset-summary';
+  static const dataSaveSuccess = 'data-save-success';
 }

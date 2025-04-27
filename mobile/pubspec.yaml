@@ -69,6 +69,8 @@ flutter:
   assets:
     - ./
     - .env
+    - assets/icons/svg/
+    - assets/animated_json/
     - assets/images/
 
   fonts:
