@@ -1,12 +1,13 @@
 import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:flutter/material.dart';
-import 'package:selco/router/app_router.dart';
-import 'package:selco/utils/extensions.dart';
-import 'package:selco/utils/i18_key_constants.dart' as i18;
-import 'package:selco/widgets/header/back_navigation_help_header.dart';
-import 'package:selco/widgets/home/home_item_card.dart';
-import 'package:selco/widgets/navigation/navbar.dart';
+
+import '../router/app_router.dart';
+import '../utils/extensions.dart';
+import '../utils/i18_key_constants.dart' as i18;
+import '../widgets/header/back_navigation_help_header.dart';
+import '../widgets/home/home_item_card.dart';
+import '../widgets/navigation/navbar.dart';
 
 @RoutePage()
 class HomePage extends StatefulWidget {

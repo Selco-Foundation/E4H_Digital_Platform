@@ -5,6 +5,8 @@ import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:flutter/material.dart';
 
 import '../router/app_router.dart';
+import '../utils/i18_key_constants.dart' as i18;
+import '../widgets/button/footer_button.dart';
 import '../widgets/header/back_navigation_help_header.dart';
 import '../widgets/navigation/navbar.dart';
 
@@ -25,23 +27,19 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
     return Scaffold(
         appBar: const Navbar(),
         body: ScrollableContent(
-            backgroundColor: theme.colorTheme.generic.background,
             header: const BackNavigationHelpHeaderWidget(
               showBackNavigation: true,
               showHelp: false,
             ),
-            footer: DigitCard(
-                margin: const EdgeInsets.only(top: spacer2),
-                children: [
-                  DigitButton(
-                    mainAxisSize: MainAxisSize.max,
-                    label: 'Next',
-                    type: DigitButtonType.primary,
-                    size: DigitButtonSize.large,
-                    onPressed: () =>
-                        context.router.push(const AddNewAssetRoute()),
-                  ),
-                ]),
+            enableFixedDigitButton: true,
+            backgroundColor: theme.colorTheme.generic.background,
+            footer: FooterButton(
+              showSuffixIcon: false,
+              text: i18.common.coreCommonNext,
+              onPress: () {
+                context.router.push(const AddNewAssetRoute());
+              },
+            ),
             children: [
               Padding(
                 padding: const EdgeInsets.symmetric(
