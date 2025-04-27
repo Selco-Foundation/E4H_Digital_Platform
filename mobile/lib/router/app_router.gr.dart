@@ -33,6 +33,12 @@ abstract class _$AppRouter extends RootStackRouter {
         child: const AssetTypeDetailPage(),
       );
     },
+    DataSaveSuccessRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const DataSaveSuccessPage(),
+      );
+    },
     EnterOtpRoute.name: (routeData) {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
@@ -146,6 +152,20 @@ class AssetTypeDetailRoute extends PageRouteInfo<void> {
         );
 
   static const String name = 'AssetTypeDetailRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [DataSaveSuccessPage]
+class DataSaveSuccessRoute extends PageRouteInfo<void> {
+  const DataSaveSuccessRoute({List<PageRouteInfo>? children})
+      : super(
+          DataSaveSuccessRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'DataSaveSuccessRoute';
 
   static const PageInfo<void> page = PageInfo<void>(name);
 }
