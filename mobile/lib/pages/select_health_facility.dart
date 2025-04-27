@@ -3,10 +3,11 @@ import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:digit_ui_components/widgets/atoms/digit_divider.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:flutter/material.dart';
-import 'package:selco/router/app_router.dart';
-import 'package:selco/widgets/header/back_navigation_help_header.dart';
-import 'package:selco/widgets/navigation/navbar.dart';
-import 'package:selco/widgets/progress_indicator/progress_indicator.dart';
+import 'package:intl/intl.dart';
+
+import '../router/app_router.dart';
+import '../widgets/header/back_navigation_help_header.dart';
+import '../widgets/navigation/navbar.dart';
 
 @RoutePage()
 class SelectHealthFacilityPage extends StatefulWidget {
@@ -27,14 +28,14 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
         appBar: const Navbar(),
         body: ScrollableContent(
             backgroundColor: theme.colorTheme.generic.background,
-            header: const BackNavigationHelpHeaderWidget(
-              showBackNavigation: true,
-              showHelp: false,
-            ),
             children: [
+              const BackNavigationHelpHeaderWidget(
+                showBackNavigation: true,
+                showHelp: false,
+              ),
               Padding(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: spacer2, vertical: spacer4),
+                      horizontal: spacer4, vertical: spacer2),
                   child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -49,7 +50,7 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
                                       color: theme.colorTheme.text.primary),
                                 ),
                                 const SizedBox(
-                                  height: spacer4,
+                                  height: spacer2,
                                 ),
                                 Row(
                                   children: [
@@ -73,19 +74,21 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
                         InstallationReportCard(
                           onPress: () =>
                               context.router.push(const SelectAssetTypeRoute()),
-                          title: 'Something',
+                          title: 'Alkod',
                           dateAssigned: DateTime(2024, 1, 25),
                           status: 'Pending Installation',
-                          solutionDocPath: 'somedocumnet',
+                          solutionDocPath: 'Allepy Solution Doc',
                         ),
                         const SizedBox(
                           height: spacer5,
                         ),
                         InstallationReportCard(
-                          title: 'Something',
+                          onPress: () =>
+                              context.router.push(const SelectAssetTypeRoute()),
+                          title: 'Allepy',
                           dateAssigned: DateTime(2024, 1, 25),
                           status: 'Pending Installation',
-                          solutionDocPath: 'somedocumnet',
+                          solutionDocPath: 'Allepy Solution Doc',
                         )
                       ])),
             ]));
@@ -95,24 +98,26 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
 class InstallationReportCard extends StatelessWidget {
   final String? title;
   final String? status;
-  final DateTime? dateAssigned;
+  final DateTime dateAssigned;
   final String? solutionDocPath;
-  final Function()? onPress;
+  final Function() onPress;
 
   const InstallationReportCard({
     super.key,
     this.title,
     this.status,
-    this.dateAssigned,
+    required this.dateAssigned,
     this.solutionDocPath,
-    this.onPress,
+    required this.onPress,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final textTheme = theme.digitTextTheme(context);
-    return DigitCard(onPressed: onPress, children: [
+    String formattedDate = DateFormat('dd/MM/yy').format(dateAssigned);
+
+    return DigitCard(children: [
       Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -125,7 +130,7 @@ class InstallationReportCard extends StatelessWidget {
             height: spacer4,
           ),
           const DigitDivider(
-            dividerType: DividerType.medium,
+            dividerType: DividerType.small,
           ),
           Row(
             children: [
@@ -166,7 +171,7 @@ class InstallationReportCard extends StatelessWidget {
                   ),
                   const SizedBox(height: spacer4),
                   Text(
-                    '$dateAssigned',
+                    formattedDate,
                     style: textTheme.bodyL
                         .copyWith(color: theme.colorTheme.text.primary),
                   ),
@@ -177,10 +182,12 @@ class InstallationReportCard extends StatelessWidget {
                         Icons.picture_as_pdf,
                         color: theme.colorTheme.primary.primary1,
                       ),
+                      const SizedBox(width: spacer1),
                       Text(
                         '$solutionDocPath',
-                        style: textTheme.bodyL
-                            .copyWith(color: theme.colorTheme.text.primary),
+                        style: textTheme.bodyL.copyWith(
+                            color: theme.colorTheme.text.disabled,
+                            fontSize: spacer3),
                       ),
                     ],
                   )
@@ -188,42 +195,54 @@ class InstallationReportCard extends StatelessWidget {
               ),
             ],
           ),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              const Expanded(
-                child: ProgressIndicatorContainer(
-                    label: '', prefixLabel: '', suffixLabel: '', value: 0.4),
-              ),
-              Text(
-                '40%',
-                style: textTheme.bodyL
-                    .copyWith(color: theme.colorTheme.text.secondary),
-              )
-            ],
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: spacer4),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              // mainAxisAlignment: MainAxisAlignment.center,
+              // textBaseline: TextBaseline.ideographic,
+              children: [
+                Expanded(
+                  child: LinearProgressIndicator(
+                    borderRadius: BorderRadius.circular(spacer1),
+                    backgroundColor: theme.colorTheme.generic.background,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      theme.colorTheme.alert.success,
+                    ),
+                    value: 0.4,
+                    minHeight: spacer3,
+                  ),
+                ),
+                const SizedBox(width: spacer3),
+                Text(
+                  '40%',
+                  style: textTheme.bodyS
+                      .copyWith(color: theme.colorTheme.text.secondary),
+                )
+              ],
+            ),
           ),
-          SizedBox(
-            height: spacer10,
-            width: double.infinity,
-            child: DigitButton(
-                label: 'Start Insallation Report',
-                onPressed: () {},
-                type: DigitButtonType.primary,
-                size: DigitButtonSize.large),
-          ),
+          // Row(
+          //   children: [
+          //     ProgressIndicatorContainer(label: '', prefixLabel: '', suffixLabel: '', value: 0.4),
+          //   ],
+          // ),
+          DigitButton(
+              mainAxisSize: MainAxisSize.max,
+              label: 'Start Installation Report',
+              onPressed: onPress,
+              type: DigitButtonType.primary,
+              size: DigitButtonSize.large),
           const SizedBox(
-            height: spacer6,
+            height: spacer4,
           ),
-          SizedBox(
-            height: spacer10,
-            width: double.infinity,
-            child: DigitButton(
-                label: 'Submit For Approval',
-                onPressed: () {},
-                isDisabled: true,
-                type: DigitButtonType.secondary,
-                size: DigitButtonSize.large),
-          ),
+          DigitButton(
+              mainAxisSize: MainAxisSize.max,
+              label: 'Submit For Approval',
+              onPressed: () {},
+              isDisabled: true,
+              type: DigitButtonType.secondary,
+              size: DigitButtonSize.large),
         ],
       )
     ]);
