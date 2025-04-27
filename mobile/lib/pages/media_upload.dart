@@ -38,7 +38,7 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
           showSuffixIcon: false,
           text: i18.common.coreCommonNext,
           onPress: () {
-            context.router.push(const SpecificationRoute());
+            context.router.push(const AssetSummaryRoute());
           },
         ),
         children: [
@@ -52,7 +52,7 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
                   height: spacer8,
                   width: double.infinity,
                   child: DigitStepper(
-                    activeIndex: 0,
+                    activeIndex: 5,
                     stepperList: [
                       StepperData(),
                       StepperData(),

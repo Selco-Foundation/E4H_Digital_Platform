@@ -21,6 +21,12 @@ abstract class _$AppRouter extends RootStackRouter {
         child: const AddNewAssetPage(),
       );
     },
+    AssetSummaryRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const AssetSummaryPage(),
+      );
+    },
     AssetTypeDetailRoute.name: (routeData) {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
@@ -112,6 +118,20 @@ class AddNewAssetRoute extends PageRouteInfo<void> {
         );
 
   static const String name = 'AddNewAssetRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [AssetSummaryPage]
+class AssetSummaryRoute extends PageRouteInfo<void> {
+  const AssetSummaryRoute({List<PageRouteInfo>? children})
+      : super(
+          AssetSummaryRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'AssetSummaryRoute';
 
   static const PageInfo<void> page = PageInfo<void>(name);
 }
