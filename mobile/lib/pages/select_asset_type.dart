@@ -5,6 +5,8 @@ import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:flutter/material.dart';
 
 import '../router/app_router.dart';
+import '../utils/i18_key_constants.dart' as i18;
+import '../widgets/button/footer_button.dart';
 import '../widgets/header/back_navigation_help_header.dart';
 import '../widgets/navigation/navbar.dart';
 
@@ -26,19 +28,19 @@ class _SelectAssetTypePageState extends State<SelectAssetTypePage> {
     return Scaffold(
         appBar: const Navbar(),
         body: ScrollableContent(
-            footer: DigitCard(
-                margin: const EdgeInsets.only(top: spacer2),
-                children: [
-                  DigitButton(
-                    mainAxisSize: MainAxisSize.max,
-                    label: 'Next',
-                    type: DigitButtonType.primary,
-                    size: DigitButtonSize.large,
-                    onPressed: () =>
-                        context.router.push(const SpecificationRoute()),
-                  ),
-                ]),
+            enableFixedDigitButton: true,
             backgroundColor: theme.colorTheme.generic.background,
+            header: const BackNavigationHelpHeaderWidget(
+              showBackNavigation: true,
+              showHelp: false,
+            ),
+            footer: FooterButton(
+              showSuffixIcon: false,
+              text: i18.common.coreCommonNext,
+              onPress: () {
+                context.router.push(const SpecificationRoute());
+              },
+            ),
             children: [
               Padding(
                 padding: const EdgeInsets.symmetric(
@@ -46,11 +48,8 @@ class _SelectAssetTypePageState extends State<SelectAssetTypePage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const BackNavigationHelpHeaderWidget(
-                        showBackNavigation: true, showHelp: false),
-                    const SizedBox(height: spacer4),
                     const SizedBox(
-                      height: spacer12,
+                      height: spacer8,
                       width: double.infinity,
                       child: DigitStepper(
                         activeIndex: 0,
@@ -65,6 +64,7 @@ class _SelectAssetTypePageState extends State<SelectAssetTypePage> {
                         inverted: true,
                       ),
                     ),
+                    const SizedBox(height: spacer4),
                     DigitCard(children: [
                       Text(
                         'Asset Type',

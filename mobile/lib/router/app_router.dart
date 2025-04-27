@@ -1,18 +1,20 @@
 import 'package:auto_route/auto_route.dart';
-import 'package:selco/pages/add_new_asset.dart';
-import 'package:selco/pages/asset_type_detail.dart';
-import 'package:selco/pages/enter_otp.dart';
-import 'package:selco/pages/forgot_password.dart';
-import 'package:selco/pages/home.dart';
-import 'package:selco/pages/installation_report_home.dart';
-import 'package:selco/pages/login.dart';
-import 'package:selco/pages/select_asset_type.dart';
-import 'package:selco/pages/select_health_facility.dart';
-import 'package:selco/pages/setup_new_password.dart';
-import 'package:selco/pages/specification.dart';
-import 'package:selco/pages/unauthenticated.dart';
-import 'package:selco/pages/welcome.dart';
-import 'package:selco/router/routes.dart';
+
+import '../pages/add_new_asset.dart';
+import '../pages/asset_type_detail.dart';
+import '../pages/enter_otp.dart';
+import '../pages/forgot_password.dart';
+import '../pages/home.dart';
+import '../pages/installation_report_home.dart';
+import '../pages/login.dart';
+import '../pages/media_upload.dart';
+import '../pages/select_asset_type.dart';
+import '../pages/select_health_facility.dart';
+import '../pages/setup_new_password.dart';
+import '../pages/specification.dart';
+import '../pages/unauthenticated.dart';
+import '../pages/welcome.dart';
+import '../router/routes.dart';
 
 export 'package:auto_route/auto_route.dart';
 
@@ -52,6 +54,7 @@ class AppRouter extends _$AppRouter {
             AutoRoute(
                 page: AssetTypeDetailRoute.page, path: Routes.assetTypeDetail),
             AutoRoute(page: AddNewAssetRoute.page, path: Routes.addNewAsset),
+            AutoRoute(page: MediaUploadRoute.page, path: Routes.mediaUpload),
           ],
         ),
       ];
