@@ -1,10 +1,8 @@
 import 'dart:io';
 
-import 'package:digit_ui_components/enum/app_enums.dart';
 import 'package:digit_ui_components/models/DropdownModels.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:digit_ui_components/theme/spacers.dart';
-import 'package:digit_ui_components/widgets/atoms/digit_button.dart';
 import 'package:digit_ui_components/widgets/atoms/digit_dropdown_input.dart';
 import 'package:digit_ui_components/widgets/atoms/digit_stepper.dart';
 import 'package:digit_ui_components/widgets/atoms/digit_text_form_input.dart';
@@ -15,6 +13,8 @@ import 'package:digit_ui_components/widgets/scrollable_content.dart';
 import 'package:flutter/material.dart';
 
 import '../router/app_router.dart';
+import '../utils/i18_key_constants.dart' as i18;
+import '../widgets/button/footer_button.dart';
 import '../widgets/header/back_navigation_help_header.dart';
 import '../widgets/navigation/navbar.dart';
 
@@ -35,23 +35,19 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
     return Scaffold(
         appBar: const Navbar(),
         body: ScrollableContent(
-            backgroundColor: theme.colorTheme.generic.background,
             header: const BackNavigationHelpHeaderWidget(
               showBackNavigation: true,
               showHelp: false,
             ),
-            footer: DigitCard(
-                margin: const EdgeInsets.only(top: spacer2),
-                children: [
-                  DigitButton(
-                    mainAxisSize: MainAxisSize.max,
-                    label: 'Next',
-                    type: DigitButtonType.primary,
-                    size: DigitButtonSize.large,
-                    onPressed: () =>
-                        context.router.push(const AssetTypeDetailRoute()),
-                  ),
-                ]),
+            enableFixedDigitButton: true,
+            backgroundColor: theme.colorTheme.generic.background,
+            footer: FooterButton(
+              showSuffixIcon: false,
+              text: i18.common.coreCommonNext,
+              onPress: () {
+                context.router.push(const MediaUploadRoute());
+              },
+            ),
             children: [
               Padding(
                 padding: const EdgeInsets.symmetric(

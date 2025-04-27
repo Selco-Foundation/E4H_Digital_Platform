@@ -3,10 +3,10 @@ import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:flutter/material.dart';
 import 'package:reactive_forms/reactive_forms.dart';
-import 'package:selco/router/app_router.dart';
-import 'package:selco/utils/extensions.dart';
-import 'package:selco/utils/i18_key_constants.dart' as i18;
 
+import '../router/app_router.dart';
+import '../utils/extensions.dart';
+import '../utils/i18_key_constants.dart' as i18;
 import '../widgets/button/footer_button.dart';
 import '../widgets/navigation/navbar.dart';
 
