@@ -63,7 +63,7 @@ public class OrganisationService {
         log.info("OrganisationService::createOrganisationWithoutWorkFlow");
         organisationServiceValidator.validateCreateOrgRegistryWithoutWorkFlow(orgRequest);
         organisationEnrichmentService.enrichCreateOrgRegistryWithoutWorkFlow(orgRequest);
-        individualService.createIndividual(orgRequest);
+//        individualService.createIndividual(orgRequest);
         OrgRequest clone;
         try {
             clone = mapper.readValue(mapper.writeValueAsString(orgRequest), OrgRequest.class);
@@ -89,7 +89,7 @@ public class OrganisationService {
         log.info("OrganisationService::updateOrganisationWithoutWorkFlow");
         organisationServiceValidator.validateUpdateOrgRegistryWithoutWorkFlow(orgRequest);
         organisationEnrichmentService.enrichUpdateOrgRegistryWithoutWorkFlow(orgRequest);
-        individualService.updateIndividual(orgRequest);
+//        individualService.updateIndividual(orgRequest);
         OrgRequest clone;
         try {
             clone = mapper.readValue(mapper.writeValueAsString(orgRequest), OrgRequest.class);

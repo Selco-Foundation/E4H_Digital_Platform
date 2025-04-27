@@ -19,7 +19,8 @@ public class AddressQueryBuilder {
             "addr.building_name as address_buildingName, addr.street as address_street, addr.additional_details as address_additionalDetails, " +
             "addrGeoLoc.id as addressGeoLocation_Id, addrGeoLoc.address_id as addressGeoLocation_addressId, " +
             "addrGeoLoc.latitude as addressGeoLocation_latitude, addrGeoLoc.longitude as addressGeoLocation_longitude, " +
-            "addrGeoLoc.additional_details as addressGeoLocation_additionalDetails " +
+            "addrGeoLoc.additional_details as addressGeoLocation_additionalDetails, " +
+            "addr.hqaddress as address_hqAddress " +
             "FROM eg_org_address addr " +
             "LEFT JOIN eg_org_address_geo_location addrGeoLoc ON addr.id = addrGeoLoc.address_id";
 

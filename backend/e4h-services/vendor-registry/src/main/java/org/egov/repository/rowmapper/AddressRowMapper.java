@@ -64,6 +64,7 @@ public class AddressRowMapper implements ResultSetExtractor<List<Address>> {
         String addressBuildingName = rs.getString("address_buildingName");
         String addressStreet = rs.getString("address_street");
         JsonNode addressAdditionalDetails = getAdditionalDetail("address_additionalDetails", rs);
+        String hqAddress = rs.getString("address_hqAddress");
 
         return Address.builder()
                 .id(addressId)
@@ -84,6 +85,7 @@ public class AddressRowMapper implements ResultSetExtractor<List<Address>> {
                 .street(addressStreet)
                 .additionDetails(addressAdditionalDetails)
                 .geoLocation(geoLocation)
+                .hqAddress(hqAddress)
                 .build();
     }
 

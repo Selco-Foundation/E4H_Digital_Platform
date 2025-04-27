@@ -47,14 +47,14 @@ public class OrganisationEnrichmentService {
         organisationUtil.setAuditDetailsForOrganisation(requestInfo.getUserInfo().getUuid(), organisationList, Boolean.TRUE);
         String tenantId = organisationList.get(0).getTenantId();
 
-        //idgen to get the list of organisation application Numbers
+//        //idgen to get the list of organisation application Numbers
         List<String> orgApplicationNumbers = idgenUtil.getIdList(requestInfo, tenantId, config.getOrgApplicationNumberName()
                 , config.getOrgApplicationNumberFormat(), organisationList.size());
-
-        //idgen to get the list of org Numbers
-        List<String> orgNumbers = idgenUtil.getIdList(requestInfo, tenantId, config.getOrgNumberName()
-                , config.getOrgNumberFormat(), organisationList.size());
-
+//
+//        //idgen to get the list of org Numbers
+//        List<String> orgNumbers = idgenUtil.getIdList(requestInfo, tenantId, config.getOrgNumberName()
+//                , config.getOrgNumberFormat(), organisationList.size());
+//
         //idgen to get the list of function application Numbers
         long idgenFuncApplicationNumberCount = organisationList.stream().mapToInt(org -> {
             if (!CollectionUtils.isEmpty(org.getFunctions())) {
@@ -62,10 +62,10 @@ public class OrganisationEnrichmentService {
             }
             return 0;
         }).sum();
-
+//
         List<String> orgFunctionApplicationNumbers = idgenUtil.getIdList(requestInfo, tenantId, config.getFunctionApplicationNumberName()
                 , config.getFunctionApplicationNumberFormat(), ((int) idgenFuncApplicationNumberCount));
-
+//
         int orgAppNumIdFormatIndex = 0;
         int funcAppNumIdFormatIndex = 0;
         for (Organisation organisation : organisationList) {
@@ -80,7 +80,7 @@ public class OrganisationEnrichmentService {
              * but this will be part of update org registry
              * and "idgen formatted number will be set once workflow is 'APPROVED' ".
              */
-            organisation.setOrgNumber(orgNumbers.get(orgAppNumIdFormatIndex));
+//            organisation.setOrgNumber(orgNumbers.get(orgAppNumIdFormatIndex));
 
             List<Address> orgAddressList = organisation.getOrgAddress();
             List<ContactDetails> contactDetailsList = organisation.getContactDetails();
@@ -178,7 +178,7 @@ public class OrganisationEnrichmentService {
         if (!CollectionUtils.isEmpty(orgAddressList)) {
             for (Address address : orgAddressList) {
                 address.setId(UUID.randomUUID().toString());
-                address.getGeoLocation().setId(UUID.randomUUID().toString());
+//                address.getGeoLocation().setId(UUID.randomUUID().toString());
             }
         }
     }

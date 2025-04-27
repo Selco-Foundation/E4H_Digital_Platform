@@ -129,39 +129,39 @@ public class OrganisationServiceValidator {
 
 
         final String jsonPathForTenants = MDMS_RES + MDMS_TENANT_MODULE_NAME + "." + MASTER_TENANTS + ".*";
-        final String jsonPathForOrgType = MDMS_RES + MDMS_COMMON_MASTERS_MODULE_NAME + "." + MASTER_ORG_TYPE + ".*";
-        final String jsonPathForOrgFuncCategory = MDMS_RES + MDMS_COMMON_MASTERS_MODULE_NAME + "." + MASTER_ORG_FUNC_CATEGORY + ".*";
-        final String jsonPathForOrgFuncClass = MDMS_RES + MDMS_COMMON_MASTERS_MODULE_NAME + "." + MASTER_ORG_FUNC_CLASS + ".*";
+        final String jsonPathForOrgType = MDMS_RES + MDMS_ORGANIZATION_MODULE_NAME + "." + MASTER_ORG_TYPE + ".*";
+//        final String jsonPathForOrgFuncCategory = MDMS_RES + MDMS_COMMON_MASTERS_MODULE_NAME + "." + MASTER_ORG_FUNC_CATEGORY + ".*";
+//        final String jsonPathForOrgFuncClass = MDMS_RES + MDMS_COMMON_MASTERS_MODULE_NAME + "." + MASTER_ORG_FUNC_CLASS + ".*";
         final String jsonPathForOrgIdentifier = MDMS_RES + MDMS_COMMON_MASTERS_MODULE_NAME + "." + MASTER_ORG_TAX_IDENTIFIER + ".*";
 
         List<Object> tenantRes = null;
         List<Object> orgTypeRes = null;
-        List<Object> orgFuncCategoryRes = null;
-        List<Object> orgFuncClassRes = null;
+//        List<Object> orgFuncCategoryRes = null;
+//        List<Object> orgFuncClassRes = null;
         List<Object> orgIdentifierRes = null;
         try {
-            tenantRes = JsonPath.read(mdmsData, jsonPathForTenants);
+//            tenantRes = JsonPath.read(mdmsData, jsonPathForTenants);
             orgTypeRes = JsonPath.read(mdmsData, jsonPathForOrgType);
-            orgFuncCategoryRes = JsonPath.read(mdmsData, jsonPathForOrgFuncCategory);
-            orgFuncClassRes = JsonPath.read(mdmsData, jsonPathForOrgFuncClass);
+//            orgFuncCategoryRes = JsonPath.read(mdmsData, jsonPathForOrgFuncCategory);
+//            orgFuncClassRes = JsonPath.read(mdmsData, jsonPathForOrgFuncClass);
             orgIdentifierRes = JsonPath.read(mdmsData, jsonPathForOrgIdentifier);
         } catch (Exception e) {
             log.error(e.getMessage());
             throw new CustomException("JSONPATH_ERROR", "Failed to parse mdms response");
         }
 
-        //tenant
-        if (CollectionUtils.isEmpty(tenantRes))
-            errorMap.put("INVALID_TENANT_ID", "The tenant: " + tenantId + NOT_PRESENT_IN_MDMS);
+//        tenant
+//        if (CollectionUtils.isEmpty(tenantRes))
+//            errorMap.put("INVALID_TENANT_ID", "The tenant: " + tenantId + NOT_PRESENT_IN_MDMS);
 
         //org type
         validateOrgType(orgTypeReqSet, orgTypeRes, errorMap);
 
-        //org function category
-        validateOrgFunctionCategory(orgFuncCategoryReqSet, orgFuncCategoryRes, errorMap);
-
-        //org function class
-        validateOrgFunctionClass(orgFuncClassReqSet, orgFuncClassRes, errorMap);
+//        //org function category
+//        validateOrgFunctionCategory(orgFuncCategoryReqSet, orgFuncCategoryRes, errorMap);
+//
+//        //org function class
+//        validateOrgFunctionClass(orgFuncClassReqSet, orgFuncClassRes, errorMap);
 
 
         //org identifier type

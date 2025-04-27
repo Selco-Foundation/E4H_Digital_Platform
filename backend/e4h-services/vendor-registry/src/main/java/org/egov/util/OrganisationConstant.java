@@ -5,10 +5,12 @@ public class OrganisationConstant {
     //Modules
     public static final String MDMS_TENANT_MODULE_NAME = "tenant";
     public static final String MDMS_COMMON_MASTERS_MODULE_NAME = "common-masters";
+    public static final String MDMS_ORGANIZATION_MODULE_NAME = "organization";
 
     //Masters
     public static final String MASTER_TENANTS = "tenants";
-    public static final String MASTER_ORG_TYPE = "OrgType";
+//    public static final String MASTER_ORG_TYPE = "OrgType";
+    public static final String MASTER_ORG_TYPE = "VendorType";
     public static final String MASTER_ORG_FUNC_CATEGORY = "OrgFunctionCategory";
     public static final String MASTER_ORG_FUNC_CLASS = "OrgFunctionClass";
     public static final String MASTER_ORG_TAX_IDENTIFIER = "OrgTaxIdentifier";
@@ -45,7 +47,7 @@ public class OrganisationConstant {
 
     public static final String HRMS_USER_MOBILE_NO = "$.Employees.*.user.mobileNumber";
 
-    public static final String ORGANISATION_ENCRYPT_KEY = "Organisation";
+    public static final String ORGANISATION_ENCRYPT_KEY = "Organization";
 
 
 }

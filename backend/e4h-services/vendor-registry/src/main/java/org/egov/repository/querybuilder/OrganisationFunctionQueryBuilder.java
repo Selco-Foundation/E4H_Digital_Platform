@@ -21,7 +21,7 @@ public class OrganisationFunctionQueryBuilder {
     private final Configuration config;
 
     private static final String FETCH_ORGANISATION_FUNCTION_QUERY = "SELECT org.id as organisation_Id, org.tenant_id as organisation_tenantId, " +
-            "org.application_number as organisation_applicationNumber, org.name as organisation_name, org.org_number as organisation_orgNumber, " +
+            "org.application_number as organisation_applicationNumber, org.name as organisation_name, org.code as organisation_code, org.org_number as organisation_orgNumber, " +
             "org.external_ref_number as organisation_externalRefNumber, org.date_of_incorporation as organisation_dateOfIncorporation, " +
             "org.application_status as organisation_applicationStatus, org.is_active as organisation_isActive, " +
             "org.additional_details as organisation_additionalDetails, org.created_by as organisation_createdBy, " +
@@ -29,7 +29,7 @@ public class OrganisationFunctionQueryBuilder {
             "org.last_modified_time as organisation_lastModifiedTime, " +
             "orgFunction.id as organisationFunction_Id, orgFunction.org_id as organisationFunction_OrgId, " +
             "orgFunction.application_number as organisationFunction_applicationNumber, orgFunction.type as organisationFunction_type, " +
-            "orgFunction.category as organisationFunction_category, orgFunction.class as organisationFunction_class, " +
+            "orgFunction.subtype as organisationFunction_subType, orgFunction.category as organisationFunction_category, orgFunction.class as organisationFunction_class, " +
             "orgFunction.valid_from as organisationFunction_valid_from, orgFunction.valid_to as organisationFunction_validTo, " +
             "orgFunction.application_status as organisationFunction_applicationStatus, orgFunction.wf_status as organisationFunction_wfStatus, " +
             "orgFunction.is_active as organisationFunction_isActive, orgFunction.additional_details as organisationFunction_additionalDetails, " +
@@ -75,6 +75,12 @@ public class OrganisationFunctionQueryBuilder {
             addClauseIfRequired(preparedStmtList, queryBuilder);
             queryBuilder.append(" org.name LIKE ? ");
             preparedStmtList.add('%' + searchCriteria.getName() + '%');
+        }
+
+        if (StringUtils.isNotBlank(searchCriteria.getCode())) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            queryBuilder.append(" org.code LIKE ? ");
+            preparedStmtList.add('%' + searchCriteria.getCode() + '%');
         }
 
         if (StringUtils.isNotBlank(searchCriteria.getApplicationNumber())) {
@@ -125,6 +131,12 @@ public class OrganisationFunctionQueryBuilder {
                 queryBuilder.append(" OR orgFunction.type = ?  )");
                 preparedStmtList.add(searchCriteria.getFunctions().getType());
                 preparedStmtList.add(searchCriteria.getFunctions().getType());
+            }
+
+            if (StringUtils.isNotBlank(searchCriteria.getFunctions().getSubType())) {
+                addClauseIfRequired(preparedStmtList, queryBuilder);
+                queryBuilder.append(" orgFunction.subtype=? ");
+                preparedStmtList.add(searchCriteria.getFunctions().getSubType());
             }
 
             if (StringUtils.isNotBlank(searchCriteria.getFunctions().getCategory())) {

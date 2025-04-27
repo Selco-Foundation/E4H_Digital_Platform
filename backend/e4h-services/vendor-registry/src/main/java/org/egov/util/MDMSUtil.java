@@ -23,6 +23,7 @@ public class MDMSUtil {
 
     public static final String CODE_FILTER = "$.*.code";
     public static final String ACTIVE_CODE_FILTER = "$.[?(@.active==true)].code";
+    public static final String ACTIVE_TYPE_FILTER = "$.[?(@.active==true)].type";
 
     private final Configuration config;
 
@@ -56,10 +57,12 @@ public class MDMSUtil {
     public MdmsCriteriaReq prepareMDMSRequest(RequestInfo requestInfo, String tenantId) {
         log.info("MDMSUtil::prepareMDMSRequest");
         ModuleDetail commonMasterModuleDetails = prepareCommonMasterModuleDetails();
+        ModuleDetail organizationModuleDetails = prepareOrganizationModuleDetails();
         ModuleDetail tenantModuleDetail = getTenantModuleRequestData();
 
         List<ModuleDetail> moduleDetails = new LinkedList<>();
         moduleDetails.add(commonMasterModuleDetails);
+        moduleDetails.add(organizationModuleDetails);
         moduleDetails.add(tenantModuleDetail);
 
         MdmsCriteria mdmsCriteria = MdmsCriteria.builder().moduleDetails(moduleDetails).tenantId(tenantId)
@@ -90,6 +93,21 @@ public class MDMSUtil {
         commonMasterModulesDetails.add(orgTypeMaster);
         return ModuleDetail.builder().masterDetails(commonMasterModulesDetails)
                 .moduleName(MDMS_COMMON_MASTERS_MODULE_NAME).build();
+    }
+
+    /**
+     * Prepares the mdms search request for organization module
+     *
+     * @return the mdms search request for organization module
+     */
+    private ModuleDetail prepareOrganizationModuleDetails(){
+        log.info("MDMSUtil::prepareOrganizationModuleDetails");
+        List<MasterDetail> organizationModulesDetails = new ArrayList<>();
+        MasterDetail orgTypeMaster = MasterDetail.builder().name(MASTER_ORG_TYPE)
+                .filter(ACTIVE_TYPE_FILTER).build();
+        organizationModulesDetails.add(orgTypeMaster);
+        return ModuleDetail.builder().masterDetails(organizationModulesDetails)
+                .moduleName(MDMS_ORGANIZATION_MODULE_NAME).build();
     }
 
     /**
