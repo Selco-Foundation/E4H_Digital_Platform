@@ -1,6 +1,7 @@
 import 'package:auto_route/auto_route.dart';
 
 import '../pages/add_new_asset.dart';
+import '../pages/asset_summary.dart';
 import '../pages/asset_type_detail.dart';
 import '../pages/enter_otp.dart';
 import '../pages/forgot_password.dart';
@@ -55,6 +56,7 @@ class AppRouter extends _$AppRouter {
                 page: AssetTypeDetailRoute.page, path: Routes.assetTypeDetail),
             AutoRoute(page: AddNewAssetRoute.page, path: Routes.addNewAsset),
             AutoRoute(page: MediaUploadRoute.page, path: Routes.mediaUpload),
+            AutoRoute(page: AssetSummaryRoute.page, path: Routes.assetSummary),
           ],
         ),
       ];
