@@ -8,9 +8,10 @@ import 'package:digit_ui_components/widgets/atoms/labelled_fields.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:digit_ui_components/widgets/scrollable_content.dart';
 import 'package:flutter/material.dart';
-import 'package:selco/router/app_router.dart';
-import 'package:selco/widgets/header/back_navigation_help_header.dart';
-import 'package:selco/widgets/navigation/navbar.dart';
+
+import '../router/app_router.dart';
+import '../widgets/header/back_navigation_help_header.dart';
+import '../widgets/navigation/navbar.dart';
 
 @RoutePage()
 class SpecificationPage extends StatefulWidget {
@@ -53,19 +54,17 @@ class _SpecificationPageState extends State<SpecificationPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    SizedBox(
+                    const SizedBox(
                       height: spacer8,
-                      width: MediaQuery.of(context).size.width,
+                      width: double.infinity,
                       child: DigitStepper(
                         activeIndex: 1,
                         stepperList: [
-                          StepperData(
-                            onStepTap: () {},
-                          ),
-                          const StepperData(),
-                          const StepperData(),
-                          const StepperData(),
-                          const StepperData(),
+                          StepperData(),
+                          StepperData(),
+                          StepperData(),
+                          StepperData(),
+                          StepperData(),
                         ],
                         stepperDirection: Axis.horizontal,
                         inverted: true,
@@ -86,6 +85,7 @@ class _SpecificationPageState extends State<SpecificationPage> {
                         child: DigitTextFormInput(
                           controller: TextEditingController(),
                           isDisabled: true,
+                          readOnly: true,
                           initialValue: 'AC',
                           keyboardType: TextInputType.none,
                         ),
@@ -103,6 +103,7 @@ class _SpecificationPageState extends State<SpecificationPage> {
                                 keyboardType: TextInputType.none,
                                 controller: TextEditingController(),
                                 isDisabled: true,
+                                readOnly: true,
                                 initialValue: '1',
                               ),
                             ),
@@ -118,6 +119,7 @@ class _SpecificationPageState extends State<SpecificationPage> {
                               child: DigitTextFormInput(
                                 controller: TextEditingController(),
                                 isDisabled: true,
+                                readOnly: true,
                                 initialValue: 'KvA',
                                 keyboardType: TextInputType.text,
                                 onChange: (value) {},

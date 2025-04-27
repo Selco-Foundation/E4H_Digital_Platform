@@ -3,9 +3,10 @@ import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:digit_ui_components/widgets/atoms/digit_stepper.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:flutter/material.dart';
-import 'package:selco/router/app_router.dart';
-import 'package:selco/widgets/header/back_navigation_help_header.dart';
-import 'package:selco/widgets/navigation/navbar.dart';
+
+import '../router/app_router.dart';
+import '../widgets/header/back_navigation_help_header.dart';
+import '../widgets/navigation/navbar.dart';
 
 @RoutePage()
 class SelectAssetTypePage extends StatefulWidget {
@@ -25,11 +26,6 @@ class _SelectAssetTypePageState extends State<SelectAssetTypePage> {
     return Scaffold(
         appBar: const Navbar(),
         body: ScrollableContent(
-            backgroundColor: theme.colorTheme.generic.background,
-            header: const BackNavigationHelpHeaderWidget(
-              showBackNavigation: true,
-              showHelp: false,
-            ),
             footer: DigitCard(
                 margin: const EdgeInsets.only(top: spacer2),
                 children: [
@@ -42,6 +38,7 @@ class _SelectAssetTypePageState extends State<SelectAssetTypePage> {
                         context.router.push(const SpecificationRoute()),
                   ),
                 ]),
+            backgroundColor: theme.colorTheme.generic.background,
             children: [
               Padding(
                 padding: const EdgeInsets.symmetric(
@@ -49,26 +46,24 @@ class _SelectAssetTypePageState extends State<SelectAssetTypePage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    SizedBox(
-                      height: spacer8,
-                      width: MediaQuery.of(context).size.width,
+                    const BackNavigationHelpHeaderWidget(
+                        showBackNavigation: true, showHelp: false),
+                    const SizedBox(height: spacer4),
+                    const SizedBox(
+                      height: spacer12,
+                      width: double.infinity,
                       child: DigitStepper(
                         activeIndex: 0,
                         stepperList: [
-                          StepperData(
-                            onStepTap: () {},
-                          ),
-                          const StepperData(),
-                          const StepperData(),
-                          const StepperData(),
-                          const StepperData(),
+                          StepperData(),
+                          StepperData(),
+                          StepperData(),
+                          StepperData(),
+                          StepperData(),
                         ],
                         stepperDirection: Axis.horizontal,
                         inverted: true,
                       ),
-                    ),
-                    const SizedBox(
-                      height: spacer4,
                     ),
                     DigitCard(children: [
                       Text(
@@ -81,16 +76,20 @@ class _SelectAssetTypePageState extends State<SelectAssetTypePage> {
                         style: textTheme.bodyL
                             .copyWith(color: theme.colorTheme.text.primary),
                       ),
-                      Text(
-                        'Select Asset Type',
-                        style: textTheme.headingM
-                            .copyWith(color: theme.colorTheme.text.primary),
+                      LabeledField(
+                        label: 'Select Asset Type',
+                        labelStyle: textTheme.label.copyWith(
+                          color: theme.colorTheme.text.primary,
+                        ),
+                        capitalizedFirstLetter: false,
+                        child: const DigitDropdown(
+                          items: [
+                            DropdownItem(name: 'Inverter', code: 'inverter'),
+                            DropdownItem(name: 'Battery', code: 'Battery'),
+                            DropdownItem(name: 'Panel', code: 'Panel'),
+                          ],
+                        ),
                       ),
-                      const DigitDropdown(items: [
-                        DropdownItem(name: 'Inverter', code: 'inverter'),
-                        DropdownItem(name: 'Battery', code: 'Battery'),
-                        DropdownItem(name: 'Panel', code: 'Panel')
-                      ])
                     ])
                   ],
                 ),

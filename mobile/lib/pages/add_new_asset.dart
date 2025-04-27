@@ -13,9 +13,10 @@ import 'package:digit_ui_components/widgets/atoms/upload_image.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:digit_ui_components/widgets/scrollable_content.dart';
 import 'package:flutter/material.dart';
-import 'package:selco/router/app_router.dart';
-import 'package:selco/widgets/header/back_navigation_help_header.dart';
-import 'package:selco/widgets/navigation/navbar.dart';
+
+import '../router/app_router.dart';
+import '../widgets/header/back_navigation_help_header.dart';
+import '../widgets/navigation/navbar.dart';
 
 @RoutePage()
 class AddNewAssetPage extends StatefulWidget {
@@ -60,7 +61,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                   children: [
                     SizedBox(
                       height: spacer8,
-                      width: MediaQuery.of(context).size.width,
+                      width: double.infinity,
                       child: DigitStepper(
                         activeIndex: 3,
                         stepperList: [
@@ -79,15 +80,10 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                     const SizedBox(height: spacer4),
                     DigitCard(
                       children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              'Inverter 1',
-                              style: textTheme.headingXl.copyWith(
-                                  color: theme.colorTheme.primary.primary2),
-                            ),
-                          ],
+                        Text(
+                          'Inverter 1',
+                          style: textTheme.headingXl.copyWith(
+                              color: theme.colorTheme.primary.primary2),
                         ),
                         LabeledField(
                           label: 'Scan Serial No',
@@ -128,6 +124,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                                 child: DigitTextFormInput(
                                   controller: TextEditingController(),
                                   isDisabled: true,
+                                  readOnly: true,
                                   initialValue: 'KvA',
                                   keyboardType: TextInputType.text,
                                   onChange: (value) {},

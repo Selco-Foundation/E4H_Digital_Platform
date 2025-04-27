@@ -3,9 +3,10 @@ import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:digit_ui_components/widgets/atoms/digit_stepper.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:flutter/material.dart';
-import 'package:selco/router/app_router.dart';
-import 'package:selco/widgets/header/back_navigation_help_header.dart';
-import 'package:selco/widgets/navigation/navbar.dart';
+
+import '../router/app_router.dart';
+import '../widgets/header/back_navigation_help_header.dart';
+import '../widgets/navigation/navbar.dart';
 
 @RoutePage()
 class AssetTypeDetailPage extends StatefulWidget {
@@ -50,7 +51,7 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
                   children: [
                     SizedBox(
                       height: spacer8,
-                      width: MediaQuery.of(context).size.width,
+                      width: double.infinity,
                       child: DigitStepper(
                         activeIndex: 2,
                         stepperList: [
@@ -93,6 +94,7 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
                           controller: TextEditingController(),
                           initialValue: 'Default Today Date',
                           isDisabled: true,
+                          readOnly: true,
                         ),
                       ),
                       LabeledField(
