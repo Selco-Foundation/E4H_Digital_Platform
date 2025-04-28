@@ -5,12 +5,13 @@ import os
 from datetime import datetime
 
 from app.core.logging import AppLogger
+from app.decorators.rbac_validator import get_authorized_request_info
 from app.ingest.excel_data_loader import ExcelDataLoader
 from app.ingest.excel_data_writer import ExcelDataWriter
 from app.ingest.facility_template_service import FacilityTemplateService
 from app.processor.factory.vendor_data_processor_factory import VendorDataProcessorFactory
-from app.schemas.request_info import RequestInfo
-from app.utils.file_utils import FileUtils
+from app.utils.file_utils import create_temp_file, cleanup_temp_file
+from app.utils.mdms_client import MDMSClient
 from app.utils.organization_service_client import OrganizationServiceClient
 from app.utils.convertor import request_info_from_json
 
@@ -29,10 +30,11 @@ async def upload_vendors_excel_sheet(
         vendor_file: UploadFile = File(description="Excel file containing vendor data and boundary codes"),
         vendor_sheet_name: str = Form(default="Vendor Input", description="Name of the sheet containing vendor data"),
         boundary_sheet_name: str = Form(default="Boundary Code", description="Name of the sheet containing boundary codes"),
-        request_info: str = Form(default= RequestInfo)
+        request_info: str = Form(default="")
 ):
     input_temp_file = None
     request_info = request_info_from_json(request_info)
+    get_authorized_request_info(request_info)
 
     try:
         input_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
@@ -85,7 +87,7 @@ async def upload_vendors_excel_sheet(
                 }
 
                 try:
-                    org_data = org_client.create_vendor(create_vendor_payload)
+                    org_data = org_client.create_vendor(request_info, create_vendor_payload)
                     if org_data and org_data.get("Organisations"):
                         match_mask = (vendor_df["Vendor Code (Mandatory)"] == vendor.vendor_code)
                         if match_mask.any():
@@ -118,22 +120,23 @@ async def upload_vendors_excel_sheet(
             response_description="Returns Excel template with facility schema and boundary codes")
 async def get_facility_ingestion_template(
         facility_service: FacilityTemplateService = Depends(),
-        file_utils: FileUtils = Depends(),
+        request_info: str = Form(default="")
 ):
+    request_info = request_info_from_json(request_info)
+    get_authorized_request_info(request_info)
+    mdms_client = MDMSClient(mdms_url)
     try:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         output_filename = f"facility_ingestion_template_{timestamp}.xlsx"
-
-        output_file_path = file_utils.create_temp_file(suffix=".xlsx")
+        output_file_path = create_temp_file(suffix=".xlsx")
         try:
-            facility_schema = await facility_service.get_facility_schema()
-            boundary_data = await facility_service.get_boundary_data()
+            facility_schema = mdms_client.fetch_facility_schema(request_info=request_info)
+            boundary_data = facility_service.get_all_boundaries(request_info)
         except Exception as e:
             logger.error(f"Error fetching data from external services: {e}")
-            file_utils.cleanup_temp_file(output_file_path)
+            cleanup_temp_file(output_file_path)
             raise HTTPException(status_code=502, detail=f"External service error: {str(e)}")
 
-        # Generate the Excel file
         try:
             facility_service.generate_template_file(
                 output_path=output_file_path,
@@ -143,10 +146,9 @@ async def get_facility_ingestion_template(
             logger.info(f"Successfully created facility ingestion template at {output_file_path}")
         except Exception as e:
             logger.error(f"Error generating template file: {e}")
-            file_utils.cleanup_temp_file(output_file_path)
+            cleanup_temp_file(output_file_path)
             raise HTTPException(status_code=500, detail=f"Template generation error: {str(e)}")
 
-        # Return the file as a response
         return FileResponse(
             path=output_file_path,
             filename=output_filename,

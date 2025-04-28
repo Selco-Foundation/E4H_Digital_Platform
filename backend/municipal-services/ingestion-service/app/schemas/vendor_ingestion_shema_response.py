@@ -49,6 +49,6 @@ class ResponseInfo(BaseModel):
     status: Optional[str] = None
 
 
-class VendorIngestionSchemaResponse(BaseModel):
+class IngestionSchemaResponse(BaseModel):
     response_info: Optional[ResponseInfo] = None
     mdms: Optional[List[MDMS]] = None
