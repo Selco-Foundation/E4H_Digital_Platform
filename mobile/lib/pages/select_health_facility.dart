@@ -199,8 +199,6 @@ class InstallationReportCard extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: spacer4),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
-              // mainAxisAlignment: MainAxisAlignment.center,
-              // textBaseline: TextBaseline.ideographic,
               children: [
                 Expanded(
                   child: LinearProgressIndicator(

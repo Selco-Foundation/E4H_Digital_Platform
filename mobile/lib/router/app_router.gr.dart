@@ -39,6 +39,12 @@ abstract class _$AppRouter extends RootStackRouter {
         child: const DataSaveSuccessPage(),
       );
     },
+    DownloadStatusRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const DownloadStatusPage(),
+      );
+    },
     EnterOtpRoute.name: (routeData) {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
@@ -172,6 +178,20 @@ class DataSaveSuccessRoute extends PageRouteInfo<void> {
         );
 
   static const String name = 'DataSaveSuccessRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [DownloadStatusPage]
+class DownloadStatusRoute extends PageRouteInfo<void> {
+  const DownloadStatusRoute({List<PageRouteInfo>? children})
+      : super(
+          DownloadStatusRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'DownloadStatusRoute';
 
   static const PageInfo<void> page = PageInfo<void>(name);
 }
