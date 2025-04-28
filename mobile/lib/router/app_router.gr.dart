@@ -75,6 +75,12 @@ abstract class _$AppRouter extends RootStackRouter {
         child: const MediaUploadPage(),
       );
     },
+    OverallAssetSummaryRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const OverallAssetSummaryPage(),
+      );
+    },
     SelectAssetTypeRoute.name: (routeData) {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
@@ -250,6 +256,20 @@ class MediaUploadRoute extends PageRouteInfo<void> {
         );
 
   static const String name = 'MediaUploadRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [OverallAssetSummaryPage]
+class OverallAssetSummaryRoute extends PageRouteInfo<void> {
+  const OverallAssetSummaryRoute({List<PageRouteInfo>? children})
+      : super(
+          OverallAssetSummaryRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'OverallAssetSummaryRoute';
 
   static const PageInfo<void> page = PageInfo<void>(name);
 }
