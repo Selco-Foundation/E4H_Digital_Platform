@@ -3,7 +3,9 @@ import 'package:digit_ui_components/theme/spacers.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:digit_ui_components/widgets/scrollable_content.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../blocs/asset_type/asset_type.dart';
 import '../router/app_router.dart';
 import '../utils/i18_key_constants.dart' as i18;
 import '../widgets/button/footer_button.dart';
@@ -32,129 +34,140 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
       'Image 2'
     ];
 
-    return Scaffold(
-      appBar: const Navbar(),
-      body: ScrollableContent(
-        enableFixedDigitButton: true,
-        backgroundColor: theme.colorTheme.generic.background,
-        footer: FooterButton(
-          showSuffixIcon: false,
-          text: i18.common.coreCommonSave,
-          onPress: () {
-            context.router.push(const DataSaveSuccessRoute());
-          },
-        ),
-        children: [
-          const BackNavigationHelpHeaderWidget(
-            showBackNavigation: true,
-            showHelp: false,
+    return BlocBuilder<AssetTypeBloc, AssetTypeState>(
+      builder: (context, state) {
+        final heading = state.when(
+          initial: () => '',
+          inverter: () => 'Inverter',
+          battery: () => 'Battery',
+          panel: () => 'Panel',
+        );
+        return Scaffold(
+          appBar: const Navbar(),
+          body: ScrollableContent(
+            enableFixedDigitButton: true,
+            backgroundColor: theme.colorTheme.generic.background,
+            footer: FooterButton(
+              showSuffixIcon: false,
+              text: i18.common.coreCommonSave,
+              onPress: () {
+                context.router.push(const DataSaveSuccessRoute());
+              },
+            ),
+            children: [
+              const BackNavigationHelpHeaderWidget(
+                showBackNavigation: true,
+                showHelp: false,
+              ),
+              Padding(
+                  padding: const EdgeInsets.symmetric(
+                      vertical: spacer2, horizontal: spacer4),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '$heading Summary',
+                        style: textTheme.headingXl
+                            .copyWith(color: theme.colorTheme.primary.primary2),
+                      ),
+                      const SizedBox(height: spacer2),
+                      DigitCard(children: [
+                        Text(
+                          'Health Facility Details',
+                          style: textTheme.headingM.copyWith(
+                              color: theme.colorTheme.primary.primary2),
+                        ),
+                        const Row(
+                          children: [
+                            KeyColumn(keys: ['Health Facility Name', 'Status']),
+                            ValueColumn(
+                                values: ['Alkod', 'Pending Installation'])
+                          ],
+                        )
+                      ]),
+                      const SizedBox(
+                        height: spacer4,
+                      ),
+                      DigitCard(children: [
+                        Text(
+                          'Specifications',
+                          style: textTheme.headingM.copyWith(
+                              color: theme.colorTheme.primary.primary2),
+                        ),
+                        const Row(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          children: [
+                            KeyColumn(keys: ['System', 'Capacity']),
+                            ValueColumn(values: ['AC', '1 KVA'])
+                          ],
+                        )
+                      ]),
+                      const SizedBox(
+                        height: spacer4,
+                      ),
+                      DigitCard(children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Details',
+                              style: textTheme.headingM.copyWith(
+                                  color: theme.colorTheme.primary.primary2),
+                            ),
+                            Icon(Icons.edit,
+                                color: theme.colorTheme.primary.primary1),
+                          ],
+                        ),
+                        const Row(
+                          children: [
+                            KeyColumn(keys: [
+                              'Count',
+                              'Warranty Start Date',
+                              'Warranty Duration',
+                              'Brand',
+                              'Model No.'
+                            ]),
+                            ValueColumn(values: [
+                              '1',
+                              '21/03/25',
+                              '15 Years',
+                              'Brand 1',
+                              'Model 1'
+                            ]),
+                          ],
+                        )
+                      ]),
+                      const SizedBox(
+                        height: spacer4,
+                      ),
+                      DigitCard(children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Media',
+                              style: textTheme.headingM.copyWith(
+                                  color: theme.colorTheme.primary.primary2),
+                            ),
+                            Icon(Icons.edit,
+                                color: theme.colorTheme.primary.primary1),
+                          ],
+                        ),
+                        Column(
+                          children: mediaItems
+                              .map((item) => MediaDownloadItem(
+                                    label: item,
+                                    onDownload: () {},
+                                  ))
+                              .toList(),
+                        ),
+                      ])
+                    ],
+                  )),
+            ],
           ),
-          Padding(
-              padding: const EdgeInsets.symmetric(
-                  vertical: spacer2, horizontal: spacer4),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Inverter Summary',
-                    style: textTheme.headingXl
-                        .copyWith(color: theme.colorTheme.primary.primary2),
-                  ),
-                  const SizedBox(height: spacer2),
-                  DigitCard(children: [
-                    Text(
-                      'Health Facility Details',
-                      style: textTheme.headingM
-                          .copyWith(color: theme.colorTheme.primary.primary2),
-                    ),
-                    const Row(
-                      children: [
-                        KeyColumn(keys: ['Health Facility Name', 'Status']),
-                        ValueColumn(values: ['Alkod', 'Pending Installation'])
-                      ],
-                    )
-                  ]),
-                  const SizedBox(
-                    height: spacer4,
-                  ),
-                  DigitCard(children: [
-                    Text(
-                      'Specifications',
-                      style: textTheme.headingM
-                          .copyWith(color: theme.colorTheme.primary.primary2),
-                    ),
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        KeyColumn(keys: ['System', 'Capacity']),
-                        ValueColumn(values: ['AC', '1 KVA'])
-                      ],
-                    )
-                  ]),
-                  const SizedBox(
-                    height: spacer4,
-                  ),
-                  DigitCard(children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Details',
-                          style: textTheme.headingM.copyWith(
-                              color: theme.colorTheme.primary.primary2),
-                        ),
-                        Icon(Icons.edit,
-                            color: theme.colorTheme.primary.primary1),
-                      ],
-                    ),
-                    const Row(
-                      children: [
-                        KeyColumn(keys: [
-                          'Count',
-                          'Warranty Start Date',
-                          'Warranty Duration',
-                          'Brand',
-                          'Model No.'
-                        ]),
-                        ValueColumn(values: [
-                          '1',
-                          '21/03/25',
-                          '15 Years',
-                          'Brand 1',
-                          'Model 1'
-                        ]),
-                      ],
-                    )
-                  ]),
-                  const SizedBox(
-                    height: spacer4,
-                  ),
-                  DigitCard(children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Media',
-                          style: textTheme.headingM.copyWith(
-                              color: theme.colorTheme.primary.primary2),
-                        ),
-                        Icon(Icons.edit,
-                            color: theme.colorTheme.primary.primary1),
-                      ],
-                    ),
-                    Column(
-                      children: mediaItems
-                          .map((item) => MediaDownloadItem(
-                                label: item,
-                                onDownload: () {},
-                              ))
-                          .toList(),
-                    ),
-                  ])
-                ],
-              )),
-        ],
-      ),
+        );
+      },
     );
   }
 }
