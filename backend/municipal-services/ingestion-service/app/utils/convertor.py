@@ -174,7 +174,20 @@ def convert_json_to_boundary(json_str: str) -> List[Boundary]:
 def create_vendor_request(request_info:RequestInfo, vendor: Vendor):
 
     return {
-        "RequestInfo":request_info,
+        "RequestInfo":{
+            "apiId":request_info.api_id,
+            "ver":request_info.ver,
+            "ts":request_info.ts,
+            "action":"CREATE",
+            "did":request_info.did,
+            "key":request_info.key,
+            "msgId":request_info.msg_id,
+            "authToken": request_info.auth_token,
+            "userInfo":{
+                "uuid": request_info.user_info.id,
+                "name": request_info.user_info.name
+            }
+        },
         "organisations":[{
             "tenantId":"in",
             "name":vendor.vendor_name,

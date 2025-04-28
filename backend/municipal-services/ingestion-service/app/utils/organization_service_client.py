@@ -1,6 +1,7 @@
 from typing import Dict, Any
 
-from celery.worker.state import requests
+import requests
+
 
 class OrganizationServiceClient:
     def __init__(self, org_service_url: str):

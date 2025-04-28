@@ -1,6 +1,7 @@
 from app.ingest.boundary_code_validator import BoundaryCodeValidator
 from app.ingest.excel_data_loader import ExcelDataLoader
 from app.ingest.excel_data_writer import ExcelDataWriter
+from app.ingest.identifier_validator import IdentifierValidator
 from app.ingest.pattern_validator import PatternValidator
 from app.ingest.required_field_validator import RequiredFieldValidator
 from app.processor.vendor_data_processor import VendorDataProcessor
@@ -38,6 +39,7 @@ class VendorDataProcessorFactory:
                 schema = mdms_client.fetch_vendor_schema(request_info)
                 validators.append(RequiredFieldValidator(schema.mdms[0].data.columns))
                 validators.append(PatternValidator(schema.mdms[0].data.columns))
+                # validators.append(IdentifierValidator())
             except Exception as e:
                 print(f"Error: Could not set up MDMS validators - {e}")
                 raise Exception("Could not set up MDMS validators")
