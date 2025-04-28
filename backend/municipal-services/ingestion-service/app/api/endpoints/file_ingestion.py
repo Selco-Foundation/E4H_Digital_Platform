@@ -13,7 +13,7 @@ from app.processor.factory.vendor_data_processor_factory import VendorDataProces
 from app.utils.file_utils import create_temp_file, cleanup_temp_file
 from app.utils.mdms_client import MDMSClient
 from app.utils.organization_service_client import OrganizationServiceClient
-from app.utils.convertor import request_info_from_json
+from app.utils.convertor import request_info_from_json, create_vendor_request
 
 router = APIRouter()
 logger = AppLogger().get_logger()
@@ -21,7 +21,7 @@ logger = AppLogger().get_logger()
 from dotenv import load_dotenv
 load_dotenv()
 mdms_url = os.getenv("MDMS_URL")
-org_service_url = os.getenv("ORGANIZATION_URL")
+org_service_url = os.getenv("VENDOR_SERVICE_URL")
 
 @router.post('/ingest_vendors_excel',
              summary='Upload and process vendor Excel file with multiple sheets',
@@ -71,23 +71,10 @@ async def upload_vendors_excel_sheet(
                 raise HTTPException(status_code=500, detail="Data loader incompatibility")
 
             for vendor in vendors:
-                create_vendor_payload = {
-                    "countryBoundaryCode": vendor.country_boundary_code,
-                    "vendorName": vendor.vendor_name,
-                    "vendorCode": vendor.vendor_code,
-                    "vendorType": vendor.vendor_type,
-                    "vendorSubtype": vendor.vendor_subtype,
-                    "identifierType": vendor.identifier_type,
-                    "identifierValue": vendor.identifier_value,
-                    "hqAddress": vendor.hq_address,
-                    "pincode": vendor.pincode,
-                    "pocPhone": vendor.poc_phone,
-                    "pocName": vendor.poc_name,
-                    "tenantId": "in"
-                }
+                vendor_payload = create_vendor_request(request_info, vendor)
 
                 try:
-                    org_data = org_client.create_vendor(request_info, create_vendor_payload)
+                    org_data = org_client.create_vendor(vendor_payload)
                     if org_data and org_data.get("Organisations"):
                         match_mask = (vendor_df["Vendor Code (Mandatory)"] == vendor.vendor_code)
                         if match_mask.any():

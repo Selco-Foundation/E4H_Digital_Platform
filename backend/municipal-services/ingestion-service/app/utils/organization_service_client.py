@@ -2,17 +2,31 @@ from typing import Dict, Any
 
 from celery.worker.state import requests
 
-from app.schemas.request_info import RequestInfo
-
-
 class OrganizationServiceClient:
     def __init__(self, org_service_url: str):
         self.org_service_url = org_service_url
 
-    def create_vendor(self, request_info:RequestInfo,vendor_data: Dict[str, Any]) -> Dict[str, Any]:
-        org_response = requests.post(
-            f"{self.org_service_url}/org-services/organisation/v1/_create",
-            json={"RequestInfo": request_info, "Organisations": [vendor_data]},
-        )
-        org_response.raise_for_status()
-        return org_response.json()
+    def create_vendor(self, vendor_payload:Dict[str,Any]):
+        url = "http://localhost:8071/vendor/organisation/v1/_create"
+        headers = {
+            "Content-Type": "application/json"
+        }
+        payload = vendor_payload
+        try:
+            response = requests.post(url, headers=headers, json=payload)
+            response.raise_for_status()
+            print(f"Vendor save successfully: {response}")
+            return response.json()
+
+        except requests.exceptions.HTTPError as http_err:
+            print(f"HTTP error occurred: {http_err}")
+            raise http_err
+        except requests.exceptions.ConnectionError as conn_err:
+            print(f"Connection error occurred: {conn_err}")
+            raise conn_err
+        except requests.exceptions.Timeout as timeout_err:
+            print(f"Timeout error occurred: {timeout_err}")
+            raise timeout_err
+        except requests.exceptions.RequestException as req_err:
+            print(f"An error occurred: {req_err}")
+            raise req_err
