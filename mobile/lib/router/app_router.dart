@@ -10,6 +10,7 @@ import '../pages/home.dart';
 import '../pages/installation_report_home.dart';
 import '../pages/login.dart';
 import '../pages/media_upload.dart';
+import '../pages/overall_asset_summary.dart';
 import '../pages/select_asset_type.dart';
 import '../pages/select_health_facility.dart';
 import '../pages/setup_new_password.dart';
@@ -60,6 +61,9 @@ class AppRouter extends _$AppRouter {
             AutoRoute(page: AssetSummaryRoute.page, path: Routes.assetSummary),
             AutoRoute(
                 page: DataSaveSuccessRoute.page, path: Routes.dataSaveSuccess),
+            AutoRoute(
+                page: OverallAssetSummaryRoute.page,
+                path: Routes.overallAssetSummary),
           ],
         ),
       ];
