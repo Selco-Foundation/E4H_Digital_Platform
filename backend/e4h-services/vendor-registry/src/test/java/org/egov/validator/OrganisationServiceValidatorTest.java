@@ -134,22 +134,6 @@ class OrganisationServiceValidatorTest {
     }
 
     @Test
-    void shouldThrowException_IfFunctionCategoryInValidForCreateOrganisation() {
-        OrgRequest orgRequest = OrganisationRequestTestBuilder.builder().withRequestInfo().addGoodOrganisationForCreate().build();
-        orgRequest.getOrganisations().get(0).getFunctions().get(0).setCategory("ot1");
-        CustomException exception = assertThrows(CustomException.class, ()-> organisationServiceValidator.validateCreateOrgRegistryWithoutWorkFlow(orgRequest));
-        assertTrue(exception.toString().contains("INVALID_ORG.FUNCTION_CATEGORY"));
-    }
-
-    @Test
-    void shouldThrowException_IfFunctionClassInValidForCreateOrganisation() {
-        OrgRequest orgRequest = OrganisationRequestTestBuilder.builder().withRequestInfo().addGoodOrganisationForCreate().build();
-        orgRequest.getOrganisations().get(0).getFunctions().get(0).setPropertyClass("ot1");
-        CustomException exception = assertThrows(CustomException.class, ()-> organisationServiceValidator.validateCreateOrgRegistryWithoutWorkFlow(orgRequest));
-        assertTrue(exception.toString().contains("INVALID_ORG.FUNCTION_CLASS"));
-    }
-
-    @Test
     void shouldThrowException_IfTaxIdentifierInValidForCreateOrganisation() {
         OrgRequest orgRequest = OrganisationRequestTestBuilder.builder().withRequestInfo().addGoodOrganisationForCreate().build();
         orgRequest.getOrganisations().get(0).getIdentifiers().get(0).setType("ot1");

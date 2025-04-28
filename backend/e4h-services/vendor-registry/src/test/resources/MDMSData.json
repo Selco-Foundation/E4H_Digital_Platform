@@ -17,8 +17,10 @@
         "VEN.CW",
         "VEN.EW",
         "CBO.NA"
-      ],
-      "OrgType": [
+      ]
+    },
+    "organization": {
+      "VendorType": [
         "VEN.CMS",
         "VEN.NA",
         "CBO.MSG",
