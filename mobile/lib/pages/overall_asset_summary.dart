@@ -58,9 +58,12 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                   const SizedBox(height: spacer4),
                   DigitCard(
                     children: [
-                      const ElementAssetSummary(type: 'Battery', count: 2),
-                      const ElementAssetSummary(type: 'Inverter', count: 0),
-                      const ElementAssetSummary(type: 'Panel', count: 0),
+                      const ElementAssetSummary(
+                          type: 'Battery', count: 2, text: 'batteries'),
+                      const ElementAssetSummary(
+                          type: 'Inverter', count: 0, text: 'inverters'),
+                      const ElementAssetSummary(
+                          type: 'Panel', count: 0, text: 'panels'),
                       DigitButton(
                           mainAxisSize: MainAxisSize.max,
                           label: 'Add More Assets',
@@ -112,11 +115,13 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
 
 class ElementAssetSummary extends StatelessWidget {
   final String type;
+  final String text;
   final int count;
 
   const ElementAssetSummary({
     super.key,
     required this.type,
+    required this.text,
     required this.count,
   });
 
@@ -133,7 +138,7 @@ class ElementAssetSummary extends StatelessWidget {
           children: [
             Flexible(
               child: Text(
-                'Total batteries\ninstalled',
+                'Total $text\ninstalled',
                 style: textTheme.headingS,
               ),
             ),

@@ -32,7 +32,7 @@ class _HomePageState extends State<HomePage> {
       {
         'icon': Icons.autorenew,
         'label': 'Data Sync',
-        'onPressed': () {},
+        'onPressed': () => context.router.push(const DownloadStatusRoute()),
       },
     ];
 

@@ -11,6 +11,7 @@ import 'package:isar/isar.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import 'blocs/app_bloc_observer.dart';
+import 'blocs/asset_type/asset_type.dart';
 import 'data/local_store/app_shared_preferences.dart';
 import 'data/local_store/secure_store/secure_store.dart';
 import 'data/remote_client.dart';
@@ -82,29 +83,35 @@ class MainApp extends StatefulWidget {
 
 class _MainAppState extends State<MainApp> {
   final _approuter = AppRouter();
+
   @override
   Widget build(BuildContext context) {
     return Directionality(
       textDirection: TextDirection.ltr,
-      child: Builder(
-        builder: (BuildContext context) {
-          return MaterialApp.router(
-            scaffoldMessengerKey: scaffoldMessengerKey,
-            theme: DigitTheme.instance.mobileTheme.copyWith(),
-            routerDelegate: _approuter.delegate(),
-            routeInformationParser: _approuter.defaultRouteParser(),
-            localizationsDelegates: const [
-              AppComponentLocalizationDelegate(),
-              GlobalWidgetsLocalizations.delegate,
-              GlobalCupertinoLocalizations.delegate,
-              GlobalMaterialLocalizations.delegate,
-            ],
-            supportedLocales: const [
-              Locale('en', 'US'),
-            ],
-            locale: const Locale('en', 'US'),
-          );
-        },
+      child: MultiBlocProvider(
+        providers: [
+          BlocProvider(create: (context) => AssetTypeBloc()),
+        ],
+        child: Builder(
+          builder: (BuildContext context) {
+            return MaterialApp.router(
+              scaffoldMessengerKey: scaffoldMessengerKey,
+              theme: DigitTheme.instance.mobileTheme.copyWith(),
+              routerDelegate: _approuter.delegate(),
+              routeInformationParser: _approuter.defaultRouteParser(),
+              localizationsDelegates: const [
+                AppComponentLocalizationDelegate(),
+                GlobalWidgetsLocalizations.delegate,
+                GlobalCupertinoLocalizations.delegate,
+                GlobalMaterialLocalizations.delegate,
+              ],
+              supportedLocales: const [
+                Locale('en', 'US'),
+              ],
+              locale: const Locale('en', 'US'),
+            );
+          },
+        ),
       ),
     );
   }
