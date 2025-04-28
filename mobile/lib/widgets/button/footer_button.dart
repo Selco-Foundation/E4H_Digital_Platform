@@ -8,11 +8,14 @@ class FooterButton extends StatelessWidget {
   final String text;
   final Function() onPress;
   final bool showSuffixIcon;
-  const FooterButton(
-      {super.key,
-      required this.text,
-      required this.onPress,
-      this.showSuffixIcon = true});
+  final bool isDisabled;
+  const FooterButton({
+    super.key,
+    required this.text,
+    required this.onPress,
+    this.showSuffixIcon = true,
+    this.isDisabled = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -21,6 +24,7 @@ class FooterButton extends StatelessWidget {
         suffixIcon: showSuffixIcon ? Icons.arrow_forward_outlined : null,
         mainAxisSize: MainAxisSize.max,
         label: text,
+        isDisabled: isDisabled,
         type: DigitButtonType.primary,
         size: DigitButtonSize.large,
         onPressed: onPress,

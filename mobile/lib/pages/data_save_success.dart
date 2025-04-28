@@ -31,7 +31,8 @@ class DataSaveSuccessPage extends StatelessWidget {
                   type: DigitButtonType.primary,
                   size: DigitButtonSize.large,
                   label: 'Next',
-                  onPressed: () {},
+                  onPressed: () =>
+                      context.router.push(const OverallAssetSummaryRoute()),
                 ),
               ],
             ),
