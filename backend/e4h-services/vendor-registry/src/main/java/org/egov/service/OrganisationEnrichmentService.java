@@ -47,14 +47,10 @@ public class OrganisationEnrichmentService {
         organisationUtil.setAuditDetailsForOrganisation(requestInfo.getUserInfo().getUuid(), organisationList, Boolean.TRUE);
         String tenantId = organisationList.get(0).getTenantId();
 
-//        //idgen to get the list of organisation application Numbers
+        //idgen to get the list of organisation application Numbers
         List<String> orgApplicationNumbers = idgenUtil.getIdList(requestInfo, tenantId, config.getOrgApplicationNumberName()
                 , config.getOrgApplicationNumberFormat(), organisationList.size());
-//
-//        //idgen to get the list of org Numbers
-//        List<String> orgNumbers = idgenUtil.getIdList(requestInfo, tenantId, config.getOrgNumberName()
-//                , config.getOrgNumberFormat(), organisationList.size());
-//
+
         //idgen to get the list of function application Numbers
         long idgenFuncApplicationNumberCount = organisationList.stream().mapToInt(org -> {
             if (!CollectionUtils.isEmpty(org.getFunctions())) {
@@ -62,10 +58,10 @@ public class OrganisationEnrichmentService {
             }
             return 0;
         }).sum();
-//
+
         List<String> orgFunctionApplicationNumbers = idgenUtil.getIdList(requestInfo, tenantId, config.getFunctionApplicationNumberName()
                 , config.getFunctionApplicationNumberFormat(), ((int) idgenFuncApplicationNumberCount));
-//
+
         int orgAppNumIdFormatIndex = 0;
         int funcAppNumIdFormatIndex = 0;
         for (Organisation organisation : organisationList) {
