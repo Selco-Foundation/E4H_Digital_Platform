@@ -146,16 +146,21 @@ class ElementAssetSummary extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: spacer4),
+        const SizedBox(height: spacer2),
         if (count > 0)
-          DigitButton(
-            mainAxisSize: MainAxisSize.max,
-            label: 'View $type Summary',
-            type: DigitButtonType.secondary,
-            size: DigitButtonSize.medium,
-            onPressed: () {
-              // context.router.replace(const EnterOtpRoute());
-            },
+          Column(
+            children: [
+              DigitButton(
+                mainAxisSize: MainAxisSize.max,
+                label: 'View $type Summary',
+                type: DigitButtonType.secondary,
+                size: DigitButtonSize.medium,
+                onPressed: () {
+                  // context.router.replace(const EnterOtpRoute());
+                },
+              ),
+              const SizedBox(height: spacer2),
+            ],
           ),
         const SizedBox(height: spacer2),
         const DigitDivider(dividerType: DividerType.small),
