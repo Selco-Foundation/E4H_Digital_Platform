@@ -1,29 +1,30 @@
 import json
 from json import JSONDecodeError
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 
 from pydantic import ValidationError
 
+from app.schemas.boundary import Boundary
 from app.schemas.plain_access_object import PlainAccessRequest
 from app.schemas.request_info import RequestInfo
 from app.schemas.user import User
-from app.schemas.vendor_ingestion_shema_response import VendorIngestionSchemaResponse, MDMS, ResponseInfo, \
+from app.schemas.vendor_ingestion_shema_response import IngestionSchemaResponse, MDMS, ResponseInfo, \
     MDMSDataSource, MDMSColumn, MDMSData, MDMSAuditDetails
 
 
-def request_info_from_json(json_str: str) -> RequestInfo:
+def request_info_from_json(request_info: str) -> RequestInfo:
     """
     Parses a JSON string and constructs a RequestInfo object.  Handles
     nested objects (PlainAccessRequest, User) correctly.
 
     Args:
-        json_str: The JSON string to parse.
+        request_info: The JSON string to parse.
 
     Returns:
         A RequestInfo object, or None if the input is invalid.
     """
     try:
-        data: Dict[str, Any] = json.loads(json_str)
+        data: Dict[str, Any] = json.loads(request_info)
         def extract_nested(data: Dict[str, Any], key: str, class_type):
             if key in data and data[key] is not None:
                 nested_data = data[key]
@@ -58,16 +59,16 @@ def request_info_from_json(json_str: str) -> RequestInfo:
         raise
 
 
-def convert_json_to_object(json_str: str) -> Optional[VendorIngestionSchemaResponse]:
+def convert_json_to_object(json_str: str) -> Optional[IngestionSchemaResponse]:
     """
-    Converts a JSON string to a VendorIngestionSchemaResponse object,
+    Converts a JSON string to a IngestionSchemaResponse object,
     handling nested objects.
 
     Args:
         json_str: The JSON string to convert.
 
     Returns:
-        A VendorIngestionSchemaResponse object if the conversion is successful,
+        A IngestionSchemaResponse object if the conversion is successful,
         None otherwise.
     """
     try:
@@ -139,14 +140,14 @@ def convert_json_to_object(json_str: str) -> Optional[VendorIngestionSchemaRespo
 
         # Create response object with proper field names
         try:
-            return VendorIngestionSchemaResponse(
+            return IngestionSchemaResponse(
                 response_info=response_info_data,
                 mdms=mdms_objects if mdms_objects else None
             )
         except ValidationError as e:
             print(f"Validation Error when creating response object: {e}")
             # Try with explicit field names matching the class definition
-            return VendorIngestionSchemaResponse(**{
+            return IngestionSchemaResponse(**{
                 "ResponseInfo": response_info_data,
                 "mdms": mdms_objects if mdms_objects else None
             })
@@ -160,3 +161,9 @@ def convert_json_to_object(json_str: str) -> Optional[VendorIngestionSchemaRespo
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
         return None
+
+
+def convert_json_to_boundary(json_str: str) -> List[Boundary]:
+    data = json.loads(json_str)
+    locations = [Boundary(**item) for item in data]
+    return locations
