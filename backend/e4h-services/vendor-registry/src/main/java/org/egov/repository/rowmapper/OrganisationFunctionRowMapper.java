@@ -56,6 +56,7 @@ public class OrganisationFunctionRowMapper implements ResultSetExtractor<List<Or
         String organisationTenantId = rs.getString("organisation_tenantId");
         String organisationApplicationNumber = rs.getString("organisation_applicationNumber");
         String organisationName = rs.getString("organisation_name");
+        String organisationCode = rs.getString("organisation_code");
         String organisationOrgNumber = rs.getString("organisation_orgNumber");
         String organisationExternalRefNumber = rs.getString("organisation_externalRefNumber");
         BigDecimal organisationDateOfIncorporation = rs.getBigDecimal("organisation_dateOfIncorporation");
@@ -76,6 +77,7 @@ public class OrganisationFunctionRowMapper implements ResultSetExtractor<List<Or
                 .tenantId(organisationTenantId)
                 .applicationNumber(organisationApplicationNumber)
                 .name(organisationName)
+                .code(organisationCode)
                 .orgNumber(organisationOrgNumber)
                 .externalRefNumber(organisationExternalRefNumber)
                 .dateOfIncorporation(organisationDateOfIncorporation)
@@ -92,6 +94,7 @@ public class OrganisationFunctionRowMapper implements ResultSetExtractor<List<Or
         String organisationFunctionOrgId = rs.getString("organisationFunction_OrgId");
         String organisationFunctionApplicationNumber = rs.getString("organisationFunction_applicationNumber");
         String organisationFunctionType = rs.getString("organisationFunction_type");
+        String organisationFunctionSubType = rs.getString("organisationFunction_subType");
         String organisationFunctionCategory = rs.getString("organisationFunction_category");
         String organisationFunctionClass = rs.getString("organisationFunction_class");
         BigDecimal organisationFunctionValidFrom = rs.getBigDecimal("organisationFunction_valid_from");
@@ -114,6 +117,7 @@ public class OrganisationFunctionRowMapper implements ResultSetExtractor<List<Or
                 .orgId(organisationFunctionOrgId)
                 .applicationNumber(organisationFunctionApplicationNumber)
                 .type(organisationFunctionType)
+                .subType(organisationFunctionSubType)
                 .category(organisationFunctionCategory)
                 .propertyClass(organisationFunctionClass)
                 .validFrom(organisationFunctionValidFrom)

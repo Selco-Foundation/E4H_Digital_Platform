@@ -78,5 +78,8 @@ public class Address {
 
     @JsonProperty("geoLocation")
     private GeoLocation geoLocation = null;
+
+    @JsonProperty("hqAddress")
+    private String hqAddress = null;
 }
 

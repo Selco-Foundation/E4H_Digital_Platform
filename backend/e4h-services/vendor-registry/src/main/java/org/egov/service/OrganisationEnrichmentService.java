@@ -51,10 +51,6 @@ public class OrganisationEnrichmentService {
         List<String> orgApplicationNumbers = idgenUtil.getIdList(requestInfo, tenantId, config.getOrgApplicationNumberName()
                 , config.getOrgApplicationNumberFormat(), organisationList.size());
 
-        //idgen to get the list of org Numbers
-        List<String> orgNumbers = idgenUtil.getIdList(requestInfo, tenantId, config.getOrgNumberName()
-                , config.getOrgNumberFormat(), organisationList.size());
-
         //idgen to get the list of function application Numbers
         long idgenFuncApplicationNumberCount = organisationList.stream().mapToInt(org -> {
             if (!CollectionUtils.isEmpty(org.getFunctions())) {
@@ -80,7 +76,7 @@ public class OrganisationEnrichmentService {
              * but this will be part of update org registry
              * and "idgen formatted number will be set once workflow is 'APPROVED' ".
              */
-            organisation.setOrgNumber(orgNumbers.get(orgAppNumIdFormatIndex));
+//            organisation.setOrgNumber(orgNumbers.get(orgAppNumIdFormatIndex));
 
             List<Address> orgAddressList = organisation.getOrgAddress();
             List<ContactDetails> contactDetailsList = organisation.getContactDetails();
@@ -178,7 +174,7 @@ public class OrganisationEnrichmentService {
         if (!CollectionUtils.isEmpty(orgAddressList)) {
             for (Address address : orgAddressList) {
                 address.setId(UUID.randomUUID().toString());
-                address.getGeoLocation().setId(UUID.randomUUID().toString());
+//                address.getGeoLocation().setId(UUID.randomUUID().toString());
             }
         }
     }
