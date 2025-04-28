@@ -4,10 +4,12 @@ from typing import Dict, Any, Optional, List
 
 from pydantic import ValidationError
 
+from app.schemas import vendor
 from app.schemas.boundary import Boundary
 from app.schemas.plain_access_object import PlainAccessRequest
 from app.schemas.request_info import RequestInfo
 from app.schemas.user import User
+from app.schemas.vendor import Vendor
 from app.schemas.vendor_ingestion_shema_response import IngestionSchemaResponse, MDMS, ResponseInfo, \
     MDMSDataSource, MDMSColumn, MDMSData, MDMSAuditDetails
 
@@ -167,3 +169,43 @@ def convert_json_to_boundary(json_str: str) -> List[Boundary]:
     data = json.loads(json_str)
     locations = [Boundary(**item) for item in data]
     return locations
+
+
+def create_vendor_request(request_info:RequestInfo, vendor: Vendor):
+
+    return {
+        "RequestInfo":request_info,
+        "organisations":[{
+            "tenantId":"in",
+            "name":vendor.vendor_name,
+            "code":vendor.vendor_code,
+            "orgAddress":[
+                {
+                    "tenantId":"in",
+                    "boundaryType":"country",
+                    "boundaryCode":vendor.country_boundary_code,
+                    "hqAddress":vendor.hq_address
+                }
+            ],
+            "contactDetails":[
+                {
+                    "contactName":vendor.vendor_name,
+                    "contactMobileNumber":vendor.poc_phone
+                }
+            ],
+            "identifiers":[
+                {
+                    "type": vendor.identifier_type,
+                    "value": vendor.identifier_value
+                }
+            ],
+            "functions":[
+                {
+                    "type":"",
+                    "subType":""
+                }
+            ],
+            "isActive":True
+
+        }]
+    }

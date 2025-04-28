@@ -16,7 +16,7 @@ logger = AppLogger().get_logger()
 from dotenv import load_dotenv
 load_dotenv()
 mdms_url = os.getenv("MDMS_URL")
-boundary_service_url = os.getenv("BOUNDARY_URL")
+boundary_service_url = os.getenv("BOUNDARY_SERVICE_URL")
 
 class FacilityTemplateService:
 
