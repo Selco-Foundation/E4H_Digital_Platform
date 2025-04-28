@@ -7,7 +7,7 @@ class OrganizationServiceClient:
         self.org_service_url = org_service_url
 
     def create_vendor(self, vendor_payload:Dict[str,Any]):
-        url = "http://localhost:8071/vendor/organisation/v1/_create"
+        url = f"{self.org_service_url}/vendor/organisation/v1/_create"
         headers = {
             "Content-Type": "application/json"
         }
