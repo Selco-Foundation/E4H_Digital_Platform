@@ -113,8 +113,6 @@ public class OrganisationEnrichmentServiceTest {
     public void getIdGenIds() {
         when(configuration.getOrgApplicationNumberName()).thenReturn("organisation.application.number");
         when(configuration.getOrgApplicationNumberFormat()).thenReturn("OR/AP/001/001");
-        when(configuration.getOrgNumberName()).thenReturn("organisation.number");
-        when(configuration.getOrgNumberFormat()).thenReturn("OR/001/001");
         when(configuration.getFunctionApplicationNumberName()).thenReturn("organisation.function.number");
         when(configuration.getFunctionApplicationNumberFormat()).thenReturn("OR/FN/001/001");
 
@@ -123,8 +121,6 @@ public class OrganisationEnrichmentServiceTest {
         List<String> functionNumbers = Collections.singletonList("OR/FN/001/001");
         when(idgenUtil.getIdList(any(RequestInfo.class),any(String.class),eq("organisation.application.number"),any(String.class),anyInt()))
                 .thenReturn(applicationNumbers);
-        when(idgenUtil.getIdList(any(RequestInfo.class),any(String.class),eq("organisation.number"),any(String.class),anyInt()))
-                .thenReturn(orgNumbers);
         when(idgenUtil.getIdList(any(RequestInfo.class),any(String.class),eq("organisation.function.number"),any(String.class),anyInt()))
                 .thenReturn(functionNumbers);
     }
