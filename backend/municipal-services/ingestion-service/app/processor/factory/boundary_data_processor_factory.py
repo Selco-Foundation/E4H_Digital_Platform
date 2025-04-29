@@ -1,3 +1,4 @@
+from app.core.logging import AppLogger
 from app.ingest.boundary_hierarchy_validator import BoundaryHierarchyValidator
 from app.ingest.boundary_excel_data_loader import BoundaryExcelDataLoader
 from app.ingest.excel_data_writer import ExcelDataWriter
@@ -7,7 +8,7 @@ from app.processor.boundary_data_processor import BoundaryDataProcessor
 from app.schemas.request_info import RequestInfo
 from app.utils.mdms_client import MDMSClient
 
-
+logger = AppLogger().get_logger()
 class BoundaryDataProcessorFactory:
     @staticmethod
     def create_processor(
@@ -25,14 +26,16 @@ class BoundaryDataProcessorFactory:
         data_loader.load_data()
 
         # Set up MDMS-based validators if MDMS URL is provided
-        if mdms_url:
+        if not mdms_url:
+            logger.warning("MDMS URL not provided. Skipping MDMS-based validators.")
+        else:
             mdms_client = MDMSClient(mdms_url)
             try:
                 schema = mdms_client.fetch_boundary_schema(request_info)
                 validators.append(RequiredFieldValidator(schema.mdms[0].data.columns))
                 validators.append(PatternValidator(schema.mdms[0].data.columns))
             except Exception as e:
-                print(f"Error: Could not set up MDMS validators - {e}")
+                logger.error(f"Error: Could not set up MDMS validators - {e}")
                 raise Exception("Could not set up MDMS validators")
 
         # Add boundary-specific validators

@@ -1,7 +1,8 @@
-from typing import List, Dict, Set
+from typing import List
+
 import pandas as pd
-import requests
-import json
+
+from app.core.logging import AppLogger
 from app.ingest.boundary_excel_data_loader import BoundaryExcelDataLoader
 from app.ingest.facility_template_service import boundary_service_url
 from app.ingest.service.data_loader import DataLoader
@@ -10,7 +11,7 @@ from app.ingest.service.validator import Validator
 from app.schemas.request_info import RequestInfo
 from app.utils.boundary_service_client import BoundaryServiceClient
 
-
+logger = AppLogger().get_logger()
 class BoundaryDataProcessor:
     def __init__(self, data_loader: DataLoader, validators: List[Validator], data_writer: DataWriter,
                  request_info: RequestInfo = None):
@@ -45,14 +46,14 @@ class BoundaryDataProcessor:
         """Process and validate boundary data"""
         # Load data
         if not self.data_loader.load_data():
-            return []
+            return pd.DataFrame()
 
         if isinstance(self.data_loader, BoundaryExcelDataLoader):
             boundary_df = self.data_loader.get_boundary_data()
-            print(boundary_df.head(2))
+            logger.info(boundary_df.head(2))
         else:
-            print("Data loader is not compatible")
-            return []
+            logger.warning("Data loader is not compatible")
+            return pd.DataFrame()
 
         # Run all validators
         has_error = False
@@ -109,7 +110,6 @@ class BoundaryDataProcessor:
                     boundary_df.loc[index, "status"] = "success"
                     boundary_df.loc[index, "error"] = ""
 
-
         # self.data_writer.write_data(boundary_df)
         return boundary_df
 
@@ -144,7 +144,7 @@ class BoundaryDataProcessor:
 
         # Print summary
         for level in self.hierarchy_levels:
-            print(f"Found {len(self.boundary_codes[level])} unique {level} boundaries")
+            logger.info(f"Found {len(self.boundary_codes[level])} unique {level} boundaries")
 
     def _check_existing_boundaries(self):
         """Check which boundaries already exist in the system"""
@@ -165,13 +165,13 @@ class BoundaryDataProcessor:
                     codes=chunk
                 )
 
-                if "Boundary" in response_data:
+                if response_data and "Boundary" in response_data:
                     for boundary in response_data["Boundary"]:
                         self.existing_boundaries.add(boundary["code"])
             except Exception as e:
-                print(f"Error checking existing boundaries: {e}")
+                logger.error(f"Error checking existing boundaries: {e}")
 
-        print(f"Found {len(self.existing_boundaries)} existing boundaries in the system")
+        logger.info(f"Found {len(self.existing_boundaries)} existing boundaries in the system")
 
     def _create_new_boundaries(self):
         """Create new boundaries that don't already exist"""
@@ -189,7 +189,7 @@ class BoundaryDataProcessor:
                     })
 
         if not boundaries_to_create:
-            print("No new boundaries to create")
+            logger.info("No new boundaries to create")
             return
 
         chunk_size = 50
@@ -201,16 +201,19 @@ class BoundaryDataProcessor:
                     request_info=self.request_info,
                     boundary_data=chunk
                 )
-                created_count += len(chunk)
+                if response_data and "Boundary" in response_data:
+                    created_count += len(chunk)
+                else:
+                    logger.warning("Failed to create boundaries")
             except Exception as e:
                 for boundary in chunk:
                     if boundary["code"] not in self.failed_boundaries:
                         self.failed_boundaries[boundary["code"]] = str(e)
 
-        print(f"Attempted to create {len(boundaries_to_create)} new boundaries. "
-              f"Successfully created: {created_count}, Failed: {len(self.failed_boundaries)}")
+        logger.info(f"Attempted to create {len(boundaries_to_create)} new boundaries. "
+                    f"Successfully created: {created_count}, Failed: {len(self.failed_boundaries)}")
         if self.failed_boundaries:
-            print("Failed boundary creations:", self.failed_boundaries)
+            logger.error(f"Failed boundary creations: {self.failed_boundaries}")
 
     def _create_boundary_relationships(self):
         """Create boundary relationships in hierarchical order"""
@@ -226,10 +229,11 @@ class BoundaryDataProcessor:
                 elif error:
                     self.failed_relationships[(code, level)] = error
 
-        print(f"Attempted to create {sum(len(self.boundary_data[level]) for level in self.hierarchy_levels)} relationships. "
-              f"Successfully created: {relationship_created_count}, Failed: {len(self.failed_relationships)}")
+        logger.info(
+            f"Attempted to create {sum(len(self.boundary_data[level]) for level in self.hierarchy_levels)} relationships. "
+            f"Successfully created: {relationship_created_count}, Failed: {len(self.failed_relationships)}")
         if self.failed_relationships:
-            print("Failed relationship creations:", self.failed_relationships)
+            logger.error(f"Failed relationship creations: {self.failed_relationships}")
 
     def _create_single_relationship(self, code, boundary_type, parent_code):
         """Create a single boundary relationship"""
@@ -246,16 +250,16 @@ class BoundaryDataProcessor:
             if "Errors" in response_data and any(
                     error.get("code") == "DUPLICATE_RECORD" for error in response_data["Errors"]
             ):
-                print(f"Relationship for {boundary_type} {code} already exists")
+                logger.info(f"Relationship for {boundary_type} {code} already exists")
                 return True, None  # Consider as success
             elif "Errors" in response_data:
                 error_messages = [error.get("message") for error in response_data["Errors"]]
-                print(f"Error creating relationship for {boundary_type} {code}: {error_messages}")
+                logger.error(f"Error creating relationship for {boundary_type} {code}: {error_messages}")
                 return False, ", ".join(error_messages)
             else:
-                print(f"Successfully created relationship for {boundary_type} {code}")
+                logger.info(f"Successfully created relationship for {boundary_type} {code}")
                 return True, None
 
         except Exception as e:
-            print(f"Error creating relationship for {boundary_type} {code}: {e}")
+            logger.error(f"Error creating relationship for {boundary_type} {code}: {e}")
             return False, str(e)

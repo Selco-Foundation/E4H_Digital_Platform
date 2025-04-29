@@ -1,8 +1,10 @@
 from typing import Set, Dict, Tuple
 import pandas as pd
+
+from app.core.logging import AppLogger
 from app.ingest.service.data_loader import DataLoader
 
-
+logger = AppLogger().get_logger()
 class BoundaryExcelDataLoader(DataLoader):
     def __init__(self, file_path: str, boundary_sheet: str = "Boundary Data"):
         self.file_path = file_path
@@ -29,11 +31,11 @@ class BoundaryExcelDataLoader(DataLoader):
             # Pre-process hierarchy combinations for uniqueness check
             self._preprocess_hierarchy()
 
-            print(f"Loaded {len(self.boundary_df)} boundary records")
+            logger.info(f"Loaded {len(self.boundary_df)} boundary records")
             return True
 
         except Exception as e:
-            print(f"Error loading boundary data: {str(e)}")
+            logger.error(f"Error loading boundary data: {str(e)}")
             return False
 
     def _preprocess_hierarchy(self):
