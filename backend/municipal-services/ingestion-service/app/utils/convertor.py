@@ -13,51 +13,30 @@ from app.schemas.vendor import Vendor
 from app.schemas.vendor_ingestion_shema_response import IngestionSchemaResponse, MDMS, ResponseInfo, \
     MDMSDataSource, MDMSColumn, MDMSData, MDMSAuditDetails
 
-
-def request_info_from_json(request_info: str) -> RequestInfo:
+def request_info_from_json(request_info_str: str) -> RequestInfo:
     """
-    Parses a JSON string and constructs a RequestInfo object.  Handles
-    nested objects (PlainAccessRequest, User) correctly.
+    Parses a JSON string and constructs a RequestInfo object using pydantic.
+    Handles nested objects (PlainAccessRequest, User) automatically.
 
     Args:
-        request_info: The JSON string to parse.
+        request_info_str: The JSON string to parse.
 
     Returns:
-        A RequestInfo object, or None if the input is invalid.
+        A RequestInfo object.
+
+    Raises:
+        json.JSONDecodeError: If the input string is not valid JSON.
+        pydantic.ValidationError: If the parsed JSON does not conform to the
+                                  RequestInfo pydantic model.
     """
     try:
-        data: Dict[str, Any] = json.loads(request_info)
-        def extract_nested(data: Dict[str, Any], key: str, class_type):
-            if key in data and data[key] is not None:
-                nested_data = data[key]
-                if isinstance(nested_data, dict):
-                  return class_type(**nested_data)
-                else:
-                   return None
-            return None
-
-        plain_access_request_data = extract_nested(data, 'plain_access_request', PlainAccessRequest)
-        user_info_data = extract_nested(data, 'user_info', User)
-        request_info = RequestInfo.builder() \
-            .api_id(data.get('api_id')) \
-            .ver(data.get('ver')) \
-            .ts(data.get('ts')) \
-            .action(data.get('action')) \
-            .did(data.get('did')) \
-            .key(data.get('key')) \
-            .msg_id(data.get('msg_id')) \
-            .auth_token(data.get('auth_token')) \
-            .correlation_id(data.get('correlation_id')) \
-            .plain_access_request(plain_access_request_data) \
-            .user_info(user_info_data) \
-            .build()
-        return request_info
-
+        data: Dict[str, Any] = json.loads(request_info_str)
+        return RequestInfo(**data)
     except json.JSONDecodeError as e:
-        print(f"Error: Invalid JSON: {e}")
+        print(f"Error: Invalid JSON string: {e}")
         raise
     except Exception as e:
-        print(f"Error: An unexpected error occurred: {e}")
+        print(f"Error: Pydantic model creation failed: {e}")
         raise
 
 
@@ -174,7 +153,7 @@ def convert_json_to_boundary(json_str: str) -> List[Boundary]:
 def create_vendor_request(request_info:RequestInfo, vendor: Vendor):
 
     return {
-        "RequestInfo":request_info,
+        "RequestInfo":request_info.model_dump(by_alias=True, exclude_none=True),
         "organisations":[{
             "tenantId":"in",
             "name":vendor.vendor_name,

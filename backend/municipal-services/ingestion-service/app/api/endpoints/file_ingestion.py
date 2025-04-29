@@ -1,19 +1,21 @@
-from fastapi import APIRouter, File, Form, UploadFile, HTTPException, Response, Depends
-from fastapi.responses import FileResponse
-import tempfile
 import os
+import tempfile
 from datetime import datetime
+
+from fastapi import APIRouter, File, Form, UploadFile, HTTPException, Depends
+from fastapi.responses import FileResponse
 
 from app.core.logging import AppLogger
 from app.decorators.rbac_validator import get_authorized_request_info
 from app.ingest.excel_data_loader import ExcelDataLoader
 from app.ingest.excel_data_writer import ExcelDataWriter
 from app.ingest.facility_template_service import FacilityTemplateService
+from app.processor.factory.boundary_data_processor_factory import BoundaryDataProcessorFactory
 from app.processor.factory.vendor_data_processor_factory import VendorDataProcessorFactory
+from app.utils.convertor import request_info_from_json, create_vendor_request
 from app.utils.file_utils import create_temp_file, cleanup_temp_file
 from app.utils.mdms_client import MDMSClient
 from app.utils.organization_service_client import OrganizationServiceClient
-from app.utils.convertor import request_info_from_json, create_vendor_request
 
 router = APIRouter()
 logger = AppLogger().get_logger()
@@ -145,3 +147,58 @@ async def get_facility_ingestion_template(
     except Exception as e:
         logger.error(f"Unhandled error in get_facility_ingestion_template: {e}")
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
+
+
+@router.post('/ingest_boundaries_excel',
+             summary='Upload and process boundary Excel file',
+             response_description="Returns processed Excel file with validation results")
+async def upload_boundaries_excel_sheet(
+        boundary_file: UploadFile = File(description="Excel file containing boundary data"),
+        boundary_sheet_name: str = Form(default="Boundary Data",
+                                        description="Name of the sheet containing boundary data"),
+        request_info: str = Form(default="")
+):
+    input_temp_file = None
+    request_info = request_info_from_json(request_info)
+    get_authorized_request_info(request_info)
+
+    try:
+        input_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
+        content = await boundary_file.read()
+        input_temp_file.write(content)
+        input_temp_file.close()
+        boundary_file_path = input_temp_file.name
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_filename = f"boundary_validation_results_{timestamp}.xlsx"
+        output_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
+        output_temp_file.close()
+        output_file_path = output_temp_file.name
+
+        with open(boundary_file_path, 'rb') as src, open(output_file_path, 'wb') as dst:
+            dst.write(src.read())
+
+        processor = BoundaryDataProcessorFactory.create_processor(
+            file_path=output_file_path,
+            boundary_sheet=boundary_sheet_name,
+            mdms_url=mdms_url,
+            request_info=request_info
+        )
+        boundary_df = processor.process_data()
+
+        writer = ExcelDataWriter(output_file_path, output_sheet="Boundary Data Output")
+        writer.write_data(boundary_df)
+
+        return FileResponse(
+            path=output_file_path,
+            filename=output_filename,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+
+    except Exception as e:
+        logger.error(f"Error processing boundary data: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to process boundary data: {str(e)}")
+
+    finally:
+        if input_temp_file and os.path.exists(input_temp_file.name):
+            os.unlink(input_temp_file.name)

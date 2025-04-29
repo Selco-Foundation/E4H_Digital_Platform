@@ -1,8 +1,12 @@
 import json
+from typing import List
+
 from fastapi import HTTPException, Depends
 
 from app.core.user_role import UserRole
 from app.schemas.request_info import RequestInfo
+from app.schemas.role import Role
+
 
 def get_authorized_request_info(request_info: RequestInfo) -> RequestInfo:
     try:
@@ -12,23 +16,20 @@ def get_authorized_request_info(request_info: RequestInfo) -> RequestInfo:
                 detail="Unauthorized: User information or roles are missing",
             )
 
-        user_roles = request_info.user_info.roles
-        for role_str in user_roles:
+        user_roles: List[Role] = request_info.user_info.roles
+        for role_obj in user_roles:
             for user_role in UserRole:
-                if role_str["name"] == user_role.value:
+                if role_obj.name == user_role.value:
                     return request_info
 
         raise HTTPException(
             status_code=403,
-            detail=f"User role(s) '{user_roles}' not authorized for this operation. Allowed roles: {[role.value for role in UserRole]}",
+            detail=f"User role(s) '{[role.name for role in user_roles]}' not authorized for this operation. Allowed roles: {[role.value for role in UserRole]}",
         )
 
-    except json.JSONDecodeError:
-        raise HTTPException(status_code=400, detail="Invalid RequestInfo format")
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Authorization error: {str(e)}"
         )
-
