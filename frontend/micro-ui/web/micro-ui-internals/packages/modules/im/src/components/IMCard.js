@@ -8,11 +8,17 @@ const IMCard = () => {
   const stateTenantId = Digit.ULBService.getStateId();
   const { t } = useTranslation();
   const [total, setTotal] = useState("-");
+  const { uuid } = Digit.UserService.getUser().info;
+  const userRoles = Digit.SessionStorage.get("User")?.info?.roles || [];
+
+  const isCodePresent = (array, codeToCheck) =>{
+    return array.some(item => item.code === codeToCheck);
+  }
   
   const { data, isLoading, isFetching, isSuccess } = Digit.Hooks.useNewInboxGeneral({
     tenantId: Digit.ULBService.getCurrentTenantId(),
     ModuleCode: "Incident",
-    filters: { limit: 10, offset: 0, services: ["Incident"] },
+    filters: { limit: 10, offset: 0, services: ["Incident"], ...(isCodePresent(userRoles, "COMPLAINT_RESOLVER") && { assignee: uuid }) },
     config: {
       select: (data) => {
         return {totalCount:data?.totalCount,nearingSlaCount:data?.nearingSlaCount, data:data} || "-";
@@ -36,10 +42,6 @@ const IMCard = () => {
   if (!Digit.Utils.pgrAccess()) {
     return null;
   }
-
-  const isCodePresent = (array, codeToCheck) =>{
-    return array.some(item => item.code === codeToCheck);
-  }
   
   console.log("total", total)
   sessionStorage.setItem("inboxTotal", JSON.stringify(total?.totalCount));
@@ -47,7 +49,6 @@ const IMCard = () => {
   let newTenant = window.Digit.SessionStorage.get("Tenants")
   useEffect(() => {
     (async () => {
-      const userRoles = Digit.SessionStorage.get("User")?.info?.roles || [];
       if (isCodePresent(userRoles, "COMPLAINT_RESOLVER")) {
         const tenantCode = Digit.SessionStorage.get("citizen.userRequestObject").info.roles.map((ulb) => {
           return ulb.tenantId

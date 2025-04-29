@@ -7,7 +7,7 @@ on:
     tags:
       - 'v*'
     paths:
-      - 'backend/municipal-services/processor-services/**'
+      - 'backend/e4h-services/processor-services/**'
   workflow_dispatch:
   workflow_call:
 permissions:
@@ -41,7 +41,7 @@ jobs:
 
       - name: Git commit_hash for service
         run: |
-          commit_hash=$(git log -1 --pretty=format:%H -- backend/municipal-services/processor-services)
+          commit_hash=$(git log -1 --pretty=format:%H -- backend/e4h-services/processor-services)
           echo "commit_hash=$commit_hash" >> $GITHUB_ENV
 
       # Login to Docker Container Registry
@@ -50,7 +50,7 @@ jobs:
 
       - name: Build and Push Docker image for Processor-Service
         run: |
-          docker build --build-arg WORK_DIR="backend/municipal-services/processor-services" -t selcohub/processor-services:${{ env.VERSION }}-${{ env.commit_hash }} -f build/maven/Dockerfile .
+          docker build --build-arg WORK_DIR="backend/e4h-services/processor-services" -t selcohub/processor-services:${{ env.VERSION }}-${{ env.commit_hash }} -f build/maven/Dockerfile .
           docker push selcohub/processor-services:${{ env.VERSION }}-${{ env.commit_hash }}
 
 #  Workflow_Trigger:

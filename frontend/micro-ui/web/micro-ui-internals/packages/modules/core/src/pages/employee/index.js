@@ -37,9 +37,7 @@ const EmployeeApp = ({
   const showLanguageChange = location?.pathname?.includes("language-selection");
   const isUserProfile = userScreensExempted.some((url) => location?.pathname?.includes(url));
   const bgImageUrl = window?.globalConfigs?.getConfig("BG_IMAGE");
-  const nhmLogo = window?.globalConfigs?.getConfig("STATE_NHM_LOGO");
-  const govtLogo = window?.globalConfigs?.getConfig("STATE_GOVT_LOGO");
-  const selcoLogo = window?.globalConfigs?.getConfig("SELCO_LOGO");
+  const logos = window?.globalConfigs?.getConfig("LOGO_LIST") || [];
 
   useEffect(() => {
     Digit.UserService.setType("employee");
@@ -131,30 +129,21 @@ const EmployeeApp = ({
                   : { display: "flex", justifyContent: "center", gap: "1rem", marginBottom: "58px", marginTop: "-26px" }
               }
             >
-              {nhmLogo && (
+              {logos.map((logo, index) => (
                 <img
+                  key={index}
                   className="bannerLogo"
-                  src={nhmLogo}
-                  alt="State NHM Logo"
-                  style={{ height: "3rem", width: "3rem", cursor: "pointer", marginRight: "unset", paddingRight: "unset" }}
+                  src={logo.url}
+                  alt={logo.alt}
+                  style={{
+                    height: "3rem",
+                    width: "3rem",
+                    cursor: "pointer",
+                    marginRight: "unset",
+                    paddingRight: "unset",
+                  }}
                 />
-              )}
-              {govtLogo && (
-                <img
-                  className="bannerLogo"
-                  src={govtLogo}
-                  alt="State Govt Logo"
-                  style={{ height: "3rem", width: "3rem", cursor: "pointer", marginRight: "unset", paddingRight: "unset" }}
-                />
-              )}
-              {selcoLogo && (
-                <img
-                  className="bannerLogo"
-                  src={selcoLogo}
-                  alt="Selco Foundation"
-                  style={{ height: "3rem", cursor: "pointer", width: "3rem", marginRight: "unset", paddingRight: "unset" }}
-                />
-              )}
+              ))}
             </div>
             <div
               className="employee-home-footer"
