@@ -59,16 +59,18 @@ async def upload_vendors_excel_sheet(
             mdms_url=mdms_url,
             request_info=request_info
         )
-        vendors = processor.process_data()
+        tuple_vendors = processor.process_data()
+        vendors = tuple_vendors[0]
+        vendor_df = tuple_vendors[1]
 
         if org_service_url and vendors:
             org_client = OrganizationServiceClient(org_service_url)
 
-            if isinstance(processor.data_loader, ExcelDataLoader):
-                vendor_df = processor.data_loader.get_vendor_data()
-            else:
-                logger.error("Data loader is not compatible")
-                raise HTTPException(status_code=500, detail="Data loader incompatibility")
+            # if isinstance(processor.data_loader, ExcelDataLoader):
+            #     vendor_df = processor.data_loader.get_vendor_data()
+            # else:
+            #     logger.error("Data loader is not compatible")
+            #     raise HTTPException(status_code=500, detail="Data loader incompatibility")
 
             for vendor in vendors:
                 vendor_payload = create_vendor_request(request_info, vendor)
