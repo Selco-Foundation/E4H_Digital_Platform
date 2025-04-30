@@ -1,15 +1,19 @@
+import os
 from typing import List
 
 import pandas as pd
 
 from app.core.logging import AppLogger
 from app.ingest.boundary_excel_data_loader import BoundaryExcelDataLoader
-from app.ingest.facility_template_service import boundary_service_url
 from app.ingest.service.data_loader import DataLoader
 from app.ingest.service.data_writer import DataWriter
 from app.ingest.service.validator import Validator
 from app.schemas.request_info import RequestInfo
 from app.utils.boundary_service_client import BoundaryServiceClient
+
+from dotenv import load_dotenv
+load_dotenv()
+boundary_service_url = os.getenv("BOUNDARY_SERVICE_URL")
 
 logger = AppLogger().get_logger()
 class BoundaryDataProcessor:
