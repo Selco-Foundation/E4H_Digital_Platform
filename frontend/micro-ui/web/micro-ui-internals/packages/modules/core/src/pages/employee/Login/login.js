@@ -1,7 +1,7 @@
 import { BackButton, Dropdown, FormComposer, Loader, Toast } from "@selco/digit-ui-react-components";
 import PropTypes from "prop-types";
 import React, { useEffect, useState } from "react";
-import { useHistory } from "react-router-dom";
+import { useHistory, useLocation } from "react-router-dom";
 import Background from "../../../components/Background";
 import Header from "../../../components/Header";
 import ForgotPassword from "../ForgotPasswordPopup/ForgotPassword";
@@ -36,8 +36,12 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
   const [disable, setDisable] = useState(false);
 
   const history = useHistory();
+  const location = useLocation();
   // const getUserType = () => "EMPLOYEE" || Digit.UserService.getType();
   const isMobile = window.Digit.Utils.browser.isMobile();
+
+  const logos = window?.globalConfigs?.getConfig("LOGO_LIST") || [];
+
   useEffect(() => {
     if (!user) {
       return;
@@ -49,9 +53,12 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
     setEmployeeDetail(user?.info, user?.access_token);
     let redirectPath = `/${window.contextPath}/employee`;
 
+
+    const fromParam = new URLSearchParams(location.search).get('from');
+
     /* logic to redirect back to same screen where we left off  */
-    if (window?.location?.href?.includes("from=")) {
-      redirectPath = decodeURIComponent(window?.location?.href?.split("from=")?.[1]) || `/${window.contextPath}/employee`;
+    if (fromParam) {
+      redirectPath = decodeURIComponent(fromParam) || `/${window.contextPath}/employee`;
     }
 
     /*  RAIN-6489 Logic to navigate to National DSS home incase user has only one role [NATADMIN]*/
@@ -185,24 +192,19 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
           {popup && <ForgotPassword setPopup={setPopup} />}
         </div>
         <div style={{ display: "flex", justifyContent: "center", margin: "1rem auto" }}>
-          <img
-            className="bannerLogo"
-            src={window?.globalConfigs?.getConfig("STATE_NHM_LOGO")}
-            alt="Selco Foundation"
-            style={{ border: "0px", marginLeft: "15px" }}
-          />
-          <img
-            className="bannerLogo"
-            src={window?.globalConfigs?.getConfig("STATE_GOVT_LOGO")}
-            alt="Selco Foundation"
-            style={{ border: "0px" }}
-          />
-          <img
-            className="bannerLogo"
-            src={window?.globalConfigs?.getConfig("SELCO_LOGO")}
-            alt="Selco Foundation"
-            style={{ border: "0px" }}
-          />
+          {logos.map((logo, index) => (
+            <img
+              key={index}
+              className="bannerLogo"
+              src={logo.url}
+              alt={logo.alt}
+              style={{
+                border: "0px",
+                marginRight: "unset",
+                paddingRight: "unset",
+              }}
+            />
+          ))}
         </div>
       </div>
       {showToast && <Toast error={true} label={t(showToast)} onClose={closeToast} />}

@@ -69,12 +69,12 @@ public class WorkflowService {
      * return the updated status of the application
      *
      * */
-    public String updateWorkflowStatus(IncidentRequest incidentRequest) {
+    public ProcessInstance updateWorkflowStatus(IncidentRequest incidentRequest) {
         ProcessInstance processInstance = getProcessInstanceForIM(incidentRequest);
         ProcessInstanceRequest workflowRequest = new ProcessInstanceRequest(incidentRequest.getRequestInfo(), Collections.singletonList(processInstance));
-        State state = callWorkFlow(workflowRequest);
-        incidentRequest.getIncident().setApplicationStatus(state.getApplicationStatus());
-        return state.getApplicationStatus();
+        ProcessInstance updatedProcessInstance = callWorkFlow(workflowRequest);
+        incidentRequest.getIncident().setApplicationStatus(updatedProcessInstance.getState().getApplicationStatus());
+        return updatedProcessInstance;
     }
 
 
@@ -191,6 +191,10 @@ public class WorkflowService {
         processInstance.setDocuments(request.getWorkflow().getVerificationDocuments());
         processInstance.setComment(workflow.getComments());
 
+        if(request.getWorkflow().getAction().equalsIgnoreCase("RATE")) {
+            processInstance.setRating(workflow.getRating());
+        }
+
         if (!CollectionUtils.isEmpty(workflow.getAssignes())) {
             List<User> users = new ArrayList<>();
 
@@ -224,6 +228,7 @@ public class WorkflowService {
                     .action(processInstance.getAction())
                     .assignes(userIds)
                     .comments(processInstance.getComment())
+                    .rating(processInstance.getRating())
                     .verificationDocuments(processInstance.getDocuments())
                     .build();
 
@@ -240,13 +245,13 @@ public class WorkflowService {
      * <p>
      * and return wf-response to sets the resultant status
      */
-    private State callWorkFlow(ProcessInstanceRequest workflowReq) {
+    private ProcessInstance callWorkFlow(ProcessInstanceRequest workflowReq) {
 
         ProcessInstanceResponse response = null;
         StringBuilder url = new StringBuilder(imConfiguration.getWfHost().concat(imConfiguration.getWfTransitionPath()));
         Object optional = repository.fetchResult(url, workflowReq);
         response = mapper.convertValue(optional, ProcessInstanceResponse.class);
-        return response.getProcessInstances().get(0).getState();
+        return response.getProcessInstances().get(0);
     }
 
 

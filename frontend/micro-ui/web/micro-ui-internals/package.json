@@ -22,6 +22,7 @@
     "start": "SKIP_PREFLIGHT_CHECK=true run-s build start:dev",
     "sprint": "SKIP_PREFLIGHT_CHECK=true run-s start:script",
     "start:dev": "run-p dev:**",
+    "start:local": "run-p dev:css dev:libraries dev:components dev:example dev:core dev:im",
     "start:script": "./scripts/create.sh",
     "dev:css": "cd packages/css && yarn start",
     "publish:css": "cd packages/css && yarn publish --access public",
@@ -69,7 +70,7 @@
   "dependencies": {
     "@egovernments/digit-ui-react-components": "1.8.0",
     "@selco/digit-ui-react-components": "1.8.0",
-    "@selco/selco-css": "1.8.19",
+    "@selco/selco-css": "1.8.20",
     "hls.js": "^1.5.20",
     "lodash": "4.17.21",
     "microbundle-crl": "0.13.11",

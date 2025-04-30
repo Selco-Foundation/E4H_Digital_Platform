@@ -8,10 +8,12 @@ import org.egov.im.producer.Producer;
 import org.egov.im.repository.IMRepository;
 import org.egov.im.util.MDMSUtils;
 import org.egov.im.validator.ServiceRequestValidator;
+import org.egov.im.web.models.IncidentRequestWrapper;
 import org.egov.im.web.models.IncidentWrapper;
 import org.egov.im.web.controllers.*;
 import org.egov.im.web.models.RequestSearchCriteria;
 import org.egov.im.web.models.IncidentRequest;
+import org.egov.im.web.models.workflow.ProcessInstance;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.CollectionUtils;
 
@@ -65,9 +67,9 @@ public class IMService {
         Object mdmsData = mdmsUtils.mDMSCall(request);
         validator.validateCreate(request, mdmsData);
         enrichmentService.enrichCreateRequest(request);
-        workflowService.updateWorkflowStatus(request);
+        ProcessInstance updatedProcessInstance = workflowService.updateWorkflowStatus(request);
         producer.push(tenantId,config.getCreateTopic(),request);
-        producer.push(tenantId,config.getCreateTopicIndexer(),request);
+        producer.push(tenantId,config.getCreateTopicIndexer(),new IncidentRequestWrapper(request,updatedProcessInstance));
         return request;
     }
 
@@ -127,9 +129,9 @@ public class IMService {
         Object mdmsData = mdmsUtils.mDMSCall(request);
         validator.validateUpdate(request, mdmsData);
         enrichmentService.enrichUpdateRequest(request);
-        workflowService.updateWorkflowStatus(request);
+        ProcessInstance updatedProcessInstance = workflowService.updateWorkflowStatus(request);
         producer.push(tenantId,config.getUpdateTopic(),request);
-        producer.push(tenantId,config.getUpdateTopicIndexer(),request);
+        producer.push(tenantId,config.getUpdateTopicIndexer(),new IncidentRequestWrapper(request,updatedProcessInstance));
 
         return request;
     }

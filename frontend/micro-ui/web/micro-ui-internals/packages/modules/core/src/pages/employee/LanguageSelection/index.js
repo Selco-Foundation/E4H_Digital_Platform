@@ -1,28 +1,42 @@
 import { Card, CustomButton, SubmitBar } from "@selco/digit-ui-react-components";
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Redirect, useHistory } from "react-router-dom";
+import { Redirect, useHistory, useLocation } from "react-router-dom";
 import Background from "../../../components/Background";
 
 const LanguageSelection = () => {
   const { data: storeData, isLoading } = Digit.Hooks.useStore.getInitData();
   const { t } = useTranslation();
   const history = useHistory()
+  const location = useLocation()
+  const fromParam = new URLSearchParams(location.search).get('from');
   const { languages, stateInfo } = storeData || {};
   const selectedLanguage = Digit.StoreData.getCurrentLanguage();
   const [selected, setselected] = useState(selectedLanguage);
+
+  const logos = window?.globalConfigs?.getConfig("LOGO_LIST") || [];
+
   const handleChangeLanguage = (language) => {
     setselected(language.value);
     Digit.LocalizationService.changeLanguage(language.value, stateInfo.code);
   };
   const loginURL = `/${window.contextPath}/employee/user/login`
 
+  const getNavigationConfig = (from) => ({
+    pathname: loginURL,
+    search: fromParam ? `?from=${encodeURIComponent(fromParam)}` : "",
+  });
+
   const handleSubmit = (event) => {
-    history.push(loginURL)
+    history.push(getNavigationConfig(fromParam));
   };
 
-  if(languages?.length === 1) {
-    return <Redirect to={loginURL} />;
+  if (languages?.length === 1) {
+    return (
+      <Redirect
+        to={getNavigationConfig(fromParam)}
+      />
+    );
   }
 
   if (isLoading) return null;
@@ -64,24 +78,19 @@ const LanguageSelection = () => {
         </div>
         <SubmitBar style={{ width: "100%" }} label={t(`CORE_COMMON_CONTINUE`)} onSubmit={handleSubmit} />
         <div style={{ display: "flex", justifyContent: "center", marginTop: "10px" }}>
-          <img
-            className="bannerLogo"
-            src={window?.globalConfigs?.getConfig("STATE_NHM_LOGO")}
-            alt="Selco Foundation"
-            style={{ border: "0px", marginLeft: "15px" }}
-          />
-          <img
-            className="bannerLogo"
-            src={window?.globalConfigs?.getConfig("STATE_GOVT_LOGO")}
-            alt="Selco Foundation"
-            style={{ border: "0px" }}
-          />
-          <img
-            className="bannerLogo"
-            src={window?.globalConfigs?.getConfig("SELCO_LOGO")}
-            alt="Selco Foundation"
-            style={{ border: "0px" }}
-          />
+          {logos.map((logo, index) => (
+            <img
+              key={index}
+              className="bannerLogo"
+              src={logo.url}
+              alt={logo.alt}
+              style={{
+                border: "0px",
+                marginRight: "unset",
+                paddingRight: "unset",
+              }}
+            />
+          ))}
         </div>
       </Card>
       <div className="EmployeeLoginFooter">

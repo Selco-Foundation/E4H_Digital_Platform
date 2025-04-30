@@ -10,14 +10,16 @@ import { PGR_CITIZEN_CREATE_COMPLAINT } from "./constants/Citizen";
 import { useTranslation } from "react-i18next";
 import { LOCALE } from "./constants/Localization";
 import { ComplaintDetails } from "./pages/employee/ComplaintDetails";
+import ComplaintFeedback from "./pages/employee/ComplaintFeedback";
 import { CreateComplaint as CreateComplaintEmp } from "./pages/employee/CreateComplaint";
 import Inbox from "./pages/employee/Inbox";
 import ResponseEmp from "./pages/employee/Response";
+import SelectRating from "./pages/employee/Rating/SelectRating";
 
 import { CreateComplaint as CreateComplaintCitizen } from "./pages/citizen/Create";
 import { ComplaintsList } from "./pages/citizen/ComplaintsList";
 import ComplaintDetailsPage from "./pages/citizen/ComplaintDetails";
-import SelectRating from "./pages/citizen/Rating/SelectRating";
+// import SelectRating from "./pages/citizen/Rating/SelectRating";
 import ResponseCitizen from "./pages/citizen/Response";
 
 
@@ -67,6 +69,7 @@ const componentsToRegister = {
   IMLinks,
   IMCard,
   PGRComplaintDetails : ComplaintDetails,
+  PGRComplaintFeedback : ComplaintFeedback,
   PGRCreateComplaintEmp : CreateComplaintEmp,
   PGRInbox : Inbox,
   PGRResponseEmp : ResponseEmp,
