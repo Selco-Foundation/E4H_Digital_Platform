@@ -1,4 +1,5 @@
 import json
+import os
 from typing import Dict, Any, List, Optional
 
 import requests
@@ -7,9 +8,11 @@ from requests.exceptions import HTTPError, ConnectionError, Timeout, RequestExce
 from app.schemas.request_info import RequestInfo
 from app.core.logging import AppLogger
 
+from dotenv import load_dotenv
+load_dotenv()
+time_out = os.getenv("TIME_OUT")
+
 logger = AppLogger().get_logger()
-
-
 class BoundaryServiceClient:
     def __init__(self, boundary_service_url: str):
         self.boundary_service_url = boundary_service_url
@@ -21,7 +24,7 @@ class BoundaryServiceClient:
             "Boundary": boundary_data
         }
         try:
-            response = requests.post(url, json=payload)
+            response = requests.post(url, json=payload, timeout=time_out)
             response.raise_for_status()
             return response.json()
 
@@ -47,7 +50,7 @@ class BoundaryServiceClient:
         }
 
         try:
-            response = requests.post(url, headers=headers, json=payload)
+            response = requests.post(url, headers=headers, json=payload, timeout=time_out)
             response.raise_for_status()
             return response.json()
 
@@ -84,7 +87,7 @@ class BoundaryServiceClient:
         }
 
         try:
-            response = requests.post(url, headers=headers, json=payload)
+            response = requests.post(url, headers=headers, json=payload, timeout=time_out)
             response.raise_for_status()
             return response.json()
 

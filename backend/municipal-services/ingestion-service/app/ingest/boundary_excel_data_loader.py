@@ -36,15 +36,15 @@ class BoundaryExcelDataLoader(DataLoader):
 
         except Exception as e:
             logger.error(f"Error loading boundary data: {str(e)}")
-            return False
+            raise Exception("Failed to load boundary data from the provided file") from e
 
     def _preprocess_hierarchy(self):
         # Create BoundaryCode only for rows with all 4 values present
         has_all_values = (
-            self.boundary_df["Country"].str.strip().notna() &
-            self.boundary_df["State"].str.strip().notna() &
-            self.boundary_df["District"].str.strip().notna() &
-            self.boundary_df["Block"].str.strip().notna()
+            self.boundary_df["Country"].notna() & self.boundary_df["Country"].str.strip().ne('') &
+            self.boundary_df["State"].notna() & self.boundary_df["State"].str.strip().ne('') &
+            self.boundary_df["District"].notna() & self.boundary_df["District"].str.strip().ne('') &
+            self.boundary_df["Block"].notna() & self.boundary_df["Block"].str.strip().ne('')
         )
 
         # Initialize BoundaryCode column with empty strings

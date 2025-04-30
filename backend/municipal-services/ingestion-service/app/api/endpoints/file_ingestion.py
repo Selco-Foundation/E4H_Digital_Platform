@@ -21,9 +21,11 @@ router = APIRouter()
 logger = AppLogger().get_logger()
 
 from dotenv import load_dotenv
+
 load_dotenv()
 mdms_url = os.getenv("MDMS_URL")
 org_service_url = os.getenv("VENDOR_SERVICE_URL")
+
 
 @router.post('/ingest_vendors_excel',
              summary='Upload and process vendor Excel file with multiple sheets',
@@ -31,7 +33,8 @@ org_service_url = os.getenv("VENDOR_SERVICE_URL")
 async def upload_vendors_excel_sheet(
         vendor_file: UploadFile = File(description="Excel file containing vendor data and boundary codes"),
         vendor_sheet_name: str = Form(default="Vendor Input", description="Name of the sheet containing vendor data"),
-        boundary_sheet_name: str = Form(default="Boundary Code", description="Name of the sheet containing boundary codes"),
+        boundary_sheet_name: str = Form(default="Boundary Code",
+                                        description="Name of the sheet containing boundary codes"),
         request_info: str = Form(default="")
 ):
     input_temp_file = None
@@ -161,21 +164,21 @@ async def upload_boundaries_excel_sheet(
         request_info: str = Form(default="")
 ):
     input_temp_file = None
+    output_temp_file = None
     request_info = request_info_from_json(request_info)
     get_authorized_request_info(request_info)
 
     try:
-        input_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
-        content = await boundary_file.read()
-        input_temp_file.write(content)
-        input_temp_file.close()
-        boundary_file_path = input_temp_file.name
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as input_temp_file:
+            content = await boundary_file.read()
+            input_temp_file.write(content)
+            boundary_file_path = input_temp_file.name
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         output_filename = f"boundary_validation_results_{timestamp}.xlsx"
-        output_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
-        output_temp_file.close()
-        output_file_path = output_temp_file.name
+
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as output_temp_file:
+            output_file_path = output_temp_file.name
 
         with open(boundary_file_path, 'rb') as src, open(output_file_path, 'wb') as dst:
             dst.write(src.read())
@@ -199,8 +202,14 @@ async def upload_boundaries_excel_sheet(
 
     except Exception as e:
         logger.error(f"Error processing boundary data: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to process boundary data: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to process boundary data"
+        ) from e
+
 
     finally:
         if input_temp_file and os.path.exists(input_temp_file.name):
             os.unlink(input_temp_file.name)
+        if 'output_temp_file' in locals() and os.path.exists(output_temp_file.name):
+            os.unlink(output_temp_file.name)
