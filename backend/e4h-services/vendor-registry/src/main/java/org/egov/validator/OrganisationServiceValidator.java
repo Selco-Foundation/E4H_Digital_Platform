@@ -59,6 +59,10 @@ public class OrganisationServiceValidator {
         //validate organisation details against MDMS
         validateMDMSData(organisationList, requestInfo, organisationList.get(0).getTenantId(), errorMap);
 
+        //validate location - boundary code(s)
+        Map<String, List<String>> boundariesForValidation = getBoundaryForValidation(organisationList);
+        validateBoundary(boundariesForValidation, organisationList.get(0).getTenantId(), requestInfo);
+
         if (!errorMap.isEmpty())
             throw new CustomException(errorMap);
     }
@@ -273,6 +277,10 @@ public class OrganisationServiceValidator {
 
         //validate organisation details against MDMS
         validateMDMSData(organisationList, requestInfo, organisationList.get(0).getTenantId(), errorMap);
+
+        //validate location - boundary code(s)
+        Map<String, List<String>> boundariesForValidation = getBoundaryForValidation(organisationList);
+        validateBoundary(boundariesForValidation, organisationList.get(0).getTenantId(), requestInfo);
 
         if (!errorMap.isEmpty())
             throw new CustomException(errorMap);

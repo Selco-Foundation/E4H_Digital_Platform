@@ -2,7 +2,6 @@ from typing import Dict, Any
 
 import requests
 
-
 class OrganizationServiceClient:
     def __init__(self, org_service_url: str):
         self.org_service_url = org_service_url
