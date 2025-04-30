@@ -58,7 +58,7 @@ class _InstallationReportPageState extends State<InstallationReportPage> {
                       'View list of assigned health facilities, search for health facility and create installation report',
                 ),
                 ReportCard(
-                  onPress: () {},
+                  onPress: () => context.router.push(const InboxRoute()),
                   icon: Icons.toc,
                   heading: 'Inbox',
                   description: 'View reports that have been approved/rejected',
