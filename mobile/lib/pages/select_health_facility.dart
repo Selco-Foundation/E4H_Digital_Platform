@@ -79,9 +79,7 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
                           status: 'Pending Installation',
                           solutionDocPath: 'Allepy Solution Doc',
                         ),
-                        const SizedBox(
-                          height: spacer5,
-                        ),
+                        const SizedBox(height: spacer5),
                         InstallationReportCard(
                           onPress: () =>
                               context.router.push(const SelectAssetTypeRoute()),

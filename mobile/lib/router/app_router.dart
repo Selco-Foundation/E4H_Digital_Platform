@@ -8,6 +8,7 @@ import '../pages/download_status.dart';
 import '../pages/enter_otp.dart';
 import '../pages/forgot_password.dart';
 import '../pages/home.dart';
+import '../pages/inbox.dart';
 import '../pages/installation_report_home.dart';
 import '../pages/login.dart';
 import '../pages/media_upload.dart';
@@ -67,6 +68,7 @@ class AppRouter extends _$AppRouter {
                 path: Routes.overallAssetSummary),
             AutoRoute(
                 page: DownloadStatusRoute.page, path: Routes.downloadStatus),
+            AutoRoute(page: InboxRoute.page, path: Routes.inbox),
           ],
         ),
       ];
