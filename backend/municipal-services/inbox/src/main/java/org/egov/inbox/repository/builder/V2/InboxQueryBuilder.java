@@ -86,6 +86,19 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
             Map<String, Object> slaComparison = generateSLAComparison(System.currentTimeMillis());
             runTimeMappings.put("sla_comparison", slaComparison);
             baseEsQuery.put("runtime_mappings", runTimeMappings);
+
+            // Add must_not: isTerminateState == true
+            Map<String, Object> query = (Map<String, Object>) baseEsQuery.get("query");
+            Map<String, Object> boolClause = (Map<String, Object>) query.get("bool");
+
+            // Initialize must_not if not present
+            List<Map<String, Object>> mustNotClauseList = (List<Map<String, Object>>) boolClause.getOrDefault("must_not", new ArrayList<>());
+
+            Map<String, Object> termClause = new HashMap<>();
+            termClause.put("term", Collections.singletonMap("Data.currentProcessInstance.state.isTerminateState", true));
+            mustNotClauseList.add(termClause);
+
+            boolClause.put("must_not", mustNotClauseList);
         }
 
         return baseEsQuery;
@@ -359,11 +372,17 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
             ));
         }
 
-        esQuery.put("query",
-                Collections.singletonMap("bool",
-                        Collections.singletonMap("must", must)
-                )
-        );
+        Map<String, Object> boolQuery = new LinkedHashMap<>();
+        boolQuery.put("must", must);
+
+        // Add must_not clause to not add resolved
+        List<Map<String, Object>> mustNot = new ArrayList<>();
+        mustNot.add(Collections.singletonMap("term",
+                Collections.singletonMap("Data.currentProcessInstance.state.isTerminateState", true)
+        ));
+        boolQuery.put("must_not", mustNot);
+
+        esQuery.put("query", Collections.singletonMap("bool", boolQuery));
 
         // 5. _source filtering
         esQuery.put("_source", Arrays.asList(
