@@ -63,6 +63,12 @@ abstract class _$AppRouter extends RootStackRouter {
         child: const HomePage(),
       );
     },
+    InboxRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const InboxPage(),
+      );
+    },
     InstallationReportRoute.name: (routeData) {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
@@ -234,6 +240,20 @@ class HomeRoute extends PageRouteInfo<void> {
         );
 
   static const String name = 'HomeRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [InboxPage]
+class InboxRoute extends PageRouteInfo<void> {
+  const InboxRoute({List<PageRouteInfo>? children})
+      : super(
+          InboxRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'InboxRoute';
 
   static const PageInfo<void> page = PageInfo<void>(name);
 }
