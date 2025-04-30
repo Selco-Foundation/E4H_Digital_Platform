@@ -19,7 +19,12 @@ export const UserService = {
       },
     });
     const invalidRoles = window?.globalConfigs?.getConfig("INVALIDROLES") || [];
-    if (invalidRoles && invalidRoles.length > 0 && authResponse && authResponse?.UserRequest?.roles?.some((role) => invalidRoles.includes(role.code))) {
+    if (
+      invalidRoles &&
+      invalidRoles.length > 0 &&
+      authResponse &&
+      authResponse?.UserRequest?.roles?.some((role) => invalidRoles.includes(role.code))
+    ) {
       throw new Error("ES_ERROR_USER_NOT_PERMITTED");
     }
     return authResponse;
@@ -50,20 +55,19 @@ export const UserService = {
     return Digit.SessionStorage.get("Employee.tenantId");
   },
   logout: async () => {
-      const userType = UserService.getType();
-      try {
-        await UserService.logoutUser();
-      } catch (e) {
+    const userType = UserService.getType();
+    try {
+      await UserService.logoutUser();
+    } catch (e) {
+    } finally {
+      window.localStorage.clear();
+      window.sessionStorage.clear();
+      if (userType === "citizen") {
+        window.location.replace(`/${window.contextPath}/citizen`);
+      } else {
+        window.location.replace(`/${window.contextPath}/employee/user/language-selection`);
       }
-      finally{
-        window.localStorage.clear();
-        window.sessionStorage.clear();
-        if (userType === "citizen") {
-          window.location.replace(`/${window.contextPath}/citizen`);
-        } else {
-          window.location.replace(`/${window.contextPath}/employee/user/language-selection`);
-        }
-      }
+    }
   },
   sendOtp: (details, stateCode) =>
     ServiceRequest({
@@ -128,7 +132,6 @@ export const UserService = {
     });
   },
   userSearch: async (tenantId, data, filters) => {
-
     return ServiceRequest({
       url: Urls.UserSearch,
       params: { ...filters },

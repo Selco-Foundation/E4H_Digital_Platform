@@ -3,21 +3,21 @@ import html2canvas from "html2canvas";
 import XLSX from "xlsx";
 import domtoimage from "dom-to-image";
 
-const changeClasses=(class1,class2)=>{
-  var elements = document.getElementsByClassName(class1)
-  Array.prototype.map.call(elements, function(testElement){
+const changeClasses = (class1, class2) => {
+  var elements = document.getElementsByClassName(class1);
+  Array.prototype.map.call(elements, function (testElement) {
     testElement.classList.add(class2);
     testElement.classList.remove(class1);
   });
-}
+};
 
-const revertCss=()=>{
-  changeClasses("dss-white-pre-temp",'dss-white-pre-line');
-}
+const revertCss = () => {
+  changeClasses("dss-white-pre-temp", "dss-white-pre-line");
+};
 
-const applyCss=()=>{
-  changeClasses('dss-white-pre-line',"dss-white-pre-temp");
-}
+const applyCss = () => {
+  changeClasses("dss-white-pre-line", "dss-white-pre-temp");
+};
 
 const Download = {
   Image: (node, fileName, share, resolve = null) => {
@@ -49,21 +49,21 @@ const Download = {
   },
 
   Excel: (data, filename) => {
-    const file = filename.substring(0,30);
+    const file = filename.substring(0, 30);
     const wb = XLSX.utils.book_new();
     let ws = null;
-    ws = XLSX.utils.json_to_sheet(data)
-    const coulmncount= Object.keys(data[0]).length;
-    const uniformWidths={ wch: 20};
-    const coulmnWidths=new Array(coulmncount).fill(uniformWidths)
-    ws['!cols']= coulmnWidths;
-    const header=Object.keys(data[0]);
-    header.forEach((header, index)=>{
-      const cellAddress=XLSX.utils.encode_cell({c: index, r: 0});
-      if(!ws[cellAddress]) ws[cellAddress]={ t: 's', v:header};
-      ws[cellAddress].s={
-        font: { bold: true},
-      }
+    ws = XLSX.utils.json_to_sheet(data);
+    const coulmncount = Object.keys(data[0]).length;
+    const uniformWidths = { wch: 20 };
+    const coulmnWidths = new Array(coulmncount).fill(uniformWidths);
+    ws["!cols"] = coulmnWidths;
+    const header = Object.keys(data[0]);
+    header.forEach((header, index) => {
+      const cellAddress = XLSX.utils.encode_cell({ c: index, r: 0 });
+      if (!ws[cellAddress]) ws[cellAddress] = { t: "s", v: header };
+      ws[cellAddress].s = {
+        font: { bold: true },
+      };
     });
     wb.SheetNames.push(file);
     wb.Sheets[file] = ws;
@@ -71,11 +71,8 @@ const Download = {
   },
 
   PDF: (node, fileName, share, resolve = null) => {
-
-
-
     const saveAs = (uri, filename) => {
-      if(window.mSewaApp && window.mSewaApp.isMsewaApp()){
+      if (window.mSewaApp && window.mSewaApp.isMsewaApp()) {
         window.mSewaApp.downloadBase64File(uri, filename);
       }
       const link = document.createElement("a");
@@ -91,28 +88,29 @@ const Download = {
       }
     };
     const dataURItoBlob = (dataURI) => {
-      var binary = atob(dataURI.split(',')[1]);
+      var binary = atob(dataURI.split(",")[1]);
       var array = [];
       for (var i = 0; i < binary.length; i++) {
-          array.push(binary.charCodeAt(i));
+        array.push(binary.charCodeAt(i));
       }
-      return new Blob([new Uint8Array(array)], { type: 'image/jpeg' });
+      return new Blob([new Uint8Array(array)], { type: "image/jpeg" });
     };
-        changeClasses('dss-white-pre-line',"dss-white-pre-temp");
+    changeClasses("dss-white-pre-line", "dss-white-pre-temp");
 
-  applyCss();
+    applyCss();
     const element = ReactDOM.findDOMNode(node.current);
 
-
-    return domtoimage.toJpeg(element, {
-      quality: 1,
-      bgcolor: 'white',
-      filter:node=>!node?.className?.includes?.("divToBeHidden"),
-      style:{
-        margin:'25px'
-      }
-     }).then(function (dataUrl) {
-/*  to enable pdf
+    return domtoimage
+      .toJpeg(element, {
+        quality: 1,
+        bgcolor: "white",
+        filter: (node) => !node?.className?.includes?.("divToBeHidden"),
+        style: {
+          margin: "25px",
+        },
+      })
+      .then(function (dataUrl) {
+        /*  to enable pdf
     var htmlImage = new Image();
       htmlImage.src = dataUrl;
       var pdf = new jsPDF( 'l', 'pt', [element.offsetWidth, element.offsetHeight] );
@@ -123,18 +121,15 @@ const Download = {
       pdf.addImage?.( htmlImage, 25, 50, 50, element.offsetWidth, element.offsetHeight );
       pdf.save?.( fileName +'.pdf' );
       */
-            changeClasses("dss-white-pre-temp",'dss-white-pre-line');
+        changeClasses("dss-white-pre-temp", "dss-white-pre-line");
 
-     revertCss();
-     var blobData = dataURItoBlob(dataUrl);
-       revertCss();
-       return share
-       ? resolve(new File([blobData], `${fileName}.jpeg`, { type: "image/jpeg" }))
-       : saveAs(dataUrl, `${fileName}.jpeg`)
-        });
-    
+        revertCss();
+        var blobData = dataURItoBlob(dataUrl);
+        revertCss();
+        return share ? resolve(new File([blobData], `${fileName}.jpeg`, { type: "image/jpeg" })) : saveAs(dataUrl, `${fileName}.jpeg`);
+      });
 
-        /*
+    /*
     const getPDF = (canvas) => {
       const width = canvas.width;
       const height = canvas.height;
@@ -179,7 +174,7 @@ const Download = {
 
   IndividualChartImage: (node, fileName, share, resolve = null) => {
     const saveAs = (uri, filename) => {
-      if(window.mSewaApp && window.mSewaApp.isMsewaApp()){
+      if (window.mSewaApp && window.mSewaApp.isMsewaApp()) {
         window.mSewaApp.downloadBase64File(uri, filename);
       }
       const link = document.createElement("a");
@@ -195,26 +190,25 @@ const Download = {
       }
     };
     const dataURItoBlob = (dataURI) => {
-      var binary = atob(dataURI.split(',')[1]);
+      var binary = atob(dataURI.split(",")[1]);
       var array = [];
       for (var i = 0; i < binary.length; i++) {
-          array.push(binary.charCodeAt(i));
+        array.push(binary.charCodeAt(i));
       }
-      return new Blob([new Uint8Array(array)], { type: 'image/jpeg' });
+      return new Blob([new Uint8Array(array)], { type: "image/jpeg" });
     };
-    changeClasses('dss-white-pre-line',"dss-white-pre-temp");
+    changeClasses("dss-white-pre-line", "dss-white-pre-temp");
     const element = ReactDOM.findDOMNode(node.current);
-    return domtoimage.toJpeg(element, {
-      quality: 1,
-      bgcolor: 'white'
-     }).then(function (dataUrl) {
-       var blobData = dataURItoBlob(dataUrl);
-      changeClasses("dss-white-pre-temp",'dss-white-pre-line');
-       return share
-       ? resolve(new File([blobData], `${fileName}.jpeg`, { type: "image/jpeg" }))
-       : saveAs(dataUrl, `${fileName}.jpeg`)
-        });
-    
+    return domtoimage
+      .toJpeg(element, {
+        quality: 1,
+        bgcolor: "white",
+      })
+      .then(function (dataUrl) {
+        var blobData = dataURItoBlob(dataUrl);
+        changeClasses("dss-white-pre-temp", "dss-white-pre-line");
+        return share ? resolve(new File([blobData], `${fileName}.jpeg`, { type: "image/jpeg" })) : saveAs(dataUrl, `${fileName}.jpeg`);
+      });
   },
 };
 export default Download;

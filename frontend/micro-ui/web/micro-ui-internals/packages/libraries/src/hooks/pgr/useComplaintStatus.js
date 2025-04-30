@@ -5,21 +5,19 @@ const useComplaintStatus = () => {
   const { t } = useTranslation();
   const [complaintStatus, setComplaintStatus] = useState([]);
   const tenantId = Digit.ULBService.getCurrentTenantId();
-  let assignee="";
-  const appFilters=JSON.parse(sessionStorage.getItem("appFilters"));
- // const { limit, offset }=appFilters;
+
+  let assignee = "";
+  const appFilters = JSON.parse(sessionStorage.getItem("appFilters"));
   const { data, isLoading, isFetching, isSuccess } = Digit.Hooks.useNewInboxGeneral({
     tenantId: Digit.ULBService.getCurrentTenantId(),
     ModuleCode: "Incident",
     filters: { limit: 10, offset: 0, services: ["Incident"] },
     config: {
       select: (data) => {
-        return {data:data};
+        return { data: data };
       },
       enabled: Digit.Utils.pgrAccess(),
     },
-    
-    
   });
 
   useEffect(() => {
@@ -41,7 +39,6 @@ const useComplaintStatus = () => {
       setComplaintStatus(applicationStatus);
     })();
   }, [t, tenantId]);
-
   return complaintStatus;
 };
 export default useComplaintStatus;

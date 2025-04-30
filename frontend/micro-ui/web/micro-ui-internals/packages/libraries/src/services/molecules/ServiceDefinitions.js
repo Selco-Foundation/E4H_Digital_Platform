@@ -19,6 +19,7 @@ export const GetServiceDefinitions = {
         ],
       },
     };
+
     const serviceDefs = await MdmsService.getDataByCriteria(tenantId, criteria, "Incident");
     Storage.set("serviceDefinitions", serviceDefs);
     return serviceDefs;
