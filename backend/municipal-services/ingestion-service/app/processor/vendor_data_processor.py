@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Tuple, Optional
 
 import pandas as pd
 
@@ -17,64 +17,66 @@ class VendorDataProcessor:
         self.vendors = []
         self.validation_errors = []
 
-    def process_data(self) -> List[Vendor]:
-        """Process and validate vendor data"""
-        # Load data
+    def process_data(self) -> Tuple[List[Vendor], pd.DataFrame]:
         if not self.data_loader.load_data():
-            return []
+            return [], pd.DataFrame()
 
         if isinstance(self.data_loader, ExcelDataLoader):
             vendor_df = self.data_loader.get_vendor_data()
             print(vendor_df.head(2))
         else:
             print("Data loader is not compatible")
-            return []
+            return [], pd.DataFrame()
 
-        vendor_df["status"] = None
+        vendor_df["status"] = "success"
         vendor_df["error"] = ""
 
-        has_error = False
         for validator in self.validators:
             vendor_df = validator.validate(vendor_df)
-            if (vendor_df["status"] == "fail").any():
-                has_error = True
 
         self.validation_errors = []
         for idx, row in vendor_df[vendor_df["status"] == "fail"].iterrows():
             self.validation_errors.append({
                 'row': idx + 2,
-                'vendor_name': row.get('Vendor Name (Mandatory)', 'Unknown'),
-                'errors': [row.get('error', '')]
+                'vendor_name': row.get('Vendor Name', 'Unknown'),
+                'errors': [err for err in row.get('error', '').split(';') if err]
             })
-
-        # Write results back to Excel
         self.data_writer.write_data(vendor_df)
 
-        # Process valid vendors
         self.vendors = []
         for _, row in vendor_df[vendor_df["status"] != "fail"].iterrows():
             try:
-                vendor = Vendor(
-                    country_boundary_code=str(row.get('Country Boundary Code', '')).strip() if not pd.isna(
-                        row.get('Country Boundary Code', None)) else None,
-                    vendor_name=str(row.get('Vendor Name', '')).strip(),
-                    vendor_code=str(row.get('Vendor Code', '')).strip(),
-                    vendor_type=str(row.get('Vendor Type', '')).strip(),
-                    vendor_subtype=str(row.get('Vendor Subtype', '')).strip() if not pd.isna(
-                        row.get('Vendor Subtype', None)) else None,
-                    identifier_type=str(row.get('Identifier Type', '')).strip(),
-                    identifier_value=str(row.get('Identifier Value', '')).strip(),
-                    hq_address=str(row.get('HQ Address', '')).strip(),
-                    pincode=str(row.get('Pincode', '')).strip(),
-                    poc_phone=str(row.get('PoC Phone', '')).strip(),
-                    poc_name=str(row.get('PoC Name', '')).strip()
-                )
-                self.vendors.append(vendor)
+                vendor = self._create_vendor_from_row(row)
+                if vendor:
+                    self.vendors.append(vendor)
             except Exception as e:
                 print(f"Error creating vendor object: {e}")
+                vendor_df.at[_, "status"] = "fail"
+                vendor_df.at[_, "error"] = f"{vendor_df.at[_, 'error']};Exception: {str(e)}" if vendor_df.at[_, "error"] else f"Exception: {str(e)}"
 
         print(f"Processed {len(vendor_df)} vendors")
         print(f"Found {len(self.validation_errors)} vendors with validation errors")
         print(f"Successfully validated {len(self.vendors)} vendors")
 
-        return self.vendors
+        return self.vendors, vendor_df
+
+    def _create_vendor_from_row(self, row) -> Optional[Vendor]:
+        try:
+            return Vendor(
+                country_boundary_code=str(row.get('Country Boundary Code', '')).strip() if not pd.isna(
+                    row.get('Country Boundary Code', None)) else None,
+                vendor_name=str(row.get('Vendor Name', '')).strip(),
+                vendor_code=str(row.get('Vendor Code', '')).strip(),
+                vendor_type=str(row.get('Vendor Type', '')).strip(),
+                vendor_subtype=str(row.get('Vendor Subtype', '')).strip() if not pd.isna(
+                    row.get('Vendor Subtype', None)) else None,
+                identifier_type=str(row.get('Identifier Type', '')).strip(),
+                identifier_value=str(row.get('Identifier Value', '')).strip(),
+                hq_address=str(row.get('HQ Address', '')).strip(),
+                pincode=str(row.get('Pincode', '')).strip(),
+                poc_phone=str(row.get('PoC Phone', '')).strip(),
+                poc_name=str(row.get('PoC Name', '')).strip()
+            )
+        except Exception as e:
+            print(f"Error in vendor creation: {e}")
+            return None
