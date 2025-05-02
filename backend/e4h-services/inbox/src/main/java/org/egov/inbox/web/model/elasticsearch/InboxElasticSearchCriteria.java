@@ -1,12 +1,9 @@
 package org.egov.inbox.web.model.elasticsearch;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
-import org.egov.inbox.web.model.workflow.ProcessInstanceSearchCriteria;
-
-import javax.validation.constraints.Max;
-import javax.validation.constraints.NotNull;
-import java.util.HashMap;
 
 
 @Data

@@ -3,9 +3,9 @@ package org.egov.inbox.web.model.workflow;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
-import javax.validation.constraints.NotNull;
 import java.util.List;
 
 @Data
@@ -54,15 +54,6 @@ public class ProcessInstanceSearchCriteria {
     
     @JsonIgnore
     private Boolean isNearingSlaCount;
-
-
-    public Boolean isNull(){
-        if(this.getBusinessIds()==null && this.getIds()==null && this.getAssignee()==null &&
-                this.getStatus()==null)
-            return true;
-        else return false;
-    }
-
 
 
 }

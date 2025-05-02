@@ -19,7 +19,6 @@ import java.util.List;
 import java.util.Map;
 
 import static org.egov.inbox.util.PTConstants.*;
-import static org.egov.inbox.util.PTConstants.LIMIT_PARAM;
 
 @Slf4j
 @Service

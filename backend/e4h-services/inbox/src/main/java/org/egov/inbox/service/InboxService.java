@@ -1,35 +1,10 @@
 package org.egov.inbox.service;
 
-import static org.egov.inbox.util.BpaConstants.BPA;
-import static org.egov.inbox.util.BpaConstants.BPAREG;
-import static org.egov.inbox.util.BpaConstants.BPA_APPLICATION_NUMBER_PARAM;
-import static org.egov.inbox.util.BpaConstants.LOCALITY_PARAM;
-import static org.egov.inbox.util.BpaConstants.MOBILE_NUMBER_PARAM;
-import static org.egov.inbox.util.BpaConstants.OFFSET_PARAM;
-import static org.egov.inbox.util.BpaConstants.STATUS_ID;
-import static org.egov.inbox.util.BpaConstants.STATUS_PARAM;
-import static org.egov.inbox.util.DSSConstants.*;
-import static org.egov.inbox.util.FSMConstants.COUNT;
-import static org.egov.inbox.util.NocConstants.NOC;
-import static org.egov.inbox.util.NocConstants.NOC_APPLICATION_NUMBER_PARAM;
-import static org.egov.inbox.util.PTConstants.ACKNOWLEDGEMENT_IDS_PARAM;
-import static org.egov.inbox.util.PTConstants.PT;
-import static org.egov.inbox.util.TLConstants.APPLICATION_NUMBER_PARAM;
-import static org.egov.inbox.util.TLConstants.REQUESTINFO_PARAM;
-import static org.egov.inbox.util.TLConstants.SEARCH_CRITERIA_PARAM;
-import static org.egov.inbox.util.TLConstants.TENANT_ID_PARAM;
-import static org.egov.inbox.util.TLConstants.TL;
-import static org.egov.inbox.util.SWConstants.SW;
-import static org.egov.inbox.util.BSConstants.*;
-import static org.egov.inbox.util.WSConstants.WS;
-
-import java.util.*;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
-
-import static java.util.Objects.isNull;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.jayway.jsonpath.JsonPath;
+import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.common.contract.request.Role;
 import org.egov.inbox.config.InboxConfiguration;
@@ -59,11 +34,31 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.jayway.jsonpath.JsonPath;
+import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
-import lombok.extern.slf4j.Slf4j;
+import static java.util.Objects.isNull;
+import static org.egov.inbox.util.BSConstants.*;
+import static org.egov.inbox.util.BSConstants.ASSIGNEE_PARAM;
+import static org.egov.inbox.util.BpaConstants.*;
+import static org.egov.inbox.util.BpaConstants.LOCALITY_PARAM;
+import static org.egov.inbox.util.BpaConstants.MOBILE_NUMBER_PARAM;
+import static org.egov.inbox.util.BpaConstants.OFFSET_PARAM;
+import static org.egov.inbox.util.BpaConstants.STATUS_PARAM;
+import static org.egov.inbox.util.DSSConstants.ELASTICSEARCH_HIT_KEY;
+import static org.egov.inbox.util.FSMConstants.COUNT;
+import static org.egov.inbox.util.NocConstants.NOC;
+import static org.egov.inbox.util.NocConstants.NOC_APPLICATION_NUMBER_PARAM;
+import static org.egov.inbox.util.PTConstants.ACKNOWLEDGEMENT_IDS_PARAM;
+import static org.egov.inbox.util.PTConstants.PT;
+import static org.egov.inbox.util.SWConstants.SW;
+import static org.egov.inbox.util.TLConstants.*;
+import static org.egov.inbox.util.TLConstants.REQUESTINFO_PARAM;
+import static org.egov.inbox.util.TLConstants.SEARCH_CRITERIA_PARAM;
+import static org.egov.inbox.util.TLConstants.TENANT_ID_PARAM;
+import static org.egov.inbox.util.WSConstants.WS;
 
 @Slf4j
 @Service

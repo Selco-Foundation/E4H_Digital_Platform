@@ -1,29 +1,12 @@
 package org.egov.inbox.service;
 
-import static org.egov.inbox.util.TLConstants.APPLICATION_NUMBER_PARAM;
-import static org.egov.inbox.util.TLConstants.ASSIGNEE_PARAM;
-import static org.egov.inbox.util.TLConstants.LICENSE_NUMBER_PARAM;
-import static org.egov.inbox.util.TLConstants.LOCALITY_PARAM;
-import static org.egov.inbox.util.TLConstants.MOBILE_NUMBER_PARAM;
-import static org.egov.inbox.util.TLConstants.REQUESTINFO_PARAM;
-import static org.egov.inbox.util.TLConstants.SEARCH_CRITERIA_PARAM;
-import static org.egov.inbox.util.TLConstants.STATUS_PARAM;
-import static org.egov.inbox.util.TLConstants.TENANT_ID_PARAM;
-import static org.egov.inbox.util.TLConstants.USERID_PARAM;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-
-import org.apache.commons.lang3.StringUtils;
+import com.jayway.jsonpath.JsonPath;
+import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.inbox.repository.ServiceRequestRepository;
 import org.egov.inbox.util.FSMConstants;
 import org.egov.inbox.web.model.InboxSearchCriteria;
 import org.egov.inbox.web.model.workflow.ProcessInstanceSearchCriteria;
-import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -31,9 +14,12 @@ import org.springframework.util.CollectionUtils;
 import org.springframework.util.ObjectUtils;
 import org.springframework.web.client.RestTemplate;
 
-import com.jayway.jsonpath.JsonPath;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
-import lombok.extern.slf4j.Slf4j;
+import static org.egov.inbox.util.TLConstants.*;
 
 @Slf4j
 @Service

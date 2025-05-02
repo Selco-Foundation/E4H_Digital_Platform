@@ -1,9 +1,8 @@
 package org.egov.inbox.web.model.dss;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.Valid;
 import lombok.*;
-
-import javax.validation.Valid;
 
 @Builder
 @AllArgsConstructor
