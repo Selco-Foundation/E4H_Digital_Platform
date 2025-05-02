@@ -1,7 +1,7 @@
 package org.egov.inbox.repository.builder.V2;
 
-import java.util.*;
-
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.egov.inbox.util.ErrorConstants;
 import org.egov.inbox.util.MDMSUtil;
 import org.egov.inbox.web.model.InboxRequest;
@@ -17,9 +17,7 @@ import org.springframework.util.CollectionUtils;
 import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-import lombok.extern.slf4j.Slf4j;
+import java.util.*;
 
 import static org.egov.inbox.util.InboxConstants.*;
 

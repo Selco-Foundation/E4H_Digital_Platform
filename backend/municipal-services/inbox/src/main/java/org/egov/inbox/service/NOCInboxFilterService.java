@@ -1,29 +1,7 @@
 package org.egov.inbox.service;
 
-import static org.egov.inbox.util.NocConstants.ASSIGNEE_PARAM;
-import static org.egov.inbox.util.NocConstants.BUSINESS_SERVICE_PARAM;
-import static org.egov.inbox.util.NocConstants.CITIZEN;
-import static org.egov.inbox.util.NocConstants.DESC_PARAM;
-import static org.egov.inbox.util.NocConstants.LIMIT_PARAM;
-import static org.egov.inbox.util.NocConstants.LOCALITY_PARAM;
-import static org.egov.inbox.util.NocConstants.MOBILE_NUMBER_PARAM;
-import static org.egov.inbox.util.NocConstants.NOC_APPLICATION_NUMBER_PARAM;
-import static org.egov.inbox.util.NocConstants.NOC_SOURCE_APPLICATION_NUMBER_PARAM;
-import static org.egov.inbox.util.NocConstants.NOC_SOURCE_REF_ID_PARAM;
-import static org.egov.inbox.util.NocConstants.NO_OF_RECORDS_PARAM;
-import static org.egov.inbox.util.NocConstants.OFFSET_PARAM;
-import static org.egov.inbox.util.NocConstants.REQUESTINFO_PARAM;
-import static org.egov.inbox.util.NocConstants.SEARCH_CRITERIA_PARAM;
-import static org.egov.inbox.util.NocConstants.SORT_ORDER_PARAM;
-import static org.egov.inbox.util.NocConstants.STATUS_PARAM;
-import static org.egov.inbox.util.NocConstants.TENANT_ID_PARAM;
-import static org.egov.inbox.util.NocConstants.USERID_PARAM;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
+import com.jayway.jsonpath.JsonPath;
+import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.inbox.repository.ServiceRequestRepository;
 import org.egov.inbox.web.model.InboxSearchCriteria;
@@ -35,9 +13,12 @@ import org.springframework.util.CollectionUtils;
 import org.springframework.util.ObjectUtils;
 import org.springframework.web.client.RestTemplate;
 
-import com.jayway.jsonpath.JsonPath;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
-import lombok.extern.slf4j.Slf4j;
+import static org.egov.inbox.util.NocConstants.*;
 
 @Slf4j
 @Service

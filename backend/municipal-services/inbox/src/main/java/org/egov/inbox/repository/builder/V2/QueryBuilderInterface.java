@@ -2,10 +2,8 @@ package org.egov.inbox.repository.builder.V2;
 
 
 import org.egov.inbox.web.model.InboxRequest;
-import org.egov.inbox.web.model.V2.InboxQueryConfiguration;
 
 import java.util.Map;
-import java.util.Optional;
 
 public interface QueryBuilderInterface{
 

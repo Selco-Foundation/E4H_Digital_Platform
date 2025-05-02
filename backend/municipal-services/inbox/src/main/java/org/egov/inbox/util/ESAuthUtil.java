@@ -1,9 +1,8 @@
 package org.egov.inbox.util;
 
 import org.egov.inbox.config.InboxConfiguration;
-import org.springframework.stereotype.Component;
-
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import java.util.Base64;
 

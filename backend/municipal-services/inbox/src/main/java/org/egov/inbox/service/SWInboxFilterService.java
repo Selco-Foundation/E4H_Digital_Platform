@@ -19,8 +19,8 @@ import java.util.List;
 import java.util.Map;
 
 import static org.egov.inbox.util.SWConstants.*;
-import static org.egov.inbox.util.WSConstants.WS_ASSIGNEE_PARAM;
 import static org.egov.inbox.util.WSConstants.WS_APPLICATION_STATUS_PARAM;
+import static org.egov.inbox.util.WSConstants.WS_ASSIGNEE_PARAM;
 
 @Slf4j
 @Service

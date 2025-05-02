@@ -1,18 +1,15 @@
 package org.egov.inbox.web.model;
 
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import org.egov.common.contract.response.ResponseInfo;
-
 import com.fasterxml.jackson.annotation.JsonProperty;
-
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.egov.common.contract.response.ResponseInfo;
+
+import java.util.HashMap;
+import java.util.List;
 
 @Builder
 @Data
