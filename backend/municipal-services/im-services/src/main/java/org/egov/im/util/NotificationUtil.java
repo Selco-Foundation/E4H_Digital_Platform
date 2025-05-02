@@ -111,8 +111,26 @@ public class NotificationUtil {
 
         return message;
     }
-    
-    
+
+
+    public String getUrlByTenantId( String localizationMessage) {
+        String localizationCode = "IM_URL_SMS_MESSAGE";
+        String path = "$..messages[?(@.code==\"" + localizationCode + "\")].message";
+
+        String url = null;
+        try {
+            ArrayList<String> urlObj = JsonPath.parse(localizationMessage).read(path);
+            if (urlObj != null && !urlObj.isEmpty()) {
+                url = urlObj.get(0);
+            }
+        } catch (Exception e) {
+            log.warn("Fetching from localization failed for code: {}", localizationCode, e);
+        }
+
+        return url;
+    }
+
+
 
     /**
      *
