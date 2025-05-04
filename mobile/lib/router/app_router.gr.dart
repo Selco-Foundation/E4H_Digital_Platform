@@ -45,6 +45,12 @@ abstract class _$AppRouter extends RootStackRouter {
         child: const DownloadStatusPage(),
       );
     },
+    DraftRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const DraftPage(),
+      );
+    },
     EnterOtpRoute.name: (routeData) {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
@@ -216,6 +222,20 @@ class DownloadStatusRoute extends PageRouteInfo<void> {
         );
 
   static const String name = 'DownloadStatusRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [DraftPage]
+class DraftRoute extends PageRouteInfo<void> {
+  const DraftRoute({List<PageRouteInfo>? children})
+      : super(
+          DraftRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'DraftRoute';
 
   static const PageInfo<void> page = PageInfo<void>(name);
 }
