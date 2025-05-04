@@ -96,8 +96,8 @@ class _SelectAssetTypePageState extends State<SelectAssetTypePage> {
                               items: const [
                                 DropdownItem(
                                     name: 'Inverter', code: 'inverter'),
-                                DropdownItem(name: 'Battery', code: 'Battery'),
-                                DropdownItem(name: 'Panel', code: 'Panel'),
+                                DropdownItem(name: 'Battery', code: 'battery'),
+                                DropdownItem(name: 'Panel', code: 'panel'),
                               ],
                             ),
                           ),

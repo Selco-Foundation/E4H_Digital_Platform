@@ -66,10 +66,21 @@ class _InboxPageState extends State<InboxPage> {
                   children: [
                     Row(
                       children: [
-                        const Expanded(
+                        Expanded(
                           child: DigitSearchFormInput(
                             innerLabel: "Search Health Facility",
                             suffixIcon: Icons.search,
+                            iconColor: const Light().primary2,
+                            enableBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(spacer1),
+                              borderSide: BorderSide(
+                                  color: theme.colorTheme.text.secondary),
+                            ),
+                            focusBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(spacer1),
+                              borderSide: BorderSide(
+                                  color: theme.colorTheme.text.secondary),
+                            ),
                           ),
                         ),
                         Icon(
@@ -87,11 +98,19 @@ class _InboxPageState extends State<InboxPage> {
                 const SizedBox(height: spacer4),
                 InboxReportCard(
                     onPress: () =>
-                        context.router.push(const SelectAssetTypeRoute()),
+                        context.router.push(const InboxAssetSummaryRoute()),
                     title: 'Alkod',
                     dateAssigned: DateTime(2024, 1, 25),
                     status: 'Pending Installation'),
                 const SizedBox(height: spacer5),
+                InboxReportRejectedCard(
+                  title: 'Alkod',
+                  reason:
+                      "1. Battery S No Incorrect, None \n2. Battery S No Incorrect, Battery Sno Incorrect \n3. SYSTEM FUNCTIONALITY PARAMETERS, Record the Battery Voltage",
+                  status: 'Pending Approval',
+                  onPress: () =>
+                      context.router.push(const InboxAssetSummaryRoute()),
+                )
               ],
             ),
           )
@@ -130,12 +149,8 @@ class InboxReportCard extends StatelessWidget {
             style: textTheme.headingM
                 .copyWith(color: theme.colorTheme.primary.primary2),
           ),
-          const SizedBox(
-            height: spacer4,
-          ),
-          const DigitDivider(
-            dividerType: DividerType.small,
-          ),
+          const SizedBox(height: spacer4),
+          const DigitDivider(dividerType: DividerType.small),
           Row(
             children: [
               Column(
@@ -185,5 +200,105 @@ class InboxReportCard extends StatelessWidget {
         ],
       )
     ]);
+  }
+}
+
+class InboxReportRejectedCard extends StatelessWidget {
+  final String? title;
+  final String? status;
+  final String? reason;
+  final Function() onPress;
+
+  const InboxReportRejectedCard({
+    super.key,
+    this.title,
+    this.status,
+    this.reason,
+    required this.onPress,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final textTheme = theme.digitTextTheme(context);
+
+    return DigitCard(
+      children: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title!,
+              style: textTheme.headingM
+                  .copyWith(color: theme.colorTheme.primary.primary2),
+            ),
+            const SizedBox(height: spacer4),
+            const DigitDivider(dividerType: DividerType.small),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  flex: 1,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: spacer4),
+                      Text(
+                        'Status',
+                        style: textTheme.headingS
+                            .copyWith(color: theme.colorTheme.text.primary),
+                      ),
+                      const SizedBox(height: spacer4),
+                      Text(
+                        'Rejection Reason',
+                        style: textTheme.headingS
+                            .copyWith(color: theme.colorTheme.text.primary),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: spacer12),
+                Expanded(
+                  flex: 2,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: spacer4),
+                      Text(
+                        status ?? '',
+                        style: textTheme.bodyL
+                            .copyWith(color: theme.colorTheme.text.primary),
+                      ),
+                      const SizedBox(height: spacer4),
+                      Text(
+                        reason ?? '',
+                        style: textTheme.bodyL
+                            .copyWith(color: theme.colorTheme.text.primary),
+                        softWrap: true,
+                        overflow: TextOverflow.visible,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: spacer8),
+            DigitButton(
+                mainAxisSize: MainAxisSize.max,
+                label: 'Edit Asset Data',
+                onPressed: onPress,
+                type: DigitButtonType.primary,
+                size: DigitButtonSize.large),
+            const SizedBox(height: spacer4),
+            DigitButton(
+                mainAxisSize: MainAxisSize.max,
+                label: 'Re-Submit for Approval',
+                onPressed: onPress,
+                type: DigitButtonType.secondary,
+                size: DigitButtonSize.large),
+          ],
+        ),
+      ],
+    );
   }
 }

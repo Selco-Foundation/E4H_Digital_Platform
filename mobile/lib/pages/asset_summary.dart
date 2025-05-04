@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../blocs/asset_type/asset_type.dart';
+import '../blocs/report_type/report_type.dart';
 import '../router/app_router.dart';
 import '../utils/i18_key_constants.dart' as i18;
 import '../widgets/button/footer_button.dart';
@@ -47,11 +48,19 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
           body: ScrollableContent(
             enableFixedDigitButton: true,
             backgroundColor: theme.colorTheme.generic.background,
-            footer: FooterButton(
-              showSuffixIcon: false,
-              text: i18.common.coreCommonSave,
-              onPress: () {
-                context.router.push(const DataSaveSuccessRoute());
+            footer: BlocBuilder<ReportTypeBloc, ReportTypeState>(
+              builder: (context, state) {
+                if (state is ReportTypeInbox) {
+                  return const SizedBox.shrink();
+                } else {
+                  return FooterButton(
+                    showSuffixIcon: false,
+                    text: i18.common.coreCommonSave,
+                    onPress: () {
+                      context.router.push(const DataSaveSuccessRoute());
+                    },
+                  );
+                }
               },
             ),
             children: [

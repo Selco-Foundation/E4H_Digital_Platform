@@ -9,6 +9,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:isar/isar.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:selco/blocs/report_type/report_type.dart';
 
 import 'blocs/app_bloc_observer.dart';
 import 'blocs/asset_type/asset_type.dart';
@@ -91,6 +92,7 @@ class _MainAppState extends State<MainApp> {
       child: MultiBlocProvider(
         providers: [
           BlocProvider(create: (context) => AssetTypeBloc()),
+          BlocProvider(create: (context) => ReportTypeBloc()),
         ],
         child: Builder(
           builder: (BuildContext context) {

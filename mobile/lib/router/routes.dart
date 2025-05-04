@@ -17,4 +17,5 @@ class Routes {
   static const overallAssetSummary = 'overall-asset-summary';
   static const downloadStatus = 'download-status';
   static const inbox = 'inbox';
+  static const inboxAssetSummary = 'inbox-asset-summary';
 }
