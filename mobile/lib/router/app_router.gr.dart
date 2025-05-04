@@ -51,6 +51,12 @@ abstract class _$AppRouter extends RootStackRouter {
         child: const DraftPage(),
       );
     },
+    DraftSummaryRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const DraftSummaryPage(),
+      );
+    },
     EnterOtpRoute.name: (routeData) {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
@@ -236,6 +242,20 @@ class DraftRoute extends PageRouteInfo<void> {
         );
 
   static const String name = 'DraftRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [DraftSummaryPage]
+class DraftSummaryRoute extends PageRouteInfo<void> {
+  const DraftSummaryRoute({List<PageRouteInfo>? children})
+      : super(
+          DraftSummaryRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'DraftSummaryRoute';
 
   static const PageInfo<void> page = PageInfo<void>(name);
 }

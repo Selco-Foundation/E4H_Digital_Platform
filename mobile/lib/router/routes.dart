@@ -21,4 +21,5 @@ class Routes {
   static const submitForApproval = 'submit-for-approval';
   static const submittedSaveSuccess = 'submitted-save-success';
   static const draft = 'draft';
+  static const draftSummary = 'draft-summary';
 }
