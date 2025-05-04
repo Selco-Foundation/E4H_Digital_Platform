@@ -18,6 +18,8 @@ import '../pages/select_asset_type.dart';
 import '../pages/select_health_facility.dart';
 import '../pages/setup_new_password.dart';
 import '../pages/specification.dart';
+import '../pages/submit_for_approval.dart';
+import '../pages/submitted_save_success.dart';
 import '../pages/unauthenticated.dart';
 import '../pages/welcome.dart';
 import '../router/routes.dart';
@@ -73,6 +75,12 @@ class AppRouter extends _$AppRouter {
             AutoRoute(
                 page: InboxAssetSummaryRoute.page,
                 path: Routes.inboxAssetSummary),
+            AutoRoute(
+                page: SubmitForApprovalRoute.page,
+                path: Routes.submitForApproval),
+            AutoRoute(
+                page: SubmittedSaveSuccessRoute.page,
+                path: Routes.submittedSaveSuccess)
           ],
         ),
       ];

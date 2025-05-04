@@ -18,4 +18,6 @@ class Routes {
   static const downloadStatus = 'download-status';
   static const inbox = 'inbox';
   static const inboxAssetSummary = 'inbox-asset-summary';
+  static const submitForApproval = 'submit-for-approval';
+  static const submittedSaveSuccess = 'submitted-save-success';
 }
