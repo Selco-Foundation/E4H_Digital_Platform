@@ -123,6 +123,18 @@ abstract class _$AppRouter extends RootStackRouter {
         child: const SpecificationPage(),
       );
     },
+    SubmitForApprovalRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const SubmitForApprovalPage(),
+      );
+    },
+    SubmittedSaveSuccessRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const SubmittedSaveSuccessPage(),
+      );
+    },
     UnauthenticatedRouteWrapper.name: (routeData) {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
@@ -386,6 +398,34 @@ class SpecificationRoute extends PageRouteInfo<void> {
         );
 
   static const String name = 'SpecificationRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [SubmitForApprovalPage]
+class SubmitForApprovalRoute extends PageRouteInfo<void> {
+  const SubmitForApprovalRoute({List<PageRouteInfo>? children})
+      : super(
+          SubmitForApprovalRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'SubmitForApprovalRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [SubmittedSaveSuccessPage]
+class SubmittedSaveSuccessRoute extends PageRouteInfo<void> {
+  const SubmittedSaveSuccessRoute({List<PageRouteInfo>? children})
+      : super(
+          SubmittedSaveSuccessRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'SubmittedSaveSuccessRoute';
 
   static const PageInfo<void> page = PageInfo<void>(name);
 }

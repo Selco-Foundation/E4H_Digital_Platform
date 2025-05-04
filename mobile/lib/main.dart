@@ -9,6 +9,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:isar/isar.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:selco/blocs/inbox_type/inbox_type.dart';
 import 'package:selco/blocs/report_type/report_type.dart';
 
 import 'blocs/app_bloc_observer.dart';
@@ -93,6 +94,7 @@ class _MainAppState extends State<MainApp> {
         providers: [
           BlocProvider(create: (context) => AssetTypeBloc()),
           BlocProvider(create: (context) => ReportTypeBloc()),
+          BlocProvider(create: (context) => InboxTypeBloc()),
         ],
         child: Builder(
           builder: (BuildContext context) {
