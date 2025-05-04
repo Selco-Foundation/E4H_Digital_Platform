@@ -70,13 +70,15 @@ class _InstallationReportPageState extends State<InstallationReportPage> {
                         .add(const ReportTypeEvent.typeSelected("inbox"));
                     context.router.push(const InboxRoute());
                   },
+                  badgeCount: 2,
                   icon: Icons.toc,
                   heading: 'Inbox',
                   description: 'View reports that have been approved/rejected',
                 ),
                 ReportCard(
-                  onPress: () {},
+                  onPress: () => context.router.push(const DraftRoute()),
                   icon: Icons.assignment_late,
+                  badgeCount: 0,
                   heading: 'Submitted Reports',
                   description: 'View reports that have been submitted',
                 ),
@@ -93,6 +95,7 @@ class ReportCard extends StatelessWidget {
   final IconData icon;
   final String heading;
   final String description;
+  final int? badgeCount;
   final Function() onPress;
 
   const ReportCard({
@@ -100,6 +103,7 @@ class ReportCard extends StatelessWidget {
     required this.icon,
     required this.heading,
     required this.description,
+    this.badgeCount = 5,
     required this.onPress,
   });
 
@@ -134,18 +138,19 @@ class ReportCard extends StatelessWidget {
                       ),
                     ),
                     const Spacer(),
-                    badges.Badge(
-                      badgeStyle: badges.BadgeStyle(
-                        shape: badges.BadgeShape.square,
-                        badgeColor: theme.colorTheme.alert.error,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: spacer3, vertical: spacer1),
-                        borderRadius: BorderRadius.circular(20),
+                    if (badgeCount! > 0)
+                      badges.Badge(
+                        badgeStyle: badges.BadgeStyle(
+                          shape: badges.BadgeShape.square,
+                          badgeColor: theme.colorTheme.alert.error,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: spacer3, vertical: spacer1),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        badgeContent: Text("$badgeCount",
+                            style: textTheme.bodyS.copyWith(
+                                color: theme.colorTheme.paper.primary)),
                       ),
-                      badgeContent: Text('05',
-                          style: textTheme.bodyS
-                              .copyWith(color: theme.colorTheme.paper.primary)),
-                    ),
                   ],
                 ),
                 const SizedBox(height: spacer3),
