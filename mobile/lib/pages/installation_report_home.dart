@@ -3,7 +3,9 @@ import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../blocs/report_type/report_type.dart';
 import '../router/app_router.dart';
 import '../widgets/header/back_navigation_help_header.dart';
 import '../widgets/navigation/navbar.dart';
@@ -50,15 +52,24 @@ class _InstallationReportPageState extends State<InstallationReportPage> {
                 ),
                 const SizedBox(height: spacer4),
                 ReportCard(
-                  onPress: () =>
-                      context.router.push(const SelectHealthFacilityRoute()),
+                  onPress: () {
+                    context
+                        .read<ReportTypeBloc>()
+                        .add(const ReportTypeEvent.typeSelected("new-report"));
+                    context.router.push(const SelectHealthFacilityRoute());
+                  },
                   icon: Icons.add_box_outlined,
                   heading: 'New Report',
                   description:
                       'View list of assigned health facilities, search for health facility and create installation report',
                 ),
                 ReportCard(
-                  onPress: () => context.router.push(const InboxRoute()),
+                  onPress: () {
+                    context
+                        .read<ReportTypeBloc>()
+                        .add(const ReportTypeEvent.typeSelected("inbox"));
+                    context.router.push(const InboxRoute());
+                  },
                   icon: Icons.toc,
                   heading: 'Inbox',
                   description: 'View reports that have been approved/rejected',
