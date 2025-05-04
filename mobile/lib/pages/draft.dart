@@ -52,13 +52,15 @@ class _DraftPageState extends State<DraftPage> {
                 ),
                 const SizedBox(height: spacer4),
                 InboxReportCard(
-                    onPress: () {},
+                    onPress: () =>
+                        context.router.push(const DraftSummaryRoute()),
                     title: 'Alkod',
                     dateAssigned: DateTime(2024, 1, 25),
                     status: 'Pending Installation'),
                 const SizedBox(height: spacer6),
                 InboxReportCard(
-                    onPress: () {},
+                    onPress: () =>
+                        context.router.push(const DraftSummaryRoute()),
                     title: 'Alkod',
                     dateAssigned: DateTime(2024, 1, 25),
                     status: 'Pending Installation')
