@@ -1,6 +1,5 @@
 import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
-import 'package:digit_ui_components/widgets/atoms/digit_divider.dart';
 import 'package:digit_ui_components/widgets/atoms/upload_drag.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:flutter/material.dart';
@@ -8,6 +7,7 @@ import 'package:flutter/material.dart';
 import '../router/app_router.dart';
 import '../utils/i18_key_constants.dart' as i18;
 import '../widgets/button/footer_button.dart';
+import '../widgets/cards/element_asset_summary.dart';
 import '../widgets/header/back_navigation_help_header.dart';
 import '../widgets/navigation/navbar.dart';
 
@@ -73,9 +73,7 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                           size: DigitButtonSize.medium),
                     ],
                   ),
-                  const SizedBox(
-                    height: spacer4,
-                  ),
+                  const SizedBox(height: spacer4),
                   DigitCard(children: [
                     Text(
                       'Installation Completion Report',
@@ -110,66 +108,5 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
             )
           ],
         ));
-  }
-}
-
-class ElementAssetSummary extends StatelessWidget {
-  final String type;
-  final String text;
-  final int count;
-
-  const ElementAssetSummary({
-    super.key,
-    required this.type,
-    required this.text,
-    required this.count,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final textTheme = theme.digitTextTheme(context);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: [
-            Flexible(
-              child: Text(
-                'Total $text\ninstalled',
-                style: textTheme.headingS,
-              ),
-            ),
-            const SizedBox(
-              width: spacer6 * 3,
-            ),
-            Text(
-              '$count',
-              style: textTheme.bodyL,
-            ),
-          ],
-        ),
-        const SizedBox(height: spacer2),
-        if (count > 0)
-          Column(
-            children: [
-              DigitButton(
-                mainAxisSize: MainAxisSize.max,
-                label: 'View $type Summary',
-                type: DigitButtonType.secondary,
-                size: DigitButtonSize.medium,
-                onPressed: () {
-                  // context.router.replace(const EnterOtpRoute());
-                },
-              ),
-              const SizedBox(height: spacer2),
-            ],
-          ),
-        const SizedBox(height: spacer2),
-        const DigitDivider(dividerType: DividerType.small),
-      ],
-    );
   }
 }
