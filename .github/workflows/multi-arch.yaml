@@ -1,0 +1,120 @@
+name: Multi Arch Image Build Pipeline
+on:
+  push:
+    branches:
+      - develop
+      - main
+  workflow_dispatch:
+    inputs:
+      service_folder:
+        description: 'Folder prefix for the service'
+        required: true
+        type: choice
+        options:
+          - /backend/core-services/
+          - /backend/e4h-services/
+          - /backend/municipal-services/
+          - /frontend/
+        default: /backend/core-services/
+      service:
+        description: 'Name of the service to build and deploy'
+        required: true
+        type: choice
+        options:
+          - "boundary-service"
+          - "egov-filestore"
+          - "egov-idgen"
+          - "egov-mdms-service-v2"
+          - "egov-notification-sms"
+          - "egov-workflow-v2"
+          - "egov-hrms"
+          - "im-services"
+          - "im-services-analytics"
+          - "inbox"
+          - "processor-services"
+          - "vendor-registry"
+        default: "egov-filestore"
+
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      # Using matrix for potential future expansion. For now, it runs a single service.
+      matrix:
+        service: [ "${{ github.event.inputs.service }}" ]
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Cache Docker Layers
+        uses: actions/cache@v3
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ matrix.service }}-${{ github.ref_name }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ vars.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Set Version from Tag or Branch
+        id: set_version
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/}  # Use tag name for version
+          elif [[ "${GITHUB_REF}" == refs/heads/* ]]; then
+            # Use branch name as version, replacing '/' with '-'
+            VERSION=${GITHUB_REF#refs/heads/}
+            VERSION=$(echo "${VERSION}" | sed 's|/|-|g')
+          else
+            VERSION="latest"  # Default version if not a tag or branch
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Git commit_hash for service
+        run: |
+          commit_hash=$(git log -1 --pretty=format:%H -- frontend/micro-ui)
+          echo "commit_hash=$commit_hash" >> $GITHUB_ENV
+
+      - name: Build and Push Application Docker Image
+        id: build_push_docker
+        uses: docker/build-push-action@v5
+        with:
+          platforms: linux/amd64,linux/arm64
+          context: .
+          file: build-arch/maven/Dockerfile
+          push: true
+          tags: |
+            ${{ vars.DOCKER_USERNAME }}/${{ matrix.service }}:${{ env.VERSION }}-${{ env.commit_hash }}
+          build-args: |
+            WORK_DIR=${{ github.event.inputs.service_folder }}/${{ matrix.service }}
+
+      - name: Check if DB folder exists
+        id: check-db-folder
+        run: |
+          FOLDER_PATH="${{ github.event.inputs.service_folder }}/${{ matrix.service }}/src/main/resources/db"
+          if [ -d "$FOLDER_PATH" ]; then
+            echo "folder_exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "folder_exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build and Push Database Docker Image
+        if: ${{ steps.check-db-folder.outputs.folder_exists == 'true' }}
+        id: build_push_db_docker
+        uses: docker/build-push-action@v5
+        with:
+          platforms: linux/amd64,linux/arm64
+          context: ${{ github.event.inputs.service_folder }}/${{ matrix.service }}/src/main/resources/db
+          file: ${{ github.event.inputs.service_folder }}/${{ matrix.service }}/src/main/resources/db/Dockerfile
+          push: true
+          tags: |
+            ${{ vars.DOCKER_USERNAME }}/${{ matrix.service }}-db:${{ env.VERSION }}-${{ env.commit_hash }}
