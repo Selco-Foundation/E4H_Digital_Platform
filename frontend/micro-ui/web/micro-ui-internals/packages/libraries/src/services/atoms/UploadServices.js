@@ -24,9 +24,9 @@ export const UploadServices = {
     filesArray?.forEach((fileData, index) => (fileData ? formData.append("file", fileData, fileData.name) : null));
     formData.append("tenantId", tenantId);
     formData.append("module", module);
+    let tenantInfo = window?.globalConfigs?.getConfig("ENABLE_SINGLEINSTANCE") ? `?tenantId=${tenantId}` : "";
     const url = isVideo ? `${Urls.VideoFileUpload}${tenantInfo}` : `${Urls.FileStore}${tenantInfo}`;
     const token = Digit.UserService.getUser().access_token;
-    let tenantInfo = window?.globalConfigs?.getConfig("ENABLE_SINGLEINSTANCE") ? `?tenantId=${tenantId}` : "";
     var config = {
       method: "post",
       url: url,
