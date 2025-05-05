@@ -1,0 +1,147 @@
+package org.egov.asset.web.controllers;
+
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
+import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.servlet.http.HttpServletRequest;
+import org.egov.asset.web.models.*;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.*;
+import javax.validation.Valid;
+import java.io.IOException;
+
+@jakarta.annotation.Generated(value = "org.egov.codegen.SpringBootCodegen", date = "2025-05-05T14:19:51.673231117+05:30[Asia/Kolkata]")
+@Controller
+@RequestMapping("")
+public class V1ApiController {
+
+    private final ObjectMapper objectMapper;
+
+    private final HttpServletRequest request;
+
+    @Autowired
+    public V1ApiController(ObjectMapper objectMapper, HttpServletRequest request) {
+        this.objectMapper = objectMapper;
+        this.request = request;
+    }
+
+    @RequestMapping(value = "/v1/asset/bulk/_create", method = RequestMethod.POST)
+    public ResponseEntity<BulkAssetCreateResponse> bulkCreateAsset(@Parameter(in = ParameterIn.DEFAULT, description = "Asset data to be added to the registry", required = true, schema = @Schema()) @Valid @RequestBody BulkAssetCreateRequest body) {
+        String accept = request.getHeader("Accept");
+        if (accept != null && accept.contains("application/json")) {
+            try {
+                return new ResponseEntity<BulkAssetCreateResponse>(objectMapper.readValue("{  \"ResponseInfo\" : \"{}\",  \"assets\" : \"\"}", BulkAssetCreateResponse.class), HttpStatus.NOT_IMPLEMENTED);
+            } catch (IOException e) {
+                return new ResponseEntity<BulkAssetCreateResponse>(HttpStatus.INTERNAL_SERVER_ERROR);
+            }
+        }
+
+        return new ResponseEntity<BulkAssetCreateResponse>(HttpStatus.NOT_IMPLEMENTED);
+    }
+
+    @RequestMapping(value = "/v1/asset/amc/visit/_create", method = RequestMethod.POST)
+    public ResponseEntity<Void> createAMCVisit(@Parameter(in = ParameterIn.DEFAULT, description = "AMC visit details to be logged", required = true, schema = @Schema()) @Valid @RequestBody AssetAMCVisitRequest body) {
+        String accept = request.getHeader("Accept");
+        return new ResponseEntity<Void>(HttpStatus.NOT_IMPLEMENTED);
+    }
+
+    @RequestMapping(value = "/v1/asset/_create", method = RequestMethod.POST)
+    public ResponseEntity<AssetCreateUpdateResponse> createAsset() {
+        String accept = request.getHeader("Accept");
+        if (accept != null && accept.contains("application/json")) {
+            try {
+                return new ResponseEntity<AssetCreateUpdateResponse>(objectMapper.readValue("\"{}\"", AssetCreateUpdateResponse.class), HttpStatus.NOT_IMPLEMENTED);
+            } catch (IOException e) {
+                return new ResponseEntity<AssetCreateUpdateResponse>(HttpStatus.INTERNAL_SERVER_ERROR);
+            }
+        }
+
+        return new ResponseEntity<AssetCreateUpdateResponse>(HttpStatus.NOT_IMPLEMENTED);
+    }
+
+    @RequestMapping(value = "/v1/asset/amc/_create", method = RequestMethod.POST)
+    public ResponseEntity<Void> createAssetAMC(@Parameter(in = ParameterIn.DEFAULT, description = "AMC contract details and visit history", required = true, schema = @Schema()) @Valid @RequestBody AssetAMCRequest body) {
+        String accept = request.getHeader("Accept");
+        return new ResponseEntity<Void>(HttpStatus.NOT_IMPLEMENTED);
+    }
+
+    @RequestMapping(value = "/v1/asset/amc/visit/_search", method = RequestMethod.GET)
+    public ResponseEntity<Object> searchAMCVisits(@Parameter(in = ParameterIn.QUERY, description = "", schema = @Schema()) @Valid @RequestParam(value = "assetID", required = false) Object assetID, @Parameter(in = ParameterIn.QUERY, description = "", schema = @Schema()) @Valid @RequestParam(value = "facilityID", required = false) Object facilityID, @Parameter(in = ParameterIn.QUERY, description = "", schema = @Schema()) @Valid @RequestParam(value = "visitDate", required = false) Object visitDate) {
+        String accept = request.getHeader("Accept");
+        if (accept != null && accept.contains("application/json")) {
+            try {
+                return new ResponseEntity<Object>(objectMapper.readValue("\"\"", Object.class), HttpStatus.NOT_IMPLEMENTED);
+            } catch (IOException e) {
+                return new ResponseEntity<Object>(HttpStatus.INTERNAL_SERVER_ERROR);
+            }
+        }
+
+        return new ResponseEntity<Object>(HttpStatus.NOT_IMPLEMENTED);
+    }
+
+    @RequestMapping(value = "/v1/asset/amc/_search", method = RequestMethod.GET)
+    public ResponseEntity<Object> searchAssetAMC(@Parameter(in = ParameterIn.QUERY, description = "Filter AMC records for a specific asset", schema = @Schema()) @Valid @RequestParam(value = "assetID", required = false) Object assetID, @Parameter(in = ParameterIn.QUERY, description = "Filter by AMC contract number", schema = @Schema()) @Valid @RequestParam(value = "contractNumber", required = false) Object contractNumber) {
+        String accept = request.getHeader("Accept");
+        if (accept != null && accept.contains("application/json")) {
+            try {
+                return new ResponseEntity<Object>(objectMapper.readValue("\"\"", Object.class), HttpStatus.NOT_IMPLEMENTED);
+            } catch (IOException e) {
+                return new ResponseEntity<Object>(HttpStatus.INTERNAL_SERVER_ERROR);
+            }
+        }
+
+        return new ResponseEntity<Object>(HttpStatus.NOT_IMPLEMENTED);
+    }
+
+    @RequestMapping(value = "/v1/asset/_search", method = RequestMethod.GET)
+    public ResponseEntity<Object> searchAssets(@Parameter(in = ParameterIn.DEFAULT, description = "Asset data to be searched for", required = true, schema = @Schema()) @Valid @RequestBody AssetSearchRequest body) {
+        String accept = request.getHeader("Accept");
+        if (accept != null && accept.contains("application/json")) {
+            try {
+                return new ResponseEntity<Object>(objectMapper.readValue("\"\"", Object.class), HttpStatus.NOT_IMPLEMENTED);
+            } catch (IOException e) {
+                return new ResponseEntity<Object>(HttpStatus.INTERNAL_SERVER_ERROR);
+            }
+        }
+
+        return new ResponseEntity<Object>(HttpStatus.NOT_IMPLEMENTED);
+    }
+
+    @RequestMapping(value = "/v1/asset/amc/visit/_update", method = RequestMethod.POST)
+    public ResponseEntity<Void> updateAMCVisit(@Parameter(in = ParameterIn.DEFAULT, description = "Updated AMC visit information", required = true, schema = @Schema()) @Valid @RequestBody AssetAMCVisitRequest body, @Parameter(in = ParameterIn.PATH, description = "Unique identifier of the AMC visit record", required = true, schema = @Schema()) @PathVariable("visitID") Object visitID) {
+        String accept = request.getHeader("Accept");
+        return new ResponseEntity<Void>(HttpStatus.NOT_IMPLEMENTED);
+    }
+
+    @RequestMapping(value = "/v1/asset/_update", method = RequestMethod.POST)
+    public ResponseEntity<AssetCreateUpdateResponse> updateAsset() {
+        String accept = request.getHeader("Accept");
+        if (accept != null && accept.contains("application/json")) {
+            try {
+                return new ResponseEntity<AssetCreateUpdateResponse>(objectMapper.readValue("\"{}\"", AssetCreateUpdateResponse.class), HttpStatus.NOT_IMPLEMENTED);
+            } catch (IOException e) {
+                return new ResponseEntity<AssetCreateUpdateResponse>(HttpStatus.INTERNAL_SERVER_ERROR);
+            }
+        }
+
+        return new ResponseEntity<AssetCreateUpdateResponse>(HttpStatus.NOT_IMPLEMENTED);
+    }
+
+    @RequestMapping(value = "/v1/asset/amc/_update", method = RequestMethod.POST)
+    public ResponseEntity<Void> updateAssetAMC(@Parameter(in = ParameterIn.DEFAULT, description = "Updated AMC contract or visit information", required = true, schema = @Schema()) @Valid @RequestBody AssetAMCRequest body, @Parameter(in = ParameterIn.PATH, description = "System-generated unique identifier for the AMC", required = true, schema = @Schema()) @PathVariable("amcId") Object amcId) {
+        String accept = request.getHeader("Accept");
+        return new ResponseEntity<Void>(HttpStatus.NOT_IMPLEMENTED);
+    }
+
+    @RequestMapping(value = "/v1/asset/workflow/_update", method = RequestMethod.POST)
+    public ResponseEntity<Void> updateAssetWorkflow(@Parameter(in = ParameterIn.DEFAULT, description = "Workflow status update for an asset", required = true, schema = @Schema()) @Valid @RequestBody AssetWorkflowRequest body, @Parameter(in = ParameterIn.PATH, description = "System-generated unique identifier for the asset", required = true, schema = @Schema()) @PathVariable("assetID") Object assetID) {
+        String accept = request.getHeader("Accept");
+        return new ResponseEntity<Void>(HttpStatus.NOT_IMPLEMENTED);
+    }
+
+}
