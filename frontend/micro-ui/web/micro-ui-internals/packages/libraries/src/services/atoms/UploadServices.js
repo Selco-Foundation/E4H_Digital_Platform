@@ -26,7 +26,7 @@ export const UploadServices = {
     formData.append("module", module);
     let tenantInfo = window?.globalConfigs?.getConfig("ENABLE_SINGLEINSTANCE") ? `?tenantId=${tenantId}` : "";
     const url = isVideo ? `${Urls.VideoFileUpload}${tenantInfo}` : `${Urls.FileStore}${tenantInfo}`;
-    const token = Digit.UserService.getUser().access_token;
+    const token = Digit.UserService.getUser()?.access_token;
     var config = {
       method: "post",
       url: url,
