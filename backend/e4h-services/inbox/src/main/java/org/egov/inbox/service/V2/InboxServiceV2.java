@@ -344,23 +344,22 @@ public class InboxServiceV2 {
         Integer totalCount = 0;
         // Fetch slot percentage only once here !!!!!!!!!!
 
-
-        for(int i = 0; i < businessServices.size(); i++){
-            String businessService = businessServices.get(i);
+        for (String businessService : businessServices) {
             Long businessServiceSla = businessServiceSlaMap.get(businessService);
-            //inboxRequest.getInbox().getProcessSearchCriteria().setStatus(businessServiceVsUuidsBasedOnSearchCriteria.get(businessService));
             Map<String, Object> finalQueryBody = queryBuilder.getNearingSlaCountQuery(inboxRequest, businessServiceSla);
-            StringBuilder uri = getURI(indexName, SEARCH_PATH);
+
+            // use COUNT_PATH instead of SEARCH_PATH
+            StringBuilder uri = getURI(indexName, COUNT_PATH);
+
+            @SuppressWarnings("unchecked")
             Map<String, Object> response = (Map<String, Object>) serviceRequestRepository.fetchESResult(uri, finalQueryBody);
-            Integer currentCount = 0;
-            if(response.containsKey(HITS)){
-                Map<String, Object> map = (Map<String, Object>)(response).get(HITS);
-                Map<String, Object> totals = (Map<String, Object>) map.get("total");
-                currentCount = (Integer) totals.get("value");
-            }else{
+
+            // extract the top‐level "count" key
+            if (!response.containsKey("count")) {
                 throw new CustomException("INBOX_COUNT_ERR", "Error occurred while executing ES count query");
             }
-            totalCount += currentCount;
+            Integer cnt = (Integer) response.get("count");
+            totalCount += cnt;
         }
 
         return totalCount;
