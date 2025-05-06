@@ -70,12 +70,15 @@ public class BoundaryController {
             @RequestParam(defaultValue = "10") int size,
             @RequestParam String tenantId,
             @RequestParam String hierarchyType,
+            @RequestParam String boundaryType,
             @RequestBody RequestInfo requestInfo) {
 
         BoundaryRelationshipSearchCriteria criteria = new BoundaryRelationshipSearchCriteria();
         criteria.setTenantId(tenantId);
         criteria.setHierarchyType(hierarchyType);
-        criteria.setIncludeChildren(true); // ensure full depth
+        criteria.setIncludeChildren(false);
+        criteria.setIncludeParents(true);
+        criteria.setBoundaryType(boundaryType);
 
         BoundarySearchResponse response = boundaryRelationshipService.getBoundaryRelationships(criteria, requestInfo);
         log.info(String.valueOf(response));
