@@ -49,7 +49,7 @@ class BoundaryExcelDataLoader(DataLoader):
 
         # Initialize BoundaryCode column with empty strings
         self.boundary_df["BoundaryCode"] = ""
-
+        # CodeReview: Convert everything to small case. What happens if this becomes too long? Will we truncate?
         # Only process rows with complete data
         self.boundary_df.loc[has_all_values, "BoundaryCode"] = (
                 self.boundary_df["Country"].str.strip() + "_" +

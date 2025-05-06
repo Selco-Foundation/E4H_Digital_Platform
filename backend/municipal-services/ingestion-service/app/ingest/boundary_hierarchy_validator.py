@@ -19,7 +19,7 @@ class BoundaryHierarchyValidator(Validator):
             code = str(row['BoundaryCode'])
             if code == "":  # Skip empty codes
                 continue
-
+            #CodeReview: How will we account for minor changes in spelling for the same hierarchy? Eg. Raichur vs Raicur 
             if code not in code_occurrences:
                 code_occurrences[code] = []
             code_occurrences[code].append(idx)

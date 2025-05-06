@@ -1,8 +1,13 @@
 from typing import Set
+from typing import Optional, Dict, Any
 
+# CodeReview: Consider adding type validation for Excel files to prevent security issues
+# CodeReview: Add memory usage optimization for large files
 import pandas as pd
 
+from app.core.logging import AppLogger
 from app.ingest.service.data_loader import DataLoader
+from app.utils.file_utils import validate_excel_file  # TODO: Create this utility
 
 
 class ExcelDataLoader(DataLoader):
