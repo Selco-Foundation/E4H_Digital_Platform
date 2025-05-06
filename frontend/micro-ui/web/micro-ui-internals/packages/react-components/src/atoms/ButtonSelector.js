@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 const ButtonSelector = (props) => {
   let theme = "selector-button-primary";
   const isMobile = window.Digit.Utils.browser.isMobile();
-  const language = JSON.parse(sessionStorage.getItem("Digit.locale"))?.value;
+  // const language = JSON.parse(sessionStorage.getItem("Digit.locale"))?.value;
   switch (props.theme) {
     case "border":
       theme = "selector-button-border";

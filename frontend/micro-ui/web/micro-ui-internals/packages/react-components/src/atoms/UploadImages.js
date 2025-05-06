@@ -19,7 +19,6 @@ const UploadImages = (props) => {
   const { t } = useTranslation();
 
   const UploadImagesNew = (e) => {
-    console.log("UploadImagesNewUploadImagesNewUploadImagesNew", props);
     if (props.disabled) {
       setError(t("SET_PHC_TYPE"));
     } else {

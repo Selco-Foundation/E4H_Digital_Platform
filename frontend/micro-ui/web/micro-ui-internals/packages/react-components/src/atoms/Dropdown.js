@@ -118,7 +118,6 @@ const Dropdown = React.forwardRef((props, ref) => {
 
   // Method to validate the dropdown
   const validate = () => {
-    console.log("selectedOption", selectedOption, !selectedOption, props, props.onBlur);
     setTouched(true); // Set touched to true on blur
     if (props.required && (!selectedOption || Object.keys(props.selected).length == 0)) {
       setError(t("CS_FIELD_REQUIRED"));
@@ -265,12 +264,13 @@ const Dropdown = React.forwardRef((props, ref) => {
               filteredOption.map((option, index) => {
                 return (
                   <div
-                    className={`cp profile-dropdown--item display: flex `}
+                    className={`cp profile-dropdown--item `}
                     style={
                       index === optionIndex
                         ? {
                             opacity: 1,
                             backgroundColor: "rgba(238, 238, 238, var(--bg-opacity))",
+                            display: "flex",
                           }
                         : {}
                     }

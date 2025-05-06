@@ -22,13 +22,7 @@ const IndeterminateCheckbox = forwardRef(({ indeterminate, ...rest }, ref) => {
     </React.Fragment>
   );
 });
-const getNoColumnBorder = (noColumnBorder) =>
-  noColumnBorder
-    ? {
-        cellspacing: "0",
-        cellpadding: "0",
-      }
-    : null;
+const getNoColumnBorder = (noColumnBorder) => (noColumnBorder ? { cellSpacing: "0", cellPadding: "0" } : {});
 const Table = ({
   className = "table",
   t,
@@ -180,9 +174,8 @@ const Table = ({
 
   useEffect(() => {
     if (toast?.show) {
-      setTimeout(() => {
-        handleToastClose();
-      }, 3000);
+      const timer = setTimeout(handleToastClose, 3000);
+      return () => clearTimeout(timer);
     }
   }, [toast?.show]);
 
@@ -190,7 +183,12 @@ const Table = ({
   //use case -> without this if we enter string to search and then click on it's attendence checkbox or skill selector for that matter then the global filtering resets and whole table is shown
   return (
     <React.Fragment>
-      <div style={{ marginTop: isIpadView ? "210px" : "none", marginLeft: isIpadView ? -20 : "none" }}>
+      <div
+        style={{
+          marginTop: isIpadView ? "210px" : 0,
+          marginLeft: isIpadView ? -20 : 0,
+        }}
+      >
         <div style={{ overflowX: "auto" }} ref={tableWrapperRef}>
           {/* Table */}
           <div style={{ display: "inline-block", minWidth: "100%" }}>
