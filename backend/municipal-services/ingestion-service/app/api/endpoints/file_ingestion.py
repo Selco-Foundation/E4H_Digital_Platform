@@ -169,16 +169,17 @@ async def upload_boundaries_excel_sheet(
     get_authorized_request_info(request_info)
 
     try:
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as input_temp_file:
-            content = await boundary_file.read()
-            input_temp_file.write(content)
-            boundary_file_path = input_temp_file.name
+        input_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
+        content = await boundary_file.read()
+        input_temp_file.write(content)
+        input_temp_file.close()
+        boundary_file_path = input_temp_file.name
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         output_filename = f"boundary_validation_results_{timestamp}.xlsx"
-
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as output_temp_file:
-            output_file_path = output_temp_file.name
+        output_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
+        output_temp_file.close()
+        output_file_path = output_temp_file.name
 
         with open(boundary_file_path, 'rb') as src, open(output_file_path, 'wb') as dst:
             dst.write(src.read())
@@ -211,5 +212,3 @@ async def upload_boundaries_excel_sheet(
     finally:
         if input_temp_file and os.path.exists(input_temp_file.name):
             os.unlink(input_temp_file.name)
-        if 'output_temp_file' in locals() and os.path.exists(output_temp_file.name):
-            os.unlink(output_temp_file.name)

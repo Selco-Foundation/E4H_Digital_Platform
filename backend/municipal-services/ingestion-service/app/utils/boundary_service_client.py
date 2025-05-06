@@ -10,7 +10,7 @@ from app.core.logging import AppLogger
 
 from dotenv import load_dotenv
 load_dotenv()
-time_out = os.getenv("TIME_OUT")
+time_out = int(os.getenv("TIME_OUT", "60"))
 
 logger = AppLogger().get_logger()
 class BoundaryServiceClient:
@@ -88,7 +88,6 @@ class BoundaryServiceClient:
 
         try:
             response = requests.post(url, headers=headers, json=payload, timeout=time_out)
-            response.raise_for_status()
             return response.json()
 
         except HTTPError as e:
