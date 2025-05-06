@@ -10,16 +10,15 @@ const AuditService = {
       data: {
         InboxElasticSearchCriteria: {
           tenantId: tenantId,
-          "indexKey": "userLogin",
-          limit:10,
-          offset:0,
+          indexKey: "userLogin",
+          limit: 10,
+          offset: 0,
           ...filters,
         },
       },
       auth: true,
       userService: false,
-    }
-    ),
-}
+    }),
+};
 
-export default AuditService
+export default AuditService;
