@@ -1,0 +1,38 @@
+{
+  "tenantId": "in",
+  "module": "data-ingestion",
+  "BoundaryIngestionSchema": {
+    "columns": [
+      {
+        "name": "Country",
+        "required": true,
+        "type": "string",
+        "pattern": "^[a-zA-Z\\s]+$",
+        "mdmsSource": {
+          "module": "common-masters",
+          "master": "CountryInfo",
+          "path": "$.name",
+          "filterType": "ONE_OF"
+        }
+      },
+      {
+        "name": "State",
+        "type": "string",
+        "pattern": "^[a-zA-Z\\s]+$",
+        "required": true
+      },
+      {
+        "name": "District",
+        "type": "string",
+        "pattern": "^[a-zA-Z\\s]+$",
+        "required": true
+      },
+      {
+        "name": "Block",
+        "type": "string",
+        "pattern": "^[a-zA-Z\\s]+$",
+        "required": true
+      }
+    ]
+  }
+}

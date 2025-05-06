@@ -1,0 +1,21 @@
+{
+  "tenantId": "pg",
+  "module": "facility",
+  "FacilityOwnership": [
+    {
+      "active": true,
+      "code": "PPP",
+      "name": "PPP"
+    },
+    {
+      "active": true,
+      "code": "GOVERNMENT",
+      "name": "Government"
+    },
+    {
+      "active": true,
+      "code": "PRIVATE",
+      "name": "Private"
+    }
+  ]
+}

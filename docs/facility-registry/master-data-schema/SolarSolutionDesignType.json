@@ -1,0 +1,66 @@
+{
+  "tenantId": "pg",
+  "module": "facility",
+  "SolarSolutionDesignType": [
+    {
+      "active": true,
+      "code": "type_1",
+      "name": "SC - without labour room + Refrigerator & without cold chain point",
+      "url": ""
+    },
+    {
+      "active": true,
+      "code": "type_2",
+      "name": "SC - with labour room + Refrigerator & without cold chain point",
+      "url": ""
+    },
+    {
+      "active": true,
+      "code": "type_3",
+      "name": "SC - with Labour room with cold chain point",
+      "url": ""
+    },
+    {
+      "active": true,
+      "code": "type_4",
+      "name": "PHC Without Delivery Without Cold Chain",
+      "url": ""
+    },
+    {
+      "active": true,
+      "code": "type_5",
+      "name": "PHC With Delivery Without Cold Chain",
+      "url": ""
+    },
+    {
+      "active": true,
+      "code": "type_6",
+      "name": "PHC Without Delivery With Cold Chain",
+      "url": ""
+    },
+    {
+      "active": true,
+      "code": "type_7",
+      "name": "PHC With Delivery With Cold Chain",
+      "url": ""
+    },
+    {
+      "active": true,
+      "code": "type_8",
+      "name": "PHC With Delivery With Cold Chain and Dental Unit",
+      "url": ""
+    },
+    {
+      "active": true,
+      "code": "type_9",
+      "name": "PHC with Lab + Cold Chain (or) Lab + Labour Room",
+      "url": ""
+    },
+    {
+      "active": true,
+      "code": "type_10",
+      "name": "PHC With Delivery With Cold Chain - Hybrid System",
+      "url": ""
+    }
+  ]
+}

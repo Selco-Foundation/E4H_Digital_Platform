@@ -1,0 +1,9 @@
+{
+  "tenantId": "pg",
+  "module": "asset",
+  "AssetType": [
+    { "active": true, "code": "BATTERY", "name": "Battery" },
+    { "active": true, "code": "INVERTER", "name": "Inverter" },
+    { "active": true, "code": "PANEL", "name": "Panel" }
+  ]
+}
