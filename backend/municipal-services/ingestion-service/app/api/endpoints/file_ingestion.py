@@ -2,6 +2,7 @@ import os
 import tempfile
 from datetime import datetime
 
+import pandas as pd
 from fastapi import APIRouter, File, Form, UploadFile, HTTPException, Depends
 from fastapi.responses import FileResponse
 
@@ -38,6 +39,7 @@ async def upload_vendors_excel_sheet(
         request_info: str = Form(default="")
 ):
     input_temp_file = None
+    output_temp_file = None
     request_info = request_info_from_json(request_info)
     get_authorized_request_info(request_info)
 
@@ -54,11 +56,8 @@ async def upload_vendors_excel_sheet(
         output_temp_file.close()
         output_file_path = output_temp_file.name
 
-        with open(vendor_file_path, 'rb') as src, open(output_file_path, 'wb') as dst:
-            dst.write(src.read())
-
         processor = VendorDataProcessorFactory.create_processor(
-            file_path=output_file_path,
+            file_path=vendor_file_path,
             vendor_sheet=vendor_sheet_name,
             boundary_sheet=boundary_sheet_name,
             mdms_url=mdms_url,
@@ -70,12 +69,6 @@ async def upload_vendors_excel_sheet(
 
         if org_service_url and vendors:
             org_client = OrganizationServiceClient(org_service_url)
-
-            # if isinstance(processor.data_loader, ExcelDataLoader):
-            #     vendor_df = processor.data_loader.get_vendor_data()
-            # else:
-            #     logger.error("Data loader is not compatible")
-            #     raise HTTPException(status_code=500, detail="Data loader incompatibility")
 
             for vendor in vendors:
                 vendor_payload = create_vendor_request(request_info, vendor)
@@ -92,8 +85,12 @@ async def upload_vendors_excel_sheet(
                         logger.warning(f"Failed to create vendor: {vendor.vendor_name}")
                 except Exception as e:
                     logger.error(f"Error creating vendor in org service: {e}")
-            writer = ExcelDataWriter(output_file_path, output_sheet="Vendor Output")
-            writer.write_data(vendor_df)
+
+        with pd.ExcelWriter(output_file_path, engine='openpyxl') as writer:
+            vendor_df.to_excel(writer, sheet_name="Vendor Output", index=False)
+            boundary_df = pd.read_excel(vendor_file_path, sheet_name=boundary_sheet_name)
+            boundary_df.to_excel(writer, sheet_name=boundary_sheet_name, index=False)
+
         return FileResponse(
             path=output_file_path,
             filename=output_filename,

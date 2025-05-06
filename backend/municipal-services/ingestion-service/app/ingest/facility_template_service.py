@@ -26,7 +26,8 @@ class FacilityTemplateService:
             "page": 0,
             "size": 20000,
             "tenantId": "in",
-            "hierarchyType": "SELCO"
+            "hierarchyType": "SELCO",
+            "boundaryType": "Block"
         }
         payload = {
             "apiId": "org.egov.boundary",

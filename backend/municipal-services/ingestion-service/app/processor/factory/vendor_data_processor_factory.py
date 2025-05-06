@@ -21,12 +21,16 @@ class VendorDataProcessorFactory:
         data_loader = ExcelDataLoader(file_path, vendor_sheet, boundary_sheet)
         validators = []
         data_loader.load_data()
+
         def add_validation_columns(processor):
             data = processor.get_vendor_data().copy()
             if "status" not in data.columns:
                 data["status"] = None
+            else:
+                data = data[data["status"] != "success"]
             if "error" not in data.columns:
                 data["error"] = ""
+
             processor.set_vendor_data(data)
             return processor
 
