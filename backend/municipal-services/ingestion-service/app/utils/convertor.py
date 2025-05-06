@@ -146,7 +146,7 @@ def convert_json_to_object(json_str: str) -> Optional[IngestionSchemaResponse]:
 
 def convert_json_to_boundary(json_str: str) -> List[Boundary]:
     data = json.loads(json_str)
-    locations = [Boundary(**item) for item in data['Boundary']]
+    locations = [Boundary(**item) for item in data]
     return locations
 
 

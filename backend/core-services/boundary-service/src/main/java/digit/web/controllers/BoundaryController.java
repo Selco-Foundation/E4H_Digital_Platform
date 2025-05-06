@@ -3,6 +3,7 @@ package digit.web.controllers;
 import digit.service.BoundaryRelationshipService;
 import digit.service.BoundaryService;
 import digit.web.models.*;
+import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.request.RequestInfo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -17,6 +18,7 @@ import java.util.List;
 
 @Controller
 @RequestMapping("/boundary")
+@Slf4j
 public class BoundaryController {
 
     private final BoundaryService boundaryService;
@@ -68,14 +70,18 @@ public class BoundaryController {
             @RequestParam(defaultValue = "10") int size,
             @RequestParam String tenantId,
             @RequestParam String hierarchyType,
+            @RequestParam String boundaryType,
             @RequestBody RequestInfo requestInfo) {
 
         BoundaryRelationshipSearchCriteria criteria = new BoundaryRelationshipSearchCriteria();
         criteria.setTenantId(tenantId);
         criteria.setHierarchyType(hierarchyType);
-        criteria.setIncludeChildren(true); // ensure full depth
+        criteria.setIncludeChildren(false);
+        criteria.setIncludeParents(true);
+        criteria.setBoundaryType(boundaryType);
 
         BoundarySearchResponse response = boundaryRelationshipService.getBoundaryRelationships(criteria, requestInfo);
+        log.info(String.valueOf(response));
 
         List<FlatBoundaryResponse> flatList = new ArrayList<>();
         for (HierarchyRelation tenantBoundary : response.getTenantBoundary()) {
