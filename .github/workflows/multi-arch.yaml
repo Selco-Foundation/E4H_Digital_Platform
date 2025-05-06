@@ -11,11 +11,11 @@ on:
         required: true
         type: choice
         options:
-          - /backend/core-services/
-          - /backend/e4h-services/
-          - /backend/municipal-services/
-          - /frontend/
-        default: /backend/core-services/
+          - /backend/core-services
+          - /backend/e4h-services
+          - /backend/municipal-services
+          - /frontend
+        default: /backend/core-services
       service:
         description: 'Name of the service to build and deploy'
         required: true
