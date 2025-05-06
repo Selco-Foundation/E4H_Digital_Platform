@@ -4,14 +4,6 @@ RUN apk update && apk upgrade
 
 RUN apk add --no-cache git>2.30.0
 
-RUN yarn add @egovernments/digit-ui-libraries
-RUN yarn add @egovernments/digit-ui-module-core
-RUN yarn add @egovernments/digit-ui-module-common
-RUN yarn add @selco/digit-ui-module-hrms
-RUN yarn add @selco/digit-ui-module-pgr
-RUN yarn add @selco/digit-ui-module-dss
-
-
 ARG WORK_DIR
 ARG PUBLIC_PATH
 
