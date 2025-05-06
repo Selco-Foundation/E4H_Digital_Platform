@@ -567,6 +567,10 @@ public class NotificationService {
             messageForCitizen = messageForCitizen.replace("{incidentId}", incidentWrapper.getIncident().getIncidentId());
             messageForCitizen = messageForCitizen.replace("{date}", date.format(formatter));
             messageForCitizen = messageForCitizen.replace("{download_link}", config.getMobileDownloadLink());
+            if (messageForCitizen.contains("{url}")) {
+                String url = notificationUtil.getUrlByTenantId(localizationMessage);
+                messageForCitizen = messageForCitizen.replace("{url}",url );
+            }
         }
 
         if (messageForEmployee != null) {
@@ -577,6 +581,10 @@ public class NotificationService {
                 messageForEmployee = messageForEmployee.replace("{dropDownValue}", request.getWorkflow().getSendBackReason().getReason());
             }
             messageForEmployee = messageForEmployee.replace("{download_link}", config.getMobileDownloadLink());
+            if (messageForEmployee.contains("{url}")) {
+                String url = notificationUtil.getUrlByTenantId(localizationMessage);
+                messageForEmployee = messageForEmployee.replace("{url}",url );
+            }
         }
 
 
@@ -585,6 +593,10 @@ public class NotificationService {
             messageForCRM = messageForCRM.replace("{incidentId}", incidentWrapper.getIncident().getIncidentId());
             messageForCRM = messageForCRM.replace("{date}", date.format(formatter));
             messageForCRM = messageForCRM.replace("{download_link}", config.getMobileDownloadLink());
+            if (messageForCRM.contains("{url}")) {
+                String url = notificationUtil.getUrlByTenantId(localizationMessage);
+                messageForCRM = messageForCRM.replace("{url}",url );
+            }
         }
         if (messageForCitizen != null)
             message.put(CITIZEN, Arrays.asList(new String[]{messageForCitizen}));
