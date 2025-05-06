@@ -8,10 +8,13 @@ import digit.web.models.*;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.common.contract.response.ResponseInfo;
 import org.egov.common.utils.ResponseInfoUtil;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 public class BoundaryService {
@@ -98,18 +101,36 @@ public class BoundaryService {
         path.add(boundary.getCode());
 
         if (boundary.getChildren() == null || boundary.getChildren().isEmpty()) {
-            FlatBoundaryResponse flat = new FlatBoundaryResponse();
-            flat.setCountry(getOrNull(path, 0));
-            flat.setState(getOrNull(path, 1));
-            flat.setDistrict(getOrNull(path, 2));
-            flat.setBlock(getOrNull(path, 3));
-            flat.setCode(boundary.getCode());
+            FlatBoundaryResponse flat = getFlatBoundaryResponse(path);
             result.add(flat);
         } else {
             for (EnrichedBoundary child : boundary.getChildren()) {
                 buildFlatHierarchy(child, result, new ArrayList<>(path));
             }
         }
+    }
+
+    @NotNull
+    private FlatBoundaryResponse getFlatBoundaryResponse(List<String> path) {
+        FlatBoundaryResponse flat = new FlatBoundaryResponse();
+
+        String country = getOrNull(path, 0);
+        String state = getOrNull(path, 1);
+        String district = getOrNull(path, 2);
+        String block = getOrNull(path, 3);
+
+        flat.setCountry(country);
+        flat.setState(state);
+        flat.setDistrict(district);
+        flat.setBlock(block);
+
+        // Build code string using only non-null, non-empty values
+        String code = Stream.of(country, state, district, block)
+                .filter(s -> s != null && !s.isEmpty())
+                .collect(Collectors.joining("_"));
+
+        flat.setCode(code);
+        return flat;
     }
 
     private String getOrNull(List<String> list, int index) {
