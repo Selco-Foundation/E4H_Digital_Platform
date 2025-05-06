@@ -14,7 +14,7 @@ app = FastAPI(
 # Consider restricting origins, methods, and headers based on environment
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # TODO: Replace with specific origins from config
+    allow_origins=["*"], #TODO: Too permissive. Specify origins
     allow_credentials=True,
     allow_methods=["*"],  # TODO: Restrict to needed methods (GET, POST)
     allow_headers=["*"],  # TODO: Specify required headers only
