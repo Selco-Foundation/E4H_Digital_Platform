@@ -3,7 +3,7 @@
 
 -- asset_details is a JSONB whose schema has to be validated against MDMS
 CREATE TABLE asset (
-    id UUID PRIMARY KEY,
+    id VARCHAR PRIMARY KEY,
     tenant_id VARCHAR NOT NULL,
     facility_id UUID NOT NULL,
     asset_type_id VARCHAR(64),
@@ -33,7 +33,7 @@ CREATE INDEX idx_asset_status ON asset(tenant_id,wf_status);
 --- Table to store documents related to the asset. Can be images or any other artifacts. Documents are uploaded in filestore and the id
 -- is referenced here
 CREATE TABLE asset_documents (
-    id UUID PRIMARY KEY,
+    id VARCHAR PRIMARY KEY,
     tenant_id VARCHAR NOT NULL,
     asset_id UUID NOT NULL,
     filestore_id VARCHAR NOT NULL,

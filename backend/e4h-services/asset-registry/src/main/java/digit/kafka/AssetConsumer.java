@@ -6,7 +6,7 @@ import org.springframework.stereotype.Component;
 import java.util.HashMap;
 
 @Component
-public class Consumer {
+public class AssetConsumer {
 
     /*
     * Uncomment the below line to start consuming record from kafka.topics.consumer
