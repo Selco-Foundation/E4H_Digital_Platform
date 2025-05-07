@@ -457,7 +457,7 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
                     innerWildcardClause.put(addDataPathToSearchParamKey(key, nameToPathMap), item + ".*");
                 }
                 else{
-                    innerWildcardClause.put(addDataPathToSearchParamKey(key, nameToPathMap), item + "*");
+                    innerWildcardClause.put(addDataPathToSearchParamKey(key, nameToPathMap),  "*" + item + "*");
                 }
                 wildcardClauses.add(wildcardClause);
             }
@@ -471,7 +471,7 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
                 innerWildcardClause.put(addDataPathToSearchParamKey(key, nameToPathMap), value + ".*");
             }
             else{
-                innerWildcardClause.put(addDataPathToSearchParamKey(key, nameToPathMap), value + "*");
+                innerWildcardClause.put(addDataPathToSearchParamKey(key, nameToPathMap), "*" + value + "*");
             }
             wildcardClauses.add(wildcardClause);
             return wildcardClauses;
