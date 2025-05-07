@@ -1,8 +1,7 @@
 // Importing necessary packages and files
 import "package:dio/dio.dart"; // Dio package for HTTP requests
-
-import '../utils/environment_config.dart';
-import 'repositories/api_interceptors.dart'; // Custom utility file for environment configurations
+import '../utils/envConfig.dart';
+import 'api_interceptors.dart';
 
 // The DioClient class for managing the Dio instance
 class DioClient {
@@ -29,7 +28,6 @@ class DioClient {
     _dio = Dio()
       ..interceptors.addAll([
         AuthTokenInterceptor(), // Custom interceptor for handling authentication tokens
-        ApiLoggerInterceptor(), // Custom interceptor for logging API requests and responses
       ])
       ..options = BaseOptions(
         connectTimeout: Duration(
@@ -44,5 +42,7 @@ class DioClient {
         baseUrl: envConfig.variables
             .baseUrl, // Base URL for API endpoints from the environment configuration
       );
+
+    _dio.options.baseUrl = envConfig.variables.baseUrl;
   }
 }

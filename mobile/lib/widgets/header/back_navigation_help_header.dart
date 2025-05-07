@@ -2,8 +2,6 @@ import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/theme/ComponentTheme/button_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:selco/router/app_router.dart';
-import 'package:selco/utils/extensions.dart';
-import 'package:selco/utils/i18_key_constants.dart' as i18;
 
 class BackNavigationHelpHeaderWidget extends StatelessWidget {
   final bool showHelp;
@@ -35,7 +33,7 @@ class BackNavigationHelpHeaderWidget extends StatelessWidget {
                     prefixIcon: Icons.arrow_left,
                     textColor: const DigitColors().light.textPrimary,
                     iconColor: const DigitColors().light.textPrimary,
-                    label: context.translate(i18.common.coreCommonBack),
+                    label: "Back",
                     type: DigitButtonType.tertiary,
                     size: DigitButtonSize.medium,
                     onPressed: () {
@@ -57,7 +55,7 @@ class BackNavigationHelpHeaderWidget extends StatelessWidget {
               textColor: const Light().primary1,
               iconColor: const Light().primary1,
               isDisabled: helpClicked == null,
-              label: context.translate(i18.common.coreCommonHelp),
+              label: "Help",
               type: DigitButtonType.tertiary,
               size: DigitButtonSize.medium,
               suffixIcon: Icons.help_outline_outlined,

@@ -1,9 +1,9 @@
 import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:flutter/material.dart';
-import 'package:selco/utils/extensions.dart';
 
 import '../router/app_router.dart';
+import '../utils/extensions.dart';
 import '../widgets/navigation/drawer.dart';
 import '../widgets/navigation/navbar.dart';
 

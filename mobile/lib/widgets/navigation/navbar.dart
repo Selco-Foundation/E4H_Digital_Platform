@@ -3,8 +3,6 @@ import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:flutter/material.dart';
 
 import '../../utils/asset_images.dart';
-import '../../utils/extensions.dart';
-import '../../utils/i18_key_constants.dart' as i18;
 
 class Navbar extends StatelessWidget implements PreferredSizeWidget {
   final bool showMenu;
@@ -50,7 +48,7 @@ class Navbar extends StatelessWidget implements PreferredSizeWidget {
             color: const DigitColors().light.paperPrimary,
           ),
           const SizedBox(width: spacer2), // Reduced spacing
-          Text(context.translate(i18.detail.appName),
+          Text("SELCO",
               style: textTheme.bodyS.copyWith(
                 color: const DigitColors().light.paperPrimary,
               )),

@@ -59,7 +59,7 @@ class _LoginPageState extends State<LoginPage> {
                   margin: const EdgeInsets.all(spacer2),
                   children: [
                     Text(
-                      context.translate(i18.login.labelText),
+                      "Login",
                       style: textTheme.headingXl.copyWith(
                         color: theme
                             .colorTheme.primary.primary2, // Use theme color
@@ -75,9 +75,7 @@ class _LoginPageState extends State<LoginPage> {
                         },
                       },
                       builder: (field) => LabeledField(
-                        label: context.translate(
-                          i18.login.userIdPlaceholder,
-                        ),
+                        label: "User ID",
                         capitalizedFirstLetter: false,
                         isRequired: true,
                         child: DigitTextFormInput(
@@ -99,9 +97,7 @@ class _LoginPageState extends State<LoginPage> {
                         },
                       },
                       builder: (field) => LabeledField(
-                        label: context.translate(
-                          i18.login.passwordPlaceholder,
-                        ),
+                        label: "Password",
                         isRequired: true,
                         child: DigitPasswordFormInput(
                           errorMessage: field.errorText,
@@ -113,7 +109,7 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ),
                     DigitButton(
-                      label: context.translate(i18.login.actionLabel),
+                      label: "Login",
                       type: DigitButtonType.primary,
                       onPressed: () {
                         form.markAllAsTouched();
@@ -126,9 +122,7 @@ class _LoginPageState extends State<LoginPage> {
                       mainAxisSize: MainAxisSize.max,
                     ),
                     DigitButton(
-                        label: context.translate(
-                          i18.forgotPassword.actionLabel,
-                        ),
+                        label: "Forgot Password",
                         mainAxisSize: MainAxisSize.max,
                         type: DigitButtonType.tertiary,
                         size: DigitButtonSize.medium,
