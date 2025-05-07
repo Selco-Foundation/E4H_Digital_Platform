@@ -101,7 +101,9 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
             boolClause.put("must_not", mustNotClauseList);
         }
 
+
         return baseEsQuery;
+
     }
 
     public Map<String, Object> generateSLAComparison(long currentTime) {
@@ -516,7 +518,12 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
                 Map<String, Object> wildcardClause = new HashMap<>();
                 wildcardClause.put("wildcard", new HashMap<>());
                 Map<String, Object> innerWildcardClause = (Map<String, Object>) wildcardClause.get("wildcard");
-                innerWildcardClause.put(addDataPathToSearchParamKey(key, nameToPathMap), item + ".*");
+                if(key.equals("tenantId")) {
+                    innerWildcardClause.put(addDataPathToSearchParamKey(key, nameToPathMap), item + ".*");
+                }
+                else{
+                    innerWildcardClause.put(addDataPathToSearchParamKey(key, nameToPathMap), item + "*");
+                }
                 wildcardClauses.add(wildcardClause);
             }
 
@@ -525,7 +532,12 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
             Map<String, Object> wildcardClause = new HashMap<>();
             wildcardClause.put("wildcard", new HashMap<>());
             Map<String, Object> innerWildcardClause = (Map<String, Object>) wildcardClause.get("wildcard");
-            innerWildcardClause.put(addDataPathToSearchParamKey(key, nameToPathMap), value + ".*");
+            if(key.equals("tenantId")) {
+                innerWildcardClause.put(addDataPathToSearchParamKey(key, nameToPathMap), value + ".*");
+            }
+            else{
+                innerWildcardClause.put(addDataPathToSearchParamKey(key, nameToPathMap), value + "*");
+            }
             wildcardClauses.add(wildcardClause);
             return wildcardClauses;
         }
