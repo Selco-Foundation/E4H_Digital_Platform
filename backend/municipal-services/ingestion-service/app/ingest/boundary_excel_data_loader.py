@@ -62,10 +62,10 @@ class BoundaryExcelDataLoader(DataLoader):
         self.unique_boundary_codes = set()
         for _, row in self.boundary_df[has_all_values].iterrows():
             combo = (
-                row['Country'].strip(),
-                row['State'].strip(),
-                row['District'].strip(),
-                row['Block'].strip()
+                str(row['Country']).strip(),
+                str(row['State']).strip(),
+                str(row['District']).strip(),
+                str(row['Block']).strip()
             )
             self.unique_boundary_codes.add(combo)
 

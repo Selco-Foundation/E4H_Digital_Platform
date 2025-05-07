@@ -189,7 +189,7 @@ async def upload_boundaries_excel_sheet(
         )
         boundary_df = processor.process_data()
 
-        writer = ExcelDataWriter(output_file_path, output_sheet="Boundary Data Output")
+        writer = ExcelDataWriter(output_file_path, output_sheet="Boundary Data")
         writer.write_data(boundary_df)
 
         return FileResponse(
