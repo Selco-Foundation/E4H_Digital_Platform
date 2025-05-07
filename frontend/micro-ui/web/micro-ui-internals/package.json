@@ -22,6 +22,7 @@
     "start": "SKIP_PREFLIGHT_CHECK=true run-s build start:dev",
     "sprint": "SKIP_PREFLIGHT_CHECK=true run-s start:script",
     "start:dev": "run-p dev:**",
+    "start:local": "run-p dev:css dev:libraries dev:components dev:example dev:core dev:im",
     "start:script": "./scripts/create.sh",
     "dev:css": "cd packages/css && yarn start",
     "publish:css": "cd packages/css && yarn publish --access public",
