@@ -117,10 +117,10 @@ class FacilityTemplateService:
         try:
             df = pd.read_excel(input_path, sheet_name=sheet_name)
             columns_to_add = {
-                "Role (Mandatory)": "Supervisor",
-                "Name (Mandatory)": None,
-                "Phone Number (Mandatory)": None,
-                "Email Address (Mandatory)": None
+                "Role": "Supervisor",
+                "Name": None,
+                "Phone Number": None,
+                "Email Address": None
             }
 
             for col_name, default_value in columns_to_add.items():
