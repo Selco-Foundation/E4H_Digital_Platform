@@ -3,7 +3,6 @@ import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
-import 'package:selco/utils/extensions.dart';
 
 class HomeItemCard extends StatelessWidget {
   final IconData icon;
@@ -69,9 +68,7 @@ class HomeItemCard extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: spacer10),
                   child: Text(
-                    context.translate(
-                      label,
-                    ),
+                    label,
                     style: textTheme.headingS.copyWith(
                       color: onPressed == null
                           ? theme.disabledColor

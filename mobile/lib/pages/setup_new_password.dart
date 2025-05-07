@@ -49,7 +49,7 @@ class _SetupNewPasswordPageState extends State<SetupNewPasswordPage> {
             backgroundColor: theme.colorTheme.generic.background,
             footer: FooterButton(
               showSuffixIcon: false,
-              text: context.translate(i18.common.coreCommonSave),
+              text: "Save",
               onPress: () {
                 form.markAllAsTouched();
                 if (!form.valid) return;
@@ -63,7 +63,7 @@ class _SetupNewPasswordPageState extends State<SetupNewPasswordPage> {
                 margin: const EdgeInsets.all(spacer2),
                 children: [
                   Text(
-                    context.translate(i18.forgotPassword.setUpNewPassword),
+                    "Setup your new password",
                     style: textTheme.headingXl.copyWith(
                       color: theme.colorTheme.primary.primary2,
                     ),
@@ -76,9 +76,7 @@ class _SetupNewPasswordPageState extends State<SetupNewPasswordPage> {
                           ),
                     },
                     builder: (field) => LabeledField(
-                      label: context.translate(
-                        i18.forgotPassword.enterNewPassword,
-                      ),
+                      label: "Enter new password",
                       isRequired: true,
                       child: DigitPasswordFormInput(
                         errorMessage: field.errorText,
@@ -96,9 +94,7 @@ class _SetupNewPasswordPageState extends State<SetupNewPasswordPage> {
                           ),
                     },
                     builder: (field) => LabeledField(
-                      label: context.translate(
-                        i18.forgotPassword.reEnterNewPassword,
-                      ),
+                      label: "Re-enter new password",
                       isRequired: true,
                       child: DigitPasswordFormInput(
                         errorMessage: field.errorText,

@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 
 import '../router/app_router.dart';
 import '../utils/asset_images.dart';
-import '../utils/i18_key_constants.dart' as i18;
 import '../widgets/button/footer_button.dart';
 import '../widgets/navigation/navbar.dart';
 
@@ -27,7 +26,7 @@ class _WelcomePageState extends State<WelcomePage> {
         enableFixedDigitButton: true,
         backgroundColor: theme.colorTheme.generic.background,
         footer: FooterButton(
-            text: i18.common.proceed,
+            text: "Proceed",
             onPress: () {
               context.router.replace(const LoginRoute());
             }),
