@@ -195,7 +195,7 @@ const Table = ({
             <table className={className} {...getTableProps()} style={styles} ref={tableRef} {...getNoColumnBorder(noColumnBorder)}>
               <thead>
                 {headerGroups.map((headerGroup) => (
-                  <tr {...headerGroup.getHeaderGroupProps()}>
+                  <tr {...headerGroup.getHeaderGroupProps()} key={headerGroup.id}>
                     {showAutoSerialNo && (
                       <th style={{ verticalAlign: "top" }}>
                         {showAutoSerialNo && typeof showAutoSerialNo == "string" ? t(showAutoSerialNo) : t("TB_SNO")}
