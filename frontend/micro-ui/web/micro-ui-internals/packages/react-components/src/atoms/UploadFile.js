@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import RemoveableTag from "./RemoveableTag";
 import { DeleteBtn } from "./svgindex";
 import { Loader } from "./Loader";
+
 const getRandomId = () => {
   return Math.floor((Math.random() || 1) * 139);
 };
@@ -136,6 +137,9 @@ const getCitizenStyles = (value) => {
 };
 
 const UploadFile = (props) => {
+  // if (props.enableButton) {
+  //   props.disabled = !props.enableButton;
+  // }
   const { t } = useTranslation();
   const inpRef = useRef();
   const [hasFile, setHasFile] = useState(false);
@@ -191,6 +195,7 @@ const UploadFile = (props) => {
   useEffect(() => handleChange(), [props.message]);
 
   const showHint = props?.showHint || false;
+
   const styles = {
     ...props?.textStyles,
     color: "white",
@@ -259,9 +264,7 @@ const UploadFile = (props) => {
           multiple={props.multiple}
           accept={props.accept}
           disabled={props.disabled}
-          onChange={(e) => {
-            props.onUpload(e);
-          }}
+          onChange={(e) => props.onUpload(e)}
           onClick={(event) => {
             if (!props?.enableButton) {
               event.preventDefault();

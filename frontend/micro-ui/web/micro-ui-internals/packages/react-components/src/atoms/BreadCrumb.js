@@ -6,8 +6,12 @@ const Breadcrumb = (props) => {
   function isLast(index) {
     return index === props.crumbs.length - 1;
   }
+  // function handleRedirect(path) {
+  //   const host = window.location.origin; // Dynamically get the base URL
+  //   window.location.href = `${host}${path}`;
+  // }
   return (
-    <ol className={`bread-crumb ${props?.className?props?.className:""}`}>
+    <ol className={`bread-crumb ${props?.className ? props?.className : ""}`}>
       {props?.crumbs?.map((crumb, ci) => {
         if (!crumb?.show) return;
         if (crumb?.isBack)
@@ -19,11 +23,11 @@ const Breadcrumb = (props) => {
             </li>
           );
         return (
-          <li key={ci} style={{ ...props.style, color:"white" }} className="bread-crumb--item">
+          <li key={ci} style={{ ...props.style, color: "white" }} className="bread-crumb--item">
             {isLast(ci) || !crumb?.path ? (
               <span style={props?.spanStyle ? { ...props?.spanStyle, color: "#0B0C0C" } : { color: "#0B0C0C" }}>{crumb.content}</span>
             ) : (
-              <Link to={{ pathname:crumb.path, state: {count : crumb?.count} , search: crumb?.query}} >{crumb.content}</Link>
+              <Link to={{ pathname: crumb.path, state: { count: crumb?.count }, search: crumb?.query }}>{crumb.content}</Link>
             )}
           </li>
         );
