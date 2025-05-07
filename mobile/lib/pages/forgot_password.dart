@@ -53,9 +53,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                   margin: const EdgeInsets.all(spacer2),
                   children: [
                     Text(
-                      context.translate(
-                        i18.forgotPassword.enterMobileNumberText,
-                      ),
+                      "Enter your mobile number",
                       style: textTheme.headingXl.copyWith(
                         color: theme
                             .colorTheme.primary.primary2, // Use theme color
@@ -71,9 +69,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                         },
                       },
                       builder: (field) => LabeledField(
-                        label: context.translate(
-                          i18.forgotPassword.registeredMobileNumberLabel,
-                        ),
+                        label: "Registered mobile number",
                         capitalizedFirstLetter: false,
                         isRequired: true,
                         child: InputField(

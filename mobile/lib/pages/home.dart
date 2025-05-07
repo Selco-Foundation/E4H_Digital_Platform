@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
-import '../utils/i18_key_constants.dart' as i18;
 import '../widgets/header/back_navigation_help_header.dart';
 import '../widgets/home/home_item_card.dart';
 import '../widgets/navigation/drawer.dart';
@@ -79,16 +78,16 @@ class _HomePageState extends State<HomePage> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: spacer2)
                   .copyWith(top: spacer2),
-              child: Column(
+              child: const Column(
                 children: [
                   InfoCard(
-                    title: context.translate(i18.dashboard.dataSyncPending),
+                    title: "Data Sync Pending!",
                     type: InfoType.warning,
                     description: 'There are 90 records yet to be synced',
                   ),
-                  const SizedBox(height: spacer3),
+                  SizedBox(height: spacer3),
                   InfoCard(
-                    title: context.translate(i18.dashboard.facilityAssigned),
+                    title: "Facilities assigned",
                     type: InfoType.info,
                     description:
                         '10 more facilities have been assigned to you.',

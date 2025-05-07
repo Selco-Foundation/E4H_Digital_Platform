@@ -55,9 +55,7 @@ class _EnterOtpPageState extends State<EnterOtpPage> {
                   margin: const EdgeInsets.all(spacer2),
                   children: [
                     Text(
-                      context.translate(
-                        i18.forgotPassword.otpVerfication,
-                      ),
+                      "OTP Verification",
                       style: textTheme.headingXl.copyWith(
                           color: theme
                               .colorTheme.primary.primary2 // Use theme color
@@ -66,7 +64,7 @@ class _EnterOtpPageState extends State<EnterOtpPage> {
                     SizedBox(
                       width: context.width,
                       child: DigitOTPInput(
-                        label: context.translate(i18.forgotPassword.enterOtp),
+                        label: "Enter OTP",
                         onChanged: (input) {},
                       ),
                     )
