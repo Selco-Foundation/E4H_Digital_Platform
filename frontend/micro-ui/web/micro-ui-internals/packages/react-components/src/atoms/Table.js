@@ -222,7 +222,7 @@ const Table = ({
                 {page.map((row, i) => {
                   prepareRow(row);
                   return (
-                    <tr {...row.getRowProps()} onClick={() => onClickRow(row)} className={rowClassName}>
+                    <tr {...row.getRowProps()} onClick={() => onClickRow(row)} className={rowClassName} key={row.id}>
                       {showAutoSerialNo && <td>{i + 1}</td>}
                       {row.cells.map((cell) => (
                         <td key={cell.column.id} {...cell.getCellProps([getCellProps(cell)])}>
