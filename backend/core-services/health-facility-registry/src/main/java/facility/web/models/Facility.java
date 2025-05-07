@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.annotation.Generated;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
+import lombok.Setter;
 
 import java.util.Map;
 import java.util.Objects;
@@ -17,12 +18,13 @@ import java.util.UUID;
  * Facility
  */
 
+@Setter
 @Generated(value = "org.openapitools.codegen.languages.SpringCodegen", date = "2025-04-24T16:00:58.522282987+05:30[Asia/Kolkata]", comments = "Generator version: 7.4.0")
 public class Facility {
 
     private String tenantId;
 
-    private UUID facilityId;
+    private String facilityId;
 
     private String facilityCategory;
 
@@ -57,15 +59,6 @@ public class Facility {
         return tenantId;
     }
 
-    public void setTenantId(String tenantId) {
-        this.tenantId = tenantId;
-    }
-
-    public Facility facilityId(UUID facilityId) {
-        this.facilityId = facilityId;
-        return this;
-    }
-
     /**
      * System generated unique identifier for the facility
      *
@@ -75,12 +68,8 @@ public class Facility {
     @Size(min = 4, max = 36)
     @Schema(name = "facility_id", accessMode = Schema.AccessMode.READ_ONLY, example = "44e128a5-ac7a-4c9a-be4c-224b6bf81b20", description = "System generated unique identifier for the facility", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     @JsonProperty("facility_id")
-    public UUID getFacilityId() {
+    public String getFacilityId() {
         return facilityId;
-    }
-
-    public void setFacilityId(UUID facilityId) {
-        this.facilityId = facilityId;
     }
 
     public Facility facilityCategory(String facilityCategory) {
@@ -100,10 +89,6 @@ public class Facility {
         return facilityCategory;
     }
 
-    public void setFacilityCategory(String facilityCategory) {
-        this.facilityCategory = facilityCategory;
-    }
-
     public Facility facilityType(String facilityType) {
         this.facilityType = facilityType;
         return this;
@@ -119,10 +104,6 @@ public class Facility {
     @JsonProperty("facility_type")
     public String getFacilityType() {
         return facilityType;
-    }
-
-    public void setFacilityType(String facilityType) {
-        this.facilityType = facilityType;
     }
 
     public Facility facilitySubtype(String facilitySubtype) {
@@ -142,10 +123,6 @@ public class Facility {
         return facilitySubtype;
     }
 
-    public void setFacilitySubtype(String facilitySubtype) {
-        this.facilitySubtype = facilitySubtype;
-    }
-
     public Facility facilityName(String facilityName) {
         this.facilityName = facilityName;
         return this;
@@ -163,10 +140,6 @@ public class Facility {
         return facilityName;
     }
 
-    public void setFacilityName(String facilityName) {
-        this.facilityName = facilityName;
-    }
-
     public Facility facilityOwnership(String facilityOwnership) {
         this.facilityOwnership = facilityOwnership;
         return this;
@@ -182,10 +155,6 @@ public class Facility {
     @JsonProperty("facility_ownership")
     public String getFacilityOwnership() {
         return facilityOwnership;
-    }
-
-    public void setFacilityOwnership(String facilityOwnership) {
-        this.facilityOwnership = facilityOwnership;
     }
 
     public Facility facilityRegion(FacilityRegionEnum facilityRegion) {
@@ -247,10 +216,6 @@ public class Facility {
         return facilityDetails;
     }
 
-    public void setFacilityDetails(Map<String, Object> facilityDetails) {
-        this.facilityDetails = facilityDetails;
-    }
-
     public Facility wfStatus(String wfStatus) {
         this.wfStatus = wfStatus;
         return this;
@@ -266,10 +231,6 @@ public class Facility {
     @JsonProperty("wfStatus")
     public String getWfStatus() {
         return wfStatus;
-    }
-
-    public void setWfStatus(String wfStatus) {
-        this.wfStatus = wfStatus;
     }
 
     public Facility additionalDetails(Map<String, Object> additionalDetails) {
@@ -289,10 +250,6 @@ public class Facility {
         return additionalDetails;
     }
 
-    public void setAdditionalDetails(Map<String, Object> additionalDetails) {
-        this.additionalDetails = additionalDetails;
-    }
-
     public Facility isActive(Boolean isActive) {
         this.isActive = isActive;
         return this;
@@ -308,10 +265,6 @@ public class Facility {
     @JsonProperty("isActive")
     public Boolean getIsActive() {
         return isActive;
-    }
-
-    public void setIsActive(Boolean isActive) {
-        this.isActive = isActive;
     }
 
     @Override
