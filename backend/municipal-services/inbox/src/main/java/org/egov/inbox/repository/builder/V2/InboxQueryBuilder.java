@@ -516,7 +516,7 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
                 Map<String, Object> wildcardClause = new HashMap<>();
                 wildcardClause.put("wildcard", new HashMap<>());
                 Map<String, Object> innerWildcardClause = (Map<String, Object>) wildcardClause.get("wildcard");
-                innerWildcardClause.put(addDataPathToSearchParamKey(key, nameToPathMap), "*" + item + "*");
+                innerWildcardClause.put(addDataPathToSearchParamKey(key, nameToPathMap), item + ".*");
                 wildcardClauses.add(wildcardClause);
             }
 
@@ -525,7 +525,7 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
             Map<String, Object> wildcardClause = new HashMap<>();
             wildcardClause.put("wildcard", new HashMap<>());
             Map<String, Object> innerWildcardClause = (Map<String, Object>) wildcardClause.get("wildcard");
-            innerWildcardClause.put(addDataPathToSearchParamKey(key, nameToPathMap), "*" + value + "*");
+            innerWildcardClause.put(addDataPathToSearchParamKey(key, nameToPathMap), value + ".*");
             wildcardClauses.add(wildcardClause);
             return wildcardClauses;
         }
