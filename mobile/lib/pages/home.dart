@@ -7,6 +7,7 @@ import '../utils/extensions.dart';
 import '../utils/i18_key_constants.dart' as i18;
 import '../widgets/header/back_navigation_help_header.dart';
 import '../widgets/home/home_item_card.dart';
+import '../widgets/navigation/drawer.dart';
 import '../widgets/navigation/navbar.dart';
 
 @RoutePage()
@@ -38,6 +39,7 @@ class _HomePageState extends State<HomePage> {
 
     return Scaffold(
       backgroundColor: DigitTheme.instance.colorScheme.surface,
+      drawer: const CustomDrawer(),
       appBar: const Navbar(),
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: spacer2),

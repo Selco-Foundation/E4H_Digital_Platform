@@ -18,6 +18,7 @@ import '../router/app_router.dart';
 import '../utils/i18_key_constants.dart' as i18;
 import '../widgets/button/footer_button.dart';
 import '../widgets/header/back_navigation_help_header.dart';
+import '../widgets/navigation/drawer.dart';
 import '../widgets/navigation/navbar.dart';
 
 @RoutePage()
@@ -44,6 +45,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
         );
         return Scaffold(
             appBar: const Navbar(),
+            drawer: const CustomDrawer(),
             body: ScrollableContent(
                 header: const BackNavigationHelpHeaderWidget(
                   showBackNavigation: true,
@@ -92,12 +94,6 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                                   color: theme.colorTheme.primary.primary2),
                             ),
                             LabeledField(
-                              label: 'Scan Serial No',
-                              child: ImageUploader(
-                                onImagesSelected: (List<File> imageFile) {},
-                              ),
-                            ),
-                            LabeledField(
                               label: 'Serial Number',
                               capitalizedFirstLetter: false,
                               child: DigitTextFormInput(
@@ -138,6 +134,12 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                                   ),
                                 ),
                               ],
+                            ),
+                            LabeledField(
+                              label: 'Scan Serial No',
+                              child: ImageUploader(
+                                onImagesSelected: (List<File> imageFile) {},
+                              ),
                             ),
                           ],
                         ),

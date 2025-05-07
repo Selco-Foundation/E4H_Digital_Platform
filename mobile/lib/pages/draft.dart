@@ -1,6 +1,7 @@
 import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:flutter/material.dart';
+import 'package:selco/widgets/navigation/drawer.dart';
 
 import '../router/app_router.dart';
 import '../widgets/button/footer_button.dart';
@@ -24,6 +25,7 @@ class _DraftPageState extends State<DraftPage> {
 
     return Scaffold(
       appBar: const Navbar(),
+      drawer: const CustomDrawer(),
       body: ScrollableContent(
         enableFixedDigitButton: true,
         backgroundColor: theme.colorTheme.generic.background,

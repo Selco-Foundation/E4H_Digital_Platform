@@ -87,11 +87,8 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
                             labelStyle: textTheme.headingS
                                 .copyWith(color: theme.colorTheme.text.primary),
                             capitalizedFirstLetter: false,
-                            child: DigitDropdown(
-                              onSelect: (DropdownItem selected) {
-                                // debugPrint("selected ${selected.code}");
-                              },
-                              items: const [
+                            child: const DigitDropdown(
+                              items: [
                                 DropdownItem(name: '1', code: '1'),
                                 DropdownItem(name: '2', code: '2'),
                                 DropdownItem(name: '3', code: '3')
