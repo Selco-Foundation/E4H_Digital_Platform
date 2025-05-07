@@ -4,6 +4,7 @@ from typing import Dict, List
 
 import pandas as pd
 import requests
+from fastapi import HTTPException
 
 from app.core.logging import AppLogger
 from app.schemas.boundary import Boundary
@@ -100,3 +101,41 @@ class FacilityTemplateService:
             })
 
         return boundary_records
+
+    def add_supervisor_columns_to_facility_template(self,input_path, output_path, sheet_name):
+        """
+        Add supervisor columns to the specified Excel sheet if they don't already exist.
+
+        Args:
+            input_path: Path to the input Excel file
+            output_path: Path where the modified Excel file will be saved
+            sheet_name: Name of the sheet to modify
+
+        Raises:
+            HTTPException: If the specified sheet is not found
+        """
+        try:
+            df = pd.read_excel(input_path, sheet_name=sheet_name)
+            columns_to_add = {
+                "Role": "Supervisor",
+                "Name": None,
+                "Phone Number": None,
+                "Email Address": None
+            }
+
+            for col_name, default_value in columns_to_add.items():
+                if col_name not in df.columns:
+                    df[col_name] = default_value
+
+            with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
+                all_sheets = pd.read_excel(input_path, sheet_name=None)
+                for sheet, sheet_df in all_sheets.items():
+                    if sheet == sheet_name:
+                        df.to_excel(writer, sheet_name=sheet, index=False)
+                    else:
+                        sheet_df.to_excel(writer, sheet_name=sheet, index=False)
+
+        except ValueError as e:
+            if "No sheet named" in str(e):
+                raise HTTPException(status_code=400, detail=f"Sheet '{sheet_name}' not found in the uploaded file")
+            raise e
