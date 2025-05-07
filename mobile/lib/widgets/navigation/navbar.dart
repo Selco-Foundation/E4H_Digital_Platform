@@ -23,9 +23,17 @@ class Navbar extends StatelessWidget implements PreferredSizeWidget {
       foregroundColor: theme.colorTheme.paper.primary,
       backgroundColor: theme.colorTheme.primary.primary2,
       leading: showMenu
-          ? IconButton(
-              icon: const Icon(Icons.menu, color: Colors.white, size: spacer6),
-              onPressed: () {},
+          ? GestureDetector(
+              onTap: () {
+                //
+              },
+              child: IconButton(
+                icon:
+                    const Icon(Icons.menu, color: Colors.white, size: spacer6),
+                onPressed: () {
+                  Scaffold.of(context).openDrawer();
+                },
+              ),
             )
           : null,
       title: Row(

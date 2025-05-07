@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:selco/utils/extensions.dart';
 
 import '../router/app_router.dart';
+import '../widgets/navigation/drawer.dart';
 import '../widgets/navigation/navbar.dart';
 
 @RoutePage()
@@ -22,6 +23,7 @@ class _DownloadStatusPageState extends State<DownloadStatusPage> {
 
     return Scaffold(
       appBar: const Navbar(),
+      drawer: const CustomDrawer(),
       body: ScrollableContent(
         // backgroundColor: theme.colorTheme.generic.background,
         children: [

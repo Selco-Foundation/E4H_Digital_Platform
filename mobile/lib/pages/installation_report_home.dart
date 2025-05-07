@@ -8,6 +8,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../blocs/report_type/report_type.dart';
 import '../router/app_router.dart';
 import '../widgets/header/back_navigation_help_header.dart';
+import '../widgets/navigation/drawer.dart';
 import '../widgets/navigation/navbar.dart';
 
 @RoutePage()
@@ -28,6 +29,7 @@ class _InstallationReportPageState extends State<InstallationReportPage> {
 
     return Scaffold(
       appBar: const Navbar(),
+      drawer: const CustomDrawer(),
       body: ScrollableContent(
         footer: const PoweredByDigit(version: ''),
         backgroundColor: theme.colorTheme.generic.background,

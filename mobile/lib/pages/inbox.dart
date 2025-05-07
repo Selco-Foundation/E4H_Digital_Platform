@@ -11,6 +11,7 @@ import '../router/app_router.dart';
 import '../widgets/cards/inbox_report_card.dart';
 import '../widgets/cards/inbox_report_rejected_card.dart';
 import '../widgets/header/back_navigation_help_header.dart';
+import '../widgets/navigation/drawer.dart';
 import '../widgets/navigation/navbar.dart';
 
 @RoutePage()
@@ -29,6 +30,7 @@ class _InboxPageState extends State<InboxPage> {
 
     return Scaffold(
       appBar: const Navbar(),
+      drawer: const CustomDrawer(),
       body: BlocBuilder<InboxTypeBloc, InboxTypeState>(
         builder: (ctx, state) {
           return ScrollableContent(
