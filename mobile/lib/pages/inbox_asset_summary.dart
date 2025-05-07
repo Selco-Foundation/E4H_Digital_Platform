@@ -11,6 +11,7 @@ import '../utils/i18_key_constants.dart' as i18;
 import '../widgets/button/footer_button.dart';
 import '../widgets/cards/element_asset_summary.dart';
 import '../widgets/header/back_navigation_help_header.dart';
+import '../widgets/navigation/drawer.dart';
 import '../widgets/navigation/navbar.dart';
 
 @RoutePage()
@@ -29,6 +30,7 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
 
     return Scaffold(
       appBar: const Navbar(),
+      drawer: const CustomDrawer(),
       body: ScrollableContent(
         enableFixedDigitButton: true,
         backgroundColor: theme.colorTheme.generic.background,

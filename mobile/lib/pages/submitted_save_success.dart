@@ -29,7 +29,7 @@ class SubmittedSaveSuccessPage extends StatelessWidget {
                 DigitButton(
                   type: DigitButtonType.primary,
                   size: DigitButtonSize.large,
-                  label: 'Back to Landing Page',
+                  label: 'Home',
                   onPressed: () => context.router.push(const HomeRoute()),
                 ),
               ],
