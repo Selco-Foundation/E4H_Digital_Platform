@@ -203,6 +203,7 @@ const Table = ({
                     )}
                     {headerGroup.headers.map((column) => (
                       <th
+                        key={column.id}
                         {...column.getHeaderProps(column.getSortByToggleProps())}
                         style={
                           column?.id === "selection"
@@ -224,7 +225,7 @@ const Table = ({
                     <tr {...row.getRowProps()} onClick={() => onClickRow(row)} className={rowClassName}>
                       {showAutoSerialNo && <td>{i + 1}</td>}
                       {row.cells.map((cell) => (
-                        <td {...cell.getCellProps([getCellProps(cell)])}>
+                        <td key={cell.column.id} {...cell.getCellProps([getCellProps(cell)])}>
                           {cell.attachment_link ? (
                             <a style={{ color: "#1D70B8" }} href={cell.attachment_link}>
                               {cell.render("Cell")}
