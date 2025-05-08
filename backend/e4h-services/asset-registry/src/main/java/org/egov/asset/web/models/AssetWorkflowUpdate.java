@@ -21,11 +21,11 @@ import javax.validation.Valid;
 public class AssetWorkflowUpdate {
     @JsonProperty("tenant_id")
 
-    private Object tenantId = null;
+    private String tenantId = null;
 
     @JsonProperty("assetID")
 
-    private Object assetID = null;
+    private String assetID = null;
 
     @JsonProperty("workflow")
 

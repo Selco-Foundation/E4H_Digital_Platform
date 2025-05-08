@@ -12,8 +12,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
+
 import javax.validation.Valid;
 import java.io.IOException;
+import java.util.HashMap;
 
 @jakarta.annotation.Generated(value = "org.egov.codegen.SpringBootCodegen", date = "2025-05-05T14:19:51.673231117+05:30[Asia/Kolkata]")
 @Controller
@@ -32,11 +34,17 @@ public class V1ApiController {
 
     @RequestMapping(value = "/v1/asset/bulk/_create", method = RequestMethod.POST)
     public ResponseEntity<BulkAssetCreateResponse> bulkCreateAsset(@Parameter(in = ParameterIn.DEFAULT, description = "Asset data to be added to the registry", required = true, schema = @Schema()) @Valid @RequestBody BulkAssetCreateRequest body) {
+        // TODO: Implement the actual bulk asset creation logic
         String accept = request.getHeader("Accept");
         if (accept != null && accept.contains("application/json")) {
             try {
-                return new ResponseEntity<BulkAssetCreateResponse>(objectMapper.readValue("{  \"ResponseInfo\" : \"{}\",  \"assets\" : \"\"}", BulkAssetCreateResponse.class), HttpStatus.NOT_IMPLEMENTED);
-            } catch (IOException e) {
+                // Create a proper response object instead of using a hardcoded JSON string
+                BulkAssetCreateResponse response = new BulkAssetCreateResponse();
+                // Set appropriate fields in the response
+                return new ResponseEntity<BulkAssetCreateResponse>(response, HttpStatus.NOT_IMPLEMENTED);
+            } catch (Exception e) {
+                // Log the error
+                // log.error("Error creating bulk assets", e);
                 return new ResponseEntity<BulkAssetCreateResponse>(HttpStatus.INTERNAL_SERVER_ERROR);
             }
         }
@@ -51,12 +59,18 @@ public class V1ApiController {
     }
 
     @RequestMapping(value = "/v1/asset/_create", method = RequestMethod.POST)
-    public ResponseEntity<AssetCreateUpdateResponse> createAsset() {
+    public ResponseEntity<AssetCreateUpdateResponse> createAsset(@Parameter(in = ParameterIn.DEFAULT, description = "Asset data to be added to the registry", required = true, schema = @Schema()) @Valid @RequestBody AssetCreateRequest body) {
+        // TODO: Implement the actual asset creation logic
         String accept = request.getHeader("Accept");
         if (accept != null && accept.contains("application/json")) {
             try {
-                return new ResponseEntity<AssetCreateUpdateResponse>(objectMapper.readValue("\"{}\"", AssetCreateUpdateResponse.class), HttpStatus.NOT_IMPLEMENTED);
-            } catch (IOException e) {
+                // Create a proper response object instead of using a hardcoded JSON string
+                AssetCreateUpdateResponse response = new AssetCreateUpdateResponse();
+                // Set appropriate fields in the response
+                return new ResponseEntity<AssetCreateUpdateResponse>(response, HttpStatus.NOT_IMPLEMENTED);
+            } catch (Exception e) {
+                // Log the error
+                // log.error("Error creating asset", e);
                 return new ResponseEntity<AssetCreateUpdateResponse>(HttpStatus.INTERNAL_SERVER_ERROR);
             }
         }
@@ -98,13 +112,17 @@ public class V1ApiController {
         return new ResponseEntity<Object>(HttpStatus.NOT_IMPLEMENTED);
     }
 
-    @RequestMapping(value = "/v1/asset/_search", method = RequestMethod.GET)
+    @RequestMapping(value = "/v1/asset/_search", method = RequestMethod.POST)
     public ResponseEntity<Object> searchAssets(@Parameter(in = ParameterIn.DEFAULT, description = "Asset data to be searched for", required = true, schema = @Schema()) @Valid @RequestBody AssetSearchRequest body) {
+        // TODO: Implement the actual asset search logic
         String accept = request.getHeader("Accept");
         if (accept != null && accept.contains("application/json")) {
             try {
-                return new ResponseEntity<Object>(objectMapper.readValue("\"\"", Object.class), HttpStatus.NOT_IMPLEMENTED);
-            } catch (IOException e) {
+                // Create a proper response object
+                return new ResponseEntity<Object>(new HashMap<>(), HttpStatus.NOT_IMPLEMENTED);
+            } catch (Exception e) {
+                // Log the error
+                // log.error("Error searching assets", e);
                 return new ResponseEntity<Object>(HttpStatus.INTERNAL_SERVER_ERROR);
             }
         }
@@ -118,13 +136,19 @@ public class V1ApiController {
         return new ResponseEntity<Void>(HttpStatus.NOT_IMPLEMENTED);
     }
 
-    @RequestMapping(value = "/v1/asset/_update", method = RequestMethod.POST)
-    public ResponseEntity<AssetCreateUpdateResponse> updateAsset() {
+    @RequestMapping(value = "/v1/asset/{assetID}/_update", method = RequestMethod.POST)
+    public ResponseEntity<AssetCreateUpdateResponse> updateAsset(@Parameter(in = ParameterIn.DEFAULT, description = "Updated asset information", required = true, schema = @Schema()) @Valid @RequestBody AssetCreateRequest body, @Parameter(in = ParameterIn.PATH, description = "Unique identifier of the asset", required = true, schema = @Schema()) @PathVariable("assetID") String assetID) {
+        // TODO: Implement the actual asset update logic
         String accept = request.getHeader("Accept");
         if (accept != null && accept.contains("application/json")) {
             try {
-                return new ResponseEntity<AssetCreateUpdateResponse>(objectMapper.readValue("\"{}\"", AssetCreateUpdateResponse.class), HttpStatus.NOT_IMPLEMENTED);
-            } catch (IOException e) {
+                // Create a proper response object
+                AssetCreateUpdateResponse response = new AssetCreateUpdateResponse();
+                // Set appropriate fields in the response
+                return new ResponseEntity<AssetCreateUpdateResponse>(response, HttpStatus.NOT_IMPLEMENTED);
+            } catch (Exception e) {
+                // Log the error
+                // log.error("Error updating asset", e);
                 return new ResponseEntity<AssetCreateUpdateResponse>(HttpStatus.INTERNAL_SERVER_ERROR);
             }
         }
@@ -138,8 +162,9 @@ public class V1ApiController {
         return new ResponseEntity<Void>(HttpStatus.NOT_IMPLEMENTED);
     }
 
-    @RequestMapping(value = "/v1/asset/workflow/_update", method = RequestMethod.POST)
+    @RequestMapping(value = "/v1/asset/workflow/{assetID}/_update", method = RequestMethod.POST)
     public ResponseEntity<Void> updateAssetWorkflow(@Parameter(in = ParameterIn.DEFAULT, description = "Workflow status update for an asset", required = true, schema = @Schema()) @Valid @RequestBody AssetWorkflowRequest body, @Parameter(in = ParameterIn.PATH, description = "System-generated unique identifier for the asset", required = true, schema = @Schema()) @PathVariable("assetID") Object assetID) {
+        // TODO: Implement the actual asset workflow update logic
         String accept = request.getHeader("Accept");
         return new ResponseEntity<Void>(HttpStatus.NOT_IMPLEMENTED);
     }
