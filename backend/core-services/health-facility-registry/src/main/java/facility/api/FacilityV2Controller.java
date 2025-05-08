@@ -25,7 +25,6 @@ import org.springframework.web.context.request.NativeWebRequest;
 import javax.annotation.processing.Generated;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 @Generated(value = "org.openapitools.codegen.languages.SpringCodegen", date = "2025-04-24T16:00:58.522282987+05:30[Asia/Kolkata]", comments = "Generator version: 7.4.0")
 @Validated
@@ -145,7 +144,7 @@ public interface FacilityV2Controller {
     )
 
     default ResponseEntity<FacilitySummary> getFacilitiesSummary(
-            @Parameter(name = "facilityId", description = "System generated unique identifier for a PHC", required = true, in = ParameterIn.PATH) @PathVariable("facilityId") UUID facilityId
+            @Parameter(name = "facilityId", description = "System generated unique identifier for a PHC", required = true, in = ParameterIn.PATH) @PathVariable("facilityId") String facilityId
     ) {
         getRequest().ifPresent(request -> {
             for (MediaType mediaType : MediaType.parseMediaTypes(request.getHeader("Accept"))) {

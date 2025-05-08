@@ -2,9 +2,7 @@ package facility.service;
 
 
 import facility.repository.FacilityRepository;
-import facility.web.models.Facility;
-import facility.web.models.FacilityAddress;
-import facility.web.models.FacilityCreateRequest;
+import facility.web.models.*;
 import facility.web.models.Idgen.IdGenerationRequest;
 import facility.web.models.Idgen.IdGenerationResponse;
 import facility.web.models.Idgen.IdRequest;
@@ -13,10 +11,12 @@ import org.egov.common.contract.request.RequestInfo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -28,6 +28,12 @@ public class FacilityService {
 
     @Autowired
     private RestTemplate restTemplate;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    private FacilityRowMapper facilityRowMapper;
 
     @Value("${egov.mdms.host}")
     private String mdmsHost;
@@ -68,9 +74,91 @@ public class FacilityService {
         return facility;
     }
 
+    public Facility updateFacility(FacilityUpdateRequest request) {
+        FacilityUpdateRequestFacilityUpdate update = request.getFacilityUpdate();
+
+        if (update.getFacilityId() == null || update.getTenantId() == null) {
+            throw new IllegalArgumentException("facilityId and tenantId must be provided for update");
+        }
+
+        // Convert update DTO to core Facility model
+        Facility facility = new Facility();
+        facility.setFacilityId(update.getFacilityId());
+        facility.setTenantId(update.getTenantId());
+        facility.setFacilityType(update.getFacilityType());
+        facility.setFacilitySubtype(update.getFacilitySubtype());
+        facility.setFacilityName(update.getFacilityName());
+        facility.setAddress(update.getAddress());
+        facility.setAdditionalDetails(update.getAdditionalDetails());
+
+        // Validate with MDMS (optional depending on update rules)
+        validateAgainstMDMS(facility, update.getTenantId());
+
+        // Set defaults
+        if (facility.getWfStatus() == null) facility.setWfStatus("UPDATED");
+        if (facility.getIsActive() == null) facility.setIsActive(true);
+
+        // Push to Kafka update topic
+        FacilityUpdateRequest kafkaRequest = new FacilityUpdateRequest();
+        kafkaRequest.setRequestInfo(request.getRequestInfo());
+        kafkaRequest.setFacilityUpdate(update);
+        facilityRepository.pushUpdateFacility(kafkaRequest);
+
+        return facility;
+    }
+
+    public List<Facility> searchFacilities(String tenantId, String facilityId, String facilityName, String hfrId, String ninId) {
+        StringBuilder query = new StringBuilder("SELECT * FROM facility WHERE 1=1");
+        List<Object> params = new ArrayList<>();
+
+        if (tenantId != null && !tenantId.isBlank()) {
+            query.append(" AND tenant_id = ?");
+            params.add(tenantId);
+        }
+
+        if (facilityId != null && !facilityId.isBlank()) {
+            query.append(" AND facility_id::text = ?");
+            params.add(facilityId);
+        }
+
+        if (facilityName != null && !facilityName.isBlank()) {
+            query.append(" AND facility_name ILIKE ?");
+            params.add("%" + facilityName + "%");
+        }
+
+        if (hfrId != null && !hfrId.isBlank()) {
+            query.append(" AND facility_details->>'hfrId' = ?");
+            params.add(hfrId);
+        }
+
+        if (ninId != null && !ninId.isBlank()) {
+            query.append(" AND facility_details->>'ninId' = ?");
+            params.add(ninId);
+        }
+
+        return jdbcTemplate.query(query.toString(), params.toArray(), facilityRowMapper.facilityRowMapper);
+    }
+
+
+    public FacilitySummary getFacilitySummary(String facilityId) {
+        String sql = "SELECT facility_name, facility_type FROM facility WHERE facility_id = ?";
+
+        return jdbcTemplate.queryForObject(sql, new Object[]{facilityId}, (rs, rowNum) -> {
+            String name = rs.getString("facility_name");
+            String type = rs.getString("facility_type");
+
+            String summaryText = "Facility '" + name + "' is of type '" + type + "'.";
+
+            FacilitySummary summary = new FacilitySummary();
+            summary.setSummary(summaryText);
+            return summary;
+        });
+    }
+
+
     private void validateAgainstMDMS(Facility facility, String tenantId) {
         String url = String.format("%s:%s/egov-mdms-service/v2/_search", mdmsHost, mdmsPort);
-        Map<String, Object> requestInfo = Map.of("authToken", ""); // Set token if required
+        Map<String, Object> requestInfo = Map.of("authToken", "");
         Map<String, Object> mdmsRequest = Map.of(
                 "RequestInfo", requestInfo,
                 "MdmsCriteria", Map.of(
@@ -99,6 +187,28 @@ public class FacilityService {
         List<Map<String, Object>> columns = (List<Map<String, Object>>) schema.get("columns");
         Map<String, Object> input = convertFacilityToMap(facility);
 
+        // Static field overrides
+        Map<String, Function<Facility, Object>> staticMappers = Map.of(
+                "Type of HC", Facility::getFacilityType,
+                "Health Centre Name", Facility::getFacilityName,
+                "facility_id", Facility::getFacilityId,
+                "tenant_id", Facility::getTenantId
+        );
+
+        // Apply static field values
+        staticMappers.forEach((key, extractor) -> {
+            Object value = extractor.apply(facility);
+            if (value != null) {
+                input.put(key, value);
+            }
+        });
+
+        // Remove static fields from MDMS-driven validation
+        Set<String> staticFields = staticMappers.keySet();
+        columns = columns.stream()
+                .filter(c -> !staticFields.contains(c.get("name")))
+                .toList();
+
         for (Map<String, Object> col : columns) {
             String name = (String) col.get("name");
 
@@ -106,7 +216,7 @@ public class FacilityService {
             String key = name;
             if (col.containsKey("svcSource")) {
                 key = ((Map<String, String>) col.get("svcSource")).get("key");
-            } else if (col.containsKey("mdmsSource") && !key.equals("Type of HC")) {
+            } else if (col.containsKey("mdmsSource")) {
                 key = ((Map<String, String>) col.get("mdmsSource")).get("path").replace("$.", "");
             }
 

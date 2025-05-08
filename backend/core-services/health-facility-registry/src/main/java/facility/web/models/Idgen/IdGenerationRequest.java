@@ -11,9 +11,8 @@ import java.util.List;
 
 /**
  * <h1>IdGenerationRequest</h1>
- * 
- * @author VISHAL_GENIUS
  *
+ * @author VISHAL_GENIUS
  */
 @Data
 @AllArgsConstructor
@@ -21,9 +20,9 @@ import java.util.List;
 @Builder
 public class IdGenerationRequest {
 
-	@JsonProperty("RequestInfo")
-	private RequestInfo requestInfo;
+    @JsonProperty("RequestInfo")
+    private RequestInfo requestInfo;
 
-	private List<IdRequest> idRequests;
+    private List<IdRequest> idRequests;
 
 }

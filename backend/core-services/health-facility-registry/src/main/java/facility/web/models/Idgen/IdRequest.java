@@ -9,9 +9,8 @@ import lombok.NoArgsConstructor;
 
 /**
  * <h1>IdRequest</h1>
- * 
- * @author Narendra
  *
+ * @author Narendra
  */
 @Data
 @AllArgsConstructor
@@ -19,15 +18,15 @@ import lombok.NoArgsConstructor;
 @Builder
 public class IdRequest {
 
-	@JsonProperty("idName")
-	@NotNull
-	private String idName;
+    @JsonProperty("idName")
+    @NotNull
+    private String idName;
 
-	@NotNull
-	@JsonProperty("tenantId")
-	private String tenantId;
+    @NotNull
+    @JsonProperty("tenantId")
+    private String tenantId;
 
-	@JsonProperty("format")
-	private String format;
+    @JsonProperty("format")
+    private String format;
 
 }

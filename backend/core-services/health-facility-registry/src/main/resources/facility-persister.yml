@@ -27,3 +27,29 @@ serviceMaps:
               type: JSON
               dbType: JSONB
             - jsonPath: $.facilities.is_active
+    - version: 1.0
+      description: Updates facility data
+      fromTopic: update-facility
+      isTransaction: true
+      queryMaps:
+        - query: UPDATE facility SET facility_name = ?, facility_type = ?, facility_category = ?, facility_ownership = ?, facility_region = ?, facility_details = ?, address = ?, wf_status = ?, additional_details = ?, is_active = ? WHERE facility_id = ? AND tenant_id = ?;
+          basePath: $.facilityUpdate
+          jsonMaps:
+            - jsonPath: $.facilityUpdate.facility_name
+            - jsonPath: $.facilityUpdate.facility_type
+            - jsonPath: $.facilityUpdate.facility_category
+            - jsonPath: $.facilityUpdate.facility_ownership
+            - jsonPath: $.facilityUpdate.facility_region
+            - jsonPath: $.facilityUpdate.facility_details
+              type: JSON
+              dbType: JSONB
+            - jsonPath: $.facilityUpdate.address
+              type: JSON
+              dbType: JSONB
+            - jsonPath: $.facilityUpdate.wf_status
+            - jsonPath: $.facilityUpdate.additional_details
+              type: JSON
+              dbType: JSONB
+            - jsonPath: $.facilityUpdate.is_active
+            - jsonPath: $.facilityUpdate.facility_id
+            - jsonPath: $.facilityUpdate.tenant_id
