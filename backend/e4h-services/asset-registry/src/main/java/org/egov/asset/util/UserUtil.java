@@ -114,6 +114,12 @@ public class UserUtil {
      * @param userInfo
      */
     public void addUserDefaultFields(String mobileNumber, String tenantId, User userInfo, UserType userType) {
+        if (userInfo == null) {
+            throw new CustomException("INVALID_USER_INFO", "User info cannot be null");
+        }
+        if (userType == null) {
+            throw new CustomException("INVALID_USER_TYPE", "User type cannot be null");
+        }
         Role role = getCitizenRole(tenantId);
         userInfo.setRoles(Collections.singleton(role));
         userInfo.setType(userType);

@@ -115,8 +115,15 @@ public class WorkflowUtil {
         processInstance.setAction(workflow.getAction());
         processInstance.setModuleName(wfModuleName);
         processInstance.setTenantId(tenantId);
-        processInstance.setBusinessService(getBusinessService(requestInfo, tenantId, businessServiceCode).getBusinessService());
-        processInstance.setDocuments(workflow.getVerificationDocuments());
+        BusinessService businessService;
+        try {
+            businessService = getBusinessService(requestInfo, tenantId, businessServiceCode);
+            processInstance.setBusinessService(businessService.getBusinessService());
+        } catch (CustomException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new CustomException("BUSINESS_SERVICE_ERROR", "Error retrieving business service: "+e.getMessage());
+        } processInstance.setDocuments(workflow.getVerificationDocuments());
         processInstance.setComment(workflow.getComments());
 
         if (!CollectionUtils.isEmpty(workflow.getAssignes())) {
@@ -145,7 +152,7 @@ public class WorkflowUtil {
         Map<String, Workflow> businessIdToWorkflow = new HashMap<>();
 
         processInstances.forEach(processInstance -> {
-            List<String> userIds = null;
+            List<String> userIds = new ArrayList<>();
 
             if (!CollectionUtils.isEmpty(processInstance.getAssignes())) {
                 userIds = processInstance.getAssignes().stream().map(User::getUuid).collect(Collectors.toList());
