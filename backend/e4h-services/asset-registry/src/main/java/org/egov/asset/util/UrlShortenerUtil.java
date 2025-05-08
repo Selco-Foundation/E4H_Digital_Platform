@@ -23,15 +23,24 @@ public class UrlShortenerUtil {
 
 
     public String getShortenedUrl(String url) {
+        if (StringUtils.isBlank(url)) {
+            log.error("Empty URL provided for shortening");
+            return url;
+        }
 
         HashMap<String, String> body = new HashMap<>();
         body.put(URL, url);
-        String res = restTemplate.postForObject(configs.getUrlShortnerHost() + configs.getUrlShortnerEndpoint(), body, String.class);
+        try {
+            String res = restTemplate.postForObject(configs.getUrlShortnerHost() + configs.getUrlShortnerEndpoint(), body, String.class);
 
-        if (StringUtils.isEmpty(res)) {
-            log.error(URL_SHORTENING_ERROR_CODE, URL_SHORTENING_ERROR_MESSAGE + url);
+            if (StringUtils.isEmpty(res)) {
+                log.error(URL_SHORTENING_ERROR_CODE, URL_SHORTENING_ERROR_MESSAGE + url);
+                return url;
+            } else return res;
+        } catch (Exception e) {
+            log.error(URL_SHORTENING_ERROR_CODE, URL_SHORTENING_ERROR_MESSAGE, url, e);
             return url;
-        } else return res;
+        }
     }
 
 

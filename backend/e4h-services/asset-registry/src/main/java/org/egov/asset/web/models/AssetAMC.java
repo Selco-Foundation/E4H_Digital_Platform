@@ -2,13 +2,18 @@ package org.egov.asset.web.models;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import digit.models.coremodels.AuditDetails;
+import digit.models.coremodels.Document;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 
-import javax.validation.Valid;
+import jakarta.validation.Valid;
+
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
 
 /**
  * AssetAMC
@@ -22,43 +27,42 @@ import javax.validation.Valid;
 public class AssetAMC {
     @JsonProperty("tenant_id")
 
-    private Object tenantId = null;
+    private String tenantId = null;
 
     @JsonProperty("amcID")
 
-    private Object amcID = null;
+    private String amcID = null;
 
     @JsonProperty("assetID")
 
-    private Object assetID = null;
+    private String assetID = null;
 
     @JsonProperty("contractNumber")
 
-    private Object contractNumber = null;
+    private String contractNumber = null;
 
     @JsonProperty("vendorCode")
 
-    private Object vendorCode = null;
+    private String vendorCode = null;
 
     @JsonProperty("contractStartDate")
 
-    private Object contractStartDate = null;
+    private Date contractStartDate = null;
 
     @JsonProperty("contractEndDate")
 
-    private Object contractEndDate = null;
+    private Date contractEndDate = null;
 
     @JsonProperty("visitSchedule")
 
     private Object visitSchedule = null;
 
     @JsonProperty("visits")
-
-    private Object visits = null;
+    private List<AssetAMCVisit> visits = null;
 
     @JsonProperty("documents")
 
-    private Object documents = null;
+    private List<Document> documents = null;
 
     @JsonProperty("auditDetails")
 
@@ -67,7 +71,7 @@ public class AssetAMC {
 
     @JsonProperty("additionalDetails")
 
-    private Object additionalDetails = null;
+    private Map<String, Object> additionalDetails = null;
 
 
 }

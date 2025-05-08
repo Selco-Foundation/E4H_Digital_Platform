@@ -24,31 +24,31 @@ public class AssetSearchCriteria {
     @JsonProperty("tenant_id")
     @NotNull
 
-    private Object tenantId = null;
+    private String tenantId = null;
 
     @JsonProperty("assetID")
 
-    private Object assetID = null;
+    private String assetID = null;
 
     @JsonProperty("facilityID")
 
-    private Object facilityID = null;
+    private String facilityID = null;
 
     @JsonProperty("serialNumber")
 
-    private Object serialNumber = null;
+    private String serialNumber = null;
 
     @JsonProperty("modelNumber")
 
-    private Object modelNumber = null;
+    private String modelNumber = null;
 
     @JsonProperty("brandID")
 
-    private Object brandID = null;
+    private String brandID = null;
 
     @JsonProperty("wfStatus")
 
-    private Object wfStatus = null;
+    private String wfStatus = null;
 
 
 }

@@ -1,41 +1,42 @@
 package org.egov.asset.web.models;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 
+import java.time.LocalDate;
+
 /**
  * AssetUpdate
  */
 @Validated
-@jakarta.annotation.Generated(value = "org.egov.codegen.SpringBootCodegen", date = "2025-05-05T14:19:51.673231117+05:30[Asia/Kolkata]")
+@jakarta.annotation.Generated(value = "org.egov.codegen.SpringBootCodegen", date = "2025-05-05T14:19:51.67323111705:30[Asia/Kolkata]")
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
 public class AssetUpdate {
+    
     @JsonProperty("tenant_id")
-
-    private Object tenantId = null;
+    @NotNull
+    private String tenantId = null;
 
     @JsonProperty("assetID")
-
-    private Object assetID = null;
+    @NotNull
+    private String assetID = null;
 
     @JsonProperty("warrantyStartDate")
-
-    private Object warrantyStartDate = null;
+    private LocalDate warrantyStartDate = null;
 
     @JsonProperty("warrantyDuration")
-
-    private Object warrantyDuration = null;
+    private Integer warrantyDuration = null;
 
     @JsonProperty("warrantyEndDate")
-
-    private Object warrantyEndDate = null;
+    private LocalDate warrantyEndDate = null;
 
 
 }

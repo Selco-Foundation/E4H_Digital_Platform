@@ -8,6 +8,9 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 
+import java.util.Date;
+import java.util.Map;
+
 /**
  * Description of an AMC visit
  */
@@ -21,47 +24,46 @@ import org.springframework.validation.annotation.Validated;
 public class AssetAMCVisit {
     @JsonProperty("tenant_id")
 
-    private Object tenantId = null;
+    private String tenantId = null;
 
     @JsonProperty("visitId")
 
-    private Object visitId = null;
+    private String visitId = null;
 
     @JsonProperty("assetId")
 
-    private Object assetId = null;
+    private String assetId = null;
 
     @JsonProperty("facilityId")
 
-    private Object facilityId = null;
+    private String facilityId = null;
 
     @JsonProperty("scheduledDate")
-
-    private Object scheduledDate = null;
+    private Date scheduledDate = null;
 
     @JsonProperty("visitDate")
 
-    private Object visitDate = null;
+    private Date visitDate = null;
 
     @JsonProperty("engineerName")
 
-    private Object engineerName = null;
+    private String engineerName = null;
 
     @JsonProperty("observations")
 
-    private Object observations = null;
+    private String observations = null;
 
     @JsonProperty("nextDueDate")
 
-    private Object nextDueDate = null;
+    private Date nextDueDate = null;
 
     @JsonProperty("visitStatus")
 
-    private Object visitStatus = null;
+    private String visitStatus = null;
 
     @JsonProperty("additionalDetails")
 
-    private Object additionalDetails = null;
+    private Map<String,Object> additionalDetails = null;
 
 
 }

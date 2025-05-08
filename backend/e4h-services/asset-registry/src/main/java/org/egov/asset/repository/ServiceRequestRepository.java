@@ -10,8 +10,6 @@ import org.springframework.stereotype.Repository;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.Map;
-
 import static org.egov.asset.config.ServiceConstants.EXTERNAL_SERVICE_EXCEPTION;
 import static org.egov.asset.config.ServiceConstants.SEARCHER_SERVICE_EXCEPTION;
 
@@ -31,18 +29,16 @@ public class ServiceRequestRepository {
     }
 
 
-    public Object fetchResult(StringBuilder uri, Object request) {
+    public <T> T fetchResult(StringBuilder uri, Object request, Class<T> responseType) {
         mapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
-        Object response = null;
         try {
-            response = restTemplate.postForObject(uri.toString(), request, Map.class);
+            return restTemplate.postForObject(uri.toString(), request, responseType);
         } catch (HttpClientErrorException e) {
             log.error(EXTERNAL_SERVICE_EXCEPTION, e);
             throw new ServiceCallException(e.getResponseBodyAsString());
         } catch (Exception e) {
             log.error(SEARCHER_SERVICE_EXCEPTION, e);
+            throw new ServiceCallException("Error while fetching from service: " + e.getMessage());
         }
-
-        return response;
     }
 }

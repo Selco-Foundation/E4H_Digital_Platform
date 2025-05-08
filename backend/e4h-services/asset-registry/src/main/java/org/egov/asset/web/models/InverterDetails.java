@@ -8,6 +8,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 
+import java.math.BigDecimal;
+
 /**
  * This describes the master schema needed for an inverter asset. To be created in MDMS and validated against
  */
@@ -20,8 +22,8 @@ import org.springframework.validation.annotation.Validated;
 @Builder
 public class InverterDetails {
     @JsonProperty("capacity")
-
-    private Object capacity = null;
+    @Schema(description = "Rated capacity of the inverter")
+    private BigDecimal capacity;
 
 
 }

@@ -6,10 +6,12 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Import;
+import org.springframework.kafka.annotation.EnableKafka;
 
 @Import({TracerConfiguration.class})
 @SpringBootApplication
-@ComponentScan(basePackages = {"digit", "digit.web.controllers", "digit.config"})
+@EnableKafka
+@ComponentScan(basePackages = {"org.egov.asset", "org.egov.asset.web.controllers", "org.egov.asset.config"})
 public class Main {
 
 

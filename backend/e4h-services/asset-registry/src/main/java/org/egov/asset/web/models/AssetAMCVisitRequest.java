@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 import org.egov.common.contract.request.RequestInfo;
 import org.springframework.validation.annotation.Validated;
 
-import javax.validation.Valid;
+import jakarta.validation.Valid;
 import javax.validation.constraints.NotNull;
 
 /**
@@ -31,7 +31,7 @@ public class AssetAMCVisitRequest {
     @NotNull
 
     @Valid
-    private AssetAMCVisit amCVisit = null;
+    private AssetAMCVisit amcVisit = null;
 
 
 }

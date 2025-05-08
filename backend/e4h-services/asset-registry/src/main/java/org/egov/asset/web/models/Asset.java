@@ -2,14 +2,18 @@ package org.egov.asset.web.models;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import digit.models.coremodels.AuditDetails;
+import digit.models.coremodels.Document;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 
-import javax.validation.Valid;
+import jakarta.validation.Valid;
 import javax.validation.constraints.NotNull;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Asset
@@ -23,36 +27,36 @@ import javax.validation.constraints.NotNull;
 public class Asset {
     @JsonProperty("tenant_id")
 
-    private Object tenantId = null;
+    private String tenantId = null;
 
     @JsonProperty("assetID")
 
-    private Object assetID = null;
+    private String assetID = null;
 
     @JsonProperty("facilityID")
     @NotNull
 
-    private Object facilityID = null;
+    private String facilityID = null;
 
     @JsonProperty("assetTypeID")
     @NotNull
 
-    private Object assetTypeID = null;
+    private String assetTypeID = null;
 
     @JsonProperty("serialNumber")
     @NotNull
 
-    private Object serialNumber = null;
+    private String serialNumber = null;
 
     @JsonProperty("modelNumber")
     @NotNull
 
-    private Object modelNumber = null;
+    private String modelNumber = null;
 
     @JsonProperty("brandID")
     @NotNull
 
-    private Object brandID = null;
+    private String brandID = null;
 
     @JsonProperty("assetDetails")
 
@@ -61,29 +65,29 @@ public class Asset {
     @JsonProperty("warrantyStartDate")
     @NotNull
 
-    private Object warrantyStartDate = null;
+    private Date warrantyStartDate = null;
 
     @JsonProperty("warrantyDuration")
     @NotNull
 
-    private Object warrantyDuration = null;
+    private Integer warrantyDuration = null;
 
     @JsonProperty("warrantyEndDate")
     @NotNull
 
-    private Object warrantyEndDate = null;
+    private Date warrantyEndDate = null;
 
     @JsonProperty("wfStatus")
 
-    private Object wfStatus = null;
+    private String wfStatus = null;
 
     @JsonProperty("isActive")
 
-    private Object isActive = null;
+    private Boolean isActive = null;
 
     @JsonProperty("documents")
 
-    private Object documents = null;
+    private List<Document> documents = null;
 
     @JsonProperty("auditDetails")
 
@@ -92,7 +96,7 @@ public class Asset {
 
     @JsonProperty("additionalDetails")
 
-    private Object additionalDetails = null;
+    private Map<String, Object> additionalDetails = null;
 
 
 }

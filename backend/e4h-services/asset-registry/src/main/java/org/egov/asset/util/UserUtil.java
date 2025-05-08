@@ -23,20 +23,18 @@ import static org.egov.asset.config.ServiceConstants.*;
 @Component
 public class UserUtil {
 
-    @Autowired
     private final ObjectMapper mapper;
 
-    @Autowired
     private final ServiceRequestRepository serviceRequestRepository;
 
-    @Autowired
-    private Configuration configs;
+    private final Configuration configs;
 
 
     @Autowired
-    public UserUtil(ObjectMapper mapper, ServiceRequestRepository serviceRequestRepository) {
+    public UserUtil(ObjectMapper mapper, ServiceRequestRepository serviceRequestRepository, Configuration configs) {
         this.mapper = mapper;
         this.serviceRequestRepository = serviceRequestRepository;
+        this.configs = configs;
     }
 
     /**
@@ -49,17 +47,26 @@ public class UserUtil {
 
     public UserDetailResponse userCall(Object userRequest, StringBuilder uri) {
         String dobFormat = null;
-        if (uri.toString().contains(configs.getUserSearchEndpoint()) || uri.toString().contains(configs.getUserUpdateEndpoint()))
+        String uriString = uri.toString();
+        if (uriString.contains(configs.getUserSearchEndpoint()) || uriString.contains(configs.getUserUpdateEndpoint()))
             dobFormat = DOB_FORMAT_Y_M_D;
-        else if (uri.toString().contains(configs.getUserCreateEndpoint()))
+        else if (uriString.contains(configs.getUserCreateEndpoint()))
             dobFormat = DOB_FORMAT_D_M_Y;
+        else
+            dobFormat = DOB_FORMAT_Y_M_D; // Default format
+
         try {
-            LinkedHashMap responseMap = (LinkedHashMap) serviceRequestRepository.fetchResult(uri, userRequest);
+            LinkedHashMap responseMap = (LinkedHashMap) serviceRequestRepository.fetchResult(uri, userRequest, LinkedHashMap.class);
+            if (responseMap == null) {
+                throw new CustomException("USER_SERVICE_RESPONSE_ERROR", "Received null response from user service");
+            }
             parseResponse(responseMap, dobFormat);
             UserDetailResponse userDetailResponse = mapper.convertValue(responseMap, UserDetailResponse.class);
             return userDetailResponse;
         } catch (IllegalArgumentException e) {
             throw new CustomException(ILLEGAL_ARGUMENT_EXCEPTION_CODE, OBJECTMAPPER_UNABLE_TO_CONVERT);
+        } catch (Exception e) {
+            throw new CustomException();
         }
     }
 
@@ -71,6 +78,9 @@ public class UserUtil {
      */
 
     public void parseResponse(LinkedHashMap responseMap, String dobFormat) {
+        if (responseMap == null) {
+            return;
+        }
         List<LinkedHashMap> users = (List<LinkedHashMap>) responseMap.get(USER);
         String format1 = DOB_FORMAT_D_M_Y_H_M_S;
         if (users != null) {
@@ -95,12 +105,17 @@ public class UserUtil {
      * @return Long value of date
      */
     private Long dateTolong(String date, String format) {
+        if (date == null || format == null) {
+            throw new CustomException("INVALID_DATE_INPUT", "Date or format is null");
+        }
         SimpleDateFormat f = new SimpleDateFormat(format);
         Date d = null;
         try {
             d = f.parse(date);
         } catch (ParseException e) {
             throw new CustomException(INVALID_DATE_FORMAT_CODE, INVALID_DATE_FORMAT_MESSAGE);
+        } catch (Exception e) {
+            throw new CustomException("DATE_PROCESSING_ERROR", "Error processing date: " + e.getMessage());
         }
         return d.getTime();
     }
@@ -143,7 +158,14 @@ public class UserUtil {
     }
 
     public String getStateLevelTenant(String tenantId) {
-        return tenantId.split("\\.")[0];
+        if (tenantId == null || tenantId.isEmpty()) {
+            throw new CustomException("INVALID_TENANT_ID", "TenantId cannot be null or empty");
+        }
+        String[] tenantParts = tenantId.split("\\.");
+        if (tenantParts.length == 0) {
+            throw new CustomException();
+        }
+        return tenantParts[0];
     }
 
 }

@@ -2,6 +2,7 @@ package org.egov.asset.web.models;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -20,8 +21,8 @@ import org.springframework.validation.annotation.Validated;
 @Builder
 public class BatteryDetails {
     @JsonProperty("capacity")
-
-    private Object capacity = null;
+    @NotNull
+    private Double capacity = null;
 
 
 }

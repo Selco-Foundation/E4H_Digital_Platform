@@ -40,15 +40,26 @@ public class WorkflowUtil {
      * @return
      */
     public BusinessService getBusinessService(RequestInfo requestInfo, String tenantId, String businessServiceCode) {
+        if (requestInfo == null || tenantId == null || businessServiceCode == null) {
+            throw new CustomException("INVALID_INPUT", "RequestInfo, tenantId, and businessServiceCode cannot be null");
+        }
 
         StringBuilder url = getSearchURLWithParams(tenantId, businessServiceCode);
         RequestInfoWrapper requestInfoWrapper = RequestInfoWrapper.builder().requestInfo(requestInfo).build();
-        Object result = repository.fetchResult(url, requestInfoWrapper);
+        Object result;
+        try {
+            result = repository.fetchResult(url, requestInfoWrapper, String.class);
+        } catch (Exception e) {
+            throw new CustomException("WF_SERVICE_CALL_FAILED", "Failed to fetch business service: "+ e.getMessage());
+        }
+
         BusinessServiceResponse response = null;
         try {
             response = mapper.convertValue(result, BusinessServiceResponse.class);
         } catch (IllegalArgumentException e) {
             throw new CustomException(PARSING_ERROR, FAILED_TO_PARSE_BUSINESS_SERVICE_SEARCH);
+        } catch (Exception e) {
+            throw new CustomException("BUSINESS_SERVICE_PROCESSING_ERROR", "Error processing business service: "+e.getMessage());
         }
 
         if (CollectionUtils.isEmpty(response.getBusinessServices()))
@@ -122,14 +133,15 @@ public class WorkflowUtil {
         } catch (CustomException e) {
             throw e;
         } catch (Exception e) {
-            throw new CustomException("BUSINESS_SERVICE_ERROR", "Error retrieving business service: "+e.getMessage());
-        } processInstance.setDocuments(workflow.getVerificationDocuments());
+            throw new CustomException();
+        }
+        processInstance.setDocuments(workflow.getVerificationDocuments());
         processInstance.setComment(workflow.getComments());
 
-        if (!CollectionUtils.isEmpty(workflow.getAssignes())) {
+        if (!CollectionUtils.isEmpty(workflow.getAssignees())) {
             List<User> users = new ArrayList<>();
 
-            workflow.getAssignes().forEach(uuid -> {
+            workflow.getAssignees().forEach(uuid -> {
                 User user = new User();
                 user.setUuid(uuid);
                 users.add(user);
@@ -160,7 +172,7 @@ public class WorkflowUtil {
 
             Workflow workflow = Workflow.builder()
                     .action(processInstance.getAction())
-                    .assignes(userIds)
+                    .assignees(userIds)
                     .comments(processInstance.getComment())
                     .verificationDocuments(processInstance.getDocuments())
                     .build();
@@ -180,8 +192,23 @@ public class WorkflowUtil {
     private State callWorkFlow(ProcessInstanceRequest workflowReq) {
         ProcessInstanceResponse response = null;
         StringBuilder url = new StringBuilder(configs.getWfHost().concat(configs.getWfTransitionPath()));
-        Object optional = repository.fetchResult(url, workflowReq);
-        response = mapper.convertValue(optional, ProcessInstanceResponse.class);
+        Object result;
+        try {
+            result = repository.fetchResult(url, workflowReq, String.class);
+        } catch (Exception e) {
+            throw new CustomException();
+        }
+
+        try {
+            response = mapper.convertValue(result, ProcessInstanceResponse.class);
+        } catch (Exception e) {
+            throw new CustomException();
+        }
+
+        if (response == null || CollectionUtils.isEmpty(response.getProcessInstances())) {
+            throw new CustomException("WORKFLOW_RESPONSE_ERROR", "No process instances found in workflow response");
+        }
+
         return response.getProcessInstances().get(0).getState();
     }
 }

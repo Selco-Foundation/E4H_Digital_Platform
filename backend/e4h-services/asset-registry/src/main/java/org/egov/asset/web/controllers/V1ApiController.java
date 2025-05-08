@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
 import org.egov.asset.web.models.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -13,13 +14,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
-import javax.validation.Valid;
+import jakarta.validation.Valid;
 import java.io.IOException;
 import java.util.HashMap;
 
 @jakarta.annotation.Generated(value = "org.egov.codegen.SpringBootCodegen", date = "2025-05-05T14:19:51.673231117+05:30[Asia/Kolkata]")
 @Controller
-@RequestMapping("")
+@Slf4j
+@RequestMapping("/asset-registry")
 public class V1ApiController {
 
     private final ObjectMapper objectMapper;
@@ -130,7 +132,7 @@ public class V1ApiController {
         return new ResponseEntity<Object>(HttpStatus.NOT_IMPLEMENTED);
     }
 
-    @RequestMapping(value = "/v1/asset/amc/visit/_update", method = RequestMethod.POST)
+    @RequestMapping(value = "/v1/asset/amc/visit/{visitID}/_update", method = RequestMethod.POST)
     public ResponseEntity<Void> updateAMCVisit(@Parameter(in = ParameterIn.DEFAULT, description = "Updated AMC visit information", required = true, schema = @Schema()) @Valid @RequestBody AssetAMCVisitRequest body, @Parameter(in = ParameterIn.PATH, description = "Unique identifier of the AMC visit record", required = true, schema = @Schema()) @PathVariable("visitID") Object visitID) {
         String accept = request.getHeader("Accept");
         return new ResponseEntity<Void>(HttpStatus.NOT_IMPLEMENTED);
