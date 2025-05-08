@@ -13,7 +13,7 @@ public class FacilityRowMapper {
 
     private final ObjectMapper mapper = new ObjectMapper();
 
-    public final RowMapper<Facility> facilityRowMapper = (rs, rowNum) -> {
+    public final RowMapper<Facility> rowMapper = (rs, rowNum) -> {
         Facility facility = new Facility();
         facility.setFacilityId(rs.getString("facility_id"));
         facility.setTenantId(rs.getString("tenant_id"));

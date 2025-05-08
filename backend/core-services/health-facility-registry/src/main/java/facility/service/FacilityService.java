@@ -1,6 +1,7 @@
 package facility.service;
 
 
+import exception.ServiceCallException;
 import facility.repository.FacilityRepository;
 import facility.web.models.*;
 import facility.web.models.Idgen.IdGenerationRequest;
@@ -24,6 +25,7 @@ import java.util.stream.Stream;
 @Service
 public class FacilityService {
 
+    public static final String MDMS_SOURCE = "mdmsSource";
     @Autowired
     private FacilityRepository facilityRepository;
 
@@ -144,7 +146,7 @@ public class FacilityService {
         params.add(limit);
         params.add(offset);
 
-        return jdbcTemplate.query(query.toString(), params.toArray(), facilityRowMapper.facilityRowMapper);
+        return jdbcTemplate.query(query.toString(), params.toArray(), facilityRowMapper.rowMapper);
     }
 
 
@@ -169,6 +171,17 @@ public class FacilityService {
 
 
     private void validateAgainstMDMS(Facility facility, String tenantId) {
+        List<Map<String, Object>> mdmsList = fetchMDMSData(tenantId);
+        Map<String, Object> schema = extractFacilitySchema(mdmsList);
+
+        List<Map<String, Object>> columns = (List<Map<String, Object>>) schema.get("columns");
+        Map<String, Object> input = buildInputMapWithOverrides(facility, columns);
+
+        validateFields(columns, input, mdmsList);
+        validateRowConstraints((List<Map<String, Object>>) schema.get("rowConstraints"), input);
+    }
+
+    private List<Map<String, Object>> fetchMDMSData(String tenantId) {
         String url = String.format("%s:%s/egov-mdms-service/v2/_search", mdmsHost, mdmsPort);
         Map<String, Object> requestInfo = Map.of("authToken", "");
         Map<String, Object> mdmsRequest = Map.of(
@@ -187,19 +200,26 @@ public class FacilityService {
         );
 
         ResponseEntity<Map> response = restTemplate.postForEntity(url, mdmsRequest, Map.class);
-        if (!response.getStatusCode().is2xxSuccessful()) throw new RuntimeException("MDMS call failed");
+        if (!response.getStatusCode().is2xxSuccessful()) {
+            Map<String, String> errors = new HashMap<>();
+            errors.put("MDMS_ERROR", "Failed to fetch MDMS data. Status: " + response.getStatusCode());
+            throw new ServiceCallException(errors);
+        }
 
-        List<Map<String, Object>> mdmsList = (List<Map<String, Object>>) response.getBody().get("mdms");
-        Map<String, Object> schema = mdmsList.stream()
+        return (List<Map<String, Object>>) response.getBody().get("mdms");
+    }
+
+    private Map<String, Object> extractFacilitySchema(List<Map<String, Object>> mdmsList) {
+        return mdmsList.stream()
                 .filter(m -> "data-ingestion.FacilityIngestionSchema".equals(m.get("schemaCode")))
                 .findFirst()
                 .map(m -> (Map<String, Object>) m.get("data"))
                 .orElseThrow(() -> new RuntimeException("FacilityIngestionSchema not found"));
+    }
 
-        List<Map<String, Object>> columns = (List<Map<String, Object>>) schema.get("columns");
+    private Map<String, Object> buildInputMapWithOverrides(Facility facility, List<Map<String, Object>> columns) {
         Map<String, Object> input = convertFacilityToMap(facility);
 
-        // Static field overrides
         Map<String, Function<Facility, Object>> staticMappers = Map.of(
                 "Type of HC", Facility::getFacilityType,
                 "Health Centre Name", Facility::getFacilityName,
@@ -207,30 +227,20 @@ public class FacilityService {
                 "tenant_id", Facility::getTenantId
         );
 
-        // Apply static field values
         staticMappers.forEach((key, extractor) -> {
             Object value = extractor.apply(facility);
-            if (value != null) {
-                input.put(key, value);
-            }
+            if (value != null) input.put(key, value);
         });
 
-        // Remove static fields from MDMS-driven validation
         Set<String> staticFields = staticMappers.keySet();
-        columns = columns.stream()
-                .filter(c -> !staticFields.contains(c.get("name")))
-                .toList();
+        columns.removeIf(c -> staticFields.contains(c.get("name")));
+        return input;
+    }
 
+    private void validateFields(List<Map<String, Object>> columns, Map<String, Object> input, List<Map<String, Object>> mdmsList) {
         for (Map<String, Object> col : columns) {
             String name = (String) col.get("name");
-
-            // Determine the key used in input map (defaults to column name)
-            String key = name;
-            if (col.containsKey("svcSource")) {
-                key = ((Map<String, String>) col.get("svcSource")).get("key");
-            } else if (col.containsKey("mdmsSource")) {
-                key = ((Map<String, String>) col.get("mdmsSource")).get("path").replace("$.", "");
-            }
+            String key = deriveKeyFromColumn(col, name);
 
             Object value = input.get(key);
 
@@ -245,38 +255,56 @@ public class FacilityService {
                 }
             }
 
-            if (value != null && col.containsKey("mdmsSource")) {
-                Map<String, String> src = (Map<String, String>) col.get("mdmsSource");
-                String schemaCode = src.get("module") + "." + src.get("master");
-
-                Set<String> valid = mdmsList.stream()
-                        .filter(m -> schemaCode.equals(m.get("schemaCode")))
-                        .map(m -> (Map<String, Object>) m.get("data"))
-                        .map(d -> (String) d.get(src.get("path").replace("$.", "")))
-                        .collect(Collectors.toSet());
-
-                if (!valid.contains(value.toString())) {
-                    throw new IllegalArgumentException("Invalid value for " + name + ": " + value);
-                }
-            }
+            validateColumns(mdmsList, col, value, name);
         }
+    }
 
+    private static void validateColumns(List<Map<String, Object>> mdmsList, Map<String, Object> col, Object value, String name) {
+        if (value != null && col.containsKey(MDMS_SOURCE)) {
+            Map<String, String> src = (Map<String, String>) col.get(MDMS_SOURCE);
+            String schemaCode = src.get("module") + "." + src.get("master");
 
-        List<Map<String, Object>> rowConstraints = (List<Map<String, Object>>) schema.get("rowConstraints");
-        for (Map<String, Object> c : rowConstraints) {
-            List<String> fields = (List<String>) c.get("fields");
-            long present = fields.stream().filter(f -> input.get(f) != null && !input.get(f).toString().isBlank()).count();
-            switch ((String) c.get("type")) {
-                case "atLeastOneRequired":
-                    if (present < 1) throw new IllegalArgumentException((String) c.get("message"));
-                    break;
-                case "allOrNoneRequired":
-                    if (present > 0 && present < fields.size())
-                        throw new IllegalArgumentException((String) c.get("message"));
-                    break;
+            Set<String> valid = mdmsList.stream()
+                    .filter(m -> schemaCode.equals(m.get("schemaCode")))
+                    .map(m -> (Map<String, Object>) m.get("data"))
+                    .map(d -> (String) d.get(src.get("path").replace("$.", "")))
+                    .collect(Collectors.toSet());
+
+            if (!valid.contains(value.toString())) {
+                throw new IllegalArgumentException("Invalid value for " + name + ": " + value);
             }
         }
     }
+
+    private String deriveKeyFromColumn(Map<String, Object> col, String defaultKey) {
+        if (col.containsKey("svcSource")) {
+            return ((Map<String, String>) col.get("svcSource")).get("key");
+        } else if (col.containsKey(MDMS_SOURCE)) {
+            return ((Map<String, String>) col.get(MDMS_SOURCE)).get("path").replace("$.", "");
+        }
+        return defaultKey;
+    }
+
+    private void validateRowConstraints(List<Map<String, Object>> constraints, Map<String, Object> input) {
+        for (Map<String, Object> constraint : constraints) {
+            List<String> fields = (List<String>) constraint.get("fields");
+            long present = fields.stream().filter(f -> input.get(f) != null && !input.get(f).toString().isBlank()).count();
+
+            switch ((String) constraint.get("type")) {
+                case "atLeastOneRequired":
+                    if (present < 1) throw new IllegalArgumentException((String) constraint.get("message"));
+                    break;
+                case "allOrNoneRequired":
+                    if (present > 0 && present < fields.size()) {
+                        throw new IllegalArgumentException((String) constraint.get("message"));
+                    }
+                    break;
+                default:
+                    throw new IllegalArgumentException("Unsupported constraint type: " + constraint.get("type"));
+            }
+        }
+    }
+
 
     private Map<String, Object> convertFacilityToMap(Facility f) {
         Map<String, Object> map = new HashMap<>();
@@ -359,7 +387,9 @@ public class FacilityService {
         );
 
         if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
-            throw new RuntimeException("Failed to generate Facility ID from IDGen service");
+            Map<String, String> errors = new HashMap<>();
+            errors.put("IDGEN_ERROR", "Failed to fetch IDEN data. Status: " + response.getStatusCode());
+            throw new ServiceCallException(errors);
         }
 
         List<IdResponse> idResponses = response.getBody().getIdResponses();
