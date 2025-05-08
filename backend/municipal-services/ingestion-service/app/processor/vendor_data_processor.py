@@ -65,17 +65,17 @@ class VendorDataProcessor:
             return Vendor(
                 country_boundary_code=str(row.get('Country Boundary Code', '')).strip() if not pd.isna(
                     row.get('Country Boundary Code', None)) else None,
-                vendor_name=str(row.get('Vendor Name', '')).strip(),
-                vendor_code=str(row.get('Vendor Code', '')).strip(),
-                vendor_type=str(row.get('Vendor Type', '')).strip(),
+                vendor_name=str(row.get('Vendor Name (Mandatory)', '')).strip(),
+                vendor_code=str(row.get('Vendor Code (Mandatory)', '')).strip(),
+                vendor_type=str(row.get('Vendor Type (Mandatory)', '')).strip(),
                 vendor_subtype=str(row.get('Vendor Subtype', '')).strip() if not pd.isna(
                     row.get('Vendor Subtype', None)) else None,
-                identifier_type=str(row.get('Identifier Type', '')).strip(),
-                identifier_value=str(row.get('Identifier Value', '')).strip(),
-                hq_address=str(row.get('HQ Address', '')).strip(),
-                pincode=str(row.get('Pincode', '')).strip(),
-                poc_phone=str(row.get('PoC Phone', '')).strip(),
-                poc_name=str(row.get('PoC Name', '')).strip()
+                identifier_type=str(row.get('Identifier Type (Mandatory)', '')).strip(),
+                identifier_value=str(row.get('Identifier Value (Mandatory)', '')).strip(),
+                hq_address=str(row.get('HQ Address (Mandatory)', '')).strip(),
+                pincode=str(row.get('Pincode (Mandatory)', '')).strip(),
+                poc_phone=str(row.get('PoC Phone (Mandatory)', '')).strip(),
+                poc_name=str(row.get('PoC Name (Mandatory)', '')).strip()
             )
         except Exception as e:
             print(f"Error in vendor creation: {e}")
