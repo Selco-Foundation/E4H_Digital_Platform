@@ -68,7 +68,7 @@ public class MDMSService {
      * @return
      */
     public Object mDMSCall(RequestInfo requestInfo){
-        MdmsCriteriaReq mdmsCriteriaReq = getMDMSRequest(requestInfo,workflowConfig.getStateLevelTenantId());
+        MdmsCriteriaReq mdmsCriteriaReq = getMDMSRequest(requestInfo,requestInfo.getUserInfo().getTenantId());
         Object result = serviceRequestRepository.fetchResult(getMdmsSearchUrl(), mdmsCriteriaReq);
         return result;
     }
