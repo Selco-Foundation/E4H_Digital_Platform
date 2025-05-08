@@ -1,4 +1,4 @@
-package exception;
+package facility.exception;
 
 import lombok.Getter;
 

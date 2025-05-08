@@ -1,7 +1,7 @@
 package facility.service;
 
 
-import exception.ServiceCallException;
+import facility.exception.ServiceCallException;
 import facility.repository.FacilityRepository;
 import facility.web.models.*;
 import facility.web.models.Idgen.IdGenerationRequest;
