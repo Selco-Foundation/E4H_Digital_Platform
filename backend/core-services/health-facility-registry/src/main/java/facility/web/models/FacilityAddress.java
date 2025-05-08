@@ -4,6 +4,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.annotation.Generated;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.util.Objects;
 
@@ -11,6 +13,7 @@ import java.util.Objects;
  * Representation of a address. Indiavidual APIs may choose to extend from this using allOf if more details needed to be added in their case.
  */
 
+@Setter
 @Schema(name = "Facility_address", description = "Representation of a address. Indiavidual APIs may choose to extend from this using allOf if more details needed to be added in their case. ")
 @JsonTypeName("Facility_address")
 @Generated(value = "org.openapitools.codegen.languages.SpringCodegen", date = "2025-04-24T16:00:58.522282987+05:30[Asia/Kolkata]", comments = "Generator version: 7.4.0")
@@ -38,6 +41,19 @@ public class FacilityAddress {
 
     private String detail;
 
+    // Add corresponding getters and setters
+    @Getter
+    @JsonProperty("state")
+    private String state;
+
+    @Getter
+    @JsonProperty("district")
+    private String district;
+
+    @Getter
+    @JsonProperty("block")
+    private String block;
+
     public FacilityAddress tenantId(String tenantId) {
         this.tenantId = tenantId;
         return this;
@@ -53,10 +69,6 @@ public class FacilityAddress {
     @JsonProperty("tenantId")
     public String getTenantId() {
         return tenantId;
-    }
-
-    public void setTenantId(String tenantId) {
-        this.tenantId = tenantId;
     }
 
     public FacilityAddress latitude(Double latitude) {
@@ -76,10 +88,6 @@ public class FacilityAddress {
         return latitude;
     }
 
-    public void setLatitude(Double latitude) {
-        this.latitude = latitude;
-    }
-
     public FacilityAddress longitude(Double longitude) {
         this.longitude = longitude;
         return this;
@@ -95,10 +103,6 @@ public class FacilityAddress {
     @JsonProperty("longitude")
     public Double getLongitude() {
         return longitude;
-    }
-
-    public void setLongitude(Double longitude) {
-        this.longitude = longitude;
     }
 
     public FacilityAddress addressId(String addressId) {
@@ -118,10 +122,6 @@ public class FacilityAddress {
         return addressId;
     }
 
-    public void setAddressId(String addressId) {
-        this.addressId = addressId;
-    }
-
     public FacilityAddress addressNumber(String addressNumber) {
         this.addressNumber = addressNumber;
         return this;
@@ -137,10 +137,6 @@ public class FacilityAddress {
     @JsonProperty("addressNumber")
     public String getAddressNumber() {
         return addressNumber;
-    }
-
-    public void setAddressNumber(String addressNumber) {
-        this.addressNumber = addressNumber;
     }
 
     public FacilityAddress addressLine1(String addressLine1) {
@@ -160,10 +156,6 @@ public class FacilityAddress {
         return addressLine1;
     }
 
-    public void setAddressLine1(String addressLine1) {
-        this.addressLine1 = addressLine1;
-    }
-
     public FacilityAddress addressLine2(String addressLine2) {
         this.addressLine2 = addressLine2;
         return this;
@@ -179,10 +171,6 @@ public class FacilityAddress {
     @JsonProperty("addressLine2")
     public String getAddressLine2() {
         return addressLine2;
-    }
-
-    public void setAddressLine2(String addressLine2) {
-        this.addressLine2 = addressLine2;
     }
 
     public FacilityAddress landmark(String landmark) {
@@ -202,10 +190,6 @@ public class FacilityAddress {
         return landmark;
     }
 
-    public void setLandmark(String landmark) {
-        this.landmark = landmark;
-    }
-
     public FacilityAddress city(String city) {
         this.city = city;
         return this;
@@ -221,10 +205,6 @@ public class FacilityAddress {
     @JsonProperty("city")
     public String getCity() {
         return city;
-    }
-
-    public void setCity(String city) {
-        this.city = city;
     }
 
     public FacilityAddress pincode(String pincode) {
@@ -244,10 +224,6 @@ public class FacilityAddress {
         return pincode;
     }
 
-    public void setPincode(String pincode) {
-        this.pincode = pincode;
-    }
-
     public FacilityAddress detail(String detail) {
         this.detail = detail;
         return this;
@@ -263,10 +239,6 @@ public class FacilityAddress {
     @JsonProperty("detail")
     public String getDetail() {
         return detail;
-    }
-
-    public void setDetail(String detail) {
-        this.detail = detail;
     }
 
     @Override

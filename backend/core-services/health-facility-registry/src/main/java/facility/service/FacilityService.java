@@ -1,25 +1,42 @@
 package facility.service;
 
 
+import facility.exception.ServiceCallException;
 import facility.repository.FacilityRepository;
-import facility.web.models.Facility;
-import facility.web.models.FacilityCreateRequest;
+import facility.web.models.*;
+import facility.web.models.Idgen.IdGenerationRequest;
+import facility.web.models.Idgen.IdGenerationResponse;
+import facility.web.models.Idgen.IdRequest;
+import facility.web.models.Idgen.IdResponse;
+import org.egov.common.contract.request.RequestInfo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.http.ResponseEntity;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 public class FacilityService {
 
+    public static final String MDMS_SOURCE = "mdmsSource";
     @Autowired
     private FacilityRepository facilityRepository;
 
     @Autowired
     private RestTemplate restTemplate;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    private FacilityRowMapper facilityRowMapper;
 
     @Value("${egov.mdms.host}")
     private String mdmsHost;
@@ -60,96 +77,329 @@ public class FacilityService {
         return facility;
     }
 
+    public Facility updateFacility(FacilityUpdateRequest request) {
+        FacilityUpdateRequestFacilityUpdate update = request.getFacilityUpdate();
+
+        if (update.getFacilityId() == null || update.getTenantId() == null) {
+            throw new IllegalArgumentException("facilityId and tenantId must be provided for update");
+        }
+
+        String checkSql = "SELECT COUNT(*) FROM facility WHERE facility_id = ? AND tenant_id = ?";
+        Integer count = jdbcTemplate.queryForObject(checkSql, Integer.class, update.getFacilityId(), update.getTenantId());
+        if (count == null || count == 0) {
+            return null;
+        }
+
+        // Convert update DTO to core Facility model
+        Facility facility = new Facility();
+        facility.setFacilityId(update.getFacilityId());
+        facility.setTenantId(update.getTenantId());
+        facility.setFacilityType(update.getFacilityType());
+        facility.setFacilitySubtype(update.getFacilitySubtype());
+        facility.setFacilityName(update.getFacilityName());
+        facility.setAddress(update.getAddress());
+        facility.setAdditionalDetails(update.getAdditionalDetails());
+
+        validateAgainstMDMS(facility, update.getTenantId());
+
+        if (facility.getWfStatus() == null) facility.setWfStatus("UPDATED");
+        if (facility.getIsActive() == null) facility.setIsActive(true);
+
+        FacilityUpdateRequest kafkaRequest = new FacilityUpdateRequest();
+        kafkaRequest.setRequestInfo(request.getRequestInfo());
+        kafkaRequest.setFacilityUpdate(update);
+        facilityRepository.pushUpdateFacility(kafkaRequest);
+
+        return facility;
+    }
+
+    public List<Facility> searchFacilities(String tenantId, String facilityId, String facilityName, String hfrId, String ninId, int limit, int offset) {
+        StringBuilder query = new StringBuilder("SELECT * FROM facility WHERE 1=1");
+        List<Object> params = new ArrayList<>();
+
+        if (tenantId != null && !tenantId.isBlank()) {
+            query.append(" AND tenant_id = ?");
+            params.add(tenantId);
+        }
+
+        if (facilityId != null && !facilityId.isBlank()) {
+            query.append(" AND facility_id::text = ?");
+            params.add(facilityId);
+        }
+
+        if (facilityName != null && !facilityName.isBlank()) {
+            query.append(" AND facility_name ILIKE ?");
+            params.add("%" + facilityName + "%");
+        }
+
+        if (hfrId != null && !hfrId.isBlank()) {
+            query.append(" AND facility_details->>'hfrId' = ?");
+            params.add(hfrId);
+        }
+
+        if (ninId != null && !ninId.isBlank()) {
+            query.append(" AND facility_details->>'ninId' = ?");
+            params.add(ninId);
+        }
+
+        query.append(" ORDER BY created_time DESC LIMIT ? OFFSET ?");
+        params.add(limit);
+        params.add(offset);
+
+        return jdbcTemplate.query(query.toString(), params.toArray(), facilityRowMapper.rowMapper);
+    }
+
+
+    public FacilitySummary getFacilitySummary(String facilityId) {
+        String sql = "SELECT facility_name, facility_type FROM facility WHERE facility_id = ?";
+        try {
+            return jdbcTemplate.queryForObject(sql, new Object[]{facilityId}, (rs, rowNum) -> {
+                String name = rs.getString("facility_name");
+                String type = rs.getString("facility_type");
+
+                String summaryText = "Facility '" + name + "' is of type '" + type + "'.";
+
+                FacilitySummary summary = new FacilitySummary();
+                summary.setSummary(summaryText);
+                return summary;
+            });
+        } catch (EmptyResultDataAccessException e) {
+            return null;
+        }
+
+    }
+
+
     private void validateAgainstMDMS(Facility facility, String tenantId) {
-        String url = String.format("%s:%s/egov-mdms-service/v1/_search", mdmsHost, mdmsPort);
+        List<Map<String, Object>> mdmsList = fetchMDMSData(tenantId);
+        Map<String, Object> schema = extractFacilitySchema(mdmsList);
 
-        Map<String, Object> mdmsRequest = new HashMap<>();
-        Map<String, Object> requestInfo = new HashMap<>(); // Replace with actual RequestInfo if available
-        mdmsRequest.put("RequestInfo", requestInfo);
+        List<Map<String, Object>> columns = (List<Map<String, Object>>) schema.get("columns");
+        Map<String, Object> input = buildInputMapWithOverrides(facility, columns);
 
-        Map<String, Object> moduleDetail = new HashMap<>();
-        moduleDetail.put("moduleName", "common-masters");
+        validateFields(columns, input, mdmsList);
+        validateRowConstraints((List<Map<String, Object>>) schema.get("rowConstraints"), input);
+    }
 
-        List<Map<String, String>> masterDetails = new ArrayList<>();
-        masterDetails.add(Map.of("name", "FacilityType"));
-        masterDetails.add(Map.of("name", "FacilityCategory"));
-        masterDetails.add(Map.of("name", "FacilityOwnership"));
-
-        moduleDetail.put("masterDetails", masterDetails);
-
-        Map<String, Object> mdmsCriteria = new HashMap<>();
-        mdmsCriteria.put("tenantId", tenantId);
-        mdmsCriteria.put("moduleDetails", List.of(moduleDetail));
-
-        mdmsRequest.put("MdmsCriteria", mdmsCriteria);
+    private List<Map<String, Object>> fetchMDMSData(String tenantId) {
+        String url = String.format("%s:%s/egov-mdms-service/v2/_search", mdmsHost, mdmsPort);
+        Map<String, Object> requestInfo = Map.of("authToken", "");
+        Map<String, Object> mdmsRequest = Map.of(
+                "RequestInfo", requestInfo,
+                "MdmsCriteria", Map.of(
+                        "tenantId", tenantId,
+                        "moduleDetails", List.of(
+                                Map.of("moduleName", "data-ingestion", "masterDetails", List.of(Map.of("name", "FacilityIngestionSchema"))),
+                                Map.of("moduleName", "facility", "masterDetails", List.of(
+                                        Map.of("name", "FacilityType"),
+                                        Map.of("name", "FacilityCategory"),
+                                        Map.of("name", "FacilityOwnership")
+                                ))
+                        )
+                )
+        );
 
         ResponseEntity<Map> response = restTemplate.postForEntity(url, mdmsRequest, Map.class);
-
         if (!response.getStatusCode().is2xxSuccessful()) {
-            throw new RuntimeException("Failed to fetch MDMS data for validation");
+            Map<String, String> errors = new HashMap<>();
+            errors.put("MDMS_ERROR", "Failed to fetch MDMS data. Status: " + response.getStatusCode());
+            throw new ServiceCallException(errors);
         }
 
-        Map<String, Object> mdmsRes = response.getBody();
-        Map<String, Object> mdms = (Map<String, Object>) mdmsRes.get("MdmsRes");
-        Map<String, Object> commonMasters = (Map<String, Object>) mdms.get("common-masters");
+        return (List<Map<String, Object>>) response.getBody().get("mdms");
+    }
 
-        Set<String> validFacilityTypes = extractCodeSet(commonMasters, "FacilityType");
-        Set<String> validFacilityCategories = extractCodeSet(commonMasters, "FacilityCategory");
-        Set<String> validFacilityOwnerships = extractCodeSet(commonMasters, "FacilityOwnership");
+    private Map<String, Object> extractFacilitySchema(List<Map<String, Object>> mdmsList) {
+        return mdmsList.stream()
+                .filter(m -> "data-ingestion.FacilityIngestionSchema".equals(m.get("schemaCode")))
+                .findFirst()
+                .map(m -> (Map<String, Object>) m.get("data"))
+                .orElseThrow(() -> new RuntimeException("FacilityIngestionSchema not found"));
+    }
 
-        if (!validFacilityTypes.contains(facility.getFacilityType())) {
-            throw new IllegalArgumentException("Invalid Facility Type: " + facility.getFacilityType());
-        }
+    private Map<String, Object> buildInputMapWithOverrides(Facility facility, List<Map<String, Object>> columns) {
+        Map<String, Object> input = convertFacilityToMap(facility);
 
-        if (!validFacilityCategories.contains(facility.getFacilityCategory())) {
-            throw new IllegalArgumentException("Invalid Facility Category: " + facility.getFacilityCategory());
-        }
+        Map<String, Function<Facility, Object>> staticMappers = Map.of(
+                "Type of HC", Facility::getFacilityType,
+                "Health Centre Name", Facility::getFacilityName,
+                "facility_id", Facility::getFacilityId,
+                "tenant_id", Facility::getTenantId
+        );
 
-        if (!validFacilityOwnerships.contains(facility.getFacilityOwnership())) {
-            throw new IllegalArgumentException("Invalid Facility Ownership: " + facility.getFacilityOwnership());
+        staticMappers.forEach((key, extractor) -> {
+            Object value = extractor.apply(facility);
+            if (value != null) input.put(key, value);
+        });
+
+        Set<String> staticFields = staticMappers.keySet();
+        columns.removeIf(c -> staticFields.contains(c.get("name")));
+        return input;
+    }
+
+    private void validateFields(List<Map<String, Object>> columns, Map<String, Object> input, List<Map<String, Object>> mdmsList) {
+        for (Map<String, Object> col : columns) {
+            String name = (String) col.get("name");
+            String key = deriveKeyFromColumn(col, name);
+
+            Object value = input.get(key);
+
+            if (Boolean.TRUE.equals(col.get("required")) && (value == null || value.toString().isBlank())) {
+                throw new IllegalArgumentException("Missing required field: " + name);
+            }
+
+            if (value != null && col.containsKey("pattern")) {
+                String pattern = (String) col.get("pattern");
+                if (!value.toString().matches(pattern)) {
+                    throw new IllegalArgumentException("Invalid format for " + name + ": " + value);
+                }
+            }
+
+            validateColumns(mdmsList, col, value, name);
         }
     }
 
-    private Set<String> extractCodeSet(Map<String, Object> module, String masterName) {
-        List<Map<String, Object>> masterData = (List<Map<String, Object>>) module.get(masterName);
-        Set<String> codes = new HashSet<>();
-        for (Map<String, Object> item : masterData) {
-            codes.add((String) item.get("code"));
+    private static void validateColumns(List<Map<String, Object>> mdmsList, Map<String, Object> col, Object value, String name) {
+        if (value != null && col.containsKey(MDMS_SOURCE)) {
+            Map<String, String> src = (Map<String, String>) col.get(MDMS_SOURCE);
+            String schemaCode = src.get("module") + "." + src.get("master");
+
+            Set<String> valid = mdmsList.stream()
+                    .filter(m -> schemaCode.equals(m.get("schemaCode")))
+                    .map(m -> (Map<String, Object>) m.get("data"))
+                    .map(d -> (String) d.get(src.get("path").replace("$.", "")))
+                    .collect(Collectors.toSet());
+
+            if (!valid.contains(value.toString())) {
+                throw new IllegalArgumentException("Invalid value for " + name + ": " + value);
+            }
         }
-        return codes;
     }
 
-    private UUID generateFacilityId(String tenantId) {
-        Map<String, Object> requestInfo = new HashMap<>(); // Use real RequestInfo if available
+    private String deriveKeyFromColumn(Map<String, Object> col, String defaultKey) {
+        if (col.containsKey("svcSource")) {
+            return ((Map<String, String>) col.get("svcSource")).get("key");
+        } else if (col.containsKey(MDMS_SOURCE)) {
+            return ((Map<String, String>) col.get(MDMS_SOURCE)).get("path").replace("$.", "");
+        }
+        return defaultKey;
+    }
 
-        Map<String, Object> idRequest = Map.of(
-                "idName", "facility.id",
-                "tenantId", tenantId,
-                "format", "",
-                "count", 1
-        );
+    private void validateRowConstraints(List<Map<String, Object>> constraints, Map<String, Object> input) {
+        for (Map<String, Object> constraint : constraints) {
+            List<String> fields = (List<String>) constraint.get("fields");
+            long present = fields.stream().filter(f -> input.get(f) != null && !input.get(f).toString().isBlank()).count();
 
-        Map<String, Object> payload = Map.of(
-                "RequestInfo", requestInfo,
-                "idRequests", List.of(idRequest)
-        );
+            switch ((String) constraint.get("type")) {
+                case "atLeastOneRequired":
+                    if (present < 1) throw new IllegalArgumentException((String) constraint.get("message"));
+                    break;
+                case "allOrNoneRequired":
+                    if (present > 0 && present < fields.size()) {
+                        throw new IllegalArgumentException((String) constraint.get("message"));
+                    }
+                    break;
+                default:
+                    throw new IllegalArgumentException("Unsupported constraint type: " + constraint.get("type"));
+            }
+        }
+    }
 
+
+    private Map<String, Object> convertFacilityToMap(Facility f) {
+        Map<String, Object> map = new HashMap<>();
+
+        FacilityAddress addr = f.getAddress();
+        if (addr != null) {
+            map.put("Latitude", addr.getLatitude());
+            map.put("Longitude", addr.getLongitude());
+            map.put("Address", buildFullAddress(addr));
+            map.put("City", addr.getCity());
+            map.put("Pincode", addr.getPincode());
+            map.put("State", addr.getState());
+            map.put("District", addr.getDistrict());
+            map.put("Block", addr.getBlock());
+        }
+
+        map.put("Health Centre Name", f.getFacilityName());
+        map.put("Type of HC", f.getFacilityType());
+
+        map.put("boundaryCode", get(f.getFacilityDetails(), "boundaryCode"));
+
+        map.put("HFR ID", get(f.getFacilityDetails(), "hfrId"));
+        map.put("NIN ID", get(f.getFacilityDetails(), "ninId"));
+        map.put("Vendor Code", get(f.getFacilityDetails(), "vendorCode"));
+        map.put("Solution Design Type", get(f.getFacilityDetails(), "solutionDesignType"));
+        map.put("HC PoC Name", get(f.getFacilityDetails(), "pocName"));
+        map.put("HC PoC Designation", get(f.getFacilityDetails(), "pocDesignation"));
+        map.put("HC PoC Contact number", get(f.getFacilityDetails(), "pocContact"));
+
+        return map;
+    }
+
+    private String buildFullAddress(FacilityAddress addr) {
+        return Stream.of(
+                        addr.getAddressNumber(),
+                        addr.getAddressLine1(),
+                        addr.getAddressLine2(),
+                        addr.getLandmark(),
+                        addr.getCity(),
+                        addr.getPincode()
+                ).filter(Objects::nonNull)
+                .filter(s -> !s.isBlank())
+                .collect(Collectors.joining(", "));
+    }
+
+
+    private Object get(Map<String, Object> map, String key) {
+        return map != null ? map.get(key) : null;
+    }
+
+    private String generateFacilityId(String tenantId) {
+
+        RequestInfo requestInfo = RequestInfo.builder()
+                .apiId("org.egov.facility")
+                .ver("1.0")
+                .ts(System.currentTimeMillis())
+                .action("create")
+                .did("1")
+                .msgId(UUID.randomUUID().toString())
+                .authToken("") // Optional or pass a real token if needed
+                .build();
+
+        // Build the ID request object
+        IdRequest idRequest = IdRequest.builder()
+                .idName("facility.id")
+                .tenantId(tenantId)
+                .format("")
+                .build();
+
+        IdGenerationRequest idGenRequest = IdGenerationRequest.builder()
+                .requestInfo(requestInfo)
+                .idRequests(List.of(idRequest))
+                .build();
+
+        // Call the IDGen service
         String url = idgenHost + idgenPath;
 
-        ResponseEntity<Map> response = restTemplate.postForEntity(url, payload, Map.class);
+        ResponseEntity<IdGenerationResponse> response = restTemplate.postForEntity(
+                url, idGenRequest, IdGenerationResponse.class
+        );
 
-        if (!response.getStatusCode().is2xxSuccessful()) {
-            throw new RuntimeException("Failed to generate Facility ID");
+        if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+            Map<String, String> errors = new HashMap<>();
+            errors.put("IDGEN_ERROR", "Failed to fetch IDEN data. Status: " + response.getStatusCode());
+            throw new ServiceCallException(errors);
         }
 
-        Map<String, Object> body = response.getBody();
-        List<Map<String, Object>> idResponses = (List<Map<String, Object>>) body.get("idResponses");
+        List<IdResponse> idResponses = response.getBody().getIdResponses();
 
-        if (idResponses.isEmpty() || idResponses.get(0).get("id") == null) {
-            throw new IllegalArgumentException("IDGen returned empty ID");
+        if (idResponses == null || idResponses.isEmpty() || idResponses.getFirst().getId() == null) {
+            throw new IllegalArgumentException("IDGen returned empty or invalid ID");
         }
 
-        return UUID.fromString((String) idResponses.get(0).get("id"));
+        return idResponses.getFirst().getId();
     }
+
 }
 
