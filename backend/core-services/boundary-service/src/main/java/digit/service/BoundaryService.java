@@ -124,12 +124,7 @@ public class BoundaryService {
         flat.setDistrict(district);
         flat.setBlock(block);
 
-        // Build code string using only non-null, non-empty values
-        String code = Stream.of(country, state, district, block)
-                .filter(s -> s != null && !s.isEmpty())
-                .collect(Collectors.joining("_"));
-
-        flat.setCode(code);
+        flat.setCode(block);
         return flat;
     }
 

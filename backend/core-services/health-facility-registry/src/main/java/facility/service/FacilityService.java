@@ -53,15 +53,15 @@ public class FacilityService {
     @Value("${egov.boundary.host}")
     private String boundaryHost;
 
-    @Value("${egov.boundary.path:/egov-location/boundarys/_search}")
+    @Value("${egov.boundary.path:/boundary-service/boundary/_search}")
     private String boundaryPath;
 
     public Facility createFacility(FacilityCreateRequest request) {
         Facility facility = request.getFacility();
         String tenantId = facility.getTenantId();
 
-        //TODO 1. MDMS validation
         validateAgainstMDMS(facility, tenantId);
+        validateBoundary(facility.getFacilityDetails().get("boundaryCode"), tenantId);
 
         // 3. Generate facility ID if not set
         if (facility.getFacilityId() == null) {
@@ -76,6 +76,37 @@ public class FacilityService {
 
         return facility;
     }
+
+    private void validateBoundary(Object boundaryCode, String tenantId) {
+        if (boundaryCode == null || boundaryCode.toString().isBlank()) {
+            throw new IllegalArgumentException("boundaryCode is required for facility");
+        }
+
+        String code = boundaryCode.toString();
+        String url = String.format("%s%s?tenantId=%s&codes=%s", boundaryHost, boundaryPath, tenantId, code);
+
+        Map<String, Object> requestInfo = Map.of(); // Add authToken if needed
+        Map<String, Object> requestBody = Map.of("RequestInfo", requestInfo);
+
+        try {
+            ResponseEntity<Map> response = restTemplate.postForEntity(url, requestBody, Map.class);
+
+            if (!response.getStatusCode().is2xxSuccessful()) {
+                throw new IllegalArgumentException("Boundary service call failed with status: " + response.getStatusCode());
+            }
+
+            Map<String, Object> body = response.getBody();
+            List<?> boundaries = (List<?>) body.get("Boundary");
+
+            if (boundaries == null || boundaries.isEmpty()) {
+                throw new IllegalArgumentException("Invalid boundaryCode: " + code);
+            }
+
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Error validating boundaryCode: " + code, e);
+        }
+    }
+
 
     public Facility updateFacility(FacilityUpdateRequest request) {
         FacilityUpdateRequestFacilityUpdate update = request.getFacilityUpdate();
@@ -227,13 +258,14 @@ public class FacilityService {
                 "tenant_id", Facility::getTenantId
         );
 
-        staticMappers.forEach((key, extractor) -> {
-            Object value = extractor.apply(facility);
-            if (value != null) input.put(key, value);
-        });
+        for (Map.Entry<String, Function<Facility, Object>> entry : staticMappers.entrySet()) {
+            Object value = entry.getValue().apply(facility);
+            if (value != null) {
+                input.put(entry.getKey(), value);
+            }
+        }
 
-        Set<String> staticFields = staticMappers.keySet();
-        columns.removeIf(c -> staticFields.contains(c.get("name")));
+        // ✅ Do NOT remove any columns — all should be validated
         return input;
     }
 
@@ -242,7 +274,7 @@ public class FacilityService {
             String name = (String) col.get("name");
             String key = deriveKeyFromColumn(col, name);
 
-            Object value = input.get(key);
+            Object value = input.getOrDefault(key, input.get(name));;
 
             if (Boolean.TRUE.equals(col.get("required")) && (value == null || value.toString().isBlank())) {
                 throw new IllegalArgumentException("Missing required field: " + name);
@@ -263,18 +295,28 @@ public class FacilityService {
         if (value != null && col.containsKey(MDMS_SOURCE)) {
             Map<String, String> src = (Map<String, String>) col.get(MDMS_SOURCE);
             String schemaCode = src.get("module") + "." + src.get("master");
+            String field = src.get("path") != null ? src.get("path").replace("$.", "") : null;
+
+            if (field == null) {
+                System.out.println("⚠️ Skipping MDMS validation for " + name + ": missing path");
+                return;
+            }
 
             Set<String> valid = mdmsList.stream()
                     .filter(m -> schemaCode.equals(m.get("schemaCode")))
                     .map(m -> (Map<String, Object>) m.get("data"))
-                    .map(d -> (String) d.get(src.get("path").replace("$.", "")))
+                    .map(d -> (String) d.get(field))
+                    .filter(Objects::nonNull)
                     .collect(Collectors.toSet());
 
+            System.out.println("🔎 Valid values for " + name + " from " + schemaCode + ": " + valid);
+
             if (!valid.contains(value.toString())) {
-                throw new IllegalArgumentException("Invalid value for " + name + ": " + value);
+                throw new IllegalArgumentException("❌ Invalid value for " + name + ": " + value + " — allowed: " + valid);
             }
         }
     }
+
 
     private String deriveKeyFromColumn(Map<String, Object> col, String defaultKey) {
         if (col.containsKey("svcSource")) {
