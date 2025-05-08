@@ -10,6 +10,7 @@ import facility.web.models.Idgen.IdResponse;
 import org.egov.common.contract.request.RequestInfo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -81,6 +82,12 @@ public class FacilityService {
             throw new IllegalArgumentException("facilityId and tenantId must be provided for update");
         }
 
+        String checkSql = "SELECT COUNT(*) FROM facility WHERE facility_id = ? AND tenant_id = ?";
+        Integer count = jdbcTemplate.queryForObject(checkSql, Integer.class, update.getFacilityId(), update.getTenantId());
+        if (count == null || count == 0) {
+            return null;
+        }
+
         // Convert update DTO to core Facility model
         Facility facility = new Facility();
         facility.setFacilityId(update.getFacilityId());
@@ -91,14 +98,11 @@ public class FacilityService {
         facility.setAddress(update.getAddress());
         facility.setAdditionalDetails(update.getAdditionalDetails());
 
-        // Validate with MDMS (optional depending on update rules)
         validateAgainstMDMS(facility, update.getTenantId());
 
-        // Set defaults
         if (facility.getWfStatus() == null) facility.setWfStatus("UPDATED");
         if (facility.getIsActive() == null) facility.setIsActive(true);
 
-        // Push to Kafka update topic
         FacilityUpdateRequest kafkaRequest = new FacilityUpdateRequest();
         kafkaRequest.setRequestInfo(request.getRequestInfo());
         kafkaRequest.setFacilityUpdate(update);
@@ -107,7 +111,7 @@ public class FacilityService {
         return facility;
     }
 
-    public List<Facility> searchFacilities(String tenantId, String facilityId, String facilityName, String hfrId, String ninId) {
+    public List<Facility> searchFacilities(String tenantId, String facilityId, String facilityName, String hfrId, String ninId, int limit, int offset) {
         StringBuilder query = new StringBuilder("SELECT * FROM facility WHERE 1=1");
         List<Object> params = new ArrayList<>();
 
@@ -136,23 +140,31 @@ public class FacilityService {
             params.add(ninId);
         }
 
+        query.append(" ORDER BY created_time DESC LIMIT ? OFFSET ?");
+        params.add(limit);
+        params.add(offset);
+
         return jdbcTemplate.query(query.toString(), params.toArray(), facilityRowMapper.facilityRowMapper);
     }
 
 
     public FacilitySummary getFacilitySummary(String facilityId) {
         String sql = "SELECT facility_name, facility_type FROM facility WHERE facility_id = ?";
+        try {
+            return jdbcTemplate.queryForObject(sql, new Object[]{facilityId}, (rs, rowNum) -> {
+                String name = rs.getString("facility_name");
+                String type = rs.getString("facility_type");
 
-        return jdbcTemplate.queryForObject(sql, new Object[]{facilityId}, (rs, rowNum) -> {
-            String name = rs.getString("facility_name");
-            String type = rs.getString("facility_type");
+                String summaryText = "Facility '" + name + "' is of type '" + type + "'.";
 
-            String summaryText = "Facility '" + name + "' is of type '" + type + "'.";
+                FacilitySummary summary = new FacilitySummary();
+                summary.setSummary(summaryText);
+                return summary;
+            });
+        } catch (EmptyResultDataAccessException e) {
+            return null;
+        }
 
-            FacilitySummary summary = new FacilitySummary();
-            summary.setSummary(summaryText);
-            return summary;
-        });
     }
 
 
@@ -276,9 +288,9 @@ public class FacilityService {
             map.put("Address", buildFullAddress(addr));
             map.put("City", addr.getCity());
             map.put("Pincode", addr.getPincode());
-            map.put("State", addr.getDetail());     // Adjust if you later map "State" specifically
-            map.put("District", addr.getDetail());  // Adjust if schema defines them separately
-            map.put("Block", addr.getDetail());     // Optional fallback
+            map.put("State", addr.getState());
+            map.put("District", addr.getDistrict());
+            map.put("Block", addr.getBlock());
         }
 
         map.put("Health Centre Name", f.getFacilityName());

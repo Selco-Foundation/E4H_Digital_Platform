@@ -173,7 +173,7 @@ public interface FacilityV2Controller {
      */
     @Operation(
             operationId = "searchFacilities",
-            summary = "Search facilities",
+            summary = "Search facilities with optional filters and pagination",
             tags = {"Facilities"},
             responses = {
                     @ApiResponse(responseCode = "200", description = "A list of facilities matching search criteria", content = {
@@ -187,25 +187,29 @@ public interface FacilityV2Controller {
             value = "/v2/facility/search",
             produces = {"application/json"}
     )
-
     default ResponseEntity<List<Facility>> searchFacilities(
-            @Parameter(name = "tenant_id", description = "Filter facilities by tenant", in = ParameterIn.QUERY) @Valid @RequestParam(value = "tenant_id", required = false) String tenantId,
-            @Parameter(name = "facility_id", description = "Filter facilities by id", in = ParameterIn.QUERY) @Valid @RequestParam(value = "facility_id", required = false) String facilityId,
-            @Parameter(name = "facility_name", description = "Filter facilities by name (partial or full match)", in = ParameterIn.QUERY) @Valid @RequestParam(value = "facility_name", required = false) String facilityName,
-            @Parameter(name = "hfr_id", description = "Filter facilities by HFR Id", in = ParameterIn.QUERY) @Valid @RequestParam(value = "hfr_id", required = false) String hfrId,
-            @Parameter(name = "nin_id", description = "Filter facilities by NIN id", in = ParameterIn.QUERY) @Valid @RequestParam(value = "nin_id", required = false) String ninId
-    ) {
-        getRequest().ifPresent(request -> {
-            for (MediaType mediaType : MediaType.parseMediaTypes(request.getHeader("Accept"))) {
-                if (mediaType.isCompatibleWith(MediaType.valueOf("application/json"))) {
-                    String exampleString = "[ { \"tenant_id\" : \"state1.phc1\", \"address\" : { \"pincode\" : \"pincode\", \"city\" : \"city\", \"latitude\" : 0.8008281904610115, \"tenantId\" : \"tenantId\", \"addressNumber\" : \"addressNumber\", \"addressLine1\" : \"addressLine1\", \"addressLine2\" : \"addressLine2\", \"detail\" : \"detail\", \"landmark\" : \"landmark\", \"longitude\" : 6.027456183070403, \"addressId\" : \"addressId\" }, \"additionalDetails\" : \"\", \"isActive\" : true, \"facility_name\" : \"Gejjalgetta PHC\", \"facility_details\" : \"\", \"facility_region\" : \"RURAL\", \"facility_category\" : \"facility_category\", \"facility_ownership\" : \"facility_ownership\", \"facility_id\" : \"44e128a5-ac7a-4c9a-be4c-224b6bf81b20\", \"facility_type\" : \"facility_type\", \"wfStatus\" : \"wfStatus\", \"facility_subtype\" : \"facility_subtype\" }, { \"tenant_id\" : \"state1.phc1\", \"address\" : { \"pincode\" : \"pincode\", \"city\" : \"city\", \"latitude\" : 0.8008281904610115, \"tenantId\" : \"tenantId\", \"addressNumber\" : \"addressNumber\", \"addressLine1\" : \"addressLine1\", \"addressLine2\" : \"addressLine2\", \"detail\" : \"detail\", \"landmark\" : \"landmark\", \"longitude\" : 6.027456183070403, \"addressId\" : \"addressId\" }, \"additionalDetails\" : \"\", \"isActive\" : true, \"facility_name\" : \"Gejjalgetta PHC\", \"facility_details\" : \"\", \"facility_region\" : \"RURAL\", \"facility_category\" : \"facility_category\", \"facility_ownership\" : \"facility_ownership\", \"facility_id\" : \"44e128a5-ac7a-4c9a-be4c-224b6bf81b20\", \"facility_type\" : \"facility_type\", \"wfStatus\" : \"wfStatus\", \"facility_subtype\" : \"facility_subtype\" } ]";
-                    ApiUtil.setExampleResponse(request, "application/json", exampleString);
-                    break;
-                }
-            }
-        });
-        return new ResponseEntity<>(HttpStatus.NOT_IMPLEMENTED);
+            @Parameter(name = "tenant_id", description = "Filter facilities by tenant", in = ParameterIn.QUERY)
+            @RequestParam(value = "tenant_id", required = false) String tenantId,
 
+            @Parameter(name = "facility_id", description = "Filter facilities by id", in = ParameterIn.QUERY)
+            @RequestParam(value = "facility_id", required = false) String facilityId,
+
+            @Parameter(name = "facility_name", description = "Filter facilities by name (partial or full match)", in = ParameterIn.QUERY)
+            @RequestParam(value = "facility_name", required = false) String facilityName,
+
+            @Parameter(name = "hfr_id", description = "Filter facilities by HFR Id", in = ParameterIn.QUERY)
+            @RequestParam(value = "hfr_id", required = false) String hfrId,
+
+            @Parameter(name = "nin_id", description = "Filter facilities by NIN id", in = ParameterIn.QUERY)
+            @RequestParam(value = "nin_id", required = false) String ninId,
+
+            @Parameter(name = "limit", description = "Maximum number of records to return", in = ParameterIn.QUERY)
+            @RequestParam(value = "limit", required = false, defaultValue = "10") Integer limit,
+
+            @Parameter(name = "offset", description = "Number of records to skip", in = ParameterIn.QUERY)
+            @RequestParam(value = "offset", required = false, defaultValue = "0") Integer offset
+    ) {
+        return new ResponseEntity<>(HttpStatus.NOT_IMPLEMENTED);
     }
 
 

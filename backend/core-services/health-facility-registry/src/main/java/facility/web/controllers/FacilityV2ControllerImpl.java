@@ -51,9 +51,13 @@ public class FacilityV2ControllerImpl implements FacilityV2Controller {
             @RequestParam(value = "facility_id", required = false) String facilityId,
             @RequestParam(value = "facility_name", required = false) String facilityName,
             @RequestParam(value = "hfr_id", required = false) String hfrId,
-            @RequestParam(value = "nin_id", required = false) String ninId) {
+            @RequestParam(value = "nin_id", required = false) String ninId,
+            @RequestParam(value = "limit", required = false, defaultValue = "10") Integer limit,
+            @RequestParam(value = "offset", required = false, defaultValue = "0") Integer offset) {
 
-        List<Facility> facilities = facilityService.searchFacilities(tenantId, facilityId, facilityName, hfrId, ninId);
+        List<Facility> facilities = facilityService.searchFacilities(
+                tenantId, facilityId, facilityName, hfrId, ninId, limit, offset
+        );
         return ResponseEntity.ok(facilities);
     }
 
