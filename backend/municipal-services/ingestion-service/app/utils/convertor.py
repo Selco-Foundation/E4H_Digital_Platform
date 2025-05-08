@@ -1,17 +1,15 @@
 import json
-from json import JSONDecodeError
 from typing import Dict, Any, Optional, List
 
+from pandas import Series
 from pydantic import ValidationError
 
-from app.schemas import vendor
 from app.schemas.boundary import Boundary
-from app.schemas.plain_access_object import PlainAccessRequest
 from app.schemas.request_info import RequestInfo
-from app.schemas.user import User
 from app.schemas.vendor import Vendor
 from app.schemas.vendor_ingestion_shema_response import IngestionSchemaResponse, MDMS, ResponseInfo, \
     MDMSDataSource, MDMSColumn, MDMSData, MDMSAuditDetails
+
 
 def request_info_from_json(request_info_str: str) -> RequestInfo:
     """
@@ -150,41 +148,66 @@ def convert_json_to_boundary(json_str: str) -> List[Boundary]:
     return locations
 
 
-def create_vendor_request(request_info:RequestInfo, vendor: Vendor):
-
+def create_vendor_request(request_info: RequestInfo, vendor: Vendor):
     return {
-        "RequestInfo":request_info.model_dump(by_alias=True, exclude_none=True),
-        "organisations":[{
-            "tenantId":"in",
-            "name":vendor.vendor_name,
-            "code":vendor.vendor_code,
-            "orgAddress":[
+        "RequestInfo": request_info.model_dump(by_alias=True, exclude_none=True),
+        "organisations": [{
+            "tenantId": "in",
+            "name": vendor.vendor_name,
+            "code": vendor.vendor_code,
+            "orgAddress": [
                 {
-                    "tenantId":"in",
-                    "boundaryType":"country",
-                    "boundaryCode":vendor.country_boundary_code,
-                    "hqAddress":vendor.hq_address
+                    "tenantId": "in",
+                    "boundaryType": "country",
+                    "boundaryCode": vendor.country_boundary_code,
+                    "hqAddress": vendor.hq_address
                 }
             ],
-            "contactDetails":[
+            "contactDetails": [
                 {
-                    "contactName":vendor.vendor_name,
-                    "contactMobileNumber":vendor.poc_phone
+                    "contactName": vendor.vendor_name,
+                    "contactMobileNumber": vendor.poc_phone
                 }
             ],
-            "identifiers":[
+            "identifiers": [
                 {
                     "type": vendor.identifier_type,
                     "value": vendor.identifier_value
                 }
             ],
-            "functions":[
+            "functions": [
                 {
-                    "type":"",
-                    "subType":""
+                    "type": "",
+                    "subType": ""
                 }
             ],
-            "isActive":True
+            "isActive": True
 
         }]
+    }
+
+
+def create_facility_with_supervisor_update_payload(request_info: RequestInfo, row: Series):
+    return {
+        'country': row.get('Country', ''),
+        'state': row.get('State', ''),
+        'district': row.get('District', ''),
+        'block': row.get('Block', ''),
+        'boundary_code': row.get('Boundary Code (Mandatory)', ''),
+        'health_centre_name': row.get('Health Centre Name (Mandatory)', ''),
+        'type_of_hc': row.get('Type of HC (Mandatory)', ''),
+        'hfr_id': row.get('HFR ID', ''),
+        'nin_id': row.get('NIN ID', ''),
+        'hc_poc_name': row.get('HC PoC Name (Mandatory)', ''),
+        'hc_poc_designation': row.get('HC PoC Designation (Optional)', ''),
+        'hc_poc_contact': row.get('HC PoC Contact number (Mandatory)', ''),
+        'latitude': row.get('Latitude', ''),
+        'longitude': row.get('Longitude', ''),
+        'address': row.get('Address', ''),
+        'supervisor': {
+            'role': row.get('Role (Mandatory)', ''),
+            'name': row.get('Name (Mandatory)', ''),
+            'phone': row.get('Phone Number (Mandatory)', ''),
+            'email': row.get('Email Address (Mandatory)', '')
+        }
     }
