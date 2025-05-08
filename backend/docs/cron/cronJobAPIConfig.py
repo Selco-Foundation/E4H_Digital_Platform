@@ -1,67 +1,122 @@
-    import requests
+import requests
 import sys
 import json
+import shlex
+from urllib.parse import urlencode
 
-# The first argument to the script is the job name
-argumentList = sys.argv 
-job_name = sys.argv[1]
+# Command-line arguments
+argumentList = sys.argv
+if len(argumentList) < 3:
+    print("Usage: python script.py <job_name> <tenant_id>")
+    sys.exit(1)
 
+job_name = argumentList[1]
+tenant_id = argumentList[2]
 
 # Calls MDMS service to fetch cron job API endpoints configuration
-
 mdms_url = "http://egov-mdms-service.core-dev:8080/egov-mdms-service/v1/_search"
-mdms_payload = "{\n \"RequestInfo\": {\n   \"apiId\": \"asset-services\",\n   \"ver\": null,\n   \"ts\": null,\n   \"action\": null,\n   \"did\": null,\n   \"key\": null,\n   \"msgId\": \"search with from and to values\",\n   \"authToken\": \"f81648a6-bfa0-4a5e-afc2-57d751f256b7\"\n },\n \"MdmsCriteria\": {\n   \"tenantId\": \"pg\",\n   \"moduleDetails\": [\n     {\n       \"moduleName\": \"common-masters\",\n       \"masterDetails\": [\n         {\n           \"name\": \"CronJobAPIConfig\"\n         }\n       ]\n     }\n   ]\n }\n}"
-mdms_headers = {
-  'Content-Type': 'application/json'
+mdms_payload = {
+    "RequestInfo": {
+        "apiId": "asset-services",
+        "ver": None,
+        "ts": None,
+        "action": None,
+        "did": None,
+        "key": None,
+        "msgId": "search with from and to values",
+        "authToken": "f81648a6-bfa0-4a5e-afc2-57d751f256b7"
+    },
+    "MdmsCriteria": {
+        "tenantId": tenant_id,
+        "moduleDetails": [
+            {
+                "moduleName": "common-masters",
+                "masterDetails": [
+                    {
+                        "name": "CronJobAPIConfig"
+                    }
+                ]
+            }
+        ]
+    }
 }
-response = requests.request("POST", mdms_url, headers=mdms_headers, data = mdms_payload)
+mdms_headers = {'Content-Type': 'application/json'}
+response = requests.post(mdms_url, headers=mdms_headers, data=json.dumps(mdms_payload))
 
-# Convert the response to json
+# Convert the response to JSON
 mdms_data = response.json()
 
-
 # Call user search to fetch SYSTEM user
-user_url = "http://egov-user.core-dev:8080/user/v1/_search?tenantId=pg"
-user_payload = "{\n\t\"requestInfo\" :{\n   \"apiId\": \"Rainmaker\",\n    \"ver\": \".01\",\n    \"ts\": null,\n    \"action\": \"POST\",\n    \"did\": null,\n    \"key\": null,\n    \"msgId\": \"8c11c5ca-03bd-11e7-93ae-92361f002671\",\n    \"userInfo\": {\n    \t\"id\" : 32\n    },\n    \"authToken\": \"5eb3655f-31b1-4cd5-b8c2-4f9c033510d4\"\n\t},\n\t\n   \"tenantId\" : \"pg\",\n   \"userType\":\"SYSTEM\",\n   \"userName\" : \"CRONJOB\",\n   \"pageSize\": \"1\",\n   \"roleCodes\" : [\"SYSTEM\"]\n\n\n}\n   \n   \n   \n   \n   \n   \n   \n   \n   \n   \n   \n   \n   \n   \n   \n   \n   \n   \n   \n   \n   \n   \n   \n   \n   \n   \n   \n   \n   \n   \n   \n   \n   \n   \n   \n   \n   \n   \n   \n   \n   \n   \n}\n"
-user_headers = {
-  'Content-Type': 'application/json'
+user_url = f"http://egov-user.core-dev:8080/user/v1/_search?tenantId={tenant_id}"
+user_payload = {
+    "requestInfo": {
+        "apiId": "Rainmaker",
+        "ver": ".01",
+        "ts": None,
+        "action": "POST",
+        "did": None,
+        "key": None,
+        "msgId": "8c11c5ca-03bd-11e7-93ae-92361f002671",
+        "userInfo": {
+            "id": 32
+        },
+        "authToken": "5eb3655f-31b1-4cd5-b8c2-4f9c033510d4"
+
+    },
+    "tenantId": tenant_id,
+    "userType": "SYSTEM",
+    "userName": "CRONJOB",
+    "pageSize": "1",
+    "roleCodes": ["SYSTEM"]
 }
-user_response = requests.request("POST", user_url, headers=user_headers, data = user_payload)
+user_headers = {'Content-Type': 'application/json'}
+user_response = requests.post(user_url, headers=user_headers, data=json.dumps(user_payload))
 users = user_response.json()['user']
-if len(users)==0:
+
+if len(users) == 0:
     raise Exception("System user not found")
 else:
     userInfo = users[0]
 
+RequestInfo = {
+    "apiId": "Rainmaker",
+    "ver": ".01",
+    "action": "",
+    "did": "1",
+    "key": "",
+    "msgId": "20170310130900|en_IN",
+    "requesterId": "",
+    "userInfo": userInfo
+}
 
-
-RequestInfo = json.loads("{\n    \"apiId\": \"Rainmaker\",\n    \"ver\": \".01\",\n    \"action\": \"\",\n    \"did\": \"1\",\n    \"key\": \"\",\n    \"msgId\": \"20170310130900|en_IN\",\n    \"requesterId\": \"\",\n    \"userInfo\": \"\"\n  }")
-RequestInfo["userInfo"] = userInfo
-
-
-# Looping through each entry in the config, it checks if the active flag is true and jobName 
-# matches the job name given as argument if both criteria fulfilled the given http request is called
-
+# Looping through each entry in the config
 for data in mdms_data["MdmsRes"]["common-masters"]["CronJobAPIConfig"]:
-    
-    params = None
-    payload = None
-    headers = None
 
-    if data["active"].lower()=="true" and data["jobName"]==job_name:
+    if data["active"].lower() == "true" and data["jobName"] == job_name:
         method = data["method"]
-        url = data["url"]
-        
-        if "header" in data.keys():
-            headers = data["header"]
-            
-        if 'payload' in data.keys():    
-            payload = data["payload"]
-            if "RequestInfo" in payload:
-                if payload["RequestInfo"]=="{DEFAULT_REQUESTINFO}":
-                    payload["RequestInfo"] = RequestInfo    
-            
-        if 'parmas' in data.keys():
-            params = data['params']
-            
-        res = requests.request(method, url, params = params, headers = headers, data=json.dumps(payload))
+        url = f"http://egov-workflow-v2.core-dev:8080/egov-workflow-v2/egov-wf/auto/Incident/_escalate?tenantId={tenant_id}"  # override
+
+        headers = data.get("header", {})
+        payload = data.get("payload", None)
+        params = data.get("params", None)
+
+        if payload and "RequestInfo" in payload:
+            if payload["RequestInfo"] == "{DEFAULT_REQUESTINFO}":
+                payload["RequestInfo"] = RequestInfo
+
+        full_url = url
+        if params:
+            full_url += '&' + urlencode(params)
+
+        # Print the equivalent curl command
+        curl_parts = [f"curl -X {method}", shlex.quote(full_url)]
+        for k, v in headers.items():
+            curl_parts.append(f"-H {shlex.quote(f'{k}: {v}')}")
+        if payload:
+            curl_parts.append(f"--data {shlex.quote(json.dumps(payload))}")
+
+        print("\n Generated curl command:\n")
+        print(" ".join(curl_parts) + "\n")
+
+        # Perform actual request
+        res = requests.request(method, url, params=params, headers=headers, data=json.dumps(payload))
