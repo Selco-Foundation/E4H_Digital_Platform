@@ -131,7 +131,7 @@ const combineResponses = (incidentDetails, workflowInstances) => {
         //locality: complaint.service.address.locality.code,
         status: incident.applicationStatus,
         taskOwner: wfMap[incident.incidentId]?.assignes?.[0]?.name || "-",
-        sla: incident.applicationStatus==="RESOLVED" ? "-" : wfMap[incident.incidentId]?.businesssServiceSla+wfMap[incident.incidentId]?.auditDetails?.createdTime-currentTime,
+        sla: (incident.applicationStatus === "RESOLVED" || incident.applicationStatus === "CLOSEDAFTERRESOLUTION")  ? "-" : wfMap[incident.incidentId]?.businesssServiceSla+wfMap[incident.incidentId]?.auditDetails?.createdTime-currentTime,
         tenantId: incident.tenantId,
       })
     }else if (!wfMap?.[incident.incidentId]){
@@ -144,7 +144,7 @@ const combineResponses = (incidentDetails, workflowInstances) => {
         //locality: complaint.service.address.locality.code,
         status: incident.applicationStatus,
         taskOwner: "-",
-        sla: incident.applicationStatus==="RESOLVED" ? "-" : wfMap[incident.incidentId]?.businesssServiceSla+wfMap[incident.incidentId]?.auditDetails?.createdTime-currentTime,
+        sla: (incident.applicationStatus === "RESOLVED" || incident.applicationStatus === "CLOSEDAFTERRESOLUTION")  ? "-" : wfMap[incident.incidentId]?.businesssServiceSla+wfMap[incident.incidentId]?.auditDetails?.createdTime-currentTime,
         tenantId: incident.tenantId,
       })
     }});
