@@ -1,13 +1,11 @@
 package org.egov.im.web.models.storage;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
 @Builder(toBuilder = true)
 @Getter
 @AllArgsConstructor
+@NoArgsConstructor
 @Setter
 public class File {
     private String fileStoreId;
