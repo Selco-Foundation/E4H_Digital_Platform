@@ -36,6 +36,7 @@ const checkIfAllValidFiles = (files, otherFilesLength, videoFilesLength, regex, 
 
   // Validate count separately for videos & others
   const fileLimitErrors = [];
+
   if (otherFilesLength && maxFilesAllowed && uploadedOthers + otherFilesLength > maxFilesAllowed) {
     fileLimitErrors.push({
       valid: false,
@@ -175,7 +176,7 @@ const MultiUploadWrapper = ({
 
     if (error) {
       setFileErrors(validationMsg);
-      setEnableButton(false);
+      setEnableButton(true);
       return;
     }
 

@@ -21,7 +21,7 @@ export const CreateComplaint = ({ parentUrl }) => {
   const [uploadedFile, setUploadedFile] = useState([]);
   const [uploadedImages, setUploadedImagesIds] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
-  const specificFileConstraint = { type: "video", maxSize: 100, maxFiles: 5 };
+  const specificFileConstraint = { type: "video", maxSize: 100, maxFiles: 2 };
   const [district, setDistrict] = useState(null);
   const [block, setBlock] = useState(null);
   const [error, setError] = useState(null);
@@ -545,14 +545,14 @@ export const CreateComplaint = ({ parentUrl }) => {
                 tenantId={tenantId}
                 getFormState={(state, loading) => getData(state, loading)}
                 onUploadStatusChange={setIsUploading}
-                allowedFileTypesRegex={/(mp4|mov|avi|wmv|video)$/i}
+                allowedFileTypesRegex={/(mp4|mov|avi|wmv|webm|video)$/i}
                 allowedMaxSizeInMB={50}
                 maxFilesAllowed={2}
                 disabled={disbaledUpload}
                 ulb={
                   Digit.SessionStorage.get("Employee.tenantId") !== stateTenantId ? Digit.SessionStorage.get("Employee.tenantId") : healthcentre?.code
                 }
-                acceptFiles={".mp4, .avi, .mov, .wmv, video/*"}
+                acceptFiles={".mp4, .avi, .mov, .wmv, .webm"}
                 multiple={false}
                 specificFileConstraint={specificFileConstraint}
               />
