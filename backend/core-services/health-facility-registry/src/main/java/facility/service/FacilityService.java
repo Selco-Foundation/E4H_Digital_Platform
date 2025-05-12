@@ -436,11 +436,11 @@ public class FacilityService {
 
         List<IdResponse> idResponses = response.getBody().getIdResponses();
 
-        if (idResponses == null || idResponses.isEmpty() || idResponses.getFirst().getId() == null) {
+        if (idResponses == null || idResponses.isEmpty() || idResponses.get(0).getId() == null) {
             throw new IllegalArgumentException("IDGen returned empty or invalid ID");
         }
 
-        return idResponses.getFirst().getId();
+        return idResponses.get(0).getId();
     }
 
 }
