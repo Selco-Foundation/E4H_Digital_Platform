@@ -36,7 +36,6 @@ const checkIfAllValidFiles = (files, otherFilesLength, videoFilesLength, regex, 
 
   // Validate count separately for videos & others
   const fileLimitErrors = [];
-
   if (otherFilesLength && maxFilesAllowed && uploadedOthers + otherFilesLength > maxFilesAllowed) {
     fileLimitErrors.push({
       valid: false,
@@ -97,6 +96,7 @@ const MultiUploadWrapper = ({
   disabled,
   ulb,
   specificFileConstraint,
+  multiple = true,
 }) => {
   const FILES_UPLOADED = "FILES_UPLOADED";
   const TARGET_FILE_REMOVAL = "TARGET_FILE_REMOVAL";
@@ -175,7 +175,7 @@ const MultiUploadWrapper = ({
 
     if (error) {
       setFileErrors(validationMsg);
-      setEnableButton(true);
+      setEnableButton(false);
       return;
     }
 
@@ -291,7 +291,7 @@ const MultiUploadWrapper = ({
           dispatch({ type: TARGET_FILE_REMOVAL, payload: fileDetailsData });
         }}
         uploadedFiles={state}
-        multiple={true}
+        multiple={multiple}
         showHintBelow={showHintBelow}
         hintText={hintText}
         extraStyleName={extraStyleName}

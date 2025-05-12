@@ -32,7 +32,6 @@ export const UploadServices = {
       url: url,
       data: formData,
       headers: { "Content-Type": "multipart/form-data", "auth-token": token },
-      timeout: 120000,
     };
 
     return Axios(config);

@@ -1,10 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useDispatch } from "react-redux";
-import {
-  Dropdown,
-  MultiUploadWrapper,
-} from "@selco/digit-ui-react-components";
+import { Dropdown, MultiUploadWrapper } from "@selco/digit-ui-react-components";
 import { useRouteMatch, useHistory } from "react-router-dom";
 import { useQueryClient } from "react-query";
 import { FormComposer } from "../../../components/FormComposer";
@@ -513,7 +510,7 @@ export const CreateComplaint = ({ parentUrl }) => {
           },
         },
         {
-          label: t("INCIDENT_UPLOAD_FILE"),
+          label: t("INCIDENT_UPLOAD_IMAGE"),
           populators: (
             <div>
               <MultiUploadWrapper
@@ -522,16 +519,45 @@ export const CreateComplaint = ({ parentUrl }) => {
                 tenantId={tenantId}
                 getFormState={(state, loading) => getData(state, loading)}
                 onUploadStatusChange={setIsUploading}
-                allowedFileTypesRegex={/(jpg|jpeg|png|image|mp4|mov|avi|wmv|video)$/i}
+                allowedFileTypesRegex={/(jpg|jpeg|png|image)$/i}
                 allowedMaxSizeInMB={50}
                 maxFilesAllowed={5}
                 disabled={disbaledUpload}
-                ulb={Digit.SessionStorage.get("Employee.tenantId") !== stateTenantId ? Digit.SessionStorage.get("Employee.tenantId") : healthcentre?.code}
-                acceptFiles={".png, .image, .jpg, .jpeg, .mp4, .avi, .mov, .wmv, video/*"}
+                ulb={
+                  Digit.SessionStorage.get("Employee.tenantId") !== stateTenantId ? Digit.SessionStorage.get("Employee.tenantId") : healthcentre?.code
+                }
+                acceptFiles={".png, .image, .jpg, .jpeg"}
+                multiple={false}
                 specificFileConstraint={specificFileConstraint}
               />
               {/* <ImageUploadHandler tenantId={tenant} uploadedImages={uploadedImages} onPhotoChange={handleUpload} disabled={disbaled}/> */}
-              <div style={{ marginLeft: "20px", marginTop: "10px", fontSize: "12px" }}>{t("CS_IMAGE_VIDEO_BASED_FILES_ARE_ACCEPTED")}</div>
+              <div style={{ marginTop: "10px", marginBottom: "20px", fontSize: "12px", color: "#b5b4b4" }}>{t("CS_MAXIMUM_IMAGES")}</div>
+            </div>
+          ),
+        },
+        {
+          label: t("INCIDENT_UPLOAD_VIDEO"),
+          populators: (
+            <div>
+              <MultiUploadWrapper
+                t={t}
+                module="Incident"
+                tenantId={tenantId}
+                getFormState={(state, loading) => getData(state, loading)}
+                onUploadStatusChange={setIsUploading}
+                allowedFileTypesRegex={/(mp4|mov|avi|wmv|video)$/i}
+                allowedMaxSizeInMB={50}
+                maxFilesAllowed={2}
+                disabled={disbaledUpload}
+                ulb={
+                  Digit.SessionStorage.get("Employee.tenantId") !== stateTenantId ? Digit.SessionStorage.get("Employee.tenantId") : healthcentre?.code
+                }
+                acceptFiles={".mp4, .avi, .mov, .wmv, video/*"}
+                multiple={false}
+                specificFileConstraint={specificFileConstraint}
+              />
+              {/* <ImageUploadHandler tenantId={tenant} uploadedImages={uploadedImages} onPhotoChange={handleUpload} disabled={disbaled}/> */}
+              <div style={{ marginTop: "10px", fontSize: "12px", color: "#b5b4b4" }}>{t("CS_MAXIMUM_VIDEOS")}</div>
             </div>
           ),
         },
