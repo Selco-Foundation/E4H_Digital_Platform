@@ -1,17 +1,16 @@
 import json
-from json import JSONDecodeError
 from typing import Dict, Any, Optional, List
 
+import pandas as pd
+from pandas import Series
 from pydantic import ValidationError
 
-from app.schemas import vendor
 from app.schemas.boundary import Boundary
-from app.schemas.plain_access_object import PlainAccessRequest
 from app.schemas.request_info import RequestInfo
-from app.schemas.user import User
 from app.schemas.vendor import Vendor
 from app.schemas.vendor_ingestion_shema_response import IngestionSchemaResponse, MDMS, ResponseInfo, \
     MDMSDataSource, MDMSColumn, MDMSData, MDMSAuditDetails
+
 
 def request_info_from_json(request_info_str: str) -> RequestInfo:
     """
@@ -150,41 +149,103 @@ def convert_json_to_boundary(json_str: str) -> List[Boundary]:
     return locations
 
 
-def create_vendor_request(request_info:RequestInfo, vendor: Vendor):
-
+def create_vendor_request(request_info: RequestInfo, vendor: Vendor):
     return {
-        "RequestInfo":request_info.model_dump(by_alias=True, exclude_none=True),
-        "organisations":[{
-            "tenantId":"in",
-            "name":vendor.vendor_name,
-            "code":vendor.vendor_code,
-            "orgAddress":[
+        "RequestInfo": request_info.model_dump(by_alias=True, exclude_none=True),
+        "organisations": [{
+            "tenantId": "in",
+            "name": vendor.vendor_name,
+            "code": vendor.vendor_code,
+            "orgAddress": [
                 {
-                    "tenantId":"in",
-                    "boundaryType":"country",
-                    "boundaryCode":vendor.country_boundary_code,
-                    "hqAddress":vendor.hq_address
+                    "tenantId": "in",
+                    "boundaryType": "country",
+                    "boundaryCode": vendor.country_boundary_code,
+                    "hqAddress": vendor.hq_address
                 }
             ],
-            "contactDetails":[
+            "contactDetails": [
                 {
-                    "contactName":vendor.vendor_name,
-                    "contactMobileNumber":vendor.poc_phone
+                    "contactName": vendor.vendor_name,
+                    "contactMobileNumber": vendor.poc_phone
                 }
             ],
-            "identifiers":[
+            "identifiers": [
                 {
                     "type": vendor.identifier_type,
                     "value": vendor.identifier_value
                 }
             ],
-            "functions":[
+            "functions": [
                 {
-                    "type":"",
-                    "subType":""
+                    "type": "",
+                    "subType": ""
                 }
             ],
-            "isActive":True
+            "isActive": True
 
         }]
+    }
+
+
+def create_facility_with_supervisor_update_payload(request_info: RequestInfo, row: Series):
+    return {
+        'country': row.get('Country', ''),
+        'state': row.get('State', ''),
+        'district': row.get('District', ''),
+        'block': row.get('Block', ''),
+        'boundary_code': row.get('Boundary Code (Mandatory)', ''),
+        'health_centre_name': row.get('Health Centre Name (Mandatory)', ''),
+        'type_of_hc': row.get('Type of HC (Mandatory)', ''),
+        'hfr_id': row.get('HFR ID', ''),
+        'nin_id': row.get('NIN ID', ''),
+        'hc_poc_name': row.get('HC PoC Name (Mandatory)', ''),
+        'hc_poc_designation': row.get('HC PoC Designation (Optional)', ''),
+        'hc_poc_contact': row.get('HC PoC Contact number (Mandatory)', ''),
+        'latitude': row.get('Latitude', ''),
+        'longitude': row.get('Longitude', ''),
+        'address': row.get('Address', ''),
+        'supervisor': {
+            'role': row.get('Role (Mandatory)', ''),
+            'name': row.get('Name (Mandatory)', ''),
+            'phone': row.get('Phone Number (Mandatory)', ''),
+            'email': row.get('Email Address (Mandatory)', '')
+        }
+    }
+
+def safe_get(row, key, default=None):
+    val = row.get(key, default)
+    return default if pd.isna(val) else val
+
+def create_facility_payload(request_info: RequestInfo, row: Series):
+    return {
+        'RequestInfo': request_info.model_dump(by_alias=True, exclude_none=True),
+        'facility': {
+            'tenant_id': 'in',
+            'facility_name': safe_get(row, 'Health Centre Name (Mandatory)'),
+            'facility_type': safe_get(row, 'Type of HC (Mandatory)'),
+            'facility_category': safe_get(row, 'Category', 'HEALTH'),
+            'facility_ownership': safe_get(row, 'Ownership', 'GOVERNMENT'),
+            'facility_region': safe_get(row, 'Region', 'RURAL'),
+            'isActive': True,
+            'address': {
+                'tenantId': 'in',
+                'latitude': safe_get(row, 'Latitude'),
+                'longitude': safe_get(row, 'Longitude'),
+                'addressLine1': safe_get(row, 'Address'),
+                'state': safe_get(row, 'State'),
+                'district': safe_get(row, 'District'),
+                'block': safe_get(row, 'Block')
+            },
+            'facility_details': {
+                'boundaryCode': safe_get(row, 'Boundary Code (Mandatory)'),
+                'vendorCode': safe_get(row, 'Vendor Code (Mandatory)'),
+                'solutionDesignType': safe_get(row, 'Solution Design Type (Mandatory)'),
+                'pocName': safe_get(row, 'HC PoC Name (Mandatory)'),
+                'pocDesignation': safe_get(row, 'HC PoC Designation'),
+                'pocContact': safe_get(row, 'HC PoC Contact number (Mandatory)'),
+                'hfrId': safe_get(row, 'HFR ID'),
+                'ninId': safe_get(row, 'NIN ID')
+            }
+        }
     }

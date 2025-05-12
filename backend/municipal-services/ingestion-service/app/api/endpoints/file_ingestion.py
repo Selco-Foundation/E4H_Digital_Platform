@@ -11,8 +11,11 @@ from app.decorators.rbac_validator import get_authorized_request_info
 from app.ingest.excel_data_writer import ExcelDataWriter
 from app.processor.factory.boundary_data_processor_factory import BoundaryDataProcessorFactory
 from app.processor.factory.vendor_data_processor_factory import VendorDataProcessorFactory
-from app.utils.convertor import request_info_from_json, create_vendor_request
+from app.utils.convertor import request_info_from_json, create_vendor_request, \
+    create_facility_with_supervisor_update_payload, create_facility_payload
+from app.utils.facility_service_client import FacilityServiceClient
 from app.utils.organization_service_client import OrganizationServiceClient
+from app.utils.project_service_client import ProjectServiceClient
 
 router = APIRouter()
 logger = AppLogger().get_logger()
@@ -22,7 +25,8 @@ from dotenv import load_dotenv
 load_dotenv()
 mdms_url = os.getenv("MDMS_URL")
 org_service_url = os.getenv("VENDOR_SERVICE_URL")
-
+project_service_url = os.getenv("PROJECT_SERVICE_URL")
+facility_service_url = os.getenv("FACILITY_SERVICE_URL")
 
 @router.post('/vendors',
              summary='Upload and process vendor Excel file with multiple sheets',
@@ -157,6 +161,153 @@ async def upload_boundaries_excel_sheet(
         ) from e
 
 
+    finally:
+        if input_temp_file and os.path.exists(input_temp_file.name):
+            os.unlink(input_temp_file.name)
+
+@router.post('/facilities',
+             summary='Upload and process facility Excel file',
+             response_description='Returns processed Excel file with validations results')
+async def upload_facilities_excel_sheet(
+        facility_file: UploadFile = File(description="Excel file containing facility data"),
+        facility_sheet_name: str = Form(default="FacilityIngestionTemplate",
+                                        description="Name of the sheet containing facility data"),
+        request_info: str = Form(default="")
+):
+    input_temp_file = None
+    output_temp_file = None
+    request_info = request_info_from_json(request_info)
+    get_authorized_request_info(request_info)
+
+    try:
+        input_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
+        content = await facility_file.read()
+        input_temp_file.write(content)
+        input_temp_file.close()
+        facility_file_path = input_temp_file.name
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_filename = f"facility_ingestion_results_{timestamp}.xlsx"
+        output_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
+        output_temp_file.close()
+        output_file_path = output_temp_file.name
+
+        with open(facility_file_path, 'rb') as src, open(output_file_path, 'wb') as dst:
+            dst.write(src.read())
+
+        df = pd.read_excel(facility_file_path, sheet_name=facility_sheet_name)
+
+        if 'status' not in df.columns:
+            df['status'] = ''
+        if 'error' not in df.columns:
+            df['error'] = ''
+
+        if facility_service_url and not df.empty:
+            facility_client = FacilityServiceClient(facility_service_url)
+            for index, row in df[df['status'] != 'success'].iterrows():
+                try:
+                    facility_data_payload = create_facility_payload(request_info, row)
+                    response = facility_client.create_facility(facility_data_payload)
+                    if response.status_code in (200, 201):
+                        df.at[index, 'status'] = 'success'
+                        df.at[index, 'error'] = ''
+                    elif response.status_code == 400:
+                        error_data = response.json()
+                        error_message = error_data.get('Errors', [{}])[0].get('message', 'Unknown error')
+                        df.at[index, 'status'] = 'failed'
+                        df.at[index, 'error'] = error_message
+                    else:
+                        df.at[index, 'status'] = 'failed'
+                        df.at[index, 'error'] = f'{response.status_code}: {response.text}'
+                except Exception as e:
+                    df.at[index, 'status'] = 'failed'
+                    df.at[index, 'error'] = f'Exception: {str(e)}'
+
+        writer = ExcelDataWriter(output_file_path, output_sheet=facility_sheet_name)
+        writer.write_data(df)
+
+        return FileResponse(
+            path=output_file_path,
+            filename=output_filename,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+    except Exception as e:
+        logger.error(f"Error processing facility data: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to process facility data: {str(e)}"
+        )
+    finally:
+        if input_temp_file and os.path.exists(input_temp_file.name):
+            os.unlink(input_temp_file.name)
+
+@router.post('/facilityWithSupervisors',
+             summary='Upload and process facility with supervisors Excel file',
+             response_description="Returns processed Excel file with validation results")
+async def upload_boundaries_excel_sheet(
+        facility_with_supervisors: UploadFile = File(
+            description="Excel file containing facility with supervisors data"),
+        facility_output: str = Form(default="Facility Output Template",
+                                    description="Name of the sheet containing facility data"),
+        request_info: str = Form(default="")
+):
+    input_temp_file = None
+    output_temp_file = None
+    request_info = request_info_from_json(request_info)
+    get_authorized_request_info(request_info)
+
+    try:
+        input_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
+        content = await facility_with_supervisors.read()
+        input_temp_file.write(content)
+        input_temp_file.close()
+        facility_with_supervisors_file_path = input_temp_file.name
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_filename = f"facility_with_supervisor_ingestion_results_{timestamp}.xlsx"
+        output_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
+        output_temp_file.close()
+        output_file_path = output_temp_file.name
+
+        with open(facility_with_supervisors_file_path, 'rb') as src, open(output_file_path, 'wb') as dst:
+            dst.write(src.read())
+
+        df = pd.read_excel(facility_with_supervisors_file_path, sheet_name=facility_output)
+
+        if 'status' not in df.columns:
+            df['status'] = ''
+        if 'error' not in df.columns:
+            df['error'] = ''
+
+        if project_service_url and not df.empty:
+            project_client = ProjectServiceClient(project_service_url)
+            for index, row in df.iterrows():
+                try:
+                    facility_data_payload = create_facility_with_supervisor_update_payload(request_info, row)
+                    response = project_client.update_facility_with_supervisor(facility_data_payload)
+                    if response.status_code == 200 or response.status_code == 201:
+                        df.at[index, 'status'] = 'success'
+                    else:
+                        df.at[index, 'status'] = 'failed'
+                        df.at[index, 'error'] = f"API Error: {response.status_code} - {response.text}"
+                except Exception as e:
+                    df.at[index, 'status'] = 'failed'
+                    df.at[index, 'error'] = f"Processing Error: {str(e)}"
+
+        writer = ExcelDataWriter(output_file_path, output_sheet=facility_output)
+        writer.write_data(df)
+
+        return FileResponse(
+            path=output_file_path,
+            filename=output_filename,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+    except Exception as e:
+        logger.error(f"Error processing facility data: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to process facility data: {str(e)}"
+        )
     finally:
         if input_temp_file and os.path.exists(input_temp_file.name):
             os.unlink(input_temp_file.name)
