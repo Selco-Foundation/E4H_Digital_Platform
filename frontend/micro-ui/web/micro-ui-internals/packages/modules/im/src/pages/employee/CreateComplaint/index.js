@@ -526,7 +526,7 @@ export const CreateComplaint = ({ parentUrl }) => {
                 ulb={
                   Digit.SessionStorage.get("Employee.tenantId") !== stateTenantId ? Digit.SessionStorage.get("Employee.tenantId") : healthcentre?.code
                 }
-                acceptFiles={".png, .image, .jpg, .jpeg"}
+                acceptFiles={".png, .jpg, .jpeg, image/*"}
                 multiple={false}
                 specificFileConstraint={specificFileConstraint}
               />
@@ -545,14 +545,14 @@ export const CreateComplaint = ({ parentUrl }) => {
                 tenantId={tenantId}
                 getFormState={(state, loading) => getData(state, loading)}
                 onUploadStatusChange={setIsUploading}
-                allowedFileTypesRegex={/(mp4|mov|avi|wmv|webm|video)$/i}
+                allowedFileTypesRegex={/(mp4|mov|avi|wmv|video)$/i}
                 allowedMaxSizeInMB={50}
                 maxFilesAllowed={2}
                 disabled={disbaledUpload}
                 ulb={
                   Digit.SessionStorage.get("Employee.tenantId") !== stateTenantId ? Digit.SessionStorage.get("Employee.tenantId") : healthcentre?.code
                 }
-                acceptFiles={".mp4, .avi, .mov, .wmv, .webm"}
+                acceptFiles={".mp4, .avi, .mov, .wmv, video/*"}
                 multiple={false}
                 specificFileConstraint={specificFileConstraint}
               />

@@ -3,7 +3,7 @@ import tempfile
 from datetime import datetime
 
 import pandas as pd
-from fastapi import APIRouter, File, Form, UploadFile, HTTPException, Depends
+from fastapi import APIRouter, File, Form, UploadFile, HTTPException
 from fastapi.responses import FileResponse
 
 from app.core.logging import AppLogger
