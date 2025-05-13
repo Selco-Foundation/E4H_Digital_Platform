@@ -35,7 +35,7 @@ public class ProjectEnrichment {
     public static final String START_DATE = "startDate";
     public static final String END_DATE = "endDate";
     public static final String FOR_PROJECT = " for project ";
-    private ProjectServiceUtil projectServiceUtil;
+    private final ProjectServiceUtil projectServiceUtil;
 
     private final Producer producer;
 
