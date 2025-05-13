@@ -207,7 +207,7 @@ const UploadFile = (props) => {
               ? {
                   ...extraStyles?.uploadFile,
                   padding: "0.5rem",
-                  width: "70%",
+                  width: "85%",
                   display: "flex",
                   alignItems: "center",
                   color: props?.uploadedFiles?.length === 0 ? "#D5D5D5" : "#000000",
