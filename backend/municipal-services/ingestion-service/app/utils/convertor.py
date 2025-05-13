@@ -1,6 +1,7 @@
 import json
 from typing import Dict, Any, Optional, List
 
+import pandas as pd
 from pandas import Series
 from pydantic import ValidationError
 
@@ -209,5 +210,42 @@ def create_facility_with_supervisor_update_payload(request_info: RequestInfo, ro
             'name': row.get('Name (Mandatory)', ''),
             'phone': row.get('Phone Number (Mandatory)', ''),
             'email': row.get('Email Address (Mandatory)', '')
+        }
+    }
+
+def safe_get(row, key, default=None):
+    val = row.get(key, default)
+    return default if pd.isna(val) else val
+
+def create_facility_payload(request_info: RequestInfo, row: Series):
+    return {
+        'RequestInfo': request_info.model_dump(by_alias=True, exclude_none=True),
+        'facility': {
+            'tenant_id': 'in',
+            'facility_name': safe_get(row, 'Health Centre Name (Mandatory)'),
+            'facility_type': safe_get(row, 'Type of HC (Mandatory)'),
+            'facility_category': safe_get(row, 'Category', 'HEALTH'),
+            'facility_ownership': safe_get(row, 'Ownership', 'GOVERNMENT'),
+            'facility_region': safe_get(row, 'Region', 'RURAL'),
+            'isActive': True,
+            'address': {
+                'tenantId': 'in',
+                'latitude': safe_get(row, 'Latitude'),
+                'longitude': safe_get(row, 'Longitude'),
+                'addressLine1': safe_get(row, 'Address'),
+                'state': safe_get(row, 'State'),
+                'district': safe_get(row, 'District'),
+                'block': safe_get(row, 'Block')
+            },
+            'facility_details': {
+                'boundaryCode': safe_get(row, 'Boundary Code (Mandatory)'),
+                'vendorCode': safe_get(row, 'Vendor Code (Mandatory)'),
+                'solutionDesignType': safe_get(row, 'Solution Design Type (Mandatory)'),
+                'pocName': safe_get(row, 'HC PoC Name (Mandatory)'),
+                'pocDesignation': safe_get(row, 'HC PoC Designation'),
+                'pocContact': safe_get(row, 'HC PoC Contact number (Mandatory)'),
+                'hfrId': safe_get(row, 'HFR ID'),
+                'ninId': safe_get(row, 'NIN ID')
+            }
         }
     }
