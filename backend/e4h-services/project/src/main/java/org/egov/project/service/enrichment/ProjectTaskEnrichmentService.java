@@ -21,6 +21,8 @@ import static org.egov.common.utils.CommonUtils.*;
 @Slf4j
 public class ProjectTaskEnrichmentService {
 
+    public static final String ENRICHING_RESOURCES = "enriching resources";
+    public static final String ENRICHMENT_DONE = "enrichment done";
     private final IdGenService idGenService;
 
     private final ProjectConfiguration projectConfiguration;
@@ -45,13 +47,13 @@ public class ProjectTaskEnrichmentService {
     }
 
     private static void enrichResourcesForUpdate(TaskBulkRequest request, List<Task> tasks) {
-        log.info("enriching resources");
+        log.info(ENRICHING_RESOURCES);
         for (Task task : tasks) {
             if (CollectionUtils.isEmpty(task.getResources())) continue;
             List<TaskResource> resourcesToCreate = task.getResources().stream()
-                    .filter(r -> r.getId() == null).collect(Collectors.toList());
+                    .filter(r -> r.getId() == null).toList();
             List<TaskResource> resourcesToUpdate = task.getResources().stream()
-                    .filter(r -> r.getId() != null).collect(Collectors.toList());
+                    .filter(r -> r.getId() != null).toList();
 
             if (!resourcesToCreate.isEmpty()) {
                 enrichResourcesForCreate(request, resourcesToCreate, task.getId());
@@ -65,7 +67,7 @@ public class ProjectTaskEnrichmentService {
     private static void enrichAddressesForUpdate(List<Task> validTasks) {
         List<Address> addressesToCreate = validTasks.stream()
                 .filter(ad1 -> ad1.getAddress() != null && ad1.getAddress().getId() == null)
-                .map(Task::getAddress).collect(Collectors.toList());
+                .map(Task::getAddress).toList();
 
         if (!addressesToCreate.isEmpty()) {
             log.info("enriching addresses to create");
@@ -76,7 +78,7 @@ public class ProjectTaskEnrichmentService {
 
     private static void enrichAddressesForCreate(List<Task> validTasks) {
         List<Address> addresses = validTasks.stream().map(Task::getAddress)
-                .collect(Collectors.toList());
+                .toList();
         if (!addresses.isEmpty()) {
             log.info("enriching addresses");
             List<String> addressIdList = uuidSupplier().apply(addresses.size());
@@ -87,7 +89,7 @@ public class ProjectTaskEnrichmentService {
     private static void enrichResourcesForCreate(TaskBulkRequest request,
                                                  List<Task> validTasks) {
         for (Task task : validTasks) {
-            log.info("enriching resources");
+            log.info(ENRICHING_RESOURCES);
             List<TaskResource> resources = task.getResources();
             if (CollectionUtils.isEmpty(resources))
                 continue;
@@ -97,7 +99,7 @@ public class ProjectTaskEnrichmentService {
 
     private static void enrichResourcesForCreate(TaskBulkRequest request,
                                                  List<TaskResource> resources, String taskId) {
-        log.info("enriching resources");
+        log.info(ENRICHING_RESOURCES);
         List<String> ids = uuidSupplier().apply(resources.size());
         enrichForCreate(resources, ids, request.getRequestInfo(), false);
         resources.forEach(taskResource -> taskResource.setTaskId(taskId));
@@ -115,7 +117,7 @@ public class ProjectTaskEnrichmentService {
         enrichForCreate(validTasks, taskIdList, request.getRequestInfo());
         enrichAddressesForCreate(validTasks);
         enrichResourcesForCreate(request, validTasks);
-        log.info("enrichment done");
+        log.info(ENRICHMENT_DONE);
     }
 
     public void update(List<Task> validTasks, TaskBulkRequest request) throws Exception {
@@ -125,7 +127,7 @@ public class ProjectTaskEnrichmentService {
         enrichResourcesForUpdate(request, validTasks);
         Map<String, Task> iMap = getIdToObjMap(validTasks);
         enrichForUpdate(iMap, request);
-        log.info("enrichment done");
+        log.info(ENRICHMENT_DONE);
     }
 
     public void delete(List<Task> validTasks, TaskBulkRequest request) throws Exception {
@@ -153,6 +155,6 @@ public class ProjectTaskEnrichmentService {
                 }
             }
         }
-        log.info("enrichment done");
+        log.info(ENRICHMENT_DONE);
     }
 }

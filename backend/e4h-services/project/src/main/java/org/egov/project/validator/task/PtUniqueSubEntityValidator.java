@@ -31,7 +31,7 @@ public class PtUniqueSubEntityValidator implements Validator<TaskBulkRequest, Ta
         log.info("validating unique sub entity");
         Map<Task, List<Error>> errorDetailsMap = new HashMap<>();
         List<Task> validEntities = request.getTasks()
-                .stream().filter(notHavingErrors()).collect(Collectors.toList());
+                .stream().filter(notHavingErrors()).toList();
         if (!validEntities.isEmpty()) {
             for (Task entity : validEntities) {
                 if (entity.getAddress() != null) {
@@ -41,7 +41,7 @@ public class PtUniqueSubEntityValidator implements Validator<TaskBulkRequest, Ta
                         List<String> duplicates = eMap.keySet().stream().filter(id ->
                                 address.stream()
                                         .filter(ad -> ad.getId().equals(id)).count() > 1
-                        ).collect(Collectors.toList());
+                        ).toList();
                         duplicates.forEach(duplicate -> {
                             Error error = getErrorForUniqueSubEntity();
                             populateErrorDetails(entity, error, errorDetailsMap);
@@ -51,7 +51,7 @@ public class PtUniqueSubEntityValidator implements Validator<TaskBulkRequest, Ta
 
                 if (entity.getResources() != null) {
                     List<TaskResource> entities = entity.getResources().stream()
-                            .filter(r -> r.getId() != null).collect(Collectors.toList());
+                            .filter(r -> r.getId() != null).toList();
                     if (!entities.isEmpty()) {
                         Method idMethod = getMethod(GET_ID, TaskResource.class);
                         Map<String, TaskResource> eMap = getIdToObjMap(entities, idMethod);
@@ -59,7 +59,7 @@ public class PtUniqueSubEntityValidator implements Validator<TaskBulkRequest, Ta
                             List<String> duplicates = eMap.keySet().stream().filter(id ->
                                     entities.stream()
                                             .filter(idt -> idt.getId().equals(id)).count() > 1
-                            ).collect(Collectors.toList());
+                            ).toList();
                             duplicates.forEach(duplicate -> {
                                 Error error = getErrorForUniqueSubEntity();
                                 populateErrorDetails(entity, error, errorDetailsMap);

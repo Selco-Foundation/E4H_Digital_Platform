@@ -197,7 +197,7 @@ public class ProjectFacilityService {
             throw new CustomException(VALIDATION_ERROR, errorDetailsMap.values().toString());
         }
         List<ProjectFacility> validEntities = request.getProjectFacilities().stream()
-                .filter(notHavingErrors()).collect(Collectors.toList());
+                .filter(notHavingErrors()).toList();
         log.info("validation successful, found valid project facility");
         return new Tuple<>(validEntities, errorDetailsMap);
     }
@@ -218,7 +218,7 @@ public class ProjectFacilityService {
                     .filter(lastChangedSince(lastChangedSince))
                     .filter(havingTenantId(tenantId))
                     .filter(includeDeleted(includeDeleted))
-                    .collect(Collectors.toList());
+                    .toList();
             return SearchResponse.<ProjectFacility>builder().response(projectfacilities).build();
         }
         log.info("searching project facility using criteria");

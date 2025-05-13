@@ -30,6 +30,10 @@ import static org.egov.project.util.ProjectConstants.*;
 @Slf4j
 public class ProjectValidator {
 
+    public static final String START_DATE_SHOULD_BE_LESS_THAN_END_DATE = "Start date should be less than end date";
+    public static final String IS_NOT_PRESENT_IN_MDMS = " is not present in MDMS";
+    public static final String TENANT_ID_IS_MANDATORY_IN_PROJECT_REQUEST_BODY = "Tenant ID is mandatory in Project request body";
+    public static final String DOES_NOT_EXISTS_FOR_THE_PROJECT = " that you are trying to update does not exists for the project ";
     @Autowired
     MDMSUtils mdmsUtils;
 
@@ -113,10 +117,7 @@ public class ProjectValidator {
         );
 
         // Check if tenant ID is present in the request
-        if (StringUtils.isBlank(urlParams.getTenantId())) {
-            log.error("Tenant ID is mandatory in Project request body");
-            throw new CustomException("TENANT_ID", "Tenant ID is mandatory");
-        }
+        checkTenantId(urlParams);
 
         // Validate if at least one project search field is present
         if (CollectionUtils.isEmpty(projectSearch.getId())
@@ -134,8 +135,8 @@ public class ProjectValidator {
         // Validate that start date is less than or equal to end date
         if ((projectSearch.getStartDate() != null && projectSearch.getEndDate() != null && projectSearch.getEndDate() != 0)
                 && (projectSearch.getStartDate().compareTo(projectSearch.getEndDate()) > 0)) {
-            log.error("Start date should be less than end date");
-            throw new CustomException("INVALID_DATE", "Start date should be less than end date");
+            log.error(START_DATE_SHOULD_BE_LESS_THAN_END_DATE);
+            throw new CustomException("INVALID_DATE", START_DATE_SHOULD_BE_LESS_THAN_END_DATE);
         }
 
         // Validate that if end date is provided, start date should also be provided
@@ -148,6 +149,13 @@ public class ProjectValidator {
         // If there are any collected errors, throw a CustomException with the error map
         if (!errorMap.isEmpty()) {
             throw new CustomException(errorMap);
+        }
+    }
+
+    private static void checkTenantId(ProjectSearchURLParams urlParams) {
+        if (StringUtils.isBlank(urlParams.getTenantId())) {
+            log.error(TENANT_ID_IS_MANDATORY_IN_PROJECT_REQUEST_BODY);
+            throw new CustomException("TENANT_ID", "Tenant ID is mandatory");
         }
     }
 
@@ -222,10 +230,7 @@ public class ProjectValidator {
     private void validateProjectRequest(List<Project> projects) {
         Map<String, String> errorMap = new HashMap<>();
 
-        if (projects == null || projects.size() == 0) {
-            log.error("Project list is empty. Projects is mandatory");
-            throw new CustomException("PROJECT", "Projects are mandatory");
-        }
+        checkProjectIfEmpty(projects);
 
         for (Project project : projects) {
             if (project == null) {
@@ -233,12 +238,12 @@ public class ProjectValidator {
                 throw new CustomException("PROJECT", "Project is mandatory");
             }
             if (StringUtils.isBlank(project.getTenantId())) {
-                log.error("Tenant ID is mandatory in Project request body");
+                log.error(TENANT_ID_IS_MANDATORY_IN_PROJECT_REQUEST_BODY);
                 errorMap.put("TENANT_ID", "Tenant ID is mandatory");
             }
             if ((project.getStartDate() != null && project.getEndDate() != null && project.getEndDate() != 0) && (project.getStartDate().compareTo(project.getEndDate()) > 0)) {
-                log.error("Start date should be less than end date");
-                errorMap.put("INVALID_DATE", "Start date should be less than end date");
+                log.error(START_DATE_SHOULD_BE_LESS_THAN_END_DATE);
+                errorMap.put("INVALID_DATE", START_DATE_SHOULD_BE_LESS_THAN_END_DATE);
             }
             if (project.getStartDate() != null && project.getEndDate() != null && project.getEndDate() != 0
                     && project.getEndDate().compareTo(Instant.ofEpochMilli(project.getStartDate()).plus(Duration.ofDays(1)).toEpochMilli()) < 0) {
@@ -255,41 +260,23 @@ public class ProjectValidator {
             throw new CustomException(errorMap);
     }
 
-    /* Validates Search Project Request body */
-    private void validateSearchProjectRequest(List<Project> projects, String tenantId, Long createdFrom) {
+    private static void checkProjectIfEmpty(List<Project> projects) {
         if (projects == null || projects.size() == 0) {
             log.error("Project list is empty. Projects is mandatory");
             throw new CustomException("PROJECT", "Projects are mandatory");
         }
+    }
+
+    /* Validates Search Project Request body */
+    private void validateSearchProjectRequest(List<Project> projects, String tenantId, Long createdFrom) {
+        checkProjectIfEmpty(projects);
 
         for (Project project : projects) {
-            if (project == null) {
-                log.error("Project is mandatory in Projects");
-                throw new CustomException("PROJECT", "Project is mandatory");
-            }
-            if (StringUtils.isBlank(project.getTenantId())) {
-                log.error("Tenant ID is mandatory in Project request body");
-                throw new CustomException("TENANT_ID", "Tenant ID is mandatory");
-            }
-            if (StringUtils.isBlank(project.getId()) && StringUtils.isBlank(project.getProjectType())
-                    && StringUtils.isBlank(project.getName()) && StringUtils.isBlank(project.getProjectNumber())
-                    && StringUtils.isBlank(project.getProjectSubType())
-                    && (project.getStartDate() == null || project.getStartDate() == 0)
-                    && (project.getEndDate() == null || project.getEndDate() == 0)
-                    && (createdFrom == null || createdFrom == 0)
-                    && (project.getAddress() == null || StringUtils.isBlank(project.getAddress().getBoundary()))) {
-                log.error("Any one project search field is required for Project Search");
-                throw new CustomException("PROJECT_SEARCH_FIELDS", "Any one project search field is required");
-            }
-
-            if (!project.getTenantId().equals(tenantId)) {
-                log.error("Tenant Id must be same in URL param as well as project request body");
-                throw new CustomException("MULTIPLE_TENANTS", "Tenant Id must be same in URL param and project request");
-            }
+            doNullAndEmptyChecks(tenantId, createdFrom, project);
 
             if ((project.getStartDate() != null && project.getEndDate() != null && project.getEndDate() != 0) && (project.getStartDate().compareTo(project.getEndDate()) > 0)) {
-                log.error("Start date should be less than end date");
-                throw new CustomException("INVALID_DATE", "Start date should be less than end date");
+                log.error(START_DATE_SHOULD_BE_LESS_THAN_END_DATE);
+                throw new CustomException("INVALID_DATE", START_DATE_SHOULD_BE_LESS_THAN_END_DATE);
             }
 
             if ((project.getStartDate() == null || project.getStartDate() == 0) && (project.getEndDate() != null && project.getEndDate() != 0)) {
@@ -297,6 +284,32 @@ public class ProjectValidator {
                 throw new CustomException("INVALID_DATE", "Start date is required if end date is passed");
             }
 
+        }
+    }
+
+    private static void doNullAndEmptyChecks(String tenantId, Long createdFrom, Project project) {
+        if (project == null) {
+            log.error("Project is mandatory in Projects");
+            throw new CustomException("PROJECT", "Project is mandatory");
+        }
+        if (StringUtils.isBlank(project.getTenantId())) {
+            log.error(TENANT_ID_IS_MANDATORY_IN_PROJECT_REQUEST_BODY);
+            throw new CustomException("TENANT_ID", "Tenant ID is mandatory");
+        }
+        if (StringUtils.isBlank(project.getId()) && StringUtils.isBlank(project.getProjectType())
+                && StringUtils.isBlank(project.getName()) && StringUtils.isBlank(project.getProjectNumber())
+                && StringUtils.isBlank(project.getProjectSubType())
+                && (project.getStartDate() == null || project.getStartDate() == 0)
+                && (project.getEndDate() == null || project.getEndDate() == 0)
+                && (createdFrom == null || createdFrom == 0)
+                && (project.getAddress() == null || StringUtils.isBlank(project.getAddress().getBoundary()))) {
+            log.error("Any one project search field is required for Project Search");
+            throw new CustomException("PROJECT_SEARCH_FIELDS", "Any one project search field is required");
+        }
+
+        if (!project.getTenantId().equals(tenantId)) {
+            log.error("Tenant Id must be same in URL param as well as project request body");
+            throw new CustomException("MULTIPLE_TENANTS", "Tenant Id must be same in URL param and project request");
         }
     }
 
@@ -318,10 +331,11 @@ public class ProjectValidator {
 
     /* Validates the request data against MDMS data */
     private void validateMDMSData(List<Project> projects, Object mdmsData, Map<String, String> errorMap) {
-        final String jsonPathForMDMSTypeOfProjectList = "$.MdmsRes." + config.getMdmsModule() + "." + MASTER_PROJECTTYPE + ".[?(@.active==true)].code";
-        final String jsonPathForMDMSNatureOfWorkList = "$.MdmsRes." + config.getMdmsModule() + "." + MASTER_NATUREOFWORK + ".[?(@.active==true)].code";
-        final String jsonPathForDepartment = "$.MdmsRes." + MDMS_COMMON_MASTERS_MODULE_NAME + "." + MASTER_DEPARTMENT + ".*.code";
-        final String jsonPathForTenants = "$.MdmsRes." + MDMS_TENANT_MODULE_NAME + "." + MASTER_TENANTS + ".*";
+        String mdmsRes = "$.MdmsRes.";
+        final String jsonPathForMDMSTypeOfProjectList = mdmsRes + config.getMdmsModule() + "." + MASTER_PROJECTTYPE + ".[?(@.active==true)].code";
+        final String jsonPathForMDMSNatureOfWorkList = mdmsRes + config.getMdmsModule() + "." + MASTER_NATUREOFWORK + ".[?(@.active==true)].code";
+        final String jsonPathForDepartment = mdmsRes + MDMS_COMMON_MASTERS_MODULE_NAME + "." + MASTER_DEPARTMENT + ".*.code";
+        final String jsonPathForTenants = mdmsRes + MDMS_TENANT_MODULE_NAME + "." + MASTER_TENANTS + ".*";
 
         List<Object> deptRes = null;
         List<Object> typeOfProjectRes = null;
@@ -341,26 +355,27 @@ public class ProjectValidator {
 
         for (Project project : projects) {
             log.info("Validate Project type with MDMS");
+            String mdmsNotPresent = IS_NOT_PRESENT_IN_MDMS;
             if (!StringUtils.isBlank(project.getProjectType()) && !typeOfProjectRes.contains(project.getProjectType())) {
-                log.error("The project type: " + project.getProjectType() + " is not present in MDMS");
-                errorMap.put("INVALID_PROJECT_TYPE", "The project type: " + project.getProjectType() + " is not present in MDMS");
+                log.error("The project type: " + project.getProjectType() + mdmsNotPresent);
+                errorMap.put("INVALID_PROJECT_TYPE", "The project type: " + project.getProjectType() + mdmsNotPresent);
             }
             log.info("Validate Tenant Id with MDMS");
             if (!StringUtils.isBlank(project.getTenantId()) && !tenantRes.contains(project.getTenantId())) {
-                log.error("The tenant: " + project.getTenantId() + " is not present in MDMS");
-                errorMap.put("INVALID_TENANT", "The tenant: " + project.getTenantId() + " is not present in MDMS");
+                log.error("The tenant: " + project.getTenantId() + mdmsNotPresent);
+                errorMap.put("INVALID_TENANT", "The tenant: " + project.getTenantId() + mdmsNotPresent);
             }
             log.info("Validate Department with MDMS");
             if (!StringUtils.isBlank(project.getDepartment()) && !deptRes.contains(project.getDepartment())) {
-                log.error("The department code: " + project.getDepartment() + " is not present in MDMS");
-                errorMap.put("INVALID_DEPARTMENT_CODE", "The department code: " + project.getDepartment() + " is not present in MDMS");
+                log.error("The department code: " + project.getDepartment() + mdmsNotPresent);
+                errorMap.put("INVALID_DEPARTMENT_CODE", "The department code: " + project.getDepartment() + mdmsNotPresent);
             }
 
             //Verify if project subtype is present for project type
             log.info("Validate Nature of Work with MDMS");
             if (!StringUtils.isBlank(project.getNatureOfWork()) && natureOfWorkRes != null && !natureOfWorkRes.contains(project.getNatureOfWork())) {
-                log.error("The nature of work: " + project.getNatureOfWork() + " is not present in MDMS");
-                errorMap.put("INVALID_NATURE_OF_WORK", "The nature of work: " + project.getNatureOfWork() + " is not present in MDMS");
+                log.error("The nature of work: " + project.getNatureOfWork() + mdmsNotPresent);
+                errorMap.put("INVALID_NATURE_OF_WORK", "The nature of work: " + project.getNatureOfWork() + mdmsNotPresent);
             }
         }
     }
@@ -404,8 +419,8 @@ public class ProjectValidator {
 
             // Validate numberOfSessions
             if (!StringUtils.isBlank(numberOfSessions) && !attendanceRes.contains(numberOfSessions)) {
-                log.error("The number of attendance sessions " + numberOfSessions + " is not present in MDMS");
-                errorMap.put("INVALID_NUMBER_OF_ATTENDANCE_SESSIONS", "The number of attendance sessions: " + numberOfSessions + " is not present in MDMS");
+                log.error("The number of attendance sessions " + numberOfSessions + IS_NOT_PRESENT_IN_MDMS);
+                errorMap.put("INVALID_NUMBER_OF_ATTENDANCE_SESSIONS", "The number of attendance sessions: " + numberOfSessions + IS_NOT_PRESENT_IN_MDMS);
             }
         }
     }
@@ -497,19 +512,7 @@ public class ProjectValidator {
     private void validateStartDateAndEndDateAgainstDB(Project project, Project projectFromDB, Long currentTimestamp, Long nextDateTimestampUTC) {
         String errorMessage = "";
         // Check if the project start date is not null and whether it's different from the one in the database
-        if (project.getStartDate() != null) {
-            // Check if the project start date is different from the one in the database
-            if (project.getStartDate().compareTo(projectFromDB.getStartDate()) != 0) {
-                // Check if the project start date is before the current timestamp or within 24 hours from the next date's midnight
-                if (projectFromDB.getStartDate().compareTo(currentTimestamp) < 0) {
-                    errorMessage = "The project start date cannot be updated as the project has already started.";
-                } else if (project.getStartDate().compareTo(nextDateTimestampUTC) < 0) {
-                    errorMessage = "The project start date cannot be updated as it should be at least 24 hours in advance from the current time and start after the next day onwards.";
-                }
-            }
-        } else {
-            errorMessage = "The project start date cannot be updated as it is null.";
-        }
+        errorMessage = getErrorMessage(project, projectFromDB, currentTimestamp, nextDateTimestampUTC, errorMessage);
         // If there's an error message, log it and throw a CustomException
         if (!errorMessage.trim().isEmpty()) {
             log.error(errorMessage);
@@ -537,6 +540,23 @@ public class ProjectValidator {
         }
     }
 
+    private static String getErrorMessage(Project project, Project projectFromDB, Long currentTimestamp, Long nextDateTimestampUTC, String errorMessage) {
+        if (project.getStartDate() != null) {
+            // Check if the project start date is different from the one in the database
+            if (project.getStartDate().compareTo(projectFromDB.getStartDate()) != 0) {
+                // Check if the project start date is before the current timestamp or within 24 hours from the next date's midnight
+                if (projectFromDB.getStartDate().compareTo(currentTimestamp) < 0) {
+                    errorMessage = "The project start date cannot be updated as the project has already started.";
+                } else if (project.getStartDate().compareTo(nextDateTimestampUTC) < 0) {
+                    errorMessage = "The project start date cannot be updated as it should be at least 24 hours in advance from the current time and start after the next day onwards.";
+                }
+            }
+        } else {
+            errorMessage = "The project start date cannot be updated as it is null.";
+        }
+        return errorMessage;
+    }
+
     private void validateUpdateAddressAgainstDB(Project project, Project projectFromDB) {
         //Checks for a project if address already present in DB
         if ((projectFromDB.getAddress() != null && projectFromDB.getAddress().getId() != null) && project.getAddress() != null && StringUtils.isBlank(project.getAddress().getId())) {
@@ -548,30 +568,34 @@ public class ProjectValidator {
                 && StringUtils.isNotBlank(project.getAddress().getId())
                 && (projectFromDB.getAddress() == null || StringUtils.isBlank(projectFromDB.getAddress().getId()) || !projectFromDB.getAddress().getId().equals(project.getAddress().getId()))) {
             log.error("The address id " + project.getAddress().getId() + " that you are trying to update does not exists for the project");
-            throw new CustomException("INVALID_PROJECT_MODIFY.ADDRESS", "The address id " + project.getAddress().getId() + " that you are trying to update does not exists for the project " + projectFromDB.getProjectNumber());
+            throw new CustomException("INVALID_PROJECT_MODIFY.ADDRESS", "The address id " + project.getAddress().getId() + DOES_NOT_EXISTS_FOR_THE_PROJECT + projectFromDB.getProjectNumber());
         }
     }
 
     private void validateUpdateTargetAgainstDB(Project project, Project projectFromDB) {
         //If targets are present in the project's database and target id in update request mismatches
-        if (projectFromDB.getTargets() != null && !projectFromDB.getTargets().isEmpty()) {
-            Set<String> targetIdsFromDB = projectFromDB.getTargets().stream().filter(t -> !t.getIsDeleted()).map(Target::getId).collect(Collectors.toSet());
-            if (project.getTargets() != null) {
-                for (Target target : project.getTargets()) {
-                    if (StringUtils.isNotBlank(target.getId()) && !targetIdsFromDB.contains(target.getId())) {
-                        log.error("The target id " + target.getId() + " that you are trying to update does not exists for the project " + projectFromDB.getProjectNumber());
-                        throw new CustomException("INVALID_PROJECT_MODIFY.TARGET", "The target id " + target.getId() + " that you are trying to update does not exists for the project " + projectFromDB.getProjectNumber());
-                    }
-                }
-            }
-        }
+        checkProjectDbTargetId(project, projectFromDB);
 
         // If targets are not present in the project's database, and the update request contains targets with ids
         if ((projectFromDB.getTargets() == null || projectFromDB.getTargets().isEmpty()) && (project.getTargets() != null && !project.getTargets().isEmpty())) {
             for (Target target : project.getTargets()) {
                 if (StringUtils.isNotBlank(target.getId())) {
-                    log.error("The target id " + target.getId() + " that you are trying to update does not exists for the project " + projectFromDB.getProjectNumber());
-                    throw new CustomException("INVALID_PROJECT_MODIFY.TARGET", "The target id " + target.getId() + " that you are trying to update does not exists for the project " + projectFromDB.getProjectNumber());
+                    log.error("The target id " + target.getId() + DOES_NOT_EXISTS_FOR_THE_PROJECT + projectFromDB.getProjectNumber());
+                    throw new CustomException("INVALID_PROJECT_MODIFY.TARGET", "The target id " + target.getId() + DOES_NOT_EXISTS_FOR_THE_PROJECT + projectFromDB.getProjectNumber());
+                }
+            }
+        }
+    }
+
+    private static void checkProjectDbTargetId(Project project, Project projectFromDB) {
+        if (projectFromDB.getTargets() != null && !projectFromDB.getTargets().isEmpty()) {
+            Set<String> targetIdsFromDB = projectFromDB.getTargets().stream().filter(t -> !t.getIsDeleted()).map(Target::getId).collect(Collectors.toSet());
+            if (project.getTargets() != null) {
+                for (Target target : project.getTargets()) {
+                    if (StringUtils.isNotBlank(target.getId()) && !targetIdsFromDB.contains(target.getId())) {
+                        log.error("The target id " + target.getId() + DOES_NOT_EXISTS_FOR_THE_PROJECT + projectFromDB.getProjectNumber());
+                        throw new CustomException("INVALID_PROJECT_MODIFY.TARGET", "The target id " + target.getId() + DOES_NOT_EXISTS_FOR_THE_PROJECT + projectFromDB.getProjectNumber());
+                    }
                 }
             }
         }
@@ -579,24 +603,28 @@ public class ProjectValidator {
 
     private void validateUpdateDocumentAgainstDB(Project project, Project projectFromDB) {
         //If targets are present in the project's database and target id in update request mismatches
-        if (projectFromDB.getDocuments() != null && !projectFromDB.getDocuments().isEmpty()) {
-            Set<String> documentIdsFromDB = projectFromDB.getDocuments().stream().map(Document::getId).collect(Collectors.toSet());
-            if (project.getDocuments() != null) {
-                for (Document document : project.getDocuments()) {
-                    if (StringUtils.isNotBlank(document.getId()) && !documentIdsFromDB.contains(document.getId())) {
-                        log.error("The document id " + document.getId() + " that you are trying to update does not exists for the project " + projectFromDB.getProjectNumber());
-                        throw new CustomException("INVALID_PROJECT_MODIFY.DOCUMENT", "The document id " + document.getId() + " that you are trying to update does not exists for the project " + projectFromDB.getProjectNumber());
-                    }
-                }
-            }
-        }
+        checkProjectDB(project, projectFromDB);
 
         // If documents are not present in the project's database, and the update request contains documents with ids
         if ((projectFromDB.getDocuments() == null || projectFromDB.getDocuments().isEmpty()) && (project.getDocuments() != null && !project.getDocuments().isEmpty())) {
             for (Document document : project.getDocuments()) {
                 if (StringUtils.isNotBlank(document.getId())) {
-                    log.error("The document id " + document.getId() + " that you are trying to update does not exists for the project " + projectFromDB.getProjectNumber());
-                    throw new CustomException("INVALID_PROJECT_MODIFY.DOCUMENT", "The document id " + document.getId() + " that you are trying to update does not exists for the project " + projectFromDB.getProjectNumber());
+                    log.error("The document id " + document.getId() + DOES_NOT_EXISTS_FOR_THE_PROJECT + projectFromDB.getProjectNumber());
+                    throw new CustomException("INVALID_PROJECT_MODIFY.DOCUMENT", "The document id " + document.getId() + DOES_NOT_EXISTS_FOR_THE_PROJECT + projectFromDB.getProjectNumber());
+                }
+            }
+        }
+    }
+
+    private static void checkProjectDB(Project project, Project projectFromDB) {
+        if (projectFromDB.getDocuments() != null && !projectFromDB.getDocuments().isEmpty()) {
+            Set<String> documentIdsFromDB = projectFromDB.getDocuments().stream().map(Document::getId).collect(Collectors.toSet());
+            if (project.getDocuments() != null) {
+                for (Document document : project.getDocuments()) {
+                    if (StringUtils.isNotBlank(document.getId()) && !documentIdsFromDB.contains(document.getId())) {
+                        log.error("The document id " + document.getId() + DOES_NOT_EXISTS_FOR_THE_PROJECT + projectFromDB.getProjectNumber());
+                        throw new CustomException("INVALID_PROJECT_MODIFY.DOCUMENT", "The document id " + document.getId() + DOES_NOT_EXISTS_FOR_THE_PROJECT + projectFromDB.getProjectNumber());
+                    }
                 }
             }
         }

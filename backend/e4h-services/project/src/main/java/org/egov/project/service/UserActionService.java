@@ -152,7 +152,7 @@ public class UserActionService {
 
         // Filter and return valid user actions
         List<UserAction> validUserActions = request.getUserActions().stream()
-                .filter(notHavingErrors()).collect(Collectors.toList());
+                .filter(notHavingErrors()).toList();
         return new Tuple<>(validUserActions, errorDetailsMap);
     }
 
@@ -177,7 +177,7 @@ public class UserActionService {
                     .filter(lastChangedSince(urlParams.getLastChangedSince()))
                     .filter(havingTenantId(urlParams.getTenantId()))
                     .filter(includeDeleted(urlParams.getIncludeDeleted()))
-                    .collect(Collectors.toList())).totalCount(searchResponse.getTotalCount()).build();
+                    .toList()).totalCount(searchResponse.getTotalCount()).build();
         }
 
         try {

@@ -49,7 +49,7 @@ public class PfFacilityIdValidator implements Validator<ProjectFacilityBulkReque
 
         List<ProjectFacility> validEntities = request.getProjectFacilities().stream()
                 .filter(notHavingErrors())
-                .collect(Collectors.toList());
+                .toList();
         if (!validEntities.isEmpty()) {
             String tenantId = getTenantId(validEntities);
             Class<?> objClass = getObjClass(validEntities);
@@ -62,7 +62,7 @@ public class PfFacilityIdValidator implements Validator<ProjectFacilityBulkReque
                         tenantId, errorDetailsMap, request.getRequestInfo());
                 List<ProjectFacility> invalidEntities = validEntities.stream().filter(notHavingErrors()).filter(entity ->
                                 !existingFacilityIds.contains(entity.getFacilityId()))
-                        .collect(Collectors.toList());
+                        .toList();
                 invalidEntities.forEach(projectFacility -> {
                     Error error = getErrorForNonExistentRelatedEntity(projectFacility.getFacilityId());
                     populateErrorDetails(projectFacility, error, errorDetailsMap);
@@ -92,7 +92,7 @@ public class PfFacilityIdValidator implements Validator<ProjectFacilityBulkReque
                             + "&offset=0&tenantId=" + tenantId),
                     facilitySearchRequest,
                     FacilityBulkResponse.class);
-            return response.getFacilities().stream().map(Facility::getId).collect(Collectors.toList());
+            return response.getFacilities().stream().map(Facility::getId).toList();
         } catch (Exception e) {
             log.error("error while fetching facility list", ExceptionUtils.getStackTrace(e));
             projectFacilities.forEach(b -> {

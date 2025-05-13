@@ -67,7 +67,7 @@ public class UaExistentEntityValidator implements Validator<UserActionBulkReques
         List<String> clientReferenceIdList = entities.stream()
                 .filter(notHavingErrors()) // Filter out entities that already have errors.
                 .map(UserAction::getClientReferenceId) // Map to extract client reference IDs.
-                .collect(Collectors.toList()); // Collect the IDs into a list.
+                .toList(); // Collect the IDs into a list.
 
         // Create a map for quick lookup of UserAction entities by client reference ID.
         Map<String, UserAction> map = entities.stream()

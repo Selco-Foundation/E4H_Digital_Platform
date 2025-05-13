@@ -52,7 +52,7 @@ public class PbVoucherTagUniqueForUpdateValidator implements Validator<Beneficia
 
         // Filter valid project beneficiaries (those without errors)
         List<ProjectBeneficiary> validProjectBeneficiaries = beneficiaryBulkRequest.getProjectBeneficiaries()
-                .stream().filter(notHavingErrors()).filter(projectBeneficiary -> projectBeneficiary.getTag() != null).collect(Collectors.toList());
+                .stream().filter(notHavingErrors()).filter(projectBeneficiary -> projectBeneficiary.getTag() != null).toList();
 
         if (!validProjectBeneficiaries.isEmpty()) {
             // Get a list of existing ProjectBeneficiaries based on IDs
@@ -77,7 +77,7 @@ public class PbVoucherTagUniqueForUpdateValidator implements Validator<Beneficia
 
         // Build a search request to find existing voucher tags
         ProjectBeneficiarySearch projectBeneficiarySearch = ProjectBeneficiarySearch.builder()
-                .id(validProjectBeneficiaries.stream().map(ProjectBeneficiary::getId).collect(Collectors.toList()))
+                .id(validProjectBeneficiaries.stream().map(ProjectBeneficiary::getId).toList())
                 .build();
 
         try {
@@ -106,7 +106,7 @@ public class PbVoucherTagUniqueForUpdateValidator implements Validator<Beneficia
         List<ProjectBeneficiary> invalidEntities = validProjectBeneficiaries.stream()
                 .filter(notHavingErrors())
                 .filter(entity -> !existingProjectBeneficiaryMap.containsKey(entity.getId()))
-                .collect(Collectors.toList());
+                .toList();
 
         populateErrors(invalidEntities, errorDetailsMap);
 
@@ -115,7 +115,7 @@ public class PbVoucherTagUniqueForUpdateValidator implements Validator<Beneficia
                 .filter(notHavingErrors())
                 .filter(projectBeneficiary -> isUpdated(projectBeneficiary, existingProjectBeneficiaryMap))
                 .filter(projectBeneficiary -> isInvalid(projectBeneficiary, existingProjectBeneficiaryVoucherTagMap))
-                .collect(Collectors.toList());
+                .toList();
 
         populateErrors(invalidEntities, errorDetailsMap);
     }
@@ -169,6 +169,6 @@ public class PbVoucherTagUniqueForUpdateValidator implements Validator<Beneficia
 
         // Check if the tag of the current entity is equal to the tag of the existing entity
         return (!projectBeneficiaryFromSearch.getTag().equals(tag)
-                || (tag != null && !tag.equals(projectBeneficiaryFromSearch.getTag())));
+                || (!tag.equals(projectBeneficiaryFromSearch.getTag())));
     }
 }

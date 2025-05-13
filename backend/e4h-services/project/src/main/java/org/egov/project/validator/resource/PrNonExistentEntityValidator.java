@@ -41,7 +41,7 @@ public class PrNonExistentEntityValidator implements Validator<ProjectResourceBu
         Class<?> objClass = getObjClass(entities);
         Method idMethod = getMethod(GET_ID, objClass);
         Map<String, ProjectResource> eMap = getIdToObjMap(entities
-                .stream().filter(notHavingErrors()).collect(Collectors.toList()), idMethod);
+                .stream().filter(notHavingErrors()).toList(), idMethod);
         if (!eMap.isEmpty()) {
             List<String> entityIds = new ArrayList<>(eMap.keySet());
             List<ProjectResource> existingEntities = projectResourceRepository

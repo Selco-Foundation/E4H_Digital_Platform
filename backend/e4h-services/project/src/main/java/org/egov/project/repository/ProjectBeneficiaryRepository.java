@@ -91,13 +91,13 @@ public class ProjectBeneficiaryRepository extends GenericRepository<ProjectBenef
         if (!includeDeleted) {
             objFound = objFound.stream()
                     .filter(entity -> entity.getIsDeleted().equals(false))
-                    .collect(Collectors.toList());
+                    .toList();
         }
         if (!objFound.isEmpty()) {
             Method idMethod = getIdMethod(objFound, columnName);
             ids.removeAll(objFound.stream()
                     .map(obj -> (String) ReflectionUtils.invokeMethod(idMethod, obj))
-                    .collect(Collectors.toList()));
+                    .toList());
             if (ids.isEmpty()) {
                 log.info("all objects were found in the cache, returning objects");
                 return SearchResponse.<ProjectBeneficiary>builder().response(objFound).build();

@@ -38,7 +38,7 @@ public class PrRowVersionValidator implements Validator<ProjectResourceBulkReque
         Method idMethod = getIdMethod(request.getProjectResource());
         Map<String, ProjectResource> eMap = getIdToObjMap(request.getProjectResource().stream()
                 .filter(notHavingErrors())
-                .collect(Collectors.toList()), idMethod);
+                .toList(), idMethod);
         if (!eMap.isEmpty()) {
             List<String> entityIds = new ArrayList<>(eMap.keySet());
             List<ProjectResource> existingEntities = projectResourceRepository

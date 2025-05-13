@@ -56,7 +56,7 @@ public class PsUserIdValidator implements Validator<ProjectStaffBulkRequest, Pro
 
         List<String> userIds = entities.stream()
                 .filter(notHavingErrors())
-                .map(ProjectStaff::getUserId).distinct().collect(Collectors.toList());
+                .map(ProjectStaff::getUserId).distinct().toList();
         final String tenantId = getTenantId(entities);
         Map<String, ProjectStaff> uMap = getIdToObjMap(entities,
                 getMethod(GET_USER_ID, getObjClass(entities)));
@@ -71,7 +71,7 @@ public class PsUserIdValidator implements Validator<ProjectStaffBulkRequest, Pro
                             .search(userSearchRequest)
                             .stream()
                             .map(User::getUuid)
-                            .collect(Collectors.toList());
+                            .toList();
                 } else if ("individual".equalsIgnoreCase(projectConfiguration.getEgovUserIdValidator())) {
                     IndividualSearchRequest individualSearchRequest = IndividualSearchRequest.builder()
                             .individual(IndividualSearch.builder()
@@ -87,7 +87,7 @@ public class PsUserIdValidator implements Validator<ProjectStaffBulkRequest, Pro
                                     individualSearchRequest,
                                     IndividualBulkResponse.class).getIndividual().stream()
                             .map(Individual::getId)
-                            .collect(Collectors.toList());
+                            .toList();
                 }
                 for (Map.Entry<String, ProjectStaff> entry : uMap.entrySet()) {
                     if (!validUserIds.contains(entry.getKey())) {

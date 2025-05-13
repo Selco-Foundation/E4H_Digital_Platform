@@ -38,12 +38,12 @@ public class PfUniqueCombinationValidator implements Validator<ProjectFacilityBu
 
         List<ProjectFacility> validEntities = request.getProjectFacilities().stream()
                 .filter(notHavingErrors())
-                .collect(Collectors.toList());
+                .toList();
         if (!validEntities.isEmpty()) {
             validateProjectFacilityMappingFromRequest(validEntities, errorDetailsMap);
             validEntities = request.getProjectFacilities().stream()
                     .filter(notHavingErrors())
-                    .collect(Collectors.toList());
+                    .toList();
             if (!validEntities.isEmpty()) {
                 validateProjectFacilityMappingFromDb(validEntities, errorDetailsMap);
             }
@@ -57,7 +57,7 @@ public class PfUniqueCombinationValidator implements Validator<ProjectFacilityBu
         log.info("validating mapping from db");
         log.info("validating {} valid entities", validEntities.size());
         List<String> projectIds = validEntities.stream().map(ProjectFacility::getProjectId)
-                .collect(Collectors.toList());
+                .toList();
 
         List<ProjectFacility> existingProjectFacilities = projectFacilityRepository.findById(projectIds,
                 false, PROJECT_ID);
@@ -85,7 +85,7 @@ public class PfUniqueCombinationValidator implements Validator<ProjectFacilityBu
                     validEntities.stream().filter(entity -> {
                         String combinationId = entity.getFacilityId() + PIPE + entity.getProjectId();
                         return combinationId.equals(id);
-                    }).count() > 1).collect(Collectors.toList());
+                    }).count() > 1).toList();
             for (String key : duplicates) {
                 ProjectFacility projectFacility = map.get(key);
                 Error error = getErrorForDuplicateMapping(projectFacility.getProjectId(),

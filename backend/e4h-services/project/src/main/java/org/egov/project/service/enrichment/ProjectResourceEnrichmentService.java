@@ -16,6 +16,7 @@ import static org.egov.common.utils.CommonUtils.*;
 @Slf4j
 public class ProjectResourceEnrichmentService {
 
+    public static final String ENRICHMENT_DONE = "enrichment done";
     private final IdGenService idGenService;
 
     private final ProjectConfiguration projectConfiguration;
@@ -34,19 +35,19 @@ public class ProjectResourceEnrichmentService {
                 projectConfiguration.getProjectResourceIdFormat(), "", entities.size());
 
         enrichForCreate(entities, idList, request.getRequestInfo());
-        log.info("enrichment done");
+        log.info(ENRICHMENT_DONE);
     }
 
     public void update(List<ProjectResource> entities, ProjectResourceBulkRequest request) {
         log.info("starting the enrichment for create project resource");
         Map<String, ProjectResource> projectResourceMap = getIdToObjMap(entities);
         enrichForUpdate(projectResourceMap, entities, request);
-        log.info("enrichment done");
+        log.info(ENRICHMENT_DONE);
     }
 
     public void delete(List<ProjectResource> entities, ProjectResourceBulkRequest request) {
         log.info("starting the enrichment for delete project resource");
         enrichForDelete(entities, request.getRequestInfo(), true);
-        log.info("enrichment done");
+        log.info(ENRICHMENT_DONE);
     }
 }

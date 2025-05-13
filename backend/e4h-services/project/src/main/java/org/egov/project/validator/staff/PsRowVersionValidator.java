@@ -40,7 +40,7 @@ public class PsRowVersionValidator implements Validator<ProjectStaffBulkRequest,
         Method idMethod = getIdMethod(request.getProjectStaff());
         Map<String, ProjectStaff> eMap = getIdToObjMap(request.getProjectStaff().stream()
                 .filter(notHavingErrors())
-                .collect(Collectors.toList()), idMethod);
+                .toList(), idMethod);
         if (!eMap.isEmpty()) {
             List<String> entityIds = new ArrayList<>(eMap.keySet());
             List<ProjectStaff> existingEntities = repository.findById(entityIds, false,

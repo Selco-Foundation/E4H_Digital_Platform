@@ -53,7 +53,7 @@ class ProjectBeneficiaryEnrichmentServiceUpdateTest {
                 .withOneProjectBeneficiary()
                 .build();
         projectBeneficiaryIds = request.getProjectBeneficiaries().stream().map(ProjectBeneficiary::getId)
-                .collect(Collectors.toList());
+                .toList();
 
         lenient().when(projectConfiguration.getUpdateProjectBeneficiaryTopic()).thenReturn("update-topic");
     }

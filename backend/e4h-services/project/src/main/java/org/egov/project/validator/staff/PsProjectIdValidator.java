@@ -41,14 +41,14 @@ public class PsProjectIdValidator implements Validator<ProjectStaffBulkRequest, 
         Class<?> objClass = getObjClass(entities);
         Method idMethod = getMethod("getProjectId", objClass);
         Map<String, ProjectStaff> eMap = getIdToObjMap(entities
-                .stream().filter(notHavingErrors()).collect(Collectors.toList()), idMethod);
+                .stream().filter(notHavingErrors()).toList(), idMethod);
         if (!eMap.isEmpty()) {
             List<String> entityIds = new ArrayList<>(eMap.keySet());
             List<String> existingProjectIds = projectRepository.validateIds(entityIds,
                     getIdFieldName(idMethod));
             List<ProjectStaff> invalidEntities = entities.stream().filter(notHavingErrors()).filter(entity ->
                             !existingProjectIds.contains(entity.getProjectId()))
-                    .collect(Collectors.toList());
+                    .toList();
             invalidEntities.forEach(ProjectStaff -> {
                 Error error = getErrorForNonExistentRelatedEntity(ProjectStaff.getProjectId());
                 populateErrorDetails(ProjectStaff, error, errorDetailsMap);

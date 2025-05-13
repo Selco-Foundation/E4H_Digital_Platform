@@ -49,7 +49,7 @@ public class PsUniqueCombinationValidator implements Validator<ProjectStaffBulkR
                     validEntities.stream().filter(entity -> {
                         String combinationId = entity.getUserId() + PIPE + entity.getProjectId();
                         return combinationId.equals(id);
-                    }).count() > 1).collect(Collectors.toList());
+                    }).count() > 1).toList();
             log.info("found {} duplicates in request", duplicates.size());
             for (String key : duplicates) {
                 ProjectStaff projectStaff = map.get(key);
@@ -66,7 +66,7 @@ public class PsUniqueCombinationValidator implements Validator<ProjectStaffBulkR
         log.info("validating mapping from db");
         log.info("validating {} valid entities", validEntities.size());
         List<String> projectIds = validEntities.stream().map(ProjectStaff::getProjectId)
-                .collect(Collectors.toList());
+                .toList();
         List<ProjectStaff> existingProjectResources = projectStaffRepository.findById(projectIds,
                 false, PROJECT_ID);
 
@@ -86,11 +86,11 @@ public class PsUniqueCombinationValidator implements Validator<ProjectStaffBulkR
     public Map<ProjectStaff, List<Error>> validate(ProjectStaffBulkRequest request) {
         Map<ProjectStaff, List<Error>> errorDetailsMap = new HashMap<>();
         List<ProjectStaff> validEntities = request.getProjectStaff()
-                .stream().filter(notHavingErrors()).collect(Collectors.toList());
+                .stream().filter(notHavingErrors()).toList();
 
         if (!validEntities.isEmpty()) {
             validateProductVariantMappingFromRequest(validEntities, errorDetailsMap);
-            validEntities = validEntities.stream().filter(notHavingErrors()).collect(Collectors.toList());
+            validEntities = validEntities.stream().filter(notHavingErrors()).toList();
             if (!validEntities.isEmpty()) {
                 validateProductVariantMappingFromDb(validEntities, errorDetailsMap);
             }

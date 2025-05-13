@@ -2,6 +2,7 @@ package org.egov.project.validator.beneficiary;
 
 import lombok.extern.slf4j.Slf4j;
 import org.egov.common.models.Error;
+import org.egov.common.models.core.EgovOfflineModel;
 import org.egov.common.models.project.BeneficiaryBulkRequest;
 import org.egov.common.models.project.ProjectBeneficiary;
 import org.egov.common.models.project.ProjectBeneficiarySearch;
@@ -69,17 +70,15 @@ public class PbExistentEntityValidator implements Validator<BeneficiaryBulkReque
         List<String> clientReferenceIdList = entities.stream()
                 .filter(notHavingErrors()) // Filter out entities that already have errors.
                 .map(ProjectBeneficiary::getClientReferenceId) // Map to extract client reference IDs.
-                .collect(Collectors.toList()); // Collect the IDs into a list.
+                .toList(); // Collect the IDs into a list.
 
         // Create a map of client reference ID to ProjectBeneficiary entity for quick lookup.
         Map<String, ProjectBeneficiary> map = entities.stream()
                 .filter(entity -> StringUtils.hasText(entity.getClientReferenceId())) // Ensure client reference ID is not empty.
-                .collect(Collectors.toMap(entity -> entity.getClientReferenceId(), entity -> entity)); // Collect to a map.
+                .collect(Collectors.toMap(EgovOfflineModel::getClientReferenceId, entity -> entity)); // Collect to a map.
 
         // Create a search object to query entities by client reference IDs.
-        ProjectBeneficiarySearch projectBeneficiarySearch = ProjectBeneficiarySearch.builder()
-                .clientReferenceId(clientReferenceIdList) // Set the client reference IDs for the search.
-                .build();
+
 
         // Check if the client reference ID list is not empty before querying the database.
         if (!CollectionUtils.isEmpty(clientReferenceIdList)) {

@@ -36,13 +36,10 @@ import static org.egov.project.Constants.VALIDATION_ERROR;
 @Slf4j
 public class ProjectStaffService {
 
-    private final IdGenService idGenService;
+    public static final String CREATING_BULK_REQUEST = "creating bulk request";
+    public static final String PROCESSING_VALID_ENTITIES = "processing {} valid entities";
 
     private final ProjectStaffRepository projectStaffRepository;
-
-    private final ProjectService projectService;
-
-    private final UserService userService;
 
     private final ProjectConfiguration projectConfiguration;
 
@@ -80,10 +77,7 @@ public class ProjectStaffService {
             ProjectConfiguration projectConfiguration,
             ProjectStaffEnrichmentService enrichmentService,
             Producer producer, List<Validator<ProjectStaffBulkRequest, ProjectStaff>> validators) {
-        this.idGenService = idGenService;
         this.projectStaffRepository = projectStaffRepository;
-        this.projectService = projectService;
-        this.userService = userService;
         this.projectConfiguration = projectConfiguration;
         this.enrichmentService = enrichmentService;
         this.validators = validators;
@@ -94,7 +88,7 @@ public class ProjectStaffService {
         log.info("received request to create project staff");
         ProjectStaffBulkRequest bulkRequest = ProjectStaffBulkRequest.builder().requestInfo(request.getRequestInfo())
                 .projectStaff(Collections.singletonList(request.getProjectStaff())).build();
-        log.info("creating bulk request");
+        log.info(CREATING_BULK_REQUEST);
         return create(bulkRequest, false).get(0);
     }
 
@@ -109,7 +103,7 @@ public class ProjectStaffService {
         List<ProjectStaff> validEntities = tuple.getX();
         try {
             if (!validEntities.isEmpty()) {
-                log.info("processing {} valid entities", validEntities.size());
+                log.info(PROCESSING_VALID_ENTITIES, validEntities.size());
                 enrichmentService.create(validEntities, request);
                 // Pushing the data as ProjectStaffBulkRequest for Attendance Service Consumer
                 producer.push(projectConfiguration.getProjectStaffAttendanceTopic(), new ProjectStaffBulkRequest(request.getRequestInfo(), validEntities));
@@ -132,7 +126,7 @@ public class ProjectStaffService {
         log.debug("received request to update project staff");
         ProjectStaffBulkRequest bulkRequest = ProjectStaffBulkRequest.builder().requestInfo(request.getRequestInfo())
                 .projectStaff(Collections.singletonList(request.getProjectStaff())).build();
-        log.info("creating bulk request");
+        log.info(CREATING_BULK_REQUEST);
         return update(bulkRequest, false).get(0);
     }
 
@@ -146,7 +140,7 @@ public class ProjectStaffService {
         List<ProjectStaff> validEntities = tuple.getX();
         try {
             if (!validEntities.isEmpty()) {
-                log.info("processing {} valid entities", validEntities.size());
+                log.info(PROCESSING_VALID_ENTITIES, validEntities.size());
                 enrichmentService.update(validEntities, request);
                 projectStaffRepository.save(validEntities, projectConfiguration.getUpdateProjectStaffTopic());
                 log.info("successfully updated bulk project staff");
@@ -165,7 +159,7 @@ public class ProjectStaffService {
         log.info("received request to delete a project staff");
         ProjectStaffBulkRequest bulkRequest = ProjectStaffBulkRequest.builder().requestInfo(request.getRequestInfo())
                 .projectStaff(Collections.singletonList(request.getProjectStaff())).build();
-        log.info("creating bulk request");
+        log.info(CREATING_BULK_REQUEST);
         return delete(bulkRequest, false).get(0);
     }
 
@@ -178,7 +172,7 @@ public class ProjectStaffService {
         List<ProjectStaff> validEntities = tuple.getX();
         try {
             if (!validEntities.isEmpty()) {
-                log.info("processing {} valid entities", validEntities.size());
+                log.info(PROCESSING_VALID_ENTITIES, validEntities.size());
                 enrichmentService.delete(validEntities, request);
                 projectStaffRepository.save(validEntities, projectConfiguration.getDeleteProjectStaffTopic());
                 log.info("successfully deleted entities");
@@ -205,7 +199,7 @@ public class ProjectStaffService {
             throw new CustomException(VALIDATION_ERROR, errorDetailsMap.values().toString());
         }
         List<ProjectStaff> validEntities = request.getProjectStaff().stream()
-                .filter(notHavingErrors()).collect(Collectors.toList());
+                .filter(notHavingErrors()).toList();
         log.info("validation successful, found valid project staff");
         return new Tuple<>(validEntities, errorDetailsMap);
     }
@@ -226,7 +220,7 @@ public class ProjectStaffService {
                     .filter(lastChangedSince(lastChangedSince))
                     .filter(havingTenantId(tenantId))
                     .filter(includeDeleted(includeDeleted))
-                    .collect(Collectors.toList());
+                    .toList();
             return SearchResponse.<ProjectStaff>builder().response(projectStaffs).build();
         }
         log.info("searching project staff using criteria");

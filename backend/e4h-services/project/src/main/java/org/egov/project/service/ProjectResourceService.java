@@ -32,6 +32,7 @@ import static org.egov.project.Constants.*;
 @Slf4j
 public class ProjectResourceService {
 
+    public static final String PROCESSING_VALID_ENTITIES = "processing {} valid entities";
     private final List<Validator<ProjectResourceBulkRequest, ProjectResource>> validators;
 
     private final ProjectResourceRepository projectResourceRepository;
@@ -84,7 +85,7 @@ public class ProjectResourceService {
         List<ProjectResource> validEntities = tuple.getX();
         try {
             if (!validEntities.isEmpty()) {
-                log.info("processing {} valid entities", validEntities.size());
+                log.info(PROCESSING_VALID_ENTITIES, validEntities.size());
                 enrichmentService.create(validEntities, request);
                 projectResourceRepository.save(validEntities, projectConfiguration.getCreateProjectResourceTopic());
                 log.info("successfully created project resource");
@@ -117,7 +118,7 @@ public class ProjectResourceService {
         List<ProjectResource> validEntities = tuple.getX();
         try {
             if (!validEntities.isEmpty()) {
-                log.info("processing {} valid entities", validEntities.size());
+                log.info(PROCESSING_VALID_ENTITIES, validEntities.size());
                 enrichmentService.update(validEntities, request);
                 projectResourceRepository.save(validEntities, projectConfiguration.getUpdateProjectResourceTopic());
                 log.info("successfully created project resource");
@@ -150,7 +151,7 @@ public class ProjectResourceService {
         List<ProjectResource> validEntities = tuple.getX();
         try {
             if (!validEntities.isEmpty()) {
-                log.info("processing {} valid entities", validEntities.size());
+                log.info(PROCESSING_VALID_ENTITIES, validEntities.size());
                 enrichmentService.delete(validEntities, request);
                 projectResourceRepository.save(validEntities, projectConfiguration.getDeleteProjectResourceTopic());
                 log.info("successfully deleted project resource");
@@ -182,7 +183,7 @@ public class ProjectResourceService {
                     .filter(lastChangedSince(lastChangedSince))
                     .filter(havingTenantId(tenantId))
                     .filter(includeDeleted(includeDeleted))
-                    .collect(Collectors.toList());
+                    .toList();
             return SearchResponse.<ProjectResource>builder().response(projectResources).build();
         }
 

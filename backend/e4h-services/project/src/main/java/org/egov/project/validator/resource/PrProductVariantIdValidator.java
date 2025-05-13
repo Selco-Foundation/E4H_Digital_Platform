@@ -49,7 +49,7 @@ public class PrProductVariantIdValidator implements Validator<ProjectResourceBul
         log.info("validating for product variant id");
         Map<ProjectResource, List<Error>> errorDetailsMap = new HashMap<>();
         List<ProjectResource> entities = request.getProjectResource().stream()
-                .filter(notHavingErrors()).collect(Collectors.toList());
+                .filter(notHavingErrors()).toList();
         if (!entities.isEmpty()) {
             Set<String> productVariantIds = entities.stream().map(pr -> pr.getResource().getProductVariantId())
                     .collect(Collectors.toSet());
@@ -59,7 +59,7 @@ public class PrProductVariantIdValidator implements Validator<ProjectResourceBul
                 List<String> validProductVariantsIds = checkIfProductVariantExist(productVariantIds,
                         getTenantId(entities),
                         request.getRequestInfo())
-                        .stream().map(ProductVariant::getId).collect(Collectors.toList());
+                        .stream().map(ProductVariant::getId).toList();
                 productVariantIds.forEach(id -> {
                     if (!validProductVariantsIds.contains(id)) {
                         Error error = getErrorForNonExistentRelatedEntity(id);

@@ -57,7 +57,7 @@ public class UaBoundaryValidator implements Validator<UserActionBulkRequest, Use
         // Filter userActions with non-null addresses
         List<UserAction> entitiesWithValidBoundaries = request.getUserActions().parallelStream()
                 .filter(userAction -> Objects.nonNull(userAction.getBoundaryCode())) // Exclude null boundary codes
-                .collect(Collectors.toList());
+                .toList();
 
         Map<String, List<UserAction>> tenantIdUserActionMap = entitiesWithValidBoundaries.stream().collect(Collectors.groupingBy(UserAction::getTenantId));
 
@@ -87,14 +87,14 @@ public class UaBoundaryValidator implements Validator<UserActionBulkRequest, Use
                     List<String> invalidBoundaryCodes = new ArrayList<>(boundaries);
                     invalidBoundaryCodes.removeAll(boundarySearchResponse.getBoundary().stream()
                             .map(Boundary::getCode)
-                            .collect(Collectors.toList())
+                            .toList()
                     );
 
                     // Filter out userActions with invalid boundary codes
                     List<UserAction> userActionsWithInvalidBoundaries = boundaryCodeUserActionsMap.entrySet().stream()
                             .filter(entry -> invalidBoundaryCodes.contains(entry.getKey())) // filter invalid boundary codes
                             .flatMap(entry -> entry.getValue().stream()) // Flatten the list of userActions
-                            .collect(Collectors.toList());
+                            .toList();
 
                     // Create an error object for userActions with invalid boundaries
                     Error error = Error.builder()

@@ -35,11 +35,10 @@ import static org.egov.project.Constants.VALIDATION_ERROR;
 @Slf4j
 public class ProjectBeneficiaryService {
 
-    private final IdGenService idGenService;
+    public static final String CREATING_BULK_REQUEST = "creating bulk request";
+    public static final String PROCESSING_VALID_ENTITIES = "processing {} valid entities";
 
     private final ProjectBeneficiaryRepository projectBeneficiaryRepository;
-
-    private final ProjectService projectService;
 
     private final ProjectConfiguration projectConfiguration;
 
@@ -71,16 +70,12 @@ public class ProjectBeneficiaryService {
 
     @Autowired
     public ProjectBeneficiaryService(
-            IdGenService idGenService,
             ProjectBeneficiaryRepository projectBeneficiaryRepository,
-            ProjectService projectService,
             ProjectConfiguration projectConfiguration,
             List<Validator<BeneficiaryBulkRequest, ProjectBeneficiary>> validators,
             ProjectBeneficiaryEnrichmentService projectBeneficiaryEnrichmentService
     ) {
-        this.idGenService = idGenService;
         this.projectBeneficiaryRepository = projectBeneficiaryRepository;
-        this.projectService = projectService;
         this.projectConfiguration = projectConfiguration;
         this.validators = validators;
         this.projectBeneficiaryEnrichmentService = projectBeneficiaryEnrichmentService;
@@ -90,7 +85,7 @@ public class ProjectBeneficiaryService {
         log.info("received request to create project beneficiaries");
         BeneficiaryBulkRequest bulkRequest = BeneficiaryBulkRequest.builder().requestInfo(request.getRequestInfo())
                 .projectBeneficiaries(Collections.singletonList(request.getProjectBeneficiary())).build();
-        log.info("creating bulk request");
+        log.info(CREATING_BULK_REQUEST);
         return create(bulkRequest, false);
     }
 
@@ -103,7 +98,7 @@ public class ProjectBeneficiaryService {
 
         try {
             if (!validProjectBeneficiaries.isEmpty()) {
-                log.info("processing {} valid entities", validProjectBeneficiaries.size());
+                log.info(PROCESSING_VALID_ENTITIES, validProjectBeneficiaries.size());
                 projectBeneficiaryEnrichmentService.create(validProjectBeneficiaries, beneficiaryRequest);
                 projectBeneficiaryRepository.save(validProjectBeneficiaries,
                         projectConfiguration.getCreateProjectBeneficiaryTopic());
@@ -123,7 +118,7 @@ public class ProjectBeneficiaryService {
         log.info("received request to update project beneficiary");
         BeneficiaryBulkRequest bulkRequest = BeneficiaryBulkRequest.builder().requestInfo(request.getRequestInfo())
                 .projectBeneficiaries(Collections.singletonList(request.getProjectBeneficiary())).build();
-        log.info("creating bulk request");
+        log.info(CREATING_BULK_REQUEST);
         return update(bulkRequest, false);
     }
 
@@ -136,7 +131,7 @@ public class ProjectBeneficiaryService {
 
         try {
             if (!validProjectBeneficiaries.isEmpty()) {
-                log.info("processing {} valid entities", validProjectBeneficiaries.size());
+                log.info(PROCESSING_VALID_ENTITIES, validProjectBeneficiaries.size());
                 projectBeneficiaryEnrichmentService.update(validProjectBeneficiaries, beneficiaryRequest);
                 projectBeneficiaryRepository.save(validProjectBeneficiaries,
                         projectConfiguration.getUpdateProjectBeneficiaryTopic());
@@ -173,7 +168,7 @@ public class ProjectBeneficiaryService {
                     .filter(lastChangedSince(lastChangedSince))
                     .filter(havingTenantId(tenantId))
                     .filter(includeDeleted(includeDeleted))
-                    .collect(Collectors.toList());
+                    .toList();
             searchResponse.setResponse(projectBeneficiaries);
 
             return searchResponse;
@@ -187,7 +182,7 @@ public class ProjectBeneficiaryService {
         log.info("received request to delete a project beneficiary");
         BeneficiaryBulkRequest bulkRequest = BeneficiaryBulkRequest.builder().requestInfo(beneficiaryRequest.getRequestInfo())
                 .projectBeneficiaries(Collections.singletonList(beneficiaryRequest.getProjectBeneficiary())).build();
-        log.info("creating bulk request");
+        log.info(CREATING_BULK_REQUEST);
         return delete(bulkRequest, false);
     }
 
@@ -199,7 +194,7 @@ public class ProjectBeneficiaryService {
 
         try {
             if (!validProjectBeneficiaries.isEmpty()) {
-                log.info("processing {} valid entities", validProjectBeneficiaries.size());
+                log.info(PROCESSING_VALID_ENTITIES, validProjectBeneficiaries.size());
                 projectBeneficiaryEnrichmentService.delete(validProjectBeneficiaries, beneficiaryRequest);
                 projectBeneficiaryRepository.save(validProjectBeneficiaries,
                         projectConfiguration.getDeleteProjectBeneficiaryTopic());
@@ -234,7 +229,7 @@ public class ProjectBeneficiaryService {
             throw new CustomException(VALIDATION_ERROR, errorDetailsMap.values().toString());
         }
         List<ProjectBeneficiary> validProjectBeneficiaries = request.getProjectBeneficiaries().stream()
-                .filter(notHavingErrors()).collect(Collectors.toList());
+                .filter(notHavingErrors()).toList();
         log.info("validation successful, found valid project beneficiaries");
         return new Tuple<>(validProjectBeneficiaries, errorDetailsMap);
     }

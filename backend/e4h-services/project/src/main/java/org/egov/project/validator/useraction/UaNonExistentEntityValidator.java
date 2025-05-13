@@ -45,7 +45,7 @@ public class UaNonExistentEntityValidator implements Validator<UserActionBulkReq
         Class<?> objClass = getObjClass(entities);
         Method idMethod = getMethod(GET_ID, objClass);
         Map<String, UserAction> eMap = getIdToObjMap(entities
-                .stream().filter(notHavingErrors()).collect(Collectors.toList()), idMethod);
+                .stream().filter(notHavingErrors()).toList(), idMethod);
         // Lists to store IDs and client reference IDs
         List<String> idList = new ArrayList<>();
         List<String> clientReferenceIdList = new ArrayList<>();

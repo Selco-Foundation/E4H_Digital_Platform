@@ -43,7 +43,7 @@ public class UaRowVersionValidator implements Validator<UserActionBulkRequest, U
             Method idMethod = getIdMethod(request.getUserActions());
             Map<String, UserAction> eMap = getIdToObjMap(request.getUserActions().stream()
                     .filter(notHavingErrors())
-                    .collect(Collectors.toList()), idMethod);
+                    .toList(), idMethod);
             if (!eMap.isEmpty()) {
                 List<String> entityIds = new ArrayList<>(eMap.keySet());
                 List<UserAction> existingEntities = userActionRepository.findById(entityIds,

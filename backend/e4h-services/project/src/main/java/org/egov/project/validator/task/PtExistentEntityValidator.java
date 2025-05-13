@@ -69,7 +69,7 @@ public class PtExistentEntityValidator implements Validator<TaskBulkRequest, Tas
         List<String> clientReferenceIdList = entities.stream()
                 .filter(notHavingErrors()) // Filter out entities that already have errors.
                 .map(Task::getClientReferenceId) // Map to extract client reference IDs.
-                .collect(Collectors.toList()); // Collect the IDs into a list.
+                .toList(); // Collect the IDs into a list.
 
         // Create a map for quick lookup of Task entities by client reference ID.
         Map<String, Task> map = entities.stream()

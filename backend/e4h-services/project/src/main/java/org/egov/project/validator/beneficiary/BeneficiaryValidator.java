@@ -65,7 +65,7 @@ public class BeneficiaryValidator implements Validator<BeneficiaryBulkRequest, P
         log.info("validating the beneficiary");
         Map<ProjectBeneficiary, List<Error>> errorDetailsMap = new HashMap<>();
         List<ProjectBeneficiary> validProjectBeneficiaries = beneficiaryBulkRequest.getProjectBeneficiaries()
-                .stream().filter(notHavingErrors()).collect(Collectors.toList());
+                .stream().filter(notHavingErrors()).toList();
         if (!validProjectBeneficiaries.isEmpty()) {
             String tenantId = getTenantId(validProjectBeneficiaries);
 
@@ -181,7 +181,7 @@ public class BeneficiaryValidator implements Validator<BeneficiaryBulkRequest, P
                                                           HouseholdBulkResponse response, Method idMethod, Method beneficiaryMethod) {
         List<String> responseIds = response.getHouseholds().stream()
                 .map(household -> (String) ReflectionUtils.invokeMethod(idMethod, household))
-                .collect(Collectors.toList());
+                .toList();
         beneficiaryList.stream()
                 .filter(beneficiary -> !responseIds.contains((String) ReflectionUtils
                         .invokeMethod(beneficiaryMethod, beneficiary)))
@@ -197,7 +197,7 @@ public class BeneficiaryValidator implements Validator<BeneficiaryBulkRequest, P
                                                            Method beneficiaryMethod) {
         List<String> responseIds = response.getIndividual().stream()
                 .map(individual -> (String) ReflectionUtils.invokeMethod(idMethod, individual))
-                .collect(Collectors.toList());
+                .toList();
         beneficiaryList.stream()
                 .filter(beneficiary -> !responseIds.contains((String) ReflectionUtils
                         .invokeMethod(beneficiaryMethod, beneficiary)))

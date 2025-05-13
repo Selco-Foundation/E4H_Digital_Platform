@@ -107,7 +107,7 @@ public class UserActionRepository extends GenericRepository<UserAction> {
             Method idMethod = getIdMethod(objFound, columnName);
             ids.removeAll(objFound.stream()
                     .map(obj -> (String) ReflectionUtils.invokeMethod(idMethod, obj))
-                    .collect(Collectors.toList()));
+                    .toList());
 
             if (ids.isEmpty()) {
                 log.info("All requested user actions found in cache");

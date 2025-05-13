@@ -28,7 +28,7 @@ public class PfIsDeletedValidator implements Validator<ProjectFacilityBulkReques
         HashMap<ProjectFacility, List<Error>> errorDetailsMap = new HashMap<>();
         List<ProjectFacility> validEntities = request.getProjectFacilities().stream()
                 .filter(notHavingErrors())
-                .collect(Collectors.toList());
+                .toList();
         if (!validEntities.isEmpty()) {
             validEntities.stream().filter(ProjectFacility::getIsDeleted).forEach(individual -> {
                 Error error = getErrorForIsDelete();

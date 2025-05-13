@@ -26,14 +26,14 @@ public class PtUniqueEntityValidator implements Validator<TaskBulkRequest, Task>
         log.info("validating unique entity");
         Map<Task, List<Error>> errorDetailsMap = new HashMap<>();
         List<Task> validEntities = request.getTasks()
-                .stream().filter(notHavingErrors()).collect(Collectors.toList());
+                .stream().filter(notHavingErrors()).toList();
         if (!validEntities.isEmpty()) {
             Map<String, Task> eMap = getIdToObjMap(validEntities);
             if (eMap.keySet().size() != validEntities.size()) {
                 List<String> duplicates = eMap.keySet().stream().filter(id ->
                         validEntities.stream()
                                 .filter(entity -> entity.getId().equals(id)).count() > 1
-                ).collect(Collectors.toList());
+                ).toList();
                 for (String key : duplicates) {
                     Error error = getErrorForUniqueEntity();
                     populateErrorDetails(eMap.get(key), error, errorDetailsMap);

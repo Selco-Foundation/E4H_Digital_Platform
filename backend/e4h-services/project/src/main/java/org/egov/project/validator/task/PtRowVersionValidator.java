@@ -40,7 +40,7 @@ public class PtRowVersionValidator implements Validator<TaskBulkRequest, Task> {
         Method idMethod = getIdMethod(request.getTasks());
         Map<String, Task> eMap = getIdToObjMap(request.getTasks().stream()
                 .filter(notHavingErrors())
-                .collect(Collectors.toList()), idMethod);
+                .toList(), idMethod);
         if (!eMap.isEmpty()) {
             List<String> entityIds = new ArrayList<>(eMap.keySet());
             List<Task> existingEntities = projectTaskRepository.findById(entityIds,

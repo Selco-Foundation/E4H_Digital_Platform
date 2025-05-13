@@ -102,7 +102,7 @@ public class LocationCaptureRepository extends GenericRepository<UserAction> {
             Method idMethod = getIdMethod(objFound, columnName);
             ids.removeAll(objFound.stream()
                     .map(obj -> (String) ReflectionUtils.invokeMethod(idMethod, obj))
-                    .collect(Collectors.toList()));
+                    .toList());
 
             if (ids.isEmpty()) {
                 log.info("All requested user locations found in cache");
@@ -110,7 +110,8 @@ public class LocationCaptureRepository extends GenericRepository<UserAction> {
             }
         }
 
-        String query = String.format(selectQuery + " WHERE ul.%s IN (:ids)", columnName);
+        String query = String.format("%s WHERE ul.%s IN (:ids)", selectQuery, columnName);
+
         Map<String, Object> paramMap = new HashMap<>();
         paramMap.put("ids", ids);
 

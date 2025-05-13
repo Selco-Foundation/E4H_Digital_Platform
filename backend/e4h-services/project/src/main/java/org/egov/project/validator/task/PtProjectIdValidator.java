@@ -41,14 +41,14 @@ public class PtProjectIdValidator implements Validator<TaskBulkRequest, Task> {
         Class<?> objClass = getObjClass(entities);
         Method idMethod = getMethod("getProjectId", objClass);
         Map<String, Task> eMap = getIdToObjMap(entities
-                .stream().filter(notHavingErrors()).collect(Collectors.toList()), idMethod);
+                .stream().filter(notHavingErrors()).toList(), idMethod);
         if (!eMap.isEmpty()) {
             List<String> entityIds = new ArrayList<>(eMap.keySet());
             List<String> existingProjectIds = projectRepository.validateIds(entityIds,
                     getIdFieldName(idMethod));
             List<Task> invalidEntities = entities.stream().filter(notHavingErrors()).filter(entity ->
                             !existingProjectIds.contains(entity.getProjectId()))
-                    .collect(Collectors.toList());
+                    .toList();
             invalidEntities.forEach(task -> {
                 Error error = getErrorForNonExistentRelatedEntity(task.getProjectId());
                 populateErrorDetails(task, error, errorDetailsMap);

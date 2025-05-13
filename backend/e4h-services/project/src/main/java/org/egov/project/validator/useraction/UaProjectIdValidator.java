@@ -59,7 +59,7 @@ public class UaProjectIdValidator implements Validator<UserActionBulkRequest, Us
         log.debug("Retrieved getProjectId method from UserAction entity class");
 
         // Create a map of Project IDs to UserAction entities
-        Map<String, UserAction> eMap = getIdToObjMap(entities.stream().filter(notHavingErrors()).collect(Collectors.toList()), idMethod);
+        Map<String, UserAction> eMap = getIdToObjMap(entities.stream().filter(notHavingErrors()).toList(), idMethod);
         log.info("Created map of Project IDs to UserAction entities with {} entries", eMap.size());
 
         if (!eMap.isEmpty()) {
@@ -72,7 +72,7 @@ public class UaProjectIdValidator implements Validator<UserActionBulkRequest, Us
 
             // Identify invalid UserAction entities with non-existent Project IDs
             List<UserAction> invalidEntities = entities.stream().filter(notHavingErrors()).filter(entity ->
-                    !existingProjectIds.contains(entity.getProjectId())).collect(Collectors.toList());
+                    !existingProjectIds.contains(entity.getProjectId())).toList();
             log.info("Identified {} invalid UserAction entities with non-existent Project IDs", invalidEntities.size());
 
             // Populate error details for invalid UserAction entities

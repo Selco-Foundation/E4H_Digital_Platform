@@ -41,7 +41,7 @@ public class PsNonExistentEntityValidator implements Validator<ProjectStaffBulkR
         Class<?> objClass = getObjClass(entities);
         Method idMethod = getMethod(GET_ID, objClass);
         Map<String, ProjectStaff> eMap = getIdToObjMap(entities
-                .stream().filter(notHavingErrors()).collect(Collectors.toList()), idMethod);
+                .stream().filter(notHavingErrors()).toList(), idMethod);
         if (!eMap.isEmpty()) {
             List<String> entityIds = new ArrayList<>(eMap.keySet());
             List<ProjectStaff> existingEntities = repository.findById(entityIds, false,

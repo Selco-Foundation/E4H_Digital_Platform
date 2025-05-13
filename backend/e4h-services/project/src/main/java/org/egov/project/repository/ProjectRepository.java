@@ -16,6 +16,7 @@ import org.egov.project.repository.rowmapper.DocumentRowMapper;
 import org.egov.project.repository.rowmapper.ProjectAddressRowMapper;
 import org.egov.project.repository.rowmapper.ProjectRowMapper;
 import org.egov.project.repository.rowmapper.TargetRowMapper;
+import org.egov.project.web.models.ProjectSearchCriteria;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -80,7 +81,7 @@ public class ProjectRepository extends GenericRepository<Project> {
             if (includeAncestors) {
                 ancestors = getProjectAncestors(projects);
                 if (ancestors != null && !ancestors.isEmpty()) {
-                    List<String> ancestorProjectIds = ancestors.stream().map(Project::getId).collect(Collectors.toList());
+                    List<String> ancestorProjectIds = ancestors.stream().map(Project::getId).toList();
                     projectIds.addAll(ancestorProjectIds);
                 }
             }
@@ -88,7 +89,7 @@ public class ProjectRepository extends GenericRepository<Project> {
             if (includeDescendants) {
                 descendants = getProjectDescendants(projects);
                 if (descendants != null && !descendants.isEmpty()) {
-                    List<String> descendantsProjectIds = descendants.stream().map(Project::getId).collect(Collectors.toList());
+                    List<String> descendantsProjectIds = descendants.stream().map(Project::getId).toList();
                     projectIds.addAll(descendantsProjectIds);
                 }
             }
@@ -156,7 +157,21 @@ public class ProjectRepository extends GenericRepository<Project> {
     /* Fetch Projects based on search criteria */
     private List<Project> getProjectsBasedOnSearchCriteria(List<Project> projectsRequest, Integer limit, Integer offset, String tenantId, Long lastChangedSince, Boolean includeDeleted, Long createdFrom, Long createdTo, boolean isAncestorProjectId) {
         List<Object> preparedStmtList = new ArrayList<>();
-        String query = queryBuilder.getProjectSearchQuery(projectsRequest, limit, offset, tenantId, lastChangedSince, includeDeleted, createdFrom, createdTo, isAncestorProjectId, preparedStmtList, false);
+        ProjectSearchCriteria criteria = ProjectSearchCriteria.builder()
+                .projects(projectsRequest)
+                .limit(limit)
+                .offset(offset)
+                .tenantId(tenantId)
+                .lastChangedSince(lastChangedSince)
+                .includeDeleted(includeDeleted)
+                .createdFrom(createdFrom)
+                .createdTo(createdTo)
+                .isAncestorProjectId(isAncestorProjectId)
+                .preparedStmtList(preparedStmtList)
+                .isCountQuery(false) // change as needed
+                .build();
+
+        String query = queryBuilder.getProjectSearchQuery(criteria);
         List<Project> projects = jdbcTemplate.query(query, addressRowMapper, preparedStmtList.toArray());
 
         log.info("Fetched project list based on given search criteria");
@@ -221,7 +236,7 @@ public class ProjectRepository extends GenericRepository<Project> {
 
     /* Fetch projects where project hierarchy for projects in db contains project ID of requested project. The descendant project's projectHierarchy will contain parent project id */
     private List<Project> getProjectDescendants(List<Project> projects) {
-        List<String> projectIds = projects.stream().map(Project::getId).collect(Collectors.toList());
+        List<String> projectIds = projects.stream().map(Project::getId).toList();
 
         List<Object> preparedStmtListDescendants = new ArrayList<>();
         log.info("Fetching descendant projects");
@@ -280,7 +295,7 @@ public class ProjectRepository extends GenericRepository<Project> {
     /* Adds ancestors to Project based on project and ancestors list  */
     private void addAncestorsToProjectSearchResult(Project project, List<Project> ancestors, List<Target> targets, List<Document> documents) {
         List<Project> currentProjectAncestors = ancestors.stream().filter(a -> (project.getProjectHierarchy().contains(a.getId())
-                && !project.getId().equals(a.getId()))).collect(Collectors.toList());
+                && !project.getId().equals(a.getId()))).toList();
         //Add target and document to ancestor projects using targets and documents list
         for (Project ancestor : currentProjectAncestors) {
             addTargetToProject(ancestor, targets);
@@ -307,7 +322,7 @@ public class ProjectRepository extends GenericRepository<Project> {
     private void addDescendantsToProjectSearchResult(Project project, List<Project> descendants, List<Target> targets, List<Document> documents) {
         List<Project> subProjects = descendants.stream().filter(d -> StringUtils.isNotBlank(d.getParent())
                 && d.getProjectHierarchy().contains(project.getId())
-                && !d.getId().equals(project.getId())).collect(Collectors.toList());
+                && !d.getId().equals(project.getId())).toList();
         //Add target and document to descendants projects using targets and documents list
         for (Project ancestor : subProjects) {
             addTargetToProject(ancestor, targets);

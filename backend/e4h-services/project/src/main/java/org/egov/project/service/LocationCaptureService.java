@@ -43,9 +43,7 @@ import static org.egov.project.Constants.VALIDATION_ERROR;
 @Slf4j
 public class LocationCaptureService {
 
-    private final IdGenService idGenService;
     private final LocationCaptureRepository locationCaptureRepository;
-    private final ServiceRequestClient serviceRequestClient;
     private final ProjectConfiguration projectConfiguration;
     private final UserActionEnrichmentService userActionEnrichmentService;
     private final List<Validator<UserActionBulkRequest, UserAction>> validators;
@@ -78,9 +76,7 @@ public class LocationCaptureService {
             UserActionEnrichmentService userActionEnrichmentService,
             List<Validator<UserActionBulkRequest, UserAction>> validators
     ) {
-        this.idGenService = idGenService;
         this.locationCaptureRepository = locationCaptureRepository;
-        this.serviceRequestClient = serviceRequestClient;
         this.projectConfiguration = projectConfiguration;
         this.userActionEnrichmentService = userActionEnrichmentService;
         this.validators = validators;
@@ -158,7 +154,7 @@ public class LocationCaptureService {
         // Filter out tasks with no errors.
         List<UserAction> validLocationCaptures = request.getUserActions().stream()
                 .filter(notHavingErrors())
-                .collect(Collectors.toList());
+                .toList();
 
         return new Tuple<>(validLocationCaptures, errorDetailsMap);
     }
@@ -191,7 +187,7 @@ public class LocationCaptureService {
                     .response(searchResponse.getResponse().stream()
                             .filter(lastChangedSince(urlParams.getLastChangedSince()))
                             .filter(havingTenantId(urlParams.getTenantId()))
-                            .collect(Collectors.toList())
+                            .toList()
                     )
                     .totalCount(searchResponse.getTotalCount())
                     .build();

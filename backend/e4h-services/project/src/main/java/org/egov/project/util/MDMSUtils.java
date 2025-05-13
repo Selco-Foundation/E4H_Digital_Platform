@@ -1,5 +1,6 @@
 package org.egov.project.util;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.egov.common.contract.request.RequestInfo;
@@ -24,14 +25,13 @@ import static org.egov.project.util.ProjectConstants.*;
 
 @Component
 @Slf4j
+@RequiredArgsConstructor
 public class MDMSUtils {
 
-    public static final String filterCode = "$.*.code";
-    public static final String filterActiveTrue = "$.[?(@.active==true)]";
-    @Autowired
-    private ServiceRequestClient serviceRequestRepository;
-    @Autowired
-    private ProjectConfiguration config;
+    public static final String FILTER_CODE = "$.*.code";
+    public static final String FILTER_ACTIVE_TRUE = "$.[?(@.active==true)]";
+    private final ServiceRequestClient serviceRequestRepository;
+    private final ProjectConfiguration config;
 
     public Object mDMSCall(ProjectRequest request, String tenantId) {
         RequestInfo requestInfo = request.getRequestInfo();
@@ -71,10 +71,10 @@ public class MDMSUtils {
         List<MasterDetail> projectMDMSMasterDetails = new ArrayList<>();
 
         MasterDetail projectTypeMasterDetails = MasterDetail.builder().name(MASTER_PROJECTTYPE)
-                .filter(filterActiveTrue)
+                .filter(FILTER_ACTIVE_TRUE)
                 .build();
         MasterDetail natureOfWorkMasterDetails = MasterDetail.builder().name(MASTER_NATUREOFWORK)
-                .filter(filterActiveTrue)
+                .filter(FILTER_ACTIVE_TRUE)
                 .build();
         projectMDMSMasterDetails.add(projectTypeMasterDetails);
         projectMDMSMasterDetails.add(natureOfWorkMasterDetails);
@@ -91,7 +91,7 @@ public class MDMSUtils {
         List<MasterDetail> projectDepartmentMasterDetails = new ArrayList<>();
 
         MasterDetail departmentMasterDetails = MasterDetail.builder().name(MASTER_DEPARTMENT)
-                .filter(filterActiveTrue).build();
+                .filter(FILTER_ACTIVE_TRUE).build();
         projectDepartmentMasterDetails.add(departmentMasterDetails);
 
         ModuleDetail projectDepartmentModuleDetail = ModuleDetail.builder().masterDetails(projectDepartmentMasterDetails)
@@ -108,7 +108,7 @@ public class MDMSUtils {
         List<MasterDetail> tenantMasterDetails = new ArrayList<>();
 
         MasterDetail tenantMasterDetail = MasterDetail.builder().name(MASTER_TENANTS)
-                .filter(filterCode).build();
+                .filter(FILTER_CODE).build();
 
         tenantMasterDetails.add(tenantMasterDetail);
 
@@ -122,7 +122,7 @@ public class MDMSUtils {
         List<MasterDetail> attendanceMasterDetails = new ArrayList<>();
 
         MasterDetail attendanceSessionsMasterDetails = MasterDetail.builder().name(MASTER_ATTENDANCE_SESSION)
-                .filter(filterCode)
+                .filter(FILTER_CODE)
                 .build();
 
         attendanceMasterDetails.add(attendanceSessionsMasterDetails);

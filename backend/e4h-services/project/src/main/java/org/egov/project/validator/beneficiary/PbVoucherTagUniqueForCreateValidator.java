@@ -50,7 +50,7 @@ public class PbVoucherTagUniqueForCreateValidator implements Validator<Beneficia
 
         // Filter valid project beneficiaries (those without errors)
         List<ProjectBeneficiary> validProjectBeneficiaries = beneficiaryBulkRequest.getProjectBeneficiaries()
-                .stream().filter(notHavingErrors()).collect(Collectors.toList());
+                .stream().filter(notHavingErrors()).toList();
 
         if (!validProjectBeneficiaries.isEmpty()) {
             // Get a list of invalid voucher tags
@@ -66,11 +66,11 @@ public class PbVoucherTagUniqueForCreateValidator implements Validator<Beneficia
 
     // Helper method to validate and populate errors
     private void validateAndPopulateErrors(List<ProjectBeneficiary> validProjectBeneficiaries, List<ProjectBeneficiary> existingProjectBeneficiaries, Map<ProjectBeneficiary, List<Error>> errorDetailsMap) {
-        List<String> existingVoucherTags = existingProjectBeneficiaries.stream().map(ProjectBeneficiary::getTag).collect(Collectors.toList());
+        List<String> existingVoucherTags = existingProjectBeneficiaries.stream().map(ProjectBeneficiary::getTag).toList();
         // Filter project beneficiaries that are valid and have invalid voucher tags
         List<ProjectBeneficiary> invalidEntities = validProjectBeneficiaries.stream().filter(notHavingErrors())
                 .filter(entity -> existingVoucherTags.contains(entity.getTag()))
-                .collect(Collectors.toList());
+                .toList();
 
         // For each invalid entity, create an error and populate error details
         invalidEntities.forEach(projectBeneficiary -> {
@@ -85,7 +85,7 @@ public class PbVoucherTagUniqueForCreateValidator implements Validator<Beneficia
         List<String> voucherTags = validProjectBeneficiaries.stream()
                 .filter(Objects::nonNull)
                 .map(ProjectBeneficiary::getTag)
-                .collect(Collectors.toList());
+                .toList();
 
         if (CollectionUtils.isEmpty(voucherTags))
             return new ArrayList<>();

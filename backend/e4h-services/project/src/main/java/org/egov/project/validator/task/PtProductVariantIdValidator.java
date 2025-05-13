@@ -50,7 +50,7 @@ public class PtProductVariantIdValidator implements Validator<TaskBulkRequest, T
         log.info("validating for product variant id");
         Map<Task, List<Error>> errorDetailsMap = new HashMap<>();
         List<Task> entities = request.getTasks().stream()
-                .filter(notHavingErrors()).collect(Collectors.toList());
+                .filter(notHavingErrors()).toList();
         if (!entities.isEmpty()) {
             for (Task task : entities) {
                 if (CollectionUtils.isEmpty(task.getResources()))

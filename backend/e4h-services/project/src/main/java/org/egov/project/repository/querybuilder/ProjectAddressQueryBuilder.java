@@ -2,13 +2,14 @@ package org.egov.project.repository.querybuilder;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.egov.common.models.core.ProjectSearchURLParams;
 import org.egov.common.models.project.Project;
 import org.egov.common.models.project.ProjectSearch;
 import org.egov.project.config.ProjectConfiguration;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.egov.project.web.models.ProjectSearchCriteria;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 
@@ -19,6 +20,7 @@ import static org.egov.project.util.ProjectConstants.DOT;
 
 @Component
 @Slf4j
+@RequiredArgsConstructor
 public class ProjectAddressQueryBuilder {
 
     private static final String FETCH_PROJECT_ADDRESS_QUERY = "SELECT prj.id as projectId, prj.tenantId as project_tenantId, prj.projectNumber as project_projectNumber, prj.name as project_name, prj.projectType as project_projectType, prj.projectTypeId as project_projectTypeId, prj.projectSubType as project_projectSubtype, " +
@@ -40,9 +42,8 @@ public class ProjectAddressQueryBuilder {
             "({})" +
             " result) result_offset " +
             "WHERE offset_ > ? AND offset_ <= ?";
-    @Autowired
-    private ProjectConfiguration config;
-    ;
+
+    private final ProjectConfiguration config;
 
     /* Add WHERE clause before first condition, ADD and for subsequent conditions. Do not add AND before any condition and after "(" */
     private static void addClauseIfRequired(List<Object> values, StringBuilder queryString) {
@@ -62,134 +63,141 @@ public class ProjectAddressQueryBuilder {
         }
     }
 
-    /**
-     * Constructs project search query based on conditions
-     *
-     * @param isAncestorProjectId if set to true, project id in the projects would be considered as ancestor project id.
-     */
-    public String getProjectSearchQuery(List<Project> projects, Integer limit, Integer offset, String tenantId, Long lastChangedSince, Boolean includeDeleted, Long createdFrom, Long createdTo, boolean isAncestorProjectId, List<Object> preparedStmtList, boolean isCountQuery) {
+    private static void extracted(Long lastChangedSince, boolean isAncestorProjectId, List<Object> preparedStmtList, Project project, StringBuilder queryBuilder) {
+        checkAncestorProject(isAncestorProjectId, preparedStmtList, project, queryBuilder);
+
+        if (StringUtils.isNotBlank(project.getProjectNumber())) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            queryBuilder.append(" prj.projectNumber =? ");
+            preparedStmtList.add(project.getProjectNumber());
+        }
+
+        if (StringUtils.isNotBlank(project.getName())) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            queryBuilder.append(" prj.name LIKE ? ");
+            preparedStmtList.add('%' + project.getName() + '%');
+        }
+
+        if (StringUtils.isNotBlank(project.getProjectType())) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            queryBuilder.append(" prj.projectType=? ");
+            preparedStmtList.add(project.getProjectType());
+        }
+
+        if (StringUtils.isNotBlank(project.getReferenceID())) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            queryBuilder.append(" prj.referenceId =? ");
+            preparedStmtList.add(project.getReferenceID());
+        }
+
+        if (StringUtils.isNotBlank(project.getParent())) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            queryBuilder.append(" prj.parent =? ");
+            preparedStmtList.add(project.getParent());
+        }
+
+        if (project.getAddress() != null && StringUtils.isNotBlank(project.getAddress().getBoundary())) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            queryBuilder.append(" addr.boundary=? ");
+            preparedStmtList.add(project.getAddress().getBoundary());
+        }
+
+        if (StringUtils.isNotBlank(project.getProjectSubType())) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            queryBuilder.append(" prj.projectSubtype=? ");
+            preparedStmtList.add(project.getProjectSubType());
+        }
+
+        if (project.getStartDate() != null && project.getStartDate() != 0) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            queryBuilder.append(" prj.startDate >= ? ");
+            preparedStmtList.add(project.getStartDate());
+        }
+
+        if (project.getEndDate() != null && project.getEndDate() != 0) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            queryBuilder.append(" prj.endDate <= ? ");
+            preparedStmtList.add(project.getEndDate());
+        }
+
+        if (lastChangedSince != null && lastChangedSince != 0) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            queryBuilder.append(" ( prj.lastModifiedTime >= ? )");
+            preparedStmtList.add(lastChangedSince);
+        }
+    }
+
+    private static void checkAncestorProject(boolean isAncestorProjectId, List<Object> preparedStmtList, Project project, StringBuilder queryBuilder) {
+        if (isAncestorProjectId && StringUtils.isNotBlank(project.getId())) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            queryBuilder.append(" ( prj.projectHierarchy LIKE ? OR prj.id =? ) ");
+            preparedStmtList.add('%' + project.getId() + '%');
+            preparedStmtList.add(project.getId());
+        } else if (StringUtils.isNotBlank(project.getId())) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            queryBuilder.append(" prj.id =? ");
+            preparedStmtList.add(project.getId());
+        }
+    }
+
+    private static void addClause(String tenantId, List<Object> preparedStmtList, StringBuilder queryBuilder) {
+        if (StringUtils.isNotBlank(tenantId)) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            if (!tenantId.contains(DOT)) {
+                log.info("State level tenant");
+                queryBuilder.append(" prj.tenantId like ? ");
+                preparedStmtList.add(tenantId + '%');
+            } else {
+                log.info("City level tenant");
+                queryBuilder.append(" prj.tenantId=? ");
+                preparedStmtList.add(tenantId);
+            }
+        }
+    }
+
+    public String getProjectSearchQuery(ProjectSearchCriteria criteria) {
         //This uses a ternary operator to choose between PROJECTS_COUNT_QUERY or FETCH_PROJECT_ADDRESS_QUERY based on the value of isCountQuery.
-        String query = isCountQuery ? PROJECTS_COUNT_QUERY : FETCH_PROJECT_ADDRESS_QUERY;
+        String query = criteria.isCountQuery() ? PROJECTS_COUNT_QUERY : FETCH_PROJECT_ADDRESS_QUERY;
         StringBuilder queryBuilder = new StringBuilder(query);
 
-        Integer count = projects.size();
+        Integer count = criteria.getProjects().size();
 
-        for (Project project : projects) {
+        for (Project project : criteria.getProjects()) {
 
-            if (StringUtils.isNotBlank(tenantId)) {
-                addClauseIfRequired(preparedStmtList, queryBuilder);
-                if (!tenantId.contains(DOT)) {
-                    log.info("State level tenant");
-                    queryBuilder.append(" prj.tenantId like ? ");
-                    preparedStmtList.add(tenantId + '%');
-                } else {
-                    log.info("City level tenant");
-                    queryBuilder.append(" prj.tenantId=? ");
-                    preparedStmtList.add(tenantId);
-                }
-            }
+            addClause(criteria.getTenantId(), criteria.getPreparedStmtList(), queryBuilder);
 
             /*
              * If isAncestorProjectId is set to true, Then either id equals to project id or projectHierarchy
              *  should have id of the project
              */
-            if (isAncestorProjectId && StringUtils.isNotBlank(project.getId())) {
-                addClauseIfRequired(preparedStmtList, queryBuilder);
-                queryBuilder.append(" ( prj.projectHierarchy LIKE ? OR prj.id =? ) ");
-                preparedStmtList.add('%' + project.getId() + '%');
-                preparedStmtList.add(project.getId());
-            } else if (StringUtils.isNotBlank(project.getId())) {
-                addClauseIfRequired(preparedStmtList, queryBuilder);
-                queryBuilder.append(" prj.id =? ");
-                preparedStmtList.add(project.getId());
-            }
+            extracted(criteria.getLastChangedSince(), criteria.isAncestorProjectId(), criteria.getPreparedStmtList(), project, queryBuilder);
 
-            if (StringUtils.isNotBlank(project.getProjectNumber())) {
-                addClauseIfRequired(preparedStmtList, queryBuilder);
-                queryBuilder.append(" prj.projectNumber =? ");
-                preparedStmtList.add(project.getProjectNumber());
-            }
-
-            if (StringUtils.isNotBlank(project.getName())) {
-                addClauseIfRequired(preparedStmtList, queryBuilder);
-                queryBuilder.append(" prj.name LIKE ? ");
-                preparedStmtList.add('%' + project.getName() + '%');
-            }
-
-            if (StringUtils.isNotBlank(project.getProjectType())) {
-                addClauseIfRequired(preparedStmtList, queryBuilder);
-                queryBuilder.append(" prj.projectType=? ");
-                preparedStmtList.add(project.getProjectType());
-            }
-
-            if (StringUtils.isNotBlank(project.getReferenceID())) {
-                addClauseIfRequired(preparedStmtList, queryBuilder);
-                queryBuilder.append(" prj.referenceId =? ");
-                preparedStmtList.add(project.getReferenceID());
-            }
-
-            if (StringUtils.isNotBlank(project.getParent())) {
-                addClauseIfRequired(preparedStmtList, queryBuilder);
-                queryBuilder.append(" prj.parent =? ");
-                preparedStmtList.add(project.getParent());
-            }
-
-            if (project.getAddress() != null && StringUtils.isNotBlank(project.getAddress().getBoundary())) {
-                addClauseIfRequired(preparedStmtList, queryBuilder);
-                queryBuilder.append(" addr.boundary=? ");
-                preparedStmtList.add(project.getAddress().getBoundary());
-            }
-
-            if (StringUtils.isNotBlank(project.getProjectSubType())) {
-                addClauseIfRequired(preparedStmtList, queryBuilder);
-                queryBuilder.append(" prj.projectSubtype=? ");
-                preparedStmtList.add(project.getProjectSubType());
-            }
-
-            if (project.getStartDate() != null && project.getStartDate() != 0) {
-                addClauseIfRequired(preparedStmtList, queryBuilder);
-                queryBuilder.append(" prj.startDate >= ? ");
-                preparedStmtList.add(project.getStartDate());
-            }
-
-            if (project.getEndDate() != null && project.getEndDate() != 0) {
-                addClauseIfRequired(preparedStmtList, queryBuilder);
-                queryBuilder.append(" prj.endDate <= ? ");
-                preparedStmtList.add(project.getEndDate());
-            }
-
-            if (lastChangedSince != null && lastChangedSince != 0) {
-                addClauseIfRequired(preparedStmtList, queryBuilder);
-                queryBuilder.append(" ( prj.lastModifiedTime >= ? )");
-                preparedStmtList.add(lastChangedSince);
-            }
-
-            if (createdFrom != null && createdFrom != 0) {
-                addClauseIfRequired(preparedStmtList, queryBuilder);
+            if (criteria.getCreatedFrom() != null && criteria.getCreatedFrom() != 0) {
+                addClauseIfRequired(criteria.getPreparedStmtList(), queryBuilder);
                 queryBuilder.append(" prj.createdTime >= ? ");
-                preparedStmtList.add(createdFrom);
+                criteria.getPreparedStmtList().add(criteria.getCreatedFrom());
             }
 
-            if (createdTo != null && createdTo != 0) {
-                addClauseIfRequired(preparedStmtList, queryBuilder);
+            if (criteria.getCreatedTo() != null && criteria.getCreatedTo() != 0) {
+                addClauseIfRequired(criteria.getPreparedStmtList(), queryBuilder);
                 queryBuilder.append(" prj.createdTime <= ? ");
-                preparedStmtList.add(createdTo);
+                criteria.getPreparedStmtList().add(criteria.getCreatedTo());
             }
 
             //Add clause if includeDeleted is true in request parameter
-            addIsDeletedCondition(preparedStmtList, queryBuilder, includeDeleted);
+            addIsDeletedCondition(criteria.getPreparedStmtList(), queryBuilder, criteria.getIncludeDeleted());
 
             queryBuilder.append(" )");
             count--;
             addORClause(count, queryBuilder);
         }
 
-        if (isCountQuery) {
+        if (criteria.isCountQuery()) {
             return queryBuilder.toString();
         }
 
         //Wrap constructed SQL query with where criteria in pagination query
-        return addPaginationWrapper(queryBuilder.toString(), preparedStmtList, limit, offset);
+        return addPaginationWrapper(queryBuilder.toString(), criteria.getPreparedStmtList(), criteria.getLimit(), criteria.getOffset());
     }
 
     /**
@@ -207,48 +215,10 @@ public class ProjectAddressQueryBuilder {
         StringBuilder queryBuilder = new StringBuilder(query);
 
         // Check if tenant ID is provided in URL parameters
-        if (StringUtils.isNotBlank(urlParams.getTenantId())) {
-            addClauseIfRequired(preparedStmtList, queryBuilder);
-            if (!urlParams.getTenantId().contains(DOT)) {
-                // State level tenant ID: use LIKE for partial matching
-                log.info("State level tenant");
-                queryBuilder.append(" prj.tenantId like ? ");
-                preparedStmtList.add(urlParams.getTenantId() + '%');
-            } else {
-                // City level tenant ID: use exact match
-                log.info("City level tenant");
-                queryBuilder.append(" prj.tenantId=? ");
-                preparedStmtList.add(urlParams.getTenantId());
-            }
-        }
+        addClause(urlParams.getTenantId(), preparedStmtList, queryBuilder);
 
         // Check if project IDs are provided
-        if (!CollectionUtils.isEmpty(projectSearch.getId())) {
-            addClauseIfRequired(preparedStmtList, queryBuilder);
-            queryBuilder.append(" prj.id IN (").append(createQuery(projectSearch.getId())).append(")");
-            addToPreparedStatement(preparedStmtList, projectSearch.getId());
-        }
-
-        // Check if reference ID is provided
-        if (StringUtils.isNotBlank(projectSearch.getReferenceId())) {
-            addClauseIfRequired(preparedStmtList, queryBuilder);
-            queryBuilder.append(" prj.referenceId =? ");
-            preparedStmtList.add(projectSearch.getReferenceId());
-        }
-
-        // Check if project name is provided
-        if (StringUtils.isNotBlank(projectSearch.getName())) {
-            addClauseIfRequired(preparedStmtList, queryBuilder);
-            queryBuilder.append(" prj.name LIKE ? ");
-            preparedStmtList.add('%' + projectSearch.getName() + '%');
-        }
-
-        // Check if project type ID is provided
-        if (StringUtils.isNotBlank(projectSearch.getProjectTypeId())) {
-            addClauseIfRequired(preparedStmtList, queryBuilder);
-            queryBuilder.append(" prj.projectType=? ");
-            preparedStmtList.add(projectSearch.getProjectTypeId());
-        }
+        addClauseOnProjects(projectSearch, preparedStmtList, queryBuilder);
 
         // Check if boundary code is provided
         if (projectSearch.getBoundaryCode() != null && StringUtils.isNotBlank(projectSearch.getBoundaryCode())) {
@@ -312,6 +282,35 @@ public class ProjectAddressQueryBuilder {
 
         // Wrap constructed SQL query with pagination criteria
         return addPaginationWrapper(queryBuilder.toString(), preparedStmtList, urlParams.getLimit(), urlParams.getOffset());
+    }
+
+    private void addClauseOnProjects(ProjectSearch projectSearch, List<Object> preparedStmtList, StringBuilder queryBuilder) {
+        if (!CollectionUtils.isEmpty(projectSearch.getId())) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            queryBuilder.append(" prj.id IN (").append(createQuery(projectSearch.getId())).append(")");
+            addToPreparedStatement(preparedStmtList, projectSearch.getId());
+        }
+
+        // Check if reference ID is provided
+        if (StringUtils.isNotBlank(projectSearch.getReferenceId())) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            queryBuilder.append(" prj.referenceId =? ");
+            preparedStmtList.add(projectSearch.getReferenceId());
+        }
+
+        // Check if project name is provided
+        if (StringUtils.isNotBlank(projectSearch.getName())) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            queryBuilder.append(" prj.name LIKE ? ");
+            preparedStmtList.add('%' + projectSearch.getName() + '%');
+        }
+
+        // Check if project type ID is provided
+        if (StringUtils.isNotBlank(projectSearch.getProjectTypeId())) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            queryBuilder.append(" prj.projectType=? ");
+            preparedStmtList.add(projectSearch.getProjectTypeId());
+        }
     }
 
     /* Constructs project search query based on Project Ids */
@@ -390,13 +389,25 @@ public class ProjectAddressQueryBuilder {
 
     /* Returns query to get total projects count based on project search params */
     public String getSearchCountQueryString(List<Project> projects, String tenantId, Long lastChangedSince, Boolean includeDeleted, Long createdFrom, Long createdTo, boolean isAncestorProjectId, List<Object> preparedStatement) {
-        String query = getProjectSearchQuery(projects, config.getMaxLimit(), config.getDefaultOffset(), tenantId, lastChangedSince, includeDeleted, createdFrom, createdTo, isAncestorProjectId, preparedStatement, true);
-        return query;
+        ProjectSearchCriteria criteria = ProjectSearchCriteria.builder()
+                .projects(projects)
+                .limit(config.getMaxLimit())
+                .offset(config.getDefaultOffset())
+                .tenantId(tenantId)
+                .lastChangedSince(lastChangedSince)
+                .includeDeleted(includeDeleted)
+                .createdFrom(createdFrom)
+                .createdTo(createdTo)
+                .isAncestorProjectId(isAncestorProjectId)
+                .preparedStmtList(preparedStatement)
+                .isCountQuery(true)
+                .build();
+
+        return getProjectSearchQuery(criteria);
     }
 
     /* Returns query to get total projects count based on project search params */
     public String getSearchCountQueryString(ProjectSearch projectSearch, ProjectSearchURLParams urlParams, List<Object> preparedStatement) {
-        String query = getProjectSearchQuery(projectSearch, urlParams, preparedStatement, Boolean.TRUE);
-        return query;
+        return getProjectSearchQuery(projectSearch, urlParams, preparedStatement, Boolean.TRUE);
     }
 }

@@ -308,7 +308,7 @@ public class ProjectService {
     /* Search for parent projects based on "parent" field and returns parent projects  */
     private List<Project> getParentProjects(ProjectRequest projectRequest) {
         List<Project> parentProjects = null;
-        List<Project> projectsForSearchRequest = projectRequest.getProjects().stream().filter(p -> StringUtils.isNotBlank(p.getParent())).collect(Collectors.toList());
+        List<Project> projectsForSearchRequest = projectRequest.getProjects().stream().filter(p -> StringUtils.isNotBlank(p.getParent())).toList();
         if (projectsForSearchRequest.size() > 0) {
             parentProjects = searchProject(getSearchProjectRequest(projectsForSearchRequest, projectRequest.getRequestInfo(), true), projectConfiguration.getMaxLimit(), projectConfiguration.getDefaultOffset(), projectRequest.getProjects().get(0).getTenantId(), null, false, false, false, null, null, false);
         }

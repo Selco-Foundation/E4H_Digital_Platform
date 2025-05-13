@@ -40,7 +40,7 @@ public class PbRowVersionValidator implements Validator<BeneficiaryBulkRequest, 
         Method idMethod = getIdMethod(request.getProjectBeneficiaries());
         Map<String, ProjectBeneficiary> iMap = getIdToObjMap(request.getProjectBeneficiaries().stream()
                 .filter(notHavingErrors())
-                .collect(Collectors.toList()), idMethod);
+                .toList(), idMethod);
         if (!iMap.isEmpty()) {
             List<String> individualIds = new ArrayList<>(iMap.keySet());
             List<ProjectBeneficiary> existingProjectBeneficiaries = projectBeneficiaryRepository.findById(individualIds,

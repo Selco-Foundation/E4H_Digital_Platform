@@ -39,7 +39,7 @@ public class PfNonExistentEntityValidator implements Validator<ProjectFacilityBu
         Map<ProjectFacility, List<Error>> errorDetailsMap = new HashMap<>();
         List<ProjectFacility> validEntities = request.getProjectFacilities().stream()
                 .filter(notHavingErrors())
-                .collect(Collectors.toList());
+                .toList();
         if (!validEntities.isEmpty()) {
             Class<?> objClass = getObjClass(validEntities);
             Method idMethod = getMethod(GET_ID, objClass);

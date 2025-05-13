@@ -43,7 +43,7 @@ public class PtNonExistentEntityValidator implements Validator<TaskBulkRequest, 
         Class<?> objClass = getObjClass(entities);
         Method idMethod = getMethod(GET_ID, objClass);
         Map<String, Task> eMap = getIdToObjMap(entities
-                .stream().filter(notHavingErrors()).collect(Collectors.toList()), idMethod);
+                .stream().filter(notHavingErrors()).toList(), idMethod);
         // Lists to store IDs and client reference IDs
         List<String> idList = new ArrayList<>();
         List<String> clientReferenceIdList = new ArrayList<>();
@@ -104,12 +104,12 @@ public class PtNonExistentEntityValidator implements Validator<TaskBulkRequest, 
         if (subEntities != null && !subEntities.isEmpty()) {
             List<String> existingSubEntityIds = subEntities.stream()
                     .map(obj -> (String) ReflectionUtils.invokeMethod(getIdMethod(subEntities), obj))
-                    .collect(Collectors.toList());
+                    .toList();
             if (subEntitiesInReq != null && !subEntitiesInReq.isEmpty()) {
                 List<T> nonExistingSubEntities = subEntitiesInReq.stream().filter(subEntity -> {
                     String id = (String) ReflectionUtils.invokeMethod(getMethod(GET_ID, subEntity.getClass()), subEntity);
                     return id != null && !existingSubEntityIds.contains(id);
-                }).collect(Collectors.toList());
+                }).toList();
 
                 if (!nonExistingSubEntities.isEmpty()) {
                     nonExistingSubEntities.forEach(subEntity -> {

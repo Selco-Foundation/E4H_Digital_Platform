@@ -1,5 +1,6 @@
 package org.egov.project.util;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.common.http.client.ServiceRequestClient;
@@ -21,6 +22,7 @@ import java.util.stream.Collectors;
  */
 @Component
 @Slf4j
+@RequiredArgsConstructor
 public class BoundaryV2Util {
 
     // Injecting boundary host value from configuration
@@ -31,8 +33,7 @@ public class BoundaryV2Util {
     @Value("${egov.boundary.search.url}")
     private String boundarySearchUrl;
 
-    @Autowired
-    private ServiceRequestClient serviceRequestClient;
+    private final ServiceRequestClient serviceRequestClient;
 
     /**
      * Validates boundary details against the egov-location service response.
@@ -46,7 +47,7 @@ public class BoundaryV2Util {
                                         RequestInfo requestInfo, String hierarchyTypeCode) {
         // Flatten the lists of boundary codes from the map values
         List<String> boundaries = boundaryTypeBoundariesMap.values().stream().flatMap(List::stream)
-                .collect(Collectors.toList());
+                .toList();
         if (CollectionUtils.isEmpty(boundaries)) return;
         try {
             // Fetch boundary details from the service
@@ -66,7 +67,7 @@ public class BoundaryV2Util {
             List<String> invalidBoundaryCodes = new ArrayList<>(boundaries);
             invalidBoundaryCodes.removeAll(boundarySearchResponse.getBoundary().stream()
                     .map(Boundary::getCode)
-                    .collect(Collectors.toList())
+                    .toList()
             );
 
             // Throw exception if invalid boundary codes are found

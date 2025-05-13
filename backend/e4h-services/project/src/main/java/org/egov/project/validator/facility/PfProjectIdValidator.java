@@ -40,7 +40,7 @@ public class PfProjectIdValidator implements Validator<ProjectFacilityBulkReques
         Map<ProjectFacility, List<Error>> errorDetailsMap = new HashMap<>();
         List<ProjectFacility> validEntities = request.getProjectFacilities().stream()
                 .filter(notHavingErrors())
-                .collect(Collectors.toList());
+                .toList();
         if (!validEntities.isEmpty()) {
             Class<?> objClass = getObjClass(validEntities);
             Method idMethod = getMethod(GET_PROJECT_ID, objClass);
@@ -51,7 +51,7 @@ public class PfProjectIdValidator implements Validator<ProjectFacilityBulkReques
                         getIdFieldName(idMethod));
                 List<ProjectFacility> invalidEntities = validEntities.stream().filter(notHavingErrors()).filter(entity ->
                                 !existingProjectIds.contains(entity.getProjectId()))
-                        .collect(Collectors.toList());
+                        .toList();
                 invalidEntities.forEach(projectFacility -> {
                     Error error = getErrorForNonExistentRelatedEntity(projectFacility.getProjectId());
                     populateErrorDetails(projectFacility, error, errorDetailsMap);

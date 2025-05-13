@@ -38,11 +38,11 @@ public class PbUniqueEntityValidator implements Validator<BeneficiaryBulkRequest
         log.info("validating unique entity");
         Map<ProjectBeneficiary, List<Error>> errorDetailsMap = new HashMap<>();
         List<ProjectBeneficiary> validProjectBeneficiaries = request.getProjectBeneficiaries()
-                .stream().filter(notHavingErrors()).collect(Collectors.toList());
+                .stream().filter(notHavingErrors()).toList();
 
         if (!validProjectBeneficiaries.isEmpty()) {
 
-            List<String> duplicates = new ArrayList<>();
+            List<String> duplicates;
             Map<String, ProjectBeneficiary> iMap = getIdToObjMap(validProjectBeneficiaries);
 
             if (iMap.keySet().size() != validProjectBeneficiaries.size()) {
@@ -50,7 +50,7 @@ public class PbUniqueEntityValidator implements Validator<BeneficiaryBulkRequest
                 duplicates = iMap.keySet().stream().filter(id ->
                         validProjectBeneficiaries.stream()
                                 .filter(projectBeneficiary -> projectBeneficiary.getId().equals(id)).count() > 1
-                ).collect(Collectors.toList());
+                ).toList();
 
                 // Populate error details for duplicate entities
                 for (String key : duplicates) {

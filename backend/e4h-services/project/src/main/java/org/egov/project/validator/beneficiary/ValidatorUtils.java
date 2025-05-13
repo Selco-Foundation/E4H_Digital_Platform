@@ -28,7 +28,7 @@ public class ValidatorUtils {
                 .filter(projectBeneficiaries -> projectBeneficiaries.size() > 1)
                 .flatMap(List::stream)
                 .filter(notHavingErrors())
-                .collect(Collectors.toList());
+                .toList();
 
         // Populate error details for entities with duplicate voucher tags
         for (ProjectBeneficiary projectBeneficiary : duplicates) {

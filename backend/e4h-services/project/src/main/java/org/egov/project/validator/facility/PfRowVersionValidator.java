@@ -39,7 +39,7 @@ public class PfRowVersionValidator implements Validator<ProjectFacilityBulkReque
         Map<ProjectFacility, List<Error>> errorDetailsMap = new HashMap<>();
         List<ProjectFacility> validEntities = request.getProjectFacilities().stream()
                 .filter(notHavingErrors())
-                .collect(Collectors.toList());
+                .toList();
         if (!validEntities.isEmpty()) {
             Method idMethod = getIdMethod(validEntities);
             Map<String, ProjectFacility> eMap = getIdToObjMap(validEntities, idMethod);

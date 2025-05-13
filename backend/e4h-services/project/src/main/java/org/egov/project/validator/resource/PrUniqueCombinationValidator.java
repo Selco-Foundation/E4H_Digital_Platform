@@ -50,7 +50,7 @@ public class PrUniqueCombinationValidator implements Validator<ProjectResourceBu
                     validEntities.stream().filter(entity -> {
                         String combinationId = entity.getResource().getProductVariantId() + PIPE + entity.getProjectId();
                         return combinationId.equals(id);
-                    }).count() > 1).collect(Collectors.toList());
+                    }).count() > 1).toList();
             for (String key : duplicates) {
                 ProjectResource projectResource = map.get(key);
                 Error error = getErrorForDuplicateMapping(projectResource.getProjectId(),
@@ -66,7 +66,7 @@ public class PrUniqueCombinationValidator implements Validator<ProjectResourceBu
         log.info("validating mapping from db");
         log.info("validating {} valid entities", validEntities.size());
         List<String> projectIds = validEntities.stream().map(ProjectResource::getProjectId)
-                .collect(Collectors.toList());
+                .toList();
         List<ProjectResource> existingProjectResources = projectResourceRepository.findById(projectIds,
                 false, PROJECT_ID);
 
@@ -86,11 +86,11 @@ public class PrUniqueCombinationValidator implements Validator<ProjectResourceBu
     public Map<ProjectResource, List<Error>> validate(ProjectResourceBulkRequest request) {
         Map<ProjectResource, List<Error>> errorDetailsMap = new HashMap<>();
         List<ProjectResource> validEntities = request.getProjectResource()
-                .stream().filter(notHavingErrors()).collect(Collectors.toList());
+                .stream().filter(notHavingErrors()).toList();
 
         if (!validEntities.isEmpty()) {
             validateProductVariantMappingFromRequest(validEntities, errorDetailsMap);
-            validEntities = validEntities.stream().filter(notHavingErrors()).collect(Collectors.toList());
+            validEntities = validEntities.stream().filter(notHavingErrors()).toList();
             if (!validEntities.isEmpty()) {
                 validateProductVariantMappingFromDb(validEntities, errorDetailsMap);
             }

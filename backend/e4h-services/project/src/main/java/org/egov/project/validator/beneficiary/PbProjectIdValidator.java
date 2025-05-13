@@ -41,14 +41,14 @@ public class PbProjectIdValidator implements Validator<BeneficiaryBulkRequest, P
         Class<?> objClass = getObjClass(entities);
         Method idMethod = getMethod("getProjectId", objClass);
         Map<String, ProjectBeneficiary> eMap = getIdToObjMap(entities
-                .stream().filter(notHavingErrors()).collect(Collectors.toList()), idMethod);
+                .stream().filter(notHavingErrors()).toList(), idMethod);
         if (!eMap.isEmpty()) {
             List<String> entityIds = new ArrayList<>(eMap.keySet());
             List<String> existingProjectIds = projectRepository.validateIds(entityIds,
                     getIdFieldName(idMethod));
             List<ProjectBeneficiary> invalidEntities = entities.stream().filter(notHavingErrors()).filter(entity ->
                             !existingProjectIds.contains(entity.getProjectId()))
-                    .collect(Collectors.toList());
+                    .toList();
             invalidEntities.forEach(projectBeneficiary -> {
                 Error error = getErrorForNonExistentEntity();
                 populateErrorDetails(projectBeneficiary, error, errorDetailsMap);

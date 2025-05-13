@@ -128,7 +128,7 @@ class ProjectBeneficiaryServiceUpdateTest {
                 .withOneProjectBeneficiary()
                 .build();
         projectBeneficiaryIds = request.getProjectBeneficiaries().stream().map(ProjectBeneficiary::getId)
-                .collect(Collectors.toList());
+                .toList();
         validators = Arrays.asList(pbNullIdValidator, pbNonExistentEntityValidator,
                 pbUniqueEntityValidator, pbRowVersionValidator, pbIsDeletedValidator);
         ReflectionTestUtils.setField(projectBeneficiaryService, "validators", validators);

@@ -42,10 +42,10 @@ public class PtProjectBeneficiaryIdValidator implements Validator<TaskBulkReques
         Method idMethod = getIdMethod(entities,
                 "projectBeneficiaryId", "projectBeneficiaryClientReferenceId");
         Map<String, Task> eMap = getIdToObjMap(entities
-                .stream().filter(notHavingErrors()).collect(Collectors.toList()), idMethod);
+                .stream().filter(notHavingErrors()).toList(), idMethod);
         if (eMap.size() != entities.size()) {
             List<Task> invalidTasks = entities.stream().filter(t -> ReflectionUtils.invokeMethod(idMethod, t) == null)
-                    .collect(Collectors.toList());
+                    .toList();
             invalidTasks.forEach(task -> {
                 Error error = getErrorForInvalidRelatedEntityID();
                 populateErrorDetails(task, error, errorDetailsMap);
@@ -57,14 +57,14 @@ public class PtProjectBeneficiaryIdValidator implements Validator<TaskBulkReques
             if (idMethod.getName().contains("getProjectBeneficiaryClientReferenceId")) {
                 columnName = "clientReferenceId";
             }
-            entities = entities.stream().filter(notHavingErrors()).collect(Collectors.toList());
+            entities = entities.stream().filter(notHavingErrors()).toList();
             List<String> existingProjectBeneficiaryIds = projectBeneficiaryRepository
                     .validateIds(getIdList(entities, idMethod),
                             columnName);
             List<Task> invalidEntities = eMap.values().stream().filter(entity ->
                             !existingProjectBeneficiaryIds
                                     .contains(ReflectionUtils.invokeMethod(idMethod, entity)))
-                    .collect(Collectors.toList());
+                    .toList();
             invalidEntities.forEach(task -> {
                 Error error = getErrorForNonExistentRelatedEntity((String) ReflectionUtils.invokeMethod(idMethod, task));
                 populateErrorDetails(task, error, errorDetailsMap);

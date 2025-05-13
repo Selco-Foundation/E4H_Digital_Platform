@@ -38,20 +38,15 @@ import static org.egov.project.Constants.VALIDATION_ERROR;
 @Slf4j
 public class ProjectTaskService {
 
-    private final IdGenService idGenService;
-
-    private final ProjectRepository projectRepository;
-
-    private final ServiceRequestClient serviceRequestClient;
+    public static final String CREATING_BULK_REQUEST = "creating bulk request";
+    public static final String PROCESSING_VALID_ENTITIES = "processing {} valid entities";
 
     private final ProjectTaskRepository projectTaskRepository;
-
-    private final ProjectBeneficiaryRepository projectBeneficiaryRepository;
 
     private final ProjectConfiguration projectConfiguration;
 
     private final ProjectTaskEnrichmentService enrichmentService;
-    //                    || validator.getClass().equals(PtResourceQuantityValidator.class) FIXME add this back once requirement confirmation is done
+
     private final Predicate<Validator<TaskBulkRequest, Task>> isApplicableForCreate = validator ->
             validator.getClass().equals(PtProjectIdValidator.class)
                     || validator.getClass().equals(PtExistentEntityValidator.class)
@@ -60,7 +55,7 @@ public class ProjectTaskService {
                     || validator.getClass().equals(PtProjectBeneficiaryIdValidator.class)
                     || validator.getClass().equals(PtProductVariantIdValidator.class);
 
-    //                    || validator.getClass().equals(PtResourceQuantityValidator.class) FIXME add this back once requirement confirmation is done
+
     private final Predicate<Validator<TaskBulkRequest, Task>> isApplicableForUpdate = validator ->
             validator.getClass().equals(PtProjectIdValidator.class)
                     || validator.getClass().equals(PtIsResouceEmptyValidator.class)
@@ -84,11 +79,7 @@ public class ProjectTaskService {
                               ServiceRequestClient serviceRequestClient,
                               ProjectTaskRepository projectTaskRepository,
                               ProjectBeneficiaryRepository projectBeneficiaryRepository, ProjectConfiguration projectConfiguration, ProjectTaskEnrichmentService enrichmentService, List<Validator<TaskBulkRequest, Task>> validators) {
-        this.idGenService = idGenService;
-        this.projectRepository = projectRepository;
-        this.serviceRequestClient = serviceRequestClient;
         this.projectTaskRepository = projectTaskRepository;
-        this.projectBeneficiaryRepository = projectBeneficiaryRepository;
         this.projectConfiguration = projectConfiguration;
         this.enrichmentService = enrichmentService;
         this.validators = validators;
@@ -98,7 +89,7 @@ public class ProjectTaskService {
         log.info("received request to create tasks");
         TaskBulkRequest bulkRequest = TaskBulkRequest.builder().requestInfo(request.getRequestInfo())
                 .tasks(Collections.singletonList(request.getTask())).build();
-        log.info("creating bulk request");
+        log.info(CREATING_BULK_REQUEST);
         List<Task> tasks = create(bulkRequest, false);
         return tasks.get(0);
     }
@@ -112,7 +103,7 @@ public class ProjectTaskService {
         List<Task> validTasks = tuple.getX();
         try {
             if (!validTasks.isEmpty()) {
-                log.info("processing {} valid entities", validTasks.size());
+                log.info(PROCESSING_VALID_ENTITIES, validTasks.size());
                 enrichmentService.create(validTasks, request);
                 projectTaskRepository.save(validTasks, projectConfiguration.getCreateProjectTaskTopic());
                 log.info("successfully created project tasks");
@@ -131,7 +122,7 @@ public class ProjectTaskService {
         log.info("received request to update project tasks");
         TaskBulkRequest bulkRequest = TaskBulkRequest.builder().requestInfo(request.getRequestInfo())
                 .tasks(Collections.singletonList(request.getTask())).build();
-        log.info("creating bulk request");
+        log.info(CREATING_BULK_REQUEST);
         return update(bulkRequest, false).get(0);
     }
 
@@ -144,7 +135,7 @@ public class ProjectTaskService {
         List<Task> validTasks = tuple.getX();
         try {
             if (!validTasks.isEmpty()) {
-                log.info("processing {} valid entities", validTasks.size());
+                log.info(PROCESSING_VALID_ENTITIES, validTasks.size());
                 enrichmentService.update(validTasks, request);
                 projectTaskRepository.save(validTasks, projectConfiguration.getUpdateProjectTaskTopic());
                 log.info("successfully updated bulk project tasks");
@@ -163,7 +154,7 @@ public class ProjectTaskService {
         log.info("received request to delete a project task");
         TaskBulkRequest bulkRequest = TaskBulkRequest.builder().requestInfo(request.getRequestInfo())
                 .tasks(Collections.singletonList(request.getTask())).build();
-        log.info("creating bulk request");
+        log.info(CREATING_BULK_REQUEST);
         return delete(bulkRequest, false).get(0);
     }
 
@@ -175,7 +166,7 @@ public class ProjectTaskService {
         List<Task> validTasks = tuple.getX();
         try {
             if (!validTasks.isEmpty()) {
-                log.info("processing {} valid entities", validTasks.size());
+                log.info(PROCESSING_VALID_ENTITIES, validTasks.size());
                 enrichmentService.delete(validTasks, request);
                 projectTaskRepository.save(validTasks, projectConfiguration.getDeleteProjectTaskTopic());
             }
@@ -199,7 +190,7 @@ public class ProjectTaskService {
             throw new CustomException(VALIDATION_ERROR, errorDetailsMap.values().toString());
         }
         List<Task> validTasks = request.getTasks().stream()
-                .filter(notHavingErrors()).collect(Collectors.toList());
+                .filter(notHavingErrors()).toList();
         return new Tuple<>(validTasks, errorDetailsMap);
     }
 
@@ -221,7 +212,7 @@ public class ProjectTaskService {
                     .filter(lastChangedSince(lastChangedSince))
                     .filter(havingTenantId(tenantId))
                     .filter(includeDeleted(includeDeleted))
-                    .collect(Collectors.toList())).totalCount(searchResponse.getTotalCount()).build();
+                    .toList()).totalCount(searchResponse.getTotalCount()).build();
         }
 
         try {

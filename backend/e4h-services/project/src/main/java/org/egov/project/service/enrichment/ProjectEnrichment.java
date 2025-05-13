@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -28,21 +29,21 @@ import static org.egov.project.util.ProjectConstants.PROJECT_PARENT_HIERARCHY_SE
 
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class ProjectEnrichment {
 
-    @Autowired
+    public static final String START_DATE = "startDate";
+    public static final String END_DATE = "endDate";
+    public static final String FOR_PROJECT = " for project ";
     private ProjectServiceUtil projectServiceUtil;
 
-    @Autowired
-    private Producer producer;
-    @Autowired
-    private ProjectConfiguration projectConfiguration;
+    private final Producer producer;
 
-    @Autowired
-    private IdGenService idGenService;
+    private final ProjectConfiguration projectConfiguration;
 
-    @Autowired
-    private ProjectConfiguration config;
+    private final IdGenService idGenService;
+
+    private final ProjectConfiguration config;
 
     /* Enrich Project on Create Request */
     public void enrichProjectOnCreate(ProjectRequest request, List<Project> parentProjects) {
@@ -70,7 +71,7 @@ public class ProjectEnrichment {
             log.info("Enriched project request with id and Audit details");
 
             //Enrich Address id and audit details
-            enrichProjectAddressOnCreate(projects.get(i), requestInfo);
+            enrichProjectAddressOnCreate(projects.get(i));
             log.info("Enriched project Address with id and Audit details");
 
             //Enrich target id and audit details
@@ -226,49 +227,52 @@ public class ProjectEnrichment {
                 if (requestProjectTypeNode != null) {
                     JsonNode requestCyclesNode = requestProjectTypeNode.get("cycles");
 
-                    if (requestCyclesNode != null && requestCyclesNode.isArray()) {
-                        /*
-                         * Iterate over descendant cycles and update as necessary
-                         */
-                        for (JsonNode descendantOrAncestorCycleNode : descendantOrAncestorCyclesNode) {
-                            String descendantOrAncestorCycleId = descendantOrAncestorCycleNode.get("id").asText();
-
-                            for (JsonNode requestCycleNode : requestCyclesNode) {
-                                String requestCycleId = requestCycleNode.get("id").asText();
-
-                                if (descendantOrAncestorCycleId.equals(requestCycleId)) {
-                                    /*
-                                     * Update start and end dates of descendant cycle node
-                                     */
-                                    long requestStartDate = requestCycleNode.get("startDate").asLong();
-                                    long requestEndDate = requestCycleNode.get("endDate").asLong();
-                                    long currentStartDate = descendantOrAncestorCycleNode.get("startDate").asLong();
-                                    long currentEndDate = descendantOrAncestorCycleNode.get("endDate").asLong();
-                                    if (isDescendant) {
-                                        ((ObjectNode) descendantOrAncestorCycleNode).put("startDate", requestStartDate);
-                                        ((ObjectNode) descendantOrAncestorCycleNode).put("endDate", requestEndDate);
-                                    } else {
-                                        ((ObjectNode) descendantOrAncestorCycleNode).put("startDate",
-                                                Math.min(requestStartDate, currentStartDate));
-                                        ((ObjectNode) descendantOrAncestorCycleNode).put("endDate",
-                                                Math.max(requestEndDate, currentEndDate));
-                                    }
-                                    break; // Once updated, exit the loop for this descendantCycleNode
-                                }
-                            }
-                        }
-
-                        /*
-                         * Convert updated additional details back to a map and set it on the descendant or ancestor project
-                         */
-                        Map<String, Object> updatedAdditionalDetails = objectMapper.convertValue(
-                                descendantOrAncestorAdditionalDetails, new TypeReference<Map<String, Object>>() {
-                                });
-                        descendantOrAncestor.setAdditionalDetails(updatedAdditionalDetails);
-                    }
+                    if (requestCyclesNode != null && requestCyclesNode.isArray())
+                        iterateDescendant(descendantOrAncestor, isDescendant, descendantOrAncestorCyclesNode, requestCyclesNode, objectMapper, descendantOrAncestorAdditionalDetails);
                 }
             }
         }
+    }
+
+    private static void iterateDescendant(Project descendantOrAncestor, boolean isDescendant, JsonNode descendantOrAncestorCyclesNode, JsonNode requestCyclesNode, ObjectMapper objectMapper, JsonNode descendantOrAncestorAdditionalDetails) {
+        /*
+         * Iterate over descendant cycles and update as necessary
+         */
+        for (JsonNode descendantOrAncestorCycleNode : descendantOrAncestorCyclesNode) {
+            String descendantOrAncestorCycleId = descendantOrAncestorCycleNode.get("id").asText();
+
+            for (JsonNode requestCycleNode : requestCyclesNode) {
+                String requestCycleId = requestCycleNode.get("id").asText();
+
+                if (descendantOrAncestorCycleId.equals(requestCycleId)) {
+                    /*
+                     * Update start and end dates of descendant cycle node
+                     */
+                    long requestStartDate = requestCycleNode.get(START_DATE).asLong();
+                    long requestEndDate = requestCycleNode.get(END_DATE).asLong();
+                    long currentStartDate = descendantOrAncestorCycleNode.get(START_DATE).asLong();
+                    long currentEndDate = descendantOrAncestorCycleNode.get(END_DATE).asLong();
+                    if (isDescendant) {
+                        ((ObjectNode) descendantOrAncestorCycleNode).put(START_DATE, requestStartDate);
+                        ((ObjectNode) descendantOrAncestorCycleNode).put(END_DATE, requestEndDate);
+                    } else {
+                        ((ObjectNode) descendantOrAncestorCycleNode).put(START_DATE,
+                                Math.min(requestStartDate, currentStartDate));
+                        ((ObjectNode) descendantOrAncestorCycleNode).put(END_DATE,
+                                Math.max(requestEndDate, currentEndDate));
+                    }
+                    break; // Once updated, exit the loop for this descendantCycleNode
+                }
+            }
+        }
+
+        /*
+         * Convert updated additional details back to a map and set it on the descendant or ancestor project
+         */
+        Map<String, Object> updatedAdditionalDetails = objectMapper.convertValue(
+                descendantOrAncestorAdditionalDetails, new TypeReference<Map<String, Object>>() {
+                });
+        descendantOrAncestor.setAdditionalDetails(updatedAdditionalDetails);
     }
 
 
@@ -306,10 +310,10 @@ public class ProjectEnrichment {
     }
 
     /* Enrich Address with id and audit details in project create request */
-    private void enrichProjectAddressOnCreate(Project projectFromRequest, RequestInfo requestInfo) {
+    private void enrichProjectAddressOnCreate(Project projectFromRequest) {
         if (projectFromRequest.getAddress() != null) {
             projectFromRequest.getAddress().setId(UUID.randomUUID().toString());
-            log.info("Added address with id " + projectFromRequest.getAddress().getId() + " for project " + projectFromRequest.getId());
+            log.info("Added address with id " + projectFromRequest.getAddress().getId() + FOR_PROJECT + projectFromRequest.getId());
         }
     }
 
@@ -319,7 +323,7 @@ public class ProjectEnrichment {
             //Add address if not present already
             if (StringUtils.isBlank(projectFromRequest.getAddress().getId())) {
                 log.info("Adding address for project " + projectFromDB.getId());
-                enrichProjectAddressOnCreate(projectFromRequest, requestInfo);
+                enrichProjectAddressOnCreate(projectFromRequest);
             }
         }
         //Address not present in request
@@ -351,14 +355,14 @@ public class ProjectEnrichment {
         target.setId(UUID.randomUUID().toString());
         AuditDetails auditDetailsForAdd = projectServiceUtil.getAuditDetails(requestInfo.getUserInfo().getUuid(), null, true);
         target.setAuditDetails(auditDetailsForAdd);
-        log.info("Added target with id " + target.getId() + " for project " + projectFromRequest.getId());
+        log.info("Added target with id " + target.getId() + FOR_PROJECT + projectFromRequest.getId());
     }
 
     /* Enrich last modified by and last modified time for target in update project request. If id is not present add target */
     private void enrichProjectTargetOnUpdate(Project projectFromRequest, Project projectFromDB, RequestInfo requestInfo) {
         //Enrich the response with existing targets from the database if targets array is empty in the project request.
         if (projectFromRequest.getTargets() == null && projectFromDB.getTargets() != null) {
-            projectFromRequest.setTargets(projectFromDB.getTargets().stream().filter(t -> !t.getIsDeleted()).collect(Collectors.toList()));
+            projectFromRequest.setTargets(projectFromDB.getTargets().stream().filter(t -> !t.getIsDeleted()).toList());
             return;
         }
         if (projectFromRequest.getTargets() != null) {
@@ -394,7 +398,7 @@ public class ProjectEnrichment {
 
     private void addMissingTargetsFromDBToRequest(Project projectFromRequest, Project projectFromDB) {
         Set<String> targetIdsInRequest = projectFromRequest.getTargets().stream().map(Target::getId).collect(Collectors.toSet());
-        List<Target> filteredTargetsFromDB = projectFromDB.getTargets().stream().filter(t -> !targetIdsInRequest.contains(t.getId()) && !t.getIsDeleted()).collect(Collectors.toList());
+        List<Target> filteredTargetsFromDB = projectFromDB.getTargets().stream().filter(t -> !targetIdsInRequest.contains(t.getId()) && !t.getIsDeleted()).toList();
         projectFromRequest.getTargets().addAll(filteredTargetsFromDB);
     }
 
@@ -411,14 +415,14 @@ public class ProjectEnrichment {
         document.setId(UUID.randomUUID().toString());
         AuditDetails auditDetailsForAdd = projectServiceUtil.getAuditDetails(requestInfo.getUserInfo().getUuid(), null, true);
         document.setAuditDetails(auditDetailsForAdd);
-        log.info("Added document with id " + document.getId() + " for project " + projectFromRequest.getId());
+        log.info("Added document with id " + document.getId() + FOR_PROJECT + projectFromRequest.getId());
     }
 
     /* Enrich last modified by and last modified time for document in update project request. If id is not present add document */
     private void enrichProjectDocumentOnUpdate(Project projectFromRequest, Project projectFromDB, RequestInfo requestInfo) {
         //Enrich the response with existing targets from the database if targets array is empty in the project request.
         if (projectFromRequest.getDocuments() == null && projectFromDB.getDocuments() != null) {
-            projectFromRequest.setDocuments(projectFromDB.getDocuments().stream().filter(d -> (d.getStatus() != null && !d.getStatus().equals("INACTIVE"))).collect(Collectors.toList()));
+            projectFromRequest.setDocuments(projectFromDB.getDocuments().stream().filter(d -> (d.getStatus() != null && !d.getStatus().equals("INACTIVE"))).toList());
             return;
         }
         if (projectFromRequest.getDocuments() != null) {
@@ -454,7 +458,7 @@ public class ProjectEnrichment {
 
     private void addMissingDocumentFromDBToRequest(Project projectFromRequest, Project projectFromDB) {
         Set<String> documentIdsInRequest = projectFromRequest.getDocuments().stream().map(Document::getId).collect(Collectors.toSet());
-        List<Document> filteredDocumentsFromDB = projectFromDB.getDocuments().stream().filter(d -> !documentIdsInRequest.contains(d.getId())).collect(Collectors.toList());
+        List<Document> filteredDocumentsFromDB = projectFromDB.getDocuments().stream().filter(d -> !documentIdsInRequest.contains(d.getId())).toList();
         projectFromRequest.getDocuments().addAll(filteredDocumentsFromDB);
     }
 

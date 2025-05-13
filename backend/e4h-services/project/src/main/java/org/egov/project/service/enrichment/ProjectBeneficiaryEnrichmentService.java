@@ -19,6 +19,7 @@ import static org.egov.common.utils.CommonUtils.*;
 @Slf4j
 public class ProjectBeneficiaryEnrichmentService {
 
+    public static final String ENRICHMENT_DONE = "enrichment done";
     private final IdGenService idGenService;
 
     private final ProjectConfiguration projectConfiguration;
@@ -50,7 +51,7 @@ public class ProjectBeneficiaryEnrichmentService {
         log.info("ids generated");
 
         enrichForCreate(validProjectBeneficiaries, idList, beneficiaryRequest.getRequestInfo());
-        log.info("enrichment done");
+        log.info(ENRICHMENT_DONE);
     }
 
     public void update(List<ProjectBeneficiary> validProjectBeneficiaries,
@@ -71,13 +72,13 @@ public class ProjectBeneficiaryEnrichmentService {
         log.info("updating lastModifiedTime and lastModifiedBy");
         enrichForUpdate(projectBeneficiaryMap, existingProjectBeneficiaryIds, beneficiaryRequest, idMethod);
 
-        log.info("enrichment done");
+        log.info(ENRICHMENT_DONE);
     }
 
     public void delete(List<ProjectBeneficiary> validProjectBeneficiaries,
                        BeneficiaryBulkRequest beneficiaryRequest) {
         log.info("starting the enrichment for delete project beneficiaries");
         enrichForDelete(validProjectBeneficiaries, beneficiaryRequest.getRequestInfo(), true);
-        log.info("enrichment done");
+        log.info(ENRICHMENT_DONE);
     }
 }
