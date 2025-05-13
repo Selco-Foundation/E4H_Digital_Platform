@@ -61,6 +61,12 @@
       "code": "type_10",
       "name": "PHC With Delivery With Cold Chain - Hybrid System",
       "url": ""
+    },
+    {
+      "active": true,
+      "code": "type_11",
+      "name": "SC - without labour room & without cold chain point",
+      "url": ""
     }
   ]
 }
