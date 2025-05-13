@@ -440,11 +440,14 @@ const ShippingTruck = ({ className, styles }) => (
   </svg>
 );
 
-function CloseSvg({ onClick }) {
+function CloseSvg({ onClick, color, background }) {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 0 24 24" width="24" onClick={onClick}>
-      <path d="M0 0h24v24H0z" fill="none" />
-      <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+      <path d="M0 0h24v24H0z" fill={background ? background : "none"} />
+      <path
+        d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"
+        fill={color ? color : "black"}
+      />
     </svg>
   );
 }
@@ -1085,6 +1088,30 @@ const UploadIcon = ({ styles, className, fill = "white", height = "64", width = 
     <defs>
       <clipPath id="clip0_431_5084">
         <rect width={width} height={height} fill={fill} />
+      </clipPath>
+    </defs>
+  </svg>
+);
+
+const UploadIconOrange = ({ styles, className, fill = "rgba(207,98,55,255)", height = "64", width = "64" }) => (
+  <svg
+    style={{ ...styles }}
+    className={className}
+    width={width}
+    height={height}
+    viewBox="0 0 64 64"
+    fill="rgba(207,98,55,255)"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <g clip-path="url(#clip0_431_5084)">
+      <path
+        d="M24.0007 42.6667H40.0007V26.6667H50.6673L32.0007 8L13.334 26.6667H24.0007V42.6667ZM13.334 48H50.6673V53.3333H13.334V48Z"
+        fill="rgba(207,98,55,255"
+      />
+    </g>
+    <defs>
+      <clipPath id="clip0_431_5084">
+        <rect width={width} height={height} fill={"rgba(207,98,55,255)"} />
       </clipPath>
     </defs>
   </svg>
@@ -2089,6 +2116,7 @@ export {
   WarningIcon,
   AttentionListIcon,
   UploadIcon,
+  UploadIconOrange,
   FileIcon,
   DeleteIconv2,
   InfoIconOutline,
