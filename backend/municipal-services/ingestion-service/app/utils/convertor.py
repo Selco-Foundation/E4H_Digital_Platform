@@ -249,3 +249,95 @@ def create_facility_payload(request_info: RequestInfo, row: Series):
             }
         }
     }
+
+
+def to_dict(obj):
+    """
+    Convert a Python object to a dictionary.
+
+    This function handles various object types:
+    - If already a dict, returns it directly
+    - For dataclasses, named tuples, and objects with __dict__, converts to dict
+    - For lists and tuples, converts each item recursively
+    - For sets, converts to a list and then converts each item
+    - For primitive types (str, int, float, bool, None), returns as is
+
+    Args:
+        obj: Any Python object to convert
+
+    Returns:
+        dict: Dictionary representation of the object
+    """
+    # If None or primitive type, return as is
+    if obj is None or isinstance(obj, (str, int, float, bool)):
+        return obj
+
+    # If already a dict, convert values recursively
+    if isinstance(obj, dict):
+        return {key: to_dict(value) for key, value in obj.items()}
+
+    # If list or tuple, convert items recursively
+    if isinstance(obj, (list, tuple)):
+        return [to_dict(item) for item in obj]
+
+    # If set, convert to list and then convert items
+    if isinstance(obj, set):
+        return [to_dict(item) for item in obj]
+
+    # Check if it's a dataclass
+    try:
+        import dataclasses
+        if dataclasses.is_dataclass(obj):
+            return {field.name: to_dict(getattr(obj, field.name))
+                    for field in dataclasses.fields(obj)}
+    except ImportError:
+        pass  # dataclasses module not available
+
+    # Check if it's a named tuple
+    if hasattr(obj, '_asdict'):
+        try:
+            return {key: to_dict(value) for key, value in obj._asdict().items()}
+        except (AttributeError, TypeError):
+            pass
+
+    # For objects with __dict__, convert attributes
+    if hasattr(obj, "__dict__"):
+        return {key: to_dict(value) for key, value in obj.__dict__.items()
+                if not key.startswith('_')}  # Skip private attributes
+
+    # For objects with __slots__, get those attributes
+    if hasattr(obj, "__slots__"):
+        return {slot: to_dict(getattr(obj, slot)) for slot in obj.__slots__
+                if hasattr(obj, slot) and not slot.startswith('_')}
+
+    # If all else fails, try to convert to a string
+    try:
+        return str(obj)
+    except:
+        return repr(obj)
+
+
+def convert_response_to_facility(response:Dict[str, Any]):
+    return {
+        "Country":"India",
+        "State":response["address"]["state"],
+        "District":response["address"]["district"],
+        "Block":response["address"]["block"],
+        "Boundary Code (Mandatory)":response["facility_details"]["boundaryCode"],
+        "Health Centre Name (Mandatory)":response["facility_name"],
+        "Type of HC (Mandatory)":response["facility_type"],
+        "HFR ID":response["facility_details"]["hfrId"],
+        "NIN ID":"",
+        "HC PoC Name (Mandatory)":response["facility_details"]["pocName"],
+        "HC PoC Designation":"",
+        "HC PoC Contact Number (Mandatory)":response["facility_details"]["pocContact"],
+        "Latitude":response["address"]["latitude"],
+        "Longitude":response["address"]["longitude"],
+        "Address":response["address"]["addressNumber"]+" "+response["address"]["addressLine1"]+" "
+                  +response["address"]["addressLine2"]+" "+response["address"]["landmark"]+" "
+                  +response["address"]["city"]+" "+response["address"]["pincode"],
+        "Role":"Supervisor",
+        "Name":"",
+        "Phone Number":"",
+        "Email Address":""
+    }

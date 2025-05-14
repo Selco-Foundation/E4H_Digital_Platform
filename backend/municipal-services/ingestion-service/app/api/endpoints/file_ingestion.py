@@ -247,7 +247,7 @@ async def upload_facilities_excel_sheet(
 async def upload_boundaries_excel_sheet(
         facility_with_supervisors: UploadFile = File(
             description="Excel file containing facility with supervisors data"),
-        facility_output: str = Form(default="Facility Output Template",
+        facility_sheet: str = Form(default="Facilities_Supervisors",
                                     description="Name of the sheet containing facility data"),
         request_info: str = Form(default="")
 ):
@@ -272,7 +272,7 @@ async def upload_boundaries_excel_sheet(
         with open(facility_with_supervisors_file_path, 'rb') as src, open(output_file_path, 'wb') as dst:
             dst.write(src.read())
 
-        df = pd.read_excel(facility_with_supervisors_file_path, sheet_name=facility_output)
+        df = pd.read_excel(facility_with_supervisors_file_path, sheet_name=facility_sheet)
 
         if 'status' not in df.columns:
             df['status'] = ''
@@ -294,7 +294,7 @@ async def upload_boundaries_excel_sheet(
                     df.at[index, 'status'] = 'failed'
                     df.at[index, 'error'] = f"Processing Error: {str(e)}"
 
-        writer = ExcelDataWriter(output_file_path, output_sheet=facility_output)
+        writer = ExcelDataWriter(output_file_path, output_sheet=facility_sheet)
         writer.write_data(df)
 
         return FileResponse(
