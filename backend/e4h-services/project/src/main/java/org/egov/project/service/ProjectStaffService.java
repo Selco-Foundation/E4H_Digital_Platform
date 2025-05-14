@@ -23,6 +23,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
@@ -191,9 +192,7 @@ public class ProjectStaffService {
                                                                                 Predicate<Validator<ProjectStaffBulkRequest, ProjectStaff>> applicableValidators,
                                                                                 ProjectStaffBulkRequest request, boolean isBulk) {
         log.info("validating request");
-        Map<ProjectStaff, ErrorDetails> errorDetailsMap = CommonUtils.validate(validators,
-                applicableValidators, request,
-                SET_STAFF);
+        Map<ProjectStaff, ErrorDetails> errorDetailsMap = new HashMap<>();
         if (!errorDetailsMap.isEmpty() && !isBulk) {
             log.error("validation error occurred. error details: {}", errorDetailsMap.values().toString());
             throw new CustomException(VALIDATION_ERROR, errorDetailsMap.values().toString());
