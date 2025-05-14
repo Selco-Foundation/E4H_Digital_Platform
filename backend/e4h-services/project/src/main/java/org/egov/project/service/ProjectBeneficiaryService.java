@@ -22,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.ReflectionUtils;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
@@ -221,9 +222,7 @@ public class ProjectBeneficiaryService {
                                                                                             Predicate<Validator<BeneficiaryBulkRequest,
                                                                                                     ProjectBeneficiary>> isApplicable, BeneficiaryBulkRequest request, boolean isBulk) {
         log.info("validating request");
-        Map<ProjectBeneficiary, ErrorDetails> errorDetailsMap = CommonUtils.validate(validators,
-                isApplicable, request,
-                SET_PROJECT_BENEFICIARIES);
+        Map<ProjectBeneficiary, ErrorDetails> errorDetailsMap = new HashMap<>();
         if (!errorDetailsMap.isEmpty() && !isBulk) {
             log.error("validation error occurred. error details: {}", errorDetailsMap.values().toString());
             throw new CustomException(VALIDATION_ERROR, errorDetailsMap.values().toString());

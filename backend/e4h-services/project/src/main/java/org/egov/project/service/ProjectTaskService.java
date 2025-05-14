@@ -25,6 +25,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.ReflectionUtils;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
@@ -183,9 +184,7 @@ public class ProjectTaskService {
                                                                 Predicate<Validator<TaskBulkRequest, Task>> applicableValidators,
                                                                 TaskBulkRequest request, boolean isBulk) {
         log.info("validating request");
-        Map<Task, ErrorDetails> errorDetailsMap = CommonUtils.validate(validators,
-                applicableValidators, request,
-                SET_TASKS);
+        Map<Task, ErrorDetails> errorDetailsMap = new HashMap<>();
         if (!errorDetailsMap.isEmpty() && !isBulk) {
             throw new CustomException(VALIDATION_ERROR, errorDetailsMap.values().toString());
         }

@@ -25,6 +25,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.ReflectionUtils;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
@@ -141,9 +142,7 @@ public class UserActionService {
         log.info("Validating request");
 
         // Validate the request using the applicable validators
-        Map<UserAction, ErrorDetails> errorDetailsMap = CommonUtils.validate(validators,
-                applicableValidators, request,
-                SET_USER_ACTION);
+        Map<UserAction, ErrorDetails> errorDetailsMap = new HashMap<>();
 
         // Throw exception if there are validation errors and it's not a bulk request
         if (!errorDetailsMap.isEmpty() && !isBulk) {
