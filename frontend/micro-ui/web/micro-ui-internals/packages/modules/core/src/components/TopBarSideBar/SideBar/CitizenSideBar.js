@@ -107,7 +107,7 @@ export const CitizenSideBar = ({ isOpen, isMobile = false, toggleSidebar, onLogo
   if (islinkDataLoading || isLoading) {
     return <Loader />;
   }
-  const filteredTenantContact = storeData?.tenants.filter((e) => e.code === tenantId)[0]?.contactNumber || storeData?.tenants[0]?.contactNumber;
+  const filteredTenantContact = window?.globalConfigs?.getConfig("CRM_HELPLINE_NUMBER") || storeData?.tenants[0]?.contactNumber;
 
   let menuItems = [...SideBarMenu(t, closeSidebar, redirectToLoginPage, isEmployee, storeData, tenantId)];
   let profileItem;
