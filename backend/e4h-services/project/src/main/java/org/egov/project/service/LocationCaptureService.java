@@ -26,6 +26,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.ReflectionUtils;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
@@ -139,12 +140,7 @@ public class LocationCaptureService {
         log.info("Validating request");
 
         // Perform validation and collect error details.
-        Map<UserAction, ErrorDetails> errorDetailsMap = CommonUtils.validate(
-                validators,
-                applicableValidators,
-                request,
-                SET_USER_ACTION
-        );
+        Map<UserAction, ErrorDetails> errorDetailsMap = new HashMap<>();
 
         // Throw an exception if there are validation errors and it's not a bulk operation.
         if (!errorDetailsMap.isEmpty() && !isBulk) {
