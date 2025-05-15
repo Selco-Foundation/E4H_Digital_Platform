@@ -22,6 +22,12 @@ import org.egov.TestConfiguration;
 @RunWith(SpringRunner.class)
 @WebMvcTest(OrgServicesApiController.class)
 @Import(TestConfiguration.class)
+@EnableAutoConfiguration(exclude = {
+    io.opentelemetry.instrumentation.spring.autoconfigure.OpenTelemetryAutoConfiguration.class,
+    org.springframework.boot.actuate.autoconfigure.observation.ObservationAutoConfiguration.class,
+    org.springframework.boot.actuate.autoconfigure.tracing.OpenTelemetryAutoConfiguration.class,
+    org.springframework.boot.actuate.autoconfigure.tracing.MicrometerTracingAutoConfiguration.class
+})
 public class OrgServicesApiControllerTest {
 
     @Autowired
