@@ -56,7 +56,7 @@ import org.junit.jupiter.api.Test;
 //import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @RunWith(SpringRunner.class)
-SpringBootTest(classes = OrganizationMain.class, properties = {
+@SpringBootTest(classes = OrganizationMain.class, properties = {
     "spring.main.lazy-initialization=true",
     "management.tracing.enabled=false",
     "management.otlp.metrics.export.enabled=false",
