@@ -13,7 +13,7 @@ class HRMSServiceClient:
             "Content-Type": "application/json"
         }
         params = {
-            "tenantId": "in"
+            "tenantId": "pg"
         }
         try:
             response = requests.post(url, headers=headers, params=params, json=user_payload)
