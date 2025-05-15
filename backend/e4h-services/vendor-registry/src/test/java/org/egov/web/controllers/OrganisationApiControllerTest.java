@@ -56,10 +56,18 @@ import org.junit.jupiter.api.Test;
 //import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @RunWith(SpringRunner.class)
-@SpringBootTest(classes = OrganizationMain.class, properties = "spring.main.lazy-initialization=true")
+@SpringBootTest(classes = OrganizationMain.class, properties = {
+    "spring.main.lazy-initialization=true",
+    "management.tracing.enabled=false",
+    "management.otlp.metrics.export.enabled=false",
+    "management.otlp.tracing.export.enabled=false"
+})
 @AutoConfigureMockMvc
 @EnableAutoConfiguration(exclude = {
-    io.opentelemetry.instrumentation.spring.autoconfigure.OpenTelemetryAutoConfiguration.class
+    io.opentelemetry.instrumentation.spring.autoconfigure.OpenTelemetryAutoConfiguration.class,
+    org.springframework.boot.actuate.autoconfigure.observation.ObservationAutoConfiguration.class,
+    org.springframework.boot.actuate.autoconfigure.tracing.OpenTelemetryAutoConfiguration.class,
+    org.springframework.boot.actuate.autoconfigure.tracing.MicrometerTracingAutoConfiguration.class
 })
 class OrganisationApiControllerTest {
 
