@@ -11,11 +11,12 @@ from app.decorators.rbac_validator import get_authorized_request_info
 from app.ingest.excel_data_writer import ExcelDataWriter
 from app.processor.factory.boundary_data_processor_factory import BoundaryDataProcessorFactory
 from app.processor.factory.vendor_data_processor_factory import VendorDataProcessorFactory
-from app.utils.convertor import request_info_from_json, create_vendor_request, \
-    create_facility_with_supervisor_update_payload, create_facility_payload
+from app.utils.convertor import request_info_from_json, create_vendor_request, create_facility_payload, \
+    get_project_creation_payload, get_user_creation_payload, get_staff_creation_payload
 from app.utils.facility_service_client import FacilityServiceClient
 from app.utils.organization_service_client import OrganizationServiceClient
 from app.utils.project_service_client import ProjectServiceClient
+from app.utils.hrms_service_client import HRMSServiceClient
 
 router = APIRouter()
 logger = AppLogger().get_logger()
@@ -27,6 +28,7 @@ mdms_url = os.getenv("MDMS_URL")
 org_service_url = os.getenv("VENDOR_SERVICE_URL")
 project_service_url = os.getenv("PROJECT_SERVICE_URL")
 facility_service_url = os.getenv("FACILITY_SERVICE_URL")
+hrms_service_url = os.getenv("HRMS_SERVICE_URL")
 
 @router.post('/vendors',
              summary='Upload and process vendor Excel file with multiple sheets',
@@ -244,7 +246,7 @@ async def upload_facilities_excel_sheet(
 @router.post('/facilityWithSupervisors',
              summary='Upload and process facility with supervisors Excel file',
              response_description="Returns processed Excel file with validation results")
-async def upload_boundaries_excel_sheet(
+async def upload_facility_with_supervisors_excel_sheet(
         facility_with_supervisors: UploadFile = File(
             description="Excel file containing facility with supervisors data"),
         facility_sheet: str = Form(default="Facilities_Supervisors",
@@ -281,15 +283,34 @@ async def upload_boundaries_excel_sheet(
 
         if project_service_url and not df.empty:
             project_client = ProjectServiceClient(project_service_url)
+            hrms_client = HRMSServiceClient(hrms_service_url)
             for index, row in df.iterrows():
                 try:
-                    facility_data_payload = create_facility_with_supervisor_update_payload(request_info, row)
-                    response = project_client.update_facility_with_supervisor(facility_data_payload)
-                    if response.status_code == 200 or response.status_code == 201:
+                    # Create work stream
+                    work_stream_creation_payload = get_project_creation_payload(request_info, "Work Stream "+row.get('Health Centre Name (Mandatory)', ''), "Work Stream")
+                    work_stream_creation_response = project_client.create_project(work_stream_creation_payload)
+                    if work_stream_creation_response.status_code == 200 or work_stream_creation_response.status_code == 201:
                         df.at[index, 'status'] = 'success'
+                        # Create User
+                        user_creation_payload = get_user_creation_payload(request_info, row)
+                        user_creation_response = hrms_client.create_user(user_creation_payload)
+                        if user_creation_response.status_code == 200 or user_creation_response.status_code == 201:
+                            df.at[index, 'status'] = 'success'
+                            # Create staff
+                            staff_creation_payload = get_staff_creation_payload(request_info,user_creation_response["uuid"], work_stream_creation_response["projectId"])
+                            staff_creation_response = project_client.create_project_staff(staff_creation_payload)
+                            if staff_creation_response.status_code == 200 or staff_creation_response.status_code ==201:
+                                df.at[index,'status'] = 'success'
+                            else:
+                                df.at[index, 'status'] = 'failed'
+                                df.at[index, 'error'] = f"Staff Creation Error: {staff_creation_response.status_code} - {staff_creation_response.text}"
+                        else:
+                            df.at[index, 'status'] = 'failed'
+                            df.at[index, 'error'] = f"User Creation Error: {user_creation_response.status_code} - {user_creation_response.text}"
+
                     else:
                         df.at[index, 'status'] = 'failed'
-                        df.at[index, 'error'] = f"API Error: {response.status_code} - {response.text}"
+                        df.at[index, 'error'] = f"Workstream Creation Error: {work_stream_creation_response.status_code} - {work_stream_creation_response.text}"
                 except Exception as e:
                     df.at[index, 'status'] = 'failed'
                     df.at[index, 'error'] = f"Processing Error: {str(e)}"

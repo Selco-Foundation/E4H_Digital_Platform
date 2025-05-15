@@ -1,9 +1,12 @@
+import datetime
 import json
+import time
 from typing import Dict, Any, Optional, List
 
 import pandas as pd
 from pandas import Series
 from pydantic import ValidationError
+from sqlalchemy import false
 
 from app.schemas.boundary import Boundary
 from app.schemas.request_info import RequestInfo
@@ -188,34 +191,87 @@ def create_vendor_request(request_info: RequestInfo, vendor: Vendor):
     }
 
 
-def create_facility_with_supervisor_update_payload(request_info: RequestInfo, row: Series):
+def get_project_creation_payload(request_info: RequestInfo, project_name: str, project_type: str):
+    current_date = datetime.datetime.now()
+    one_year_later = current_date.replace(year=current_date.year + 1)
+    current_timestamp = int(time.mktime(current_date.timetuple()) * 1000)
+    one_year_later_timestamp = int(time.mktime(one_year_later.timetuple()) * 1000)
+
     return {
-        'country': row.get('Country', ''),
-        'state': row.get('State', ''),
-        'district': row.get('District', ''),
-        'block': row.get('Block', ''),
-        'boundary_code': row.get('Boundary Code (Mandatory)', ''),
-        'health_centre_name': row.get('Health Centre Name (Mandatory)', ''),
-        'type_of_hc': row.get('Type of HC (Mandatory)', ''),
-        'hfr_id': row.get('HFR ID', ''),
-        'nin_id': row.get('NIN ID', ''),
-        'hc_poc_name': row.get('HC PoC Name (Mandatory)', ''),
-        'hc_poc_designation': row.get('HC PoC Designation (Optional)', ''),
-        'hc_poc_contact': row.get('HC PoC Contact number (Mandatory)', ''),
-        'latitude': row.get('Latitude', ''),
-        'longitude': row.get('Longitude', ''),
-        'address': row.get('Address', ''),
-        'supervisor': {
-            'role': row.get('Role (Mandatory)', ''),
-            'name': row.get('Name (Mandatory)', ''),
-            'phone': row.get('Phone Number (Mandatory)', ''),
-            'email': row.get('Email Address (Mandatory)', '')
+        "RequestInfo": request_info.model_dump(by_alias=True, exclude_none=True),
+        "Projects": [{
+            "tenantId": "in",
+            "name": project_name,
+            "projectType": project_type,
+            "startDate": current_timestamp,
+            "endDate": one_year_later_timestamp
+        }],
+        "isCascadingProjectDateUpdate": False,
+        "apiOperation": "CREATE"
+    }
+
+def get_user_creation_payload(request_info:RequestInfo, row:Series):
+    return {
+            "RequestInfo": request_info.model_dump(by_alias=True, exclude_none=True),
+            "Employees": [
+                {
+                    "tenantId": "in",
+                    "user": {
+                        "name": row.get("Name",""),
+                        "mobileNumber": row.get("Phone Number",""),
+                        "emailId":row.get("Email Address",""),
+                        "roles": [
+                            {"code": "INSTALLATION_SUPERVISOR", "name": "Installation supervisor"},
+                            {"code": "INSTALLATION_REPORT_VIEWER", "name": "Installation report viewer"},
+                            {"code": "HRMS_ADMIN", "name": "Hrms admin"}
+                        ],
+                        "tenantId": "in",
+                    },
+                    "code": row.get("Name",""),
+                    "jurisdictions": [
+                        {
+                            "hierarchy": "ADMIN",
+                            "roles": [
+                                {"value": "INSTALLATION_SUPERVISOR", "label": "Installation supervisor"},
+                                {"value": "INSTALLATION_REPORT_VIEWER", "label": "Installation report viewer"},
+                                {"value": "HRMS_ADMIN", "label":"Hrms admin"}
+                            ],
+                            "boundaryType": "City",
+                            "boundary": "in",
+                            "furnishedRolesList": "INSTALLATION_SUPERVISOR, INSTALLATION_REPORT_VIEWER, HRMS_ADMIN",
+                            "tenantId": "in",
+                        }
+                    ],
+                    "serviceHistory": [],
+                    "education": [],
+                    "tests": [],
+                }
+            ],
+        }
+
+def get_staff_creation_payload(request_info:RequestInfo, user_uuid:str, parent_id:str):
+    current_date = datetime.datetime.now()
+    one_year_later = current_date.replace(year=current_date.year + 1)
+    current_timestamp = int(time.mktime(current_date.timetuple()) * 1000)
+    one_year_later_timestamp = int(time.mktime(one_year_later.timetuple()) * 1000)
+
+    return {
+        "RequestInfo": request_info.model_dump(by_alias=True, exclude_none=True),
+        "ProjectStaff":{
+            "userId":user_uuid,
+            "projectId":parent_id,
+            "startDate": current_timestamp,
+            "endDate": one_year_later_timestamp,
+            "channel": "MOBILE",
+            "isDeleted": false,
+            "tenantId": "in"
         }
     }
 
 def safe_get(row, key, default=None):
     val = row.get(key, default)
     return default if pd.isna(val) else val
+
 
 def create_facility_payload(request_info: RequestInfo, row: Series):
     return {
@@ -251,93 +307,30 @@ def create_facility_payload(request_info: RequestInfo, row: Series):
     }
 
 
-def to_dict(obj):
-    """
-    Convert a Python object to a dictionary.
 
-    This function handles various object types:
-    - If already a dict, returns it directly
-    - For dataclasses, named tuples, and objects with __dict__, converts to dict
-    - For lists and tuples, converts each item recursively
-    - For sets, converts to a list and then converts each item
-    - For primitive types (str, int, float, bool, None), returns as is
-
-    Args:
-        obj: Any Python object to convert
-
-    Returns:
-        dict: Dictionary representation of the object
-    """
-    # If None or primitive type, return as is
-    if obj is None or isinstance(obj, (str, int, float, bool)):
-        return obj
-
-    # If already a dict, convert values recursively
-    if isinstance(obj, dict):
-        return {key: to_dict(value) for key, value in obj.items()}
-
-    # If list or tuple, convert items recursively
-    if isinstance(obj, (list, tuple)):
-        return [to_dict(item) for item in obj]
-
-    # If set, convert to list and then convert items
-    if isinstance(obj, set):
-        return [to_dict(item) for item in obj]
-
-    # Check if it's a dataclass
-    try:
-        import dataclasses
-        if dataclasses.is_dataclass(obj):
-            return {field.name: to_dict(getattr(obj, field.name))
-                    for field in dataclasses.fields(obj)}
-    except ImportError:
-        pass  # dataclasses module not available
-
-    # Check if it's a named tuple
-    if hasattr(obj, '_asdict'):
-        try:
-            return {key: to_dict(value) for key, value in obj._asdict().items()}
-        except (AttributeError, TypeError):
-            pass
-
-    # For objects with __dict__, convert attributes
-    if hasattr(obj, "__dict__"):
-        return {key: to_dict(value) for key, value in obj.__dict__.items()
-                if not key.startswith('_')}  # Skip private attributes
-
-    # For objects with __slots__, get those attributes
-    if hasattr(obj, "__slots__"):
-        return {slot: to_dict(getattr(obj, slot)) for slot in obj.__slots__
-                if hasattr(obj, slot) and not slot.startswith('_')}
-
-    # If all else fails, try to convert to a string
-    try:
-        return str(obj)
-    except:
-        return repr(obj)
-
-
-def convert_response_to_facility(response:Dict[str, Any]):
+def convert_response_to_facility(response: Dict[str, Any]):
     return {
-        "Country":"India",
-        "State":response["address"]["state"],
-        "District":response["address"]["district"],
-        "Block":response["address"]["block"],
-        "Boundary Code (Mandatory)":response["facility_details"]["boundaryCode"],
-        "Health Centre Name (Mandatory)":response["facility_name"],
-        "Type of HC (Mandatory)":response["facility_type"],
-        "HFR ID":response["facility_details"]["hfrId"],
-        "NIN ID":"",
-        "HC PoC Name (Mandatory)":response["facility_details"]["pocName"],
-        "HC PoC Designation":"",
-        "HC PoC Contact Number (Mandatory)":response["facility_details"]["pocContact"],
-        "Latitude":response["address"]["latitude"],
-        "Longitude":response["address"]["longitude"],
-        "Address":response["address"]["addressNumber"]+" "+response["address"]["addressLine1"]+" "
-                  +response["address"]["addressLine2"]+" "+response["address"]["landmark"]+" "
-                  +response["address"]["city"]+" "+response["address"]["pincode"],
-        "Role":"Supervisor",
-        "Name":"",
-        "Phone Number":"",
-        "Email Address":""
+        "Country": "India",
+        "State": response["address"]["state"],
+        "District": response["address"]["district"],
+        "Block": response["address"]["block"],
+        "Boundary Code (Mandatory)": response["facility_details"]["boundaryCode"],
+        "Health Centre Name (Mandatory)": response["facility_name"],
+        "Type of HC (Mandatory)": response["facility_type"],
+        "HFR ID": response["facility_details"]["hfrId"],
+        "NIN ID": "",
+        "Facility ID": response["facility_id"],
+        "HC PoC Name (Mandatory)": response["facility_details"]["pocName"],
+        "HC PoC Designation": "",
+        "HC PoC Contact Number (Mandatory)": response["facility_details"]["pocContact"],
+        "Latitude": response["address"]["latitude"],
+        "Longitude": response["address"]["longitude"],
+        "Address": response["address"]["addressNumber"] + " " + response["address"]["addressLine1"] + " "
+                   + response["address"]["addressLine2"] + " " + response["address"]["landmark"] + " "
+                   + response["address"]["city"] + " " + response["address"]["pincode"],
+        "Role": "Supervisor",
+        "Name": "",
+        "Gender": "",
+        "Phone Number": "",
+        "Email Address": ""
     }

@@ -45,46 +45,7 @@ class FacilityServiceClient:
         }
 
         try:
-            # response = requests.get(url, headers=headers, params=params)
-            response = [
-                {
-                    "tenant_id": "in",
-                    "facility_id": "FAC/2025/000039",
-                    "facility_category": "HEALTH",
-                    "facility_type": "PHC",
-                    "facility_subtype": null,
-                    "facility_name": "Gejjalgetta PHC",
-                    "facility_ownership": "GOVERNMENT",
-                    "facility_region": "RURAL",
-                    "address": {
-                        "tenantId": "in",
-                        "latitude": 17.385044,
-                        "longitude": 78.486671,
-                        "addressId": null,
-                        "addressNumber": "12",
-                        "addressLine1": "Main Road",
-                        "addressLine2": "Colony Area",
-                        "landmark": "Near Water Tank",
-                        "city": "Hyderabad",
-                        "pincode": "500001",
-                        "detail": null,
-                        "state": null,
-                        "district": null,
-                        "block": null
-                    },
-                    "facility_details": {
-                        "hfrId": "HFR123",
-                        "pocName": "Dr Asha",
-                        "pocContact": "9876543210",
-                        "vendorCode": "VND001",
-                        "boundaryCode": "India_Telangana_Hyderabad_Gachibowli",
-                        "solutionDesignType": "type_7"
-                    },
-                    "wfStatus": "CREATED",
-                    "additionalDetails": null,
-                    "isActive": true
-                }
-            ]
+            response = requests.get(url, headers=headers, params=params)
             return response
 
         except requests.exceptions.HTTPError as http_err:

@@ -89,3 +89,28 @@ class ProjectServiceClient:
             print(f"An error occurred: {req_err}")
             raise req_err
 
+    def create_project_staff(self, project_staff_payload: Dict[str, Any]):
+        url = f"{self.project_service_url}/project/staff/v1/_create"
+        headers = {
+            "Content-Type": "application/json"
+        }
+
+        try:
+            response = requests.post(url, headers=headers, json=project_staff_payload)
+            response.raise_for_status()
+            print(f"Project staff created successfully: {response}")
+            return response
+
+        except requests.exceptions.HTTPError as http_err:
+            print(f"HTTP error occurred: {http_err}")
+            raise http_err
+        except requests.exceptions.ConnectionError as conn_err:
+            print(f"Connection error occurred: {conn_err}")
+            raise conn_err
+        except requests.exceptions.Timeout as timeout_err:
+            print(f"Timeout error occurred: {timeout_err}")
+            raise timeout_err
+        except requests.exceptions.RequestException as req_err:
+            print(f"An error occurred: {req_err}")
+            raise req_err
+
