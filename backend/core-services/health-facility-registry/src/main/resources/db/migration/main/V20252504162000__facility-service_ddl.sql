@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS facility (
-    facility_id UUID PRIMARY KEY,
+    facility_id VARCHAR PRIMARY KEY,
     tenant_id VARCHAR(128) NOT NULL,
     facility_name VARCHAR(256),
     facility_type VARCHAR(64),

@@ -7,26 +7,26 @@ serviceMaps:
       isTransaction: true
       queryMaps:
         - query: INSERT INTO facility (facility_id, tenant_id, facility_name, facility_type, facility_category, facility_ownership, facility_region, facility_details, address, wf_status, additional_details, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
-          basePath: $.facilities
+          basePath: $.facility
           jsonMaps:
-            - jsonPath: $.facilities.facility_id
-            - jsonPath: $.facilities.tenant_id
-            - jsonPath: $.facilities.facility_name
-            - jsonPath: $.facilities.facility_type
-            - jsonPath: $.facilities.facility_category
-            - jsonPath: $.facilities.facility_ownership
-            - jsonPath: $.facilities.facility_region
-            - jsonPath: $.facilities.facility_details
+            - jsonPath: $.facility.facility_id
+            - jsonPath: $.facility.tenant_id
+            - jsonPath: $.facility.facility_name
+            - jsonPath: $.facility.facility_type
+            - jsonPath: $.facility.facility_category
+            - jsonPath: $.facility.facility_ownership
+            - jsonPath: $.facility.facility_region
+            - jsonPath: $.facility.facility_details
               type: JSON
               dbType: JSONB
-            - jsonPath: $.facilities.address
+            - jsonPath: $.facility.address
               type: JSON
               dbType: JSONB
-            - jsonPath: $.facilities.wf_status
-            - jsonPath: $.facilities.additional_details
+            - jsonPath: $.facility.wfStatus
+            - jsonPath: $.facility.additionalDetails
               type: JSON
               dbType: JSONB
-            - jsonPath: $.facilities.is_active
+            - jsonPath: $.facility.isActive
     - version: 1.0
       description: Updates facility data
       fromTopic: update-facility
