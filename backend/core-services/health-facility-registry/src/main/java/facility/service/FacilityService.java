@@ -41,9 +41,6 @@ public class FacilityService {
     @Value("${egov.mdms.host}")
     private String mdmsHost;
 
-    @Value("${egov.mdms.port}")
-    private String mdmsPort;
-
     @Value("${egov.idgen.host}")
     private String idgenHost;
 
@@ -213,7 +210,7 @@ public class FacilityService {
     }
 
     private List<Map<String, Object>> fetchMDMSData(String tenantId) {
-        String url = String.format("%s:%s/egov-mdms-service/v2/_search", mdmsHost, mdmsPort);
+        String url = String.format("%s/egov-mdms-service/v2/_search", mdmsHost);
         Map<String, Object> requestInfo = Map.of("authToken", "");
         Map<String, Object> mdmsRequest = Map.of(
                 "RequestInfo", requestInfo,
