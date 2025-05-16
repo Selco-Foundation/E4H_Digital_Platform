@@ -21,7 +21,10 @@ export const CreateComplaint = ({ parentUrl }) => {
   const [uploadedFile, setUploadedFile] = useState([]);
   const [uploadedImages, setUploadedImagesIds] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
-  const specificFileConstraint = [{ type: "video", maxSize: 100, maxFiles: 2 }, { type: "image", maxSize: 10, maxFiles: 5 }];
+  const specificFileConstraint = [
+    { type: "video", maxSize: 100, maxFiles: 2 },
+    { type: "image", maxSize: 10, maxFiles: 5 },
+  ];
   const [district, setDistrict] = useState(null);
   const [block, setBlock] = useState(null);
   const [error, setError] = useState(null);
@@ -272,7 +275,6 @@ export const CreateComplaint = ({ parentUrl }) => {
 
   const wrapperSubmit = (data) => {
     const abc = handleButtonClick();
-
     if (!canSubmit) return;
     setSubmitted(true);
     !submitted && !abc && onSubmit(data);
