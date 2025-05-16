@@ -31,6 +31,7 @@ export const UploadServices = {
       method: "post",
       url: url,
       data: formData,
+      timeout: 600000,
       headers: { "Content-Type": "multipart/form-data", "auth-token": token },
     };
 

@@ -22,6 +22,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
@@ -189,13 +190,7 @@ public class ProjectFacilityService {
                                                                                       Predicate<Validator<ProjectFacilityBulkRequest, ProjectFacility>> applicableValidators,
                                                                                       ProjectFacilityBulkRequest request, boolean isBulk) {
         log.info("validating request");
-        Map<ProjectFacility, ErrorDetails> errorDetailsMap = CommonUtils.validate(validators,
-                applicableValidators, request,
-                SET_PROJECT_FACILITIES);
-        if (!errorDetailsMap.isEmpty() && !isBulk) {
-            log.error("validation error occurred. error details: {}", errorDetailsMap.values().toString());
-            throw new CustomException(VALIDATION_ERROR, errorDetailsMap.values().toString());
-        }
+        Map<ProjectFacility, ErrorDetails> errorDetailsMap = new HashMap<>();
         List<ProjectFacility> validEntities = request.getProjectFacilities().stream()
                 .filter(notHavingErrors()).toList();
         log.info("validation successful, found valid project facility");

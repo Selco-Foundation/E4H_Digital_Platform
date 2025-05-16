@@ -8,6 +8,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.junit4.SpringRunner;
@@ -22,6 +23,12 @@ import org.egov.TestConfiguration;
 @RunWith(SpringRunner.class)
 @WebMvcTest(OrgServicesApiController.class)
 @Import(TestConfiguration.class)
+@EnableAutoConfiguration(exclude = {
+    io.opentelemetry.instrumentation.spring.autoconfigure.OpenTelemetryAutoConfiguration.class,
+    org.springframework.boot.actuate.autoconfigure.observation.ObservationAutoConfiguration.class,
+    org.springframework.boot.actuate.autoconfigure.tracing.OpenTelemetryAutoConfiguration.class,
+    org.springframework.boot.actuate.autoconfigure.tracing.MicrometerTracingAutoConfiguration.class
+})
 public class OrgServicesApiControllerTest {
 
     @Autowired
