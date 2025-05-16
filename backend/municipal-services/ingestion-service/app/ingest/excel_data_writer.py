@@ -16,6 +16,8 @@ class ExcelDataWriter(DataWriter):
 
             # Remove the existing output sheet if it exists
             if self.output_sheet in book.sheetnames:
+                if len(book.sheetnames) == 1:
+                    book.create_sheet("TempSheet")
                 idx = book.sheetnames.index(self.output_sheet)
                 book.remove(book.worksheets[idx])
 
@@ -25,6 +27,12 @@ class ExcelDataWriter(DataWriter):
             # Now write the results to the output sheet
             with pd.ExcelWriter(self.file_path, engine='openpyxl', mode='a') as writer:
                 data.to_excel(writer, sheet_name=self.output_sheet, index=False)
+
+            # Reload and remove TempSheet if it exists
+            book = load_workbook(self.file_path)
+            if "TempSheet" in book.sheetnames:
+                book.remove(book["TempSheet"])
+                book.save(self.file_path)
 
             print(f"Updated '{self.output_sheet}' sheet in {self.file_path}")
             return True
