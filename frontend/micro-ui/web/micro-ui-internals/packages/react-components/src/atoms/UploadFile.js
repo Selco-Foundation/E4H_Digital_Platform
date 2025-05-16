@@ -293,7 +293,7 @@ const UploadFile = (props) => {
               {fileType.substring(0, 5) === "image" ? (
                 <div style={{ width: "100px", display: "flex", flexDirection: "column", flexWrap: "wrap", marginTop: "10px" }}>
                   <img src={fileSrc} alt="thumbnail" style={{ width: "100px", height: "80px" }} />
-                  <div style={{ color: "#D5D5D5", fontSize: "12px", textAlign: "center", width: "100%" }}>
+                  <div style={{ color: "#8F8F8F", fontSize: "12px", textAlign: "center", width: "100%" }}>
                     {fileDetailsData.file.name.length > 12
                       ? `${fileDetailsData.file.name.substring(0, 7)}...${fileDetailsData.file.name.substring(fileDetailsData.file.name.length - 7)}`
                       : fileDetailsData.file.name}
@@ -348,7 +348,7 @@ const UploadFile = (props) => {
                     style={{ zIndex: 9999, position: "relative", top: "45%", left: '45%' }}
                   >
                     <PlayIcon color={'white'} /></div> */}
-                  <div style={{ color: "#D5D5D5", fontSize: "12px", textAlign: "center", width: "100%" }}>
+                  <div style={{ color: "#8F8F8F", fontSize: "12px", textAlign: "center", width: "100%" }}>
                     {fileDetailsData.file.name.length > 20
                       ? `${fileDetailsData.file.name.substring(0, 10)}...${fileDetailsData.file.name.substring(
                           fileDetailsData.file.name.length - 10
