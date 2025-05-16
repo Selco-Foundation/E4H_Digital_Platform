@@ -372,5 +372,7 @@ def create_project_payload(request_info: RequestInfo, row: Series):
                     'boundaryType': safe_get(row, 'Boundary Type'),
                 }
             }
-        ]
+        ],
+        'isCascadingProjectDateUpdate': False,
+        'apiOperation': 'CREATE'
     }

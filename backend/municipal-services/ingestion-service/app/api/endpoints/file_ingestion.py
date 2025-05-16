@@ -389,7 +389,7 @@ async def upload_projects_excel_sheet(
                 try:
                     project_data_payload = create_project_payload(request_info, row)
                     response = project_client.create_project(project_data_payload)
-                    if response.status_code in (200, 201):
+                    if response.status_code in (200, 201, 202):
                         df.at[index, 'status'] = 'success'
                         df.at[index, 'error'] = ''
                     elif response.status_code == 400:
@@ -417,6 +417,88 @@ async def upload_projects_excel_sheet(
         raise HTTPException(
             status_code=500,
             detail=f"Failed to process project data: {str(e)}"
+        )
+    finally:
+        if input_temp_file and os.path.exists(input_temp_file.name):
+            os.unlink(input_temp_file.name)
+
+@router.post('/facilitySelection',
+             summary='Upload and process facility selection Excel file',
+             response_description='Returns processed Excel file with validations results')
+async def upload_facility_selection_excel_sheet(
+        facility_selection_file: UploadFile = File(description="Excel file containing facility selection data"),
+        project_id: str = Form(...),
+        facility_selection_sheet_name: str = Form(default="Facility Selection Template",
+                                        description="Name of the sheet containing facility selection data"),
+        request_info: str = Form(default="")
+):
+    input_temp_file = None
+    output_temp_file = None
+    request_info = request_info_from_json(request_info)
+    get_authorized_request_info(request_info)
+
+    try:
+        input_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
+        content = await facility_selection_file.read()
+        input_temp_file.write(content)
+        input_temp_file.close()
+        project_file_path = input_temp_file.name
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_filename = f"project_facility_ingestion_results_{timestamp}.xlsx"
+        output_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
+        output_temp_file.close()
+        output_file_path = output_temp_file.name
+
+        with open(project_file_path, 'rb') as src, open(output_file_path, 'wb') as dst:
+            dst.write(src.read())
+
+        df = pd.read_excel(project_file_path, sheet_name=facility_selection_sheet_name)
+
+        if 'status' not in df.columns:
+            df['status'] = ''
+        if 'error' not in df.columns:
+            df['error'] = ''
+
+        if project_service_url and not df.empty:
+            project_client = ProjectServiceClient(project_service_url)
+            for index, row in df[(df['status'] != 'success') & (df['Selection?'] == 'Yes')].iterrows():
+                try:
+                    facility_id = row.get("HC ID")
+                    if pd.isna(facility_id):
+                        df.at[index, 'status'] = 'failed'
+                        df.at[index, 'error'] = 'HC ID must not be null.'
+                        continue
+                    response = project_client.create_project_facility(request_info, project_id, facility_id)
+                    if response.status_code in (200, 201, 202):
+                        df.at[index, 'status'] = 'success'
+                        df.at[index, 'error'] = ''
+                    elif response.status_code == 400:
+                        error_data = response.json()
+                        error_message = error_data.get('Errors', [{}])[0].get('message', 'Unknown error')
+                        df.at[index, 'status'] = 'failed'
+                        df.at[index, 'error'] = error_message
+                    else:
+                        df.at[index, 'status'] = 'failed'
+                        df.at[index, 'error'] = f'{response.status_code}: {response.text}'
+                except Exception as e:
+                    df.at[index, 'status'] = 'failed'
+                    df.at[index, 'error'] = f'Exception: {str(e)}'
+
+        writer = ExcelDataWriter(output_file_path, output_sheet=facility_selection_sheet_name)
+        writer.write_data(df)
+
+        return FileResponse(
+            path=output_file_path,
+            filename=output_filename,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+
+    except Exception as e:
+        logger.error(f"Error processing facility selection data: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to process facility selection data: {str(e)}"
         )
     finally:
         if input_temp_file and os.path.exists(input_temp_file.name):
