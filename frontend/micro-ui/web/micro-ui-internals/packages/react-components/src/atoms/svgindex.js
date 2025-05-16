@@ -1106,7 +1106,7 @@ const UploadIconOrange = ({ styles, className, fill = "rgba(207,98,55,255)", hei
     <g clip-path="url(#clip0_431_5084)">
       <path
         d="M24.0007 42.6667H40.0007V26.6667H50.6673L32.0007 8L13.334 26.6667H24.0007V42.6667ZM13.334 48H50.6673V53.3333H13.334V48Z"
-        fill="rgba(207,98,55,255"
+        fill="rgba(207,98,55,255)"
       />
     </g>
     <defs>
