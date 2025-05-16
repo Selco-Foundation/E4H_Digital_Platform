@@ -1,6 +1,7 @@
 import os
 import tempfile
 from datetime import datetime
+from typing import Optional, List, Dict, Any
 
 import pandas as pd
 from fastapi import APIRouter, Form, HTTPException, Depends
@@ -11,8 +12,11 @@ from app.decorators.rbac_validator import get_authorized_request_info
 from app.ingest.facility_template_service import FacilityTemplateService
 from app.ingest.project_service import ProjectService
 from app.utils.convertor import request_info_from_json
+from app.utils.facility_service_client import FacilityServiceClient
 from app.utils.file_utils import create_temp_file, cleanup_temp_file
 from app.utils.mdms_client import MDMSClient
+from app.utils.project_service_client import ProjectServiceClient
+from app.utils.temp_mock_facility import mockedData
 
 router = APIRouter()
 logger = AppLogger().get_logger()
@@ -113,3 +117,89 @@ async def get_facility_ingestion_template_with_supervisors(
         cleanup_temp_file(output_file_path)
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
 
+@router.get('/facilitySelection',
+            summary='Generate facility selection template Excel file',
+            response_description="Returns Excel template with facility data")
+async def get_facility_selection_template(
+        facility_service: FacilityTemplateService = Depends(),
+        parent_project_id: Optional[str] = Form(default=None),
+        boundary_codes: str = Form(...),
+        request_info: str = Form(default="")
+):
+    request_info = request_info_from_json(request_info)
+    get_authorized_request_info(request_info)
+    mdms_client = MDMSClient(mdms_url)
+
+    boundary_code_list: List[str] = [code.strip() for code in boundary_codes.split(",") if code.strip()]
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_filename = f"facility_selection_template_{timestamp}.xlsx"
+    output_file_path = create_temp_file(suffix=".xlsx")
+
+    boundary_facilities = []
+    project_facilities = []
+
+    facility_client = None
+
+    try:
+        facility_selection_schema = mdms_client.fetch_facility_selection_schema(request_info=request_info)
+    except Exception as e:
+        logger.error(f"Error fetching data from external services: {e}")
+        cleanup_temp_file(output_file_path)
+        raise HTTPException(status_code=502, detail=f"External service error: {str(e)}")
+
+    if facility_service_url:
+        facility_client = FacilityServiceClient(facility_service_url)
+        try:
+            boundary_facilities = facility_client.search_facility_by_boundary_codes(boundary_code_list, request_info)
+            # boundary_facilities = mockedData()
+        except Exception as e:
+            print(f"Error fetching boundary facilities: {e}")
+
+    if project_service_url and parent_project_id:
+        project_client = ProjectServiceClient(project_service_url)
+        try:
+            pf_response = project_client.search_project_facility(
+                request_info=request_info,
+                project_id=parent_project_id
+            )
+            raw_project_facilities = pf_response.get("ProjectFacilities", [])
+            if raw_project_facilities and facility_client:
+                for pf in raw_project_facilities:
+                    facility_id = pf.get("facilityId")
+                    if facility_id:
+                        try:
+                            facility_data = facility_client.search_facility_by_id(facility_id)
+                            if facility_data:
+                                project_facilities.extend(facility_data)
+                        except Exception as e:
+                            print(f"Error fetching facility {facility_id}: {e}")
+        except Exception as e:
+            print(f"Error fetching project facilities: {e}")
+
+    # Intersect by facility_id
+    if parent_project_id:
+        boundary_facility_ids = set(f.get("facility_id") for f in boundary_facilities)
+        intersected_facilities = [
+            f for f in project_facilities if f.get("facility_id") in boundary_facility_ids
+        ]
+    else:
+        intersected_facilities = boundary_facilities
+
+    try:
+        facility_service.generate_selection_template_file(
+            output_path=output_file_path,
+            facility_selection_schema=facility_selection_schema,
+            facility_data=intersected_facilities
+        )
+        logger.info(f"Successfully created facility ingestion template at {output_file_path}")
+    except Exception as e:
+        logger.error(f"Error generating template file: {e}")
+        cleanup_temp_file(output_file_path)
+        raise HTTPException(status_code=500, detail=f"Template generation error: {str(e)}")
+
+    return FileResponse(
+        path=output_file_path,
+        filename=output_filename,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )

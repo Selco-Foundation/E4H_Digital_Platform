@@ -1,10 +1,12 @@
 # services/facility_service.py
 import os
-from typing import Dict, List
+from typing import Dict, List, Any
 
 import pandas as pd
 import requests
 from fastapi import HTTPException
+from openpyxl import load_workbook
+from openpyxl.worksheet.datavalidation import DataValidation
 
 from app.core.logging import AppLogger
 from app.schemas.boundary import Boundary
@@ -139,3 +141,69 @@ class FacilityTemplateService:
             if "No sheet named" in str(e):
                 raise HTTPException(status_code=400, detail=f"Sheet '{sheet_name}' not found in the uploaded file")
             raise e
+
+    def generate_selection_template_file(self, output_path: str,
+                                         facility_selection_schema: IngestionSchemaResponse,
+                                         facility_data: List[Dict[str, Any]]) -> None:
+        try:
+            create_empty_excel_file(output_path)
+
+            schema_columns = facility_selection_schema.mdms[0].data.columns
+            column_names = [col.name.strip() for col in schema_columns]
+
+            records = []
+            for facility in facility_data:
+                address = facility.get("address", {})
+                details = facility.get("facility_details", {})
+
+                record = {
+                    "Country": "India",
+                    "State": address.get("state", ""),
+                    "District": address.get("district", ""),
+                    "Block": address.get("block", ""),
+                    "Boundary Code": details.get("boundaryCode", ""),
+                    "Health Centre Name": facility.get("facility_name", ""),
+                    "HC ID": facility.get("facility_id", ""),
+                    "Type of HC": facility.get("facility_type", ""),
+                    "HFR ID": details.get("hfrId", ""),
+                    "NIN ID": details.get("ninId", ""),
+                    "Selection?": ""  # dropdown will be added
+                }
+
+                records.append(record)
+
+            df_facility = pd.DataFrame(records, columns=column_names)
+
+            self.write_excel_with_dropdown(output_path, df_facility)
+
+            logger.info(f"Successfully created template file at {output_path}")
+        except Exception as e:
+            logger.error(f"Error generating template file: {e}")
+            raise
+
+    def write_excel_with_dropdown(self, output_path: str, df: pd.DataFrame):
+        # Step 1: Write data to Excel
+        df.to_excel(output_path, sheet_name="Facility Selection Template", index=False)
+
+        # Step 2: Load workbook with openpyxl
+        wb = load_workbook(output_path)
+        ws = wb["Facility Selection Template"]
+
+        # Step 3: Create data validation for dropdown
+        dv = DataValidation(type="list", formula1='"Yes,No"', allow_blank=True)
+        dv.error = 'Please select from the list'
+        dv.errorTitle = 'Invalid Entry'
+
+        # Step 4: Find the column letter for "Selection?"
+        for col in ws.iter_cols(1, ws.max_column):
+            if col[0].value == "Selection?":
+                col_letter = col[0].column_letter
+                # Apply dropdown to all cells in that column (starting from row 2 to avoid header)
+                dv.ranges.add(f"{col_letter}2:{col_letter}{ws.max_row}")
+                break
+
+        # Step 5: Add the data validation to sheet
+        ws.add_data_validation(dv)
+
+        # Step 6: Save file
+        wb.save(output_path)
