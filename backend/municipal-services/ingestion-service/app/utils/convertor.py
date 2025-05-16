@@ -351,3 +351,26 @@ def convert_response_to_facility(response: Dict[str, Any]):
         "Phone Number": "",
         "Email Address": ""
     }
+
+def create_project_payload(request_info: RequestInfo, row: Series):
+    return {
+        'RequestInfo': request_info.model_dump(by_alias=True, exclude_none=True),
+        'Projects': [
+            {
+                'tenantId': 'in',
+                'name': safe_get(row, 'Project Name'),
+                'projectType': safe_get(row, 'Project Type'),
+                'projectSubType': safe_get(row, 'Project Sub Type'),
+                'department': safe_get(row, 'Project Department'),
+                'description': safe_get(row, 'Project Description'),
+                'referenceID': safe_get(row, 'Project Reference ID'),
+                'parent': safe_get(row, 'Parent Project ID'),
+                'startDate': safe_get(row, 'Project Start Date (Epoch)'),
+                'endDate': safe_get(row, 'Project End Date (Epoch)'),
+                'address': {
+                    'boundary': safe_get(row, 'Boundary Code'),
+                    'boundaryType': safe_get(row, 'Boundary Type'),
+                }
+            }
+        ]
+    }
