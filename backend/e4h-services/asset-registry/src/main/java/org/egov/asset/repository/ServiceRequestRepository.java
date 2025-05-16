@@ -3,6 +3,7 @@ package org.egov.asset.repository;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import digit.models.coremodels.IdGenerationRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.tracer.model.ServiceCallException;
 import org.springframework.beans.factory.annotation.Autowired;

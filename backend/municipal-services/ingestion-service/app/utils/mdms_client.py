@@ -53,3 +53,18 @@ class MDMSClient:
         }
         response = requests.post(url, headers=headers, json=payload)
         return convert_json_to_object(response.text)
+
+    def fetch_facility_selection_schema(self, request_info: RequestInfo) -> 'IngestionSchemaResponse':
+        url = f"{self.mdms_url}/egov-mdms-service/v2/_search"
+        payload = {
+            "RequestInfo": {"authToken": request_info.auth_token},
+            "MdmsCriteria": {
+                "tenantId": "in",
+                "schemaCode": "data-ingestion.FacilitySelectionSchema"
+            }
+        }
+        headers = {
+            "Accept": "application/json, text/plain, */*",
+        }
+        response = requests.post(url, headers=headers, json=payload)
+        return convert_json_to_object(response.text)
