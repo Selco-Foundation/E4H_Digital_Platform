@@ -1,10 +1,9 @@
 import React, { useEffect, useRef, useState, Fragment } from "react";
 import ButtonSelector from "./ButtonSelector";
-import { Close, CloseSvg, UploadIcon, UploadIconOrange } from "./svgindex";
+import { Close, CloseSvg, PlayIcon, UploadIcon, UploadIconOrange } from "./svgindex";
 import { useTranslation } from "react-i18next";
 import RemoveableTag from "./RemoveableTag";
-import { DeleteBtn } from "./svgindex";
-import { Loader } from "./Loader";
+import { DeleteBtn } from "./svgindex"; import { Loader } from "@egovernments/digit-ui-react-components";
 const randomId = Math.floor((Math.random() || 1) * 139);
 
 const getCitizenStyles = (value) => {
@@ -135,15 +134,15 @@ const getCitizenStyles = (value) => {
 
 const UploadFile = (props) => {
   const { t } = useTranslation();
-  const inpRef = useRef();
+  const inputRef = useRef();
   const [hasFile, setHasFile] = useState(false);
   const [prevSate, setprevSate] = useState(null);
   const user_type = Digit.SessionStorage.get("userType");
   let extraStyles = {};
   const handleChange = () => {
-    if (inpRef.current.files[0]) {
+    if (inputRef.current.files[0]) {
       setHasFile(true);
-      setprevSate(inpRef.current.files[0]);
+      setprevSate(inputRef.current.files[0]);
     } else setHasFile(false);
   };
 
@@ -168,23 +167,23 @@ const UploadFile = (props) => {
   // }
 
   const handleDelete = () => {
-    inpRef.current.value = "";
+    inputRef.current.value = "";
     props.onDelete();
   };
 
   const handleEmpty = () => {
-    if (inpRef.current.files.length <= 0 && prevSate !== null) {
-      inpRef.current.value = "";
+    if (inputRef.current.files.length <= 0 && prevSate !== null) {
+      inputRef.current.value = "";
       props.onDelete();
     }
   };
 
-  if (props.uploadMessage && inpRef.current.value) {
+  if (props.uploadMessage && inputRef.current.value) {
     handleDelete();
     setHasFile(false);
   }
 
-  useEffect(() => handleEmpty(), [inpRef?.current?.files]);
+  useEffect(() => handleEmpty(), [inputRef?.current?.files]);
 
   useEffect(() => handleChange(), [props.message]);
 
@@ -199,19 +198,18 @@ const UploadFile = (props) => {
       {showHint && <p className="cell-text">{t(props?.hintText)}</p>}
       <div style={{ display: "flex", alignItems: "center" }}>
         <div
-          className={`upload-file ${props?.customClass} ${user_type === "employee" ? "" : "upload-file-max-width"} ${
-            props.disabled ? " disabled" : ""
-          }`}
+          className={`upload-file ${props?.customClass} ${user_type === "employee" ? "" : "upload-file-max-width"} ${props.disabled ? " disabled" : ""
+            }`}
           style={
             extraStyles?.uploadFile
               ? {
-                  ...extraStyles?.uploadFile,
-                  padding: "0.5rem",
-                  width: "85%",
-                  display: "flex",
-                  alignItems: "center",
-                  color: props?.uploadedFiles?.length === 0 ? "#D5D5D5" : "#000000",
-                }
+                ...extraStyles?.uploadFile,
+                padding: "0.5rem",
+                width: "85%",
+                display: "flex",
+                alignItems: "center",
+                color: props?.uploadedFiles?.length === 0 ? "#D5D5D5" : "#000000",
+              }
               : {}
           }
         >
@@ -223,17 +221,17 @@ const UploadFile = (props) => {
             style={{
               ...(extraStyles
                 ? {
-                    ...extraStyles?.inputStyles,
-                    ...props?.inputStyles,
-                    maxHeight: "56px !important",
-                    paddingLeft: "0px !important",
-                    paddingRight: "0px !important",
-                    display: "none",
-                  }
+                  ...extraStyles?.inputStyles,
+                  ...props?.inputStyles,
+                  maxHeight: "56px !important",
+                  paddingLeft: "0px !important",
+                  paddingRight: "0px !important",
+                  display: "none",
+                }
                 : { ...props?.inputStyles }),
               cursor: "pointer",
             }}
-            ref={inpRef}
+            ref={inputRef}
             type="file"
             id={props.id || `document-${randomId}`}
             name="file"
@@ -272,11 +270,12 @@ const UploadFile = (props) => {
             textStyles={styles}
             type={props.buttonType}
             onSubmit={() => {
-              inpRef.current.click();
+              inputRef.current.click();
             }}
           />
         </div>
       </div>
+      {props.isUploading && <Loader />}
       <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
         {props?.uploadedFiles?.map((file, index) => {
           const fileDetailsData = file[1];
@@ -287,19 +286,73 @@ const UploadFile = (props) => {
           return (
             <div className="tag-container" style={extraStyles ? extraStyles?.tagContainerStyles : null}>
               {fileType.substring(0, 5) === "image" ? (
-                <img src={fileSrc} alt="thumbnail" style={{ width: "100px", height: "80px" }} />
-              ) : (
-                <video controls style={{ width: "250px", height: "150px" }}>
-                  <source src={fileSrc} type="video/mp4" />
-                </video>
-              )}
-              <div
-                style={{ zIndex: 9999, position: "relative", right: "24px", cursor: "pointer" }}
+                <div style={{ width: '100px', display: 'flex', flexDirection: 'column', flexWrap: 'wrap', marginTop: '10px' }}><img src={fileSrc} alt="thumbnail" style={{ width: "100px", height: "80px" }} /><div style={{ color: '#D5D5D5', fontSize: '12px', textAlign: "center", width: '100%' }}>{fileDetailsData.file.name.length > 12 ? `${fileDetailsData.file.name.substring(0, 7)}...${fileDetailsData.file.name.substring(fileDetailsData.file.name.length - 7)}` : fileDetailsData.file.name}</div></div>
+              ) : fileType.substring(0, 5) === "video" ?
+                (<div style={{ width: 'fit-content', display: 'flex', flexDirection: 'column', flexWrap: 'wrap', marginTop: '10px' }}>
+                  <div style={{ position: "relative", height: "250px", width: "300px" }}>
+                    <video
+                      ref={(el) => (fileDetailsData.videoRef = el)}
+                      src={fileSrc}
+                      style={{ height: "100%", width: "100%" }}
+                      onClick={() => {
+                        if (fileDetailsData.videoRef.paused) {
+                          fileDetailsData.videoRef.play();
+                        } else {
+                          fileDetailsData.videoRef.pause();
+                        }
+                      }}
+                    />
+                    <button
+                      onClick={() => {
+                        if (fileDetailsData.videoRef.paused) {
+                          fileDetailsData.videoRef.play();
+                        } else {
+                          fileDetailsData.videoRef.pause();
+                        }
+                      }}
+                      style={{
+                        position: "absolute",
+                        bottom: "45%",
+                        left: "50%",
+                        transform: "translateX(-50%)",
+                        background: "rgba(0,0,0,0.5)",
+                        border: "none",
+                        borderRadius: "50%",
+                        width: "40px",
+                        height: "40px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: "white",
+                        cursor: "pointer",
+                        paddingLeft: '5px'
+                      }}
+                    >
+                      <PlayIcon color='white' />
+                    </button>
+                  </div>
+
+                  {/* <div
+                    style={{ zIndex: 9999, position: "relative", top: "45%", left: '45%' }}
+                  >
+                    <PlayIcon color={'white'} /></div> */}
+                  <div style={{ color: '#D5D5D5', fontSize: '12px', textAlign: "center", width: '100%' }}>
+                    {
+                      fileDetailsData.file.name.length > 20 ?
+                        `${fileDetailsData.file.name.substring(0, 10)}...${fileDetailsData.file.name.substring(fileDetailsData.file.name.length - 10)}`
+                        :
+                        fileDetailsData.file.name
+                    }
+                  </div>
+                </div>)
+                : null}
+              {(fileType.substring(0, 5) === "image" || fileType.substring(0, 5) === "video") && <div
+                style={{ zIndex: 9999, position: "relative", right: "24px", top: '10px', cursor: "pointer", height: 'fit-content' }}
                 onClick={(e) => props?.removeTargetedFile(fileDetailsData, e)}
               >
                 <CloseSvg color="white" background="#135067" />
-              </div>
-              {/* <RemoveableTag extraStyles={extraStyles} key={index} text={file[0]} onClick={(e) => props?.removeTargetedFile(fileDetailsData, e)} /> */}
+              </div>}
+              {(fileType.substring(0, 5) !== "image" && fileType.substring(0, 5) !== "video") && <RemoveableTag extraStyles={extraStyles} key={index} text={file[0]} onClick={(e) => props?.removeTargetedFile(fileDetailsData, e)} />}
             </div>
           );
         })}
