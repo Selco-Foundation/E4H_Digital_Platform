@@ -21,7 +21,7 @@ export const CreateComplaint = ({ parentUrl }) => {
   const [uploadedFile, setUploadedFile] = useState([]);
   const [uploadedImages, setUploadedImagesIds] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
-  const specificFileConstraint = { type: "video", maxSize: 100, maxFiles: 2 };
+  const specificFileConstraint = [{ type: "video", maxSize: 100, maxFiles: 2 }, { type: "image", maxSize: 10, maxFiles: 5 }];
   const [district, setDistrict] = useState(null);
   const [block, setBlock] = useState(null);
   const [error, setError] = useState(null);
@@ -527,8 +527,8 @@ export const CreateComplaint = ({ parentUrl }) => {
                   Digit.SessionStorage.get("Employee.tenantId") !== stateTenantId ? Digit.SessionStorage.get("Employee.tenantId") : healthcentre?.code
                 }
                 acceptFiles={".png, .jpg, .jpeg, image/*"}
-                multiple={false}
-                specificFileConstraint={specificFileConstraint}
+                multiple={true}
+                specificFileConstraint={specificFileConstraint[1]}
               />
               {/* <ImageUploadHandler tenantId={tenant} uploadedImages={uploadedImages} onPhotoChange={handleUpload} disabled={disbaled}/> */}
               <div style={{ marginTop: "10px", marginBottom: "20px", fontSize: "12px", color: "#b5b4b4" }}>{t("CS_MAXIMUM_IMAGES")}</div>
@@ -554,7 +554,7 @@ export const CreateComplaint = ({ parentUrl }) => {
                 }
                 acceptFiles={".mp4, .avi, .mov, .wmv, video/*"}
                 multiple={false}
-                specificFileConstraint={specificFileConstraint}
+                specificFileConstraint={specificFileConstraint[0]}
               />
               {/* <ImageUploadHandler tenantId={tenant} uploadedImages={uploadedImages} onPhotoChange={handleUpload} disabled={disbaled}/> */}
               <div style={{ marginTop: "10px", fontSize: "12px", color: "#b5b4b4" }}>{t("CS_MAXIMUM_VIDEOS")}</div>
