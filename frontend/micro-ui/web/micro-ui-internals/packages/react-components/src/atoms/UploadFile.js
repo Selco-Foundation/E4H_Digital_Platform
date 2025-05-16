@@ -314,7 +314,7 @@ const UploadFile = (props) => {
                         }
                       }}
                     />
-                    <button
+                    <div
                       onClick={() => {
                         if (fileDetailsData.videoRef.paused) {
                           fileDetailsData.videoRef.play();
@@ -341,7 +341,7 @@ const UploadFile = (props) => {
                       }}
                     >
                       <PlayIcon color="white" />
-                    </button>
+                    </div>
                   </div>
 
                   {/* <div
@@ -359,7 +359,14 @@ const UploadFile = (props) => {
               ) : null}
               {(fileType.substring(0, 5) === "image" || fileType.substring(0, 5) === "video") && (
                 <div
-                  style={{ zIndex: 9999, position: "relative", right: "24px", top: "10px", cursor: "pointer", height: "fit-content" }}
+                  style={{
+                    zIndex: 9999,
+                    position: "relative",
+                    right: "24px",
+                    top: fileType.substring(0, 5) === "video" ? "30px" : "10px",
+                    cursor: "pointer",
+                    height: "fit-content",
+                  }}
                   onClick={(e) => props?.removeTargetedFile(fileDetailsData, e)}
                 >
                   <CloseSvg color="white" background="#135067" />
