@@ -15,7 +15,6 @@ class ProjectSearchModelWrapperMapper
     if (_instance == null) {
       MapperContainer.globals
           .use(_instance = ProjectSearchModelWrapperMapper._());
-      ProjectSearchModelMapper.ensureInitialized();
     }
     return _instance!;
   }
@@ -362,7 +361,6 @@ class ProjectModelMapper extends ClassMapperBase<ProjectModel> {
   static ProjectModelMapper ensureInitialized() {
     if (_instance == null) {
       MapperContainer.globals.use(_instance = ProjectModelMapper._());
-      AddressModelMapper.ensureInitialized();
     }
     return _instance!;
   }

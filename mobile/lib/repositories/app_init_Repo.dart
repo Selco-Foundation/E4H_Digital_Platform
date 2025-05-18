@@ -1,12 +1,12 @@
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/services.dart';
 
 import '../data/remote_client.dart';
 import '../data/secure_storage/secureStore.dart';
 import '../model/appconfig/mdmsRequest.dart';
 import '../model/appconfig/mdmsResponse.dart';
-import '../model/serviceRegistry/serviceRegistryModel.dart';
 import '../utils/envConfig.dart';
 
 //create an instance of the environmentConfiguration class
@@ -27,6 +27,10 @@ class AppInitRepo {
       return MdmsResponseModel.fromJson(json.decode(localAppConfig));
     }
 
+    if (envConfig.variables.envType == EnvType.dev) {
+      return _loadLocalAppConfig();
+    }
+
     final headers = <String, String>{
       // "content-type": 'application/x-www-form-urlencoded',
       "Access-Control-Allow-Origin": "*",
@@ -35,6 +39,7 @@ class AppInitRepo {
 
     try {
       //make an api call
+
       final response = await client.post(envConfig.variables.completeMdmsApiUrl,
           data: body, options: Options(headers: headers));
 
@@ -51,40 +56,14 @@ class AppInitRepo {
     }
   }
 
-  Future<ServiceRegistryModel> searchServiceRegistry(
-    Map<String, dynamic> body,
-  ) async {
-    final SecureStore storage = SecureStore();
-
-    // try to fetch locally
-    String? localServiceRegistry = await storage.getServiceRegistry();
-    if (localServiceRegistry != null) {
-      return ServiceRegistryModel.fromJson(json.decode(localServiceRegistry));
-    }
-
-    //fetch from the mdms
-    final client = DioClient().dio;
-
-    final headers = <String, String>{
-      "Access-Control-Allow-Origin": "*",
-      "authorization": "Basic ZWdvdi11c2VyLWNsaWVudDo=",
-    };
-
-    //this request needs an interceptor to add RequestInfo
+  Future<MdmsResponseModel> _loadLocalAppConfig() async {
     try {
-      //make an api call
-      final response = await client.post(envConfig.variables.completeMdmsApiUrl,
-          data: body, options: Options(headers: headers));
-
-      final responseBody = ServiceRegistryModel.fromJson(
-          json.decode(response.toString())['MdmsRes']);
-
-      //store locally to avoid fetching online in future
-      storage.setServiceRegistry(responseBody);
-
-      return responseBody;
-    } catch (_) {
-      rethrow;
+      final jsonString =
+          await rootBundle.loadString('assets/mocks/mockAppConfig.json');
+      final jsonResponse = json.decode(jsonString);
+      return MdmsResponseModel.fromJson(jsonResponse['MdmsRes']);
+    } catch (e) {
+      throw Exception('Failed to load mock app config: $e');
     }
   }
 }

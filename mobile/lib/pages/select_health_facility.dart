@@ -3,15 +3,23 @@ import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:digit_ui_components/widgets/atoms/digit_divider.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
+import '../blocs/cache_project_asset/cache_project_asset.dart';
+import '../blocs/project/project.dart';
+import '../blocs/selected_project/selected_project.dart';
+import '../data/nosql/cache_project_asset.dart';
+import '../model/projects/project.dart';
 import '../router/app_router.dart';
+import '../utils/extensions.dart';
 import '../widgets/header/back_navigation_help_header.dart';
 import '../widgets/navigation/navbar.dart';
 
 @RoutePage()
 class SelectHealthFacilityPage extends StatefulWidget {
   const SelectHealthFacilityPage({super.key});
+
   @override
   State<SelectHealthFacilityPage> createState() {
     return _SelectHealthFacilityPageState();
@@ -19,6 +27,23 @@ class SelectHealthFacilityPage extends StatefulWidget {
 }
 
 class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
+  void _handleProjectTap(BuildContext context, ProjectModel project) {
+    context.read<CacheProjectAssetBloc>().add(
+        CacheProjectAssetEvent.add(CacheProjectAsset(projectId: project.id)));
+    context
+        .read<SelectedProjectBloc>()
+        .add(SelectedProjectEvent.select(project));
+  }
+
+  void _handleNavigation(BuildContext context, CacheProjectAsset entry) {
+    print("entry.progress ${entry.progress}");
+    if (entry.progress == 0) {
+      context.router.push(const AssetCountRoute());
+    } else {
+      context.router.push(const SelectAssetTypeRoute());
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -33,62 +58,105 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
                 showBackNavigation: true,
                 showHelp: false,
               ),
-              Padding(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: spacer4, vertical: spacer2),
-                  child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        DigitCard(
-                          children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Select Health Facility',
-                                  style: textTheme.bodyL.copyWith(
-                                      color: theme.colorTheme.text.primary),
-                                ),
-                                const SizedBox(
-                                  height: spacer2,
-                                ),
-                                Row(
+              BlocBuilder<ProjectBloc, ProjectState>(
+                builder: (context, state) {
+                  context
+                      .read<ProjectBloc>()
+                      .add(const ProjectEvent.fetchProjects(uuid: ""));
+                  if (state is ProjectFetchedState) {
+                    final projectList = state.projectsList;
+                    if (projectList.isEmpty) {
+                      return const Text('No Projects to be fetched');
+                    }
+                    return Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: spacer4, vertical: spacer2),
+                        child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              BlocConsumer<CacheProjectAssetBloc,
+                                  CacheProjectAssetState>(
+                                listener: (context, cacheState) {
+                                  cacheState.whenOrNull(
+                                      added: (entry) =>
+                                          _handleNavigation(context, entry),
+                                      loaded: (entries) => _handleNavigation(
+                                          context, entries.first),
+                                      error: (error) {
+                                        context.showSnackBar(SnackBar(
+                                          content: Text(error),
+                                          backgroundColor:
+                                              const Light().alertError,
+                                        ));
+                                      });
+                                },
+                                builder: (context, state) {
+                                  return DigitCard(
+                                    children: [
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Select Health Facility',
+                                            style: textTheme.bodyL.copyWith(
+                                                color: theme
+                                                    .colorTheme.text.primary),
+                                          ),
+                                          const SizedBox(
+                                            height: spacer2,
+                                          ),
+                                          Row(
+                                            children: [
+                                              const Expanded(
+                                                child: DigitSearchFormInput(
+                                                  suffixIcon: Icons.search,
+                                                ),
+                                              ),
+                                              Icon(
+                                                Icons.import_export,
+                                                color: theme.colorTheme.primary
+                                                    .primary1,
+                                                size: spacer8,
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      )
+                                    ],
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: spacer8),
+                              // InstallationReportCard(
+                              //   onPress: () => context.router
+                              //       .push(const SelectAssetTypeRoute()),
+                              //   title: 'Alkod',
+                              //   dateAssigned: DateTime(2024, 1, 25),
+                              //   status: 'Pending Installation',
+                              //   solutionDocPath: 'Allepy Solution Doc',
+                              // ),
+                              for (final project in projectList)
+                                Column(
                                   children: [
-                                    const Expanded(
-                                      child: DigitSearchFormInput(
-                                        suffixIcon: Icons.search,
-                                      ),
+                                    InstallationReportCard(
+                                      onPress: () {
+                                        _handleProjectTap(context, project);
+                                      },
+                                      title: project.name,
+                                      dateAssigned: DateTime(2024, 1, 25),
+                                      status: project.projectType,
+                                      solutionDocPath: project.projectNumber,
                                     ),
-                                    Icon(
-                                      Icons.import_export,
-                                      color: theme.colorTheme.primary.primary1,
-                                      size: spacer8,
-                                    ),
+                                    const SizedBox(height: spacer5),
                                   ],
-                                ),
-                              ],
-                            )
-                          ],
-                        ),
-                        const SizedBox(height: spacer8),
-                        InstallationReportCard(
-                          onPress: () =>
-                              context.router.push(const SelectAssetTypeRoute()),
-                          title: 'Alkod',
-                          dateAssigned: DateTime(2024, 1, 25),
-                          status: 'Pending Installation',
-                          solutionDocPath: 'Allepy Solution Doc',
-                        ),
-                        const SizedBox(height: spacer5),
-                        InstallationReportCard(
-                          onPress: () =>
-                              context.router.push(const SelectAssetTypeRoute()),
-                          title: 'Allepy',
-                          dateAssigned: DateTime(2024, 1, 25),
-                          status: 'Pending Installation',
-                          solutionDocPath: 'Allepy Solution Doc',
-                        )
-                      ])),
+                                )
+                            ]));
+                  } else {
+                    return const Center(child: Text('No Projects Found'));
+                  }
+                },
+              ),
             ]));
   }
 }

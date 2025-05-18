@@ -8,6 +8,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../blocs/asset_type/asset_type.dart';
 import '../blocs/report_type/report_type.dart';
 import '../router/app_router.dart';
+import '../utils/extensions.dart';
 import '../utils/i18_key_constants.dart' as i18;
 import '../widgets/button/footer_button.dart';
 import '../widgets/header/back_navigation_help_header.dart';
@@ -57,7 +58,7 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
                 } else {
                   return FooterButton(
                     showSuffixIcon: false,
-                    text: i18.common.coreCommonSave,
+                    text: context.translate(i18.common.coreCommonSave),
                     onPress: () {
                       context.router.push(const DataSaveSuccessRoute());
                     },

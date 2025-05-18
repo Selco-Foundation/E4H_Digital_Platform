@@ -24,7 +24,7 @@ Map<String, dynamic> _$$RoleActionsWrapperModelImplToJson(
 _$RoleActionsModelImpl _$$RoleActionsModelImplFromJson(
         Map<String, dynamic> json) =>
     _$RoleActionsModelImpl(
-      id: json['id'] as int,
+      id: (json['id'] as num).toInt(),
       name: json['name'] as String?,
       url: json['url'] as String?,
       displayName: json['displayName'] as String?,

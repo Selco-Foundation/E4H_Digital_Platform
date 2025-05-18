@@ -40,7 +40,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         enableFixedDigitButton: true,
         backgroundColor: theme.colorTheme.generic.background,
         footer: FooterButton(
-          text: i18.common.coreCommonNext,
+          text: context.translate(i18.common.coreCommonNext),
           onPress: () {
             context.router.replace(const EnterOtpRoute());
           },

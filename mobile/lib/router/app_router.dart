@@ -1,8 +1,10 @@
 import 'package:auto_route/auto_route.dart';
 
 import '../pages/add_new_asset.dart';
+import '../pages/asset_count.dart';
 import '../pages/asset_summary.dart';
 import '../pages/asset_type_detail.dart';
+import '../pages/authenticated.dart';
 import '../pages/data_save_success.dart';
 import '../pages/download_status.dart';
 import '../pages/draft.dart';
@@ -50,42 +52,44 @@ class AppRouter extends _$AppRouter {
             AutoRoute(
                 page: SetupNewPasswordRoute.page,
                 path: Routes.setUpNewPassword),
-            AutoRoute(page: HomeRoute.page, path: Routes.home),
-            AutoRoute(
-                page: InstallationReportRoute.page,
-                path: Routes.installationReport),
-            AutoRoute(
-                page: SelectHealthFacilityRoute.page,
-                path: Routes.selectHealthFacility),
-            AutoRoute(
-                page: SelectAssetTypeRoute.page, path: Routes.selectAssetType),
-            AutoRoute(
-                page: SpecificationRoute.page, path: Routes.specification),
-            AutoRoute(
-                page: AssetTypeDetailRoute.page, path: Routes.assetTypeDetail),
-            AutoRoute(page: AddNewAssetRoute.page, path: Routes.addNewAsset),
-            AutoRoute(page: MediaUploadRoute.page, path: Routes.mediaUpload),
-            AutoRoute(page: AssetSummaryRoute.page, path: Routes.assetSummary),
-            AutoRoute(
-                page: DataSaveSuccessRoute.page, path: Routes.dataSaveSuccess),
-            AutoRoute(
-                page: OverallAssetSummaryRoute.page,
-                path: Routes.overallAssetSummary),
-            AutoRoute(
-                page: DownloadStatusRoute.page, path: Routes.downloadStatus),
-            AutoRoute(page: InboxRoute.page, path: Routes.inbox),
-            AutoRoute(
-                page: InboxAssetSummaryRoute.page,
-                path: Routes.inboxAssetSummary),
-            AutoRoute(
-                page: SubmitForApprovalRoute.page,
-                path: Routes.submitForApproval),
-            AutoRoute(
-                page: SubmittedSaveSuccessRoute.page,
-                path: Routes.submittedSaveSuccess),
-            AutoRoute(page: DraftRoute.page, path: Routes.draft),
-            AutoRoute(page: DraftSummaryRoute.page, path: Routes.draftSummary)
           ],
         ),
+        AutoRoute(page: AuthenticatedRouteWrapper.page, path: '/', children: [
+          AutoRoute(page: HomeRoute.page, initial: true, path: Routes.home),
+          AutoRoute(
+              page: InstallationReportRoute.page,
+              path: Routes.installationReport),
+          AutoRoute(
+              page: SelectHealthFacilityRoute.page,
+              path: Routes.selectHealthFacility),
+          AutoRoute(page: AssetCountRoute.page, path: Routes.assetCount),
+          AutoRoute(
+              page: SelectAssetTypeRoute.page, path: Routes.selectAssetType),
+          AutoRoute(page: SpecificationRoute.page, path: Routes.specification),
+          AutoRoute(
+              page: AssetTypeDetailRoute.page, path: Routes.assetTypeDetail),
+          AutoRoute(page: AddNewAssetRoute.page, path: Routes.addNewAsset),
+          AutoRoute(page: MediaUploadRoute.page, path: Routes.mediaUpload),
+          AutoRoute(page: AssetSummaryRoute.page, path: Routes.assetSummary),
+          AutoRoute(
+              page: DataSaveSuccessRoute.page, path: Routes.dataSaveSuccess),
+          AutoRoute(
+              page: OverallAssetSummaryRoute.page,
+              path: Routes.overallAssetSummary),
+          AutoRoute(
+              page: DownloadStatusRoute.page, path: Routes.downloadStatus),
+          AutoRoute(page: InboxRoute.page, path: Routes.inbox),
+          AutoRoute(
+              page: InboxAssetSummaryRoute.page,
+              path: Routes.inboxAssetSummary),
+          AutoRoute(
+              page: SubmitForApprovalRoute.page,
+              path: Routes.submitForApproval),
+          AutoRoute(
+              page: SubmittedSaveSuccessRoute.page,
+              path: Routes.submittedSaveSuccess),
+          AutoRoute(page: DraftRoute.page, path: Routes.draft),
+          AutoRoute(page: DraftSummaryRoute.page, path: Routes.draftSummary)
+        ])
       ];
 }

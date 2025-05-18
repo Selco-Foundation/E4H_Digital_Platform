@@ -3,12 +3,11 @@ import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
-import '../model/dataModel.dart';
-import '../model/project_staff/project_staff.dart';
-import '../model/projects/project.dart';
-import '../repositories/app_init_Repo.dart';
-import '../repositories/project_repo.dart';
-import '../repositories/project_staff_repo.dart';
+import '../../model/project_staff/project_staff.dart';
+import '../../model/projects/project.dart';
+import '../../repositories/app_init_Repo.dart';
+import '../../repositories/project_repo.dart';
+import '../../repositories/project_staff_repo.dart';
 
 part 'project.freezed.dart';
 
@@ -24,9 +23,8 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
   FutureOr<void> _handleFetchProjects(
       ProjectsFetchEvent event, Emitter<ProjectState> emit) async {
     // Fetch project staff list
-    final projectStaffList = await ProjectStaffRemoteRepository().searchStaff(
-        ProjectStaffSearchModel(staffId: [event.uuid.toString()]),
-        event.actionMap);
+    final projectStaffList = await ProjectStaffRemoteRepository()
+        .searchStaff(ProjectStaffSearchModel(staffId: [event.uuid.toString()]));
 
     // Create search body for projects based on staff's project IDs
     List<ProjectSearchModel> searchBody = [];
@@ -40,7 +38,7 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
     // Fetch projects based on search body
     final projectRemoteRepository = ProjectRemoteRepository();
     List<ProjectModel> projectsList =
-        await projectRemoteRepository.search(searchBody, event.actionMap);
+        await projectRemoteRepository.search(searchBody);
 
     // Emit fetched state with projects list
     emit(ProjectState.fetched(projectsList));
@@ -57,9 +55,7 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
 // Freezed union for project events
 @freezed
 class ProjectEvent with _$ProjectEvent {
-  const factory ProjectEvent.fetchProjects(
-          {required String uuid,
-          required Map<DataModelType, Map<ApiOperation, String>> actionMap}) =
+  const factory ProjectEvent.fetchProjects({required String uuid}) =
       ProjectsFetchEvent;
 
   const factory ProjectEvent.selectProject(String projectId) =

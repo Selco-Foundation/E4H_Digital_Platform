@@ -1,6 +1,6 @@
 import 'package:uuid/uuid.dart';
 
-import '../blocs/app_init.dart';
+import '../blocs/app_init/app_init.dart';
 import '../data/app_shared_preferences.dart';
 
 getSelectedLanguage(Initialized state, int index) {

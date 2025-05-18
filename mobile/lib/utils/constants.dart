@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:isar/isar.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:selco/data/nosql/cache_asset_count.dart';
 
+import '../data/nosql/cache_project_asset.dart';
 import '../data/nosql/localization.dart';
 
 final scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
@@ -33,6 +35,8 @@ class Constants {
       return await Isar.open(
         [
           LocalizationWrapperSchema,
+          CacheProjectAssetSchema,
+          CacheAssetCountSchema,
         ],
         name: 'HCM',
         inspector: true,

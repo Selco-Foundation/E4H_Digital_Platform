@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:isar/isar.dart';
 
-import '../model/appconfig/mdmsResponse.dart';
+import '../../model/appconfig/mdmsResponse.dart';
 import 'app_localization.dart';
 
 //the aim here is to override methods that are defined by default in the localizations delegate file

@@ -1070,7 +1070,7 @@ packages:
     source: hosted
     version: "4.0.0"
   location:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: location
       sha256: "37ffdadcd4b1498b769824f45ebb4de8ed46663a4a67ac27b33a590ee486579f"
