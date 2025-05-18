@@ -1,3 +1,5 @@
+import 'package:digit_scanner/blocs/app_localization.dart'
+    as scanner_localization;
 import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/services/location_bloc.dart';
 import 'package:digit_ui_components/utils/app_logger.dart';
@@ -84,7 +86,7 @@ class _MainAppState extends State<MainApp> {
             BlocProvider(create: (_) => LocationBloc(location: Location())),
             BlocProvider(
                 create: (context) => CacheProjectAssetBloc(widget.isar)),
-            BlocProvider(create: (context) => CacheAssetCountBloc(widget.isar))
+            BlocProvider(create: (context) => CacheAssetCountBloc(widget.isar)),
           ],
           child: BlocBuilder<AppInitialization, InitState>(
             builder: (context, state) => state.maybeWhen(
@@ -131,6 +133,20 @@ class _MainAppState extends State<MainApp> {
                             GlobalWidgetsLocalizations.delegate,
                             GlobalCupertinoLocalizations.delegate,
                             GlobalMaterialLocalizations.delegate,
+                            // scanner_localization.ScannerLocalization
+                            //     .getDelegate(
+                            //   AppLocalizations.getDelegate(
+                            //       appConfig.appConfig!, widget.isar),
+                            // ),
+                            scanner_localization.ScannerLocalization
+                                .getDelegate(
+                                    getLocalizationString(
+                                        widget.isar, selectedLocale),
+                                    languages!)
+                            // scanner_localization.ScannerLocalization.getDelegate(
+                            //     LocalizationRepository()
+                            //         .getLocalizationsList({}) as Future,
+                            //     [Language(label: 'English', value: 'en_IN')])
                           ],
                           // Set the locale for the app
                           locale: languages != null

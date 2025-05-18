@@ -23,4 +23,5 @@ class Routes {
   static const submittedSaveSuccess = 'submitted-save-success';
   static const draft = 'draft';
   static const draftSummary = 'draft-summary';
+  static const barcode = 'DigitScannerRoute';
 }
