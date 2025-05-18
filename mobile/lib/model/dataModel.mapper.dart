@@ -451,7 +451,6 @@ class AdditionalFieldsMapper extends ClassMapperBase<AdditionalFields> {
   static AdditionalFieldsMapper ensureInitialized() {
     if (_instance == null) {
       MapperContainer.globals.use(_instance = AdditionalFieldsMapper._());
-      AdditionalFieldMapper.ensureInitialized();
     }
     return _instance!;
   }

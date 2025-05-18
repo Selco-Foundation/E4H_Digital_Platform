@@ -1,14 +1,17 @@
 import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
-import 'package:digit_ui_components/widgets/atoms/digit_stepper.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../blocs/asset_type/asset_type.dart';
+import '../blocs/cache_asset_count/cache_asset_count.dart';
+import '../blocs/selected_project/selected_project.dart';
+import '../data/nosql/cache_asset_count.dart';
 import '../router/app_router.dart';
 import '../utils/i18_key_constants.dart' as i18;
 import '../widgets/button/footer_button.dart';
+import '../widgets/cards/stepper.dart';
 import '../widgets/header/back_navigation_help_header.dart';
 import '../widgets/navigation/navbar.dart';
 
@@ -21,6 +24,34 @@ class AssetTypeDetailPage extends StatefulWidget {
 }
 
 class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
+  String? _currentProjectId;
+
+  @override
+  void initState() {
+    super.initState();
+    final assetType = context.read<AssetTypeBloc>().state.when(
+          initial: () => '',
+          inverter: () => 'inverter',
+          battery: () => 'battery',
+          panel: () => 'panel',
+        );
+    final selState = context.read<SelectedProjectBloc>().state;
+    selState.whenOrNull(selected: (project) {
+      _currentProjectId = project.id;
+      _updateProgress(project.id, assetType);
+    });
+  }
+
+  void _updateProgress(String projectId, assetType) {
+    context
+        .read<CacheAssetCountBloc>()
+        .add(CacheAssetCountEvent.update(CacheAssetCount(
+          projectId: projectId,
+          assetType: assetType,
+          progress: 4,
+        )));
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -57,23 +88,11 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        SizedBox(
-                          height: spacer8,
-                          width: double.infinity,
-                          child: DigitStepper(
-                            activeIndex: 2,
-                            stepperList: [
-                              StepperData(
-                                onStepTap: () {},
-                              ),
-                              const StepperData(),
-                              const StepperData(),
-                              const StepperData(),
-                              const StepperData(),
-                            ],
-                            stepperDirection: Axis.horizontal,
-                            inverted: true,
-                          ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            AppStepper(context: context, activeIndex: 3)
+                          ],
                         ),
                         const SizedBox(height: spacer4),
                         DigitCard(children: [

@@ -183,8 +183,6 @@ class AddressModelMapper extends ClassMapperBase<AddressModel> {
   static AddressModelMapper ensureInitialized() {
     if (_instance == null) {
       MapperContainer.globals.use(_instance = AddressModelMapper._());
-      AddressTypeMapper.ensureInitialized();
-      LocalityModelMapper.ensureInitialized();
     }
     return _instance!;
   }

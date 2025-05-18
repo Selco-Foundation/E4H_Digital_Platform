@@ -148,7 +148,6 @@ class UserModelMapper extends ClassMapperBase<UserModel> {
   static UserModelMapper ensureInitialized() {
     if (_instance == null) {
       MapperContainer.globals.use(_instance = UserModelMapper._());
-      RoleMapper.ensureInitialized();
     }
     return _instance!;
   }

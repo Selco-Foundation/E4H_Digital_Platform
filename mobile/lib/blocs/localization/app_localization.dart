@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:isar/isar.dart';
 
-import '../data/nosql/localization.dart';
-import '../model/appconfig/mdmsResponse.dart';
-import '../model/localization/localizationModel.dart';
+import '../../data/nosql/localization.dart';
+import '../../model/appconfig/mdmsResponse.dart';
+import '../../model/localization/localizationModel.dart';
 import 'app_localization_delegate.dart';
 
 class AppLocalizations {

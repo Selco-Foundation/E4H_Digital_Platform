@@ -1,5 +1,6 @@
 import '../data/remote_client.dart';
 import '../model/localization/localizationModel.dart';
+import '../utils/envConfig.dart';
 
 class LocalizationRepository {
   final client = DioClient().dio;
@@ -8,7 +9,7 @@ class LocalizationRepository {
       Map<String, String> queryParameters) async {
     try {
       final response = await client.post(
-          'https://unified-qa.digit.org/localization/messages/v1/_search',
+          '${envConfig.variables.baseUrl}localization/messages/v1/_search',
           queryParameters: queryParameters,
           data: {});
 

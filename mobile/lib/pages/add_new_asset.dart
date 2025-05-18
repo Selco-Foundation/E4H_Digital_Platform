@@ -15,6 +15,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../blocs/asset_type/asset_type.dart';
 import '../router/app_router.dart';
+import '../utils/extensions.dart';
 import '../utils/i18_key_constants.dart' as i18;
 import '../widgets/button/footer_button.dart';
 import '../widgets/header/back_navigation_help_header.dart';
@@ -55,7 +56,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                 backgroundColor: theme.colorTheme.generic.background,
                 footer: FooterButton(
                   showSuffixIcon: false,
-                  text: i18.common.coreCommonNext,
+                  text: context.translate(i18.common.coreCommonNext),
                   onPress: () {
                     context.router.push(const MediaUploadRoute());
                   },

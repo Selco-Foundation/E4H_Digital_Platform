@@ -1,6 +1,8 @@
 import 'package:digit_ui_components/digit_components.dart';
 import 'package:flutter/material.dart';
 
+import '../blocs/localization/app_localization.dart';
+
 extension on ThemeData {
   get transparent => DigitTheme.instance.colors.transparent;
 }
@@ -19,12 +21,13 @@ extension ContextExt on BuildContext {
   NavigatorState get navigator => Navigator.of(this);
 
   ScaffoldMessengerState get scaffoldMessenger => ScaffoldMessenger.of(this);
+
+  get showSnackBar => scaffoldMessenger.showSnackBar;
 }
 
 extension LocalizationExtension on BuildContext {
   String translate(String key) {
-    //final localization = AppLocalizations.of(this);
-    return //localization?.translate(key) ??
-        key;
+    final localization = AppLocalizations.of(this);
+    return localization?.translate(key) ?? key;
   }
 }

@@ -1,14 +1,15 @@
 import 'dart:async';
 
+import 'package:dio/dio.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
-import '../data/secure_storage/secureStore.dart';
-import '../model/dataModel.dart';
-import '../model/login/loginModel.dart';
-import '../model/response/responsemodel.dart';
-import '../repositories/app_init_Repo.dart';
-import '../repositories/authRepo.dart';
+import '../../data/secure_storage/secureStore.dart';
+import '../../model/dataModel.dart';
+import '../../model/login/loginModel.dart';
+import '../../model/response/responsemodel.dart';
+import '../../repositories/app_init_Repo.dart';
+import '../../repositories/authRepo.dart';
 
 part 'authbloc.freezed.dart';
 
@@ -29,19 +30,15 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     ResponseModel response;
     final secureStore = SecureStore();
     //Send a login request and retrieve the access_token for further requests
+    emit(const AuthState.loading());
     try {
-      final loginUrl =
-          event.actionMap?[DataModelType.user]?[ApiOperation.login];
-
-      response = await authRepository.validateLogin(
-          loginUrl!,
-          LoginModel(
-            username: event.username,
-            password: event.password,
-            tenantId: envConfig.variables.tenantId,
-            grant_type: 'password',
-            userType: 'EMPLOYEE',
-          ));
+      response = await authRepository.validateLogin(LoginModel(
+        username: event.username,
+        password: event.password,
+        tenantId: envConfig.variables.tenantId,
+        grant_type: 'password',
+        userType: 'EMPLOYEE',
+      ));
 
       _accesstoken = response.access_token;
       _refreshtoken = response.refresh_token!;
@@ -85,7 +82,17 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
       // secureStore.setSelectedIndividual(loggedInIndividual.first.id);
     } catch (err) {
-      rethrow;
+      String errorMessage = 'Unknown error occurred';
+      if (err is DioException) {
+        errorMessage = err.response?.data?['error_description'] ??
+            err.response?.data?['error'] ??
+            err.message ??
+            'Network error occurred';
+      } else if (err is Exception) {
+        errorMessage = err.toString();
+      }
+      emit(AuthState.error(errorMessage));
+      // rethrow;
     }
   }
 
@@ -136,11 +143,12 @@ class AuthEvent with _$AuthEvent {
 
 @freezed
 class AuthState with _$AuthState {
-  const factory AuthState.error() = _ErrorState;
+  const factory AuthState.error(String message) = _ErrorState;
   const factory AuthState.unauthenticated() = _UnauthenticatedState;
   const factory AuthState.authenticated({
     required String accesstoken,
     required String? refreshtoken,
     required UserRequest? userRequest,
   }) = _AuthenticatedState;
+  const factory AuthState.loading() = _LoadingState;
 }

@@ -6,7 +6,6 @@ import '../../model/appconfig/mdmsResponse.dart';
 import '../../model/localization/localizationModel.dart';
 import '../../model/response/responsemodel.dart';
 import '../../model/role_actions/role_actions_model.dart';
-import '../../model/serviceRegistry/serviceRegistryModel.dart';
 
 class SecureStore {
   final storage = const FlutterSecureStorage();
@@ -33,14 +32,14 @@ class SecureStore {
   }
 
   //service Registry
-  Future setServiceRegistry(ServiceRegistryModel serviceRegistryModel) async {
-    String jsonServiceRegistryList = json.encode(serviceRegistryModel.toJson());
-    await storage.write(key: 'serviceRegistry', value: jsonServiceRegistryList);
-  }
-
-  Future<String?> getServiceRegistry() async {
-    return await storage.read(key: 'serviceRegistry');
-  }
+  // Future setServiceRegistry(ServiceRegistryModel serviceRegistryModel) async {
+  //   String jsonServiceRegistryList = json.encode(serviceRegistryModel.toJson());
+  //   await storage.write(key: 'serviceRegistry', value: jsonServiceRegistryList);
+  // }
+  //
+  // Future<String?> getServiceRegistry() async {
+  //   return await storage.read(key: 'serviceRegistry');
+  // }
 
   //access token
   Future setAccessToken(String? accessToken) async {

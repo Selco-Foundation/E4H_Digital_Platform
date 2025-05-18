@@ -5,10 +5,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:isar/isar.dart';
 
-import '../data/app_shared_preferences.dart';
-import '../data/nosql/localization.dart';
-import '../model/appconfig/mdmsResponse.dart';
-import '../repositories/localizationRepo.dart';
+import '../../data/app_shared_preferences.dart';
+import '../../data/nosql/localization.dart';
+import '../../model/appconfig/mdmsResponse.dart';
+import '../../repositories/app_init_Repo.dart';
+import '../../repositories/localizationRepo.dart';
 import 'app_localization.dart';
 
 part 'localization.freezed.dart';
@@ -36,19 +37,25 @@ class LocalizationBloc extends Bloc<LocalizationEvent, LocalizationState> {
 
       //defining parameters in case we need to fetch localizations from online
       //the module name list is essentially a list of all the use cases or modules we need our localizations for
-      List<String?> moduleNameList = [];
-      if (event.moduleList != null) {
-        for (var list in event.moduleList!.interfaces!) {
-          if (!list.name!.contains(RegExp(r'[A-Z]'))) {
-            moduleNameList.add(list.name);
-          }
-        }
-      }
+      // List<String?> moduleNameList = [];
+      // if (event.moduleList != null) {
+      //   for (var list in event.moduleList!.interfaces!) {
+      //     if (!list.name!.contains(RegExp(r'[A-Z]'))) {
+      //       moduleNameList.add(list.name);
+      //     }
+      //   }
+      // }
+      List<String?> moduleNameList = [
+        'rainmaker-hrms',
+        'rainmaker-pg',
+        'rainmaker-common',
+        'rainmaker-im',
+        'rainmaker-hr'
+      ];
       final Map<String, String> queryParam = {
-        'locale': event.locale.toString(),
+        'locale': 'en_IN', // event.locale.toString(),
         'module': moduleNameList.join(','),
-        'tenantId': 'mz'
-        // TODO Need to read this from env file
+        'tenantId': envConfig.variables.tenantId // 'mz'
       };
 
       //initialize appLocalizations for searching ISAR or setting locmodel

@@ -7,7 +7,6 @@ import 'package:reactive_forms/reactive_forms.dart';
 
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
-import '../utils/i18_key_constants.dart' as i18;
 import '../widgets/button/footer_button.dart';
 import '../widgets/navigation/navbar.dart';
 
@@ -42,7 +41,7 @@ class _EnterOtpPageState extends State<EnterOtpPage> {
         backgroundColor: theme.colorTheme.generic.background,
         footer: FooterButton(
           showSuffixIcon: false,
-          text: i18.common.coreCommonSubmit,
+          text: "Submit",
           onPress: () {
             context.router.replace(const SetupNewPasswordRoute());
           },
