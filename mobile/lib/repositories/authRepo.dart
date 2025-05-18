@@ -10,7 +10,7 @@ import '../utils/envConfig.dart';
 
 class AuthRepository {
   AuthRepository();
-  Future<ResponseModel> validateLogin(String url, LoginModel body) async {
+  Future<ResponseModel> validateLogin(LoginModel body) async {
     final formData = body.toJson();
 
     //make a custom Dio client which will not send the request with the interceptor
@@ -24,7 +24,7 @@ class AuthRepository {
     };
 
     try {
-      final response = await authClient.post(url,
+      final response = await authClient.post('user/oauth/token',
           data: formData, options: Options(headers: headers));
       final responseBody = ResponseModel.fromJson(response.data);
 

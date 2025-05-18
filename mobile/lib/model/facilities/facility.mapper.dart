@@ -173,7 +173,6 @@ class FacilityModelMapper extends ClassMapperBase<FacilityModel> {
   static FacilityModelMapper ensureInitialized() {
     if (_instance == null) {
       MapperContainer.globals.use(_instance = FacilityModelMapper._());
-      AddressModelMapper.ensureInitialized();
     }
     return _instance!;
   }

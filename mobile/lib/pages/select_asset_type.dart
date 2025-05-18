@@ -1,14 +1,18 @@
+import 'package:collection/collection.dart';
 import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
-import 'package:digit_ui_components/widgets/atoms/digit_stepper.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../blocs/asset_type/asset_type.dart';
+import '../blocs/cache_asset_count/cache_asset_count.dart';
+import '../blocs/selected_project/selected_project.dart';
+import '../data/nosql/cache_asset_count.dart';
 import '../router/app_router.dart';
 import '../utils/i18_key_constants.dart' as i18;
 import '../widgets/button/footer_button.dart';
+import '../widgets/cards/stepper.dart';
 import '../widgets/header/back_navigation_help_header.dart';
 import '../widgets/navigation/navbar.dart';
 
@@ -23,6 +27,61 @@ class SelectAssetTypePage extends StatefulWidget {
 }
 
 class _SelectAssetTypePageState extends State<SelectAssetTypePage> {
+  String? _currentProjectId;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentProjectId = context
+        .read<SelectedProjectBloc>()
+        .state
+        .whenOrNull(selected: (project) => project.id);
+  }
+
+  CacheAssetCount? currentCacheEntryFor(
+    BuildContext context, {
+    required String projectId,
+    required String assetType,
+  }) {
+    final state = context.read<CacheAssetCountBloc>().state;
+    return state.maybeWhen(
+      loaded: (entries) => entries.firstWhereOrNull(
+        (e) => e.projectId == projectId && e.assetType == assetType,
+      ),
+      orElse: () => null,
+    );
+  }
+
+  void _handleNavigation(BuildContext context) {
+    final assetType = context.read<AssetTypeBloc>().state.when(
+          initial: () => '',
+          inverter: () => 'inverter',
+          battery: () => 'battery',
+          panel: () => 'panel',
+        );
+
+    CacheAssetCount? cacheEntry = currentCacheEntryFor(context,
+        projectId: _currentProjectId!, assetType: assetType);
+    print("cacheEntry?.progress.toString() ${cacheEntry?.progress.toString()}");
+    print("cacheEntry?.count.toString() ${cacheEntry?.count.toString()}");
+    switch (cacheEntry?.progress) {
+      case 3:
+        context.router.push(const SpecificationRoute());
+        break;
+      case 4:
+        context.router.push(const AssetTypeDetailRoute());
+        break;
+      case 5:
+        context.router.push(const AssetTypeDetailRoute());
+        break;
+      case 6:
+        context.router.push(const AssetTypeDetailRoute());
+        break;
+      default:
+        context.router.push(const SpecificationRoute());
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -44,7 +103,7 @@ class _SelectAssetTypePageState extends State<SelectAssetTypePage> {
                   text: i18.common.coreCommonNext,
                   isDisabled: state is AssetTypeInitial,
                   onPress: () {
-                    context.router.push(const SpecificationRoute());
+                    _handleNavigation(context);
                   },
                 ),
                 children: [
@@ -54,22 +113,11 @@ class _SelectAssetTypePageState extends State<SelectAssetTypePage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const SizedBox(
-                          height: spacer8,
-                          width: double.infinity,
-                          child: DigitStepper(
-                            activeIndex: 0,
-                            stepperList: [
-                              StepperData(),
-                              StepperData(),
-                              StepperData(),
-                              StepperData(),
-                              StepperData(),
-                            ],
-                            stepperDirection: Axis.horizontal,
-                            inverted: true,
-                          ),
-                        ),
+                        Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              AppStepper(context: context, activeIndex: 1),
+                            ]),
                         const SizedBox(height: spacer4),
                         DigitCard(children: [
                           Text(

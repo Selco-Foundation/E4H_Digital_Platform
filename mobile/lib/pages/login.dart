@@ -1,16 +1,11 @@
-import 'package:digit_ui_components/enum/app_enums.dart';
+import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
-import 'package:digit_ui_components/theme/spacers.dart';
-import 'package:digit_ui_components/widgets/atoms/digit_button.dart';
-import 'package:digit_ui_components/widgets/atoms/digit_password_form_input.dart';
-import 'package:digit_ui_components/widgets/atoms/digit_text_form_input.dart';
-import 'package:digit_ui_components/widgets/atoms/labelled_fields.dart';
-import 'package:digit_ui_components/widgets/atoms/reactive_fields.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
-import 'package:digit_ui_components/widgets/powered_by_digit.dart';
-import 'package:digit_ui_components/widgets/scrollable_content.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:reactive_forms/reactive_forms.dart';
+import 'package:recase/recase.dart';
+import 'package:selco/blocs/auth/authbloc.dart';
 
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
@@ -59,7 +54,7 @@ class _LoginPageState extends State<LoginPage> {
                   margin: const EdgeInsets.all(spacer2),
                   children: [
                     Text(
-                      "Login",
+                      context.translate(i18.common.coreCommonLogin).headerCase,
                       style: textTheme.headingXl.copyWith(
                         color: theme
                             .colorTheme.primary.primary2, // Use theme color
@@ -108,18 +103,62 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ),
                     ),
-                    DigitButton(
-                      label: "Login",
-                      type: DigitButtonType.primary,
-                      onPressed: () {
-                        form.markAllAsTouched();
-                        if (!form.valid) return;
-
-                        FocusManager.instance.primaryFocus?.unfocus();
-                        context.router.push(const HomeRoute());
+                    BlocConsumer<AuthBloc, AuthState>(
+                      listener: (context, state) {
+                        state.whenOrNull(
+                          error: (message) {
+                            context.showSnackBar(SnackBar(
+                              content: Text(message),
+                              backgroundColor: const Light().alertError,
+                            ));
+                          },
+                          authenticated:
+                              (accesstoken, refreshtoken, userRequest) {
+                            context.router
+                                .replace(const AuthenticatedRouteWrapper());
+                          },
+                        );
                       },
-                      size: DigitButtonSize.large,
-                      mainAxisSize: MainAxisSize.max,
+                      builder: (context, state) {
+                        return state.maybeWhen(
+                          loading: () => DigitButton(
+                            isDisabled: true,
+                            label: 'Loading...',
+                            type: DigitButtonType.primary,
+                            onPressed: () {},
+                            size: DigitButtonSize.large,
+                            mainAxisSize: MainAxisSize.max,
+                          ),
+                          orElse: () => DigitButton(
+                            label:
+                                context.translate(i18.common.coreCommonLogin),
+                            type: DigitButtonType.primary,
+                            onPressed: () {
+                              form.markAllAsTouched();
+                              if (!form.valid) return;
+
+                              FocusManager.instance.primaryFocus?.unfocus();
+                              // context.router.push(const HomeRoute());
+                              context.read<AuthBloc>().add(
+                                    AuthEvent.login(
+                                      // Extract and trim username from form control
+                                      username: (form.control(_userId).value
+                                              as String)
+                                          .trim(),
+                                      // Extract and trim password from form control
+                                      password: (form.control(_password).value
+                                              as String)
+                                          .trim(),
+                                      // Pass action map if needed
+                                      // actionMap: actionMap,
+                                    ),
+                                  );
+                            },
+                            size: DigitButtonSize.large,
+                            mainAxisSize: MainAxisSize.max,
+                          ),
+                        );
+                      },
                     ),
                     DigitButton(
                         label: "Forgot Password",

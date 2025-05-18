@@ -14,9 +14,6 @@ class IndividualSearchModelMapper
   static IndividualSearchModelMapper ensureInitialized() {
     if (_instance == null) {
       MapperContainer.globals.use(_instance = IndividualSearchModelMapper._());
-      NameSearchModelMapper.ensureInitialized();
-      GenderMapper.ensureInitialized();
-      IdentifierSearchModelMapper.ensureInitialized();
     }
     return _instance!;
   }
@@ -245,11 +242,6 @@ class IndividualModelMapper extends ClassMapperBase<IndividualModel> {
   static IndividualModelMapper ensureInitialized() {
     if (_instance == null) {
       MapperContainer.globals.use(_instance = IndividualModelMapper._());
-      NameModelMapper.ensureInitialized();
-      BloodGroupMapper.ensureInitialized();
-      AddressModelMapper.ensureInitialized();
-      GenderMapper.ensureInitialized();
-      IdentifierModelMapper.ensureInitialized();
     }
     return _instance!;
   }

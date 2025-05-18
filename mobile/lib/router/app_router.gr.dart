@@ -21,6 +21,12 @@ abstract class _$AppRouter extends RootStackRouter {
         child: const AddNewAssetPage(),
       );
     },
+    AssetCountRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const AssetCountPage(),
+      );
+    },
     AssetSummaryRoute.name: (routeData) {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
@@ -31,6 +37,12 @@ abstract class _$AppRouter extends RootStackRouter {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
         child: const AssetTypeDetailPage(),
+      );
+    },
+    AuthenticatedRouteWrapper.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const AuthenticatedScreenWrapper(),
       );
     },
     DataSaveSuccessRoute.name: (routeData) {
@@ -177,6 +189,20 @@ class AddNewAssetRoute extends PageRouteInfo<void> {
 }
 
 /// generated route for
+/// [AssetCountPage]
+class AssetCountRoute extends PageRouteInfo<void> {
+  const AssetCountRoute({List<PageRouteInfo>? children})
+      : super(
+          AssetCountRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'AssetCountRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
 /// [AssetSummaryPage]
 class AssetSummaryRoute extends PageRouteInfo<void> {
   const AssetSummaryRoute({List<PageRouteInfo>? children})
@@ -200,6 +226,20 @@ class AssetTypeDetailRoute extends PageRouteInfo<void> {
         );
 
   static const String name = 'AssetTypeDetailRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [AuthenticatedScreenWrapper]
+class AuthenticatedRouteWrapper extends PageRouteInfo<void> {
+  const AuthenticatedRouteWrapper({List<PageRouteInfo>? children})
+      : super(
+          AuthenticatedRouteWrapper.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'AuthenticatedRouteWrapper';
 
   static const PageInfo<void> page = PageInfo<void>(name);
 }

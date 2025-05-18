@@ -18,25 +18,19 @@ final _privateConstructorUsedError = UnsupportedError(
 mixin _$ProjectEvent {
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(String uuid,
-            Map<DataModelType, Map<ApiOperation, String>> actionMap)
-        fetchProjects,
+    required TResult Function(String uuid) fetchProjects,
     required TResult Function(String projectId) selectProject,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(String uuid,
-            Map<DataModelType, Map<ApiOperation, String>> actionMap)?
-        fetchProjects,
+    TResult? Function(String uuid)? fetchProjects,
     TResult? Function(String projectId)? selectProject,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(String uuid,
-            Map<DataModelType, Map<ApiOperation, String>> actionMap)?
-        fetchProjects,
+    TResult Function(String uuid)? fetchProjects,
     TResult Function(String projectId)? selectProject,
     required TResult orElse(),
   }) =>
@@ -86,8 +80,7 @@ abstract class _$$ProjectsFetchEventImplCopyWith<$Res> {
           $Res Function(_$ProjectsFetchEventImpl) then) =
       __$$ProjectsFetchEventImplCopyWithImpl<$Res>;
   @useResult
-  $Res call(
-      {String uuid, Map<DataModelType, Map<ApiOperation, String>> actionMap});
+  $Res call({String uuid});
 }
 
 /// @nodoc
@@ -102,17 +95,12 @@ class __$$ProjectsFetchEventImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? uuid = null,
-    Object? actionMap = null,
   }) {
     return _then(_$ProjectsFetchEventImpl(
       uuid: null == uuid
           ? _value.uuid
           : uuid // ignore: cast_nullable_to_non_nullable
               as String,
-      actionMap: null == actionMap
-          ? _value._actionMap
-          : actionMap // ignore: cast_nullable_to_non_nullable
-              as Map<DataModelType, Map<ApiOperation, String>>,
     ));
   }
 }
@@ -120,24 +108,14 @@ class __$$ProjectsFetchEventImplCopyWithImpl<$Res>
 /// @nodoc
 
 class _$ProjectsFetchEventImpl implements ProjectsFetchEvent {
-  const _$ProjectsFetchEventImpl(
-      {required this.uuid,
-      required final Map<DataModelType, Map<ApiOperation, String>> actionMap})
-      : _actionMap = actionMap;
+  const _$ProjectsFetchEventImpl({required this.uuid});
 
   @override
   final String uuid;
-  final Map<DataModelType, Map<ApiOperation, String>> _actionMap;
-  @override
-  Map<DataModelType, Map<ApiOperation, String>> get actionMap {
-    if (_actionMap is EqualUnmodifiableMapView) return _actionMap;
-    // ignore: implicit_dynamic_type
-    return EqualUnmodifiableMapView(_actionMap);
-  }
 
   @override
   String toString() {
-    return 'ProjectEvent.fetchProjects(uuid: $uuid, actionMap: $actionMap)';
+    return 'ProjectEvent.fetchProjects(uuid: $uuid)';
   }
 
   @override
@@ -145,14 +123,11 @@ class _$ProjectsFetchEventImpl implements ProjectsFetchEvent {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _$ProjectsFetchEventImpl &&
-            (identical(other.uuid, uuid) || other.uuid == uuid) &&
-            const DeepCollectionEquality()
-                .equals(other._actionMap, _actionMap));
+            (identical(other.uuid, uuid) || other.uuid == uuid));
   }
 
   @override
-  int get hashCode => Object.hash(
-      runtimeType, uuid, const DeepCollectionEquality().hash(_actionMap));
+  int get hashCode => Object.hash(runtimeType, uuid);
 
   @JsonKey(ignore: true)
   @override
@@ -164,36 +139,30 @@ class _$ProjectsFetchEventImpl implements ProjectsFetchEvent {
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(String uuid,
-            Map<DataModelType, Map<ApiOperation, String>> actionMap)
-        fetchProjects,
+    required TResult Function(String uuid) fetchProjects,
     required TResult Function(String projectId) selectProject,
   }) {
-    return fetchProjects(uuid, actionMap);
+    return fetchProjects(uuid);
   }
 
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(String uuid,
-            Map<DataModelType, Map<ApiOperation, String>> actionMap)?
-        fetchProjects,
+    TResult? Function(String uuid)? fetchProjects,
     TResult? Function(String projectId)? selectProject,
   }) {
-    return fetchProjects?.call(uuid, actionMap);
+    return fetchProjects?.call(uuid);
   }
 
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(String uuid,
-            Map<DataModelType, Map<ApiOperation, String>> actionMap)?
-        fetchProjects,
+    TResult Function(String uuid)? fetchProjects,
     TResult Function(String projectId)? selectProject,
     required TResult orElse(),
   }) {
     if (fetchProjects != null) {
-      return fetchProjects(uuid, actionMap);
+      return fetchProjects(uuid);
     }
     return orElse();
   }
@@ -231,13 +200,10 @@ class _$ProjectsFetchEventImpl implements ProjectsFetchEvent {
 }
 
 abstract class ProjectsFetchEvent implements ProjectEvent {
-  const factory ProjectsFetchEvent(
-      {required final String uuid,
-      required final Map<DataModelType, Map<ApiOperation, String>>
-          actionMap}) = _$ProjectsFetchEventImpl;
+  const factory ProjectsFetchEvent({required final String uuid}) =
+      _$ProjectsFetchEventImpl;
 
   String get uuid;
-  Map<DataModelType, Map<ApiOperation, String>> get actionMap;
   @JsonKey(ignore: true)
   _$$ProjectsFetchEventImplCopyWith<_$ProjectsFetchEventImpl> get copyWith =>
       throw _privateConstructorUsedError;
@@ -309,9 +275,7 @@ class _$ProjectSelectEventImpl implements ProjectSelectEvent {
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(String uuid,
-            Map<DataModelType, Map<ApiOperation, String>> actionMap)
-        fetchProjects,
+    required TResult Function(String uuid) fetchProjects,
     required TResult Function(String projectId) selectProject,
   }) {
     return selectProject(projectId);
@@ -320,9 +284,7 @@ class _$ProjectSelectEventImpl implements ProjectSelectEvent {
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(String uuid,
-            Map<DataModelType, Map<ApiOperation, String>> actionMap)?
-        fetchProjects,
+    TResult? Function(String uuid)? fetchProjects,
     TResult? Function(String projectId)? selectProject,
   }) {
     return selectProject?.call(projectId);
@@ -331,9 +293,7 @@ class _$ProjectSelectEventImpl implements ProjectSelectEvent {
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(String uuid,
-            Map<DataModelType, Map<ApiOperation, String>> actionMap)?
-        fetchProjects,
+    TResult Function(String uuid)? fetchProjects,
     TResult Function(String projectId)? selectProject,
     required TResult orElse(),
   }) {
