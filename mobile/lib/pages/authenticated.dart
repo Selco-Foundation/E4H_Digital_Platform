@@ -1,4 +1,5 @@
 import 'package:auto_route/auto_route.dart';
+import 'package:digit_scanner/blocs/scanner.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:selco/blocs/selected_project/selected_project.dart';
@@ -22,6 +23,9 @@ class AuthenticatedScreenWrapper extends StatelessWidget {
             BlocProvider(create: (context) => InboxTypeBloc()),
             BlocProvider(create: (context) => ProjectBloc()),
             BlocProvider(create: (context) => SelectedProjectBloc()),
+            BlocProvider(
+                create: (context) =>
+                    DigitScannerBloc(const DigitScannerState())),
           ],
           child: const Scaffold(
             body: AutoRouter(),

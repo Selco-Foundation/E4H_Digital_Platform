@@ -32,7 +32,9 @@ export 'package:auto_route/auto_route.dart';
 
 part 'app_router.gr.dart';
 
-@AutoRouterConfig(modules: [])
+@AutoRouterConfig(modules: [
+//   DigitScannerRoute,
+])
 class AppRouter extends _$AppRouter {
   @override
   RouteType get defaultRouteType => const RouteType.material();
@@ -89,7 +91,7 @@ class AppRouter extends _$AppRouter {
               page: SubmittedSaveSuccessRoute.page,
               path: Routes.submittedSaveSuccess),
           AutoRoute(page: DraftRoute.page, path: Routes.draft),
-          AutoRoute(page: DraftSummaryRoute.page, path: Routes.draftSummary)
+          AutoRoute(page: DraftSummaryRoute.page, path: Routes.draftSummary),
         ])
       ];
 }
