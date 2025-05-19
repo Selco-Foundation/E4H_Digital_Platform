@@ -4,7 +4,6 @@ package facility.config;
 import org.springframework.stereotype.Component;
 
 
-@Component
 public class ServiceConstants {
 
     private ServiceConstants() {}

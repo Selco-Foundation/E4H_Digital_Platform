@@ -11,6 +11,7 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Map;
+import java.util.Objects;
 
 import static facility.config.ServiceConstants.EXTERNAL_SERVICE_EXCEPTION;
 import static facility.config.ServiceConstants.SEARCHER_SERVICE_EXCEPTION;
@@ -42,8 +43,10 @@ public class ServiceRequestRepository {
             throw new ServiceCallException(e.getResponseBodyAsString());
         } catch (Exception e) {
             log.error(SEARCHER_SERVICE_EXCEPTION, e);
+            throw new ServiceCallException();
         }
 
-        return response;
+        return Objects.requireNonNull(response,
+                () -> "External service returned empty response for URI: " + uri);
     }
 }

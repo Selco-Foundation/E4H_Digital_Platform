@@ -17,9 +17,9 @@ import org.springframework.validation.annotation.Validated;
 @NoArgsConstructor
 @Builder
 public class FacilitySummary {
-    @JsonProperty("summary")
 
-    private Object summary = null;
+    @JsonProperty("summary")
+    private String summary = null;
 
 
 }

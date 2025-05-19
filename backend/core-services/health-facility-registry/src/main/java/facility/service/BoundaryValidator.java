@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.request.RequestInfo;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.util.List;
 import java.util.Map;
@@ -32,11 +33,15 @@ public class BoundaryValidator {
         }
 
         String code = boundaryCode.toString();
-        StringBuilder uri = new StringBuilder(String.format("%s%s?tenantId=%s&codes=%s", boundaryHost, boundaryPath, tenantId, code));
+        String uri = UriComponentsBuilder.fromUriString(boundaryHost)
+                .path(boundaryPath)
+                .queryParam("tenantId", tenantId)
+                .queryParam("codes", code)
+                .toUriString();
         Map<String, Object> requestBody = Map.of("RequestInfo", requestInfo);
 
         try {
-            Object rawResponse = serviceRequestRepository.fetchResult(uri, requestBody);
+            Object rawResponse = serviceRequestRepository.fetchResult(new StringBuilder(uri), requestBody);
             Map<String, Object> response = mapper.convertValue(rawResponse, new TypeReference<>() {});
             validateResponse(code, response);
         } catch (Exception e) {

@@ -97,12 +97,12 @@
 							}
 						],
 						"url": {
-							"raw": "http://localhost:8079/facility-service/v2/facility/search?tenant_id=in&limit=2&offset=0",
+							"raw": "http://localhost:8080/facility-service/v2/facility/search?tenant_id=in&limit=2&offset=0",
 							"protocol": "http",
 							"host": [
 								"localhost"
 							],
-							"port": "8079",
+							"port": "8080",
 							"path": [
 								"facility-service",
 								"v2",

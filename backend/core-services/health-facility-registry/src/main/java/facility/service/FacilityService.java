@@ -79,6 +79,7 @@ public class FacilityService {
         facility.setFacilityName(update.getFacilityName());
         facility.setAddress(update.getAddress());
         facility.setAdditionalDetails(update.getAdditionalDetails());
+        facility.setBoundaryCode(update.getBoundaryCode());
 
         facilityMdmsValidator.validateAgainstMDMS(facility, update.getTenantId(), request.getRequestInfo());
         boundaryValidator.validateBoundary(facility.getBoundaryCode(), update.getTenantId(), request.getRequestInfo());

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import digit.models.coremodels.*;
 import facility.config.Configuration;
 import facility.repository.ServiceRequestRepository;
+import lombok.RequiredArgsConstructor;
 import org.egov.common.contract.models.Workflow;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.common.contract.request.User;
@@ -18,16 +19,14 @@ import java.util.stream.Collectors;
 import static facility.config.ServiceConstants.*;
 
 @Service
+@RequiredArgsConstructor
 public class WorkflowUtil {
 
-    @Autowired
-    private ServiceRequestRepository repository;
+    private final ServiceRequestRepository repository;
 
-    @Autowired
-    private ObjectMapper mapper;
+    private final ObjectMapper mapper;
 
-    @Autowired
-    private Configuration configs;
+    private final Configuration configs;
 
 
     /**

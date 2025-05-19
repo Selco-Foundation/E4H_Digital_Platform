@@ -21,6 +21,10 @@ public class FacilityMdmsValidator {
     private final MdmsUtil mdmsUtil;
 
     public void validateAgainstMDMS(Facility facility, String tenantId, RequestInfo requestInfo) {
+        Objects.requireNonNull(facility,  "Facility payload cannot be null");
+        Objects.requireNonNull(tenantId,  "tenantId cannot be null");
+        Objects.requireNonNull(requestInfo, "RequestInfo cannot be null");
+
         Map<String, Object> input = convertFacilityToMap(facility);
 
         Map<String, Map<String, JSONArray>> mdmsData = new HashMap<>();

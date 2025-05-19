@@ -7,6 +7,7 @@ import digit.models.coremodels.IdRequest;
 import digit.models.coremodels.IdResponse;
 import facility.config.Configuration;
 import facility.repository.ServiceRequestRepository;
+import lombok.RequiredArgsConstructor;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,18 +22,19 @@ import static facility.config.ServiceConstants.IDGEN_ERROR;
 import static facility.config.ServiceConstants.NO_IDS_FOUND_ERROR;
 
 @Component
+@RequiredArgsConstructor
 public class IdgenUtil {
 
-    @Autowired
-    private ObjectMapper mapper;
+    private final ObjectMapper mapper;
 
-    @Autowired
-    private ServiceRequestRepository restRepo;
+    private final ServiceRequestRepository restRepo;
 
-    @Autowired
-    private Configuration configs;
+    private final Configuration configs;
 
     public List<String> getIdList(RequestInfo requestInfo, String tenantId, String idName, String idformat, Integer count) {
+        if (count == null || count <= 0) {
+            throw new IllegalArgumentException("count must be a positive integer");
+        }
         List<IdRequest> reqList = new ArrayList<>();
         for (int i = 0; i < count; i++) {
             reqList.add(IdRequest.builder().idName(idName).format(idformat).tenantId(tenantId).build());

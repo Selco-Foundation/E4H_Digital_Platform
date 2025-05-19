@@ -4,9 +4,8 @@ import lombok.*;
 import org.egov.tracer.config.TracerConfiguration;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Import;
-import org.springframework.stereotype.Component;
 
-@Component
+@org.springframework.context.annotation.Configuration
 @Data
 @Import({TracerConfiguration.class})
 @NoArgsConstructor

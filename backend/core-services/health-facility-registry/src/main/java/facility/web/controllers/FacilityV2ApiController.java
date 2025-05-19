@@ -21,7 +21,7 @@ import java.util.List;
 
 @Generated(value = "org.egov.codegen.SpringBootCodegen", date = "2025-05-14T17:15:00.238919256+05:30[Asia/Kolkata]")
 @Controller
-@RequestMapping("")
+@RequestMapping("/v2/facility")
 public class FacilityV2ApiController {
 
     private final ObjectMapper objectMapper;
@@ -37,7 +37,7 @@ public class FacilityV2ApiController {
         this.facilityService = facilityService;
     }
 
-    @PostMapping("/v2/facility/create")
+    @PostMapping("/create")
     public ResponseEntity<List<Facility>> createFacility(
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
                     description = "Health facility data to add to the registry",
@@ -54,7 +54,7 @@ public class FacilityV2ApiController {
     }
 
 
-    @RequestMapping(value = "/v2/facility/assessment/create", method = RequestMethod.POST)
+    @RequestMapping(value = "/assessment/create", method = RequestMethod.POST)
     public ResponseEntity<FacilityAssessment> createHFAssessment(@Parameter(in = ParameterIn.DEFAULT, description = "Health facility assessment data created", required = true, schema = @Schema()) @Valid @RequestBody FacilityAssessmentCreateRequest body) {
         String accept = request.getHeader("Accept");
         if (accept != null && accept.contains("application/json")) {
@@ -68,7 +68,7 @@ public class FacilityV2ApiController {
         return new ResponseEntity<FacilityAssessment>(HttpStatus.NOT_IMPLEMENTED);
     }
 
-    @RequestMapping(value = "/v2/facility/summary", method = RequestMethod.GET)
+    @RequestMapping(value = "/summary", method = RequestMethod.GET)
     public ResponseEntity<FacilitySummary> getFacilitiesSummary(@Parameter(in = ParameterIn.PATH, description = "System generated unique identifier for a PHC", required = true, schema = @Schema()) @PathVariable("facilityId") Object facilityId) {
         String accept = request.getHeader("Accept");
         if (accept != null && accept.contains("application/json")) {
@@ -82,7 +82,7 @@ public class FacilityV2ApiController {
         return new ResponseEntity<FacilitySummary>(HttpStatus.NOT_IMPLEMENTED);
     }
 
-    @PostMapping("/v2/facility/update")
+    @PostMapping("/update")
     public ResponseEntity<Facility> updateFacility(
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
                     description = "Health facility data with updates (facility_id must be provided in the payload)",
@@ -99,7 +99,7 @@ public class FacilityV2ApiController {
     }
 
 
-    @RequestMapping(value = "/v2/facility/assessment/_update", method = RequestMethod.POST)
+    @RequestMapping(value = "/assessment/_update", method = RequestMethod.POST)
     public ResponseEntity<FacilityAssessment> updateHFAssessment(@Parameter(in = ParameterIn.DEFAULT, description = "Health facility assessment data updated", required = true, schema = @Schema()) @Valid @RequestBody FacilityAssessmentCreateRequest body) {
         String accept = request.getHeader("Accept");
         if (accept != null && accept.contains("application/json")) {
@@ -114,7 +114,7 @@ public class FacilityV2ApiController {
     }
 
 
-    @GetMapping("/v2/facility/search")
+    @GetMapping("/search")
     public ResponseEntity<List<Facility>> searchFacilities(
             @Parameter(description = "Tenant ID to filter facilities")
             @RequestParam(value = "tenant_id", required = false) String tenantId,
