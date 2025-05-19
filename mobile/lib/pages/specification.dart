@@ -41,13 +41,11 @@ class _SpecificationPageState extends State<SpecificationPage> {
     final selState = context.read<SelectedProjectBloc>().state;
     selState.whenOrNull(selected: (project) {
       _currentProjectId = project.id;
-      print("project.id, assetType ${project.id + " " + assetType}");
       _updateProgress(project.id, assetType);
     });
   }
 
   void _updateProgress(String projectId, assetType) {
-    // Load inverter count
     context
         .read<CacheAssetCountBloc>()
         .add(CacheAssetCountEvent.update(CacheAssetCount(

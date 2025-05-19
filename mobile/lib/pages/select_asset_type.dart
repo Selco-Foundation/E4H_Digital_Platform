@@ -75,7 +75,7 @@ class _SelectAssetTypePageState extends State<SelectAssetTypePage> {
         context.router.push(const AddNewAssetRoute());
         break;
       case 6:
-        context.router.push(const AssetTypeDetailRoute());
+        context.router.push(const MediaUploadRoute());
         break;
       default:
         context.router.push(const SpecificationRoute());
