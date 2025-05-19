@@ -1,6 +1,14 @@
+import 'package:digit_ui_components/enum/app_enums.dart';
+import 'package:digit_ui_components/models/DropdownModels.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:digit_ui_components/theme/spacers.dart';
+import 'package:digit_ui_components/widgets/atoms/digit_button.dart';
+import 'package:digit_ui_components/widgets/atoms/digit_dropdown_input.dart';
+import 'package:digit_ui_components/widgets/atoms/input_wrapper.dart';
+import 'package:digit_ui_components/widgets/atoms/labelled_fields.dart';
+import 'package:digit_ui_components/widgets/atoms/pop_up_card.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
+import 'package:digit_ui_components/widgets/molecules/show_pop_up.dart';
 import 'package:digit_ui_components/widgets/scrollable_content.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -54,7 +62,103 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
             footer: BlocBuilder<ReportTypeBloc, ReportTypeState>(
               builder: (context, state) {
                 if (state is ReportTypeInbox) {
-                  return const SizedBox.shrink();
+                  return FooterButton(
+                    showSuffixIcon: false,
+                    text: "Send back",
+                    // onPress: () {
+                    //   context.router.push(const DataSaveSuccessRoute());
+                    // },
+                    onPress: () => showCustomPopup(
+                      context: context,
+                      builder: (ctx) => Popup(
+                        onCrossTap: () {
+                          Navigator.of(ctx).pop();
+                        },
+                        title: "Send back",
+                        onOutsideTap: () {
+                          Navigator.of(ctx).pop();
+                        },
+                        type: PopUpType.simple,
+                        actionAlignment: MainAxisAlignment.center,
+                        actions: [],
+                        additionalWidgets: [
+                          LabeledField(
+                            label: 'Reason 1',
+                            labelStyle: textTheme.label.copyWith(
+                              color: theme.colorTheme.text.primary,
+                            ),
+                            capitalizedFirstLetter: false,
+                            child: DigitDropdown(
+                              onSelect: (DropdownItem selected) {
+                                context.read<AssetTypeBloc>().add(
+                                    AssetTypeEvent.typeSelected(selected.code));
+                              },
+                              items: const [
+                                DropdownItem(name: 'Option A', code: 'a'),
+                                DropdownItem(name: 'Option B', code: 'b'),
+                                DropdownItem(name: 'Option C', code: 'c'),
+                              ],
+                            ),
+                          ),
+                          InputField(
+                            type: InputType.textArea,
+                            controller: TextEditingController(),
+                            innerLabel:
+                                'Additional Details for Selected Reason',
+                            textAreaScroll: TextAreaScroll.vertical,
+                          ),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              GestureDetector(
+                                onTap: () {},
+                                child: Text(
+                                  'Add Reason',
+                                  style: textTheme.headingM.copyWith(
+                                      color: theme.colorTheme.primary.primary1),
+                                ),
+                              ),
+                            ],
+                          ),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Expanded(
+                                flex: 1,
+                                child: DigitButton(
+                                  label: "Back",
+                                  onPressed: () {
+                                    Navigator.of(ctx).pop();
+                                  },
+                                  type: DigitButtonType.primary,
+                                  size: DigitButtonSize.large,
+                                  mainAxisSize: MainAxisSize.min,
+                                ),
+                              ),
+                              const SizedBox(width: spacer5),
+                              Expanded(
+                                flex: 1,
+                                child: DigitButton(
+                                  label: "Submit",
+                                  onPressed: () {
+                                    Navigator.of(ctx).pop();
+                                    context.read<AssetTypeBloc>().add(
+                                        const AssetTypeEvent.typeSelected(
+                                            "inverter"));
+                                    context.router
+                                        .push(const AssetSummaryRoute());
+                                  },
+                                  type: DigitButtonType.primary,
+                                  size: DigitButtonSize.large,
+                                  mainAxisSize: MainAxisSize.min,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
                 } else {
                   return FooterButton(
                     showSuffixIcon: false,
