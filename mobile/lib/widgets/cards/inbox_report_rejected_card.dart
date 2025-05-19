@@ -5,18 +5,21 @@ import 'package:digit_ui_components/widgets/atoms/digit_button.dart';
 import 'package:digit_ui_components/widgets/atoms/digit_divider.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 class InboxReportRejectedCard extends StatelessWidget {
   final String? title;
   final String? status;
-  final String? reason;
+  //final String? reason;
+  final DateTime dateAssigned;
   final Function() onPress;
 
   const InboxReportRejectedCard({
     super.key,
     this.title,
     this.status,
-    this.reason,
+    required this.dateAssigned,
+    // this.reason,
     required this.onPress,
   });
 
@@ -24,6 +27,7 @@ class InboxReportRejectedCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final textTheme = theme.digitTextTheme(context);
+    String formattedDate = DateFormat('dd/MM/yy').format(dateAssigned);
 
     return DigitCard(
       children: [
@@ -52,11 +56,16 @@ class InboxReportRejectedCard extends StatelessWidget {
                             .copyWith(color: theme.colorTheme.text.primary),
                       ),
                       const SizedBox(height: spacer4),
+                      // Text(
+                      //   'Rejection Reason',
+                      //   style: textTheme.headingS
+                      //       .copyWith(color: theme.colorTheme.text.primary),
+                      // ),
                       Text(
-                        'Rejection Reason',
+                        'Submission Date',
                         style: textTheme.headingS
                             .copyWith(color: theme.colorTheme.text.primary),
-                      ),
+                      )
                     ],
                   ),
                 ),
@@ -73,12 +82,17 @@ class InboxReportRejectedCard extends StatelessWidget {
                             .copyWith(color: theme.colorTheme.text.primary),
                       ),
                       const SizedBox(height: spacer4),
+                      // Text(
+                      //   reason ?? '',
+                      //   style: textTheme.bodyL
+                      //       .copyWith(color: theme.colorTheme.text.primary),
+                      //   softWrap: true,
+                      //   overflow: TextOverflow.visible,
+                      // ),
                       Text(
-                        reason ?? '',
+                        formattedDate,
                         style: textTheme.bodyL
                             .copyWith(color: theme.colorTheme.text.primary),
-                        softWrap: true,
-                        overflow: TextOverflow.visible,
                       ),
                     ],
                   ),
@@ -88,7 +102,7 @@ class InboxReportRejectedCard extends StatelessWidget {
             const SizedBox(height: spacer8),
             DigitButton(
                 mainAxisSize: MainAxisSize.max,
-                label: 'Edit Asset Data',
+                label: 'View Details',
                 onPressed: onPress,
                 type: DigitButtonType.primary,
                 size: DigitButtonSize.large),

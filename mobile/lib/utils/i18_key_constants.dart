@@ -108,7 +108,7 @@ class Common {
   //
   // String get coreCommonSkip => 'CORE_COMMON_SKIP';
 
-  String get coreCommonNext => 'CORE_COMMON_NEXT';
+  String get coreCommonNext => 'Next';
   //
   // String get coreCommonYes => 'CORE_COMMON_YES';
   //
