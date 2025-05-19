@@ -12,7 +12,6 @@ import '../blocs/selected_project/selected_project.dart';
 import '../data/nosql/cache_project_asset.dart';
 import '../model/projects/project.dart';
 import '../router/app_router.dart';
-import '../utils/extensions.dart';
 import '../widgets/header/back_navigation_help_header.dart';
 import '../widgets/navigation/navbar.dart';
 
@@ -33,15 +32,20 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
     context
         .read<SelectedProjectBloc>()
         .add(SelectedProjectEvent.select(project));
+
+    _handleNavigation(context);
   }
 
-  void _handleNavigation(BuildContext context, CacheProjectAsset entry) {
-    print("entry.progress ${entry.progress}");
-    if (entry.progress == 0) {
-      context.router.push(const AssetCountRoute());
-    } else {
-      context.router.push(const SelectAssetTypeRoute());
-    }
+  void _handleNavigation(
+    BuildContext context,
+    /* CacheProjectAsset entry */
+  ) {
+    // print("entry.progress ${entry.progress}");
+    // if (entry.progress == 0) {
+    context.router.push(const AssetCountRoute());
+    // } else {
+    //   context.router.push(const SelectAssetTypeRoute());
+    // }
   }
 
   @override
@@ -77,18 +81,18 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
                               BlocConsumer<CacheProjectAssetBloc,
                                   CacheProjectAssetState>(
                                 listener: (context, cacheState) {
-                                  cacheState.whenOrNull(
-                                      added: (entry) =>
-                                          _handleNavigation(context, entry),
-                                      loaded: (entries) => _handleNavigation(
-                                          context, entries.first),
-                                      error: (error) {
-                                        context.showSnackBar(SnackBar(
-                                          content: Text(error),
-                                          backgroundColor:
-                                              const Light().alertError,
-                                        ));
-                                      });
+                                  // cacheState.whenOrNull(
+                                  //     added: (entry) =>
+                                  //         _handleNavigation(context, entry),
+                                  //     loaded: (entries) => _handleNavigation(
+                                  //         context, entries.first),
+                                  //     error: (error) {
+                                  //       context.showSnackBar(SnackBar(
+                                  //         content: Text(error),
+                                  //         backgroundColor:
+                                  //             const Light().alertError,
+                                  //       ));
+                                  //     });
                                 },
                                 builder: (context, state) {
                                   return DigitCard(
