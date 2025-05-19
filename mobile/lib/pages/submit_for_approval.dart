@@ -48,37 +48,6 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Defect List',
-                  style: textTheme.headingXl
-                      .copyWith(color: theme.colorTheme.primary.primary2),
-                ),
-                const SizedBox(height: spacer4),
-                DigitCard(children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: spacer2)
-                        .copyWith(bottom: spacer2),
-                    child: Column(
-                      children: [
-                        DigitCheckbox(
-                          label: "Inverter S.No Incorrect",
-                          onChanged: (value) {},
-                        ),
-                        const SizedBox(height: spacer6),
-                        DigitCheckbox(
-                          label: "Panel S No Incorrect",
-                          onChanged: (value) {},
-                        ),
-                        const SizedBox(height: spacer6),
-                        DigitCheckbox(
-                          label: "System Functionality Incorrect",
-                          onChanged: (value) {},
-                        ),
-                      ],
-                    ),
-                  ),
-                ]),
-                const SizedBox(height: spacer6),
-                Text(
                   'Summary',
                   style: textTheme.headingXl
                       .copyWith(color: theme.colorTheme.primary.primary2),
@@ -111,6 +80,37 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                   ),
                 ]),
                 const SizedBox(height: spacer4),
+                Text(
+                  'Defect List',
+                  style: textTheme.headingXl
+                      .copyWith(color: theme.colorTheme.primary.primary2),
+                ),
+                const SizedBox(height: spacer4),
+                DigitCard(children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: spacer2)
+                        .copyWith(bottom: spacer2),
+                    child: Column(
+                      children: [
+                        DigitCheckbox(
+                          label: "Inverter S.No Incorrect",
+                          onChanged: (value) {},
+                        ),
+                        const SizedBox(height: spacer6),
+                        DigitCheckbox(
+                          label: "Panel S No Incorrect",
+                          onChanged: (value) {},
+                        ),
+                        const SizedBox(height: spacer6),
+                        DigitCheckbox(
+                          label: "System Functionality Incorrect",
+                          onChanged: (value) {},
+                        ),
+                      ],
+                    ),
+                  ),
+                ]),
+                const SizedBox(height: spacer2),
               ],
             ),
           ),

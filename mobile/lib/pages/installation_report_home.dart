@@ -78,7 +78,12 @@ class _InstallationReportPageState extends State<InstallationReportPage> {
                   description: 'View reports that have been approved/rejected',
                 ),
                 ReportCard(
-                  onPress: () => context.router.push(const DraftRoute()),
+                  onPress: () {
+                    context
+                        .read<ReportTypeBloc>()
+                        .add(const ReportTypeEvent.typeSelected("draft"));
+                    context.router.push(const DraftRoute());
+                  },
                   icon: Icons.assignment_late,
                   badgeCount: 0,
                   heading: 'Submitted Reports',
