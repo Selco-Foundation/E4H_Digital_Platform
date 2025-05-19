@@ -13,11 +13,11 @@ class HRMSServiceClient:
             "Content-Type": "application/json"
         }
         params = {
-            "tenantId": "pg"
+            "tenantId": "in"
         }
         try:
             response = requests.post(url, headers=headers, params=params, json=user_payload)
-            response.raise_for_status()
+            # response.raise_for_status()
             print(f"User created successfully: {response}")
             return response
 

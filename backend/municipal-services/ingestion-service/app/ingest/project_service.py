@@ -31,13 +31,15 @@ class ProjectService:
 
         # Call the search_project_facilities method
         response = self.project_client.search_project_facilities(search_payload, tenant_id="in")
-        facility_data = response.get("ProjectFacilities", [])
+        facility_data = response["ProjectFacilities"]
 
         facilities = []
         for facility_item in facility_data:
             facility_id = facility_item.get("facilityId")
             if facility_id:
                 response = self.facility_client.search_facility("in", facility_id)
-                facilities.append(convert_response_to_facility(response[0]))
+                if response:
+                    for facility_data in response:
+                        facilities.append(convert_response_to_facility(facility_data))
 
         return facilities
