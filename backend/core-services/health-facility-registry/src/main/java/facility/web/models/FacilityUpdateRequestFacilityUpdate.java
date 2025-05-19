@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.annotation.Generated;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
+import lombok.Setter;
 
 import java.util.Map;
 import java.util.Objects;
@@ -14,6 +15,7 @@ import java.util.Objects;
  * FacilityUpdateRequestFacilityUpdate
  */
 
+@Setter
 @JsonTypeName("FacilityUpdateRequest_FacilityUpdate")
 @Generated(value = "org.openapitools.codegen.languages.SpringCodegen", date = "2025-04-24T16:00:58.522282987+05:30[Asia/Kolkata]", comments = "Generator version: 7.4.0")
 public class FacilityUpdateRequestFacilityUpdate {
@@ -49,10 +51,6 @@ public class FacilityUpdateRequestFacilityUpdate {
         return tenantId;
     }
 
-    public void setTenantId(String tenantId) {
-        this.tenantId = tenantId;
-    }
-
     public FacilityUpdateRequestFacilityUpdate facilityId(String facilityId) {
         this.facilityId = facilityId;
         return this;
@@ -68,10 +66,6 @@ public class FacilityUpdateRequestFacilityUpdate {
     @JsonProperty("facilityId")
     public String getFacilityId() {
         return facilityId;
-    }
-
-    public void setFacilityId(String facilityId) {
-        this.facilityId = facilityId;
     }
 
     public FacilityUpdateRequestFacilityUpdate facilityType(String facilityType) {
@@ -91,10 +85,6 @@ public class FacilityUpdateRequestFacilityUpdate {
         return facilityType;
     }
 
-    public void setFacilityType(String facilityType) {
-        this.facilityType = facilityType;
-    }
-
     public FacilityUpdateRequestFacilityUpdate facilitySubtype(String facilitySubtype) {
         this.facilitySubtype = facilitySubtype;
         return this;
@@ -110,10 +100,6 @@ public class FacilityUpdateRequestFacilityUpdate {
     @JsonProperty("facility_subtype")
     public String getFacilitySubtype() {
         return facilitySubtype;
-    }
-
-    public void setFacilitySubtype(String facilitySubtype) {
-        this.facilitySubtype = facilitySubtype;
     }
 
     public FacilityUpdateRequestFacilityUpdate facilityName(String facilityName) {
@@ -133,10 +119,6 @@ public class FacilityUpdateRequestFacilityUpdate {
         return facilityName;
     }
 
-    public void setFacilityName(String facilityName) {
-        this.facilityName = facilityName;
-    }
-
     public FacilityUpdateRequestFacilityUpdate address(FacilityAddress address) {
         this.address = address;
         return this;
@@ -154,10 +136,6 @@ public class FacilityUpdateRequestFacilityUpdate {
         return address;
     }
 
-    public void setAddress(FacilityAddress address) {
-        this.address = address;
-    }
-
     public FacilityUpdateRequestFacilityUpdate additionalDetails(Map<String, Object> additionalDetails) {
         this.additionalDetails = additionalDetails;
         return this;
@@ -173,10 +151,6 @@ public class FacilityUpdateRequestFacilityUpdate {
     @JsonProperty("additionalDetails")
     public Map<String, Object> getAdditionalDetails() {
         return additionalDetails;
-    }
-
-    public void setAdditionalDetails(Map<String, Object> additionalDetails) {
-        this.additionalDetails = additionalDetails;
     }
 
     @Override

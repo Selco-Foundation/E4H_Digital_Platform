@@ -2,6 +2,7 @@ package facility.repository;
 
 
 import facility.kafka.Producer;
+import facility.web.models.Facility;
 import facility.web.models.FacilityCreateRequest;
 import facility.web.models.FacilityUpdateRequest;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,8 +21,8 @@ public class FacilityRepository {
     @Value("${facility.update.topic}")
     private String updateTopic;
 
-    public void pushCreateFacility(FacilityCreateRequest request) {
-        producer.push(createTopic, request);
+    public void pushCreateFacility(Facility facility) {
+        producer.push(createTopic, facility);
     }
 
     public void pushUpdateFacility(FacilityUpdateRequest request) {

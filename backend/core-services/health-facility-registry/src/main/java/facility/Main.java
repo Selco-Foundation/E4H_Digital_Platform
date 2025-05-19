@@ -12,7 +12,7 @@ public class Main {
 
 
     public static void main(String[] args) throws Exception {
-        SpringApplication.run(facility_v2.Main.class, args);
+        SpringApplication.run(facility.Main.class, args);
     }
 
 }

@@ -21,10 +21,11 @@ public class FacilityRowMapper {
         facility.setFacilityType(rs.getString("facility_type"));
         facility.setFacilityCategory(rs.getString("facility_category"));
         facility.setFacilityOwnership(rs.getString("facility_ownership"));
+        facility.setBoundaryCode(rs.getString("boundary_code"));
 
         String region = rs.getString("facility_region");
         if (region != null) {
-            facility.setFacilityRegion(Facility.FacilityRegionEnum.valueOf(region));
+            facility.setFacilityRegion(region);
         }
 
         facility.setWfStatus(rs.getString("wf_status"));
