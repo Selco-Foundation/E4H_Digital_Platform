@@ -1,3 +1,4 @@
+import json
 from typing import Dict, Any
 
 import requests
@@ -58,7 +59,7 @@ class ProjectServiceClient:
             print(f"An error occurred: {req_err}")
             raise req_err
 
-    def search_project_facilities(self, search_payload: Dict[str, Any], tenant_id: str, limit: int = 20000,
+    def search_project_facilities(self, search_payload: Dict[str, Any], tenant_id: str, limit: int = 1000,
                                   offset: int = 0, include_deleted: bool = False):
         url = f"{self.project_service_url}/project/facility/v1/_search"
         params = {
@@ -76,7 +77,7 @@ class ProjectServiceClient:
             response = requests.post(url, headers=headers, params=params, json=search_payload)
             response.raise_for_status()
             print(f"Project facilities search completed successfully: {response}")
-            return response
+            return json.loads(response.text)
 
         except requests.exceptions.HTTPError as http_err:
             print(f"HTTP error occurred: {http_err}")

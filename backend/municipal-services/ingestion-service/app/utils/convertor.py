@@ -220,7 +220,7 @@ def get_user_creation_payload(request_info: RequestInfo, row: Series):
         "RequestInfo": request_info.model_dump(by_alias=True, exclude_none=True),
         "Employees": [
             {
-                "tenantId": "pg",
+                "tenantId": "in",
                 "employeeStatus": "EMPLOYED",
                 "dateOfAppointment": current_timestamp,
                 "employeeType": "PERMANENT",
@@ -233,7 +233,7 @@ def get_user_creation_payload(request_info: RequestInfo, row: Series):
                         {"code": "INSTALLATION_REPORT_VIEWER", "name": "Installation report viewer"},
                         {"code": "HRMS_ADMIN", "name": "Hrms admin"}
                     ],
-                    "tenantId": "pg",
+                    "tenantId": "in",
                 },
                 "code": row.get("Name", ""),
                 "jurisdictions": [
@@ -247,7 +247,7 @@ def get_user_creation_payload(request_info: RequestInfo, row: Series):
                         "boundaryType": "City",
                         "boundary": "in",
                         "furnishedRolesList": "INSTALLATION_SUPERVISOR, INSTALLATION_REPORT_VIEWER, HRMS_ADMIN",
-                        "tenantId": "pg",
+                        "tenantId": "in",
                     }
                 ],
                 "assignments": [
@@ -342,9 +342,9 @@ def convert_response_to_facility(response: Dict[str, Any]):
         "HC PoC Contact Number (Mandatory)": response["facility_details"]["pocContact"],
         "Latitude": response["address"]["latitude"],
         "Longitude": response["address"]["longitude"],
-        "Address": response["address"]["addressNumber"] + " " + response["address"]["addressLine1"] + " "
-                   + response["address"]["addressLine2"] + " " + response["address"]["landmark"] + " "
-                   + response["address"]["city"] + " " + response["address"]["pincode"],
+        "Address": (response["address"]["addressNumber"] or "") + " " + (response["address"]["addressLine1"] or "") + " " \
+           + (response["address"]["addressLine2"] or "") + " " + (response["address"]["landmark"] or "") + " " \
+           + (response["address"]["city"] or "") + " " + (response["address"]["pincode"] or ""),
         "Role": "Supervisor",
         "Name": "",
         "Gender": "",

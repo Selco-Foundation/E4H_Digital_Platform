@@ -291,36 +291,38 @@ async def upload_facility_with_supervisors_excel_sheet(
             project_client = ProjectServiceClient(project_service_url)
             hrms_client = HRMSServiceClient(hrms_service_url)
             for index, row in df.iterrows():
-                try:
-                    # Create work stream
-                    work_stream_creation_payload = get_project_creation_payload(request_info, "Work Stream "+row.get('Health Centre Name (Mandatory)', ''), "Work Stream")
-                    work_stream_creation_response = project_client.create_project(work_stream_creation_payload)
-                    work_stream = json.loads(work_stream_creation_response.text)
-                    if work_stream_creation_response.status_code in [200, 201, 202]:
-                        df.at[index, 'status'] = 'success'
-                        # Create User
-                        user_creation_payload = get_user_creation_payload(request_info, row)
-                        user_creation_response = hrms_client.create_user(user_creation_payload)
-                        if user_creation_response.status_code in [200, 201, 202]:
-                            user = json.loads(user_creation_response.text)
+                if row.get("status", "") != "success":
+                    try:
+                        # Create work stream
+                        work_stream_creation_payload = get_project_creation_payload(request_info, "Work Stream "+row.get('Health Centre Name (Mandatory)', ''), "Work Stream")
+                        work_stream_creation_response = project_client.create_project(work_stream_creation_payload)
+                        work_stream = json.loads(work_stream_creation_response.text)
+                        if work_stream_creation_response.status_code in [200, 201, 202]:
                             df.at[index, 'status'] = 'success'
-                            # Create staff
-                            staff_creation_payload = get_staff_creation_payload(request_info, user["Employees"][0]["uuid"], work_stream["Project"][0]["id"])
-                            staff_creation_response = project_client.create_project_staff(staff_creation_payload)
-                            if staff_creation_response.status_code in [200, 201, 202]:
-                                df.at[index,'status'] = 'success'
+                            # Create User
+                            user_creation_payload = get_user_creation_payload(request_info, row)
+                            user_creation_response = hrms_client.create_user(user_creation_payload)
+                            user = json.loads(user_creation_response.text)
+                            if user_creation_response.status_code in [200, 201, 202]:
+                                df.at[index, 'status'] = 'success'
+                                # Create staff
+                                staff_creation_payload = get_staff_creation_payload(request_info, user["Employees"][0]["uuid"], work_stream["Project"][0]["id"])
+                                staff_creation_response = project_client.create_project_staff(staff_creation_payload)
+                                if staff_creation_response.status_code in [200, 201, 202]:
+                                    df.at[index,'status'] = 'success'
+                                    df.at[index, 'error'] = ''
+                                else:
+                                    df.at[index, 'status'] = 'failed'
+                                    df.at[index, 'error'] = f"Staff Creation Error: {staff_creation_response.status_code} - {staff_creation_response.text}"
                             else:
                                 df.at[index, 'status'] = 'failed'
-                                df.at[index, 'error'] = f"Staff Creation Error: {staff_creation_response.status_code} - {staff_creation_response.text}"
+                                df.at[index, 'error'] = f"User Creation Error: {user_creation_response.status_code} - {user["Errors"]}"
                         else:
                             df.at[index, 'status'] = 'failed'
-                            df.at[index, 'error'] = f"User Creation Error: {user_creation_response.status_code} - {user_creation_response.text}"
-                    else:
+                            df.at[index, 'error'] = f"Workstream Creation Error: {work_stream_creation_response.status_code} - {work_stream_creation_response.text}"
+                    except Exception as e:
                         df.at[index, 'status'] = 'failed'
-                        df.at[index, 'error'] = f"Workstream Creation Error: {work_stream_creation_response.status_code} - {work_stream_creation_response.text}"
-                except Exception as e:
-                    df.at[index, 'status'] = 'failed'
-                    df.at[index, 'error'] = f"Processing Error: {str(e)}"
+                        df.at[index, 'error'] = f"Processing Error: {str(e)}"
 
         # Write data to the same sheet name that was read
         with pd.ExcelWriter(output_file_path, engine='openpyxl', mode='a') as writer:

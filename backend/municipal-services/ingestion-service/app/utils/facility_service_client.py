@@ -1,3 +1,4 @@
+import json
 from typing import Dict, Any, List
 
 import requests
@@ -40,7 +41,7 @@ class FacilityServiceClient:
 
         # Add optional facility_id parameter if provided
         if facility_id:
-            params["facility_id"] = "FAC/2025/000039"
+            params["facility_id"] = facility_id
 
         headers = {
             "Accept": "application/json"
@@ -48,7 +49,7 @@ class FacilityServiceClient:
 
         try:
             response = requests.get(url, headers=headers, params=params)
-            return response
+            return json.loads(response.text)
 
         except requests.exceptions.HTTPError as http_err:
             print(f"HTTP error occurred: {http_err}")
