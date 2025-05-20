@@ -62,7 +62,7 @@ class Common {
   //
   // String get coreCommonMobileNumber => 'CORE_COMMON_MOBILE_NUMBER';
   //
-  String get coreCommonSubmit => 'CS_COMMON_BUTTON_SUBMIT';
+  String get coreCommonSubmit => 'Submit';
 
   String get coreCommonSave => 'CORE_COMMON_SAVE';
   //

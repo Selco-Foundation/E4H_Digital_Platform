@@ -82,7 +82,7 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
                           onPressed: () {
                             Navigator.of(ctx).pop();
                           },
-                          type: DigitButtonType.primary,
+                          type: DigitButtonType.secondary,
                           size: DigitButtonSize.large,
                           mainAxisSize: MainAxisSize.min,
                         ),
