@@ -67,4 +67,7 @@ public class FacilityUpdateRequestFacilityUpdate {
     @Schema(name = "boundaryCode", accessMode = Schema.AccessMode.READ_ONLY, requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     @JsonProperty("boundaryCode")
     private String boundaryCode;
+
+    @JsonProperty("facility_details")
+    private Map<String, Object> facilityDetails = null;
 }
