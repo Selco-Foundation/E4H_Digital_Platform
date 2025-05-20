@@ -20,12 +20,12 @@ public class FacilityMdmsValidator {
 
     private final MdmsUtil mdmsUtil;
 
-    public void validateAgainstMDMS(Facility facility, String tenantId, RequestInfo requestInfo) {
-        Objects.requireNonNull(facility,  "Facility payload cannot be null");
-        Objects.requireNonNull(tenantId,  "tenantId cannot be null");
+    public void validateAgainstMDMS(List<Facility> facilities, String tenantId, RequestInfo requestInfo) {
+        Objects.requireNonNull(facilities, "Facility list cannot be null");
+        Objects.requireNonNull(tenantId, "tenantId cannot be null");
         Objects.requireNonNull(requestInfo, "RequestInfo cannot be null");
 
-        Map<String, Object> input = convertFacilityToMap(facility);
+        if (facilities.isEmpty()) return;
 
         Map<String, Map<String, JSONArray>> mdmsData = new HashMap<>();
         mdmsData.putAll(mdmsUtil.fetchMdmsData(requestInfo, tenantId, "data-ingestion", List.of("FacilityIngestionSchema")));
@@ -41,10 +41,15 @@ public class FacilityMdmsValidator {
 
         List<Map<String, Object>> columns = (List<Map<String, Object>>) schema.get("columns");
         List<Map<String, Object>> rowConstraints = (List<Map<String, Object>>) schema.get("rowConstraints");
+        List<Map<String, Object>> flattenedMdmsData = flattenMdmsData(mdmsData);
 
-        validateFields(columns, input, flattenMdmsData(mdmsData));
-        validateRowConstraints(rowConstraints, input);
+        for (Facility facility : facilities) {
+            Map<String, Object> input = convertFacilityToMap(facility);
+            validateFields(columns, input, flattenedMdmsData);
+            validateRowConstraints(rowConstraints, input);
+        }
     }
+
 
     private void validateFields(List<Map<String, Object>> columns, Map<String, Object> input, List<Map<String, Object>> mdmsList) {
         for (Map<String, Object> col : columns) {

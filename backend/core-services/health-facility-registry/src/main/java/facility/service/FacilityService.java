@@ -9,6 +9,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -38,25 +39,43 @@ public class FacilityService {
     }
 
     public List<Facility> createFacility(FacilityCreateRequest request) {
-        List<Facility> facilities = new ArrayList<>();
-        for (Facility facility : request.getFacilities()) {
-            String tenantId = facility.getTenantId();
+        List<Facility> facilities = request.getFacilities();
+        Map<String, List<Facility>> facilitiesByTenant = facilities.stream()
+                .collect(Collectors.groupingBy(Facility::getTenantId));
 
-            facilityMdmsValidator.validateAgainstMDMS(facility, tenantId, request.getRequestInfo());
-            boundaryValidator.validateBoundary(facility.getBoundaryCode(), tenantId, request.getRequestInfo());
+        List<Facility> validatedFacilities = new ArrayList<>();
 
-            if (facility.getFacilityId() == null) {
-                facility.setFacilityId(idgenUtil.getIdList(request.getRequestInfo(), tenantId, "facility.id", "", 1).get(0));
+        for (Map.Entry<String, List<Facility>> entry : facilitiesByTenant.entrySet()) {
+            String tenantId = entry.getKey();
+            List<Facility> tenantFacilities = entry.getValue();
+
+            // --- Bulk MDMS Validation ---
+            facilityMdmsValidator.validateAgainstMDMS(tenantFacilities, tenantId, request.getRequestInfo());
+
+            // --- Collect all boundaryCodes and validate in bulk ---
+            Set<String> boundaryCodes = tenantFacilities.stream()
+                    .map(Facility::getBoundaryCode)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+            boundaryValidator.validateBoundaries(boundaryCodes, tenantId, request.getRequestInfo());
+
+            for (Facility facility : tenantFacilities) {
+                if (facility.getFacilityId() == null) {
+                    facility.setFacilityId(idgenUtil.getIdList(
+                            request.getRequestInfo(), tenantId, "facility.id", "", 1).get(0));
+                }
+
+                if (facility.getWfStatus() == null) facility.setWfStatus("CREATED");
+                if (facility.getIsActive() == null) facility.setIsActive(true);
+
+                facilityRepository.pushCreateFacility(facility);
+                validatedFacilities.add(facility);
             }
-
-            if (facility.getWfStatus() == null) facility.setWfStatus("CREATED");
-            if (facility.getIsActive() == null) facility.setIsActive(true);
-
-            facilityRepository.pushCreateFacility(facility);
-            facilities.add(facility);
         }
-        return facilities;
+
+        return validatedFacilities;
     }
+
 
     public Facility updateFacility(FacilityUpdateRequest request) {
         FacilityUpdateRequestFacilityUpdate update = request.getFacilityUpdate();
@@ -82,8 +101,8 @@ public class FacilityService {
         facility.setBoundaryCode(update.getBoundaryCode());
         facility.setFacilityDetails(update.getFacilityDetails());
 
-        facilityMdmsValidator.validateAgainstMDMS(facility, update.getTenantId(), request.getRequestInfo());
-        boundaryValidator.validateBoundary(facility.getBoundaryCode(), update.getTenantId(), request.getRequestInfo());
+        facilityMdmsValidator.validateAgainstMDMS(List.of(facility), update.getTenantId(), request.getRequestInfo());
+        boundaryValidator.validateBoundaries(Set.of(facility.getBoundaryCode()), update.getTenantId(), request.getRequestInfo());
 
         if (facility.getWfStatus() == null) facility.setWfStatus("UPDATED");
         if (facility.getIsActive() == null) facility.setIsActive(true);
