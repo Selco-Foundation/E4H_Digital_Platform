@@ -130,7 +130,7 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
                                   onPressed: () {
                                     Navigator.of(ctx).pop();
                                   },
-                                  type: DigitButtonType.primary,
+                                  type: DigitButtonType.secondary,
                                   size: DigitButtonSize.large,
                                   mainAxisSize: MainAxisSize.min,
                                 ),
@@ -142,11 +142,10 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
                                   label: "Submit",
                                   onPressed: () {
                                     Navigator.of(ctx).pop();
-                                    context.read<AssetTypeBloc>().add(
-                                        const AssetTypeEvent.typeSelected(
-                                            "inverter"));
-                                    context.router
-                                        .push(const AssetSummaryRoute());
+                                    // context.read<AssetTypeBloc>().add(
+                                    //     const AssetTypeEvent.typeSelected(
+                                    //         "inverter"));
+                                    // Navigator.of(ctx).pop();
                                   },
                                   type: DigitButtonType.primary,
                                   size: DigitButtonSize.large,
