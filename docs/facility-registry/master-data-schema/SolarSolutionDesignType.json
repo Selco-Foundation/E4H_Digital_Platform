@@ -4,67 +4,67 @@
   "SolarSolutionDesignType": [
     {
       "active": true,
-      "code": "type_1",
+      "code": "SC_NO_LR_FRIDGE_NO_CCP",
       "name": "SC - without labour room + Refrigerator & without cold chain point",
       "url": ""
     },
     {
       "active": true,
-      "code": "type_2",
+      "code": "SC_LR_FRIDGE_NO_CCP",
       "name": "SC - with labour room + Refrigerator & without cold chain point",
       "url": ""
     },
     {
       "active": true,
-      "code": "type_3",
+      "code": "SC_LR_WITH_CCP",
       "name": "SC - with Labour room with cold chain point",
       "url": ""
     },
     {
       "active": true,
-      "code": "type_4",
+      "code": "PHC_NO_DELIVERY_NO_CCP",
       "name": "PHC Without Delivery Without Cold Chain",
       "url": ""
     },
     {
       "active": true,
-      "code": "type_5",
+      "code": "PHC_DELIVERY_NO_CCP",
       "name": "PHC With Delivery Without Cold Chain",
       "url": ""
     },
     {
       "active": true,
-      "code": "type_6",
+      "code": "PHC_NO_DELIVERY_WITH_CCP",
       "name": "PHC Without Delivery With Cold Chain",
       "url": ""
     },
     {
       "active": true,
-      "code": "type_7",
+      "code": "PHC_DELIVERY_WITH_CCP",
       "name": "PHC With Delivery With Cold Chain",
       "url": ""
     },
     {
       "active": true,
-      "code": "type_8",
+      "code": "PHC_DELIVERY_CCP_DENTAL",
       "name": "PHC With Delivery With Cold Chain and Dental Unit",
       "url": ""
     },
     {
       "active": true,
-      "code": "type_9",
+      "code": "PHC_LAB_CCP_OR_LR",
       "name": "PHC with Lab + Cold Chain (or) Lab + Labour Room",
       "url": ""
     },
     {
       "active": true,
-      "code": "type_10",
+      "code": "PHC_DELIVERY_CCP_HYBRID",
       "name": "PHC With Delivery With Cold Chain - Hybrid System",
       "url": ""
     },
     {
       "active": true,
-      "code": "type_11",
+      "code": "SC_NO_LR_NO_CCP",
       "name": "SC - without labour room & without cold chain point",
       "url": ""
     }
