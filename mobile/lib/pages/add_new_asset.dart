@@ -649,6 +649,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                                 heading: heading,
                                 index: e.key,
                                 asset: e.value,
+                                maxAsset: maxAssets,
                                 assetType: assetType,
                               ),
                             );
@@ -659,7 +660,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                               GestureDetector(
                                 onTap: () => _addNewAsset(maxAssets),
                                 child: Text(
-                                  'Add New Asset (${_assets.length} / $maxAssets)',
+                                  'Add New Asset',
                                   style: textTheme.headingM.copyWith(
                                       color: theme.colorTheme.primary.primary1),
                                 ),
@@ -685,16 +686,26 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
     required DigitTextTheme textTheme,
     required String heading,
     required int index,
+    required int maxAsset,
     required AssetModel asset,
     required String assetType,
   }) {
     return DigitCard(
       key: ValueKey(index),
       children: [
-        Text(
-          '$heading ${index + 1}',
-          style: textTheme.headingXl
-              .copyWith(color: theme.colorTheme.primary.primary2),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              '$heading ${index + 1}',
+              style: textTheme.headingXl
+                  .copyWith(color: theme.colorTheme.primary.primary2),
+            ),
+            Text("${index + 1}/$maxAsset",
+                style: textTheme.bodyL
+                    .copyWith(color: theme.colorTheme.text.secondary))
+          ],
         ),
         LabeledField(
           label: 'Serial Number',
@@ -703,13 +714,33 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
             children: [
               Expanded(
                 flex: 5,
-                child: DigitTextFormInput(
-                  initialValue: asset.serialNumber,
-                  isDisabled: true,
-                  innerLabel: asset.serialNumber.isEmpty
-                      ? 'Scan serial number'
-                      : asset.serialNumber,
-                  keyboardType: TextInputType.none,
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() => _scanningIndex = index);
+                    context
+                        .read<DigitScannerBloc>()
+                        .add(const DigitScannerEvent.handleScanner(qrCode: []));
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (ctx) => BlocProvider.value(
+                          value: context.read<DigitScannerBloc>(),
+                          child: const DigitScannerPage(
+                            quantity: 1,
+                            isGS1code: false,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                  child: DigitTextFormInput(
+                    initialValue: asset.serialNumber,
+                    isDisabled: true,
+                    innerLabel: asset.serialNumber.isEmpty
+                        ? 'Scan serial number'
+                        : asset.serialNumber,
+                    keyboardType: TextInputType.none,
+                  ),
                 ),
               ),
               const SizedBox(width: spacer4),

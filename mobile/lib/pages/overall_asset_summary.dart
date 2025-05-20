@@ -1,6 +1,6 @@
 import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
-import 'package:digit_ui_components/widgets/atoms/upload_drag.dart';
+import 'package:digit_ui_components/widgets/atoms/upload_popUp.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:flutter/material.dart';
 
@@ -87,23 +87,23 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                       style: textTheme.bodyS
                           .copyWith(color: theme.colorTheme.text.secondary),
                     ),
-                    FileUploadWidget2(
-                      // showPreview: true,
-                      // allowMultiples: false,
-                      label: 'Upload',
-                      // downloadText: "Hello",
-                      onFilesSelected: (files) {
-                        return {};
-                      },
-                    ),
-                    // FileUploadWidget(
-                    //   showPreview: true,
-                    //   allowMultiples: false,
+                    // FileUploadWidget2(
+                    //   // showPreview: true,
+                    //   // allowMultiples: false,
                     //   label: 'Upload',
+                    //   // downloadText: "Hello",
                     //   onFilesSelected: (files) {
                     //     return {};
                     //   },
                     // ),
+                    FileUploadWidget(
+                      showPreview: true,
+                      allowMultiples: false,
+                      label: 'Upload',
+                      onFilesSelected: (files) {
+                        return {};
+                      },
+                    ),
                   ])
                 ],
               ),

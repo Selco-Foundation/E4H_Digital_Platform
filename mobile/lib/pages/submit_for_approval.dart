@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 
 import '../router/app_router.dart';
 import '../widgets/button/footer_button.dart';
-import '../widgets/cards/edit_asset_summary.dart';
+import '../widgets/cards/rejected_edit_summary.dart';
 import '../widgets/header/back_navigation_help_header.dart';
 import '../widgets/navigation/navbar.dart';
 
@@ -53,11 +53,7 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                       .copyWith(color: theme.colorTheme.primary.primary2),
                 ),
                 const SizedBox(height: spacer4),
-                const EditAssetSummary(text: 'Battery', count: 2),
-                const SizedBox(height: spacer4),
-                const EditAssetSummary(text: 'Panel', count: 2),
-                const SizedBox(height: spacer4),
-                const EditAssetSummary(text: 'Inverter', count: 2),
+                const RejectedEditAssetSummary(text: 'Battery', count: 2),
                 const SizedBox(height: spacer4),
                 DigitCard(children: [
                   Text(
