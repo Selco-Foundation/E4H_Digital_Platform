@@ -75,12 +75,27 @@ public class FacilityService {
                     facility.getAddress().setAddressId(UUID.randomUUID().toString());
                 }
                 validateHfrOrNinUniqueness(facility, tenantId);
+                validateFacilityNameBoundaryCodeUnique(facility, tenantId);
                 facilityRepository.pushCreateFacility(facility);
                 validatedFacilities.add(facility);
             }
         }
 
         return validatedFacilities;
+    }
+
+    private void validateFacilityNameBoundaryCodeUnique(Facility facility, String tenantId) {
+        if (facility.getFacilityName() != null && facility.getBoundaryCode() != null) {
+            boolean exists = facilityQueryDao.existsByFacilityNameAndBoundary(
+                    tenantId, facility.getFacilityName(), facility.getBoundaryCode()
+            );
+
+            if (exists) {
+                throw new CustomException("FACILITY_DUPLICATE_NAME_LOCATION",
+                        "A facility with the same name and boundary already exists in this tenant");
+            }
+        }
+
     }
 
     private void validateHfrOrNinUniqueness(Facility facility, String tenantId) {

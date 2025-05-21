@@ -55,3 +55,7 @@ CREATE INDEX idx_facility_ownership ON facility(tenant_id, facility_ownership);
 CREATE INDEX idx_facility_region ON facility(tenant_id, facility_region);
 CREATE INDEX idx_facility_name ON facility(tenant_id, facility_name);
 CREATE INDEX idx_facility_status ON facility(tenant_id, wf_status);
+
+CREATE UNIQUE INDEX uniq_facility_name_boundary
+ON facility (tenant_id, facility_name, boundary_code);
+

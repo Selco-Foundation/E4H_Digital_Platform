@@ -40,4 +40,23 @@ public class FacilityQueryDao {
         return Boolean.TRUE.equals(exists);
     }
 
+
+    public boolean existsByFacilityNameAndBoundary(String tenantId, String facilityName, String boundaryCode) {
+        String sql = """
+        SELECT EXISTS (
+            SELECT 1 FROM facility
+            WHERE tenant_id = ? AND facility_name = ? AND boundary_code = ?
+        )
+    """;
+
+        Boolean exists = jdbcTemplate.queryForObject(
+                sql,
+                new Object[]{tenantId, facilityName, boundaryCode},
+                Boolean.class
+        );
+
+        return Boolean.TRUE.equals(exists);
+    }
+
+
 }
