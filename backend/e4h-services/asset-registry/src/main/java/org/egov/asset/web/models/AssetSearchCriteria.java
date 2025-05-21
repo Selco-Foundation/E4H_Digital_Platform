@@ -23,32 +23,24 @@ import javax.validation.constraints.NotNull;
 public class AssetSearchCriteria {
     @JsonProperty("tenantId")
     @NotNull
-
     private String tenantId = null;
 
     @JsonProperty("assetID")
-
     private String assetID = null;
 
     @JsonProperty("facilityID")
-
     private String facilityID = null;
 
     @JsonProperty("serialNumber")
-
     private String serialNumber = null;
 
     @JsonProperty("modelNumber")
-
     private String modelNumber = null;
 
     @JsonProperty("brandID")
-
     private String brandID = null;
 
     @JsonProperty("wfStatus")
-
     private String wfStatus = null;
-
 
 }

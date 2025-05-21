@@ -57,7 +57,7 @@ public class AssetService {
                 .build();
     }
 
-    public List<Asset> searchAssets(String tenantId, String facilityId, String assetTypeId, String serialNumber, String modelNumber, String brandId, int limit, int offset) {
+    public List<Asset> searchAssets(String tenantId, String assetId, String wfStatus, String facilityId, String serialNumber, String modelNumber, String brandId, int limit, int offset) {
         StringBuilder query = new StringBuilder("SELECT * FROM asset WHERE 1=1");
         List<Object> params = new ArrayList<>();
 
@@ -66,14 +66,19 @@ public class AssetService {
             params.add(tenantId);
         }
 
+        if (assetId != null && !assetId.isBlank()) {
+            query.append(" AND asset_id = ?");
+            params.add(tenantId);
+        }
+
+        if (wfStatus != null && !wfStatus.isBlank()) {
+            query.append(" AND wf_status = ?");
+            params.add(tenantId);
+        }
+
         if (facilityId != null && !facilityId.isBlank()) {
             query.append(" AND facility_id = ?");
             params.add(facilityId);
-        }
-
-        if (assetTypeId != null && !assetTypeId.isBlank()) {
-            query.append(" AND asset_type_id = ?");
-            params.add(assetTypeId);
         }
 
         if (serialNumber != null && !serialNumber.isBlank()) {
