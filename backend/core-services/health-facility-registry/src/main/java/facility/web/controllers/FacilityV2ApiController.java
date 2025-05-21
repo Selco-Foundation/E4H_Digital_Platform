@@ -10,6 +10,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.annotation.Generated;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -129,10 +131,10 @@ public class FacilityV2ApiController {
             @RequestParam(value = "nin_id", required = false) String ninId,
 
             @Parameter(description = "Maximum number of results to return")
-            @RequestParam(value = "limit", required = false, defaultValue = "10") Integer limit,
+            @RequestParam(value = "limit", required = false, defaultValue = "10")  @Min(1) @Max(10000) Integer limit,
 
             @Parameter(description = "Number of results to skip for pagination")
-            @RequestParam(value = "offset", required = false, defaultValue = "0") Integer offset
+            @RequestParam(value = "offset", required = false, defaultValue = "0") @Min(1)Integer offset
     ) {
         List<Facility> facilities = facilityService.searchFacilities(
                 tenantId, facilityId, facilityName, hfrId, ninId, boundaryCode, limit, offset
