@@ -1,8 +1,6 @@
 package facility.config;
 
 
-import org.springframework.stereotype.Component;
-
 
 public class ServiceConstants {
 

@@ -4,6 +4,7 @@ import facility.repository.FacilityRepository;
 import facility.util.IdgenUtil;
 import facility.web.models.*;
 import lombok.extern.slf4j.Slf4j;
+import org.egov.tracer.model.CustomException;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -21,6 +22,7 @@ public class FacilityService {
     private final IdgenUtil idgenUtil;
     private final FacilityMdmsValidator facilityMdmsValidator;
     private final BoundaryValidator boundaryValidator;
+    private final FacilityQueryDao facilityQueryDao;
 
     public FacilityService(
             FacilityRepository facilityRepository,
@@ -28,7 +30,7 @@ public class FacilityService {
             FacilityRowMapper facilityRowMapper,
             IdgenUtil idgenUtil,
             FacilityMdmsValidator facilityMdmsValidator,
-            BoundaryValidator boundaryValidator
+            BoundaryValidator boundaryValidator, FacilityQueryDao facilityQueryDao
     ) {
         this.facilityRepository = facilityRepository;
         this.jdbcTemplate = jdbcTemplate;
@@ -36,6 +38,7 @@ public class FacilityService {
         this.idgenUtil = idgenUtil;
         this.facilityMdmsValidator = facilityMdmsValidator;
         this.boundaryValidator = boundaryValidator;
+        this.facilityQueryDao = facilityQueryDao;
     }
 
     public List<Facility> createFacility(FacilityCreateRequest request) {
@@ -68,6 +71,10 @@ public class FacilityService {
                 if (facility.getWfStatus() == null) facility.setWfStatus("CREATED");
                 if (facility.getIsActive() == null) facility.setIsActive(true);
 
+                if (facility.getAddress().getAddressId() == null) {
+                    facility.getAddress().setAddressId(UUID.randomUUID().toString());
+                }
+                validateHfrOrNinUniqueness(facility, tenantId);
                 facilityRepository.pushCreateFacility(facility);
                 validatedFacilities.add(facility);
             }
@@ -75,6 +82,24 @@ public class FacilityService {
 
         return validatedFacilities;
     }
+
+    private void validateHfrOrNinUniqueness(Facility facility, String tenantId) {
+        HealthFacilityDetails details = facility.getFacilityDetails();
+
+        if (details != null) {
+            String hfrId = details.getHfrId();
+            String ninId = details.getNinId();
+
+            if ((hfrId != null && !hfrId.isBlank()) || (ninId != null && !ninId.isBlank())) {
+                boolean exists = facilityQueryDao.existsByHfrIdOrNinId(hfrId, ninId, tenantId);
+                if (exists) {
+                    throw new CustomException("FACILITY_DUPLICATE_ID",
+                            "Facility with same HFR ID or NIN ID already exists in tenant " + tenantId);
+                }
+            }
+        }
+    }
+
 
 
     public Facility updateFacility(FacilityUpdateRequest request) {

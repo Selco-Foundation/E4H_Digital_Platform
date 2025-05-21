@@ -10,13 +10,11 @@ import facility.repository.ServiceRequestRepository;
 import lombok.RequiredArgsConstructor;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.tracer.model.CustomException;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import static facility.config.ServiceConstants.IDGEN_ERROR;
 import static facility.config.ServiceConstants.NO_IDS_FOUND_ERROR;
@@ -49,6 +47,6 @@ public class IdgenUtil {
         if (CollectionUtils.isEmpty(idResponses))
             throw new CustomException(IDGEN_ERROR, NO_IDS_FOUND_ERROR);
 
-        return idResponses.stream().map(IdResponse::getId).collect(Collectors.toList());
+        return idResponses.stream().map(IdResponse::getId).toList();
     }
 }

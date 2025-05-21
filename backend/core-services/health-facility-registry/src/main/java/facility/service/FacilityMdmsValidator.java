@@ -3,6 +3,7 @@ package facility.service;
 import facility.util.MdmsUtil;
 import facility.web.models.Facility;
 import facility.web.models.FacilityAddress;
+import facility.web.models.HealthFacilityDetails;
 import lombok.RequiredArgsConstructor;
 import net.minidev.json.JSONArray;
 import org.egov.common.contract.request.RequestInfo;
@@ -29,7 +30,7 @@ public class FacilityMdmsValidator {
 
         Map<String, Map<String, JSONArray>> mdmsData = new HashMap<>();
         mdmsData.putAll(mdmsUtil.fetchMdmsData(requestInfo, tenantId, "data-ingestion", List.of("FacilityIngestionSchema")));
-        mdmsData.putAll(mdmsUtil.fetchMdmsData(requestInfo, tenantId, "facility", List.of("FacilityType", "FacilityCategory", "FacilityOwnership")));
+        mdmsData.putAll(mdmsUtil.fetchMdmsData(requestInfo, tenantId, "facility", List.of("FacilityType", "FacilityCategory", "FacilityOwnership", "SolarSolutionDesignType")));
 
         JSONArray ingestionSchemas = mdmsData.getOrDefault("data-ingestion", Map.of()).get("FacilityIngestionSchema");
         if (ingestionSchemas == null || ingestionSchemas.isEmpty()) {
@@ -170,15 +171,14 @@ public class FacilityMdmsValidator {
         map.put("tenant_id", facility.getTenantId());
         map.put("boundaryCode", facility.getBoundaryCode()); // ✅ this is now always present
 
-        Map<String, Object> details = facility.getFacilityDetails();
+        HealthFacilityDetails details = facility.getFacilityDetails();
         if (details != null) {
-            map.put("HFR ID", details.get("hfrId"));
-            map.put("NIN ID", details.get("ninId"));
-            map.put("Vendor Code", details.get("vendorCode"));
-            map.put("Solution Design Type", details.get("solutionDesignType"));
-            map.put("HC PoC Name", details.get("pocName"));
-            map.put("HC PoC Designation", details.get("pocDesignation"));
-            map.put("HC PoC Contact number", details.get("pocContact"));
+            map.put("HFR ID", details.getHfrId());
+            map.put("NIN ID", details.getNinId());
+            map.put("Solution Design Type", details.getSolarSolutionDesignType());
+            map.put("HC PoC Name", details.getPocName());
+            map.put("HC PoC Designation", details.getPocDesignation());
+            map.put("HC PoC Contact number", details.getPocContact());
         }
 
         return map;

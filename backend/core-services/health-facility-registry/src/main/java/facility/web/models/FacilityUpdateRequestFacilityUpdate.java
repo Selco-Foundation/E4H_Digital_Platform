@@ -69,5 +69,5 @@ public class FacilityUpdateRequestFacilityUpdate {
     private String boundaryCode;
 
     @JsonProperty("facility_details")
-    private Map<String, Object> facilityDetails = null;
+    private HealthFacilityDetails facilityDetails = null;
 }

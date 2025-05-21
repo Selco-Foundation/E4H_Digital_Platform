@@ -69,17 +69,11 @@ public class FacilityV2ApiController {
     }
 
     @RequestMapping(value = "/summary", method = RequestMethod.GET)
-    public ResponseEntity<FacilitySummary> getFacilitiesSummary(@Parameter(in = ParameterIn.PATH, description = "System generated unique identifier for a PHC", required = true, schema = @Schema()) @PathVariable("facilityId") Object facilityId) {
-        String accept = request.getHeader("Accept");
-        if (accept != null && accept.contains("application/json")) {
-            try {
-                return new ResponseEntity<FacilitySummary>(objectMapper.readValue("{  \"summary\" : \"\"}", FacilitySummary.class), HttpStatus.NOT_IMPLEMENTED);
-            } catch (IOException e) {
-                return new ResponseEntity<FacilitySummary>(HttpStatus.INTERNAL_SERVER_ERROR);
-            }
-        }
-
-        return new ResponseEntity<FacilitySummary>(HttpStatus.NOT_IMPLEMENTED);
+    public ResponseEntity<FacilitySummary> getFacilitiesSummary(@Parameter(in = ParameterIn.PATH, description = "System generated unique identifier for a PHC", required = true, schema = @Schema()) @PathVariable("facilityId") String facilityId) {
+        return new ResponseEntity<FacilitySummary>(
+                facilityService.getFacilitySummary(facilityId),
+                HttpStatus.OK
+        );
     }
 
     @PostMapping("/update")

@@ -48,7 +48,7 @@ public class Facility {
     private FacilityAddress address = null;
 
     @JsonProperty("facility_details")
-    private Map<String, Object> facilityDetails = null;
+    private HealthFacilityDetails facilityDetails = null;
 
     @JsonProperty("wfStatus")
     private String wfStatus = null;

@@ -76,4 +76,29 @@ public class FacilityAddress {
     @JsonProperty("block")
     @Schema(description = "Block of the address")
     private String block;
+
+    @JsonProperty("doorNo")
+    @Schema(description = "Door number of the address")
+    private String doorNo;
+
+    @JsonProperty("locationAccuracy")
+    @Schema(description = "Accuracy of the geolocation coordinates")
+    private Double locationAccuracy;
+
+    @JsonProperty("type")
+    @Schema(description = "Type of address (e.g. Residential, Commercial)")
+    private String type;
+
+    @JsonProperty("buildingName")
+    @Schema(description = "Name of the building")
+    private String buildingName;
+
+    @JsonProperty("street")
+    @Schema(description = "Street name of the address")
+    private String street;
+
+    @JsonProperty("localityCode")
+    @Schema(description = "Code representing the locality")
+    private String localityCode;
+
 }

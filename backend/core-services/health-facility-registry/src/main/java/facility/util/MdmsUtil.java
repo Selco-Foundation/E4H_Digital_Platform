@@ -2,6 +2,7 @@ package facility.util;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import facility.config.Configuration;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.minidev.json.JSONArray;
 import org.egov.common.contract.request.RequestInfo;
@@ -19,16 +20,14 @@ import static facility.config.ServiceConstants.ERROR_WHILE_FETCHING_FROM_MDMS;
 
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class MdmsUtil {
 
-    @Autowired
-    private RestTemplate restTemplate;
+    private final RestTemplate restTemplate;
 
-    @Autowired
-    private ObjectMapper mapper;
+    private final ObjectMapper mapper;
 
-    @Autowired
-    private Configuration configs;
+    private final Configuration configs;
 
 
     public Map<String, Map<String, JSONArray>> fetchMdmsData(RequestInfo requestInfo, String tenantId, String moduleName,
@@ -37,7 +36,7 @@ public class MdmsUtil {
         uri.append(configs.getMdmsHost()).append(configs.getMdmsEndPoint());
         MdmsCriteriaReq mdmsCriteriaReq = getMdmsRequest(requestInfo, tenantId, moduleName, masterNameList);
         Object response = new HashMap<>();
-        Integer rate = 0;
+
         MdmsResponse mdmsResponse = new MdmsResponse();
         try {
             response = restTemplate.postForObject(uri.toString(), mdmsCriteriaReq, Map.class);
@@ -47,7 +46,6 @@ public class MdmsUtil {
         }
 
         return mdmsResponse.getMdmsRes();
-        //log.info(ulbToCategoryListMap.toString());
     }
 
     private MdmsCriteriaReq getMdmsRequest(RequestInfo requestInfo, String tenantId,
