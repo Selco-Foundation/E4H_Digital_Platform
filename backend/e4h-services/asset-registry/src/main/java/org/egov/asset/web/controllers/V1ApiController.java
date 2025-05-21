@@ -7,7 +7,9 @@ import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
+import org.egov.asset.service.AssetService;
 import org.egov.asset.web.models.*;
+import org.egov.asset.web.validator.AssetValidator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -21,17 +23,23 @@ import java.util.HashMap;
 @jakarta.annotation.Generated(value = "org.egov.codegen.SpringBootCodegen", date = "2025-05-05T14:19:51.673231117+05:30[Asia/Kolkata]")
 @Controller
 @Slf4j
-@RequestMapping("/asset-registry")
+@RequestMapping("")
 public class V1ApiController {
 
     private final ObjectMapper objectMapper;
 
     private final HttpServletRequest request;
 
+    private final AssetValidator validator;
+
+    private final AssetService assetService;
+
     @Autowired
-    public V1ApiController(ObjectMapper objectMapper, HttpServletRequest request) {
+    public V1ApiController(ObjectMapper objectMapper, HttpServletRequest request, AssetValidator validator, AssetService assetService) {
         this.objectMapper = objectMapper;
         this.request = request;
+        this.validator = validator;
+        this.assetService = assetService;
     }
 
     @RequestMapping(value = "/v1/asset/bulk/_create", method = RequestMethod.POST)
@@ -60,24 +68,14 @@ public class V1ApiController {
         return new ResponseEntity<Void>(HttpStatus.NOT_IMPLEMENTED);
     }
 
-    @RequestMapping(value = "/v1/asset/_create", method = RequestMethod.POST)
-    public ResponseEntity<AssetCreateUpdateResponse> createAsset(@Parameter(in = ParameterIn.DEFAULT, description = "Asset data to be added to the registry", required = true, schema = @Schema()) @Valid @RequestBody AssetCreateRequest body) {
-        // TODO: Implement the actual asset creation logic
-        String accept = request.getHeader("Accept");
-        if (accept != null && accept.contains("application/json")) {
-            try {
-                // Create a proper response object instead of using a hardcoded JSON string
-                AssetCreateUpdateResponse response = new AssetCreateUpdateResponse();
-                // Set appropriate fields in the response
-                return new ResponseEntity<AssetCreateUpdateResponse>(response, HttpStatus.NOT_IMPLEMENTED);
-            } catch (Exception e) {
-                // Log the error
-                // log.error("Error creating asset", e);
-                return new ResponseEntity<AssetCreateUpdateResponse>(HttpStatus.INTERNAL_SERVER_ERROR);
-            }
-        }
 
-        return new ResponseEntity<AssetCreateUpdateResponse>(HttpStatus.NOT_IMPLEMENTED);
+    @RequestMapping(value = "/v1/asset/_create", method = RequestMethod.POST)
+    public ResponseEntity<AssetCreateResponse> createAsset(
+            @Parameter(in = ParameterIn.DEFAULT, description = "Asset data to be added to the registry", required = true, schema = @Schema())
+            @Valid @RequestBody AssetCreateRequest assetCreateRequest) {
+        validator.validateCreateAsset(assetCreateRequest);
+        AssetCreateResponse asset = assetService.createFacility(assetCreateRequest);
+        return new ResponseEntity<>(asset, HttpStatus.CREATED);
     }
 
     @RequestMapping(value = "/v1/asset/amc/_create", method = RequestMethod.POST)

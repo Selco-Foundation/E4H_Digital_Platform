@@ -25,5 +25,31 @@ public class InverterDetails {
     @Schema(description = "Rated capacity of the inverter")
     private BigDecimal capacity;
 
+    @JsonProperty("currentUnit")
+    private String currentUnit;
+
+    @JsonProperty("voltageUnit")
+    private String voltageUnit;
+
+    @JsonProperty("chargeControllerCurrent")
+    private BigDecimal chargeControllerCurrent;
+
+    @JsonProperty("chargeControllerVoltage")
+    private BigDecimal chargeControllerVoltage;
+
+    @JsonProperty("totalCapacity")
+    private BigDecimal totalCapacity;
+
+    @JsonProperty("totalCapacityUOM")
+    private String totalCapacityUOM;
+
+    @JsonProperty("inverterCapacity")
+    private String invertorCapacity;
+
+    @JsonProperty("invertorCapacityUnit")
+    private String invertorCapacityUnit;
+
+    @JsonProperty("outputPhase")
+    private String outputPhase;
 
 }

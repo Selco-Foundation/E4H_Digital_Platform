@@ -54,13 +54,19 @@ public class Configuration {
     @Value("${egov.workflow.processinstance.search.path}")
     private String wfProcessInstanceSearchPath;
 
+    //Facility config
+    @Value("${egov.facility.host}")
+    private String facilityHost;
+
+    @Value("${egov.facility.search.path}")
+    private String facilitySearchPath;
 
     //MDMS
     @Value("${egov.mdms.host}")
     private String mdmsHost;
 
     @Value("${egov.mdms.search.endpoint}")
-    private String mdmsEndPoint;
+    private String mdmsSearchEndPoint;
 
 
     //HRMS
@@ -82,4 +88,8 @@ public class Configuration {
     //SMSNotification
     @Value("${egov.sms.notification.topic}")
     private String smsNotificationTopic;
+
+    //Kafka topics
+    @Value("${asset.create.topic}")
+    private String createAssetTopic;
 }
