@@ -334,9 +334,9 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
                 "wildcard",
                 Collections.singletonMap(
                         "Data.incident.tenantId.keyword",
-                        "*" + inboxRequest.getInbox()
+                         inboxRequest.getInbox()
                                 .getProcessSearchCriteria()
-                                .getTenantId() + "*"
+                                .getTenantId() + ".*"
                 )
         ));
 
