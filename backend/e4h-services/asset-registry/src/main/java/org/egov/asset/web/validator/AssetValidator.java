@@ -3,12 +3,8 @@ package org.egov.asset.web.validator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.asset.service.AssetService;
-import org.egov.asset.util.AssetConstants;
-import org.egov.asset.util.ErrorConstants;
-import org.egov.asset.util.FacilityUtil;
-import org.egov.asset.util.MdmsUtil;
-import org.egov.asset.web.models.Asset;
-import org.egov.asset.web.models.AssetCreateRequest;
+import org.egov.asset.util.*;
+import org.egov.asset.web.models.*;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -18,6 +14,8 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+
+import static org.egov.asset.util.AssetConstants.*;
 
 @Service
 @Slf4j
@@ -57,7 +55,202 @@ public class AssetValidator {
         validateBrandType(asset, errorMap, mdmsData.get(AssetConstants.BRAND_CODE));
         validateWarranty(asset, errorMap, mdmsData.get(AssetConstants.WARRANTY_DURATION));
         validateSystem(asset, errorMap, mdmsData.get(AssetConstants.SYSTEM_CODE));
+        validateAssetDetails(asset, errorMap);
         validateFacilityId(asset, errorMap);
+    }
+
+    private void validateAssetDetails(Asset asset, Map<String, String> errorMap) {
+        if(asset.getAssetTypeID().equalsIgnoreCase("INVERTOR"))
+            validateInverterDetails(AssetConverterUtil.convertMapToInverterDetails(asset.getAssetDetails()), asset.getSystem(), errorMap);
+        else if(asset.getAssetTypeID().equalsIgnoreCase("BATTERY"))
+            validateBatteryDetails(AssetConverterUtil.convertMapToBatteryDetails(asset.getAssetDetails()), asset.getSystem(), errorMap);
+        else if (asset.getAssetTypeID().equalsIgnoreCase("PANEL"))
+            validatePanelDetails(AssetConverterUtil.convertMapToPanelDetails(asset.getAssetDetails()), asset.getSystem(), errorMap);
+    }
+
+    public static void validateInverterDetails(InverterDetails inverterDetails, String systemType, Map<String, String> errorMaps) {
+        if (inverterDetails == null) {
+            errorMaps.put(ErrorConstants.ASSET_INVERTER_DETAILS_EMPTY_CODE, ErrorConstants.ASSET_INVERTER_DETAILS_EMPTY_MSG);
+            return;
+        }
+
+        if (SYSTEM_DC.equals(systemType)) {
+            validateDCSystem(inverterDetails, errorMaps);
+        } else if (SYSTEM_AC_OFF_GRID.equals(systemType)) {
+            validateACOffGridSystem(inverterDetails, errorMaps);
+        } else {
+            errorMaps.put(ErrorConstants.ASSET_SYSTEM_TYPE_INVALID_CODE, ErrorConstants.ASSET_SYSTEM_TYPE_INVALID_MSG);
+        }
+    }
+
+    private static void validateDCSystem(InverterDetails inverterDetails, Map<String, String> errorMaps) {
+        if (inverterDetails.getChargeControllerCurrent() == null) {
+            errorMaps.put(ErrorConstants.ASSET_INVERTER_CHARGE_CONTROLLER_CURRENT_VALIDATION_CODE,
+                    ErrorConstants.ASSET_INVERTER_CHARGE_CONTROLLER_CURRENT_VALIDATION_MSG);
+        } else if (inverterDetails.getChargeControllerCurrent() != 20.0) {
+            errorMaps.put(ErrorConstants.ASSET_INVERTER_CHARGE_CONTROLLER_CURRENT_VALUE_CODE,
+                    ErrorConstants.ASSET_INVERTER_CHARGE_CONTROLLER_CURRENT_VALUE_MSG);
+        }
+
+        if (inverterDetails.getChargeControllerVoltage() == null) {
+            errorMaps.put(ErrorConstants.ASSET_INVERTER_CHARGE_CONTROLLER_VOLTAGE_REQUIRED_CODE,
+                    ErrorConstants.ASSET_INVERTER_CHARGE_CONTROLLER_VOLTAGE_REQUIRED_MSG);
+        } else if (inverterDetails.getChargeControllerVoltage() != 12.0) {
+            errorMaps.put(ErrorConstants.ASSET_INVERTER_CHARGE_CONTROLLER_VOLTAGE_VALUE_CODE,
+                    ErrorConstants.ASSET_INVERTER_CHARGE_CONTROLLER_VOLTAGE_VALUE_MSG);
+        }
+
+        if (!"A".equals(inverterDetails.getCurrentUnit())) {
+            errorMaps.put(ErrorConstants.ASSET_INVERTER_CURRENT_UNIT_CODE,
+                    ErrorConstants.ASSET_INVERTER_CURRENT_UNIT_MSG);
+        }
+        if (!"vDC".equals(inverterDetails.getVoltageUnit())) {
+            errorMaps.put(ErrorConstants.ASSET_INVERTER_VOLTAGE_UNIT_CODE,
+                    ErrorConstants.ASSET_INVERTER_VOLTAGE_UNIT_MSG);
+        }
+    }
+
+    private static void validateACOffGridSystem(InverterDetails inverterDetails, Map<String, String> errorMaps) {
+        if (inverterDetails.getInvertorCapacity() == null) {
+            errorMaps.put(ErrorConstants.ASSET_INVERTER_CAPACITY_REQUIRED_CODE,
+                    ErrorConstants.ASSET_INVERTER_CAPACITY_REQUIRED_MSG);
+        } else {
+            try {
+                Double capacity = Double.parseDouble(inverterDetails.getInvertorCapacity());
+                if (!VALID_INVERTER_CAPACITIES.contains(capacity)) {
+                    errorMaps.put(ErrorConstants.ASSET_INVERTER_CAPACITY_INVALID_VALUE_CODE,
+                            ErrorConstants.ASSET_INVERTER_CAPACITY_INVALID_VALUE_MSG);
+                }
+            } catch (NumberFormatException e) {
+                errorMaps.put(ErrorConstants.ASSET_INVERTER_CAPACITY_INVALID_FORMAT_CODE,
+                        ErrorConstants.ASSET_INVERTER_CAPACITY_INVALID_FORMAT_MSG);
+            }
+        }
+        if (!"kVA".equals(inverterDetails.getInvertorCapacityUnit())) {
+            errorMaps.put(ErrorConstants.ASSET_INVERTER_CAPACITY_UNIT_CODE,
+                    ErrorConstants.ASSET_INVERTER_CAPACITY_UNIT_MSG);
+        }
+        if (inverterDetails.getTotalCapacity() == null) {
+            errorMaps.put(ErrorConstants.ASSET_TOTAL_CAPACITY_REQUIRED_CODE,
+                    ErrorConstants.ASSET_TOTAL_CAPACITY_REQUIRED_MSG);
+        } else if (inverterDetails.getTotalCapacity() != 1.0) {
+            errorMaps.put(ErrorConstants.ASSET_TOTAL_CAPACITY_VALUE_CODE,
+                    ErrorConstants.ASSET_TOTAL_CAPACITY_VALUE_MSG);
+        }
+        if (!"kVA".equals(inverterDetails.getTotalCapacityUOM())) {
+            errorMaps.put(ErrorConstants.ASSET_TOTAL_CAPACITY_UNIT_CODE,
+                    ErrorConstants.ASSET_TOTAL_CAPACITY_UNIT_MSG);
+        }
+    }
+
+    public static void validateBatteryDetails(BatteryDetails batteryDetails, String systemType, Map<String, String> errorMap) {
+        if (batteryDetails == null) {
+            errorMap.put(ErrorConstants.ASSET_BATTERY_DETAILS_NULL_CODE, ErrorConstants.ASSET_BATTERY_DETAILS_NULL_MSG);
+            return;
+        }
+
+        validateCommonBatteryDetails(batteryDetails, errorMap);
+
+        if (SYSTEM_DC.equals(systemType)) {
+            validateDCSystemBattery(batteryDetails, errorMap);
+        } else if (SYSTEM_AC_OFF_GRID.equals(systemType)) {
+            validateACOffGridSystemBattery(batteryDetails, errorMap);
+        } else {
+            errorMap.put(ErrorConstants.ASSET_SYSTEM_TYPE_INVALID_CODE, ErrorConstants.ASSET_SYSTEM_TYPE_INVALID_MSG);
+        }
+    }
+
+    private static void validateCommonBatteryDetails(BatteryDetails batteryDetails, Map<String, String> errorMap) {
+        if (batteryDetails.getTotalCapacity() == null) {
+            errorMap.put(ErrorConstants.ASSET_BATTERY_TOTAL_CAPACITY_REQUIRED_CODE,
+                    ErrorConstants.ASSET_BATTERY_TOTAL_CAPACITY_REQUIRED_MSG);
+        } else if (!VALID_TOTAL_CAPACITIES.contains(batteryDetails.getTotalCapacity())) {
+            errorMap.put(ErrorConstants.ASSET_BATTERY_TOTAL_CAPACITY_INVALID_CODE,
+                    ErrorConstants.ASSET_BATTERY_TOTAL_CAPACITY_INVALID_MSG);
+        }
+
+        if (!"kWh".equals(batteryDetails.getTotalCapacityUOM())) {
+            errorMap.put(ErrorConstants.ASSET_BATTERY_TOTAL_CAPACITY_UOM_CODE,
+                    ErrorConstants.ASSET_BATTERY_TOTAL_CAPACITY_UOM_MSG);
+        }
+
+        if (batteryDetails.getBatteryType() == null || !VALID_BATTERY_TYPES.contains(batteryDetails.getBatteryType())) {
+            errorMap.put(ErrorConstants.ASSET_BATTERY_TYPE_INVALID_CODE,
+                    ErrorConstants.ASSET_BATTERY_TYPE_INVALID_MSG);
+        }
+
+        if (!"Volts".equals(batteryDetails.getVoltageUnit())) {
+            errorMap.put(ErrorConstants.ASSET_BATTERY_VOLTAGE_UNIT_CODE,
+                    ErrorConstants.ASSET_BATTERY_VOLTAGE_UNIT_MSG);
+        }
+
+        if (!"Ah".equals(batteryDetails.getCapacityUnit())) {
+            errorMap.put(ErrorConstants.ASSET_BATTERY_CAPACITY_UNIT_CODE,
+                    ErrorConstants.ASSET_BATTERY_CAPACITY_UNIT_MSG);
+        }
+    }
+
+    private static void validateDCSystemBattery(BatteryDetails batteryDetails, Map<String, String> errorMap) {
+        // Validate Battery Voltage for DC system
+        if (batteryDetails.getBatteryVoltage() == null) {
+            errorMap.put(ErrorConstants.ASSET_BATTERY_VOLTAGE_REQUIRED_DC_CODE,
+                    ErrorConstants.ASSET_BATTERY_VOLTAGE_REQUIRED_DC_MSG);
+        } else if (!VALID_DC_BATTERY_VOLTAGES.contains(batteryDetails.getBatteryVoltage())) {
+            errorMap.put(ErrorConstants.ASSET_BATTERY_VOLTAGE_INVALID_DC_CODE,
+                    ErrorConstants.ASSET_BATTERY_VOLTAGE_INVALID_DC_MSG);
+        }
+
+        // Validate Battery Capacity for DC system
+        if (batteryDetails.getBatteryCapacity() == null) {
+            errorMap.put(ErrorConstants.ASSET_BATTERY_CAPACITY_REQUIRED_DC_CODE,
+                    ErrorConstants.ASSET_BATTERY_CAPACITY_REQUIRED_DC_MSG);
+        } else if (!VALID_DC_BATTERY_CAPACITIES.contains(batteryDetails.getBatteryCapacity())) {
+            errorMap.put(ErrorConstants.ASSET_BATTERY_CAPACITY_INVALID_DC_CODE,
+                    ErrorConstants.ASSET_BATTERY_CAPACITY_INVALID_DC_MSG);
+        }
+    }
+
+    private static void validateACOffGridSystemBattery(BatteryDetails batteryDetails, Map<String, String> errorMap) {
+        // Validate Battery Voltage for AC Off Grid system
+        if (batteryDetails.getBatteryVoltage() == null) {
+            errorMap.put(ErrorConstants.ASSET_BATTERY_VOLTAGE_REQUIRED_AC_CODE,
+                    ErrorConstants.ASSET_BATTERY_VOLTAGE_REQUIRED_AC_MSG);
+        } else if (!VALID_AC_BATTERY_VOLTAGES.contains(batteryDetails.getBatteryVoltage())) {
+            errorMap.put(ErrorConstants.ASSET_BATTERY_VOLTAGE_INVALID_AC_CODE,
+                    ErrorConstants.ASSET_BATTERY_VOLTAGE_INVALID_AC_MSG);
+        }
+
+        // Validate Battery Capacity for AC Off Grid system
+        if (batteryDetails.getBatteryCapacity() == null) {
+            errorMap.put(ErrorConstants.ASSET_BATTERY_CAPACITY_REQUIRED_AC_CODE,
+                    ErrorConstants.ASSET_BATTERY_CAPACITY_REQUIRED_AC_MSG);
+        } else if (!VALID_DC_BATTERY_CAPACITIES.contains(batteryDetails.getBatteryCapacity())) {
+            errorMap.put(ErrorConstants.ASSET_BATTERY_CAPACITY_INVALID_AC_CODE,
+                    ErrorConstants.ASSET_BATTERY_CAPACITY_INVALID_AC_MSG);
+        }
+    }
+
+
+    public static void validatePanelDetails(PanelDetails panelDetails, String systemType, Map<String, String> errorMap) {
+        if (panelDetails == null)
+            errorMap.put(ErrorConstants.ASSET_PANEL_DETAILS_NULL_CODE, ErrorConstants.ASSET_PANEL_DETAILS_NULL_MSG);
+
+        // Common validations for total capacity
+        if (panelDetails.getTotalCapacity() == null)
+            errorMap.put(ErrorConstants.ASSET_PANEL_TOTAL_CAPACITY_REQUIRED_CODE, ErrorConstants.ASSET_PANEL_TOTAL_CAPACITY_REQUIRED_MSG);
+
+        if (panelDetails.getTotalCapacityUnit() == null)
+            errorMap.put(ErrorConstants.ASSET_PANEL_TOTAL_CAPACITY_UNIT_REQUIRED_CODE, ErrorConstants.ASSET_PANEL_TOTAL_CAPACITY_UNIT_REQUIRED_MSG);
+
+        // System-specific validations
+        if (SYSTEM_DC.equals(systemType) || SYSTEM_AC_OFF_GRID.equals(systemType)) {
+            // Both DC and AC Off Grid systems require panel capacity
+            if (panelDetails.getPanelCapacity() == null)
+                errorMap.put(ErrorConstants.ASSET_PANEL_CAPACITY_REQUIRED_CODE, ErrorConstants.ASSET_PANEL_CAPACITY_REQUIRED_MSG);
+
+            if (panelDetails.getCapacityUnit() == null)
+                errorMap.put(ErrorConstants.ASSET_PANEL_CAPACITY_UNIT_REQUIRED_CODE, ErrorConstants.ASSET_PANEL_CAPACITY_UNIT_REQUIRED_MSG);
+        }
     }
 
     private void validateSystem(Asset asset, Map<String, String> errorMap, Object mdmsSystemData) {

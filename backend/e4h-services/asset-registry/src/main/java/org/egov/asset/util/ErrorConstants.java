@@ -35,5 +35,112 @@ public class ErrorConstants {
     public static final String ASSET_SYSTEM_VALIDATION_CODE = "ERR_ASSET_SYSTEM_VALIDATION";
     public static final String ASSET_SYSTEM_VALIDATION_MSG = "Provided system data does not matches with the mdms data";
 
+    public static final String ASSET_INVERTER_DETAILS_EMPTY_CODE = "ERR_ASSET_INVERTER_DETAILS_EMPTY";
+    public static final String ASSET_INVERTER_DETAILS_EMPTY_MSG = "Inverter details cannot be empty";
+
+    public static final String ASSET_INVERTER_CHARGE_CONTROLLER_CURRENT_VALIDATION_CODE = "ERR_INVERTER_CHARGE_CONTROLLER_CURRENT_VALIDATION";
+    public static final String ASSET_INVERTER_CHARGE_CONTROLLER_CURRENT_VALIDATION_MSG = "Charge Controller Current is required for DC system";
+
+    public static final String ASSET_INVERTER_CHARGE_CONTROLLER_CURRENT_VALUE_CODE = "ERR_INVERTER_CHARGE_CONTROLLER_CURRENT_VALUE";
+    public static final String ASSET_INVERTER_CHARGE_CONTROLLER_CURRENT_VALUE_MSG = "Charge Controller Current must be 20 for DC system";
+
+    public static final String ASSET_INVERTER_CHARGE_CONTROLLER_VOLTAGE_REQUIRED_CODE = "ERR_INVERTER_CHARGE_CONTROLLER_VOLTAGE_REQUIRED";
+    public static final String ASSET_INVERTER_CHARGE_CONTROLLER_VOLTAGE_REQUIRED_MSG = "Charge Controller Voltage is required for DC system";
+
+    public static final String ASSET_INVERTER_CHARGE_CONTROLLER_VOLTAGE_VALUE_CODE = "ERR_INVERTER_CHARGE_CONTROLLER_VOLTAGE_VALUE";
+    public static final String ASSET_INVERTER_CHARGE_CONTROLLER_VOLTAGE_VALUE_MSG = "Charge Controller Voltage must be 12 for DC system";
+
+    public static final String ASSET_INVERTER_CURRENT_UNIT_CODE = "ERR_INVERTER_CURRENT_UNIT";
+    public static final String ASSET_INVERTER_CURRENT_UNIT_MSG = "Current Unit must be 'A' for DC system";
+
+    public static final String ASSET_INVERTER_VOLTAGE_UNIT_CODE = "ERR_INVERTER_VOLTAGE_UNIT";
+    public static final String ASSET_INVERTER_VOLTAGE_UNIT_MSG = "Voltage Unit must be 'vDC' for DC system";
+
+    public static final String ASSET_INVERTER_CAPACITY_REQUIRED_CODE = "ERR_INVERTER_CAPACITY_REQUIRED";
+    public static final String ASSET_INVERTER_CAPACITY_REQUIRED_MSG = "Inverter Capacity is required for AC Off Grid system";
+
+    public static final String ASSET_INVERTER_CAPACITY_INVALID_FORMAT_CODE = "ERR_INVERTER_CAPACITY_INVALID_FORMAT";
+    public static final String ASSET_INVERTER_CAPACITY_INVALID_FORMAT_MSG = "Inverter Capacity must be a valid number";
+
+    public static final String ASSET_INVERTER_CAPACITY_INVALID_VALUE_CODE = "ERR_INVERTER_CAPACITY_INVALID_VALUE";
+    public static final String ASSET_INVERTER_CAPACITY_INVALID_VALUE_MSG = "Inverter Capacity must be one of the valid values";
+
+    public static final String ASSET_INVERTER_CAPACITY_UNIT_CODE = "ERR_INVERTER_CAPACITY_UNIT";
+    public static final String ASSET_INVERTER_CAPACITY_UNIT_MSG = "Inverter Capacity Unit must be 'kVA' for AC Off Grid system";
+
+    public static final String ASSET_TOTAL_CAPACITY_REQUIRED_CODE = "ERR_TOTAL_CAPACITY_REQUIRED";
+    public static final String ASSET_TOTAL_CAPACITY_REQUIRED_MSG = "Total Capacity is required for AC Off Grid system";
+
+    public static final String ASSET_TOTAL_CAPACITY_VALUE_CODE = "ERR_TOTAL_CAPACITY_VALUE";
+    public static final String ASSET_TOTAL_CAPACITY_VALUE_MSG = "Total Capacity must be 1 for AC Off Grid system";
+
+    public static final String ASSET_TOTAL_CAPACITY_UNIT_CODE = "ERR_TOTAL_CAPACITY_UNIT";
+    public static final String ASSET_TOTAL_CAPACITY_UNIT_MSG = "Total Capacity UOM must be 'kVA' for AC Off Grid system";
+
+    public static final String ASSET_SYSTEM_TYPE_INVALID_CODE = "ERR_SYSTEM_TYPE_INVALID";
+    public static final String ASSET_SYSTEM_TYPE_INVALID_MSG = "Invalid system type. Must be either 'DC' or 'AC Off Grid'";
+
+    // Battery Details Error Codes
+    public static final String ASSET_BATTERY_DETAILS_NULL_CODE = "ERR_BATTERY_DETAILS_NULL";
+    public static final String ASSET_BATTERY_DETAILS_NULL_MSG = "Battery details cannot be null";
+
+    public static final String ASSET_BATTERY_TOTAL_CAPACITY_REQUIRED_CODE = "ERR_BATTERY_TOTAL_CAPACITY_REQUIRED";
+    public static final String ASSET_BATTERY_TOTAL_CAPACITY_REQUIRED_MSG = "Total Capacity is required";
+
+    public static final String ASSET_BATTERY_TOTAL_CAPACITY_INVALID_CODE = "ERR_BATTERY_TOTAL_CAPACITY_INVALID";
+    public static final String ASSET_BATTERY_TOTAL_CAPACITY_INVALID_MSG = "Total Capacity must be one of the valid values";
+
+    public static final String ASSET_BATTERY_TOTAL_CAPACITY_UOM_CODE = "ERR_BATTERY_TOTAL_CAPACITY_UOM";
+    public static final String ASSET_BATTERY_TOTAL_CAPACITY_UOM_MSG = "Total Capacity UOM must be 'kWh'";
+
+    public static final String ASSET_BATTERY_TYPE_INVALID_CODE = "ERR_BATTERY_TYPE_INVALID";
+    public static final String ASSET_BATTERY_TYPE_INVALID_MSG = "Battery Type must be one of the valid types";
+
+    public static final String ASSET_BATTERY_VOLTAGE_UNIT_CODE = "ERR_BATTERY_VOLTAGE_UNIT";
+    public static final String ASSET_BATTERY_VOLTAGE_UNIT_MSG = "Voltage Unit must be 'Volts'";
+
+    public static final String ASSET_BATTERY_CAPACITY_UNIT_CODE = "ERR_BATTERY_CAPACITY_UNIT";
+    public static final String ASSET_BATTERY_CAPACITY_UNIT_MSG = "Capacity Unit must be 'Ah'";
+
+    // DC System Battery Validation
+    public static final String ASSET_BATTERY_VOLTAGE_REQUIRED_DC_CODE = "ERR_BATTERY_VOLTAGE_REQUIRED_DC";
+    public static final String ASSET_BATTERY_VOLTAGE_REQUIRED_DC_MSG = "Battery Voltage is required for DC system";
+
+    public static final String ASSET_BATTERY_VOLTAGE_INVALID_DC_CODE = "ERR_BATTERY_VOLTAGE_INVALID_DC";
+    public static final String ASSET_BATTERY_VOLTAGE_INVALID_DC_MSG = "Battery Voltage must be one of the valid values for DC system";
+
+    public static final String ASSET_BATTERY_CAPACITY_REQUIRED_DC_CODE = "ERR_BATTERY_CAPACITY_REQUIRED_DC";
+    public static final String ASSET_BATTERY_CAPACITY_REQUIRED_DC_MSG = "Battery Capacity is required for DC system";
+
+    public static final String ASSET_BATTERY_CAPACITY_INVALID_DC_CODE = "ERR_BATTERY_CAPACITY_INVALID_DC";
+    public static final String ASSET_BATTERY_CAPACITY_INVALID_DC_MSG = "Battery Capacity must be one of the valid values for DC system";
+
+    // AC Off Grid System Battery Validation
+    public static final String ASSET_BATTERY_VOLTAGE_REQUIRED_AC_CODE = "ERR_BATTERY_VOLTAGE_REQUIRED_AC";
+    public static final String ASSET_BATTERY_VOLTAGE_REQUIRED_AC_MSG = "Battery Voltage is required for AC Off Grid system";
+
+    public static final String ASSET_BATTERY_VOLTAGE_INVALID_AC_CODE = "ERR_BATTERY_VOLTAGE_INVALID_AC";
+    public static final String ASSET_BATTERY_VOLTAGE_INVALID_AC_MSG = "Battery Voltage must be one of the valid values for AC Off Grid system";
+
+    public static final String ASSET_BATTERY_CAPACITY_REQUIRED_AC_CODE = "ERR_BATTERY_CAPACITY_REQUIRED_AC";
+    public static final String ASSET_BATTERY_CAPACITY_REQUIRED_AC_MSG = "Battery Capacity is required for AC Off Grid system";
+
+    public static final String ASSET_BATTERY_CAPACITY_INVALID_AC_CODE = "ERR_BATTERY_CAPACITY_INVALID_AC";
+    public static final String ASSET_BATTERY_CAPACITY_INVALID_AC_MSG = "Battery Capacity must be one of the valid values for AC Off Grid system";
+
+    public static final String ASSET_PANEL_DETAILS_NULL_CODE = "ERR_PANEL_DETAILS_NULL";
+    public static final String ASSET_PANEL_DETAILS_NULL_MSG = "Panel details cannot be null";
+
+    public static final String ASSET_PANEL_TOTAL_CAPACITY_REQUIRED_CODE = "ERR_PANEL_TOTAL_CAPACITY_REQUIRED";
+    public static final String ASSET_PANEL_TOTAL_CAPACITY_REQUIRED_MSG = "Total Capacity is required";
+
+    public static final String ASSET_PANEL_TOTAL_CAPACITY_UNIT_REQUIRED_CODE = "ERR_PANEL_TOTAL_CAPACITY_UNIT_REQUIRED";
+    public static final String ASSET_PANEL_TOTAL_CAPACITY_UNIT_REQUIRED_MSG = "Total Capacity Unit is required";
+
+    public static final String ASSET_PANEL_CAPACITY_REQUIRED_CODE = "ERR_PANEL_CAPACITY_REQUIRED";
+    public static final String ASSET_PANEL_CAPACITY_REQUIRED_MSG = "Capacity is required";
+
+    public static final String ASSET_PANEL_CAPACITY_UNIT_REQUIRED_CODE = "ERR_PANEL_CAPACITY_UNIT_REQUIRED";
+    public static final String ASSET_PANEL_CAPACITY_UNIT_REQUIRED_MSG = "Capacity Unit is required";
 
 }
