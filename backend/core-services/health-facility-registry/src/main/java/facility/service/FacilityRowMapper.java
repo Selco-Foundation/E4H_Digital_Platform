@@ -6,6 +6,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import facility.web.models.Facility;
 import facility.web.models.FacilityAddress;
 import facility.web.models.HealthFacilityDetails;
+import org.springframework.dao.DataAccessException;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
@@ -45,13 +47,13 @@ public class FacilityRowMapper {
         try {
             String detailsJson = rs.getString("facility_details");
             if (detailsJson != null) {
-                HealthFacilityDetails details = mapper.readValue(detailsJson, new TypeReference<>() {});
+                HealthFacilityDetails details = mapper.readValue(detailsJson, new TypeReference<HealthFacilityDetails>() {});
                 facility.setFacilityDetails(details);
             }
 
             String additionalJson = rs.getString("additional_details");
             if (additionalJson != null) {
-                Map<String, Object> additional = mapper.readValue(additionalJson, new TypeReference<>() {});
+                Map<String, Object> additional = mapper.readValue(additionalJson, new TypeReference<Map<String, Object>>() {});
                 facility.setAdditionalDetails(additional);
             }
 
@@ -70,18 +72,22 @@ public class FacilityRowMapper {
     private FacilityAddress fetchAddressById(String addressId) {
         String sql = "SELECT * FROM facility_address WHERE id = ?";
 
-        return jdbcTemplate.queryForObject(sql, new Object[]{addressId}, (rs, rowNum) -> {
-            FacilityAddress address = new FacilityAddress();
-            address.setAddressId(rs.getString("id"));
-            address.setTenantId(rs.getString("tenant_id"));
-            address.setLatitude(rs.getDouble("latitude"));
-            address.setLongitude(rs.getDouble("longitude"));
-            address.setAddressLine1(rs.getString("addressLine1"));
-            address.setAddressLine2(rs.getString("addressLine2"));
-            address.setCity(rs.getString("city"));
-            address.setPincode(rs.getString("pincode"));
-            address.setLandmark(rs.getString("landmark"));
-            return address;
-        });
+        try {
+            return jdbcTemplate.queryForObject(sql, new Object[]{addressId}, (rs, rowNum) -> {
+                FacilityAddress address = new FacilityAddress();
+                address.setAddressId(rs.getString("id"));
+                address.setTenantId(rs.getString("tenant_id"));
+                address.setLatitude(rs.getDouble("latitude"));
+                address.setLongitude(rs.getDouble("longitude"));
+                address.setAddressLine1(rs.getString("addressLine1"));
+                address.setAddressLine2(rs.getString("addressLine2"));
+                address.setCity(rs.getString("city"));
+                address.setPincode(rs.getString("pincode"));
+                address.setLandmark(rs.getString("landmark"));
+                return address;
+            });
+        } catch (EmptyResultDataAccessException e) {
+            throw new RuntimeException("Address not available");
+        }
     }
 }
