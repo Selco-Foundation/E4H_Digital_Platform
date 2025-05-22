@@ -71,12 +71,12 @@ public class AssetService {
 
         if (assetId != null && !assetId.isBlank()) {
             query.append(" AND asset_id = ?");
-            params.add(tenantId);
+            params.add(assetId);
         }
 
         if (wfStatus != null && !wfStatus.isBlank()) {
             query.append(" AND wf_status = ?");
-            params.add(tenantId);
+            params.add(wfStatus);
         }
 
         if (facilityId != null && !facilityId.isBlank()) {
