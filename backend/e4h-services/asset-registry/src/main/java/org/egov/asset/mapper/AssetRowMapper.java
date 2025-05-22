@@ -34,8 +34,8 @@ public class AssetRowMapper {
         AuditDetails details = new AuditDetails();
         details.setCreatedBy(rs.getString("created_by"));
         details.setCreatedTime(rs.getLong("created_time"));
-        details.setLastModifiedBy(rs.getString("updated_by"));
-        details.setLastModifiedTime(rs.getLong("updated_time"));
+        details.setLastModifiedBy(rs.getString("last_modified_by"));
+        details.setLastModifiedTime(rs.getLong("last_modified_time"));
         asset.setAuditDetails(details);
 
         String detailsJson = rs.getString("asset_details");
