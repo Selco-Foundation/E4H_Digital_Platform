@@ -353,6 +353,12 @@ def convert_response_to_facility(response: Dict[str, Any]):
     }
 
 def create_project_payload(request_info: RequestInfo, row: Series):
+    def to_epoch(date_str: str) -> int:
+        try:
+            dt = datetime.datetime.strptime(date_str.strip(), "%d/%m/%Y")
+            return int(dt.timestamp() * 1000)
+        except ValueError:
+            raise ValueError(f"Date '{date_str}' is not in the format DD/MM/YYYY")
     return {
         'RequestInfo': request_info.model_dump(by_alias=True, exclude_none=True),
         'Projects': [
@@ -365,8 +371,8 @@ def create_project_payload(request_info: RequestInfo, row: Series):
                 'description': safe_get(row, 'Project Description'),
                 'referenceID': safe_get(row, 'Project Reference ID'),
                 'parent': safe_get(row, 'Parent Project ID'),
-                'startDate': safe_get(row, 'Project Start Date (Epoch)'),
-                'endDate': safe_get(row, 'Project End Date (Epoch)'),
+                'startDate': to_epoch(safe_get(row, 'Project Start Date (DD/MM/YYYY)')),
+                'endDate': to_epoch(safe_get(row, 'Project End Date (DD/MM/YYYY)')),
                 'address': {
                     'boundary': safe_get(row, 'Boundary Code'),
                     'boundaryType': safe_get(row, 'Boundary Type'),

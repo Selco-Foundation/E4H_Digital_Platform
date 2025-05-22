@@ -43,7 +43,7 @@ async def get_facility_ingestion_template(
         output_filename = f"facility_ingestion_template_{timestamp}.xlsx"
         output_file_path = create_temp_file(suffix=".xlsx")
         try:
-            facility_schema = mdms_client.fetch_facility_schema(request_info=request_info)
+            facility_schema = mdms_client.get_column_definitions_with_metadata(request_info, 'data-ingestion.FacilityIngestionSchema')
             boundary_data = facility_service.get_all_boundaries(request_info)
         except Exception as e:
             logger.error(f"Error fetching data from external services: {e}")
@@ -151,8 +151,8 @@ async def get_facility_selection_template(
     if facility_service_url:
         facility_client = FacilityServiceClient(facility_service_url)
         try:
-            boundary_facilities = facility_client.search_facility_by_boundary_codes(boundary_code_list, request_info)
-            # boundary_facilities = mockedData()
+            # boundary_facilities = facility_client.search_facility_by_boundary_codes(boundary_code_list, request_info)
+            boundary_facilities = mockedData()
         except Exception as e:
             print(f"Error fetching boundary facilities: {e}")
 

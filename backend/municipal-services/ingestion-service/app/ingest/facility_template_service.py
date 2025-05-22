@@ -7,12 +7,14 @@ import requests
 from fastapi import HTTPException
 from openpyxl import load_workbook
 from openpyxl.worksheet.datavalidation import DataValidation
+from sqlalchemy import false
 
 from app.core.logging import AppLogger
 from app.schemas.boundary import Boundary
 from app.schemas.request_info import RequestInfo
 from app.schemas.vendor_ingestion_shema_response import IngestionSchemaResponse
 from app.utils.convertor import convert_json_to_boundary
+from app.utils.excel_utils import add_dropdowns_to_excel, lock_excel_columns
 from app.utils.file_utils import create_empty_excel_file, create_excel_data_writer
 
 logger = AppLogger().get_logger()
@@ -51,24 +53,39 @@ class FacilityTemplateService:
         return convert_json_to_boundary(response.text)
 
     def generate_template_file(self, output_path: str,
-                               facility_schema: IngestionSchemaResponse,
+                               facility_schema: List[Dict[str, Any]],
                                boundary_data: List[Boundary]
                                ) -> None:
         try:
             create_empty_excel_file(output_path)
-            schema_columns = facility_schema.mdms[0].data.columns
 
             output_list = []
-            for col in schema_columns:
-                mandatory_indicator = "(Mandatory)" if col.required else ""
-                output_list.append(f"{col.name} {mandatory_indicator}".strip())
-            df_facility = pd.DataFrame(columns=output_list)
+            dropdowns_map = {}
+            for col in facility_schema:
+                mandatory_indicator = "(Mandatory)" if col.get("required") else ""
+                header_name = f"{col.get('name')} {mandatory_indicator}".strip()
+                output_list.append(header_name)
 
+                mdms_values = col.get("mdms_values")
+                if mdms_values:
+                    dropdown_options = [item.get("name") for item in mdms_values if item.get("name")]
+                    if dropdown_options:
+                        dropdowns_map[header_name] = dropdown_options
+
+            df_facility = pd.DataFrame(columns=output_list)
             facility_writer = create_excel_data_writer(
                 output_path,
                 "FacilityIngestionTemplate"
             )
             facility_writer.write_data(df_facility)
+
+            add_dropdowns_to_excel(
+                file_path=output_path,
+                sheet_name="FacilityIngestionTemplate",
+                dropdowns=dropdowns_map,
+                allow_blank=True
+            )
+
             boundary_records = self._format_boundary_data(boundary_data)
             df_boundary = pd.DataFrame(boundary_records)
             boundary_writer = create_excel_data_writer(
@@ -174,36 +191,24 @@ class FacilityTemplateService:
 
             df_facility = pd.DataFrame(records, columns=column_names)
 
-            self.write_excel_with_dropdown(output_path, df_facility)
+            df_facility.to_excel(output_path, sheet_name="Facility Selection Template", index=False)
+
+            dropdowns_map = {'Selection?': ['Yes', 'No']}
+
+            add_dropdowns_to_excel(
+                file_path=output_path,
+                sheet_name="Facility Selection Template",
+                dropdowns=dropdowns_map,
+                allow_blank=False
+            )
+
+            lock_excel_columns(
+                file_path=output_path,
+                sheet_name="Facility Selection Template",
+                column_headers_to_unlock=[ "Selection?"]
+            )
 
             logger.info(f"Successfully created template file at {output_path}")
         except Exception as e:
             logger.error(f"Error generating template file: {e}")
             raise
-
-    def write_excel_with_dropdown(self, output_path: str, df: pd.DataFrame):
-        # Step 1: Write data to Excel
-        df.to_excel(output_path, sheet_name="Facility Selection Template", index=False)
-
-        # Step 2: Load workbook with openpyxl
-        wb = load_workbook(output_path)
-        ws = wb["Facility Selection Template"]
-
-        # Step 3: Create data validation for dropdown
-        dv = DataValidation(type="list", formula1='"Yes,No"', allow_blank=True)
-        dv.error = 'Please select from the list'
-        dv.errorTitle = 'Invalid Entry'
-
-        # Step 4: Find the column letter for "Selection?"
-        for col in ws.iter_cols(1, ws.max_column):
-            if col[0].value == "Selection?":
-                col_letter = col[0].column_letter
-                # Apply dropdown to all cells in that column (starting from row 2 to avoid header)
-                dv.ranges.add(f"{col_letter}2:{col_letter}{ws.max_row}")
-                break
-
-        # Step 5: Add the data validation to sheet
-        ws.add_data_validation(dv)
-
-        # Step 6: Save file
-        wb.save(output_path)

@@ -29,6 +29,9 @@ class MDMSData(BaseModel):
     id: Optional[int] = None
     columns: Optional[List[MDMSColumn]] = None
 
+    class Config:
+        extra = "allow"
+
 
 class MDMS(BaseModel):
     id: Optional[str] = None
