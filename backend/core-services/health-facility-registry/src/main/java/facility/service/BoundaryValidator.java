@@ -62,7 +62,7 @@ public class BoundaryValidator {
         try {
             // Call boundary service and parse the response
             Object rawResponse = serviceRequestRepository.fetchResult(new StringBuilder(uri), requestBody);
-            Map<String, Object> response = mapper.convertValue(rawResponse, new TypeReference<>() {});
+            Map<String, Object> response = mapper.convertValue(rawResponse, new TypeReference<Map<String, Object>>() {});
 
             // Validate each boundary code individually against the response
             for (String code : boundaryCodes) {
@@ -80,15 +80,26 @@ public class BoundaryValidator {
      * @param code Boundary code to validate
      * @param response Parsed response from boundary service
      */
+    @SuppressWarnings("unchecked")
     private void validateResponse(String code, Map<String, Object> response) {
         if (response == null || !response.containsKey("Boundary")) {
             throw new IllegalArgumentException("Boundary response is missing 'Boundary' field");
         }
 
-        // Ensure 'Boundary' is a non-empty list
-        Object boundaries = response.get("Boundary");
-        if (!(boundaries instanceof List<?> list) || list.isEmpty()) {
-            throw new IllegalArgumentException("Invalid or empty 'Boundary' response for code: " + code);
+        Object boundariesObj = response.get("Boundary");
+        if (!(boundariesObj instanceof List<?> boundaries) || boundaries.isEmpty()) {
+            throw new IllegalArgumentException("Boundary response is empty");
+        }
+
+        // Check if any returned boundary matches the requested code
+        boolean found = boundaries.stream()
+                .filter(Objects::nonNull)
+                .filter(Map.class::isInstance)
+                .map(obj -> (Map<String, Object>) obj)
+                .anyMatch(boundary -> code.equals(boundary.get("code")));
+
+        if (!found) {
+            throw new IllegalArgumentException("Boundary code not found in response: " + code);
         }
     }
 }

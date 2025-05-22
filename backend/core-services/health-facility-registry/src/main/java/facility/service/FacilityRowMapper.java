@@ -5,8 +5,11 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import facility.web.models.Facility;
 import facility.web.models.FacilityAddress;
+import facility.web.models.HealthFacilityDetails;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
+
+import java.util.Map;
 
 @Service
 public class FacilityRowMapper {
@@ -43,13 +46,13 @@ public class FacilityRowMapper {
             // Deserialize JSONB column: facility_details (Map<String, Object>)
             String detailsJson = rs.getString("facility_details");
             if (detailsJson != null) {
-                facility.setFacilityDetails(mapper.readValue(detailsJson, new TypeReference<>() {}));
+                facility.setFacilityDetails(mapper.readValue(detailsJson, new TypeReference<HealthFacilityDetails>() {}));
             }
 
             // Deserialize JSONB column: additional_details (Map<String, Object>)
             String additionalJson = rs.getString("additional_details");
             if (additionalJson != null) {
-                facility.setAdditionalDetails(mapper.readValue(additionalJson, new TypeReference<>() {}));
+                facility.setAdditionalDetails(mapper.readValue(additionalJson, new TypeReference<Map<String, Object>>() {}));
             }
 
             // Deserialize JSONB column: address (FacilityAddress)

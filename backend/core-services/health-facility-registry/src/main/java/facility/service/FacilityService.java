@@ -176,7 +176,12 @@ public class FacilityService {
 
         // Validate with MDMS and boundary APIs
         facilityMdmsValidator.validateAgainstMDMS(List.of(facility), update.getTenantId(), request.getRequestInfo());
-        boundaryValidator.validateBoundaries(Set.of(facility.getBoundaryCode()), update.getTenantId(), request.getRequestInfo());
+        if (facility.getBoundaryCode() != null) {
+            boundaryValidator.validateBoundaries(
+                    Set.of(facility.getBoundaryCode()),
+                    update.getTenantId(),
+                    request.getRequestInfo());
+        }
 
         if (facility.getWfStatus() == null) facility.setWfStatus("UPDATED");
         if (facility.getIsActive() == null) facility.setIsActive(true);
