@@ -21,6 +21,14 @@ public class FacilityMdmsValidator {
 
     private final MdmsUtil mdmsUtil;
 
+    /**
+     * Validates a list of facilities against MDMS master data.
+     * It checks both schema-based column validations and row-level constraints.
+     *
+     * @param facilities List of Facility objects to validate
+     * @param tenantId   Tenant ID to scope the MDMS lookup
+     * @param requestInfo Request metadata
+     */
     public void validateAgainstMDMS(List<Facility> facilities, String tenantId, RequestInfo requestInfo) {
         Objects.requireNonNull(facilities, "Facility list cannot be null");
         Objects.requireNonNull(tenantId, "tenantId cannot be null");
@@ -28,10 +36,12 @@ public class FacilityMdmsValidator {
 
         if (facilities.isEmpty()) return;
 
+        // Fetch MDMS data from relevant modules
         Map<String, Map<String, JSONArray>> mdmsData = new HashMap<>();
         mdmsData.putAll(mdmsUtil.fetchMdmsData(requestInfo, tenantId, "data-ingestion", List.of("FacilityIngestionSchema")));
         mdmsData.putAll(mdmsUtil.fetchMdmsData(requestInfo, tenantId, "facility", List.of("FacilityType", "FacilityCategory", "FacilityOwnership", "SolarSolutionDesignType")));
 
+        // Extract ingestion schema definition
         JSONArray ingestionSchemas = mdmsData.getOrDefault("data-ingestion", Map.of()).get("FacilityIngestionSchema");
         if (ingestionSchemas == null || ingestionSchemas.isEmpty()) {
             throw new IllegalArgumentException("FacilityIngestionSchema not found in MDMS response");
@@ -42,16 +52,24 @@ public class FacilityMdmsValidator {
 
         List<Map<String, Object>> columns = (List<Map<String, Object>>) schema.get("columns");
         List<Map<String, Object>> rowConstraints = (List<Map<String, Object>>) schema.get("rowConstraints");
+
+        // Flatten MDMS data to enable quick lookups during validation
         List<Map<String, Object>> flattenedMdmsData = flattenMdmsData(mdmsData);
 
         for (Facility facility : facilities) {
             Map<String, Object> input = convertFacilityToMap(facility);
+
+            // Validate individual fields (required, pattern, allowed values)
             validateFields(columns, input, flattenedMdmsData);
+
+            // Validate cross-field constraints (e.g. atLeastOne, allOrNone)
             validateRowConstraints(rowConstraints, input);
         }
     }
 
-
+    /**
+     * Validates each column's value against required, pattern, and allowed MDMS values.
+     */
     private void validateFields(List<Map<String, Object>> columns, Map<String, Object> input, List<Map<String, Object>> mdmsList) {
         for (Map<String, Object> col : columns) {
             String name = (String) col.get("name");
@@ -70,10 +88,14 @@ public class FacilityMdmsValidator {
                 }
             }
 
+            // Check if value is allowed per MDMS source
             validateColumns(mdmsList, col, value, name);
         }
     }
 
+    /**
+     * Validates row-level constraints like "atLeastOneRequired" or "allOrNoneRequired"
+     */
     private void validateRowConstraints(List<Map<String, Object>> constraints, Map<String, Object> input) {
         if (constraints == null) return;
 
@@ -99,6 +121,9 @@ public class FacilityMdmsValidator {
         }
     }
 
+    /**
+     * Validates values against the list of allowed MDMS values.
+     */
     private void validateColumns(List<Map<String, Object>> mdmsList, Map<String, Object> col, Object value, String name) {
         if (value != null && col.containsKey(MDMS_SOURCE)) {
             Map<String, String> src = (Map<String, String>) col.get(MDMS_SOURCE);
@@ -120,6 +145,10 @@ public class FacilityMdmsValidator {
         }
     }
 
+    /**
+     * Determines the key name to use from column definition,
+     * using svcSource, mdmsSource, or falling back to column name.
+     */
     private String deriveKeyFromColumn(Map<String, Object> col, String defaultKey) {
         if (col.containsKey("svcSource")) {
             return ((Map<String, String>) col.get("svcSource")).get("key");
@@ -129,6 +158,10 @@ public class FacilityMdmsValidator {
         return defaultKey;
     }
 
+    /**
+     * Flattens MDMS module/master records into a schemaCode + data structure.
+     * This allows simple lookup during value validation.
+     */
     private List<Map<String, Object>> flattenMdmsData(Map<String, Map<String, JSONArray>> mdmsData) {
         List<Map<String, Object>> flat = new ArrayList<>();
 
@@ -150,6 +183,10 @@ public class FacilityMdmsValidator {
         return flat;
     }
 
+    /**
+     * Converts a Facility object into a flat map suitable for validation.
+     * Includes data from nested FacilityAddress and HealthFacilityDetails.
+     */
     private Map<String, Object> convertFacilityToMap(Facility facility) {
         Map<String, Object> map = new HashMap<>();
 
@@ -169,7 +206,7 @@ public class FacilityMdmsValidator {
         map.put("Type of HC", facility.getFacilityType());
         map.put("facility_id", facility.getFacilityId());
         map.put("tenant_id", facility.getTenantId());
-        map.put("boundaryCode", facility.getBoundaryCode()); // ✅ this is now always present
+        map.put("boundaryCode", facility.getBoundaryCode());
 
         HealthFacilityDetails details = facility.getFacilityDetails();
         if (details != null) {
@@ -184,6 +221,9 @@ public class FacilityMdmsValidator {
         return map;
     }
 
+    /**
+     * Combines all address fields into a single human-readable address string.
+     */
     private String buildFullAddress(FacilityAddress addr) {
         return Stream.of(
                         addr.getAddressNumber(),

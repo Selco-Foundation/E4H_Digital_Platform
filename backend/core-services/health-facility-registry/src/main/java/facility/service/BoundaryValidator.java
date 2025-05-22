@@ -23,21 +23,34 @@ public class BoundaryValidator {
     private final ServiceRequestRepository serviceRequestRepository;
     private final ObjectMapper mapper;
 
+    // Base URL for the boundary service (e.g., http://localhost:8082)
     @Value("${egov.boundary.host}")
     private String boundaryHost;
 
+    // Path to the boundary search endpoint
     @Value("${egov.boundary.path:/boundary-service/boundary/_search}")
     private String boundaryPath;
 
+    /**
+     * Validates that each boundaryCode in the given set exists for the specified tenant.
+     * Makes a call to the boundary service using the provided tenantId and RequestInfo.
+     *
+     * @param boundaryCodes Set of boundary codes to validate
+     * @param tenantId Tenant identifier (e.g., "pg.city")
+     * @param requestInfo Metadata about the user and request context
+     */
     public void validateBoundaries(Set<String> boundaryCodes, String tenantId, RequestInfo requestInfo) {
         Objects.requireNonNull(boundaryCodes, "boundaryCodes cannot be null");
         Objects.requireNonNull(tenantId, "tenantId cannot be null");
         Objects.requireNonNull(requestInfo, "RequestInfo cannot be null");
 
+        // If no boundary codes are provided, nothing to validate
         if (boundaryCodes.isEmpty()) return;
 
+        // Join boundary codes into comma-separated string for the query parameter
         String codes = String.join(",", boundaryCodes);
 
+        // Construct the complete URI for boundary search
         String uri = UriComponentsBuilder.fromUriString(boundaryHost)
                 .path(boundaryPath)
                 .queryParam("tenantId", tenantId)
@@ -47,23 +60,32 @@ public class BoundaryValidator {
         Map<String, Object> requestBody = Map.of("RequestInfo", requestInfo);
 
         try {
+            // Call boundary service and parse the response
             Object rawResponse = serviceRequestRepository.fetchResult(new StringBuilder(uri), requestBody);
             Map<String, Object> response = mapper.convertValue(rawResponse, new TypeReference<>() {});
 
+            // Validate each boundary code individually against the response
             for (String code : boundaryCodes) {
                 validateResponse(code, response);
             }
         } catch (Exception e) {
+            // Wrap and rethrow exceptions with contextual information
             throw new IllegalArgumentException("Error validating boundary codes: " + boundaryCodes, e);
         }
     }
 
-
+    /**
+     * Validates that the response contains a non-empty list of boundaries for a given code.
+     *
+     * @param code Boundary code to validate
+     * @param response Parsed response from boundary service
+     */
     private void validateResponse(String code, Map<String, Object> response) {
         if (response == null || !response.containsKey("Boundary")) {
             throw new IllegalArgumentException("Boundary response is missing 'Boundary' field");
         }
 
+        // Ensure 'Boundary' is a non-empty list
         Object boundaries = response.get("Boundary");
         if (!(boundaries instanceof List<?> list) || list.isEmpty()) {
             throw new IllegalArgumentException("Invalid or empty 'Boundary' response for code: " + code);
