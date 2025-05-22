@@ -82,8 +82,7 @@ class FacilityTemplateService:
             add_dropdowns_to_excel(
                 file_path=output_path,
                 sheet_name="FacilityIngestionTemplate",
-                dropdowns=dropdowns_map,
-                allow_blank=True
+                dropdowns=dropdowns_map
             )
 
             boundary_records = self._format_boundary_data(boundary_data)
@@ -198,8 +197,7 @@ class FacilityTemplateService:
             add_dropdowns_to_excel(
                 file_path=output_path,
                 sheet_name="Facility Selection Template",
-                dropdowns=dropdowns_map,
-                allow_blank=False
+                dropdowns=dropdowns_map
             )
 
             lock_excel_columns(
