@@ -384,6 +384,8 @@ async def upload_projects_excel_sheet(
             df['status'] = ''
         if 'error' not in df.columns:
             df['error'] = ''
+        if 'Project ID' not in df.columns:
+            df['Project ID'] = ''
 
         if project_service_url and not df.empty:
             project_client = ProjectServiceClient(project_service_url)
@@ -391,9 +393,14 @@ async def upload_projects_excel_sheet(
                 try:
                     project_data_payload = create_project_payload(request_info, row)
                     response = project_client.create_project(project_data_payload)
-                    if response.status_code in (200, 201, 202):
+                    response_data = response.json()
+
+                    if response.status_code in [200, 201, 202] and isinstance(response_data.get('Project'), list) and response_data[
+                        'Project']:
+                        project_id = response_data['Project'][0].get('id')
                         df.at[index, 'status'] = 'success'
                         df.at[index, 'error'] = ''
+                        df.at[index, 'Project ID'] = project_id
                     elif response.status_code == 400:
                         error_data = response.json()
                         error_message = error_data.get('Errors', [{}])[0].get('message', 'Unknown error')
