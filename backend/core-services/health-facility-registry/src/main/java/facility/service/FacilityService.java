@@ -196,47 +196,43 @@ public class FacilityService {
      *
      * @return List of facilities matching the filter
      */
-    public List<Facility> searchFacilities(String tenantId, String facilityId, String facilityName,
-                                           String hfrId, String ninId, String boundaryCode,
-                                           int limit, int offset) {
-
+    public List<Facility> searchFacilities(FacilitySearchRequest searchRequest) {
         StringBuilder query = new StringBuilder("SELECT * FROM facility WHERE 1=1");
         List<Object> params = new ArrayList<>();
 
-        if (tenantId != null && !tenantId.isBlank()) {
+        if (searchRequest.getTenantId() != null && !searchRequest.getTenantId().isBlank()) {
             query.append(" AND tenant_id = ?");
-            params.add(tenantId);
+            params.add(searchRequest.getTenantId());
         }
 
-        if (facilityId != null && !facilityId.isBlank()) {
-            query.append(" AND facility_id::text = ?");
-            params.add(facilityId);
+        if (searchRequest.getFacilityId() != null && !searchRequest.getFacilityId().isBlank()) {
+            query.append(" AND id = ?");
+            params.add(searchRequest.getFacilityId());
         }
 
-        if (facilityName != null && !facilityName.isBlank()) {
+        if (searchRequest.getFacilityName() != null && !searchRequest.getFacilityName().isBlank()) {
             query.append(" AND facility_name ILIKE ?");
-            params.add("%" + facilityName + "%");
+            params.add("%" + searchRequest.getFacilityName() + "%");
         }
 
-        if (hfrId != null && !hfrId.isBlank()) {
-            query.append(" AND facility_details->>'hfrId' = ?");
-            params.add(hfrId);
+        if (searchRequest.getHfrId() != null && !searchRequest.getHfrId().isBlank()) {
+            query.append(" AND facility_details ->> 'hfrId' = ?");
+            params.add(searchRequest.getHfrId());
         }
 
-        if (ninId != null && !ninId.isBlank()) {
-            query.append(" AND facility_details->>'ninId' = ?");
-            params.add(ninId);
+        if (searchRequest.getNinId() != null && !searchRequest.getNinId().isBlank()) {
+            query.append(" AND facility_details ->> 'ninId' = ?");
+            params.add(searchRequest.getNinId());
         }
 
-        if (boundaryCode != null && !boundaryCode.isBlank()) {
+        if (searchRequest.getBoundaryCode() != null && !searchRequest.getBoundaryCode().isBlank()) {
             query.append(" AND boundary_code = ?");
-            params.add(boundaryCode);
+            params.add(searchRequest.getBoundaryCode());
         }
 
-        // Add pagination and sort
-        query.append(" ORDER BY created_time DESC LIMIT ? OFFSET ?");
-        params.add(limit);
-        params.add(offset);
+        query.append(" ORDER BY created_at DESC LIMIT ? OFFSET ?");
+        params.add(searchRequest.getLimit());
+        params.add(searchRequest.getOffset());
 
         return jdbcTemplate.query(query.toString(), params.toArray(), facilityRowMapper.rowMapper);
     }

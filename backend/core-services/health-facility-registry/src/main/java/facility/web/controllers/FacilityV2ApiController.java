@@ -10,8 +10,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.annotation.Generated;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -112,35 +110,11 @@ public class FacilityV2ApiController {
 
     @GetMapping("/search")
     public ResponseEntity<List<Facility>> searchFacilities(
-            @Parameter(description = "Tenant ID to filter facilities")
-            @RequestParam(value = "tenant_id", required = false) String tenantId,
-
-            @Parameter(description = "Facility ID to filter a specific facility")
-            @RequestParam(value = "facility_id", required = false) String facilityId,
-
-            @Parameter(description = "Facility name to search by (partial or full match)")
-            @RequestParam(value = "facility_name", required = false) String facilityName,
-
-            @Parameter(description = "Boundary code to filter facilities by location")
-            @RequestParam(value = "boundary_code", required = false) String boundaryCode,
-
-            @Parameter(description = "HFR ID to filter facilities")
-            @RequestParam(value = "hfr_id", required = false) String hfrId,
-
-            @Parameter(description = "NIN ID to filter facilities")
-            @RequestParam(value = "nin_id", required = false) String ninId,
-
-            @Parameter(description = "Maximum number of results to return")
-            @RequestParam(value = "limit", required = false, defaultValue = "10")  @Min(1) @Max(10000) Integer limit,
-
-            @Parameter(description = "Number of results to skip for pagination")
-            @RequestParam(value = "offset", required = false, defaultValue = "0") @Min(1)Integer offset
-    ) {
-        List<Facility> facilities = facilityService.searchFacilities(
-                tenantId, facilityId, facilityName, hfrId, ninId, boundaryCode, limit, offset
-        );
+            @ModelAttribute FacilitySearchRequest searchRequest) {
+        List<Facility> facilities = facilityService.searchFacilities(searchRequest);
         return ResponseEntity.ok(facilities);
     }
+
 
 
 }
