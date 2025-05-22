@@ -3,12 +3,14 @@ package org.egov.asset.service;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.asset.mapper.AssetRowMapper;
 import org.egov.asset.repository.AssetRepository;
+import org.egov.asset.util.ErrorConstants;
 import org.egov.asset.util.IdgenUtil;
 import org.egov.asset.util.ResponseInfoFactory;
 import digit.models.coremodels.AuditDetails;
 import org.egov.asset.web.models.Asset;
 import org.egov.asset.web.models.AssetCreateRequest;
 import org.egov.asset.web.models.AssetCreateResponse;
+import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -35,11 +37,12 @@ public class AssetService {
         this.responseInfoFactory = responseInfoFactory;
     }
 
-    public AssetCreateResponse createFacility(AssetCreateRequest request) {
+    public AssetCreateResponse createAsset(AssetCreateRequest request) {
         List<String> ids = idgenUtil.getIdList(request.getRequestInfo(), request.getAssetDetail().getAsset().getTenantId(),
                 "assetId","ASSET-[SEQ_ASSET_ID]",1);
         if(!ids.isEmpty())
             request.getAssetDetail().getAsset().setAssetId(ids.get(0));
+        else throw new CustomException(ErrorConstants.ID_GEN_SERVICE_ERROR_CODE, ErrorConstants.ID_GEN_SERVICE_ERROR_MSG);
         if(request.getAssetDetail().getAsset().getAuditDetails()==null){
             AuditDetails auditDetails = AuditDetails.builder()
                     .createdBy(request.getRequestInfo().getUserInfo().getUserName())

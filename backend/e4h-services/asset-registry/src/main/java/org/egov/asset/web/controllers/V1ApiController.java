@@ -75,7 +75,7 @@ public class V1ApiController {
             @Parameter(in = ParameterIn.DEFAULT, description = "Asset data to be added to the registry", required = true, schema = @Schema())
             @Valid @RequestBody AssetCreateRequest assetCreateRequest) {
         validator.validateCreateAsset(assetCreateRequest);
-        AssetCreateResponse asset = assetService.createFacility(assetCreateRequest);
+        AssetCreateResponse asset = assetService.createAsset(assetCreateRequest);
         return new ResponseEntity<>(asset, HttpStatus.CREATED);
     }
 

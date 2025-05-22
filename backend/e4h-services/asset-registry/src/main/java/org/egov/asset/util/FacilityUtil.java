@@ -1,11 +1,8 @@
 package org.egov.asset.util;
 
 import lombok.extern.slf4j.Slf4j;
-import org.apache.kafka.common.protocol.types.Field;
 import org.egov.asset.config.Configuration;
-import org.egov.common.contract.request.RequestInfo;
-import org.egov.mdms.model.MdmsCriteriaReq;
-import org.egov.mdms.model.MdmsResponse;
+import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
@@ -32,6 +29,9 @@ public class FacilityUtil {
     }
 
     public List<Object> searchFacility(String tenantId, String facilityId) {
+        if (tenantId == null || tenantId.isEmpty()) {
+            throw new CustomException(ErrorConstants.FACILITY_SEARCH_REQUIRED_PARAMS_CODE, ErrorConstants.FACILITY_SEARCH_REQUIRED_PARAMS_MSG);
+        }
         String url = prepareFacilityRequest(tenantId, facilityId);
         ResponseEntity<List<Object>> response = null;
         try {
@@ -39,12 +39,13 @@ public class FacilityUtil {
             headers.set("Accept", "application/json");
 
             HttpEntity<?> entity = new HttpEntity<>(headers);
-            response = restTemplate.exchange(url, HttpMethod.GET, entity, new ParameterizedTypeReference<List<Object>>() {});
+            response = restTemplate.exchange(url, HttpMethod.GET, entity, new ParameterizedTypeReference<List<Object>>() {
+            });
 
             return response.getBody();
         } catch (Exception e) {
             log.error("Exception while fetching from facility: ", e);
-            throw new RuntimeException("Failed to fetch facility data", e);
+            throw new CustomException(ErrorConstants.FACILITY_SERVICE_ERROR_CODE, ErrorConstants.FACILITY_SERVICE_ERROR_MSG);
         }
     }
 
@@ -52,7 +53,7 @@ public class FacilityUtil {
     private String prepareFacilityRequest(String tenantId, String facilityId) {
         String url = configuration.getFacilityHost() + configuration.getFacilitySearchPath();
         UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(url)
-              .queryParam("tenant_id", tenantId);
+                .queryParam("tenant_id", tenantId);
 
         if (facilityId != null && !facilityId.isEmpty()) {
             builder.queryParam("facility_id", facilityId);

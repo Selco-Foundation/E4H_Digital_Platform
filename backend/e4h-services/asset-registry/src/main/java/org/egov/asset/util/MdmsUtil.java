@@ -4,13 +4,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.egov.asset.config.Configuration;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.mdms.model.*;
+import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Component
@@ -42,7 +42,7 @@ public class MdmsUtil {
             if (!CollectionUtils.isEmpty(response.getMdmsRes().keySet())) {
                 if (null != response.getMdmsRes().get(AssetConstants.ASSET_MODULE_NAME)) {
                     eachMasterMap = (Map) response.getMdmsRes().get(AssetConstants.ASSET_MODULE_NAME);
-                    masterData.put(AssetConstants.ASSET_TYPE_C0DE, eachMasterMap.get(AssetConstants.ASSET_TYPE_C0DE));
+                    masterData.put(AssetConstants.ASSET_TYPE_CODE, eachMasterMap.get(AssetConstants.ASSET_TYPE_CODE));
                     masterData.put(AssetConstants.ASSET_COUNT_CODE, eachMasterMap.get(AssetConstants.ASSET_COUNT_CODE));
                     masterData.put(AssetConstants.BRAND_CODE, eachMasterMap.get(AssetConstants.BRAND_CODE));
                     masterData.put(AssetConstants.SYSTEM_CODE, eachMasterMap.get(AssetConstants.SYSTEM_CODE));
@@ -70,7 +70,7 @@ public class MdmsUtil {
             response = restTemplate.postForObject(uri.toString(), request, MdmsResponse.class);
         } catch (Exception e) {
             log.info("Exception while fetching from MDMS: ", e);
-            log.info("Request: " + request);
+            throw new CustomException(ErrorConstants.MDMS_SERVICE_ERROR_CODE, ErrorConstants.MDMS_SERVICE_ERROR_MSG);
         }
         return response;
     }
@@ -85,7 +85,7 @@ public class MdmsUtil {
      */
     public MdmsCriteriaReq prepareMDMSRequest(StringBuilder uri, RequestInfo requestInfo, String tenantId) {
         Map<String, List<String>> mapOfModulesAndMasters = new HashMap<>();
-        String[] assetMasters = {AssetConstants.ASSET_TYPE_C0DE, AssetConstants.ASSET_COUNT_CODE, AssetConstants.BRAND_CODE,
+        String[] assetMasters = {AssetConstants.ASSET_TYPE_CODE, AssetConstants.ASSET_COUNT_CODE, AssetConstants.BRAND_CODE,
                 AssetConstants.SYSTEM_CODE, AssetConstants.WARRANTY_DURATION};
         mapOfModulesAndMasters.put(AssetConstants.ASSET_MODULE_NAME, Arrays.asList(assetMasters));
         List<ModuleDetail> moduleDetails = new ArrayList<>(mapOfModulesAndMasters.entrySet().stream()

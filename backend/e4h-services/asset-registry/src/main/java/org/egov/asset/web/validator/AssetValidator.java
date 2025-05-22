@@ -51,7 +51,7 @@ public class AssetValidator {
     }
 
     private void validateMdmsData(Asset asset, Map<String, String> errorMap, Map<String, Object> mdmsData) {
-        validateAssetType(asset, errorMap, mdmsData.get(AssetConstants.ASSET_TYPE_C0DE));
+        validateAssetType(asset, errorMap, mdmsData.get(AssetConstants.ASSET_TYPE_CODE));
         validateBrandType(asset, errorMap, mdmsData.get(AssetConstants.BRAND_CODE));
         validateWarranty(asset, errorMap, mdmsData.get(AssetConstants.WARRANTY_DURATION));
         validateSystem(asset, errorMap, mdmsData.get(AssetConstants.SYSTEM_CODE));
@@ -111,12 +111,12 @@ public class AssetValidator {
     }
 
     private static void validateACOffGridSystem(InverterDetails inverterDetails, Map<String, String> errorMaps) {
-        if (inverterDetails.getInvertorCapacity() == null) {
+        if (inverterDetails.getInverterCapacity() == null) {
             errorMaps.put(ErrorConstants.ASSET_INVERTER_CAPACITY_REQUIRED_CODE,
                     ErrorConstants.ASSET_INVERTER_CAPACITY_REQUIRED_MSG);
         } else {
             try {
-                Double capacity = Double.parseDouble(inverterDetails.getInvertorCapacity());
+                Double capacity = Double.parseDouble(inverterDetails.getInverterCapacity());
                 if (!VALID_INVERTER_CAPACITIES.contains(capacity)) {
                     errorMaps.put(ErrorConstants.ASSET_INVERTER_CAPACITY_INVALID_VALUE_CODE,
                             ErrorConstants.ASSET_INVERTER_CAPACITY_INVALID_VALUE_MSG);
@@ -126,7 +126,7 @@ public class AssetValidator {
                         ErrorConstants.ASSET_INVERTER_CAPACITY_INVALID_FORMAT_MSG);
             }
         }
-        if (!"kVA".equals(inverterDetails.getInvertorCapacityUnit())) {
+        if (!"kVA".equals(inverterDetails.getInverterCapacityUnit())) {
             errorMaps.put(ErrorConstants.ASSET_INVERTER_CAPACITY_UNIT_CODE,
                     ErrorConstants.ASSET_INVERTER_CAPACITY_UNIT_MSG);
         }

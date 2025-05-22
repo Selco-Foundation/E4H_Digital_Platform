@@ -1,10 +1,26 @@
 package org.egov.asset.util;
 
-import org.apache.kafka.common.protocol.types.Field;
 import org.springframework.stereotype.Component;
 
 @Component
 public class ErrorConstants {
+
+
+    public static final String MDMS_SERVICE_ERROR_CODE = "ERR_MDMS_SERVICE";
+    public static final String MDMS_SERVICE_ERROR_MSG = "Error occurred while fetching the data from mdms";
+
+    public static final String ID_GEN_SERVICE_ERROR_CODE = "ERR_ID_GEN_SERVICE";
+    public static final String ID_GEN_SERVICE_ERROR_MSG = "Id generation failed.";
+
+    public static final String FACILITY_SERVICE_ERROR_CODE = "ERR_FACILITY_SERVICE";
+    public static final String FACILITY_SERVICE_ERROR_MSG = "Error while fetching the data from facility service.";
+
+    public static final String FACILITY_SEARCH_REQUIRED_PARAMS_CODE = "ERR_FACILITY_SEARCH_PARAMS";
+    public static final String FACILITY_SEARCH_REQUIRED_PARAMS_MSG = "TenantId and facility is mandatory for facility search.";
+
+    public static final String KAFKA_PUSH_ERROR_CODE = "ERR_KAFKA_PUSH";
+    public static final String KAFKA_PUSH_ERROR_MSG = "Failed to push asset creation event";
+
     public static final String ASSET_BRAND_MDMS_DATA_CODE = "ERR_ASSET_BRAND_MDMS_DATA";
     public static final String ASSET_BRAND_MDMS_DATA_MSG = "Mdms data for brand does not exist or invalid in asset-registry module";
 

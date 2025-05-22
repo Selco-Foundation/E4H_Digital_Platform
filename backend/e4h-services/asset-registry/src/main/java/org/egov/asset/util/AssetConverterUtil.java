@@ -24,9 +24,9 @@ public class AssetConverterUtil {
         if (inverterCap == null) {
             inverterCap = (String) map.get("inverterCapacity");
         }
-        inverterDetails.setInvertorCapacity(inverterCap);
+        inverterDetails.setInverterCapacity(inverterCap);
 
-        inverterDetails.setInvertorCapacityUnit((String) map.get("invertorCapacityUnit"));
+        inverterDetails.setInverterCapacityUnit((String) map.get("invertorCapacityUnit"));
         inverterDetails.setOutputPhase((String) map.get("outputPhase"));
 
         inverterDetails.setChargeControllerCurrent(getDoubleValue(map.get("chargeControllerCurrent")));

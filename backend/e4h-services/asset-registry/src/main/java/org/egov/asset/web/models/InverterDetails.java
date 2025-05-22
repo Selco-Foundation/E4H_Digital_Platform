@@ -40,10 +40,10 @@ public class InverterDetails {
     private String totalCapacityUOM;
 
     @JsonProperty("inverterCapacity")
-    private String invertorCapacity;
+    private String inverterCapacity;
 
     @JsonProperty("invertorCapacityUnit")
-    private String invertorCapacityUnit;
+    private String inverterCapacityUnit;
 
     @JsonProperty("outputPhase")
     private String outputPhase;

@@ -2,8 +2,9 @@ package org.egov.asset.repository;
 
 import org.egov.asset.config.Configuration;
 import org.egov.asset.kafka.Producer;
+import org.egov.asset.util.ErrorConstants;
 import org.egov.asset.web.models.Asset;
-import org.egov.asset.web.models.AssetCreateRequest;
+import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
@@ -20,6 +21,10 @@ public class AssetRepository {
     }
 
     public void pushCreateAsset(Asset asset) {
-        producer.push(configuration.getCreateAssetTopic(), asset);
+        try {
+            producer.push(configuration.getCreateAssetTopic(), asset);
+        }catch (Exception e){
+            throw new CustomException(ErrorConstants.KAFKA_PUSH_ERROR_CODE,ErrorConstants.KAFKA_PUSH_ERROR_MSG);
+        }
     }
 }
