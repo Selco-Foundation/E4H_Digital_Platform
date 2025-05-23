@@ -20,9 +20,26 @@ import org.springframework.validation.annotation.Validated;
 @NoArgsConstructor
 @Builder
 public class BatteryDetails {
-    @JsonProperty("capacity")
+    @JsonProperty("totalCapacity")
     @NotNull
-    private Double capacity = null;
+    private Double totalCapacity = null;
 
+    @JsonProperty("totalCapacityUOM")
+    private String totalCapacityUOM = null;
+
+    @JsonProperty("batteryVoltage")
+    private Double batteryVoltage = null;
+
+    @JsonProperty("voltageUnit")
+    private String voltageUnit = null;
+
+    @JsonProperty("batteryCapacity")
+    private Double batteryCapacity;
+
+    @JsonProperty("capacityUnit")
+    private String capacityUnit;
+
+    @JsonProperty("batteryType")
+    private String batteryType;
 
 }

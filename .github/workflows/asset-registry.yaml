@@ -51,6 +51,12 @@ jobs:
         run: |
           docker build --build-arg WORK_DIR="backend/e4h-services/asset-registry" -t selcohub/asset-registry:${{ env.VERSION }}-${{ env.commit_hash }} -f build/maven/Dockerfile .
           docker push selcohub/asset-registry:${{ env.VERSION }}-${{ env.commit_hash }}
+          
+      - name: Build and Push Docker image for asset-registry-DB
+        run: |
+          docker build  -t selcohub/asset-registry-db:${{ env.VERSION }}-${{ env.commit_hash }} -f  Dockerfile .
+          docker push selcohub/asset-registry-db:${{ env.VERSION }}-${{ env.commit_hash }}
+        working-directory: backend/e4h-services/asset-registry/src/main/resources/db
 
 
   Workflow_Trigger:

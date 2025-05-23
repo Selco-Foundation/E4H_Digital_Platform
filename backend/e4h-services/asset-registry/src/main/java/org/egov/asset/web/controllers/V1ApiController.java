@@ -7,7 +7,9 @@ import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
+import org.egov.asset.service.AssetService;
 import org.egov.asset.web.models.*;
+import org.egov.asset.web.validator.AssetValidator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,21 +19,28 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 
 @jakarta.annotation.Generated(value = "org.egov.codegen.SpringBootCodegen", date = "2025-05-05T14:19:51.673231117+05:30[Asia/Kolkata]")
 @Controller
 @Slf4j
-@RequestMapping("/asset-registry")
+@RequestMapping("")
 public class V1ApiController {
 
     private final ObjectMapper objectMapper;
 
     private final HttpServletRequest request;
 
+    private final AssetValidator validator;
+
+    private final AssetService assetService;
+
     @Autowired
-    public V1ApiController(ObjectMapper objectMapper, HttpServletRequest request) {
+    public V1ApiController(ObjectMapper objectMapper, HttpServletRequest request, AssetValidator validator, AssetService assetService) {
         this.objectMapper = objectMapper;
         this.request = request;
+        this.validator = validator;
+        this.assetService = assetService;
     }
 
     @RequestMapping(value = "/v1/asset/bulk/_create", method = RequestMethod.POST)
@@ -60,24 +69,14 @@ public class V1ApiController {
         return new ResponseEntity<Void>(HttpStatus.NOT_IMPLEMENTED);
     }
 
-    @RequestMapping(value = "/v1/asset/_create", method = RequestMethod.POST)
-    public ResponseEntity<AssetCreateUpdateResponse> createAsset(@Parameter(in = ParameterIn.DEFAULT, description = "Asset data to be added to the registry", required = true, schema = @Schema()) @Valid @RequestBody AssetCreateRequest body) {
-        // TODO: Implement the actual asset creation logic
-        String accept = request.getHeader("Accept");
-        if (accept != null && accept.contains("application/json")) {
-            try {
-                // Create a proper response object instead of using a hardcoded JSON string
-                AssetCreateUpdateResponse response = new AssetCreateUpdateResponse();
-                // Set appropriate fields in the response
-                return new ResponseEntity<AssetCreateUpdateResponse>(response, HttpStatus.NOT_IMPLEMENTED);
-            } catch (Exception e) {
-                // Log the error
-                // log.error("Error creating asset", e);
-                return new ResponseEntity<AssetCreateUpdateResponse>(HttpStatus.INTERNAL_SERVER_ERROR);
-            }
-        }
 
-        return new ResponseEntity<AssetCreateUpdateResponse>(HttpStatus.NOT_IMPLEMENTED);
+    @RequestMapping(value = "/v1/asset/_create", method = RequestMethod.POST)
+    public ResponseEntity<AssetCreateResponse> createAsset(
+            @Parameter(in = ParameterIn.DEFAULT, description = "Asset data to be added to the registry", required = true, schema = @Schema())
+            @Valid @RequestBody AssetCreateRequest assetCreateRequest) {
+        validator.validateCreateAsset(assetCreateRequest);
+        AssetCreateResponse asset = assetService.createAsset(assetCreateRequest);
+        return new ResponseEntity<>(asset, HttpStatus.CREATED);
     }
 
     @RequestMapping(value = "/v1/asset/amc/_create", method = RequestMethod.POST)
@@ -115,21 +114,19 @@ public class V1ApiController {
     }
 
     @RequestMapping(value = "/v1/asset/_search", method = RequestMethod.POST)
-    public ResponseEntity<Object> searchAssets(@Parameter(in = ParameterIn.DEFAULT, description = "Asset data to be searched for", required = true, schema = @Schema()) @Valid @RequestBody AssetSearchRequest body) {
-        // TODO: Implement the actual asset search logic
-        String accept = request.getHeader("Accept");
-        if (accept != null && accept.contains("application/json")) {
-            try {
-                // Create a proper response object
-                return new ResponseEntity<Object>(new HashMap<>(), HttpStatus.NOT_IMPLEMENTED);
-            } catch (Exception e) {
-                // Log the error
-                // log.error("Error searching assets", e);
-                return new ResponseEntity<Object>(HttpStatus.INTERNAL_SERVER_ERROR);
-            }
-        }
-
-        return new ResponseEntity<Object>(HttpStatus.NOT_IMPLEMENTED);
+    public ResponseEntity<List<Asset>> searchAssets(
+            @Parameter(in = ParameterIn.DEFAULT, description = "Asset data to be searched for", required = true, schema = @Schema())
+            @Valid @RequestBody AssetSearchRequest searchRequest,
+            @Parameter(in = ParameterIn.QUERY, description = "Offset for pagination", schema = @Schema(type = "integer", format = "int32"))
+            @RequestParam(value = "offset", defaultValue = "0") Integer offset,
+            @Parameter(in = ParameterIn.QUERY, description = "Limit for pagination", schema = @Schema(type = "integer", format = "int32"))
+            @RequestParam(value = "limit", defaultValue = "10") Integer limit) {
+        AssetSearchCriteria criteria = searchRequest.getCriteria();
+        List<Asset> searchResponse = assetService.searchAssets(
+                criteria.getTenantId(), criteria.getAssetID(), criteria.getWfStatus(), criteria.getFacilityID(),
+                criteria.getSerialNumber(), criteria.getModelNumber(),criteria.getBrandID(), limit, offset
+        );
+        return new ResponseEntity<>(searchResponse, HttpStatus.OK);
     }
 
     @RequestMapping(value = "/v1/asset/amc/visit/{visitID}/_update", method = RequestMethod.POST)
