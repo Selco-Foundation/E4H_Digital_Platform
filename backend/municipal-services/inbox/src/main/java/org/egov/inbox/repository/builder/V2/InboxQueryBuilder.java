@@ -330,13 +330,15 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
         List<Map<String, Object>> must = new ArrayList<>();
 
         // 3a. Tenant wildcard
+
+        String tenantId = inboxRequest.getInbox()
+                .getProcessSearchCriteria()
+                .getTenantId();
         must.add(Collections.singletonMap(
                 "wildcard",
                 Collections.singletonMap(
                         "Data.incident.tenantId.keyword",
-                         inboxRequest.getInbox()
-                                .getProcessSearchCriteria()
-                                .getTenantId() + ".*"
+                         tenantId + (tenantId.contains(".") ? "" :".*")
                 )
         ));
 
