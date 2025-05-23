@@ -2,54 +2,97 @@ serviceMaps:
   serviceName: facility-service
   mappings:
     - version: 1.0
-      description: Persists facility data
+      description: Persists a single FacilityAddress object
       fromTopic: save-facility
       isTransaction: true
       queryMaps:
-        - query: INSERT INTO facility (facility_id, tenant_id, facility_name, facility_type, facility_category, facility_ownership, facility_region, facility_details, address, wf_status, additional_details, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
-          basePath: $.facilities
+        - query: >
+            INSERT INTO facility_address (
+              id, tenant_id, doorNo, latitude, longitude, locationAccuracy,
+              type, addressLine1, addressLine2, landmark, city, pincode,
+              buildingName, street, localityCode
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+          basePath: $.address
           jsonMaps:
-            - jsonPath: $.facilities.facility_id
-            - jsonPath: $.facilities.tenant_id
-            - jsonPath: $.facilities.facility_name
-            - jsonPath: $.facilities.facility_type
-            - jsonPath: $.facilities.facility_category
-            - jsonPath: $.facilities.facility_ownership
-            - jsonPath: $.facilities.facility_region
-            - jsonPath: $.facilities.facility_details
-              type: JSON
-              dbType: JSONB
-            - jsonPath: $.facilities.address
-              type: JSON
-              dbType: JSONB
-            - jsonPath: $.facilities.wf_status
-            - jsonPath: $.facilities.additional_details
-              type: JSON
-              dbType: JSONB
-            - jsonPath: $.facilities.is_active
+            - jsonPath: $.address.addressId
+            - jsonPath: $.address.tenantId
+            - jsonPath: $.address.doorNo
+            - jsonPath: $.address.latitude
+            - jsonPath: $.address.longitude
+            - jsonPath: $.address.locationAccuracy
+            - jsonPath: $.address.type
+            - jsonPath: $.address.addressLine1
+            - jsonPath: $.address.addressLine2
+            - jsonPath: $.address.landmark
+            - jsonPath: $.address.city
+            - jsonPath: $.address.pincode
+            - jsonPath: $.address.buildingName
+            - jsonPath: $.address.street
+            - jsonPath: $.address.localityCode
+
     - version: 1.0
-      description: Updates facility data
+      description: Persists a single Facility object
+      fromTopic: save-facility
+      isTransaction: true
+      queryMaps:
+        - query: >
+            INSERT INTO facility (
+              id, tenant_id, facility_name, facility_type,
+              facility_category, facility_subtype, facility_ownership,
+              facility_region, addressId, facility_details,
+              wf_status, additional_details, is_active, boundary_code
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+          basePath: $
+          jsonMaps:
+            - jsonPath: $.facility_id
+            - jsonPath: $.tenant_id
+            - jsonPath: $.facility_name
+            - jsonPath: $.facility_type
+            - jsonPath: $.facility_category
+            - jsonPath: $.facility_subtype
+            - jsonPath: $.facility_ownership
+            - jsonPath: $.facility_region
+            - jsonPath: $.address.addressId
+            - jsonPath: $.facility_details
+              type: JSON
+              dbType: JSONB
+            - jsonPath: $.wfStatus
+            - jsonPath: $.additionalDetails
+              type: JSON
+              dbType: JSONB
+            - jsonPath: $.isActive
+            - jsonPath: $.boundaryCode
+
+    - version: 1.0
+      description: Updates a single Facility object
       fromTopic: update-facility
       isTransaction: true
       queryMaps:
-        - query: UPDATE facility SET facility_name = ?, facility_type = ?, facility_category = ?, facility_ownership = ?, facility_region = ?, facility_details = ?, address = ?, wf_status = ?, additional_details = ?, is_active = ? WHERE facility_id = ? AND tenant_id = ?;
-          basePath: $.facilityUpdate
+        - query: >
+            UPDATE facility SET
+              facility_name = ?, facility_type = ?, facility_category = ?,
+              facility_subtype = ?, facility_ownership = ?, facility_region = ?,
+              addressId = ?, facility_details = ?, wf_status = ?,
+              additional_details = ?, is_active = ?
+            WHERE id = ? AND tenant_id = ?;
+          basePath: $
           jsonMaps:
-            - jsonPath: $.facilityUpdate.facility_name
-            - jsonPath: $.facilityUpdate.facility_type
-            - jsonPath: $.facilityUpdate.facility_category
-            - jsonPath: $.facilityUpdate.facility_ownership
-            - jsonPath: $.facilityUpdate.facility_region
-            - jsonPath: $.facilityUpdate.facility_details
+            - jsonPath: $.facilityName
+            - jsonPath: $.facilityType
+            - jsonPath: $.facilityCategory
+            - jsonPath: $.facilitySubtype
+            - jsonPath: $.facilityOwnership
+            - jsonPath: $.facilityRegion
+            - jsonPath: $.address.id
+            - jsonPath: $.facilityDetails
               type: JSON
               dbType: JSONB
-            - jsonPath: $.facilityUpdate.address
+            - jsonPath: $.wfStatus
+            - jsonPath: $.additionalDetails
               type: JSON
               dbType: JSONB
-            - jsonPath: $.facilityUpdate.wf_status
-            - jsonPath: $.facilityUpdate.additional_details
-              type: JSON
-              dbType: JSONB
-            - jsonPath: $.facilityUpdate.is_active
-            - jsonPath: $.facilityUpdate.facility_id
-            - jsonPath: $.facilityUpdate.tenant_id
+            - jsonPath: $.isActive
+            - jsonPath: $.id
+            - jsonPath: $.tenantId
