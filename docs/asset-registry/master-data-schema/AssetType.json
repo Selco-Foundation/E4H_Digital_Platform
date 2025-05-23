@@ -2,7 +2,7 @@
   "tenantId": "pg",
   "module": "asset",
   "AssetType": [
-    { "active": true, "code": "BATTERY", "name": "Battery" },
+    { "active": true, "code": "BATTERY", "name": "Battery", form_fields: [{system:"dc", key:"total_current_uom",name:"total current unit", options:["A"]}]},
     { "active": true, "code": "INVERTER", "name": "Inverter" },
     { "active": true, "code": "PANEL", "name": "Panel" }
   ]
