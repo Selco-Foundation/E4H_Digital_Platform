@@ -1,5 +1,6 @@
 package org.egov.asset.service;
 
+import digit.models.coremodels.Document;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.asset.mapper.AssetRowMapper;
 import org.egov.asset.repository.AssetRepository;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.IntStream;
 
 @Service
 @Slf4j
@@ -40,6 +42,8 @@ public class AssetService {
     public AssetCreateResponse createAsset(AssetCreateRequest request) {
         List<String> ids = idgenUtil.getIdList(request.getRequestInfo(), request.getAssetDetail().getAsset().getTenantId(),
                 "assetId","ASSET-[SEQ_ASSET_ID]",1);
+        List<String> documentIds = idgenUtil.getIdList(request.getRequestInfo(), request.getAssetDetail().getAsset().getTenantId(),
+                "documentId","DOCUMENT-[SEQ_DOCUMENT_ID]", request.getAssetDetail().getAsset().getDocuments().size());
         if(!ids.isEmpty())
             request.getAssetDetail().getAsset().setAssetId(ids.get(0));
         else throw new CustomException(ErrorConstants.ID_GEN_SERVICE_ERROR_CODE, ErrorConstants.ID_GEN_SERVICE_ERROR_MSG);
@@ -52,6 +56,8 @@ public class AssetService {
                     .build();
             request.getAssetDetail().getAsset().setAuditDetails(auditDetails);
         }
+        IntStream.range(0, documentIds.size())
+                .forEach(i -> request.getAssetDetail().getAsset().getDocuments().get(i).setId(documentIds.get(i)));
 
         assetRepository.pushCreateAsset(request.getAssetDetail().getAsset());
         return AssetCreateResponse.builder()

@@ -8,6 +8,7 @@ import digit.models.coremodels.AuditDetails;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Component;
 
+import java.util.Date;
 import java.util.Map;
 
 @Component
@@ -25,9 +26,9 @@ public class AssetRowMapper {
         asset.setSerialNumber(rs.getString("serial_number"));
         asset.setModelNumber(rs.getString("model_number"));
         asset.setBrandID(rs.getString("brand_id"));
-        asset.setWarrantyStartDate(rs.getDate("warranty_start_date"));
+        asset.setWarrantyStartDate(new Date(rs.getLong("warranty_start_date")));
         asset.setWarrantyDuration(rs.getInt("warranty_duration"));
-        asset.setWarrantyEndDate(rs.getDate("warranty_end_date"));
+        asset.setWarrantyEndDate(new Date(rs.getLong("warranty_end_date")));
         asset.setWfStatus(rs.getString("wf_status"));
         asset.setIsActive(rs.getBoolean("is_active"));
 
