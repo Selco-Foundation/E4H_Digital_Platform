@@ -1,3 +1,4 @@
+import json
 from typing import Dict, Any
 
 import requests
@@ -18,7 +19,7 @@ class HRMSServiceClient:
         try:
             response = requests.post(url, headers=headers, params=params, json=user_payload)
             # response.raise_for_status()
-            print(f"User created successfully: {response}")
+            print(f"User created successfully: {json.loads(response.text)}")
             return response
 
         except requests.exceptions.HTTPError as http_err:
