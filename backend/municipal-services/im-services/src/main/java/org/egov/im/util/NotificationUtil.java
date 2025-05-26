@@ -67,8 +67,8 @@ public class NotificationUtil {
         tenantId= centralInstanceUtil.getStateLevelTenant(tenantId);
         log.info("tenantId after calling central instance method :"+ tenantId);
         String locale = NOTIFICATION_LOCALE;
-        if (!StringUtils.isEmpty(requestInfo.getMsgId()) && requestInfo.getMsgId().split("|").length >= 2)
-            locale = requestInfo.getMsgId().split("\\|")[1];
+//        if (!StringUtils.isEmpty(requestInfo.getMsgId()) && requestInfo.getMsgId().split("|").length >= 2)
+//            locale = requestInfo.getMsgId().split("\\|")[1];
         StringBuilder uri = new StringBuilder();
         uri.append(config.getLocalizationHost()).append(config.getLocalizationContextPath())
                 .append(config.getLocalizationSearchEndpoint()).append("?").append("locale=").append(locale)
