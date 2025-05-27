@@ -17,9 +17,37 @@ class HRMSServiceClient:
             "tenantId": "in"
         }
         try:
+            requests.post(url, headers=headers, params=params, json=user_payload)
+            response = self.search_user(user_payload = user_payload)
+            print(f"User created successfully: {json.loads(response.text)}")
+            return response
+
+        except requests.exceptions.HTTPError as http_err:
+            print(f"HTTP error occurred: {http_err}")
+            raise http_err
+        except requests.exceptions.ConnectionError as conn_err:
+            print(f"Connection error occurred: {conn_err}")
+            raise conn_err
+        except requests.exceptions.Timeout as timeout_err:
+            print(f"Timeout error occurred: {timeout_err}")
+            raise timeout_err
+        except requests.exceptions.RequestException as req_err:
+            print(f"An error occurred: {req_err}")
+            raise req_err
+
+    def search_user(self, user_payload: Dict[str, Any]):
+        url = f"{self.hrms_service_url}/egov-hrms/employees/_search"
+        headers = {
+            "Content-Type": "application/json"
+        }
+        params = {
+            "tenantId":"in",
+            "phone": user_payload["Employees"][0]["user"]["mobileNumber"]
+        }
+        try:
             response = requests.post(url, headers=headers, params=params, json=user_payload)
             # response.raise_for_status()
-            print(f"User created successfully: {json.loads(response.text)}")
+            print(f"User fetched successfully: {json.loads(response.text)}")
             return response
 
         except requests.exceptions.HTTPError as http_err:
