@@ -17,9 +17,9 @@ export const AppModules = ({ stateCode, userType, modules, appTenants }) => {
 
   const user = Digit.UserService.getUser();
 
-  if (!user || !user?.access_token || !user?.info) {
-    return <Redirect to={{ pathname: `/${window.contextPath}/employee/user/language-selection`, search: `?from=${encodeURIComponent(location.pathname + location.search)}` }} />;
-  }
+  // if (!user || !user?.access_token || !user?.info) {
+  //   return <Redirect to={{ pathname: `/${window.contextPath}/employee/user/language-selection`, search: `?from=${encodeURIComponent(location.pathname + location.search)}` }} />;
+  // }
 
   const appRoutes = modules.map(({ code, tenants }, index) => {
     const Module = Digit.ComponentRegistryService.getComponent(`${code}Module`);
@@ -27,9 +27,13 @@ export const AppModules = ({ stateCode, userType, modules, appTenants }) => {
       <Route key={index} path={`${path}/${code.toLowerCase()}`}>
         <Module stateCode={stateCode} moduleCode={code} userType={userType} tenants={getTenants(tenants, appTenants)} />
       </Route>
-    ) :   <Route key={index} path={`${path}/${code.toLowerCase()}`}>
-    <Redirect to={{ pathname: `/${window.contextPath}/employee/user/error?type=notfound`, state: { from: location.pathname + location.search } }} />
-  </Route>;
+    ) : (
+      <Route key={index} path={`${path}/${code.toLowerCase()}`}>
+        <Redirect
+          to={{ pathname: `/${window.contextPath}/employee/user/error?type=notfound`, state: { from: location.pathname + location.search } }}
+        />
+      </Route>
+    );
   });
 
   return (
