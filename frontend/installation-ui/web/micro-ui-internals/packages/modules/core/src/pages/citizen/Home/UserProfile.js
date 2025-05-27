@@ -94,7 +94,7 @@ const UserProfile = ({ stateCode, userType, cityDetails }) => {
               const lastSlashIndex = value.lastIndexOf("/");
               const pattern = value.slice(1, lastSlashIndex); // Extracting regex pattern
               const flags = value.slice(lastSlashIndex + 1); // Extracting regex flags
-  
+
               acc[key] = new RegExp(pattern, flags); // Converting properly
             } else {
               acc[key] = new RegExp(value); // Treating it as a normal regex pattern (no flags)
@@ -290,8 +290,8 @@ const UserProfile = ({ stateCode, userType, cityDetails }) => {
         photo: profilePic,
       };
 
-      if(name){
-        setName((prev)=>prev.trim());
+      if (name) {
+        setName((prev) => prev.trim());
       }
 
       if (!validationConfig?.name.test(name) || name === "" || name.length > 50 || name.length < 1) {
@@ -322,9 +322,8 @@ const UserProfile = ({ stateCode, userType, cityDetails }) => {
       setCurrentPassword(trimmedCurrentPassword);
       setNewPassword(trimmedNewPassword);
       setConfirmPassword(trimmedConfirmPassword);
-      
 
-      if (changepassword && (trimmedCurrentPassword && trimmedNewPassword && trimmedConfirmPassword)) {
+      if (changepassword && trimmedCurrentPassword && trimmedNewPassword && trimmedConfirmPassword) {
         if (trimmedNewPassword !== trimmedConfirmPassword) {
           throw JSON.stringify({
             type: "error",
@@ -447,7 +446,7 @@ const UserProfile = ({ stateCode, userType, cityDetails }) => {
 
   return (
     <div className={`user-profile ${userType === "citizen" ? "citizen" : "employee"}`}>
-      <section style={{ margin: userType === "citizen" || isMobile ? "8px" : "0px" }}>
+      {/* <section style={{ margin: userType === "citizen" || isMobile ? "8px" : "0px" }}>
         {userType === "citizen" || isMobile ? (
           <BackLink onClick={() => window.history.back()} />
         ) : (
@@ -460,14 +459,14 @@ const UserProfile = ({ stateCode, userType, cityDetails }) => {
                 show: true,
               },
               {
-                internalLink: `/${window?.contextPath}/employee/user/profile`,
+                internalLink: `/${window?.contextPath}/employee/user/home`,
                 content: t("ES_COMMON_PAGE_1"),
-                show: url.includes("/user/profile"),
+                show: url.includes("/user/home"),
               },
             ]}
           />
         )}
-      </section>
+      </section> */}
       <div
         style={{
           display: "flex",

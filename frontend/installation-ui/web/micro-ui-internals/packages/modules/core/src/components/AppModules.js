@@ -18,7 +18,7 @@ export const AppModules = ({ stateCode, userType, modules, appTenants, additiona
   const user = Digit.UserService.getUser();
 
   if (!user || !user?.access_token || !user?.info) {
-    return <Redirect to={{ pathname: `/${window?.contextPath}/employee/user/login`, state: { from: location.pathname + location.search } }} />;
+    return <Redirect to={{ pathname: `/${window?.contextPath}/employee/user/home` }} />;
   }
 
   const appRoutes = modules?.map(({ code, tenants }, index) => {
@@ -29,9 +29,7 @@ export const AppModules = ({ stateCode, userType, modules, appTenants, additiona
       </Route>
     ) : (
       <Route key={index} path={`${path}/${code.toLowerCase()}`}>
-        <Redirect
-          to={`/${window?.contextPath}/employee/user/error?type=notfound&module=${code}` }
-        />
+        <Redirect to={`/${window?.contextPath}/employee/user/error?type=notfound&module=${code}`} />
       </Route>
     );
   });

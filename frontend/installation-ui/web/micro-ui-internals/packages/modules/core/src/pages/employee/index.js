@@ -15,7 +15,7 @@ import UserProfile from "../citizen/Home/UserProfile";
 import ErrorComponent from "../../components/ErrorComponent";
 import { PrivateRoute } from "@egovernments/digit-ui-components";
 import ImageComponent from "../../components/ImageComponent";
-const userScreensExempted = ["user/landing", "user/profile", "user/error","user/productPage"];
+import HomePage from "./Home";
 
 const EmployeeApp = ({
   stateInfo,
@@ -33,16 +33,14 @@ const EmployeeApp = ({
   sourceUrl,
   pathname,
   initData,
-  noTopBar=false
+  noTopBar = false,
 }) => {
-  
-
   const history = useHistory();
   const { t } = useTranslation();
   const { path } = useRouteMatch();
   const location = useLocation();
   const showLanguageChange = location?.pathname?.includes("language-selection");
-  const isUserProfile = userScreensExempted.some((url) => location?.pathname?.includes(url));
+  // const isUserProfile = userScreensExempted.some((url) => location?.pathname?.includes(url));
   useEffect(() => {
     Digit.UserService.setType("employee");
   }, []);
@@ -53,29 +51,21 @@ const EmployeeApp = ({
     <div className="employee">
       <Switch>
         <Route path={`${path}/user`}>
-          {isUserProfile && (
-            <TopBarSideBar
-              t={t}
-              stateInfo={stateInfo}
-              userDetails={userDetails}
-              CITIZEN={CITIZEN}
-              cityDetails={cityDetails}
-              mobileView={mobileView}
-              handleUserDropdownSelection={handleUserDropdownSelection}
-              logoUrl={logoUrl}
-              logoUrlWhite={logoUrlWhite}
-              showSidebar={isUserProfile ? true : false}
-              showLanguageChange={!showLanguageChange}
-            />
-          )}
-          <div
-            className={isUserProfile ? "grounded-container" : "loginContainer"}
-            style={
-              isUserProfile
-                ? { padding: 0, paddingTop: "0", marginLeft: mobileView ? "0" : "0" }
-                : { "--banner-url": `url(${stateInfo?.bannerUrl})`, padding: "0px" }
-            }
-          >
+          {/* {isUserProfile && ( */}
+          <TopBarSideBar
+            t={t}
+            stateInfo={stateInfo}
+            userDetails={userDetails}
+            CITIZEN={CITIZEN}
+            cityDetails={cityDetails}
+            mobileView={mobileView}
+            handleUserDropdownSelection={handleUserDropdownSelection}
+            logoUrl={logoUrl}
+            logoUrlWhite={logoUrlWhite}
+            showSidebar={true}
+            showLanguageChange={!showLanguageChange}
+          />
+          <div className={"grounded-container"} style={{ padding: 0, paddingTop: "0", marginLeft: mobileView ? "0" : "0" }}>
             <Switch>
               <Route exact path={`${path}/user/login`}>
                 <EmployeeLogin stateCode={stateCode} />
@@ -89,9 +79,12 @@ const EmployeeApp = ({
               <Route path={`${path}/user/change-password`}>
                 <ChangePassword />
               </Route>
-              <PrivateRoute path={`${path}/user/profile`}>
-                <UserProfile stateCode={stateCode} userType={"employee"} cityDetails={cityDetails} />
-              </PrivateRoute>
+              <Route path={`${path}/user/home`}>
+                <HomePage stateCode={stateCode} userType={"employee"} cityDetails={cityDetails} />
+              </Route>
+              <Route path={`${path}/user/table`}>
+                <HomePage stateCode={stateCode} userType={"employee"} cityDetails={cityDetails} />
+              </Route>
 
               <Route path={`${path}/user/error`}>
                 <ErrorComponent
@@ -109,9 +102,10 @@ const EmployeeApp = ({
               </Route>
             </Switch>
           </div>
-        </Route> 
-       <Route>
-          {!noTopBar&&<TopBarSideBar
+        </Route>
+        <Route>
+          {/* {!noTopBar && ( */}
+          <TopBarSideBar
             t={t}
             stateInfo={stateInfo}
             userDetails={userDetails}
@@ -122,8 +116,9 @@ const EmployeeApp = ({
             logoUrl={logoUrl}
             logoUrlWhite={logoUrlWhite}
             modules={modules}
-          />}
-          <div className={!noTopBar?`main ${DSO ? "m-auto" : ""} digit-home-main`:""}>
+          />
+          {/* )} */}
+          <div className={!noTopBar ? `main ${DSO ? "m-auto" : ""} digit-home-main` : ""}>
             <div className="employee-app-wrapper digit-home-app-wrapper">
               <ErrorBoundary initData={initData}>
                 <AppModules
