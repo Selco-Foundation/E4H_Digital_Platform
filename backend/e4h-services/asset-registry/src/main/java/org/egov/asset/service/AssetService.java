@@ -1,5 +1,6 @@
 package org.egov.asset.service;
 
+import digit.models.coremodels.AuditDetails;
 import digit.models.coremodels.Document;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.asset.mapper.AssetRowMapper;
@@ -8,7 +9,6 @@ import org.egov.asset.repository.AssetRepository;
 import org.egov.asset.util.ErrorConstants;
 import org.egov.asset.util.IdgenUtil;
 import org.egov.asset.util.ResponseInfoFactory;
-import digit.models.coremodels.AuditDetails;
 import org.egov.asset.web.models.Asset;
 import org.egov.asset.web.models.AssetCreateRequest;
 import org.egov.asset.web.models.AssetCreateResponse;
@@ -17,8 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -45,13 +44,14 @@ public class AssetService {
 
     public AssetCreateResponse createAsset(AssetCreateRequest request) {
         List<String> ids = idgenUtil.getIdList(request.getRequestInfo(), request.getAssetDetail().getAsset().getTenantId(),
-                "assetId","ASSET-[SEQ_ASSET_ID]",1);
+                "assetId", "ASSET-[SEQ_ASSET_ID]", 1);
         List<String> documentIds = idgenUtil.getIdList(request.getRequestInfo(), request.getAssetDetail().getAsset().getTenantId(),
-                "documentId","DOCUMENT-[SEQ_DOCUMENT_ID]", request.getAssetDetail().getAsset().getDocuments().size());
-        if(!ids.isEmpty())
+                "documentId", "DOCUMENT-[SEQ_DOCUMENT_ID]", request.getAssetDetail().getAsset().getDocuments().size());
+        if (!ids.isEmpty())
             request.getAssetDetail().getAsset().setAssetId(ids.get(0));
-        else throw new CustomException(ErrorConstants.ID_GEN_SERVICE_ERROR_CODE, ErrorConstants.ID_GEN_SERVICE_ERROR_MSG);
-        if(request.getAssetDetail().getAsset().getAuditDetails()==null){
+        else
+            throw new CustomException(ErrorConstants.ID_GEN_SERVICE_ERROR_CODE, ErrorConstants.ID_GEN_SERVICE_ERROR_MSG);
+        if (request.getAssetDetail().getAsset().getAuditDetails() == null) {
             AuditDetails auditDetails = AuditDetails.builder()
                     .createdBy(request.getRequestInfo().getUserInfo().getUserName())
                     .createdTime(System.currentTimeMillis())
@@ -65,22 +65,28 @@ public class AssetService {
 
         assetRepository.pushCreateAsset(request.getAssetDetail().getAsset());
         return AssetCreateResponse.builder()
-                .responseInfo(responseInfoFactory.createResponseInfoFromRequestInfo(request.getRequestInfo(),true))
+                .responseInfo(responseInfoFactory.createResponseInfoFromRequestInfo(request.getRequestInfo(), true))
                 .asset(request.getAssetDetail().getAsset())
                 .build();
     }
 
     public List<Asset> fetchAssetsWithDocuments(String tenantId, String assetId, String wfStatus, String facilityId, String serialNumber, String modelNumber, String brandId, int limit, int offset) {
-        return searchAssets(tenantId, assetId, wfStatus, facilityId, serialNumber, modelNumber, brandId, limit, offset)
-                .parallelStream()
-                .peek(asset -> {
-                    List<Document> documents = searchDocuments(asset.getTenantId(), asset.getAssetId());
-                    asset.setDocuments(documents);
-                })
-                .collect(Collectors.toList());
+        List<Asset> assets = searchAssets(tenantId, assetId, wfStatus, facilityId, serialNumber, modelNumber, brandId, limit, offset);
+
+        if (!assets.isEmpty()) {
+            List<String> assetIds = assets.stream().map(Asset::getAssetId).collect(Collectors.toList());
+            Map<String, List<Document>> documentsMap = searchDocumentsByAssetIds(tenantId, assetIds);
+
+            assets.forEach(asset -> {
+                List<Document> documents = documentsMap.getOrDefault(asset.getAssetId(), new ArrayList<>());
+                asset.setDocuments(documents);
+            });
+        }
+
+        return assets;
     }
 
-        public List<Asset> searchAssets(String tenantId, String assetId, String wfStatus, String facilityId, String serialNumber, String modelNumber, String brandId, int limit, int offset) {
+    public List<Asset> searchAssets(String tenantId, String assetId, String wfStatus, String facilityId, String serialNumber, String modelNumber, String brandId, int limit, int offset) {
         StringBuilder query = new StringBuilder("SELECT * FROM asset WHERE 1=1");
         List<Object> params = new ArrayList<>();
 
@@ -114,7 +120,7 @@ public class AssetService {
             params.add(modelNumber);
         }
 
-        if(brandId !=null && !brandId.isBlank()){
+        if (brandId != null && !brandId.isBlank()) {
             query.append(" AND brand_id = ?");
             params.add(brandId);
         }
@@ -126,7 +132,11 @@ public class AssetService {
         return jdbcTemplate.query(query.toString(), params.toArray(), assetRowMapper.rowMapper);
     }
 
-    public List<Document> searchDocuments(String tenantId, String assetId){
+    public Map<String, List<Document>> searchDocumentsByAssetIds(String tenantId, List<String> assetIds) {
+        if (assetIds == null || assetIds.isEmpty()) {
+            return new HashMap<>();
+        }
+
         StringBuilder query = new StringBuilder("SELECT * FROM asset_documents WHERE 1=1");
         List<Object> params = new ArrayList<>();
 
@@ -134,13 +144,20 @@ public class AssetService {
             query.append(" AND tenant_id = ?");
             params.add(tenantId);
         }
+        query.append(" AND asset_id IN (");
+        query.append(String.join(",", Collections.nCopies(assetIds.size(), "?")));
+        query.append(")");
+        params.addAll(assetIds);
 
-        if (assetId != null && !assetId.isBlank()) {
-            query.append(" AND asset_id = ?");
-            params.add(assetId);
-        }
-
-        return jdbcTemplate.query(query.toString(), params.toArray(), documentRowMapper.rowMapper);
+        return jdbcTemplate.query(query.toString(), params.toArray(), (rs) -> {
+            Map<String, List<Document>> documentsMap = new HashMap<>();
+            while (rs.next()) {
+                String assetId = rs.getString("asset_id");
+                Document document = documentRowMapper.mapDocument(rs);
+                documentsMap.computeIfAbsent(assetId, k -> new ArrayList<>()).add(document);
+            }
+            return documentsMap;
+        });
     }
 
 }
