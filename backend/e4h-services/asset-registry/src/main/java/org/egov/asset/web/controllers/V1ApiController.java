@@ -122,7 +122,7 @@ public class V1ApiController {
             @Parameter(in = ParameterIn.QUERY, description = "Limit for pagination", schema = @Schema(type = "integer", format = "int32"))
             @RequestParam(value = "limit", defaultValue = "10") Integer limit) {
         AssetSearchCriteria criteria = searchRequest.getCriteria();
-        List<Asset> searchResponse = assetService.searchAssets(
+        List<Asset> searchResponse = assetService.fetchAssetsWithDocuments(
                 criteria.getTenantId(), criteria.getAssetID(), criteria.getWfStatus(), criteria.getFacilityID(),
                 criteria.getSerialNumber(), criteria.getModelNumber(),criteria.getBrandID(), limit, offset
         );

@@ -3,6 +3,7 @@ package org.egov.asset.service;
 import digit.models.coremodels.Document;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.asset.mapper.AssetRowMapper;
+import org.egov.asset.mapper.DocumentRowMapper;
 import org.egov.asset.repository.AssetRepository;
 import org.egov.asset.util.ErrorConstants;
 import org.egov.asset.util.IdgenUtil;
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 @Service
@@ -26,14 +28,16 @@ public class AssetService {
 
     private final JdbcTemplate jdbcTemplate;
     private final AssetRowMapper assetRowMapper;
+    private final DocumentRowMapper documentRowMapper;
     private final IdgenUtil idgenUtil;
     private final AssetRepository assetRepository;
     private final ResponseInfoFactory responseInfoFactory;
 
     @Autowired
-    public AssetService(JdbcTemplate jdbcTemplate, AssetRowMapper assetRowMapper, IdgenUtil idgenUtil, AssetRepository assetRepository, ResponseInfoFactory responseInfoFactory) {
+    public AssetService(JdbcTemplate jdbcTemplate, AssetRowMapper assetRowMapper, DocumentRowMapper documentRowMapper, IdgenUtil idgenUtil, AssetRepository assetRepository, ResponseInfoFactory responseInfoFactory) {
         this.jdbcTemplate = jdbcTemplate;
         this.assetRowMapper = assetRowMapper;
+        this.documentRowMapper = documentRowMapper;
         this.idgenUtil = idgenUtil;
         this.assetRepository = assetRepository;
         this.responseInfoFactory = responseInfoFactory;
@@ -66,7 +70,17 @@ public class AssetService {
                 .build();
     }
 
-    public List<Asset> searchAssets(String tenantId, String assetId, String wfStatus, String facilityId, String serialNumber, String modelNumber, String brandId, int limit, int offset) {
+    public List<Asset> fetchAssetsWithDocuments(String tenantId, String assetId, String wfStatus, String facilityId, String serialNumber, String modelNumber, String brandId, int limit, int offset) {
+        return searchAssets(tenantId, assetId, wfStatus, facilityId, serialNumber, modelNumber, brandId, limit, offset)
+                .parallelStream()
+                .peek(asset -> {
+                    List<Document> documents = searchDocuments(asset.getTenantId(), asset.getAssetId());
+                    asset.setDocuments(documents);
+                })
+                .collect(Collectors.toList());
+    }
+
+        public List<Asset> searchAssets(String tenantId, String assetId, String wfStatus, String facilityId, String serialNumber, String modelNumber, String brandId, int limit, int offset) {
         StringBuilder query = new StringBuilder("SELECT * FROM asset WHERE 1=1");
         List<Object> params = new ArrayList<>();
 
@@ -110,6 +124,23 @@ public class AssetService {
         params.add(offset);
 
         return jdbcTemplate.query(query.toString(), params.toArray(), assetRowMapper.rowMapper);
+    }
+
+    public List<Document> searchDocuments(String tenantId, String assetId){
+        StringBuilder query = new StringBuilder("SELECT * FROM asset_documents WHERE 1=1");
+        List<Object> params = new ArrayList<>();
+
+        if (tenantId != null && !tenantId.isBlank()) {
+            query.append(" AND tenant_id = ?");
+            params.add(tenantId);
+        }
+
+        if (assetId != null && !assetId.isBlank()) {
+            query.append(" AND asset_id = ?");
+            params.add(assetId);
+        }
+
+        return jdbcTemplate.query(query.toString(), params.toArray(), documentRowMapper.rowMapper);
     }
 
 }
