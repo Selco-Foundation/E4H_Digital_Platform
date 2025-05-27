@@ -70,12 +70,12 @@ public class AssetService {
                 .build();
     }
 
-    public List<Asset> fetchAssetsWithDocuments(String tenantId, String assetId, String wfStatus, String facilityId, String serialNumber, String modelNumber, String brandId, int limit, int offset) {
-        List<Asset> assets = searchAssets(tenantId, assetId, wfStatus, facilityId, serialNumber, modelNumber, brandId, limit, offset);
+    public List<Asset> fetchAssetsWithDocuments(Asset request, int limit, int offset) {
+        List<Asset> assets = searchAssets(request, limit, offset);
 
         if (!assets.isEmpty()) {
             List<String> assetIds = assets.stream().map(Asset::getAssetId).collect(Collectors.toList());
-            Map<String, List<Document>> documentsMap = searchDocumentsByAssetIds(tenantId, assetIds);
+            Map<String, List<Document>> documentsMap = searchDocumentsByAssetIds(request.getTenantId(), assetIds);
 
             assets.forEach(asset -> {
                 List<Document> documents = documentsMap.getOrDefault(asset.getAssetId(), new ArrayList<>());
@@ -86,43 +86,43 @@ public class AssetService {
         return assets;
     }
 
-    public List<Asset> searchAssets(String tenantId, String assetId, String wfStatus, String facilityId, String serialNumber, String modelNumber, String brandId, int limit, int offset) {
+    public List<Asset> searchAssets(Asset asset, int limit, int offset) {
         StringBuilder query = new StringBuilder("SELECT * FROM asset WHERE 1=1");
         List<Object> params = new ArrayList<>();
 
-        if (tenantId != null && !tenantId.isBlank()) {
+        if (asset.getTenantId() != null && !asset.getTenantId().isBlank()) {
             query.append(" AND tenant_id = ?");
-            params.add(tenantId);
+            params.add(asset.getTenantId());
         }
 
-        if (assetId != null && !assetId.isBlank()) {
+        if (asset.getAssetId() != null && !asset.getAssetId().isBlank()) {
             query.append(" AND asset_id = ?");
-            params.add(assetId);
+            params.add(asset.getAssetId());
         }
 
-        if (wfStatus != null && !wfStatus.isBlank()) {
+        if (asset.getWfStatus() != null && !asset.getWfStatus().isBlank()) {
             query.append(" AND wf_status = ?");
-            params.add(wfStatus);
+            params.add(asset.getWfStatus());
         }
 
-        if (facilityId != null && !facilityId.isBlank()) {
+        if (asset.getFacilityID() != null && !asset.getFacilityID().isBlank()) {
             query.append(" AND facility_id = ?");
-            params.add(facilityId);
+            params.add(asset.getFacilityID());
         }
 
-        if (serialNumber != null && !serialNumber.isBlank()) {
+        if (asset.getSerialNumber() != null && !asset.getSerialNumber().isBlank()) {
             query.append(" AND serial_number = ?");
-            params.add(serialNumber);
+            params.add(asset.getSerialNumber());
         }
 
-        if (modelNumber != null && !modelNumber.isBlank()) {
+        if (asset.getModelNumber() != null && !asset.getModelNumber().isBlank()) {
             query.append(" AND model_number = ?");
-            params.add(modelNumber);
+            params.add(asset.getModelNumber());
         }
 
-        if (brandId != null && !brandId.isBlank()) {
+        if (asset.getBrandID()!= null && !asset.getBrandID().isBlank()) {
             query.append(" AND brand_id = ?");
-            params.add(brandId);
+            params.add(asset.getBrandID());
         }
 
         query.append(" ORDER BY created_time DESC LIMIT ? OFFSET ?");
