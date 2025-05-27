@@ -118,7 +118,7 @@ class FacilityTemplateService:
 
     def add_supervisor_columns_to_dataframe(self, df:pd.DataFrame):
         columns_to_add = {
-            "Role (Mandatory)": "Supervisor",
+            "Role (Mandatory)": "",
             "Name (Mandatory)": None,
             "Phone Number (Mandatory)": None,
             "Email Address (Mandatory)": None

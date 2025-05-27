@@ -12,6 +12,7 @@ from app.decorators.rbac_validator import get_authorized_request_info
 from app.ingest.facility_template_service import FacilityTemplateService
 from app.ingest.project_service import ProjectService
 from app.utils.convertor import request_info_from_json
+from app.utils.excel_utils import add_dropdowns_to_excel
 from app.utils.facility_service_client import FacilityServiceClient
 from app.utils.file_utils import create_temp_file, cleanup_temp_file
 from app.utils.mdms_client import MDMSClient
@@ -102,6 +103,13 @@ async def get_facility_ingestion_template_with_supervisors(
                 for i, col in enumerate(df.columns):
                     column_width = max(df[col].astype(str).map(len).max(), len(col)) + 2
                     worksheet.column_dimensions[chr(65 + i)].width = column_width
+
+            dropdowns_map = {'Role (Mandatory) ?': ['Supervisor', 'Field Planner']}
+            add_dropdowns_to_excel(
+                file_path=output_file_path,
+                sheet_name="Facilities_Supervisors",
+                dropdowns=dropdowns_map
+            )
 
         except Exception as e:
             logger.error(f"Error generating template file: {e}")
