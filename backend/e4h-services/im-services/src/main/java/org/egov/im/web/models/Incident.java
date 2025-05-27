@@ -104,4 +104,7 @@ public class Incident   {
         @JsonProperty("auditDetails")
         private AuditDetails auditDetails = null;
 
+        @JsonProperty("systemFunctional")
+        private String systemFunctional = null;
+
 }
