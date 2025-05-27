@@ -193,9 +193,44 @@ class ProjectServiceClient:
         }
         try:
             response = requests.post(url, headers=headers, json=payload)
-            print(f"Project Facility created successfully: {response}")
+            print(f"Project Facility created successfully: {json.loads(response.text)}")
             return response
 
+        except requests.exceptions.HTTPError as http_err:
+            print(f"HTTP error occurred: {http_err}")
+            raise http_err
+        except requests.exceptions.ConnectionError as conn_err:
+            print(f"Connection error occurred: {conn_err}")
+            raise conn_err
+        except requests.exceptions.Timeout as timeout_err:
+            print(f"Timeout error occurred: {timeout_err}")
+            raise timeout_err
+        except requests.exceptions.RequestException as req_err:
+            print(f"An error occurred: {req_err}")
+            raise req_err
+
+    def search_project(self, request_info: RequestInfo, project_id: str):
+        url = f"{self.project_service_url}/project/v2/_search"
+        headers = {
+            "Content-Type":"application/json"
+        }
+        params = {
+            "tenantId": "in",
+            "limit": 1,
+            "offset": 0,
+            "includeAncestors": "false",
+            "includeDescendants": "false"
+        }
+        payload = {
+            'RequestInfo': request_info.model_dump(by_alias=True, exclude_none=True),
+            'Project': {
+                'id': [project_id]
+            }
+        }
+        try:
+            response = requests.post(url, params=params, headers=headers, json=payload)
+            print(f"Project fetched successfully")
+            return json.loads(response.text)
         except requests.exceptions.HTTPError as http_err:
             print(f"HTTP error occurred: {http_err}")
             raise http_err

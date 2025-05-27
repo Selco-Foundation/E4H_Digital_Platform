@@ -192,25 +192,73 @@ def create_vendor_request(request_info: RequestInfo, vendor: Vendor):
     }
 
 
-def get_project_creation_payload(request_info: RequestInfo, project_name: str, project_type: str):
-    current_date = datetime.datetime.now()
-    one_year_later = current_date.replace(year=current_date.year + 1)
-    current_timestamp = int(time.mktime(current_date.timetuple()) * 1000)
-    one_year_later_timestamp = int(time.mktime(one_year_later.timetuple()) * 1000)
-
+def get_project_creation_payload(request_info: RequestInfo, project_name: str, project_type: str,
+                                 parent_id:str, start_date:str, end_date:str, subType:str):
     return {
         "RequestInfo": request_info.model_dump(by_alias=True, exclude_none=True),
         "Projects": [{
             "tenantId": "in",
             "name": project_name,
             "projectType": project_type,
-            "startDate": current_timestamp,
-            "endDate": one_year_later_timestamp
+            "parent": parent_id,
+            "startDate": start_date,
+            "endDate": end_date,
+            "projectSubType": subType
         }],
         "isCascadingProjectDateUpdate": False,
         "apiOperation": "CREATE"
     }
 
+def get_installation_spoc_creation_payload(request_info: RequestInfo, name:str, mobile_number:str, email:str):
+    current_date = datetime.datetime.now()
+    current_timestamp = int(time.mktime(current_date.timetuple()) * 1000)
+    return {
+        "RequestInfo": request_info.model_dump(by_alias=True, exclude_none=True),
+        "Employees": [
+            {
+                "tenantId": "in",
+                "employeeStatus": "EMPLOYED",
+                "dateOfAppointment": current_timestamp,
+                "employeeType": "PERMANENT",
+                "user": {
+                    "name": name,
+                    "mobileNumber": mobile_number,
+                    "emailId": email,
+                    "roles": [
+                        {"code": "PROJECT_MANAGER", "name": "Project manager"},
+                        {"code": "HRMS_ADMIN", "name": "Hrms admin"}
+                    ],
+                    "tenantId": "in",
+                },
+                "code": name,
+                "jurisdictions": [
+                    {
+                        "hierarchy": "ADMIN",
+                        "roles": [
+                            {"value": "PROJECT_MANAGER", "label": "Project manager"},
+                            {"value": "HRMS_ADMIN", "label": "Hrms admin"}
+                        ],
+                        "boundaryType": "City",
+                        "boundary": "in",
+                        "furnishedRolesList": "PROJECT_MANAGER, HRMS_ADMIN",
+                        "tenantId": "in",
+                    }
+                ],
+                "assignments": [
+                    {
+                        "fromDate": current_timestamp,
+                        "toDate": "",
+                        "isCurrentAssignment": True,
+                        "department": "DEPT_1",
+                        "designation": "DESIG_01"
+                    }
+                ],
+                "serviceHistory": [],
+                "education": [],
+                "tests": [],
+            }
+        ],
+    }
 
 def get_user_creation_payload(request_info: RequestInfo, row: Series):
     current_date = datetime.datetime.now()
