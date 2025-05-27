@@ -104,7 +104,10 @@ public class Incident   {
         @JsonProperty("auditDetails")
         private AuditDetails auditDetails = null;
 
+        @SafeHtml
+        @CharacterConstraint(size = 256)
         @JsonProperty("systemFunctional")
         private String systemFunctional = null;
+
 
 }
