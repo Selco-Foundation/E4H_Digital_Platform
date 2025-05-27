@@ -90,9 +90,11 @@ async def get_facility_ingestion_template_with_supervisors(
 
         project_service = ProjectService()
         facilities = project_service.get_facilities(request_info, parent_id)
+        facility_template_service = FacilityTemplateService()
 
         try:
-            df = pd.DataFrame(facilities)
+            original_df = pd.DataFrame(facilities)
+            df = facility_template_service.add_supervisor_columns_to_dataframe(original_df)
 
             with pd.ExcelWriter(output_file_path, engine='openpyxl') as writer:
                 df.to_excel(writer, index=False, sheet_name='Facilities_Supervisors')
