@@ -109,11 +109,13 @@ public class FacilityV2ApiController {
 
 
     @GetMapping("/search")
-    public ResponseEntity<List<Facility>> searchFacilities(
+    public ResponseEntity<FacilitySearchResponse> searchFacilities(
             @ModelAttribute FacilitySearchRequest searchRequest) {
         List<Facility> facilities = facilityService.searchFacilities(searchRequest);
-        return ResponseEntity.ok(facilities);
+        int totalCount = facilityService.countFacilities(searchRequest);
+        return ResponseEntity.ok(new FacilitySearchResponse(facilities, totalCount));
     }
+
 
 
 
