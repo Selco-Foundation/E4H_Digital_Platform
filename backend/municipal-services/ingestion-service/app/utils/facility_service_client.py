@@ -1,5 +1,5 @@
 import json
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 
 import requests
 from sqlalchemy import null, true
@@ -34,22 +34,51 @@ class FacilityServiceClient:
             print(f"An error occurred: {req_err}")
             raise req_err
 
-    def search_facility(self, tenant_id: str, facility_id: str):
+    def search_facility(self, tenant_id: str, facility_id: Optional[str] = None, boundary_code: Optional[str] = None) -> Dict[str, Any]:
+        limit = 1000
+        offset = 0
+        all_facilities = []
 
         url = f"{self.facility_service_url}/facility-service/v2/facility/search"
-        params = {"tenant_id": tenant_id}
-
-        # Add optional facility_id parameter if provided
-        if facility_id:
-            params["facility_id"] = facility_id
 
         headers = {
             "Accept": "application/json"
         }
 
         try:
+            # First request to get total count
+            params = {
+                "tenantId": tenant_id,
+                "limit": limit,
+                "offset": offset
+            }
+
+            # Add optional facility_id parameter if provided
+            if facility_id:
+                params["facilityId"] = facility_id
+            if boundary_code:
+                params["boundaryCode"] = boundary_code
+
             response = requests.get(url, headers=headers, params=params)
-            return json.loads(response.text)
+            response.raise_for_status()
+
+            data = response.json()
+            total_count = data.get("totalCount", 0)
+            all_facilities.extend(data.get("facilities", []))
+
+            # If more pages are present, fetch them
+            while len(all_facilities) < total_count:
+                offset += limit
+                params["offset"] = offset
+                response = requests.get(url, headers=headers, params=params)
+                response.raise_for_status()
+                data = response.json()
+                all_facilities.extend(data.get("facilities", []))
+
+            return {
+                "totalCount": total_count,
+                "facilities": all_facilities
+            }
 
         except requests.exceptions.HTTPError as http_err:
             print(f"HTTP error occurred: {http_err}")
@@ -63,49 +92,3 @@ class FacilityServiceClient:
         except requests.exceptions.RequestException as req_err:
             print(f"An error occurred: {req_err}")
             raise req_err
-
-
-    def search_facility_by_id(self, facility_id: str) -> List[Dict[str, Any]]:
-        url = f"{self.facility_service_url}/facility-service/v2/facility/search"
-        params = {
-            "tenant_id": 'in',
-            "facility_id": facility_id,
-            "limit": 1,
-            "offset": 0
-        }
-        headers = {
-            "Accept": "application/json"
-        }
-
-        try:
-            response = requests.get(url, headers=headers, params=params)
-            response.raise_for_status()
-            facilities = response.json()
-            print(f"Facility search result for ID {facility_id}: {facilities}")
-            return facilities  # This is a list of facility dicts
-
-        except requests.exceptions.HTTPError as http_err:
-            print(f"HTTP error occurred while searching for facility {facility_id}: {http_err}")
-            raise http_err
-        except requests.exceptions.RequestException as req_err:
-            print(f"Request error occurred while searching for facility {facility_id}: {req_err}")
-            raise req_err
-
-    def search_facility_by_boundary_codes(self, boundary_codes: List[str], request_info: RequestInfo):
-        url = f"{self.facility_service_url}/facility-service/v2/facility/_search"
-
-        headers = {
-            "Content-Type": "application/json"
-        }
-
-        payload = {
-            "RequestInfo": request_info.model_dump(by_alias=True, exclude_none=True),
-            "boundaryCodes": boundary_codes
-        }
-
-        try:
-            response = requests.post(url, headers=headers, json=payload)
-            return response.json()
-        except requests.exceptions.RequestException as err:
-            print(f"Request error: {err}")
-            raise err

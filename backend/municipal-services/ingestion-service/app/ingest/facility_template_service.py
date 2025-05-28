@@ -151,12 +151,12 @@ class FacilityTemplateService:
                     "State": address.get("state", ""),
                     "District": address.get("district", ""),
                     "Block": address.get("block", ""),
-                    "Boundary Code": details.get("boundaryCode", ""),
+                    "Boundary Code": facility.get("boundaryCode", ""),
                     "Health Centre Name": facility.get("facility_name", ""),
                     "HC ID": facility.get("facility_id", ""),
                     "Type of HC": facility.get("facility_type", ""),
-                    "HFR ID": details.get("hfrId", ""),
-                    "NIN ID": details.get("ninId", ""),
+                    "HFR ID": details.get("hfr_id", ""),
+                    "NIN ID": details.get("nin_id", ""),
                     "Selection?": ""  # dropdown will be added
                 }
 
