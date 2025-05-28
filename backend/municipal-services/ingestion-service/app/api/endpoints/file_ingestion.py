@@ -14,6 +14,7 @@ from app.processor.factory.boundary_data_processor_factory import BoundaryDataPr
 from app.processor.factory.vendor_data_processor_factory import VendorDataProcessorFactory
 from app.utils.convertor import request_info_from_json, create_vendor_request, create_facility_payload, get_project_creation_payload, get_user_creation_payload, get_staff_creation_payload, create_project_payload
 from app.utils.facility_service_client import FacilityServiceClient
+from app.utils.mdms_client import MDMSClient
 from app.utils.organization_service_client import OrganizationServiceClient
 from app.utils.project_service_client import ProjectServiceClient
 from app.utils.hrms_service_client import HRMSServiceClient
@@ -180,6 +181,7 @@ async def upload_facilities_excel_sheet(
     output_temp_file = None
     request_info = request_info_from_json(request_info)
     get_authorized_request_info(request_info)
+    mdms_client = MDMSClient(mdms_url)
 
     try:
         input_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
@@ -206,9 +208,10 @@ async def upload_facilities_excel_sheet(
 
         if facility_service_url and not df.empty:
             facility_client = FacilityServiceClient(facility_service_url)
+            facility_schema = mdms_client.get_column_definitions_with_metadata(request_info,'data-ingestion.FacilityIngestionSchema')
             for index, row in df[df['status'] != 'success'].iterrows():
                 try:
-                    facility_data_payload = create_facility_payload(request_info, row)
+                    facility_data_payload = create_facility_payload(request_info, row, facility_schema)
                     response = facility_client.create_facility(facility_data_payload)
                     if response.status_code in (200, 201):
                         df.at[index, 'status'] = 'success'
