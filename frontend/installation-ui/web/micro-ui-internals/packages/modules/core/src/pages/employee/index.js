@@ -13,9 +13,10 @@ import Otp from "./Otp";
 import ViewUrl from "./ViewUrl";
 import UserProfile from "../citizen/Home/UserProfile";
 import ErrorComponent from "../../components/ErrorComponent";
-import { PrivateRoute } from "@egovernments/digit-ui-components";
 import ImageComponent from "../../components/ImageComponent";
 import HomePage from "./Home";
+import ComplaintTable from "./installation-centers";
+import { Link } from "react-router-dom";
 
 const EmployeeApp = ({
   stateInfo,
@@ -44,6 +45,78 @@ const EmployeeApp = ({
   useEffect(() => {
     Digit.UserService.setType("employee");
   }, []);
+
+  const GetCell = (value) => <span className="cell-text">{value}</span>;
+
+  const GetProgress = (value) => {
+    return (
+      <div style={{ display: "flex", gap: `${value > 99 ? "10px" : "20px"}` }}>
+        <div>{value}%</div>
+        <div style={{ width: "100px", height: "20px", background: "#E0E0E0", borderRadius: "5px" }}>
+          <div style={{ position: "absolute", height: "20px", width: `${value}px`, background: "#00703C", borderRadius: "5px" }}></div>
+        </div>
+      </div>
+    );
+  };
+
+  const GetLink = (value) => (
+    <Link to={`/${window.contextPath}/employee/im/complaint/details/${incidentId.toString()}/${tenantId}`} style={{ color: "#7a2829" }}>
+      {value}
+    </Link>
+  );
+
+  const columns = [
+    {
+      Header: "Field Plan Code",
+      Cell: ({ row }) => {
+        return (
+          <div>
+            <span className="link">
+              <Link to={`/${window.contextPath}/employee/user/centres/${row.original["code"]}`} style={{ color: "#C84C0E" }}>
+                {row.original["code"]}
+              </Link>
+            </span>
+          </div>
+        );
+      },
+    },
+    {
+      Header: "Activity Type",
+      Cell: ({ row }) => {
+        return GetCell(`${row.original["type"].toUpperCase()}`);
+      },
+    },
+    {
+      Header: "Health Facilities",
+      Cell: ({ row }) => {
+        return GetCell(`${row.original["facilities"].toUpperCase()}`);
+      },
+    },
+    {
+      Header: "Start Date",
+      Cell: ({ row }) => {
+        return GetCell(`${row.original["start"].toUpperCase()}`);
+      },
+    },
+    {
+      Header: "End Date",
+      Cell: ({ row }) => {
+        return GetCell(`${row.original["end"].toUpperCase()}`);
+      },
+    },
+    {
+      Header: "Completion Rate",
+      Cell: ({ row }) => {
+        return GetProgress(`${row.original["completion"]}`);
+      },
+    },
+  ];
+
+  const data = [
+    { code: "MH-QC_HO-2024-200centres", type: "Installation", facilities: "200", start: "08/05/2025", end: "08/10/2025", completion: 40 },
+    { code: "MH-QC_HO-2024-201centres", type: "Installation", facilities: "100", start: "08/03/2025", end: "22/05/2025", completion: 20 },
+    { code: "MH-QC_HO-2024-202centres", type: "Installation", facilities: "400", start: "01/05/2024", end: "01/03/2025", completion: 100 },
+  ];
 
   const additionalComponent = initData?.modules?.filter((i) => i?.additionalComponent)?.map((i) => i?.additionalComponent);
 
@@ -83,6 +156,22 @@ const EmployeeApp = ({
                 <HomePage stateCode={stateCode} userType={"employee"} cityDetails={cityDetails} />
               </Route>
               <Route path={`${path}/user/table`}>
+                <ComplaintTable
+                  t={t}
+                  columns={columns}
+                  data={data}
+                  getCellProps={(cellInfo) => {
+                    return {
+                      style: {
+                        maxWidth: "100%",
+                        padding: "17.24px 18px",
+                        fontSize: "15px",
+                      },
+                    };
+                  }}
+                />
+              </Route>
+              <Route path={`${path}/user/centres/:id*`}>
                 <HomePage stateCode={stateCode} userType={"employee"} cityDetails={cityDetails} />
               </Route>
 

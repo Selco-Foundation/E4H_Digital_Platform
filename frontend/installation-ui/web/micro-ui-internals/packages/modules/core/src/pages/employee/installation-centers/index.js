@@ -1,22 +1,8 @@
 import React from "react";
-import { Table } from "@selco/digit-ui-react-components";
-
+import { Table } from "@egovernments/digit-ui-react-components";
 const ComplaintTable = ({ t, columns, data, getCellProps, onNextPage, onPrevPage, currentPage, totalRecords, pageSizeLimit, onPageSizeChange }) => {
-  console.log("jhisss", data, columns);
   return (
-    <div>
-      <style>
-        {`
-          .table thead th:first-child {
-            min-width: 0px;
-          }
-        
-          .table thead th:nth-child(2) {
-            min-width: 0px;
-          }
-        `}
-      </style>
-
+    <div style={{ marginTop: "75px", width: "97%", marginLeft: "auto" }}>
       <Table
         t={t}
         data={data}
