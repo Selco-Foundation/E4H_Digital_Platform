@@ -4,10 +4,6 @@ from typing import Dict, List, Any
 
 import pandas as pd
 import requests
-from fastapi import HTTPException
-from openpyxl import load_workbook
-from openpyxl.worksheet.datavalidation import DataValidation
-from sqlalchemy import false
 
 from app.core.logging import AppLogger
 from app.schemas.boundary import Boundary
@@ -120,43 +116,21 @@ class FacilityTemplateService:
 
         return boundary_records
 
-    def add_supervisor_columns_to_facility_template(self,input_path, output_path, sheet_name):
-        """
-        Add supervisor columns to the specified Excel sheet if they don't already exist.
+    def add_supervisor_columns_to_dataframe(self, df:pd.DataFrame):
+        columns_to_add = {
+            "Role (Mandatory)": "",
+            "Name (Mandatory)": None,
+            "Phone Number (Mandatory)": None,
+            "Email Address (Mandatory)": None
+        }
+        df_modified = df.copy()
 
-        Args:
-            input_path: Path to the input Excel file
-            output_path: Path where the modified Excel file will be saved
-            sheet_name: Name of the sheet to modify
+        for col_name, default_value in columns_to_add.items():
+            if col_name not in df_modified.columns:
+                df_modified[col_name] = default_value
+        return df_modified
 
-        Raises:
-            HTTPException: If the specified sheet is not found
-        """
-        try:
-            df = pd.read_excel(input_path, sheet_name=sheet_name)
-            columns_to_add = {
-                "Role (Mandatory)": "Supervisor",
-                "Name (Mandatory)": None,
-                "Phone Number (Mandatory)": None,
-                "Email Address (Mandatory)": None
-            }
 
-            for col_name, default_value in columns_to_add.items():
-                if col_name not in df.columns:
-                    df[col_name] = default_value
-
-            with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
-                all_sheets = pd.read_excel(input_path, sheet_name=None)
-                for sheet, sheet_df in all_sheets.items():
-                    if sheet == sheet_name:
-                        df.to_excel(writer, sheet_name=sheet, index=False)
-                    else:
-                        sheet_df.to_excel(writer, sheet_name=sheet, index=False)
-
-        except ValueError as e:
-            if "No sheet named" in str(e):
-                raise HTTPException(status_code=400, detail=f"Sheet '{sheet_name}' not found in the uploaded file")
-            raise e
 
     def generate_selection_template_file(self, output_path: str,
                                          facility_selection_schema: IngestionSchemaResponse,

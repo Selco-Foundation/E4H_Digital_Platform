@@ -2,6 +2,8 @@ package facility.service;
 
 import facility.repository.FacilityRepository;
 import facility.util.IdgenUtil;
+import facility.util.QueryBuilderResult;
+import facility.util.QueryBuilderUtil;
 import facility.web.models.*;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.tracer.model.CustomException;
@@ -196,46 +198,21 @@ public class FacilityService {
      *
      * @return List of facilities matching the filter
      */
-    public List<Facility> searchFacilities(FacilitySearchRequest searchRequest) {
-        StringBuilder query = new StringBuilder("SELECT * FROM facility WHERE 1=1");
-        List<Object> params = new ArrayList<>();
+    public List<Facility> searchFacilities(FacilitySearchRequest request) {
+        QueryBuilderResult result = QueryBuilderUtil.buildWhereClause(request);
 
-        if (searchRequest.getTenantId() != null && !searchRequest.getTenantId().isBlank()) {
-            query.append(" AND tenant_id = ?");
-            params.add(searchRequest.getTenantId());
-        }
-
-        if (searchRequest.getFacilityId() != null && !searchRequest.getFacilityId().isBlank()) {
-            query.append(" AND id = ?");
-            params.add(searchRequest.getFacilityId());
-        }
-
-        if (searchRequest.getFacilityName() != null && !searchRequest.getFacilityName().isBlank()) {
-            query.append(" AND facility_name ILIKE ?");
-            params.add("%" + searchRequest.getFacilityName() + "%");
-        }
-
-        if (searchRequest.getHfrId() != null && !searchRequest.getHfrId().isBlank()) {
-            query.append(" AND facility_details ->> 'hfrId' = ?");
-            params.add(searchRequest.getHfrId());
-        }
-
-        if (searchRequest.getNinId() != null && !searchRequest.getNinId().isBlank()) {
-            query.append(" AND facility_details ->> 'ninId' = ?");
-            params.add(searchRequest.getNinId());
-        }
-
-        if (searchRequest.getBoundaryCode() != null && !searchRequest.getBoundaryCode().isBlank()) {
-            query.append(" AND boundary_code = ?");
-            params.add(searchRequest.getBoundaryCode());
-        }
-
+        StringBuilder query = new StringBuilder("SELECT * FROM facility");
+        query.append(result.getWhereClause());
         query.append(" ORDER BY created_at DESC LIMIT ? OFFSET ?");
-        params.add(searchRequest.getLimit());
-        params.add(searchRequest.getOffset());
 
-        return jdbcTemplate.query(query.toString(), params.toArray(), facilityRowMapper.rowMapper);
+        List<Object> allParams = new ArrayList<>(result.getParams());
+        allParams.add(request.getLimit());
+        allParams.add(request.getOffset());
+
+        return jdbcTemplate.query(query.toString(), allParams.toArray(), facilityRowMapper.rowMapper);
     }
+
+
 
     /**
      * Fetches a one-line summary of a facility using its ID.
@@ -258,4 +235,13 @@ public class FacilityService {
             return null;
         }
     }
+
+    public int countFacilities(FacilitySearchRequest request) {
+        QueryBuilderResult result = QueryBuilderUtil.buildWhereClause(request);
+        String query = "SELECT COUNT(*) FROM facility" + result.getWhereClause();
+        return jdbcTemplate.queryForObject(query, result.getParams().toArray(), Integer.class);
+    }
+
+
+
 }

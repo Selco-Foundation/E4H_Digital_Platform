@@ -351,7 +351,7 @@ public class AssetValidator {
     }
 
     private void validateExistingDuplicates(Asset asset, Map<String, String> errorMap) {
-        List<Asset> assets = assetService.searchAssets(null,null,null,null, asset.getSerialNumber(), asset.getModelNumber(), asset.getBrandID(), 1, 0);
+        List<Asset> assets = assetService.searchAssets(asset,1,0);
         if(!assets.isEmpty())
             errorMap.put(ErrorConstants.ASSET_DUPLICATE_VALIDATION_CODE, ErrorConstants.ASSET_DUPLICATE_VALIDATION_MSG);
     }

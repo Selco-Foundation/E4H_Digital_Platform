@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.asset.service.AssetService;
 import org.egov.asset.web.models.*;
@@ -16,9 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
-import jakarta.validation.Valid;
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.List;
 
 @jakarta.annotation.Generated(value = "org.egov.codegen.SpringBootCodegen", date = "2025-05-05T14:19:51.673231117+05:30[Asia/Kolkata]")
@@ -122,10 +121,16 @@ public class V1ApiController {
             @Parameter(in = ParameterIn.QUERY, description = "Limit for pagination", schema = @Schema(type = "integer", format = "int32"))
             @RequestParam(value = "limit", defaultValue = "10") Integer limit) {
         AssetSearchCriteria criteria = searchRequest.getCriteria();
-        List<Asset> searchResponse = assetService.searchAssets(
-                criteria.getTenantId(), criteria.getAssetID(), criteria.getWfStatus(), criteria.getFacilityID(),
-                criteria.getSerialNumber(), criteria.getModelNumber(),criteria.getBrandID(), limit, offset
-        );
+        Asset asset = Asset.builder()
+                .tenantId(criteria.getTenantId())
+                .assetId(criteria.getAssetID())
+                .wfStatus(criteria.getWfStatus())
+                .facilityID(criteria.getFacilityID())
+                .serialNumber(criteria.getSerialNumber())
+                .modelNumber(criteria.getModelNumber())
+                .brandID(criteria.getBrandID())
+                .build();
+        List<Asset> searchResponse = assetService.fetchAssetsWithDocuments(asset,limit, offset);
         return new ResponseEntity<>(searchResponse, HttpStatus.OK);
     }
 
