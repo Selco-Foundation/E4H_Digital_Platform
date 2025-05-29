@@ -13,8 +13,6 @@ class LocalizationRepository {
           queryParameters: queryParameters,
           data: {});
 
-      print("localization response ${response.data}");
-
       final responseBody = LocalizationModel.fromJson(response.data);
 
       return responseBody;

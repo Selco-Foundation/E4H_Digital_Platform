@@ -1,19 +1,26 @@
 import 'package:dart_mappable/dart_mappable.dart';
-import 'package:flutter/material.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 
+part 'userModel.g.dart';
 part 'userModel.mapper.dart';
 
+@JsonSerializable(includeIfNull: false)
 @MappableClass(ignoreNull: true, discriminatorValue: MappableClass.useAsDefault)
 class UserSearchModel with UserSearchModelMappable {
   final String? id;
   final String? userName;
+  final String? tenantId;
   final List<String>? uuid;
 
   UserSearchModel({
     this.id,
     this.userName,
+    this.tenantId,
     this.uuid,
   }) : super();
+
+  factory UserSearchModel.fromJson(Map<String, dynamic> json) =>
+      _$UserSearchModelFromJson(json);
 }
 
 @MappableClass(ignoreNull: true)

@@ -27,13 +27,18 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
         .searchStaff(ProjectStaffSearchModel(staffId: [event.uuid.toString()]));
 
     // Create search body for projects based on staff's project IDs
-    List<ProjectSearchModel> searchBody = [];
-    for (final staff in projectStaffList) {
-      searchBody.add(ProjectSearchModel(
-        id: staff.projectId,
-        tenantId: envConfig.variables.tenantId,
-      ));
-    }
+    // List<ProjectSearchModel> searchBody = [];
+    // for (final staff in projectStaffList) {
+    //   searchBody.add(ProjectSearchModel(
+    //       id: staff.projectId,
+    //       tenantId: envConfig.variables.tenantId,
+    //       projectTypeId: "FieldPlan"));
+    // }
+
+    ProjectSearchModel searchBody = ProjectSearchModel(
+      tenantId: envConfig.variables.tenantId,
+      projectTypeId: "FieldPlan",
+    );
 
     // Fetch projects based on search body
     final projectRemoteRepository = ProjectRemoteRepository();
