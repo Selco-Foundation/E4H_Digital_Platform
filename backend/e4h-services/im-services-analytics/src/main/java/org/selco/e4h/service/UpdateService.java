@@ -132,6 +132,14 @@ public class UpdateService {
 	}
 
 	public void updateSlaFields(String documentId, Long slaRemaining, Long totalSlaRemaining, Long stateSla) {
+		// Input validation
+		if (documentId == null || documentId.trim().isEmpty()) {
+			throw new IllegalArgumentException("Document ID cannot be null or empty");
+		}
+		if (slaRemaining == null || totalSlaRemaining == null || stateSla == null) {
+			throw new IllegalArgumentException("SLA values cannot be null");
+		}
+
 		try {
 			JSONObject params = new JSONObject();
 			params.put("slaRemaining", slaRemaining);
@@ -139,9 +147,11 @@ public class UpdateService {
 			params.put("stateSLA", stateSla);
 
 			JSONObject script = new JSONObject();
-			script.put("source", "ctx._source.Data.slaRemaining = params.slaRemaining; " +
-					"ctx._source.Data.totalSlaRemaining = params.totalSlaRemaining; " +
-					"ctx._source.Data.stateSLA = params.stateSLA;");
+			script.put("source",
+				"if (ctx._source.Data == null) { ctx._source.Data = [:]; } " +
+				"ctx._source.Data.slaRemaining = params.slaRemaining; " +
+				"ctx._source.Data.totalSlaRemaining = params.totalSlaRemaining; " +
+				"ctx._source.Data.stateSLA = params.stateSLA;");
 			script.put("lang", "painless");
 			script.put("params", params);
 
@@ -150,13 +160,21 @@ public class UpdateService {
 			payload.put("doc_as_upsert", false);
 
 			String updateUrl = config.getEsHostUrl() + config.getUpdateIndexPath() + documentId;
+			log.debug("Updating SLA fields for document ID: {}", documentId);
 
 			HttpEntity<String> entity = new HttpEntity<>(payload.toString(), buildHeaders());
 			String response = restTemplate.postForObject(updateUrl, entity, String.class);
 
 			processResponse(response, documentId);
+		} catch (HttpClientErrorException | HttpServerErrorException e) {
+			log.error("HTTP error while updating SLA fields for document ID {}: {}", documentId, e.getMessage());
+			throw new ServiceCallException("Failed to update SLA fields due to HTTP error: " + e.getMessage());
+		} catch (ResourceAccessException e) {
+			log.error("Elasticsearch is unreachable while updating SLA fields for document ID {}: {}", documentId, e.getMessage());
+			throw new ServiceCallException("Elasticsearch is unreachable: " + e.getMessage());
 		} catch (Exception e) {
 			log.error("Error while updating SLA fields for document ID {}: {}", documentId, e.getMessage(), e);
+			throw new ServiceCallException("Failed to update SLA fields: " + e.getMessage());
 		}
 	}
 
