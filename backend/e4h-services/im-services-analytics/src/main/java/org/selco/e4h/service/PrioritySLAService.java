@@ -86,7 +86,10 @@ public class PrioritySLAService {
 
         try {
             JSONArray hoursArray = mdmsData.get("common-masters").get("BusinessHours");
-            if (hoursArray == null || hoursArray.isEmpty()) return businessHours;
+            if (hoursArray == null || hoursArray.isEmpty()) {
+                log.warn("No business hours configuration found in MDMS");
+                return businessHours;
+            }
 
             Map<String, BusinessHours.Schedule> scheduleMap = new HashMap<>();
             JsonNode node = new ObjectMapper().convertValue(hoursArray.get(0), JsonNode.class)
