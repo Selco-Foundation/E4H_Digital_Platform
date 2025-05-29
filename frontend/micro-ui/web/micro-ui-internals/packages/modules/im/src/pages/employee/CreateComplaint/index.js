@@ -184,12 +184,12 @@ export const CreateComplaint = ({ parentUrl }) => {
   const client = useQueryClient();
 
   useEffect(() => {
-    if (complaintType?.key && subType?.key && healthCareType?.code && healthcentre?.code && district?.key && block.key && !isUploading) {
+    if (complaintType?.key && subType?.key && systemFunctionality?.key && healthCareType?.code && healthcentre?.code && district?.key && block.key && !isUploading) {
       setSubmitValve(true);
     } else {
       setSubmitValve(false);
     }
-  }, [complaintType, subType, healthcentre, healthCareType, district, block, isUploading]);
+  }, [complaintType, subType, systemFunctionality, healthcentre, healthCareType, district, block, isUploading]);
   async function selectedType(value) {
     setDisableUpload(false);
     if (value.key !== complaintType.key) {
