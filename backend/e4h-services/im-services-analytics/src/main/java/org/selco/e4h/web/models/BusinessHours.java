@@ -47,28 +47,28 @@ public class BusinessHours {
         }
 
         public int getStartHour() {
-            if (start == null || !start.matches("\\d{2}:\\d{2}")) {
+            if (start == null || !start.matches("^([01]?\\d|2[0-3]):[0-5]\\d$")) {
                 throw new IllegalArgumentException("Invalid time format. Expected HH:mm, got: " + start);
             }
             return Integer.parseInt(start.split(":")[0]);
         }
 
         public int getStartMinute() {
-            if (start == null || !start.matches("\\d{2}:\\d{2}")) {
+            if (start == null || !start.matches("^([01]?\\d|2[0-3]):[0-5]\\d$")) {
                 throw new IllegalArgumentException("Invalid time format. Expected HH:mm, got: " + start);
             }
             return Integer.parseInt(start.split(":")[1]);
         }
 
         public int getEndHour() {
-            if (end == null || !end.matches("\\d{2}:\\d{2}")) {
+            if (end == null || !end.matches("^([01]?\\d|2[0-3]):[0-5]\\d$")) {
                 throw new IllegalArgumentException("Invalid time format. Expected HH:mm, got: " + end);
             }
             return Integer.parseInt(end.split(":")[0]);
         }
 
         public int getEndMinute() {
-            if (end == null || !end.matches("\\d{2}:\\d{2}")) {
+            if (end == null || !end.matches("^([01]?\\d|2[0-3]):[0-5]\\d$")) {
                 throw new IllegalArgumentException("Invalid time format. Expected HH:mm, got: " + end);
             }
             return Integer.parseInt(end.split(":")[1]);

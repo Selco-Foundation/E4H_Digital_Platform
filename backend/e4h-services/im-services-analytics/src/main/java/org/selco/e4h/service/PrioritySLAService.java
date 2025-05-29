@@ -34,7 +34,9 @@ public class PrioritySLAService {
     private static final ZoneId INDIA_ZONE = ZoneId.of("Asia/Kolkata");
 
     public void computeAndUpdateSLA(SLARequest request) {
-        List<Map<String, Object>> tickets = esClient.fetchOpenTickets();
+        int pageSize = 5000;
+        int from = 0;
+        boolean hasMore = true;
 
         Map<String, Map<String, JSONArray>> mdmsData = mdmsUtil.fetchMdmsData(
                 request.getRequestInfo(), request.getTenantId(),
@@ -44,14 +46,23 @@ public class PrioritySLAService {
         BusinessHours bh = parseBusinessHours(mdmsData);
         Map<TenantServiceStateKey, Duration> slaMap = loadSLADurationsFromBusinessService();
 
-        for (Map<String, Object> ticket : tickets) {
-            try {
-                updateTicket(ticket, slaMap, bh);
-            } catch (Exception e) {
-                log.error("Error processing ticket: {}", ticket, e);
+        while (hasMore) {
+            List<Map<String, Object>> tickets = esClient.fetchOpenTickets(from, pageSize);
+            if (tickets.isEmpty()) break;
+
+            for (Map<String, Object> ticket : tickets) {
+                try {
+                    updateTicket(ticket, slaMap, bh);
+                } catch (Exception e) {
+                    log.error("Error processing ticket: {}", ticket, e);
+                }
             }
+
+            hasMore = tickets.size() == pageSize;
+            from += pageSize;
         }
     }
+
 
     private void updateTicket(Map<String, Object> ticket, Map<TenantServiceStateKey, Duration> slaMap, BusinessHours bh) {
         Map<String, Object> data = (Map<String, Object>) ticket.get("Data");
