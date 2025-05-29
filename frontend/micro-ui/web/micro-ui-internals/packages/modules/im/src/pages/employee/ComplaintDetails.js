@@ -233,7 +233,11 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
                     ? t("CS_COMMON_RESOLVE")
                     : selectedAction === "CLOSE"
                       ? t("CS_COMMON_CLOSE")
-                      : t("CS_COMMON_SENDBACK")
+                      : selectedAction === "SENDBACK"
+                        ? t("CS_COMMON_SENDbACK")
+                        : selectedAction === "OUT_OF_WARRANTY"
+                          ? t("CS_COMMON_OUT_OF_WARRANTY")
+                          : t("CS_COMMON_SPARE_PART_NEEDED")
           }
         />
       }
@@ -251,7 +255,11 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
                 ? t("CS_COMMON_RESOLVE_BUTTON")
                 : selectedAction === "CLOSE"
                   ? t("CS_COMMON_CLOSE")
-                  : t("CS_COMMON_SENDbACK")
+                  : selectedAction === "SENDBACK"
+                    ? t("CS_COMMON_SENDbACK")
+                    : selectedAction === "OUT_OF_WARRANTY"
+                      ? t("CS_COMMON_OUT_OF_WARRANTY")
+                      : t("CS_COMMON_SPARE_PART_NEEDED")
       }
       actionSaveOnSubmit={() => {
         const isTextareaAction =
@@ -622,6 +630,14 @@ export const ComplaintDetails = (props) => {
         setDisplayMenu(false);
         break;
       case "SENDBACK":
+        setPopup(true);
+        setDisplayMenu(false);
+        break;
+      case "OUT_OF_WARRANTY":
+        setPopup(true);
+        setDisplayMenu(false);
+        break;
+      case "SPARE_PART_NEEDED":
         setPopup(true);
         setDisplayMenu(false);
         break;
