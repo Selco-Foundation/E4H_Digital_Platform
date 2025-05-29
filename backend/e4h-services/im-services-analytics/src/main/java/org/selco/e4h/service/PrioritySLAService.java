@@ -111,10 +111,18 @@ public class PrioritySLAService {
         return businessHours;
     }
 
-    private long calculateBusinessMillis(long startMillis, long endMillis, BusinessHours businessHours) {
-        ZonedDateTime start = Instant.ofEpochMilli(startMillis).atZone(INDIA_ZONE);
-        ZonedDateTime end = Instant.ofEpochMilli(endMillis).atZone(INDIA_ZONE);
-        long total = 0;
+private long calculateBusinessMillis(long startMillis, long endMillis, BusinessHours businessHours) {
+    if (startMillis > endMillis) {
+        log.warn("Start time {} is after end time {}, returning 0", startMillis, endMillis);
+        return 0;
+    }
+    if (businessHours == null || businessHours.getSchedule() == null) {
+        log.warn("Business hours not configured, returning full duration");
+        return endMillis - startMillis;
+    }
+    ZonedDateTime start = Instant.ofEpochMilli(startMillis).atZone(INDIA_ZONE);
+    ZonedDateTime end = Instant.ofEpochMilli(endMillis).atZone(INDIA_ZONE);
+    long total = 0;
 
         for (ZonedDateTime dt = start.truncatedTo(ChronoUnit.DAYS);
              !dt.isAfter(end.truncatedTo(ChronoUnit.DAYS));
