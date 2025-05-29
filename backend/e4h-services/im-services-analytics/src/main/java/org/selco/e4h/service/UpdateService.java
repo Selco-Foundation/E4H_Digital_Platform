@@ -130,4 +130,34 @@ public class UpdateService {
 			}
 		}
 	}
+
+	public void updateSlaFields(String documentId, Long slaRemaining, Long totalSlaRemaining, Long stateSla) {
+		try {
+			JSONObject params = new JSONObject();
+			params.put("slaRemaining", slaRemaining);
+			params.put("totalSlaRemaining", totalSlaRemaining);
+			params.put("stateSLA", stateSla);
+
+			JSONObject script = new JSONObject();
+			script.put("source", "ctx._source.Data.slaRemaining = params.slaRemaining; " +
+					"ctx._source.Data.totalSlaRemaining = params.totalSlaRemaining; " +
+					"ctx._source.Data.stateSLA = params.stateSLA;");
+			script.put("lang", "painless");
+			script.put("params", params);
+
+			JSONObject payload = new JSONObject();
+			payload.put("script", script);
+			payload.put("doc_as_upsert", false);
+
+			String updateUrl = config.getEsHostUrl() + config.getUpdateIndexPath() + documentId;
+
+			HttpEntity<String> entity = new HttpEntity<>(payload.toString(), buildHeaders());
+			String response = restTemplate.postForObject(updateUrl, entity, String.class);
+
+			processResponse(response, documentId);
+		} catch (Exception e) {
+			log.error("Error while updating SLA fields for document ID {}: {}", documentId, e.getMessage(), e);
+		}
+	}
+
 }
