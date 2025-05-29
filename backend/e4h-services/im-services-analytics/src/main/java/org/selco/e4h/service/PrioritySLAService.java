@@ -26,7 +26,7 @@ import java.util.*;
 @RequiredArgsConstructor
 public class PrioritySLAService {
 
-    public static final String STATE = "state";
+    private static final String STATE = "state";
     private final UpdateService updateService;
     private final MdmsUtil mdmsUtil;
     private final ElasticSearchClient esClient;
