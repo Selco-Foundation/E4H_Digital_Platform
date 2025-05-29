@@ -1,0 +1,50 @@
+{
+  "access_token": "bd0731bb-f78a-4918-a9f3-874d52cf228b",
+  "token_type": "bearer",
+  "refresh_token": "5b6a4293-8e31-44ef-bf9d-72861c4c1a99",
+  "expires_in": 585734,
+  "scope": "read write",
+  "ResponseInfo": {
+    "api_id": "",
+    "ver": "",
+    "ts": "",
+    "res_msg_id": "",
+    "msg_id": "",
+    "status": "Access Token generated successfully"
+  },
+  "UserRequest": {
+    "id": 95,
+    "uuid": "cd831d19-3799-4e73-a52a-237930f1e450",
+    "userName": "7346864311",
+    "name": "Akhila",
+    "mobileNumber": "9901224633",
+    "emailId": "",
+    "locale": "en_IN",
+    "type": "EMPLOYEE",
+    "roles": [
+      {
+        "name": "Complainant",
+        "code": "COMPLAINANT",
+        "tenantId": "pg"
+      },
+      {
+        "name": "Employee",
+        "code": "EMPLOYEE",
+        "tenantId": "pg"
+      },
+      {
+        "name": "Super User",
+        "code": "SUPERUSER",
+        "tenantId": "pg"
+      },
+      {
+        "name": "Complaint Assessor",
+        "code": "COMPLAINT_ASSESSOR",
+        "tenantId": "pg"
+      }
+    ],
+    "active": true,
+    "tenantId": "pg",
+    "permanentCity": "All"
+  }
+}

@@ -26,6 +26,9 @@ class UserSearchModelMapper extends ClassMapperBase<UserSearchModel> {
   static String? _$userName(UserSearchModel v) => v.userName;
   static const Field<UserSearchModel, String> _f$userName =
       Field('userName', _$userName, opt: true);
+  static String? _$tenantId(UserSearchModel v) => v.tenantId;
+  static const Field<UserSearchModel, String> _f$tenantId =
+      Field('tenantId', _$tenantId, opt: true);
   static List<String>? _$uuid(UserSearchModel v) => v.uuid;
   static const Field<UserSearchModel, List<String>> _f$uuid =
       Field('uuid', _$uuid, opt: true);
@@ -34,6 +37,7 @@ class UserSearchModelMapper extends ClassMapperBase<UserSearchModel> {
   final MappableFields<UserSearchModel> fields = const {
     #id: _f$id,
     #userName: _f$userName,
+    #tenantId: _f$tenantId,
     #uuid: _f$uuid,
   };
   @override
@@ -43,6 +47,7 @@ class UserSearchModelMapper extends ClassMapperBase<UserSearchModel> {
     return UserSearchModel(
         id: data.dec(_f$id),
         userName: data.dec(_f$userName),
+        tenantId: data.dec(_f$tenantId),
         uuid: data.dec(_f$uuid));
   }
 
@@ -100,7 +105,7 @@ extension UserSearchModelValueCopy<$R, $Out>
 abstract class UserSearchModelCopyWith<$R, $In extends UserSearchModel, $Out>
     implements ClassCopyWith<$R, $In, $Out> {
   ListCopyWith<$R, String, ObjectCopyWith<$R, String, String>>? get uuid;
-  $R call({String? id, String? userName, List<String>? uuid});
+  $R call({String? id, String? userName, String? tenantId, List<String>? uuid});
   UserSearchModelCopyWith<$R2, $In, $Out2> $chain<$R2, $Out2>(
       Then<$Out2, $R2> t);
 }
@@ -123,16 +128,19 @@ class _UserSearchModelCopyWithImpl<$R, $Out>
   $R call(
           {Object? id = $none,
           Object? userName = $none,
+          Object? tenantId = $none,
           Object? uuid = $none}) =>
       $apply(FieldCopyWithData({
         if (id != $none) #id: id,
         if (userName != $none) #userName: userName,
+        if (tenantId != $none) #tenantId: tenantId,
         if (uuid != $none) #uuid: uuid
       }));
   @override
   UserSearchModel $make(CopyWithData data) => UserSearchModel(
       id: data.get(#id, or: $value.id),
       userName: data.get(#userName, or: $value.userName),
+      tenantId: data.get(#tenantId, or: $value.tenantId),
       uuid: data.get(#uuid, or: $value.uuid));
 
   @override

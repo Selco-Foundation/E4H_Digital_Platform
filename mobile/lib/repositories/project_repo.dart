@@ -6,7 +6,6 @@ import 'package:flutter/services.dart';
 
 import '../data/remote_client.dart';
 import '../model/projects/project.dart';
-import '../utils/envConfig.dart';
 
 /// Repository handling remote operations related to projects.
 class ProjectRemoteRepository {
@@ -15,23 +14,28 @@ class ProjectRemoteRepository {
   final dio = DioClient().dio;
 
   /// Searches for projects based on the provided [body]
-  FutureOr<List<ProjectModel>> search(List<ProjectSearchModel> body) async {
+  FutureOr<List<ProjectModel>> search(ProjectSearchModel body) async {
     try {
       Response response;
-      String searchPath = "";
+      String searchPath =
+          "https://9743-197-211-59-71.ngrok-free.app/project/v2/_search";
       // actionMap![DataModelType.project]![ApiOperation.search]!;
 
-      if (envConfig.variables.envType == EnvType.dev) {
-        return _loadLocalProjects();
-      }
+      // if (envConfig.variables.envType == EnvType.dev) {
+      //   return _loadLocalProjects();
+      // }
 
       response = await dio.post(searchPath, queryParameters: {
-        'tenantId': envConfig.variables.tenantId,
+        'tenantId': 'in', // envConfig.variables.tenantId,
         'limit': 100,
-        'offset': 0
+        'offset': 0,
+        'includeDescendants': false,
+        'includeAncestors': false
       }, data: {
-        'Projects': body.map((e) => e.toMap()).toList()
+        'Project': body.toMap()
       });
+
+      // print("response - projects ${response.data}");
 
       final responseMap = response.data['Project'];
 
@@ -42,6 +46,7 @@ class ProjectRemoteRepository {
 
       return projectsList;
     } catch (err) {
+      print("err ${err.toString()}");
       rethrow;
     }
   }
