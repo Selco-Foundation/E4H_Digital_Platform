@@ -369,7 +369,7 @@ components:
           description: Store any documents associated with the asset
           type: array
           items:
-            $ref: 'https://raw.githubusercontent.com/egovernments/DIGIT-Specs/common-contract-update/Common%20Services/common-contract.yaml#/components/schemas/Document'
+            $ref: '#/components/schemas/GeoTaggedDocument'
         auditDetails:
           readOnly: true
           description: System generated; to be consumed by end users of the API
@@ -377,7 +377,37 @@ components:
         additionalDetails:
           type: object
           description: Extra key-value pair object for implementation specific customizations.
-
+    GeoTaggedDocument:
+      description: >-
+        This object hold a document attached during the transaciton for
+        a property, alongwith the geolocation data for the document
+      type: object
+      properties:
+        id:
+          description: system id of the Document.
+          type: string
+          maxLength: 64
+        documentType:
+          description: >-
+            unique document type code, should be validated with document type
+            master
+          type: string
+        fileStore:
+          description: File store reference key.
+          type: string
+        documentUid:
+          description: The unique id(Pancard Number,Adhar etc.) of the given Document.
+          type: string
+          maxLength: 64
+        additionalDetails:
+          description: >-
+            Json object to capture any extra information which is not
+            accommodated by model
+          type: object
+        geoLocation:
+          description: >-
+            object to store location data associated with the document
+          $ref: 'https://raw.githubusercontent.com/egovernments/DIGIT-Specs/common-contract-update/Common%20Services/common-contract.yaml#/components/schemas/GeoLocation'
     AssetCreate:
       type: object
       properties:
@@ -387,8 +417,7 @@ components:
             $ref: 'https://raw.githubusercontent.com/egovernments/DIGIT-Specs/common-contract-update/Common%20Services/common-contract.yaml#/components/schemas/Workflow'
       required:
         - Asset
-        - workflow
-      
+        - workflow 
     AssetUpdate:
       type: object
       properties:
