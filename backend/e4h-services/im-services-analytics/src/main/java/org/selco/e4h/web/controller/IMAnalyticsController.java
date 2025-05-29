@@ -16,9 +16,29 @@ public class IMAnalyticsController {
 
     private final PrioritySLAService slaService;
 
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
+@RestController
+@RequestMapping("/v1")
+@RequiredArgsConstructor
+public class IMAnalyticsController {
+
+    private final PrioritySLAService slaService;
+
     @PostMapping("/computeSLA")
-    public ResponseEntity<String> computeSLA(@RequestBody SLARequest request) {
-        slaService.computeAndUpdateSLA(request);
-        return ResponseEntity.ok("SLA computation triggered");
+    public ResponseEntity<String> computeSLA(@Valid @RequestBody SLARequest request) {
+        try {
+            log.info("SLA computation triggered for tenant: {}", request.getTenantId());
+            slaService.computeAndUpdateSLA(request);
+            return ResponseEntity.ok("SLA computation completed successfully");
+        } catch (Exception e) {
+            log.error("Error during SLA computation for tenant: {}", request.getTenantId(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("SLA computation failed: " + e.getMessage());
+        }
     }
+}
 }
