@@ -2,6 +2,7 @@ package org.selco.e4h.service;
 
 import com.jayway.jsonpath.JsonPath;
 import lombok.extern.slf4j.Slf4j;
+import org.egov.tracer.model.ServiceCallException;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;

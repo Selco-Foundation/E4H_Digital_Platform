@@ -5,9 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.minidev.json.JSONArray;
-import java.time.*;
-import java.time.format.TextStyle;
 
+import org.egov.tracer.model.CustomException;
 import org.selco.e4h.util.ElasticSearchClient;
 import org.selco.e4h.util.IMConstants;
 import org.selco.e4h.util.MdmsUtil;
@@ -16,8 +15,8 @@ import org.selco.e4h.web.models.SLARequest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
-import java.time.Duration;
-import java.time.Instant;
+import java.time.*;
+import java.time.format.TextStyle;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 
@@ -38,52 +37,63 @@ public class PrioritySLAService {
         List<Map<String, Object>> tickets = esClient.fetchOpenTickets();
 
         Map<String, Map<String, JSONArray>> mdmsData = mdmsUtil.fetchMdmsData(
-                request.getRequestInfo(), request.getTenantId(), IMConstants.MODULE_NAME_COMMON_MASTERS, Collections.singletonList(IMConstants.BUSINESS_HOUR_MASTER));
+                request.getRequestInfo(), request.getTenantId(),
+                IMConstants.MODULE_NAME_COMMON_MASTERS,
+                Collections.singletonList(IMConstants.BUSINESS_HOUR_MASTER));
 
         BusinessHours bh = parseBusinessHours(mdmsData);
-
-        Map<TenantStatePriorityKey, Duration> slaMap = loadSLADurationsFromBusinessService();
+        Map<TenantServiceStateKey, Duration> slaMap = loadSLADurationsFromBusinessService();
 
         for (Map<String, Object> ticket : tickets) {
-            Map<String, Object> data = (Map<String, Object>) ticket.get("Data");
-            Map<String, Object> auditDetails = (Map<String, Object>) data.get("auditDetails");
-            Map<String, Object> incident = (Map<String, Object>) data.get("incident");
-            Map<String, Object> currentProcessInstance = (Map<String, Object>) data.get("currentProcessInstance");
-
-            String tenantId = (String) data.get("tenantId");
-            String state = (String) ((Map<String, Object>) currentProcessInstance.get(STATE)).get("applicationStatus");
-            String priority = (String) incident.get("priority");
-
-            long createdTime = Long.parseLong(auditDetails.get("createdTime").toString());
-            long lastModifiedTime = Long.parseLong(auditDetails.get("lastModifiedTime").toString());
-            long now = Instant.now().toEpochMilli();
-
-            Duration totalSla = slaMap.getOrDefault(new TenantStatePriorityKey(tenantId, state, priority), Duration.ZERO);
-            long businessElapsedFromCreated = calculateBusinessMillis(createdTime, now, bh);
-            long businessElapsedFromModified = calculateBusinessMillis(lastModifiedTime, now, bh);
-
-            long totalSlaRemaining = totalSla.toMillis() - businessElapsedFromCreated;
-
-            long stateSla = currentProcessInstance.get(STATE) instanceof Map
-                    ? ((Number) ((Map<?, ?>) currentProcessInstance.get(STATE)).get("sla")).longValue()
-                    : 0;
-
-            long slaRemaining = stateSla - businessElapsedFromModified;
-
-            // ✨ Update ES via UpdateService
-            String incidentId = incident.get("incidentId").toString();
-            updateService.updateSlaFields(
-                    incidentId,
-                    Math.max(slaRemaining, 0),
-                    Math.max(totalSlaRemaining, 0),
-                    stateSla
-            );
+            try {
+                updateTicket(ticket, slaMap, bh);
+            } catch (Exception e) {
+                log.error("Error processing ticket: {}", ticket, e);
+            }
         }
+    }
+
+    private void updateTicket(Map<String, Object> ticket, Map<TenantServiceStateKey, Duration> slaMap, BusinessHours bh) {
+        Map<String, Object> data = (Map<String, Object>) ticket.get("Data");
+        Map<String, Object> auditDetails = (Map<String, Object>) data.get("auditDetails");
+        Map<String, Object> incident = (Map<String, Object>) data.get("incident");
+        Map<String, Object> currentProcessInstance = (Map<String, Object>) data.get("currentProcessInstance");
+
+        String tenantId = (String) data.get("tenantId");
+        String state = (String) ((Map<String, Object>) currentProcessInstance.get(STATE)).get("applicationStatus");
+        String businessService = (String) currentProcessInstance.get("businessService");
+
+        long createdTime = Long.parseLong(auditDetails.get("createdTime").toString());
+        long lastModifiedTime = Long.parseLong(auditDetails.get("lastModifiedTime").toString());
+        long now = Instant.now().toEpochMilli();
+
+        if (slaMap == null) throw new IllegalStateException("Unable to fetch SLA Maps from RDMS");
+
+        Duration totalSla = slaMap.getOrDefault(new TenantServiceStateKey(tenantId, businessService, state), Duration.ZERO);
+
+        long businessElapsedFromCreated = calculateBusinessMillis(createdTime, now, bh);
+        long businessElapsedFromModified = calculateBusinessMillis(lastModifiedTime, now, bh);
+
+        long totalSlaRemaining = totalSla.toMillis() - businessElapsedFromCreated;
+
+        long stateSla = currentProcessInstance.get(STATE) instanceof Map
+                ? ((Number) ((Map<?, ?>) currentProcessInstance.get(STATE)).get("sla")).longValue()
+                : 0;
+
+        long slaRemaining = stateSla - businessElapsedFromModified;
+
+        // ✨ Update ES via UpdateService
+        String incidentId = incident.get("incidentId").toString();
+        updateService.updateSlaFields(
+                incidentId,
+                Math.max(slaRemaining, 0),
+                Math.max(totalSlaRemaining, 0),
+                stateSla
+        );
     }
 
     private BusinessHours parseBusinessHours(Map<String, Map<String, JSONArray>> mdmsData) {
         BusinessHours businessHours = new BusinessHours();
-
         try {
             JSONArray hoursArray = mdmsData.get("common-masters").get("BusinessHours");
             if (hoursArray == null || hoursArray.isEmpty()) {
@@ -114,18 +124,20 @@ public class PrioritySLAService {
         return businessHours;
     }
 
-private long calculateBusinessMillis(long startMillis, long endMillis, BusinessHours businessHours) {
-    if (startMillis > endMillis) {
-        log.warn("Start time {} is after end time {}, returning 0", startMillis, endMillis);
-        return 0;
-    }
-    if (businessHours == null || businessHours.getSchedule() == null) {
-        log.warn("Business hours not configured, returning full duration");
-        return endMillis - startMillis;
-    }
-    ZonedDateTime start = Instant.ofEpochMilli(startMillis).atZone(INDIA_ZONE);
-    ZonedDateTime end = Instant.ofEpochMilli(endMillis).atZone(INDIA_ZONE);
-    long total = 0;
+    private long calculateBusinessMillis(long startMillis, long endMillis, BusinessHours businessHours) {
+        if (startMillis > endMillis) {
+            log.warn("Start time {} is after end time {}, returning 0", startMillis, endMillis);
+            return 0;
+        }
+
+        if (businessHours == null || businessHours.getSchedule() == null) {
+            log.warn("Business hours not configured, returning full duration");
+            return endMillis - startMillis;
+        }
+
+        ZonedDateTime start = Instant.ofEpochMilli(startMillis).atZone(INDIA_ZONE);
+        ZonedDateTime end = Instant.ofEpochMilli(endMillis).atZone(INDIA_ZONE);
+        long total = 0;
 
         for (ZonedDateTime dt = start.truncatedTo(ChronoUnit.DAYS);
              !dt.isAfter(end.truncatedTo(ChronoUnit.DAYS));
@@ -153,30 +165,33 @@ private long calculateBusinessMillis(long startMillis, long endMillis, BusinessH
         return total;
     }
 
+    public record TenantServiceStateKey(String tenantId, String businessService, String state) {}
 
-    private record TenantStatePriorityKey(String tenantId, String state, String priority) {}
+    private Map<TenantServiceStateKey, Duration> loadSLADurationsFromBusinessService() {
+        try {
+            String sql = """
+                SELECT s.tenantid, b.businessservice, s.applicationstatus, s.sla
+                FROM eg_wf_state_v2 s
+                JOIN eg_wf_businessservice_v2 b ON s.businessserviceid = b.uuid
+                WHERE s.sla IS NOT NULL
+            """;
 
-    private Map<TenantStatePriorityKey, Duration> loadSLADurationsFromBusinessService() {
-        String sql = """
-        SELECT s.tenantid, b.businessservice, s.applicationstatus, s.sla
-        FROM eg_wf_state_v2 s
-        JOIN eg_wf_businessservice_v2 b ON s.businessserviceid = b.uuid
-        WHERE s.sla IS NOT NULL
-    """;
+            return jdbcTemplate.query(sql, rs -> {
+                Map<TenantServiceStateKey, Duration> result = new HashMap<>();
+                while (rs.next()) {
+                    String tenantId = rs.getString("tenantid");
+                    String businessService = rs.getString("businessservice");
+                    String state = rs.getString("applicationstatus");
+                    long slaMillis = rs.getLong("sla");
 
-        return jdbcTemplate.query(sql, rs -> {
-            Map<TenantStatePriorityKey, Duration> result = new HashMap<>();
-            while (rs.next()) {
-                String tenantId = rs.getString("tenantid");
-                String businessService = rs.getString("businessservice");
-                String state = rs.getString("applicationstatus");
-                long slaMillis = rs.getLong("sla");
-
-                TenantStatePriorityKey key = new TenantStatePriorityKey(tenantId, businessService, state);
-                result.put(key, Duration.ofMillis(slaMillis));
-            }
-            return result;
-        });
+                    TenantServiceStateKey key = new TenantServiceStateKey(tenantId, businessService, state);
+                    result.put(key, Duration.ofMillis(slaMillis));
+                }
+                return result;
+            });
+        } catch (Exception e) {
+            log.error("Failed to load SLA durations from database", e);
+            return Collections.emptyMap();
+        }
     }
-
 }
