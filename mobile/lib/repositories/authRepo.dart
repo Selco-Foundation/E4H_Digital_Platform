@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/services.dart';
 
 import '../data/remote_client.dart';
 import '../model/login/loginModel.dart';
@@ -12,6 +13,10 @@ class AuthRepository {
   AuthRepository();
   Future<ResponseModel> validateLogin(LoginModel body) async {
     final formData = body.toJson();
+
+    if (envConfig.variables.envType == EnvType.dev) {
+      // return _loadLocalAuth();
+    }
 
     //make a custom Dio client which will not send the request with the interceptor
     final authClient = Dio();
@@ -48,6 +53,19 @@ class AuthRepository {
       return RoleActionsWrapperModel.fromJson(json.decode(response.toString()));
     } catch (_) {
       rethrow;
+    }
+  }
+
+  Future<ResponseModel> _loadLocalAuth() async {
+    try {
+      final jsonString =
+          await rootBundle.loadString('assets/mocks/mockLogin.json');
+      final jsonResponse = json.decode(jsonString);
+      final responseBody = ResponseModel.fromJson(jsonResponse);
+
+      return responseBody;
+    } catch (e) {
+      throw Exception('Failed to load mock projects: $e');
     }
   }
 }
