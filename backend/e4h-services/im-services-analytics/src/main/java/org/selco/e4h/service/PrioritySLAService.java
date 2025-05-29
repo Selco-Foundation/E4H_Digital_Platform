@@ -76,12 +76,16 @@ public class PrioritySLAService {
 
         long totalSlaRemaining = totalSla.toMillis() - businessElapsedFromCreated;
 
-        long stateSla = currentProcessInstance.get(STATE) instanceof Map
-                ? ((Number) ((Map<?, ?>) currentProcessInstance.get(STATE)).get("sla")).longValue()
-                : 0;
+        long stateSla = 0;
+        Object stateObj = currentProcessInstance.get(STATE);
+        if (stateObj instanceof Map<?, ?> stateMap) {
+            Object slaObj = stateMap.get("sla");
+            if (slaObj instanceof Number) {
+                stateSla = ((Number) slaObj).longValue();
+            }
+        }
 
         long slaRemaining = stateSla - businessElapsedFromModified;
-
         // ✨ Update ES via UpdateService
         String incidentId = incident.get("incidentId").toString();
         updateService.updateSlaFields(
