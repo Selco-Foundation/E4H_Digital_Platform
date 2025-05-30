@@ -1,6 +1,8 @@
 import 'dart:convert';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:selco/model/asset_count/asset_count.dart';
+import 'package:selco/model/mdms/mdms.dart';
 
 import '../../model/appconfig/mdmsResponse.dart';
 import '../../model/localization/localizationModel.dart';
@@ -40,6 +42,23 @@ class SecureStore {
   // Future<String?> getServiceRegistry() async {
   //   return await storage.read(key: 'serviceRegistry');
   // }
+
+  //Asset count
+  Future setAssetCount(List<Mdms<AssetCount>> list) async {
+    // String jsonAssetCountList = json
+    //     .encode(assetCountModel.toJson((assetCount) => assetCount.toJson()));
+    // await storage.write(key: 'assetCount', value: jsonAssetCountList);
+
+    final List<Map<String, dynamic>> jsonList = list
+        .map((mdms) => mdms.toJson((assetCount) => assetCount.toJson()))
+        .toList();
+    print("json ${jsonList}");
+    await storage.write(key: 'assetCount', value: json.encode(jsonList));
+  }
+
+  Future<String?> getAssetCount() async {
+    return await storage.read(key: 'assetCount');
+  }
 
   //access token
   Future setAccessToken(String? accessToken) async {

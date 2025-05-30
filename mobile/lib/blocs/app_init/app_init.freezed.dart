@@ -168,19 +168,25 @@ mixin _$InitState {
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function() uninitialized,
-    required TResult Function(MdmsResponseModel appConfig) initialized,
+    required TResult Function(
+            MdmsResponseModel appConfig, List<Mdms<AssetCount>> assetCount)
+        initialized,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? uninitialized,
-    TResult? Function(MdmsResponseModel appConfig)? initialized,
+    TResult? Function(
+            MdmsResponseModel appConfig, List<Mdms<AssetCount>> assetCount)?
+        initialized,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? uninitialized,
-    TResult Function(MdmsResponseModel appConfig)? initialized,
+    TResult Function(
+            MdmsResponseModel appConfig, List<Mdms<AssetCount>> assetCount)?
+        initialized,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -261,7 +267,9 @@ class _$UninitializedImpl extends _Uninitialized {
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function() uninitialized,
-    required TResult Function(MdmsResponseModel appConfig) initialized,
+    required TResult Function(
+            MdmsResponseModel appConfig, List<Mdms<AssetCount>> assetCount)
+        initialized,
   }) {
     return uninitialized();
   }
@@ -270,7 +278,9 @@ class _$UninitializedImpl extends _Uninitialized {
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? uninitialized,
-    TResult? Function(MdmsResponseModel appConfig)? initialized,
+    TResult? Function(
+            MdmsResponseModel appConfig, List<Mdms<AssetCount>> assetCount)?
+        initialized,
   }) {
     return uninitialized?.call();
   }
@@ -279,7 +289,9 @@ class _$UninitializedImpl extends _Uninitialized {
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? uninitialized,
-    TResult Function(MdmsResponseModel appConfig)? initialized,
+    TResult Function(
+            MdmsResponseModel appConfig, List<Mdms<AssetCount>> assetCount)?
+        initialized,
     required TResult orElse(),
   }) {
     if (uninitialized != null) {
@@ -331,7 +343,7 @@ abstract class _$$InitializedImplCopyWith<$Res> {
           _$InitializedImpl value, $Res Function(_$InitializedImpl) then) =
       __$$InitializedImplCopyWithImpl<$Res>;
   @useResult
-  $Res call({MdmsResponseModel appConfig});
+  $Res call({MdmsResponseModel appConfig, List<Mdms<AssetCount>> assetCount});
 
   $MdmsResponseModelCopyWith<$Res> get appConfig;
 }
@@ -348,12 +360,17 @@ class __$$InitializedImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? appConfig = null,
+    Object? assetCount = null,
   }) {
     return _then(_$InitializedImpl(
       appConfig: null == appConfig
           ? _value.appConfig
           : appConfig // ignore: cast_nullable_to_non_nullable
               as MdmsResponseModel,
+      assetCount: null == assetCount
+          ? _value._assetCount
+          : assetCount // ignore: cast_nullable_to_non_nullable
+              as List<Mdms<AssetCount>>,
     ));
   }
 
@@ -369,14 +386,25 @@ class __$$InitializedImplCopyWithImpl<$Res>
 /// @nodoc
 
 class _$InitializedImpl extends Initialized {
-  const _$InitializedImpl({required this.appConfig}) : super._();
+  const _$InitializedImpl(
+      {required this.appConfig,
+      required final List<Mdms<AssetCount>> assetCount})
+      : _assetCount = assetCount,
+        super._();
 
   @override
   final MdmsResponseModel appConfig;
+  final List<Mdms<AssetCount>> _assetCount;
+  @override
+  List<Mdms<AssetCount>> get assetCount {
+    if (_assetCount is EqualUnmodifiableListView) return _assetCount;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_assetCount);
+  }
 
   @override
   String toString() {
-    return 'InitState.initialized(appConfig: $appConfig)';
+    return 'InitState.initialized(appConfig: $appConfig, assetCount: $assetCount)';
   }
 
   @override
@@ -385,11 +413,14 @@ class _$InitializedImpl extends Initialized {
         (other.runtimeType == runtimeType &&
             other is _$InitializedImpl &&
             (identical(other.appConfig, appConfig) ||
-                other.appConfig == appConfig));
+                other.appConfig == appConfig) &&
+            const DeepCollectionEquality()
+                .equals(other._assetCount, _assetCount));
   }
 
   @override
-  int get hashCode => Object.hash(runtimeType, appConfig);
+  int get hashCode => Object.hash(
+      runtimeType, appConfig, const DeepCollectionEquality().hash(_assetCount));
 
   @JsonKey(ignore: true)
   @override
@@ -401,29 +432,35 @@ class _$InitializedImpl extends Initialized {
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function() uninitialized,
-    required TResult Function(MdmsResponseModel appConfig) initialized,
+    required TResult Function(
+            MdmsResponseModel appConfig, List<Mdms<AssetCount>> assetCount)
+        initialized,
   }) {
-    return initialized(appConfig);
+    return initialized(appConfig, assetCount);
   }
 
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? uninitialized,
-    TResult? Function(MdmsResponseModel appConfig)? initialized,
+    TResult? Function(
+            MdmsResponseModel appConfig, List<Mdms<AssetCount>> assetCount)?
+        initialized,
   }) {
-    return initialized?.call(appConfig);
+    return initialized?.call(appConfig, assetCount);
   }
 
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? uninitialized,
-    TResult Function(MdmsResponseModel appConfig)? initialized,
+    TResult Function(
+            MdmsResponseModel appConfig, List<Mdms<AssetCount>> assetCount)?
+        initialized,
     required TResult orElse(),
   }) {
     if (initialized != null) {
-      return initialized(appConfig);
+      return initialized(appConfig, assetCount);
     }
     return orElse();
   }
@@ -461,11 +498,13 @@ class _$InitializedImpl extends Initialized {
 }
 
 abstract class Initialized extends InitState {
-  const factory Initialized({required final MdmsResponseModel appConfig}) =
-      _$InitializedImpl;
+  const factory Initialized(
+      {required final MdmsResponseModel appConfig,
+      required final List<Mdms<AssetCount>> assetCount}) = _$InitializedImpl;
   const Initialized._() : super._();
 
   MdmsResponseModel get appConfig;
+  List<Mdms<AssetCount>> get assetCount;
   @JsonKey(ignore: true)
   _$$InitializedImplCopyWith<_$InitializedImpl> get copyWith =>
       throw _privateConstructorUsedError;

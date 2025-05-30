@@ -17,8 +17,7 @@ class ProjectRemoteRepository {
   FutureOr<List<ProjectModel>> search(ProjectSearchModel body) async {
     try {
       Response response;
-      String searchPath =
-          "https://9743-197-211-59-71.ngrok-free.app/project/v2/_search";
+      String searchPath = "project/v2/_search";
       // actionMap![DataModelType.project]![ApiOperation.search]!;
 
       // if (envConfig.variables.envType == EnvType.dev) {

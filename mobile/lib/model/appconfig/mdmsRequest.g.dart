@@ -25,6 +25,7 @@ _$MdmsCriteriaModelImpl _$$MdmsCriteriaModelImplFromJson(
         Map<String, dynamic> json) =>
     _$MdmsCriteriaModelImpl(
       tenantId: json['tenantId'] as String?,
+      schemaCode: json['schemaCode'] as String?,
       moduleDetails: (json['moduleDetails'] as List<dynamic>)
           .map((e) => e == null
               ? null
@@ -36,6 +37,7 @@ Map<String, dynamic> _$$MdmsCriteriaModelImplToJson(
         _$MdmsCriteriaModelImpl instance) =>
     <String, dynamic>{
       'tenantId': instance.tenantId,
+      'schemaCode': instance.schemaCode,
       'moduleDetails': instance.moduleDetails,
     };
 
