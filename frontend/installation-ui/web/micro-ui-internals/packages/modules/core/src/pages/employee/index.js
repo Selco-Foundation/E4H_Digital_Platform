@@ -17,6 +17,7 @@ import ImageComponent from "../../components/ImageComponent";
 import HomePage from "./Home";
 import ComplaintTable from "./installation-centers";
 import { Link } from "react-router-dom";
+import InstallationTable from "./installation";
 
 const EmployeeApp = ({
   stateInfo,
@@ -58,12 +59,6 @@ const EmployeeApp = ({
       </div>
     );
   };
-
-  const GetLink = (value) => (
-    <Link to={`/${window.contextPath}/employee/im/complaint/details/${incidentId.toString()}/${tenantId}`} style={{ color: "#7a2829" }}>
-      {value}
-    </Link>
-  );
 
   const columns = [
     {
@@ -172,7 +167,18 @@ const EmployeeApp = ({
                 />
               </Route>
               <Route path={`${path}/user/centres/:id*`}>
-                <HomePage stateCode={stateCode} userType={"employee"} cityDetails={cityDetails} />
+                <InstallationTable
+                  t={t}
+                  getCellProps={(cellInfo) => {
+                    return {
+                      style: {
+                        maxWidth: "100%",
+                        padding: "17.24px 18px",
+                        fontSize: "15px",
+                      },
+                    };
+                  }}
+                />
               </Route>
 
               <Route path={`${path}/user/error`}>
