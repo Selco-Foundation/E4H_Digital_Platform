@@ -4,6 +4,8 @@ on:
     branches:
       - develop
       - main
+    tags:
+      - 'v*'
     paths:
       - 'backend/core-services/egov-workflow-v2/**'
   workflow_dispatch:
@@ -11,6 +13,7 @@ on:
 
 jobs:
   docker_image-build:
+    if: (github.event_name == 'push' && (startsWith(github.ref, 'refs/heads/develop') || startsWith(github.ref, 'refs/heads/main') || startsWith(github.ref, 'refs/tags/v'))) || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
