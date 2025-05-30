@@ -182,6 +182,7 @@ MdmsCriteriaModel _$MdmsCriteriaModelFromJson(Map<String, dynamic> json) {
 /// @nodoc
 mixin _$MdmsCriteriaModel {
   String? get tenantId => throw _privateConstructorUsedError;
+  String? get schemaCode => throw _privateConstructorUsedError;
   List<MdmsModuleDetailsModel?> get moduleDetails =>
       throw _privateConstructorUsedError;
 
@@ -197,7 +198,10 @@ abstract class $MdmsCriteriaModelCopyWith<$Res> {
           MdmsCriteriaModel value, $Res Function(MdmsCriteriaModel) then) =
       _$MdmsCriteriaModelCopyWithImpl<$Res, MdmsCriteriaModel>;
   @useResult
-  $Res call({String? tenantId, List<MdmsModuleDetailsModel?> moduleDetails});
+  $Res call(
+      {String? tenantId,
+      String? schemaCode,
+      List<MdmsModuleDetailsModel?> moduleDetails});
 }
 
 /// @nodoc
@@ -214,12 +218,17 @@ class _$MdmsCriteriaModelCopyWithImpl<$Res, $Val extends MdmsCriteriaModel>
   @override
   $Res call({
     Object? tenantId = freezed,
+    Object? schemaCode = freezed,
     Object? moduleDetails = null,
   }) {
     return _then(_value.copyWith(
       tenantId: freezed == tenantId
           ? _value.tenantId
           : tenantId // ignore: cast_nullable_to_non_nullable
+              as String?,
+      schemaCode: freezed == schemaCode
+          ? _value.schemaCode
+          : schemaCode // ignore: cast_nullable_to_non_nullable
               as String?,
       moduleDetails: null == moduleDetails
           ? _value.moduleDetails
@@ -237,7 +246,10 @@ abstract class _$$MdmsCriteriaModelImplCopyWith<$Res>
       __$$MdmsCriteriaModelImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({String? tenantId, List<MdmsModuleDetailsModel?> moduleDetails});
+  $Res call(
+      {String? tenantId,
+      String? schemaCode,
+      List<MdmsModuleDetailsModel?> moduleDetails});
 }
 
 /// @nodoc
@@ -252,12 +264,17 @@ class __$$MdmsCriteriaModelImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? tenantId = freezed,
+    Object? schemaCode = freezed,
     Object? moduleDetails = null,
   }) {
     return _then(_$MdmsCriteriaModelImpl(
       tenantId: freezed == tenantId
           ? _value.tenantId
           : tenantId // ignore: cast_nullable_to_non_nullable
+              as String?,
+      schemaCode: freezed == schemaCode
+          ? _value.schemaCode
+          : schemaCode // ignore: cast_nullable_to_non_nullable
               as String?,
       moduleDetails: null == moduleDetails
           ? _value._moduleDetails
@@ -272,6 +289,7 @@ class __$$MdmsCriteriaModelImplCopyWithImpl<$Res>
 class _$MdmsCriteriaModelImpl implements _MdmsCriteriaModel {
   const _$MdmsCriteriaModelImpl(
       {required this.tenantId,
+      this.schemaCode,
       required final List<MdmsModuleDetailsModel?> moduleDetails})
       : _moduleDetails = moduleDetails;
 
@@ -280,6 +298,8 @@ class _$MdmsCriteriaModelImpl implements _MdmsCriteriaModel {
 
   @override
   final String? tenantId;
+  @override
+  final String? schemaCode;
   final List<MdmsModuleDetailsModel?> _moduleDetails;
   @override
   List<MdmsModuleDetailsModel?> get moduleDetails {
@@ -290,7 +310,7 @@ class _$MdmsCriteriaModelImpl implements _MdmsCriteriaModel {
 
   @override
   String toString() {
-    return 'MdmsCriteriaModel(tenantId: $tenantId, moduleDetails: $moduleDetails)';
+    return 'MdmsCriteriaModel(tenantId: $tenantId, schemaCode: $schemaCode, moduleDetails: $moduleDetails)';
   }
 
   @override
@@ -300,13 +320,15 @@ class _$MdmsCriteriaModelImpl implements _MdmsCriteriaModel {
             other is _$MdmsCriteriaModelImpl &&
             (identical(other.tenantId, tenantId) ||
                 other.tenantId == tenantId) &&
+            (identical(other.schemaCode, schemaCode) ||
+                other.schemaCode == schemaCode) &&
             const DeepCollectionEquality()
                 .equals(other._moduleDetails, _moduleDetails));
   }
 
   @JsonKey(ignore: true)
   @override
-  int get hashCode => Object.hash(runtimeType, tenantId,
+  int get hashCode => Object.hash(runtimeType, tenantId, schemaCode,
       const DeepCollectionEquality().hash(_moduleDetails));
 
   @JsonKey(ignore: true)
@@ -327,6 +349,7 @@ class _$MdmsCriteriaModelImpl implements _MdmsCriteriaModel {
 abstract class _MdmsCriteriaModel implements MdmsCriteriaModel {
   const factory _MdmsCriteriaModel(
           {required final String? tenantId,
+          final String? schemaCode,
           required final List<MdmsModuleDetailsModel?> moduleDetails}) =
       _$MdmsCriteriaModelImpl;
 
@@ -335,6 +358,8 @@ abstract class _MdmsCriteriaModel implements MdmsCriteriaModel {
 
   @override
   String? get tenantId;
+  @override
+  String? get schemaCode;
   @override
   List<MdmsModuleDetailsModel?> get moduleDetails;
   @override

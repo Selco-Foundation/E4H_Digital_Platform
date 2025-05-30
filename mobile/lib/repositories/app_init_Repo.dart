@@ -7,6 +7,8 @@ import '../data/remote_client.dart';
 import '../data/secure_storage/secureStore.dart';
 import '../model/appconfig/mdmsRequest.dart';
 import '../model/appconfig/mdmsResponse.dart';
+import '../model/asset_count/asset_count.dart';
+import '../model/mdms/mdms.dart';
 import '../utils/envConfig.dart';
 
 //create an instance of the environmentConfiguration class
@@ -52,6 +54,51 @@ class AppInitRepo {
 
       return responseBody;
     } catch (err) {
+      rethrow;
+    }
+  }
+
+  Future<List<Mdms<AssetCount>>> searchAssetCount(
+      MdmsRequestModel mdmsRequestBody) async {
+    final body = mdmsRequestBody.toJson();
+
+    final SecureStore storage = SecureStore();
+
+    // try to fetch locally
+    String? localAssetCount = await storage.getAssetCount();
+    if (localAssetCount != null) {
+      final List<dynamic> decodedList =
+          json.decode(localAssetCount) as List<dynamic>;
+      return decodedList
+          .map((item) => Mdms<AssetCount>.fromJson(
+                item as Map<String, dynamic>,
+                (json) => AssetCount.fromJson(json as Map<String, dynamic>),
+              ))
+          .toList();
+    }
+
+    final client = DioClient().dio;
+    final headers = <String, String>{
+      "Access-Control-Allow-Origin": "*",
+      "authorization": "Basic ZWdvdi11c2VyLWNsaWVudDo=",
+    };
+
+    try {
+      final response = await client.post("egov-mdms-service/v2/_search",
+          data: body, options: Options(headers: headers));
+
+      final List<dynamic> payloadList = response.data['mdms'] as List<dynamic>;
+      final List<Mdms<AssetCount>> result = payloadList
+          .map((item) => Mdms<AssetCount>.fromJson(
+                item as Map<String, dynamic>,
+                (json) => AssetCount.fromJson(json as Map<String, dynamic>),
+              ))
+          .toList();
+
+      await storage.setAssetCount(result);
+      return result;
+    } catch (e) {
+      print("error ${e.toString()}");
       rethrow;
     }
   }

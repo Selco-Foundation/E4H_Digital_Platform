@@ -1,14 +1,13 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'mdmsRequest.freezed.dart';
-
 part 'mdmsRequest.g.dart';
 
 @freezed
 class MdmsRequestModel with _$MdmsRequestModel {
   const factory MdmsRequestModel(
       {@JsonKey(name: 'MdmsCriteria')
-          required MdmsCriteriaModel? mdmsCriteria}) = _MdmsRequestModel;
+      required MdmsCriteriaModel? mdmsCriteria}) = _MdmsRequestModel;
 
   factory MdmsRequestModel.fromJson(Map<String, Object?> json) =>
       _$MdmsRequestModelFromJson(json);
@@ -18,6 +17,7 @@ class MdmsRequestModel with _$MdmsRequestModel {
 class MdmsCriteriaModel with _$MdmsCriteriaModel {
   const factory MdmsCriteriaModel(
           {required String? tenantId,
+          String? schemaCode,
           required List<MdmsModuleDetailsModel?> moduleDetails}) =
       _MdmsCriteriaModel;
 
