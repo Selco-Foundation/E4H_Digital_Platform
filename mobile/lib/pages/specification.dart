@@ -96,28 +96,28 @@ class _SpecificationPageState extends State<SpecificationPage> {
                     builder: (initContext, initState) {
                       final List<Mdms<System>> systemList = initState.maybeWhen(
                           orElse: () => [],
-                          initialized:
-                              (appConfig, assetCount, assetType, system) =>
-                                  system);
+                          initialized: (appConfig, assetCount, assetType,
+                                  system, warranty) =>
+                              system);
 
                       final List<Mdms<AssetType>> assetTypeList =
                           initState.maybeWhen(
                         orElse: () => [],
-                        initialized:
-                            (appConfig, assetCount, assetType, system) =>
-                                assetType,
+                        initialized: (appConfig, assetCount, assetType, system,
+                                warranty) =>
+                            assetType,
                       );
 
                       final systemCode = systemList.lastOrNull?.data.code;
 
-                      // Find the BATTERY asset type
+                      // Find the asset type
                       final selectedAssetType = assetTypeList
                           .map((e) => e.data)
                           .firstWhereOrNull((asset) =>
                               asset.code.toUpperCase() ==
                               assetType.toUpperCase());
 
-                      // From that battery, get the total_capacity form field
+                      // From that asset type, get the total_capacity form field
                       final totalCapacityField =
                           selectedAssetType?.formFields.firstWhereOrNull(
                         (field) =>
