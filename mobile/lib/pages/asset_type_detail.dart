@@ -32,7 +32,7 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
   String? _currentProjectId;
   String assetTypeTitle = "";
   late List<Warranty> assetWarranties = [];
-  late List<Brand> assetBrands;
+  late List<Brand> assetBrands = [];
   final List<Mdms<AssetType>> assetTypeList = [];
 
   @override
@@ -45,29 +45,24 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
           panel: () => 'panel',
         );
 
-    final List<Mdms<AssetType>> assetTypeList = context
-        .read<AppInitialization>()
-        .state
-        .maybeWhen(
-            orElse: () => [],
-            initialized:
-                (appConfig, assetCount, assetType, system, warranty, brand) {
-              assetWarranties = warranty
-                  .map((w) => w.data)
-                  .where((w) =>
-                      w.assetTypeCode.toUpperCase() ==
-                      assetTypeTitle.toUpperCase())
-                  // .map((w) => w.duration)
-                  .toList();
+    context.read<AppInitialization>().state.maybeWhen(
+        orElse: () => [],
+        initialized:
+            (appConfig, assetCount, assetType, system, warranty, brand) {
+          assetWarranties = warranty
+              .map((w) => w.data)
+              .where((w) =>
+                  w.assetTypeCode.toUpperCase() == assetTypeTitle.toUpperCase())
+              // .map((w) => w.duration)
+              .toList();
 
-              assetBrands = brand
-                  .map((b) => b.data)
-                  .where((w) =>
-                      w.assetTypeCode.toUpperCase() ==
-                      assetTypeTitle.toUpperCase())
-                  .toList();
-              return assetType;
-            });
+          assetBrands = brand
+              .map((b) => b.data)
+              .where((w) =>
+                  w.assetTypeCode.toUpperCase() == assetTypeTitle.toUpperCase())
+              .toList();
+          return assetType;
+        });
 
     final selState = context.read<SelectedProjectBloc>().state;
     selState.whenOrNull(selected: (project) {
@@ -116,81 +111,81 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
                   },
                 ),
                 children: [
-                  BlocBuilder<AppInitialization, InitState>(
-                    builder: (initContext, initState) {
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: spacer2, vertical: spacer4),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                  // BlocBuilder<AppInitialization, InitState>(
+                  //   builder: (initContext, initState) {
+                  //     return
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: spacer2, vertical: spacer4),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                AppStepper(context: context, activeIndex: 3)
-                              ],
-                            ),
-                            const SizedBox(height: spacer4),
-                            DigitCard(children: [
-                              Text(
-                                detailHeading,
-                                style: textTheme.headingXl.copyWith(
-                                    color: theme.colorTheme.primary.primary2),
-                              ),
-                              LabeledField(
-                                label: 'Warranty Start Date',
-                                labelStyle: textTheme.headingS.copyWith(
-                                    color: theme.colorTheme.text.primary),
-                                capitalizedFirstLetter: false,
-                                child: DigitDateFormInput(
-                                  controller: TextEditingController(),
-                                  initialValue: 'Default Today Date',
-                                  isDisabled: true,
-                                  readOnly: true,
-                                ),
-                              ),
-                              LabeledField(
-                                  label: 'Warranty Duration',
-                                  labelStyle: textTheme.headingS.copyWith(
-                                      color: theme.colorTheme.text.primary),
-                                  capitalizedFirstLetter: false,
-                                  child: DigitDropdown(
-                                      items: assetWarranties
-                                          .map((type) => DropdownItem(
-                                                name: type.duration,
-                                                code: type.duration,
-                                              ))
-                                          .toList())),
-                              //),
-                              LabeledField(
-                                  label: 'Brand',
-                                  labelStyle: textTheme.headingS.copyWith(
-                                      color: theme.colorTheme.text.primary),
-                                  capitalizedFirstLetter: false,
-                                  child: DigitDropdown(
-                                      items: assetBrands
-                                          .map((type) => DropdownItem(
-                                                name: type.name,
-                                                code: type.code,
-                                              ))
-                                          .toList())),
-                              LabeledField(
-                                label: 'Model Number',
-                                labelStyle: textTheme.headingS.copyWith(
-                                    color: theme.colorTheme.text.primary),
-                                capitalizedFirstLetter: false,
-                                child: DigitTextFormInput(
-                                  controller: TextEditingController(),
-                                  innerLabel: 'SR45934295',
-                                  keyboardType: TextInputType.text,
-                                ),
-                              ),
-                            ])
+                            AppStepper(context: context, activeIndex: 3)
                           ],
                         ),
-                      );
-                    },
+                        const SizedBox(height: spacer4),
+                        DigitCard(children: [
+                          Text(
+                            detailHeading,
+                            style: textTheme.headingXl.copyWith(
+                                color: theme.colorTheme.primary.primary2),
+                          ),
+                          LabeledField(
+                            label: 'Warranty Start Date',
+                            labelStyle: textTheme.headingS
+                                .copyWith(color: theme.colorTheme.text.primary),
+                            capitalizedFirstLetter: false,
+                            child: DigitDateFormInput(
+                              controller: TextEditingController(),
+                              initialValue: 'Default Today Date',
+                              isDisabled: true,
+                              readOnly: true,
+                            ),
+                          ),
+                          LabeledField(
+                              label: 'Warranty Duration',
+                              labelStyle: textTheme.headingS.copyWith(
+                                  color: theme.colorTheme.text.primary),
+                              capitalizedFirstLetter: false,
+                              child: DigitDropdown(
+                                  items: assetWarranties
+                                      .map((type) => DropdownItem(
+                                            name: type.duration,
+                                            code: type.duration,
+                                          ))
+                                      .toList())),
+                          LabeledField(
+                              label: 'Brand',
+                              labelStyle: textTheme.headingS.copyWith(
+                                  color: theme.colorTheme.text.primary),
+                              capitalizedFirstLetter: false,
+                              child: DigitDropdown(
+                                  items: assetBrands
+                                      .map((type) => DropdownItem(
+                                            name: type.name,
+                                            code: type.code,
+                                          ))
+                                      .toList())),
+                          LabeledField(
+                            label: 'Model Number',
+                            labelStyle: textTheme.headingS
+                                .copyWith(color: theme.colorTheme.text.primary),
+                            capitalizedFirstLetter: false,
+                            child: DigitTextFormInput(
+                              controller: TextEditingController(),
+                              innerLabel: 'SR45934295',
+                              keyboardType: TextInputType.text,
+                            ),
+                          ),
+                        ])
+                      ],
+                    ),
                   )
+                  //   },
+                  // )
                 ]));
       },
     );
