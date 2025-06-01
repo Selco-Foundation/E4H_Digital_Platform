@@ -9,6 +9,7 @@ import '../model/appconfig/mdmsRequest.dart';
 import '../model/appconfig/mdmsResponse.dart';
 import '../model/asset_count/asset_count.dart';
 import '../model/asset_type/asset_type.dart';
+import '../model/brand/brand.dart';
 import '../model/mdms/mdms.dart';
 import '../model/system/system.dart';
 import '../model/warranty/warranty.dart';
@@ -231,6 +232,50 @@ class AppInitRepo {
           .toList();
 
       await storage.setWarranty(result);
+      return result;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<List<Mdms<Brand>>> searchBrand(
+      MdmsRequestModel mdmsRequestBody) async {
+    final body = mdmsRequestBody.toJson();
+
+    final SecureStore storage = SecureStore();
+
+    // try to fetch locally
+    String? localBrand = await storage.getBrand();
+    if (localBrand != null) {
+      final List<dynamic> decodedList =
+          json.decode(localBrand) as List<dynamic>;
+      return decodedList
+          .map((item) => Mdms<Brand>.fromJson(
+                item as Map<String, dynamic>,
+                (json) => Brand.fromJson(json as Map<String, dynamic>),
+              ))
+          .toList();
+    }
+
+    final client = DioClient().dio;
+    final headers = <String, String>{
+      "Access-Control-Allow-Origin": "*",
+      "authorization": "Basic ZWdvdi11c2VyLWNsaWVudDo=",
+    };
+
+    try {
+      final response = await client.post("egov-mdms-service/v2/_search",
+          data: body, options: Options(headers: headers));
+
+      final List<dynamic> payloadList = response.data['mdms'] as List<dynamic>;
+      final List<Mdms<Brand>> result = payloadList
+          .map((item) => Mdms<Brand>.fromJson(
+                item as Map<String, dynamic>,
+                (json) => Brand.fromJson(json as Map<String, dynamic>),
+              ))
+          .toList();
+
+      await storage.setBrand(result);
       return result;
     } catch (e) {
       rethrow;

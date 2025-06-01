@@ -86,7 +86,7 @@ class _AssetCountPageState extends State<AssetCountPage> {
           initState.maybeWhen(
               orElse: () => 0,
               initialized:
-                  (appConfig, assetCount, assetType, system, warranty) {
+                  (appConfig, assetCount, assetType, system, warranty, brand) {
                 final inverterEntry = assetCount.firstWhere(
                     (entry) => entry.data.assetTypeCode == "INVERTER");
                 inverterData = inverterEntry.data;

@@ -6,6 +6,7 @@ import 'package:selco/model/mdms/mdms.dart';
 
 import '../../model/appconfig/mdmsResponse.dart';
 import '../../model/asset_type/asset_type.dart';
+import '../../model/brand/brand.dart';
 import '../../model/localization/localizationModel.dart';
 import '../../model/response/responsemodel.dart';
 import '../../model/role_actions/role_actions_model.dart';
@@ -35,16 +36,6 @@ class SecureStore {
   Future<String?> getAppConfig() async {
     return await storage.read(key: 'appConfig');
   }
-
-  //service Registry
-  // Future setServiceRegistry(ServiceRegistryModel serviceRegistryModel) async {
-  //   String jsonServiceRegistryList = json.encode(serviceRegistryModel.toJson());
-  //   await storage.write(key: 'serviceRegistry', value: jsonServiceRegistryList);
-  // }
-  //
-  // Future<String?> getServiceRegistry() async {
-  //   return await storage.read(key: 'serviceRegistry');
-  // }
 
   //Asset count
   Future setAssetCount(List<Mdms<AssetCount>> list) async {
@@ -91,6 +82,17 @@ class SecureStore {
 
   Future<String?> getWarranty() async {
     return await storage.read(key: 'warranty');
+  }
+
+  //Warranty
+  Future setBrand(List<Mdms<Brand>> list) async {
+    final List<Map<String, dynamic>> jsonList =
+        list.map((mdms) => mdms.toJson((brand) => brand.toJson())).toList();
+    await storage.write(key: 'brand', value: json.encode(jsonList));
+  }
+
+  Future<String?> getBrand() async {
+    return await storage.read(key: 'brand');
   }
 
   //access token

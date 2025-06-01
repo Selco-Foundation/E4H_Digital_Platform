@@ -8,6 +8,7 @@ import '../../model/appconfig/mdmsRequest.dart';
 import '../../model/appconfig/mdmsResponse.dart';
 import '../../model/asset_count/asset_count.dart';
 import '../../model/asset_type/asset_type.dart';
+import '../../model/brand/brand.dart';
 import '../../model/mdms/mdms.dart';
 import '../../model/system/system.dart';
 import '../../repositories/app_init_Repo.dart';
@@ -82,6 +83,14 @@ class AppInitialization extends Bloc<InitEvent, InitState> {
       )));
       final warrantyList = warranty ?? [];
 
+      final brand = await appInitRepo.searchBrand(const MdmsRequestModel(
+          mdmsCriteria: MdmsCriteriaModel(
+        tenantId: 'pg',
+        schemaCode: "asset.Brand",
+        moduleDetails: [],
+      )));
+      final brandList = brand ?? [];
+
       //go to the initialized state once configuration details are fetched
       emit(InitState.initialized(
         appConfig: appConfig,
@@ -89,6 +98,7 @@ class AppInitialization extends Bloc<InitEvent, InitState> {
         assetType: assetTypeList,
         system: systemList,
         warranty: warrantyList,
+        brand: brandList,
       ));
     } catch (err) {
       rethrow;
@@ -111,5 +121,6 @@ class InitState with _$InitState {
     required List<Mdms<AssetType>> assetType,
     required List<Mdms<System>> system,
     required List<Mdms<Warranty>> warranty,
+    required List<Mdms<Brand>> brand,
   }) = Initialized;
 }
