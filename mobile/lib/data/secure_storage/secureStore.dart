@@ -5,6 +5,7 @@ import 'package:selco/model/asset_count/asset_count.dart';
 import 'package:selco/model/mdms/mdms.dart';
 
 import '../../model/appconfig/mdmsResponse.dart';
+import '../../model/asset_type/asset_type.dart';
 import '../../model/localization/localizationModel.dart';
 import '../../model/response/responsemodel.dart';
 import '../../model/role_actions/role_actions_model.dart';
@@ -45,19 +46,26 @@ class SecureStore {
 
   //Asset count
   Future setAssetCount(List<Mdms<AssetCount>> list) async {
-    // String jsonAssetCountList = json
-    //     .encode(assetCountModel.toJson((assetCount) => assetCount.toJson()));
-    // await storage.write(key: 'assetCount', value: jsonAssetCountList);
-
     final List<Map<String, dynamic>> jsonList = list
         .map((mdms) => mdms.toJson((assetCount) => assetCount.toJson()))
         .toList();
-    print("json ${jsonList}");
     await storage.write(key: 'assetCount', value: json.encode(jsonList));
   }
 
   Future<String?> getAssetCount() async {
     return await storage.read(key: 'assetCount');
+  }
+
+  //Asset type
+  Future setAssetType(List<Mdms<AssetType>> list) async {
+    final List<Map<String, dynamic>> jsonList = list
+        .map((mdms) => mdms.toJson((assetType) => assetType.toJson()))
+        .toList();
+    await storage.write(key: 'assetType', value: json.encode(jsonList));
+  }
+
+  Future<String?> getAssetType() async {
+    return await storage.read(key: 'assetType');
   }
 
   //access token

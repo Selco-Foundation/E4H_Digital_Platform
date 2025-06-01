@@ -6,12 +6,14 @@ import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:selco/blocs/app_init/app_init.dart';
 
 import '../blocs/cache_asset_count/cache_asset_count.dart';
 import '../blocs/cache_project_asset/cache_project_asset.dart';
 import '../blocs/selected_project/selected_project.dart';
 import '../data/nosql/cache_asset_count.dart';
 import '../data/nosql/cache_project_asset.dart';
+import '../model/asset_count/asset_count.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
 import '../utils/i18_key_constants.dart' as i18;
@@ -31,6 +33,9 @@ class AssetCountPage extends StatefulWidget {
 
 class _AssetCountPageState extends State<AssetCountPage> {
   String? _currentProjectId;
+  AssetCount? inverterData;
+  AssetCount? batteryData;
+  AssetCount? panelData;
 
   @override
   void initState() {
@@ -76,136 +81,159 @@ class _AssetCountPageState extends State<AssetCountPage> {
     return Scaffold(
       appBar: const Navbar(),
       drawer: const CustomDrawer(),
-      body: ScrollableContent(
-        backgroundColor: theme.colorTheme.generic.background,
-        header: const BackNavigationHelpHeaderWidget(
-          showBackNavigation: true,
-          showHelp: false,
-        ),
-        enableFixedDigitButton: true,
-        footer: FooterButton(
-          showSuffixIcon: false,
-          text: context.translate(i18.common.coreCommonNext),
-          onPress: () {
-            context.router.push(const SelectAssetTypeRoute());
-          },
-        ),
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: spacer2,
-              vertical: spacer4,
+      body: BlocBuilder<AppInitialization, InitState>(
+        builder: (initContext, initState) {
+          final counts = initState.maybeWhen(
+              orElse: () => 0,
+              initialized: (appConfig, assetCount, assetType) {
+                final inverterEntry = assetCount.firstWhere(
+                    (entry) => entry.data.assetTypeCode == "INVERTER");
+                inverterData = inverterEntry.data;
+                final batteryEntry = assetCount.firstWhere(
+                    (entry) => entry.data.assetTypeCode == "BATTERY");
+                batteryData = batteryEntry.data;
+
+                final panelEntry = assetCount
+                    .firstWhere((entry) => entry.data.assetTypeCode == "PANEL");
+                panelData = panelEntry.data;
+              });
+
+          return ScrollableContent(
+            backgroundColor: theme.colorTheme.generic.background,
+            header: const BackNavigationHelpHeaderWidget(
+              showBackNavigation: true,
+              showHelp: false,
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [AppStepper(context: context)],
+            enableFixedDigitButton: true,
+            footer: FooterButton(
+              showSuffixIcon: false,
+              text: context.translate(i18.common.coreCommonNext),
+              onPress: () {
+                context.router.push(const SelectAssetTypeRoute());
+              },
+            ),
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: spacer2,
+                  vertical: spacer4,
                 ),
-                const SizedBox(height: spacer4),
-
-                // Asset count card
-                DigitCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Asset Count',
-                      style: textTheme.headingXl.copyWith(
-                        color: theme.colorTheme.primary.primary2,
-                      ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [AppStepper(context: context)],
                     ),
-                    Text(
-                      'Choose the asset type',
-                      style: textTheme.bodyL.copyWith(
-                        color: theme.colorTheme.text.primary,
-                      ),
-                    ),
-                    const SizedBox(height: spacer2),
+                    const SizedBox(height: spacer4),
 
-                    // Inverter count with BlocSelector
-                    BlocSelector<CacheAssetCountBloc, CacheAssetCountState,
-                        String>(
-                      selector: (state) => state.maybeWhen(
-                        loaded: (entries) =>
-                            entries
-                                .firstWhereOrNull(
-                                    (e) => e.assetType == 'inverter')
-                                ?.count
-                                .toString() ??
-                            '0',
-                        orElse: () => '0',
-                      ),
-                      builder: (context, inverterCount) {
-                        return LabeledField(
-                          label: 'Inverters',
+                    // Asset count card
+                    DigitCard(
+                      children: [
+                        Text(
+                          'Asset Count',
+                          style: textTheme.headingXl.copyWith(
+                            color: theme.colorTheme.primary.primary2,
+                          ),
+                        ),
+                        Text(
+                          'Choose the asset type',
+                          style: textTheme.bodyL.copyWith(
+                            color: theme.colorTheme.text.primary,
+                          ),
+                        ),
+                        const SizedBox(height: spacer2),
+
+                        // Inverter count with BlocSelector
+                        BlocSelector<CacheAssetCountBloc, CacheAssetCountState,
+                            String>(
+                          selector: (state) => state.maybeWhen(
+                            loaded: (entries) =>
+                                entries
+                                    .firstWhereOrNull(
+                                        (e) => e.assetType == 'inverter')
+                                    ?.count
+                                    .toString() ??
+                                '0',
+                            orElse: () => '0',
+                          ),
+                          builder: (context, inverterCount) {
+                            return LabeledField(
+                              label: 'Inverters',
+                              labelStyle: textTheme.headingS.copyWith(
+                                color: theme.colorTheme.text.primary,
+                              ),
+                              capitalizedFirstLetter: false,
+                              child: InputField(
+                                minValue: inverterData?.min ?? 0,
+                                maxValue: inverterData?.max ?? 0,
+                                type: InputType.numeric,
+                                editable: false,
+                                initialValue: inverterCount,
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.digitsOnly
+                                ],
+                                onChange: (value) {
+                                  if (_currentProjectId == null) return;
+                                  final count = int.tryParse(value) ?? 0;
+                                  context.read<CacheAssetCountBloc>().add(
+                                        CacheAssetCountEventAdd(
+                                          CacheAssetCount(
+                                            projectId: _currentProjectId!,
+                                            assetType: 'inverter',
+                                            count: count,
+                                          ),
+                                        ),
+                                      );
+                                },
+                              ),
+                            );
+                          },
+                        ),
+
+                        // Batteries (static for now)
+                        LabeledField(
+                          label: 'Batteries',
                           labelStyle: textTheme.headingS.copyWith(
                             color: theme.colorTheme.text.primary,
                           ),
                           capitalizedFirstLetter: false,
                           child: InputField(
                             type: InputType.numeric,
-                            initialValue: inverterCount,
+                            initialValue: '0',
                             inputFormatters: [
                               FilteringTextInputFormatter.digitsOnly
                             ],
                             editable: true,
-                            onChange: (value) {
-                              if (_currentProjectId == null) return;
-                              final count = int.tryParse(value) ?? 0;
-                              context.read<CacheAssetCountBloc>().add(
-                                    CacheAssetCountEventAdd(
-                                      CacheAssetCount(
-                                        projectId: _currentProjectId!,
-                                        assetType: 'inverter',
-                                        count: count,
-                                      ),
-                                    ),
-                                  );
-                            },
                           ),
-                        );
-                      },
-                    ),
+                        ),
 
-                    // Batteries (static for now)
-                    LabeledField(
-                      label: 'Batteries',
-                      labelStyle: textTheme.headingS.copyWith(
-                        color: theme.colorTheme.text.primary,
-                      ),
-                      capitalizedFirstLetter: false,
-                      child: InputField(
-                        type: InputType.numeric,
-                        initialValue: '0',
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly
-                        ],
-                        editable: true,
-                      ),
-                    ),
-
-                    // Panels (static for now)
-                    LabeledField(
-                      label: 'Panels',
-                      labelStyle: textTheme.headingS.copyWith(
-                        color: theme.colorTheme.text.primary,
-                      ),
-                      capitalizedFirstLetter: false,
-                      child: InputField(
-                        type: InputType.numeric,
-                        initialValue: '0',
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly
-                        ],
-                        editable: true,
-                      ),
+                        // Panels (static for now)
+                        LabeledField(
+                          label: 'Panels',
+                          labelStyle: textTheme.headingS.copyWith(
+                            color: theme.colorTheme.text.primary,
+                          ),
+                          capitalizedFirstLetter: false,
+                          child: InputField(
+                            type: InputType.numeric,
+                            minValue: 0,
+                            maxValue: 100,
+                            initialValue: '0',
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly
+                            ],
+                            editable: true,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
-            ),
-          ),
-        ],
+              ),
+            ],
+          );
+        },
       ),
     );
   }
