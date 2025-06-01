@@ -10,6 +10,7 @@ import '../blocs/cache_asset_count/cache_asset_count.dart';
 import '../blocs/selected_project/selected_project.dart';
 import '../data/nosql/cache_asset_count.dart';
 import '../model/asset_type/asset_type.dart';
+import '../model/brand/brand.dart';
 import '../model/mdms/mdms.dart';
 import '../model/warranty/warranty.dart';
 import '../router/app_router.dart';
@@ -29,30 +30,41 @@ class AssetTypeDetailPage extends StatefulWidget {
 
 class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
   String? _currentProjectId;
-  String assetType = "";
-  late List<Warranty> allWarranties = [];
-  // List warrantyList = [];
+  String assetTypeTitle = "";
+  late List<Warranty> assetWarranties = [];
+  late List<Brand> assetBrands;
   final List<Mdms<AssetType>> assetTypeList = [];
 
   @override
   void initState() {
     super.initState();
-    assetType = context.read<AssetTypeBloc>().state.when(
+    assetTypeTitle = context.read<AssetTypeBloc>().state.when(
           initial: () => '',
           inverter: () => 'inverter',
           battery: () => 'battery',
           panel: () => 'panel',
         );
 
-    final List<Mdms<AssetType>> assetTypeList =
-        context.read<AppInitialization>().state.maybeWhen(
+    final List<Mdms<AssetType>> assetTypeList = context
+        .read<AppInitialization>()
+        .state
+        .maybeWhen(
             orElse: () => [],
-            initialized: (appConfig, assetCount, assetType, system, warranty) {
-              // allWarranties.addAll(warranty);
-              allWarranties = warranty
+            initialized:
+                (appConfig, assetCount, assetType, system, warranty, brand) {
+              assetWarranties = warranty
                   .map((w) => w.data)
-                  .where((w) => w.assetTypeCode.toUpperCase() == "BATTERY")
+                  .where((w) =>
+                      w.assetTypeCode.toUpperCase() ==
+                      assetTypeTitle.toUpperCase())
                   // .map((w) => w.duration)
+                  .toList();
+
+              assetBrands = brand
+                  .map((b) => b.data)
+                  .where((w) =>
+                      w.assetTypeCode.toUpperCase() ==
+                      assetTypeTitle.toUpperCase())
                   .toList();
               return assetType;
             });
@@ -60,7 +72,7 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
     final selState = context.read<SelectedProjectBloc>().state;
     selState.whenOrNull(selected: (project) {
       _currentProjectId = project.id;
-      _updateProgress(project.id, assetType);
+      _updateProgress(project.id, assetTypeTitle);
     });
   }
 
@@ -143,30 +155,25 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
                                       color: theme.colorTheme.text.primary),
                                   capitalizedFirstLetter: false,
                                   child: DigitDropdown(
-                                      items: allWarranties
+                                      items: assetWarranties
                                           .map((type) => DropdownItem(
                                                 name: type.duration,
                                                 code: type.duration,
                                               ))
-                                          .toList())
-                                  // [
-                                  //   DropdownItem(name: '15 Years', code: '15'),
-                                  //   DropdownItem(name: '16 Years', code: '16'),
-                                  //   DropdownItem(name: '17 Years', code: '17')
-                                  // ]
-                                  ),
+                                          .toList())),
                               //),
                               LabeledField(
-                                label: 'Brand',
-                                labelStyle: textTheme.headingS.copyWith(
-                                    color: theme.colorTheme.text.primary),
-                                capitalizedFirstLetter: false,
-                                child: const DigitDropdown(items: [
-                                  DropdownItem(name: 'Brand 1', code: '1'),
-                                  DropdownItem(name: 'Brand 2', code: '2'),
-                                  DropdownItem(name: 'Brand 3', code: '3')
-                                ]),
-                              ),
+                                  label: 'Brand',
+                                  labelStyle: textTheme.headingS.copyWith(
+                                      color: theme.colorTheme.text.primary),
+                                  capitalizedFirstLetter: false,
+                                  child: DigitDropdown(
+                                      items: assetBrands
+                                          .map((type) => DropdownItem(
+                                                name: type.name,
+                                                code: type.code,
+                                              ))
+                                          .toList())),
                               LabeledField(
                                 label: 'Model Number',
                                 labelStyle: textTheme.headingS.copyWith(

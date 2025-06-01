@@ -114,7 +114,7 @@ class _SelectAssetTypePageState extends State<SelectAssetTypePage> {
                           initState.maybeWhen(
                               orElse: () => [],
                               initialized: (appConfig, assetCount, assetType,
-                                      system, warranty) =>
+                                      system, warranty, brand) =>
                                   assetType);
 
                       return Padding(
