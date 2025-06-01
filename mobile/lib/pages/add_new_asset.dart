@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:collection/collection.dart';
 import 'package:digit_scanner/blocs/scanner.dart';
 import 'package:digit_scanner/pages/qr_scanner.dart';
@@ -11,15 +13,18 @@ import 'package:digit_ui_components/widgets/atoms/digit_button.dart';
 import 'package:digit_ui_components/widgets/atoms/digit_dropdown_input.dart';
 import 'package:digit_ui_components/widgets/atoms/digit_text_form_input.dart';
 import 'package:digit_ui_components/widgets/atoms/labelled_fields.dart';
+import 'package:digit_ui_components/widgets/atoms/upload_image.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:digit_ui_components/widgets/scrollable_content.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../blocs/app_init/app_init.dart';
 import '../blocs/asset_type/asset_type.dart';
 import '../blocs/cache_asset_count/cache_asset_count.dart';
 import '../blocs/selected_project/selected_project.dart';
 import '../data/nosql/cache_asset_count.dart';
+import '../model/asset_type/asset_type.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
 import '../utils/i18_key_constants.dart' as i18;
@@ -47,12 +52,18 @@ class AddNewAssetPage extends StatefulWidget {
 class _AddNewAssetPageState extends State<AddNewAssetPage> {
   String? _currentProjectId;
   final List<AssetModel> _assets = [AssetModel(serialNumber: '')];
+  String assetTypeTitle = "";
+  late List<String> assetCapacity = [];
+  late String assetCapacityUom = "";
+  late List<AssetType> assetTypeList = [];
+  late List<String> typesField = [];
+  late AssetType? selectedAssetType;
   int? _scanningIndex;
 
   @override
   void initState() {
     super.initState();
-    final assetType = context.read<AssetTypeBloc>().state.when(
+    assetTypeTitle = context.read<AssetTypeBloc>().state.when(
           initial: () => '',
           inverter: () => 'inverter',
           battery: () => 'battery',
@@ -63,8 +74,51 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
       // Only load existing count:
       context
           .read<CacheAssetCountBloc>()
-          .add(CacheAssetCountEvent.get(proj.id, assetType));
+          .add(CacheAssetCountEvent.get(proj.id, assetTypeTitle));
     });
+
+    context.read<AppInitialization>().state.maybeWhen(
+        orElse: () => [],
+        initialized:
+            (appConfig, assetCount, assetType, system, warranty, brand) {
+          assetTypeList = assetType
+              .map((at) => at.data)
+              .where(
+                  (at) => at.code.toUpperCase() == assetTypeTitle.toUpperCase())
+              // .map((w) => w.duration)
+              .toList();
+
+          final systemCode = system.lastOrNull?.data.code;
+
+          // Find the asset type
+          selectedAssetType = assetTypeList
+              //.map((e) => e.data)
+              .firstWhereOrNull((asset) =>
+                  asset.code.toUpperCase() == assetTypeTitle.toUpperCase());
+
+          final fields = selectedAssetType!.formFields;
+
+          // From that asset type, get the total_capacity form field
+          final assetCapacityField = fields.firstWhereOrNull(
+            (field) => field.key == "capacity" && field.system == systemCode,
+          );
+
+          // Get the total_capacity_uom form field
+          final assetCapacityUomField = fields.firstWhereOrNull(
+            (field) =>
+                field.key == "capacity_uom" && field.system == systemCode,
+          );
+
+          typesField =
+              fields.firstWhereOrNull((field) => field.types != null)?.types ??
+                  [];
+
+          // Use first option or fallback to empty string
+          assetCapacity = assetCapacityField!.options!;
+          assetCapacityUom = assetCapacityUomField!.options!.firstOrNull ?? '';
+
+          return assetType;
+        });
   }
 
   void _addNewAsset(int maxAssets) {
@@ -74,7 +128,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
       context.showSnackBar(
         SnackBar(
           content: Text('Maximum of $maxAssets assets reached'),
-          backgroundColor: Light().alertError,
+          backgroundColor: const Light().alertError,
         ),
       );
     }
@@ -307,20 +361,32 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
             ],
           ),
         ),
+        LabeledField(
+          label: 'Supporting Photo',
+          capitalizedFirstLetter: false,
+          child: ImageUploader(
+            onImagesSelected: (List<File> imageFile) {
+              // Handle the selected image file here
+              // print('Image selected: ${imageFile.path}');
+            },
+          ),
+        ),
         if (assetType == 'inverter') ...[
           const SizedBox(height: spacer4),
           Row(
             children: [
-              const Expanded(
+              Expanded(
                 flex: 3,
                 child: LabeledField(
                   label: 'Capacity',
                   capitalizedFirstLetter: false,
-                  child: DigitDropdown(items: [
-                    DropdownItem(name: '1', code: '1'),
-                    DropdownItem(name: '2', code: '2'),
-                    DropdownItem(name: '3', code: '3'),
-                  ]),
+                  child: DigitDropdown(
+                      items: assetCapacity
+                          .map((type) => DropdownItem(
+                                name: type,
+                                code: type,
+                              ))
+                          .toList()),
                 ),
               ),
               const SizedBox(width: spacer6),
@@ -330,7 +396,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                   label: 'Unit',
                   capitalizedFirstLetter: false,
                   child: DigitTextFormInput(
-                    controller: TextEditingController(text: asset.unit),
+                    controller: TextEditingController(text: assetCapacityUom),
                     isDisabled: true,
                     readOnly: true,
                     keyboardType: TextInputType.text,
@@ -358,23 +424,33 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
               LabeledField(
                 label: '$heading Type',
                 capitalizedFirstLetter: false,
-                child: const DigitDropdown(items: [
-                  DropdownItem(name: 'Lead acid', code: 'lead'),
-                  DropdownItem(name: 'Pure acid', code: 'acid'),
-                ]),
+                child: DigitDropdown(
+                    items: typesField
+                        .map((type) => DropdownItem(
+                              name: type,
+                              code: type,
+                            ))
+                        .toList()
+                    // [
+                    //   DropdownItem(name: 'Lead acid', code: 'lead'),
+                    //   DropdownItem(name: 'Pure acid', code: 'acid'),
+                    // ]
+                    ),
               ),
               Row(
                 children: [
-                  const Expanded(
+                  Expanded(
                     flex: 3,
                     child: LabeledField(
                       label: 'Voltage',
                       capitalizedFirstLetter: false,
-                      child: DigitDropdown(items: [
-                        DropdownItem(name: '1', code: '1'),
-                        DropdownItem(name: '2', code: '2'),
-                        DropdownItem(name: '3', code: '3'),
-                      ]),
+                      child: DigitDropdown(
+                          items: assetCapacity
+                              .map((type) => DropdownItem(
+                                    name: type,
+                                    code: type,
+                                  ))
+                              .toList()),
                     ),
                   ),
                   const SizedBox(width: spacer6),
@@ -386,7 +462,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                       child: DigitTextFormInput(
                         controller: TextEditingController(),
                         isDisabled: true,
-                        initialValue: 'Volts',
+                        initialValue: assetCapacityUom,
                         keyboardType: TextInputType.text,
                       ),
                     ),
@@ -401,9 +477,9 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                       label: 'Current',
                       capitalizedFirstLetter: false,
                       child: DigitDropdown(items: [
-                        DropdownItem(name: '1', code: '1'),
-                        DropdownItem(name: '2', code: '2'),
-                        DropdownItem(name: '3', code: '3'),
+                        DropdownItem(name: '12', code: '12'),
+                        DropdownItem(name: '12.8', code: '12.8'),
+                        DropdownItem(name: '24', code: '24'),
                       ]),
                     ),
                   ),
@@ -442,16 +518,18 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
               ),
               Row(
                 children: [
-                  const Expanded(
+                  Expanded(
                     flex: 3,
                     child: LabeledField(
                       label: 'Voltage',
                       capitalizedFirstLetter: false,
-                      child: DigitDropdown(items: [
-                        DropdownItem(name: '1', code: '1'),
-                        DropdownItem(name: '2', code: '2'),
-                        DropdownItem(name: '3', code: '3'),
-                      ]),
+                      child: DigitDropdown(
+                          items: assetCapacity
+                              .map((type) => DropdownItem(
+                                    name: type,
+                                    code: type,
+                                  ))
+                              .toList()),
                     ),
                   ),
                   const SizedBox(width: spacer6),
@@ -463,7 +541,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                       child: DigitTextFormInput(
                         controller: TextEditingController(),
                         isDisabled: true,
-                        initialValue: 'Volts',
+                        initialValue: assetCapacityUom,
                         keyboardType: TextInputType.text,
                       ),
                     ),
