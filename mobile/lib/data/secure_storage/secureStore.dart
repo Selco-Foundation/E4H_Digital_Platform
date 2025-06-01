@@ -10,6 +10,7 @@ import '../../model/localization/localizationModel.dart';
 import '../../model/response/responsemodel.dart';
 import '../../model/role_actions/role_actions_model.dart';
 import '../../model/system/system.dart';
+import '../../model/warranty/warranty.dart';
 
 class SecureStore {
   final storage = const FlutterSecureStorage();
@@ -78,6 +79,18 @@ class SecureStore {
 
   Future<String?> getSystem() async {
     return await storage.read(key: 'system');
+  }
+
+  //Warranty
+  Future setWarranty(List<Mdms<Warranty>> list) async {
+    final List<Map<String, dynamic>> jsonList = list
+        .map((mdms) => mdms.toJson((warranty) => warranty.toJson()))
+        .toList();
+    await storage.write(key: 'warranty', value: json.encode(jsonList));
+  }
+
+  Future<String?> getWarranty() async {
+    return await storage.read(key: 'warranty');
   }
 
   //access token
