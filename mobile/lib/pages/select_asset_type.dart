@@ -150,7 +150,7 @@ class _SelectAssetTypePageState extends State<SelectAssetTypePage> {
                                     onSelect: (DropdownItem selected) {
                                       context.read<AssetTypeBloc>().add(
                                           AssetTypeEvent.typeSelected(
-                                              selected.code.toLowerCase()));
+                                              selected.code));
                                     },
                                     items: assetTypeList
                                         .map((type) => DropdownItem(
