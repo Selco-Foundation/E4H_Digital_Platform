@@ -9,6 +9,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:isar/isar.dart';
 import 'package:location/location.dart';
+import 'package:selco/blocs/cache_asset_detail/cache_asset_detail.dart';
+import 'package:selco/blocs/cache_specification/cache_specification.dart';
 
 import 'blocs/app_init/app_init.dart';
 import 'blocs/auth/authbloc.dart';
@@ -87,6 +89,10 @@ class _MainAppState extends State<MainApp> {
             BlocProvider(
                 create: (context) => CacheProjectAssetBloc(widget.isar)),
             BlocProvider(create: (context) => CacheAssetCountBloc(widget.isar)),
+            BlocProvider(
+                create: (context) => CacheSpecificationBloc(widget.isar)),
+            BlocProvider(
+                create: (context) => CacheAssetDetailBloc(widget.isar)),
           ],
           child: BlocBuilder<AppInitialization, InitState>(
             builder: (context, state) => state.maybeWhen(

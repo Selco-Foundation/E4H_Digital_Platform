@@ -7,8 +7,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../blocs/app_init/app_init.dart';
 import '../blocs/asset_type/asset_type.dart';
 import '../blocs/cache_asset_count/cache_asset_count.dart';
+import '../blocs/cache_asset_detail/cache_asset_detail.dart';
 import '../blocs/selected_project/selected_project.dart';
 import '../data/nosql/cache_asset_count.dart';
+import '../data/nosql/cache_asset_detail.dart';
 import '../model/asset_type/asset_type.dart';
 import '../model/brand/brand.dart';
 import '../model/mdms/mdms.dart';
@@ -34,6 +36,10 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
   late List<Warranty> assetWarranties = [];
   late List<Brand> assetBrands = [];
   final List<Mdms<AssetType>> assetTypeList = [];
+
+  String? selectedWarranty;
+  String? selectedBrandCode;
+  final TextEditingController modelController = TextEditingController();
 
   @override
   void initState() {
@@ -71,6 +77,12 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
     });
   }
 
+  @override
+  void dispose() {
+    modelController.dispose();
+    super.dispose();
+  }
+
   void _updateProgress(String projectId, assetType) {
     context
         .read<CacheAssetCountBloc>()
@@ -94,6 +106,11 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
           battery: () => 'Battery Details',
           panel: () => 'Panel Details',
         );
+
+        final bool isEnabled = selectedWarranty != null &&
+            selectedBrandCode != null &&
+            modelController.text.trim().isNotEmpty;
+
         return Scaffold(
             appBar: const Navbar(),
             body: ScrollableContent(
@@ -104,16 +121,26 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
                 enableFixedDigitButton: true,
                 backgroundColor: theme.colorTheme.generic.background,
                 footer: FooterButton(
+                  isDisabled: !isEnabled,
                   showSuffixIcon: false,
                   text: i18.common.coreCommonNext,
                   onPress: () {
+                    if (!isEnabled) return;
+                    final newDetail = CacheAssetDetail(
+                      projectId: _currentProjectId!,
+                      assetType: assetTypeTitle,
+                      warranty: selectedWarranty!,
+                      brand: selectedBrandCode!,
+                      model: modelController.text.trim(),
+                    );
+
+                    context
+                        .read<CacheAssetDetailBloc>()
+                        .add(CacheAssetDetailEvent.add(newDetail));
                     context.router.push(const AddNewAssetRoute());
                   },
                 ),
                 children: [
-                  // BlocBuilder<AppInitialization, InitState>(
-                  //   builder: (initContext, initState) {
-                  //     return
                   Padding(
                     padding: const EdgeInsets.symmetric(
                         horizontal: spacer2, vertical: spacer4),
@@ -151,41 +178,57 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
                                   color: theme.colorTheme.text.primary),
                               capitalizedFirstLetter: false,
                               child: DigitDropdown(
-                                  items: assetWarranties
-                                      .map((type) => DropdownItem(
-                                            name: type.duration,
-                                            code: type.duration,
-                                          ))
-                                      .toList())),
+                                items: assetWarranties
+                                    .map((type) => DropdownItem(
+                                          name: type.duration,
+                                          code: type.duration,
+                                        ))
+                                    .toList(),
+                                onSelect: (DropdownItem selected) {
+                                  setState(() {
+                                    selectedWarranty = selected.code;
+                                  });
+                                },
+                              )),
                           LabeledField(
                               label: 'Brand',
                               labelStyle: textTheme.headingS.copyWith(
                                   color: theme.colorTheme.text.primary),
                               capitalizedFirstLetter: false,
                               child: DigitDropdown(
-                                  items: assetBrands
-                                      .map((type) => DropdownItem(
-                                            name: type.name,
-                                            code: type.code,
-                                          ))
-                                      .toList())),
+                                items: assetBrands
+                                    .map((type) => DropdownItem(
+                                          name: type.name,
+                                          code: type.code,
+                                        ))
+                                    .toList(),
+                                onSelect: (DropdownItem selected) {
+                                  setState(() {
+                                    selectedBrandCode = selected.code;
+                                  });
+                                },
+                              )),
                           LabeledField(
                             label: 'Model Number',
                             labelStyle: textTheme.headingS
                                 .copyWith(color: theme.colorTheme.text.primary),
                             capitalizedFirstLetter: false,
                             child: DigitTextFormInput(
-                              controller: TextEditingController(),
+                              controller: modelController,
                               innerLabel: 'SR45934295',
                               keyboardType: TextInputType.text,
+                              onChange: (value) {
+                                setState(() {
+                                  // modelController.text is updated internally;
+                                  // we just need to rebuild for isEnabled.
+                                });
+                              },
                             ),
                           ),
                         ])
                       ],
                     ),
                   )
-                  //   },
-                  // )
                 ]));
       },
     );
