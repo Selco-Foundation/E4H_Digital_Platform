@@ -5,10 +5,13 @@ import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../blocs/app_init/app_init.dart';
 import '../blocs/asset_type/asset_type.dart';
 import '../blocs/cache_asset_count/cache_asset_count.dart';
 import '../blocs/selected_project/selected_project.dart';
 import '../data/nosql/cache_asset_count.dart';
+import '../model/asset_type/asset_type.dart';
+import '../model/mdms/mdms.dart';
 import '../router/app_router.dart';
 import '../utils/i18_key_constants.dart' as i18;
 import '../widgets/button/footer_button.dart';
@@ -62,8 +65,6 @@ class _SelectAssetTypePageState extends State<SelectAssetTypePage> {
 
     CacheAssetCount? cacheEntry = currentCacheEntryFor(context,
         projectId: _currentProjectId!, assetType: assetType);
-    print("cacheEntry?.progress.toString() ${cacheEntry?.progress.toString()}");
-    print("cacheEntry?.count.toString() ${cacheEntry?.count.toString()}");
     switch (cacheEntry?.progress) {
       case 3:
         context.router.push(const SpecificationRoute());
@@ -107,51 +108,61 @@ class _SelectAssetTypePageState extends State<SelectAssetTypePage> {
                   },
                 ),
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: spacer2, vertical: spacer4),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              AppStepper(context: context, activeIndex: 1),
-                            ]),
-                        const SizedBox(height: spacer4),
-                        DigitCard(children: [
-                          Text(
-                            'Asset Type',
-                            style: textTheme.headingXl.copyWith(
-                                color: theme.colorTheme.primary.primary2),
-                          ),
-                          Text(
-                            'Choose the asset type',
-                            style: textTheme.bodyL
-                                .copyWith(color: theme.colorTheme.text.primary),
-                          ),
-                          LabeledField(
-                            label: 'Select Asset Type',
-                            labelStyle: textTheme.label.copyWith(
-                              color: theme.colorTheme.text.primary,
-                            ),
-                            capitalizedFirstLetter: false,
-                            child: DigitDropdown(
-                              onSelect: (DropdownItem selected) {
-                                context.read<AssetTypeBloc>().add(
-                                    AssetTypeEvent.typeSelected(selected.code));
-                              },
-                              items: const [
-                                DropdownItem(
-                                    name: 'Inverter', code: 'inverter'),
-                                DropdownItem(name: 'Battery', code: 'battery'),
-                                DropdownItem(name: 'Panel', code: 'panel'),
-                              ],
-                            ),
-                          ),
-                        ])
-                      ],
-                    ),
+                  BlocBuilder<AppInitialization, InitState>(
+                    builder: (initContext, initState) {
+                      final List<Mdms<AssetType>> assetTypeList =
+                          initState.maybeWhen(
+                              orElse: () => [],
+                              initialized: (appConfig, assetCount, assetType) =>
+                                  assetType);
+
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: spacer2, vertical: spacer4),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  AppStepper(context: context, activeIndex: 1),
+                                ]),
+                            const SizedBox(height: spacer4),
+                            DigitCard(children: [
+                              Text(
+                                'Asset Type',
+                                style: textTheme.headingXl.copyWith(
+                                    color: theme.colorTheme.primary.primary2),
+                              ),
+                              Text(
+                                'Choose the asset type',
+                                style: textTheme.bodyL.copyWith(
+                                    color: theme.colorTheme.text.primary),
+                              ),
+                              LabeledField(
+                                label: 'Select Asset Type',
+                                labelStyle: textTheme.label.copyWith(
+                                  color: theme.colorTheme.text.primary,
+                                ),
+                                capitalizedFirstLetter: false,
+                                child: DigitDropdown(
+                                    onSelect: (DropdownItem selected) {
+                                      context.read<AssetTypeBloc>().add(
+                                          AssetTypeEvent.typeSelected(
+                                              selected.code.toLowerCase()));
+                                    },
+                                    items: assetTypeList
+                                        .map((type) => DropdownItem(
+                                              name: type.data.name,
+                                              code: type.data.code,
+                                            ))
+                                        .toList()),
+                              ),
+                            ])
+                          ],
+                        ),
+                      );
+                    },
                   )
                 ]);
           },
