@@ -8,11 +8,13 @@ import 'package:digit_ui_components/widgets/scrollable_content.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:selco/blocs/cache_asset_count/cache_asset_count.dart';
+import 'package:selco/blocs/cache_specification/cache_specification.dart';
 import 'package:selco/data/nosql/cache_asset_count.dart';
 
 import '../blocs/app_init/app_init.dart';
 import '../blocs/asset_type/asset_type.dart';
 import '../blocs/selected_project/selected_project.dart';
+import '../data/nosql/cache_specification.dart';
 import '../model/asset_type/asset_type.dart';
 import '../model/mdms/mdms.dart';
 import '../model/system/system.dart';
@@ -75,71 +77,78 @@ class _SpecificationPageState extends State<SpecificationPage> {
           panel: () => 'Panel Specifications',
         );
 
-        return Scaffold(
-            appBar: const Navbar(),
-            body: ScrollableContent(
-                header: const BackNavigationHelpHeaderWidget(
-                  showBackNavigation: true,
-                  showHelp: false,
-                ),
-                enableFixedDigitButton: true,
-                backgroundColor: theme.colorTheme.generic.background,
-                footer: FooterButton(
-                  showSuffixIcon: false,
-                  text: i18.common.coreCommonNext,
-                  onPress: () {
-                    context.router.push(const AssetTypeDetailRoute());
-                  },
-                ),
-                children: [
-                  BlocBuilder<AppInitialization, InitState>(
-                    builder: (initContext, initState) {
-                      final List<Mdms<System>> systemList = initState.maybeWhen(
-                          orElse: () => [],
-                          initialized: (appConfig, assetCount, assetType,
-                                  system, warranty, brand) =>
-                              system);
+        return BlocBuilder<AppInitialization, InitState>(
+          builder: (initContext, initState) {
+            final List<Mdms<System>> systemList = initState.maybeWhen(
+                orElse: () => [],
+                initialized: (appConfig, assetCount, assetType, system,
+                        warranty, brand) =>
+                    system);
 
-                      final List<Mdms<AssetType>> assetTypeList =
-                          initState.maybeWhen(
-                        orElse: () => [],
-                        initialized: (appConfig, assetCount, assetType, system,
-                                warranty, brand) =>
-                            assetType,
-                      );
+            final List<Mdms<AssetType>> assetTypeList = initState.maybeWhen(
+              orElse: () => [],
+              initialized:
+                  (appConfig, assetCount, assetType, system, warranty, brand) =>
+                      assetType,
+            );
 
-                      final systemCode = systemList.lastOrNull?.data.code;
+            final systemCode = systemList.lastOrNull?.data.code;
 
-                      // Find the asset type
-                      final selectedAssetType = assetTypeList
-                          .map((e) => e.data)
-                          .firstWhereOrNull((asset) =>
-                              asset.code.toUpperCase() ==
-                              assetType.toUpperCase());
+            // Find the asset type
+            final selectedAssetType = assetTypeList
+                .map((e) => e.data)
+                .firstWhereOrNull((asset) =>
+                    asset.code.toUpperCase() == assetType.toUpperCase());
 
-                      // From that asset type, get the total_capacity form field
-                      final totalCapacityField =
-                          selectedAssetType?.formFields.firstWhereOrNull(
-                        (field) =>
-                            field.key == "total_capacity" &&
-                            field.system == systemCode,
-                      );
+            // From that asset type, get the total_capacity form field
+            final totalCapacityField =
+                selectedAssetType?.formFields.firstWhereOrNull(
+              (field) =>
+                  field.key == "total_capacity" && field.system == systemCode,
+            );
 
-                      // Get the total_capacity_uom form field
-                      final totalCapacityUomField =
-                          selectedAssetType?.formFields.firstWhereOrNull(
-                        (field) =>
-                            field.key == "total_capacity_uom" &&
-                            field.system == systemCode,
-                      );
+            // Get the total_capacity_uom form field
+            final totalCapacityUomField =
+                selectedAssetType?.formFields.firstWhereOrNull(
+              (field) =>
+                  field.key == "total_capacity_uom" &&
+                  field.system == systemCode,
+            );
 
-                      // Use first option or fallback to empty string
-                      final String totalCapacity =
-                          totalCapacityField?.options?.firstOrNull ?? '';
-                      final String totalCapacityUom =
-                          totalCapacityUomField?.options?.firstOrNull ?? '';
+            // Use first option or fallback to empty string
+            final String totalCapacity =
+                totalCapacityField?.options?.firstOrNull ?? '';
+            final String totalCapacityUom =
+                totalCapacityUomField?.options?.firstOrNull ?? '';
 
-                      return Padding(
+            return Scaffold(
+                appBar: const Navbar(),
+                body: ScrollableContent(
+                    header: const BackNavigationHelpHeaderWidget(
+                      showBackNavigation: true,
+                      showHelp: false,
+                    ),
+                    enableFixedDigitButton: true,
+                    backgroundColor: theme.colorTheme.generic.background,
+                    footer: FooterButton(
+                      showSuffixIcon: false,
+                      text: i18.common.coreCommonNext,
+                      onPress: () {
+                        final newSpec = CacheSpecification(
+                          projectId: _currentProjectId!,
+                          assetType: assetType,
+                          system: systemList.last.data.name,
+                          totalCapacity: double.tryParse(totalCapacity) ?? 0.0,
+                          totalCapacityUnit: totalCapacityUom,
+                        );
+                        context
+                            .read<CacheSpecificationBloc>()
+                            .add(CacheSpecificationEvent.add(newSpec));
+                        context.router.push(const AssetTypeDetailRoute());
+                      },
+                    ),
+                    children: [
+                      Padding(
                         padding: const EdgeInsets.symmetric(
                             horizontal: spacer2, vertical: spacer4),
                         child: Column(
@@ -212,10 +221,10 @@ class _SpecificationPageState extends State<SpecificationPage> {
                             ])
                           ],
                         ),
-                      );
-                    },
-                  )
-                ]));
+                      )
+                    ]));
+          },
+        );
       },
     );
   }
