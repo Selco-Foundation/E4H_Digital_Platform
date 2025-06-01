@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
 import 'package:selco/model/asset_type/asset_type.dart';
+import 'package:selco/model/system/system.dart';
 
 import '../data/remote_client.dart';
 import '../data/secure_storage/secureStore.dart';
@@ -141,6 +142,50 @@ class AppInitRepo {
           .toList();
 
       await storage.setAssetType(result);
+      return result;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<List<Mdms<System>>> searchSystem(
+      MdmsRequestModel mdmsRequestBody) async {
+    final body = mdmsRequestBody.toJson();
+
+    final SecureStore storage = SecureStore();
+
+    // try to fetch locally
+    String? localSystem = await storage.getSystem();
+    if (localSystem != null) {
+      final List<dynamic> decodedList =
+          json.decode(localSystem) as List<dynamic>;
+      return decodedList
+          .map((item) => Mdms<System>.fromJson(
+                item as Map<String, dynamic>,
+                (json) => System.fromJson(json as Map<String, dynamic>),
+              ))
+          .toList();
+    }
+
+    final client = DioClient().dio;
+    final headers = <String, String>{
+      "Access-Control-Allow-Origin": "*",
+      "authorization": "Basic ZWdvdi11c2VyLWNsaWVudDo=",
+    };
+
+    try {
+      final response = await client.post("egov-mdms-service/v2/_search",
+          data: body, options: Options(headers: headers));
+
+      final List<dynamic> payloadList = response.data['mdms'] as List<dynamic>;
+      final List<Mdms<System>> result = payloadList
+          .map((item) => Mdms<System>.fromJson(
+                item as Map<String, dynamic>,
+                (json) => System.fromJson(json as Map<String, dynamic>),
+              ))
+          .toList();
+
+      await storage.setSystem(result);
       return result;
     } catch (e) {
       rethrow;
