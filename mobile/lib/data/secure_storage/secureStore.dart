@@ -9,6 +9,7 @@ import '../../model/asset_type/asset_type.dart';
 import '../../model/localization/localizationModel.dart';
 import '../../model/response/responsemodel.dart';
 import '../../model/role_actions/role_actions_model.dart';
+import '../../model/system/system.dart';
 
 class SecureStore {
   final storage = const FlutterSecureStorage();
@@ -66,6 +67,17 @@ class SecureStore {
 
   Future<String?> getAssetType() async {
     return await storage.read(key: 'assetType');
+  }
+
+  //System
+  Future setSystem(List<Mdms<System>> list) async {
+    final List<Map<String, dynamic>> jsonList =
+        list.map((mdms) => mdms.toJson((system) => system.toJson())).toList();
+    await storage.write(key: 'system', value: json.encode(jsonList));
+  }
+
+  Future<String?> getSystem() async {
+    return await storage.read(key: 'system');
   }
 
   //access token

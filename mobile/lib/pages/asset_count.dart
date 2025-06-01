@@ -85,7 +85,7 @@ class _AssetCountPageState extends State<AssetCountPage> {
         builder: (initContext, initState) {
           final counts = initState.maybeWhen(
               orElse: () => 0,
-              initialized: (appConfig, assetCount, assetType) {
+              initialized: (appConfig, assetCount, assetType, system) {
                 final inverterEntry = assetCount.firstWhere(
                     (entry) => entry.data.assetTypeCode == "INVERTER");
                 inverterData = inverterEntry.data;
