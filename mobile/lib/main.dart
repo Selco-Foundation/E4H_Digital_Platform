@@ -91,7 +91,7 @@ class _MainAppState extends State<MainApp> {
           child: BlocBuilder<AppInitialization, InitState>(
             builder: (context, state) => state.maybeWhen(
                 orElse: () => const Center(child: Text('error Initializing')),
-                initialized: (appConfig, assetCount) {
+                initialized: (appConfig, assetCount, assetType) {
                   final initialModuleList =
                       appConfig.appConfig!.appConfig?[0].backendInterface;
                   final languages =
