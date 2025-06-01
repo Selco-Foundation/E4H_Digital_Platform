@@ -113,9 +113,9 @@ class _SelectAssetTypePageState extends State<SelectAssetTypePage> {
                       final List<Mdms<AssetType>> assetTypeList =
                           initState.maybeWhen(
                               orElse: () => [],
-                              initialized:
-                                  (appConfig, assetCount, assetType, system) =>
-                                      assetType);
+                              initialized: (appConfig, assetCount, assetType,
+                                      system, warranty) =>
+                                  assetType);
 
                       return Padding(
                         padding: const EdgeInsets.symmetric(

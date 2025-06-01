@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:selco/model/warranty/warranty.dart';
 
 import '../../model/appconfig/mdmsRequest.dart';
 import '../../model/appconfig/mdmsResponse.dart';
@@ -73,12 +74,22 @@ class AppInitialization extends Bloc<InitEvent, InitState> {
       )));
       final systemList = system ?? [];
 
+      final warranty = await appInitRepo.searchWarranty(const MdmsRequestModel(
+          mdmsCriteria: MdmsCriteriaModel(
+        tenantId: 'pg',
+        schemaCode: "asset.WarrantyDuration",
+        moduleDetails: [],
+      )));
+      final warrantyList = warranty ?? [];
+
       //go to the initialized state once configuration details are fetched
       emit(InitState.initialized(
-          appConfig: appConfig,
-          assetCount: assetCountList,
-          assetType: assetTypeList,
-          system: systemList));
+        appConfig: appConfig,
+        assetCount: assetCountList,
+        assetType: assetTypeList,
+        system: systemList,
+        warranty: warrantyList,
+      ));
     } catch (err) {
       rethrow;
     }
@@ -99,5 +110,6 @@ class InitState with _$InitState {
     required List<Mdms<AssetCount>> assetCount,
     required List<Mdms<AssetType>> assetType,
     required List<Mdms<System>> system,
+    required List<Mdms<Warranty>> warranty,
   }) = Initialized;
 }

@@ -2,15 +2,16 @@ import 'dart:convert';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
-import 'package:selco/model/asset_type/asset_type.dart';
-import 'package:selco/model/system/system.dart';
 
 import '../data/remote_client.dart';
 import '../data/secure_storage/secureStore.dart';
 import '../model/appconfig/mdmsRequest.dart';
 import '../model/appconfig/mdmsResponse.dart';
 import '../model/asset_count/asset_count.dart';
+import '../model/asset_type/asset_type.dart';
 import '../model/mdms/mdms.dart';
+import '../model/system/system.dart';
+import '../model/warranty/warranty.dart';
 import '../utils/envConfig.dart';
 
 //create an instance of the environmentConfiguration class
@@ -186,6 +187,50 @@ class AppInitRepo {
           .toList();
 
       await storage.setSystem(result);
+      return result;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<List<Mdms<Warranty>>> searchWarranty(
+      MdmsRequestModel mdmsRequestBody) async {
+    final body = mdmsRequestBody.toJson();
+
+    final SecureStore storage = SecureStore();
+
+    // try to fetch locally
+    String? localWarranty = await storage.getWarranty();
+    if (localWarranty != null) {
+      final List<dynamic> decodedList =
+          json.decode(localWarranty) as List<dynamic>;
+      return decodedList
+          .map((item) => Mdms<Warranty>.fromJson(
+                item as Map<String, dynamic>,
+                (json) => Warranty.fromJson(json as Map<String, dynamic>),
+              ))
+          .toList();
+    }
+
+    final client = DioClient().dio;
+    final headers = <String, String>{
+      "Access-Control-Allow-Origin": "*",
+      "authorization": "Basic ZWdvdi11c2VyLWNsaWVudDo=",
+    };
+
+    try {
+      final response = await client.post("egov-mdms-service/v2/_search",
+          data: body, options: Options(headers: headers));
+
+      final List<dynamic> payloadList = response.data['mdms'] as List<dynamic>;
+      final List<Mdms<Warranty>> result = payloadList
+          .map((item) => Mdms<Warranty>.fromJson(
+                item as Map<String, dynamic>,
+                (json) => Warranty.fromJson(json as Map<String, dynamic>),
+              ))
+          .toList();
+
+      await storage.setWarranty(result);
       return result;
     } catch (e) {
       rethrow;

@@ -83,9 +83,10 @@ class _AssetCountPageState extends State<AssetCountPage> {
       drawer: const CustomDrawer(),
       body: BlocBuilder<AppInitialization, InitState>(
         builder: (initContext, initState) {
-          final counts = initState.maybeWhen(
+          initState.maybeWhen(
               orElse: () => 0,
-              initialized: (appConfig, assetCount, assetType, system) {
+              initialized:
+                  (appConfig, assetCount, assetType, system, warranty) {
                 final inverterEntry = assetCount.firstWhere(
                     (entry) => entry.data.assetTypeCode == "INVERTER");
                 inverterData = inverterEntry.data;
