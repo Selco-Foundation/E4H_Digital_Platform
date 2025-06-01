@@ -59,7 +59,7 @@ class AppInitialization extends Bloc<InitEvent, InitState> {
           await appInitRepo.searchAssetType(const MdmsRequestModel(
               mdmsCriteria: MdmsCriteriaModel(
         tenantId: 'pg',
-        schemaCode: "asset.AssetCount2",
+        schemaCode: "asset.AssetType2",
         moduleDetails: [],
       )));
       final assetTypeList = assetType ?? [];
