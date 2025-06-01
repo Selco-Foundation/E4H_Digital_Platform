@@ -173,7 +173,8 @@ mixin _$InitState {
             List<Mdms<AssetCount>> assetCount,
             List<Mdms<AssetType>> assetType,
             List<Mdms<System>> system,
-            List<Mdms<Warranty>> warranty)
+            List<Mdms<Warranty>> warranty,
+            List<Mdms<Brand>> brand)
         initialized,
   }) =>
       throw _privateConstructorUsedError;
@@ -185,7 +186,8 @@ mixin _$InitState {
             List<Mdms<AssetCount>> assetCount,
             List<Mdms<AssetType>> assetType,
             List<Mdms<System>> system,
-            List<Mdms<Warranty>> warranty)?
+            List<Mdms<Warranty>> warranty,
+            List<Mdms<Brand>> brand)?
         initialized,
   }) =>
       throw _privateConstructorUsedError;
@@ -197,7 +199,8 @@ mixin _$InitState {
             List<Mdms<AssetCount>> assetCount,
             List<Mdms<AssetType>> assetType,
             List<Mdms<System>> system,
-            List<Mdms<Warranty>> warranty)?
+            List<Mdms<Warranty>> warranty,
+            List<Mdms<Brand>> brand)?
         initialized,
     required TResult orElse(),
   }) =>
@@ -284,7 +287,8 @@ class _$UninitializedImpl extends _Uninitialized {
             List<Mdms<AssetCount>> assetCount,
             List<Mdms<AssetType>> assetType,
             List<Mdms<System>> system,
-            List<Mdms<Warranty>> warranty)
+            List<Mdms<Warranty>> warranty,
+            List<Mdms<Brand>> brand)
         initialized,
   }) {
     return uninitialized();
@@ -299,7 +303,8 @@ class _$UninitializedImpl extends _Uninitialized {
             List<Mdms<AssetCount>> assetCount,
             List<Mdms<AssetType>> assetType,
             List<Mdms<System>> system,
-            List<Mdms<Warranty>> warranty)?
+            List<Mdms<Warranty>> warranty,
+            List<Mdms<Brand>> brand)?
         initialized,
   }) {
     return uninitialized?.call();
@@ -314,7 +319,8 @@ class _$UninitializedImpl extends _Uninitialized {
             List<Mdms<AssetCount>> assetCount,
             List<Mdms<AssetType>> assetType,
             List<Mdms<System>> system,
-            List<Mdms<Warranty>> warranty)?
+            List<Mdms<Warranty>> warranty,
+            List<Mdms<Brand>> brand)?
         initialized,
     required TResult orElse(),
   }) {
@@ -372,7 +378,8 @@ abstract class _$$InitializedImplCopyWith<$Res> {
       List<Mdms<AssetCount>> assetCount,
       List<Mdms<AssetType>> assetType,
       List<Mdms<System>> system,
-      List<Mdms<Warranty>> warranty});
+      List<Mdms<Warranty>> warranty,
+      List<Mdms<Brand>> brand});
 
   $MdmsResponseModelCopyWith<$Res> get appConfig;
 }
@@ -393,6 +400,7 @@ class __$$InitializedImplCopyWithImpl<$Res>
     Object? assetType = null,
     Object? system = null,
     Object? warranty = null,
+    Object? brand = null,
   }) {
     return _then(_$InitializedImpl(
       appConfig: null == appConfig
@@ -415,6 +423,10 @@ class __$$InitializedImplCopyWithImpl<$Res>
           ? _value._warranty
           : warranty // ignore: cast_nullable_to_non_nullable
               as List<Mdms<Warranty>>,
+      brand: null == brand
+          ? _value._brand
+          : brand // ignore: cast_nullable_to_non_nullable
+              as List<Mdms<Brand>>,
     ));
   }
 
@@ -435,11 +447,13 @@ class _$InitializedImpl extends Initialized {
       required final List<Mdms<AssetCount>> assetCount,
       required final List<Mdms<AssetType>> assetType,
       required final List<Mdms<System>> system,
-      required final List<Mdms<Warranty>> warranty})
+      required final List<Mdms<Warranty>> warranty,
+      required final List<Mdms<Brand>> brand})
       : _assetCount = assetCount,
         _assetType = assetType,
         _system = system,
         _warranty = warranty,
+        _brand = brand,
         super._();
 
   @override
@@ -476,9 +490,17 @@ class _$InitializedImpl extends Initialized {
     return EqualUnmodifiableListView(_warranty);
   }
 
+  final List<Mdms<Brand>> _brand;
+  @override
+  List<Mdms<Brand>> get brand {
+    if (_brand is EqualUnmodifiableListView) return _brand;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_brand);
+  }
+
   @override
   String toString() {
-    return 'InitState.initialized(appConfig: $appConfig, assetCount: $assetCount, assetType: $assetType, system: $system, warranty: $warranty)';
+    return 'InitState.initialized(appConfig: $appConfig, assetCount: $assetCount, assetType: $assetType, system: $system, warranty: $warranty, brand: $brand)';
   }
 
   @override
@@ -493,7 +515,8 @@ class _$InitializedImpl extends Initialized {
             const DeepCollectionEquality()
                 .equals(other._assetType, _assetType) &&
             const DeepCollectionEquality().equals(other._system, _system) &&
-            const DeepCollectionEquality().equals(other._warranty, _warranty));
+            const DeepCollectionEquality().equals(other._warranty, _warranty) &&
+            const DeepCollectionEquality().equals(other._brand, _brand));
   }
 
   @override
@@ -503,7 +526,8 @@ class _$InitializedImpl extends Initialized {
       const DeepCollectionEquality().hash(_assetCount),
       const DeepCollectionEquality().hash(_assetType),
       const DeepCollectionEquality().hash(_system),
-      const DeepCollectionEquality().hash(_warranty));
+      const DeepCollectionEquality().hash(_warranty),
+      const DeepCollectionEquality().hash(_brand));
 
   @JsonKey(ignore: true)
   @override
@@ -520,10 +544,12 @@ class _$InitializedImpl extends Initialized {
             List<Mdms<AssetCount>> assetCount,
             List<Mdms<AssetType>> assetType,
             List<Mdms<System>> system,
-            List<Mdms<Warranty>> warranty)
+            List<Mdms<Warranty>> warranty,
+            List<Mdms<Brand>> brand)
         initialized,
   }) {
-    return initialized(appConfig, assetCount, assetType, system, warranty);
+    return initialized(
+        appConfig, assetCount, assetType, system, warranty, brand);
   }
 
   @override
@@ -535,11 +561,12 @@ class _$InitializedImpl extends Initialized {
             List<Mdms<AssetCount>> assetCount,
             List<Mdms<AssetType>> assetType,
             List<Mdms<System>> system,
-            List<Mdms<Warranty>> warranty)?
+            List<Mdms<Warranty>> warranty,
+            List<Mdms<Brand>> brand)?
         initialized,
   }) {
     return initialized?.call(
-        appConfig, assetCount, assetType, system, warranty);
+        appConfig, assetCount, assetType, system, warranty, brand);
   }
 
   @override
@@ -551,12 +578,14 @@ class _$InitializedImpl extends Initialized {
             List<Mdms<AssetCount>> assetCount,
             List<Mdms<AssetType>> assetType,
             List<Mdms<System>> system,
-            List<Mdms<Warranty>> warranty)?
+            List<Mdms<Warranty>> warranty,
+            List<Mdms<Brand>> brand)?
         initialized,
     required TResult orElse(),
   }) {
     if (initialized != null) {
-      return initialized(appConfig, assetCount, assetType, system, warranty);
+      return initialized(
+          appConfig, assetCount, assetType, system, warranty, brand);
     }
     return orElse();
   }
@@ -599,7 +628,8 @@ abstract class Initialized extends InitState {
       required final List<Mdms<AssetCount>> assetCount,
       required final List<Mdms<AssetType>> assetType,
       required final List<Mdms<System>> system,
-      required final List<Mdms<Warranty>> warranty}) = _$InitializedImpl;
+      required final List<Mdms<Warranty>> warranty,
+      required final List<Mdms<Brand>> brand}) = _$InitializedImpl;
   const Initialized._() : super._();
 
   MdmsResponseModel get appConfig;
@@ -607,6 +637,7 @@ abstract class Initialized extends InitState {
   List<Mdms<AssetType>> get assetType;
   List<Mdms<System>> get system;
   List<Mdms<Warranty>> get warranty;
+  List<Mdms<Brand>> get brand;
   @JsonKey(ignore: true)
   _$$InitializedImplCopyWith<_$InitializedImpl> get copyWith =>
       throw _privateConstructorUsedError;

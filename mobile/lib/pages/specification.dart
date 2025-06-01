@@ -97,14 +97,14 @@ class _SpecificationPageState extends State<SpecificationPage> {
                       final List<Mdms<System>> systemList = initState.maybeWhen(
                           orElse: () => [],
                           initialized: (appConfig, assetCount, assetType,
-                                  system, warranty) =>
+                                  system, warranty, brand) =>
                               system);
 
                       final List<Mdms<AssetType>> assetTypeList =
                           initState.maybeWhen(
                         orElse: () => [],
                         initialized: (appConfig, assetCount, assetType, system,
-                                warranty) =>
+                                warranty, brand) =>
                             assetType,
                       );
 
