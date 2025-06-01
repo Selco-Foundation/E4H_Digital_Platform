@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:isar/isar.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:selco/data/nosql/cache_asset_count.dart';
+import 'package:selco/data/nosql/cache_asset_detail.dart';
+import 'package:selco/data/nosql/cache_specification.dart';
 
 import '../data/nosql/cache_project_asset.dart';
 import '../data/nosql/localization.dart';
@@ -37,6 +39,8 @@ class Constants {
           LocalizationWrapperSchema,
           CacheProjectAssetSchema,
           CacheAssetCountSchema,
+          CacheSpecificationSchema,
+          CacheAssetDetailSchema,
         ],
         name: 'HCM',
         inspector: true,
