@@ -6,6 +6,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 import '../../model/appconfig/mdmsRequest.dart';
 import '../../model/appconfig/mdmsResponse.dart';
 import '../../model/asset_count/asset_count.dart';
+import '../../model/asset_type/asset_type.dart';
 import '../../model/mdms/mdms.dart';
 import '../../repositories/app_init_Repo.dart';
 
@@ -52,12 +53,22 @@ class AppInitialization extends Bloc<InitEvent, InitState> {
         schemaCode: "asset.AssetCount",
         moduleDetails: [],
       )));
-
       final assetCountList = assetCount ?? [];
+
+      final assetType =
+          await appInitRepo.searchAssetType(const MdmsRequestModel(
+              mdmsCriteria: MdmsCriteriaModel(
+        tenantId: 'pg',
+        schemaCode: "asset.AssetCount2",
+        moduleDetails: [],
+      )));
+      final assetTypeList = assetType ?? [];
 
       //go to the initialized state once configuration details are fetched
       emit(InitState.initialized(
-          appConfig: appConfig, assetCount: assetCountList));
+          appConfig: appConfig,
+          assetCount: assetCountList,
+          assetType: assetTypeList));
     } catch (err) {
       rethrow;
     }
@@ -76,5 +87,6 @@ class InitState with _$InitState {
   const factory InitState.initialized({
     required MdmsResponseModel appConfig,
     required List<Mdms<AssetCount>> assetCount,
+    required List<Mdms<AssetType>> assetType,
   }) = Initialized;
 }
