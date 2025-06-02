@@ -253,7 +253,7 @@ public class WorkflowService {
 
     private Priority getPriorityFromMDMS(IncidentRequest request, Object mdmsData) {
         String serviceCode = request.getIncident().getIncidentSubType();
-        String assetType = request.getIncident().getIncidentType(); // Assuming assetType is present
+        String assetType = request.getIncident().getIncidentType();
 
         String jsonPath = MDMS_SERVICEDEF_SEARCH.replace("{SERVICEDEF}", serviceCode);
 
