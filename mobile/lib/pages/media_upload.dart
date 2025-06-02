@@ -129,7 +129,7 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
             children: [
               Padding(
                 padding: const EdgeInsets.symmetric(
-                    horizontal: spacer2, vertical: spacer4),
+                    vertical: spacer2, horizontal: spacer4),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
