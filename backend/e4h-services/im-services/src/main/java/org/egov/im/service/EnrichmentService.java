@@ -58,7 +58,7 @@ public class EnrichmentService {
 
         userService.callUserService(incidentRequest);
 
-        if(incident.getReporterTenant().equalsIgnoreCase("pg"))
+        if(incident.getReporterTenant().equalsIgnoreCase(incident.getTenantId().split("\\.")[0]))
         	incident.setReporterType("CRM");
         else
         	incident.setReporterType("HCR");
