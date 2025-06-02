@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 
 import '../blocs/app_init/app_init.dart';
@@ -29,4 +32,13 @@ class IdGen {
   const IdGen._internal() : uuid = const Uuid();
 
   String get identifier => uuid.v1();
+}
+
+Future<String> copyFileToLocalDir(File sourceFile) async {
+  final appDocDir = await getApplicationDocumentsDirectory();
+  final timestamp = DateTime.now().millisecondsSinceEpoch;
+  final fileName = '${timestamp}_${sourceFile.uri.pathSegments.last}';
+  final dest = File('${appDocDir.path}/$fileName');
+  final copied = await sourceFile.copy(dest.path);
+  return copied.path;
 }

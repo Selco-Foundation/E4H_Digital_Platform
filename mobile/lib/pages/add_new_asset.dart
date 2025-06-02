@@ -21,13 +21,16 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../blocs/app_init/app_init.dart';
 import '../blocs/asset_type/asset_type.dart';
+import '../blocs/cache_add_new_asset/cache_add_new_asset.dart';
 import '../blocs/cache_asset_count/cache_asset_count.dart';
 import '../blocs/selected_project/selected_project.dart';
+import '../data/nosql/cache_add_new_asset.dart';
 import '../data/nosql/cache_asset_count.dart';
 import '../model/asset_type/asset_type.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
 import '../utils/i18_key_constants.dart' as i18;
+import '../utils/utils.dart';
 import '../widgets/button/footer_button.dart';
 import '../widgets/cards/stepper.dart';
 import '../widgets/header/back_navigation_help_header.dart';
@@ -38,8 +41,13 @@ class AssetModel {
   String serialNumber;
   String capacity;
   String unit;
-  AssetModel(
-      {required this.serialNumber, this.capacity = '1', this.unit = 'KvA'});
+  String? photoPath;
+  AssetModel({
+    required this.serialNumber,
+    this.capacity = '1',
+    this.unit = 'KvA',
+    this.photoPath,
+  });
 }
 
 @RoutePage()
@@ -69,9 +77,10 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
           battery: () => 'battery',
           panel: () => 'panel',
         );
+
     context.read<SelectedProjectBloc>().state.whenOrNull(selected: (proj) {
       _currentProjectId = proj.id;
-      // Only load existing count:
+      // Fire “get” once on init
       context
           .read<CacheAssetCountBloc>()
           .add(CacheAssetCountEvent.get(proj.id, assetTypeTitle));
@@ -85,25 +94,22 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
               .map((at) => at.data)
               .where(
                   (at) => at.code.toUpperCase() == assetTypeTitle.toUpperCase())
-              // .map((w) => w.duration)
               .toList();
 
           final systemCode = system.lastOrNull?.data.code;
 
           // Find the asset type
-          selectedAssetType = assetTypeList
-              //.map((e) => e.data)
-              .firstWhereOrNull((asset) =>
-                  asset.code.toUpperCase() == assetTypeTitle.toUpperCase());
+          selectedAssetType = assetTypeList.firstWhereOrNull((asset) =>
+              asset.code.toUpperCase() == assetTypeTitle.toUpperCase());
 
           final fields = selectedAssetType!.formFields;
 
-          // From that asset type, get the total_capacity form field
+          // From that asset type, get the capacity form field
           final assetCapacityField = fields.firstWhereOrNull(
             (field) => field.key == "capacity" && field.system == systemCode,
           );
 
-          // Get the total_capacity_uom form field
+          // Get the capacity_uom form field
           final assetCapacityUomField = fields.firstWhereOrNull(
             (field) =>
                 field.key == "capacity_uom" && field.system == systemCode,
@@ -113,7 +119,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
               fields.firstWhereOrNull((field) => field.types != null)?.types ??
                   [];
 
-          // Use first option or fallback to empty string
+          // Use options or fallback
           assetCapacity = assetCapacityField!.options!;
           assetCapacityUom = assetCapacityUomField!.options!.firstOrNull ?? '';
 
@@ -168,6 +174,13 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
             panel: () => 'Panel',
           );
 
+          // ─── NEW: Re-dispatch “get” here every time build runs ───
+          if (_currentProjectId != null && assetType.isNotEmpty) {
+            context
+                .read<CacheAssetCountBloc>()
+                .add(CacheAssetCountEvent.get(_currentProjectId!, assetType));
+          }
+
           return BlocSelector<CacheAssetCountBloc, CacheAssetCountState, int>(
             selector: (st) => st.maybeWhen(
               loaded: (entries) =>
@@ -178,6 +191,10 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
               orElse: () => 0,
             ),
             builder: (ctx, maxAssets) {
+              final bool isDisabled = _assets.length != maxAssets ||
+                  _assets.any(
+                      (a) => a.serialNumber.isEmpty || a.photoPath == null);
+
               return Scaffold(
                 appBar: const Navbar(),
                 drawer: const CustomDrawer(),
@@ -189,9 +206,21 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                   footer: FooterButton(
                     showSuffixIcon: false,
                     text: context.translate(i18.common.coreCommonNext),
-                    isDisabled: _assets.length != maxAssets ||
-                        _assets.any((a) => a.serialNumber.isEmpty),
+                    isDisabled: isDisabled,
                     onPress: () {
+                      if (isDisabled) return;
+                      for (final asset in _assets) {
+                        final newAsset = CacheAddNewAsset(
+                          projectId: _currentProjectId!,
+                          assetType: assetType,
+                          itemNumber: asset.capacity,
+                          serialNumber: asset.serialNumber,
+                          photoPath: asset.photoPath!,
+                        );
+                        context
+                            .read<CacheAddNewAssetBloc>()
+                            .add(CacheAddNewAssetEvent.add(newAsset));
+                      }
                       if (_currentProjectId != null) {
                         context.read<CacheAssetCountBloc>().add(
                               CacheAssetCountEvent.update(
@@ -365,9 +394,12 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
           label: 'Supporting Photo',
           capitalizedFirstLetter: false,
           child: ImageUploader(
-            onImagesSelected: (List<File> imageFile) {
-              // Handle the selected image file here
-              // print('Image selected: ${imageFile.path}');
+            onImagesSelected: (List<File> imageFile) async {
+              if (imageFile.isEmpty) return;
+              final copiedPath = await copyFileToLocalDir(imageFile.first);
+              setState(() {
+                asset.photoPath = copiedPath;
+              });
             },
           ),
         ),
@@ -386,7 +418,12 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                                 name: type,
                                 code: type,
                               ))
-                          .toList()),
+                          .toList(),
+                      onSelect: (DropdownItem selected) {
+                        setState(() {
+                          asset.capacity = selected.code;
+                        });
+                      }),
                 ),
               ),
               const SizedBox(width: spacer6),
@@ -430,12 +467,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                               name: type,
                               code: type,
                             ))
-                        .toList()
-                    // [
-                    //   DropdownItem(name: 'Lead acid', code: 'lead'),
-                    //   DropdownItem(name: 'Pure acid', code: 'acid'),
-                    // ]
-                    ),
+                        .toList()),
               ),
               Row(
                 children: [
