@@ -42,3 +42,10 @@ Future<String> copyFileToLocalDir(File sourceFile) async {
   final copied = await sourceFile.copy(dest.path);
   return copied.path;
 }
+
+String truncateText(String text, {int maxLength = 16}) {
+  if (text.length > maxLength) {
+    return '${text.substring(0, maxLength)}...';
+  }
+  return text;
+}

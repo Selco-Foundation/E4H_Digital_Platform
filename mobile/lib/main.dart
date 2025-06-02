@@ -15,6 +15,7 @@ import 'package:selco/blocs/cache_media_upload/cache_media_upload.dart';
 import 'package:selco/blocs/cache_specification/cache_specification.dart';
 
 import 'blocs/app_init/app_init.dart';
+import 'blocs/asset_summary/asset_summary.dart';
 import 'blocs/auth/authbloc.dart';
 import 'blocs/cache_asset_count/cache_asset_count.dart';
 import 'blocs/cache_project_asset/cache_project_asset.dart';
@@ -99,6 +100,7 @@ class _MainAppState extends State<MainApp> {
                 create: (context) => CacheAddNewAssetBloc(widget.isar)),
             BlocProvider(
                 create: (context) => CacheMediaUploadBloc(widget.isar)),
+            BlocProvider(create: (context) => AssetSummaryBloc(widget.isar)),
           ],
           child: BlocBuilder<AppInitialization, InitState>(
             builder: (context, state) => state.maybeWhen(
