@@ -81,6 +81,13 @@ class AppInitRepo {
           .toList();
     }
 
+    if (envConfig.variables.envType == EnvType.dev) {
+      return _loadLocalMdms<AssetCount>(
+        'assets/mocks/mockAssetCount.json',
+        (json) => AssetCount.fromJson(json),
+      );
+    }
+
     final client = DioClient().dio;
     final headers = <String, String>{
       "Access-Control-Allow-Origin": "*",
@@ -123,6 +130,13 @@ class AppInitRepo {
                 (json) => AssetType.fromJson(json as Map<String, dynamic>),
               ))
           .toList();
+    }
+
+    if (envConfig.variables.envType == EnvType.dev) {
+      return _loadLocalMdms<AssetType>(
+        'assets/mocks/mockAssetType.json',
+        (json) => AssetType.fromJson(json),
+      );
     }
 
     final client = DioClient().dio;
@@ -169,6 +183,13 @@ class AppInitRepo {
           .toList();
     }
 
+    if (envConfig.variables.envType == EnvType.dev) {
+      return _loadLocalMdms<System>(
+        'assets/mocks/mockSystem.json',
+        (json) => System.fromJson(json),
+      );
+    }
+
     final client = DioClient().dio;
     final headers = <String, String>{
       "Access-Control-Allow-Origin": "*",
@@ -211,6 +232,13 @@ class AppInitRepo {
                 (json) => Warranty.fromJson(json as Map<String, dynamic>),
               ))
           .toList();
+    }
+
+    if (envConfig.variables.envType == EnvType.dev) {
+      return _loadLocalMdms<Warranty>(
+        'assets/mocks/mockWarranty.json',
+        (json) => Warranty.fromJson(json),
+      );
     }
 
     final client = DioClient().dio;
@@ -257,6 +285,13 @@ class AppInitRepo {
           .toList();
     }
 
+    if (envConfig.variables.envType == EnvType.dev) {
+      return _loadLocalMdms<Brand>(
+        'assets/mocks/mockBrand.json',
+        (json) => Brand.fromJson(json),
+      );
+    }
+
     final client = DioClient().dio;
     final headers = <String, String>{
       "Access-Control-Allow-Origin": "*",
@@ -290,6 +325,67 @@ class AppInitRepo {
       return MdmsResponseModel.fromJson(jsonResponse['MdmsRes']);
     } catch (e) {
       throw Exception('Failed to load mock app config: $e');
+    }
+  }
+
+  // Future<List<Mdms<T>>> _loadLocalMdms<T>(
+  //     String filePath, T Function(Map<String, dynamic>) fromJsonT) async {
+  //   try {
+  //     final jsonString = await rootBundle.loadString(filePath);
+  //     final Map<String, dynamic> decoded =
+  //         json.decode(jsonString) as Map<String, dynamic>;
+  //
+  //     // The mock payload has a top‐level "mdms" array:
+  //     final List<dynamic> mdmsList = decoded['mdms'] as List<dynamic>;
+  //
+  //     return mdmsList
+  //         .map((entry) => Mdms<T>.fromJson(
+  //               entry as Map<String, dynamic>,
+  //               (inner) => fromJsonT(inner as Map<String, dynamic>),
+  //             ))
+  //         .toList();
+  //   } catch (e) {
+  //     throw Exception('Failed to load mock data from $filePath: $e');
+  //   }
+  // }
+
+  Future<List<Mdms<T>>> _loadLocalMdms<T>(
+    String filePath,
+    T Function(Map<String, dynamic>) fromJsonT,
+  ) async {
+    try {
+      // 1) Load the raw JSON string from assets
+      final jsonString = await rootBundle.loadString(filePath);
+      final Map<String, dynamic> decoded =
+          json.decode(jsonString) as Map<String, dynamic>;
+
+      // 2) Figure out whether the array is under "mdms" or "MdmsRes"
+      String? arrayKey;
+      if (decoded.containsKey('mdms')) {
+        arrayKey = 'mdms';
+      } else if (decoded.containsKey('MdmsRes')) {
+        arrayKey = 'MdmsRes';
+      } else {
+        throw Exception('No "mdms" or "MdmsRes" key found in $filePath');
+      }
+
+      final rawList = decoded[arrayKey];
+      if (rawList is! List) {
+        throw Exception('"$arrayKey" is not a List in $filePath');
+      }
+
+      print("filepATH $filePath");
+
+      // 3) Map each entry into `Mdms<T>.fromJson(...)`
+      return rawList
+          .cast<Map<String, dynamic>>()
+          .map((entry) => Mdms<T>.fromJson(
+                entry,
+                (inner) => fromJsonT(inner as Map<String, dynamic>),
+              ))
+          .toList();
+    } catch (e) {
+      throw Exception('Failed to load mock data from $filePath: $e');
     }
   }
 }

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:digit_ui_components/widgets/atoms/upload_popUp.dart';
@@ -8,10 +10,13 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../blocs/asset_type/asset_type.dart';
 import '../blocs/cache_asset_count/cache_asset_count.dart';
+import '../blocs/cache_media_upload/cache_media_upload.dart';
 import '../blocs/selected_project/selected_project.dart';
 import '../data/nosql/cache_asset_count.dart';
+import '../data/nosql/cache_media_upload.dart';
 import '../router/app_router.dart';
 import '../utils/i18_key_constants.dart' as i18;
+import '../utils/utils.dart';
 import '../widgets/button/footer_button.dart';
 import '../widgets/cards/stepper.dart';
 import '../widgets/header/back_navigation_help_header.dart';
@@ -28,6 +33,8 @@ class MediaUploadPage extends StatefulWidget {
 
 class _MediaUploadPageState extends State<MediaUploadPage> {
   String? _currentProjectId;
+  List<PlatformFile> _selectedImages = [];
+  List<PlatformFile> _selectedVideos = [];
 
   @override
   void initState() {
@@ -61,12 +68,16 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
     final textTheme = theme.digitTextTheme(context);
     return BlocBuilder<AssetTypeBloc, AssetTypeState>(
       builder: (context, state) {
-        final heading = state.when(
+        final assetType = state.when(
           initial: () => '',
           inverter: () => 'Inverter',
           battery: () => 'Battery',
           panel: () => 'Panel',
         );
+
+        final bool isDisabled =
+            _selectedImages.isEmpty && _selectedVideos.isEmpty;
+
         return Scaffold(
           appBar: const Navbar(),
           drawer: const CustomDrawer(),
@@ -78,9 +89,40 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
               showHelp: false,
             ),
             footer: FooterButton(
+              isDisabled: isDisabled,
               showSuffixIcon: false,
               text: i18.common.coreCommonNext,
-              onPress: () {
+              onPress: () async {
+                if (_currentProjectId == null) return;
+
+                for (final file in _selectedImages) {
+                  final copiedPath = await copyFileToLocalDir(File(file.path!));
+                  final newEntry = CacheMediaUpload(
+                    projectId: _currentProjectId!,
+                    assetType: assetType.toLowerCase(),
+                    itemNumber: file.name,
+                    itemType: 'image',
+                    photoPath: copiedPath,
+                  );
+                  context
+                      .read<CacheMediaUploadBloc>()
+                      .add(CacheMediaUploadEvent.add(newEntry));
+
+                  for (final file in _selectedVideos) {
+                    final copiedPath =
+                        await copyFileToLocalDir(File(file.path!));
+                    final newEntry = CacheMediaUpload(
+                      projectId: _currentProjectId!,
+                      assetType: assetType.toLowerCase(),
+                      itemNumber: file.name,
+                      itemType: 'video',
+                      photoPath: copiedPath,
+                    );
+                    context
+                        .read<CacheMediaUploadBloc>()
+                        .add(CacheMediaUploadEvent.add(newEntry));
+                  }
+                }
                 context.router.push(const AssetSummaryRoute());
               },
             ),
@@ -98,7 +140,7 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
                     DigitCard(
                       children: [
                         Text(
-                          '$heading Images',
+                          '$assetType Images',
                           style: textTheme.headingXl.copyWith(
                               color: theme.colorTheme.primary.primary2),
                         ),
@@ -112,6 +154,9 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
                           child: FileUploadWidget(
                             label: 'Upload',
                             onFilesSelected: (List<PlatformFile> files) {
+                              setState(() {
+                                _selectedImages = files;
+                              });
                               Map<PlatformFile, String?> fileErrors = {};
                               return fileErrors;
                             },
@@ -125,7 +170,7 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
                     DigitCard(
                       children: [
                         Text(
-                          '$heading Videos',
+                          '$assetType Videos',
                           style: textTheme.headingXl.copyWith(
                               color: theme.colorTheme.primary.primary2),
                         ),
@@ -137,9 +182,22 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
                         LabeledField(
                           label: 'Upload videos',
                           child: FileUploadWidget(
-                            allowedExtensions: const ['mp4'],
+                            allowedExtensions: const [
+                              'mp4',
+                              'mov',
+                              'mkv',
+                              'avi',
+                              'webm',
+                              'flv',
+                              'vob',
+                              'ts',
+                              'm2ts'
+                            ],
                             label: 'Upload',
                             onFilesSelected: (List<PlatformFile> files) {
+                              setState(() {
+                                _selectedVideos = files;
+                              });
                               Map<PlatformFile, String?> fileErrors = {};
                               return fileErrors;
                             },

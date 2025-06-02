@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 
 import '../data/remote_client.dart';
 import '../model/projects/project.dart';
+import '../utils/envConfig.dart';
 
 /// Repository handling remote operations related to projects.
 class ProjectRemoteRepository {
@@ -20,9 +21,9 @@ class ProjectRemoteRepository {
       String searchPath = "project/v2/_search";
       // actionMap![DataModelType.project]![ApiOperation.search]!;
 
-      // if (envConfig.variables.envType == EnvType.dev) {
-      //   return _loadLocalProjects();
-      // }
+      if (envConfig.variables.envType == EnvType.dev) {
+        return _loadLocalProjects();
+      }
 
       response = await dio.post(searchPath, queryParameters: {
         'tenantId': 'in', // envConfig.variables.tenantId,

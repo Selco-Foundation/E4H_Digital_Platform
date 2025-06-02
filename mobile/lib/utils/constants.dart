@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:isar/isar.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:selco/data/nosql/cache_add_new_asset.dart';
 import 'package:selco/data/nosql/cache_asset_count.dart';
 import 'package:selco/data/nosql/cache_asset_detail.dart';
+import 'package:selco/data/nosql/cache_media_upload.dart';
 import 'package:selco/data/nosql/cache_specification.dart';
 
 import '../data/nosql/cache_project_asset.dart';
@@ -41,6 +43,8 @@ class Constants {
           CacheAssetCountSchema,
           CacheSpecificationSchema,
           CacheAssetDetailSchema,
+          CacheAddNewAssetSchema,
+          CacheMediaUploadSchema
         ],
         name: 'HCM',
         inspector: true,
