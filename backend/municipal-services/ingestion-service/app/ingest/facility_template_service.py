@@ -2,6 +2,9 @@
 import os
 from typing import Dict, List, Any
 
+# CodeReview: Add caching mechanism for MDMS and boundary service responses
+# CodeReview: Implement retry mechanism for external service calls
+# CodeReview: Add circuit breaker pattern for external service dependencies
 import pandas as pd
 import requests
 
@@ -19,6 +22,7 @@ load_dotenv()
 mdms_url = os.getenv("MDMS_URL")
 boundary_service_url = os.getenv("BOUNDARY_SERVICE_URL")
 
+#CodeReview: Please add comments as to what each script or class is doing. Does this generate a template?
 class FacilityTemplateService:
 
     def get_all_boundaries(self, request_info: RequestInfo) -> List[Boundary]:
