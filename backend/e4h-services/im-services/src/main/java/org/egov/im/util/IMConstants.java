@@ -14,6 +14,12 @@ public class IMConstants {
 
     public static final String IM_BUSINESSSERVICE = "Incident";
 
+    public static final String IM_BUSINESSSERVICE_HIGH = "Incident_High";
+
+    public static final String IM_BUSINESSSERVICE_MEDIUM = "Incident_Medium";
+
+    public static final String IM_BUSINESSSERVICE_LOW = "Incident_Low";
+
     public static final String USERTYPE_EMPLOYEE = "EMPLOYEE";
 
     public static final String USERTYPE_CITIZEN = "CITIZEN";
