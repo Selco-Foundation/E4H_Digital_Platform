@@ -1,0 +1,107 @@
+{
+  "ResponseInfo": {
+    "apiId": null,
+    "ver": null,
+    "ts": null,
+    "resMsgId": "uief87324",
+    "msgId": null,
+    "status": "successful"
+  },
+  "mdms": [
+    {
+      "id": "af681763-0d05-4136-af0d-7d943db6d150",
+      "tenantId": "pg",
+      "schemaCode": "asset.Brand",
+      "uniqueIdentifier": "ENPHASE_ENERGY.Enphase Energy",
+      "data": {
+        "code": "ENPHASE_ENERGY",
+        "name": "Enphase Energy",
+        "active": true,
+        "asset_type_code": "PANEL"
+      },
+      "isActive": true,
+      "auditDetails": {
+        "createdBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "lastModifiedBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "createdTime": 1748705333751,
+        "lastModifiedTime": 1748705333751
+      }
+    },
+    {
+      "id": "cac129f4-84f0-4de2-bfac-66749eb305fc",
+      "tenantId": "pg",
+      "schemaCode": "asset.Brand",
+      "uniqueIdentifier": "SOLAR_EDGE.SolarEdge",
+      "data": {
+        "code": "SOLAR_EDGE",
+        "name": "SolarEdge",
+        "active": true,
+        "asset_type_code": "BATTER"
+      },
+      "isActive": true,
+      "auditDetails": {
+        "createdBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "lastModifiedBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "createdTime": 1748705279845,
+        "lastModifiedTime": 1748705279845
+      }
+    },
+    {
+      "id": "30216b90-31fb-42ca-9256-71543f770665",
+      "tenantId": "pg",
+      "schemaCode": "asset.Brand",
+      "uniqueIdentifier": "PYLON_TECH.Pylontech",
+      "data": {
+        "code": "PYLON_TECH",
+        "name": "Pylontech",
+        "active": true,
+        "asset_type_code": "BATTERY"
+      },
+      "isActive": true,
+      "auditDetails": {
+        "createdBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "lastModifiedBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "createdTime": 1748705234646,
+        "lastModifiedTime": 1748705234646
+      }
+    },
+    {
+      "id": "2a99a6cb-98d9-4e7c-9e23-47caee0a1f56",
+      "tenantId": "pg",
+      "schemaCode": "asset.Brand",
+      "uniqueIdentifier": "SUNGROW.Sungrow",
+      "data": {
+        "code": "SUNGROW",
+        "name": "Sungrow",
+        "active": true,
+        "asset_type_code": "INVERTER"
+      },
+      "isActive": true,
+      "auditDetails": {
+        "createdBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "lastModifiedBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "createdTime": 1748705170415,
+        "lastModifiedTime": 1748705170415
+      }
+    },
+    {
+      "id": "928958de-0815-4973-9813-ed522cd7f0cf",
+      "tenantId": "pg",
+      "schemaCode": "asset.Brand",
+      "uniqueIdentifier": "GROWATT.Growatt",
+      "data": {
+        "code": "GROWATT",
+        "name": "Growatt",
+        "active": true,
+        "asset_type_code": "INVERTER"
+      },
+      "isActive": true,
+      "auditDetails": {
+        "createdBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "lastModifiedBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "createdTime": 1748705039117,
+        "lastModifiedTime": 1748705039117
+      }
+    }
+  ]
+}

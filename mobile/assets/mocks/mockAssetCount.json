@@ -1,0 +1,69 @@
+{
+  "ResponseInfo": {
+    "apiId": null,
+    "ver": null,
+    "ts": null,
+    "resMsgId": "uief87324",
+    "msgId": null,
+    "status": "successful"
+  },
+  "mdms": [
+    {
+      "id": "fcb06252-3fab-4415-8e12-a98f9818e5a3",
+      "tenantId": "in",
+      "schemaCode": "asset.AssetCount",
+      "uniqueIdentifier": "PANEL",
+      "data": {
+        "max": 20,
+        "min": 1,
+        "active": true,
+        "asset_type_code": "PANEL"
+      },
+      "isActive": true,
+      "auditDetails": {
+        "createdBy": "0ab7b240-5092-4759-83a6-75f396a35a9b",
+        "lastModifiedBy": "0ab7b240-5092-4759-83a6-75f396a35a9b",
+        "createdTime": 1746790085338,
+        "lastModifiedTime": 1746790085338
+      }
+    },
+    {
+      "id": "226906eb-8578-4421-943a-fbf8726882f8",
+      "tenantId": "in",
+      "schemaCode": "asset.AssetCount",
+      "uniqueIdentifier": "BATTERY",
+      "data": {
+        "max": 25,
+        "min": 1,
+        "active": true,
+        "asset_type_code": "BATTERY"
+      },
+      "isActive": true,
+      "auditDetails": {
+        "createdBy": "0ab7b240-5092-4759-83a6-75f396a35a9b",
+        "lastModifiedBy": "0ab7b240-5092-4759-83a6-75f396a35a9b",
+        "createdTime": 1746790075317,
+        "lastModifiedTime": 1746790075317
+      }
+    },
+    {
+      "id": "2bbb9d04-2983-4dfa-aa52-3b38de5dce79",
+      "tenantId": "in",
+      "schemaCode": "asset.AssetCount",
+      "uniqueIdentifier": "INVERTER",
+      "data": {
+        "max": 5,
+        "min": 1,
+        "active": true,
+        "asset_type_code": "INVERTER"
+      },
+      "isActive": true,
+      "auditDetails": {
+        "createdBy": "0ab7b240-5092-4759-83a6-75f396a35a9b",
+        "lastModifiedBy": "0ab7b240-5092-4759-83a6-75f396a35a9b",
+        "createdTime": 1746790064270,
+        "lastModifiedTime": 1746790064270
+      }
+    }
+  ]
+}

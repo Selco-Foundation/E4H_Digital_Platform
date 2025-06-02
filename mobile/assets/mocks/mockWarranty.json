@@ -1,0 +1,525 @@
+{
+  "ResponseInfo": {
+    "apiId": null,
+    "ver": null,
+    "ts": null,
+    "resMsgId": "uief87324",
+    "msgId": null,
+    "status": "successful"
+  },
+  "mdms": [
+    {
+      "id": "ed4d4be3-8e74-45b0-ae7f-7d93c76f3405",
+      "tenantId": "pg",
+      "schemaCode": "asset.WarrantyDuration",
+      "uniqueIdentifier": "P25Y.PANEL.ISO-8601",
+      "data": {
+        "active": true,
+        "format": "ISO-8601",
+        "duration": "P25Y",
+        "asset_type_code": "PANEL"
+      },
+      "isActive": true,
+      "auditDetails": {
+        "createdBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "lastModifiedBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "createdTime": 1748706929006,
+        "lastModifiedTime": 1748706929006
+      }
+    },
+    {
+      "id": "4adc38c0-644e-490a-b919-284c21438d27",
+      "tenantId": "pg",
+      "schemaCode": "asset.WarrantyDuration",
+      "uniqueIdentifier": "P20Y.PANEL.ISO-8601",
+      "data": {
+        "active": true,
+        "format": "ISO-8601",
+        "duration": "P20Y",
+        "asset_type_code": "PANEL"
+      },
+      "isActive": true,
+      "auditDetails": {
+        "createdBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "lastModifiedBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "createdTime": 1748706913682,
+        "lastModifiedTime": 1748706913682
+      }
+    },
+    {
+      "id": "3e6afade-1b1a-4a2b-b265-745f824c9ee4",
+      "tenantId": "pg",
+      "schemaCode": "asset.WarrantyDuration",
+      "uniqueIdentifier": "P15Y.PANEL.ISO-8601",
+      "data": {
+        "active": true,
+        "format": "ISO-8601",
+        "duration": "P15Y",
+        "asset_type_code": "PANEL"
+      },
+      "isActive": true,
+      "auditDetails": {
+        "createdBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "lastModifiedBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "createdTime": 1748706902242,
+        "lastModifiedTime": 1748706902242
+      }
+    },
+    {
+      "id": "e2e8dea2-6084-4ccc-af3f-28f23d492699",
+      "tenantId": "pg",
+      "schemaCode": "asset.WarrantyDuration",
+      "uniqueIdentifier": "P12Y.PANEL.ISO-8601",
+      "data": {
+        "active": true,
+        "format": "ISO-8601",
+        "duration": "P12Y",
+        "asset_type_code": "PANEL"
+      },
+      "isActive": true,
+      "auditDetails": {
+        "createdBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "lastModifiedBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "createdTime": 1748706891106,
+        "lastModifiedTime": 1748706891106
+      }
+    },
+    {
+      "id": "5b3a5bdd-5ae1-4bc3-97e2-e1fe9b5a9d38",
+      "tenantId": "pg",
+      "schemaCode": "asset.WarrantyDuration",
+      "uniqueIdentifier": "P10Y.PANEL.ISO-8601",
+      "data": {
+        "active": true,
+        "format": "ISO-8601",
+        "duration": "P10Y",
+        "asset_type_code": "PANEL"
+      },
+      "isActive": true,
+      "auditDetails": {
+        "createdBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "lastModifiedBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "createdTime": 1748706879037,
+        "lastModifiedTime": 1748706879037
+      }
+    },
+    {
+      "id": "8b88e87d-6c3a-42b2-9938-4e04a3d05cfa",
+      "tenantId": "pg",
+      "schemaCode": "asset.WarrantyDuration",
+      "uniqueIdentifier": "P7Y.PANEL.ISO-8601",
+      "data": {
+        "active": true,
+        "format": "ISO-8601",
+        "duration": "P7Y",
+        "asset_type_code": "PANEL"
+      },
+      "isActive": true,
+      "auditDetails": {
+        "createdBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "lastModifiedBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "createdTime": 1748706867441,
+        "lastModifiedTime": 1748706867441
+      }
+    },
+    {
+      "id": "8fb4f7f9-04fd-4b68-a396-628e55a740e3",
+      "tenantId": "pg",
+      "schemaCode": "asset.WarrantyDuration",
+      "uniqueIdentifier": "P5Y.PANEL.ISO-8601",
+      "data": {
+        "active": true,
+        "format": "ISO-8601",
+        "duration": "P5Y",
+        "asset_type_code": "PANEL"
+      },
+      "isActive": true,
+      "auditDetails": {
+        "createdBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "lastModifiedBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "createdTime": 1748706856927,
+        "lastModifiedTime": 1748706856927
+      }
+    },
+    {
+      "id": "2014aee0-17f7-4268-9f4b-728b0f9e8c68",
+      "tenantId": "pg",
+      "schemaCode": "asset.WarrantyDuration",
+      "uniqueIdentifier": "P3Y.PANEL.ISO-8601",
+      "data": {
+        "active": true,
+        "format": "ISO-8601",
+        "duration": "P3Y",
+        "asset_type_code": "PANEL"
+      },
+      "isActive": true,
+      "auditDetails": {
+        "createdBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "lastModifiedBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "createdTime": 1748706845830,
+        "lastModifiedTime": 1748706845830
+      }
+    },
+    {
+      "id": "0164d036-d280-4b7a-a907-572512376911",
+      "tenantId": "pg",
+      "schemaCode": "asset.WarrantyDuration",
+      "uniqueIdentifier": "P1Y.PANEL.ISO-8601",
+      "data": {
+        "active": true,
+        "format": "ISO-8601",
+        "duration": "P1Y",
+        "asset_type_code": "PANEL"
+      },
+      "isActive": true,
+      "auditDetails": {
+        "createdBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "lastModifiedBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "createdTime": 1748706833396,
+        "lastModifiedTime": 1748706833396
+      }
+    },
+    {
+      "id": "8539bb73-759e-4ee2-ab40-9ac96a1ecdd9",
+      "tenantId": "pg",
+      "schemaCode": "asset.WarrantyDuration",
+      "uniqueIdentifier": "P25Y.BATTERY.ISO-8601",
+      "data": {
+        "active": true,
+        "format": "ISO-8601",
+        "duration": "P25Y",
+        "asset_type_code": "BATTERY"
+      },
+      "isActive": true,
+      "auditDetails": {
+        "createdBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "lastModifiedBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "createdTime": 1748706812716,
+        "lastModifiedTime": 1748706812716
+      }
+    },
+    {
+      "id": "98811081-81b4-4e05-9bfc-6e0b93343873",
+      "tenantId": "pg",
+      "schemaCode": "asset.WarrantyDuration",
+      "uniqueIdentifier": "P20Y.BATTERY.ISO-8601",
+      "data": {
+        "active": true,
+        "format": "ISO-8601",
+        "duration": "P20Y",
+        "asset_type_code": "BATTERY"
+      },
+      "isActive": true,
+      "auditDetails": {
+        "createdBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "lastModifiedBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "createdTime": 1748706801922,
+        "lastModifiedTime": 1748706801922
+      }
+    },
+    {
+      "id": "585822c2-5df7-4079-92a1-73924675b6a5",
+      "tenantId": "pg",
+      "schemaCode": "asset.WarrantyDuration",
+      "uniqueIdentifier": "P15Y.BATTERY.ISO-8601",
+      "data": {
+        "active": true,
+        "format": "ISO-8601",
+        "duration": "P15Y",
+        "asset_type_code": "BATTERY"
+      },
+      "isActive": true,
+      "auditDetails": {
+        "createdBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "lastModifiedBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "createdTime": 1748706790252,
+        "lastModifiedTime": 1748706790252
+      }
+    },
+    {
+      "id": "115cd4c3-ba71-4ada-8519-4cae8c2ed3dc",
+      "tenantId": "pg",
+      "schemaCode": "asset.WarrantyDuration",
+      "uniqueIdentifier": "P12Y.BATTERY.ISO-8601",
+      "data": {
+        "active": true,
+        "format": "ISO-8601",
+        "duration": "P12Y",
+        "asset_type_code": "BATTERY"
+      },
+      "isActive": true,
+      "auditDetails": {
+        "createdBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "lastModifiedBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "createdTime": 1748706779175,
+        "lastModifiedTime": 1748706779175
+      }
+    },
+    {
+      "id": "1a654cf2-232c-4109-8e01-b47d35dab80f",
+      "tenantId": "pg",
+      "schemaCode": "asset.WarrantyDuration",
+      "uniqueIdentifier": "P10Y.BATTERY.ISO-8601",
+      "data": {
+        "active": true,
+        "format": "ISO-8601",
+        "duration": "P10Y",
+        "asset_type_code": "BATTERY"
+      },
+      "isActive": true,
+      "auditDetails": {
+        "createdBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "lastModifiedBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "createdTime": 1748706766661,
+        "lastModifiedTime": 1748706766661
+      }
+    },
+    {
+      "id": "25d03e4f-8a44-4757-8088-7241c8e080c6",
+      "tenantId": "pg",
+      "schemaCode": "asset.WarrantyDuration",
+      "uniqueIdentifier": "P7Y.BATTERY.ISO-8601",
+      "data": {
+        "active": true,
+        "format": "ISO-8601",
+        "duration": "P7Y",
+        "asset_type_code": "BATTERY"
+      },
+      "isActive": true,
+      "auditDetails": {
+        "createdBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "lastModifiedBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "createdTime": 1748706747390,
+        "lastModifiedTime": 1748706747390
+      }
+    },
+    {
+      "id": "882a43d7-e7b3-48c3-a96f-4a375cd7dbe2",
+      "tenantId": "pg",
+      "schemaCode": "asset.WarrantyDuration",
+      "uniqueIdentifier": "P5Y.BATTERY.ISO-8601",
+      "data": {
+        "active": true,
+        "format": "ISO-8601",
+        "duration": "P5Y",
+        "asset_type_code": "BATTERY"
+      },
+      "isActive": true,
+      "auditDetails": {
+        "createdBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "lastModifiedBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "createdTime": 1748706730361,
+        "lastModifiedTime": 1748706730361
+      }
+    },
+    {
+      "id": "50f57a57-e7f9-464e-b3d0-ec3fe234ce42",
+      "tenantId": "pg",
+      "schemaCode": "asset.WarrantyDuration",
+      "uniqueIdentifier": "P3Y.BATTERY.ISO-8601",
+      "data": {
+        "active": true,
+        "format": "ISO-8601",
+        "duration": "P3Y",
+        "asset_type_code": "BATTERY"
+      },
+      "isActive": true,
+      "auditDetails": {
+        "createdBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "lastModifiedBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "createdTime": 1748706717508,
+        "lastModifiedTime": 1748706717508
+      }
+    },
+    {
+      "id": "9ef42033-d542-4ebe-b819-929da1ef4a50",
+      "tenantId": "pg",
+      "schemaCode": "asset.WarrantyDuration",
+      "uniqueIdentifier": "P1Y.BATTERY.ISO-8601",
+      "data": {
+        "active": true,
+        "format": "ISO-8601",
+        "duration": "P1Y",
+        "asset_type_code": "BATTERY"
+      },
+      "isActive": true,
+      "auditDetails": {
+        "createdBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "lastModifiedBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "createdTime": 1748706700273,
+        "lastModifiedTime": 1748706700273
+      }
+    },
+    {
+      "id": "d9ba308f-b387-448e-9438-99dd57ff40f8",
+      "tenantId": "pg",
+      "schemaCode": "asset.WarrantyDuration",
+      "uniqueIdentifier": "P25Y.INVERTER.ISO-8601",
+      "data": {
+        "active": true,
+        "format": "ISO-8601",
+        "duration": "P25Y",
+        "asset_type_code": "INVERTER"
+      },
+      "isActive": true,
+      "auditDetails": {
+        "createdBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "lastModifiedBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "createdTime": 1748706627187,
+        "lastModifiedTime": 1748706627187
+      }
+    },
+    {
+      "id": "6a6c8c2d-0354-4191-bb85-52a60633c0a8",
+      "tenantId": "pg",
+      "schemaCode": "asset.WarrantyDuration",
+      "uniqueIdentifier": "P20Y.INVERTER.ISO-8601",
+      "data": {
+        "active": true,
+        "format": "ISO-8601",
+        "duration": "P20Y",
+        "asset_type_code": "INVERTER"
+      },
+      "isActive": true,
+      "auditDetails": {
+        "createdBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "lastModifiedBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "createdTime": 1748706614896,
+        "lastModifiedTime": 1748706614896
+      }
+    },
+    {
+      "id": "5725e843-c665-4bba-985a-edf162dae88b",
+      "tenantId": "pg",
+      "schemaCode": "asset.WarrantyDuration",
+      "uniqueIdentifier": "P15Y.INVERTER.ISO-8601",
+      "data": {
+        "active": true,
+        "format": "ISO-8601",
+        "duration": "P15Y",
+        "asset_type_code": "INVERTER"
+      },
+      "isActive": true,
+      "auditDetails": {
+        "createdBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "lastModifiedBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "createdTime": 1748706593686,
+        "lastModifiedTime": 1748706593686
+      }
+    },
+    {
+      "id": "9206c0f7-54d1-4b74-bb04-6897ce0dd0da",
+      "tenantId": "pg",
+      "schemaCode": "asset.WarrantyDuration",
+      "uniqueIdentifier": "P12Y.INVERTER.ISO-8601",
+      "data": {
+        "active": true,
+        "format": "ISO-8601",
+        "duration": "P12Y",
+        "asset_type_code": "INVERTER"
+      },
+      "isActive": true,
+      "auditDetails": {
+        "createdBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "lastModifiedBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "createdTime": 1748706580788,
+        "lastModifiedTime": 1748706580788
+      }
+    },
+    {
+      "id": "5f82e3fa-2c26-433a-a020-88bbff90b4de",
+      "tenantId": "pg",
+      "schemaCode": "asset.WarrantyDuration",
+      "uniqueIdentifier": "P10Y.INVERTER.ISO-8601",
+      "data": {
+        "active": true,
+        "format": "ISO-8601",
+        "duration": "P10Y",
+        "asset_type_code": "INVERTER"
+      },
+      "isActive": true,
+      "auditDetails": {
+        "createdBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "lastModifiedBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "createdTime": 1748706568412,
+        "lastModifiedTime": 1748706568412
+      }
+    },
+    {
+      "id": "d1cca289-23b7-47c7-a03d-f09466628350",
+      "tenantId": "pg",
+      "schemaCode": "asset.WarrantyDuration",
+      "uniqueIdentifier": "P7Y.INVERTER.ISO-8601",
+      "data": {
+        "active": true,
+        "format": "ISO-8601",
+        "duration": "P7Y",
+        "asset_type_code": "INVERTER"
+      },
+      "isActive": true,
+      "auditDetails": {
+        "createdBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "lastModifiedBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "createdTime": 1748706515656,
+        "lastModifiedTime": 1748706515656
+      }
+    },
+    {
+      "id": "407e6428-d8af-41e9-8ef2-1a7169dbad64",
+      "tenantId": "pg",
+      "schemaCode": "asset.WarrantyDuration",
+      "uniqueIdentifier": "P5Y.INVERTER.ISO-8601",
+      "data": {
+        "active": true,
+        "format": "ISO-8601",
+        "duration": "P5Y",
+        "asset_type_code": "INVERTER"
+      },
+      "isActive": true,
+      "auditDetails": {
+        "createdBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "lastModifiedBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "createdTime": 1748706442842,
+        "lastModifiedTime": 1748706442842
+      }
+    },
+    {
+      "id": "3e29e726-064f-4ed6-83a9-6b671ef8f384",
+      "tenantId": "pg",
+      "schemaCode": "asset.WarrantyDuration",
+      "uniqueIdentifier": "P3Y.INVERTER.ISO-8601",
+      "data": {
+        "active": true,
+        "format": "ISO-8601",
+        "duration": "P3Y",
+        "asset_type_code": "INVERTER"
+      },
+      "isActive": true,
+      "auditDetails": {
+        "createdBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "lastModifiedBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "createdTime": 1748706382224,
+        "lastModifiedTime": 1748706382224
+      }
+    },
+    {
+      "id": "c070faab-2359-4217-a20b-8f2b4130f965",
+      "tenantId": "pg",
+      "schemaCode": "asset.WarrantyDuration",
+      "uniqueIdentifier": "P1Y.INVERTER.ISO-8601",
+      "data": {
+        "active": true,
+        "format": "ISO-8601",
+        "duration": "P1Y",
+        "asset_type_code": "INVERTER"
+      },
+      "isActive": true,
+      "auditDetails": {
+        "createdBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "lastModifiedBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "createdTime": 1748706302443,
+        "lastModifiedTime": 1748706302443
+      }
+    }
+  ]
+}

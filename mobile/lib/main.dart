@@ -9,7 +9,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:isar/isar.dart';
 import 'package:location/location.dart';
+import 'package:selco/blocs/cache_add_new_asset/cache_add_new_asset.dart';
 import 'package:selco/blocs/cache_asset_detail/cache_asset_detail.dart';
+import 'package:selco/blocs/cache_media_upload/cache_media_upload.dart';
 import 'package:selco/blocs/cache_specification/cache_specification.dart';
 
 import 'blocs/app_init/app_init.dart';
@@ -93,6 +95,10 @@ class _MainAppState extends State<MainApp> {
                 create: (context) => CacheSpecificationBloc(widget.isar)),
             BlocProvider(
                 create: (context) => CacheAssetDetailBloc(widget.isar)),
+            BlocProvider(
+                create: (context) => CacheAddNewAssetBloc(widget.isar)),
+            BlocProvider(
+                create: (context) => CacheMediaUploadBloc(widget.isar)),
           ],
           child: BlocBuilder<AppInitialization, InitState>(
             builder: (context, state) => state.maybeWhen(
