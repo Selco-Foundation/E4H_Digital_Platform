@@ -273,9 +273,9 @@ public class WorkflowService {
                 Map<String, Object> map = (Map<String, Object>) obj;
 
                 String menuPath = String.valueOf(map.get("menuPath"));
-                String name = String.valueOf(map.get("name"));
+                String mdmsServiceCode = String.valueOf(map.get("serviceCode"));
 
-                if (assetType.equals(menuPath) && serviceCode.equals(name)) {
+                if (assetType.equals(menuPath) && serviceCode.equals(mdmsServiceCode)) {
                     String priorityStr = String.valueOf(map.get("priority"));
                     return Priority.fromString(priorityStr);
                 }
