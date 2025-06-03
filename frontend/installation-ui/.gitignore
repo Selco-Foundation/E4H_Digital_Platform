@@ -5,7 +5,6 @@
 
 # yarn $
 .yarn
-yarn.lock
 .yarnrc.yml
 
 # dependencies

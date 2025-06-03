@@ -18,8 +18,8 @@
   },
   "scripts": {
     "start": "SKIP_PREFLIGHT_CHECK=true run-s build start:dev",
-    "sprint": "SKIP_PREFLIGHT_CHECK=true run-s start:script",
-    "start:dev": "run-p dev:**",
+    "sprint": "SKIP_PREFIGHT_CHECK=true run-s start:script",
+    "start:dev": "SKIP_PREFIGHT_CHECK=true run-p dev:**",
     "start:script": "./scripts/create.sh",
     "dev:css": "cd packages/css && yarn start",
     "publish:css": "cd packages/css && yarn publish --access public",
@@ -30,7 +30,6 @@
     "dev:dss": "cd packages/modules/dss && yarn start",
     "dev:hrms": "cd packages/modules/hrms && yarn start",
     "devD:common": "cd packages/modules/common && yarn start",
-    "dev:utilities": "cd packages/modules/utilities && yarn start",
     "dev:workbench": "cd packages/modules/workbench && yarn start",
     "dev:pgr": "cd packages/modules/pgr && yarn start",
     "dev:openpayment": "cd packages/modules/open-payment && yarn start",
@@ -45,7 +44,6 @@
     "build:core": "cd packages/modules/core && yarn build",
     "build:hrms": "cd packages/modules/hrms && yarn build",
     "build:common": "cd packages/modules/common && yarn build",
-    "build:utilities": "cd packages/modules/utilities && yarn build",
     "build:engagement": "cd packages/modules/engagement && yarn build",
     "build:workbench": "cd packages/modules/workbench && yarn build",
     "build:pgr": "cd packages/modules/pgr && yarn build",
@@ -59,7 +57,8 @@
     "**/babel-preset-react-app": "10.0.0",
     "**/@babel/traverse": "7.25.9",
     "**/styled-components": "5.0.0",
-    "fast-uri": "2.1.0"
+    "fast-uri": "2.1.0",
+    "chokidar": "2.1.8"
   },
   "devDependencies": {
     "husky": "7.0.4",
