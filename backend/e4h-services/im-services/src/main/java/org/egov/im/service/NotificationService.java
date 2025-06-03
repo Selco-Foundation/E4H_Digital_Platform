@@ -122,6 +122,7 @@ public class NotificationService {
 
             } else if (applicationStatus.equalsIgnoreCase(CLOSED_AFTER_RESOLUTION) && action.equalsIgnoreCase(CLOSE)) {
                 ProcessInstance processInstance = getEmployeeName(incidentWrapper.getIncident().getTenantId(), incidentWrapper.getIncident().getIncidentId(), request.getRequestInfo(), IM_WF_RESOLVE);
+              if(processInstance.getAssigner()!=null)
                 employeeMobileNumber = processInstance.getAssigner().getMobileNumber();
 
                 Map<String, String> reassigneeDetails = getHRMSEmployee(request, "COMPLAINANT");
@@ -488,7 +489,7 @@ public class NotificationService {
 //            if(messageForEmployee.contains("{rating}"))
 //                messageForEmployee=messageForEmployee.replace("{rating}",incidentWrapper.getIncident().getRating().toString());
 
-            if (messageForEmployee.contains("{emp_name}"))
+            if (messageForEmployee.contains("{emp_name}") && processInstance.getAssignes()!=null)
                 messageForEmployee = messageForEmployee.replace("{emp_name}", processInstance.getAssignes().get(0).getName());
 
             if (messageForEmployee.contains("ticket_id"))
@@ -584,7 +585,7 @@ public class NotificationService {
             messageForCitizen = messageForCitizen.replace("{download_link}", config.getMobileDownloadLink());
         }
 
-        if (messageForEmployee != null) {
+        if (messageForEmployee != null && request.getWorkflow().getSendBackReason()!=null) {
             messageForEmployee = messageForEmployee.replace("{ticket_type}", incidentWrapper.getIncident().getIncidentType());
             messageForEmployee = messageForEmployee.replace("{incidentId}", incidentWrapper.getIncident().getIncidentId());
             messageForEmployee = messageForEmployee.replace("{date}", date.format(formatter));
