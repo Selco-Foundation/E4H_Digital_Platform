@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.im.service.IMService;
@@ -71,11 +72,10 @@ public class NotificationConsumer {
 			try {
 				log.info("Consuming record: " + record);
 				List<Map<String, Object>> processInstancesRaw = (List<Map<String, Object>>) record.get("ProcessInstances");
-				List<IMEscalationInstance> escalationInstances = new ArrayList<>();
-				for (Map<String, Object> instanceRaw : processInstancesRaw) {
-					IMEscalationInstance instance = mapper.convertValue(instanceRaw, IMEscalationInstance.class);
-					escalationInstances.add(instance);
-				}
+				List<IMEscalationInstance> escalationInstances = processInstancesRaw.stream()
+						.map(instanceRaw -> mapper.convertValue(instanceRaw, IMEscalationInstance.class))
+						.collect(Collectors.toList());
+
 				processInstanceRequest.setImEscalationInstance(escalationInstances);
 
 				Map<String, Object> requestInfoRaw = (Map<String, Object>) record.get("RequestInfo");
