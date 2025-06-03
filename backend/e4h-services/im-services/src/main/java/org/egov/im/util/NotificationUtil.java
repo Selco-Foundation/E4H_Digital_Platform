@@ -206,4 +206,13 @@ public class NotificationUtil {
         return message;
     }
 
+    public static long convertMsToDays(long milliseconds) {
+        if(milliseconds>0){
+            final long MILLISECONDS_IN_A_DAY = 24 * 60 * 60 * 1000;
+            return milliseconds / MILLISECONDS_IN_A_DAY;
+        }
+        else
+            return 0;
+    }
+
 }

@@ -130,6 +130,8 @@ public class IMService {
         validator.validateUpdate(request, mdmsData);
         enrichmentService.enrichUpdateRequest(request);
         ProcessInstance updatedProcessInstance = workflowService.updateWorkflowStatus(request);
+        if(updatedProcessInstance!=null && updatedProcessInstance.getState()!=null)
+            request.getIncident().setSla(updatedProcessInstance.getState().getSla());
         producer.push(tenantId,config.getUpdateTopic(),request);
         producer.push(tenantId,config.getUpdateTopicIndexer(),new IncidentRequestWrapper(request,updatedProcessInstance));
 

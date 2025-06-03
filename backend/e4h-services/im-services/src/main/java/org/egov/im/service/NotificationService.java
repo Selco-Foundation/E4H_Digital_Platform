@@ -128,7 +128,15 @@ public class NotificationService {
                 citizenMobileNumber = reassigneeDetails.get("employeeMobile");
             } else if (applicationStatus.equalsIgnoreCase(PENDINGATVENDOR) && action.equalsIgnoreCase(REASSIGN)) {
                 employeeMobileNumber = fetchUserByUUID(request.getWorkflow().getAssignes().get(0), request.getRequestInfo(), request.getIncident().getTenantId()).getMobileNumber();
-            } else {
+            }
+            else if ((applicationStatus.equalsIgnoreCase(PENDING_ASSIGNMENT_OUT_OF_WARRANTY) && action.equalsIgnoreCase(OUT_OF_WARRANTY)) ||
+                    (applicationStatus.equalsIgnoreCase(PENDING_ASSIGNMENT_SPARE_PART_NEEDED) && action.equalsIgnoreCase(SPARE_PART_NEEDED)) ||
+                    (applicationStatus.equalsIgnoreCase(PENDING_RESOLUTION_OUT_OF_WARRANTY) && action.equalsIgnoreCase(ASSIGN)) ||
+                    (applicationStatus.equalsIgnoreCase(PENDING_RESOLUTION_SPARE_PART_NEEDED) && action.equalsIgnoreCase(ASSIGN))) {
+                Map<String, String> reassigneeDetails = getHRMSEmployee(request, "COMPLAINANT");
+                employeeMobileNumber = reassigneeDetails.get("employeeMobile");
+            }
+            else {
                 employeeMobileNumber = fetchUserByUUID(request.getIncident().getAuditDetails().getCreatedBy(), request.getRequestInfo(), request.getIncident().getTenantId()).getMobileNumber();
             }
 
@@ -280,6 +288,102 @@ public class NotificationService {
                 } catch (Exception e) {
                     log.warn("Fetching from localization failed", e);
                 }
+            }
+        }
+
+        /**
+         * SMS to complainant, when a complaint is Pending Out of Warranty to an employee
+         */
+        if (incidentWrapper.getIncident().getApplicationStatus().equalsIgnoreCase(PENDING_ASSIGNMENT_OUT_OF_WARRANTY) && incidentWrapper.getWorkflow().getAction().equalsIgnoreCase(OUT_OF_WARRANTY)) {
+            messageForEmployee = notificationUtil.getCustomizedMsg(request.getWorkflow().getAction(), applicationStatus, EMPLOYEE, localizationMessage);
+            if (messageForEmployee == null) {
+                log.info("No message Found For Employee On Topic : " + topic);
+                return null;
+            }
+
+//            Map<String, String> reassigneeDetails = getHRMSEmployee(request, "COMPLAINANT");
+
+            if (messageForEmployee.contains("{Ticket Number}"))
+                messageForEmployee = messageForEmployee.replace("{Ticket Number}", request.getIncident().getIncidentId());
+
+            if (messageForEmployee.contains("{Asset Type}")) {
+                messageForEmployee = messageForEmployee.replace("{Asset Type}", request.getIncident().getIncidentSubType());
+            }
+        }
+
+        /**
+         * SMS to complainant, when a complaint is Pending Spare part Needed to an employee
+         */
+        if (incidentWrapper.getIncident().getApplicationStatus().equalsIgnoreCase(PENDING_ASSIGNMENT_SPARE_PART_NEEDED) && incidentWrapper.getWorkflow().getAction().equalsIgnoreCase(SPARE_PART_NEEDED)) {
+            messageForEmployee = notificationUtil.getCustomizedMsg(request.getWorkflow().getAction(), applicationStatus, EMPLOYEE, localizationMessage);
+            if (messageForEmployee == null) {
+                log.info("No message Found For Employee On Topic : " + topic);
+                return null;
+            }
+
+//            Map<String, String> reassigneeDetails = getHRMSEmployee(request, "COMPLAINANT");
+
+            if (messageForEmployee.contains("{Ticket Number}"))
+                messageForEmployee = messageForEmployee.replace("{Ticket Number}", request.getIncident().getIncidentId());
+
+            if (messageForEmployee.contains("{Asset Type}")) {
+                messageForEmployee = messageForEmployee.replace("{Asset Type}", request.getIncident().getIncidentType());
+            }
+        }
+
+        /**
+         * SMS to complainant, when a complaint is Pending Resolution Out of Warranty to an employee
+         */
+        if (incidentWrapper.getIncident().getApplicationStatus().equalsIgnoreCase(PENDING_RESOLUTION_OUT_OF_WARRANTY) && incidentWrapper.getWorkflow().getAction().equalsIgnoreCase(ASSIGN)) {
+            messageForEmployee = notificationUtil.getCustomizedMsg(request.getWorkflow().getAction(), applicationStatus, EMPLOYEE, localizationMessage);
+            if (messageForEmployee == null) {
+                log.info("No message Found For Employee On Topic : " + topic);
+                return null;
+            }
+
+//            Map<String, String> reassigneeDetails = getHRMSEmployee(request, "COMPLAINANT");
+
+            if (messageForEmployee.contains("{Ticket Number}"))
+                messageForEmployee = messageForEmployee.replace("{Ticket Number}", request.getIncident().getIncidentId());
+
+            if (messageForEmployee.contains("{Asset Type}")) {
+                messageForEmployee = messageForEmployee.replace("{Asset Type}", request.getIncident().getIncidentType());
+            }
+
+            if (messageForEmployee.contains("{X}")) {
+                try {
+                    long days = NotificationUtil.convertMsToDays(request.getIncident().getSla());
+                    messageForEmployee = messageForEmployee.replace("{X}", days+"");
+                }
+                catch (Exception e){}
+            }
+        }
+
+        /**
+         * SMS to complainant, when a complaint is Pending Resolution Spare Part Needed to an employee
+         */
+        if (incidentWrapper.getIncident().getApplicationStatus().equalsIgnoreCase(PENDING_RESOLUTION_SPARE_PART_NEEDED) && incidentWrapper.getWorkflow().getAction().equalsIgnoreCase(ASSIGN)) {
+            messageForEmployee = notificationUtil.getCustomizedMsg(request.getWorkflow().getAction(), applicationStatus, EMPLOYEE, localizationMessage);
+            if (messageForEmployee == null) {
+                log.info("No message Found For Employee On Topic : " + topic);
+                return null;
+            }
+
+//            Map<String, String> reassigneeDetails = getHRMSEmployee(request, "COMPLAINANT");
+
+            if (messageForEmployee.contains("{Ticket Number}"))
+                messageForEmployee = messageForEmployee.replace("{Ticket Number}", request.getIncident().getIncidentId());
+
+            if (messageForEmployee.contains("{Asset Type}")) {
+                messageForEmployee = messageForEmployee.replace("{Asset Type}", request.getIncident().getIncidentType());
+            }
+
+            if (messageForEmployee.contains("{X}")) {
+                try {
+                    long days = NotificationUtil.convertMsToDays(request.getIncident().getSla());
+                    messageForEmployee = messageForEmployee.replace("{X}", days+"");
+                }
+                catch (Exception e){}
             }
         }
 
