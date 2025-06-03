@@ -2,17 +2,19 @@ package facility.repository;
 
 
 import facility.kafka.Producer;
+import facility.web.models.Facility;
 import facility.web.models.FacilityCreateRequest;
 import facility.web.models.FacilityUpdateRequest;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Repository;
 
 @Repository
+@RequiredArgsConstructor
 public class FacilityRepository {
 
-    @Autowired
-    private Producer producer;
+    private final Producer producer;
 
     @Value("${facility.create.topic}")
     private String createTopic;
@@ -20,8 +22,8 @@ public class FacilityRepository {
     @Value("${facility.update.topic}")
     private String updateTopic;
 
-    public void pushCreateFacility(FacilityCreateRequest request) {
-        producer.push(createTopic, request);
+    public void pushCreateFacility(Facility facility) {
+        producer.push(createTopic, facility);
     }
 
     public void pushUpdateFacility(FacilityUpdateRequest request) {

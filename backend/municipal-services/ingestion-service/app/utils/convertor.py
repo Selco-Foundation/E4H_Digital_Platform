@@ -192,25 +192,73 @@ def create_vendor_request(request_info: RequestInfo, vendor: Vendor):
     }
 
 
-def get_project_creation_payload(request_info: RequestInfo, project_name: str, project_type: str):
-    current_date = datetime.datetime.now()
-    one_year_later = current_date.replace(year=current_date.year + 1)
-    current_timestamp = int(time.mktime(current_date.timetuple()) * 1000)
-    one_year_later_timestamp = int(time.mktime(one_year_later.timetuple()) * 1000)
-
+def get_project_creation_payload(request_info: RequestInfo, project_name: str, project_type: str,
+                                 parent_id:str, start_date:str, end_date:str, subType:str):
     return {
         "RequestInfo": request_info.model_dump(by_alias=True, exclude_none=True),
         "Projects": [{
             "tenantId": "in",
             "name": project_name,
             "projectType": project_type,
-            "startDate": current_timestamp,
-            "endDate": one_year_later_timestamp
+            "parent": parent_id,
+            "startDate": start_date,
+            "endDate": end_date,
+            "projectSubType": subType
         }],
         "isCascadingProjectDateUpdate": False,
         "apiOperation": "CREATE"
     }
 
+def get_installation_spoc_creation_payload(request_info: RequestInfo, name:str, mobile_number:str, email:str):
+    current_date = datetime.datetime.now()
+    current_timestamp = int(time.mktime(current_date.timetuple()) * 1000)
+    return {
+        "RequestInfo": request_info.model_dump(by_alias=True, exclude_none=True),
+        "Employees": [
+            {
+                "tenantId": "in",
+                "employeeStatus": "EMPLOYED",
+                "dateOfAppointment": current_timestamp,
+                "employeeType": "PERMANENT",
+                "user": {
+                    "name": name,
+                    "mobileNumber": mobile_number,
+                    "emailId": email,
+                    "roles": [
+                        {"code": "PROJECT_MANAGER", "name": "Project manager"},
+                        {"code": "HRMS_ADMIN", "name": "Hrms admin"}
+                    ],
+                    "tenantId": "in",
+                },
+                "code": name,
+                "jurisdictions": [
+                    {
+                        "hierarchy": "ADMIN",
+                        "roles": [
+                            {"value": "PROJECT_MANAGER", "label": "Project manager"},
+                            {"value": "HRMS_ADMIN", "label": "Hrms admin"}
+                        ],
+                        "boundaryType": "City",
+                        "boundary": "in",
+                        "furnishedRolesList": "PROJECT_MANAGER, HRMS_ADMIN",
+                        "tenantId": "in",
+                    }
+                ],
+                "assignments": [
+                    {
+                        "fromDate": current_timestamp,
+                        "toDate": "",
+                        "isCurrentAssignment": True,
+                        "department": "DEPT_1",
+                        "designation": "DESIG_01"
+                    }
+                ],
+                "serviceHistory": [],
+                "education": [],
+                "tests": [],
+            }
+        ],
+    }
 
 def get_user_creation_payload(request_info: RequestInfo, row: Series):
     current_date = datetime.datetime.now()
@@ -290,37 +338,45 @@ def safe_get(row, key, default=None):
     return default if pd.isna(val) else val
 
 
-def create_facility_payload(request_info: RequestInfo, row: Series):
+def create_facility_payload(request_info: RequestInfo, row: Series, facility_schema: List[Dict[str, Any]]):
+    facility_type_name = safe_get(row, 'Type of HC (Mandatory)')
+    facility_type_code = get_mdms_code_by_name(facility_schema, 'Type of HC', facility_type_name)
+
+    solar_solution_design_type_name = safe_get(row, 'Solution Design Type (Mandatory)')
+    solar_solution_design_type_code = get_mdms_code_by_name(facility_schema, 'Solution Design Type', solar_solution_design_type_name)
+
     return {
         'RequestInfo': request_info.model_dump(by_alias=True, exclude_none=True),
-        'facility': {
-            'tenant_id': 'in',
-            'facility_name': safe_get(row, 'Health Centre Name (Mandatory)'),
-            'facility_type': safe_get(row, 'Type of HC (Mandatory)'),
-            'facility_category': safe_get(row, 'Category', 'HEALTH'),
-            'facility_ownership': safe_get(row, 'Ownership', 'GOVERNMENT'),
-            'facility_region': safe_get(row, 'Region', 'RURAL'),
-            'isActive': True,
-            'address': {
-                'tenantId': 'in',
-                'latitude': safe_get(row, 'Latitude'),
-                'longitude': safe_get(row, 'Longitude'),
-                'addressLine1': safe_get(row, 'Address'),
-                'state': safe_get(row, 'State'),
-                'district': safe_get(row, 'District'),
-                'block': safe_get(row, 'Block')
-            },
-            'facility_details': {
+        'facilities': [
+            {
+                'tenant_id': 'in',
+                'facility_name': safe_get(row, 'Health Centre Name (Mandatory)'),
+                'facility_type': facility_type_code,
+                'facility_category': safe_get(row, 'Category', 'HEALTH'),
+                'facility_ownership': safe_get(row, 'Ownership', 'GOVERNMENT'),
+                'facility_region': safe_get(row, 'Region', 'RURAL'),
+                'isActive': True,
                 'boundaryCode': safe_get(row, 'Boundary Code (Mandatory)'),
-                'vendorCode': safe_get(row, 'Vendor Code (Mandatory)'),
-                'solutionDesignType': safe_get(row, 'Solution Design Type (Mandatory)'),
-                'pocName': safe_get(row, 'HC PoC Name (Mandatory)'),
-                'pocDesignation': safe_get(row, 'HC PoC Designation'),
-                'pocContact': safe_get(row, 'HC PoC Contact number (Mandatory)'),
-                'hfrId': safe_get(row, 'HFR ID'),
-                'ninId': safe_get(row, 'NIN ID')
+                'address': {
+                    'tenantId': 'in',
+                    'latitude': safe_get(row, 'Latitude'),
+                    'longitude': safe_get(row, 'Longitude'),
+                    'addressLine1': safe_get(row, 'Address'),
+                    'state': safe_get(row, 'State'),
+                    'district': safe_get(row, 'District'),
+                    'block': safe_get(row, 'Block')
+                },
+                'facility_details': {
+                    'vendor_code': safe_get(row, 'Vendor Code (Mandatory)'),
+                    'solar_solution_design_type': solar_solution_design_type_code,
+                    'pocName': safe_get(row, 'HC PoC Name (Mandatory)'),
+                    'pocDesignation': safe_get(row, 'HC PoC Designation'),
+                    'pocContact': safe_get(row, 'HC PoC Contact number (Mandatory)'),
+                    'hfr_id': safe_get(row, 'HFR ID'),
+                    'nin_id': safe_get(row, 'NIN ID')
+                }
             }
-        }
+        ]
     }
 
 
@@ -353,6 +409,12 @@ def convert_response_to_facility(response: Dict[str, Any]):
     }
 
 def create_project_payload(request_info: RequestInfo, row: Series):
+    def to_epoch(date_str: str) -> int:
+        try:
+            dt = datetime.datetime.strptime(date_str.strip(), "%d/%m/%Y")
+            return int(dt.timestamp() * 1000)
+        except ValueError:
+            raise ValueError(f"Date '{date_str}' is not in the format DD/MM/YYYY")
     return {
         'RequestInfo': request_info.model_dump(by_alias=True, exclude_none=True),
         'Projects': [
@@ -365,8 +427,8 @@ def create_project_payload(request_info: RequestInfo, row: Series):
                 'description': safe_get(row, 'Project Description'),
                 'referenceID': safe_get(row, 'Project Reference ID'),
                 'parent': safe_get(row, 'Parent Project ID'),
-                'startDate': safe_get(row, 'Project Start Date (Epoch)'),
-                'endDate': safe_get(row, 'Project End Date (Epoch)'),
+                'startDate': to_epoch(safe_get(row, 'Project Start Date (DD/MM/YYYY)')),
+                'endDate': to_epoch(safe_get(row, 'Project End Date (DD/MM/YYYY)')),
                 'address': {
                     'boundary': safe_get(row, 'Boundary Code'),
                     'boundaryType': safe_get(row, 'Boundary Type'),
@@ -376,3 +438,21 @@ def create_project_payload(request_info: RequestInfo, row: Series):
         'isCascadingProjectDateUpdate': False,
         'apiOperation': 'CREATE'
     }
+
+
+def get_mdms_code_by_name(schema_list: List[Dict[str, Any]], field_name: str, value: str) -> str:
+    """
+    From schema_list, finds the entry where `name` matches `field_name` and then returns the `code`
+    of the mdms_value where `name` == value.
+
+    Raises:
+        ValueError: If the field_name or value is not found in the schema.
+    """
+    for schema in schema_list:
+        if schema.get('name') == field_name:
+            for item in schema.get('mdms_values', []):
+                if item.get('name') == value:
+                    return item.get('code')
+            raise ValueError(f"Invalid value '{value}' for field '{field_name}' in MDMS schema.")
+
+    raise ValueError(f"Field name '{field_name}' not found in MDMS schema.")

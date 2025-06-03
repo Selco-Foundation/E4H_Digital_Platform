@@ -31,7 +31,7 @@ public class IMQueryBuilder {
                                                 "ser.tenantId as ser_tenantId," +
                                                 "ser.additionaldetails as ser_additionaldetails," +
                                                 "ser.createdby as ser_createdby,ser.createdtime as ser_createdtime," +
-                                                "ser.lastmodifiedby as ser_lastmodifiedby,ser.lastmodifiedtime as ser_lastmodifiedtime" ;
+                                                "ser.lastmodifiedby as ser_lastmodifiedby,ser.lastmodifiedtime as ser_lastmodifiedtime , ser.systemfunctional as ser_systemfunctional";
 
 
     private static final String QUERY = "select ser.*," + QUERY_ALIAS+

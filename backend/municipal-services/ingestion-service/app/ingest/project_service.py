@@ -1,7 +1,4 @@
 import os
-from typing import Dict, Any
-
-from sqlalchemy import null, false
 
 from app.schemas.request_info import RequestInfo
 from app.utils.convertor import convert_response_to_facility
@@ -37,9 +34,9 @@ class ProjectService:
         for facility_item in facility_data:
             facility_id = facility_item.get("facilityId")
             if facility_id:
-                response = self.facility_client.search_facility("in", facility_id)
+                response = self.facility_client.search_facility(tenant_id="in", facility_id=facility_id)
                 if response:
-                    for facility_data in response:
+                    for facility_data in response.get("facilities", []):
                         facilities.append(convert_response_to_facility(facility_data))
 
         return facilities

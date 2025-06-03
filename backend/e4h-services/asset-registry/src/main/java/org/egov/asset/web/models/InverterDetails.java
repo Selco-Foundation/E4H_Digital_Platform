@@ -21,9 +21,31 @@ import java.math.BigDecimal;
 @NoArgsConstructor
 @Builder
 public class InverterDetails {
-    @JsonProperty("capacity")
-    @Schema(description = "Rated capacity of the inverter")
-    private BigDecimal capacity;
+    @JsonProperty("currentUnit")
+    private String currentUnit;
 
+    @JsonProperty("voltageUnit")
+    private String voltageUnit;
+
+    @JsonProperty("chargeControllerCurrent")
+    private Double chargeControllerCurrent;
+
+    @JsonProperty("chargeControllerVoltage")
+    private Double chargeControllerVoltage;
+
+    @JsonProperty("totalCapacity")
+    private Double totalCapacity;
+
+    @JsonProperty("totalCapacityUOM")
+    private String totalCapacityUOM;
+
+    @JsonProperty("inverterCapacity")
+    private String inverterCapacity;
+
+    @JsonProperty("invertorCapacityUnit")
+    private String inverterCapacityUnit;
+
+    @JsonProperty("outputPhase")
+    private String outputPhase;
 
 }

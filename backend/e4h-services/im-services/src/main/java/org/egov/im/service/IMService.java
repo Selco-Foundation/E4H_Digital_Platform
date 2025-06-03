@@ -67,7 +67,7 @@ public class IMService {
         Object mdmsData = mdmsUtils.mDMSCall(request);
         validator.validateCreate(request, mdmsData);
         enrichmentService.enrichCreateRequest(request);
-        ProcessInstance updatedProcessInstance = workflowService.updateWorkflowStatus(request);
+        ProcessInstance updatedProcessInstance = workflowService.updateWorkflowStatus(request, mdmsData);
         producer.push(tenantId,config.getCreateTopic(),request);
         producer.push(tenantId,config.getCreateTopicIndexer(),new IncidentRequestWrapper(request,updatedProcessInstance));
         return request;
@@ -129,7 +129,7 @@ public class IMService {
         Object mdmsData = mdmsUtils.mDMSCall(request);
         validator.validateUpdate(request, mdmsData);
         enrichmentService.enrichUpdateRequest(request);
-        ProcessInstance updatedProcessInstance = workflowService.updateWorkflowStatus(request);
+        ProcessInstance updatedProcessInstance = workflowService.updateWorkflowStatus(request, mdmsData);
         if(updatedProcessInstance!=null && updatedProcessInstance.getState()!=null)
             request.getIncident().setSla(updatedProcessInstance.getState().getSla());
         producer.push(tenantId,config.getUpdateTopic(),request);

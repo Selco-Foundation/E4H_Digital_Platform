@@ -12,11 +12,11 @@ from app.decorators.rbac_validator import get_authorized_request_info
 from app.ingest.facility_template_service import FacilityTemplateService
 from app.ingest.project_service import ProjectService
 from app.utils.convertor import request_info_from_json
+from app.utils.excel_utils import add_dropdowns_to_excel
 from app.utils.facility_service_client import FacilityServiceClient
 from app.utils.file_utils import create_temp_file, cleanup_temp_file
 from app.utils.mdms_client import MDMSClient
 from app.utils.project_service_client import ProjectServiceClient
-from app.utils.temp_mock_facility import mockedData
 
 router = APIRouter()
 logger = AppLogger().get_logger()
@@ -43,7 +43,7 @@ async def get_facility_ingestion_template(
         output_filename = f"facility_ingestion_template_{timestamp}.xlsx"
         output_file_path = create_temp_file(suffix=".xlsx")
         try:
-            facility_schema = mdms_client.fetch_facility_schema(request_info=request_info)
+            facility_schema = mdms_client.get_column_definitions_with_metadata(request_info, 'data-ingestion.FacilityIngestionSchema')
             boundary_data = facility_service.get_all_boundaries(request_info)
         except Exception as e:
             logger.error(f"Error fetching data from external services: {e}")
@@ -90,9 +90,11 @@ async def get_facility_ingestion_template_with_supervisors(
 
         project_service = ProjectService()
         facilities = project_service.get_facilities(request_info, parent_id)
+        facility_template_service = FacilityTemplateService()
 
         try:
-            df = pd.DataFrame(facilities)
+            original_df = pd.DataFrame(facilities)
+            df = facility_template_service.add_supervisor_columns_to_dataframe(original_df)
 
             with pd.ExcelWriter(output_file_path, engine='openpyxl') as writer:
                 df.to_excel(writer, index=False, sheet_name='Facilities_Supervisors')
@@ -100,6 +102,13 @@ async def get_facility_ingestion_template_with_supervisors(
                 for i, col in enumerate(df.columns):
                     column_width = max(df[col].astype(str).map(len).max(), len(col)) + 2
                     worksheet.column_dimensions[chr(65 + i)].width = column_width
+
+            dropdowns_map = {'Role (Mandatory) ?': ['Supervisor', 'Field Planner']}
+            add_dropdowns_to_excel(
+                file_path=output_file_path,
+                sheet_name="Facilities_Supervisors",
+                dropdowns=dropdowns_map
+            )
 
         except Exception as e:
             logger.error(f"Error generating template file: {e}")
@@ -150,11 +159,12 @@ async def get_facility_selection_template(
 
     if facility_service_url:
         facility_client = FacilityServiceClient(facility_service_url)
-        try:
-            boundary_facilities = facility_client.search_facility_by_boundary_codes(boundary_code_list, request_info)
-            # boundary_facilities = mockedData()
-        except Exception as e:
-            print(f"Error fetching boundary facilities: {e}")
+        for boundary_code in boundary_code_list:
+            try:
+                results = facility_client.search_facility(tenant_id='in', boundary_code=boundary_code)
+                boundary_facilities.extend(results.get('facilities', []))
+            except Exception as e:
+                print(f"Error fetching boundary facilities: {e}")
 
     if project_service_url and parent_project_id:
         project_client = ProjectServiceClient(project_service_url)
@@ -167,11 +177,11 @@ async def get_facility_selection_template(
             if raw_project_facilities and facility_client:
                 for pf in raw_project_facilities:
                     facility_id = pf.get("facilityId")
-                    if facility_id:
+                    if facility_id and any(f.get('facility_id') == facility_id for f in boundary_facilities):
                         try:
-                            facility_data = facility_client.search_facility_by_id(facility_id)
+                            facility_data = facility_client.search_facility(tenant_id='in', facility_id=facility_id)
                             if facility_data:
-                                project_facilities.extend(facility_data)
+                                project_facilities.extend(facility_data.get('facilities', []))
                         except Exception as e:
                             print(f"Error fetching facility {facility_id}: {e}")
         except Exception as e:
@@ -179,10 +189,7 @@ async def get_facility_selection_template(
 
     # Intersect by facility_id
     if parent_project_id:
-        boundary_facility_ids = set(f.get("facility_id") for f in boundary_facilities)
-        intersected_facilities = [
-            f for f in project_facilities if f.get("facility_id") in boundary_facility_ids
-        ]
+        intersected_facilities = project_facilities
     else:
         intersected_facilities = boundary_facilities
 

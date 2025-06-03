@@ -107,5 +107,8 @@ public class Incident   {
         @SafeHtml
         @JsonProperty("sla")
         private Long sla = null;
+        
+        @JsonProperty("systemFunctional")
+        private String systemFunctional = null;
 
 }

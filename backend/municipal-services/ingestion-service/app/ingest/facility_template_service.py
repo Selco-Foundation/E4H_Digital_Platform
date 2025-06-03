@@ -4,15 +4,13 @@ from typing import Dict, List, Any
 
 import pandas as pd
 import requests
-from fastapi import HTTPException
-from openpyxl import load_workbook
-from openpyxl.worksheet.datavalidation import DataValidation
 
 from app.core.logging import AppLogger
 from app.schemas.boundary import Boundary
 from app.schemas.request_info import RequestInfo
 from app.schemas.vendor_ingestion_shema_response import IngestionSchemaResponse
 from app.utils.convertor import convert_json_to_boundary
+from app.utils.excel_utils import add_dropdowns_to_excel, lock_excel_columns
 from app.utils.file_utils import create_empty_excel_file, create_excel_data_writer
 
 logger = AppLogger().get_logger()
@@ -51,24 +49,38 @@ class FacilityTemplateService:
         return convert_json_to_boundary(response.text)
 
     def generate_template_file(self, output_path: str,
-                               facility_schema: IngestionSchemaResponse,
+                               facility_schema: List[Dict[str, Any]],
                                boundary_data: List[Boundary]
                                ) -> None:
         try:
             create_empty_excel_file(output_path)
-            schema_columns = facility_schema.mdms[0].data.columns
 
             output_list = []
-            for col in schema_columns:
-                mandatory_indicator = "(Mandatory)" if col.required else ""
-                output_list.append(f"{col.name} {mandatory_indicator}".strip())
-            df_facility = pd.DataFrame(columns=output_list)
+            dropdowns_map = {}
+            for col in facility_schema:
+                mandatory_indicator = "(Mandatory)" if col.get("required") else ""
+                header_name = f"{col.get('name')} {mandatory_indicator}".strip()
+                output_list.append(header_name)
 
+                mdms_values = col.get("mdms_values")
+                if mdms_values:
+                    dropdown_options = [item.get("name") for item in mdms_values if item.get("name")]
+                    if dropdown_options:
+                        dropdowns_map[header_name] = dropdown_options
+
+            df_facility = pd.DataFrame(columns=output_list)
             facility_writer = create_excel_data_writer(
                 output_path,
                 "FacilityIngestionTemplate"
             )
             facility_writer.write_data(df_facility)
+
+            add_dropdowns_to_excel(
+                file_path=output_path,
+                sheet_name="FacilityIngestionTemplate",
+                dropdowns=dropdowns_map
+            )
+
             boundary_records = self._format_boundary_data(boundary_data)
             df_boundary = pd.DataFrame(boundary_records)
             boundary_writer = create_excel_data_writer(
@@ -104,43 +116,21 @@ class FacilityTemplateService:
 
         return boundary_records
 
-    def add_supervisor_columns_to_facility_template(self,input_path, output_path, sheet_name):
-        """
-        Add supervisor columns to the specified Excel sheet if they don't already exist.
+    def add_supervisor_columns_to_dataframe(self, df:pd.DataFrame):
+        columns_to_add = {
+            "Role (Mandatory)": "",
+            "Name (Mandatory)": None,
+            "Phone Number (Mandatory)": None,
+            "Email Address (Mandatory)": None
+        }
+        df_modified = df.copy()
 
-        Args:
-            input_path: Path to the input Excel file
-            output_path: Path where the modified Excel file will be saved
-            sheet_name: Name of the sheet to modify
+        for col_name, default_value in columns_to_add.items():
+            if col_name not in df_modified.columns:
+                df_modified[col_name] = default_value
+        return df_modified
 
-        Raises:
-            HTTPException: If the specified sheet is not found
-        """
-        try:
-            df = pd.read_excel(input_path, sheet_name=sheet_name)
-            columns_to_add = {
-                "Role (Mandatory)": "Supervisor",
-                "Name (Mandatory)": None,
-                "Phone Number (Mandatory)": None,
-                "Email Address (Mandatory)": None
-            }
 
-            for col_name, default_value in columns_to_add.items():
-                if col_name not in df.columns:
-                    df[col_name] = default_value
-
-            with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
-                all_sheets = pd.read_excel(input_path, sheet_name=None)
-                for sheet, sheet_df in all_sheets.items():
-                    if sheet == sheet_name:
-                        df.to_excel(writer, sheet_name=sheet, index=False)
-                    else:
-                        sheet_df.to_excel(writer, sheet_name=sheet, index=False)
-
-        except ValueError as e:
-            if "No sheet named" in str(e):
-                raise HTTPException(status_code=400, detail=f"Sheet '{sheet_name}' not found in the uploaded file")
-            raise e
 
     def generate_selection_template_file(self, output_path: str,
                                          facility_selection_schema: IngestionSchemaResponse,
@@ -161,12 +151,12 @@ class FacilityTemplateService:
                     "State": address.get("state", ""),
                     "District": address.get("district", ""),
                     "Block": address.get("block", ""),
-                    "Boundary Code": details.get("boundaryCode", ""),
+                    "Boundary Code": facility.get("boundaryCode", ""),
                     "Health Centre Name": facility.get("facility_name", ""),
                     "HC ID": facility.get("facility_id", ""),
                     "Type of HC": facility.get("facility_type", ""),
-                    "HFR ID": details.get("hfrId", ""),
-                    "NIN ID": details.get("ninId", ""),
+                    "HFR ID": details.get("hfr_id", ""),
+                    "NIN ID": details.get("nin_id", ""),
                     "Selection?": ""  # dropdown will be added
                 }
 
@@ -174,36 +164,23 @@ class FacilityTemplateService:
 
             df_facility = pd.DataFrame(records, columns=column_names)
 
-            self.write_excel_with_dropdown(output_path, df_facility)
+            df_facility.to_excel(output_path, sheet_name="Facility Selection Template", index=False)
+
+            dropdowns_map = {'Selection?': ['Yes', 'No']}
+
+            add_dropdowns_to_excel(
+                file_path=output_path,
+                sheet_name="Facility Selection Template",
+                dropdowns=dropdowns_map
+            )
+
+            lock_excel_columns(
+                file_path=output_path,
+                sheet_name="Facility Selection Template",
+                column_headers_to_unlock=[ "Selection?"]
+            )
 
             logger.info(f"Successfully created template file at {output_path}")
         except Exception as e:
             logger.error(f"Error generating template file: {e}")
             raise
-
-    def write_excel_with_dropdown(self, output_path: str, df: pd.DataFrame):
-        # Step 1: Write data to Excel
-        df.to_excel(output_path, sheet_name="Facility Selection Template", index=False)
-
-        # Step 2: Load workbook with openpyxl
-        wb = load_workbook(output_path)
-        ws = wb["Facility Selection Template"]
-
-        # Step 3: Create data validation for dropdown
-        dv = DataValidation(type="list", formula1='"Yes,No"', allow_blank=True)
-        dv.error = 'Please select from the list'
-        dv.errorTitle = 'Invalid Entry'
-
-        # Step 4: Find the column letter for "Selection?"
-        for col in ws.iter_cols(1, ws.max_column):
-            if col[0].value == "Selection?":
-                col_letter = col[0].column_letter
-                # Apply dropdown to all cells in that column (starting from row 2 to avoid header)
-                dv.ranges.add(f"{col_letter}2:{col_letter}{ws.max_row}")
-                break
-
-        # Step 5: Add the data validation to sheet
-        ws.add_data_validation(dv)
-
-        # Step 6: Save file
-        wb.save(output_path)

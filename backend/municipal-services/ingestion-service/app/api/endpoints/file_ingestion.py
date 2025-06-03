@@ -6,14 +6,18 @@ from datetime import datetime
 import pandas as pd
 from fastapi import APIRouter, File, Form, UploadFile, HTTPException
 from fastapi.responses import FileResponse
+from starlette.responses import JSONResponse
 
 from app.core.logging import AppLogger
 from app.decorators.rbac_validator import get_authorized_request_info
 from app.ingest.excel_data_writer import ExcelDataWriter
 from app.processor.factory.boundary_data_processor_factory import BoundaryDataProcessorFactory
 from app.processor.factory.vendor_data_processor_factory import VendorDataProcessorFactory
-from app.utils.convertor import request_info_from_json, create_vendor_request, create_facility_payload, get_project_creation_payload, get_user_creation_payload, get_staff_creation_payload, create_project_payload
+from app.utils.convertor import request_info_from_json, create_vendor_request, create_facility_payload, \
+    get_project_creation_payload, get_user_creation_payload, get_staff_creation_payload, create_project_payload, \
+    get_installation_spoc_creation_payload
 from app.utils.facility_service_client import FacilityServiceClient
+from app.utils.mdms_client import MDMSClient
 from app.utils.organization_service_client import OrganizationServiceClient
 from app.utils.project_service_client import ProjectServiceClient
 from app.utils.hrms_service_client import HRMSServiceClient
@@ -180,6 +184,7 @@ async def upload_facilities_excel_sheet(
     output_temp_file = None
     request_info = request_info_from_json(request_info)
     get_authorized_request_info(request_info)
+    mdms_client = MDMSClient(mdms_url)
 
     try:
         input_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
@@ -206,9 +211,10 @@ async def upload_facilities_excel_sheet(
 
         if facility_service_url and not df.empty:
             facility_client = FacilityServiceClient(facility_service_url)
+            facility_schema = mdms_client.get_column_definitions_with_metadata(request_info,'data-ingestion.FacilityIngestionSchema')
             for index, row in df[df['status'] != 'success'].iterrows():
                 try:
-                    facility_data_payload = create_facility_payload(request_info, row)
+                    facility_data_payload = create_facility_payload(request_info, row, facility_schema)
                     response = facility_client.create_facility(facility_data_payload)
                     if response.status_code in (200, 201):
                         df.at[index, 'status'] = 'success'
@@ -243,6 +249,76 @@ async def upload_facilities_excel_sheet(
         if input_temp_file and os.path.exists(input_temp_file.name):
             os.unlink(input_temp_file.name)
 
+@router.post('/workStreamWithFacilities',
+             summary='Upload and process workstream with facilities excel file.',
+             response_description='Returns processed Excel file with validation results')
+async def upload_facilities_with_workstream(
+        project_id_with_type_field_plan: str = Form(default="Project id of the project with type field plan"),
+        request_info: str = Form(default=""),
+        installation_spoc_user_name:str = Form(default=""),
+        installation_spoc_user_mobile_number:str = Form(default=""),
+        installation_spoc_user_email:str = Form(default="")
+)->JSONResponse:
+    request_info = request_info_from_json(request_info)
+    get_authorized_request_info(request_info)
+
+    try:
+        # Fetch project of type Field Plan using project_id
+        if project_service_url and hrms_service_url:
+            project_client = ProjectServiceClient(project_service_url)
+            hrms_client = HRMSServiceClient(hrms_service_url)
+            field_plan_project = project_client.search_project(request_info, project_id_with_type_field_plan)
+            project = field_plan_project["Project"][0]
+            if not project:
+                raise Exception("Field plan id is not correct.")
+            field_plan_project_facilities = project_client.search_project_facility(request_info,
+                                                                                   project_id_with_type_field_plan)
+            work_stream_creation_payload = get_project_creation_payload(
+                request_info,
+                project['name'] + "_work_stream",
+                "Work Stream",
+                project_id_with_type_field_plan,
+                project["startDate"],
+                project["endDate"],
+                "Installation"
+            )
+            work_stream_creation_response = json.loads(project_client.create_project(work_stream_creation_payload).text)
+            work_stream = work_stream_creation_response['Project'][0]
+
+            # Link work stream project to facilities
+            facilities = field_plan_project_facilities["ProjectFacilities"]
+            for facility in facilities:
+                project_client.create_project_facility(request_info,
+                    work_stream["id"],
+                    facility["facilityId"]
+                )
+            # Create a installation spoc user
+            installation_spoc_creation_payload = get_installation_spoc_creation_payload(request_info, installation_spoc_user_name, installation_spoc_user_mobile_number,
+                                                   installation_spoc_user_email)
+            user_creation_response = json.loads(hrms_client.create_user(installation_spoc_creation_payload).text)
+            user = user_creation_response['Employees'][0]
+            staff_creation_payload = get_staff_creation_payload(request_info, user["uuid"], work_stream["id"])
+            staff_creation_response = json.loads(project_client.create_project_staff(staff_creation_payload).text)
+            staff = staff_creation_response['ProjectStaff']
+            return JSONResponse(
+                status_code=200,
+                content={"staff": staff, "user": user, "work_stream": work_stream}
+            )
+        return JSONResponse(
+            status_code=500,
+            content="Connection failed with project service and hrms service."
+        )
+
+    except Exception as e:
+        logger.error(f"Error processing facility data: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to process facility data: {str(e)}"
+        )
+
+
+
+
 @router.post('/facilityWithSupervisors',
              summary='Upload and process facility with supervisors Excel file',
              response_description="Returns processed Excel file with validation results")
@@ -251,7 +327,8 @@ async def upload_facility_with_supervisors_excel_sheet(
             description="Excel file containing facility with supervisors data"),
         facility_sheet: str = Form(default="Facilities_Supervisors",
                                     description="Name of the sheet containing facility data"),
-        request_info: str = Form(default="")
+        request_info: str = Form(default=""),
+        work_stream_project_id:str = Form(default="")
 ):
     input_temp_file = None
     output_temp_file = None
@@ -290,14 +367,17 @@ async def upload_facility_with_supervisors_excel_sheet(
         if project_service_url and not df.empty:
             project_client = ProjectServiceClient(project_service_url)
             hrms_client = HRMSServiceClient(hrms_service_url)
+            work_stream_project = project_client.search_project(request_info, work_stream_project_id)
+            work_stream = work_stream_project["Project"][0]
             for index, row in df.iterrows():
                 if row.get("status", "") != "success":
                     try:
-                        # Create work stream
-                        work_stream_creation_payload = get_project_creation_payload(request_info, "Work Stream "+row.get('Health Centre Name (Mandatory)', ''), "Work Stream")
-                        work_stream_creation_response = project_client.create_project(work_stream_creation_payload)
-                        work_stream = json.loads(work_stream_creation_response.text)
-                        if work_stream_creation_response.status_code in [200, 201, 202]:
+                        # Create project of type facility
+                        facility_creation_payload = get_project_creation_payload(request_info, row.get('Health Centre Name (Mandatory)', ''), "Facility",
+                                                                                 work_stream_project_id, work_stream["startDate"],work_stream["endDate"],"")
+                        facility_creation_response = project_client.create_project(facility_creation_payload)
+                        facility = json.loads(facility_creation_response.text)
+                        if facility_creation_response.status_code in [200, 201, 202]:
                             df.at[index, 'status'] = 'success'
                             # Create User
                             user_creation_payload = get_user_creation_payload(request_info, row)
@@ -306,7 +386,7 @@ async def upload_facility_with_supervisors_excel_sheet(
                             if user_creation_response.status_code in [200, 201, 202]:
                                 df.at[index, 'status'] = 'success'
                                 # Create staff
-                                staff_creation_payload = get_staff_creation_payload(request_info, user["Employees"][0]["uuid"], work_stream["Project"][0]["id"])
+                                staff_creation_payload = get_staff_creation_payload(request_info, user["Employees"][0]["uuid"], facility["Project"][0]["id"])
                                 staff_creation_response = project_client.create_project_staff(staff_creation_payload)
                                 if staff_creation_response.status_code in [200, 201, 202]:
                                     df.at[index,'status'] = 'success'
@@ -319,7 +399,7 @@ async def upload_facility_with_supervisors_excel_sheet(
                                 df.at[index, 'error'] = f"User Creation Error: {user_creation_response.status_code} - {user["Errors"]}"
                         else:
                             df.at[index, 'status'] = 'failed'
-                            df.at[index, 'error'] = f"Workstream Creation Error: {work_stream_creation_response.status_code} - {work_stream_creation_response.text}"
+                            df.at[index, 'error'] = f"Facility Creation Error: {facility_creation_response.status_code} - {facility_creation_response.text}"
                     except Exception as e:
                         df.at[index, 'status'] = 'failed'
                         df.at[index, 'error'] = f"Processing Error: {str(e)}"
@@ -384,6 +464,8 @@ async def upload_projects_excel_sheet(
             df['status'] = ''
         if 'error' not in df.columns:
             df['error'] = ''
+        if 'Project ID' not in df.columns:
+            df['Project ID'] = ''
 
         if project_service_url and not df.empty:
             project_client = ProjectServiceClient(project_service_url)
@@ -391,9 +473,14 @@ async def upload_projects_excel_sheet(
                 try:
                     project_data_payload = create_project_payload(request_info, row)
                     response = project_client.create_project(project_data_payload)
-                    if response.status_code in (200, 201, 202):
+                    response_data = response.json()
+
+                    if response.status_code in [200, 201, 202] and isinstance(response_data.get('Project'), list) and response_data[
+                        'Project']:
+                        project_id = response_data['Project'][0].get('id')
                         df.at[index, 'status'] = 'success'
                         df.at[index, 'error'] = ''
+                        df.at[index, 'Project ID'] = project_id
                     elif response.status_code == 400:
                         error_data = response.json()
                         error_message = error_data.get('Errors', [{}])[0].get('message', 'Unknown error')
