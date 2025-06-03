@@ -74,7 +74,7 @@ public class NotificationConsumer {
 				List<Map<String, Object>> processInstancesRaw = (List<Map<String, Object>>) record.get("ProcessInstances");
 				List<IMEscalationInstance> escalationInstances = processInstancesRaw.stream()
 						.map(instanceRaw -> mapper.convertValue(instanceRaw, IMEscalationInstance.class))
-						.collect(Collectors.toList());
+						.toList();
 
 				processInstanceRequest.setImEscalationInstance(escalationInstances);
 
