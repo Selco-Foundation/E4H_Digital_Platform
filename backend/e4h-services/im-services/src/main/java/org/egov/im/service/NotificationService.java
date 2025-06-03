@@ -355,7 +355,10 @@ public class NotificationService {
                     long days = NotificationUtil.convertMsToDays(request.getIncident().getSla());
                     messageForEmployee = messageForEmployee.replace("{X}", days+"");
                 }
-                catch (Exception e){}
+                catch (Exception e){
+                    log.error("Failed to convert SLA to days for incident: " + request.getIncident().getIncidentId(), e);
+                    messageForEmployee = messageForEmployee.replace("{X}", "N/A");
+                }
             }
         }
 
@@ -383,7 +386,10 @@ public class NotificationService {
                     long days = NotificationUtil.convertMsToDays(request.getIncident().getSla());
                     messageForEmployee = messageForEmployee.replace("{X}", days+"");
                 }
-                catch (Exception e){}
+                catch (Exception e){
+                    log.error("Failed to convert SLA to days for incident: " + request.getIncident().getIncidentId(), e);
+                    messageForEmployee = messageForEmployee.replace("{X}", "N/A");
+                }
             }
         }
 
