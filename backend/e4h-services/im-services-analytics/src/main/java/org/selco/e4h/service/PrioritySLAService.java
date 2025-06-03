@@ -153,14 +153,38 @@ public class PrioritySLAService {
                 return businessHours;
             }
 
-            Map<String, Object> outerObject = (Map<String, Object>) outerArray.get(0);
-            List<Map<String, String>> innerHours = (List<Map<String, String>>) outerObject.get("BusinessHours");
+            // Validate outerArray has at least one element and it's a Map
+            if (!(outerArray.get(0) instanceof Map<?, ?> outerObject)) {
+                log.warn("Invalid business hours structure in MDMS");
+                return businessHours;
+            }
 
+            // Ensure "BusinessHours" is a List
+            Object innerHoursObj = outerObject.get("BusinessHours");
+            if (!(innerHoursObj instanceof List<?> innerHoursList)) {
+                log.warn("BusinessHours is not a list in MDMS");
+                return businessHours;
+            }
+
+            // Build the schedule map with safe extraction
             Map<String, BusinessHours.Schedule> scheduleMap = new HashMap<>();
-            for (Map<String, String> entry : innerHours) {
-                String day = entry.get("day").toUpperCase();
-                String start = entry.get("start");
-                String end = entry.get("end");
+            for (Object item : innerHoursList) {
+                if (!(item instanceof Map<?, ?> entry)) {
+                    continue;
+                }
+
+                Object dayObj   = entry.get("day");
+                Object startObj = entry.get("start");
+                Object endObj   = entry.get("end");
+
+                if (dayObj == null || startObj == null || endObj == null) {
+                    log.warn("Incomplete business hours entry: {}", entry);
+                    continue;
+                }
+
+                String day   = dayObj.toString().toUpperCase();
+                String start = startObj.toString();
+                String end   = endObj.toString();
                 scheduleMap.put(day, new BusinessHours.Schedule(start, end));
             }
 
