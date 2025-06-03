@@ -74,7 +74,7 @@ public class NotificationConsumer {
 				List<Map<String, Object>> processInstancesRaw = (List<Map<String, Object>>) record.get("ProcessInstances");
 				List<IMEscalationInstance> escalationInstances = processInstancesRaw.stream()
 						.map(instanceRaw -> mapper.convertValue(instanceRaw, IMEscalationInstance.class))
-						.collect(Collectors.toList());
+								.toList();
 
 				processInstanceRequest.setImEscalationInstance(escalationInstances);
 
@@ -98,21 +98,25 @@ public class NotificationConsumer {
 		}
 		log.debug("BPA Received: " + processInstanceRequest.getImEscalationInstance().get(0).getBusinessId());
 
-        if (!incidents.isEmpty()) {
-        	log.info("inside update");
+		extracted(incidents, workflow, requestInfo);
+	}
+
+	private void extracted(List<IncidentWrapper> incidents, Workflow workflow, RequestInfo requestInfo) {
+		if (!incidents.isEmpty()) {
+			log.info("inside update");
 			workflow.setAssignes(new ArrayList<>());
 			workflow.setAction("CLOSE");
 			workflow.setVerificationDocuments(null);
-        	IncidentRequest incidentRequest=new IncidentRequest();
-        	incidentRequest.setIncident(incidents.get(0).getIncident());
-        	incidentRequest.setRequestInfo(requestInfo);
-        	incidentRequest.setWorkflow(workflow);
+			IncidentRequest incidentRequest=new IncidentRequest();
+			incidentRequest.setIncident(incidents.get(0).getIncident());
+			incidentRequest.setRequestInfo(requestInfo);
+			incidentRequest.setWorkflow(workflow);
 		log.info("Proceeding for Update call");
 
-        	//bpasearch (response)  -> Approve bpa request
+			//bpasearch (response)  -> Approve bpa request
 		log.info("Proceeding for Update call2");
-            imService.update(incidentRequest);
+			imService.update(incidentRequest);
 	}
-    }
+	}
 }
 
