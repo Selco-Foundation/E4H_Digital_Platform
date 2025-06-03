@@ -89,7 +89,7 @@ public class UpdateService {
 				.toString();
 	}
 
-	private HttpHeaders buildHeaders() {
+	public HttpHeaders buildHeaders() {
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.APPLICATION_JSON);
 		headers.add("Authorization", indexerUtils.getESEncodedCredentials());

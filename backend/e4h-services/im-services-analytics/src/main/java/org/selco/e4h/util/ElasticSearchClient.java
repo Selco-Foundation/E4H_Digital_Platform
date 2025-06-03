@@ -1,9 +1,10 @@
 package org.selco.e4h.util;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.selco.e4h.service.UpdateService;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
@@ -15,6 +16,7 @@ import java.util.*;
 public class ElasticSearchClient {
 
     private final RestTemplate restTemplate;
+    private final UpdateService updateService;
 
     @Value("${egov.indexer.es.host.name}")
     private String esHost;
@@ -28,10 +30,11 @@ public class ElasticSearchClient {
     public List<Map<String, Object>> fetchOpenTickets(int from, int size) {
         String uri = getBaseUrl() + "/" + INDEX_NAME + "/" + SEARCH_PATH;
         Map<String, Object> query = buildOpenTicketQuery(from, size);
+        HttpEntity<Object> entity = new HttpEntity<>(query, updateService.buildHeaders());
 
         try {
-            Map<String, Object> response = restTemplate.postForObject(uri, query, Map.class);
-            return parseESHits(response);  // ✅ use your existing parser
+            Map<String, Object> response = restTemplate.postForObject(uri, entity, Map.class);
+            return parseESHits(response);
         } catch (Exception e) {
             log.error("Failed to fetch open tickets from Elasticsearch", e);
             return Collections.emptyList();
@@ -41,11 +44,16 @@ public class ElasticSearchClient {
     private Map<String, Object> buildOpenTicketQuery(int from, int size) {
         Map<String, Object> query = new HashMap<>();
         Map<String, Object> bool = new HashMap<>();
-        List<Map<String, Object>> must = new ArrayList<>();
 
-        must.add(Map.of("match", Map.of("Data.currentProcessInstance.state.applicationStatus.keyword", "OPEN")));
+        List<Map<String, Object>> mustNot = new ArrayList<>();
+        mustNot.add(Map.of("term", Map.of("Data.currentProcessInstance.state.isTerminateState", true)));
 
-        bool.put("must", must);
+        mustNot.add(Map.of("terms", Map.of(
+                "Data.currentProcessInstance.state.applicationStatus.keyword",
+                List.of("RESOLVED", "CLOSED_AFTER_RESOLUTION", "REJECTED")
+        )));
+
+        bool.put("must_not", mustNot);
         query.put("query", Map.of("bool", bool));
         query.put("_source", true);
         query.put("from", from);
@@ -53,7 +61,6 @@ public class ElasticSearchClient {
 
         return query;
     }
-
 
     private List<Map<String, Object>> parseESHits(Map<String, Object> response) {
         List<Map<String, Object>> resultList = new ArrayList<>();

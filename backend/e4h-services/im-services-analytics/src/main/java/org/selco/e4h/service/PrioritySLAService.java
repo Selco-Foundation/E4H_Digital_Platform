@@ -1,12 +1,9 @@
 package org.selco.e4h.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.minidev.json.JSONArray;
 
-import org.egov.tracer.model.CustomException;
 import org.selco.e4h.util.ElasticSearchClient;
 import org.selco.e4h.util.IMConstants;
 import org.selco.e4h.util.MdmsUtil;
@@ -63,7 +60,6 @@ public class PrioritySLAService {
         }
     }
 
-
     private void updateTicket(Map<String, Object> ticket, Map<TenantServiceStateKey, Duration> slaMap, BusinessHours bh) {
         Map<String, Object> data = (Map<String, Object>) ticket.get("Data");
         Map<String, Object> auditDetails = (Map<String, Object>) data.get("auditDetails");
@@ -71,6 +67,7 @@ public class PrioritySLAService {
         Map<String, Object> currentProcessInstance = (Map<String, Object>) data.get("currentProcessInstance");
 
         String tenantId = (String) data.get("tenantId");
+        if (tenantId.contains(".")) tenantId = tenantId.split("\\.")[0];
         String state = (String) ((Map<String, Object>) currentProcessInstance.get(STATE)).get("applicationStatus");
         String businessService = (String) currentProcessInstance.get("businessService");
 
@@ -78,14 +75,8 @@ public class PrioritySLAService {
         long lastModifiedTime = Long.parseLong(auditDetails.get("lastModifiedTime").toString());
         long now = Instant.now().toEpochMilli();
 
-        if (slaMap == null) throw new IllegalStateException("Unable to fetch SLA Maps from RDMS");
-
-        Duration totalSla = slaMap.getOrDefault(new TenantServiceStateKey(tenantId, businessService, state), Duration.ZERO);
-
         long businessElapsedFromCreated = calculateBusinessMillis(createdTime, now, bh);
         long businessElapsedFromModified = calculateBusinessMillis(lastModifiedTime, now, bh);
-
-        long totalSlaRemaining = totalSla.toMillis() - businessElapsedFromCreated;
 
         long stateSla = 0;
         Object stateObj = currentProcessInstance.get(STATE);
@@ -96,40 +87,76 @@ public class PrioritySLAService {
             }
         }
 
+        String priority = extractPriority(businessService);
+        Duration totalSla = computeHappyFlowTotalSla(tenantId, priority, state, slaMap);
+
+        long totalSlaRemaining = totalSla.toMillis() - businessElapsedFromCreated;
         long slaRemaining = stateSla - businessElapsedFromModified;
-        // ✨ Update ES via UpdateService
+
         String incidentId = incident.get("incidentId").toString();
         updateService.updateSlaFields(
                 incidentId,
-                Math.max(slaRemaining, 0),
-                Math.max(totalSlaRemaining, 0),
+                slaRemaining,
+                totalSlaRemaining,
                 stateSla
         );
     }
 
+    private String extractPriority(String businessService) {
+        if (businessService != null && businessService.contains("_")) {
+            return businessService.split("_")[1].toUpperCase();
+        }
+        return "MEDIUM";
+    }
+
+    private Duration computeHappyFlowTotalSla(String tenantId, String priority, String currentState, Map<TenantServiceStateKey, Duration> slaMap) {
+        String businessService = "Incident_" + priority.toUpperCase();
+        Duration total = Duration.ZERO;
+
+        if (currentState.equals("PENDINGFORASSIGNMENT") || currentState.equals("PENDINGRESOLUTION")) {
+            total = total.plus(getDurationFromMap(slaMap, tenantId, businessService, "PENDINGFORASSIGNMENT"));
+            total = total.plus(getDurationFromMap(slaMap, tenantId, businessService, "PENDINGRESOLUTION"));
+        } else if (currentState.startsWith("PENDING_ASSIGNMENT_")) {
+            total = total.plus(sumStatesWithPrefix(slaMap, tenantId, businessService, "PENDING_ASSIGNMENT_"));
+            total = total.plus(sumStatesWithPrefix(slaMap, tenantId, businessService, "PENDING_RESOLUTION_"));
+        }
+
+        return total;
+    }
+
+    private Duration getDurationFromMap(Map<TenantServiceStateKey, Duration> map, String tenantId, String service, String state) {
+        return map.getOrDefault(new TenantServiceStateKey(tenantId, service, state), Duration.ZERO);
+    }
+
+    private Duration sumStatesWithPrefix(Map<TenantServiceStateKey, Duration> map, String tenantId, String service, String prefix) {
+        return map.entrySet().stream()
+                .filter(entry -> entry.getKey().tenantId().equals(tenantId))
+                .filter(entry -> entry.getKey().businessService().equals(service))
+                .filter(entry -> entry.getKey().state().startsWith(prefix))
+                .map(Map.Entry::getValue)
+                .reduce(Duration.ZERO, Duration::plus);
+    }
+
     private BusinessHours parseBusinessHours(Map<String, Map<String, JSONArray>> mdmsData) {
         BusinessHours businessHours = new BusinessHours();
+
         try {
-            JSONArray hoursArray = mdmsData.get("common-masters").get("BusinessHours");
-            if (hoursArray == null || hoursArray.isEmpty()) {
+            JSONArray outerArray = mdmsData.get("common-masters").get("BusinessHours");
+            if (outerArray == null || outerArray.isEmpty()) {
                 log.warn("No business hours configuration found in MDMS");
                 return businessHours;
             }
 
-            Map<String, BusinessHours.Schedule> scheduleMap = new HashMap<>();
-            JsonNode node = new ObjectMapper().convertValue(hoursArray.get(0), JsonNode.class)
-                    .path("schedule");
+            Map<String, Object> outerObject = (Map<String, Object>) outerArray.get(0);
+            List<Map<String, String>> innerHours = (List<Map<String, String>>) outerObject.get("BusinessHours");
 
-            node.fieldNames().forEachRemaining(day -> {
-                JsonNode daySchedule = node.get(day);
-                if (daySchedule != null && !daySchedule.isNull()) {
-                    String start = daySchedule.get("start").asText();
-                    String end = daySchedule.get("end").asText();
-                    scheduleMap.put(day.toUpperCase(), new BusinessHours.Schedule(start, end));
-                } else {
-                    scheduleMap.put(day.toUpperCase(), null);
-                }
-            });
+            Map<String, BusinessHours.Schedule> scheduleMap = new HashMap<>();
+            for (Map<String, String> entry : innerHours) {
+                String day = entry.get("day").toUpperCase();
+                String start = entry.get("start");
+                String end = entry.get("end");
+                scheduleMap.put(day, new BusinessHours.Schedule(start, end));
+            }
 
             businessHours.setSchedule(scheduleMap);
         } catch (Exception e) {
