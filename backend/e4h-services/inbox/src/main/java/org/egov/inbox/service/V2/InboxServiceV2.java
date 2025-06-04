@@ -71,10 +71,7 @@ public class InboxServiceV2 {
         hashParamsWhereverRequiredBasedOnConfiguration(inboxRequest.getInbox().getModuleSearchCriteria(), inboxQueryConfiguration);
         List<Inbox> items = getInboxItems(inboxRequest, inboxQueryConfiguration.getIndex());
         enrichProcessInstanceInInboxItems(items);
-        //Integer totalCount = CollectionUtils.isEmpty(inboxRequest.getInbox().getProcessSearchCriteria().getStatus()) ? 0 : getTotalApplicationCount(inboxRequest, inboxQueryConfiguration.getIndex());
-        //List<HashMap<String, Object>> statusCountMap = CollectionUtils.isEmpty(inboxRequest.getInbox().getProcessSearchCriteria().getStatus()) ? new ArrayList<>() : getStatusCountMap(inboxRequest, inboxQueryConfiguration.getIndex());
-        //Integer nearingSlaCount = CollectionUtils.isEmpty(inboxRequest.getInbox().getProcessSearchCriteria().getStatus()) ? 0 : getApplicationsNearingSlaCount(inboxRequest, inboxQueryConfiguration.getIndex());
-        
+
         Integer totalCount = getTotalApplicationCount(inboxRequest, inboxQueryConfiguration.getIndex());
         List<HashMap<String, Object>> statusCountMap = getStatusCountMap(inboxRequest, inboxQueryConfiguration.getIndex());
         Integer nearingSlaCount = getApplicationsNearingSlaCount(inboxRequest, inboxQueryConfiguration.getIndex());
@@ -291,8 +288,13 @@ public class InboxServiceV2 {
         nestedHits.forEach(hit ->{
             Inbox inbox = new Inbox();
             Map<String, Object> businessObject = (Map<String, Object>) hit.get(SOURCE_KEY);
-            inbox.setBusinessObject((Map<String, Object>)businessObject.get(DATA_KEY));
-            Long serviceSla = getApplicationServiceSla(businessServiceSlaMap, stateUuidVsSlaMap, inbox.getBusinessObject());            inbox.getBusinessObject().put(SERVICESLA_KEY, serviceSla);
+            Map<String, Object> dataBusinessObject = (Map<String, Object>) businessObject.get(DATA_KEY);
+            inbox.setBusinessObject(dataBusinessObject);
+            Long serviceSla = getApplicationServiceSla(businessServiceSlaMap, stateUuidVsSlaMap, inbox.getBusinessObject());
+            inbox.getBusinessObject().put(SERVICESLA_KEY, serviceSla);
+            inbox.getBusinessObject().put(SLA_REMAINING, dataBusinessObject.get(SLA_REMAINING));
+            inbox.getBusinessObject().put(STATE_SLA,dataBusinessObject.get(STATE_SLA));
+            inbox.getBusinessObject().put(TOTAL_SLA_REMAINING,dataBusinessObject.get(TOTAL_SLA_REMAINING));
             inboxItemList.add(inbox);
         });
         return inboxItemList;
