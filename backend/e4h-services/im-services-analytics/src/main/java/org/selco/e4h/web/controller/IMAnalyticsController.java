@@ -7,10 +7,7 @@ import org.selco.e4h.service.PrioritySLAService;
 import org.selco.e4h.web.models.SLARequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @Slf4j
 @RestController
@@ -21,10 +18,13 @@ public class IMAnalyticsController {
     private final PrioritySLAService slaService;
 
     @PostMapping("/computeSLA")
-    public ResponseEntity<String> computeSLA(@Valid @RequestBody SLARequest request) {
+    public ResponseEntity<String> computeSLA(
+            @Valid @RequestBody SLARequest request,
+            @RequestParam(name = "transform", defaultValue = "false") boolean transform
+    ) {
         try {
-            log.info("SLA computation triggered for tenant: {}", request.getTenantId());
-            slaService.computeAndUpdateSLA(request);
+            log.info("SLA computation triggered for tenant: {}, transform={}", request.getTenantId(), transform);
+            slaService.computeAndUpdateSLA(request, transform);
             return ResponseEntity.ok("SLA computation completed successfully");
         } catch (Exception e) {
             log.error("Error during SLA computation for tenant: {}", request.getTenantId(), e);
@@ -32,4 +32,5 @@ public class IMAnalyticsController {
                     .body("SLA computation failed: " + e.getMessage());
         }
     }
+
 }

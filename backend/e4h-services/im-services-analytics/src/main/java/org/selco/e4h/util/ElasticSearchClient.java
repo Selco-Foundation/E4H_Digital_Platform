@@ -26,9 +26,18 @@ public class ElasticSearchClient {
 
     private static final String SEARCH_PATH = "_search";
     private static final String INDEX_NAME = "computed-sla-im-services";
+    private static final String OLD_INDEX_NAME = "im-services";
 
     public List<Map<String, Object>> fetchOpenTickets(int from, int size) {
-        String uri = getBaseUrl() + "/" + INDEX_NAME + "/" + SEARCH_PATH;
+        return fetchTickets(INDEX_NAME, from, size);
+    }
+
+    public List<Map<String, Object>> fetchOldOpenTicketsFromImServices(int from, int size) {
+        return fetchTickets(OLD_INDEX_NAME, from, size);
+    }
+
+    private List<Map<String, Object>> fetchTickets(String indexName, int from, int size) {
+        String uri = getBaseUrl() + "/" + indexName + "/" + SEARCH_PATH;
         Map<String, Object> query = buildOpenTicketQuery(from, size);
         HttpEntity<Object> entity = new HttpEntity<>(query, updateService.buildHeaders());
 
@@ -36,7 +45,7 @@ public class ElasticSearchClient {
             Map<String, Object> response = restTemplate.postForObject(uri, entity, Map.class);
             return parseESHits(response);
         } catch (Exception e) {
-            log.error("Failed to fetch open tickets from Elasticsearch", e);
+            log.error("Failed to fetch open tickets from index '{}'", indexName, e);
             return Collections.emptyList();
         }
     }
@@ -82,4 +91,3 @@ public class ElasticSearchClient {
         return esHost + ":" + esPort;
     }
 }
-

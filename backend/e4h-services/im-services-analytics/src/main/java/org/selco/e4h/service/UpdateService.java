@@ -15,6 +15,8 @@ import org.springframework.web.client.*;
 import static org.selco.e4h.config.ServiceConstants.*;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -132,50 +134,51 @@ public class UpdateService {
 		}
 	}
 
-	public void updateSlaFields(String documentId, Long slaRemaining, Long totalSlaRemaining, Long stateSla) {
-		// Input validation
-		if (documentId == null || documentId.trim().isEmpty()) {
-			throw new IllegalArgumentException("Document ID cannot be null or empty");
+	public void updateSlaFields(String incidentId, long slaRemaining, long totalSlaRemaining, long stateSla, String businessService) {
+		Map<String, Object> doc = new HashMap<>();
+		doc.put("Data.slaRemaining", slaRemaining);
+		doc.put("Data.totalSlaRemaining", totalSlaRemaining);
+		doc.put("Data.stateSla", stateSla);
+
+		if (businessService != null) {
+			doc.put("Data.currentProcessInstance.businessService", businessService);
 		}
-		if (slaRemaining == null || totalSlaRemaining == null || stateSla == null) {
-			throw new IllegalArgumentException("SLA values cannot be null");
+
+		Map<String, Object> updateBody = Map.of("doc", doc);
+
+		String url = config.getEsHostUrl() + "/computed-sla-im-services/_update/" + incidentId;
+		HttpEntity<Map<String, Object>> entity = new HttpEntity<>(updateBody, buildHeaders());
+
+		try {
+			restTemplate.postForEntity(url, entity, String.class);
+			log.info("Updated SLA{} for ticket {}", businessService != null ? " + businessService" : "", incidentId);
+		} catch (Exception e) {
+			log.error("Failed to update SLA fields for ticket {}: {}", incidentId, e.getMessage(), e);
+		}
+	}
+
+	public void upsertTransformedTicket(String documentId, Map<String, Object> dataMap) {
+		if (documentId == null || documentId.isEmpty()) {
+			log.warn("Document ID is missing for upsert.");
+			return;
 		}
 
 		try {
-			JSONObject params = new JSONObject();
-			params.put("slaRemaining", slaRemaining);
-			params.put("totalSlaRemaining", totalSlaRemaining);
-			params.put("stateSLA", stateSla);
+			Map<String, Object> finalPayload = new HashMap<>();
+			finalPayload.put("Data", dataMap);
 
-			JSONObject script = new JSONObject();
-			script.put("source",
-				"if (ctx._source.Data == null) { ctx._source.Data = [:]; } " +
-				"ctx._source.Data.slaRemaining = params.slaRemaining; " +
-				"ctx._source.Data.totalSlaRemaining = params.totalSlaRemaining; " +
-				"ctx._source.Data.stateSLA = params.stateSLA;");
-			script.put("lang", "painless");
-			script.put("params", params);
+			String indexUrl = config.getEsHostUrl() + "/computed-sla-im-services/_doc/" + documentId;
+			HttpEntity<Map<String, Object>> entity = new HttpEntity<>(finalPayload, buildHeaders());
 
-			JSONObject payload = new JSONObject();
-			payload.put("script", script);
-			payload.put("doc_as_upsert", false);
+			restTemplate.put(indexUrl, entity);
+			log.info("Upserted transformed ticket for document ID: {}", documentId);
 
-			String updateUrl = config.getEsHostUrl() + config.getUpdateIndexPath() + documentId;
-			log.debug("Updating SLA fields for document ID: {}", documentId);
-
-			HttpEntity<String> entity = new HttpEntity<>(payload.toString(), buildHeaders());
-			String response = restTemplate.postForObject(updateUrl, entity, String.class);
-
-			processResponse(response, documentId);
 		} catch (HttpClientErrorException | HttpServerErrorException e) {
-			log.error("HTTP error while updating SLA fields for document ID {}: {}", documentId, e.getMessage());
-			throw new ServiceCallException("Failed to update SLA fields due to HTTP error: " + e.getMessage());
+			log.error("HTTP error during upsert of transformed ticket {}: {}", documentId, e.getMessage());
 		} catch (ResourceAccessException e) {
-			log.error("Elasticsearch is unreachable while updating SLA fields for document ID {}: {}", documentId, e.getMessage());
-			throw new ServiceCallException("Elasticsearch is unreachable: " + e.getMessage());
+			log.error("Elasticsearch is unreachable while upserting ticket {}: {}", documentId, e.getMessage());
 		} catch (Exception e) {
-			log.error("Error while updating SLA fields for document ID {}: {}", documentId, e.getMessage(), e);
-			throw new ServiceCallException("Failed to update SLA fields: " + e.getMessage());
+			log.error("Unexpected error during upsert of transformed ticket {}: {}", documentId, e.getMessage(), e);
 		}
 	}
 

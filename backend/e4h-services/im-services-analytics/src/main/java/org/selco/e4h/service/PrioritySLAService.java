@@ -3,7 +3,6 @@ package org.selco.e4h.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.minidev.json.JSONArray;
-
 import org.selco.e4h.util.ElasticSearchClient;
 import org.selco.e4h.util.IMConstants;
 import org.selco.e4h.util.MdmsUtil;
@@ -23,6 +22,10 @@ import java.util.*;
 public class PrioritySLAService {
 
     private static final String STATE = "state";
+    public static final String PENDING_ASSIGNMENT = "PENDING_ASSIGNMENT_";
+    public static final String PENDING_RESOLUTION = "PENDING_RESOLUTION_";
+    public static final String PENDINGFORASSIGNMENT = "PENDINGFORASSIGNMENT";
+    public static final String PENDINGFORRESOLUTION = "PENDINGRESOLUTION";
     private final UpdateService updateService;
     private final MdmsUtil mdmsUtil;
     private final ElasticSearchClient esClient;
@@ -30,26 +33,36 @@ public class PrioritySLAService {
 
     private static final ZoneId INDIA_ZONE = ZoneId.of("Asia/Kolkata");
 
-    public void computeAndUpdateSLA(SLARequest request) {
+    public void computeAndUpdateSLA(SLARequest request, boolean transform) {
         int pageSize = 5000;
         int from = 0;
         boolean hasMore = true;
 
-        Map<String, Map<String, JSONArray>> mdmsData = mdmsUtil.fetchMdmsData(
+        Map<String, Map<String, JSONArray>> serviceDefMdms = mdmsUtil.fetchMdmsData(
+                request.getRequestInfo(), request.getTenantId(),
+                IMConstants.INCIDENT,
+                Collections.singletonList(IMConstants.SERVICE_DEF));
+
+        Map<String, String> incidentTypeToPriority = getIncidentKeyToPriorityMapping(serviceDefMdms);
+
+        Map<String, Map<String, JSONArray>> bhMdmsData = mdmsUtil.fetchMdmsData(
                 request.getRequestInfo(), request.getTenantId(),
                 IMConstants.MODULE_NAME_COMMON_MASTERS,
                 Collections.singletonList(IMConstants.BUSINESS_HOUR_MASTER));
 
-        BusinessHours bh = parseBusinessHours(mdmsData);
+        BusinessHours bh = parseBusinessHours(bhMdmsData);
         Map<TenantServiceStateKey, Duration> slaMap = loadSLADurationsFromBusinessService();
 
         while (hasMore) {
-            List<Map<String, Object>> tickets = esClient.fetchOpenTickets(from, pageSize);
+            List<Map<String, Object>> tickets = transform
+                    ? esClient.fetchOldOpenTicketsFromImServices(from, pageSize)
+                    : esClient.fetchOpenTickets(from, pageSize);
+
             if (tickets.isEmpty()) break;
 
             for (Map<String, Object> ticket : tickets) {
                 try {
-                    updateTicket(ticket, slaMap, bh);
+                    updateTicket(ticket, slaMap, bh, transform, incidentTypeToPriority);
                 } catch (Exception e) {
                     log.error("Error processing ticket: {}", ticket, e);
                 }
@@ -60,7 +73,9 @@ public class PrioritySLAService {
         }
     }
 
-    private void updateTicket(Map<String, Object> ticket, Map<TenantServiceStateKey, Duration> slaMap, BusinessHours bh) {
+
+    private void updateTicket(Map<String, Object> ticket, Map<TenantServiceStateKey, Duration> slaMap,
+                              BusinessHours bh, boolean transform, Map<String, String> incidentPriorityMap) {
         Map<String, Object> data = (Map<String, Object>) ticket.get("Data");
         Map<String, Object> auditDetails = (Map<String, Object>) data.get("auditDetails");
         Map<String, Object> incident = (Map<String, Object>) data.get("incident");
@@ -69,7 +84,6 @@ public class PrioritySLAService {
         String tenantId = (String) data.get("tenantId");
         if (tenantId.contains(".")) tenantId = tenantId.split("\\.")[0];
         String state = (String) ((Map<String, Object>) currentProcessInstance.get(STATE)).get("applicationStatus");
-        String businessService = (String) currentProcessInstance.get("businessService");
 
         long createdTime = Long.parseLong(auditDetails.get("createdTime").toString());
         long lastModifiedTime = Long.parseLong(auditDetails.get("lastModifiedTime").toString());
@@ -87,60 +101,94 @@ public class PrioritySLAService {
             }
         }
 
-        String priority = extractPriority(businessService);
-        Duration totalSla = computeHappyFlowTotalSla(tenantId, priority, state, slaMap);
+        String incidentType = (String) incident.get("incidentType");
+        String incidentSubType = (String) incident.get("incidentSubType");
+        String key = buildIncidentKey(incidentType, incidentSubType);
 
+        String existingBusinessService = (String) currentProcessInstance.get("businessService");
+        String priority;
+        boolean needsOverride = existingBusinessService == null || !existingBusinessService.contains("_");
+        String updatedBusinessService = null;
+
+        if (needsOverride && incidentPriorityMap.containsKey(key)) {
+            priority = incidentPriorityMap.get(key);
+            updatedBusinessService = "Incident_" + capitalize(priority);
+            currentProcessInstance.put("businessService", updatedBusinessService);  // update ES doc in memory
+        } else if (existingBusinessService != null && existingBusinessService.contains("_")) {
+            priority = existingBusinessService.split("_")[1];
+        } else {
+            priority = "Medium";
+        }
+
+        Duration totalSla = computeTotalSla(tenantId, priority, state, slaMap);
         long totalSlaRemaining = totalSla.toMillis() - businessElapsedFromCreated;
         long slaRemaining = stateSla - businessElapsedFromModified;
 
         Object incidentIdObj = incident.get("incidentId");
         if (incidentIdObj == null) {
             log.warn("Incident ID is null for ticket: {}", ticket);
-            return; // Skip processing this ticket
+            return;
         }
+
         String incidentId = incidentIdObj.toString();
-        updateService.updateSlaFields(
-                incidentId,
-                slaRemaining,
-                totalSlaRemaining,
-                stateSla
-        );
-    }
-
-    private String extractPriority(String businessService) {
-        if (businessService != null && businessService.contains("_")) {
-            return businessService.split("_")[1].toUpperCase();
+        if (transform) {
+            Map<String, Object> fullDoc = buildDocumentToInsert(stateSla, slaRemaining, totalSlaRemaining, ticket);
+            updateService.upsertTransformedTicket(incidentId, fullDoc);
+        } else {
+            updateService.updateSlaFields(
+                    incidentId,
+                    slaRemaining,
+                    totalSlaRemaining,
+                    stateSla,
+                    updatedBusinessService
+            );
         }
-        return "MEDIUM";
     }
 
-    private Duration computeHappyFlowTotalSla(String tenantId, String priority, String currentState, Map<TenantServiceStateKey, Duration> slaMap) {
-        String businessService = "Incident_" + priority.toUpperCase();
-        Duration total = Duration.ZERO;
 
-        if (currentState.equals("PENDINGFORASSIGNMENT") || currentState.equals("PENDINGRESOLUTION")) {
-            total = total.plus(getDurationFromMap(slaMap, tenantId, businessService, "PENDINGFORASSIGNMENT"));
-            total = total.plus(getDurationFromMap(slaMap, tenantId, businessService, "PENDINGRESOLUTION"));
-        } else if (currentState.startsWith("PENDING_ASSIGNMENT_")) {
-            total = total.plus(sumStatesWithPrefix(slaMap, tenantId, businessService, "PENDING_ASSIGNMENT_"));
-            total = total.plus(sumStatesWithPrefix(slaMap, tenantId, businessService, "PENDING_RESOLUTION_"));
+
+    private Map<String, String> getIncidentKeyToPriorityMapping(Map<String, Map<String, JSONArray>> mdmsData) {
+        Map<String, String> map = new HashMap<>();
+        JSONArray serviceDefs = mdmsData.get("Incident").get("ServiceDefs");
+
+        for (Object obj : serviceDefs) {
+            if (obj instanceof Map<?, ?> entry) {
+                String menuPath = (String) entry.get("menuPath");
+                String serviceCode = (String) entry.get("serviceCode");
+                String priority = (String) entry.get("priority");
+
+                if (menuPath != null && serviceCode != null && priority != null) {
+                    String key = buildIncidentKey(menuPath, serviceCode);
+                    map.put(key, priority.toUpperCase());
+                }
+            }
         }
 
-        return total;
+        return map;
     }
 
-    private Duration getDurationFromMap(Map<TenantServiceStateKey, Duration> map, String tenantId, String service, String state) {
-        return map.getOrDefault(new TenantServiceStateKey(tenantId, service, state), Duration.ZERO);
+
+    private String buildIncidentKey(String type, String subType) {
+        return type.trim().toUpperCase() + "::" + subType.trim().toUpperCase();
     }
 
-    private Duration sumStatesWithPrefix(Map<TenantServiceStateKey, Duration> map, String tenantId, String service, String prefix) {
-        return map.entrySet().stream()
-                .filter(entry -> entry.getKey().tenantId().equals(tenantId))
-                .filter(entry -> entry.getKey().businessService().equals(service))
-                .filter(entry -> entry.getKey().state().startsWith(prefix))
-                .map(Map.Entry::getValue)
-                .reduce(Duration.ZERO, Duration::plus);
+
+    private Map<String, Object> buildDocumentToInsert(long stateSla, long slaRemaining, long totalSlaRemaining, Map<String, Object> oldTicket) {
+
+        Map<String, Object> data = (Map<String, Object>) oldTicket.get("Data");
+
+        if (data == null || data.isEmpty()) {
+            log.warn("Missing 'Data' field, using oldTicket directly");
+            data = oldTicket;
+        }
+
+        data.put("stateSla", stateSla);
+        data.put("slaRemaining", slaRemaining);
+        data.put("totalSlaRemaining", totalSlaRemaining);
+
+        return data;
     }
+
 
     private BusinessHours parseBusinessHours(Map<String, Map<String, JSONArray>> mdmsData) {
         BusinessHours businessHours = new BusinessHours();
@@ -152,59 +200,39 @@ public class PrioritySLAService {
                 return businessHours;
             }
 
-            // Validate outerArray has at least one element and it's a Map
             if (!(outerArray.get(0) instanceof Map<?, ?> outerObject)) {
                 log.warn("Invalid business hours structure in MDMS");
                 return businessHours;
             }
 
-            // Ensure "BusinessHours" is a List
             Object innerHoursObj = outerObject.get("BusinessHours");
             if (!(innerHoursObj instanceof List<?> innerHoursList)) {
                 log.warn("BusinessHours is not a list in MDMS");
                 return businessHours;
             }
 
-            // Build the schedule map with safe extraction
             Map<String, BusinessHours.Schedule> scheduleMap = new HashMap<>();
             for (Object item : innerHoursList) {
-                if (!(item instanceof Map<?, ?> entry)) {
-                    continue;
-                }
-
-                Object dayObj   = entry.get("day");
+                if (!(item instanceof Map<?, ?> entry)) continue;
+                Object dayObj = entry.get("day");
                 Object startObj = entry.get("start");
-                Object endObj   = entry.get("end");
-
-                if (dayObj == null || startObj == null || endObj == null) {
-                    log.warn("Incomplete business hours entry: {}", entry);
-                    continue;
-                }
-
-                String day   = dayObj.toString().toUpperCase();
+                Object endObj = entry.get("end");
+                if (dayObj == null || startObj == null || endObj == null) continue;
+                String day = dayObj.toString().toUpperCase();
                 String start = startObj.toString();
-                String end   = endObj.toString();
+                String end = endObj.toString();
                 scheduleMap.put(day, new BusinessHours.Schedule(start, end));
             }
-
             businessHours.setSchedule(scheduleMap);
         } catch (Exception e) {
             log.error("Error parsing business hours from MDMS", e);
         }
-
         return businessHours;
     }
 
     private long calculateBusinessMillis(long startMillis, long endMillis, BusinessHours businessHours) {
-        if (startMillis > endMillis) {
-            log.warn("Start time {} is after end time {}, returning 0", startMillis, endMillis);
-            return 0;
-        }
-
-        if (businessHours == null || businessHours.getSchedule() == null) {
-            log.warn("Business hours not configured, returning full duration");
-            return endMillis - startMillis;
-        }
+        if (startMillis > endMillis) return 0;
+        if (businessHours == null || businessHours.getSchedule() == null) return endMillis - startMillis;
 
         ZonedDateTime start = Instant.ofEpochMilli(startMillis).atZone(INDIA_ZONE);
         ZonedDateTime end = Instant.ofEpochMilli(endMillis).atZone(INDIA_ZONE);
@@ -216,7 +244,6 @@ public class PrioritySLAService {
 
             String dayName = dt.getDayOfWeek().getDisplayName(TextStyle.FULL, Locale.ENGLISH).toUpperCase();
             BusinessHours.Schedule sched = businessHours.getSchedule().get(dayName);
-
             if (sched == null) continue;
 
             LocalTime schedStart = LocalTime.of(sched.getStartHour(), sched.getStartMinute());
@@ -232,7 +259,6 @@ public class PrioritySLAService {
                 total += Duration.between(intervalStart, intervalEnd).toMillis();
             }
         }
-
         return total;
     }
 
@@ -264,5 +290,36 @@ public class PrioritySLAService {
             log.error("Failed to load SLA durations from database", e);
             return Collections.emptyMap();
         }
+    }
+
+    private Duration computeTotalSla(String tenantId, String priority, String currentState, Map<TenantServiceStateKey, Duration> slaMap) {
+        String businessService = "Incident_" + priority.toUpperCase();
+        Duration total = Duration.ZERO;
+
+        if (currentState.equals(PENDINGFORASSIGNMENT) || currentState.equals(PENDINGFORRESOLUTION)) {
+            total = total.plus(getDurationFromMap(slaMap, tenantId, businessService, PENDINGFORASSIGNMENT));
+            total = total.plus(getDurationFromMap(slaMap, tenantId, businessService, PENDINGFORRESOLUTION));
+        } else if (currentState.startsWith(PENDING_ASSIGNMENT)) {
+            String suffix = currentState.replace(PENDING_ASSIGNMENT, "");
+            String resolutionState = PENDING_RESOLUTION + suffix;
+            total = total.plus(getDurationFromMap(slaMap, tenantId, businessService, currentState));
+            total = total.plus(getDurationFromMap(slaMap, tenantId, businessService, resolutionState));
+        } else if (currentState.startsWith(PENDING_RESOLUTION)) {
+            String suffix = currentState.replace(PENDING_RESOLUTION, "");
+            String assignmentState = PENDING_ASSIGNMENT + suffix;
+            total = total.plus(getDurationFromMap(slaMap, tenantId, businessService, assignmentState));
+            total = total.plus(getDurationFromMap(slaMap, tenantId, businessService, currentState));
+        }
+
+        return total;
+    }
+
+    private Duration getDurationFromMap(Map<TenantServiceStateKey, Duration> map, String tenantId, String service, String state) {
+        return map.getOrDefault(new TenantServiceStateKey(tenantId, service, state), Duration.ZERO);
+    }
+
+    private String capitalize(String value) {
+        if (value == null || value.isEmpty()) return value;
+        return value.substring(0, 1).toUpperCase() + value.substring(1).toLowerCase();
     }
 }
