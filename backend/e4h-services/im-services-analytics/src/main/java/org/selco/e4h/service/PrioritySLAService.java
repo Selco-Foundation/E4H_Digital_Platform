@@ -93,7 +93,6 @@ public class PrioritySLAService {
         long totalSlaRemaining = totalSla.toMillis() - businessElapsedFromCreated;
         long slaRemaining = stateSla - businessElapsedFromModified;
 
-        // before this: Map<String, Object> incident = (Map<String, Object>) auditDetails.get("incident");
         Object incidentIdObj = incident.get("incidentId");
         if (incidentIdObj == null) {
             log.warn("Incident ID is null for ticket: {}", ticket);
