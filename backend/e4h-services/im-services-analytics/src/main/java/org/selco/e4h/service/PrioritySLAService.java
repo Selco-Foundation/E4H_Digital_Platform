@@ -16,16 +16,15 @@ import java.time.format.TextStyle;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 
+import static org.selco.e4h.util.IMConstants.*;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class PrioritySLAService {
 
     private static final String STATE = "state";
-    public static final String PENDING_ASSIGNMENT = "PENDING_ASSIGNMENT_";
-    public static final String PENDING_RESOLUTION = "PENDING_RESOLUTION_";
-    public static final String PENDINGFORASSIGNMENT = "PENDINGFORASSIGNMENT";
-    public static final String PENDINGFORRESOLUTION = "PENDINGRESOLUTION";
+
     private final UpdateService updateService;
     private final MdmsUtil mdmsUtil;
     private final ElasticSearchClient esClient;
@@ -92,20 +91,17 @@ public class PrioritySLAService {
         long businessElapsedFromCreated = calculateBusinessMillis(createdTime, now, bh);
         long businessElapsedFromModified = calculateBusinessMillis(lastModifiedTime, now, bh);
 
-        long stateSla = 0;
-        Object stateObj = currentProcessInstance.get(STATE);
-        if (stateObj instanceof Map<?, ?> stateMap) {
-            Object slaObj = stateMap.get("sla");
-            if (slaObj instanceof Number) {
-                stateSla = ((Number) slaObj).longValue();
-            }
-        }
+        String existingBusinessService = (String) currentProcessInstance.get(BUSINESS_SERVICE);
+        TenantServiceStateKey stateKey = new TenantServiceStateKey(tenantId, existingBusinessService, state);
+        Duration stateSlaDuration = slaMap.getOrDefault(stateKey, Duration.ZERO);
+        long stateSla = stateSlaDuration.toMillis();
+
 
         String incidentType = (String) incident.get("incidentType");
         String incidentSubType = (String) incident.get("incidentSubType");
         String key = buildIncidentKey(incidentType, incidentSubType);
 
-        String existingBusinessService = (String) currentProcessInstance.get("businessService");
+
         String priority;
         boolean needsOverride = existingBusinessService == null || !existingBusinessService.contains("_");
         String updatedBusinessService = null;
@@ -113,11 +109,13 @@ public class PrioritySLAService {
         if (needsOverride && incidentPriorityMap.containsKey(key)) {
             priority = incidentPriorityMap.get(key);
             updatedBusinessService = "Incident_" + capitalize(priority);
-            currentProcessInstance.put("businessService", updatedBusinessService);  // update ES doc in memory
+            currentProcessInstance.put(BUSINESS_SERVICE, updatedBusinessService);  // update ES doc in memory
         } else if (existingBusinessService != null && existingBusinessService.contains("_")) {
             priority = existingBusinessService.split("_")[1];
         } else {
             priority = "Medium";
+            updatedBusinessService = "Incident_Medium";
+            currentProcessInstance.put(BUSINESS_SERVICE, updatedBusinessService);
         }
 
         Duration totalSla = computeTotalSla(tenantId, priority, state, slaMap);
