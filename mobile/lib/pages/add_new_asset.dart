@@ -34,8 +34,6 @@ import '../utils/utils.dart';
 import '../widgets/button/footer_button.dart';
 import '../widgets/cards/stepper.dart';
 import '../widgets/header/back_navigation_help_header.dart';
-import '../widgets/navigation/drawer.dart';
-import '../widgets/navigation/navbar.dart';
 
 class AssetModel {
   String serialNumber;
@@ -196,8 +194,6 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                       (a) => a.serialNumber.isEmpty || a.photoPath == null);
 
               return Scaffold(
-                appBar: const Navbar(),
-                drawer: const CustomDrawer(),
                 body: ScrollableContent(
                   header: const BackNavigationHelpHeaderWidget(
                       showBackNavigation: true, showHelp: false),

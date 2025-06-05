@@ -4,8 +4,6 @@ import 'package:flutter/material.dart';
 
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
-import '../widgets/navigation/drawer.dart';
-import '../widgets/navigation/navbar.dart';
 
 @RoutePage()
 class DownloadStatusPage extends StatefulWidget {
@@ -22,8 +20,6 @@ class _DownloadStatusPageState extends State<DownloadStatusPage> {
     final textTheme = theme.digitTextTheme(context);
 
     return Scaffold(
-      appBar: const Navbar(),
-      drawer: const CustomDrawer(),
       body: ScrollableContent(
         // backgroundColor: theme.colorTheme.generic.background,
         children: [

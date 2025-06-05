@@ -8,7 +8,6 @@ import '../router/app_router.dart';
 import '../widgets/button/footer_button.dart';
 import '../widgets/cards/rejected_edit_summary.dart';
 import '../widgets/header/back_navigation_help_header.dart';
-import '../widgets/navigation/navbar.dart';
 
 @RoutePage()
 class SubmitForApprovalPage extends StatefulWidget {
@@ -25,7 +24,6 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
     final textTheme = theme.digitTextTheme(context);
 
     return Scaffold(
-      appBar: const Navbar(),
       body: ScrollableContent(
         enableFixedDigitButton: true,
         backgroundColor: theme.colorTheme.generic.background,

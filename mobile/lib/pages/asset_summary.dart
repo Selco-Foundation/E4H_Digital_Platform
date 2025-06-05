@@ -16,15 +16,15 @@ import '../blocs/asset_summary/asset_summary.dart';
 import '../blocs/asset_type/asset_type.dart';
 import '../blocs/report_type/report_type.dart';
 import '../blocs/selected_project/selected_project.dart';
+import '../data/secure_storage/secureStore.dart';
 import '../model/asset_summary/asset_summary.dart';
+import '../model/projects/project.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
 import '../utils/i18_key_constants.dart' as i18;
 import '../utils/utils.dart';
 import '../widgets/button/footer_button.dart';
 import '../widgets/header/back_navigation_help_header.dart';
-import '../widgets/navigation/drawer.dart';
-import '../widgets/navigation/navbar.dart';
 
 @RoutePage()
 class AssetSummaryPage extends StatefulWidget {
@@ -37,6 +37,7 @@ class AssetSummaryPage extends StatefulWidget {
 class _AssetSummaryPageState extends State<AssetSummaryPage> {
   String projectName = "";
   String assetType = "";
+  ProjectModel? selectedProject;
 
   @override
   void initState() {
@@ -55,6 +56,7 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
       final selectedProjectState = context.read<SelectedProjectBloc>().state;
       selectedProjectState.whenOrNull(selected: (proj) {
         final projectId = proj.id;
+        selectedProject = proj;
         projectName = proj.name;
         context.read<AssetSummaryBloc>().add(
               AssetSummaryEvent.load(
@@ -81,8 +83,6 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
         );
 
         return Scaffold(
-          appBar: const Navbar(),
-          drawer: const CustomDrawer(),
           body: ScrollableContent(
             enableFixedDigitButton: true,
             backgroundColor: theme.colorTheme.generic.background,
@@ -176,8 +176,10 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
                 } else {
                   return FooterButton(
                     showSuffixIcon: false,
-                    text: context.translate(i18.common.coreCommonSave),
+                    text: context.translate(i18.common.coreCommonNext),
                     onPress: () {
+                      final SecureStore storage = SecureStore();
+                      storage.addToDraftProjects(selectedProject!);
                       context.router.push(const DataSaveSuccessRoute());
                     },
                   );
@@ -247,7 +249,6 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
     final assetCards = summary.addedAssets.asMap().entries.map((entryPair) {
       final index = entryPair.key;
       final asset = entryPair.value;
-      // E.g. “Inverter 1”, “Inverter 2”, etc:
       final title = '$heading ${index + 1}';
 
       return Padding(
@@ -288,7 +289,7 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
                     Padding(
                       padding: const EdgeInsets.only(bottom: spacer3),
                       child: Text(
-                        asset.itemNumber,
+                        '$capacity$capacityUnit',
                         style: textTheme.bodyS.copyWith(
                           color: Theme.of(context).colorTheme.text.primary,
                         ),
@@ -434,26 +435,6 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
         ),
         const SizedBox(height: spacer4),
         ...assetCards,
-        // Media
-        // DigitCard(
-        //   children: [
-        //     Row(
-        //       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        //       children: [
-        //         Text(
-        //           'Media',
-        //           style: textTheme.headingM.copyWith(
-        //               color: Theme.of(context).colorTheme.primary.primary2),
-        //         ),
-        //         Icon(
-        //           Icons.edit,
-        //           color: Theme.of(context).colorTheme.primary.primary1,
-        //         ),
-        //       ],
-        //     ),
-        //     Column(children: mediaWidgets),
-        //   ],
-        // ),
         if (imageWidgets.isNotEmpty) ...[
           const SizedBox(height: spacer4),
           DigitCard(

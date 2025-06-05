@@ -10,14 +10,15 @@ class ElementAssetSummary extends StatelessWidget {
   final String text;
   final int count;
   final bool lastCard;
+  final VoidCallback? onPress;
 
-  const ElementAssetSummary({
-    super.key,
-    required this.type,
-    required this.text,
-    required this.count,
-    this.lastCard = false,
-  });
+  const ElementAssetSummary(
+      {super.key,
+      required this.type,
+      required this.text,
+      required this.count,
+      this.lastCard = false,
+      this.onPress});
 
   @override
   Widget build(BuildContext context) {
@@ -58,9 +59,7 @@ class ElementAssetSummary extends StatelessWidget {
                 label: 'View $type Summary',
                 type: DigitButtonType.secondary,
                 size: DigitButtonSize.medium,
-                onPressed: () {
-                  // context.router.replace(const EnterOtpRoute());
-                },
+                onPressed: onPress ?? () {},
               ),
               const SizedBox(height: spacer2),
             ],

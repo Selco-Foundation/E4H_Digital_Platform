@@ -7,13 +7,13 @@ import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:digit_ui_components/widgets/scrollable_content.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:selco/blocs/cache_asset_count/cache_asset_count.dart';
-import 'package:selco/blocs/cache_specification/cache_specification.dart';
-import 'package:selco/data/nosql/cache_asset_count.dart';
 
 import '../blocs/app_init/app_init.dart';
 import '../blocs/asset_type/asset_type.dart';
+import '../blocs/cache_asset_count/cache_asset_count.dart';
+import '../blocs/cache_specification/cache_specification.dart';
 import '../blocs/selected_project/selected_project.dart';
+import '../data/nosql/cache_asset_count.dart';
 import '../data/nosql/cache_specification.dart';
 import '../model/asset_type/asset_type.dart';
 import '../model/mdms/mdms.dart';

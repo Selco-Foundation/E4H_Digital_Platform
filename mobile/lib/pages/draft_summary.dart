@@ -8,8 +8,6 @@ import '../router/app_router.dart';
 import '../widgets/button/footer_button.dart';
 import '../widgets/cards/view_asset_summary.dart';
 import '../widgets/header/back_navigation_help_header.dart';
-import '../widgets/navigation/drawer.dart';
-import '../widgets/navigation/navbar.dart';
 
 @RoutePage()
 class DraftSummaryPage extends StatefulWidget {
@@ -26,8 +24,6 @@ class _DraftSummaryPageState extends State<DraftSummaryPage> {
     final textTheme = theme.digitTextTheme(context);
 
     return Scaffold(
-      appBar: const Navbar(),
-      drawer: const CustomDrawer(),
       body: ScrollableContent(
         enableFixedDigitButton: true,
         backgroundColor: theme.colorTheme.generic.background,

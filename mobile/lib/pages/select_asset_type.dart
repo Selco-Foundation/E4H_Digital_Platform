@@ -17,7 +17,6 @@ import '../utils/i18_key_constants.dart' as i18;
 import '../widgets/button/footer_button.dart';
 import '../widgets/cards/stepper.dart';
 import '../widgets/header/back_navigation_help_header.dart';
-import '../widgets/navigation/navbar.dart';
 
 @RoutePage()
 class SelectAssetTypePage extends StatefulWidget {
@@ -88,85 +87,83 @@ class _SelectAssetTypePageState extends State<SelectAssetTypePage> {
     final theme = Theme.of(context);
     final textTheme = theme.digitTextTheme(context);
 
-    return Scaffold(
-        appBar: const Navbar(),
-        body: BlocBuilder<AssetTypeBloc, AssetTypeState>(
-          builder: (context, state) {
-            return ScrollableContent(
-                enableFixedDigitButton: true,
-                backgroundColor: theme.colorTheme.generic.background,
-                header: const BackNavigationHelpHeaderWidget(
-                  showBackNavigation: true,
-                  showHelp: false,
-                ),
-                footer: FooterButton(
-                  showSuffixIcon: false,
-                  text: i18.common.coreCommonNext,
-                  isDisabled: state is AssetTypeInitial,
-                  onPress: () {
-                    _handleNavigation(context);
-                  },
-                ),
-                children: [
-                  BlocBuilder<AppInitialization, InitState>(
-                    builder: (initContext, initState) {
-                      final List<Mdms<AssetType>> assetTypeList =
-                          initState.maybeWhen(
-                              orElse: () => [],
-                              initialized: (appConfig, assetCount, assetType,
-                                      system, warranty, brand) =>
-                                  assetType);
+    return Scaffold(body: BlocBuilder<AssetTypeBloc, AssetTypeState>(
+      builder: (context, state) {
+        return ScrollableContent(
+            enableFixedDigitButton: true,
+            backgroundColor: theme.colorTheme.generic.background,
+            header: const BackNavigationHelpHeaderWidget(
+              showBackNavigation: true,
+              showHelp: false,
+            ),
+            footer: FooterButton(
+              showSuffixIcon: false,
+              text: i18.common.coreCommonNext,
+              isDisabled: state is AssetTypeInitial,
+              onPress: () {
+                _handleNavigation(context);
+              },
+            ),
+            children: [
+              BlocBuilder<AppInitialization, InitState>(
+                builder: (initContext, initState) {
+                  final List<Mdms<AssetType>> assetTypeList =
+                      initState.maybeWhen(
+                          orElse: () => [],
+                          initialized: (appConfig, assetCount, assetType,
+                                  system, warranty, brand) =>
+                              assetType);
 
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: spacer2, vertical: spacer4),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  AppStepper(context: context, activeIndex: 1),
-                                ]),
-                            const SizedBox(height: spacer4),
-                            DigitCard(children: [
-                              Text(
-                                'Asset Type',
-                                style: textTheme.headingXl.copyWith(
-                                    color: theme.colorTheme.primary.primary2),
-                              ),
-                              Text(
-                                'Choose the asset type',
-                                style: textTheme.bodyL.copyWith(
-                                    color: theme.colorTheme.text.primary),
-                              ),
-                              LabeledField(
-                                label: 'Select Asset Type',
-                                labelStyle: textTheme.label.copyWith(
-                                  color: theme.colorTheme.text.primary,
-                                ),
-                                capitalizedFirstLetter: false,
-                                child: DigitDropdown(
-                                    onSelect: (DropdownItem selected) {
-                                      context.read<AssetTypeBloc>().add(
-                                          AssetTypeEvent.typeSelected(
-                                              selected.code));
-                                    },
-                                    items: assetTypeList
-                                        .map((type) => DropdownItem(
-                                              name: type.data.name,
-                                              code: type.data.code,
-                                            ))
-                                        .toList()),
-                              ),
-                            ])
-                          ],
-                        ),
-                      );
-                    },
-                  )
-                ]);
-          },
-        ));
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: spacer2, vertical: spacer4),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              AppStepper(context: context, activeIndex: 1),
+                            ]),
+                        const SizedBox(height: spacer4),
+                        DigitCard(children: [
+                          Text(
+                            'Asset Type',
+                            style: textTheme.headingXl.copyWith(
+                                color: theme.colorTheme.primary.primary2),
+                          ),
+                          Text(
+                            'Choose the asset type',
+                            style: textTheme.bodyL
+                                .copyWith(color: theme.colorTheme.text.primary),
+                          ),
+                          LabeledField(
+                            label: 'Select Asset Type',
+                            labelStyle: textTheme.label.copyWith(
+                              color: theme.colorTheme.text.primary,
+                            ),
+                            capitalizedFirstLetter: false,
+                            child: DigitDropdown(
+                                onSelect: (DropdownItem selected) {
+                                  context.read<AssetTypeBloc>().add(
+                                      AssetTypeEvent.typeSelected(
+                                          selected.code));
+                                },
+                                items: assetTypeList
+                                    .map((type) => DropdownItem(
+                                          name: type.data.name,
+                                          code: type.data.code,
+                                        ))
+                                    .toList()),
+                          ),
+                        ])
+                      ],
+                    ),
+                  );
+                },
+              )
+            ]);
+      },
+    ));
   }
 }

@@ -46,7 +46,6 @@ class ProjectRemoteRepository {
 
       return projectsList;
     } catch (err) {
-      print("err ${err.toString()}");
       rethrow;
     }
   }
