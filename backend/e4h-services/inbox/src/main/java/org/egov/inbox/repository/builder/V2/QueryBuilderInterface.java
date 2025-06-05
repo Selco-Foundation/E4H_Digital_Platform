@@ -34,6 +34,6 @@ public interface QueryBuilderInterface{
      * @param inboxRequest
      * @return
      */
-    public Map<String, Object> getNearingSlaCountQuery(InboxRequest inboxRequest, Long businessServiceSla);
+    public Map<String, Object> getNearingSlaCountQuery(InboxRequest inboxRequest, Long businessServiceSla, String businessService);
 
 }

@@ -5,10 +5,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-import java.util.stream.Collectors;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import org.egov.inbox.util.ErrorConstants;
 import org.egov.inbox.util.MDMSUtil;
 import org.egov.inbox.web.model.InboxRequest;
@@ -25,7 +22,6 @@ import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.jayway.jsonpath.JsonPath;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -311,29 +307,39 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
     }
 
     @Override
-    public Map<String, Object> getNearingSlaCountQuery(InboxRequest inboxRequest, Long businessServiceSla) {
+    public Map<String, Object> getNearingSlaCountQuery(InboxRequest inboxRequest, Long businessServiceSla, String businessService) {
         Map<String, Object> baseEsQuery = getESQuery(inboxRequest, Boolean.FALSE, Boolean.FALSE);
-        Long currenTimeInMillis = System.currentTimeMillis();
-        Long lteParam = currenTimeInMillis;
-        Long slotLimit = businessServiceSla - 40 * (businessServiceSla / 100);
-        Long gteParam = currenTimeInMillis - slotLimit;
 
-        appendNearingSlaCountClause(baseEsQuery, gteParam, lteParam);
-        log.info("+++++++++++++++NEARING SLA QUERY+++++++++++++++++", baseEsQuery);
+        Map<String, Object> query = (Map<String, Object>) baseEsQuery.get("query");
+        Map<String, Object> bool = (Map<String, Object>) query.get("bool");
+        List<Object> mustClauseList = (List<Object>) bool.get("must");
+
+        // Add businessService term filter
+        Map<String, Object> serviceTerm = new HashMap<>();
+        serviceTerm.put("Data.currentProcessInstance.businessService.keyword", businessService);
+        Map<String, Object> termWrapper = new HashMap<>();
+        termWrapper.put("term", serviceTerm);
+        mustClauseList.add(termWrapper);
+
+        // Build the painless script
+        Map<String, Object> innerScript = new HashMap<>();
+        innerScript.put("source",
+                "doc.containsKey('Data.slaRemaining') && " +
+                        "doc.containsKey('Data.stateSLA') && " +
+                        "doc['Data.stateSLA'].size() > 0 && " +
+                        "doc['Data.stateSLA'].value > 0 && " +
+                        "(doc['Data.slaRemaining'].value / doc['Data.stateSLA'].value) <= 0.3");
+        innerScript.put("lang", "painless");
+
+        Map<String, Object> script = new HashMap<>();
+        script.put("script", innerScript);
+
+        mustClauseList.add(Collections.singletonMap("script", script));
+        bool.put("must", mustClauseList);
+        log.info("Nearing SLA Query: " + baseEsQuery);
         return baseEsQuery;
     }
 
-    private void appendNearingSlaCountClause(Map<String, Object> baseEsQuery, Long gteParam, Long lteParam) {
-        List mustClause = JsonPath.read(baseEsQuery, "$.query.bool.must");
-        Map<String, Object> rangeObject = new HashMap<>();
-        Map<String, Object> rangeClause = new HashMap<>();
-        rangeClause.put("gte", gteParam);
-        rangeClause.put("lte", lteParam);
-        rangeObject.put("Data.auditDetails.lastModifiedTime", rangeClause);
-        HashMap<String, Object> rangeMap = new HashMap<>();
-        rangeMap.put("range", rangeObject);
-        mustClause.add(rangeMap);
-    }
 
     private void appendStatusCountAggsNode(Map<String, Object> baseEsQuery) {
         Map<String, Object> aggsNode = new HashMap<>();
