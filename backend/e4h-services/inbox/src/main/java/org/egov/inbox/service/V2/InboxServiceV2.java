@@ -351,7 +351,7 @@ public class InboxServiceV2 {
             String businessService = businessServices.get(i);
             Long businessServiceSla = businessServiceSlaMap.get(businessService);
             //inboxRequest.getInbox().getProcessSearchCriteria().setStatus(businessServiceVsUuidsBasedOnSearchCriteria.get(businessService));
-            Map<String, Object> finalQueryBody = queryBuilder.getNearingSlaCountQuery(inboxRequest, businessServiceSla);
+            Map<String, Object> finalQueryBody = queryBuilder.getNearingSlaCountQuery(inboxRequest, businessServiceSla, businessService);
             StringBuilder uri = getURI(indexName, COUNT_PATH);
             Map<String, Object> response = (Map<String, Object>) serviceRequestRepository.fetchESResult(uri, finalQueryBody);
             Integer currentCount = 0;
