@@ -20,7 +20,6 @@ import '../utils/i18_key_constants.dart' as i18;
 import '../widgets/button/footer_button.dart';
 import '../widgets/cards/stepper.dart';
 import '../widgets/header/back_navigation_help_header.dart';
-import '../widgets/navigation/navbar.dart';
 
 @RoutePage()
 class AssetTypeDetailPage extends StatefulWidget {
@@ -112,7 +111,6 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
             modelController.text.trim().isNotEmpty;
 
         return Scaffold(
-            appBar: const Navbar(),
             body: ScrollableContent(
                 header: const BackNavigationHelpHeaderWidget(
                   showBackNavigation: true,
@@ -141,95 +139,93 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
                   },
                 ),
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: spacer2, vertical: spacer4),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            AppStepper(context: context, activeIndex: 3)
-                          ],
-                        ),
-                        const SizedBox(height: spacer4),
-                        DigitCard(children: [
-                          Text(
-                            detailHeading,
-                            style: textTheme.headingXl.copyWith(
-                                color: theme.colorTheme.primary.primary2),
-                          ),
-                          LabeledField(
-                            label: 'Warranty Start Date',
-                            labelStyle: textTheme.headingS
-                                .copyWith(color: theme.colorTheme.text.primary),
-                            capitalizedFirstLetter: false,
-                            child: DigitDateFormInput(
-                              controller: TextEditingController(),
-                              initialValue: 'Default Today Date',
-                              isDisabled: true,
-                              readOnly: true,
-                            ),
-                          ),
-                          LabeledField(
-                              label: 'Warranty Duration',
-                              labelStyle: textTheme.headingS.copyWith(
-                                  color: theme.colorTheme.text.primary),
-                              capitalizedFirstLetter: false,
-                              child: DigitDropdown(
-                                items: assetWarranties
-                                    .map((type) => DropdownItem(
-                                          name: type.duration,
-                                          code: type.duration,
-                                        ))
-                                    .toList(),
-                                onSelect: (DropdownItem selected) {
-                                  setState(() {
-                                    selectedWarranty = selected.code;
-                                  });
-                                },
-                              )),
-                          LabeledField(
-                              label: 'Brand',
-                              labelStyle: textTheme.headingS.copyWith(
-                                  color: theme.colorTheme.text.primary),
-                              capitalizedFirstLetter: false,
-                              child: DigitDropdown(
-                                items: assetBrands
-                                    .map((type) => DropdownItem(
-                                          name: type.name,
-                                          code: type.code,
-                                        ))
-                                    .toList(),
-                                onSelect: (DropdownItem selected) {
-                                  setState(() {
-                                    selectedBrandCode = selected.code;
-                                  });
-                                },
-                              )),
-                          LabeledField(
-                            label: 'Model Number',
-                            labelStyle: textTheme.headingS
-                                .copyWith(color: theme.colorTheme.text.primary),
-                            capitalizedFirstLetter: false,
-                            child: DigitTextFormInput(
-                              controller: modelController,
-                              innerLabel: 'SR45934295',
-                              keyboardType: TextInputType.text,
-                              onChange: (value) {
-                                setState(() {
-                                  // modelController.text is updated internally;
-                                  // we just need to rebuild for isEnabled.
-                                });
-                              },
-                            ),
-                          ),
-                        ])
-                      ],
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: spacer2, vertical: spacer4),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [AppStepper(context: context, activeIndex: 3)],
                     ),
-                  )
-                ]));
+                    const SizedBox(height: spacer4),
+                    DigitCard(children: [
+                      Text(
+                        detailHeading,
+                        style: textTheme.headingXl
+                            .copyWith(color: theme.colorTheme.primary.primary2),
+                      ),
+                      LabeledField(
+                        label: 'Warranty Start Date',
+                        labelStyle: textTheme.headingS
+                            .copyWith(color: theme.colorTheme.text.primary),
+                        capitalizedFirstLetter: false,
+                        child: DigitDateFormInput(
+                          controller: TextEditingController(),
+                          initialValue: 'Default Today Date',
+                          isDisabled: true,
+                          readOnly: true,
+                        ),
+                      ),
+                      LabeledField(
+                          label: 'Warranty Duration',
+                          labelStyle: textTheme.headingS
+                              .copyWith(color: theme.colorTheme.text.primary),
+                          capitalizedFirstLetter: false,
+                          child: DigitDropdown(
+                            items: assetWarranties
+                                .map((type) => DropdownItem(
+                                      name: type.duration,
+                                      code: type.duration,
+                                    ))
+                                .toList(),
+                            onSelect: (DropdownItem selected) {
+                              setState(() {
+                                selectedWarranty = selected.code;
+                              });
+                            },
+                          )),
+                      LabeledField(
+                          label: 'Brand',
+                          labelStyle: textTheme.headingS
+                              .copyWith(color: theme.colorTheme.text.primary),
+                          capitalizedFirstLetter: false,
+                          child: DigitDropdown(
+                            items: assetBrands
+                                .map((type) => DropdownItem(
+                                      name: type.name,
+                                      code: type.code,
+                                    ))
+                                .toList(),
+                            onSelect: (DropdownItem selected) {
+                              setState(() {
+                                selectedBrandCode = selected.code;
+                              });
+                            },
+                          )),
+                      LabeledField(
+                        label: 'Model Number',
+                        labelStyle: textTheme.headingS
+                            .copyWith(color: theme.colorTheme.text.primary),
+                        capitalizedFirstLetter: false,
+                        child: DigitTextFormInput(
+                          controller: modelController,
+                          innerLabel: 'SR45934295',
+                          keyboardType: TextInputType.text,
+                          onChange: (value) {
+                            setState(() {
+                              // modelController.text is updated internally;
+                              // we just need to rebuild for isEnabled.
+                            });
+                          },
+                        ),
+                      ),
+                    ])
+                  ],
+                ),
+              )
+            ]));
       },
     );
   }

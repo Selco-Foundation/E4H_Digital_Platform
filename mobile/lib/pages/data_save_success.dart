@@ -4,8 +4,6 @@ import 'package:digit_ui_components/widgets/molecules/panel_cards.dart';
 import 'package:flutter/material.dart';
 
 import '../router/app_router.dart';
-import '../widgets/navigation/drawer.dart';
-import '../widgets/navigation/navbar.dart';
 
 @RoutePage()
 class DataSaveSuccessPage extends StatelessWidget {
@@ -14,8 +12,6 @@ class DataSaveSuccessPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
-      appBar: const Navbar(),
-      drawer: const CustomDrawer(),
       body: ScrollableContent(
         backgroundColor: theme.colorTheme.generic.background,
         children: [

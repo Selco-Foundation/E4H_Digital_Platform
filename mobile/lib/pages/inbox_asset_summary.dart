@@ -10,8 +10,6 @@ import '../blocs/asset_type/asset_type.dart';
 import '../router/app_router.dart';
 import '../widgets/cards/element_asset_summary.dart';
 import '../widgets/header/back_navigation_help_header.dart';
-import '../widgets/navigation/drawer.dart';
-import '../widgets/navigation/navbar.dart';
 
 @RoutePage()
 class InboxAssetSummaryPage extends StatefulWidget {
@@ -28,8 +26,6 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
     final textTheme = theme.digitTextTheme(context);
 
     return Scaffold(
-      appBar: const Navbar(),
-      drawer: const CustomDrawer(),
       body: ScrollableContent(
         enableFixedDigitButton: true,
         backgroundColor: theme.colorTheme.generic.background,

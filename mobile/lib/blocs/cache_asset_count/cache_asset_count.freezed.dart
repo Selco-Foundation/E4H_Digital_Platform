@@ -19,6 +19,7 @@ mixin _$CacheAssetCountEvent {
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function(String projectId, String assetType) get,
+    required TResult Function(String projectId) getAll,
     required TResult Function(CacheAssetCount entry) add,
     required TResult Function(CacheAssetCount entry) update,
     required TResult Function(int id) delete,
@@ -27,6 +28,7 @@ mixin _$CacheAssetCountEvent {
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(String projectId, String assetType)? get,
+    TResult? Function(String projectId)? getAll,
     TResult? Function(CacheAssetCount entry)? add,
     TResult? Function(CacheAssetCount entry)? update,
     TResult? Function(int id)? delete,
@@ -35,6 +37,7 @@ mixin _$CacheAssetCountEvent {
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(String projectId, String assetType)? get,
+    TResult Function(String projectId)? getAll,
     TResult Function(CacheAssetCount entry)? add,
     TResult Function(CacheAssetCount entry)? update,
     TResult Function(int id)? delete,
@@ -44,6 +47,7 @@ mixin _$CacheAssetCountEvent {
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
     required TResult Function(CacheAssetCountEventGet value) get,
+    required TResult Function(CacheAssetCountEventGetAll value) getAll,
     required TResult Function(CacheAssetCountEventAdd value) add,
     required TResult Function(CacheAssetCountEventUpdate value) update,
     required TResult Function(CacheAssetCountEventDelete value) delete,
@@ -52,6 +56,7 @@ mixin _$CacheAssetCountEvent {
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(CacheAssetCountEventGet value)? get,
+    TResult? Function(CacheAssetCountEventGetAll value)? getAll,
     TResult? Function(CacheAssetCountEventAdd value)? add,
     TResult? Function(CacheAssetCountEventUpdate value)? update,
     TResult? Function(CacheAssetCountEventDelete value)? delete,
@@ -60,6 +65,7 @@ mixin _$CacheAssetCountEvent {
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
     TResult Function(CacheAssetCountEventGet value)? get,
+    TResult Function(CacheAssetCountEventGetAll value)? getAll,
     TResult Function(CacheAssetCountEventAdd value)? add,
     TResult Function(CacheAssetCountEventUpdate value)? update,
     TResult Function(CacheAssetCountEventDelete value)? delete,
@@ -166,6 +172,7 @@ class _$CacheAssetCountEventGetImpl implements CacheAssetCountEventGet {
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function(String projectId, String assetType) get,
+    required TResult Function(String projectId) getAll,
     required TResult Function(CacheAssetCount entry) add,
     required TResult Function(CacheAssetCount entry) update,
     required TResult Function(int id) delete,
@@ -177,6 +184,7 @@ class _$CacheAssetCountEventGetImpl implements CacheAssetCountEventGet {
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(String projectId, String assetType)? get,
+    TResult? Function(String projectId)? getAll,
     TResult? Function(CacheAssetCount entry)? add,
     TResult? Function(CacheAssetCount entry)? update,
     TResult? Function(int id)? delete,
@@ -188,6 +196,7 @@ class _$CacheAssetCountEventGetImpl implements CacheAssetCountEventGet {
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(String projectId, String assetType)? get,
+    TResult Function(String projectId)? getAll,
     TResult Function(CacheAssetCount entry)? add,
     TResult Function(CacheAssetCount entry)? update,
     TResult Function(int id)? delete,
@@ -203,6 +212,7 @@ class _$CacheAssetCountEventGetImpl implements CacheAssetCountEventGet {
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
     required TResult Function(CacheAssetCountEventGet value) get,
+    required TResult Function(CacheAssetCountEventGetAll value) getAll,
     required TResult Function(CacheAssetCountEventAdd value) add,
     required TResult Function(CacheAssetCountEventUpdate value) update,
     required TResult Function(CacheAssetCountEventDelete value) delete,
@@ -214,6 +224,7 @@ class _$CacheAssetCountEventGetImpl implements CacheAssetCountEventGet {
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(CacheAssetCountEventGet value)? get,
+    TResult? Function(CacheAssetCountEventGetAll value)? getAll,
     TResult? Function(CacheAssetCountEventAdd value)? add,
     TResult? Function(CacheAssetCountEventUpdate value)? update,
     TResult? Function(CacheAssetCountEventDelete value)? delete,
@@ -225,6 +236,7 @@ class _$CacheAssetCountEventGetImpl implements CacheAssetCountEventGet {
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
     TResult Function(CacheAssetCountEventGet value)? get,
+    TResult Function(CacheAssetCountEventGetAll value)? getAll,
     TResult Function(CacheAssetCountEventAdd value)? add,
     TResult Function(CacheAssetCountEventUpdate value)? update,
     TResult Function(CacheAssetCountEventDelete value)? delete,
@@ -246,6 +258,163 @@ abstract class CacheAssetCountEventGet implements CacheAssetCountEvent {
   String get assetType;
   @JsonKey(ignore: true)
   _$$CacheAssetCountEventGetImplCopyWith<_$CacheAssetCountEventGetImpl>
+      get copyWith => throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class _$$CacheAssetCountEventGetAllImplCopyWith<$Res> {
+  factory _$$CacheAssetCountEventGetAllImplCopyWith(
+          _$CacheAssetCountEventGetAllImpl value,
+          $Res Function(_$CacheAssetCountEventGetAllImpl) then) =
+      __$$CacheAssetCountEventGetAllImplCopyWithImpl<$Res>;
+  @useResult
+  $Res call({String projectId});
+}
+
+/// @nodoc
+class __$$CacheAssetCountEventGetAllImplCopyWithImpl<$Res>
+    extends _$CacheAssetCountEventCopyWithImpl<$Res,
+        _$CacheAssetCountEventGetAllImpl>
+    implements _$$CacheAssetCountEventGetAllImplCopyWith<$Res> {
+  __$$CacheAssetCountEventGetAllImplCopyWithImpl(
+      _$CacheAssetCountEventGetAllImpl _value,
+      $Res Function(_$CacheAssetCountEventGetAllImpl) _then)
+      : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? projectId = null,
+  }) {
+    return _then(_$CacheAssetCountEventGetAllImpl(
+      null == projectId
+          ? _value.projectId
+          : projectId // ignore: cast_nullable_to_non_nullable
+              as String,
+    ));
+  }
+}
+
+/// @nodoc
+
+class _$CacheAssetCountEventGetAllImpl implements CacheAssetCountEventGetAll {
+  const _$CacheAssetCountEventGetAllImpl(this.projectId);
+
+  @override
+  final String projectId;
+
+  @override
+  String toString() {
+    return 'CacheAssetCountEvent.getAll(projectId: $projectId)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$CacheAssetCountEventGetAllImpl &&
+            (identical(other.projectId, projectId) ||
+                other.projectId == projectId));
+  }
+
+  @override
+  int get hashCode => Object.hash(runtimeType, projectId);
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$CacheAssetCountEventGetAllImplCopyWith<_$CacheAssetCountEventGetAllImpl>
+      get copyWith => __$$CacheAssetCountEventGetAllImplCopyWithImpl<
+          _$CacheAssetCountEventGetAllImpl>(this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function(String projectId, String assetType) get,
+    required TResult Function(String projectId) getAll,
+    required TResult Function(CacheAssetCount entry) add,
+    required TResult Function(CacheAssetCount entry) update,
+    required TResult Function(int id) delete,
+  }) {
+    return getAll(projectId);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function(String projectId, String assetType)? get,
+    TResult? Function(String projectId)? getAll,
+    TResult? Function(CacheAssetCount entry)? add,
+    TResult? Function(CacheAssetCount entry)? update,
+    TResult? Function(int id)? delete,
+  }) {
+    return getAll?.call(projectId);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function(String projectId, String assetType)? get,
+    TResult Function(String projectId)? getAll,
+    TResult Function(CacheAssetCount entry)? add,
+    TResult Function(CacheAssetCount entry)? update,
+    TResult Function(int id)? delete,
+    required TResult orElse(),
+  }) {
+    if (getAll != null) {
+      return getAll(projectId);
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(CacheAssetCountEventGet value) get,
+    required TResult Function(CacheAssetCountEventGetAll value) getAll,
+    required TResult Function(CacheAssetCountEventAdd value) add,
+    required TResult Function(CacheAssetCountEventUpdate value) update,
+    required TResult Function(CacheAssetCountEventDelete value) delete,
+  }) {
+    return getAll(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(CacheAssetCountEventGet value)? get,
+    TResult? Function(CacheAssetCountEventGetAll value)? getAll,
+    TResult? Function(CacheAssetCountEventAdd value)? add,
+    TResult? Function(CacheAssetCountEventUpdate value)? update,
+    TResult? Function(CacheAssetCountEventDelete value)? delete,
+  }) {
+    return getAll?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(CacheAssetCountEventGet value)? get,
+    TResult Function(CacheAssetCountEventGetAll value)? getAll,
+    TResult Function(CacheAssetCountEventAdd value)? add,
+    TResult Function(CacheAssetCountEventUpdate value)? update,
+    TResult Function(CacheAssetCountEventDelete value)? delete,
+    required TResult orElse(),
+  }) {
+    if (getAll != null) {
+      return getAll(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class CacheAssetCountEventGetAll implements CacheAssetCountEvent {
+  const factory CacheAssetCountEventGetAll(final String projectId) =
+      _$CacheAssetCountEventGetAllImpl;
+
+  String get projectId;
+  @JsonKey(ignore: true)
+  _$$CacheAssetCountEventGetAllImplCopyWith<_$CacheAssetCountEventGetAllImpl>
       get copyWith => throw _privateConstructorUsedError;
 }
 
@@ -318,6 +487,7 @@ class _$CacheAssetCountEventAddImpl implements CacheAssetCountEventAdd {
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function(String projectId, String assetType) get,
+    required TResult Function(String projectId) getAll,
     required TResult Function(CacheAssetCount entry) add,
     required TResult Function(CacheAssetCount entry) update,
     required TResult Function(int id) delete,
@@ -329,6 +499,7 @@ class _$CacheAssetCountEventAddImpl implements CacheAssetCountEventAdd {
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(String projectId, String assetType)? get,
+    TResult? Function(String projectId)? getAll,
     TResult? Function(CacheAssetCount entry)? add,
     TResult? Function(CacheAssetCount entry)? update,
     TResult? Function(int id)? delete,
@@ -340,6 +511,7 @@ class _$CacheAssetCountEventAddImpl implements CacheAssetCountEventAdd {
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(String projectId, String assetType)? get,
+    TResult Function(String projectId)? getAll,
     TResult Function(CacheAssetCount entry)? add,
     TResult Function(CacheAssetCount entry)? update,
     TResult Function(int id)? delete,
@@ -355,6 +527,7 @@ class _$CacheAssetCountEventAddImpl implements CacheAssetCountEventAdd {
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
     required TResult Function(CacheAssetCountEventGet value) get,
+    required TResult Function(CacheAssetCountEventGetAll value) getAll,
     required TResult Function(CacheAssetCountEventAdd value) add,
     required TResult Function(CacheAssetCountEventUpdate value) update,
     required TResult Function(CacheAssetCountEventDelete value) delete,
@@ -366,6 +539,7 @@ class _$CacheAssetCountEventAddImpl implements CacheAssetCountEventAdd {
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(CacheAssetCountEventGet value)? get,
+    TResult? Function(CacheAssetCountEventGetAll value)? getAll,
     TResult? Function(CacheAssetCountEventAdd value)? add,
     TResult? Function(CacheAssetCountEventUpdate value)? update,
     TResult? Function(CacheAssetCountEventDelete value)? delete,
@@ -377,6 +551,7 @@ class _$CacheAssetCountEventAddImpl implements CacheAssetCountEventAdd {
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
     TResult Function(CacheAssetCountEventGet value)? get,
+    TResult Function(CacheAssetCountEventGetAll value)? getAll,
     TResult Function(CacheAssetCountEventAdd value)? add,
     TResult Function(CacheAssetCountEventUpdate value)? update,
     TResult Function(CacheAssetCountEventDelete value)? delete,
@@ -468,6 +643,7 @@ class _$CacheAssetCountEventUpdateImpl implements CacheAssetCountEventUpdate {
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function(String projectId, String assetType) get,
+    required TResult Function(String projectId) getAll,
     required TResult Function(CacheAssetCount entry) add,
     required TResult Function(CacheAssetCount entry) update,
     required TResult Function(int id) delete,
@@ -479,6 +655,7 @@ class _$CacheAssetCountEventUpdateImpl implements CacheAssetCountEventUpdate {
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(String projectId, String assetType)? get,
+    TResult? Function(String projectId)? getAll,
     TResult? Function(CacheAssetCount entry)? add,
     TResult? Function(CacheAssetCount entry)? update,
     TResult? Function(int id)? delete,
@@ -490,6 +667,7 @@ class _$CacheAssetCountEventUpdateImpl implements CacheAssetCountEventUpdate {
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(String projectId, String assetType)? get,
+    TResult Function(String projectId)? getAll,
     TResult Function(CacheAssetCount entry)? add,
     TResult Function(CacheAssetCount entry)? update,
     TResult Function(int id)? delete,
@@ -505,6 +683,7 @@ class _$CacheAssetCountEventUpdateImpl implements CacheAssetCountEventUpdate {
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
     required TResult Function(CacheAssetCountEventGet value) get,
+    required TResult Function(CacheAssetCountEventGetAll value) getAll,
     required TResult Function(CacheAssetCountEventAdd value) add,
     required TResult Function(CacheAssetCountEventUpdate value) update,
     required TResult Function(CacheAssetCountEventDelete value) delete,
@@ -516,6 +695,7 @@ class _$CacheAssetCountEventUpdateImpl implements CacheAssetCountEventUpdate {
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(CacheAssetCountEventGet value)? get,
+    TResult? Function(CacheAssetCountEventGetAll value)? getAll,
     TResult? Function(CacheAssetCountEventAdd value)? add,
     TResult? Function(CacheAssetCountEventUpdate value)? update,
     TResult? Function(CacheAssetCountEventDelete value)? delete,
@@ -527,6 +707,7 @@ class _$CacheAssetCountEventUpdateImpl implements CacheAssetCountEventUpdate {
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
     TResult Function(CacheAssetCountEventGet value)? get,
+    TResult Function(CacheAssetCountEventGetAll value)? getAll,
     TResult Function(CacheAssetCountEventAdd value)? add,
     TResult Function(CacheAssetCountEventUpdate value)? update,
     TResult Function(CacheAssetCountEventDelete value)? delete,
@@ -618,6 +799,7 @@ class _$CacheAssetCountEventDeleteImpl implements CacheAssetCountEventDelete {
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function(String projectId, String assetType) get,
+    required TResult Function(String projectId) getAll,
     required TResult Function(CacheAssetCount entry) add,
     required TResult Function(CacheAssetCount entry) update,
     required TResult Function(int id) delete,
@@ -629,6 +811,7 @@ class _$CacheAssetCountEventDeleteImpl implements CacheAssetCountEventDelete {
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(String projectId, String assetType)? get,
+    TResult? Function(String projectId)? getAll,
     TResult? Function(CacheAssetCount entry)? add,
     TResult? Function(CacheAssetCount entry)? update,
     TResult? Function(int id)? delete,
@@ -640,6 +823,7 @@ class _$CacheAssetCountEventDeleteImpl implements CacheAssetCountEventDelete {
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(String projectId, String assetType)? get,
+    TResult Function(String projectId)? getAll,
     TResult Function(CacheAssetCount entry)? add,
     TResult Function(CacheAssetCount entry)? update,
     TResult Function(int id)? delete,
@@ -655,6 +839,7 @@ class _$CacheAssetCountEventDeleteImpl implements CacheAssetCountEventDelete {
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
     required TResult Function(CacheAssetCountEventGet value) get,
+    required TResult Function(CacheAssetCountEventGetAll value) getAll,
     required TResult Function(CacheAssetCountEventAdd value) add,
     required TResult Function(CacheAssetCountEventUpdate value) update,
     required TResult Function(CacheAssetCountEventDelete value) delete,
@@ -666,6 +851,7 @@ class _$CacheAssetCountEventDeleteImpl implements CacheAssetCountEventDelete {
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(CacheAssetCountEventGet value)? get,
+    TResult? Function(CacheAssetCountEventGetAll value)? getAll,
     TResult? Function(CacheAssetCountEventAdd value)? add,
     TResult? Function(CacheAssetCountEventUpdate value)? update,
     TResult? Function(CacheAssetCountEventDelete value)? delete,
@@ -677,6 +863,7 @@ class _$CacheAssetCountEventDeleteImpl implements CacheAssetCountEventDelete {
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
     TResult Function(CacheAssetCountEventGet value)? get,
+    TResult Function(CacheAssetCountEventGetAll value)? getAll,
     TResult Function(CacheAssetCountEventAdd value)? add,
     TResult Function(CacheAssetCountEventUpdate value)? update,
     TResult Function(CacheAssetCountEventDelete value)? delete,
