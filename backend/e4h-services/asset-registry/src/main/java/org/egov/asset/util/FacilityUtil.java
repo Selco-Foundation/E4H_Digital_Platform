@@ -13,7 +13,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 @Component
 @Slf4j
@@ -33,16 +35,16 @@ public class FacilityUtil {
             throw new CustomException(ErrorConstants.FACILITY_SEARCH_REQUIRED_PARAMS_CODE, ErrorConstants.FACILITY_SEARCH_REQUIRED_PARAMS_MSG);
         }
         String url = prepareFacilityRequest(tenantId, facilityId);
-        ResponseEntity<List<Object>> response = null;
+        ResponseEntity<Map<String,Object>> response = null;
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.set("Accept", "application/json");
 
             HttpEntity<?> entity = new HttpEntity<>(headers);
-            response = restTemplate.exchange(url, HttpMethod.GET, entity, new ParameterizedTypeReference<List<Object>>() {
+            response = restTemplate.exchange(url, HttpMethod.GET, entity, new ParameterizedTypeReference<Map<String,Object>>() {
             });
 
-            return response.getBody();
+            return Collections.singletonList(response.getBody().get("facilities"));
         } catch (Exception e) {
             log.error("Exception while fetching from facility: ", e);
             throw new CustomException(ErrorConstants.FACILITY_SERVICE_ERROR_CODE, ErrorConstants.FACILITY_SERVICE_ERROR_MSG);
@@ -53,10 +55,10 @@ public class FacilityUtil {
     private String prepareFacilityRequest(String tenantId, String facilityId) {
         String url = configuration.getFacilityHost() + configuration.getFacilitySearchPath();
         UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(url)
-                .queryParam("tenant_id", tenantId);
+                .queryParam("tenantId", tenantId);
 
         if (facilityId != null && !facilityId.isEmpty()) {
-            builder.queryParam("facility_id", facilityId);
+            builder.queryParam("facilityId", facilityId);
         }
         return builder.toUriString();
     }
