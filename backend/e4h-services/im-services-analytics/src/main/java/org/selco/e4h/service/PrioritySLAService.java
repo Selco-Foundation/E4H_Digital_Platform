@@ -294,17 +294,17 @@ public class PrioritySLAService {
         String businessService = "Incident_" + priority.toUpperCase();
         Duration total = Duration.ZERO;
 
-        if (currentState.equals(PENDINGFORASSIGNMENT) || currentState.equals(PENDINGFORRESOLUTION)) {
-            total = total.plus(getDurationFromMap(slaMap, tenantId, businessService, PENDINGFORASSIGNMENT));
-            total = total.plus(getDurationFromMap(slaMap, tenantId, businessService, PENDINGFORRESOLUTION));
-        } else if (currentState.startsWith(PENDING_ASSIGNMENT)) {
-            String suffix = currentState.replace(PENDING_ASSIGNMENT, "");
-            String resolutionState = PENDING_RESOLUTION + suffix;
+        if (currentState.equals(PENDING_FOR_ASSIGNMENT) || currentState.equals(PENDING_RESOLUTION)) {
+            total = total.plus(getDurationFromMap(slaMap, tenantId, businessService, PENDING_FOR_ASSIGNMENT));
+            total = total.plus(getDurationFromMap(slaMap, tenantId, businessService, PENDING_RESOLUTION));
+        } else if (currentState.startsWith(PENDING_ASSIGNMENT_PREFIX)) {
+            String suffix = currentState.replace(PENDING_ASSIGNMENT_PREFIX, "");
+            String resolutionState = PENDING_RESOLUTION_PREFIX + suffix;
             total = total.plus(getDurationFromMap(slaMap, tenantId, businessService, currentState));
             total = total.plus(getDurationFromMap(slaMap, tenantId, businessService, resolutionState));
-        } else if (currentState.startsWith(PENDING_RESOLUTION)) {
-            String suffix = currentState.replace(PENDING_RESOLUTION, "");
-            String assignmentState = PENDING_ASSIGNMENT + suffix;
+        } else if (currentState.startsWith(PENDING_RESOLUTION_PREFIX)) {
+            String suffix = currentState.replace(PENDING_RESOLUTION_PREFIX, "");
+            String assignmentState = PENDING_ASSIGNMENT_PREFIX + suffix;
             total = total.plus(getDurationFromMap(slaMap, tenantId, businessService, assignmentState));
             total = total.plus(getDurationFromMap(slaMap, tenantId, businessService, currentState));
         }
