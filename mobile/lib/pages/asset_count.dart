@@ -20,8 +20,6 @@ import '../utils/i18_key_constants.dart' as i18;
 import '../widgets/button/footer_button.dart';
 import '../widgets/cards/stepper.dart';
 import '../widgets/header/back_navigation_help_header.dart';
-import '../widgets/navigation/drawer.dart';
-import '../widgets/navigation/navbar.dart';
 
 @RoutePage()
 class AssetCountPage extends StatefulWidget {
@@ -68,9 +66,12 @@ class _AssetCountPageState extends State<AssetCountPage> {
         );
 
     // Load inverter count
-    context
-        .read<CacheAssetCountBloc>()
-        .add(CacheAssetCountEvent.get(projectId, 'inverter'));
+    // context
+    //     .read<CacheAssetCountBloc>()
+    //     .add(CacheAssetCountEvent.get(projectId, 'inverter'));
+    context.read<CacheAssetCountBloc>().add(
+          CacheAssetCountEvent.getAll(projectId),
+        );
   }
 
   @override
@@ -79,23 +80,21 @@ class _AssetCountPageState extends State<AssetCountPage> {
     final textTheme = theme.digitTextTheme(context);
 
     return Scaffold(
-      appBar: const Navbar(),
-      drawer: const CustomDrawer(),
       body: BlocBuilder<AppInitialization, InitState>(
         builder: (initContext, initState) {
           initState.maybeWhen(
               orElse: () => 0,
               initialized:
                   (appConfig, assetCount, assetType, system, warranty, brand) {
-                final inverterEntry = assetCount.firstWhere(
-                    (entry) => entry.data.assetTypeCode == "INVERTER");
+                final inverterEntry = assetCount.firstWhere((entry) =>
+                    entry.data.assetTypeCode.toUpperCase() == "INVERTER");
                 inverterData = inverterEntry.data;
-                final batteryEntry = assetCount.firstWhere(
-                    (entry) => entry.data.assetTypeCode == "BATTERY");
+                final batteryEntry = assetCount.firstWhere((entry) =>
+                    entry.data.assetTypeCode.toUpperCase() == "BATTERY");
                 batteryData = batteryEntry.data;
 
-                final panelEntry = assetCount
-                    .firstWhere((entry) => entry.data.assetTypeCode == "PANEL");
+                final panelEntry = assetCount.firstWhere((entry) =>
+                    entry.data.assetTypeCode.toUpperCase() == "PANEL");
                 panelData = panelEntry.data;
               });
 
@@ -192,40 +191,96 @@ class _AssetCountPageState extends State<AssetCountPage> {
                           },
                         ),
 
-                        // Batteries (static for now)
-                        LabeledField(
-                          label: 'Batteries',
-                          labelStyle: textTheme.headingS.copyWith(
-                            color: theme.colorTheme.text.primary,
+                        BlocSelector<CacheAssetCountBloc, CacheAssetCountState,
+                            String>(
+                          selector: (state) => state.maybeWhen(
+                            loaded: (entries) =>
+                                entries
+                                    .firstWhereOrNull(
+                                        (e) => e.assetType == 'battery')
+                                    ?.count
+                                    .toString() ??
+                                '0',
+                            orElse: () => '0',
                           ),
-                          capitalizedFirstLetter: false,
-                          child: InputField(
-                            type: InputType.numeric,
-                            initialValue: '0',
-                            inputFormatters: [
-                              FilteringTextInputFormatter.digitsOnly
-                            ],
-                            editable: true,
-                          ),
+                          builder: (context, batteryCount) {
+                            return LabeledField(
+                              label: 'Batteries',
+                              labelStyle: textTheme.headingS.copyWith(
+                                color: theme.colorTheme.text.primary,
+                              ),
+                              capitalizedFirstLetter: false,
+                              child: InputField(
+                                minValue: batteryData?.min ?? 0,
+                                maxValue: batteryData?.max ?? 0,
+                                type: InputType.numeric,
+                                editable: false,
+                                initialValue: batteryCount,
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.digitsOnly
+                                ],
+                                onChange: (value) {
+                                  if (_currentProjectId == null) return;
+                                  final count = int.tryParse(value) ?? 0;
+                                  context.read<CacheAssetCountBloc>().add(
+                                        CacheAssetCountEventAdd(
+                                          CacheAssetCount(
+                                            projectId: _currentProjectId!,
+                                            assetType: 'battery',
+                                            count: count,
+                                          ),
+                                        ),
+                                      );
+                                },
+                              ),
+                            );
+                          },
                         ),
 
-                        // Panels (static for now)
-                        LabeledField(
-                          label: 'Panels',
-                          labelStyle: textTheme.headingS.copyWith(
-                            color: theme.colorTheme.text.primary,
+                        BlocSelector<CacheAssetCountBloc, CacheAssetCountState,
+                            String>(
+                          selector: (state) => state.maybeWhen(
+                            loaded: (entries) =>
+                                entries
+                                    .firstWhereOrNull(
+                                        (e) => e.assetType == 'panel')
+                                    ?.count
+                                    .toString() ??
+                                '0',
+                            orElse: () => '0',
                           ),
-                          capitalizedFirstLetter: false,
-                          child: InputField(
-                            type: InputType.numeric,
-                            minValue: 0,
-                            maxValue: 100,
-                            initialValue: '0',
-                            inputFormatters: [
-                              FilteringTextInputFormatter.digitsOnly
-                            ],
-                            editable: true,
-                          ),
+                          builder: (context, panelCount) {
+                            return LabeledField(
+                              label: 'Panels',
+                              labelStyle: textTheme.headingS.copyWith(
+                                color: theme.colorTheme.text.primary,
+                              ),
+                              capitalizedFirstLetter: false,
+                              child: InputField(
+                                minValue: panelData?.min ?? 0,
+                                maxValue: panelData?.max ?? 0,
+                                type: InputType.numeric,
+                                editable: false,
+                                initialValue: panelCount,
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.digitsOnly
+                                ],
+                                onChange: (value) {
+                                  if (_currentProjectId == null) return;
+                                  final count = int.tryParse(value) ?? 0;
+                                  context.read<CacheAssetCountBloc>().add(
+                                        CacheAssetCountEventAdd(
+                                          CacheAssetCount(
+                                            projectId: _currentProjectId!,
+                                            assetType: 'panel',
+                                            count: count,
+                                          ),
+                                        ),
+                                      );
+                                },
+                              ),
+                            );
+                          },
                         ),
                       ],
                     ),

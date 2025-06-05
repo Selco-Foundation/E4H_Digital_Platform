@@ -1,0 +1,1286 @@
+// coverage:ignore-file
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint
+// ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
+
+part of 'asset_submission.dart';
+
+// **************************************************************************
+// FreezedGenerator
+// **************************************************************************
+
+T _$identity<T>(T value) => value;
+
+final _privateConstructorUsedError = UnsupportedError(
+    'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models');
+
+/// @nodoc
+mixin _$AssetSubmissionEvent {
+  String get projectId => throw _privateConstructorUsedError;
+  String get authToken => throw _privateConstructorUsedError;
+  String get tenantId => throw _privateConstructorUsedError;
+  String get facilityId => throw _privateConstructorUsedError;
+  String get systemCode => throw _privateConstructorUsedError;
+  String? get modelNumber => throw _privateConstructorUsedError;
+  String? get brandId => throw _privateConstructorUsedError;
+  double? get totalCapacity => throw _privateConstructorUsedError;
+  String? get totalCapacityUnit => throw _privateConstructorUsedError;
+  double? get panelCapacity => throw _privateConstructorUsedError;
+  String? get capacityUnit => throw _privateConstructorUsedError;
+  String? get warrantyStartDate => throw _privateConstructorUsedError;
+  int? get warrantyDuration => throw _privateConstructorUsedError;
+  String? get warrantyEndDate => throw _privateConstructorUsedError;
+  Map<String, dynamic>? get additionalDetails =>
+      throw _privateConstructorUsedError;
+  Map<String, dynamic>? get userInfo => throw _privateConstructorUsedError;
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function(
+            String projectId,
+            String authToken,
+            String tenantId,
+            String facilityId,
+            String systemCode,
+            String? modelNumber,
+            String? brandId,
+            double? totalCapacity,
+            String? totalCapacityUnit,
+            double? panelCapacity,
+            String? capacityUnit,
+            String? warrantyStartDate,
+            int? warrantyDuration,
+            String? warrantyEndDate,
+            Map<String, dynamic>? additionalDetails,
+            Map<String, dynamic>? userInfo)
+        submitAll,
+  }) =>
+      throw _privateConstructorUsedError;
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function(
+            String projectId,
+            String authToken,
+            String tenantId,
+            String facilityId,
+            String systemCode,
+            String? modelNumber,
+            String? brandId,
+            double? totalCapacity,
+            String? totalCapacityUnit,
+            double? panelCapacity,
+            String? capacityUnit,
+            String? warrantyStartDate,
+            int? warrantyDuration,
+            String? warrantyEndDate,
+            Map<String, dynamic>? additionalDetails,
+            Map<String, dynamic>? userInfo)?
+        submitAll,
+  }) =>
+      throw _privateConstructorUsedError;
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function(
+            String projectId,
+            String authToken,
+            String tenantId,
+            String facilityId,
+            String systemCode,
+            String? modelNumber,
+            String? brandId,
+            double? totalCapacity,
+            String? totalCapacityUnit,
+            double? panelCapacity,
+            String? capacityUnit,
+            String? warrantyStartDate,
+            int? warrantyDuration,
+            String? warrantyEndDate,
+            Map<String, dynamic>? additionalDetails,
+            Map<String, dynamic>? userInfo)?
+        submitAll,
+    required TResult orElse(),
+  }) =>
+      throw _privateConstructorUsedError;
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(_SubmitAll value) submitAll,
+  }) =>
+      throw _privateConstructorUsedError;
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(_SubmitAll value)? submitAll,
+  }) =>
+      throw _privateConstructorUsedError;
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(_SubmitAll value)? submitAll,
+    required TResult orElse(),
+  }) =>
+      throw _privateConstructorUsedError;
+
+  @JsonKey(ignore: true)
+  $AssetSubmissionEventCopyWith<AssetSubmissionEvent> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class $AssetSubmissionEventCopyWith<$Res> {
+  factory $AssetSubmissionEventCopyWith(AssetSubmissionEvent value,
+          $Res Function(AssetSubmissionEvent) then) =
+      _$AssetSubmissionEventCopyWithImpl<$Res, AssetSubmissionEvent>;
+  @useResult
+  $Res call(
+      {String projectId,
+      String authToken,
+      String tenantId,
+      String facilityId,
+      String systemCode,
+      String? modelNumber,
+      String? brandId,
+      double? totalCapacity,
+      String? totalCapacityUnit,
+      double? panelCapacity,
+      String? capacityUnit,
+      String? warrantyStartDate,
+      int? warrantyDuration,
+      String? warrantyEndDate,
+      Map<String, dynamic>? additionalDetails,
+      Map<String, dynamic>? userInfo});
+}
+
+/// @nodoc
+class _$AssetSubmissionEventCopyWithImpl<$Res,
+        $Val extends AssetSubmissionEvent>
+    implements $AssetSubmissionEventCopyWith<$Res> {
+  _$AssetSubmissionEventCopyWithImpl(this._value, this._then);
+
+  // ignore: unused_field
+  final $Val _value;
+  // ignore: unused_field
+  final $Res Function($Val) _then;
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? projectId = null,
+    Object? authToken = null,
+    Object? tenantId = null,
+    Object? facilityId = null,
+    Object? systemCode = null,
+    Object? modelNumber = freezed,
+    Object? brandId = freezed,
+    Object? totalCapacity = freezed,
+    Object? totalCapacityUnit = freezed,
+    Object? panelCapacity = freezed,
+    Object? capacityUnit = freezed,
+    Object? warrantyStartDate = freezed,
+    Object? warrantyDuration = freezed,
+    Object? warrantyEndDate = freezed,
+    Object? additionalDetails = freezed,
+    Object? userInfo = freezed,
+  }) {
+    return _then(_value.copyWith(
+      projectId: null == projectId
+          ? _value.projectId
+          : projectId // ignore: cast_nullable_to_non_nullable
+              as String,
+      authToken: null == authToken
+          ? _value.authToken
+          : authToken // ignore: cast_nullable_to_non_nullable
+              as String,
+      tenantId: null == tenantId
+          ? _value.tenantId
+          : tenantId // ignore: cast_nullable_to_non_nullable
+              as String,
+      facilityId: null == facilityId
+          ? _value.facilityId
+          : facilityId // ignore: cast_nullable_to_non_nullable
+              as String,
+      systemCode: null == systemCode
+          ? _value.systemCode
+          : systemCode // ignore: cast_nullable_to_non_nullable
+              as String,
+      modelNumber: freezed == modelNumber
+          ? _value.modelNumber
+          : modelNumber // ignore: cast_nullable_to_non_nullable
+              as String?,
+      brandId: freezed == brandId
+          ? _value.brandId
+          : brandId // ignore: cast_nullable_to_non_nullable
+              as String?,
+      totalCapacity: freezed == totalCapacity
+          ? _value.totalCapacity
+          : totalCapacity // ignore: cast_nullable_to_non_nullable
+              as double?,
+      totalCapacityUnit: freezed == totalCapacityUnit
+          ? _value.totalCapacityUnit
+          : totalCapacityUnit // ignore: cast_nullable_to_non_nullable
+              as String?,
+      panelCapacity: freezed == panelCapacity
+          ? _value.panelCapacity
+          : panelCapacity // ignore: cast_nullable_to_non_nullable
+              as double?,
+      capacityUnit: freezed == capacityUnit
+          ? _value.capacityUnit
+          : capacityUnit // ignore: cast_nullable_to_non_nullable
+              as String?,
+      warrantyStartDate: freezed == warrantyStartDate
+          ? _value.warrantyStartDate
+          : warrantyStartDate // ignore: cast_nullable_to_non_nullable
+              as String?,
+      warrantyDuration: freezed == warrantyDuration
+          ? _value.warrantyDuration
+          : warrantyDuration // ignore: cast_nullable_to_non_nullable
+              as int?,
+      warrantyEndDate: freezed == warrantyEndDate
+          ? _value.warrantyEndDate
+          : warrantyEndDate // ignore: cast_nullable_to_non_nullable
+              as String?,
+      additionalDetails: freezed == additionalDetails
+          ? _value.additionalDetails
+          : additionalDetails // ignore: cast_nullable_to_non_nullable
+              as Map<String, dynamic>?,
+      userInfo: freezed == userInfo
+          ? _value.userInfo
+          : userInfo // ignore: cast_nullable_to_non_nullable
+              as Map<String, dynamic>?,
+    ) as $Val);
+  }
+}
+
+/// @nodoc
+abstract class _$$SubmitAllImplCopyWith<$Res>
+    implements $AssetSubmissionEventCopyWith<$Res> {
+  factory _$$SubmitAllImplCopyWith(
+          _$SubmitAllImpl value, $Res Function(_$SubmitAllImpl) then) =
+      __$$SubmitAllImplCopyWithImpl<$Res>;
+  @override
+  @useResult
+  $Res call(
+      {String projectId,
+      String authToken,
+      String tenantId,
+      String facilityId,
+      String systemCode,
+      String? modelNumber,
+      String? brandId,
+      double? totalCapacity,
+      String? totalCapacityUnit,
+      double? panelCapacity,
+      String? capacityUnit,
+      String? warrantyStartDate,
+      int? warrantyDuration,
+      String? warrantyEndDate,
+      Map<String, dynamic>? additionalDetails,
+      Map<String, dynamic>? userInfo});
+}
+
+/// @nodoc
+class __$$SubmitAllImplCopyWithImpl<$Res>
+    extends _$AssetSubmissionEventCopyWithImpl<$Res, _$SubmitAllImpl>
+    implements _$$SubmitAllImplCopyWith<$Res> {
+  __$$SubmitAllImplCopyWithImpl(
+      _$SubmitAllImpl _value, $Res Function(_$SubmitAllImpl) _then)
+      : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? projectId = null,
+    Object? authToken = null,
+    Object? tenantId = null,
+    Object? facilityId = null,
+    Object? systemCode = null,
+    Object? modelNumber = freezed,
+    Object? brandId = freezed,
+    Object? totalCapacity = freezed,
+    Object? totalCapacityUnit = freezed,
+    Object? panelCapacity = freezed,
+    Object? capacityUnit = freezed,
+    Object? warrantyStartDate = freezed,
+    Object? warrantyDuration = freezed,
+    Object? warrantyEndDate = freezed,
+    Object? additionalDetails = freezed,
+    Object? userInfo = freezed,
+  }) {
+    return _then(_$SubmitAllImpl(
+      projectId: null == projectId
+          ? _value.projectId
+          : projectId // ignore: cast_nullable_to_non_nullable
+              as String,
+      authToken: null == authToken
+          ? _value.authToken
+          : authToken // ignore: cast_nullable_to_non_nullable
+              as String,
+      tenantId: null == tenantId
+          ? _value.tenantId
+          : tenantId // ignore: cast_nullable_to_non_nullable
+              as String,
+      facilityId: null == facilityId
+          ? _value.facilityId
+          : facilityId // ignore: cast_nullable_to_non_nullable
+              as String,
+      systemCode: null == systemCode
+          ? _value.systemCode
+          : systemCode // ignore: cast_nullable_to_non_nullable
+              as String,
+      modelNumber: freezed == modelNumber
+          ? _value.modelNumber
+          : modelNumber // ignore: cast_nullable_to_non_nullable
+              as String?,
+      brandId: freezed == brandId
+          ? _value.brandId
+          : brandId // ignore: cast_nullable_to_non_nullable
+              as String?,
+      totalCapacity: freezed == totalCapacity
+          ? _value.totalCapacity
+          : totalCapacity // ignore: cast_nullable_to_non_nullable
+              as double?,
+      totalCapacityUnit: freezed == totalCapacityUnit
+          ? _value.totalCapacityUnit
+          : totalCapacityUnit // ignore: cast_nullable_to_non_nullable
+              as String?,
+      panelCapacity: freezed == panelCapacity
+          ? _value.panelCapacity
+          : panelCapacity // ignore: cast_nullable_to_non_nullable
+              as double?,
+      capacityUnit: freezed == capacityUnit
+          ? _value.capacityUnit
+          : capacityUnit // ignore: cast_nullable_to_non_nullable
+              as String?,
+      warrantyStartDate: freezed == warrantyStartDate
+          ? _value.warrantyStartDate
+          : warrantyStartDate // ignore: cast_nullable_to_non_nullable
+              as String?,
+      warrantyDuration: freezed == warrantyDuration
+          ? _value.warrantyDuration
+          : warrantyDuration // ignore: cast_nullable_to_non_nullable
+              as int?,
+      warrantyEndDate: freezed == warrantyEndDate
+          ? _value.warrantyEndDate
+          : warrantyEndDate // ignore: cast_nullable_to_non_nullable
+              as String?,
+      additionalDetails: freezed == additionalDetails
+          ? _value._additionalDetails
+          : additionalDetails // ignore: cast_nullable_to_non_nullable
+              as Map<String, dynamic>?,
+      userInfo: freezed == userInfo
+          ? _value._userInfo
+          : userInfo // ignore: cast_nullable_to_non_nullable
+              as Map<String, dynamic>?,
+    ));
+  }
+}
+
+/// @nodoc
+
+class _$SubmitAllImpl implements _SubmitAll {
+  const _$SubmitAllImpl(
+      {required this.projectId,
+      required this.authToken,
+      required this.tenantId,
+      required this.facilityId,
+      required this.systemCode,
+      this.modelNumber,
+      this.brandId,
+      this.totalCapacity,
+      this.totalCapacityUnit,
+      this.panelCapacity,
+      this.capacityUnit,
+      this.warrantyStartDate,
+      this.warrantyDuration,
+      this.warrantyEndDate,
+      final Map<String, dynamic>? additionalDetails,
+      final Map<String, dynamic>? userInfo})
+      : _additionalDetails = additionalDetails,
+        _userInfo = userInfo;
+
+  @override
+  final String projectId;
+  @override
+  final String authToken;
+  @override
+  final String tenantId;
+  @override
+  final String facilityId;
+  @override
+  final String systemCode;
+  @override
+  final String? modelNumber;
+  @override
+  final String? brandId;
+  @override
+  final double? totalCapacity;
+  @override
+  final String? totalCapacityUnit;
+  @override
+  final double? panelCapacity;
+  @override
+  final String? capacityUnit;
+  @override
+  final String? warrantyStartDate;
+  @override
+  final int? warrantyDuration;
+  @override
+  final String? warrantyEndDate;
+  final Map<String, dynamic>? _additionalDetails;
+  @override
+  Map<String, dynamic>? get additionalDetails {
+    final value = _additionalDetails;
+    if (value == null) return null;
+    if (_additionalDetails is EqualUnmodifiableMapView)
+      return _additionalDetails;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableMapView(value);
+  }
+
+  final Map<String, dynamic>? _userInfo;
+  @override
+  Map<String, dynamic>? get userInfo {
+    final value = _userInfo;
+    if (value == null) return null;
+    if (_userInfo is EqualUnmodifiableMapView) return _userInfo;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableMapView(value);
+  }
+
+  @override
+  String toString() {
+    return 'AssetSubmissionEvent.submitAll(projectId: $projectId, authToken: $authToken, tenantId: $tenantId, facilityId: $facilityId, systemCode: $systemCode, modelNumber: $modelNumber, brandId: $brandId, totalCapacity: $totalCapacity, totalCapacityUnit: $totalCapacityUnit, panelCapacity: $panelCapacity, capacityUnit: $capacityUnit, warrantyStartDate: $warrantyStartDate, warrantyDuration: $warrantyDuration, warrantyEndDate: $warrantyEndDate, additionalDetails: $additionalDetails, userInfo: $userInfo)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$SubmitAllImpl &&
+            (identical(other.projectId, projectId) ||
+                other.projectId == projectId) &&
+            (identical(other.authToken, authToken) ||
+                other.authToken == authToken) &&
+            (identical(other.tenantId, tenantId) ||
+                other.tenantId == tenantId) &&
+            (identical(other.facilityId, facilityId) ||
+                other.facilityId == facilityId) &&
+            (identical(other.systemCode, systemCode) ||
+                other.systemCode == systemCode) &&
+            (identical(other.modelNumber, modelNumber) ||
+                other.modelNumber == modelNumber) &&
+            (identical(other.brandId, brandId) || other.brandId == brandId) &&
+            (identical(other.totalCapacity, totalCapacity) ||
+                other.totalCapacity == totalCapacity) &&
+            (identical(other.totalCapacityUnit, totalCapacityUnit) ||
+                other.totalCapacityUnit == totalCapacityUnit) &&
+            (identical(other.panelCapacity, panelCapacity) ||
+                other.panelCapacity == panelCapacity) &&
+            (identical(other.capacityUnit, capacityUnit) ||
+                other.capacityUnit == capacityUnit) &&
+            (identical(other.warrantyStartDate, warrantyStartDate) ||
+                other.warrantyStartDate == warrantyStartDate) &&
+            (identical(other.warrantyDuration, warrantyDuration) ||
+                other.warrantyDuration == warrantyDuration) &&
+            (identical(other.warrantyEndDate, warrantyEndDate) ||
+                other.warrantyEndDate == warrantyEndDate) &&
+            const DeepCollectionEquality()
+                .equals(other._additionalDetails, _additionalDetails) &&
+            const DeepCollectionEquality().equals(other._userInfo, _userInfo));
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      runtimeType,
+      projectId,
+      authToken,
+      tenantId,
+      facilityId,
+      systemCode,
+      modelNumber,
+      brandId,
+      totalCapacity,
+      totalCapacityUnit,
+      panelCapacity,
+      capacityUnit,
+      warrantyStartDate,
+      warrantyDuration,
+      warrantyEndDate,
+      const DeepCollectionEquality().hash(_additionalDetails),
+      const DeepCollectionEquality().hash(_userInfo));
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$SubmitAllImplCopyWith<_$SubmitAllImpl> get copyWith =>
+      __$$SubmitAllImplCopyWithImpl<_$SubmitAllImpl>(this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function(
+            String projectId,
+            String authToken,
+            String tenantId,
+            String facilityId,
+            String systemCode,
+            String? modelNumber,
+            String? brandId,
+            double? totalCapacity,
+            String? totalCapacityUnit,
+            double? panelCapacity,
+            String? capacityUnit,
+            String? warrantyStartDate,
+            int? warrantyDuration,
+            String? warrantyEndDate,
+            Map<String, dynamic>? additionalDetails,
+            Map<String, dynamic>? userInfo)
+        submitAll,
+  }) {
+    return submitAll(
+        projectId,
+        authToken,
+        tenantId,
+        facilityId,
+        systemCode,
+        modelNumber,
+        brandId,
+        totalCapacity,
+        totalCapacityUnit,
+        panelCapacity,
+        capacityUnit,
+        warrantyStartDate,
+        warrantyDuration,
+        warrantyEndDate,
+        additionalDetails,
+        userInfo);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function(
+            String projectId,
+            String authToken,
+            String tenantId,
+            String facilityId,
+            String systemCode,
+            String? modelNumber,
+            String? brandId,
+            double? totalCapacity,
+            String? totalCapacityUnit,
+            double? panelCapacity,
+            String? capacityUnit,
+            String? warrantyStartDate,
+            int? warrantyDuration,
+            String? warrantyEndDate,
+            Map<String, dynamic>? additionalDetails,
+            Map<String, dynamic>? userInfo)?
+        submitAll,
+  }) {
+    return submitAll?.call(
+        projectId,
+        authToken,
+        tenantId,
+        facilityId,
+        systemCode,
+        modelNumber,
+        brandId,
+        totalCapacity,
+        totalCapacityUnit,
+        panelCapacity,
+        capacityUnit,
+        warrantyStartDate,
+        warrantyDuration,
+        warrantyEndDate,
+        additionalDetails,
+        userInfo);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function(
+            String projectId,
+            String authToken,
+            String tenantId,
+            String facilityId,
+            String systemCode,
+            String? modelNumber,
+            String? brandId,
+            double? totalCapacity,
+            String? totalCapacityUnit,
+            double? panelCapacity,
+            String? capacityUnit,
+            String? warrantyStartDate,
+            int? warrantyDuration,
+            String? warrantyEndDate,
+            Map<String, dynamic>? additionalDetails,
+            Map<String, dynamic>? userInfo)?
+        submitAll,
+    required TResult orElse(),
+  }) {
+    if (submitAll != null) {
+      return submitAll(
+          projectId,
+          authToken,
+          tenantId,
+          facilityId,
+          systemCode,
+          modelNumber,
+          brandId,
+          totalCapacity,
+          totalCapacityUnit,
+          panelCapacity,
+          capacityUnit,
+          warrantyStartDate,
+          warrantyDuration,
+          warrantyEndDate,
+          additionalDetails,
+          userInfo);
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(_SubmitAll value) submitAll,
+  }) {
+    return submitAll(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(_SubmitAll value)? submitAll,
+  }) {
+    return submitAll?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(_SubmitAll value)? submitAll,
+    required TResult orElse(),
+  }) {
+    if (submitAll != null) {
+      return submitAll(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class _SubmitAll implements AssetSubmissionEvent {
+  const factory _SubmitAll(
+      {required final String projectId,
+      required final String authToken,
+      required final String tenantId,
+      required final String facilityId,
+      required final String systemCode,
+      final String? modelNumber,
+      final String? brandId,
+      final double? totalCapacity,
+      final String? totalCapacityUnit,
+      final double? panelCapacity,
+      final String? capacityUnit,
+      final String? warrantyStartDate,
+      final int? warrantyDuration,
+      final String? warrantyEndDate,
+      final Map<String, dynamic>? additionalDetails,
+      final Map<String, dynamic>? userInfo}) = _$SubmitAllImpl;
+
+  @override
+  String get projectId;
+  @override
+  String get authToken;
+  @override
+  String get tenantId;
+  @override
+  String get facilityId;
+  @override
+  String get systemCode;
+  @override
+  String? get modelNumber;
+  @override
+  String? get brandId;
+  @override
+  double? get totalCapacity;
+  @override
+  String? get totalCapacityUnit;
+  @override
+  double? get panelCapacity;
+  @override
+  String? get capacityUnit;
+  @override
+  String? get warrantyStartDate;
+  @override
+  int? get warrantyDuration;
+  @override
+  String? get warrantyEndDate;
+  @override
+  Map<String, dynamic>? get additionalDetails;
+  @override
+  Map<String, dynamic>? get userInfo;
+  @override
+  @JsonKey(ignore: true)
+  _$$SubmitAllImplCopyWith<_$SubmitAllImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+mixin _$AssetSubmissionState {
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function() initial,
+    required TResult Function() loading,
+    required TResult Function() success,
+    required TResult Function(String errorMessage) failure,
+  }) =>
+      throw _privateConstructorUsedError;
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function()? initial,
+    TResult? Function()? loading,
+    TResult? Function()? success,
+    TResult? Function(String errorMessage)? failure,
+  }) =>
+      throw _privateConstructorUsedError;
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function()? initial,
+    TResult Function()? loading,
+    TResult Function()? success,
+    TResult Function(String errorMessage)? failure,
+    required TResult orElse(),
+  }) =>
+      throw _privateConstructorUsedError;
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(_Initial value) initial,
+    required TResult Function(_Loading value) loading,
+    required TResult Function(_Success value) success,
+    required TResult Function(_Failure value) failure,
+  }) =>
+      throw _privateConstructorUsedError;
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(_Initial value)? initial,
+    TResult? Function(_Loading value)? loading,
+    TResult? Function(_Success value)? success,
+    TResult? Function(_Failure value)? failure,
+  }) =>
+      throw _privateConstructorUsedError;
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(_Initial value)? initial,
+    TResult Function(_Loading value)? loading,
+    TResult Function(_Success value)? success,
+    TResult Function(_Failure value)? failure,
+    required TResult orElse(),
+  }) =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class $AssetSubmissionStateCopyWith<$Res> {
+  factory $AssetSubmissionStateCopyWith(AssetSubmissionState value,
+          $Res Function(AssetSubmissionState) then) =
+      _$AssetSubmissionStateCopyWithImpl<$Res, AssetSubmissionState>;
+}
+
+/// @nodoc
+class _$AssetSubmissionStateCopyWithImpl<$Res,
+        $Val extends AssetSubmissionState>
+    implements $AssetSubmissionStateCopyWith<$Res> {
+  _$AssetSubmissionStateCopyWithImpl(this._value, this._then);
+
+  // ignore: unused_field
+  final $Val _value;
+  // ignore: unused_field
+  final $Res Function($Val) _then;
+}
+
+/// @nodoc
+abstract class _$$InitialImplCopyWith<$Res> {
+  factory _$$InitialImplCopyWith(
+          _$InitialImpl value, $Res Function(_$InitialImpl) then) =
+      __$$InitialImplCopyWithImpl<$Res>;
+}
+
+/// @nodoc
+class __$$InitialImplCopyWithImpl<$Res>
+    extends _$AssetSubmissionStateCopyWithImpl<$Res, _$InitialImpl>
+    implements _$$InitialImplCopyWith<$Res> {
+  __$$InitialImplCopyWithImpl(
+      _$InitialImpl _value, $Res Function(_$InitialImpl) _then)
+      : super(_value, _then);
+}
+
+/// @nodoc
+
+class _$InitialImpl implements _Initial {
+  const _$InitialImpl();
+
+  @override
+  String toString() {
+    return 'AssetSubmissionState.initial()';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType && other is _$InitialImpl);
+  }
+
+  @override
+  int get hashCode => runtimeType.hashCode;
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function() initial,
+    required TResult Function() loading,
+    required TResult Function() success,
+    required TResult Function(String errorMessage) failure,
+  }) {
+    return initial();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function()? initial,
+    TResult? Function()? loading,
+    TResult? Function()? success,
+    TResult? Function(String errorMessage)? failure,
+  }) {
+    return initial?.call();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function()? initial,
+    TResult Function()? loading,
+    TResult Function()? success,
+    TResult Function(String errorMessage)? failure,
+    required TResult orElse(),
+  }) {
+    if (initial != null) {
+      return initial();
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(_Initial value) initial,
+    required TResult Function(_Loading value) loading,
+    required TResult Function(_Success value) success,
+    required TResult Function(_Failure value) failure,
+  }) {
+    return initial(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(_Initial value)? initial,
+    TResult? Function(_Loading value)? loading,
+    TResult? Function(_Success value)? success,
+    TResult? Function(_Failure value)? failure,
+  }) {
+    return initial?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(_Initial value)? initial,
+    TResult Function(_Loading value)? loading,
+    TResult Function(_Success value)? success,
+    TResult Function(_Failure value)? failure,
+    required TResult orElse(),
+  }) {
+    if (initial != null) {
+      return initial(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class _Initial implements AssetSubmissionState {
+  const factory _Initial() = _$InitialImpl;
+}
+
+/// @nodoc
+abstract class _$$LoadingImplCopyWith<$Res> {
+  factory _$$LoadingImplCopyWith(
+          _$LoadingImpl value, $Res Function(_$LoadingImpl) then) =
+      __$$LoadingImplCopyWithImpl<$Res>;
+}
+
+/// @nodoc
+class __$$LoadingImplCopyWithImpl<$Res>
+    extends _$AssetSubmissionStateCopyWithImpl<$Res, _$LoadingImpl>
+    implements _$$LoadingImplCopyWith<$Res> {
+  __$$LoadingImplCopyWithImpl(
+      _$LoadingImpl _value, $Res Function(_$LoadingImpl) _then)
+      : super(_value, _then);
+}
+
+/// @nodoc
+
+class _$LoadingImpl implements _Loading {
+  const _$LoadingImpl();
+
+  @override
+  String toString() {
+    return 'AssetSubmissionState.loading()';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType && other is _$LoadingImpl);
+  }
+
+  @override
+  int get hashCode => runtimeType.hashCode;
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function() initial,
+    required TResult Function() loading,
+    required TResult Function() success,
+    required TResult Function(String errorMessage) failure,
+  }) {
+    return loading();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function()? initial,
+    TResult? Function()? loading,
+    TResult? Function()? success,
+    TResult? Function(String errorMessage)? failure,
+  }) {
+    return loading?.call();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function()? initial,
+    TResult Function()? loading,
+    TResult Function()? success,
+    TResult Function(String errorMessage)? failure,
+    required TResult orElse(),
+  }) {
+    if (loading != null) {
+      return loading();
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(_Initial value) initial,
+    required TResult Function(_Loading value) loading,
+    required TResult Function(_Success value) success,
+    required TResult Function(_Failure value) failure,
+  }) {
+    return loading(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(_Initial value)? initial,
+    TResult? Function(_Loading value)? loading,
+    TResult? Function(_Success value)? success,
+    TResult? Function(_Failure value)? failure,
+  }) {
+    return loading?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(_Initial value)? initial,
+    TResult Function(_Loading value)? loading,
+    TResult Function(_Success value)? success,
+    TResult Function(_Failure value)? failure,
+    required TResult orElse(),
+  }) {
+    if (loading != null) {
+      return loading(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class _Loading implements AssetSubmissionState {
+  const factory _Loading() = _$LoadingImpl;
+}
+
+/// @nodoc
+abstract class _$$SuccessImplCopyWith<$Res> {
+  factory _$$SuccessImplCopyWith(
+          _$SuccessImpl value, $Res Function(_$SuccessImpl) then) =
+      __$$SuccessImplCopyWithImpl<$Res>;
+}
+
+/// @nodoc
+class __$$SuccessImplCopyWithImpl<$Res>
+    extends _$AssetSubmissionStateCopyWithImpl<$Res, _$SuccessImpl>
+    implements _$$SuccessImplCopyWith<$Res> {
+  __$$SuccessImplCopyWithImpl(
+      _$SuccessImpl _value, $Res Function(_$SuccessImpl) _then)
+      : super(_value, _then);
+}
+
+/// @nodoc
+
+class _$SuccessImpl implements _Success {
+  const _$SuccessImpl();
+
+  @override
+  String toString() {
+    return 'AssetSubmissionState.success()';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType && other is _$SuccessImpl);
+  }
+
+  @override
+  int get hashCode => runtimeType.hashCode;
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function() initial,
+    required TResult Function() loading,
+    required TResult Function() success,
+    required TResult Function(String errorMessage) failure,
+  }) {
+    return success();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function()? initial,
+    TResult? Function()? loading,
+    TResult? Function()? success,
+    TResult? Function(String errorMessage)? failure,
+  }) {
+    return success?.call();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function()? initial,
+    TResult Function()? loading,
+    TResult Function()? success,
+    TResult Function(String errorMessage)? failure,
+    required TResult orElse(),
+  }) {
+    if (success != null) {
+      return success();
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(_Initial value) initial,
+    required TResult Function(_Loading value) loading,
+    required TResult Function(_Success value) success,
+    required TResult Function(_Failure value) failure,
+  }) {
+    return success(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(_Initial value)? initial,
+    TResult? Function(_Loading value)? loading,
+    TResult? Function(_Success value)? success,
+    TResult? Function(_Failure value)? failure,
+  }) {
+    return success?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(_Initial value)? initial,
+    TResult Function(_Loading value)? loading,
+    TResult Function(_Success value)? success,
+    TResult Function(_Failure value)? failure,
+    required TResult orElse(),
+  }) {
+    if (success != null) {
+      return success(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class _Success implements AssetSubmissionState {
+  const factory _Success() = _$SuccessImpl;
+}
+
+/// @nodoc
+abstract class _$$FailureImplCopyWith<$Res> {
+  factory _$$FailureImplCopyWith(
+          _$FailureImpl value, $Res Function(_$FailureImpl) then) =
+      __$$FailureImplCopyWithImpl<$Res>;
+  @useResult
+  $Res call({String errorMessage});
+}
+
+/// @nodoc
+class __$$FailureImplCopyWithImpl<$Res>
+    extends _$AssetSubmissionStateCopyWithImpl<$Res, _$FailureImpl>
+    implements _$$FailureImplCopyWith<$Res> {
+  __$$FailureImplCopyWithImpl(
+      _$FailureImpl _value, $Res Function(_$FailureImpl) _then)
+      : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? errorMessage = null,
+  }) {
+    return _then(_$FailureImpl(
+      null == errorMessage
+          ? _value.errorMessage
+          : errorMessage // ignore: cast_nullable_to_non_nullable
+              as String,
+    ));
+  }
+}
+
+/// @nodoc
+
+class _$FailureImpl implements _Failure {
+  const _$FailureImpl(this.errorMessage);
+
+  @override
+  final String errorMessage;
+
+  @override
+  String toString() {
+    return 'AssetSubmissionState.failure(errorMessage: $errorMessage)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$FailureImpl &&
+            (identical(other.errorMessage, errorMessage) ||
+                other.errorMessage == errorMessage));
+  }
+
+  @override
+  int get hashCode => Object.hash(runtimeType, errorMessage);
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$FailureImplCopyWith<_$FailureImpl> get copyWith =>
+      __$$FailureImplCopyWithImpl<_$FailureImpl>(this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function() initial,
+    required TResult Function() loading,
+    required TResult Function() success,
+    required TResult Function(String errorMessage) failure,
+  }) {
+    return failure(errorMessage);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function()? initial,
+    TResult? Function()? loading,
+    TResult? Function()? success,
+    TResult? Function(String errorMessage)? failure,
+  }) {
+    return failure?.call(errorMessage);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function()? initial,
+    TResult Function()? loading,
+    TResult Function()? success,
+    TResult Function(String errorMessage)? failure,
+    required TResult orElse(),
+  }) {
+    if (failure != null) {
+      return failure(errorMessage);
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(_Initial value) initial,
+    required TResult Function(_Loading value) loading,
+    required TResult Function(_Success value) success,
+    required TResult Function(_Failure value) failure,
+  }) {
+    return failure(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(_Initial value)? initial,
+    TResult? Function(_Loading value)? loading,
+    TResult? Function(_Success value)? success,
+    TResult? Function(_Failure value)? failure,
+  }) {
+    return failure?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(_Initial value)? initial,
+    TResult Function(_Loading value)? loading,
+    TResult Function(_Success value)? success,
+    TResult Function(_Failure value)? failure,
+    required TResult orElse(),
+  }) {
+    if (failure != null) {
+      return failure(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class _Failure implements AssetSubmissionState {
+  const factory _Failure(final String errorMessage) = _$FailureImpl;
+
+  String get errorMessage;
+  @JsonKey(ignore: true)
+  _$$FailureImplCopyWith<_$FailureImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}

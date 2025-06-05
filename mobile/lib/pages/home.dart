@@ -3,13 +3,13 @@ import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:digit_ui_components/widgets/atoms/pop_up_card.dart';
 import 'package:digit_ui_components/widgets/molecules/show_pop_up.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../blocs/report_type/report_type.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
 import '../widgets/header/back_navigation_help_header.dart';
 import '../widgets/home/home_item_card.dart';
-import '../widgets/navigation/drawer.dart';
-import '../widgets/navigation/navbar.dart';
 
 @RoutePage()
 class HomePage extends StatefulWidget {
@@ -46,7 +46,7 @@ class _HomePageState extends State<HomePage> {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Text("Your data has not been synced since 28/01/2025. Sync now!",
+              Text("Your data has not been synced since 02/06/2025. Sync now!",
                   textAlign: TextAlign.center,
                   style: textTheme.bodyL.copyWith(
                       color: const Light().textPrimary,
@@ -73,6 +73,10 @@ class _HomePageState extends State<HomePage> {
                   label: "Sync Data",
                   onPressed: () {
                     Navigator.of(ctx).pop();
+                    context
+                        .read<ReportTypeBloc>()
+                        .add(const ReportTypeEvent.typeSelected("draft"));
+                    context.router.push(const DraftRoute());
 
                     ///context.router.push(const AssetSummaryRoute());
                   },
@@ -108,8 +112,6 @@ class _HomePageState extends State<HomePage> {
 
     return Scaffold(
       backgroundColor: DigitTheme.instance.colorScheme.surface,
-      drawer: const CustomDrawer(),
-      appBar: const Navbar(),
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: spacer2),
         child: ScrollableContent(

@@ -13,7 +13,6 @@ import '../data/nosql/cache_project_asset.dart';
 import '../model/projects/project.dart';
 import '../router/app_router.dart';
 import '../widgets/header/back_navigation_help_header.dart';
-import '../widgets/navigation/navbar.dart';
 
 @RoutePage()
 class SelectHealthFacilityPage extends StatefulWidget {
@@ -54,114 +53,113 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
     final textTheme = theme.digitTextTheme(context);
 
     return Scaffold(
-        appBar: const Navbar(),
         body: ScrollableContent(
             backgroundColor: theme.colorTheme.generic.background,
             children: [
-              const BackNavigationHelpHeaderWidget(
-                showBackNavigation: true,
-                showHelp: false,
-              ),
-              BlocBuilder<ProjectBloc, ProjectState>(
-                builder: (context, state) {
-                  context
-                      .read<ProjectBloc>()
-                      .add(const ProjectEvent.fetchProjects(uuid: ""));
-                  if (state is ProjectFetchedState) {
-                    final projectList = state.projectsList;
-                    if (projectList.isEmpty) {
-                      return const Text('No Projects to be fetched');
-                    }
-                    return Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: spacer4, vertical: spacer2),
-                        child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              BlocConsumer<CacheProjectAssetBloc,
-                                  CacheProjectAssetState>(
-                                listener: (context, cacheState) {
-                                  // cacheState.whenOrNull(
-                                  //     added: (entry) =>
-                                  //         _handleNavigation(context, entry),
-                                  //     loaded: (entries) => _handleNavigation(
-                                  //         context, entries.first),
-                                  //     error: (error) {
-                                  //       context.showSnackBar(SnackBar(
-                                  //         content: Text(error),
-                                  //         backgroundColor:
-                                  //             const Light().alertError,
-                                  //       ));
-                                  //     });
-                                },
-                                builder: (context, state) {
-                                  return DigitCard(
+          const BackNavigationHelpHeaderWidget(
+            showBackNavigation: true,
+            showHelp: false,
+          ),
+          BlocBuilder<ProjectBloc, ProjectState>(
+            builder: (context, state) {
+              context
+                  .read<ProjectBloc>()
+                  .add(const ProjectEvent.fetchProjects(uuid: ""));
+              if (state is ProjectFetchedState) {
+                final projectList = state.projectsList;
+                if (projectList.isEmpty) {
+                  return const Text('No Projects to be fetched');
+                }
+                return Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: spacer4, vertical: spacer2),
+                    child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          BlocConsumer<CacheProjectAssetBloc,
+                              CacheProjectAssetState>(
+                            listener: (context, cacheState) {
+                              // cacheState.whenOrNull(
+                              //     added: (entry) =>
+                              //         _handleNavigation(context, entry),
+                              //     loaded: (entries) => _handleNavigation(
+                              //         context, entries.first),
+                              //     error: (error) {
+                              //       context.showSnackBar(SnackBar(
+                              //         content: Text(error),
+                              //         backgroundColor:
+                              //             const Light().alertError,
+                              //       ));
+                              //     });
+                            },
+                            builder: (context, state) {
+                              return DigitCard(
+                                children: [
+                                  Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
+                                      Text(
+                                        'Select Health Facility',
+                                        style: textTheme.bodyL.copyWith(
+                                            color:
+                                                theme.colorTheme.text.primary),
+                                      ),
+                                      const SizedBox(
+                                        height: spacer2,
+                                      ),
+                                      Row(
                                         children: [
-                                          Text(
-                                            'Select Health Facility',
-                                            style: textTheme.bodyL.copyWith(
-                                                color: theme
-                                                    .colorTheme.text.primary),
+                                          const Expanded(
+                                            child: DigitSearchFormInput(
+                                              suffixIcon: Icons.search,
+                                            ),
                                           ),
-                                          const SizedBox(
-                                            height: spacer2,
-                                          ),
-                                          Row(
-                                            children: [
-                                              const Expanded(
-                                                child: DigitSearchFormInput(
-                                                  suffixIcon: Icons.search,
-                                                ),
-                                              ),
-                                              Icon(
-                                                Icons.import_export,
-                                                color: theme.colorTheme.primary
-                                                    .primary1,
-                                                size: spacer8,
-                                              ),
-                                            ],
+                                          Icon(
+                                            Icons.import_export,
+                                            color: theme
+                                                .colorTheme.primary.primary1,
+                                            size: spacer8,
                                           ),
                                         ],
-                                      )
+                                      ),
                                     ],
-                                  );
-                                },
-                              ),
-                              const SizedBox(height: spacer8),
-                              // InstallationReportCard(
-                              //   onPress: () => context.router
-                              //       .push(const SelectAssetTypeRoute()),
-                              //   title: 'Alkod',
-                              //   dateAssigned: DateTime(2024, 1, 25),
-                              //   status: 'Pending Installation',
-                              //   solutionDocPath: 'Allepy Solution Doc',
-                              // ),
-                              for (final project in projectList)
-                                Column(
-                                  children: [
-                                    InstallationReportCard(
-                                      onPress: () {
-                                        _handleProjectTap(context, project);
-                                      },
-                                      title: project.name,
-                                      dateAssigned: DateTime(2024, 1, 25),
-                                      status: project.projectType,
-                                      solutionDocPath: project.projectNumber,
-                                    ),
-                                    const SizedBox(height: spacer5),
-                                  ],
-                                )
-                            ]));
-                  } else {
-                    return const Center(child: Text('No Projects Found'));
-                  }
-                },
-              ),
-            ]));
+                                  )
+                                ],
+                              );
+                            },
+                          ),
+                          const SizedBox(height: spacer8),
+                          // InstallationReportCard(
+                          //   onPress: () => context.router
+                          //       .push(const SelectAssetTypeRoute()),
+                          //   title: 'Alkod',
+                          //   dateAssigned: DateTime(2024, 1, 25),
+                          //   status: 'Pending Installation',
+                          //   solutionDocPath: 'Allepy Solution Doc',
+                          // ),
+                          for (final project in projectList)
+                            Column(
+                              children: [
+                                InstallationReportCard(
+                                  onPress: () {
+                                    _handleProjectTap(context, project);
+                                  },
+                                  title: project.name,
+                                  dateAssigned: DateTime(2024, 1, 25),
+                                  status: project.projectType,
+                                  solutionDocPath: project.projectNumber,
+                                ),
+                                const SizedBox(height: spacer5),
+                              ],
+                            )
+                        ]));
+              } else {
+                return const Center(child: Text('No Projects Found'));
+              }
+            },
+          ),
+        ]));
   }
 }
 

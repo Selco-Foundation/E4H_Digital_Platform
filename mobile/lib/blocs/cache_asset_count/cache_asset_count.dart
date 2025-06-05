@@ -1,25 +1,29 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:isar/isar.dart';
-import 'package:selco/data/nosql/cache_asset_count.dart';
 
-import '../../data/nosql/cache_project_asset.dart';
+import '../../data/nosql/cache_asset_count.dart';
 
 part 'cache_asset_count.freezed.dart';
 
+/// BLoC responsible for CRUD and fetching all asset counts for a project
 class CacheAssetCountBloc
     extends Bloc<CacheAssetCountEvent, CacheAssetCountState> {
   final Isar isar;
 
   CacheAssetCountBloc(this.isar) : super(const CacheAssetCountState.initial()) {
     on<CacheAssetCountEventGet>(_getCacheAssetCount);
+    on<CacheAssetCountEventGetAll>(_getAllCacheAssetCounts); // new
     on<CacheAssetCountEventAdd>(_addCacheAssetCount);
     on<CacheAssetCountEventUpdate>(_updateCacheAssetCount);
     on<CacheAssetCountEventDelete>(_deleteCacheAssetCount);
   }
 
+  /// Fetch a single assetType’s entry for [projectId]
   Future<void> _getCacheAssetCount(
-      CacheAssetCountEventGet event, Emitter<CacheAssetCountState> emit) async {
+    CacheAssetCountEventGet event,
+    Emitter<CacheAssetCountState> emit,
+  ) async {
     emit(const CacheAssetCountState.loading());
     try {
       final entries = await isar.cacheAssetCounts
@@ -39,8 +43,32 @@ class CacheAssetCountBloc
     }
   }
 
+  /// NEW: Fetch *all* asset‐type entries for [projectId] in one shot
+  Future<void> _getAllCacheAssetCounts(
+    CacheAssetCountEventGetAll event,
+    Emitter<CacheAssetCountState> emit,
+  ) async {
+    emit(const CacheAssetCountState.loading());
+    try {
+      final entries = await isar.cacheAssetCounts
+          .where()
+          .projectIdEqualTo(event.projectId)
+          .findAll(); // no assetType filter
+
+      if (entries.isEmpty) {
+        emit(const CacheAssetCountState.notFound());
+      } else {
+        emit(CacheAssetCountState.loaded(entries));
+      }
+    } catch (e) {
+      emit(CacheAssetCountState.error(e.toString()));
+    }
+  }
+
   Future<void> _addCacheAssetCount(
-      CacheAssetCountEventAdd event, Emitter<CacheAssetCountState> emit) async {
+    CacheAssetCountEventAdd event,
+    Emitter<CacheAssetCountState> emit,
+  ) async {
     try {
       await isar.writeTxn(() async {
         final existing = await isar.cacheAssetCounts
@@ -60,7 +88,6 @@ class CacheAssetCountBloc
       });
       emit(CacheAssetCountState.added(event.entry));
     } catch (e) {
-      print(e.toString());
       emit(CacheAssetCountState.error(e.toString()));
     }
   }
@@ -108,11 +135,13 @@ class CacheAssetCountBloc
     }
   }
 
-  Future<void> _deleteCacheAssetCount(CacheAssetCountEventDelete event,
-      Emitter<CacheAssetCountState> emit) async {
+  Future<void> _deleteCacheAssetCount(
+    CacheAssetCountEventDelete event,
+    Emitter<CacheAssetCountState> emit,
+  ) async {
     try {
       await isar.writeTxn(() async {
-        await isar.cacheProjectAssets.delete(event.id);
+        await isar.cacheAssetCounts.delete(event.id);
       });
       emit(const CacheAssetCountState.deleted());
     } catch (e) {
@@ -123,12 +152,25 @@ class CacheAssetCountBloc
 
 @freezed
 class CacheAssetCountEvent with _$CacheAssetCountEvent {
-  const factory CacheAssetCountEvent.get(String projectId, String assetType) =
-      CacheAssetCountEventGet;
+  /// Load one asset‐type’s count for [projectId]
+  const factory CacheAssetCountEvent.get(
+    String projectId,
+    String assetType,
+  ) = CacheAssetCountEventGet;
+
+  /// NEW: Load *all* counts for [projectId] at once
+  const factory CacheAssetCountEvent.getAll(String projectId) =
+      CacheAssetCountEventGetAll;
+
+  /// Insert or overwrite a single asset count record
   const factory CacheAssetCountEvent.add(CacheAssetCount entry) =
       CacheAssetCountEventAdd;
+
+  /// Update progress (or other fields) for an existing asset count entry
   const factory CacheAssetCountEvent.update(CacheAssetCount entry) =
       CacheAssetCountEventUpdate;
+
+  /// Delete by Isar id
   const factory CacheAssetCountEvent.delete(int id) =
       CacheAssetCountEventDelete;
 }

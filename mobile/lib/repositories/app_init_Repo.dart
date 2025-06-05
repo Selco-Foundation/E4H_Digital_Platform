@@ -328,27 +328,6 @@ class AppInitRepo {
     }
   }
 
-  // Future<List<Mdms<T>>> _loadLocalMdms<T>(
-  //     String filePath, T Function(Map<String, dynamic>) fromJsonT) async {
-  //   try {
-  //     final jsonString = await rootBundle.loadString(filePath);
-  //     final Map<String, dynamic> decoded =
-  //         json.decode(jsonString) as Map<String, dynamic>;
-  //
-  //     // The mock payload has a top‐level "mdms" array:
-  //     final List<dynamic> mdmsList = decoded['mdms'] as List<dynamic>;
-  //
-  //     return mdmsList
-  //         .map((entry) => Mdms<T>.fromJson(
-  //               entry as Map<String, dynamic>,
-  //               (inner) => fromJsonT(inner as Map<String, dynamic>),
-  //             ))
-  //         .toList();
-  //   } catch (e) {
-  //     throw Exception('Failed to load mock data from $filePath: $e');
-  //   }
-  // }
-
   Future<List<Mdms<T>>> _loadLocalMdms<T>(
     String filePath,
     T Function(Map<String, dynamic>) fromJsonT,

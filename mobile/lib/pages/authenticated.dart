@@ -10,6 +10,8 @@ import '../blocs/inbox_type/inbox_type.dart';
 import '../blocs/project/project.dart';
 import '../blocs/report_type/report_type.dart';
 import '../blocs/userbloc.dart';
+import '../widgets/navigation/drawer.dart';
+import '../widgets/navigation/navbar.dart';
 
 @RoutePage()
 class AuthenticatedScreenWrapper extends StatelessWidget {
@@ -35,5 +37,7 @@ class AuthenticatedScreenWrapper extends StatelessWidget {
             // drawer: const Drawer(
             //   child: SideBar(),
             // )
+            appBar: Navbar(),
+            drawer: CustomDrawer(),
           ));
 }

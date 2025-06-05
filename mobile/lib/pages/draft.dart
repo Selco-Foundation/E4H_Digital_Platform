@@ -1,13 +1,16 @@
 import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:flutter/material.dart';
-import 'package:selco/widgets/navigation/drawer.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
+// Import your generated mapper and model
+import '../blocs/selected_project/selected_project.dart';
+import '../data/secure_storage/secureStore.dart';
+import '../model/projects/project.dart'; // contains `ProjectModel` and `ProjectModelMapper`
 import '../router/app_router.dart';
 import '../widgets/button/footer_button.dart';
 import '../widgets/cards/inbox_report_card.dart';
 import '../widgets/header/back_navigation_help_header.dart';
-import '../widgets/navigation/navbar.dart';
 
 @RoutePage()
 class DraftPage extends StatefulWidget {
@@ -18,14 +21,21 @@ class DraftPage extends StatefulWidget {
 }
 
 class _DraftPageState extends State<DraftPage> {
+  final SecureStore storage = SecureStore();
+  Future<List<ProjectModel>>? _draftsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _draftsFuture = storage.getDraftProjects();
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final textTheme = theme.digitTextTheme(context);
 
     return Scaffold(
-      appBar: const Navbar(),
-      drawer: const CustomDrawer(),
       body: ScrollableContent(
         enableFixedDigitButton: true,
         backgroundColor: theme.colorTheme.generic.background,
@@ -35,15 +45,18 @@ class _DraftPageState extends State<DraftPage> {
         ),
         footer: FooterButton(
           showSuffixIcon: false,
-          text: "Sync",
+          text: 'Sync',
           onPress: () {
+            // Implement your “sync” logic here
             context.router.replace(const SubmittedSaveSuccessRoute());
           },
         ),
         children: [
           Padding(
             padding: const EdgeInsets.symmetric(
-                vertical: spacer4, horizontal: spacer4),
+              vertical: spacer4,
+              horizontal: spacer4,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -53,22 +66,70 @@ class _DraftPageState extends State<DraftPage> {
                       .copyWith(color: theme.colorTheme.primary.primary2),
                 ),
                 const SizedBox(height: spacer4),
-                InboxReportCard(
-                    onPress: () =>
-                        context.router.push(const DraftSummaryRoute()),
-                    title: 'Alkod',
-                    dateAssigned: DateTime(2024, 1, 25),
-                    status: 'Pending Installation'),
-                const SizedBox(height: spacer6),
-                InboxReportCard(
-                    onPress: () =>
-                        context.router.push(const DraftSummaryRoute()),
-                    title: 'Alkod',
-                    dateAssigned: DateTime(2024, 1, 25),
-                    status: 'Pending Installation')
+
+                // ── FUTURE BUILDER TO DISPLAY ONE CARD PER DRAFT ─────────────────
+                FutureBuilder<List<ProjectModel>>(
+                  future: _draftsFuture,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      // While loading from secure storage, show a spinner
+                      return const Center(child: CircularProgressIndicator());
+                    }
+
+                    if (snapshot.hasError) {
+                      // If something went wrong, show an error message
+                      return Center(
+                        child: Text(
+                          'Failed to load drafts.',
+                          style: textTheme.bodyL.copyWith(
+                            color: theme.colorTheme.alert.error,
+                          ),
+                        ),
+                      );
+                    }
+
+                    final drafts = snapshot.data ?? <ProjectModel>[];
+
+                    if (drafts.isEmpty) {
+                      // No drafts found
+                      return Center(
+                        child: Text(
+                          'No unsynced reports found.',
+                          style: textTheme.bodyL.copyWith(
+                            color: theme.colorTheme.text.primary,
+                          ),
+                        ),
+                      );
+                    }
+
+                    // Build a list of InboxReportCard, one per stored ProjectModel
+                    return Column(
+                      children: drafts.map((project) {
+                        return Column(
+                          children: [
+                            InboxReportCard(
+                              onPress: () {
+                                context
+                                    .read<SelectedProjectBloc>()
+                                    .add(SelectedProjectEvent.select(project));
+                                context.router.push(const AssetSummaryRoute());
+                              },
+                              title: project.name,
+                              // Use project's startDateTime if available; otherwise default
+                              dateAssigned:
+                                  project.startDateTime ?? DateTime.now(),
+                              status: 'Pending Installation',
+                            ),
+                            const SizedBox(height: spacer6),
+                          ],
+                        );
+                      }).toList(),
+                    );
+                  },
+                ),
               ],
             ),
-          )
+          ),
         ],
       ),
     );
