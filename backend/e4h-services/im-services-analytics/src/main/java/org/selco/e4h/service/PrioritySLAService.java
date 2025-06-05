@@ -291,7 +291,7 @@ public class PrioritySLAService {
     }
 
     private Duration computeTotalSla(String tenantId, String priority, String currentState, Map<TenantServiceStateKey, Duration> slaMap) {
-        String businessService = "Incident_" + priority.toUpperCase();
+        String businessService = "Incident_" + priority;
         Duration total = Duration.ZERO;
 
         if (currentState.equals(PENDING_FOR_ASSIGNMENT) || currentState.equals(PENDING_RESOLUTION)) {

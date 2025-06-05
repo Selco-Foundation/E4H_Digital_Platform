@@ -135,16 +135,23 @@ public class UpdateService {
 	}
 
 	public void updateSlaFields(String incidentId, long slaRemaining, long totalSlaRemaining, long stateSla, String businessService) {
-		Map<String, Object> doc = new HashMap<>();
-		doc.put("Data.slaRemaining", slaRemaining);
-		doc.put("Data.totalSlaRemaining", totalSlaRemaining);
-		doc.put("Data.stateSla", stateSla);
+		Map<String, Object> dataMap = new HashMap<>();
+		dataMap.put("slaRemaining", slaRemaining);
+		dataMap.put("totalSlaRemaining", totalSlaRemaining);
+		dataMap.put("stateSla", stateSla);
 
 		if (businessService != null) {
-			doc.put("Data.currentProcessInstance.businessService", businessService);
+			Map<String, Object> currentProcessInstance = new HashMap<>();
+			currentProcessInstance.put("businessService", businessService);
+			dataMap.put("currentProcessInstance", currentProcessInstance);
 		}
 
-		Map<String, Object> updateBody = Map.of("doc", doc);
+		Map<String, Object> doc = new HashMap<>();
+		doc.put("Data", dataMap);
+
+		Map<String, Object> updateBody = new HashMap<>();
+		updateBody.put("doc", doc);
+
 
 		String url = config.getEsHostUrl() + "/computed-sla-im-services/_update/" + incidentId;
 		HttpEntity<Map<String, Object>> entity = new HttpEntity<>(updateBody, buildHeaders());
