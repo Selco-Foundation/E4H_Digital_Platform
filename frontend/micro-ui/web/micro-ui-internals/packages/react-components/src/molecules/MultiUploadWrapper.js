@@ -279,7 +279,9 @@ const MultiUploadWrapper = ({
   }, [isUploading]);
 
   useEffect(() => {
-    requestSpecifcFileRemoval ? dispatch({ type: TARGET_FILE_REMOVAL, payload: requestSpecifcFileRemoval }) : null;
+    if (requestSpecifcFileRemoval) {
+      dispatch({ type: TARGET_FILE_REMOVAL, payload: requestSpecifcFileRemoval })
+    }
   }, [requestSpecifcFileRemoval]);
 
   return (

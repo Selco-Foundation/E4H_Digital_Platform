@@ -1,10 +1,6 @@
 package org.egov.inbox.repository.builder.V2;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import org.egov.inbox.util.ErrorConstants;
 import org.egov.inbox.util.MDMSUtil;
@@ -90,9 +86,51 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
             Map<String, Object> slaComparison = generateSLAComparison(System.currentTimeMillis());
             runTimeMappings.put("sla_comparison", slaComparison);
             baseEsQuery.put("runtime_mappings", runTimeMappings);
+
+            // Add must_not: isTerminateState == true
+            Map<String, Object> query = (Map<String, Object>) baseEsQuery.get("query");
+            Map<String, Object> boolClause = (Map<String, Object>) query.get("bool");
+
+            // Initialize must_not if not present
+            List<Map<String, Object>> mustNotClauseList = (List<Map<String, Object>>) boolClause.getOrDefault("must_not", new ArrayList<>());
+
+            Map<String, Object> termClause = new HashMap<>();
+            termClause.put("term", Collections.singletonMap("Data.currentProcessInstance.state.isTerminateState", true));
+            mustNotClauseList.add(termClause);
+
+            boolClause.put("must_not", mustNotClauseList);
         }
 
+
         return baseEsQuery;
+
+    }
+
+    public Map<String, Object> generateSLAComparison(long currentTime) {
+        Map<String, Object> slaComparison = new HashMap<>();
+        slaComparison.put("type", "long");
+
+        Map<String, Object> script = new HashMap<>();
+        String scriptSource =
+                "long sla = doc.containsKey('Data.currentProcessInstance.businesssServiceSla') " +
+                        "&& doc['Data.currentProcessInstance.businesssServiceSla'].size() > 0 " +
+                        "? doc['Data.currentProcessInstance.businesssServiceSla'].value : 0; " +
+
+                        "long createdTime = doc.containsKey('Data.currentProcessInstance.auditDetails.createdTime') " +
+                        "&& doc['Data.currentProcessInstance.auditDetails.createdTime'].size() > 0 " +
+                        "? doc['Data.currentProcessInstance.auditDetails.createdTime'].value : 0; " +
+
+                        "emit(sla + createdTime - params.currentTime);";
+
+        script.put("source", scriptSource);
+
+        Map<String, Object> params = new HashMap<>();
+        params.put("currentTime", currentTime);
+        script.put("params", params);
+
+        slaComparison.put("script", script);
+
+        return slaComparison;
     }
 
     public Map<String, Object> generateSLAComparison(long currentTime) {
@@ -457,7 +495,12 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
                 Map<String, Object> wildcardClause = new HashMap<>();
                 wildcardClause.put("wildcard", new HashMap<>());
                 Map<String, Object> innerWildcardClause = (Map<String, Object>) wildcardClause.get("wildcard");
-                innerWildcardClause.put(addDataPathToSearchParamKey(key, nameToPathMap), "*" + item + "*");
+                if(key.equals("tenantId")) {
+                    innerWildcardClause.put(addDataPathToSearchParamKey(key, nameToPathMap), item + ".*");
+                }
+                else{
+                    innerWildcardClause.put(addDataPathToSearchParamKey(key, nameToPathMap),  "*" + item + "*");
+                }
                 wildcardClauses.add(wildcardClause);
             }
 
@@ -466,7 +509,12 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
             Map<String, Object> wildcardClause = new HashMap<>();
             wildcardClause.put("wildcard", new HashMap<>());
             Map<String, Object> innerWildcardClause = (Map<String, Object>) wildcardClause.get("wildcard");
-            innerWildcardClause.put(addDataPathToSearchParamKey(key, nameToPathMap), "*" + value + "*");
+            if(key.equals("tenantId")) {
+                innerWildcardClause.put(addDataPathToSearchParamKey(key, nameToPathMap), value + ".*");
+            }
+            else{
+                innerWildcardClause.put(addDataPathToSearchParamKey(key, nameToPathMap), "*" + value + "*");
+            }
             wildcardClauses.add(wildcardClause);
             return wildcardClauses;
         }

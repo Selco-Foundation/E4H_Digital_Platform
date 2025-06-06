@@ -40,6 +40,8 @@ const useInboxData = (searchParams) => {
       select: (data) => ({ data } || "-"),
       enabled: Digit.Utils.pgrAccess(),
     },
+
+
   });
 
   const filteredData = isSuccess && data ? filterData(data) : { total: 0, items: [], statusArray: [] };
@@ -67,9 +69,9 @@ const useInboxData = (searchParams) => {
     };
   };
 
-  const result = fetchInboxData();
+  const result = fetchInboxData()
 
-  return { data: result };
+  return {data:result};
 };
 
 const filterData = (data) => {

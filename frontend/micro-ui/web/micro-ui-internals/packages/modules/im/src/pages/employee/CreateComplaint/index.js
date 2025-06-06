@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useDispatch } from "react-redux";
-import { Dropdown, MultiUploadWrapper } from "@selco/digit-ui-react-components";
+import {
+  Dropdown,
+  MultiUploadWrapper,
+} from "@selco/digit-ui-react-components";
 import { useRouteMatch, useHistory } from "react-router-dom";
 import { useQueryClient } from "react-query";
 import { FormComposer } from "../../../components/FormComposer";

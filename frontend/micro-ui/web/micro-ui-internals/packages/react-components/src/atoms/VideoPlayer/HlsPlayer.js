@@ -28,8 +28,8 @@ const HlsPlayer = ({ src, originalSrc, fileStoreId, activeVideoRef }) => {
       if (!video) return;
 
       // const baseDomain = process.env.REACT_APP_PROXY_ASSETS || "";
-      const tenantMatch = src.match(/\/(pg(?:\.[^/]*)?)\//);
-      const tenantId = tenantMatch ? tenantMatch[1] : "default-tenant";
+      const srcURL = new URL(src);
+      const tenantId = srcURL.pathname.split("/")[1] || "default-tenant";
 
       const hls = new Hls({
         autoStartLoad: true,
