@@ -89,8 +89,8 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
   );
   const employeeData = useEmployeeData
     ? useEmployeeData.map((departmentData) => {
-      return { heading: departmentData.department, options: departmentData.employees };
-    })
+        return { heading: departmentData.department, options: departmentData.employees };
+      })
     : null;
 
   const [selectedEmployee, setSelectedEmployee] = useState(null);
@@ -116,7 +116,7 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
 
   //   }, [file]);
   useEffect(() => {
-    if (selectedAction === "REJECT") {
+    if (selectedAction === "DECLINE") {
       const uuid = JSON.parse(sessionStorage.getItem("Digit.User"))?.value?.info?.uuid;
       let name = JSON.parse(sessionStorage.getItem("Digit.User"))?.value?.info?.name;
       setSelectedEmployee({ name, uuid });
@@ -225,19 +225,19 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
           label={
             selectedAction === "ASSIGN" || selectedAction === "REASSIGN"
               ? t("CS_ACTION_ASSIGN_TICKET")
-              : selectedAction === "REJECT"
-                ? t("CS_ACTION_REJECT_TICKET")
-                : selectedAction === "REOPEN"
-                  ? t("CS_COMMON_REOPEN")
-                  : selectedAction === "RESOLVE"
-                    ? t("CS_COMMON_RESOLVE")
-                    : selectedAction === "CLOSE"
-                      ? t("CS_COMMON_CLOSE")
-                      : selectedAction === "SENDBACK"
-                        ? t("CS_COMMON_SENDBACK")
-                        : selectedAction === "OUT_OF_WARRANTY"
-                          ? t("CS_COMMON_OUT_OF_WARRANTY")
-                          : t("CS_COMMON_SPARE_PART_NEEDED")
+              : selectedAction === "DECLINE"
+              ? t("CS_ACTION_DECLINE_TICKET")
+              : selectedAction === "REOPEN"
+              ? t("CS_COMMON_REOPEN")
+              : selectedAction === "RESOLVE"
+              ? t("CS_COMMON_RESOLVE")
+              : selectedAction === "CLOSE"
+              ? t("CS_COMMON_CLOSE")
+              : selectedAction === "SENDBACK"
+              ? t("CS_COMMON_SENDbACK")
+              : selectedAction === "OUT_OF_WARRANTY"
+              ? t("CS_COMMON_OUT_OF_WARRANTY")
+              : t("CS_COMMON_SPARE_PART_NEEDED")
           }
         />
       }
@@ -247,23 +247,23 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
       actionSaveLabel={
         selectedAction === "ASSIGN" || selectedAction === "REASSIGN"
           ? t("CS_COMMON_ASSIGN")
-          : selectedAction === "REJECT"
-            ? t("CS_COMMON_REJECT")
-            : selectedAction === "REOPEN"
-              ? t("CS_ACTION_REOPEN")
-              : selectedAction === "RESOLVE"
-                ? t("CS_COMMON_RESOLVE_BUTTON")
-                : selectedAction === "CLOSE"
-                  ? t("CS_COMMON_CLOSE")
-                  : selectedAction === "SENDBACK"
-                    ? t("CS_COMMON_SENDBACK")
-                    : selectedAction === "OUT_OF_WARRANTY"
-                      ? t("CS_COMMON_OUT_OF_WARRANTY")
-                      : t("CS_COMMON_SPARE_PART_NEEDED")
+          : selectedAction === "DECLINE"
+          ? t("CS_COMMON_DECLINE")
+          : selectedAction === "REOPEN"
+          ? t("CS_ACTION_REOPEN")
+          : selectedAction === "RESOLVE"
+          ? t("CS_COMMON_RESOLVE_BUTTON")
+          : selectedAction === "CLOSE"
+          ? t("CS_COMMON_CLOSE")
+          : selectedAction === "SENDBACK"
+          ? t("CS_COMMON_SENDbACK")
+          : selectedAction === "OUT_OF_WARRANTY"
+          ? t("CS_COMMON_OUT_OF_WARRANTY")
+          : t("CS_COMMON_SPARE_PART_NEEDED")
       }
       actionSaveOnSubmit={() => {
         const isTextareaAction =
-          ["SENDBACK", "REJECT"].includes(selectedAction) &&
+          ["SENDBACK", "DECLINE"].includes(selectedAction) &&
           (selectedAction === "SENDBACK"
             ? selectedSendBackReason?.additionalInputs?.[0].type === "textarea"
             : selectedRejectReason?.additionalInputs?.[0].type === "textarea");
@@ -271,7 +271,7 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
         const isCommentsMandatory = (isTextareaAction || selectedAction === "RESOLVE") && !comments.trim();
 
         const validations = [
-          { condition: selectedAction === "REJECT" && !selectedRejectReason, message: "CS_MANDATORY_REJECT_REASON" },
+          { condition: selectedAction === "DECLINE" && !selectedRejectReason, message: "CS_MANDATORY_DECLINE_REASON" },
           { condition: selectedAction === "SENDBACK" && !selectedSendBackReason, message: "CS_MANDATORY_SENDBACK_REASON" },
           {
             condition: selectedAction === "SENDBACK" && selectedSendBackReason?.additionalInputs?.[0].type === "radio" && !selectedSendBackSubReason,
@@ -303,9 +303,9 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
       setError={setError}
     >
       <Card style={{ paddingTop: "0px" }}>
-        {selectedAction === "REJECT" ? (
+        {selectedAction === "DECLINE" ? (
           <React.Fragment>
-            <CardLabel>{t("CS_REJECT_COMPLAINT")}*</CardLabel>
+            <CardLabel>{t("CS_DECLINE_COMPLAINT")}*</CardLabel>
             <Dropdown
               selected={selectedRejectReason}
               option={rejectSendBackReasons?.Incident?.RejectReasons?.map((reason) => ({
@@ -333,7 +333,7 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
           </React.Fragment>
         ) : null}
 
-        {selectedAction === "REJECT" || selectedAction === "RESOLVE" || selectedAction === "REOPEN" || selectedAction === "SENDBACK" ? null : (
+        {selectedAction === "ASSIGN" || selectedAction === "REASSIGN" ? (
           <React.Fragment>
             <CardLabel>{t("CS_COMMON_EMPLOYEE_NAME")}*</CardLabel>
 
@@ -348,7 +348,7 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
               />
             )}
           </React.Fragment>
-        )}
+        ) : null}
         {selectedAction === "REOPEN" ? (
           <React.Fragment>
             <CardLabel>{t("CS_REOPEN_COMPLAINT")}*</CardLabel>
@@ -358,8 +358,10 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
         {selectedAction !== "SENDBACK" || selectedSendBackReason?.additionalInputs?.[0].type === "textarea" ? (
           <>
             {selectedAction !== "ASSIGN" &&
-              selectedAction !== "REOPEN" &&
-              !(selectedAction === "REJECT" && selectedRejectReason?.additionalInputs?.[0].type !== "textarea") ? (
+            selectedAction !== "REOPEN" &&
+            !(selectedAction === "DECLINE" && selectedRejectReason?.additionalInputs?.[0].type !== "textarea") &&
+            selectedAction !== "OUT_OF_WARRANTY" &&
+            selectedAction !== "SPARE_PART_NEEDED" ? (
               <CardLabel>{t("CS_COMMON_EMPLOYEE_COMMENTS")}*</CardLabel>
             ) : (
               <CardLabel>{t("CS_COMMON_EMPLOYEE_COMMENTS")}</CardLabel>
@@ -446,8 +448,8 @@ export const ComplaintDetails = (props) => {
   const tenant =
     Digit.SessionStorage.get("Employee.tenantId") === stateTenantId
       ? Digit.SessionStorage.get("IM_TENANTS")
-        .map((item) => item.code)
-        .join(",")
+          .map((item) => item.code)
+          .join(",")
       : Digit.SessionStorage.get("Employee.tenantId");
 
   const { isLoading, complaintDetails, revalidate: revalidateComplaintDetails } = Digit.Hooks.pgr.useComplaintDetails({
@@ -492,15 +494,15 @@ export const ComplaintDetails = (props) => {
   let filteredTimeline = timeline;
 
   // check if timeline has a CLOSEDAFTERRESOLUTION with action RATE
-  const closeAfterResolutionActions = timeline.filter(cp => cp.status === "CLOSEDAFTERRESOLUTION");
-  const hasRated = closeAfterResolutionActions.some(cp => cp.performedAction === "RATE");
+  const closeAfterResolutionActions = timeline.filter((cp) => cp.status === "CLOSEDAFTERRESOLUTION");
+  const hasRated = closeAfterResolutionActions.some((cp) => cp.performedAction === "RATE");
 
   if (hasRated) {
     // Find the RATE checkpoint (assumed to be the latest)
-    const rateCheckpoint = closeAfterResolutionActions.find(cp => cp.performedAction === "RATE");
+    const rateCheckpoint = closeAfterResolutionActions.find((cp) => cp.performedAction === "RATE");
 
     // Keep only the RATE one and filter out older CLOSE with same status
-    filteredTimeline = timeline.filter(cp => {
+    filteredTimeline = timeline.filter((cp) => {
       // Keep everything else OR the RATE checkpoint
       if (cp === rateCheckpoint) return true;
       if (cp.status === "CLOSEDAFTERRESOLUTION" && cp.performedAction === "CLOSE") return false;
@@ -618,7 +620,7 @@ export const ComplaintDetails = (props) => {
         setPopup(true);
         setDisplayMenu(false);
         break;
-      case "REJECT":
+      case "DECLINE":
         setPopup(true);
         setDisplayMenu(false);
         break;
@@ -701,7 +703,7 @@ export const ComplaintDetails = (props) => {
       switch (abc.performedAction) {
         case "REOPEN":
           return { ...abc, reopenreason: reopenReasons.shift() };
-        case "REJECT":
+        case "DECLINE":
           return { ...abc, rejectReason: rejectReasons.shift() };
         case "SENDBACK":
           return { ...abc, sendBackReason: sendBackReasons.shift() };
@@ -725,8 +727,8 @@ export const ComplaintDetails = (props) => {
       mobileNumber: checkpoint?.assigner?.mobileNumber,
       ...(checkpoint.status === "COMPLAINT_FILED" && complaintDetails?.audit
         ? {
-          source: complaintDetails.audit.source,
-        }
+            source: complaintDetails.audit.source,
+          }
         : {}),
     };
     const isFirstPendingForAssignment = arr.length - (index + 1) === 1 ? true : false;
@@ -802,9 +804,9 @@ export const ComplaintDetails = (props) => {
     // return (checkpoint.caption && checkpoint.caption.length !== 0) || checkpoint?.wfComment?.length > 0 ? <TLCaption data={checkpoint?.caption?.[0]} comments={checkpoint?.wfComment} /> : null;
     return (
       <>
-        {checkpoint.status === "REJECTED" ? (
+        {checkpoint.status === "DECLINED" ? (
           <div className="TLComments">
-            <h3>{t("WF_REJECT_REASON")}</h3>
+            <h3>{t("WF_DECLINE_REASON")}</h3>
             <h1>{arrNew[index]?.rejectReason}</h1>
           </div>
         ) : null}
@@ -941,11 +943,7 @@ export const ComplaintDetails = (props) => {
         currentOwner === currentLoginUser && (
           <ActionBar style={{ marginLeft: isIpadView ? "250px" : "none" }}>
             {displayMenu && workflowDetails?.data?.nextActions ? (
-              <Menu
-                options={workflowDetails?.data?.nextActions.map((action) => action.action)}
-                t={t}
-                onSelect={onActionSelect}
-              />
+              <Menu options={workflowDetails?.data?.nextActions.map((action) => action.action)} t={t} onSelect={onActionSelect} />
             ) : null}
             <SubmitBar label={t("WF_TAKE_ACTION")} onSubmit={() => setDisplayMenu(!displayMenu)} />
           </ActionBar>
