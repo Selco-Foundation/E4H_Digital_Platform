@@ -30,7 +30,13 @@ const ImageOrPDFIcon = ({ source, index, last = false, onClick, activeVideoRef }
   if (fileType === "pdf") {
     return (
       <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "flex-start", alignContent: "center" }}>
-        <a target="_blank" href={source} style={{ minWidth: "100px", marginRight: "10px", maxWidth: "100px", height: "auto" }} key={index}>
+        <a
+          target="_blank"
+          href={source}
+          style={{ minWidth: "100px", marginRight: "10px", maxWidth: "100px", height: "auto" }}
+          key={index}
+          rel="noreferrer"
+        >
           <div style={{ display: "flex", justifyContent: "center" }}>
             <PDFSvg style={{ background: "#f6f6f6", padding: "8px", width: "100px" }} width="100px" height="100px" minWidth="100px" />
           </div>

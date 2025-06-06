@@ -17,4 +17,7 @@ public class Properties {
     @Value("${filename.usenumbers}")
     private Boolean useNumbers;
 
+    @Value("${video.upload.retry}")
+    private Integer videoUploadRetry;
+
 }

@@ -1,0 +1,281 @@
+package org.egov.im.config;
+
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.egov.tracer.config.TracerConfiguration;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
+import org.springframework.stereotype.Component;
+
+import jakarta.annotation.PostConstruct;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TimeZone;
+
+@Component
+@Data
+@Import({TracerConfiguration.class})
+@NoArgsConstructor
+@AllArgsConstructor
+public class IMConfiguration {
+
+    @Value("${app.timezone}")
+    private String timeZone;
+
+    @PostConstruct
+    public void initialize() {
+        TimeZone.setDefault(TimeZone.getTimeZone(timeZone));
+    }
+
+    @Bean
+    @Autowired
+    public MappingJackson2HttpMessageConverter jacksonConverter(ObjectMapper objectMapper) {
+        MappingJackson2HttpMessageConverter converter = new MappingJackson2HttpMessageConverter();
+        converter.setObjectMapper(objectMapper);
+        return converter;
+    }
+
+    // User Config
+    @Value("${egov.user.host}")
+    private String userHost;
+
+    @Value("${egov.user.context.path}")
+    private String userContextPath;
+
+    @Value("${egov.user.create.path}")
+    private String userCreateEndpoint;
+
+    @Value("${egov.user.search.path}")
+    private String userSearchEndpoint;
+
+    @Value("${egov.user.update.path}")
+    private String userUpdateEndpoint;
+
+    @Value("${egov.internal.microservice.user.uuid}")
+    private String egovInternalMicroserviceUserUuid;
+
+    //Idgen Config
+    @Value("${egov.idgen.host}")
+    private String idGenHost;
+
+    @Value("${egov.idgen.path}")
+    private String idGenPath;
+
+    @Value("${egov.idgen.im.IncidentId.name}")
+    private String serviceRequestIdGenName;
+
+    @Value("${egov.idgen.im.IncidentId.format}")
+    private String serviceRequestIdGenFormat;
+
+    //Workflow Config
+    @Value("${im.business.codes}")
+    private List<String> businessServiceList;
+
+    @Value("${egov.workflow.host}")
+    private String wfHost;
+
+    @Value("${egov.workflow.transition.path}")
+    private String wfTransitionPath;
+
+    @Value("${egov.workflow.businessservice.search.path}")
+    private String wfBusinessServiceSearchPath;
+
+    @Value("${egov.workflow.processinstance.search.path}")
+    private String wfProcessInstanceSearchPath;
+
+    @Value("${is.workflow.enabled}")
+    private Boolean isWorkflowEnabled;
+
+
+    // im Variables
+
+    @Value("${im.complain.idle.time}")
+    private Long complainMaxIdleTime;
+
+    @Value("${im.kafka.create.topic}")
+    private String createTopic;
+
+    @Value("${im.kafka.migration.persister.topic}")
+    private String batchCreateTopic;
+
+    @Value("${im.kafka.update.topic}")
+    private String updateTopic;
+    
+    @Value("${im.kafka.create.topic.indexer}")
+    private String createTopicIndexer;
+
+    @Value("${im.kafka.update.topic.indexer}")
+    private String updateTopicIndexer;
+
+    @Value("${im.default.offset}")
+    private Integer defaultOffset;
+
+    @Value("${im.default.limit}")
+    private Integer defaultLimit;
+
+    @Value("${im.search.max.limit}")
+    private Integer maxLimit;
+
+    @Value(("${im.kafka.process.video.topic}"))
+    private String videoProcessorTopic;
+
+    //MDMS
+    @Value("${egov.mdms.host}")
+    private String mdmsHost;
+
+    @Value("${egov.mdms.search.endpoint}")
+    private String mdmsEndPoint;
+
+    //HRMS
+    @Value("${egov.hrms.host}")
+    private String hrmsHost;
+
+    @Value("${egov.hrms.search.endpoint}")
+    private String hrmsEndPoint;
+
+    //Notification
+    @Value("${egov.user.event.notification.enabled}")
+    private Boolean isUserEventsNotificationEnabled;
+
+    @Value("${notification.sms.enabled}")
+    private Boolean isSMSEnabled;
+
+    @Value("${egov.localization.statelevel}")
+    private Boolean isLocalizationStateLevel;
+
+    @Value("${egov.localization.host}")
+    private String localizationHost;
+
+    @Value("${egov.localization.context.path}")
+    private String localizationContextPath;
+
+    @Value("${egov.localization.search.endpoint}")
+    private String localizationSearchEndpoint;
+
+    @Value("${kafka.topics.notification.sms}")
+    private String smsNotifTopic;
+
+    @Value("${egov.usr.events.create.topic}")
+    private String saveUserEventsTopic;
+
+    @Value("${mseva.mobile.app.download.link}")
+    private String mobileDownloadLink;
+
+    @Value("${egov.url.shortner.host}")
+    private String urlShortnerHost;
+
+    @Value("${egov.url.shortner.endpoint}")
+    private String urlShortnerEndpoint;
+
+    @Value("#{${egov.ui.app.host.map}}")
+    private Map<String, String> uiAppHostMap;
+
+    @Value("${egov.im.events.rate.link}")
+    private String rateLink;
+
+    @Value("${egov.im.events.reopen.link}")
+    private String reopenLink;
+
+    @Value("${egov.usr.events.rate.code}")
+    private String rateCode;
+
+    @Value("${egov.usr.events.reopen.code}")
+    private String reopenCode;
+
+
+
+    //Allowed Search Parameters
+    @Value("${citizen.allowed.search.params}")
+    private String allowedCitizenSearchParameters;
+
+    @Value("${employee.allowed.search.params}")
+    private String allowedEmployeeSearchParameters;
+
+    //Sources
+    @Value("${allowed.source}")
+    private String allowedSource;
+
+
+    // Migration
+    @Value("${persister.save.transition.wf.topic}")
+    private String workflowSaveTopic;
+
+    @Value("${persister.save.transition.wf.migration.topic}")
+    private String batchWorkflowSaveTopic;
+
+    @Value("${im.business.level.sla}")
+    private Long businessLevelSla;
+
+    @Value("${egov.dynamicdata.period}")
+    private String numberOfDays;
+
+    @Value("${egov.complaints.category}")
+    private String complaintTypes;
+
+
+    // central-instance configs
+
+    @Value("${state.level.tenantid.length}")
+    private Integer stateLevelTenantIdLength;
+
+    @Value("${is.environment.central.instance}")
+    private Boolean isEnvironmentCentralInstance;
+
+    @Value("${video.max.size}")
+    private Integer maxVideoSizeInMB;
+
+    @Value("${digit.ui.host}")
+    private String digitUIHost;
+
+    @Value("${digit.ui.feedback}")
+    private String digitUIFeedback;
+
+    @Value("${digit.ui.tenant}")
+    private String digitUiTenantJson;
+
+    private Map<String, List<String>> digitUITenant;
+
+    @PostConstruct
+    public void init() throws JsonProcessingException {
+        ObjectMapper mapper = new ObjectMapper();
+        digitUITenant = mapper.readValue(digitUiTenantJson, new TypeReference<>() {});
+    }
+
+    @Value("${video.list.size}")
+    private Integer videoListSize;
+
+    @Value("#{${allowed.formats.map}}")
+    private Map<String,List<String>> allowedFormatsMap;
+
+    private Set<String> allowedKeySet;
+
+    @PostConstruct
+    private void enrichKeysetForFormats() {
+        allowedKeySet = allowedFormatsMap.keySet();
+    }
+
+    //File store
+    @Value("${egov.filestore.host}")
+    private String fileStoreHost;
+
+    @Value("${egov.filestore.hls.upload.endpoint}")
+    private String fileStoreHlsUploadEndpoint;
+
+    @Value("${egov.filestore.upload.endpoint}")
+    private String fileStoreUploadEndpoint;
+
+    @Value("${ffprobe.path}")
+    private String ffprobePath;
+
+    @Value("${ffmpeg.cpulimitpercentage}")
+    private String ffmpegCpuLimitPercentage;
+}

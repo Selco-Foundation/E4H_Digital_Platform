@@ -1,0 +1,37 @@
+package facility.web.models;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.annotation.Generated;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.egov.common.contract.request.RequestInfo;
+import org.springframework.validation.annotation.Validated;
+
+import java.util.List;
+
+/**
+ * FacilityCreateRequest
+ */
+@Validated
+@Generated(value = "org.egov.codegen.SpringBootCodegen", date = "2025-05-14T17:15:00.238919256+05:30[Asia/Kolkata]")
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@Builder
+public class FacilityCreateRequest {
+
+    @JsonProperty("RequestInfo")
+    @NotNull
+    private RequestInfo requestInfo = null;
+
+    @JsonProperty("facilities")
+    @NotNull
+    @Size(min = 1, message = "At least one facility must be provided")
+    private List<Facility> facilities = null;
+
+
+}

@@ -1,14 +1,11 @@
 package org.egov.filestore.repository.impl.minio;
 
-import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Component;
 
 import io.minio.MinioClient;
-import io.minio.errors.InvalidEndpointException;
-import io.minio.errors.InvalidPortException;
 import lombok.extern.slf4j.Slf4j;
 
 @Component
@@ -27,12 +24,11 @@ public class MinioClientFacade {
 
         minioClient = new MinioClient(minioConfig.getEndPoint(), minioConfig.getAccessKey(),
                 minioConfig.getSecretKey());*/
-		MinioClient minioClient = MinioClient.builder()
+
+		return MinioClient.builder()
 				.endpoint(minioConfig.getEndPoint())
 				.credentials(minioConfig.getAccessKey(), minioConfig.getSecretKey())
 				.region(minioConfig.getRegion())
 				.build();
-
-        return minioClient;
 	} 
 }

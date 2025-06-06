@@ -1,0 +1,15 @@
+package facility.web.models;
+
+public enum SolarSolutionDesignType {
+    SC_NO_LR_FRIDGE_NO_CCP,
+    SC_LR_FRIDGE_NO_CCP,
+    SC_LR_WITH_CCP,
+    PHC_NO_DELIVERY_NO_CCP,
+    PHC_DELIVERY_NO_CCP,
+    PHC_NO_DELIVERY_WITH_CCP,
+    PHC_DELIVERY_WITH_CCP,
+    PHC_DELIVERY_CCP_DENTAL,
+    PHC_LAB_CCP_OR_LR,
+    PHC_DELIVERY_CCP_HYBRID,
+    SC_NO_LR_NO_CCP
+}

@@ -24,7 +24,7 @@ const DesktopInbox = ({
   const { t } = useTranslation();
   const GetCell = (value) => <span className="cell-text">{value}</span>;
   const GetSlaCell = (value) => {
-    return value < 0 ? <span className="sla-cell-error">{value || ""}</span> : <span className="sla-cell-success">{value || ""}</span>;
+    return value == t("SLA_OVERDUE") || value < 0 ? <span className="sla-cell-error">{value || ""}</span> : <span className="sla-cell-success">{value || ""}</span>;
   };
   const iPadMaxWidth=1024;
   const iPadMinWidth=768

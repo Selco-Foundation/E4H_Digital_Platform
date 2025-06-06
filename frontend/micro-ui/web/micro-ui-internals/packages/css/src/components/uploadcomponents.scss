@@ -77,7 +77,7 @@
 }
 
 .upload-file {
-  min-height: 56px;
+  min-height: 35px;
   @apply relative border border-input-border w-full;
 
   > div:not(.upload-loader-container) {
@@ -91,7 +91,7 @@
     width: 160px;
     padding-left: 0px !important;
     padding-right: 0px !important;
-    max-height: 64px !important;
+    max-height: 35px !important;
     @apply absolute top-0 left-0 opacity-0 h-full;
   }
 }

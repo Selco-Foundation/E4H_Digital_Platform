@@ -1,5 +1,7 @@
 package org.egov.filestore.domain.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FilenameUtils;
@@ -11,14 +13,18 @@ import org.egov.filestore.domain.model.Artifact;
 import org.egov.filestore.domain.model.FileLocation;
 import org.egov.filestore.repository.impl.CloudFileMgrUtils;
 import org.egov.filestore.repository.impl.minio.MinioConfig;
+import org.egov.filestore.utils.StorageUtil;
 import org.egov.filestore.validator.StorageValidator;
 import org.egov.tracer.model.CustomException;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.awt.image.BufferedImage;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 
 @RequiredArgsConstructor
@@ -32,6 +38,26 @@ public class ArtifactMapper {
     private final Properties props;
     private final FileStoreConfig fileStoreConfig;
     private final CloudFileMgrUtils util;
+    private final StorageUtil storageUtil;
+
+    private File tempDir;
+
+    private static final String INPUT_DIR = "input";
+
+    private ObjectMapper objectMapper;
+
+    @PostConstruct
+    private void initTempFile() {
+        Path customTempDir = Paths.get(System.getProperty("user.dir"), INPUT_DIR);
+        tempDir = new File(customTempDir.toAbsolutePath().toString());
+        if (!tempDir.exists()) {
+            tempDir.mkdirs();  // Ensure directory exists
+            log.info("Created temporary directory at: {}", customTempDir);
+        } else {
+            log.info("Temporary directory already exists at: {}", customTempDir);
+        }
+    }
+
 
     /**
      * Maps given files to Artifact objects.
@@ -60,8 +86,13 @@ public class ArtifactMapper {
                         : folderName + System.currentTimeMillis() + getRandomFileSuffix(originalFileName);
 
                 // Generate file location
+                String source = isHLS
+                        ? storageUtil.createTempFile(tempDir, file.getResource()).getAbsolutePath()
+                        : null;
+
                 String id = idGeneratorService.getId();
-                FileLocation fileLocation = new FileLocation(id, module, tag, tenantId, fileName, null);
+                FileLocation fileLocation =
+                        new FileLocation(id, module, tag, tenantId, fileName, source);
 
                 // Read file content
                 String fileContent = IOUtils.toString(file.getInputStream(), fileStoreConfig.getImageCharsetType());

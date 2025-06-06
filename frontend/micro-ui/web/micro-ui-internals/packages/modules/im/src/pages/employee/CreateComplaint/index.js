@@ -24,7 +24,10 @@ export const CreateComplaint = ({ parentUrl }) => {
   const [uploadedFile, setUploadedFile] = useState([]);
   const [uploadedImages, setUploadedImagesIds] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
-  const specificFileConstraint = { type: "video", maxSize: 100, maxFiles: 5 };
+  const specificFileConstraint = [
+    { type: "video", maxSize: 100, maxFiles: 2 },
+    { type: "image", maxSize: 10, maxFiles: 5 },
+  ];
   const [district, setDistrict] = useState(null);
   const [block, setBlock] = useState(null);
   const [error, setError] = useState(null);
@@ -40,6 +43,8 @@ export const CreateComplaint = ({ parentUrl }) => {
   const [disbaledUpload, setDisableUpload] = useState(true);
   const [phcMenuNew, setPhcMenu] = useState([]);
   const [subType, setSubType] = useState(JSON?.parse(sessionStorage.getItem("subType")) || {});
+  const [systemFunctionality, setSystemFunctionality] = useState();
+  const [systemFunctionalityMenu, setSystemFunctionalityMenu] = useState([]);
   const [dataState, setDataState] = useState({ newArr: [], mappedArray: [] });
   let sortedSubMenu = [];
   if (subTypeMenu !== null) {
@@ -73,10 +78,10 @@ export const CreateComplaint = ({ parentUrl }) => {
   }
   const state = Digit.ULBService.getStateId();
   const [selectTenant, setSelectTenant] = useState(Digit.SessionStorage.get("Employee.tenantId") || null);
-  const { data: mdmsData } = Digit.Hooks.pgr.useMDMS(state, "Incident", ["District", "Block"]);
+  const { data: mdmsData } = Digit.Hooks.pgr.useMDMS(state, "Incident", ["District", "Block", "SystemFunctionality"]);
   const { data: phcMenu } = Digit.Hooks.pgr.useMDMS(state, "tenant", ["tenants"]);
   let blockNew = mdmsData?.Incident?.Block;
-
+  
   useEffect(() => {
     const fetchDistrictMenu = async () => {
       const response = phcMenu?.Incident?.District;
@@ -98,7 +103,21 @@ export const CreateComplaint = ({ parentUrl }) => {
         );
       }
     };
+    const fetchSystemFunctionalMenu = async () => {
+      const response = mdmsData?.Incident?.SystemFunctionality;
+      if (response) {
+        setSystemFunctionalityMenu(
+          response.filter(def => def.active)
+            .sort((a, b) => a.name.localeCompare(b.name))
+            .map((def) => ({
+              key: def.code,
+              name: t(def.name),
+            }))
+        );
+      }
+    }
     fetchDistrictMenu();
+    fetchSystemFunctionalMenu();
   }, [state, mdmsData, t]);
 
   useEffect(() => {
@@ -168,12 +187,12 @@ export const CreateComplaint = ({ parentUrl }) => {
   const client = useQueryClient();
 
   useEffect(() => {
-    if (complaintType?.key && subType?.key && healthCareType?.code && healthcentre?.code && district?.key && block.key && !isUploading) {
+    if (complaintType?.key && subType?.key && systemFunctionality?.key && healthCareType?.code && healthcentre?.code && district?.key && block.key && !isUploading) {
       setSubmitValve(true);
     } else {
       setSubmitValve(false);
     }
-  }, [complaintType, subType, healthcentre, healthCareType, district, block, isUploading]);
+  }, [complaintType, subType, systemFunctionality, healthcentre, healthCareType, district, block, isUploading]);
   async function selectedType(value) {
     setDisableUpload(false);
     if (value.key !== complaintType.key) {
@@ -217,6 +236,10 @@ export const CreateComplaint = ({ parentUrl }) => {
   function selectedSubType(value) {
     sessionStorage.setItem("subType", JSON.stringify(value));
     setSubType(value);
+  }
+
+  function selectedSystemFunctionality(value) {
+    setSystemFunctionality(value);
   }
   async function selectedHealthCentre(value) {
     setHealthCentre(value);
@@ -275,7 +298,6 @@ export const CreateComplaint = ({ parentUrl }) => {
 
   const wrapperSubmit = (data) => {
     const abc = handleButtonClick();
-
     if (!canSubmit) return;
     setSubmitted(true);
     !submitted && !abc && onSubmit(data);
@@ -287,6 +309,7 @@ export const CreateComplaint = ({ parentUrl }) => {
       ...data,
       complaintType,
       subType,
+      systemFunctionality,
       district,
       block,
       healthCareType,
@@ -305,6 +328,7 @@ export const CreateComplaint = ({ parentUrl }) => {
   const centerTypeRef = useRef(null);
   const ticketTypeRef = useRef(null);
   const ticketSubTypeRef = useRef(null);
+  const systemFunctionalityRef = useRef(null);
   const fieldsToValidate = [
     { field: district, ref: districtRef },
     { field: block, ref: blockRef },
@@ -312,6 +336,7 @@ export const CreateComplaint = ({ parentUrl }) => {
     { field: healthCareType, ref: centerTypeRef },
     { field: complaintType, ref: ticketTypeRef },
     { field: subType, ref: ticketSubTypeRef },
+    { field: systemFunctionality, ref: systemFunctionalityRef },
   ];
   const getData = (state) => {
     let data = Object.fromEntries(state);
@@ -493,6 +518,25 @@ export const CreateComplaint = ({ parentUrl }) => {
             />
           ),
         },
+        {
+          label: t("SYSTEM_FUNCTIONAL"),
+          type: "dropdown",
+          isMandatory: true,
+          populators: (
+            <div>
+              <Dropdown
+                ref={systemFunctionalityRef}
+                option={systemFunctionalityMenu}
+                optionKey="name"
+                id="systemFunctionality"
+                selected={systemFunctionality}
+                select={selectedSystemFunctionality}
+                required={true}
+              />
+              <div style={{ marginTop: "10px", fontSize: "12px", color: "#b5b4b4" }}>{t("CS_SYSTEM_FUNCTIONAL_HELPER_TEXT")}</div>
+            </div>
+          ),
+        }
       ],
     },
     {
@@ -513,7 +557,7 @@ export const CreateComplaint = ({ parentUrl }) => {
           },
         },
         {
-          label: t("INCIDENT_UPLOAD_FILE"),
+          label: t("INCIDENT_UPLOAD_IMAGE"),
           populators: (
             <div>
               <MultiUploadWrapper
@@ -523,15 +567,44 @@ export const CreateComplaint = ({ parentUrl }) => {
                 getFormState={(state, loading) => getData(state, loading)}
                 onUploadStatusChange={setIsUploading}
                 allowedFileTypesRegex={/(jpg|jpeg|png|image)$/i}
-                allowedMaxSizeInMB={10}
+                allowedMaxSizeInMB={50}
                 maxFilesAllowed={5}
                 disabled={disbaledUpload}
-                ulb={Digit.SessionStorage.get("Employee.tenantId") !== stateTenantId ? Digit.SessionStorage.get("Employee.tenantId") : healthcentre?.code}
-                acceptFiles={".png, .image, .jpg, .jpeg"}
-                specificFileConstraint={specificFileConstraint}
+                ulb={
+                  Digit.SessionStorage.get("Employee.tenantId") !== stateTenantId ? Digit.SessionStorage.get("Employee.tenantId") : healthcentre?.code
+                }
+                acceptFiles={".png, .jpg, .jpeg, image/*"}
+                multiple={true}
+                specificFileConstraint={specificFileConstraint[1]}
               />
               {/* <ImageUploadHandler tenantId={tenant} uploadedImages={uploadedImages} onPhotoChange={handleUpload} disabled={disbaled}/> */}
-              <div style={{ marginLeft: "20px", marginTop: "10px", fontSize: "12px" }}>{t("CS_IMAGE_BASED_FILES_ARE_ACCEPTED")}</div>
+              <div style={{ marginTop: "10px", marginBottom: "20px", fontSize: "12px", color: "#b5b4b4" }}>{t("CS_MAXIMUM_IMAGES")}</div>
+            </div>
+          ),
+        },
+        {
+          label: t("INCIDENT_UPLOAD_VIDEO"),
+          populators: (
+            <div>
+              <MultiUploadWrapper
+                t={t}
+                module="Incident"
+                tenantId={tenantId}
+                getFormState={(state, loading) => getData(state, loading)}
+                onUploadStatusChange={setIsUploading}
+                allowedFileTypesRegex={/(mp4|mov|avi|wmv|video)$/i}
+                allowedMaxSizeInMB={50}
+                maxFilesAllowed={2}
+                disabled={disbaledUpload}
+                ulb={
+                  Digit.SessionStorage.get("Employee.tenantId") !== stateTenantId ? Digit.SessionStorage.get("Employee.tenantId") : healthcentre?.code
+                }
+                acceptFiles={".mp4, .avi, .mov, .wmv, video/*"}
+                multiple={false}
+                specificFileConstraint={specificFileConstraint[0]}
+              />
+              {/* <ImageUploadHandler tenantId={tenant} uploadedImages={uploadedImages} onPhotoChange={handleUpload} disabled={disbaled}/> */}
+              <div style={{ marginTop: "10px", fontSize: "12px", color: "#b5b4b4" }}>{t("CS_MAXIMUM_VIDEOS")}</div>
             </div>
           ),
         },

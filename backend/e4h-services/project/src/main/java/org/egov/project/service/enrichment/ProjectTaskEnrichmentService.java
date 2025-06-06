@@ -1,0 +1,160 @@
+package org.egov.project.service.enrichment;
+
+import lombok.extern.slf4j.Slf4j;
+import org.egov.common.contract.models.AuditDetails;
+import org.egov.common.models.project.Address;
+import org.egov.common.models.project.Task;
+import org.egov.common.models.project.TaskBulkRequest;
+import org.egov.common.models.project.TaskResource;
+import org.egov.common.service.IdGenService;
+import org.egov.project.config.ProjectConfiguration;
+import org.springframework.stereotype.Service;
+import org.springframework.util.CollectionUtils;
+
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import static org.egov.common.utils.CommonUtils.*;
+
+@Service
+@Slf4j
+public class ProjectTaskEnrichmentService {
+
+    public static final String ENRICHING_RESOURCES = "enriching resources";
+    public static final String ENRICHMENT_DONE = "enrichment done";
+    private final IdGenService idGenService;
+
+    private final ProjectConfiguration projectConfiguration;
+
+    public ProjectTaskEnrichmentService(IdGenService idGenService, ProjectConfiguration projectConfiguration) {
+        this.idGenService = idGenService;
+        this.projectConfiguration = projectConfiguration;
+    }
+
+    private static void updateAuditDetailsForTask(TaskBulkRequest request, Task task) {
+        AuditDetails existingAuditDetails = task.getAuditDetails();
+        AuditDetails auditDetails = getAuditDetailsForUpdate(existingAuditDetails,
+                request.getRequestInfo().getUserInfo().getUuid());
+        task.setAuditDetails(auditDetails);
+    }
+
+    private static void updateAuditDetailsForResource(TaskBulkRequest request, TaskResource resource) {
+        AuditDetails existingAuditDetails = resource.getAuditDetails();
+        AuditDetails auditDetails = getAuditDetailsForUpdate(existingAuditDetails,
+                request.getRequestInfo().getUserInfo().getUuid());
+        resource.setAuditDetails(auditDetails);
+    }
+
+    private static void enrichResourcesForUpdate(TaskBulkRequest request, List<Task> tasks) {
+        log.info(ENRICHING_RESOURCES);
+        for (Task task : tasks) {
+            if (CollectionUtils.isEmpty(task.getResources())) continue;
+            List<TaskResource> resourcesToCreate = task.getResources().stream()
+                    .filter(r -> r.getId() == null).toList();
+            List<TaskResource> resourcesToUpdate = task.getResources().stream()
+                    .filter(r -> r.getId() != null).toList();
+
+            if (!resourcesToCreate.isEmpty()) {
+                enrichResourcesForCreate(request, resourcesToCreate, task.getId());
+            }
+            for (TaskResource resource : resourcesToUpdate) {
+                updateAuditDetailsForResource(request, resource);
+            }
+        }
+    }
+
+    private static void enrichAddressesForUpdate(List<Task> validTasks) {
+        List<Address> addressesToCreate = validTasks.stream()
+                .filter(ad1 -> ad1.getAddress() != null && ad1.getAddress().getId() == null)
+                .map(Task::getAddress).toList();
+
+        if (!addressesToCreate.isEmpty()) {
+            log.info("enriching addresses to create");
+            List<String> addressIdList = uuidSupplier().apply(addressesToCreate.size());
+            enrichId(addressesToCreate, addressIdList);
+        }
+    }
+
+    private static void enrichAddressesForCreate(List<Task> validTasks) {
+        List<Address> addresses = validTasks.stream().map(Task::getAddress)
+                .toList();
+        if (!addresses.isEmpty()) {
+            log.info("enriching addresses");
+            List<String> addressIdList = uuidSupplier().apply(addresses.size());
+            enrichId(addresses, addressIdList);
+        }
+    }
+
+    private static void enrichResourcesForCreate(TaskBulkRequest request,
+                                                 List<Task> validTasks) {
+        for (Task task : validTasks) {
+            log.info(ENRICHING_RESOURCES);
+            List<TaskResource> resources = task.getResources();
+            if (CollectionUtils.isEmpty(resources))
+                continue;
+            enrichResourcesForCreate(request, resources, task.getId());
+        }
+    }
+
+    private static void enrichResourcesForCreate(TaskBulkRequest request,
+                                                 List<TaskResource> resources, String taskId) {
+        log.info(ENRICHING_RESOURCES);
+        List<String> ids = uuidSupplier().apply(resources.size());
+        enrichForCreate(resources, ids, request.getRequestInfo(), false);
+        resources.forEach(taskResource -> taskResource.setTaskId(taskId));
+    }
+
+    public void create(List<Task> validTasks, TaskBulkRequest request) throws Exception {
+        log.info("starting the enrichment for tasks");
+
+        log.info("generating id for tasks");
+        List<String> taskIdList = idGenService.getIdList(request.getRequestInfo(),
+                getTenantId(request.getTasks()),
+                projectConfiguration.getProjectTaskIdFormat(),
+                "", request.getTasks().size());
+        log.info("enriching tasks");
+        enrichForCreate(validTasks, taskIdList, request.getRequestInfo());
+        enrichAddressesForCreate(validTasks);
+        enrichResourcesForCreate(request, validTasks);
+        log.info(ENRICHMENT_DONE);
+    }
+
+    public void update(List<Task> validTasks, TaskBulkRequest request) throws Exception {
+        log.info("generating id for tasks");
+        log.info("enriching tasks for update");
+        enrichAddressesForUpdate(validTasks);
+        enrichResourcesForUpdate(request, validTasks);
+        Map<String, Task> iMap = getIdToObjMap(validTasks);
+        enrichForUpdate(iMap, request);
+        log.info(ENRICHMENT_DONE);
+    }
+
+    public void delete(List<Task> validTasks, TaskBulkRequest request) throws Exception {
+        log.info("enriching tasks for delete");
+        for (Task task : validTasks) {
+            if (task.getIsDeleted()) {
+                log.info("enriching all task resources for delete");
+                if (!CollectionUtils.isEmpty(task.getResources())) {
+                    for (TaskResource resource : task.getResources()) {
+                        resource.setIsDeleted(true);
+                        updateAuditDetailsForResource(request, resource);
+                    }
+                }
+                updateAuditDetailsForTask(request, task);
+                task.setRowVersion(task.getRowVersion() + 1);
+            } else {
+                int previousRowVersion = task.getRowVersion();
+                log.info("enriching task resources for delete");
+                if (!CollectionUtils.isEmpty(task.getResources())) {
+                    task.getResources().stream().filter(TaskResource::getIsDeleted).forEach(resource -> {
+                        updateAuditDetailsForResource(request, resource);
+                        updateAuditDetailsForTask(request, task);
+                        task.setRowVersion(previousRowVersion + 1);
+                    });
+                }
+            }
+        }
+        log.info(ENRICHMENT_DONE);
+    }
+}
