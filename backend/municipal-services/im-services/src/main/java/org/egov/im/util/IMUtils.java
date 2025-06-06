@@ -3,9 +3,13 @@ package org.egov.im.util;
 import org.egov.common.utils.MultiStateInstanceUtil;
 import org.egov.im.web.models.AuditDetails;
 import org.egov.im.web.models.Incident;
+import org.egov.im.web.models.workflow.ProcessInstance;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+
+import java.util.ArrayList;
+import java.util.Objects;
 
 @Component
 public class IMUtils {
@@ -54,4 +58,14 @@ public class IMUtils {
         return finalQuery;
     }
 
+    public ProcessInstance trimRolesFromProcessInstance(ProcessInstance processInstance) {
+        if(processInstance.getAssigner()!=null)
+            processInstance.getAssigner().setRoles(new ArrayList<>());
+        if (processInstance.getAssignes() != null) {
+            processInstance.getAssignes().stream()
+                    .filter(Objects::nonNull)
+                    .forEach(assignee -> assignee.setRoles(new ArrayList<>()));
+        }
+        return processInstance;
+    }
 }
