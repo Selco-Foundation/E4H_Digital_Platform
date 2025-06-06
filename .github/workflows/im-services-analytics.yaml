@@ -53,11 +53,6 @@ jobs:
           docker build --build-arg WORK_DIR="backend/e4h-services/im-services-analytics" -t selcohub/im-services-analytics:${{ env.VERSION }}-${{ env.commit_hash }} -f build/maven/Dockerfile .
           docker push selcohub/im-services-analytics:${{ env.VERSION }}-${{ env.commit_hash }}
 
-      - name: Build and Push Docker image for im-Service-Analytics-DB
-        run: |
-          docker build  -t selcohub/im-services-analytics-db:${{ env.VERSION }}-${{ env.commit_hash }} -f  Dockerfile .
-          docker push selcohub/im-services-analytics-db:${{ env.VERSION }}-${{ env.commit_hash }}
-        working-directory: backend/e4h-services/im-services-analytics/src/main/resources/db
 
   Workflow_Trigger:
     if: startsWith(github.ref, 'refs/heads/develop')
