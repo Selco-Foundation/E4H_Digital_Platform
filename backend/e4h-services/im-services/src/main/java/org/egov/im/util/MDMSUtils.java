@@ -98,4 +98,33 @@ public class MDMSUtils {
         return new StringBuilder().append(config.getMdmsHost()).append(config.getMdmsEndPoint());
     }
 
+    public Object fetchMDMSData(RequestInfo requestInfo, String tenantId, String moduleName, List<String> masterNames, String filter) {
+        List<MasterDetail> masterDetails = masterNames.stream()
+                .map(name -> {
+                    MasterDetail.MasterDetailBuilder builder = MasterDetail.builder().name(name);
+                    if (filter != null && !filter.isEmpty()) builder.filter(filter);
+                    return builder.build();
+                })
+                .toList();
+
+        ModuleDetail moduleDetail = ModuleDetail.builder()
+                .moduleName(moduleName)
+                .masterDetails(masterDetails)
+                .build();
+
+        MdmsCriteria mdmsCriteria = MdmsCriteria.builder()
+                .tenantId(tenantId.split("\\.")[0]) // ensures 'pg' instead of 'pg.dummy'
+                .moduleDetails(Collections.singletonList(moduleDetail))
+                .build();
+
+        MdmsCriteriaReq mdmsRequest = MdmsCriteriaReq.builder()
+                .requestInfo(requestInfo)
+                .mdmsCriteria(mdmsCriteria)
+                .build();
+
+        return serviceRequestRepository.fetchResult(getMdmsSearchUrl(), mdmsRequest);
+    }
+
+
+
 }
