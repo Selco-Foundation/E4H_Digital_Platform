@@ -133,33 +133,6 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
         return slaComparison;
     }
 
-    public Map<String, Object> generateSLAComparison(long currentTime) {
-        Map<String, Object> slaComparison = new HashMap<>();
-        slaComparison.put("type", "long");
-
-        Map<String, Object> script = new HashMap<>();
-        String scriptSource =
-                "long sla = doc.containsKey('Data.currentProcessInstance.businesssServiceSla') " +
-                        "&& doc['Data.currentProcessInstance.businesssServiceSla'].size() > 0 " +
-                        "? doc['Data.currentProcessInstance.businesssServiceSla'].value : 0; " +
-
-                        "long createdTime = doc.containsKey('Data.currentProcessInstance.auditDetails.createdTime') " +
-                        "&& doc['Data.currentProcessInstance.auditDetails.createdTime'].size() > 0 " +
-                        "? doc['Data.currentProcessInstance.auditDetails.createdTime'].value : 0; " +
-
-                        "emit(sla + createdTime - params.currentTime);";
-
-        script.put("source", scriptSource);
-
-        Map<String, Object> params = new HashMap<>();
-        params.put("currentTime", currentTime);
-        script.put("params", params);
-
-        slaComparison.put("script", script);
-
-        return slaComparison;
-    }
-
     public Map<String, Object> getESQueryForSimpleSearch(SearchRequest searchRequest, Boolean isPaginationRequired) {
 
         InboxQueryConfiguration configuration = mdmsUtil.getConfigFromMDMS(
