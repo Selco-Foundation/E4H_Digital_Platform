@@ -41,16 +41,17 @@ public class EnrichmentService {
 
     /**
      * Enriches the create request with auditDetails. uuids and custom ids from idGen service
+     *
      * @param serviceRequest The create request
      */
-    public void enrichCreateRequest(IncidentRequest incidentRequest){
+    public void enrichCreateRequest(IncidentRequest incidentRequest) {
 
         RequestInfo requestInfo = incidentRequest.getRequestInfo();
         Incident incident = incidentRequest.getIncident();
         Workflow workflow = incidentRequest.getWorkflow();
         String tenantId = incident.getTenantId();
 
-        incident.setAccountId(incidentRequest.getIncident().getReporter().getUuid());        
+        incident.setAccountId(incidentRequest.getIncident().getReporter().getUuid());
         incident.setReporterTenant(incidentRequest.getIncident().getReporter().getTenantId());
 
         incident.setBlock(toCamelCase(incident.getBlock()));
@@ -58,23 +59,23 @@ public class EnrichmentService {
 
         userService.callUserService(incidentRequest);
 
-        if(incident.getReporterTenant().equalsIgnoreCase(incident.getTenantId().split("\\.")[0]))
-        	incident.setReporterType("CRM");
+        if (incident.getReporterTenant().equalsIgnoreCase(incident.getTenantId().split("\\.")[0]))
+            incident.setReporterType("CRM");
         else
-        	incident.setReporterType("HCR");
-        
-        AuditDetails auditDetails = utils.getAuditDetails(requestInfo.getUserInfo().getUuid(), incident,true);
+            incident.setReporterType("HCR");
+
+        AuditDetails auditDetails = utils.getAuditDetails(requestInfo.getUserInfo().getUuid(), incident, true);
 
         incident.setAuditDetails(auditDetails);
         incident.setId(UUID.randomUUID().toString());
 
-        if(workflow.getVerificationDocuments()!=null){
+        if (workflow.getVerificationDocuments() != null) {
             workflow.getVerificationDocuments().forEach(document -> {
                 document.setId(UUID.randomUUID().toString());
             });
         }
 
-        List<String> customIds = getIdList(requestInfo,tenantId,config.getServiceRequestIdGenName(),config.getServiceRequestIdGenFormat(),1);
+        List<String> customIds = getIdList(requestInfo, tenantId, config.getServiceRequestIdGenName(), config.getServiceRequestIdGenFormat(), 1);
 
         incident.setIncidentId(customIds.get(0));
 
@@ -84,13 +85,14 @@ public class EnrichmentService {
 
     /**
      * Enriches the update request (updates the lastModifiedTime in auditDetails0
+     *
      * @param serviceRequest The update request
      */
-    public void enrichUpdateRequest(IncidentRequest incidentRequest){
+    public void enrichUpdateRequest(IncidentRequest incidentRequest) {
 
         RequestInfo requestInfo = incidentRequest.getRequestInfo();
         Incident incident = incidentRequest.getIncident();
-        AuditDetails auditDetails = utils.getAuditDetails(requestInfo.getUserInfo().getUuid(), incident,false);
+        AuditDetails auditDetails = utils.getAuditDetails(requestInfo.getUserInfo().getUuid(), incident, false);
         incident.setBlock(toCamelCase(incident.getBlock()));
         incident.setDistrict(toCamelCase(incident.getDistrict()));
         incident.setAuditDetails(auditDetails);
@@ -101,31 +103,32 @@ public class EnrichmentService {
     /**
      * Enriches the search criteria in case of default search and enriches the userIds from mobileNumber in case of seach based on mobileNumber.
      * Also sets the default limit and offset if none is provided
+     *
      * @param requestInfo
      * @param criteria
      */
-    public void enrichSearchRequest(RequestInfo requestInfo, RequestSearchCriteria criteria){
+    public void enrichSearchRequest(RequestInfo requestInfo, RequestSearchCriteria criteria) {
 
-        if(criteria.isEmpty() && requestInfo.getUserInfo().getType().equalsIgnoreCase(USERTYPE_CITIZEN)){
+        if (criteria.isEmpty() && requestInfo.getUserInfo().getType().equalsIgnoreCase(USERTYPE_CITIZEN)) {
             String citizenMobileNumber = requestInfo.getUserInfo().getUserName();
             criteria.setMobileNumber(citizenMobileNumber);
         }
 
         criteria.setAccountId(requestInfo.getUserInfo().getUuid());
 
-        String tenantId = (criteria.getTenantId()!=null) ? criteria.getTenantId() : requestInfo.getUserInfo().getTenantId();
+        String tenantId = (criteria.getTenantId() != null) ? criteria.getTenantId() : requestInfo.getUserInfo().getTenantId();
 
-        if(criteria.getMobileNumber()!=null){
+        if (criteria.getMobileNumber() != null) {
             userService.enrichUserIds(tenantId, criteria);
         }
 
-        if(criteria.getLimit()==null)
+        if (criteria.getLimit() == null)
             criteria.setLimit(config.getDefaultLimit());
 
-        if(criteria.getOffset()==null)
+        if (criteria.getOffset() == null)
             criteria.setOffset(config.getDefaultOffset());
 
-        if(criteria.getLimit()!=null && criteria.getLimit() > config.getMaxLimit())
+        if (criteria.getLimit() != null && criteria.getLimit() > config.getMaxLimit())
             criteria.setLimit(config.getMaxLimit());
 
     }
@@ -151,32 +154,29 @@ public class EnrichmentService {
         return idResponses.stream()
                 .map(IdResponse::getId).collect(Collectors.toList());
     }
-    
-    public static String toCamelCase(String str)
-	{
-	    if (str == null || str.isEmpty()) {
-        return str;
-	    }
-		str = new String (str.trim());
-		StringBuilder converted = new StringBuilder();
+
+    public static String toCamelCase(String str) {
+        if (str == null || str.isEmpty()) {
+            return str;
+        }
+        str = new String(str.trim());
+        StringBuilder converted = new StringBuilder();
 
         boolean convertNext = true;
-            
+
         for (char ch : str.toCharArray()) {
-        	if (Character.isSpaceChar(ch)){
-            convertNext = true;
-        	} 
-        	else if (convertNext) {
-            ch = Character.toTitleCase(ch);
-            convertNext = false;
-        	} 
-        	else {
-            ch = Character.toLowerCase(ch);
-        	}
-        converted.append(ch);
+            if (Character.isSpaceChar(ch)) {
+                convertNext = true;
+            } else if (convertNext) {
+                ch = Character.toTitleCase(ch);
+                convertNext = false;
+            } else {
+                ch = Character.toLowerCase(ch);
+            }
+            converted.append(ch);
         }
         return converted.toString();
-	}
+    }
 
 
 }

@@ -234,7 +234,7 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
                     : selectedAction === "CLOSE"
                       ? t("CS_COMMON_CLOSE")
                       : selectedAction === "SENDBACK"
-                        ? t("CS_COMMON_SENDbACK")
+                        ? t("CS_COMMON_SENDBACK")
                         : selectedAction === "OUT_OF_WARRANTY"
                           ? t("CS_COMMON_OUT_OF_WARRANTY")
                           : t("CS_COMMON_SPARE_PART_NEEDED")
@@ -256,7 +256,7 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
                 : selectedAction === "CLOSE"
                   ? t("CS_COMMON_CLOSE")
                   : selectedAction === "SENDBACK"
-                    ? t("CS_COMMON_SENDbACK")
+                    ? t("CS_COMMON_SENDBACK")
                     : selectedAction === "OUT_OF_WARRANTY"
                       ? t("CS_COMMON_OUT_OF_WARRANTY")
                       : t("CS_COMMON_SPARE_PART_NEEDED")

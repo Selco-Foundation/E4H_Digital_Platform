@@ -6,6 +6,8 @@ import com.github.wnameless.json.flattener.JsonFlattener;
 import com.google.gson.Gson;
 import com.jayway.jsonpath.JsonPath;
 import lombok.extern.slf4j.Slf4j;
+
+import org.egov.common.contract.request.Role;
 import org.egov.hash.HashService;
 import org.egov.inbox.config.InboxConfiguration;
 import org.egov.inbox.repository.ServiceRequestRepository;
@@ -27,6 +29,7 @@ import org.springframework.util.CollectionUtils;
 import org.springframework.util.ObjectUtils;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static org.egov.inbox.util.InboxConstants.*;
 
@@ -64,22 +67,41 @@ public class InboxServiceV2 {
      * @param inboxRequest
      * @return
      */
-    public InboxResponse getInboxResponse(InboxRequest inboxRequest){
-
+    public InboxResponse getInboxResponse(InboxRequest inboxRequest) {
         validator.validateSearchCriteria(inboxRequest);
-        InboxQueryConfiguration inboxQueryConfiguration = mdmsUtil.getConfigFromMDMS(inboxRequest.getInbox().getTenantId(), inboxRequest.getInbox().getProcessSearchCriteria().getModuleName());
-        hashParamsWhereverRequiredBasedOnConfiguration(inboxRequest.getInbox().getModuleSearchCriteria(), inboxQueryConfiguration);
+
+        List<Role> roles = inboxRequest.getRequestInfo().getUserInfo().getRoles();
+        List<String> tenantIds = roles.stream().filter(role -> role.getCode().equals("COMPLAINT_RESOLVER"))
+                .map(role -> role.getTenantId()).collect(Collectors.toList());
+        boolean isVendor = !tenantIds.isEmpty();
+
+        Object tenantIdFromRequest = inboxRequest.getInbox().getModuleSearchCriteria().get("tenantId");
+
+        if (isVendor && tenantIdFromRequest instanceof String) {
+            Set<String> tenantsFromRequest = new HashSet<>(
+                Arrays.asList(((String) tenantIdFromRequest).split("\\.")));
+
+            if (tenantsFromRequest.size() == 1) {
+                inboxRequest.getInbox().getModuleSearchCriteria().put("tenantId", tenantIds);
+            }
+        
+        }
+
+        InboxQueryConfiguration inboxQueryConfiguration = mdmsUtil.getConfigFromMDMS(
+                inboxRequest.getInbox().getTenantId(),
+                inboxRequest.getInbox().getProcessSearchCriteria().getModuleName());
+        hashParamsWhereverRequiredBasedOnConfiguration(inboxRequest.getInbox().getModuleSearchCriteria(),
+                inboxQueryConfiguration);
         List<Inbox> items = getInboxItems(inboxRequest, inboxQueryConfiguration.getIndex());
         enrichProcessInstanceInInboxItems(items);
 
         Integer totalCount = getTotalApplicationCount(inboxRequest, inboxQueryConfiguration.getIndex());
-        List<HashMap<String, Object>> statusCountMap = getStatusCountMap(inboxRequest, inboxQueryConfiguration.getIndex());
+        List<HashMap<String, Object>> statusCountMap = getStatusCountMap(inboxRequest,
+                inboxQueryConfiguration.getIndex());
         Integer nearingSlaCount = getApplicationsNearingSlaCount(inboxRequest, inboxQueryConfiguration.getIndex());
-        
-        
-        InboxResponse inboxResponse = InboxResponse.builder().items(items).totalCount(totalCount).statusMap(statusCountMap).nearingSlaCount(nearingSlaCount).build();
 
-        return inboxResponse;
+        return InboxResponse.builder().items(items).totalCount(totalCount)
+                .statusMap(statusCountMap).nearingSlaCount(nearingSlaCount).build();
     }
 
     private void hashParamsWhereverRequiredBasedOnConfiguration(Map<String, Object> moduleSearchCriteria, InboxQueryConfiguration inboxQueryConfiguration) {
@@ -346,21 +368,22 @@ public class InboxServiceV2 {
         Integer totalCount = 0;
         // Fetch slot percentage only once here !!!!!!!!!!
 
-
-        for(int i = 0; i < businessServices.size(); i++){
-            String businessService = businessServices.get(i);
+        for (String businessService : businessServices) {
             Long businessServiceSla = businessServiceSlaMap.get(businessService);
-            //inboxRequest.getInbox().getProcessSearchCriteria().setStatus(businessServiceVsUuidsBasedOnSearchCriteria.get(businessService));
             Map<String, Object> finalQueryBody = queryBuilder.getNearingSlaCountQuery(inboxRequest, businessServiceSla);
+
+            // use COUNT_PATH instead of SEARCH_PATH
             StringBuilder uri = getURI(indexName, COUNT_PATH);
+
+            @SuppressWarnings("unchecked")
             Map<String, Object> response = (Map<String, Object>) serviceRequestRepository.fetchESResult(uri, finalQueryBody);
-            Integer currentCount = 0;
-            if(response.containsKey(COUNT_CONSTANT)){
-                currentCount = (Integer) response.get(COUNT_CONSTANT);
-            }else{
+
+            // extract the top‐level "count" key
+            if (!response.containsKey("count")) {
                 throw new CustomException("INBOX_COUNT_ERR", "Error occurred while executing ES count query");
             }
-            totalCount += currentCount;
+            Integer cnt = (Integer) response.get("count");
+            totalCount += cnt;
         }
 
         return totalCount;

@@ -2,10 +2,10 @@ import { useQuery, useQueryClient } from "react-query";
 import React, { useEffect, useState, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
-const useInboxData = (searchParams, tenantIdNew) => {
+const useInboxData = (searchParams,tenantIdNew) => {
   const { t } = useTranslation();
   let serviceIds = [];
-  const inboxTotal = sessionStorage.getItem("inboxTotal");
+  const inboxTotal=sessionStorage.getItem("inboxTotal");
   let commonFilters = { start: 1, end: 10 };
   const { limit, offset, nearingSLA } = searchParams;
   sessionStorage.setItem("limit", JSON.stringify(limit));
@@ -13,23 +13,25 @@ const useInboxData = (searchParams, tenantIdNew) => {
   let appFilters = { ...commonFilters, ...searchParams?.filters?.pgrQuery, ...searchParams?.search, limit, offset, nearingSLA };
   sessionStorage.setItem("appFilters", JSON.stringify(appFilters));
   sessionStorage.setItem("searchParams", JSON.stringify(searchParams));
-  let wfFilters;
-  if (searchParams?.filters?.wfFilters?.assignee?.[0]?.code !== "") {
-    wfFilters = { ...commonFilters, ...searchParams?.filters?.wfQuery, assignee: searchParams?.filters?.wfFilters?.assignee?.[0]?.code };
-  } else {
-    wfFilters = { ...commonFilters, ...searchParams?.filters?.wfQuery };
+  let wfFilters
+  if(searchParams?.filters?.wfFilters?.assignee?.[0]?.code !=="")
+{
+    wfFilters = { ...commonFilters, ...searchParams?.filters?.wfQuery,assignee:searchParams?.filters?.wfFilters?.assignee?.[0]?.code}
   }
-  const { assignee } = wfFilters;
-  const filterData = (data, appFilters) => {
+  else {
+    wfFilters = { ...commonFilters, ...searchParams?.filters?.wfQuery}
+  }
+  const { assignee }=wfFilters;
+  const filterData=(data, appFilters)=>{
     //const {phcType, incidentType, incidentId, applicationStatus, start, limit, offset, end}=appFilters;
-    const filteredItems = data.data.items;
-    const totalItems = data.data.totalCount;
-    const statusArray = data.data.statusMap;
+    const filteredItems= data.data.items;
+    const totalItems=data.data.totalCount;
+    const statusArray=data.data.statusMap;
     // const sortedItems=filteredItems.sort((a,b)=>{
     //   return b.businessObject?.auditDetails?.lastModifiedTime-a.businessObject?.auditDetails?.lastModifiedTime;
     // })
-    //const paginationItems=filteredItems.slice(limit, offset+limit);
-    return { total: totalItems, items: filteredItems, statusarray: statusArray };
+    //const paginationItems=filteredItems.slice(limit, offset+limit); 
+    return {total: totalItems, items:filteredItems, statusarray: statusArray};
   };
   const { data, isLoading, isFetching, isSuccess, refetch } = Digit.Hooks.useNewInboxGeneral({
     tenantId: Digit.ULBService.getCurrentTenantId(),
@@ -41,6 +43,8 @@ const useInboxData = (searchParams, tenantIdNew) => {
       },
       enabled: Digit.Utils.pgrAccess(),
     },
+
+
   });
   const filteredData = isSuccess && data ? filterData(data, appFilters) : { total: 0, items: [], statusArray: [] };
 
@@ -55,17 +59,10 @@ const useInboxData = (searchParams, tenantIdNew) => {
 
   const fetchInboxData = () => {
     let tenantId = Digit.ULBService.getCurrentTenantId();
-    const tenants = Digit.SessionStorage.get("Tenants")
-      ? Digit.SessionStorage.get("Tenants")
-          .map((item) => item.code)
-          .join(",")
-      : "";
-    const codes = Digit.SessionStorage.get("Tenants")
-      ? Digit.SessionStorage.get("Tenants")
-          .filter((item) => item.code !== "pg")
-          .map((item) => item.code)
-          .join(",")
-      : "";
+    const tenants = Digit.SessionStorage.get("Tenants")? Digit.SessionStorage.get("Tenants").map(item => item.code).join(','):"";
+    const codes = Digit.SessionStorage.get("Tenants")?Digit.SessionStorage.get("Tenants").filter(item => item.code !== "pg")
+      .map(item => item.code)
+      .join(','):"";
     const sessionTenantId = Digit.SessionStorage.get("Employee.tenantId");
     const isCodePresent = (array, codeToCheck) => {
       return array.some((item) => item.code === codeToCheck);
@@ -79,7 +76,9 @@ const useInboxData = (searchParams, tenantIdNew) => {
       tenantId = sessionTenantId === "pg" ? (isCodePresent(userRoles, "COMPLAINT_RESOLVER") ? codes : tenants) : sessionTenantId;
     }
 
-    //const tenant =  Digit.SessionStorage.get("Employee.tenantId") == "pg"?  Digit.SessionStorage.get("Tenants").map(item => item.code).join(',') :Digit.SessionStorage.get("Employee.tenantId")
+    //const tenant =  Digit.SessionStorage.get("Employee.tenantId") == "pg"?  Digit.SessionStorage.get("Tenants").map(item => item.code).join(',') :Digit.SessionStorage.get("Employee.tenantId") 
+
+
 
     let complaintDetailsResponse = null;
     let incidentDetails = null;
@@ -88,28 +87,31 @@ const useInboxData = (searchParams, tenantIdNew) => {
       incidentDetails = filteredData.items.map((incident) => incident.businessObject.incident);
     }
 
-    const workflowInstances = filteredData && filteredData?.items.map((instances) => instances.ProcessInstance);
+    const workflowInstances=filteredData&& filteredData?.items.map(instances=>instances.ProcessInstance)
 
-    if (workflowInstances.length > 0) {
+    if (workflowInstances.length>0) {
       combinedRes = combineResponses(incidentDetails, workflowInstances).map((data) => ({
         ...data,
         sla: data.sla !== "-" ? Math.round(data.sla / (24 * 60 * 60 * 1000)) : "-",
       }));
+
     }
 
-    return { combinedRes: combinedRes, total: filteredData?.total, statusArray: filteredData?.statusarray };
+
+    return {combinedRes:combinedRes, total:filteredData?.total, statusArray: filteredData?.statusarray};
+
   };
 
-  const result = fetchInboxData();
+  const result = fetchInboxData()
 
-  return { data: result };
+  return {data:result};
 };
 
 const mapWfBybusinessId = (wfs) => {
   return wfs.reduce((object, item) => {
-    let businessId = "";
-    if (item !== null) {
-      businessId = item["businessId"];
+    let businessId="";
+    if(item!==null){
+      businessId=item["businessId"];
     }
     return { ...object, [businessId]: item };
   }, {});
@@ -130,10 +132,7 @@ const combineResponses = (incidentDetails, workflowInstances) => {
         //locality: complaint.service.address.locality.code,
         status: incident.applicationStatus,
         taskOwner: wfMap[incident.incidentId]?.assignes?.[0]?.name || "-",
-        sla:
-          incident.applicationStatus === "RESOLVED"
-            ? "-"
-            : wfMap[incident.incidentId]?.businesssServiceSla + wfMap[incident.incidentId]?.auditDetails?.createdTime - currentTime,
+        sla: (incident.applicationStatus === "RESOLVED" || incident.applicationStatus === "CLOSEDAFTERRESOLUTION")  ? "-" : wfMap[incident.incidentId]?.businesssServiceSla+wfMap[incident.incidentId]?.auditDetails?.createdTime-currentTime,
         tenantId: incident.tenantId,
       });
     } else if (!wfMap?.[incident.incidentId]) {
@@ -146,14 +145,10 @@ const combineResponses = (incidentDetails, workflowInstances) => {
         //locality: complaint.service.address.locality.code,
         status: incident.applicationStatus,
         taskOwner: "-",
-        sla:
-          incident.applicationStatus === "RESOLVED"
-            ? "-"
-            : wfMap[incident.incidentId]?.businesssServiceSla + wfMap[incident.incidentId]?.auditDetails?.createdTime - currentTime,
+        sla: (incident.applicationStatus === "RESOLVED" || incident.applicationStatus === "CLOSEDAFTERRESOLUTION")  ? "-" : wfMap[incident.incidentId]?.businesssServiceSla+wfMap[incident.incidentId]?.auditDetails?.createdTime-currentTime,
         tenantId: incident.tenantId,
-      });
-    }
-  });
+      })
+    }});
 
   return data;
 };

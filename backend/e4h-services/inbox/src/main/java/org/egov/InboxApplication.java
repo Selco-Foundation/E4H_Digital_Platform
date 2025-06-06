@@ -1,6 +1,9 @@
 package org.egov;
 
 import org.cache2k.extra.spring.SpringCache2kCacheManager;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration;
+import org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration;
 import org.springframework.web.client.RestTemplate;
 
 import javax.net.ssl.*;
@@ -21,7 +24,13 @@ import org.springframework.context.annotation.Profile;
 
 import java.util.concurrent.TimeUnit;
 
-@SpringBootApplication
+@SpringBootApplication(
+		exclude = {
+				DataSourceAutoConfiguration.class,
+				DataSourceTransactionManagerAutoConfiguration.class,
+				HibernateJpaAutoConfiguration.class
+		}
+)
 @EnableAutoConfiguration
 @EnableCaching
 @Import({ TracerConfiguration.class, MultiStateInstanceUtil.class, EncryptionConfiguration.class   })
