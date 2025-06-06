@@ -370,9 +370,8 @@ public class InboxServiceV2 {
 
         for (String businessService : businessServices) {
             Long businessServiceSla = businessServiceSlaMap.get(businessService);
-            Map<String, Object> finalQueryBody = queryBuilder.getNearingSlaCountQuery(inboxRequest, businessServiceSla);
-
-            // use COUNT_PATH instead of SEARCH_PATH
+            //inboxRequest.getInbox().getProcessSearchCriteria().setStatus(businessServiceVsUuidsBasedOnSearchCriteria.get(businessService));
+            Map<String, Object> finalQueryBody = queryBuilder.getNearingSlaCountQuery(inboxRequest, businessServiceSla, businessService);
             StringBuilder uri = getURI(indexName, COUNT_PATH);
 
             @SuppressWarnings("unchecked")

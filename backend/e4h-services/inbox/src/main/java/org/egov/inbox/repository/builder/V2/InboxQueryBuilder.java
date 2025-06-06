@@ -2,7 +2,6 @@ package org.egov.inbox.repository.builder.V2;
 
 import java.util.*;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import org.egov.inbox.util.ErrorConstants;
 import org.egov.inbox.util.MDMSUtil;
 import org.egov.inbox.web.model.InboxRequest;
@@ -346,89 +345,37 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
     }
 
     @Override
-    public Map<String, Object> getNearingSlaCountQuery(InboxRequest inboxRequest, Long businessServiceSla) {
-        // 1. Compute timestamps
-        long currentTime = System.currentTimeMillis();
-        long slotLimit = businessServiceSla - (businessServiceSla * 70 / 100);
+    public Map<String, Object> getNearingSlaCountQuery(InboxRequest inboxRequest, Long businessServiceSla, String businessService) {
+        Map<String, Object> baseEsQuery = getESQuery(inboxRequest, Boolean.FALSE, Boolean.FALSE);
 
-        // 2. Build the top-level map in insertion order
-        Map<String, Object> esQuery = new LinkedHashMap<>();
+        Map<String, Object> query = (Map<String, Object>) baseEsQuery.get("query");
+        Map<String, Object> bool = (Map<String, Object>) query.get("bool");
+        List<Object> mustClauseList = (List<Object>) bool.get("must");
 
-        // 3. Build the bool.must list
-        List<Map<String, Object>> must = new ArrayList<>();
+        // Add businessService term filter
+        Map<String, Object> serviceTerm = new HashMap<>();
+        serviceTerm.put("Data.currentProcessInstance.businessService.keyword", businessService);
+        Map<String, Object> termWrapper = new HashMap<>();
+        termWrapper.put("term", serviceTerm);
+        mustClauseList.add(termWrapper);
 
-        // 3a. Tenant wildcard
+        // Build the painless script
+        Map<String, Object> innerScript = new HashMap<>();
+        innerScript.put("source",
+                "doc.containsKey('Data.slaRemaining') && " +
+                        "doc.containsKey('Data.stateSLA') && " +
+                        "doc['Data.stateSLA'].size() > 0 && " +
+                        "doc['Data.stateSLA'].value > 0 && " +
+                        "(doc['Data.slaRemaining'].value / doc['Data.stateSLA'].value) <= 0.3");
+        innerScript.put("lang", "painless");
 
-        String tenantId = inboxRequest.getInbox()
-                .getProcessSearchCriteria()
-                .getTenantId();
-        must.add(Collections.singletonMap(
-                "wildcard",
-                Collections.singletonMap(
-                        "Data.incident.tenantId.keyword",
-                         tenantId + (tenantId.contains(".") ? "" :".*")
-                )
-        ));
+        Map<String, Object> script = new HashMap<>();
+        script.put("script", innerScript);
 
-        // 3b. SLA check as a script query
-        String scriptSrc =
-                "long sla = doc.containsKey('Data.currentProcessInstance.businesssServiceSla') && " +
-                        "doc['Data.currentProcessInstance.businesssServiceSla'].size() > 0 ? " +
-                        "doc['Data.currentProcessInstance.businesssServiceSla'].value : 0; " +
-                        "long created = doc.containsKey('Data.currentProcessInstance.auditDetails.createdTime') && " +
-                        "doc['Data.currentProcessInstance.auditDetails.createdTime'].size() > 0 ? " +
-                        "doc['Data.currentProcessInstance.auditDetails.createdTime'].value : 0; " +
-                        "return (sla + created - params.currentTime) <= params.slotLimit;";
-
-        Map<String, Object> scriptInner = new LinkedHashMap<>();
-        scriptInner.put("lang",   "painless");
-        scriptInner.put("source", scriptSrc);
-
-        Map<String, Object> map = new HashMap<>();
-        map.put("currentTime", currentTime);
-        map.put("slotLimit", slotLimit);
-
-        scriptInner.put("params", map);
-
-        must.add(Collections.singletonMap(
-                "script",
-                Collections.singletonMap("script", scriptInner)
-        ));
-
-        // 3c. Optional assignee filter
-        Map<String, Object> moduleCrit = inboxRequest.getInbox().getModuleSearchCriteria();
-        if (moduleCrit != null && moduleCrit.get("assignee") != null) {
-            String assignee = moduleCrit.get("assignee").toString();
-            must.add(Collections.singletonMap(
-                    "term",
-                    Collections.singletonMap(
-                            "Data.currentProcessInstance.assignes.uuid.keyword",
-                            assignee
-                    )
-            ));
-        }
-
-        Map<String, Object> termMap = new HashMap<>();
-        termMap.put("Data.currentProcessInstance.state.isTerminateState", true);
-
-        // Wrap termMap inside a map with key "term"
-        Map<String, Object> termWrapper = Collections.singletonMap("term", termMap);
-
-        // Create the mustNot list
-        List<Map<String, Object>> mustNot = new ArrayList<>();
-        mustNot.add(termWrapper);
-
-        // Assuming `must` already exists as a List<Map<String, Object>>
-        Map<String, Object> boolQ = new HashMap<>();
-        boolQ.put("must", must);
-        boolQ.put("must_not", mustNot);
-
-
-        esQuery.put("query", Collections.singletonMap("bool", boolQ));
-
-        // 6. Return the count‐API body
-        log.info("+++++++++++++++ NEARING SLA COUNT QUERY +++++++++++++++\n{}", esQuery);
-        return esQuery;
+        mustClauseList.add(Collections.singletonMap("script", script));
+        bool.put("must", mustClauseList);
+        log.info("Nearing SLA Query: " + baseEsQuery);
+        return baseEsQuery;
     }
 
 
