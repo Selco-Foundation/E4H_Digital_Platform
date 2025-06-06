@@ -7,12 +7,18 @@ import org.egov.common.contract.request.RequestInfo;
 import org.egov.common.contract.request.User;
 import org.egov.im.config.IMConfiguration;
 import org.egov.im.repository.ServiceRequestRepository;
+import org.egov.im.util.BusinessHoursUtil;
+import org.egov.im.util.MDMSUtils;
 import org.egov.im.web.models.*;
 import org.egov.im.web.models.workflow.*;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.CollectionUtils;
 
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -28,6 +34,7 @@ public class WorkflowService {
     private ObjectMapper mapper;
 
     private NotificationService notificationService;
+    private MDMSUtils mdmsUtils;
 
     private static final Map<Priority, String> PRIORITY_BUSINESS_SERVICE_MAP = Map.of(
             Priority.HIGH, IM_BUSINESSSERVICE_HIGH,
@@ -35,14 +42,17 @@ public class WorkflowService {
             Priority.LOW, IM_BUSINESSSERVICE_LOW
     );
 
+    private List<State> states;
+
     @Autowired
     public WorkflowService(IMConfiguration imConfiguration,
                            ServiceRequestRepository repository,
-                           ObjectMapper mapper, NotificationService notificationService) {
+                           ObjectMapper mapper, NotificationService notificationService, MDMSUtils mdmsUtils) {
         this.imConfiguration = imConfiguration;
         this.repository = repository;
         this.mapper = mapper;
         this.notificationService = notificationService;
+        this.mdmsUtils = mdmsUtils;
     }
 
     /*
@@ -82,8 +92,47 @@ public class WorkflowService {
         ProcessInstanceRequest workflowRequest = new ProcessInstanceRequest(incidentRequest.getRequestInfo(), Collections.singletonList(processInstance));
         ProcessInstance updatedProcessInstance = callWorkFlow(workflowRequest);
         incidentRequest.getIncident().setApplicationStatus(updatedProcessInstance.getState().getApplicationStatus());
+        updatedProcessInstance.getState().setTotalSlaRemaining(calculateTotalSla(incidentRequest));
         return updatedProcessInstance;
     }
+
+    private Long calculateTotalSla(IncidentRequest request) {
+        Long createdTime = request.getIncident().getAuditDetails().getCreatedTime();
+        String applicationStatus = request.getIncident().getApplicationStatus();
+        ZonedDateTime created = ZonedDateTime.ofInstant(Instant.ofEpochMilli(createdTime), ZoneId.of("Asia/Kolkata"));
+        ZonedDateTime now = ZonedDateTime.now(ZoneId.of("Asia/Kolkata"));
+
+        // Step 1: Fetch MDMS BusinessHours data
+        Object mdmsData = mdmsUtils.fetchMDMSData(
+                request.getRequestInfo(),
+                request.getIncident().getTenantId(),
+                "common-masters",
+                List.of("BusinessHours"),
+                null
+        );
+
+        // Step 2: Parse BusinessHours config
+        List<Map<String, Object>> businessHourList;
+        try {
+            businessHourList = JsonPath.read(
+                    mdmsData,
+                    "$.MdmsRes['common-masters'].BusinessHours[0].BusinessHours"
+            );
+        } catch (Exception e) {
+            throw new CustomException("MDMS_PARSE_ERROR", "Unable to parse BusinessHours from MDMS");
+        }
+
+        if (businessHourList == null || businessHourList.isEmpty()) {
+            throw new CustomException("MDMS_MISSING", "BusinessHours config missing from MDMS");
+        }
+
+        // Step 3: Use BusinessHoursUtil
+        BusinessHoursUtil util = new BusinessHoursUtil(businessHourList);
+        long businessHoursElapsed = util.calculateBusinessDuration(created, now);
+
+        return computeTotalSla(applicationStatus) - businessHoursElapsed;
+    }
+
     /**
      * Creates url for search based on given tenantId and businessservices
      *
@@ -184,7 +233,9 @@ public class WorkflowService {
         processInstance.setAction(request.getWorkflow().getAction());
         processInstance.setModuleName(IM_MODULENAME);
         processInstance.setTenantId(incident.getTenantId());
-        processInstance.setBusinessService(getBusinessService(request, priority).getBusinessService());
+        BusinessService businessService = getBusinessService(request, priority);
+        this.states = businessService.getStates();
+        processInstance.setBusinessService(businessService.getBusinessService());
         processInstance.setDocuments(request.getWorkflow().getVerificationDocuments());
         processInstance.setComment(workflow.getComments());
 
@@ -205,6 +256,36 @@ public class WorkflowService {
         }
 
         return processInstance;
+    }
+
+    private long computeTotalSla(String currentState) {
+        Map<String, Long> stateToSlaMap = new HashMap<>();
+
+        // Populate the map: state name → SLA millis
+        for (State state : this.states) {
+            String key = state.getApplicationStatus(); // or use state.getState()
+            if (key != null && state.getSla() != null) {
+                stateToSlaMap.put(key, state.getSla());
+            }
+        }
+
+        long totalSla = 0;
+
+        if (PENDINGFORASSIGNMENT.equals(currentState) || PENDINGATVENDOR.equals(currentState)) {
+            totalSla += stateToSlaMap.getOrDefault(PENDINGFORASSIGNMENT, 0L);
+            totalSla += stateToSlaMap.getOrDefault(PENDINGATVENDOR, 0L);
+        } else if (currentState.startsWith(PENDING_ASSIGNMENT_PREFIX)) {
+            String suffix = currentState.replace(PENDING_ASSIGNMENT_PREFIX, "");
+            String resolutionState = PENDING_RESOLUTION_PREFIX + suffix;
+            totalSla += stateToSlaMap.getOrDefault(currentState, 0L);
+            totalSla += stateToSlaMap.getOrDefault(resolutionState, 0L);
+        } else if (currentState.startsWith(PENDING_RESOLUTION_PREFIX)) {
+            String suffix = currentState.replace(PENDING_RESOLUTION_PREFIX, "");
+            String assignmentState = PENDING_ASSIGNMENT_PREFIX + suffix;
+            totalSla += stateToSlaMap.getOrDefault(currentState, 0L);
+            totalSla += stateToSlaMap.getOrDefault(assignmentState, 0L);
+        }
+        return totalSla;
     }
 
     /**
