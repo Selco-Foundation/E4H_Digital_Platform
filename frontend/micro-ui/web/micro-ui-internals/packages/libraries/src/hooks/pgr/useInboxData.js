@@ -60,12 +60,12 @@ const useInboxData = (searchParams) => {
     const currentTenant = Digit.SessionStorage.get("Employee.tenantId");
     const stateTenantId = Digit.ULBService.getStateId();
 
-    const combinedRes = combineResponses(filteredData.items, currentUserUuid, currentTenant, stateTenantId, currentUser);
+    const combinedRes = combineResponses(filteredData.items, currentUserUuid, currentTenant, stateTenantId, currentUser, t);
 
     return {
       combinedRes,
       total: filteredData.total,
-      statusArray: filteredData.statusarray,
+      statusArray: filteredData.statusArray,
     };
   };
 
@@ -78,11 +78,11 @@ const filterData = (data) => {
   const filteredItems = data.data.items;
   const totalItems = data.data.totalCount;
   const statusArray = data.data.statusMap;
-  return { total: totalItems, items: filteredItems, statusarray: statusArray };
+  return { total: totalItems, items: filteredItems, statusArray: statusArray };
 };
 
-const combineResponses = (items, currentUserUuid, currentTenant, stateTenantId, currentUser) => {
-  const closedStates = ["RESOLVED", "CLOSEDAFTERRESOLUTION", "DECLINED"];
+const combineResponses = (items, currentUserUuid, currentTenant, stateTenantId, currentUser, t) => {
+  const closedStates = ["RESOLVED", "CLOSEDAFTERRESOLUTION", "REJECTED"];
   const roleStatusMapping = {
     PENDINGFORASSIGNMENT: "COMPLAINT_ASSESSOR",
     PENDING_ASSIGNMENT_OUT_OF_WARRANTY: "COMPLAINT_FACILITATOR_1",
