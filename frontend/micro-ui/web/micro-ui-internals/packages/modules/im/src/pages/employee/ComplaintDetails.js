@@ -268,7 +268,12 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
             ? selectedSendBackReason?.additionalInputs?.[0].type === "textarea"
             : selectedRejectReason?.additionalInputs?.[0].type === "textarea");
 
-        const isCommentsMandatory = (isTextareaAction || selectedAction === "RESOLVE") && !comments.trim();
+        const isCommentsMandatory = (
+          isTextareaAction || 
+          selectedAction === "RESOLVE" || 
+          selectedAction === "OUT_OF_WARRANTY" || 
+          selectedAction === "SPARE_PART_NEEDED"
+        ) && !comments.trim();
 
         const validations = [
           { condition: selectedAction === "REJECT" && !selectedRejectReason, message: "CS_MANDATORY_DECLINE_REASON" },
@@ -280,7 +285,7 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
           { condition: isCommentsMandatory, message: "CS_MANDATORY_COMMENTS" },
           { condition: selectedAction === "REOPEN" && selectedReopenReason === null, message: "CS_REOPEN_REASON_MANDATORY" },
           { condition: selectedAction === "ASSIGN" && selectedEmployee === null, message: "CS_ASSIGNEE_MANDATORY" },
-          { condition: selectedAction === "RESOLVE" && uploadedFile.length === 0, message: "CS_MANDATORY_FILE_UPLOAD" },
+          { condition: (selectedAction === "RESOLVE" || selectedAction === "OUT_OF_WARRANTY") && uploadedFile.length === 0, message: "CS_MANDATORY_FILE_UPLOAD" },
         ];
 
         const error = validations.find(({ condition }) => condition);
@@ -359,9 +364,7 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
           <>
             {selectedAction !== "ASSIGN" &&
             selectedAction !== "REOPEN" &&
-            !(selectedAction === "REJECT" && selectedRejectReason?.additionalInputs?.[0].type !== "textarea") &&
-            selectedAction !== "OUT_OF_WARRANTY" &&
-            selectedAction !== "SPARE_PART_NEEDED" ? (
+            !(selectedAction === "REJECT" && selectedRejectReason?.additionalInputs?.[0].type !== "textarea") ? (
               <CardLabel>{t("CS_COMMON_EMPLOYEE_COMMENTS")}*</CardLabel>
             ) : (
               <CardLabel>{t("CS_COMMON_EMPLOYEE_COMMENTS")}</CardLabel>
@@ -383,7 +386,7 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
             />
           </React.Fragment>
         )}
-        {selectedAction === "RESOLVE" ? (
+        {selectedAction === "RESOLVE" || selectedAction === "OUT_OF_WARRANTY" ? (
           <CardLabel>{t("CS_ACTION_SUPPORTING_DOCUMENTS")}*</CardLabel>
         ) : (
           <CardLabel>{t("CS_ACTION_SUPPORTING_DOCUMENTS")}</CardLabel>
