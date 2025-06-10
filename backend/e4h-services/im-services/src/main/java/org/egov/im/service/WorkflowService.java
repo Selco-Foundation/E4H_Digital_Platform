@@ -228,6 +228,12 @@ public class WorkflowService {
             List<String> assignee = Arrays.asList(reassigneeDetails.get("employeeUUID"));
             workflow.setAssignes(assignee);
         }
+        if (request.getWorkflow().getAction().equalsIgnoreCase("OUT_OF_WARRANTY")) {
+            workflow.setAssignes(null);
+            Map<String, String> reassigneeDetails = notificationService.getHRMSEmployee(request, "COMPLAINT_FACILITATOR_1");
+            List<String> assignee = Arrays.asList(reassigneeDetails.get("employeeUUID"));
+            workflow.setAssignes(assignee);
+        }
         ProcessInstance processInstance = new ProcessInstance();
         processInstance.setBusinessId(incident.getIncidentId());
         processInstance.setAction(request.getWorkflow().getAction());
