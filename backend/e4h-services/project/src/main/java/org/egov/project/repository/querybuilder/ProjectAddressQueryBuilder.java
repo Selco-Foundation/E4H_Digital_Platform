@@ -10,9 +10,11 @@ import org.egov.common.models.project.Project;
 import org.egov.common.models.project.ProjectSearch;
 import org.egov.project.config.ProjectConfiguration;
 import org.egov.project.web.models.ProjectSearchCriteria;
+import org.egov.project.web.models.ProjectSortCriteria;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
@@ -409,5 +411,30 @@ public class ProjectAddressQueryBuilder {
     /* Returns query to get total projects count based on project search params */
     public String getSearchCountQueryString(ProjectSearch projectSearch, ProjectSearchURLParams urlParams, List<Object> preparedStatement) {
         return getProjectSearchQuery(projectSearch, urlParams, preparedStatement, Boolean.TRUE);
+    }
+
+    public String getProjectSearchAndSortQuery(ProjectSearch projectSearch, ProjectSearchURLParams urlParams, List<Object> preparedStmtList, Boolean isCountQuery, ProjectSortCriteria sortParam) {
+        String query = getProjectSearchQuery(projectSearch, urlParams, preparedStmtList, Boolean.FALSE);
+        // Adding sort criteria
+        String sortField = null;
+        if (sortParam != null && sortParam.getSort_by() != null) {
+            String userSortField = sortParam.getSort_by();
+            sortField = userSortField.startsWith("project_") ? userSortField : "project_" + userSortField;
+        }
+        String sortOrder = (sortParam != null && sortParam.getSort_direction() != null) ? sortParam.getSort_direction() : null;
+        // Default sorting field
+        String defaultSortField = "project_lastModifiedTime";
+        String defaultSortOrder = "DESC";
+        if (sortField != null) {
+            query += " ORDER BY " + sortField;
+            if ("ASC".equalsIgnoreCase(sortOrder) || "DESC".equalsIgnoreCase(sortOrder)) {
+                query += " " + sortOrder;
+            } else {
+                query += " " + defaultSortOrder;
+            }
+        } else {
+            query += " ORDER BY " + defaultSortField + " " + defaultSortOrder;
+        }
+        return query;
     }
 }

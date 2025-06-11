@@ -16,6 +16,7 @@ import org.egov.project.repository.ProjectRepository;
 import org.egov.project.service.enrichment.ProjectEnrichment;
 import org.egov.project.util.ProjectServiceUtil;
 import org.egov.project.validator.project.ProjectValidator;
+import org.egov.project.web.models.ProjectSortCriteria;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -115,9 +116,9 @@ public class ProjectService {
         return projects;
     }
 
-    public List<Project> searchProject(ProjectSearchRequest projectSearchRequest, @Valid ProjectSearchURLParams urlParams) {
+    public List<Project> searchProject(ProjectSearchRequest projectSearchRequest, @Valid ProjectSearchURLParams urlParams, @Valid ProjectSortCriteria sortCriteria) {
         projectValidator.validateSearchV2ProjectRequest(projectSearchRequest, urlParams);
-        return projectRepository.getProjects(projectSearchRequest.getProject(), urlParams);
+        return projectRepository.getProjects(projectSearchRequest.getProject(), urlParams, sortCriteria);
     }
 
     public ProjectRequest updateProject(ProjectRequest request) {

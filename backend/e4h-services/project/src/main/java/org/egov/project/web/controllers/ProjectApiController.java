@@ -17,6 +17,7 @@ import org.egov.common.producer.Producer;
 import org.egov.common.utils.ResponseInfoFactory;
 import org.egov.project.config.ProjectConfiguration;
 import org.egov.project.service.*;
+import org.egov.project.web.models.ProjectSortCriteria;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -474,10 +475,10 @@ public class ProjectApiController {
 
     @RequestMapping(value = "/v2/_search", method = RequestMethod.POST)
     public ResponseEntity<ProjectResponse> searchV2Project(
-            @Valid @ModelAttribute ProjectSearchURLParams urlParams,
+            @Valid @ModelAttribute ProjectSearchURLParams urlParams, @Valid @ModelAttribute ProjectSortCriteria sortCriteria,
             @ApiParam(value = "Details for the project.", required = true) @Valid @RequestBody ProjectSearchRequest projectSearchRequest
     ) {
-        List<Project> projects = projectService.searchProject(projectSearchRequest, urlParams);
+        List<Project> projects = projectService.searchProject(projectSearchRequest, urlParams, sortCriteria);
         ResponseInfo responseInfo = ResponseInfoFactory.createResponseInfo(projectSearchRequest.getRequestInfo(), true);
         Integer count = projectService.countAllProjects(projectSearchRequest, urlParams);
         ProjectResponse projectResponse = ProjectResponse.builder()

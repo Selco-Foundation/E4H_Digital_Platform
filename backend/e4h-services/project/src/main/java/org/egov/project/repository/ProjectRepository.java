@@ -17,6 +17,7 @@ import org.egov.project.repository.rowmapper.ProjectAddressRowMapper;
 import org.egov.project.repository.rowmapper.ProjectRowMapper;
 import org.egov.project.repository.rowmapper.TargetRowMapper;
 import org.egov.project.web.models.ProjectSearchCriteria;
+import org.egov.project.web.models.ProjectSortCriteria;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -105,10 +106,10 @@ public class ProjectRepository extends GenericRepository<Project> {
         return buildProjectSearchResult(projects, targets, documents, ancestors, descendants);
     }
 
-    public List<Project> getProjects(@NotNull @Valid ProjectSearch projectSearch, @Valid ProjectSearchURLParams urlParams) {
+    public List<Project> getProjects(@NotNull @Valid ProjectSearch projectSearch, @Valid ProjectSearchURLParams urlParams, @Valid ProjectSortCriteria sortCriteria) {
 
-        //Fetch Projects based on search criteria
-        List<Project> projects = getProjectsBasedOnV2SearchCriteria(projectSearch, urlParams);
+        //Fetch Projects based on search criteria with sort criteria
+        List<Project> projects = getProjectsBasedOnV2SearchCriteria(projectSearch, urlParams, sortCriteria);
 
         Set<String> projectIds = projects.stream().map(Project::getId).collect(Collectors.toSet());
 
@@ -145,9 +146,9 @@ public class ProjectRepository extends GenericRepository<Project> {
         return buildProjectSearchResult(projects, targets, documents, ancestors, descendants);
     }
 
-    private List<Project> getProjectsBasedOnV2SearchCriteria(@NotNull @Valid ProjectSearch projectSearch, ProjectSearchURLParams urlParams) {
+    private List<Project> getProjectsBasedOnV2SearchCriteria(@NotNull @Valid ProjectSearch projectSearch, ProjectSearchURLParams urlParams, ProjectSortCriteria sortCriteria) {
         List<Object> preparedStmtList = new ArrayList<>();
-        String query = queryBuilder.getProjectSearchQuery(projectSearch, urlParams, preparedStmtList, Boolean.FALSE);
+        String query = queryBuilder.getProjectSearchAndSortQuery(projectSearch, urlParams, preparedStmtList, Boolean.FALSE, sortCriteria);
         List<Project> projects = jdbcTemplate.query(query, addressRowMapper, preparedStmtList.toArray());
 
         log.info("Fetched project list based on given search criteria");
