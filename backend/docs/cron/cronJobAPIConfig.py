@@ -5,7 +5,7 @@ import shlex
 from urllib.parse import urlencode
 
 # Hosts
-MDMS_HOST = "http://egov-mdms-service.core-dev:8080"
+USER_HOST = "http://egov-user.core-dev:8080"
 WORKFLOW_HOST = "http://egov-workflow-v2.core-dev:8080"
 
 # Business services to loop through
@@ -22,7 +22,7 @@ for tenant_id in tenant_ids:
     print(f"\n Processing tenant ID: {tenant_id}")
 
     # Step 1: Fetch SYSTEM user
-    user_url = f"{MDMS_HOST}/user/v1/_search?tenantId={tenant_id}"
+    user_url = f"{USER_HOST}/user/v1/_search?tenantId={tenant_id}"
     user_payload = {
         "requestInfo": {
             "apiId": "Rainmaker",
