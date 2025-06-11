@@ -107,7 +107,6 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
   const [selectedReopenReason, setSelectedReopenReason] = useState(null);
   const [selectedRejectReason, setSelectedRejectReason] = useState(null);
   const [selectedSendBackReason, setSelectedSendBackReason] = useState(null);
-  const [selectedSendBackSubReason, setSelectedSendBackSubReason] = useState(null);
   const state = Digit.ULBService.getStateId();
   const reopenReasonMenu = [t(`CS_REOPEN_OPTION_ONE`), t(`CS_REOPEN_OPTION_TWO`), t(`CS_REOPEN_OPTION_THREE`), t(`CS_REOPEN_OPTION_FOUR`)];
   const { isMdmsLoading, data: rejectSendBackReasons } = Digit.Hooks.pgr.useMDMS(state, "Incident", ["RejectReasons", "SendBackReasons"]);
@@ -148,11 +147,7 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
   }
   function onSelectSendBackReason(reason) {
     setSelectedSendBackReason(reason);
-    setSelectedSendBackSubReason(null);
     setComments("");
-  }
-  function onSelectSendBackSubReason(reason) {
-    setSelectedSendBackSubReason(reason);
   }
   const clearError = useCallback(() => {
     setError("");
@@ -278,10 +273,6 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
         const validations = [
           { condition: selectedAction === "REJECT" && !selectedRejectReason, message: "CS_MANDATORY_DECLINE_REASON" },
           { condition: selectedAction === "SENDBACK" && !selectedSendBackReason, message: "CS_MANDATORY_SENDBACK_REASON" },
-          {
-            condition: selectedAction === "SENDBACK" && selectedSendBackReason?.additionalInputs?.[0].type === "radio" && !selectedSendBackSubReason,
-            message: "CS_MANDATORY_SENDBACK_SUBREASON",
-          },
           { condition: isCommentsMandatory, message: "CS_MANDATORY_COMMENTS" },
           { condition: selectedAction === "REOPEN" && selectedReopenReason === null, message: "CS_REOPEN_REASON_MANDATORY" },
           { condition: selectedAction === "ASSIGN" && selectedEmployee === null, message: "CS_ASSIGNEE_MANDATORY" },
@@ -300,8 +291,7 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
           uploadedFile,
           selectedReopenReason,
           selectedRejectReason,
-          selectedSendBackReason,
-          selectedSendBackSubReason
+          selectedSendBackReason
         );
       }}
       error={error}
@@ -372,20 +362,6 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
             <TextArea name="comment" onChange={addComment} value={comments} />
           </>
         ) : null}
-        {selectedAction === "SENDBACK" && selectedSendBackReason?.additionalInputs?.[0].type === "radio" && (
-          <React.Fragment>
-            <CardLabel>{t("CS_SENDBACK_SUBCOMPLAINT")}*</CardLabel>
-            <RadioButtons
-              onSelect={onSelectSendBackSubReason}
-              selectedOption={selectedSendBackSubReason}
-              optionsKey="name"
-              options={selectedSendBackReason?.additionalInputs[0]?.options?.map((reason) => ({
-                ...reason,
-                localizedCode: t(reason.code), // Use localized text if available, otherwise fallback to default name
-              }))}
-            />
-          </React.Fragment>
-        )}
         {selectedAction === "RESOLVE" || selectedAction === "OUT_OF_WARRANTY" ? (
           <CardLabel>{t("CS_ACTION_SUPPORTING_DOCUMENTS")}*</CardLabel>
         ) : (
@@ -657,8 +633,7 @@ export const ComplaintDetails = (props) => {
     uploadedFile,
     selectedReopenReason,
     selectedRejectReason,
-    selectedSendBackReason,
-    selectedSendBackSubReason
+    selectedSendBackReason
   ) {
     setPopup(false);
     const response = await Digit.Complaint.assign(
@@ -670,8 +645,7 @@ export const ComplaintDetails = (props) => {
       tenant,
       selectedReopenReason,
       selectedRejectReason,
-      selectedSendBackReason,
-      selectedSendBackSubReason
+      selectedSendBackReason
     );
     if (response?.IncidentWrappers) {
       setAssignResponse(response);
