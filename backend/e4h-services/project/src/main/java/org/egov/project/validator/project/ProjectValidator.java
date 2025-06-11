@@ -147,9 +147,10 @@ public class ProjectValidator {
             throw new CustomException("INVALID_DATE", "Start date is required if end date is passed");
         }
 
-        if (StringUtils.isNotBlank(sortCriteria.getSortDirection().toString())) {
-            if (!sortCriteria.getSortDirection().toString().equalsIgnoreCase("ASC") &&
-                    !sortCriteria.getSortDirection().toString().equalsIgnoreCase("DESC")) {
+        if (sortCriteria != null && sortCriteria.getSortDirection() != null) {
+            ProjectSortCriteria.SortDirection sortDirection = sortCriteria.getSortDirection();
+            if (sortDirection != ProjectSortCriteria.SortDirection.ASC &&
+                    sortDirection != ProjectSortCriteria.SortDirection.DESC) {
                 log.error("Invalid sort direction: {}", sortCriteria.getSortDirection());
                 throw new CustomException("INVALID_SORT_DIRECTION", "sortDirection must be either 'ASC' or 'DESC'");
             }
