@@ -11,8 +11,10 @@ import org.egov.common.models.core.ProjectSearchURLParams;
 public class ProjectSortCriteria extends ProjectSearchURLParams {
 
     @JsonProperty("sort_by")
-    private String sort_by;
+    private String sortBy;
     @JsonProperty("sort_direction")
-    private String sort_direction;
+    private SortDirection sortDirection = SortDirection.DESC;
+
+    public enum SortDirection { ASC, DESC }
 
 }

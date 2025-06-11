@@ -117,7 +117,7 @@ public class ProjectService {
     }
 
     public List<Project> searchProject(ProjectSearchRequest projectSearchRequest, @Valid ProjectSearchURLParams urlParams, @Valid ProjectSortCriteria sortCriteria) {
-        projectValidator.validateSearchV2ProjectRequest(projectSearchRequest, urlParams);
+        projectValidator.validateSearchV2ProjectRequest(projectSearchRequest, urlParams, sortCriteria);
         return projectRepository.getProjects(projectSearchRequest.getProject(), urlParams, sortCriteria);
     }
 

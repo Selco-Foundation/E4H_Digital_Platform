@@ -12,6 +12,7 @@ import org.egov.common.models.project.*;
 import org.egov.project.config.ProjectConfiguration;
 import org.egov.project.util.BoundaryV2Util;
 import org.egov.project.util.MDMSUtils;
+import org.egov.project.web.models.ProjectSortCriteria;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -99,7 +100,7 @@ public class ProjectValidator {
     }
 
     /* Validates Project search request body */
-    public void validateSearchV2ProjectRequest(ProjectSearchRequest projectSearchRequest, @Valid ProjectSearchURLParams urlParams) {
+    public void validateSearchV2ProjectRequest(ProjectSearchRequest projectSearchRequest, @Valid ProjectSearchURLParams urlParams, @Valid ProjectSortCriteria sortCriteria) {
         Map<String, String> errorMap = new HashMap<>();
         RequestInfo requestInfo = projectSearchRequest.getRequestInfo();
         ProjectSearch projectSearch = projectSearchRequest.getProject();
@@ -144,6 +145,14 @@ public class ProjectValidator {
                 && (projectSearch.getEndDate() != null && projectSearch.getEndDate() != 0)) {
             log.error("Start date is required if end date is passed");
             throw new CustomException("INVALID_DATE", "Start date is required if end date is passed");
+        }
+
+        if (StringUtils.isNotBlank(sortCriteria.getSortDirection().toString())) {
+            if (!sortCriteria.getSortDirection().toString().equalsIgnoreCase("ASC") &&
+                    !sortCriteria.getSortDirection().toString().equalsIgnoreCase("DESC")) {
+                log.error("Invalid sort direction: {}", sortCriteria.getSortDirection());
+                throw new CustomException("INVALID_SORT_DIRECTION", "sortDirection must be either 'ASC' or 'DESC'");
+            }
         }
 
         // If there are any collected errors, throw a CustomException with the error map

@@ -414,24 +414,22 @@ public class ProjectAddressQueryBuilder {
     }
 
     public String getProjectSearchAndSortQuery(ProjectSearch projectSearch, ProjectSearchURLParams urlParams, List<Object> preparedStmtList, Boolean isCountQuery, ProjectSortCriteria sortParam) {
-        String query = getProjectSearchQuery(projectSearch, urlParams, preparedStmtList, Boolean.FALSE);
+        String query = getProjectSearchQuery(projectSearch, urlParams, preparedStmtList, isCountQuery);
         // Adding sort criteria
         String sortField = null;
-        if (sortParam != null && sortParam.getSort_by() != null) {
-            String userSortField = sortParam.getSort_by();
+        if (sortParam != null && sortParam.getSortBy() != null) {
+            String userSortField = sortParam.getSortBy();
             sortField = userSortField.startsWith("project_") ? userSortField : "project_" + userSortField;
         }
-        String sortOrder = (sortParam != null && sortParam.getSort_direction() != null) ? sortParam.getSort_direction() : null;
+        // Determine sort order (default DESC if invalid or null)
+        ProjectSortCriteria.SortDirection sortDirection = (sortParam != null && sortParam.getSortDirection() != null)
+                ? sortParam.getSortDirection()
+                : ProjectSortCriteria.SortDirection.DESC;
         // Default sorting field
         String defaultSortField = "project_lastModifiedTime";
-        String defaultSortOrder = "DESC";
+        String defaultSortOrder = ProjectSortCriteria.SortDirection.DESC.name();
         if (sortField != null) {
-            query += " ORDER BY " + sortField;
-            if ("ASC".equalsIgnoreCase(sortOrder) || "DESC".equalsIgnoreCase(sortOrder)) {
-                query += " " + sortOrder;
-            } else {
-                query += " " + defaultSortOrder;
-            }
+            query += " ORDER BY " + sortField + " " + sortDirection;
         } else {
             query += " ORDER BY " + defaultSortField + " " + defaultSortOrder;
         }
