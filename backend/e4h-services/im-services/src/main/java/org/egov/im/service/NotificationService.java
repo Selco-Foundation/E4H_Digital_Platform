@@ -763,10 +763,7 @@ public class NotificationService {
         StringBuilder url = null;
         String tenantId = request.getIncident().getTenantId();
         if ("COMPLAINT_FACILITATOR_1".equals(role) && tenantId != null && tenantId.contains(".")) {
-            String[] parts = tenantId.split("\\.");
-            if (parts.length > 0) {
-                tenantId = parts[0];
-            }
+            tenantId = tenantId.split("\\.")[0];
         }
         if (request.getWorkflow().getAssignes() != null)
             url = hrmsUtils.getHRMSURI(request.getWorkflow().getAssignes(), tenantId, role);
