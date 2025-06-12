@@ -5,7 +5,9 @@ import { useTranslation } from "react-i18next";
 import { useHistory } from "react-router-dom";
 import Background from "../../../components/Background";
 import ImageComponent from "../../../components/ImageComponent";
-const defaultLanguage = { label: "English", value: Digit.Utils.getDefaultLanguage() };
+import Utils from "../../../../../../libraries/src/utils/index";
+
+const defaultLanguage = { label: "English", value: Utils.getDefaultLanguage() };
 const LanguageSelection = () => {
   const { data: storeData, isLoading } = Digit.Hooks.useStore.getInitData();
   const { t } = useTranslation();
