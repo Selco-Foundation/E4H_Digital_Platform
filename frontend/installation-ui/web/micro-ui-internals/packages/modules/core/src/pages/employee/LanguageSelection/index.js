@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { useHistory } from "react-router-dom";
 import Background from "../../../components/Background";
 import ImageComponent from "../../../components/ImageComponent";
-import Utils from "../../../../../../libraries/src/utils/index";
+import { Utils } from "@egovernments/digit-ui-libraries";
 
 const defaultLanguage = { label: "English", value: Utils.getDefaultLanguage() };
 const LanguageSelection = () => {
