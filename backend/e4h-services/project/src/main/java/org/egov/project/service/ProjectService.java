@@ -7,20 +7,22 @@ import org.apache.commons.lang3.StringUtils;
 import org.egov.common.contract.models.AuditDetails;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.common.models.core.ProjectSearchURLParams;
-import org.egov.common.models.project.Project;
-import org.egov.common.models.project.ProjectRequest;
-import org.egov.common.models.project.ProjectSearchRequest;
+import org.egov.common.models.core.SearchResponse;
+import org.egov.common.models.project.*;
 import org.egov.common.producer.Producer;
 import org.egov.project.config.ProjectConfiguration;
 import org.egov.project.repository.ProjectRepository;
 import org.egov.project.service.enrichment.ProjectEnrichment;
 import org.egov.project.util.ProjectServiceUtil;
 import org.egov.project.validator.project.ProjectValidator;
+import org.egov.project.web.models.ProjectV2;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -38,6 +40,8 @@ public class ProjectService {
 
     private final ProjectConfiguration projectConfiguration;
 
+    private final ProjectFacilityService projectFacilityService;
+
     private final Producer producer;
 
     private final ProjectServiceUtil projectServiceUtil;
@@ -47,7 +51,7 @@ public class ProjectService {
     @Autowired
     public ProjectService(
             ProjectRepository projectRepository,
-            ProjectValidator projectValidator, ProjectEnrichment projectEnrichment, ProjectConfiguration projectConfiguration, Producer producer, ProjectServiceUtil projectServiceUtil) {
+            ProjectValidator projectValidator, ProjectEnrichment projectEnrichment, ProjectConfiguration projectConfiguration, Producer producer, ProjectServiceUtil projectServiceUtil, @Lazy ProjectFacilityService projectFacilityService) {
         this.projectRepository = projectRepository;
         this.projectValidator = projectValidator;
         this.projectEnrichment = projectEnrichment;
@@ -55,6 +59,7 @@ public class ProjectService {
         this.producer = producer;
         this.projectServiceUtil = projectServiceUtil;
         this.objectMapper = new ObjectMapper();
+        this.projectFacilityService = projectFacilityService;
     }
 
     public List<String> validateProjectIds(List<String> productIds) {
@@ -115,9 +120,42 @@ public class ProjectService {
         return projects;
     }
 
-    public List<Project> searchProject(ProjectSearchRequest projectSearchRequest, @Valid ProjectSearchURLParams urlParams) {
+    public List<ProjectV2> searchProject(ProjectSearchRequest projectSearchRequest, @Valid ProjectSearchURLParams urlParams) {
         projectValidator.validateSearchV2ProjectRequest(projectSearchRequest, urlParams);
-        return projectRepository.getProjects(projectSearchRequest.getProject(), urlParams);
+        List<Project> projects = projectRepository.getProjects(projectSearchRequest.getProject(), urlParams);
+        List<ProjectV2> projectsV2 = null;
+        try {
+            projectsV2 = getCountFacilitiesProject(projects, projectSearchRequest.getRequestInfo());
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        return projectsV2;
+    }
+
+    public List<ProjectV2> getCountFacilitiesProject(List<Project> listProjects, RequestInfo requestInfo) throws Exception {
+        List<ProjectV2> listProjectsV2 = ProjectServiceUtil.convertProjectToV2(listProjects);
+        for (ProjectV2 project : listProjectsV2) {
+            List<String> listProjectId = new ArrayList<>();
+            listProjectId.add(project.getId());
+            ProjectFacilitySearch projectFacilitySearch = ProjectFacilitySearch.builder().projectId(listProjectId).facilityId(null).build();
+            ProjectFacilitySearchRequest projectFacilitySearchRequest = ProjectFacilitySearchRequest.builder().projectFacility(projectFacilitySearch).requestInfo(requestInfo).build();
+//            try {
+                SearchResponse<ProjectFacility> searchResponse = projectFacilityService.search(
+                        projectFacilitySearchRequest,
+                        100,
+                        0,
+                        project.getTenantId(),
+                        null,
+                        false);
+                System.out.println("Test Babs");
+                project.setCountFacilities(searchResponse.getTotalCount());
+//            }
+//            catch (Exception e){
+//                log.error(e.getMessage());
+//            }
+        }
+
+        return listProjectsV2;
     }
 
     public ProjectRequest updateProject(ProjectRequest request) {

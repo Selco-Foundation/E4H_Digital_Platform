@@ -17,6 +17,8 @@ import org.egov.common.producer.Producer;
 import org.egov.common.utils.ResponseInfoFactory;
 import org.egov.project.config.ProjectConfiguration;
 import org.egov.project.service.*;
+import org.egov.project.web.models.ProjectResponseV2;
+import org.egov.project.web.models.ProjectV2;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -473,19 +475,19 @@ public class ProjectApiController {
     }
 
     @RequestMapping(value = "/v2/_search", method = RequestMethod.POST)
-    public ResponseEntity<ProjectResponse> searchV2Project(
+    public ResponseEntity<ProjectResponseV2> searchV2Project(
             @Valid @ModelAttribute ProjectSearchURLParams urlParams,
             @ApiParam(value = "Details for the project.", required = true) @Valid @RequestBody ProjectSearchRequest projectSearchRequest
     ) {
-        List<Project> projects = projectService.searchProject(projectSearchRequest, urlParams);
+        List<ProjectV2> projects = projectService.searchProject(projectSearchRequest, urlParams);
         ResponseInfo responseInfo = ResponseInfoFactory.createResponseInfo(projectSearchRequest.getRequestInfo(), true);
         Integer count = projectService.countAllProjects(projectSearchRequest, urlParams);
-        ProjectResponse projectResponse = ProjectResponse.builder()
+        ProjectResponseV2 projectResponse = ProjectResponseV2.builder()
                 .responseInfo(responseInfo)
                 .project(projects)
                 .totalCount(count)
                 .build();
-        return new ResponseEntity<ProjectResponse>(projectResponse, HttpStatus.OK);
+        return new ResponseEntity<ProjectResponseV2>(projectResponse, HttpStatus.OK);
     }
 
     @RequestMapping(value = "/v1/_update", method = RequestMethod.POST)
