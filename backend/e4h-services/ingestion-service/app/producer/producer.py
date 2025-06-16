@@ -18,3 +18,7 @@ class Producer:
         except Exception as e:
             print(f"Error sending message to Kafka: {e}")
             raise e
+
+    def close(self):
+        self.producer.flush()
+        self.producer.close()

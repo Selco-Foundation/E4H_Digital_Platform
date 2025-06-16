@@ -548,6 +548,7 @@ async def upload_projects_excel_sheet(
                                         }
                                         producer = Producer()
                                         producer.send("egov.core.notification.sms", sms_request)
+                                        producer.close()
 
 
                                 df.at[index, 'status'] = 'success'
