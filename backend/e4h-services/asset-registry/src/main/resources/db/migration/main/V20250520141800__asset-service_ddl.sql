@@ -35,6 +35,8 @@ CREATE TABLE IF NOT EXISTS asset_documents (
     tenant_id VARCHAR NOT NULL,
     asset_id VARCHAR NOT NULL,
     filestore_id VARCHAR NOT NULL,
+    latitude VARCHAR,
+    longitude VARCHAR,
     document_type VARCHAR,
     uploaded_at BIGINT,
     additional_details JSONB,
