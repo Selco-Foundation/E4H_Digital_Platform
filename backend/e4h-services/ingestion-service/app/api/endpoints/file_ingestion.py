@@ -13,7 +13,7 @@ from app.decorators.rbac_validator import get_authorized_request_info
 from app.ingest.excel_data_writer import ExcelDataWriter
 from app.processor.factory.boundary_data_processor_factory import BoundaryDataProcessorFactory
 from app.processor.factory.vendor_data_processor_factory import VendorDataProcessorFactory
-from app.producer import producer
+from app.producer.producer import Producer
 from app.utils.convertor import request_info_from_json, create_vendor_request, create_facility_payload, \
     get_project_creation_payload, get_user_creation_payload, get_staff_creation_payload, create_project_payload, \
     get_installation_spoc_creation_payload, get_staff_search_payload
@@ -468,7 +468,7 @@ async def upload_projects_excel_sheet(
         if 'Project ID' not in df.columns:
             df['Project ID'] = ''
 
-        if project_service_url and not df.empty:
+        if project_service_url and hrms_service_url and not df.empty:
             hrms_client = HRMSServiceClient(hrms_service_url)
             project_client = ProjectServiceClient(project_service_url)
             for index, row in df[df['status'] != 'success'].iterrows():
@@ -481,8 +481,19 @@ async def upload_projects_excel_sheet(
                     if df.at[index, 'Project Type'] == 'Field Plan':
                         name = df.at[index, 'Name']
                         mobile_number_raw = df.at[index, 'Mobile Number']
-                        mobile_number = int(mobile_number_raw)
-                        email = df.at[index, 'Email'].strip()
+                        email_value = df.at[index, 'Email']
+                        if pd.isna(email_value) or not email_value:
+                            df.at[index, 'status'] = 'failed'
+                            df.at[index, 'error'] = 'Email is required for Field Plan projects'
+                            continue
+                        if pd.isna(mobile_number_raw) or not mobile_number_raw:
+                            df.at[index, 'status'] = 'failed'
+                            df.at[index, 'error'] = 'Mobile Number is required for Field Plan projects'
+                            continue
+
+
+                        mobile_number = str(int(mobile_number_raw))
+                        email = str(email_value).strip()
 
                         spoc_payload = get_installation_spoc_creation_payload(request_info, name, mobile_number, email)
 
@@ -532,8 +543,10 @@ async def upload_projects_excel_sheet(
                                     if len(staff_list) == 1:
                                         sms_request = {
                                             "mobileNumber": mobile_number,
-                                            "message": "Yor are assigned to the field plan"
+                                            "message": "Yor are assigned to the field plan",
+                                            "expiryTime": None
                                         }
+                                        producer = Producer()
                                         producer.send("egov.core.notification.sms", sms_request)
 
 
