@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.egov.common.contract.models.AuditDetails;
 import org.egov.common.contract.request.RequestInfo;
+import org.egov.common.contract.workflow.ProcessInstance;
 import org.egov.common.models.core.ProjectSearchURLParams;
 import org.egov.common.models.project.Project;
 import org.egov.common.models.project.ProjectRequest;
@@ -16,14 +17,15 @@ import org.egov.project.repository.ProjectRepository;
 import org.egov.project.service.enrichment.ProjectEnrichment;
 import org.egov.project.util.ProjectServiceUtil;
 import org.egov.project.validator.project.ProjectValidator;
+import org.egov.project.web.models.ProjectWorkflowRequest;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -44,16 +46,19 @@ public class ProjectService {
 
     private final ObjectMapper objectMapper;
 
+    private final ProjectWorkflowService workflowService;
+
     @Autowired
     public ProjectService(
             ProjectRepository projectRepository,
-            ProjectValidator projectValidator, ProjectEnrichment projectEnrichment, ProjectConfiguration projectConfiguration, Producer producer, ProjectServiceUtil projectServiceUtil) {
+            ProjectValidator projectValidator, ProjectEnrichment projectEnrichment, ProjectConfiguration projectConfiguration, Producer producer, ProjectServiceUtil projectServiceUtil, ProjectWorkflowService workflowService) {
         this.projectRepository = projectRepository;
         this.projectValidator = projectValidator;
         this.projectEnrichment = projectEnrichment;
         this.projectConfiguration = projectConfiguration;
         this.producer = producer;
         this.projectServiceUtil = projectServiceUtil;
+        this.workflowService = workflowService;
         this.objectMapper = new ObjectMapper();
     }
 
@@ -115,9 +120,11 @@ public class ProjectService {
         return projects;
     }
 
-    public List<Project> searchProject(ProjectSearchRequest projectSearchRequest, @Valid ProjectSearchURLParams urlParams) {
+    public List<Project> searchProject(ProjectSearchRequest projectSearchRequest,
+                                       @Valid ProjectSearchURLParams urlParams,
+                                       List<String> workflowStatuses) {
         projectValidator.validateSearchV2ProjectRequest(projectSearchRequest, urlParams);
-        return projectRepository.getProjects(projectSearchRequest.getProject(), urlParams);
+        return projectRepository.getProjects(projectSearchRequest.getProject(), urlParams, workflowStatuses);
     }
 
     public ProjectRequest updateProject(ProjectRequest request) {
@@ -343,7 +350,83 @@ public class ProjectService {
     }
 
 
-    public Integer countAllProjects(ProjectSearchRequest projectSearchRequest, ProjectSearchURLParams urlParams) {
-        return projectRepository.getProjectCount(projectSearchRequest.getProject(), urlParams);
+    public Integer countAllProjects(ProjectSearchRequest request,
+                                    ProjectSearchURLParams urlParams,
+                                    List<String> workflowStatuses) {
+        return projectRepository.getProjectCount(request.getProject(), urlParams, workflowStatuses);
+    }
+
+    public Project updateProjectWorkflow(ProjectWorkflowRequest request) {
+        // 1. Fetch the existing project
+        List<Project> projects = projectRepository.findById(List.of(request.getProjectId()));
+        if (projects == null || projects.isEmpty()) {
+            throw new CustomException("PROJECT_NOT_FOUND", "Project not found with ID: " + request.getProjectId());
+        }
+
+        Project existingProject = projects.get(0);
+
+        // 2. Call workflow transition
+        ProcessInstance updatedWorkflow = workflowService.transitionWorkflow(
+                existingProject,
+                request.getAction(),
+                request.getDocuments(),
+                request.getRequestInfo()
+        );
+
+        // 3. Inject workflow status into additionalDetails map
+        Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(
+                existingProject.getAdditionalDetails(),
+                "status",
+                updatedWorkflow.getState().getApplicationStatus()
+        );
+
+        // 4. Create a new Project instance with enriched additionalDetails
+        Project updatedProject = Project.builder()
+                .id(existingProject.getId())
+                .tenantId(existingProject.getTenantId())
+                .projectNumber(existingProject.getProjectNumber())
+                .startDate(existingProject.getStartDate())
+                .endDate(existingProject.getEndDate())
+                .projectType(existingProject.getProjectType())
+                .projectSubType(existingProject.getProjectSubType())
+                .department(existingProject.getDepartment())
+                .description(existingProject.getDescription())
+                .referenceID(existingProject.getReferenceID())
+                .projectTypeId(existingProject.getProjectTypeId())
+                .address(existingProject.getAddress())
+                .isTaskEnabled(existingProject.getIsTaskEnabled())
+                .parent(existingProject.getParent())
+                .projectHierarchy(existingProject.getProjectHierarchy())
+                .natureOfWork(existingProject.getNatureOfWork())
+                .additionalDetails(enrichedAdditionalDetails)
+                .rowVersion(existingProject.getRowVersion())
+                .isDeleted(existingProject.getIsDeleted())
+                .build();
+
+        // 5. Create project request wrapper
+        ProjectRequest enrichedRequest = ProjectRequest.builder()
+                .requestInfo(request.getRequestInfo())
+                .projects(List.of(updatedProject))
+                .build();
+
+        // 6. Perform enriched update using standard handler
+        handleNormalUpdate(enrichedRequest, updatedProject, existingProject);
+
+        return updatedProject;
+    }
+
+
+
+    private Object mergeIntoAdditionalDetails(Object additionalDetails, String key, String value) {
+        Map<String, Object> map;
+
+        if (additionalDetails instanceof Map) {
+            map = (Map<String, Object>) additionalDetails;
+        } else {
+            map = new HashMap<>();
+        }
+
+        map.put(key, value);
+        return map;
     }
 }

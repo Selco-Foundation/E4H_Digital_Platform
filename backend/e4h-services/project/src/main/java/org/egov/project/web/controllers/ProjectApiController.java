@@ -17,6 +17,8 @@ import org.egov.common.producer.Producer;
 import org.egov.common.utils.ResponseInfoFactory;
 import org.egov.project.config.ProjectConfiguration;
 import org.egov.project.service.*;
+import org.egov.project.web.models.ExtendedProjectSearch;
+import org.egov.project.web.models.ProjectWorkflowRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -472,14 +474,20 @@ public class ProjectApiController {
         return new ResponseEntity<ProjectResponse>(projectResponse, HttpStatus.OK);
     }
 
-    @RequestMapping(value = "/v2/_search", method = RequestMethod.POST)
+    @PostMapping(value = "/v2/_search")
     public ResponseEntity<ProjectResponse> searchV2Project(
             @Valid @ModelAttribute ProjectSearchURLParams urlParams,
             @ApiParam(value = "Details for the project.", required = true) @Valid @RequestBody ProjectSearchRequest projectSearchRequest
     ) {
-        List<Project> projects = projectService.searchProject(projectSearchRequest, urlParams);
+        List<String> workflowStatuses = null;
+        if (projectSearchRequest.getProject() instanceof ExtendedProjectSearch extendedSearch) {
+            workflowStatuses = extendedSearch.getWorkflowStatus();
+        }
+
+        List<Project> projects = projectService.searchProject(projectSearchRequest, urlParams, workflowStatuses);
+        Integer count = projectService.countAllProjects(projectSearchRequest, urlParams, workflowStatuses);
+
         ResponseInfo responseInfo = ResponseInfoFactory.createResponseInfo(projectSearchRequest.getRequestInfo(), true);
-        Integer count = projectService.countAllProjects(projectSearchRequest, urlParams);
         ProjectResponse projectResponse = ProjectResponse.builder()
                 .responseInfo(responseInfo)
                 .project(projects)
@@ -496,5 +504,19 @@ public class ProjectApiController {
         ProjectResponse projectResponse = ProjectResponse.builder().responseInfo(responseInfo).project(enrichedProjectRequest.getProjects()).build();
         return new ResponseEntity<ProjectResponse>(projectResponse, HttpStatus.OK);
     }
+
+    @PostMapping("/v1/project/workflow/update")
+    public ResponseEntity<ProjectResponse> updateProjectWorkflow(
+            @Valid @RequestBody ProjectWorkflowRequest request) {
+
+        Project updatedProject = projectService.updateProjectWorkflow(request);
+
+        ResponseInfo responseInfo = ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), true);
+        return ResponseEntity.ok(ProjectResponse.builder()
+                .responseInfo(responseInfo)
+                .project(List.of(updatedProject))
+                .build());
+    }
+
 
 }
