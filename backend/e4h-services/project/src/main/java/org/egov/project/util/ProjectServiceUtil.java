@@ -7,7 +7,6 @@ import org.egov.common.contract.models.AuditDetails;
 import org.egov.common.models.project.Document;
 import org.egov.common.models.project.Project;
 import org.egov.common.models.project.Target;
-import org.egov.project.web.models.ProjectV2;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 

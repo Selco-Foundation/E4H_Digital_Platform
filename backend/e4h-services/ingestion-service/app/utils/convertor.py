@@ -333,6 +333,14 @@ def get_staff_creation_payload(request_info:RequestInfo, user_uuid:str, parent_i
         }
     }
 
+def get_staff_search_payload(request_info:RequestInfo, user_uuid:str):
+    return {
+        "RequestInfo": request_info.model_dump(by_alias=True, exclude_none=True),
+        "ProjectStaff":{
+            "staffId": [user_uuid]
+        }
+    }
+
 def safe_get(row, key, default=None):
     val = row.get(key, default)
     return default if pd.isna(val) else val

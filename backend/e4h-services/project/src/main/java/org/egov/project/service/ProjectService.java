@@ -6,26 +6,31 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.egov.common.contract.models.AuditDetails;
 import org.egov.common.contract.request.RequestInfo;
+import org.egov.common.contract.workflow.ProcessInstance;
 import org.egov.common.models.core.ProjectSearchURLParams;
 import org.egov.common.models.core.SearchResponse;
 import org.egov.common.models.project.*;
+import org.egov.common.models.project.Project;
+import org.egov.common.models.project.ProjectRequest;
+import org.egov.common.models.project.ProjectSearch;
+import org.egov.common.models.project.ProjectSearchRequest;
 import org.egov.common.producer.Producer;
 import org.egov.project.config.ProjectConfiguration;
 import org.egov.project.repository.ProjectRepository;
 import org.egov.project.service.enrichment.ProjectEnrichment;
 import org.egov.project.util.ProjectServiceUtil;
 import org.egov.project.validator.project.ProjectValidator;
-import org.egov.project.web.models.ProjectV2;
+import org.egov.project.web.models.ProjectStatusWrapper;
+import org.egov.project.web.models.ProjectWorkflowRequest;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -48,16 +53,19 @@ public class ProjectService {
 
     private final ObjectMapper objectMapper;
 
+    private final ProjectWorkflowService workflowService;
+
     @Autowired
     public ProjectService(
             ProjectRepository projectRepository,
-            ProjectValidator projectValidator, ProjectEnrichment projectEnrichment, ProjectConfiguration projectConfiguration, Producer producer, ProjectServiceUtil projectServiceUtil, @Lazy ProjectFacilityService projectFacilityService) {
+            ProjectValidator projectValidator, ProjectEnrichment projectEnrichment, ProjectConfiguration projectConfiguration, Producer producer, ProjectServiceUtil projectServiceUtil, ProjectWorkflowService workflowService, @Lazy ProjectFacilityService projectFacilityService) {
         this.projectRepository = projectRepository;
         this.projectValidator = projectValidator;
         this.projectEnrichment = projectEnrichment;
         this.projectConfiguration = projectConfiguration;
         this.producer = producer;
         this.projectServiceUtil = projectServiceUtil;
+        this.workflowService = workflowService;
         this.objectMapper = new ObjectMapper();
         this.projectFacilityService = projectFacilityService;
     }
@@ -120,42 +128,31 @@ public class ProjectService {
         return projects;
     }
 
-    public List<ProjectV2> searchProject(ProjectSearchRequest projectSearchRequest, @Valid ProjectSearchURLParams urlParams) {
+    public List<Project> searchProject(ProjectSearchRequest projectSearchRequest, @Valid ProjectSearchURLParams urlParams, List<String> workflowStatuses) throws Exception {
         projectValidator.validateSearchV2ProjectRequest(projectSearchRequest, urlParams);
-        List<Project> projects = projectRepository.getProjects(projectSearchRequest.getProject(), urlParams);
-        List<ProjectV2> projectsV2 = null;
-        try {
-            projectsV2 = getCountFacilitiesProject(projects, projectSearchRequest.getRequestInfo());
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-        return projectsV2;
+        List<Project> projects = projectRepository.getProjects(projectSearchRequest.getProject(), urlParams, workflowStatuses);
+        projects = getCountFacilitiesProject(projects, projectSearchRequest.getRequestInfo());
+        return projects;
     }
 
-    public List<ProjectV2> getCountFacilitiesProject(List<Project> listProjects, RequestInfo requestInfo) throws Exception {
-        List<ProjectV2> listProjectsV2 = ProjectServiceUtil.convertProjectToV2(listProjects);
-        for (ProjectV2 project : listProjectsV2) {
+    public List<Project> getCountFacilitiesProject(List<Project> listProjects, RequestInfo requestInfo) throws Exception {
+        for (Project project : listProjects) {
             List<String> listProjectId = new ArrayList<>();
             listProjectId.add(project.getId());
             ProjectFacilitySearch projectFacilitySearch = ProjectFacilitySearch.builder().projectId(listProjectId).facilityId(null).build();
             ProjectFacilitySearchRequest projectFacilitySearchRequest = ProjectFacilitySearchRequest.builder().projectFacility(projectFacilitySearch).requestInfo(requestInfo).build();
-//            try {
-                SearchResponse<ProjectFacility> searchResponse = projectFacilityService.search(
-                        projectFacilitySearchRequest,
-                        100,
-                        0,
-                        project.getTenantId(),
-                        null,
-                        false);
-                System.out.println("Test Babs");
-                project.setCountFacilities(searchResponse.getTotalCount());
-//            }
-//            catch (Exception e){
-//                log.error(e.getMessage());
-//            }
+            SearchResponse<ProjectFacility> searchResponse = projectFacilityService.search(
+                    projectFacilitySearchRequest,
+                    100,
+                    0,
+                    project.getTenantId(),
+                    null,
+                    false);
+            Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(project.getAdditionalDetails(), "countFacilities", searchResponse.getTotalCount()+"");
+            project.setAdditionalDetails(enrichedAdditionalDetails);
         }
 
-        return listProjectsV2;
+        return listProjects;
     }
 
     public ProjectRequest updateProject(ProjectRequest request) {
@@ -381,7 +378,103 @@ public class ProjectService {
     }
 
 
-    public Integer countAllProjects(ProjectSearchRequest projectSearchRequest, ProjectSearchURLParams urlParams) {
-        return projectRepository.getProjectCount(projectSearchRequest.getProject(), urlParams);
+    public Integer countAllProjects(ProjectSearchRequest request,
+                                    ProjectSearchURLParams urlParams,
+                                    List<String> workflowStatuses) {
+        return projectRepository.getProjectCount(request.getProject(), urlParams, workflowStatuses);
+    }
+
+    public ProjectStatusWrapper updateProjectWorkflow(ProjectWorkflowRequest request) throws Exception {
+        // 1. Fetch the existing project
+        ProjectSearch searchCriteria = ProjectSearch.builder()
+                .id(List.of(request.getProjectId()))
+                .build();
+
+        ProjectSearchRequest searchRequest = ProjectSearchRequest.builder()
+                .project(searchCriteria)
+                .requestInfo(request.getRequestInfo())
+                .build();
+
+
+        ProjectSearchURLParams urlParams = ProjectSearchURLParams.builder()
+                                                                .limit(1)
+                                                                .offset(0)
+                                                                .tenantId("in")
+                                                                .includeAncestors(false)
+                                                                .includeDescendants(false)
+                                                                .build();
+        List<String> workflowStatuses = null;
+
+        List<Project> projects = searchProject(searchRequest, urlParams, workflowStatuses);
+
+        if (projects == null || projects.isEmpty()) {
+            throw new CustomException("PROJECT_NOT_FOUND", "Project not found with ID: " + request.getProjectId());
+        }
+
+        Project existingProject = projects.get(0);
+
+        // 2. Call workflow transition
+        ProcessInstance updatedWorkflow = workflowService.transitionWorkflow(
+                existingProject,
+                request.getAction(),
+                request.getDocuments(),
+                request.getRequestInfo()
+        );
+
+        // 3. Inject workflow status into additionalDetails map
+        Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(
+                existingProject.getAdditionalDetails(),
+                "status",
+                updatedWorkflow.getState().getState()
+        );
+
+        // 4. Create a new Project instance with enriched additionalDetails
+        Project updatedProject = Project.builder()
+                .id(existingProject.getId())
+                .tenantId(existingProject.getTenantId())
+                .projectNumber(existingProject.getProjectNumber())
+                .startDate(existingProject.getStartDate())
+                .endDate(existingProject.getEndDate())
+                .projectType(existingProject.getProjectType())
+                .projectSubType(existingProject.getProjectSubType())
+                .department(existingProject.getDepartment())
+                .description(existingProject.getDescription())
+                .referenceID(existingProject.getReferenceID())
+                .projectTypeId(existingProject.getProjectTypeId())
+                .address(existingProject.getAddress())
+                .isTaskEnabled(existingProject.getIsTaskEnabled())
+                .parent(existingProject.getParent())
+                .projectHierarchy(existingProject.getProjectHierarchy())
+                .natureOfWork(existingProject.getNatureOfWork())
+                .additionalDetails(enrichedAdditionalDetails)
+                .rowVersion(existingProject.getRowVersion())
+                .isDeleted(existingProject.getIsDeleted())
+                .build();
+
+        // 5. Create project request wrapper
+        ProjectRequest enrichedRequest = ProjectRequest.builder()
+                .requestInfo(request.getRequestInfo())
+                .projects(List.of(updatedProject))
+                .build();
+
+        // 6. Perform enriched update using standard handler
+        handleNormalUpdate(enrichedRequest, updatedProject, existingProject);
+
+        return new ProjectStatusWrapper(updatedProject, updatedWorkflow.getState().getState());
+    }
+
+
+
+    private Object mergeIntoAdditionalDetails(Object additionalDetails, String key, String value) {
+        Map<String, Object> map;
+
+        if (additionalDetails instanceof Map) {
+            map = (Map<String, Object>) additionalDetails;
+        } else {
+            map = new HashMap<>();
+        }
+
+        map.put(key, value);
+        return map;
     }
 }
