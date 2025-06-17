@@ -105,6 +105,9 @@ public class Incident   {
         private AuditDetails auditDetails = null;
 
         @SafeHtml
+        @JsonProperty("sla")
+        private Long sla = null;
+        
         @JsonProperty("systemFunctional")
         private String systemFunctional = null;
 

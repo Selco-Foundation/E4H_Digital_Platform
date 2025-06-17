@@ -72,6 +72,14 @@ public class IMConstants {
 
     public static final String PENDINGFORASSIGNMENT = "PENDINGFORASSIGNMENT";
 
+    public static final String PENDING_ASSIGNMENT_SPARE_PART_NEEDED = "PENDING_ASSIGNMENT_SPARE_PART_NEEDED";
+
+    public static final String PENDING_ASSIGNMENT_OUT_OF_WARRANTY = "PENDING_ASSIGNMENT_OUT_OF_WARRANTY";
+
+    public static final String PENDING_RESOLUTION_OUT_OF_WARRANTY = "PENDING_RESOLUTION_OUT_OF_WARRANTY";
+
+    public static final String PENDING_RESOLUTION_SPARE_PART_NEEDED = "PENDING_RESOLUTION_SPARE_PART_NEEDED";
+
     public static final String RESOLVED = "RESOLVED";
 
     public static final String CLOSED_AFTER_RESOLUTION = "CLOSEDAFTERRESOLUTION";
@@ -81,6 +89,10 @@ public class IMConstants {
     public static final String RATE = "RATE";
 
     public static final String APPLY = "APPLY";
+
+    public static final String OUT_OF_WARRANTY = "OUT_OF_WARRANTY";
+
+    public static final String SPARE_PART_NEEDED = "SPARE_PART_NEEDED";
 
     public static final String CITIZEN = "CITIZEN";
 
