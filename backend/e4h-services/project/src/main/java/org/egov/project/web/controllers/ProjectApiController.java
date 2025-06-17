@@ -485,11 +485,11 @@ public class ProjectApiController {
 
         List<Project> projects = projectService.searchProject(projectSearchRequest, urlParams, workflowStatuses);
         Integer count = projectService.countAllProjects(projectSearchRequest, urlParams, workflowStatuses);
-
+        ObjectMapper mapper = new ObjectMapper();
         List<ProjectStatusWrapper> projectStatusWrappers = projects.stream()
                 .map(project -> {
                     String status = null;
-                    ObjectNode additionalDetails = (ObjectNode) project.getAdditionalDetails();
+                    ObjectNode additionalDetails = mapper.convertValue(project.getAdditionalDetails(), ObjectNode.class);
                     if (additionalDetails != null && additionalDetails.has("status")) {
                         status = additionalDetails.get("status").asText();
                     }

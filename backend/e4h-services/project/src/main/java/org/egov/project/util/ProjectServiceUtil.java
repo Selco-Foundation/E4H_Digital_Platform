@@ -45,53 +45,6 @@ public class ProjectServiceUtil {
                 .collect(Collectors.toMap(p -> String.valueOf(p.getId()), Function.identity()));
     }
 
-    public static List<ProjectV2> convertProjectToV2(List<Project> projects) {
-        List<ProjectV2> projectV2List = new ArrayList<>();
-        for (Project project : projects){
-            ProjectV2 v2 = new ProjectV2();
-
-            v2.setId(project.getId());
-            v2.setTenantId(project.getTenantId());
-            v2.setProjectNumber(project.getProjectNumber());
-            v2.setName(project.getName());
-            v2.setProjectType(project.getProjectType());
-            v2.setProjectSubType(project.getProjectSubType());
-            v2.setDepartment(project.getDepartment());
-            v2.setDescription(project.getDescription());
-            v2.setReferenceID(project.getReferenceID());
-            v2.setProjectTypeId(project.getProjectTypeId());
-            v2.setAddress(project.getAddress());
-            v2.setStartDate(project.getStartDate());
-            v2.setEndDate(project.getEndDate());
-            v2.setIsTaskEnabled(project.getIsTaskEnabled());
-            v2.setParent(project.getParent());
-            v2.setProjectHierarchy(project.getProjectHierarchy());
-            v2.setNatureOfWork(project.getNatureOfWork());
-            v2.setAncestors(project.getAncestors());
-            v2.setDescendants(project.getDescendants());
-            v2.setAdditionalDetails(project.getAdditionalDetails());
-            v2.setIsDeleted(project.getIsDeleted());
-            v2.setRowVersion(project.getRowVersion());
-            v2.setAuditDetails(project.getAuditDetails());
-
-            // Handle lists (documents, targets)
-            if (project.getDocuments() != null) {
-                for (Document doc : project.getDocuments()) {
-                    v2.addDocumentsItem(doc);
-                }
-            }
-
-            if (project.getTargets() != null) {
-                for (Target target : project.getTargets()) {
-                    v2.addTargetsItem(target);
-                }
-            }
-
-            projectV2List.add(v2);
-        }
-        return projectV2List;
-    }
-
     public void mergeAdditionalDetails(Project project, Project projectFromDb) {
         project.setAdditionalDetails(jsonMerge(objectMapper.valueToTree(projectFromDb.getAdditionalDetails()),
                 objectMapper.valueToTree(project.getAdditionalDetails())));
