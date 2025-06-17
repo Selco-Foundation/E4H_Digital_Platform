@@ -10,6 +10,7 @@ import org.egov.common.contract.workflow.ProcessInstance;
 import org.egov.common.models.core.ProjectSearchURLParams;
 import org.egov.common.models.project.Project;
 import org.egov.common.models.project.ProjectRequest;
+import org.egov.common.models.project.ProjectSearch;
 import org.egov.common.models.project.ProjectSearchRequest;
 import org.egov.common.producer.Producer;
 import org.egov.project.config.ProjectConfiguration;
@@ -358,7 +359,27 @@ public class ProjectService {
 
     public Project updateProjectWorkflow(ProjectWorkflowRequest request) {
         // 1. Fetch the existing project
-        List<Project> projects = projectRepository.findById(List.of(request.getProjectId()));
+        ProjectSearch searchCriteria = ProjectSearch.builder()
+                .id(List.of(request.getProjectId()))
+                .build();
+
+        ProjectSearchRequest searchRequest = ProjectSearchRequest.builder()
+                .project(searchCriteria)
+                .requestInfo(request.getRequestInfo())
+                .build();
+
+
+        ProjectSearchURLParams urlParams = ProjectSearchURLParams.builder()
+                                                                .limit(1)
+                                                                .offset(0)
+                                                                .tenantId("in")
+                                                                .includeAncestors(false)
+                                                                .includeDescendants(false)
+                                                                .build();
+        List<String> workflowStatuses = null;
+
+        List<Project> projects = searchProject(searchRequest, urlParams, workflowStatuses);
+
         if (projects == null || projects.isEmpty()) {
             throw new CustomException("PROJECT_NOT_FOUND", "Project not found with ID: " + request.getProjectId());
         }
