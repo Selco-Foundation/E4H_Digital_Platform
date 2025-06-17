@@ -18,6 +18,8 @@ import org.egov.common.utils.ResponseInfoFactory;
 import org.egov.project.config.ProjectConfiguration;
 import org.egov.project.service.*;
 import org.egov.project.web.models.ExtendedProjectSearch;
+import org.egov.project.web.models.ProjectStatusResponse;
+import org.egov.project.web.models.ProjectStatusWrapper;
 import org.egov.project.web.models.ProjectWorkflowRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -506,13 +508,13 @@ public class ProjectApiController {
     }
 
     @PostMapping("/v1/project/workflow/update")
-    public ResponseEntity<ProjectResponse> updateProjectWorkflow(
+    public ResponseEntity<ProjectStatusResponse> updateProjectWorkflow(
             @Valid @RequestBody ProjectWorkflowRequest request) {
 
-        Project updatedProject = projectService.updateProjectWorkflow(request);
+        ProjectStatusWrapper updatedProject = projectService.updateProjectWorkflow(request);
 
         ResponseInfo responseInfo = ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), true);
-        return ResponseEntity.ok(ProjectResponse.builder()
+        return ResponseEntity.ok(ProjectStatusResponse.builder()
                 .responseInfo(responseInfo)
                 .project(List.of(updatedProject))
                 .build());

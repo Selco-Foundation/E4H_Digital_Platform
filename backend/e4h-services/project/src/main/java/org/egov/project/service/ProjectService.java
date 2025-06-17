@@ -18,6 +18,7 @@ import org.egov.project.repository.ProjectRepository;
 import org.egov.project.service.enrichment.ProjectEnrichment;
 import org.egov.project.util.ProjectServiceUtil;
 import org.egov.project.validator.project.ProjectValidator;
+import org.egov.project.web.models.ProjectStatusWrapper;
 import org.egov.project.web.models.ProjectWorkflowRequest;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -357,7 +358,7 @@ public class ProjectService {
         return projectRepository.getProjectCount(request.getProject(), urlParams, workflowStatuses);
     }
 
-    public Project updateProjectWorkflow(ProjectWorkflowRequest request) {
+    public ProjectStatusWrapper updateProjectWorkflow(ProjectWorkflowRequest request) {
         // 1. Fetch the existing project
         ProjectSearch searchCriteria = ProjectSearch.builder()
                 .id(List.of(request.getProjectId()))
@@ -433,7 +434,7 @@ public class ProjectService {
         // 6. Perform enriched update using standard handler
         handleNormalUpdate(enrichedRequest, updatedProject, existingProject);
 
-        return updatedProject;
+        return new ProjectStatusWrapper(updatedProject, updatedWorkflow.getState().getState());
     }
 
 
