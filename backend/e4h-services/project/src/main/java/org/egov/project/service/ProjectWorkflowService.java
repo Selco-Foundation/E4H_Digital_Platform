@@ -37,8 +37,8 @@ public class ProjectWorkflowService {
         ProcessInstance instance = ProcessInstance.builder()
                 .businessId(project.getId())
                 .tenantId(project.getTenantId())
-                .moduleName("Workflow")
-                .businessService("FACILITY_INSTALLATION")
+                .moduleName(config.getModuleName())
+                .businessService(config.getBusinessService())
                 .action(action)
                 .documents(documents)
                 .build();

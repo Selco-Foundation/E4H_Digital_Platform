@@ -227,4 +227,10 @@ public class ProjectConfiguration {
 
     @Value("${egov.workflow.transition.path}")
     private String wfTransitionPath;
+
+    @Value("${egov.workflow.module.name}")
+    private String moduleName;
+
+    @Value("${egov.workflow.business.service}")
+    private String businessService;
 }

@@ -34,7 +34,7 @@ public class ServiceRequestRepository {
             throw new ServiceCallException(e.getResponseBodyAsString());
         } catch (Exception e) {
             log.error("Error during service call: ", e);
-            throw new ServiceCallException(e.getMessage(), e);
+            throw new ServiceCallException();
         }
         return response;
     }
