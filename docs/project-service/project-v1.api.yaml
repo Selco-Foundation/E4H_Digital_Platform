@@ -1,0 +1,1043 @@
+---
+swagger: '2.0'
+info:
+  version: 1.0.0
+  title: Project Management System
+  contact:
+    name: egovernments foundation
+    email: info@egovernments.org
+schemes: [https]
+x-common-path: >-
+  https://raw.githubusercontent.com/egovernments/egov-services/master/docs/common/contracts/v1-0-0.yml
+paths:
+  /project/v1/_create:
+    post:
+      summary: >-
+        Create a new Project
+      description: >-
+        Create a new Project
+      parameters:
+        - name: Project
+          in: body
+          description: Details for the new Project.
+          required: true
+          schema:
+            $ref: '#/definitions/ProjectRequest'
+      tags: [Project]
+      responses:
+        '202':
+          description: Project request accepted for creation.
+          schema:
+            $ref: '#/definitions/ProjectResponse'
+        '400':
+          description: Invalid Input body.
+          schema:
+            $ref: >-
+              https://raw.githubusercontent.com/egovernments/egov-services/master/docs/common/contracts/v1-1-1.yml#/definitions/ErrorRes
+  /project/v1/_update:
+    post:
+      summary: >-
+        Update the details of a existing Project
+      description: >-
+        Update the details of a existing Project
+      parameters:
+        - name: Project
+          in: body
+          description: Details for the new Project.
+          required: true
+          schema:
+            $ref: '#/definitions/ProjectRequest'
+      tags: [Project]
+      responses:
+        '202':
+          description: Employee request accepted for creation.
+          schema:
+            $ref: '#/definitions/ProjectResponse'
+        '400':
+          description: Invalid Input body.
+          schema:
+            $ref: >-
+              https://raw.githubusercontent.com/egovernments/egov-services/master/docs/common/contracts/v1-1-1.yml#/definitions/ErrorRes
+  /project/v1/_search:
+    post:
+      summary: >-
+        Search for existing project
+      description: >-
+        Search for existing project
+      parameters:
+        - name: Project
+          in: body
+          description: Details for the project.
+          required: true
+          schema:
+            $ref: '#/definitions/ProjectRequest'
+        - $ref: '#/parameters/limit'
+        - $ref: '#/parameters/offset'
+        - $ref: '#/parameters/tenantId'
+        - $ref: '#/parameters/lastChangedSince'
+        - $ref: '#/parameters/includeDeleted'
+        - $ref: '#/parameters/includeAncestors'
+        - $ref: '#/parameters/includeDescendants'
+        - $ref: '#/parameters/createdFrom'
+        - $ref: '#/parameters/createdTo'
+      tags: [Project]
+      responses:
+        '200':
+          description: Projects.
+          schema:
+            $ref: '#/definitions/ProjectResponse'
+        '400':
+          description: Invalid Input body.
+          schema:
+            $ref: >-
+              https://raw.githubusercontent.com/egovernments/egov-services/master/docs/common/contracts/v1-1-1.yml#/definitions/ErrorRes
+  /project/staff/v1/_create:
+    post:
+      summary: >-
+        Link Staff users to Project for a certain time period
+      description: >-
+        Link Staff users to Project for a certain time period
+      parameters:
+        - name: ProjectStaff
+          in: body
+          description: Capture linkage of Project and staff user.
+          required: true
+          schema:
+            $ref: '#/definitions/ProjectStaffRequest'
+      tags: [Project Staff]
+      responses:
+        '202':
+          description: Project Staff request has been accepted.
+          schema:
+            $ref: '#/definitions/ProjectStaffResponse'
+        '400':
+          description: Invalid Input body.
+          schema:
+            $ref: >-
+              https://raw.githubusercontent.com/egovernments/egov-services/master/docs/common/contracts/v1-1-1.yml#/definitions/ErrorRes
+  /project/staff/v1/bulk/_create:
+    post:
+      summary: >-
+        Link bulk Staff users to Project for a certain time period
+      description: >-
+        Link bulk Staff users to Project for a certain time period
+      parameters:
+        - name: ProjectStaff
+          in: body
+          description: Capture linkage of Project and staff users.
+          required: true
+          schema:
+            $ref: '#/definitions/ProjectStaffBulkRequest'
+      tags: [Project Staff]
+      responses:
+        '202':
+          description: Project Staff request has been accepted.
+          schema:
+            $ref: '#/definitions/BulkAcceptedResponse'
+        '400':
+          description: Invalid Input body.
+          schema:
+            $ref: >-
+              https://raw.githubusercontent.com/egovernments/egov-services/master/docs/common/contracts/v1-1-1.yml#/definitions/ErrorRes
+  /project/staff/v1/_update:
+    post:
+      summary: >-
+        Update Project Staff users
+      description: >-
+        Update Project Staff users
+      parameters:
+        - name: ProjectStaff
+          in: body
+          description: Capture linkage of Project and staff user.
+          required: true
+          schema:
+            $ref: '#/definitions/ProjectStaffRequest'
+      tags: [Project Staff]
+      responses:
+        '202':
+          description: Project Staff request has been accepted for updation.
+          schema:
+            $ref: '#/definitions/ProjectStaffResponse'
+        '400':
+          description: Invalid Input body.
+          schema:
+            $ref: >-
+              https://raw.githubusercontent.com/egovernments/egov-services/master/docs/common/contracts/v1-1-1.yml#/definitions/ErrorRes
+  /project/staff/v1/bulk/_update:
+    post:
+      summary: >-
+        Update Project Staff users using bulk payload
+      description: >-
+        Update Project Staff users using bulk payload
+      parameters:
+        - name: ProjectStaff
+          in: body
+          description: Capture linkage of Project and staff user.
+          required: true
+          schema:
+            $ref: '#/definitions/ProjectStaffBulkRequest'
+      tags: [Project Staff]
+      responses:
+        '202':
+          description: Project Staff bulk request has been accepted for update.
+          schema:
+            $ref: '#/definitions/BulkAcceptedResponse'
+        '400':
+          description: Invalid Input body.
+          schema:
+            $ref: >-
+              https://raw.githubusercontent.com/egovernments/egov-services/master/docs/common/contracts/v1-1-1.yml#/definitions/ErrorRes
+  /project/staff/v1/_delete:
+    post:
+      summary: >-
+        Soft delete linkage of Project Staff users with project
+      description: >-
+        Soft delete linkage of Project Staff users with project
+      parameters:
+        - name: ProjectStaff
+          in: body
+          description: Capture linkage of Project and staff user.
+          required: true
+          schema:
+            $ref: '#/definitions/ProjectStaffRequest'
+      tags: [Project Staff]
+      responses:
+        '202':
+          description: Project Staff request has been accepted for deletion.
+          schema:
+            $ref: '#/definitions/ProjectStaffResponse'
+        '400':
+          description: Invalid Input body.
+          schema:
+            $ref: >-
+              https://raw.githubusercontent.com/egovernments/egov-services/master/docs/common/contracts/v1-1-1.yml#/definitions/ErrorRes
+  /project/staff/v1/bulk/_delete:
+    post:
+      summary: >-
+        Soft delete linkage of Project Staff users with project in bulk
+      description: >-
+        Soft delete linkage of Project Staff users with project in bulk
+      parameters:
+        - name: ProjectStaff
+          in: body
+          description: Capture linkage of Project and staff user.
+          required: true
+          schema:
+            $ref: '#/definitions/ProjectStaffBulkRequest'
+      tags: [Project Staff]
+      responses:
+        '202':
+          description: Project Staff request has been accepted for deletion.
+          schema:
+            $ref: '#/definitions/BulkAcceptedResponse'
+        '400':
+          description: Invalid Input body.
+          schema:
+            $ref: >-
+              https://raw.githubusercontent.com/egovernments/egov-services/master/docs/common/contracts/v1-1-1.yml#/definitions/ErrorRes
+  /project/staff/v1/_search:
+    post:
+      summary: >-
+        Search Project Staff users
+      description: >-
+        Search Project Staff users
+      parameters:
+        - name: ProjectStaff
+          in: body
+          description: Capture linkage of Project and staff user.
+          required: true
+          schema:
+            $ref: '#/definitions/ProjectStaffSearchRequest'
+        - $ref: '#/parameters/limit'
+        - $ref: '#/parameters/offset'
+        - $ref: '#/parameters/tenantId'
+        - $ref: '#/parameters/lastChangedSince'
+        - $ref: '#/parameters/includeDeleted'
+      tags: [Project Staff]
+      responses:
+        '200':
+          description: Project Staff.
+          schema:
+            $ref: '#/definitions/ProjectStaffBulkResponse'
+        '400':
+          description: Invalid Input body.
+          schema:
+            $ref: >-
+              https://raw.githubusercontent.com/egovernments/egov-services/master/docs/common/contracts/v1-1-1.yml#/definitions/ErrorRes
+  /project/facility/v1/_create:
+    post:
+      summary: >-
+        Link Facility to Project
+      description: >-
+        Link Facility to Project
+      parameters:
+        - name: ProjectFacility
+          in: body
+          description: Capture linkage of Project and facility.
+          required: true
+          schema:
+            $ref: '#/definitions/ProjectFacilityRequest'
+      tags: [Project Facility]
+      responses:
+        '202':
+          description: Project Staff request has been accepted.
+          schema:
+            $ref: '#/definitions/ProjectFacilityResponse'
+        '400':
+          description: Invalid Input body.
+          schema:
+            $ref: >-
+              https://raw.githubusercontent.com/egovernments/egov-services/master/docs/common/contracts/v1-1-1.yml#/definitions/ErrorRes
+  /project/facility/v1/bulk/_create:
+    post:
+      summary: >-
+        Link Facilities to Project
+      description: >-
+        Link Facilities to Project
+      parameters:
+        - name: ProjectFacility
+          in: body
+          description: Capture linkage of Project and facility.
+          required: true
+          schema:
+            $ref: '#/definitions/ProjectFacilityBulkRequest'
+      tags: [Project Facility]
+      responses:
+        '202':
+          description: Project Staff request has been accepted.
+          schema:
+            $ref: '#/definitions/BulkAcceptedResponse'
+        '400':
+          description: Invalid Input body.
+          schema:
+            $ref: >-
+              https://raw.githubusercontent.com/egovernments/egov-services/master/docs/common/contracts/v1-1-1.yml#/definitions/ErrorRes
+  /project/facility/v1/_update:
+    post:
+      summary: >-
+        Update Project Facilities
+      description: >-
+        Update Project Facilities
+      parameters:
+        - name: ProjectFacility
+          in: body
+          description: Capture linkage of Project and facility.
+          required: true
+          schema:
+            $ref: '#/definitions/ProjectFacilityRequest'
+      tags: [Project Facility]
+      responses:
+        '202':
+          description: Project Facility request has been accepted
+          schema:
+            $ref: '#/definitions/ProjectFacilityResponse'
+        '400':
+          description: Invalid Input body.
+          schema:
+            $ref: >-
+              https://raw.githubusercontent.com/egovernments/egov-services/master/docs/common/contracts/v1-1-1.yml#/definitions/ErrorRes
+  /project/facility/v1/bulk/_update:
+    post:
+      summary: >-
+        Update Project Facilities
+      description: >-
+        Update Project Facilities
+      parameters:
+        - name: ProjectFacility
+          in: body
+          description: Capture linkage of Project and facility.
+          required: true
+          schema:
+            $ref: '#/definitions/ProjectFacilityBulkRequest'
+      tags: [Project Facility]
+      responses:
+        '202':
+          description: Project Facility request has been accepted
+          schema:
+            $ref: '#/definitions/BulkAcceptedResponse'
+        '400':
+          description: Invalid Input body.
+          schema:
+            $ref: >-
+              https://raw.githubusercontent.com/egovernments/egov-services/master/docs/common/contracts/v1-1-1.yml#/definitions/ErrorRes
+  /project/facility/v1/_delete:
+    post:
+      summary: >-
+        Soft delete Project Facility
+      description: >-
+        Soft delete Project Facility
+      parameters:
+        - name: ProjectFacility
+          in: body
+          description: Capture linkage of Project and facility.
+          required: true
+          schema:
+            $ref: '#/definitions/ProjectFacilityRequest'
+      tags: [Project Facility]
+      responses:
+        '202':
+          description: Project Facility delete request has been accepted
+          schema:
+            $ref: '#/definitions/ProjectFacilityResponse'
+        '400':
+          description: Invalid Input body.
+          schema:
+            $ref: >-
+              https://raw.githubusercontent.com/egovernments/egov-services/master/docs/common/contracts/v1-1-1.yml#/definitions/ErrorRes
+  /project/facility/v1/bulk/_delete:
+    post:
+      summary: >-
+        Soft delete Project Facilities in bulk
+      description: >-
+        Soft delete Project Facilities in bulk
+      parameters:
+        - name: ProjectFacility
+          in: body
+          description: Capture linkage of Project and facility.
+          required: true
+          schema:
+            $ref: '#/definitions/ProjectFacilityBulkRequest'
+      tags: [Project Facility]
+      responses:
+        '202':
+          description: Project Facility delete request has been accepted
+          schema:
+            $ref: '#/definitions/BulkAcceptedResponse'
+        '400':
+          description: Invalid Input body.
+          schema:
+            $ref: >-
+              https://raw.githubusercontent.com/egovernments/egov-services/master/docs/common/contracts/v1-1-1.yml#/definitions/ErrorRes
+  /project/facility/v1/_search:
+    post:
+      summary: >-
+        Search Project Facilities
+      description: >-
+        Search Project Facilities
+      parameters:
+        - name: ProjectFacility
+          in: body
+          description: Capture linkage of Project and facility.
+          required: true
+          schema:
+            $ref: '#/definitions/ProjectFacilitySearchRequest'
+        - $ref: '#/parameters/limit'
+        - $ref: '#/parameters/offset'
+        - $ref: '#/parameters/tenantId'
+        - $ref: '#/parameters/lastChangedSince'
+        - $ref: '#/parameters/includeDeleted'
+      tags: [Project Facility]
+      responses:
+        '200':
+          description: Project Facilities
+          schema:
+            $ref: '#/definitions/ProjectFacilityBulkResponse'
+        '400':
+          description: Invalid Input body.
+          schema:
+            $ref: >-
+              https://raw.githubusercontent.com/egovernments/egov-services/master/docs/common/contracts/v1-1-1.yml#/definitions/ErrorRes
+  /project/v1/workflow/update:
+    post:
+      summary: Update project workflow status
+      description: Update the workflow status of a project by performing a workflow
+        action
+      parameters:
+        - name: ProjectWorkflowUpdate
+          in: body
+          description: Workflow action and documents for project workflow update
+          required: true
+          schema:
+            $ref: '#/definitions/ProjectWorkflowUpdateRequest'
+      tags: [Project]
+      responses:
+        '202':
+          description: Project workflow update request accepted
+          schema:
+            $ref: '#/definitions/ProjectResponse'
+        '400':
+          description: Invalid Input body
+          schema:
+            $ref: >-
+              https://raw.githubusercontent.com/egovernments/egov-services/master/docs/common/contracts/v1-1-1.yml#/definitions/ErrorRes
+parameters:
+  # TODO is tenantId required as a query param if it can be determine from requestInfo->userInfo
+  tenantId:
+    name: tenantId
+    in: query
+    description: Unique id for a tenant.
+    required: true
+    type: string
+    format: varchar
+  lastChangedSince:
+    name: lastChangedSince
+    description: |
+      epoch of the time since when the changes on the object should be picked up. Search results from this parameter should include both newly created objects since this time as well as any modified objects since this time. This criterion is included to help polling clients to get the changes in system since a last time they synchronized with the platform.
+    in: query
+    required: false
+    type: integer
+    format: int64
+  echoResource:
+    name: echoResource
+    in: query
+    type: boolean
+    required: false
+    default: true
+    description: Client can specify if the resource in request body needs to be sent
+      back in the response. This is being used to limit amount of data that needs
+      to flow back from the server to the client in low bandwidth scenarios. Server
+      will always send the server generated id for validated requests.
+  serverHandlesErrors:
+    name: serverHandlesErrors
+    in: query
+    type: boolean
+    required: false
+    default: false
+    description: Client can specify that it is incapable of handling any errors with
+      the requests and server should route these for manual intervention if required.
+  limit:
+    name: limit
+    description: Pagination - limit records in response
+    in: query
+    type: integer
+    minimum: 0
+    maximum: 1000  # TODO review
+    required: true
+  offset:
+    name: offset
+    description: Pagination - offset from which records should be returned in response
+    in: query
+    type: integer
+    minimum: 0
+    required: true
+  includeDeleted:
+    name: includeDeleted
+    description: Used in search APIs to specify if (soft) deleted records should be
+      included in search results.
+    in: query
+    type: boolean
+    default: false
+    required: false
+  includeEnded:
+    name: includeEnded
+    description: Used in project search API to specify if records past end date should
+      be included in search results.
+    in: query
+    type: boolean
+    default: false
+    required: false
+  includeAncestors:
+    name: includeAncestors
+    description: Used in project search API to specify if response should include
+      project elements that are in the preceding hierarchy of matched projects.
+    in: query
+    type: boolean
+    default: false
+    required: false
+  includeDescendants:
+    name: includeDescendants
+    description: Used in project search API to specify if response should include
+      project elements that are in the following hierarchy of matched projects.
+    in: query
+    type: boolean
+    default: false
+    required: false
+  createdFrom:
+    name: createdFrom
+    description: |
+      Used in project search API to limit the search results to only those projects whose creation date is after the specified 'createdFrom' date.
+    in: query
+    required: false
+    type: integer
+    format: int64
+  createdTo:
+    name: createdTo
+    description: |
+      Used in project search API to limit the search results to only those projects whose creation date is before the specified 'createdTo' date.
+    in: query
+    required: false
+    type: integer
+    format: int64
+definitions:
+  boundaryCode:
+    $ref: https://raw.githubusercontent.com/digit-egov/health-api-specs/main/contracts/common.yaml#/definitions/boundaryCode
+  id:
+    $ref: https://raw.githubusercontent.com/digit-egov/health-api-specs/main/contracts/common.yaml#/definitions/id
+  idForSearch:
+    $ref: https://raw.githubusercontent.com/digit-egov/health-api-specs/main/contracts/common.yaml#/definitions/idForSearch
+  clientReferenceIdForSearch:
+    $ref: https://raw.githubusercontent.com/digit-egov/health-api-specs/main/contracts/common.yaml#/definitions/clientReferenceIdForSearch
+  clientReferenceId:
+    $ref: https://raw.githubusercontent.com/digit-egov/health-api-specs/main/contracts/common.yaml#/definitions/clientReferenceId
+  tenantId:
+    $ref: https://raw.githubusercontent.com/digit-egov/health-api-specs/main/contracts/common.yaml#/definitions/tenantId
+  eventTimestamp:
+    $ref: https://raw.githubusercontent.com/digit-egov/health-api-specs/main/contracts/common.yaml#/definitions/eventTimestamp
+  isDeleted:
+    $ref: https://raw.githubusercontent.com/digit-egov/health-api-specs/main/contracts/common.yaml#/definitions/isDeleted
+  rowVersion:
+    $ref: https://raw.githubusercontent.com/digit-egov/health-api-specs/main/contracts/common.yaml#/definitions/rowVersion
+  apiOperation:
+    $ref: https://raw.githubusercontent.com/digit-egov/health-api-specs/main/contracts/common.yaml#/definitions/apiOperation
+  additionalFields:
+    $ref: https://raw.githubusercontent.com/digit-egov/health-api-specs/main/contracts/common.yaml#/definitions/additionalFields
+  Address:
+    $ref: https://raw.githubusercontent.com/digit-egov/health-api-specs/main/contracts/common.yaml#/definitions/Address
+  projectTypeId:
+    type: string
+    description: Unique id of Project type from master data
+    minLength: 2
+    maxLength: 64
+  subProjectTypeId:
+    type: string
+    description: Unique id of subproject type from master data
+    minLength: 2
+    maxLength: 64
+  Project:
+    description: The purpose of this object to define the Project for a geography
+      and period
+    type: object
+    properties:
+      id:
+        type: string
+        minLength: 2
+        maxLength: 64
+        description: Unique system generated GUID
+        readOnly: true
+      tenantId:
+        type: string
+        minLength: 2
+        maxLength: 64
+        description: Unique tenant of the system
+        example: tenantA
+      name:
+        type: string
+        description: Name of project
+        minLength: 2
+      projectNumber:
+        type: string
+        description: The unique identifier of the project number the custom formatting.
+        example: PR/2022-23/010
+        readOnly: true
+      projectType:
+        type: string
+        description: Unique ID of project type from master data
+        minLength: 2
+        maxLength: 64
+      projectSubType:
+        type: string
+        description: Unique ID of subproject type from master data
+        minLength: 2
+        maxLength: 64
+      department:
+        type: string
+        description: Unique department ID as defined in master data
+        minLength: 2
+        maxLength: 64
+      description:
+        type: string
+        description: Description of project
+        minLength: 2
+      referenceID:
+        type: string
+        description: Reference number to a physical file or docket or some other artifact
+          of which this project is representative of.
+        minLength: 2
+        maxLength: 100
+      natureOfWork:
+        type: string
+        description: Specifies nature of work for Project
+        minLength: 2
+        maxLength: 64
+      projectHierarchy:
+        type: string
+        description: Materialized Path of the hierarchy that this project element
+          belongs to
+        readOnly: true
+      ancestors:
+        $ref: '#/definitions/Project'
+        description: Materialized Path of the hierarchy that this project element
+          belongs to
+      address:
+        $ref: '#/definitions/Address'
+      startDate:
+        type: integer
+        format: int64
+        description: Project start date
+      endDate:
+        type: integer
+        format: int64
+        description: Project end date
+      isTaskEnabled:
+        type: boolean
+        default: false
+        description: Task can be created if this is 'True'
+      parent:
+        type: string
+        minLength: 2
+        maxLength: 64
+        description: Parent Project id
+      targets:
+        type: array
+        items:
+          $ref: '#/definitions/Target'
+      wfStatus:
+        type: string
+        description: Workflow status of the project. Cannot be updated. Only returned
+          in responses.
+        readOnly: true
+      additionalDetails:
+        type: object
+        description: Any additional details of the register
+      isDeleted:
+        $ref: '#/definitions/isDeleted'
+      rowVersion:
+        $ref: '#/definitions/rowVersion'
+      auditDetails:
+        $ref: >-
+          https://raw.githubusercontent.com/egovernments/egov-services/master/docs/common/contracts/v1-1-1.yml#/definitions/AuditDetails
+  ProjectSearch:
+    type: object
+    properties:
+      id:
+        $ref: '#/definitions/idForSearch'
+      startDate:
+        type: integer
+        format: int64
+        description: Project start date
+      endDate:
+        type: integer
+        format: int64
+        description: Project end date
+      isTaskEnabled:
+        type: boolean
+        default: false
+        description: Task can be created if this is 'True'
+      parent:
+        type: string
+        minLength: 2
+        maxLength: 64
+        description: Parent Project id
+      projectTypeId:
+        $ref: '#/definitions/projectTypeId'
+      subProjectTypeId:
+        $ref: '#/definitions/subProjectTypeId'
+      department:
+        type: string
+        description: Unique department ID as defined in master data
+        minLength: 2
+        maxLength: 64
+      referenceId:
+        type: string
+        description: Reference number to a physical file or docket or some other artifact
+          of which this project is representative of.
+        minLength: 2
+        maxLength: 100
+      boundaryCode:
+        $ref: '#/definitions/boundaryCode'
+      wfStatus:
+        type: array
+        items:
+          type: string
+        description: List of workflow statuses to filter projects
+  ProjectStaff:
+    description: This object defines the mapping of a system staff user to a project
+      for a certain period.
+    type: object
+    required: [tenantId, userId, projectId]
+    properties:
+      id:
+        type: string
+        minLength: 2
+        maxLength: 64
+        description: Unique system generated GUID
+        readOnly: true
+      tenantId:
+        $ref: '#/definitions/tenantId'
+      userId:
+        type: string
+        description: Unique userId defined using user service
+        minLength: 2
+        maxLength: 64
+      projectId:
+        type: string
+        description: Project Id
+        minLength: 2
+        maxLength: 64
+      # TODO: What happens when this period falls outside the period for the project
+      # TODO: Could be multiple periods when the user needs to be active for a certain location
+      # TODO: User could have different active periods in different locations
+      startDate:
+        type: integer
+        format: int64
+        description: Start date of user operations against this project
+      endDate:
+        type: integer
+        format: int64
+        description: End date of user operations against this project
+      channel:
+        type: string
+        minLength: 2
+        maxLength: 64
+      isDeleted:
+        $ref: '#/definitions/isDeleted'
+      rowVersion:
+        $ref: '#/definitions/rowVersion'
+      auditDetails:
+        $ref: >-
+          https://raw.githubusercontent.com/egovernments/egov-services/master/docs/common/contracts/v1-1-1.yml#/definitions/AuditDetails
+  ProjectStaffSearch:
+    description: This object defines the mapping of a system staff user to a project
+      for a certain period.
+    type: object
+    properties:
+      id:
+        $ref: '#/definitions/idForSearch'
+      staffId:
+        type: array
+        items:
+          type: string
+        description: Unique userId defined using user service
+        minLength: 2
+        maxLength: 64
+      projectId:
+        type: array
+        items:
+          type: string
+        description: Project Id
+        minLength: 2
+        maxLength: 64
+      startDate:
+        type: integer
+        format: int64
+        description: Start date of user operations against this project
+      endDate:
+        type: integer
+        format: int64
+        description: End date of user operations against this project
+  ProjectFacility:
+    description: This object defines the mapping of a facility to a project.
+    type: object
+    required: [tenantId, facilityId, projectId]
+    properties:
+      id:
+        $ref: '#/definitions/id'
+      tenantId:
+        $ref: '#/definitions/tenantId'
+      facilityId:
+        type: string
+        description: Unique facilityId defined using facility service
+        minLength: 2
+        maxLength: 64
+      projectId:
+        type: string
+        description: Project Id
+        minLength: 2
+        maxLength: 64
+      isDeleted:
+        $ref: '#/definitions/isDeleted'
+      rowVersion:
+        $ref: '#/definitions/rowVersion'
+      auditDetails:
+        $ref: >-
+          https://raw.githubusercontent.com/egovernments/egov-services/master/docs/common/contracts/v1-1-1.yml#/definitions/AuditDetails
+  ProjectFacilitySearch:
+    description: This object defines the mapping of a facility to a project.
+    type: object
+    properties:
+      id:
+        $ref: '#/definitions/idForSearch'
+      facilityId:
+        $ref: '#/definitions/idForSearch'
+        description: Unique facilityId defined using facility service
+      projectId:
+        $ref: '#/definitions/idForSearch'
+  Target:
+    type: object
+    required: [beneficiaryType, baseline, target]
+    properties:
+      id:
+        type: string
+        minLength: 2
+        maxLength: 64
+        description: Unique system generated GUID
+        readOnly: true
+      beneficiaryType:
+        type: string
+        minLength: 2
+        maxLength: 64
+        example: HOUSEHOLD
+      baseline:
+        type: integer
+      target:
+        type: integer
+      isDeleted:
+        $ref: '#/definitions/isDeleted'
+      auditDetails:
+        $ref: >-
+          https://raw.githubusercontent.com/egovernments/egov-services/master/docs/common/contracts/v1-1-1.yml#/definitions/AuditDetails
+  ProjectRequest:
+    type: object
+    properties:
+      RequestInfo:
+        $ref: >-
+          https://raw.githubusercontent.com/egovernments/egov-services/master/docs/common/contracts/v1-1-1.yml#/definitions/RequestInfo
+      Projects:
+        type: array
+        minItems: 1
+        items:
+          $ref: '#/definitions/Project'
+      apiOperation:
+        $ref: '#/definitions/apiOperation'
+    required: [RequestInfo, Project]
+  ProjectSearchRequest:
+    type: object
+    properties:
+      RequestInfo:
+        $ref: >-
+          https://raw.githubusercontent.com/egovernments/egov-services/master/docs/common/contracts/v1-1-1.yml#/definitions/RequestInfo
+      Project:
+        $ref: '#/definitions/ProjectSearch'
+    required: [RequestInfo, Project]
+  ProjectResponse:
+    type: object
+    properties:
+      ResponseInfo:
+        $ref: >-
+          https://raw.githubusercontent.com/egovernments/egov-services/master/docs/common/contracts/v1-1-1.yml#/definitions/ResponseInfo
+      Projects:
+        type: array
+        items:
+          $ref: '#/definitions/Project'
+    required:
+      - ResponseInfo
+      - Project
+
+      ###############################################################
+  ProjectStaffRequest:
+    type: object
+    properties:
+      RequestInfo:
+        $ref: >-
+          https://raw.githubusercontent.com/egovernments/egov-services/master/docs/common/contracts/v1-1-1.yml#/definitions/RequestInfo
+      ProjectStaff:
+        type: object
+        $ref: '#/definitions/ProjectStaff'
+    required: [RequestInfo, ProjectStaff]
+  ProjectStaffBulkRequest:
+    type: object
+    properties:
+      RequestInfo:
+        $ref: >-
+          https://raw.githubusercontent.com/egovernments/egov-services/master/docs/common/contracts/v1-1-1.yml#/definitions/RequestInfo
+      ProjectStaff:
+        type: array
+        minItems: 1
+        items:
+          $ref: '#/definitions/ProjectStaff'
+    required: [RequestInfo, ProjectStaff]
+  ProjectStaffSearchRequest:
+    type: object
+    properties:
+      RequestInfo:
+        $ref: >-
+          https://raw.githubusercontent.com/egovernments/egov-services/master/docs/common/contracts/v1-1-1.yml#/definitions/RequestInfo
+      ProjectStaff:
+        $ref: '#/definitions/ProjectStaffSearch'
+    required: [RequestInfo, ProjectStaff]
+  ProjectStaffResponse:
+    type: object
+    properties:
+      ResponseInfo:
+        $ref: >-
+          https://raw.githubusercontent.com/egovernments/egov-services/master/docs/common/contracts/v1-1-1.yml#/definitions/ResponseInfo
+      ProjectStaff:
+        type: object
+        $ref: '#/definitions/ProjectStaff'
+    required: [ResponseInfo, ProjectStaff]
+  ProjectStaffBulkResponse:
+    type: object
+    properties:
+      ResponseInfo:
+        $ref: >-
+          https://raw.githubusercontent.com/egovernments/egov-services/master/docs/common/contracts/v1-1-1.yml#/definitions/ResponseInfo
+      ProjectStaff:
+        type: array
+        items:
+          $ref: '#/definitions/ProjectStaff'
+    required: [ResponseInfo, ProjectStaff]
+  ProjectFacilityRequest:
+    type: object
+    properties:
+      RequestInfo:
+        $ref: >-
+          https://raw.githubusercontent.com/egovernments/egov-services/master/docs/common/contracts/v1-1-1.yml#/definitions/RequestInfo
+      ProjectFacility:
+        type: object
+        $ref: '#/definitions/ProjectFacility'
+      apiOperation:
+        $ref: '#/definitions/apiOperation'
+    required: [RequestInfo, ProjectFacility]
+  ProjectFacilityBulkRequest:
+    type: object
+    properties:
+      RequestInfo:
+        $ref: >-
+          https://raw.githubusercontent.com/egovernments/egov-services/master/docs/common/contracts/v1-1-1.yml#/definitions/RequestInfo
+      ProjectFacilities:
+        type: array
+        minItems: 1
+        items:
+          $ref: '#/definitions/ProjectFacility'
+      apiOperation:
+        $ref: '#/definitions/apiOperation'
+    required: [RequestInfo, ProjectFacility]
+  ProjectFacilitySearchRequest:
+    type: object
+    properties:
+      RequestInfo:
+        $ref: >-
+          https://raw.githubusercontent.com/egovernments/egov-services/master/docs/common/contracts/v1-1-1.yml#/definitions/RequestInfo
+      ProjectFacility:
+        $ref: '#/definitions/ProjectFacilitySearch'
+    required: [RequestInfo, ProjectFacility]
+  ProjectFacilityResponse:
+    type: object
+    properties:
+      ResponseInfo:
+        $ref: >-
+          https://raw.githubusercontent.com/egovernments/egov-services/master/docs/common/contracts/v1-1-1.yml#/definitions/ResponseInfo
+      ProjectFacility:
+        type: object
+        $ref: '#/definitions/ProjectFacility'
+    required: [ResponseInfo, ProjectFacility]
+  ProjectFacilityBulkResponse:
+    type: object
+    properties:
+      ResponseInfo:
+        $ref: >-
+          https://raw.githubusercontent.com/egovernments/egov-services/master/docs/common/contracts/v1-1-1.yml#/definitions/ResponseInfo
+      ProjectFacilities:
+        type: array
+        items:
+          $ref: '#/definitions/ProjectFacility'
+    required: [ResponseInfo, ProjectFacility]
+  BulkAcceptedResponse:
+    type: object
+    properties:
+      ResponseInfo:
+        $ref: >-
+          https://raw.githubusercontent.com/egovernments/egov-services/master/docs/common/contracts/v1-1-1.yml#/definitions/ResponseInfo
+    required: [ResponseInfo]
+  ProjectWorkflowUpdateRequest:
+    type: object
+    properties:
+      RequestInfo:
+        $ref: >-
+          https://raw.githubusercontent.com/egovernments/egov-services/master/docs/common/contracts/v1-1-1.yml#/definitions/RequestInfo
+      projectId:
+        type: string
+        description: ID of the project whose workflow needs to be updated
+      workflow:
+        $ref: https://raw.githubusercontent.com/egovernments/DIGIT-Specs/common-contract-update/Common%20Services/common-contract.yaml#/components/schemas/Workflow
+    required: [RequestInfo, projectId, workflow]
