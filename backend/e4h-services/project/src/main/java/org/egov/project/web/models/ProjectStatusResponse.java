@@ -20,4 +20,7 @@ public class ProjectStatusResponse {
 
     @JsonProperty("Project")
     private List<ProjectStatusWrapper> project;
+
+    @JsonProperty
+    private Integer totalCount;
 }

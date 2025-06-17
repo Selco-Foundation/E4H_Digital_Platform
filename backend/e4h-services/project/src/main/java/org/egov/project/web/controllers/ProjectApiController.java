@@ -2,6 +2,7 @@ package org.egov.project.web.controllers;
 
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.swagger.annotations.ApiParam;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -13,14 +14,12 @@ import org.egov.common.models.core.ProjectSearchURLParams;
 import org.egov.common.models.core.SearchResponse;
 import org.egov.common.models.core.URLParams;
 import org.egov.common.models.project.*;
+import org.egov.common.models.project.BeneficiarySearchRequest;
 import org.egov.common.producer.Producer;
 import org.egov.common.utils.ResponseInfoFactory;
 import org.egov.project.config.ProjectConfiguration;
 import org.egov.project.service.*;
-import org.egov.project.web.models.ExtendedProjectSearch;
-import org.egov.project.web.models.ProjectStatusResponse;
-import org.egov.project.web.models.ProjectStatusWrapper;
-import org.egov.project.web.models.ProjectWorkflowRequest;
+import org.egov.project.web.models.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -29,6 +28,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 
 @Controller
@@ -477,25 +477,37 @@ public class ProjectApiController {
     }
 
     @PostMapping(value = "/v2/_search")
-    public ResponseEntity<ProjectResponse> searchV2Project(
+    public ResponseEntity<ProjectStatusResponse> searchV2Project(
             @Valid @ModelAttribute ProjectSearchURLParams urlParams,
-            @ApiParam(value = "Details for the project.", required = true) @Valid @RequestBody ProjectSearchRequest projectSearchRequest
-    ) {
-        List<String> workflowStatuses = null;
-        if (projectSearchRequest.getProject() instanceof ExtendedProjectSearch extendedSearch) {
-            workflowStatuses = extendedSearch.getWorkflowStatus();
-        }
+            @ApiParam(value = "Details for the project.", required = true)
+            @Valid @RequestBody ExtendedProjectSearchRequest projectSearchRequest
+    ){
+        List<String> workflowStatuses = projectSearchRequest.getWorkflowStatus();
 
         List<Project> projects = projectService.searchProject(projectSearchRequest, urlParams, workflowStatuses);
         Integer count = projectService.countAllProjects(projectSearchRequest, urlParams, workflowStatuses);
 
+        List<ProjectStatusWrapper> projectStatusWrappers = projects.stream()
+                .map(project -> {
+                    String status = null;
+                    ObjectNode additionalDetails = (ObjectNode) project.getAdditionalDetails();
+                    if (additionalDetails != null && additionalDetails.has("status")) {
+                        status = additionalDetails.get("status").asText();
+                    }
+                    return new ProjectStatusWrapper(project, status);
+                })
+                .toList();
+
+
+
         ResponseInfo responseInfo = ResponseInfoFactory.createResponseInfo(projectSearchRequest.getRequestInfo(), true);
-        ProjectResponse projectResponse = ProjectResponse.builder()
+        ProjectStatusResponse projectResponse = ProjectStatusResponse.builder()
                 .responseInfo(responseInfo)
-                .project(projects)
+                .project(projectStatusWrappers)
                 .totalCount(count)
                 .build();
-        return new ResponseEntity<ProjectResponse>(projectResponse, HttpStatus.OK);
+
+        return ResponseEntity.ok(projectResponse);
     }
 
     @RequestMapping(value = "/v1/_update", method = RequestMethod.POST)
@@ -519,6 +531,4 @@ public class ProjectApiController {
                 .project(List.of(updatedProject))
                 .build());
     }
-
-
 }
