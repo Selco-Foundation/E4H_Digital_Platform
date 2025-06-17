@@ -398,7 +398,7 @@ public class ProjectService {
         Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(
                 existingProject.getAdditionalDetails(),
                 "status",
-                updatedWorkflow.getState().getApplicationStatus()
+                updatedWorkflow.getState().getState()
         );
 
         // 4. Create a new Project instance with enriched additionalDetails
