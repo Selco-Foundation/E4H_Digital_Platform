@@ -221,4 +221,16 @@ public class ProjectConfiguration {
 
     @Value("${project.attendance.feature.enabled:true}")
     private Boolean isAttendanceFeatureEnabled;
+
+    @Value("${egov.workflow.host}")
+    private String wfHost;
+
+    @Value("${egov.workflow.transition.path}")
+    private String wfTransitionPath;
+
+    @Value("${egov.workflow.module.name}")
+    private String moduleName;
+
+    @Value("${egov.workflow.business.service}")
+    private String businessService;
 }
