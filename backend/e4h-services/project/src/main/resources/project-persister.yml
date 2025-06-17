@@ -182,7 +182,7 @@ serviceMaps:
     - version: 1.0
       name: Projects
       description: Persists project details in project table
-      fromTopic: save-project-health
+      fromTopic: save-project
       isTransaction: true
       isAuditEnabled: true
       module: PROJECT
@@ -337,7 +337,7 @@ serviceMaps:
     - version: 1.0
       name: Projects
       description: Updates project details in project table
-      fromTopic: update-project-health
+      fromTopic: update-project
       isTransaction: true
       isAuditEnabled: true
       module: PROJECT
