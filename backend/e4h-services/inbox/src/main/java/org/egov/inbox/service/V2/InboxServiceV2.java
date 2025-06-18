@@ -133,12 +133,25 @@ public class InboxServiceV2 {
             if(item.getBusinessObject().containsKey(CURRENT_PROCESS_INSTANCE_CONSTANT)) {
                 // Set process instance object in the native process instance field declared in the model inbox class.
                 ProcessInstance processInstance = mapper.convertValue(item.getBusinessObject().get(CURRENT_PROCESS_INSTANCE_CONSTANT), ProcessInstance.class);
-                item.setProcessInstance(processInstance);
+                ProcessInstance updatedProcessInstance = trimRolesFromProcessInstance(processInstance);
+                item.setProcessInstance(updatedProcessInstance);
 
                 // Remove current process instance from business object in order to avoid having redundant data in response.
                 item.getBusinessObject().remove(CURRENT_PROCESS_INSTANCE_CONSTANT);
             }
         });
+    }
+
+    private ProcessInstance trimRolesFromProcessInstance(ProcessInstance processInstance) {
+        if(processInstance.getAssigner()!=null)
+            processInstance.getAssigner().setRoles(new ArrayList<>());
+
+        if (processInstance.getAssignes() != null) {
+            processInstance.getAssignes().stream()
+                    .filter(Objects::nonNull)
+                    .forEach(assignee -> assignee.setRoles(new ArrayList<>()));
+        }
+        return processInstance;
     }
 
     private List<Inbox> getInboxItems(InboxRequest inboxRequest, String indexName){
