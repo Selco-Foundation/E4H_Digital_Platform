@@ -28,7 +28,6 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 
 
 @Controller
@@ -481,16 +480,16 @@ public class ProjectApiController {
             @Valid @ModelAttribute ProjectSearchURLParams urlParams,
             @ApiParam(value = "Details for the project.", required = true)
             @Valid @RequestBody ExtendedProjectSearchRequest projectSearchRequest
-    ){
+    ) throws Exception {
         List<String> workflowStatuses = projectSearchRequest.getWorkflowStatus();
 
         List<Project> projects = projectService.searchProject(projectSearchRequest, urlParams, workflowStatuses);
         Integer count = projectService.countAllProjects(projectSearchRequest, urlParams, workflowStatuses);
-
+        ObjectMapper mapper = new ObjectMapper();
         List<ProjectStatusWrapper> projectStatusWrappers = projects.stream()
                 .map(project -> {
                     String status = null;
-                    ObjectNode additionalDetails = (ObjectNode) project.getAdditionalDetails();
+                    ObjectNode additionalDetails = mapper.convertValue(project.getAdditionalDetails(), ObjectNode.class);
                     if (additionalDetails != null && additionalDetails.has("status")) {
                         status = additionalDetails.get("status").asText();
                     }
@@ -521,7 +520,7 @@ public class ProjectApiController {
 
     @PostMapping("/v1/project/workflow/update")
     public ResponseEntity<ProjectStatusResponse> updateProjectWorkflow(
-            @Valid @RequestBody ProjectWorkflowRequest request) {
+            @Valid @RequestBody ProjectWorkflowRequest request) throws Exception {
 
         ProjectStatusWrapper updatedProject = projectService.updateProjectWorkflow(request);
 

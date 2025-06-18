@@ -2,7 +2,6 @@ package org.egov.asset.web.models;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import digit.models.coremodels.AuditDetails;
-import digit.models.coremodels.Document;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

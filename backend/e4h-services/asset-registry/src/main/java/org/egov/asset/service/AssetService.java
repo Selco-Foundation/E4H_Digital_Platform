@@ -1,7 +1,7 @@
 package org.egov.asset.service;
 
 import digit.models.coremodels.AuditDetails;
-import digit.models.coremodels.Document;
+//import digit.models.coremodels.Document;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.asset.mapper.AssetRowMapper;
 import org.egov.asset.mapper.DocumentRowMapper;
@@ -12,6 +12,7 @@ import org.egov.asset.util.ResponseInfoFactory;
 import org.egov.asset.web.models.Asset;
 import org.egov.asset.web.models.AssetCreateRequest;
 import org.egov.asset.web.models.AssetCreateResponse;
+import org.egov.asset.web.models.Document;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
