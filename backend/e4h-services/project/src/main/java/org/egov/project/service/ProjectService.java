@@ -8,6 +8,8 @@ import org.egov.common.contract.models.AuditDetails;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.common.contract.workflow.ProcessInstance;
 import org.egov.common.models.core.ProjectSearchURLParams;
+import org.egov.common.models.core.SearchResponse;
+import org.egov.common.models.project.*;
 import org.egov.common.models.project.Project;
 import org.egov.common.models.project.ProjectRequest;
 import org.egov.common.models.project.ProjectSearch;
@@ -23,6 +25,7 @@ import org.egov.project.web.models.ProjectWorkflowRequest;
 import org.egov.project.web.models.ProjectSortCriteria;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -43,6 +46,8 @@ public class ProjectService {
 
     private final ProjectConfiguration projectConfiguration;
 
+    private final ProjectFacilityService projectFacilityService;
+
     private final Producer producer;
 
     private final ProjectServiceUtil projectServiceUtil;
@@ -54,7 +59,7 @@ public class ProjectService {
     @Autowired
     public ProjectService(
             ProjectRepository projectRepository,
-            ProjectValidator projectValidator, ProjectEnrichment projectEnrichment, ProjectConfiguration projectConfiguration, Producer producer, ProjectServiceUtil projectServiceUtil, ProjectWorkflowService workflowService) {
+            ProjectValidator projectValidator, ProjectEnrichment projectEnrichment, ProjectConfiguration projectConfiguration, Producer producer, ProjectServiceUtil projectServiceUtil, ProjectWorkflowService workflowService, @Lazy ProjectFacilityService projectFacilityService) {
         this.projectRepository = projectRepository;
         this.projectValidator = projectValidator;
         this.projectEnrichment = projectEnrichment;
@@ -63,6 +68,7 @@ public class ProjectService {
         this.projectServiceUtil = projectServiceUtil;
         this.workflowService = workflowService;
         this.objectMapper = new ObjectMapper();
+        this.projectFacilityService = projectFacilityService;
     }
 
     public List<String> validateProjectIds(List<String> productIds) {
@@ -123,12 +129,31 @@ public class ProjectService {
         return projects;
     }
 
-    public List<Project> searchProject(ProjectSearchRequest projectSearchRequest,
-                                       @Valid ProjectSearchURLParams urlParams,
-                                       List<String> workflowStatuses,
-                                       @Valid ProjectSortCriteria sortCriteria) {
+    public List<Project> searchProject(ProjectSearchRequest projectSearchRequest, @Valid ProjectSearchURLParams urlParams, List<String> workflowStatuses, @Valid ProjectSortCriteria sortCriteria) throws Exception {
         projectValidator.validateSearchV2ProjectRequest(projectSearchRequest, urlParams, sortCriteria);
-        return projectRepository.getProjects(projectSearchRequest.getProject(), urlParams, workflowStatuses, sortCriteria);
+        List<Project> projects = projectRepository.getProjects(projectSearchRequest.getProject(), urlParams, workflowStatuses, sortCriteria);
+        projects = getCountFacilitiesProject(projects, projectSearchRequest.getRequestInfo());
+        return projects;
+    }
+
+    public List<Project> getCountFacilitiesProject(List<Project> listProjects, RequestInfo requestInfo) throws Exception {
+        for (Project project : listProjects) {
+            List<String> listProjectId = new ArrayList<>();
+            listProjectId.add(project.getId());
+            ProjectFacilitySearch projectFacilitySearch = ProjectFacilitySearch.builder().projectId(listProjectId).facilityId(null).build();
+            ProjectFacilitySearchRequest projectFacilitySearchRequest = ProjectFacilitySearchRequest.builder().projectFacility(projectFacilitySearch).requestInfo(requestInfo).build();
+            SearchResponse<ProjectFacility> searchResponse = projectFacilityService.search(
+                    projectFacilitySearchRequest,
+                    100,
+                    0,
+                    project.getTenantId(),
+                    null,
+                    false);
+            Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(project.getAdditionalDetails(), "countFacilities", searchResponse.getTotalCount()+"");
+            project.setAdditionalDetails(enrichedAdditionalDetails);
+        }
+
+        return listProjects;
     }
 
     public ProjectRequest updateProject(ProjectRequest request) {
@@ -360,7 +385,7 @@ public class ProjectService {
         return projectRepository.getProjectCount(request.getProject(), urlParams, workflowStatuses);
     }
 
-    public ProjectStatusWrapper updateProjectWorkflow(ProjectWorkflowRequest request) {
+    public ProjectStatusWrapper updateProjectWorkflow(ProjectWorkflowRequest request) throws Exception {
         // 1. Fetch the existing project
         ProjectSearch searchCriteria = ProjectSearch.builder()
                 .id(List.of(request.getProjectId()))
