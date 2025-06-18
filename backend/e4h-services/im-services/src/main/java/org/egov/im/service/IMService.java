@@ -6,6 +6,7 @@ import org.egov.common.contract.request.RequestInfo;
 import org.egov.im.config.IMConfiguration;
 import org.egov.im.producer.Producer;
 import org.egov.im.repository.IMRepository;
+import org.egov.im.util.IMUtils;
 import org.egov.im.util.MDMSUtils;
 import org.egov.im.validator.ServiceRequestValidator;
 import org.egov.im.web.models.IncidentRequestWrapper;
@@ -40,11 +41,12 @@ public class IMService {
 
     private MDMSUtils mdmsUtils;
 
+    private IMUtils imUtils;
 
     @Autowired
     public IMService(EnrichmentService enrichmentService, UserService userService, WorkflowService workflowService,
                       ServiceRequestValidator serviceRequestValidator, ServiceRequestValidator validator, Producer producer,
-                      IMConfiguration config, IMRepository repository, MDMSUtils mdmsUtils) {
+                      IMConfiguration config, IMRepository repository, MDMSUtils mdmsUtils, IMUtils imUtils) {
         this.enrichmentService = enrichmentService;
         this.userService = userService;
         this.workflowService = workflowService;
@@ -54,6 +56,7 @@ public class IMService {
         this.config = config;
         this.repository = repository;
         this.mdmsUtils = mdmsUtils;
+        this.imUtils = imUtils;
     }
 
 
@@ -68,8 +71,9 @@ public class IMService {
         validator.validateCreate(request, mdmsData);
         enrichmentService.enrichCreateRequest(request);
         ProcessInstance updatedProcessInstance = workflowService.updateWorkflowStatus(request, mdmsData);
+        ProcessInstance trimmedUpdatedProcessInstance = imUtils.trimRolesFromProcessInstance(updatedProcessInstance);
         producer.push(tenantId,config.getCreateTopic(),request);
-        producer.push(tenantId,config.getCreateTopicIndexer(),new IncidentRequestWrapper(request,updatedProcessInstance));
+        producer.push(tenantId,config.getCreateTopicIndexer(),new IncidentRequestWrapper(request,trimmedUpdatedProcessInstance));
         return request;
     }
 
@@ -130,8 +134,9 @@ public class IMService {
         validator.validateUpdate(request, mdmsData);
         enrichmentService.enrichUpdateRequest(request);
         ProcessInstance updatedProcessInstance = workflowService.updateWorkflowStatus(request, mdmsData);
+        ProcessInstance trimmedUpdatedProcessInstance = imUtils.trimRolesFromProcessInstance(updatedProcessInstance);
         producer.push(tenantId,config.getUpdateTopic(),request);
-        producer.push(tenantId,config.getUpdateTopicIndexer(),new IncidentRequestWrapper(request,updatedProcessInstance));
+        producer.push(tenantId,config.getUpdateTopicIndexer(),new IncidentRequestWrapper(request,trimmedUpdatedProcessInstance));
 
         return request;
     }
