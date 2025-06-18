@@ -13,9 +13,10 @@ from app.decorators.rbac_validator import get_authorized_request_info
 from app.ingest.excel_data_writer import ExcelDataWriter
 from app.processor.factory.boundary_data_processor_factory import BoundaryDataProcessorFactory
 from app.processor.factory.vendor_data_processor_factory import VendorDataProcessorFactory
+from app.producer.producer import Producer
 from app.utils.convertor import request_info_from_json, create_vendor_request, create_facility_payload, \
     get_project_creation_payload, get_user_creation_payload_staff, get_user_creation_payload_supervisors, get_staff_creation_payload, create_project_payload, \
-    get_installation_spoc_creation_payload
+    get_installation_spoc_creation_payload, get_staff_search_payload
 from app.utils.facility_service_client import FacilityServiceClient
 from app.utils.mdms_client import MDMSClient
 from app.utils.organization_service_client import OrganizationServiceClient
@@ -517,7 +518,7 @@ async def upload_facility_with_supervisors_excel_sheet(
                                     df.at[index, 'error'] = f"Staff Creation Error: {staff_creation_response.status_code} - {staff_creation_response.text}"
                             else:
                                 df.at[index, 'status'] = 'failed'
-                                df.at[index, 'error'] = f"User Creation Error: {user_creation_response.status_code} - {user['Errors']}"
+                                df.at[index, 'error'] = f"User Creation Error: {user_creation_response.status_code} - {user.get('Errors', [{}])[0].get('message', 'Unknown error')}"
                     except Exception as e:
                         df.at[index, 'status'] = 'failed'
                         df.at[index, 'error'] = f"Processing Error: {str(e)}"
@@ -585,20 +586,101 @@ async def upload_projects_excel_sheet(
         if 'Project ID' not in df.columns:
             df['Project ID'] = ''
 
-        if project_service_url and not df.empty:
+        if project_service_url and hrms_service_url and not df.empty:
+            hrms_client = HRMSServiceClient(hrms_service_url)
             project_client = ProjectServiceClient(project_service_url)
             for index, row in df[df['status'] != 'success'].iterrows():
                 try:
+
                     project_data_payload = create_project_payload(request_info, row)
                     response = project_client.create_project(project_data_payload)
                     response_data = response.json()
 
+                    if df.at[index, 'Project Type'] == 'Field Plan':
+                        name = df.at[index, 'Name']
+                        mobile_number_raw = df.at[index, 'Mobile Number']
+                        email_value = df.at[index, 'Email']
+                        if pd.isna(email_value) or not email_value:
+                            df.at[index, 'status'] = 'failed'
+                            df.at[index, 'error'] = 'Email is required for Field Plan projects'
+                            continue
+                        if pd.isna(mobile_number_raw) or not mobile_number_raw:
+                            df.at[index, 'status'] = 'failed'
+                            df.at[index, 'error'] = 'Mobile Number is required for Field Plan projects'
+                            continue
+
+
+                        mobile_number = str(int(mobile_number_raw))
+                        email = str(email_value).strip()
+
+                        spoc_payload = get_installation_spoc_creation_payload(request_info, name, mobile_number, email)
+
+                        user_response = hrms_client.search_user(spoc_payload)
+
+                        if user_response.status_code not in [200, 201, 202]:
+                            df.at[index, 'status'] = 'failed'
+                            df.at[
+                                index, 'error'] = f"User search failed with status: {user_response.status_code} - {user_response.text}"
+                            continue
+
+                        response_body = json.loads(user_response.text)
+                        employee_list = response_body.get("Employees", [])
+
+                        # Filter for matching email
+                        matched_user = None
+                        for emp in employee_list:
+                            if emp["user"]["emailId"].strip() == email:
+                                matched_user = emp["user"]
+                                break
+
+                        if not matched_user:
+                            df.at[index, 'status'] = 'failed'
+                            df.at[index, 'error'] = f"No matching user found for email: {email}"
+                            continue
+
                     if response.status_code in [200, 201, 202] and isinstance(response_data.get('Project'), list) and response_data[
                         'Project']:
-                        project_id = response_data['Project'][0].get('id')
-                        df.at[index, 'status'] = 'success'
-                        df.at[index, 'error'] = ''
-                        df.at[index, 'Project ID'] = project_id
+                        if df.at[index, 'Project Type'] == 'Field Plan':
+
+                            user_uuid = matched_user.get("uuid")
+                            project_id = response_data['Project'][0].get('id')
+
+                            staff_payload = get_staff_creation_payload(request_info, user_uuid, project_id)
+                            staff_response = project_client.create_project_staff(staff_payload)
+
+                            if staff_response.status_code in [200, 201, 202]:
+
+                                staff_search_payload = get_staff_search_payload(request_info, user_uuid)
+                                staff_search_response = project_client.search_project_staff_by_id(staff_search_payload)
+                                if staff_search_response.status_code in [200, 201]:
+                                    print(staff_search_response.text)
+
+                                    staff_list = staff_search_response.json().get("ProjectStaff", [])
+                                    print(len(staff_list))
+
+                                    if len(staff_list) == 1:
+                                        sms_request = {
+                                            "mobileNumber": mobile_number,
+                                            "message": "Yor are assigned to the field plan",
+                                            "expiryTime": None
+                                        }
+                                        producer = Producer()
+                                        producer.send("egov.core.notification.sms", sms_request)
+                                        producer.close()
+
+
+                                df.at[index, 'status'] = 'success'
+                                df.at[index, 'error'] = ''
+                                df.at[index, 'Project ID'] = project_id
+                            else:
+                                df.at[index, 'status'] = 'failed'
+                                df.at[index, 'error'] = (
+                                    f"Staff Creation Error: {staff_response.status_code} - {staff_response.text}")
+                        else:
+                            project_id = response_data['Project'][0].get('id')
+                            df.at[index, 'status'] = 'success'
+                            df.at[index, 'error'] = ''
+                            df.at[index, 'Project ID'] = project_id
                     elif response.status_code == 400:
                         error_data = response.json()
                         error_message = error_data.get('Errors', [{}])[0].get('message', 'Unknown error')
