@@ -1,6 +1,7 @@
 package org.egov.project.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -468,15 +469,17 @@ public class ProjectService {
 
 
     private Object mergeIntoAdditionalDetails(Object additionalDetails, String key, String value) {
-        Map<String, Object> map;
-
-        if (additionalDetails instanceof Map) {
-            map = (Map<String, Object>) additionalDetails;
+        if (additionalDetails instanceof ObjectNode) {
+            ((ObjectNode) additionalDetails).put(key, value);
+            return additionalDetails;
+        } else if (additionalDetails instanceof Map) {
+            ((Map<String, Object>) additionalDetails).put(key, value);
+            return additionalDetails;
         } else {
-            map = new HashMap<>();
+            // default to HashMap if null or unknown type
+            Map<String, Object> map = new HashMap<>();
+            map.put(key, value);
+            return map;
         }
-
-        map.put(key, value);
-        return map;
     }
 }
