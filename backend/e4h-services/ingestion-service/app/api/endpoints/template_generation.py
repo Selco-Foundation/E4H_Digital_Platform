@@ -72,6 +72,58 @@ async def get_facility_ingestion_template(
         logger.error(f"Unhandled error in get_facility_ingestion_template: {e}")
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
 
+@router.get('/facilityWithStaff',
+            summary='Generate facility ingestion template with staff Excel file',
+            response_description="Returns Excel template with facility schema")
+async def get_facility_ingestion_template_with_staff(
+        parent_id: str = Form(default=""),
+        request_info: str = Form(default="")
+):
+    temp_dir = tempfile.gettempdir()
+    output_filename = f"facility_staff_template_{parent_id}.xlsx"
+    output_file_path = os.path.join(temp_dir, output_filename)
+
+    try:
+        request_info = request_info_from_json(request_info)
+        get_authorized_request_info(request_info)
+
+        project_service = ProjectService()
+        facilities = project_service.get_facilities(request_info, parent_id, "Staff")
+        facility_template_service = FacilityTemplateService()
+
+        try:
+            original_df = pd.DataFrame(facilities)
+            df = facility_template_service.add_supervisor_columns_to_dataframe(original_df)
+
+            with pd.ExcelWriter(output_file_path, engine='openpyxl') as writer:
+                df.to_excel(writer, index=False, sheet_name='Facilities_Staff')
+                worksheet = writer.sheets['Facilities_Staff']
+                for i, col in enumerate(df.columns):
+                    column_width = max(df[col].astype(str).map(len).max(), len(col)) + 2
+                    worksheet.column_dimensions[chr(65 + i)].width = column_width
+
+            dropdowns_map = {'Role (Mandatory) ?': ['Staff', 'Field Planner']}
+            add_dropdowns_to_excel(
+                file_path=output_file_path,
+                sheet_name="Facilities_Staff",
+                dropdowns=dropdowns_map
+            )
+
+        except Exception as e:
+            logger.error(f"Error generating template file: {e}")
+            cleanup_temp_file(output_file_path)
+            raise HTTPException(status_code=500, detail=f"Template generation error: {str(e)}")
+
+        return FileResponse(
+            path=output_file_path,
+            filename=output_filename,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+
+    except Exception as e:
+        logger.error(f"Unhandled error in get_facility_ingestion_template_with_staff: {e}")
+        cleanup_temp_file(output_file_path)
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
 
 @router.get('/facilityWithSupervisors',
             summary='Generate facility ingestion template with supervisors Excel file',
@@ -89,7 +141,7 @@ async def get_facility_ingestion_template_with_supervisors(
         get_authorized_request_info(request_info)
 
         project_service = ProjectService()
-        facilities = project_service.get_facilities(request_info, parent_id)
+        facilities = project_service.get_facilities(request_info, parent_id, "Supervisor")
         facility_template_service = FacilityTemplateService()
 
         try:
