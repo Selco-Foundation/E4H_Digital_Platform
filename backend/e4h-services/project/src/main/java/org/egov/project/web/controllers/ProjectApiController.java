@@ -479,11 +479,12 @@ public class ProjectApiController {
     public ResponseEntity<ProjectStatusResponse> searchV2Project(
             @Valid @ModelAttribute ProjectSearchURLParams urlParams,
             @ApiParam(value = "Details for the project.", required = true)
-            @Valid @RequestBody ExtendedProjectSearchRequest projectSearchRequest
+            @Valid @RequestBody ExtendedProjectSearchRequest projectSearchRequest,
+            @Valid @ModelAttribute ProjectSortCriteria sortCriteria
     ) throws Exception {
         List<String> workflowStatuses = projectSearchRequest.getWorkflowStatus();
 
-        List<Project> projects = projectService.searchProject(projectSearchRequest, urlParams, workflowStatuses);
+        List<Project> projects = projectService.searchProject(projectSearchRequest, urlParams, workflowStatuses, sortCriteria);
         Integer count = projectService.countAllProjects(projectSearchRequest, urlParams, workflowStatuses);
         ObjectMapper mapper = new ObjectMapper();
         List<ProjectStatusWrapper> projectStatusWrappers = projects.stream()
