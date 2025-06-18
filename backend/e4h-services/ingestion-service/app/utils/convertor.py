@@ -277,7 +277,8 @@ def get_user_creation_payload_staff(request_info: RequestInfo, row: Series):
                     "mobileNumber": row.get("Phone Number", ""),
                     "emailId": row.get("Email Address", ""),
                     "roles": [
-                        {"code": "INSTALLATION_REPORT_PART_A_CREATOR", "name": "Installation Report Part A Creator"},
+                        {"code": "INSTALLATION_REPORT_PART_A_EDITOR", "name": "Installation Report Part A Editor"},
+                        {"code": "INSTALLATION_REPORT_PART_A_REVIEWER", "name": "Installation Report Part A Reviewer"},
                         {"code": "EMPLOYEE", "name": "employee"}
                     ],
                     "tenantId": "in",
