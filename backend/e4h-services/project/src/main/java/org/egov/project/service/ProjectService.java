@@ -125,7 +125,7 @@ public class ProjectService {
 
     public List<Project> searchProject(ProjectSearchRequest projectSearchRequest,
                                        @Valid ProjectSearchURLParams urlParams,
-                                       List<String> workflowStatuses
+                                       List<String> workflowStatuses,
                                        @Valid ProjectSortCriteria sortCriteria) {
         projectValidator.validateSearchV2ProjectRequest(projectSearchRequest, urlParams, sortCriteria);
         return projectRepository.getProjects(projectSearchRequest.getProject(), urlParams, workflowStatuses, sortCriteria);
@@ -380,8 +380,9 @@ public class ProjectService {
                                                                 .includeDescendants(false)
                                                                 .build();
         List<String> workflowStatuses = null;
+        ProjectSortCriteria sortCriteria = null;
 
-        List<Project> projects = searchProject(searchRequest, urlParams, workflowStatuses);
+        List<Project> projects = searchProject(searchRequest, urlParams, workflowStatuses, sortCriteria);
 
         if (projects == null || projects.isEmpty()) {
             throw new CustomException("PROJECT_NOT_FOUND", "Project not found with ID: " + request.getProjectId());

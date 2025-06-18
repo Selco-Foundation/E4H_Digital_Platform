@@ -108,10 +108,10 @@ public class ProjectRepository extends GenericRepository<Project> {
 
     public List<Project> getProjects(@NotNull @Valid ProjectSearch projectSearch,
                                      @Valid ProjectSearchURLParams urlParams,
-                                     List<String> workflowStatuses
+                                     List<String> workflowStatuses,
                                      @Valid ProjectSortCriteria sortCriteria) {
         //Fetch Projects based on search criteria with sort criteria
-        List<Project> projects =  getProjectsBasedOnV2SearchCriteria(projectSearch, urlParams, workflowStatuses);
+        List<Project> projects =  getProjectsBasedOnV2SearchCriteria(projectSearch, urlParams, workflowStatuses, sortCriteria);
 
         Set<String> projectIds = projects.stream().map(Project::getId).collect(Collectors.toSet());
 
@@ -154,7 +154,7 @@ public class ProjectRepository extends GenericRepository<Project> {
                                                              ProjectSortCriteria sortCriteria
     ) {
         List<Object> preparedStmtList = new ArrayList<>();
-        String query = queryBuilder.getProjectSearchQuery(projectSearch, urlParams, preparedStmtList, Boolean.FALSE, workflowStatuses, sortCriteria);
+        String query = queryBuilder.getProjectSearchAndSortQuery(projectSearch, urlParams, preparedStmtList, Boolean.FALSE, workflowStatuses, sortCriteria);
         List<Project> projects = jdbcTemplate.query(query, addressRowMapper, preparedStmtList.toArray());
 
         log.info("Fetched project list based on given search criteria");

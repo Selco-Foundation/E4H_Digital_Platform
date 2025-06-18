@@ -431,8 +431,8 @@ public class ProjectAddressQueryBuilder {
         return getProjectSearchQuery(projectSearch, urlParams, preparedStatement, Boolean.TRUE, workflowStatuses);
     }
 
-    public String getProjectSearchAndSortQuery(ProjectSearch projectSearch, ProjectSearchURLParams urlParams, List<Object> preparedStmtList, Boolean isCountQuery, ProjectSortCriteria sortParam) {
-        String query = getProjectSearchQuery(projectSearch, urlParams, preparedStmtList, isCountQuery);
+    public String getProjectSearchAndSortQuery(ProjectSearch projectSearch, ProjectSearchURLParams urlParams, List<Object> preparedStmtList, Boolean isCountQuery, List<String> workflowStatuses, ProjectSortCriteria sortParam) {
+        String query = getProjectSearchQuery(projectSearch, urlParams, preparedStmtList, isCountQuery, workflowStatuses);
         // Adding sort criteria
         String sortField = null;
         if (sortParam != null && sortParam.getSortBy() != null) {
