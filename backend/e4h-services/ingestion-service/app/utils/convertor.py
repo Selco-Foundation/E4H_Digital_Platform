@@ -441,7 +441,7 @@ def create_facility_payload(request_info: RequestInfo, row: Series, facility_sch
 
 
 
-def convert_response_to_facility(response: Dict[str, Any], type: str):
+def convert_response_to_facility(response: Dict[str, Any], role_type: str):
     return {
         "Country": "India",
         "State": response["address"]["state"],
@@ -461,7 +461,7 @@ def convert_response_to_facility(response: Dict[str, Any], type: str):
         "Address": (response["address"]["addressNumber"] or "") + " " + (response["address"]["addressLine1"] or "") + " " \
            + (response["address"]["addressLine2"] or "") + " " + (response["address"]["landmark"] or "") + " " \
            + (response["address"]["city"] or "") + " " + (response["address"]["pincode"] or ""),
-        "Role": type,
+        "Role": role_type,
         "Name": "",
         "Gender": "",
         "Phone Number": "",

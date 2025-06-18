@@ -17,7 +17,7 @@ class ProjectService:
         self.facility_service_url = facility_service_url
         self.project_service_url = project_service_url
 
-    def get_facilities(self, request_info: RequestInfo, parent_project_id: str, type: str):
+    def get_facilities(self, request_info: RequestInfo, parent_project_id: str, role_type: str):
         # Prepare the search payload
         search_payload = {
             "RequestInfo":request_info.model_dump(by_alias=True, exclude_none=True),
@@ -37,6 +37,6 @@ class ProjectService:
                 response = self.facility_client.search_facility(tenant_id="in", facility_id=facility_id)
                 if response:
                     for facility_data in response.get("facilities", []):
-                        facilities.append(convert_response_to_facility(facility_data, type))
+                        facilities.append(convert_response_to_facility(facility_data, role_type))
 
         return facilities

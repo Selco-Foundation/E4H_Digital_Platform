@@ -373,7 +373,7 @@ async def upload_facility_with_staff_excel_sheet(
                     try:
                         # Create project of type facility
                         facility_creation_payload = get_project_creation_payload(request_info, row.get('Health Centre Name (Mandatory)', ''), "Facility",
-                                                                                 work_stream_project_id, work_stream["project"]["startDate"],work_stream["project"]["endDate"],"")
+                                                                                 work_stream_project_id, work_stream["startDate"],work_stream["endDate"],"")
                         facility_creation_response = project_client.create_project(facility_creation_payload)
                         facility = json.loads(facility_creation_response.text)
                         if facility_creation_response.status_code in [200, 201, 202]:
@@ -485,40 +485,48 @@ async def upload_facility_with_supervisors_excel_sheet(
                         existing_facility = project_client.search_project_facility(request_info, work_stream_project_id)
                         facility_list = existing_facility.get('ProjectFacilities', [])
 
+                        facility_created = False
                         if facility_list:
                             facility = facility_list[0]
-                            facility_created = True
+                            facility_created = False  # existing, not newly created
                         else:
                             # Create facility if not found
                             facility_creation_payload = get_project_creation_payload(request_info, row.get('Health Centre Name (Mandatory)', ''), "Facility",
-                                                                                 work_stream_project_id, work_stream["project"]["startDate"],work_stream["project"]["endDate"],"")
+                                                                                 work_stream_project_id, work_stream["startDate"],work_stream["endDate"],"")
                             facility_creation_response = project_client.create_project(facility_creation_payload)
                             if facility_creation_response.status_code not in [200, 201, 202]:
                                 df.at[index, 'status'] = 'failed'
-                                df.at[index, 'error'] = f"Facility Creation Error: {facility_creation_response.status_code} - {facility_creation_response.text}"
+                                df.at[index, 'error'] = (
+                                    f"Facility Creation Error: {facility_creation_response.status_code} - {facility_creation_response.text}"
+                                )
                                 continue
 
                             facility = json.loads(facility_creation_response.text)
                             facility_created = True
+
+                        # 🧠 Correctly extract project ID based on the structure
                         if facility_created:
-                            # Create User
-                            user_creation_payload = get_user_creation_payload_supervisors(request_info, row)
-                            user_creation_response = hrms_client.create_user(user_creation_payload)
-                            user = json.loads(user_creation_response.text)
-                            if user_creation_response.status_code in [200, 201, 202]:
-                                df.at[index, 'status'] = 'success'
-                                # Create staff
-                                staff_creation_payload = get_staff_creation_payload(request_info, user["Employees"][0]["uuid"], facility["Project"][0]["id"])
-                                staff_creation_response = project_client.create_project_staff(staff_creation_payload)
-                                if staff_creation_response.status_code in [200, 201, 202]:
-                                    df.at[index,'status'] = 'success'
-                                    df.at[index, 'error'] = ''
-                                else:
-                                    df.at[index, 'status'] = 'failed'
-                                    df.at[index, 'error'] = f"Staff Creation Error: {staff_creation_response.status_code} - {staff_creation_response.text}"
+                            project_id = facility["Project"][0]["id"]
+                        else:
+                            project_id = facility["projectId"]
+                        # Create User
+                        user_creation_payload = get_user_creation_payload_supervisors(request_info, row)
+                        user_creation_response = hrms_client.create_user(user_creation_payload)
+                        user = json.loads(user_creation_response.text)
+                        if user_creation_response.status_code in [200, 201, 202]:
+                            df.at[index, 'status'] = 'success'
+                            # Create staff
+                            staff_creation_payload = get_staff_creation_payload(request_info, user["Employees"][0]["uuid"], project_id)
+                            staff_creation_response = project_client.create_project_staff(staff_creation_payload)
+                            if staff_creation_response.status_code in [200, 201, 202]:
+                                df.at[index,'status'] = 'success'
+                                df.at[index, 'error'] = ''
                             else:
                                 df.at[index, 'status'] = 'failed'
-                                df.at[index, 'error'] = f"User Creation Error: {user_creation_response.status_code} - {user.get('Errors', [{}])[0].get('message', 'Unknown error')}"
+                                df.at[index, 'error'] = f"Staff Creation Error: {staff_creation_response.status_code} - {staff_creation_response.text}"
+                        else:
+                            df.at[index, 'status'] = 'failed'
+                            df.at[index, 'error'] = f"User Creation Error: {user_creation_response.status_code} - {user.get('Errors', [{}])[0].get('message', 'Unknown error')}"
                     except Exception as e:
                         df.at[index, 'status'] = 'failed'
                         df.at[index, 'error'] = f"Processing Error: {str(e)}"

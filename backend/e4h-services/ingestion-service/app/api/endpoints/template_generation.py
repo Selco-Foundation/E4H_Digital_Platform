@@ -80,7 +80,8 @@ async def get_facility_ingestion_template_with_staff(
         request_info: str = Form(default="")
 ):
     temp_dir = tempfile.gettempdir()
-    output_filename = f"facility_staff_template_{parent_id}.xlsx"
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+    output_filename = f"facility_staff_template_{parent_id}_{ts}.xlsx"
     output_file_path = os.path.join(temp_dir, output_filename)
 
     try:
@@ -133,7 +134,8 @@ async def get_facility_ingestion_template_with_supervisors(
         request_info: str = Form(default="")
 ):
     temp_dir = tempfile.gettempdir()
-    output_filename = f"facility_supervisors_template_{parent_id}.xlsx"
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+    output_filename = f"facility_supervisors_template_{parent_id}_{ts}.xlsx"
     output_file_path = os.path.join(temp_dir, output_filename)
 
     try:
