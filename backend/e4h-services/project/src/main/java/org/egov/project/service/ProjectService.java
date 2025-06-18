@@ -23,6 +23,7 @@ import org.egov.project.util.ProjectServiceUtil;
 import org.egov.project.validator.project.ProjectValidator;
 import org.egov.project.web.models.ProjectStatusWrapper;
 import org.egov.project.web.models.ProjectWorkflowRequest;
+import org.egov.project.web.models.ProjectSortCriteria;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
@@ -129,9 +130,9 @@ public class ProjectService {
         return projects;
     }
 
-    public List<Project> searchProject(ProjectSearchRequest projectSearchRequest, @Valid ProjectSearchURLParams urlParams, List<String> workflowStatuses) throws Exception {
-        projectValidator.validateSearchV2ProjectRequest(projectSearchRequest, urlParams);
-        List<Project> projects = projectRepository.getProjects(projectSearchRequest.getProject(), urlParams, workflowStatuses);
+    public List<Project> searchProject(ProjectSearchRequest projectSearchRequest, @Valid ProjectSearchURLParams urlParams, List<String> workflowStatuses, @Valid ProjectSortCriteria sortCriteria) throws Exception {
+        projectValidator.validateSearchV2ProjectRequest(projectSearchRequest, urlParams, sortCriteria);
+        List<Project> projects = projectRepository.getProjects(projectSearchRequest.getProject(), urlParams, workflowStatuses, sortCriteria);
         projects = getCountFacilitiesProject(projects, projectSearchRequest.getRequestInfo());
         return projects;
     }
@@ -405,8 +406,9 @@ public class ProjectService {
                                                                 .includeDescendants(false)
                                                                 .build();
         List<String> workflowStatuses = null;
+        ProjectSortCriteria sortCriteria = null;
 
-        List<Project> projects = searchProject(searchRequest, urlParams, workflowStatuses);
+        List<Project> projects = searchProject(searchRequest, urlParams, workflowStatuses, sortCriteria);
 
         if (projects == null || projects.isEmpty()) {
             throw new CustomException("PROJECT_NOT_FOUND", "Project not found with ID: " + request.getProjectId());

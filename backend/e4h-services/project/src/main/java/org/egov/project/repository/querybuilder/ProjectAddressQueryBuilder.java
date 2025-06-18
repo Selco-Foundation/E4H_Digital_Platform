@@ -10,9 +10,11 @@ import org.egov.common.models.project.Project;
 import org.egov.common.models.project.ProjectSearch;
 import org.egov.project.config.ProjectConfiguration;
 import org.egov.project.web.models.ProjectSearchCriteria;
+import org.egov.project.web.models.ProjectSortCriteria;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -427,5 +429,28 @@ public class ProjectAddressQueryBuilder {
                                             List<Object> preparedStatement,
                                             List<String> workflowStatuses) {
         return getProjectSearchQuery(projectSearch, urlParams, preparedStatement, Boolean.TRUE, workflowStatuses);
+    }
+
+    public String getProjectSearchAndSortQuery(ProjectSearch projectSearch, ProjectSearchURLParams urlParams, List<Object> preparedStmtList, Boolean isCountQuery, List<String> workflowStatuses, ProjectSortCriteria sortParam) {
+        String query = getProjectSearchQuery(projectSearch, urlParams, preparedStmtList, isCountQuery, workflowStatuses);
+        // Adding sort criteria
+        String sortField = null;
+        if (sortParam != null && sortParam.getSortBy() != null) {
+            String userSortField = sortParam.getSortBy();
+            sortField = userSortField.startsWith("project_") ? userSortField : "project_" + userSortField;
+        }
+        // Determine sort order (default DESC if invalid or null)
+        ProjectSortCriteria.SortDirection sortDirection = (sortParam != null && sortParam.getSortDirection() != null)
+                ? sortParam.getSortDirection()
+                : ProjectSortCriteria.SortDirection.DESC;
+        // Default sorting field
+        String defaultSortField = "project_lastModifiedTime";
+        String defaultSortOrder = ProjectSortCriteria.SortDirection.DESC.name();
+        if (sortField != null) {
+            query += " ORDER BY " + sortField + " " + sortDirection;
+        } else {
+            query += " ORDER BY " + defaultSortField + " " + defaultSortOrder;
+        }
+        return query;
     }
 }
