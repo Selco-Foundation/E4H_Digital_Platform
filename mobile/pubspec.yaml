@@ -45,6 +45,7 @@ dependencies:
   reactive_forms: ^17.0.0
   shared_preferences: ^2.2.3
   digit_scanner: ^1.0.5
+  qr_flutter: ^4.1.0
 
 dependency_overrides:
   camera_android_camerax: ^0.5.0

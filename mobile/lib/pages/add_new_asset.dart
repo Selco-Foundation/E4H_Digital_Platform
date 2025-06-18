@@ -78,7 +78,6 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
 
     context.read<SelectedProjectBloc>().state.whenOrNull(selected: (proj) {
       _currentProjectId = proj.id;
-      // Fire “get” once on init
       context
           .read<CacheAssetCountBloc>()
           .add(CacheAssetCountEvent.get(proj.id, assetTypeTitle));

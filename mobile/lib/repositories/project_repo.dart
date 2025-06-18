@@ -22,7 +22,7 @@ class ProjectRemoteRepository {
       // actionMap![DataModelType.project]![ApiOperation.search]!;
 
       if (envConfig.variables.envType == EnvType.dev) {
-        return _loadLocalProjects();
+        // return _loadLocalProjects();
       }
 
       response = await dio.post(searchPath, queryParameters: {
@@ -34,8 +34,6 @@ class ProjectRemoteRepository {
       }, data: {
         'Project': body.toMap()
       });
-
-      // print("response - projects ${response.data}");
 
       final responseMap = response.data['Project'];
 
