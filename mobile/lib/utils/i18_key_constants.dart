@@ -74,13 +74,13 @@ class Common {
   //
   // String get corecommonclose => 'CORE_COMMON_CLOSE';
   //
-  // String get coreCommonOk => 'CORE_COMMON_OK';
+  String get coreCommonOk => 'CORE_COMMON_OK';
   //
   // String get coreCommonNA => 'CORE_COMMON_NA';
   //
-  // String get coreCommonProfile => 'CORE_COMMON_PROFILE';
+  String get coreCommonProfile => 'Profile'; // 'CORE_COMMON_PROFILE';
   //
-  // String get coreCommonLogout => 'CORE_COMMON_LOGOUT';
+  String get coreCommonLogout => 'CORE_COMMON_LOGOUT';
 
   String get coreCommonLogin => 'CORE_COMMON_LOGIN';
 
@@ -88,7 +88,7 @@ class Common {
   //
   // String get coreCommonHelp => 'CORE_COMMON_HELP';
   //
-  // String get coreCommonHome => 'CORE_COMMON_HOME';
+  String get coreCommonHome => 'Home'; //'CORE_COMMON_HOME';
   //
   // String get coreCommonViewDownloadedData => 'CORE_COMMON_VIEW_DOWNLOADED_DATA';
   //
@@ -102,9 +102,9 @@ class Common {
   //
   // String get coreCommonDataSyncRetry => 'CORE_COMMON_DATA_SYNC_RETRY';
   //
-  // String get connectionLabel => 'CORE_COMMON_CONNECTION_LABEL';
+  String get connectionLabel => 'CORE_COMMON_CONNECTION_LABEL';
   //
-  // String get connectionContent => 'CORE_COMMON_CONNECTION_CONTENT';
+  String get connectionContent => 'CORE_COMMON_CONNECTION_CONTENT';
   //
   // String get coreCommonSkip => 'CORE_COMMON_SKIP';
 

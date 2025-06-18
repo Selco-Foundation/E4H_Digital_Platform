@@ -33,10 +33,6 @@ class AuthenticatedScreenWrapper extends StatelessWidget {
           ],
           child: const Scaffold(
             body: AutoRouter(),
-            // appBar: AppBar(),
-            // drawer: const Drawer(
-            //   child: SideBar(),
-            // )
             appBar: Navbar(),
             drawer: CustomDrawer(),
           ));

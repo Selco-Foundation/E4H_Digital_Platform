@@ -6,10 +6,9 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:bloc/bloc.dart';
-import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:dio/dio.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:isar/isar.dart';
-import 'package:meta/meta.dart';
 import 'package:selco/data/nosql/cache_add_new_asset.dart';
 
 import '../../repositories/app_init_Repo.dart';
@@ -24,16 +23,16 @@ part 'asset_submission.freezed.dart';
 ///  4. Emitting success or failure states accordingly
 class AssetSubmissionBloc
     extends Bloc<AssetSubmissionEvent, AssetSubmissionState> {
-  AssetSubmissionBloc({required this.isar})
+  final Isar _isar;
+
+  AssetSubmissionBloc(this._isar)
       : super(const AssetSubmissionState.initial()) {
     on<_SubmitAll>(_onSubmitAll);
   }
 
-  final Isar isar;
-
   /// Reads from Isar: all CacheAddNewAsset where projectId == [projectId]
   Future<List<CacheAddNewAsset>> _fetchAllCachedAssets(String projectId) async {
-    return await isar.cacheAddNewAssets
+    return await _isar.cacheAddNewAssets
         .where()
         .projectIdEqualTo(projectId)
         .findAll();
@@ -88,17 +87,6 @@ class AssetSubmissionBloc
         //     Fill in all required fields. This skeleton assumes you provided
         //     everything via the event. Adjust as your API expects.
         final createPayload = <String, dynamic>{
-          "RequestInfo": {
-            "apiId": "org.egov.asset",
-            "ver": "1.0",
-            "ts": DateTime.now().millisecondsSinceEpoch,
-            "action": "create",
-            "did": "1",
-            "key": "asset-service",
-            "msgId": "2025-${DateTime.now().millisecondsSinceEpoch}",
-            "authToken": event.authToken,
-            "userInfo": event.userInfo ?? {}
-          },
           "assetDetail": {
             "Asset": {
               "tenantId": event.tenantId,
@@ -122,7 +110,7 @@ class AssetSubmissionBloc
               "documents": [
                 {
                   "documentType": "PHOTO",
-                  "fileStoreId": fileStoreId,
+                  "fileStore": fileStoreId,
                   "documentUid": "DOC-${saved.serialNumber}",
                   "additionalDetails": {}
                 }
@@ -135,9 +123,18 @@ class AssetSubmissionBloc
         // 3c) Actually call createAsset
         try {
           await repo.createAsset(createPayload);
-        } catch (e) {
+        } catch (err) {
+          String errorMessage = 'Unknown error occurred';
+          if (err is DioException) {
+            errorMessage = err.response?.data?['error_description'] ??
+                err.response?.data?['error'] ??
+                err.message ??
+                'Network error occurred';
+          } else if (err is Exception) {
+            errorMessage = err.toString();
+          }
           emit(AssetSubmissionState.failure(
-              "Failed to create asset for ${saved.serialNumber}: $e"));
+              "Failed to create asset for ${saved.serialNumber}:"));
           return;
         }
       }
