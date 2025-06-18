@@ -15,7 +15,7 @@ class AuthRepository {
     final formData = body.toJson();
 
     if (envConfig.variables.envType == EnvType.dev) {
-      return _loadLocalAuth();
+      // return _loadLocalAuth();
     }
 
     //make a custom Dio client which will not send the request with the interceptor
@@ -34,6 +34,29 @@ class AuthRepository {
       final responseBody = ResponseModel.fromJson(response.data);
 
       //close this client so it doesnt interfere with other instances of DioClient
+      authClient.close();
+
+      return responseBody;
+    } catch (err) {
+      rethrow;
+    }
+  }
+
+  Future<ResponseModel> sendOtp(Map<String, dynamic> body) async {
+    final authClient = Dio();
+    authClient.options.baseUrl = envConfig.variables.baseUrl;
+
+    final headers = <String, String>{
+      "content-type": 'application/x-www-form-urlencoded',
+      "Access-Control-Allow-Origin": "*",
+      "authorization": "Basic ZWdvdi11c2VyLWNsaWVudDo=",
+    };
+
+    try {
+      final response = await authClient.post('user-otp/v1/_send',
+          data: {"otp": body}, options: Options(headers: headers));
+      final responseBody = ResponseModel.fromJson(response.data);
+
       authClient.close();
 
       return responseBody;

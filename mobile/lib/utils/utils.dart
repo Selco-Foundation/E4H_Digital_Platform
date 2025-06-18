@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:dio/dio.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 
@@ -48,4 +50,23 @@ String truncateText(String text, {int maxLength = 16}) {
     return '${text.substring(0, maxLength)}...';
   }
   return text;
+}
+
+class DioErrorParser {
+  static Exception parse(DioError dioErr) {
+    debugPrint("Dio error: ${dioErr.response?.data ?? dioErr}");
+
+    final serverData = dioErr.response?.data;
+    if (serverData is Map<String, dynamic> &&
+        serverData.containsKey('Errors')) {
+      final errors = serverData['Errors'] as List<dynamic>;
+      if (errors.isNotEmpty) {
+        final firstErr = errors.first as Map<String, dynamic>;
+        final msg = firstErr['message'] as String? ?? dioErr.message;
+        return Exception(msg);
+      }
+    }
+
+    return Exception(dioErr.message);
+  }
 }

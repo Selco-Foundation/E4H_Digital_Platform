@@ -104,7 +104,7 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
                         onOutsideTap: () => Navigator.of(ctx).pop(),
                         type: PopUpType.simple,
                         actionAlignment: MainAxisAlignment.center,
-                        actions: [],
+                        actions: const [],
                         additionalWidgets: [
                           LabeledField(
                             label: 'Reason',
