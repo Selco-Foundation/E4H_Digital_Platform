@@ -37,7 +37,7 @@ serviceMaps:
             - jsonPath: $.auditDetails.lastModifiedTime
               type: LONG
 
-        - query: INSERT INTO asset_documents (id, tenant_id, asset_id, filestore_id, document_type, uploaded_at, additional_details, created_by, created_time, updated_by, updated_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+        - query: INSERT INTO asset_documents (id, tenant_id, asset_id, filestore_id, document_type, uploaded_at, additional_details, created_by, created_time, updated_by, updated_time, latitude, longitude) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
           basePath: $.documents.*
           jsonMaps:
             - jsonPath: $.documents.*.id
@@ -56,3 +56,5 @@ serviceMaps:
             - jsonPath: $.auditDetails.lastModifiedBy
             - jsonPath: $.auditDetails.lastModifiedTime
               type: LONG
+            - jsonPath: $.documents.*.geoLocation.latitude
+            - jsonPath: $.documents.*.geoLocation.longitude
