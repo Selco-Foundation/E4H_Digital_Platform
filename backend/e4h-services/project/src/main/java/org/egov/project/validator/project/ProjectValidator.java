@@ -120,19 +120,6 @@ public class ProjectValidator {
         // Check if tenant ID is present in the request
         checkTenantId(urlParams);
 
-        // Validate if at least one project search field is present
-        if (CollectionUtils.isEmpty(projectSearch.getId())
-                && StringUtils.isBlank(projectSearch.getProjectTypeId())
-                && StringUtils.isBlank(projectSearch.getName())
-                && StringUtils.isBlank(projectSearch.getSubProjectTypeId())
-                && (projectSearch.getStartDate() == null || projectSearch.getStartDate() == 0)
-                && (projectSearch.getEndDate() == null || projectSearch.getEndDate() == 0)
-                && (projectSearch.getCreatedFrom() == null || projectSearch.getCreatedFrom() == 0)
-                && (projectSearch.getBoundaryCode() == null || StringUtils.isBlank(projectSearch.getBoundaryCode()))) {
-            log.error("Any one project search field is required for Project Search");
-            throw new CustomException("PROJECT_SEARCH_FIELDS", "Any one project search field is required");
-        }
-
         // Validate that start date is less than or equal to end date
         if ((projectSearch.getStartDate() != null && projectSearch.getEndDate() != null && projectSearch.getEndDate() != 0)
                 && (projectSearch.getStartDate().compareTo(projectSearch.getEndDate()) > 0)) {
