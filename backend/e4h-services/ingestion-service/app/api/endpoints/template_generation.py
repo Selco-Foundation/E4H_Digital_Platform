@@ -6,6 +6,7 @@ from typing import Optional, List, Dict, Any
 import pandas as pd
 from fastapi import APIRouter, Form, HTTPException, Depends
 from fastapi.responses import FileResponse
+from openpyxl.utils import get_column_letter
 
 from app.core.logging import AppLogger
 from app.decorators.rbac_validator import get_authorized_request_info
@@ -72,12 +73,12 @@ async def get_facility_ingestion_template(
         logger.error(f"Unhandled error in get_facility_ingestion_template: {e}")
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
 
-@router.get('/facilityWithStaff',
+@router.post('/facilityWithStaff',
             summary='Generate facility ingestion template with staff Excel file',
             response_description="Returns Excel template with facility schema")
 async def get_facility_ingestion_template_with_staff(
-        parent_id: str = Form(default=""),
-        request_info: str = Form(default="")
+        parent_id: str = Form(..., description="Parent project ID"),
+        request_info: str = Form(..., description="Serialized RequestInfo JSON")
 ):
     temp_dir = tempfile.gettempdir()
     ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
@@ -101,7 +102,7 @@ async def get_facility_ingestion_template_with_staff(
                 worksheet = writer.sheets['Facilities_Staff']
                 for i, col in enumerate(df.columns):
                     column_width = max(df[col].astype(str).map(len).max(), len(col)) + 2
-                    worksheet.column_dimensions[chr(65 + i)].width = column_width
+                    worksheet.column_dimensions[get_column_letter(i + 1)].width = column_width
 
             dropdowns_map = {'Role (Mandatory) ?': ['Staff', 'Field Planner']}
             add_dropdowns_to_excel(
@@ -126,12 +127,12 @@ async def get_facility_ingestion_template_with_staff(
         cleanup_temp_file(output_file_path)
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
 
-@router.get('/facilityWithSupervisors',
+@router.post('/facilityWithSupervisors',
             summary='Generate facility ingestion template with supervisors Excel file',
             response_description="Returns Excel template with facility schema")
 async def get_facility_ingestion_template_with_supervisors(
-        parent_id: str = Form(default=""),
-        request_info: str = Form(default="")
+        parent_id: str = Form(..., description="Parent project ID"),
+        request_info: str = Form(..., description="Serialized RequestInfo JSON")
 ):
     temp_dir = tempfile.gettempdir()
     ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
@@ -155,7 +156,7 @@ async def get_facility_ingestion_template_with_supervisors(
                 worksheet = writer.sheets['Facilities_Supervisors']
                 for i, col in enumerate(df.columns):
                     column_width = max(df[col].astype(str).map(len).max(), len(col)) + 2
-                    worksheet.column_dimensions[chr(65 + i)].width = column_width
+                    worksheet.column_dimensions[get_column_letter(i + 1)].width = column_width
 
             dropdowns_map = {'Role (Mandatory) ?': ['Supervisor', 'Field Planner']}
             add_dropdowns_to_excel(
