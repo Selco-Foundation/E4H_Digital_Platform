@@ -648,6 +648,11 @@ async def upload_facility_with_supervisors_workflow_state_excel_sheet(
                                 df.at[index,'status'] = 'success'
                                 df.at[index, 'error'] = ''
 
+                                # Validate Role column exists
+                                if 'Role' not in df.columns:
+                                    df.at[index, 'status'] = 'failed'
+                                    df.at[index, 'error'] = "Role column is required for workflow state updates"
+                                    continue
                                 # update workflow state
                                 if df.at[index,'Role'] == 'Supervisor':
                                     update_workflow_state_response = project_client.update_workflow(request_info, work_stream_project_id, 'ASSIGNED_TO_FIELD_SUPERVISOR')
