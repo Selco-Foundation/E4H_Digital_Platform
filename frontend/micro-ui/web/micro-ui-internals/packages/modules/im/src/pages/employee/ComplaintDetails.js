@@ -859,7 +859,7 @@ export const ComplaintDetails = (props) => {
           <div>
             <CardLabel style={{ marginTop: "18px", fontWeight: "bolder" }}>{t("CS_TICKET_ADDITIONAL_DETAILS")}</CardLabel>
             <DisplayPhotos srcs={imagesToShowBelowComplaintDetails?.fullImage || []} onClick={(source, index) => zoomImageWrapper(source, index)} />
-            <DisplayPhotos srcs={imagesToShowBelowComplaintDetails?.videos || []} />
+            <DisplayPhotos srcs={imagesToShowBelowComplaintDetails?.videos || []} onClick={(source, index) => zoomImageWrapper(source, index)} />
           </div>
         ) : null}
         <BreakLine />
