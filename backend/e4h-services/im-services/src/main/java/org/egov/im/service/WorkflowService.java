@@ -221,12 +221,11 @@ public class WorkflowService {
 
         Incident incident = request.getIncident();
         Workflow workflow = request.getWorkflow();
-        if (request.getWorkflow().getAction().equalsIgnoreCase("RESOLVE")
-                || request.getWorkflow().getAction().equalsIgnoreCase("REJECT")) {
-            workflow.setAssignes(null);
-            Map<String, String> reassigneeDetails = notificationService.getHRMSEmployee(request, "COMPLAINANT");
-            List<String> assignee = Arrays.asList(reassigneeDetails.get("employeeUUID"));
-            workflow.setAssignes(assignee);
+        String action = request.getWorkflow().getAction();
+        if (action.equalsIgnoreCase("RESOLVE") || action.equalsIgnoreCase("REJECT")) {
+            reassignWorkflow(workflow, request, "COMPLAINANT");
+        } else if (action.equalsIgnoreCase("OUT_OF_WARRANTY")) {
+            reassignWorkflow(workflow, request, "COMPLAINT_FACILITATOR_1");
         }
         ProcessInstance processInstance = new ProcessInstance();
         processInstance.setBusinessId(incident.getIncidentId());
@@ -256,6 +255,13 @@ public class WorkflowService {
         }
 
         return processInstance;
+    }
+
+    private void reassignWorkflow(Workflow workflow, IncidentRequest request, String role) {
+        workflow.setAssignes(null);
+        Map<String, String> reassigneeDetails = notificationService.getHRMSEmployee(request, role);
+        List<String> assignee = Arrays.asList(reassigneeDetails.get("employeeUUID"));
+        workflow.setAssignes(assignee);
     }
 
     private long computeTotalSla(String currentState) {

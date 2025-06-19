@@ -761,10 +761,14 @@ public class NotificationService {
         List<String> employeeUUID = null;
 
         StringBuilder url = null;
+        String tenantId = request.getIncident().getTenantId();
+        if ("COMPLAINT_FACILITATOR_1".equals(role) && tenantId != null && tenantId.contains(".")) {
+            tenantId = tenantId.split("\\.")[0];
+        }
         if (request.getWorkflow().getAssignes() != null)
-            url = hrmsUtils.getHRMSURI(request.getWorkflow().getAssignes(), request.getIncident().getTenantId(), role);
+            url = hrmsUtils.getHRMSURI(request.getWorkflow().getAssignes(), tenantId, role);
         else
-            url = hrmsUtils.getHRMSURI(null, request.getIncident().getTenantId(), role);
+            url = hrmsUtils.getHRMSURI(null, tenantId, role);
         RequestInfoWrapper requestInfoWrapper = RequestInfoWrapper.builder().requestInfo(request.getRequestInfo()).build();
         Object response = serviceRequestRepository.fetchResult(url, requestInfoWrapper);
 
