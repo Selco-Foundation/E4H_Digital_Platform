@@ -288,7 +288,7 @@ class ProjectServiceClient:
             }
         }
         try:
-            response = requests.post(url, params=params, headers=headers, json=payload)
+            response = requests.post(url, headers=headers, json=payload)
             print(f"Workflow state updated successfully")
             return json.loads(response.text)
         except requests.exceptions.HTTPError as http_err:
