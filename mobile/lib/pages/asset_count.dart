@@ -42,8 +42,8 @@ class _AssetCountPageState extends State<AssetCountPage> {
     // 1) If a project is already selected at startup, load its counts
     final selState = context.read<SelectedProjectBloc>().state;
     selState.whenOrNull(selected: (project) {
-      _currentProjectId = project.id;
-      _dispatchInitialLoad(project.id);
+      _currentProjectId = project.project.id;
+      _dispatchInitialLoad(project.project.id);
     });
 
     // 2) Listen to any future changes in the selected project

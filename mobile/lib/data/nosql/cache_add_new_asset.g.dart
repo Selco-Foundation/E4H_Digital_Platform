@@ -32,23 +32,33 @@ const CacheAddNewAssetSchema = CollectionSchema(
       name: r'itemNumber',
       type: IsarType.string,
     ),
-    r'photoPath': PropertySchema(
+    r'latitude': PropertySchema(
       id: 3,
+      name: r'latitude',
+      type: IsarType.string,
+    ),
+    r'longitude': PropertySchema(
+      id: 4,
+      name: r'longitude',
+      type: IsarType.string,
+    ),
+    r'photoPath': PropertySchema(
+      id: 5,
       name: r'photoPath',
       type: IsarType.string,
     ),
     r'projectId': PropertySchema(
-      id: 4,
+      id: 6,
       name: r'projectId',
       type: IsarType.string,
     ),
     r'serialNumber': PropertySchema(
-      id: 5,
+      id: 7,
       name: r'serialNumber',
       type: IsarType.string,
     ),
     r'updatedAt': PropertySchema(
-      id: 6,
+      id: 8,
       name: r'updatedAt',
       type: IsarType.dateTime,
     )
@@ -102,6 +112,8 @@ int _cacheAddNewAssetEstimateSize(
   var bytesCount = offsets.last;
   bytesCount += 3 + object.assetType.length * 3;
   bytesCount += 3 + object.itemNumber.length * 3;
+  bytesCount += 3 + object.latitude.length * 3;
+  bytesCount += 3 + object.longitude.length * 3;
   bytesCount += 3 + object.photoPath.length * 3;
   bytesCount += 3 + object.projectId.length * 3;
   bytesCount += 3 + object.serialNumber.length * 3;
@@ -117,10 +129,12 @@ void _cacheAddNewAssetSerialize(
   writer.writeString(offsets[0], object.assetType);
   writer.writeDateTime(offsets[1], object.createdAt);
   writer.writeString(offsets[2], object.itemNumber);
-  writer.writeString(offsets[3], object.photoPath);
-  writer.writeString(offsets[4], object.projectId);
-  writer.writeString(offsets[5], object.serialNumber);
-  writer.writeDateTime(offsets[6], object.updatedAt);
+  writer.writeString(offsets[3], object.latitude);
+  writer.writeString(offsets[4], object.longitude);
+  writer.writeString(offsets[5], object.photoPath);
+  writer.writeString(offsets[6], object.projectId);
+  writer.writeString(offsets[7], object.serialNumber);
+  writer.writeDateTime(offsets[8], object.updatedAt);
 }
 
 CacheAddNewAsset _cacheAddNewAssetDeserialize(
@@ -132,13 +146,15 @@ CacheAddNewAsset _cacheAddNewAssetDeserialize(
   final object = CacheAddNewAsset(
     assetType: reader.readString(offsets[0]),
     itemNumber: reader.readString(offsets[2]),
-    photoPath: reader.readString(offsets[3]),
-    projectId: reader.readString(offsets[4]),
-    serialNumber: reader.readString(offsets[5]),
+    latitude: reader.readString(offsets[3]),
+    longitude: reader.readString(offsets[4]),
+    photoPath: reader.readString(offsets[5]),
+    projectId: reader.readString(offsets[6]),
+    serialNumber: reader.readString(offsets[7]),
   );
   object.createdAt = reader.readDateTime(offsets[1]);
   object.id = id;
-  object.updatedAt = reader.readDateTimeOrNull(offsets[6]);
+  object.updatedAt = reader.readDateTimeOrNull(offsets[8]);
   return object;
 }
 
@@ -162,6 +178,10 @@ P _cacheAddNewAssetDeserializeProp<P>(
     case 5:
       return (reader.readString(offset)) as P;
     case 6:
+      return (reader.readString(offset)) as P;
+    case 7:
+      return (reader.readString(offset)) as P;
+    case 8:
       return (reader.readDateTimeOrNull(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -737,6 +757,278 @@ extension CacheAddNewAssetQueryFilter
   }
 
   QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      latitudeEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'latitude',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      latitudeGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'latitude',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      latitudeLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'latitude',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      latitudeBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'latitude',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      latitudeStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'latitude',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      latitudeEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'latitude',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      latitudeContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'latitude',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      latitudeMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'latitude',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      latitudeIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'latitude',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      latitudeIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'latitude',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      longitudeEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'longitude',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      longitudeGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'longitude',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      longitudeLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'longitude',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      longitudeBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'longitude',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      longitudeStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'longitude',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      longitudeEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'longitude',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      longitudeContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'longitude',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      longitudeMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'longitude',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      longitudeIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'longitude',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      longitudeIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'longitude',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
       photoPathEqualTo(
     String value, {
     bool caseSensitive = true,
@@ -1270,6 +1562,34 @@ extension CacheAddNewAssetQuerySortBy
   }
 
   QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
+      sortByLatitude() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'latitude', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
+      sortByLatitudeDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'latitude', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
+      sortByLongitude() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'longitude', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
+      sortByLongitudeDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'longitude', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
       sortByPhotoPath() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'photoPath', Sort.asc);
@@ -1384,6 +1704,34 @@ extension CacheAddNewAssetQuerySortThenBy
   }
 
   QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
+      thenByLatitude() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'latitude', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
+      thenByLatitudeDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'latitude', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
+      thenByLongitude() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'longitude', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
+      thenByLongitudeDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'longitude', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
       thenByPhotoPath() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'photoPath', Sort.asc);
@@ -1464,6 +1812,20 @@ extension CacheAddNewAssetQueryWhereDistinct
   }
 
   QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QDistinct>
+      distinctByLatitude({bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'latitude', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QDistinct>
+      distinctByLongitude({bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'longitude', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QDistinct>
       distinctByPhotoPath({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'photoPath', caseSensitive: caseSensitive);
@@ -1517,6 +1879,18 @@ extension CacheAddNewAssetQueryProperty
       itemNumberProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'itemNumber');
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, String, QQueryOperations> latitudeProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'latitude');
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, String, QQueryOperations> longitudeProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'longitude');
     });
   }
 

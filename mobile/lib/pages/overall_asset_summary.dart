@@ -39,7 +39,8 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
       final selState = context.read<SelectedProjectBloc>().state;
       selState.whenOrNull(selected: (project) {
         context.read<OverallAssetSummaryBloc>().add(
-              OverallAssetSummaryEvent.loadCounts(projectId: project.id),
+              OverallAssetSummaryEvent.loadCounts(
+                  projectId: project.project.id),
             );
       });
     });
@@ -154,7 +155,7 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                   loaded: (summary) {
                                     context.read<AssetSubmissionBloc>().add(
                                           AssetSubmissionEvent.submitAll(
-                                            projectId: project.id,
+                                            projectId: project.project.id,
                                             authToken: "<YOUR_AUTH_TOKEN_HERE>",
                                             tenantId: "pg",
                                             facilityId: "FAC/2025/000050",
@@ -298,7 +299,7 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                           .read<OverallAssetSummaryBloc>()
                                           .add(
                                             OverallAssetSummaryEvent.loadCounts(
-                                              projectId: project.id,
+                                              projectId: project.project.id,
                                             ),
                                           );
                                     });

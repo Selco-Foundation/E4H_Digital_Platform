@@ -20,18 +20,22 @@ mixin _$ProjectEvent {
   TResult when<TResult extends Object?>({
     required TResult Function(String uuid) fetchProjects,
     required TResult Function(String projectId) selectProject,
+    required TResult Function(List<String> workflowStatuses)
+        fetchProjectsByWorkflow,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(String uuid)? fetchProjects,
     TResult? Function(String projectId)? selectProject,
+    TResult? Function(List<String> workflowStatuses)? fetchProjectsByWorkflow,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(String uuid)? fetchProjects,
     TResult Function(String projectId)? selectProject,
+    TResult Function(List<String> workflowStatuses)? fetchProjectsByWorkflow,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -39,18 +43,24 @@ mixin _$ProjectEvent {
   TResult map<TResult extends Object?>({
     required TResult Function(ProjectsFetchEvent value) fetchProjects,
     required TResult Function(ProjectSelectEvent value) selectProject,
+    required TResult Function(FetchProjectsByWorkflowEvent value)
+        fetchProjectsByWorkflow,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(ProjectsFetchEvent value)? fetchProjects,
     TResult? Function(ProjectSelectEvent value)? selectProject,
+    TResult? Function(FetchProjectsByWorkflowEvent value)?
+        fetchProjectsByWorkflow,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
     TResult Function(ProjectsFetchEvent value)? fetchProjects,
     TResult Function(ProjectSelectEvent value)? selectProject,
+    TResult Function(FetchProjectsByWorkflowEvent value)?
+        fetchProjectsByWorkflow,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -141,6 +151,8 @@ class _$ProjectsFetchEventImpl implements ProjectsFetchEvent {
   TResult when<TResult extends Object?>({
     required TResult Function(String uuid) fetchProjects,
     required TResult Function(String projectId) selectProject,
+    required TResult Function(List<String> workflowStatuses)
+        fetchProjectsByWorkflow,
   }) {
     return fetchProjects(uuid);
   }
@@ -150,6 +162,7 @@ class _$ProjectsFetchEventImpl implements ProjectsFetchEvent {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(String uuid)? fetchProjects,
     TResult? Function(String projectId)? selectProject,
+    TResult? Function(List<String> workflowStatuses)? fetchProjectsByWorkflow,
   }) {
     return fetchProjects?.call(uuid);
   }
@@ -159,6 +172,7 @@ class _$ProjectsFetchEventImpl implements ProjectsFetchEvent {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(String uuid)? fetchProjects,
     TResult Function(String projectId)? selectProject,
+    TResult Function(List<String> workflowStatuses)? fetchProjectsByWorkflow,
     required TResult orElse(),
   }) {
     if (fetchProjects != null) {
@@ -172,6 +186,8 @@ class _$ProjectsFetchEventImpl implements ProjectsFetchEvent {
   TResult map<TResult extends Object?>({
     required TResult Function(ProjectsFetchEvent value) fetchProjects,
     required TResult Function(ProjectSelectEvent value) selectProject,
+    required TResult Function(FetchProjectsByWorkflowEvent value)
+        fetchProjectsByWorkflow,
   }) {
     return fetchProjects(this);
   }
@@ -181,6 +197,8 @@ class _$ProjectsFetchEventImpl implements ProjectsFetchEvent {
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(ProjectsFetchEvent value)? fetchProjects,
     TResult? Function(ProjectSelectEvent value)? selectProject,
+    TResult? Function(FetchProjectsByWorkflowEvent value)?
+        fetchProjectsByWorkflow,
   }) {
     return fetchProjects?.call(this);
   }
@@ -190,6 +208,8 @@ class _$ProjectsFetchEventImpl implements ProjectsFetchEvent {
   TResult maybeMap<TResult extends Object?>({
     TResult Function(ProjectsFetchEvent value)? fetchProjects,
     TResult Function(ProjectSelectEvent value)? selectProject,
+    TResult Function(FetchProjectsByWorkflowEvent value)?
+        fetchProjectsByWorkflow,
     required TResult orElse(),
   }) {
     if (fetchProjects != null) {
@@ -277,6 +297,8 @@ class _$ProjectSelectEventImpl implements ProjectSelectEvent {
   TResult when<TResult extends Object?>({
     required TResult Function(String uuid) fetchProjects,
     required TResult Function(String projectId) selectProject,
+    required TResult Function(List<String> workflowStatuses)
+        fetchProjectsByWorkflow,
   }) {
     return selectProject(projectId);
   }
@@ -286,6 +308,7 @@ class _$ProjectSelectEventImpl implements ProjectSelectEvent {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(String uuid)? fetchProjects,
     TResult? Function(String projectId)? selectProject,
+    TResult? Function(List<String> workflowStatuses)? fetchProjectsByWorkflow,
   }) {
     return selectProject?.call(projectId);
   }
@@ -295,6 +318,7 @@ class _$ProjectSelectEventImpl implements ProjectSelectEvent {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(String uuid)? fetchProjects,
     TResult Function(String projectId)? selectProject,
+    TResult Function(List<String> workflowStatuses)? fetchProjectsByWorkflow,
     required TResult orElse(),
   }) {
     if (selectProject != null) {
@@ -308,6 +332,8 @@ class _$ProjectSelectEventImpl implements ProjectSelectEvent {
   TResult map<TResult extends Object?>({
     required TResult Function(ProjectsFetchEvent value) fetchProjects,
     required TResult Function(ProjectSelectEvent value) selectProject,
+    required TResult Function(FetchProjectsByWorkflowEvent value)
+        fetchProjectsByWorkflow,
   }) {
     return selectProject(this);
   }
@@ -317,6 +343,8 @@ class _$ProjectSelectEventImpl implements ProjectSelectEvent {
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(ProjectsFetchEvent value)? fetchProjects,
     TResult? Function(ProjectSelectEvent value)? selectProject,
+    TResult? Function(FetchProjectsByWorkflowEvent value)?
+        fetchProjectsByWorkflow,
   }) {
     return selectProject?.call(this);
   }
@@ -326,6 +354,8 @@ class _$ProjectSelectEventImpl implements ProjectSelectEvent {
   TResult maybeMap<TResult extends Object?>({
     TResult Function(ProjectsFetchEvent value)? fetchProjects,
     TResult Function(ProjectSelectEvent value)? selectProject,
+    TResult Function(FetchProjectsByWorkflowEvent value)?
+        fetchProjectsByWorkflow,
     required TResult orElse(),
   }) {
     if (selectProject != null) {
@@ -346,25 +376,186 @@ abstract class ProjectSelectEvent implements ProjectEvent {
 }
 
 /// @nodoc
+abstract class _$$FetchProjectsByWorkflowEventImplCopyWith<$Res> {
+  factory _$$FetchProjectsByWorkflowEventImplCopyWith(
+          _$FetchProjectsByWorkflowEventImpl value,
+          $Res Function(_$FetchProjectsByWorkflowEventImpl) then) =
+      __$$FetchProjectsByWorkflowEventImplCopyWithImpl<$Res>;
+  @useResult
+  $Res call({List<String> workflowStatuses});
+}
+
+/// @nodoc
+class __$$FetchProjectsByWorkflowEventImplCopyWithImpl<$Res>
+    extends _$ProjectEventCopyWithImpl<$Res, _$FetchProjectsByWorkflowEventImpl>
+    implements _$$FetchProjectsByWorkflowEventImplCopyWith<$Res> {
+  __$$FetchProjectsByWorkflowEventImplCopyWithImpl(
+      _$FetchProjectsByWorkflowEventImpl _value,
+      $Res Function(_$FetchProjectsByWorkflowEventImpl) _then)
+      : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? workflowStatuses = null,
+  }) {
+    return _then(_$FetchProjectsByWorkflowEventImpl(
+      workflowStatuses: null == workflowStatuses
+          ? _value._workflowStatuses
+          : workflowStatuses // ignore: cast_nullable_to_non_nullable
+              as List<String>,
+    ));
+  }
+}
+
+/// @nodoc
+
+class _$FetchProjectsByWorkflowEventImpl
+    implements FetchProjectsByWorkflowEvent {
+  const _$FetchProjectsByWorkflowEventImpl(
+      {required final List<String> workflowStatuses})
+      : _workflowStatuses = workflowStatuses;
+
+  final List<String> _workflowStatuses;
+  @override
+  List<String> get workflowStatuses {
+    if (_workflowStatuses is EqualUnmodifiableListView)
+      return _workflowStatuses;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_workflowStatuses);
+  }
+
+  @override
+  String toString() {
+    return 'ProjectEvent.fetchProjectsByWorkflow(workflowStatuses: $workflowStatuses)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$FetchProjectsByWorkflowEventImpl &&
+            const DeepCollectionEquality()
+                .equals(other._workflowStatuses, _workflowStatuses));
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      runtimeType, const DeepCollectionEquality().hash(_workflowStatuses));
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$FetchProjectsByWorkflowEventImplCopyWith<
+          _$FetchProjectsByWorkflowEventImpl>
+      get copyWith => __$$FetchProjectsByWorkflowEventImplCopyWithImpl<
+          _$FetchProjectsByWorkflowEventImpl>(this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function(String uuid) fetchProjects,
+    required TResult Function(String projectId) selectProject,
+    required TResult Function(List<String> workflowStatuses)
+        fetchProjectsByWorkflow,
+  }) {
+    return fetchProjectsByWorkflow(workflowStatuses);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function(String uuid)? fetchProjects,
+    TResult? Function(String projectId)? selectProject,
+    TResult? Function(List<String> workflowStatuses)? fetchProjectsByWorkflow,
+  }) {
+    return fetchProjectsByWorkflow?.call(workflowStatuses);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function(String uuid)? fetchProjects,
+    TResult Function(String projectId)? selectProject,
+    TResult Function(List<String> workflowStatuses)? fetchProjectsByWorkflow,
+    required TResult orElse(),
+  }) {
+    if (fetchProjectsByWorkflow != null) {
+      return fetchProjectsByWorkflow(workflowStatuses);
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(ProjectsFetchEvent value) fetchProjects,
+    required TResult Function(ProjectSelectEvent value) selectProject,
+    required TResult Function(FetchProjectsByWorkflowEvent value)
+        fetchProjectsByWorkflow,
+  }) {
+    return fetchProjectsByWorkflow(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(ProjectsFetchEvent value)? fetchProjects,
+    TResult? Function(ProjectSelectEvent value)? selectProject,
+    TResult? Function(FetchProjectsByWorkflowEvent value)?
+        fetchProjectsByWorkflow,
+  }) {
+    return fetchProjectsByWorkflow?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(ProjectsFetchEvent value)? fetchProjects,
+    TResult Function(ProjectSelectEvent value)? selectProject,
+    TResult Function(FetchProjectsByWorkflowEvent value)?
+        fetchProjectsByWorkflow,
+    required TResult orElse(),
+  }) {
+    if (fetchProjectsByWorkflow != null) {
+      return fetchProjectsByWorkflow(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class FetchProjectsByWorkflowEvent implements ProjectEvent {
+  const factory FetchProjectsByWorkflowEvent(
+          {required final List<String> workflowStatuses}) =
+      _$FetchProjectsByWorkflowEventImpl;
+
+  List<String> get workflowStatuses;
+  @JsonKey(ignore: true)
+  _$$FetchProjectsByWorkflowEventImplCopyWith<
+          _$FetchProjectsByWorkflowEventImpl>
+      get copyWith => throw _privateConstructorUsedError;
+}
+
+/// @nodoc
 mixin _$ProjectState {
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
-    required TResult Function(List<ProjectModel> projectsList) fetched,
+    required TResult Function(List<ProjectWorkflow> projectsList) fetched,
     required TResult Function(dynamic projectId) selected,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
-    TResult? Function(List<ProjectModel> projectsList)? fetched,
+    TResult? Function(List<ProjectWorkflow> projectsList)? fetched,
     TResult? Function(dynamic projectId)? selected,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
-    TResult Function(List<ProjectModel> projectsList)? fetched,
+    TResult Function(List<ProjectWorkflow> projectsList)? fetched,
     TResult Function(dynamic projectId)? selected,
     required TResult orElse(),
   }) =>
@@ -451,7 +642,7 @@ class _$ProjectInitialStateImpl implements _ProjectInitialState {
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
-    required TResult Function(List<ProjectModel> projectsList) fetched,
+    required TResult Function(List<ProjectWorkflow> projectsList) fetched,
     required TResult Function(dynamic projectId) selected,
   }) {
     return initial();
@@ -461,7 +652,7 @@ class _$ProjectInitialStateImpl implements _ProjectInitialState {
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
-    TResult? Function(List<ProjectModel> projectsList)? fetched,
+    TResult? Function(List<ProjectWorkflow> projectsList)? fetched,
     TResult? Function(dynamic projectId)? selected,
   }) {
     return initial?.call();
@@ -471,7 +662,7 @@ class _$ProjectInitialStateImpl implements _ProjectInitialState {
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
-    TResult Function(List<ProjectModel> projectsList)? fetched,
+    TResult Function(List<ProjectWorkflow> projectsList)? fetched,
     TResult Function(dynamic projectId)? selected,
     required TResult orElse(),
   }) {
@@ -526,7 +717,7 @@ abstract class _$$ProjectFetchedStateImplCopyWith<$Res> {
           $Res Function(_$ProjectFetchedStateImpl) then) =
       __$$ProjectFetchedStateImplCopyWithImpl<$Res>;
   @useResult
-  $Res call({List<ProjectModel> projectsList});
+  $Res call({List<ProjectWorkflow> projectsList});
 }
 
 /// @nodoc
@@ -546,7 +737,7 @@ class __$$ProjectFetchedStateImplCopyWithImpl<$Res>
       null == projectsList
           ? _value._projectsList
           : projectsList // ignore: cast_nullable_to_non_nullable
-              as List<ProjectModel>,
+              as List<ProjectWorkflow>,
     ));
   }
 }
@@ -554,12 +745,12 @@ class __$$ProjectFetchedStateImplCopyWithImpl<$Res>
 /// @nodoc
 
 class _$ProjectFetchedStateImpl implements ProjectFetchedState {
-  const _$ProjectFetchedStateImpl(final List<ProjectModel> projectsList)
+  const _$ProjectFetchedStateImpl(final List<ProjectWorkflow> projectsList)
       : _projectsList = projectsList;
 
-  final List<ProjectModel> _projectsList;
+  final List<ProjectWorkflow> _projectsList;
   @override
-  List<ProjectModel> get projectsList {
+  List<ProjectWorkflow> get projectsList {
     if (_projectsList is EqualUnmodifiableListView) return _projectsList;
     // ignore: implicit_dynamic_type
     return EqualUnmodifiableListView(_projectsList);
@@ -594,7 +785,7 @@ class _$ProjectFetchedStateImpl implements ProjectFetchedState {
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
-    required TResult Function(List<ProjectModel> projectsList) fetched,
+    required TResult Function(List<ProjectWorkflow> projectsList) fetched,
     required TResult Function(dynamic projectId) selected,
   }) {
     return fetched(projectsList);
@@ -604,7 +795,7 @@ class _$ProjectFetchedStateImpl implements ProjectFetchedState {
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
-    TResult? Function(List<ProjectModel> projectsList)? fetched,
+    TResult? Function(List<ProjectWorkflow> projectsList)? fetched,
     TResult? Function(dynamic projectId)? selected,
   }) {
     return fetched?.call(projectsList);
@@ -614,7 +805,7 @@ class _$ProjectFetchedStateImpl implements ProjectFetchedState {
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
-    TResult Function(List<ProjectModel> projectsList)? fetched,
+    TResult Function(List<ProjectWorkflow> projectsList)? fetched,
     TResult Function(dynamic projectId)? selected,
     required TResult orElse(),
   }) {
@@ -660,10 +851,10 @@ class _$ProjectFetchedStateImpl implements ProjectFetchedState {
 }
 
 abstract class ProjectFetchedState implements ProjectState {
-  const factory ProjectFetchedState(final List<ProjectModel> projectsList) =
+  const factory ProjectFetchedState(final List<ProjectWorkflow> projectsList) =
       _$ProjectFetchedStateImpl;
 
-  List<ProjectModel> get projectsList;
+  List<ProjectWorkflow> get projectsList;
   @JsonKey(ignore: true)
   _$$ProjectFetchedStateImplCopyWith<_$ProjectFetchedStateImpl> get copyWith =>
       throw _privateConstructorUsedError;
@@ -734,7 +925,7 @@ class _$ProjectSelectedStateImpl implements ProjectSelectedState {
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
-    required TResult Function(List<ProjectModel> projectsList) fetched,
+    required TResult Function(List<ProjectWorkflow> projectsList) fetched,
     required TResult Function(dynamic projectId) selected,
   }) {
     return selected(projectId);
@@ -744,7 +935,7 @@ class _$ProjectSelectedStateImpl implements ProjectSelectedState {
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
-    TResult? Function(List<ProjectModel> projectsList)? fetched,
+    TResult? Function(List<ProjectWorkflow> projectsList)? fetched,
     TResult? Function(dynamic projectId)? selected,
   }) {
     return selected?.call(projectId);
@@ -754,7 +945,7 @@ class _$ProjectSelectedStateImpl implements ProjectSelectedState {
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
-    TResult Function(List<ProjectModel> projectsList)? fetched,
+    TResult Function(List<ProjectWorkflow> projectsList)? fetched,
     TResult Function(dynamic projectId)? selected,
     required TResult orElse(),
   }) {

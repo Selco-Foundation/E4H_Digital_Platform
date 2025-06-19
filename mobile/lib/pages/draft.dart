@@ -2,11 +2,11 @@ import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:selco/model/project_workflow/project_workflow.dart';
 
 // Import your generated mapper and model
 import '../blocs/selected_project/selected_project.dart';
 import '../data/secure_storage/secureStore.dart';
-import '../model/projects/project.dart'; // contains `ProjectModel` and `ProjectModelMapper`
 import '../router/app_router.dart';
 import '../widgets/button/footer_button.dart';
 import '../widgets/cards/inbox_report_card.dart';
@@ -22,7 +22,7 @@ class DraftPage extends StatefulWidget {
 
 class _DraftPageState extends State<DraftPage> {
   final SecureStore storage = SecureStore();
-  Future<List<ProjectModel>>? _draftsFuture;
+  Future<List<ProjectWorkflow>>? _draftsFuture;
 
   @override
   void initState() {
@@ -68,7 +68,7 @@ class _DraftPageState extends State<DraftPage> {
                 const SizedBox(height: spacer4),
 
                 // ── FUTURE BUILDER TO DISPLAY ONE CARD PER DRAFT ─────────────────
-                FutureBuilder<List<ProjectModel>>(
+                FutureBuilder<List<ProjectWorkflow>>(
                   future: _draftsFuture,
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
@@ -88,7 +88,7 @@ class _DraftPageState extends State<DraftPage> {
                       );
                     }
 
-                    final drafts = snapshot.data ?? <ProjectModel>[];
+                    final drafts = snapshot.data ?? <ProjectWorkflow>[];
 
                     if (drafts.isEmpty) {
                       // No drafts found
@@ -102,7 +102,6 @@ class _DraftPageState extends State<DraftPage> {
                       );
                     }
 
-                    // Build a list of InboxReportCard, one per stored ProjectModel
                     return Column(
                       children: drafts.map((project) {
                         return Column(
@@ -112,13 +111,15 @@ class _DraftPageState extends State<DraftPage> {
                                 context
                                     .read<SelectedProjectBloc>()
                                     .add(SelectedProjectEvent.select(project));
-                                context.router.push(const AssetSummaryRoute());
+                                //context.router.push(const AssetSummaryRoute());
+                                context.router
+                                    .push(const OverallAssetSummaryRoute());
                               },
-                              title: project.name,
+                              title: project.project.name ?? "",
                               // Use project's startDateTime if available; otherwise default
-                              dateAssigned:
-                                  project.startDateTime ?? DateTime.now(),
-                              status: 'Pending Installation',
+                              dateAssigned: project.project.startDateTime ??
+                                  DateTime.now(),
+                              status: project.state ?? '---',
                             ),
                             const SizedBox(height: spacer6),
                           ],

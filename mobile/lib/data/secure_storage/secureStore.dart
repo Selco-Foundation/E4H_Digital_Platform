@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:selco/model/asset_count/asset_count.dart';
 import 'package:selco/model/mdms/mdms.dart';
+import 'package:selco/model/project_workflow/project_workflow.dart';
 
 import '../../model/appconfig/mdmsResponse.dart';
 import '../../model/asset_type/asset_type.dart';
@@ -96,40 +97,39 @@ class SecureStore {
     return await storage.read(key: 'brand');
   }
 
-  Future<void> addToDraftProjects(ProjectModel project) async {
+  Future<void> addToDraftProjects(ProjectWorkflow project) async {
     final jsonString = await storage.read(key: "draft_projects");
-    List<ProjectModel> currentList = [];
+    List<ProjectWorkflow> currentList = [];
 
     if (jsonString != null && jsonString.isNotEmpty) {
       try {
         final List<dynamic> decoded = json.decode(jsonString);
         currentList = decoded
             .map((item) =>
-                ProjectModelMapper.fromMap(item as Map<String, dynamic>))
+                ProjectWorkflow.fromJson(item as Map<String, dynamic>))
             .toList();
       } catch (_) {
         currentList = [];
       }
     }
 
-    currentList.removeWhere((p) => p.id == project.id);
+    currentList.removeWhere((p) => p.project.id == project.project.id);
     currentList.add(project);
 
     await storage.write(
       key: "draft_projects",
-      value: json.encode(currentList.map((p) => p.toMap()).toList()),
+      value: json.encode(currentList.map((p) => p.toJson()).toList()),
     );
   }
 
-  Future<List<ProjectModel>> getDraftProjects() async {
+  Future<List<ProjectWorkflow>> getDraftProjects() async {
     final jsonString = await storage.read(key: "draft_projects");
     if (jsonString == null || jsonString.isEmpty) return [];
 
     try {
       final List<dynamic> decoded = json.decode(jsonString);
       return decoded
-          .map((item) =>
-              ProjectModelMapper.fromMap(item as Map<String, dynamic>))
+          .map((item) => ProjectWorkflow.fromJson(item as Map<String, dynamic>))
           .toList();
     } catch (_) {
       return [];

@@ -94,6 +94,8 @@ class CacheMediaUploadBloc
 
         if (existing != null) {
           existing.photoPath = event.entry.photoPath;
+          existing.latitude = event.entry.latitude;
+          existing.longitude = event.entry.longitude;
           existing.updatedAt = DateTime.now();
           await isar.cacheMediaUploads.put(existing);
         } else {
@@ -103,6 +105,8 @@ class CacheMediaUploadBloc
             itemNumber: event.entry.itemNumber,
             itemType: event.entry.itemType,
             photoPath: event.entry.photoPath,
+            latitude: event.entry.latitude,
+            longitude: event.entry.longitude,
           );
           await isar.cacheMediaUploads.put(newEntry);
         }

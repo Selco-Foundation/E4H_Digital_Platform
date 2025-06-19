@@ -48,8 +48,8 @@ class _SpecificationPageState extends State<SpecificationPage> {
         );
     final selState = context.read<SelectedProjectBloc>().state;
     selState.whenOrNull(selected: (project) {
-      _currentProjectId = project.id;
-      _updateProgress(project.id, assetType);
+      _currentProjectId = project.project.id;
+      _updateProgress(project.project.id, assetType);
     });
   }
 

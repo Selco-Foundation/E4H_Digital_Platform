@@ -18,19 +18,19 @@ final _privateConstructorUsedError = UnsupportedError(
 mixin _$SelectedProjectEvent {
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(ProjectModel project) select,
+    required TResult Function(ProjectWorkflow project) select,
     required TResult Function() deselect,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(ProjectModel project)? select,
+    TResult? Function(ProjectWorkflow project)? select,
     TResult? Function()? deselect,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(ProjectModel project)? select,
+    TResult Function(ProjectWorkflow project)? select,
     TResult Function()? deselect,
     required TResult orElse(),
   }) =>
@@ -81,7 +81,9 @@ abstract class _$$ProjectSelectedImplCopyWith<$Res> {
           $Res Function(_$ProjectSelectedImpl) then) =
       __$$ProjectSelectedImplCopyWithImpl<$Res>;
   @useResult
-  $Res call({ProjectModel project});
+  $Res call({ProjectWorkflow project});
+
+  $ProjectWorkflowCopyWith<$Res> get project;
 }
 
 /// @nodoc
@@ -101,8 +103,16 @@ class __$$ProjectSelectedImplCopyWithImpl<$Res>
       null == project
           ? _value.project
           : project // ignore: cast_nullable_to_non_nullable
-              as ProjectModel,
+              as ProjectWorkflow,
     ));
+  }
+
+  @override
+  @pragma('vm:prefer-inline')
+  $ProjectWorkflowCopyWith<$Res> get project {
+    return $ProjectWorkflowCopyWith<$Res>(_value.project, (value) {
+      return _then(_value.copyWith(project: value));
+    });
   }
 }
 
@@ -112,7 +122,7 @@ class _$ProjectSelectedImpl implements ProjectSelected {
   const _$ProjectSelectedImpl(this.project);
 
   @override
-  final ProjectModel project;
+  final ProjectWorkflow project;
 
   @override
   String toString() {
@@ -140,7 +150,7 @@ class _$ProjectSelectedImpl implements ProjectSelected {
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(ProjectModel project) select,
+    required TResult Function(ProjectWorkflow project) select,
     required TResult Function() deselect,
   }) {
     return select(project);
@@ -149,7 +159,7 @@ class _$ProjectSelectedImpl implements ProjectSelected {
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(ProjectModel project)? select,
+    TResult? Function(ProjectWorkflow project)? select,
     TResult? Function()? deselect,
   }) {
     return select?.call(project);
@@ -158,7 +168,7 @@ class _$ProjectSelectedImpl implements ProjectSelected {
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(ProjectModel project)? select,
+    TResult Function(ProjectWorkflow project)? select,
     TResult Function()? deselect,
     required TResult orElse(),
   }) {
@@ -201,10 +211,10 @@ class _$ProjectSelectedImpl implements ProjectSelected {
 }
 
 abstract class ProjectSelected implements SelectedProjectEvent {
-  const factory ProjectSelected(final ProjectModel project) =
+  const factory ProjectSelected(final ProjectWorkflow project) =
       _$ProjectSelectedImpl;
 
-  ProjectModel get project;
+  ProjectWorkflow get project;
   @JsonKey(ignore: true)
   _$$ProjectSelectedImplCopyWith<_$ProjectSelectedImpl> get copyWith =>
       throw _privateConstructorUsedError;
@@ -248,7 +258,7 @@ class _$ProjectDeselectedImpl implements ProjectDeselected {
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(ProjectModel project) select,
+    required TResult Function(ProjectWorkflow project) select,
     required TResult Function() deselect,
   }) {
     return deselect();
@@ -257,7 +267,7 @@ class _$ProjectDeselectedImpl implements ProjectDeselected {
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(ProjectModel project)? select,
+    TResult? Function(ProjectWorkflow project)? select,
     TResult? Function()? deselect,
   }) {
     return deselect?.call();
@@ -266,7 +276,7 @@ class _$ProjectDeselectedImpl implements ProjectDeselected {
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(ProjectModel project)? select,
+    TResult Function(ProjectWorkflow project)? select,
     TResult Function()? deselect,
     required TResult orElse(),
   }) {
@@ -317,19 +327,19 @@ mixin _$SelectedProjectState {
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
-    required TResult Function(ProjectModel project) selected,
+    required TResult Function(ProjectWorkflow project) selected,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
-    TResult? Function(ProjectModel project)? selected,
+    TResult? Function(ProjectWorkflow project)? selected,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
-    TResult Function(ProjectModel project)? selected,
+    TResult Function(ProjectWorkflow project)? selected,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -412,7 +422,7 @@ class _$InitialImpl implements _Initial {
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
-    required TResult Function(ProjectModel project) selected,
+    required TResult Function(ProjectWorkflow project) selected,
   }) {
     return initial();
   }
@@ -421,7 +431,7 @@ class _$InitialImpl implements _Initial {
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
-    TResult? Function(ProjectModel project)? selected,
+    TResult? Function(ProjectWorkflow project)? selected,
   }) {
     return initial?.call();
   }
@@ -430,7 +440,7 @@ class _$InitialImpl implements _Initial {
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
-    TResult Function(ProjectModel project)? selected,
+    TResult Function(ProjectWorkflow project)? selected,
     required TResult orElse(),
   }) {
     if (initial != null) {
@@ -481,7 +491,9 @@ abstract class _$$SelectedImplCopyWith<$Res> {
           _$SelectedImpl value, $Res Function(_$SelectedImpl) then) =
       __$$SelectedImplCopyWithImpl<$Res>;
   @useResult
-  $Res call({ProjectModel project});
+  $Res call({ProjectWorkflow project});
+
+  $ProjectWorkflowCopyWith<$Res> get project;
 }
 
 /// @nodoc
@@ -501,8 +513,16 @@ class __$$SelectedImplCopyWithImpl<$Res>
       null == project
           ? _value.project
           : project // ignore: cast_nullable_to_non_nullable
-              as ProjectModel,
+              as ProjectWorkflow,
     ));
+  }
+
+  @override
+  @pragma('vm:prefer-inline')
+  $ProjectWorkflowCopyWith<$Res> get project {
+    return $ProjectWorkflowCopyWith<$Res>(_value.project, (value) {
+      return _then(_value.copyWith(project: value));
+    });
   }
 }
 
@@ -512,7 +532,7 @@ class _$SelectedImpl implements _Selected {
   const _$SelectedImpl(this.project);
 
   @override
-  final ProjectModel project;
+  final ProjectWorkflow project;
 
   @override
   String toString() {
@@ -540,7 +560,7 @@ class _$SelectedImpl implements _Selected {
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
-    required TResult Function(ProjectModel project) selected,
+    required TResult Function(ProjectWorkflow project) selected,
   }) {
     return selected(project);
   }
@@ -549,7 +569,7 @@ class _$SelectedImpl implements _Selected {
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
-    TResult? Function(ProjectModel project)? selected,
+    TResult? Function(ProjectWorkflow project)? selected,
   }) {
     return selected?.call(project);
   }
@@ -558,7 +578,7 @@ class _$SelectedImpl implements _Selected {
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
-    TResult Function(ProjectModel project)? selected,
+    TResult Function(ProjectWorkflow project)? selected,
     required TResult orElse(),
   }) {
     if (selected != null) {
@@ -600,9 +620,9 @@ class _$SelectedImpl implements _Selected {
 }
 
 abstract class _Selected implements SelectedProjectState {
-  const factory _Selected(final ProjectModel project) = _$SelectedImpl;
+  const factory _Selected(final ProjectWorkflow project) = _$SelectedImpl;
 
-  ProjectModel get project;
+  ProjectWorkflow get project;
   @JsonKey(ignore: true)
   _$$SelectedImplCopyWith<_$SelectedImpl> get copyWith =>
       throw _privateConstructorUsedError;

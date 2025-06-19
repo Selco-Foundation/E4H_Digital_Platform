@@ -1,7 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
-
-import '../../model/projects/project.dart';
+import 'package:selco/model/project_workflow/project_workflow.dart';
 
 part 'selected_project.freezed.dart';
 
@@ -25,7 +24,7 @@ class SelectedProjectBloc
 
 @freezed
 class SelectedProjectEvent with _$SelectedProjectEvent {
-  const factory SelectedProjectEvent.select(ProjectModel project) =
+  const factory SelectedProjectEvent.select(ProjectWorkflow project) =
       ProjectSelected;
   const factory SelectedProjectEvent.deselect() = ProjectDeselected;
 }
@@ -33,5 +32,6 @@ class SelectedProjectEvent with _$SelectedProjectEvent {
 @freezed
 class SelectedProjectState with _$SelectedProjectState {
   const factory SelectedProjectState.initial() = _Initial;
-  const factory SelectedProjectState.selected(ProjectModel project) = _Selected;
+  const factory SelectedProjectState.selected(ProjectWorkflow project) =
+      _Selected;
 }
