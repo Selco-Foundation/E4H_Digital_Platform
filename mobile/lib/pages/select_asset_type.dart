@@ -37,7 +37,7 @@ class _SelectAssetTypePageState extends State<SelectAssetTypePage> {
     _currentProjectId = context
         .read<SelectedProjectBloc>()
         .state
-        .whenOrNull(selected: (project) => project.id);
+        .whenOrNull(selected: (project) => project.project.id);
   }
 
   CacheAssetCount? currentCacheEntryFor(

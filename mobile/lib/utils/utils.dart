@@ -52,6 +52,18 @@ String truncateText(String text, {int maxLength = 16}) {
   return text;
 }
 
+enum WORKFLOW_STATUS_FIELD_STAFF {
+  REJECTED_BY_FIELD_SUPERVISOR,
+  APPROVED_BY_QC_SPOC
+}
+
+enum WORKFLOW_STATUS_FIELD_SUPERVISOR {
+  SUBMITTED_BY_FIELD_STAFF,
+  SUBMITTED_BY_SUPERVISOR,
+  REJECTED_BY_QC_SPOC,
+  APPROVED_BY_QC_SPOC
+}
+
 class DioErrorParser {
   static Exception parse(DioError dioErr) {
     debugPrint("Dio error: ${dioErr.response?.data ?? dioErr}");

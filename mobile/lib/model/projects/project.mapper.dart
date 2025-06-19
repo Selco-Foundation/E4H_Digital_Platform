@@ -388,8 +388,9 @@ class ProjectModelMapper extends ClassMapperBase<ProjectModel> {
   static String? _$parent(ProjectModel v) => v.parent;
   static const Field<ProjectModel, String> _f$parent =
       Field('parent', _$parent, opt: true);
-  static String _$name(ProjectModel v) => v.name;
-  static const Field<ProjectModel, String> _f$name = Field('name', _$name);
+  static String? _$name(ProjectModel v) => v.name;
+  static const Field<ProjectModel, String> _f$name =
+      Field('name', _$name, opt: true);
   static String? _$department(ProjectModel v) => v.department;
   static const Field<ProjectModel, String> _f$department =
       Field('department', _$department, opt: true);
@@ -571,7 +572,7 @@ class _ProjectModelCopyWithImpl<$R, $Out>
           Object? subProjectTypeId = $none,
           Object? isTaskEnabled = $none,
           Object? parent = $none,
-          String? name,
+          Object? name = $none,
           Object? department = $none,
           Object? description = $none,
           Object? referenceId = $none,
@@ -590,7 +591,7 @@ class _ProjectModelCopyWithImpl<$R, $Out>
         if (subProjectTypeId != $none) #subProjectTypeId: subProjectTypeId,
         if (isTaskEnabled != $none) #isTaskEnabled: isTaskEnabled,
         if (parent != $none) #parent: parent,
-        if (name != null) #name: name,
+        if (name != $none) #name: name,
         if (department != $none) #department: department,
         if (description != $none) #description: description,
         if (referenceId != $none) #referenceId: referenceId,

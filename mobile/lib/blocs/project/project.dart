@@ -2,50 +2,35 @@ import 'dart:async';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:selco/model/project_workflow/project_workflow.dart';
 
-import '../../model/project_staff/project_staff.dart';
 import '../../model/projects/project.dart';
 import '../../repositories/app_init_Repo.dart';
 import '../../repositories/project_repo.dart';
-import '../../repositories/project_staff_repo.dart';
 
 part 'project.freezed.dart';
 
-// Bloc responsible for handling project-related operations
 class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
-  // Constructor for ProjectBloc
   ProjectBloc() : super(const ProjectState.initial()) {
-    on(_handleFetchProjects);
-    on(_selectProject);
+    on<ProjectsFetchEvent>(_handleFetchProjects);
+    on<ProjectSelectEvent>(_selectProject);
+    on<FetchProjectsByWorkflowEvent>(_handleFetchProjectsByWorkflow);
   }
 
-  // Handler for fetching projects
   FutureOr<void> _handleFetchProjects(
       ProjectsFetchEvent event, Emitter<ProjectState> emit) async {
-    // Fetch project staff list
-    final projectStaffList = await ProjectStaffRemoteRepository()
-        .searchStaff(ProjectStaffSearchModel(staffId: [event.uuid.toString()]));
-
-    // Create search body for projects based on staff's project IDs
-    // List<ProjectSearchModel> searchBody = [];
-    // for (final staff in projectStaffList) {
-    //   searchBody.add(ProjectSearchModel(
-    //       id: staff.projectId,
-    //       tenantId: envConfig.variables.tenantId,
-    //       projectTypeId: "FieldPlan"));
-    // }
+    // final projectStaffList = await ProjectStaffRemoteRepository()
+    //     .searchStaff(ProjectStaffSearchModel(staffId: [event.uuid.toString()]));
 
     ProjectSearchModel searchBody = ProjectSearchModel(
       tenantId: envConfig.variables.tenantId,
-      projectTypeId: "FieldPlan",
+      projectTypeId: "Facility",
     );
 
-    // Fetch projects based on search body
     final projectRemoteRepository = ProjectRemoteRepository();
-    List<ProjectModel> projectsList =
+    List<ProjectWorkflow> projectsList =
         await projectRemoteRepository.search(searchBody);
 
-    // Emit fetched state with projects list
     emit(ProjectState.fetched(projectsList));
   }
 
@@ -55,9 +40,24 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
 
     emit(ProjectState.selected(projectId));
   }
+
+  FutureOr<void> _handleFetchProjectsByWorkflow(
+      FetchProjectsByWorkflowEvent event, Emitter<ProjectState> emit) async {
+    final searchBody = ProjectSearchModel(
+      tenantId: envConfig.variables.tenantId,
+    );
+
+    final projectRemoteRepository = ProjectRemoteRepository();
+    List<ProjectWorkflow> projectsList =
+        await projectRemoteRepository.searchByWorkflow(
+      body: searchBody,
+      workflowStatuses: event.workflowStatuses,
+    );
+
+    emit(ProjectState.fetched(projectsList));
+  }
 }
 
-// Freezed union for project events
 @freezed
 class ProjectEvent with _$ProjectEvent {
   const factory ProjectEvent.fetchProjects({required String uuid}) =
@@ -65,13 +65,16 @@ class ProjectEvent with _$ProjectEvent {
 
   const factory ProjectEvent.selectProject(String projectId) =
       ProjectSelectEvent;
+
+  const factory ProjectEvent.fetchProjectsByWorkflow({
+    required List<String> workflowStatuses,
+  }) = FetchProjectsByWorkflowEvent;
 }
 
-// Freezed union for project states
 @freezed
 class ProjectState with _$ProjectState {
   const factory ProjectState.initial() = _ProjectInitialState;
-  const factory ProjectState.fetched(List<ProjectModel> projectsList) =
+  const factory ProjectState.fetched(List<ProjectWorkflow> projectsList) =
       ProjectFetchedState;
   const factory ProjectState.selected(projectId) = ProjectSelectedState;
 }

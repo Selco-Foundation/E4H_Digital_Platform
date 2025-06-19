@@ -1,12 +1,15 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:digit_ui_components/digit_components.dart';
+import 'package:digit_ui_components/services/location_bloc.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:digit_ui_components/widgets/atoms/upload_popUp.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:file_picker/src/platform_file.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:selco/utils/extensions.dart';
 
 import '../blocs/asset_type/asset_type.dart';
 import '../blocs/cache_asset_count/cache_asset_count.dart';
@@ -33,10 +36,25 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
   String? _currentProjectId;
   List<PlatformFile> _selectedImages = [];
   List<PlatformFile> _selectedVideos = [];
+  double? _latitude;
+  double? _longitude;
+  StreamSubscription<LocationState>? _locSub;
 
   @override
   void initState() {
     super.initState();
+    final locBloc = context.read<LocationBloc>();
+    locBloc.add(const LocationEvent.requestPermission());
+    locBloc.add(const LocationEvent.requestService());
+    // 2. Listen to updates so we keep _latitude/_longitude up to date:
+    _locSub = locBloc.stream.listen((locationState) {
+      if (locationState.latitude != null && locationState.longitude != null) {
+        setState(() {
+          _latitude = locationState.latitude;
+          _longitude = locationState.longitude;
+        });
+      }
+    });
     final assetType = context.read<AssetTypeBloc>().state.when(
           initial: () => '',
           inverter: () => 'inverter',
@@ -45,9 +63,37 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
         );
     final selState = context.read<SelectedProjectBloc>().state;
     selState.whenOrNull(selected: (project) {
-      _currentProjectId = project.id;
-      _updateProgress(project.id, assetType);
+      _currentProjectId = project.project.id;
+      _updateProgress(project.project.id, assetType);
     });
+  }
+
+  @override
+  void dispose() {
+    _locSub?.cancel();
+    super.dispose();
+  }
+
+  Future<bool> _ensureLocationLoaded(
+      {Duration timeout = const Duration(seconds: 10)}) async {
+    final locBloc = context.read<LocationBloc>();
+    // If already have coords, return immediately
+    if (locBloc.state.latitude != null && locBloc.state.longitude != null) {
+      return true;
+    }
+    try {
+      final state = await locBloc.stream
+          .firstWhere((s) => s.latitude != null && s.longitude != null)
+          .timeout(timeout);
+      // local vars already updated in listener above, but set again to be safe
+      setState(() {
+        _latitude = state.latitude;
+        _longitude = state.longitude;
+      });
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   void _updateProgress(String projectId, assetType) {
@@ -94,12 +140,13 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
                 for (final file in _selectedImages) {
                   final copiedPath = await copyFileToLocalDir(File(file.path!));
                   final newEntry = CacheMediaUpload(
-                    projectId: _currentProjectId!,
-                    assetType: assetType.toLowerCase(),
-                    itemNumber: file.name,
-                    itemType: 'image',
-                    photoPath: copiedPath,
-                  );
+                      projectId: _currentProjectId!,
+                      assetType: assetType.toLowerCase(),
+                      itemNumber: file.name,
+                      itemType: 'image',
+                      photoPath: copiedPath,
+                      longitude: _longitude.toString(),
+                      latitude: _longitude.toString());
                   context
                       .read<CacheMediaUploadBloc>()
                       .add(CacheMediaUploadEvent.add(newEntry));
@@ -113,6 +160,8 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
                       itemNumber: file.name,
                       itemType: 'video',
                       photoPath: copiedPath,
+                      longitude: _longitude.toString() ?? '--',
+                      latitude: _longitude.toString() ?? '--',
                     );
                     context
                         .read<CacheMediaUploadBloc>()
@@ -150,9 +199,21 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
                           child: FileUploadWidget(
                             label: 'Upload',
                             onFilesSelected: (List<PlatformFile> files) {
-                              setState(() {
-                                _selectedImages = files;
+                              _ensureLocationLoaded().then((ok) {
+                                if (!ok) {
+                                  context.showSnackBar(
+                                    const SnackBar(
+                                        content:
+                                            Text('Could not fetch location')),
+                                  );
+                                }
+                                setState(() {
+                                  _selectedImages = files;
+                                });
+                                debugPrint(
+                                    "latitude $_latitude, longitude $_longitude");
                               });
+
                               Map<PlatformFile, String?> fileErrors = {};
                               return fileErrors;
                             },
@@ -191,8 +252,19 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
                             ],
                             label: 'Upload',
                             onFilesSelected: (List<PlatformFile> files) {
-                              setState(() {
-                                _selectedVideos = files;
+                              _ensureLocationLoaded().then((ok) {
+                                if (!ok) {
+                                  context.showSnackBar(
+                                    const SnackBar(
+                                        content:
+                                            Text('Could not fetch location')),
+                                  );
+                                }
+                                setState(() {
+                                  _selectedVideos = files;
+                                });
+                                debugPrint(
+                                    "latitude $_latitude, longitude $_longitude");
                               });
                               Map<PlatformFile, String?> fileErrors = {};
                               return fileErrors;

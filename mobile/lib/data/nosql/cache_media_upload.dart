@@ -15,7 +15,8 @@ class CacheMediaUpload {
   late String itemNumber;
   late String itemType;
   late String photoPath;
-
+  late String latitude;
+  late String longitude;
   DateTime createdAt = DateTime.now();
   DateTime? updatedAt;
 
@@ -25,5 +26,7 @@ class CacheMediaUpload {
     required this.itemNumber,
     required this.itemType,
     required this.photoPath,
+    required this.latitude,
+    required this.longitude,
   });
 }

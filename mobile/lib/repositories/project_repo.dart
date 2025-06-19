@@ -3,19 +3,18 @@ import 'dart:convert';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
+import 'package:selco/model/project_workflow/project_workflow.dart';
 
 import '../data/remote_client.dart';
 import '../model/projects/project.dart';
 import '../utils/envConfig.dart';
 
-/// Repository handling remote operations related to projects.
 class ProjectRemoteRepository {
   ProjectRemoteRepository();
 
   final dio = DioClient().dio;
 
-  /// Searches for projects based on the provided [body]
-  FutureOr<List<ProjectModel>> search(ProjectSearchModel body) async {
+  FutureOr<List<ProjectWorkflow>> search(ProjectSearchModel body) async {
     try {
       Response response;
       String searchPath = "project/v2/_search";
@@ -26,7 +25,7 @@ class ProjectRemoteRepository {
       }
 
       response = await dio.post(searchPath, queryParameters: {
-        'tenantId': 'in', // envConfig.variables.tenantId,
+        'tenantId': envConfig.variables.tenantId,
         'limit': 100,
         'offset': 0,
         'includeDescendants': false,
@@ -37,11 +36,49 @@ class ProjectRemoteRepository {
 
       final responseMap = response.data['Project'];
 
-      List<ProjectModel> projectsList = [];
+      List<ProjectWorkflow> projectsList = [];
       for (final project in responseMap) {
-        projectsList.add(ProjectModelMapper.fromMap(project));
+        projectsList.add(ProjectWorkflow.fromJson(project));
       }
 
+      return projectsList;
+    } catch (err) {
+      rethrow;
+    }
+  }
+
+  FutureOr<List<ProjectWorkflow>> searchByWorkflow({
+    required ProjectSearchModel body,
+    required List<String> workflowStatuses,
+  }) async {
+    try {
+      Response response;
+      String searchPath = "project/v2/_search";
+
+      if (envConfig.variables.envType == EnvType.dev) {
+        // return _loadLocalProjects();
+      }
+
+      response = await dio.post(
+        searchPath,
+        queryParameters: {
+          'tenantId': envConfig.variables.tenantId,
+          'limit': 100,
+          'offset': 0,
+          'includeDescendants': false,
+          'includeAncestors': false
+        },
+        data: {
+          'Project': body.toMap(),
+          'workflowStatus': workflowStatuses,
+        },
+      );
+
+      final responseMap = response.data['Project'];
+      List<ProjectWorkflow> projectsList = [];
+      for (final project in responseMap) {
+        projectsList.add(ProjectWorkflow.fromJson(project));
+      }
       return projectsList;
     } catch (err) {
       rethrow;
