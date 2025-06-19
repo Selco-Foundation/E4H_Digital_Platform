@@ -2,7 +2,9 @@ import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:reactive_forms/reactive_forms.dart';
+import 'package:selco/blocs/auth/user_otp.dart';
 
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
@@ -32,7 +34,9 @@ class _SetupNewPasswordPageState extends State<SetupNewPasswordPage> {
           validators: [Validators.required],
           value: '',
         ),
-      });
+      }, [
+        Validators.mustMatch(_password, _reEnteredPassword)
+      ]);
 
   @override
   Widget build(BuildContext context) {
@@ -47,15 +51,39 @@ class _SetupNewPasswordPageState extends State<SetupNewPasswordPage> {
           return ScrollableContent(
             enableFixedDigitButton: true,
             backgroundColor: theme.colorTheme.generic.background,
-            footer: FooterButton(
-              showSuffixIcon: false,
-              text: "Save",
-              onPress: () {
-                form.markAllAsTouched();
-                if (!form.valid) return;
+            footer: BlocConsumer<UserOtpBloc, UserOtpState>(
+              listener: (context, state) {
+                state.whenOrNull(
+                    error: (message) {
+                      context.showSnackBar(SnackBar(
+                        content: Text(message),
+                        backgroundColor: const Light().alertError,
+                      ));
+                    },
+                    success: () => context.router.replace(const LoginRoute()));
+              },
+              builder: (context, state) {
+                return state.maybeWhen(
+                    loading: () => LoadingFooterButton(),
+                    orElse: () {
+                      return FooterButton(
+                        showSuffixIcon: false,
+                        isDisabled: !form.valid,
+                        text: "Save",
+                        onPress: () {
+                          form.markAllAsTouched();
+                          if (!form.valid) return;
 
-                FocusManager.instance.primaryFocus?.unfocus();
-                context.router.replace(const LoginRoute());
+                          FocusManager.instance.primaryFocus?.unfocus();
+                          context.read<UserOtpBloc>().add(
+                              UserOtpEvent.resetPassword(
+                                  newPassword: (form
+                                          .control(_reEnteredPassword)
+                                          .value as String)
+                                      .trim()));
+                        },
+                      );
+                    });
               },
             ),
             children: [
