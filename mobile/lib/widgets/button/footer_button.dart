@@ -32,3 +32,11 @@ class FooterButton extends StatelessWidget {
     ]);
   }
 }
+
+Widget LoadingFooterButton() {
+  return FooterButton(
+    isDisabled: true,
+    text: 'Loading...',
+    onPress: () {},
+  );
+}

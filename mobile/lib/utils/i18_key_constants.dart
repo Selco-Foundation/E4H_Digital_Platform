@@ -523,6 +523,10 @@ class Login {
   String get passwordPlaceholder => 'PASSWORD_PLACEHOLDER';
 
   String get actionLabel => 'LOGIN_ACTION_LABEL';
+
+  String get mobileNumberPlaceholder => 'MOBILE_NUMBER_PLACEHOLDER';
+
+  String get otpPlaceholder => 'OTP_PLACEHOLDER';
 }
 
 class StockDetailsReturnedShowcase {
