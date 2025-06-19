@@ -7,6 +7,8 @@ import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../utils/utils.dart';
+
 class InboxReportCard extends StatelessWidget {
   final String? title;
   final String? status;
@@ -32,7 +34,7 @@ class InboxReportCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            title!,
+            "${title}",
             style: textTheme.headingM
                 .copyWith(color: theme.colorTheme.primary.primary2),
           ),
@@ -63,7 +65,7 @@ class InboxReportCard extends StatelessWidget {
                 children: [
                   const SizedBox(height: spacer4),
                   Text(
-                    '$status',
+                    truncateText('$status', maxLength: 16),
                     style: textTheme.bodyL
                         .copyWith(color: theme.colorTheme.text.primary),
                   ),

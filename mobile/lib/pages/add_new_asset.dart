@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:collection/collection.dart';
@@ -5,6 +6,7 @@ import 'package:digit_scanner/blocs/scanner.dart';
 import 'package:digit_scanner/pages/qr_scanner.dart';
 import 'package:digit_ui_components/enum/app_enums.dart';
 import 'package:digit_ui_components/models/DropdownModels.dart';
+import 'package:digit_ui_components/services/location_bloc.dart';
 import 'package:digit_ui_components/theme/TextTheme/digit_text_theme.dart';
 import 'package:digit_ui_components/theme/colors.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
@@ -40,11 +42,15 @@ class AssetModel {
   String capacity;
   String unit;
   String? photoPath;
+  String? latitude;
+  String? longitude;
   AssetModel({
     required this.serialNumber,
     this.capacity = '1',
     this.unit = 'KvA',
     this.photoPath,
+    this.longitude,
+    this.latitude,
   });
 }
 
@@ -66,9 +72,25 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
   late AssetType? selectedAssetType;
   int? _scanningIndex;
 
+  double? _latitude;
+  double? _longitude;
+  StreamSubscription<LocationState>? _locSub;
+
   @override
   void initState() {
     super.initState();
+    final locBloc = context.read<LocationBloc>();
+    locBloc.add(const LocationEvent.requestPermission());
+    locBloc.add(const LocationEvent.requestService());
+    // 2. Listen to updates so we keep _latitude/_longitude up to date:
+    _locSub = locBloc.stream.listen((locationState) {
+      if (locationState.latitude != null && locationState.longitude != null) {
+        setState(() {
+          _latitude = locationState.latitude;
+          _longitude = locationState.longitude;
+        });
+      }
+    });
     assetTypeTitle = context.read<AssetTypeBloc>().state.when(
           initial: () => '',
           inverter: () => 'inverter',
@@ -77,10 +99,10 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
         );
 
     context.read<SelectedProjectBloc>().state.whenOrNull(selected: (proj) {
-      _currentProjectId = proj.id;
+      _currentProjectId = proj.project.id;
       context
           .read<CacheAssetCountBloc>()
-          .add(CacheAssetCountEvent.get(proj.id, assetTypeTitle));
+          .add(CacheAssetCountEvent.get(proj.project.id, assetTypeTitle));
     });
 
     context.read<AppInitialization>().state.maybeWhen(
@@ -122,6 +144,34 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
 
           return assetType;
         });
+  }
+
+  @override
+  void dispose() {
+    _locSub?.cancel();
+    super.dispose();
+  }
+
+  Future<bool> _ensureLocationLoaded(
+      {Duration timeout = const Duration(seconds: 10)}) async {
+    final locBloc = context.read<LocationBloc>();
+    // If already have coords, return immediately
+    if (locBloc.state.latitude != null && locBloc.state.longitude != null) {
+      return true;
+    }
+    try {
+      final state = await locBloc.stream
+          .firstWhere((s) => s.latitude != null && s.longitude != null)
+          .timeout(timeout);
+      // local vars already updated in listener above, but set again to be safe
+      setState(() {
+        _latitude = state.latitude;
+        _longitude = state.longitude;
+      });
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   void _addNewAsset(int maxAssets) {
@@ -211,6 +261,8 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                           itemNumber: asset.capacity,
                           serialNumber: asset.serialNumber,
                           photoPath: asset.photoPath!,
+                          longitude: asset.longitude!,
+                          latitude: asset.latitude!,
                         );
                         context
                             .read<CacheAddNewAssetBloc>()
@@ -385,18 +437,33 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
             ],
           ),
         ),
-        LabeledField(
-          label: 'Supporting Photo',
-          capitalizedFirstLetter: false,
-          child: ImageUploader(
-            onImagesSelected: (List<File> imageFile) async {
-              if (imageFile.isEmpty) return;
-              final copiedPath = await copyFileToLocalDir(imageFile.first);
-              setState(() {
-                asset.photoPath = copiedPath;
-              });
-            },
-          ),
+        BlocBuilder<LocationBloc, LocationState>(
+          builder: (context, locationState) {
+            return LabeledField(
+              label: 'Supporting Photo',
+              capitalizedFirstLetter: false,
+              child: ImageUploader(
+                onImagesSelected: (List<File> imageFile) async {
+                  if (imageFile.isEmpty) return;
+                  final ok = await _ensureLocationLoaded();
+                  if (!ok) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Could not fetch location')),
+                    );
+                  }
+                  //else {
+                  final copiedPath = await copyFileToLocalDir(imageFile.first);
+                  setState(() {
+                    asset.photoPath = copiedPath;
+                    asset.latitude = _latitude.toString();
+                    asset.longitude = _longitude.toString();
+                  });
+                  debugPrint("latitude $_latitude, longitude $_longitude");
+                  // }
+                },
+              ),
+            );
+          },
         ),
         if (assetType == 'inverter') ...[
           const SizedBox(height: spacer4),

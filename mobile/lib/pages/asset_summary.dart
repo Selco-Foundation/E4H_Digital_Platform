@@ -11,6 +11,7 @@ import 'package:digit_ui_components/widgets/molecules/show_pop_up.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+import 'package:selco/model/project_workflow/project_workflow.dart';
 
 import '../blocs/asset_summary/asset_summary.dart';
 import '../blocs/asset_type/asset_type.dart';
@@ -18,7 +19,6 @@ import '../blocs/report_type/report_type.dart';
 import '../blocs/selected_project/selected_project.dart';
 import '../data/secure_storage/secureStore.dart';
 import '../model/asset_summary/asset_summary.dart';
-import '../model/projects/project.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
 import '../utils/i18_key_constants.dart' as i18;
@@ -36,8 +36,9 @@ class AssetSummaryPage extends StatefulWidget {
 
 class _AssetSummaryPageState extends State<AssetSummaryPage> {
   String projectName = "";
+  String status = "";
   String assetType = "";
-  ProjectModel? selectedProject;
+  ProjectWorkflow? selectedProject;
 
   @override
   void initState() {
@@ -55,9 +56,10 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
       // Assumes SelectedProjectBloc holds the current project
       final selectedProjectState = context.read<SelectedProjectBloc>().state;
       selectedProjectState.whenOrNull(selected: (proj) {
-        final projectId = proj.id;
+        final projectId = proj.project.id;
         selectedProject = proj;
-        projectName = proj.name;
+        projectName = proj.project.name ?? '---';
+        status = proj.state ?? "---";
         context.read<AssetSummaryBloc>().add(
               AssetSummaryEvent.load(
                 projectId: projectId,
@@ -259,7 +261,7 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  title,
+                  "$title",
                   style: textTheme.headingM.copyWith(
                     color: Theme.of(context).colorTheme.primary.primary2,
                   ),
@@ -366,8 +368,8 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
               children: [
                 const KeyColumn(keys: ['Name', 'Status']),
                 ValueColumn(values: [
-                  truncateText(projectName, maxLength: 21),
-                  'Pending Installation'
+                  truncateText('$projectName', maxLength: 18),
+                  truncateText('$status', maxLength: 19),
                 ]),
               ],
             ),

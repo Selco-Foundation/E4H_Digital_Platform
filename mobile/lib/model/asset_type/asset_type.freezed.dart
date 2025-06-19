@@ -231,13 +231,10 @@ FormField _$FormFieldFromJson(Map<String, dynamic> json) {
 
 /// @nodoc
 mixin _$FormField {
-  /// Present if this is a “normal” form field
   String? get key => throw _privateConstructorUsedError;
   String? get name => throw _privateConstructorUsedError;
   String? get system => throw _privateConstructorUsedError;
   List<String>? get options => throw _privateConstructorUsedError;
-
-  /// Present if this entry is purely a “types” list
   List<String>? get types => throw _privateConstructorUsedError;
 
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -376,7 +373,6 @@ class _$FormFieldImpl implements _FormField {
   factory _$FormFieldImpl.fromJson(Map<String, dynamic> json) =>
       _$$FormFieldImplFromJson(json);
 
-  /// Present if this is a “normal” form field
   @override
   final String? key;
   @override
@@ -393,10 +389,7 @@ class _$FormFieldImpl implements _FormField {
     return EqualUnmodifiableListView(value);
   }
 
-  /// Present if this entry is purely a “types” list
   final List<String>? _types;
-
-  /// Present if this entry is purely a “types” list
   @override
   List<String>? get types {
     final value = _types;
@@ -459,8 +452,6 @@ abstract class _FormField implements FormField {
       _$FormFieldImpl.fromJson;
 
   @override
-
-  /// Present if this is a “normal” form field
   String? get key;
   @override
   String? get name;
@@ -469,8 +460,6 @@ abstract class _FormField implements FormField {
   @override
   List<String>? get options;
   @override
-
-  /// Present if this entry is purely a “types” list
   List<String>? get types;
   @override
   @JsonKey(ignore: true)

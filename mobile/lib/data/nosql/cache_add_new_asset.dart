@@ -15,6 +15,8 @@ class CacheAddNewAsset {
   late String itemNumber;
   late String serialNumber;
   late String photoPath;
+  late String latitude;
+  late String longitude;
 
   DateTime createdAt = DateTime.now();
   DateTime? updatedAt;
@@ -25,5 +27,7 @@ class CacheAddNewAsset {
     required this.itemNumber,
     required this.serialNumber,
     required this.photoPath,
+    required this.latitude,
+    required this.longitude,
   });
 }

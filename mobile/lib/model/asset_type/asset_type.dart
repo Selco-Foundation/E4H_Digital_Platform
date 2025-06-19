@@ -12,7 +12,6 @@ class AssetType with _$AssetType {
     @JsonKey(name: 'form_fields') required List<FormField> formFields,
   }) = _AssetType;
 
-  /// Standard JsonSerializable factory
   factory AssetType.fromJson(Map<String, dynamic> json) =>
       _$AssetTypeFromJson(json);
 }
@@ -20,13 +19,10 @@ class AssetType with _$AssetType {
 @freezed
 class FormField with _$FormField {
   const factory FormField({
-    /// Present if this is a “normal” form field
     String? key,
     String? name,
     String? system,
     List<String>? options,
-
-    /// Present if this entry is purely a “types” list
     List<String>? types,
   }) = _FormField;
 

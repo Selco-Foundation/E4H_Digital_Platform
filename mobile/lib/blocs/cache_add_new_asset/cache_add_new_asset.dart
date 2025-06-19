@@ -89,6 +89,8 @@ class CacheAddNewAssetBloc
           existing.itemNumber = event.entry.itemNumber;
           existing.serialNumber = event.entry.serialNumber;
           existing.photoPath = event.entry.photoPath;
+          existing.longitude = event.entry.longitude;
+          existing.latitude = event.entry.latitude;
           existing.updatedAt = DateTime.now();
           await isar.cacheAddNewAssets.put(existing);
         } else {
@@ -98,6 +100,8 @@ class CacheAddNewAssetBloc
             itemNumber: event.entry.itemNumber,
             serialNumber: event.entry.serialNumber,
             photoPath: event.entry.photoPath,
+            latitude: event.entry.latitude,
+            longitude: event.entry.longitude,
           );
           await isar.cacheAddNewAssets.put(newEntry);
         }

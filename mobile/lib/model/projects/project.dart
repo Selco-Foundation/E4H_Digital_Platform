@@ -83,7 +83,7 @@ class ProjectModel with ProjectModelMappable {
   final String? subProjectTypeId;
   final bool? isTaskEnabled;
   final String? parent;
-  final String name;
+  final String? name;
   final String? department;
   final String? description;
   final String? referenceId;
@@ -104,7 +104,7 @@ class ProjectModel with ProjectModelMappable {
     this.subProjectTypeId,
     this.isTaskEnabled,
     this.parent,
-    required this.name,
+    this.name,
     this.department,
     this.description,
     this.referenceId,
