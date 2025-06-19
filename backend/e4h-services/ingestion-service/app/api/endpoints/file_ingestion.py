@@ -8,6 +8,7 @@ from typing import Optional, Dict, List
 import pandas as pd
 from fastapi import APIRouter, File, Form, UploadFile, HTTPException
 from fastapi.responses import FileResponse
+import psycopg2
 from starlette.responses import JSONResponse
 import requests
 
@@ -36,6 +37,15 @@ org_service_url = os.getenv("VENDOR_SERVICE_URL")
 project_service_url = os.getenv("PROJECT_SERVICE_URL")
 facility_service_url = os.getenv("FACILITY_SERVICE_URL")
 hrms_service_url = os.getenv("HRMS_SERVICE_URL")
+im_services_url = os.getenv("IM_SERVICES_URL")
+
+DB_CONFIG = {
+    "host": os.getenv("DB_HOST"),
+    "port": int(os.getenv("DB_PORT", 5432)),
+    "database": os.getenv("DB_NAME"),
+    "user": os.getenv("DB_USER"),
+    "password": os.getenv("DB_PASSWORD")
+}
 
 @router.post('/vendors',
              summary='Upload and process vendor Excel file with multiple sheets',
@@ -399,7 +409,7 @@ async def upload_facility_with_supervisors_excel_sheet(
                                     df.at[index, 'error'] = f"Staff Creation Error: {staff_creation_response.status_code} - {staff_creation_response.text}"
                             else:
                                 df.at[index, 'status'] = 'failed'
-                                df.at[index, 'error'] = f"User Creation Error: {user_creation_response.status_code} - {user["Errors"]}"
+                                df.at[index, 'error'] = f"User Creation Error: {user_creation_response.status_code} - {user['Errors']}"
                         else:
                             df.at[index, 'status'] = 'failed'
                             df.at[index, 'error'] = f"Facility Creation Error: {facility_creation_response.status_code} - {facility_creation_response.text}"
@@ -597,61 +607,28 @@ async def upload_facility_selection_excel_sheet(
             os.unlink(input_temp_file.name)
             
 
-def get_healthcare_center_info(nin_hfr_id: str, state: str, request_info: dict, facility_service_url: str) -> Optional[Dict]:
-    """
-    Fetch healthcare center information using NIN_HFR ID and State
-    """
+def get_hrms_employee_info(codes: List[str], db_conn) -> Dict[str, str]:
     try:
-        search_url = f"{facility_service_url}/facility/v1/_search"
-        search_payload = {
-            "RequestInfo": request_info,
-            "criteria": {
-                "tenantId": state,
-                "facilityId": nin_hfr_id
-            }
-        }
-        response = requests.post(search_url, json=search_payload)
-        if response.status_code == 200:
-            data = response.json()
-            if data.get("facilities") and len(data["facilities"]) > 0:
-                return data["facilities"][0]
-        return None
-    except Exception as e:
-        logger.error(f"Error fetching healthcare center info: {e}")
-        return None
-
-def get_hrms_employee_info(code: str, request_info: dict, hrms_service_url: str) -> Optional[Dict]:
-    """
-    Fetch employee information from HRMS using code (username)
-    """
-    try:
-        search_url = f"{hrms_service_url}/egov-hrms/employees/_search"
-        search_payload = {
-            "RequestInfo": request_info,
-            "criteria": {
-                "code": code
-            }
-        }
-        response = requests.post(search_url, json=search_payload)
-        if response.status_code == 200:
-            data = response.json()
-            if data.get("Employees") and len(data["Employees"]) > 0:
-                return data["Employees"][0]
-        return None
+        with db_conn.cursor() as cursor:
+            sql = "SELECT code, tenantid  FROM eg_hrms_employee WHERE code = ANY (%s)"
+            cursor.execute(sql, (codes,))
+            rows = cursor.fetchall()
+            return {row[0]: row[1] for row in rows}
     except Exception as e:
         logger.error(f"Error fetching HRMS employee info: {e}")
-        return None
+        return {}
 
-def get_tenant_mapping(request_info: dict, mdms_url: str) -> Dict:
+def get_tenant_mapping(request_info: dict) -> Dict:
     """
     Fetch tenant mapping from MDMS for PHC subtypes
     """
+    print(mdms_url)
     try:
-        search_url = f"{mdms_url}/egov-mdms-v1/egov-mdms/v1/_search"
+        search_url = f"{mdms_url}/egov-mdms-service/v1/_search"
         search_payload = {
-            "RequestInfo": request_info,
+            "RequestInfo": request_info.model_dump(by_alias=True, exclude_none=True),
             "MdmsCriteria": {
-                "tenantId": "pb",
+                "tenantId": "pg",
                 "moduleDetails": [
                     {
                         "moduleName": "tenant",
@@ -667,7 +644,8 @@ def get_tenant_mapping(request_info: dict, mdms_url: str) -> Dict:
         response = requests.post(search_url, json=search_payload)
         if response.status_code == 200:
             data = response.json()
-            return data.get("MdmsRes", {}).get("tenant", {}).get("tenants", {})
+            tenants = data.get("MdmsRes", {}).get("tenant", {}).get("tenants", [])
+            return {tenant.get("code"): tenant for tenant in tenants if tenant.get("code")}
         return {}
     except Exception as e:
         logger.error(f"Error fetching tenant mapping from MDMS: {e}")
@@ -679,11 +657,7 @@ def get_tenant_mapping(request_info: dict, mdms_url: str) -> Dict:
 async def upload_legacy_ticket_excel_sheet(
         legacy_ticket_file: UploadFile = File(description="Excel file containing Legacy Tickets"),
         legacy_ticket_sheet_name: str = Form(default="Legacy Tickets", description="Name of the sheet containing Legacy Tickets"),
-        request_info: str = Form(default=""),
-        im_services_url: str = Form(default=os.getenv("IM_SERVICES_URL", "http://localhost:8080/im-services/request/_create")),
-        facility_service_url: str = Form(default=os.getenv("FACILITY_SERVICE_URL", "http://localhost:8080/facility-service")),
-        hrms_service_url: str = Form(default=os.getenv("HRMS_SERVICE_URL", "http://localhost:8080/egov-hrms")),
-        mdms_url: str = Form(default=os.getenv("MDMS_URL", "http://localhost:8080/egov-mdms-v1"))
+        request_info: str = Form(default="")
 ):
     input_temp_file = None
     output_temp_file = None
@@ -694,7 +668,8 @@ async def upload_legacy_ticket_excel_sheet(
     migration_id = str(uuid.uuid4())
 
     # Fetch tenant mapping once for the entire batch
-    tenant_mapping = get_tenant_mapping(request_info_obj, mdms_url)
+    tenant_mapping = get_tenant_mapping(request_info_obj)
+    print(f"Total tenant mappings fetched: {len(tenant_mapping)}")
 
     try:
         input_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
@@ -710,96 +685,142 @@ async def upload_legacy_ticket_excel_sheet(
         output_file_path = output_temp_file.name
 
         df = pd.read_excel(excel_file_path, sheet_name=legacy_ticket_sheet_name)
-        if 'status' not in df.columns:
-            df['status'] = ''
-        if 'error' not in df.columns:
-            df['error'] = ''
-        if 'ticket_id' not in df.columns:
-            df['ticket_id'] = ''
-        if 'healthcare_center_info' not in df.columns:
-            df['healthcare_center_info'] = ''
-        if 'employee_info' not in df.columns:
-            df['employee_info'] = ''
+        df.columns = df.columns.str.strip()
+        df = df.reindex(columns=df.columns.tolist() + ['status', 'error', 'ticket_id', 'employee_info'], fill_value='')
+
+
+        codes = []
+
+        for index, row in df.iterrows():
+            code = str(row.get("NIN_HFR ID", "")).strip()
+            if code:
+                codes.append(code)
+
+        conn = psycopg2.connect(**DB_CONFIG)
+
+        employee_info = get_hrms_employee_info(codes, conn)
+
 
         for idx, row in df.iterrows():
             try:
-                state = str(row.get("State", "")).strip()
-                nin_hfr_id = str(row.get("NIN_HFR ID", "")).strip()
-                code = str(row.get("code", "")).strip()  # username/code from Excel
-
-                # Fetch employee information
-                employee_info = get_hrms_employee_info(code, request_info_obj, hrms_service_url)
-                if not employee_info:
+                employee_code = str(row.get("NIN_HFR ID", "")).strip()
+                tenant_id = employee_info.get(employee_code)
+                if not tenant_id:
                     df.at[idx, 'status'] = 'failed'
-                    df.at[idx, 'error'] = f'Employee not found for code: {code}'
+                    df.at[idx, 'error'] = f'Employee not found for code: {employee_code}'
                     df.at[idx, 'employee_info'] = 'Not found'
                     continue
 
                 df.at[idx, 'employee_info'] = 'Found'
 
-                # Fetch healthcare center information
-                hc_info = get_healthcare_center_info(nin_hfr_id, state, request_info_obj, facility_service_url)
-                if not hc_info:
-                    df.at[idx, 'status'] = 'failed'
-                    df.at[idx, 'error'] = f'Healthcare center not found for NIN_HFR ID: {nin_hfr_id} in state: {state}'
-                    df.at[idx, 'healthcare_center_info'] = 'Not found'
-                    continue
+                employee_tenant_mapping = tenant_mapping.get(tenant_id,{})
 
-                df.at[idx, 'healthcare_center_info'] = 'Found'
+                # Extract tenant-based fields
+                phc_subtype = employee_tenant_mapping.get("centreType", "")
+                block = employee_tenant_mapping.get("city", {}).get("districtName", "")
+                tenant_id = employee_tenant_mapping.get("code", "")
+                district = employee_tenant_mapping.get("city", {}).get("districtCode", "")
 
-                # Get PHC subtype mapping from tenant mapping
-                phc_subtype = tenant_mapping.get(nin_hfr_id, {}).get("subtype")
-
-                # Map Excel columns to API fields
                 incident_payload = {
                     "incidentType": str(row.get("Ticket Type", "")).strip(),
-                    "incidentSubType": str(row.get("Ticket Sub Type", "")).strip(),
-                    "systemFunctional": str(row.get("Is the solar system working?", "")).strip(),
+                    "incidentSubtype": str(row.get("Ticket Sub Type", "")).strip(),
                     "comments": str(row.get("Comments", "")).strip(),
-                    "tenantId": state,
+                    "tenantId": tenant_id,
                     "migrationId": migration_id,
-                    # Add healthcare center information
-                    "district": hc_info.get("district", ""),
-                    "block": hc_info.get("block", ""),
-                    "phcType": hc_info.get("facilityType", ""),
-                    "phcSubType": phc_subtype or nin_hfr_id,
-                    # Add employee information
+                    "district": district,
+                    "block": block,
+                    "phcType": tenant_id,
+                    "phcSubType": phc_subtype,
+                    "additionalDetail": {
+                        "fileStoreId": [],
+                        "reopenreason": [],
+                        "rejectReason": [],
+                        "sendBackReason": [],
+                        "sendBackSubReason": []
+                    },
+                    "source": "web",
                     "reporter": {
-                        "uuid": employee_info.get("uuid"),
-                        "name": employee_info.get("name"),
-                        "mobileNumber": employee_info.get("mobileNumber")
+                        "uuid": "cd831d19-3799-4e73-a52a-237930f1e450",
+                        "tenantId": "pg"
                     }
                 }
 
-                # Set Unique_ID as legacyId
+                # Optional: Set legacyId if present
                 unique_id = row.get("Unique_ID", None)
                 if pd.notnull(unique_id):
                     incident_payload["legacyId"] = str(unique_id).strip()
 
-                # Handle Actual_Reported_Date (convert to epoch if present)
+                # Optional: Convert Actual_Reported_Date to epoch
                 reported_date = row.get("Actual_Reported_Date (mm/dd/yyyy)", None)
                 if pd.notnull(reported_date):
-                    if isinstance(reported_date, str):
-                        try:
-                            dt = datetime.strptime(reported_date, "%m/%d/%Y")
-                        except Exception:
-                            dt = pd.to_datetime(reported_date, errors='coerce')
-                    else:
+                    try:
+                        dt = pd.to_datetime(reported_date, errors='coerce', format="%m/%d/%Y")
+                    except Exception:
                         dt = pd.to_datetime(reported_date, errors='coerce')
                     if pd.notnull(dt):
                         incident_payload["filedDate"] = int(dt.timestamp() * 1000)
 
-                payload = {
-                    "RequestInfo": request_info_obj,
-                    "incident": incident_payload
+                request_info = {
+                    "apiId": "Rainmaker",
+                    "authToken": "79967889-fbf5-42c6-9bd3-4adc0dbe7692",
+                    "userInfo": {
+                        "id": 95,
+                        "uuid": "cd831d19-3799-4e73-a52a-237930f1e450",
+                        "userName": employee_code,
+                        "name": "Akhila",
+                        "mobileNumber": "9901224633",
+                        "emailId": None,
+                        "locale": None,
+                        "type": "EMPLOYEE",
+                        "roles": [
+                            {
+                                "name": "Complainant",
+                                "code": "COMPLAINANT",
+                                "tenantId": "pg"
+                            },
+                            {
+                                "name": "Employee",
+                                "code": "EMPLOYEE",
+                                "tenantId": "pg"
+                            },
+                            {
+                                "name": "Complaint Assessor",
+                                "code": "COMPLAINT_ASSESSOR",
+                                "tenantId": "pg"
+                            },
+                            {
+                                "name": "Super User",
+                                "code": "SUPERUSER",
+                                "tenantId": "pg"
+                            }
+                        ],
+                        "active": True,
+                        "tenantId": "pg",
+                        "permanentCity": None
+                    },
+                    "msgId": "1744021633700|en_IN",
+                    "plainAccessRequest": {}
                 }
 
+                payload = {
+                    "RequestInfo": request_info,
+                    "incident": incident_payload,
+                    "workflow": {
+                        "action": "APPLY",
+                        "verificationDocuments": []
+                    }
+                }
+                print(payload)
+
                 # Call the im-services create API
-                response = requests.post(im_services_url, json=payload)
+                create_incident_url = f"{im_services_url}/im-services/v2/request/_create"
+                headers = {"Content-Type": "application/json"}
+                response = requests.post(create_incident_url, json=payload, headers=headers)
                 if response.status_code in (200, 201):
                     resp_json = response.json()
                     # Try to extract ticket/incident id from response
-                    incident_id = resp_json.get("incident", {}).get("incidentId") or resp_json.get("incidentId")
+                    incident = resp_json.get("IncidentWrappers", {})[0].get("incident")
+                    incident_id = incident.get("incidentId")
                     df.at[idx, 'status'] = 'success'
                     df.at[idx, 'error'] = ''
                     df.at[idx, 'ticket_id'] = incident_id or ''
