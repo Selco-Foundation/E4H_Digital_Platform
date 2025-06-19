@@ -39,20 +39,35 @@ const useInboxData = (searchParams) => {
     config: {
       select: (data) => ({ data } || "-"),
       enabled: Digit.Utils.pgrAccess(),
+      staleTime: 30000,
+      cacheTime: 300000,
     },
-
-
   });
 
   const filteredData = isSuccess && data ? filterData(data) : { total: 0, items: [], statusArray: [] };
 
   const prevSearchParams = useRef(searchParams);
   useEffect(() => {
-    if (JSON.stringify(searchParams) !== JSON.stringify(prevSearchParams.current)) {
+    const currentParamsStr = JSON.stringify({
+      limit: searchParams.limit,
+      offset: searchParams.offset,
+      nearingSLA: searchParams.nearingSLA,
+      filters: searchParams.filters,
+      search: searchParams.search
+    });
+    const prevParamsStr = JSON.stringify({
+      limit: prevSearchParams.current?.limit,
+      offset: prevSearchParams.current?.offset,
+      nearingSLA: prevSearchParams.current?.nearingSLA,
+      filters: prevSearchParams.current?.filters,
+      search: prevSearchParams.current?.search
+    });
+    
+    if (currentParamsStr !== prevParamsStr) {
       refetch();
       prevSearchParams.current = searchParams;
     }
-  }, [searchParams, refetch]);
+  }, [searchParams.limit, searchParams.offset, searchParams.nearingSLA, JSON.stringify(searchParams.filters), JSON.stringify(searchParams.search), refetch]);
 
   const fetchInboxData = () => {
     const currentUser = JSON.parse(sessionStorage.getItem("Digit.User"))?.value?.info;
