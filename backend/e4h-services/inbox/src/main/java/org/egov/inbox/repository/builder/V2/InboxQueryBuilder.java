@@ -107,7 +107,7 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
                             "doc.containsKey('Data.stateSla') && " +
                             "doc['Data.stateSla'].size() > 0 && " +
                             "doc['Data.stateSla'].value > 0 && " +
-                            "(doc['Data.slaRemaining'].value / doc['Data.stateSla'].value) <= 0.3");
+                            "((double) doc['Data.slaRemaining'].value / doc['Data.stateSla'].value) <= 0.3");
             scriptInner.put("lang", "painless");
 
             Map<String, Object> scriptClause = new HashMap<>();
@@ -341,7 +341,7 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
                         "doc.containsKey('Data.stateSla') && " +
                         "doc['Data.stateSla'].size() > 0 && " +
                         "doc['Data.stateSla'].value > 0 && " +
-                        "(doc['Data.slaRemaining'].value / doc['Data.stateSla'].value) <= 0.3");
+                        "((double) doc['Data.slaRemaining'].value / doc['Data.stateSla'].value) <= 0.3");
         innerScript.put("lang", "painless");
 
         Map<String, Object> script = new HashMap<>();
