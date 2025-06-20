@@ -6,10 +6,10 @@ on:
       # - staging
       # - main
       - workflow-optimize
-    tags:
-      - 'v*'
-    paths:
-      - 'backend/e4h-services/inbox/**'
+    # tags:
+    #   - 'v*'
+    # paths:
+    #   - 'backend/e4h-services/inbox/**'
   workflow_dispatch:
 
 permissions:
