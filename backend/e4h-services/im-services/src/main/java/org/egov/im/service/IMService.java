@@ -9,11 +9,8 @@ import org.egov.im.repository.IMRepository;
 import org.egov.im.util.IMUtils;
 import org.egov.im.util.MDMSUtils;
 import org.egov.im.validator.ServiceRequestValidator;
-import org.egov.im.web.models.IncidentRequestWrapper;
-import org.egov.im.web.models.IncidentWrapper;
+import org.egov.im.web.models.*;
 import org.egov.im.web.controllers.*;
-import org.egov.im.web.models.RequestSearchCriteria;
-import org.egov.im.web.models.IncidentRequest;
 import org.egov.im.web.models.workflow.ProcessInstance;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.CollectionUtils;
@@ -43,10 +40,13 @@ public class IMService {
 
     private IMUtils imUtils;
 
+    private LocalizationService localizationService;
+
+
     @Autowired
     public IMService(EnrichmentService enrichmentService, UserService userService, WorkflowService workflowService,
                       ServiceRequestValidator serviceRequestValidator, ServiceRequestValidator validator, Producer producer,
-                      IMConfiguration config, IMRepository repository, MDMSUtils mdmsUtils, IMUtils imUtils) {
+                      IMConfiguration config, IMRepository repository, MDMSUtils mdmsUtils, IMUtils imUtils, LocalizationService localizationService) {
         this.enrichmentService = enrichmentService;
         this.userService = userService;
         this.workflowService = workflowService;
@@ -57,6 +57,7 @@ public class IMService {
         this.repository = repository;
         this.mdmsUtils = mdmsUtils;
         this.imUtils = imUtils;
+        this.localizationService = localizationService;
     }
 
 
@@ -70,10 +71,17 @@ public class IMService {
         Object mdmsData = mdmsUtils.mDMSCall(request);
         validator.validateCreate(request, mdmsData);
         enrichmentService.enrichCreateRequest(request);
-        ProcessInstance updatedProcessInstance = workflowService.updateWorkflowStatus(request, mdmsData);
+        Priority priority = workflowService.getPriorityFromMDMS(request, mdmsData);
+        ProcessInstance updatedProcessInstance = workflowService.updateWorkflowStatus(request, priority);
         ProcessInstance trimmedUpdatedProcessInstance = imUtils.trimRolesFromProcessInstance(updatedProcessInstance);
         producer.push(tenantId,config.getCreateTopic(),request);
-        producer.push(tenantId,config.getCreateTopicIndexer(),new IncidentRequestWrapper(request,trimmedUpdatedProcessInstance));
+        IncidentRequestWrapper wrapper = IncidentRequestWrapper.builder()
+                .incidentRequest(request)
+                .processInstance(trimmedUpdatedProcessInstance)
+                .build();
+        localizationService.enrichLocalizedFieldsForIndexing(wrapper);
+        wrapper.getIndexView().setPriority(priority);
+        producer.push(tenantId,config.getCreateTopicIndexer(),wrapper);
         return request;
     }
 
@@ -133,11 +141,17 @@ public class IMService {
         Object mdmsData = mdmsUtils.mDMSCall(request);
         validator.validateUpdate(request, mdmsData);
         enrichmentService.enrichUpdateRequest(request);
-        ProcessInstance updatedProcessInstance = workflowService.updateWorkflowStatus(request, mdmsData);
+        Priority priority = workflowService.getPriorityFromMDMS(request, mdmsData);
+        ProcessInstance updatedProcessInstance = workflowService.updateWorkflowStatus(request, priority);
         ProcessInstance trimmedUpdatedProcessInstance = imUtils.trimRolesFromProcessInstance(updatedProcessInstance);
         producer.push(tenantId,config.getUpdateTopic(),request);
-        producer.push(tenantId,config.getUpdateTopicIndexer(),new IncidentRequestWrapper(request,trimmedUpdatedProcessInstance));
-
+        IncidentRequestWrapper wrapper = IncidentRequestWrapper.builder()
+                .incidentRequest(request)
+                .processInstance(trimmedUpdatedProcessInstance)
+                .build();
+        localizationService.enrichLocalizedFieldsForIndexing(wrapper);
+        wrapper.getIndexView().setPriority(priority);
+        producer.push(tenantId,config.getUpdateTopicIndexer(),wrapper);
         return request;
     }
 
