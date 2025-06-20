@@ -8,23 +8,19 @@ import org.egov.im.web.models.Incident;
 import org.egov.im.web.models.IncidentRequestWrapper;
 import org.egov.im.web.models.IndexView;
 import org.egov.im.web.models.LocalizationResponse;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
-import org.springframework.web.util.UriComponentsBuilder;
 
 import java.util.Collections;
+import java.util.Optional;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class LocalizationService {
 
-    @Autowired
     private final RestTemplate restTemplate;
-
-    @Autowired
     private final IMConfiguration config;
 
     public LocalizationResponse getLocalizationMessages(RequestInfo requestInfo, String stateTenant, String module, String locale, String codes) {
@@ -38,17 +34,20 @@ public class LocalizationService {
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-
         HttpEntity<Object> requestEntity = new HttpEntity<>(Collections.singletonMap("RequestInfo", requestInfo), headers);
 
-        ResponseEntity<LocalizationResponse> responseEntity = restTemplate.exchange(
-                urlBuilder.toString(),
-                HttpMethod.POST,
-                requestEntity,
-                LocalizationResponse.class
-        );
-
-        return responseEntity.getBody();
+        try {
+            ResponseEntity<LocalizationResponse> responseEntity = restTemplate.exchange(
+                    urlBuilder.toString(),
+                    HttpMethod.POST,
+                    requestEntity,
+                    LocalizationResponse.class
+            );
+            return responseEntity.getBody();
+        } catch (Exception e) {
+            log.error("Failed to fetch localization messages for codes: {}, error: {}", codes, e.getMessage(), e);
+            return new LocalizationResponse(); // return empty response object to avoid NPE
+        }
     }
 
     public void enrichLocalizedFieldsForIndexing(IncidentRequestWrapper wrapper) {
@@ -62,9 +61,13 @@ public class LocalizationService {
         String stateCode = "HEADER_TENANT_TENANTS_" + stateTenant.toUpperCase();
         String incidentTypeCode = "SERVICEDEFS." + incident.getIncidentType().toUpperCase();
         String incidentSubTypeCode = "SERVICEDEFS." + incident.getIncidentSubType().toUpperCase();
-        String appStatusCode = "CS_COMMON_" + incident.getApplicationStatus().toUpperCase();
-        String tenantCode = "TENANT_TENANTS_" + tenantId.replace(".", "_").toUpperCase();
 
+        String appStatusCode = Optional.ofNullable(incident.getApplicationStatus())
+                .map(String::toUpperCase)
+                .map(status -> "CS_COMMON_" + status)
+                .orElse("");
+
+        String tenantCode = "TENANT_TENANTS_" + tenantId.replace(".", "_").toUpperCase();
         String imCodes = String.join(",", incidentTypeCode, incidentSubTypeCode, appStatusCode);
         String commonCodes = tenantCode;
 
@@ -81,4 +84,4 @@ public class LocalizationService {
 
         wrapper.setIndexView(indexView);
     }
-} 
+}
