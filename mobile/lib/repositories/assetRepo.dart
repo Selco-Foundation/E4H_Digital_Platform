@@ -1,5 +1,6 @@
 // lib/repositories/asset_repository.dart
 
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
@@ -25,16 +26,11 @@ class FileStoreResponse {
 }
 
 class AssetRepository {
-  AssetRepository({
-    required this.tenantId,
-    required this.authToken,
-  }) {
+  AssetRepository() {
     _dio.options.baseUrl = envConfig.variables.baseUrl;
   }
 
   final Dio _dio = DioClient().dio;
-  final String tenantId;
-  final String authToken;
 
   Future<String> uploadFile(File file) async {
     final fileName = file.path.split(Platform.pathSeparator).last;
@@ -46,7 +42,7 @@ class AssetRepository {
         filename: fileName,
         contentType: MediaType.parse(mimeType),
       ),
-      "tenantId": tenantId,
+      "tenantId": envConfig.variables.tenantId,
       "module": "Incident",
     });
 
@@ -67,16 +63,21 @@ class AssetRepository {
 
   Future<void> createAsset(Map<String, dynamic> payload) async {
     try {
+      _dio.options.baseUrl =
+          "https://819b-197-211-59-119.ngrok-free.app"; //todo to be removed
+      print(jsonEncode(payload));
       final response =
-          await _dio.post("/asset‐registry/v1/asset/_create", data: payload);
-
+          await _dio.post("/asset-registry/v1/asset/_create", data: payload);
+      _dio.options.baseUrl = envConfig.variables.baseUrl; //todo to be removed
       if (response.statusCode != 200 && response.statusCode != 201) {
         throw Exception(
             "Create Asset responded with status ${response.statusCode}");
       }
     } on DioError catch (e) {
+      _dio.options.baseUrl = envConfig.variables.baseUrl; //todo to be removed
       throw DioErrorParser.parse(e);
     }
+    _dio.options.baseUrl = envConfig.variables.baseUrl; //todo to be removed
   }
 
   String _lookupMimeType(String fileName) {

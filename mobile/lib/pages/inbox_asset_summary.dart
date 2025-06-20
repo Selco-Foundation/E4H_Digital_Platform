@@ -121,15 +121,10 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
                 const SizedBox(height: spacer4),
                 const DigitCard(
                   children: [
+                    ElementAssetSummary(count: 2, text: 'Batteries'),
+                    ElementAssetSummary(count: 2, text: 'Inverters'),
                     ElementAssetSummary(
-                        type: 'Battery', count: 2, text: 'batteries'),
-                    ElementAssetSummary(
-                        type: 'Inverter', count: 2, text: 'inverters'),
-                    ElementAssetSummary(
-                        type: 'Panel',
-                        count: 2,
-                        text: 'panels',
-                        lastCard: true),
+                        count: 2, text: 'Panels', lastCard: true),
                   ],
                 ),
                 const SizedBox(height: spacer4),

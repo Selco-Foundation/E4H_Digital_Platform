@@ -137,7 +137,7 @@ class _SpecificationPageState extends State<SpecificationPage> {
                         final newSpec = CacheSpecification(
                           projectId: _currentProjectId!,
                           assetType: assetType,
-                          system: systemList.last.data.name,
+                          system: systemList.last.data.code,
                           totalCapacity: double.tryParse(totalCapacity) ?? 0.0,
                           totalCapacityUnit: totalCapacityUom,
                         );

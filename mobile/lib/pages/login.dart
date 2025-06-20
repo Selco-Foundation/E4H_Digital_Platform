@@ -7,6 +7,7 @@ import 'package:reactive_forms/reactive_forms.dart';
 import 'package:recase/recase.dart';
 import 'package:selco/blocs/auth/authbloc.dart';
 
+import '../blocs/user_type/user_type.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
 import '../utils/i18_key_constants.dart' as i18;
@@ -114,6 +115,19 @@ class _LoginPageState extends State<LoginPage> {
                           },
                           authenticated:
                               (accesstoken, refreshtoken, userRequest) {
+                            final hasInstallerRole = userRequest?.roles.any(
+                                    (role) =>
+                                        role.code ==
+                                        'INSTALLATION_REPORT_PART_B_EDITOR') ??
+                                false;
+                            if (hasInstallerRole) {
+                              context.read<UserTypeBloc>().add(
+                                  const UserTypeEvent.typeSelected(
+                                      "supervisor"));
+                            } else {
+                              context.read<UserTypeBloc>().add(
+                                  const UserTypeEvent.typeSelected("user"));
+                            }
                             context.router
                                 .replace(const AuthenticatedRouteWrapper());
                           },
