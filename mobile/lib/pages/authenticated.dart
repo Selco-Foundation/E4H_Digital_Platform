@@ -3,7 +3,6 @@ import 'package:digit_scanner/blocs/scanner.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:selco/blocs/selected_project/selected_project.dart';
-import 'package:selco/blocs/user_type/user_type.dart';
 
 import '../blocs/asset_type/asset_type.dart';
 import '../blocs/inbox_type/inbox_type.dart';
@@ -29,7 +28,6 @@ class AuthenticatedScreenWrapper extends StatelessWidget {
             BlocProvider(
                 create: (context) =>
                     DigitScannerBloc(const DigitScannerState())),
-            BlocProvider(create: (context) => UserTypeBloc()),
           ],
           child: const Scaffold(
             body: AutoRouter(),

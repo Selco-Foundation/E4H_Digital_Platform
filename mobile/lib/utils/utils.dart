@@ -52,6 +52,31 @@ String truncateText(String text, {int maxLength = 16}) {
   return text;
 }
 
+int parseWarrantyMonths(String s) {
+  // Matches patterns like PnY, PnM, or PnYnM
+  final regex = RegExp(r'^P(?:(\d+)Y)?(?:(\d+)M)?');
+  final match = regex.firstMatch(s);
+  if (match != null) {
+    final years = int.tryParse(match.group(1) ?? '') ?? 0;
+    final months = int.tryParse(match.group(2) ?? '') ?? 0;
+    return years * 12 + months;
+  }
+  // fallback default, e.g., 1 month
+  return 1;
+}
+
+int parseWarrantyYears(String s) {
+  final regex = RegExp(r'^P(?:(\d+)Y)?(?:(\d+)M)?');
+  final match = regex.firstMatch(s);
+  if (match != null) {
+    final years = int.tryParse(match.group(1) ?? '') ?? 0;
+    final months = int.tryParse(match.group(2) ?? '') ?? 0;
+    final totalMonths = years * 12 + months;
+    return (totalMonths + 11) ~/ 12; // ceiling division
+  }
+  return 1;
+}
+
 enum WORKFLOW_STATUS_FIELD_STAFF {
   REJECTED_BY_FIELD_SUPERVISOR,
   APPROVED_BY_QC_SPOC

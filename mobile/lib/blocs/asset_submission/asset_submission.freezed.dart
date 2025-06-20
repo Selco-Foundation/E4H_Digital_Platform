@@ -17,86 +17,19 @@ final _privateConstructorUsedError = UnsupportedError(
 /// @nodoc
 mixin _$AssetSubmissionEvent {
   String get projectId => throw _privateConstructorUsedError;
-  String get authToken => throw _privateConstructorUsedError;
-  String get tenantId => throw _privateConstructorUsedError;
-  String get facilityId => throw _privateConstructorUsedError;
-  String get systemCode => throw _privateConstructorUsedError;
-  String? get modelNumber => throw _privateConstructorUsedError;
-  String? get brandId => throw _privateConstructorUsedError;
-  double? get totalCapacity => throw _privateConstructorUsedError;
-  String? get totalCapacityUnit => throw _privateConstructorUsedError;
-  double? get panelCapacity => throw _privateConstructorUsedError;
-  String? get capacityUnit => throw _privateConstructorUsedError;
-  String? get warrantyStartDate => throw _privateConstructorUsedError;
-  int? get warrantyDuration => throw _privateConstructorUsedError;
-  String? get warrantyEndDate => throw _privateConstructorUsedError;
-  Map<String, dynamic>? get additionalDetails =>
-      throw _privateConstructorUsedError;
-  Map<String, dynamic>? get userInfo => throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(
-            String projectId,
-            String authToken,
-            String tenantId,
-            String facilityId,
-            String systemCode,
-            String? modelNumber,
-            String? brandId,
-            double? totalCapacity,
-            String? totalCapacityUnit,
-            double? panelCapacity,
-            String? capacityUnit,
-            String? warrantyStartDate,
-            int? warrantyDuration,
-            String? warrantyEndDate,
-            Map<String, dynamic>? additionalDetails,
-            Map<String, dynamic>? userInfo)
-        submitAll,
+    required TResult Function(String projectId) submitAll,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(
-            String projectId,
-            String authToken,
-            String tenantId,
-            String facilityId,
-            String systemCode,
-            String? modelNumber,
-            String? brandId,
-            double? totalCapacity,
-            String? totalCapacityUnit,
-            double? panelCapacity,
-            String? capacityUnit,
-            String? warrantyStartDate,
-            int? warrantyDuration,
-            String? warrantyEndDate,
-            Map<String, dynamic>? additionalDetails,
-            Map<String, dynamic>? userInfo)?
-        submitAll,
+    TResult? Function(String projectId)? submitAll,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(
-            String projectId,
-            String authToken,
-            String tenantId,
-            String facilityId,
-            String systemCode,
-            String? modelNumber,
-            String? brandId,
-            double? totalCapacity,
-            String? totalCapacityUnit,
-            double? panelCapacity,
-            String? capacityUnit,
-            String? warrantyStartDate,
-            int? warrantyDuration,
-            String? warrantyEndDate,
-            Map<String, dynamic>? additionalDetails,
-            Map<String, dynamic>? userInfo)?
-        submitAll,
+    TResult Function(String projectId)? submitAll,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -128,23 +61,7 @@ abstract class $AssetSubmissionEventCopyWith<$Res> {
           $Res Function(AssetSubmissionEvent) then) =
       _$AssetSubmissionEventCopyWithImpl<$Res, AssetSubmissionEvent>;
   @useResult
-  $Res call(
-      {String projectId,
-      String authToken,
-      String tenantId,
-      String facilityId,
-      String systemCode,
-      String? modelNumber,
-      String? brandId,
-      double? totalCapacity,
-      String? totalCapacityUnit,
-      double? panelCapacity,
-      String? capacityUnit,
-      String? warrantyStartDate,
-      int? warrantyDuration,
-      String? warrantyEndDate,
-      Map<String, dynamic>? additionalDetails,
-      Map<String, dynamic>? userInfo});
+  $Res call({String projectId});
 }
 
 /// @nodoc
@@ -162,87 +79,12 @@ class _$AssetSubmissionEventCopyWithImpl<$Res,
   @override
   $Res call({
     Object? projectId = null,
-    Object? authToken = null,
-    Object? tenantId = null,
-    Object? facilityId = null,
-    Object? systemCode = null,
-    Object? modelNumber = freezed,
-    Object? brandId = freezed,
-    Object? totalCapacity = freezed,
-    Object? totalCapacityUnit = freezed,
-    Object? panelCapacity = freezed,
-    Object? capacityUnit = freezed,
-    Object? warrantyStartDate = freezed,
-    Object? warrantyDuration = freezed,
-    Object? warrantyEndDate = freezed,
-    Object? additionalDetails = freezed,
-    Object? userInfo = freezed,
   }) {
     return _then(_value.copyWith(
       projectId: null == projectId
           ? _value.projectId
           : projectId // ignore: cast_nullable_to_non_nullable
               as String,
-      authToken: null == authToken
-          ? _value.authToken
-          : authToken // ignore: cast_nullable_to_non_nullable
-              as String,
-      tenantId: null == tenantId
-          ? _value.tenantId
-          : tenantId // ignore: cast_nullable_to_non_nullable
-              as String,
-      facilityId: null == facilityId
-          ? _value.facilityId
-          : facilityId // ignore: cast_nullable_to_non_nullable
-              as String,
-      systemCode: null == systemCode
-          ? _value.systemCode
-          : systemCode // ignore: cast_nullable_to_non_nullable
-              as String,
-      modelNumber: freezed == modelNumber
-          ? _value.modelNumber
-          : modelNumber // ignore: cast_nullable_to_non_nullable
-              as String?,
-      brandId: freezed == brandId
-          ? _value.brandId
-          : brandId // ignore: cast_nullable_to_non_nullable
-              as String?,
-      totalCapacity: freezed == totalCapacity
-          ? _value.totalCapacity
-          : totalCapacity // ignore: cast_nullable_to_non_nullable
-              as double?,
-      totalCapacityUnit: freezed == totalCapacityUnit
-          ? _value.totalCapacityUnit
-          : totalCapacityUnit // ignore: cast_nullable_to_non_nullable
-              as String?,
-      panelCapacity: freezed == panelCapacity
-          ? _value.panelCapacity
-          : panelCapacity // ignore: cast_nullable_to_non_nullable
-              as double?,
-      capacityUnit: freezed == capacityUnit
-          ? _value.capacityUnit
-          : capacityUnit // ignore: cast_nullable_to_non_nullable
-              as String?,
-      warrantyStartDate: freezed == warrantyStartDate
-          ? _value.warrantyStartDate
-          : warrantyStartDate // ignore: cast_nullable_to_non_nullable
-              as String?,
-      warrantyDuration: freezed == warrantyDuration
-          ? _value.warrantyDuration
-          : warrantyDuration // ignore: cast_nullable_to_non_nullable
-              as int?,
-      warrantyEndDate: freezed == warrantyEndDate
-          ? _value.warrantyEndDate
-          : warrantyEndDate // ignore: cast_nullable_to_non_nullable
-              as String?,
-      additionalDetails: freezed == additionalDetails
-          ? _value.additionalDetails
-          : additionalDetails // ignore: cast_nullable_to_non_nullable
-              as Map<String, dynamic>?,
-      userInfo: freezed == userInfo
-          ? _value.userInfo
-          : userInfo // ignore: cast_nullable_to_non_nullable
-              as Map<String, dynamic>?,
     ) as $Val);
   }
 }
@@ -255,23 +97,7 @@ abstract class _$$SubmitAllImplCopyWith<$Res>
       __$$SubmitAllImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call(
-      {String projectId,
-      String authToken,
-      String tenantId,
-      String facilityId,
-      String systemCode,
-      String? modelNumber,
-      String? brandId,
-      double? totalCapacity,
-      String? totalCapacityUnit,
-      double? panelCapacity,
-      String? capacityUnit,
-      String? warrantyStartDate,
-      int? warrantyDuration,
-      String? warrantyEndDate,
-      Map<String, dynamic>? additionalDetails,
-      Map<String, dynamic>? userInfo});
+  $Res call({String projectId});
 }
 
 /// @nodoc
@@ -286,87 +112,12 @@ class __$$SubmitAllImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? projectId = null,
-    Object? authToken = null,
-    Object? tenantId = null,
-    Object? facilityId = null,
-    Object? systemCode = null,
-    Object? modelNumber = freezed,
-    Object? brandId = freezed,
-    Object? totalCapacity = freezed,
-    Object? totalCapacityUnit = freezed,
-    Object? panelCapacity = freezed,
-    Object? capacityUnit = freezed,
-    Object? warrantyStartDate = freezed,
-    Object? warrantyDuration = freezed,
-    Object? warrantyEndDate = freezed,
-    Object? additionalDetails = freezed,
-    Object? userInfo = freezed,
   }) {
     return _then(_$SubmitAllImpl(
       projectId: null == projectId
           ? _value.projectId
           : projectId // ignore: cast_nullable_to_non_nullable
               as String,
-      authToken: null == authToken
-          ? _value.authToken
-          : authToken // ignore: cast_nullable_to_non_nullable
-              as String,
-      tenantId: null == tenantId
-          ? _value.tenantId
-          : tenantId // ignore: cast_nullable_to_non_nullable
-              as String,
-      facilityId: null == facilityId
-          ? _value.facilityId
-          : facilityId // ignore: cast_nullable_to_non_nullable
-              as String,
-      systemCode: null == systemCode
-          ? _value.systemCode
-          : systemCode // ignore: cast_nullable_to_non_nullable
-              as String,
-      modelNumber: freezed == modelNumber
-          ? _value.modelNumber
-          : modelNumber // ignore: cast_nullable_to_non_nullable
-              as String?,
-      brandId: freezed == brandId
-          ? _value.brandId
-          : brandId // ignore: cast_nullable_to_non_nullable
-              as String?,
-      totalCapacity: freezed == totalCapacity
-          ? _value.totalCapacity
-          : totalCapacity // ignore: cast_nullable_to_non_nullable
-              as double?,
-      totalCapacityUnit: freezed == totalCapacityUnit
-          ? _value.totalCapacityUnit
-          : totalCapacityUnit // ignore: cast_nullable_to_non_nullable
-              as String?,
-      panelCapacity: freezed == panelCapacity
-          ? _value.panelCapacity
-          : panelCapacity // ignore: cast_nullable_to_non_nullable
-              as double?,
-      capacityUnit: freezed == capacityUnit
-          ? _value.capacityUnit
-          : capacityUnit // ignore: cast_nullable_to_non_nullable
-              as String?,
-      warrantyStartDate: freezed == warrantyStartDate
-          ? _value.warrantyStartDate
-          : warrantyStartDate // ignore: cast_nullable_to_non_nullable
-              as String?,
-      warrantyDuration: freezed == warrantyDuration
-          ? _value.warrantyDuration
-          : warrantyDuration // ignore: cast_nullable_to_non_nullable
-              as int?,
-      warrantyEndDate: freezed == warrantyEndDate
-          ? _value.warrantyEndDate
-          : warrantyEndDate // ignore: cast_nullable_to_non_nullable
-              as String?,
-      additionalDetails: freezed == additionalDetails
-          ? _value._additionalDetails
-          : additionalDetails // ignore: cast_nullable_to_non_nullable
-              as Map<String, dynamic>?,
-      userInfo: freezed == userInfo
-          ? _value._userInfo
-          : userInfo // ignore: cast_nullable_to_non_nullable
-              as Map<String, dynamic>?,
     ));
   }
 }
@@ -374,78 +125,14 @@ class __$$SubmitAllImplCopyWithImpl<$Res>
 /// @nodoc
 
 class _$SubmitAllImpl implements _SubmitAll {
-  const _$SubmitAllImpl(
-      {required this.projectId,
-      required this.authToken,
-      required this.tenantId,
-      required this.facilityId,
-      required this.systemCode,
-      this.modelNumber,
-      this.brandId,
-      this.totalCapacity,
-      this.totalCapacityUnit,
-      this.panelCapacity,
-      this.capacityUnit,
-      this.warrantyStartDate,
-      this.warrantyDuration,
-      this.warrantyEndDate,
-      final Map<String, dynamic>? additionalDetails,
-      final Map<String, dynamic>? userInfo})
-      : _additionalDetails = additionalDetails,
-        _userInfo = userInfo;
+  const _$SubmitAllImpl({required this.projectId});
 
   @override
   final String projectId;
-  @override
-  final String authToken;
-  @override
-  final String tenantId;
-  @override
-  final String facilityId;
-  @override
-  final String systemCode;
-  @override
-  final String? modelNumber;
-  @override
-  final String? brandId;
-  @override
-  final double? totalCapacity;
-  @override
-  final String? totalCapacityUnit;
-  @override
-  final double? panelCapacity;
-  @override
-  final String? capacityUnit;
-  @override
-  final String? warrantyStartDate;
-  @override
-  final int? warrantyDuration;
-  @override
-  final String? warrantyEndDate;
-  final Map<String, dynamic>? _additionalDetails;
-  @override
-  Map<String, dynamic>? get additionalDetails {
-    final value = _additionalDetails;
-    if (value == null) return null;
-    if (_additionalDetails is EqualUnmodifiableMapView)
-      return _additionalDetails;
-    // ignore: implicit_dynamic_type
-    return EqualUnmodifiableMapView(value);
-  }
-
-  final Map<String, dynamic>? _userInfo;
-  @override
-  Map<String, dynamic>? get userInfo {
-    final value = _userInfo;
-    if (value == null) return null;
-    if (_userInfo is EqualUnmodifiableMapView) return _userInfo;
-    // ignore: implicit_dynamic_type
-    return EqualUnmodifiableMapView(value);
-  }
 
   @override
   String toString() {
-    return 'AssetSubmissionEvent.submitAll(projectId: $projectId, authToken: $authToken, tenantId: $tenantId, facilityId: $facilityId, systemCode: $systemCode, modelNumber: $modelNumber, brandId: $brandId, totalCapacity: $totalCapacity, totalCapacityUnit: $totalCapacityUnit, panelCapacity: $panelCapacity, capacityUnit: $capacityUnit, warrantyStartDate: $warrantyStartDate, warrantyDuration: $warrantyDuration, warrantyEndDate: $warrantyEndDate, additionalDetails: $additionalDetails, userInfo: $userInfo)';
+    return 'AssetSubmissionEvent.submitAll(projectId: $projectId)';
   }
 
   @override
@@ -454,56 +141,11 @@ class _$SubmitAllImpl implements _SubmitAll {
         (other.runtimeType == runtimeType &&
             other is _$SubmitAllImpl &&
             (identical(other.projectId, projectId) ||
-                other.projectId == projectId) &&
-            (identical(other.authToken, authToken) ||
-                other.authToken == authToken) &&
-            (identical(other.tenantId, tenantId) ||
-                other.tenantId == tenantId) &&
-            (identical(other.facilityId, facilityId) ||
-                other.facilityId == facilityId) &&
-            (identical(other.systemCode, systemCode) ||
-                other.systemCode == systemCode) &&
-            (identical(other.modelNumber, modelNumber) ||
-                other.modelNumber == modelNumber) &&
-            (identical(other.brandId, brandId) || other.brandId == brandId) &&
-            (identical(other.totalCapacity, totalCapacity) ||
-                other.totalCapacity == totalCapacity) &&
-            (identical(other.totalCapacityUnit, totalCapacityUnit) ||
-                other.totalCapacityUnit == totalCapacityUnit) &&
-            (identical(other.panelCapacity, panelCapacity) ||
-                other.panelCapacity == panelCapacity) &&
-            (identical(other.capacityUnit, capacityUnit) ||
-                other.capacityUnit == capacityUnit) &&
-            (identical(other.warrantyStartDate, warrantyStartDate) ||
-                other.warrantyStartDate == warrantyStartDate) &&
-            (identical(other.warrantyDuration, warrantyDuration) ||
-                other.warrantyDuration == warrantyDuration) &&
-            (identical(other.warrantyEndDate, warrantyEndDate) ||
-                other.warrantyEndDate == warrantyEndDate) &&
-            const DeepCollectionEquality()
-                .equals(other._additionalDetails, _additionalDetails) &&
-            const DeepCollectionEquality().equals(other._userInfo, _userInfo));
+                other.projectId == projectId));
   }
 
   @override
-  int get hashCode => Object.hash(
-      runtimeType,
-      projectId,
-      authToken,
-      tenantId,
-      facilityId,
-      systemCode,
-      modelNumber,
-      brandId,
-      totalCapacity,
-      totalCapacityUnit,
-      panelCapacity,
-      capacityUnit,
-      warrantyStartDate,
-      warrantyDuration,
-      warrantyEndDate,
-      const DeepCollectionEquality().hash(_additionalDetails),
-      const DeepCollectionEquality().hash(_userInfo));
+  int get hashCode => Object.hash(runtimeType, projectId);
 
   @JsonKey(ignore: true)
   @override
@@ -514,126 +156,27 @@ class _$SubmitAllImpl implements _SubmitAll {
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(
-            String projectId,
-            String authToken,
-            String tenantId,
-            String facilityId,
-            String systemCode,
-            String? modelNumber,
-            String? brandId,
-            double? totalCapacity,
-            String? totalCapacityUnit,
-            double? panelCapacity,
-            String? capacityUnit,
-            String? warrantyStartDate,
-            int? warrantyDuration,
-            String? warrantyEndDate,
-            Map<String, dynamic>? additionalDetails,
-            Map<String, dynamic>? userInfo)
-        submitAll,
+    required TResult Function(String projectId) submitAll,
   }) {
-    return submitAll(
-        projectId,
-        authToken,
-        tenantId,
-        facilityId,
-        systemCode,
-        modelNumber,
-        brandId,
-        totalCapacity,
-        totalCapacityUnit,
-        panelCapacity,
-        capacityUnit,
-        warrantyStartDate,
-        warrantyDuration,
-        warrantyEndDate,
-        additionalDetails,
-        userInfo);
+    return submitAll(projectId);
   }
 
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(
-            String projectId,
-            String authToken,
-            String tenantId,
-            String facilityId,
-            String systemCode,
-            String? modelNumber,
-            String? brandId,
-            double? totalCapacity,
-            String? totalCapacityUnit,
-            double? panelCapacity,
-            String? capacityUnit,
-            String? warrantyStartDate,
-            int? warrantyDuration,
-            String? warrantyEndDate,
-            Map<String, dynamic>? additionalDetails,
-            Map<String, dynamic>? userInfo)?
-        submitAll,
+    TResult? Function(String projectId)? submitAll,
   }) {
-    return submitAll?.call(
-        projectId,
-        authToken,
-        tenantId,
-        facilityId,
-        systemCode,
-        modelNumber,
-        brandId,
-        totalCapacity,
-        totalCapacityUnit,
-        panelCapacity,
-        capacityUnit,
-        warrantyStartDate,
-        warrantyDuration,
-        warrantyEndDate,
-        additionalDetails,
-        userInfo);
+    return submitAll?.call(projectId);
   }
 
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(
-            String projectId,
-            String authToken,
-            String tenantId,
-            String facilityId,
-            String systemCode,
-            String? modelNumber,
-            String? brandId,
-            double? totalCapacity,
-            String? totalCapacityUnit,
-            double? panelCapacity,
-            String? capacityUnit,
-            String? warrantyStartDate,
-            int? warrantyDuration,
-            String? warrantyEndDate,
-            Map<String, dynamic>? additionalDetails,
-            Map<String, dynamic>? userInfo)?
-        submitAll,
+    TResult Function(String projectId)? submitAll,
     required TResult orElse(),
   }) {
     if (submitAll != null) {
-      return submitAll(
-          projectId,
-          authToken,
-          tenantId,
-          facilityId,
-          systemCode,
-          modelNumber,
-          brandId,
-          totalCapacity,
-          totalCapacityUnit,
-          panelCapacity,
-          capacityUnit,
-          warrantyStartDate,
-          warrantyDuration,
-          warrantyEndDate,
-          additionalDetails,
-          userInfo);
+      return submitAll(projectId);
     }
     return orElse();
   }
@@ -668,56 +211,10 @@ class _$SubmitAllImpl implements _SubmitAll {
 }
 
 abstract class _SubmitAll implements AssetSubmissionEvent {
-  const factory _SubmitAll(
-      {required final String projectId,
-      required final String authToken,
-      required final String tenantId,
-      required final String facilityId,
-      required final String systemCode,
-      final String? modelNumber,
-      final String? brandId,
-      final double? totalCapacity,
-      final String? totalCapacityUnit,
-      final double? panelCapacity,
-      final String? capacityUnit,
-      final String? warrantyStartDate,
-      final int? warrantyDuration,
-      final String? warrantyEndDate,
-      final Map<String, dynamic>? additionalDetails,
-      final Map<String, dynamic>? userInfo}) = _$SubmitAllImpl;
+  const factory _SubmitAll({required final String projectId}) = _$SubmitAllImpl;
 
   @override
   String get projectId;
-  @override
-  String get authToken;
-  @override
-  String get tenantId;
-  @override
-  String get facilityId;
-  @override
-  String get systemCode;
-  @override
-  String? get modelNumber;
-  @override
-  String? get brandId;
-  @override
-  double? get totalCapacity;
-  @override
-  String? get totalCapacityUnit;
-  @override
-  double? get panelCapacity;
-  @override
-  String? get capacityUnit;
-  @override
-  String? get warrantyStartDate;
-  @override
-  int? get warrantyDuration;
-  @override
-  String? get warrantyEndDate;
-  @override
-  Map<String, dynamic>? get additionalDetails;
-  @override
-  Map<String, dynamic>? get userInfo;
   @override
   @JsonKey(ignore: true)
   _$$SubmitAllImplCopyWith<_$SubmitAllImpl> get copyWith =>

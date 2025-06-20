@@ -6,7 +6,6 @@ import 'package:digit_ui_components/widgets/atoms/digit_divider.dart';
 import 'package:flutter/material.dart';
 
 class ElementAssetSummary extends StatelessWidget {
-  final String type;
   final String text;
   final int count;
   final bool lastCard;
@@ -14,7 +13,6 @@ class ElementAssetSummary extends StatelessWidget {
 
   const ElementAssetSummary(
       {super.key,
-      required this.type,
       required this.text,
       required this.count,
       this.lastCard = false,
@@ -35,7 +33,7 @@ class ElementAssetSummary extends StatelessWidget {
             Align(
               alignment: Alignment.centerLeft,
               child: Text(
-                'Total $text\ninstalled',
+                '$text',
                 style: textTheme.headingS,
               ),
             ),
@@ -56,7 +54,7 @@ class ElementAssetSummary extends StatelessWidget {
             children: [
               DigitButton(
                 mainAxisSize: MainAxisSize.max,
-                label: 'View $type Summary',
+                label: 'View Summary',
                 type: DigitButtonType.secondary,
                 size: DigitButtonSize.medium,
                 onPressed: onPress ?? () {},

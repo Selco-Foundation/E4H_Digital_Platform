@@ -76,19 +76,19 @@ class WelcomeContent extends StatelessWidget {
         title: "Save Reports",
         description:
             "Save installation reports offline until ready for submission",
-        imagePath: AssetImages.WELCOME_2,
+        imagePath: AssetImages.WELCOME_3,
       ),
       MenuItem(
         title: "Submit for Approval",
         description:
             "Save installation reports offline until ready for submission",
-        imagePath: AssetImages.WELCOME_2,
+        imagePath: AssetImages.WELCOME_4,
       ),
       MenuItem(
         title: "Edit Reports",
         description:
             "Save installation reports offline until ready for submission",
-        imagePath: AssetImages.WELCOME_2,
+        imagePath: AssetImages.WELCOME_5,
       ),
     ];
 

@@ -13,6 +13,7 @@ import '../blocs/asset_summary/asset_summary.dart';
 import '../blocs/asset_type/asset_type.dart';
 import '../blocs/overall_asset_summary/overall_asset_summary.dart';
 import '../blocs/selected_project/selected_project.dart';
+import '../blocs/user_type/user_type.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
 import '../utils/i18_key_constants.dart' as i18;
@@ -120,17 +121,6 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                     inverterCount == 0 ||
                     panelCount == 0);
 
-                // assetSubmissionState.whenOrNull(loading: () {
-                //   return DigitButton(
-                //     isDisabled: true,
-                //     label: 'Submitting...',
-                //     type: DigitButtonType.primary,
-                //     onPressed: () {},
-                //     size: DigitButtonSize.large,
-                //     mainAxisSize: MainAxisSize.max,
-                //   );
-                // });
-
                 return FooterButton(
                     showSuffixIcon: false,
                     text: assetSubmissionState.maybeWhen(
@@ -155,28 +145,7 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                   loaded: (summary) {
                                     context.read<AssetSubmissionBloc>().add(
                                           AssetSubmissionEvent.submitAll(
-                                            projectId: project.project.id,
-                                            authToken: "<YOUR_AUTH_TOKEN_HERE>",
-                                            tenantId: "pg",
-                                            facilityId: "FAC/2025/000050",
-                                            systemCode:
-                                                summary.specEntry!.system,
-                                            modelNumber:
-                                                summary.detailEntry!.model,
-                                            brandId: summary.detailEntry!.brand,
-                                            totalCapacity: summary
-                                                .specEntry!.totalCapacity,
-                                            totalCapacityUnit: summary
-                                                .specEntry!.totalCapacityUnit,
-                                            panelCapacity: 34.1,
-                                            capacityUnit: "",
-                                            warrantyStartDate:
-                                                DateTime.timestamp().toString(),
-                                            warrantyDuration: 1,
-                                            warrantyEndDate:
-                                                "2027-01-20T00:00:00.000Z",
-                                            additionalDetails: {},
-                                          ),
+                                              projectId: project.project.id),
                                         );
                                   },
                                 );
@@ -209,20 +178,13 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                             return DigitCard(
                               children: [
                                 const ElementAssetSummary(
-                                  type: 'Battery',
+                                    count: 0, text: 'Batteries'),
+                                const ElementAssetSummary(
                                   count: 0,
-                                  text: 'batteries',
+                                  text: 'Inverters',
                                 ),
                                 const ElementAssetSummary(
-                                  type: 'Inverter',
-                                  count: 0,
-                                  text: 'inverters',
-                                ),
-                                const ElementAssetSummary(
-                                  type: 'Panel',
-                                  count: 0,
-                                  text: 'panels',
-                                ),
+                                    count: 0, text: 'Panels'),
                                 const SizedBox(height: spacer6),
                                 DigitButton(
                                   mainAxisSize: MainAxisSize.max,
@@ -243,20 +205,11 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                       MainAxisAlignment.spaceEvenly,
                                   children: [
                                     ElementAssetSummary(
-                                      type: 'Battery',
-                                      count: 0,
-                                      text: 'batteries',
-                                    ),
+                                        count: 0, text: 'Batteries'),
                                     ElementAssetSummary(
-                                      type: 'Inverter',
-                                      count: 0,
-                                      text: 'inverters',
-                                    ),
+                                        count: 0, text: 'Inverters'),
                                     ElementAssetSummary(
-                                      type: 'Panel',
-                                      count: 0,
-                                      text: 'panels',
-                                    ),
+                                        count: 0, text: 'Panels'),
                                   ],
                                 ),
                                 const SizedBox(height: spacer6),
@@ -315,9 +268,8 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                             return DigitCard(
                               children: [
                                 ElementAssetSummary(
-                                  type: 'Battery',
                                   count: batteryCount,
-                                  text: 'batteries',
+                                  text: 'Batteries',
                                   onPress: () {
                                     context.read<AssetTypeBloc>().add(
                                         const AssetTypeEvent.typeSelected(
@@ -327,9 +279,8 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                   },
                                 ),
                                 ElementAssetSummary(
-                                  type: 'Inverter',
                                   count: inverterCount,
-                                  text: 'inverters',
+                                  text: 'Inverters',
                                   onPress: () {
                                     context.read<AssetTypeBloc>().add(
                                         const AssetTypeEvent.typeSelected(
@@ -339,9 +290,8 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                   },
                                 ),
                                 ElementAssetSummary(
-                                  type: 'Panel',
                                   count: panelCount,
-                                  text: 'panels',
+                                  text: 'Panels',
                                   onPress: () {
                                     context.read<AssetTypeBloc>().add(
                                         const AssetTypeEvent.typeSelected(
@@ -350,7 +300,6 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                         .push(const AssetSummaryRoute());
                                   },
                                 ),
-                                const SizedBox(height: spacer6),
                                 DigitButton(
                                   mainAxisSize: MainAxisSize.max,
                                   label: 'Add More Assets',
@@ -370,29 +319,37 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                     ),
 
                     const SizedBox(height: spacer4),
-                    DigitCard(
-                      children: [
-                        Text(
-                          'Installation Completion Report',
-                          style: textTheme.headingM.copyWith(
-                              color: theme.colorTheme.primary.primary2),
-                        ),
-                        const SizedBox(height: spacer8),
-                        Text(
-                          'Please scan and upload the installation completion report',
-                          style: textTheme.bodyS
-                              .copyWith(color: theme.colorTheme.text.secondary),
-                        ),
-                        const SizedBox(height: spacer8),
-                        FileUploadWidget(
-                          showPreview: true,
-                          allowMultiples: false,
-                          label: 'Upload',
-                          onFilesSelected: (files) {
-                            return <PlatformFile, String?>{};
-                          },
-                        ),
-                      ],
+                    BlocBuilder<UserTypeBloc, UserTypeState>(
+                      builder: (context, userState) {
+                        return userState.maybeWhen(
+                            orElse: () => Container(),
+                            supervisor: () => DigitCard(
+                                  children: [
+                                    Text(
+                                      'Installation Completion Report',
+                                      style: textTheme.headingM.copyWith(
+                                          color: theme
+                                              .colorTheme.primary.primary2),
+                                    ),
+                                    const SizedBox(height: spacer8),
+                                    Text(
+                                      'Please scan and upload the installation completion report',
+                                      style: textTheme.bodyS.copyWith(
+                                          color:
+                                              theme.colorTheme.text.secondary),
+                                    ),
+                                    const SizedBox(height: spacer8),
+                                    FileUploadWidget(
+                                      showPreview: true,
+                                      allowMultiples: false,
+                                      label: 'Upload',
+                                      onFilesSelected: (files) {
+                                        return <PlatformFile, String?>{};
+                                      },
+                                    ),
+                                  ],
+                                ));
+                      },
                     ),
                   ],
                 ),

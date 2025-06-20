@@ -259,6 +259,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                           projectId: _currentProjectId!,
                           assetType: assetType,
                           itemNumber: asset.capacity,
+                          //capacity: asset.capacity,
                           serialNumber: asset.serialNumber,
                           photoPath: asset.photoPath!,
                           longitude: asset.longitude!,
