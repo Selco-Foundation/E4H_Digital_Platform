@@ -64,7 +64,6 @@ public class StorageServiceImpl implements StorageService {
         return tempFiles;
     }
 
-    @Async
     public void createAndSaveChunks(String fileStoreId, File resource, ProcessingContext context) {
         try {
             log.info("File received: {}, Filename: {}", resource, resource.getName());

@@ -36,7 +36,6 @@ public class VideoServiceImpl implements VideoService {
 
     private static final String OUTPUT_DIR = "output";
 
-    @Async
     public void processVideoAsync(File inputFile, ProcessingContext context) {
         log.info("Starting async processing for videoId: {}", context.getVideoId());
 
