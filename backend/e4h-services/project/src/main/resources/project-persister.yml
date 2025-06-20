@@ -769,3 +769,53 @@ serviceMaps:
             - jsonPath: $.Projects.*.auditDetails.createdTime
 
             - jsonPath: $.Projects.*.auditDetails.lastModifiedTime
+
+    - version: 1.0
+      description: Persists project transactions
+      fromTopic: project-transaction-create
+      isTransaction: true
+      module: PROJECT
+      tenantIdJsonPath: $.tenantId
+      objecIdJsonPath: $.txId
+      auditAttributeBasePath: $.auditDetails
+      queryMaps:
+        - query: INSERT INTO project_transaction (
+            id, project_id, process_instance_id,
+            created_by, last_modified_by, created_time, last_modified_time
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+          basePath: $
+          jsonMaps:
+            - jsonPath: $.transactionId
+              type: UUID
+            - jsonPath: $.projectId
+            - jsonPath: $.processInstanceId
+            - jsonPath: $.auditDetails.createdBy
+            - jsonPath: $.auditDetails.lastModifiedBy
+            - jsonPath: $.auditDetails.createdTime
+            - jsonPath: $.auditDetails.lastModifiedTime
+
+    - version: 1.0
+      description: Persists project comments
+      fromTopic: project-comment-create
+      isTransaction: true
+      module: PROJECT
+      objecIdJsonPath: $.comments[*].commentId
+      auditAttributeBasePath: $.comments[*].auditDetails
+      queryMaps:
+        - query: >
+            INSERT INTO project_transaction_comment (
+              id, transaction_id, comment, asset_type,
+              created_by, last_modified_by, created_time, last_modified_time
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          basePath: $.comments[*]
+          jsonMaps:
+            - jsonPath: $.commentId
+              type: UUID
+            - jsonPath: $.transactionId
+            - jsonPath: $.commentMessage
+            - jsonPath: $.assetType
+            - jsonPath: $.auditDetails.createdBy
+            - jsonPath: $.auditDetails.lastModifiedBy
+            - jsonPath: $.auditDetails.createdTime
+            - jsonPath: $.auditDetails.lastModifiedTime

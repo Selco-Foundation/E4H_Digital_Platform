@@ -21,18 +21,13 @@ import org.egov.project.repository.ProjectRepository;
 import org.egov.project.service.enrichment.ProjectEnrichment;
 import org.egov.project.util.ProjectServiceUtil;
 import org.egov.project.validator.project.ProjectValidator;
-import org.egov.project.web.models.ProjectStatusWrapper;
-import org.egov.project.web.models.ProjectWorkflowRequest;
-import org.egov.project.web.models.ProjectSortCriteria;
+import org.egov.project.web.models.*;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Service
 @Slf4j
@@ -419,10 +414,20 @@ public class ProjectService {
         // 2. Call workflow transition
         ProcessInstance updatedWorkflow = workflowService.transitionWorkflow(
                 existingProject,
-                request.getAction(),
-                request.getDocuments(),
-                request.getRequestInfo()
+                request.getWorkflow().getAction(),
+                request.getWorkflow().getDocuments(),
+                request.getRequestInfo(),
+                request.getWorkflow().getComments()
         );
+
+        for(Transaction transaction: request.getTransactions()) {
+            transaction.setProcessInstanceId(updatedWorkflow.getId());
+            String userUUID = request.getRequestInfo().getUserInfo().getUuid();
+            transaction.setAuditDetails(projectServiceUtil.getAuditDetails(userUUID, null, true));
+            if(transaction.getTxId() == null) transaction.setTxId(UUID.randomUUID().toString());
+            if(transaction.getComments() != null) handleCommentUpdate(transaction.getComments(), transaction.getTxId(), userUUID);
+            handleTransactionUpdate(transaction, request.getProjectId());
+        }
 
         // 3. Inject workflow status into additionalDetails map
         Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(
@@ -482,4 +487,20 @@ public class ProjectService {
             return map;
         }
     }
+
+    private void handleTransactionUpdate(Transaction transaction, String projectId) {
+        transaction.setProjectId(projectId);
+        producer.push(projectConfiguration.getTransactionPersistTopic(), transaction);
+    }
+
+    public void handleCommentUpdate(List<Comment> comments, String txId, String uuid) {
+        comments.forEach(comment -> {
+            comment.setAuditDetails(projectServiceUtil.getAuditDetails(uuid, null, true));
+            comment.setCmtId(UUID.randomUUID().toString());
+            comment.setTransactionId(txId);
+        });
+
+        producer.push(projectConfiguration.getCommentPersistTopic(), new CommentRequest(comments));
+    }
+
 }
