@@ -26,8 +26,12 @@ const TimeLine = ({ isLoading, data, serviceRequestId, complaintWorkflow, rating
   const { t } = useTranslation();
 
   function zoomImageWrapper(imageSource, index,thumbnailsToShow){
-    let newIndex=thumbnailsToShow.thumbs?.findIndex(link=>link===imageSource);
-    zoomImage((newIndex>-1&&thumbnailsToShow?.fullImage?.[newIndex])||imageSource);
+    if (imageSource.includes("jpeg") || imageSource.includes("jpg") || imageSource.includes("png")) {
+      let newIndex=thumbnailsToShow.thumbs?.findIndex(link=>link===imageSource);
+      zoomImage((newIndex>-1&&thumbnailsToShow?.fullImage?.[newIndex])||imageSource);
+    } else {
+      window.open(imageSource);
+    }
   }
 
   let { timeline } = data;
@@ -68,7 +72,8 @@ const TimeLine = ({ isLoading, data, serviceRequestId, complaintWorkflow, rating
     )}</div> : null}
     {thumbnailsToShow?.thumbs?.length > 0 ? <div className="TLComments">
       <h3>{t("CS_COMMON_ATTACHMENTS")}</h3>
-      <DisplayPhotos srcs={thumbnailsToShow.thumbs} onClick={(src, index) => {zoomImageWrapper(src, index,thumbnailsToShow)}} />
+      <DisplayPhotos srcs={thumbnailsToShow.fullImage} onClick={(src, index) => {zoomImageWrapper(src, index,thumbnailsToShow)}} />
+      <DisplayPhotos srcs={thumbnailsToShow.videos} onClick={(src, index) => {zoomImageWrapper(src, index,thumbnailsToShow)}} />
     </div> : null}
     {captionDetails?.date ? <TLCaption data={captionDetails} comments={comment}/> : null}
     </>
