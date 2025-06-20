@@ -233,6 +233,12 @@ public class IMConfiguration {
     @Value("${video.max.size}")
     private Integer maxVideoSizeInMB;
 
+    @Value("${image.max.size}")
+    private Integer maxImageSizeInMB;
+
+    @Value("${file.list.size}")
+    private Integer maxFileListSize;
+
     @Value("${digit.ui.host}")
     private String digitUIHost;
 
