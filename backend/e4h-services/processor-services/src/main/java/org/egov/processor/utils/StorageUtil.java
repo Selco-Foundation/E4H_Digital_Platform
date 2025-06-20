@@ -154,7 +154,6 @@ public class StorageUtil {
     /**
      * Cleans up temporary files after processing.
      */
-    @Async
     public void cleanupTemporaryFiles(String videoId, File tempFile, Path outputPath) {
         log.info("Deleting temporary files for videoId: {}", videoId);
 
