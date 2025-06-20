@@ -533,7 +533,6 @@ export const CreateComplaint = ({ parentUrl }) => {
                 select={selectedSystemFunctionality}
                 required={true}
               />
-              <div style={{ marginTop: "10px", fontSize: "12px", color: "#b5b4b4" }}>{t("CS_SYSTEM_FUNCTIONAL_HELPER_TEXT")}</div>
             </div>
           ),
         }
