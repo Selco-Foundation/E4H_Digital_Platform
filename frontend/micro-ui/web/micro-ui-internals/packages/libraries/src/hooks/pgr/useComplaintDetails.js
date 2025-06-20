@@ -96,9 +96,12 @@ const fetchComplaintDetails = async (tenantIdNew, id) => {
 
     // Updated to fetch ALL verification documents, not just PHOTO
     const documentsToFetch = workflow.verificationDocuments || [];
+    
     const ids = documentsToFetch.map((doc) => doc.fileStoreId || doc.id);
+    
     const state = Digit.ULBService.getStateId();
     const thumbnails = ids.length > 0 ? await getThumbnails(ids, incident.tenantId, documentsToFetch) : null;
+    
     const details = transformDetails({ id, incident, workflow, thumbnails, complaintType });
     return details;
   } else {
