@@ -86,8 +86,7 @@ public class WorkflowService {
      * return the updated status of the application
      *
      * */
-    public ProcessInstance updateWorkflowStatus(IncidentRequest incidentRequest, Object mdmsData) {
-        Priority priority = getPriorityFromMDMS(incidentRequest, mdmsData);
+    public ProcessInstance updateWorkflowStatus(IncidentRequest incidentRequest, Priority priority) {
         ProcessInstance processInstance = getProcessInstanceForIM(incidentRequest, priority);
         ProcessInstanceRequest workflowRequest = new ProcessInstanceRequest(incidentRequest.getRequestInfo(), Collections.singletonList(processInstance));
         ProcessInstance updatedProcessInstance = callWorkFlow(workflowRequest);
@@ -338,7 +337,7 @@ public class WorkflowService {
         return response.getProcessInstances().get(0);
     }
 
-    private Priority getPriorityFromMDMS(IncidentRequest request, Object mdmsData) {
+    public Priority getPriorityFromMDMS(IncidentRequest request, Object mdmsData) {
         String serviceCode = request.getIncident().getIncidentSubType();
         String assetType = request.getIncident().getIncidentType();
 
