@@ -25,6 +25,7 @@ import 'blocs/cache_project_asset/cache_project_asset.dart';
 import 'blocs/localization/app_localization.dart';
 import 'blocs/localization/localization.dart';
 import 'blocs/project/project.dart';
+import 'blocs/user_type/user_type.dart';
 import 'data/app_shared_preferences.dart';
 import 'data/nosql/localization.dart';
 import 'data/remote_client.dart';
@@ -93,6 +94,7 @@ class _MainAppState extends State<MainApp> {
             BlocProvider(create: (context) => UserOtpBloc()),
             BlocProvider<ProjectBloc>(create: (context) => ProjectBloc()),
             BlocProvider(create: (_) => LocationBloc(location: Location())),
+            BlocProvider(create: (context) => UserTypeBloc()),
             BlocProvider(
                 create: (context) => CacheProjectAssetBloc(widget.isar)),
             BlocProvider(create: (context) => CacheAssetCountBloc(widget.isar)),

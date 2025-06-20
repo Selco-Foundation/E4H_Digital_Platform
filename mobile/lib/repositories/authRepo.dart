@@ -90,9 +90,10 @@ class AuthRepository {
             final errors = data['Errors'] as List;
             if (errors.isNotEmpty && errors.first is Map<String, dynamic>) {
               final first = errors.first as Map<String, dynamic>;
-              errorMessage = first['message']?.toString() ??
-                  first['description']?.toString() ??
-                  errorMessage;
+              errorMessage =
+                  (first['code'] ?? "") + " " + first['message']?.toString() ??
+                      first['description']?.toString() ??
+                      errorMessage;
             }
           }
         }

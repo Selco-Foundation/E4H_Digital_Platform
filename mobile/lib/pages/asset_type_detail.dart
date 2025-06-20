@@ -3,6 +3,7 @@ import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:selco/utils/utils.dart';
 
 import '../blocs/app_init/app_init.dart';
 import '../blocs/asset_type/asset_type.dart';
@@ -176,7 +177,8 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
                           child: DigitDropdown(
                             items: assetWarranties
                                 .map((type) => DropdownItem(
-                                      name: type.duration,
+                                      name: parseWarrantyYears(type.duration)
+                                          .toString(),
                                       code: type.duration,
                                     ))
                                 .toList(),

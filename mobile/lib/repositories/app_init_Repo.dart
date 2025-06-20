@@ -353,8 +353,6 @@ class AppInitRepo {
         throw Exception('"$arrayKey" is not a List in $filePath');
       }
 
-      print("filepATH $filePath");
-
       // 3) Map each entry into `Mdms<T>.fromJson(...)`
       return rawList
           .cast<Map<String, dynamic>>()
