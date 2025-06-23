@@ -97,11 +97,11 @@ public class WorkflowService {
         ProcessInstanceRequest workflowRequest = new ProcessInstanceRequest(incidentRequest.getRequestInfo(), Collections.singletonList(processInstance));
         ProcessInstance updatedProcessInstance = callWorkFlow(workflowRequest);
         incidentRequest.getIncident().setApplicationStatus(updatedProcessInstance.getState().getApplicationStatus());
-        updatedProcessInstance.getState().setTotalSlaRemaining(calculateTotalSla(incidentRequest));
+        enrichTotalSla(incidentRequest, updatedProcessInstance);
         return updatedProcessInstance;
     }
 
-    private Long calculateTotalSla(IncidentRequest request) {
+    private void enrichTotalSla(IncidentRequest request, ProcessInstance processInstance) {
         Long createdTime = request.getIncident().getAuditDetails().getCreatedTime();
         String applicationStatus = request.getIncident().getApplicationStatus();
         ZonedDateTime created = ZonedDateTime.ofInstant(Instant.ofEpochMilli(createdTime), ZoneId.of("Asia/Kolkata"));
@@ -135,7 +135,13 @@ public class WorkflowService {
         BusinessHoursUtil util = new BusinessHoursUtil(businessHourList);
         long businessHoursElapsed = util.calculateBusinessDuration(created, now);
 
-        return slaService.computeTotalSla(applicationStatus, this.getStates()) - businessHoursElapsed;
+        Long definedTotalSla = slaService.computeTotalSla(applicationStatus, this.getStates());
+        Long totalSlaRemaining = definedTotalSla - businessHoursElapsed;
+
+        if(applicationStatus.contains("ASSIGNMENT"))
+            processInstance.getState().setDefinedTotalSla(definedTotalSla);
+
+        processInstance.getState().setTotalSlaRemaining(totalSlaRemaining);
     }
 
     /**
