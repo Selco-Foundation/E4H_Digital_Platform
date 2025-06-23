@@ -25,6 +25,7 @@ import org.egov.project.web.models.*;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -52,10 +53,12 @@ public class ProjectService {
 
     private final ProjectWorkflowService workflowService;
 
+    private final JdbcTemplate jdbcTemplate;
+
     @Autowired
     public ProjectService(
             ProjectRepository projectRepository,
-            ProjectValidator projectValidator, ProjectEnrichment projectEnrichment, ProjectConfiguration projectConfiguration, Producer producer, ProjectServiceUtil projectServiceUtil, ProjectWorkflowService workflowService, @Lazy ProjectFacilityService projectFacilityService) {
+            ProjectValidator projectValidator, ProjectEnrichment projectEnrichment, ProjectConfiguration projectConfiguration, Producer producer, ProjectServiceUtil projectServiceUtil, ProjectWorkflowService workflowService, @Lazy ProjectFacilityService projectFacilityService, JdbcTemplate jdbcTemplate) {
         this.projectRepository = projectRepository;
         this.projectValidator = projectValidator;
         this.projectEnrichment = projectEnrichment;
@@ -63,6 +66,7 @@ public class ProjectService {
         this.producer = producer;
         this.projectServiceUtil = projectServiceUtil;
         this.workflowService = workflowService;
+        this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = new ObjectMapper();
         this.projectFacilityService = projectFacilityService;
     }
@@ -468,7 +472,7 @@ public class ProjectService {
         // 6. Perform enriched update using standard handler
         handleNormalUpdate(enrichedRequest, updatedProject, existingProject);
 
-        return new ProjectStatusWrapper(updatedProject, updatedWorkflow.getState().getState());
+        return new ProjectStatusWrapper(updatedProject, updatedWorkflow.getState().getState(), null);
     }
 
 
@@ -503,4 +507,48 @@ public class ProjectService {
         producer.push(projectConfiguration.getCommentPersistTopic(), new CommentRequest(comments));
     }
 
+    public List<Transaction> getTransactionsForProject(List<String> projectIds) {
+        if (projectIds == null || projectIds.isEmpty()) return Collections.emptyList();
+
+        String inSql = String.join(",", Collections.nCopies(projectIds.size(), "?"));
+        String sql = "SELECT id, project_id, process_instance_id, created_by, last_modified_by, created_time, last_modified_time " +
+                "FROM project_transaction WHERE project_id IN (" + inSql + ")";
+
+        return jdbcTemplate.query(sql, projectIds.toArray(), (rs, rowNum) -> {
+            Transaction transaction = new Transaction();
+            transaction.setTxId(rs.getString("id"));
+            transaction.setProjectId(rs.getString("project_id"));
+            transaction.setProcessInstanceId(rs.getString("process_instance_id"));
+            AuditDetails auditDetails = new AuditDetails();
+            auditDetails.setCreatedBy(rs.getString("created_by"));
+            auditDetails.setLastModifiedBy(rs.getString("last_modified_by"));
+            auditDetails.setCreatedTime(rs.getLong("created_time"));
+            auditDetails.setLastModifiedTime(rs.getLong("last_modified_time"));
+            transaction.setAuditDetails(auditDetails);
+            return transaction;
+        });
+    }
+
+    public List<Comment> getCommentsForTransaction(List<String> transactionIds) {
+        if (transactionIds == null || transactionIds.isEmpty()) return Collections.emptyList();
+
+        String inSql = String.join(",", Collections.nCopies(transactionIds.size(), "?"));
+        String sql = "SELECT id, transaction_id, comment, asset_type, created_by, last_modified_by, created_time, last_modified_time " +
+                "FROM project_transaction_comment WHERE transaction_id IN (" + inSql + ")";
+
+        return jdbcTemplate.query(sql, transactionIds.toArray(), (rs, rowNum) -> {
+            Comment comment = new Comment();
+            comment.setCmtId(rs.getString("id"));
+            comment.setTransactionId(rs.getString("transaction_id"));
+            comment.setCmtMsg(rs.getString("comment"));
+            comment.setAssetType(rs.getString("asset_type"));
+            AuditDetails auditDetails = new AuditDetails();
+            auditDetails.setCreatedBy(rs.getString("created_by"));
+            auditDetails.setLastModifiedBy(rs.getString("last_modified_by"));
+            auditDetails.setCreatedTime(rs.getLong("created_time"));
+            auditDetails.setLastModifiedTime(rs.getLong("last_modified_time"));
+            comment.setAuditDetails(auditDetails);
+            return comment;
+        });
+    }
 }
