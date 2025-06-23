@@ -173,12 +173,6 @@ public class EnrichmentService {
         Optional.ofNullable(hcrDetails.get("employeeUserName")).ifPresent(indexView::setNinHfrId);
         Optional.ofNullable(vendorDetails.get("employeeUserName")).ifPresent(indexView::setMappedVendor);
         Optional.ofNullable(lastActionTakenByUser.get("employeeName")).ifPresent(indexView::setLastActionTakenBy);
-
-        // Conditionally compute and set SLA
-        String applicationStatus = incidentRequest.getIncident().getApplicationStatus();
-        if (applicationStatus != null && applicationStatus.contains("ASSIGNMENT")) {
-            indexView.setOverallSla(slaService.computeTotalSla(applicationStatus, workflowService.getStates()));
-        }
     }
 
     /**
