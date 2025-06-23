@@ -8,12 +8,11 @@ import org.egov.im.web.models.*;
 import org.egov.im.web.models.Idgen.IdResponse;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static org.egov.im.util.IMConstants.USERTYPE_CITIZEN;
@@ -30,12 +29,24 @@ public class EnrichmentService {
 
     private UserService userService;
 
+    private LocalizationService localizationService;
+
+    private NotificationService notificationService;
+
+    private WorkflowService workflowService;
+
+    private SLAService slaService;
+
     @Autowired
-    public EnrichmentService(IMUtils utils, IdGenRepository idGenRepository, IMConfiguration config, UserService userService) {
+    public EnrichmentService(IMUtils utils, IdGenRepository idGenRepository, IMConfiguration config, UserService userService, LocalizationService localizationService, NotificationService notificationService, @Lazy WorkflowService workflowService, SLAService slaService) {
         this.utils = utils;
         this.idGenRepository = idGenRepository;
         this.config = config;
         this.userService = userService;
+        this.localizationService = localizationService;
+        this.notificationService = notificationService;
+        this.workflowService = workflowService;
+        this.slaService = slaService;
     }
 
 
@@ -133,6 +144,42 @@ public class EnrichmentService {
 
     }
 
+    public void enrichFieldsForIndexing(IncidentRequestWrapper wrapper) {
+        IncidentRequest incidentRequest = wrapper.getIncidentRequest();
+
+        // Enrich localized fields first (will populate IndexView inside the wrapper)
+        localizationService.enrichLocalizedFieldsForIndexing(wrapper);
+
+        // Ensure IndexView is initialized and reused (not replaced)
+        IndexView indexView = wrapper.getIndexView();
+        if (indexView == null) {
+            indexView = new IndexView();
+            wrapper.setIndexView(indexView);
+        }
+
+        // Fetch HCR and Vendor details
+        Map<String, String> hcrDetails = notificationService.getHRMSEmployeeForIndexing(incidentRequest, null, "COMPLAINANT");
+        Map<String, String> vendorDetails = notificationService.getHRMSEmployeeForIndexing(incidentRequest, null, "COMPLAINT_RESOLVER");
+
+        // Get details of the user who last modified (last action)
+        String lastActionTakenByUserUuid = incidentRequest.getIncident().getAuditDetails().getLastModifiedBy();
+        Map<String, String> lastActionTakenByUser = notificationService.getHRMSEmployeeForIndexing(
+                incidentRequest,
+                Collections.singletonList(lastActionTakenByUserUuid),
+                ""
+        );
+
+        // Set fields in IndexView if values exist
+        Optional.ofNullable(hcrDetails.get("employeeUserName")).ifPresent(indexView::setNinHfrId);
+        Optional.ofNullable(vendorDetails.get("employeeUserName")).ifPresent(indexView::setMappedVendor);
+        Optional.ofNullable(lastActionTakenByUser.get("employeeName")).ifPresent(indexView::setLastActionTakenBy);
+
+        // Conditionally compute and set SLA
+        String applicationStatus = incidentRequest.getIncident().getApplicationStatus();
+        if (applicationStatus != null && applicationStatus.contains("ASSIGNMENT")) {
+            indexView.setOverallSla(slaService.computeTotalSla(applicationStatus, workflowService.getStates()));
+        }
+    }
 
     /**
      * Returns a list of numbers generated from idgen
