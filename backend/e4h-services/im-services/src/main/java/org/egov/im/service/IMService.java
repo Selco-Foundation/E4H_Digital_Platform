@@ -67,15 +67,13 @@ public class IMService {
         Object mdmsData = mdmsUtils.mDMSCall(request);
         validator.validateCreate(request, mdmsData);
         enrichmentService.enrichCreateRequest(request);
-        Priority priority = workflowService.getPriorityFromMDMS(request, mdmsData);
-        ProcessInstance updatedProcessInstance = workflowService.updateWorkflowStatus(request, priority);
+        ProcessInstance updatedProcessInstance = workflowService.updateWorkflowStatus(request, mdmsData);
         producer.push(tenantId,config.getCreateTopic(),request);
         IncidentRequestWrapper wrapper = IncidentRequestWrapper.builder()
                 .incidentRequest(request)
                 .processInstance(updatedProcessInstance)
                 .build();
-        localizationService.enrichLocalizedFieldsForIndexing(wrapper);
-        wrapper.getIndexView().setPriority(priority);
+        enrichmentService.enrichFieldsForIndexing(wrapper);
         producer.push(tenantId,config.getCreateTopicIndexer(),wrapper);
         return request;
     }
@@ -136,15 +134,13 @@ public class IMService {
         Object mdmsData = mdmsUtils.mDMSCall(request);
         validator.validateUpdate(request, mdmsData);
         enrichmentService.enrichUpdateRequest(request);
-        Priority priority = workflowService.getPriorityFromMDMS(request, mdmsData);
-        ProcessInstance updatedProcessInstance = workflowService.updateWorkflowStatus(request, priority);
+        ProcessInstance updatedProcessInstance = workflowService.updateWorkflowStatus(request, mdmsData);
         producer.push(tenantId,config.getUpdateTopic(),request);
         IncidentRequestWrapper wrapper = IncidentRequestWrapper.builder()
                 .incidentRequest(request)
                 .processInstance(updatedProcessInstance)
                 .build();
-        localizationService.enrichLocalizedFieldsForIndexing(wrapper);
-        wrapper.getIndexView().setPriority(priority);
+        enrichmentService.enrichFieldsForIndexing(wrapper);
         producer.push(tenantId,config.getUpdateTopicIndexer(),wrapper);
         return request;
     }
