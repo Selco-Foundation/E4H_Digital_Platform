@@ -51,27 +51,49 @@ public class SLAService {
     public Priority getPriorityFromMDMS(IncidentRequest request, Object mdmsData) {
         String serviceCode = request.getIncident().getIncidentSubType();
         String assetType = request.getIncident().getIncidentType();
-        String jsonPath = MDMS_SERVICEDEF_SEARCH.replace("{SERVICEDEF}", serviceCode);
+        String jsonPath = String.format(MDMS_SERVICEDEF_SEARCH, serviceCode);
         List<Object> res;
         try {
             res = JsonPath.read(mdmsData, jsonPath);
         } catch (Exception e) {
-            throw new CustomException("JSONPATH_ERROR", "Failed to parse mdms response");
+            throw new CustomException(
+                "JSONPATH_ERROR",
+                "Failed to parse MDMS response for service code: " + serviceCode + ". Error: " + e.getMessage()
+            );
         }
         if (CollectionUtils.isEmpty(res)) {
-            throw new CustomException("INVALID_SERVICECODE", "The service code: " + serviceCode + " is not present in MDMS");
+            throw new CustomException(
+                "INVALID_SERVICECODE",
+                "The service code: " + serviceCode + " is not present in MDMS"
+            );
         }
         for (Object obj : res) {
-            if (obj instanceof Map) {
-                Map<String, Object> map = (Map<String, Object>) obj;
-                String menuPath = String.valueOf(map.get("menuPath"));
-                String mdmsServiceCode = String.valueOf(map.get("serviceCode"));
-                if (assetType.equals(menuPath) && serviceCode.equals(mdmsServiceCode)) {
-                    String priorityStr = String.valueOf(map.get("priority"));
-                    return Priority.fromString(priorityStr);
+            try {
+                if (obj instanceof Map) {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> map = (Map<String, Object>) obj;
+                    String menuPath = getStringValue(map, "menuPath");
+                    String mdmsServiceCode = getStringValue(map, "serviceCode");
+                    if (assetType.equals(menuPath) && serviceCode.equals(mdmsServiceCode)) {
+                        String priorityStr = getStringValue(map, "priority");
+                        return Priority.fromString(priorityStr);
+                    }
                 }
+            } catch (Exception e) {
+                throw new CustomException(
+                    "MDMS_DATA_ERROR",
+                    "Error processing MDMS data: " + e.getMessage()
+                );
             }
         }
-        throw new CustomException("PRIORITY_NOT_FOUND", "Priority not found for assetType: " + assetType + " and serviceCode: " + serviceCode);
+        throw new CustomException(
+            "PRIORITY_NOT_FOUND",
+            "Priority not found for assetType: " + assetType + " and serviceCode: " + serviceCode
+        );
+    }
+
+    private String getStringValue(Map<String, Object> map, String key) {
+        Object value = map.get(key);
+        return value != null ? String.valueOf(value) : null;
     }
 } 
