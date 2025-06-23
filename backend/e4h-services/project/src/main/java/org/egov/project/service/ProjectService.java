@@ -427,11 +427,13 @@ public class ProjectService {
         for(Transaction transaction: request.getTransactions()) {
             transaction.setProcessInstanceId(updatedWorkflow.getId());
             String userUUID = request.getRequestInfo().getUserInfo().getUuid();
+            transaction.setProjectId(request.getProjectId());
             transaction.setAuditDetails(projectServiceUtil.getAuditDetails(userUUID, null, true));
             if(transaction.getTxId() == null) transaction.setTxId(UUID.randomUUID().toString());
             if(transaction.getComments() != null) handleCommentUpdate(transaction.getComments(), transaction.getTxId(), userUUID);
-            handleTransactionUpdate(transaction, request.getProjectId());
         }
+
+        handleTransactionUpdate(request.getTransactions());
 
         // 3. Inject workflow status into additionalDetails map
         Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(
@@ -492,15 +494,14 @@ public class ProjectService {
         }
     }
 
-    private void handleTransactionUpdate(Transaction transaction, String projectId) {
-        transaction.setProjectId(projectId);
-        producer.push(projectConfiguration.getTransactionPersistTopic(), transaction);
+    private void handleTransactionUpdate(List<Transaction> transactions) {
+        producer.push(projectConfiguration.getTransactionPersistTopic(), new TransactionRequest(transactions));
     }
 
     public void handleCommentUpdate(List<Comment> comments, String txId, String uuid) {
         comments.forEach(comment -> {
             comment.setAuditDetails(projectServiceUtil.getAuditDetails(uuid, null, true));
-            comment.setCmtId(UUID.randomUUID().toString());
+            comment.setCmtId(UUID.randomUUID());
             comment.setTransactionId(txId);
         });
 
@@ -538,7 +539,7 @@ public class ProjectService {
 
         return jdbcTemplate.query(sql, transactionIds.toArray(), (rs, rowNum) -> {
             Comment comment = new Comment();
-            comment.setCmtId(rs.getString("id"));
+            comment.setCmtId(UUID.fromString(rs.getString("id")));
             comment.setTransactionId(rs.getString("transaction_id"));
             comment.setCmtMsg(rs.getString("comment"));
             comment.setAssetType(rs.getString("asset_type"));

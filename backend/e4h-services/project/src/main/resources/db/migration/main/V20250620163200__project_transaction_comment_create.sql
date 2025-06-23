@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS public.project_transaction (
-    id UUID PRIMARY KEY,
+    id VARCHAR(64) PRIMARY KEY,
     project_id VARCHAR(64) NOT NULL,
     process_instance_id VARCHAR(256),
     created_by VARCHAR(64),
@@ -12,16 +12,13 @@ CREATE TABLE IF NOT EXISTS public.project_transaction (
 );
 
 CREATE TABLE IF NOT EXISTS public.project_transaction_comment (
-    id UUID PRIMARY KEY,
-    transaction_id UUID NOT NULL,
+    id VARCHAR(64) PRIMARY KEY,
+    transaction_id VARCHAR(64) NOT NULL,
     comment_message TEXT,
     asset_type VARCHAR(64),
     created_by VARCHAR(64),
     last_modified_by VARCHAR(64),
     created_time BIGINT,
-    last_modified_time BIGINT,
-    CONSTRAINT fk_comment_transaction FOREIGN KEY (transaction_id)
-        REFERENCES public.project_transaction(id)
-        ON DELETE CASCADE
+    last_modified_time BIGINT
 );
 

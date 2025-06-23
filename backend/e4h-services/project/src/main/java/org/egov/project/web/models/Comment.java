@@ -8,6 +8,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.egov.common.contract.models.AuditDetails;
 
+import java.util.UUID;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -16,7 +18,7 @@ import org.egov.common.contract.models.AuditDetails;
 public class Comment {
 
     @JsonProperty("commentId")
-    String cmtId;
+    UUID cmtId;
 
     @JsonProperty("commentMessage")
     String cmtMsg;

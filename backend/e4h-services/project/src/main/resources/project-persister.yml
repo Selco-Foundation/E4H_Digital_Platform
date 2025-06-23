@@ -775,47 +775,46 @@ serviceMaps:
       fromTopic: project-transaction-create
       isTransaction: true
       module: PROJECT
-      tenantIdJsonPath: $.tenantId
-      objecIdJsonPath: $.txId
-      auditAttributeBasePath: $.auditDetails
+      objecIdJsonPath: $.transactions.*.transactionId
+      auditAttributeBasePath: $.transactions.*.auditDetails
       queryMaps:
-        - query: INSERT INTO project_transaction (
-            id, project_id, process_instance_id,
-            created_by, last_modified_by, created_time, last_modified_time
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-          basePath: $
+        - query: >
+            INSERT INTO project_transaction (
+              id, project_id, process_instance_id,
+              created_by, last_modified_by, created_time, last_modified_time
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+          basePath: $.transactions.*
           jsonMaps:
-            - jsonPath: $.transactionId
-              type: UUID
-            - jsonPath: $.projectId
-            - jsonPath: $.processInstanceId
-            - jsonPath: $.auditDetails.createdBy
-            - jsonPath: $.auditDetails.lastModifiedBy
-            - jsonPath: $.auditDetails.createdTime
-            - jsonPath: $.auditDetails.lastModifiedTime
+            - jsonPath: $.transactions.*.transactionId
+            - jsonPath: $.transactions.*.projectId
+            - jsonPath: $.transactions.*.processInstanceId
+            - jsonPath: $.transactions.*.auditDetails.createdBy
+            - jsonPath: $.transactions.*.auditDetails.lastModifiedBy
+            - jsonPath: $.transactions.*.auditDetails.createdTime
+            - jsonPath: $.transactions.*.auditDetails.lastModifiedTime
 
     - version: 1.0
       description: Persists project comments
       fromTopic: project-comment-create
       isTransaction: true
       module: PROJECT
-      objecIdJsonPath: $.comments[*].commentId
-      auditAttributeBasePath: $.comments[*].auditDetails
+      objecIdJsonPath: $.comments.*.commentId
+      auditAttributeBasePath: $.comments.*.auditDetails
       queryMaps:
         - query: >
             INSERT INTO project_transaction_comment (
-              id, transaction_id, comment, asset_type,
+              id, transaction_id, comment_message, asset_type,
               created_by, last_modified_by, created_time, last_modified_time
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-          basePath: $.comments[*]
+          basePath: $.comments.*
           jsonMaps:
-            - jsonPath: $.commentId
+            - jsonPath: $.comments.*.commentId
               type: UUID
-            - jsonPath: $.transactionId
-            - jsonPath: $.commentMessage
-            - jsonPath: $.assetType
-            - jsonPath: $.auditDetails.createdBy
-            - jsonPath: $.auditDetails.lastModifiedBy
-            - jsonPath: $.auditDetails.createdTime
-            - jsonPath: $.auditDetails.lastModifiedTime
+            - jsonPath: $.comments.*.transactionId
+              type: UUID
+            - jsonPath: $.comments.*.commentMessage
+            - jsonPath: $.comments.*.assetType
+            - jsonPath: $.comments.*.auditDetails.createdBy
+            - jsonPath: $.comments.*.auditDetails.lastModifiedBy
+            - jsonPath: $.comments.*.auditDetails.createdTime
+            - jsonPath: $.comments.*.auditDetails.lastModifiedTime
