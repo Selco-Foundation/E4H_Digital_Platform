@@ -8,6 +8,7 @@ import org.egov.im.web.models.*;
 import org.egov.im.web.models.Idgen.IdResponse;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
@@ -34,8 +35,10 @@ public class EnrichmentService {
 
     private WorkflowService workflowService;
 
+    private SLAService slaService;
+
     @Autowired
-    public EnrichmentService(IMUtils utils, IdGenRepository idGenRepository, IMConfiguration config, UserService userService, LocalizationService localizationService, NotificationService notificationService, WorkflowService workflowService) {
+    public EnrichmentService(IMUtils utils, IdGenRepository idGenRepository, IMConfiguration config, UserService userService, LocalizationService localizationService, NotificationService notificationService, @Lazy WorkflowService workflowService, SLAService slaService) {
         this.utils = utils;
         this.idGenRepository = idGenRepository;
         this.config = config;
@@ -43,6 +46,7 @@ public class EnrichmentService {
         this.localizationService = localizationService;
         this.notificationService = notificationService;
         this.workflowService = workflowService;
+        this.slaService = slaService;
     }
 
 
@@ -166,14 +170,23 @@ public class EnrichmentService {
         );
 
         // Populate the remaining fields in the existing IndexView
-        indexView.setNinHfrId(hcrDetails.get("employeeUserName"));
-        indexView.setMappedVendor(vendorDetails.get("employeeUserName"));
-        indexView.setLastActionTakenBy(lastActionTakenByUser.get("employeeName"));
+        String hcrUserName = (hcrDetails != null && hcrDetails.get("employeeUserName") != null) ? hcrDetails.get("employeeUserName") : null;
+        if (hcrUserName != null) {
+            indexView.setNinHfrId(hcrUserName);
+        }
+        String vendorUserName = (vendorDetails != null && vendorDetails.get("employeeUserName") != null) ? vendorDetails.get("employeeUserName") : null;
+        if (vendorUserName != null) {
+            indexView.setMappedVendor(vendorUserName);
+        }
+        String lastActionUserName = (lastActionTakenByUser != null && lastActionTakenByUser.get("employeeName") != null) ? lastActionTakenByUser.get("employeeName") : null;
+        if (lastActionUserName != null) {
+            indexView.setLastActionTakenBy(lastActionUserName);
+        }
 
         String applicationStatus = incidentRequest.getIncident().getApplicationStatus();
 
         if(applicationStatus != null && applicationStatus.contains("ASSIGNMENT")) {
-            indexView.setOverallSla(workflowService.computeTotalSla(applicationStatus));
+            indexView.setOverallSla(slaService.computeTotalSla(applicationStatus, workflowService.getStates()));
         }
     }
 
