@@ -21,7 +21,6 @@ public class SLAService {
     private static final String PENDING_RESOLUTION_PREFIX = "PENDING_RESOLUTION_";
     private static final String MDMS_SERVICEDEF_SEARCH = "$.MdmsRes['im-services'].ServiceDefs[?(@.serviceCode=='{SERVICEDEF}')]";
 
-    private List<State> states;
 
     public long computeTotalSla(String currentState, List<State> states) {
         Map<String, Long> stateToSlaMap = new HashMap<>();
