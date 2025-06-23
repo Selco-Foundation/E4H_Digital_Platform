@@ -12,15 +12,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.egov.im.util.IMConstants.*;
+
 @Service
 public class SLAService {
-
-    private static final String PENDINGFORASSIGNMENT = "PENDINGFORASSIGNMENT";
-    private static final String PENDINGATVENDOR = "PENDINGATVENDOR";
-    private static final String PENDING_ASSIGNMENT_PREFIX = "PENDING_ASSIGNMENT_";
-    private static final String PENDING_RESOLUTION_PREFIX = "PENDING_RESOLUTION_";
-    private static final String MDMS_SERVICEDEF_SEARCH = "$.MdmsRes['im-services'].ServiceDefs[?(@.serviceCode=='{SERVICEDEF}')]";
-
 
     public long computeTotalSla(String currentState, List<State> states) {
         Map<String, Long> stateToSlaMap = new HashMap<>();
@@ -51,7 +46,7 @@ public class SLAService {
     public Priority getPriorityFromMDMS(IncidentRequest request, Object mdmsData) {
         String serviceCode = request.getIncident().getIncidentSubType();
         String assetType = request.getIncident().getIncidentType();
-        String jsonPath = String.format(MDMS_SERVICEDEF_SEARCH, serviceCode);
+        String jsonPath = MDMS_SERVICEDEF_SEARCH.replace("{SERVICEDEF}", serviceCode);
         List<Object> res;
         try {
             res = JsonPath.read(mdmsData, jsonPath);
