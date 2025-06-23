@@ -817,25 +817,31 @@ public class NotificationService {
     }
 
     public Map<String, String> getHRMSEmployeeForIndexing(IncidentRequest request, List<String> uuids, String role) {
-        Map<String, String> reassigneeDetails = new HashMap<>();
-
-        List<String> employeeName = null;
-        List<String> employeeUserName = null;
+        Map<String, String> employeeDetails = new HashMap<>();
 
         String tenantId = request.getIncident().getTenantId();
 
         StringBuilder url = hrmsUtils.getHRMSURI(uuids, tenantId, role);
-        RequestInfoWrapper requestInfoWrapper = RequestInfoWrapper.builder().requestInfo(request.getRequestInfo()).build();
+        RequestInfoWrapper requestInfoWrapper = RequestInfoWrapper.builder()
+                .requestInfo(request.getRequestInfo())
+                .build();
+
         Object response = serviceRequestRepository.fetchResult(url, requestInfoWrapper);
 
-        employeeName = JsonPath.read(response, HRMS_EMP_NAME_JSONPATH);
-        employeeUserName = JsonPath.read(response, HRMS_EMP_USERNAME_JSONPATH);
+        List<String> employeeName = JsonPath.read(response, HRMS_EMP_NAME_JSONPATH);
+        List<String> employeeUserName = JsonPath.read(response, HRMS_EMP_USERNAME_JSONPATH);
 
-        reassigneeDetails.put("employeeName", employeeName.get(0));
-        reassigneeDetails.put("employeeUserName", employeeUserName.get(0));
+        if (employeeName != null && !employeeName.isEmpty()) {
+            employeeDetails.put("employeeName", employeeName.get(0));
+        }
 
-        return reassigneeDetails;
+        if (employeeUserName != null && !employeeUserName.isEmpty()) {
+            employeeDetails.put("employeeUserName", employeeUserName.get(0));
+        }
+
+        return employeeDetails;
     }
+
 
     private List<SMSRequest> enrichSmsRequest(String mobileNumber, String finalMessage) {
         List<SMSRequest> smsRequest = new ArrayList<>();

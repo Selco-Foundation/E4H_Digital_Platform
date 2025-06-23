@@ -97,12 +97,7 @@ public class WorkflowService {
         ProcessInstanceRequest workflowRequest = new ProcessInstanceRequest(incidentRequest.getRequestInfo(), Collections.singletonList(processInstance));
         ProcessInstance updatedProcessInstance = callWorkFlow(workflowRequest);
         incidentRequest.getIncident().setApplicationStatus(updatedProcessInstance.getState().getApplicationStatus());
-        updatedProcessInstance.getState().setTotalSlaRemaining(
-            slaService.computeTotalSla(
-                incidentRequest.getIncident().getApplicationStatus(),
-                this.getStates()
-            )
-        );
+        updatedProcessInstance.getState().setTotalSlaRemaining(calculateTotalSla(incidentRequest));
         return updatedProcessInstance;
     }
 

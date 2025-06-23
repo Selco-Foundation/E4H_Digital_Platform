@@ -169,23 +169,14 @@ public class EnrichmentService {
                 ""
         );
 
-        // Populate the remaining fields in the existing IndexView
-        String hcrUserName = (hcrDetails != null && hcrDetails.get("employeeUserName") != null) ? hcrDetails.get("employeeUserName") : null;
-        if (hcrUserName != null) {
-            indexView.setNinHfrId(hcrUserName);
-        }
-        String vendorUserName = (vendorDetails != null && vendorDetails.get("employeeUserName") != null) ? vendorDetails.get("employeeUserName") : null;
-        if (vendorUserName != null) {
-            indexView.setMappedVendor(vendorUserName);
-        }
-        String lastActionUserName = (lastActionTakenByUser != null && lastActionTakenByUser.get("employeeName") != null) ? lastActionTakenByUser.get("employeeName") : null;
-        if (lastActionUserName != null) {
-            indexView.setLastActionTakenBy(lastActionUserName);
-        }
+        // Set fields in IndexView if values exist
+        Optional.ofNullable(hcrDetails.get("employeeUserName")).ifPresent(indexView::setNinHfrId);
+        Optional.ofNullable(vendorDetails.get("employeeUserName")).ifPresent(indexView::setMappedVendor);
+        Optional.ofNullable(lastActionTakenByUser.get("employeeName")).ifPresent(indexView::setLastActionTakenBy);
 
+        // Conditionally compute and set SLA
         String applicationStatus = incidentRequest.getIncident().getApplicationStatus();
-
-        if(applicationStatus != null && applicationStatus.contains("ASSIGNMENT")) {
+        if (applicationStatus != null && applicationStatus.contains("ASSIGNMENT")) {
             indexView.setOverallSla(slaService.computeTotalSla(applicationStatus, workflowService.getStates()));
         }
     }
