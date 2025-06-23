@@ -45,8 +45,8 @@ public class State   {
         @JsonProperty("totalSlaRemaining")
         private Long totalSlaRemaining;
 
-        @JsonProperty("definedTotalSla")
-        private Long definedTotalSla;
+//        @JsonProperty("definedTotalSla")
+//        private Long definedTotalSla;
 
         @Size(max=256)
         @JsonProperty("state")

@@ -816,6 +816,33 @@ public class NotificationService {
         return reassigneeDetails;
     }
 
+    public Map<String, String> getHRMSEmployeeForIndexing(IncidentRequest request, List<String> uuids, String role) {
+        Map<String, String> employeeDetails = new HashMap<>();
+
+        String tenantId = request.getIncident().getTenantId();
+
+        StringBuilder url = hrmsUtils.getHRMSURI(uuids, tenantId, role);
+        RequestInfoWrapper requestInfoWrapper = RequestInfoWrapper.builder()
+                .requestInfo(request.getRequestInfo())
+                .build();
+
+        Object response = serviceRequestRepository.fetchResult(url, requestInfoWrapper);
+
+        List<String> employeeName = JsonPath.read(response, HRMS_EMP_NAME_JSONPATH);
+        List<String> employeeUserName = JsonPath.read(response, HRMS_EMP_USERNAME_JSONPATH);
+
+        if (employeeName != null && !employeeName.isEmpty()) {
+            employeeDetails.put("employeeName", employeeName.get(0));
+        }
+
+        if (employeeUserName != null && !employeeUserName.isEmpty()) {
+            employeeDetails.put("employeeUserName", employeeUserName.get(0));
+        }
+
+        return employeeDetails;
+    }
+
+
     private List<SMSRequest> enrichSmsRequest(String mobileNumber, String finalMessage) {
         List<SMSRequest> smsRequest = new ArrayList<>();
         SMSRequest req = SMSRequest.builder().mobileNumber(mobileNumber).message(finalMessage).build();

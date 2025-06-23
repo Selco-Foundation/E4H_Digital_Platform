@@ -75,13 +75,16 @@ public class LocalizationService {
         LocalizationResponse imResponse = getLocalizationMessages(requestInfo, stateTenant, "rainmaker-im", locale, imCodes);
         LocalizationResponse commonResponse = getLocalizationMessages(requestInfo, stateTenant, "rainmaker-common", locale, commonCodes);
 
-        IndexView indexView = new IndexView();
+        IndexView indexView = wrapper.getIndexView();
+        if (indexView == null) {
+            indexView = new IndexView();
+            wrapper.setIndexView(indexView);
+        }
+
         indexView.setState(stateTenantResponse.getMessageByCode(stateCode));
         indexView.setIncidentTypeLocalized(imResponse.getMessageByCode(incidentTypeCode));
         indexView.setIncidentSubTypeLocalized(imResponse.getMessageByCode(incidentSubTypeCode));
         indexView.setApplicationStatusLocalized(imResponse.getMessageByCode(appStatusCode));
         indexView.setTenantIdLocalized(commonResponse.getMessageByCode(tenantCode));
-
-        wrapper.setIndexView(indexView);
     }
 }

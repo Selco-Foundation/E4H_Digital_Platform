@@ -25,9 +25,18 @@ public class IndexView {
     @JsonProperty("tenantId_localized")
     private String tenantIdLocalized;
 
-    @JsonProperty("priority")
-    private Priority priority;
-
     @JsonProperty("state")
     private String state;
+
+    @JsonProperty("nin_hfr_id")
+    private String ninHfrId;
+
+    @JsonProperty("mappedVendor")
+    private String mappedVendor;
+
+    @JsonProperty("lastActionTakenBy")
+    private String lastActionTakenBy;
+
+    @JsonProperty("overallSla")
+    private Long overallSla;
 }
