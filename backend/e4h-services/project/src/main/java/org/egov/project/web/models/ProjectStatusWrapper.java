@@ -1,12 +1,19 @@
 package org.egov.project.web.models;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
+import lombok.*;
 import org.egov.common.models.project.Project;
 
-@Getter
+import java.util.List;
+
+@Data
 @AllArgsConstructor
+@NoArgsConstructor
+@Builder
 public class ProjectStatusWrapper {
+
     private Project project;
-    private String state;
+
+    private String status;
+
+    private List<Transaction> transactions;
 }

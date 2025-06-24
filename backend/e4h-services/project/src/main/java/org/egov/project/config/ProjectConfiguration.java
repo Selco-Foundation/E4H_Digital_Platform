@@ -233,4 +233,10 @@ public class ProjectConfiguration {
 
     @Value("${egov.workflow.business.service}")
     private String businessService;
+
+    @Value("${project.management.transaction.kafka.create.topic}")
+    private String transactionPersistTopic;
+
+    @Value("${project.management.comment.kafka.create.topic}")
+    private String commentPersistTopic;
 }
