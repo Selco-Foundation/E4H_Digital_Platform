@@ -67,6 +67,7 @@ public class IMService {
         Object mdmsData = mdmsUtils.mDMSCall(request);
         validator.validateCreate(request, mdmsData);
         enrichmentService.enrichCreateRequest(request);
+        String startingStatus = request.getIncident().getApplicationStatus();
         ProcessInstance updatedProcessInstance = workflowService.updateWorkflowStatus(request, mdmsData);
         producer.push(tenantId,config.getCreateTopic(),request);
         IncidentRequestWrapper wrapper = IncidentRequestWrapper.builder()
@@ -75,6 +76,8 @@ public class IMService {
                 .build();
         enrichmentService.enrichFieldsForIndexing(wrapper);
         producer.push(tenantId,config.getCreateTopicIndexer(),wrapper);
+        enrichmentService.enrichFieldsForAuditIndexing(wrapper,startingStatus);
+        producer.push(tenantId,config.getAuditCreateTopicIndexer(),wrapper);
         return request;
     }
 
@@ -134,6 +137,7 @@ public class IMService {
         Object mdmsData = mdmsUtils.mDMSCall(request);
         validator.validateUpdate(request, mdmsData);
         enrichmentService.enrichUpdateRequest(request);
+        String startingStatus = request.getIncident().getApplicationStatus();
         ProcessInstance updatedProcessInstance = workflowService.updateWorkflowStatus(request, mdmsData);
         producer.push(tenantId,config.getUpdateTopic(),request);
         IncidentRequestWrapper wrapper = IncidentRequestWrapper.builder()
@@ -142,6 +146,8 @@ public class IMService {
                 .build();
         enrichmentService.enrichFieldsForIndexing(wrapper);
         producer.push(tenantId,config.getUpdateTopicIndexer(),wrapper);
+        enrichmentService.enrichFieldsForAuditIndexing(wrapper,startingStatus);
+        producer.push(tenantId,config.getAuditCreateTopicIndexer(),wrapper);
         return request;
     }
 
