@@ -4,7 +4,6 @@ on:
     branches:
       - develop
       - staging
-      - main
     tags:
       - 'v*'
     paths:
@@ -51,7 +50,7 @@ jobs:
 
       - name: Build and Push Docker image for im-Service
         run: |
-          docker build --build-arg WORK_DIR="backend/e4h-services/im-services" -t selcohub/im-services:${{ env.VERSION }}-${{ env.commit_hash }} -f build/maven/Dockerfile .
+          docker build --build-arg WORK_DIR="backend/e4h-services/im-services" -t selcohub/im-services:${{ env.VERSION }}-${{ env.commit_hash }} -f build/adhoc/Dockerfile .
           docker push selcohub/im-services:${{ env.VERSION }}-${{ env.commit_hash }}
 
       - name: Build and Push Docker image for im-Service-DB
