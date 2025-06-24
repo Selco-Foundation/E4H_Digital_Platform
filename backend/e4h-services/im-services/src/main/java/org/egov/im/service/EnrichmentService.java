@@ -221,32 +221,42 @@ public class EnrichmentService {
 
 
     public void enrichFieldsForAuditIndexing(IncidentRequestWrapper wrapper, String startingStatus) {
+        // Ensure IndexView is initialized
+        IndexView indexView = wrapper.getIndexView();
+        if (indexView == null) {
+            indexView = new IndexView();
+            wrapper.setIndexView(indexView);
+        }
 
-        wrapper.getIndexView().setUuid(UUID.randomUUID().toString());
-        wrapper.getIndexView().setStartingStatus(startingStatus);
-        wrapper.getIndexView().setEndingStatus(wrapper.getIncidentRequest().getIncident().getApplicationStatus());
+        indexView.setUuid(UUID.randomUUID().toString());
+        indexView.setStartingStatus(startingStatus);
+        indexView.setEndingStatus(wrapper.getIncidentRequest().getIncident().getApplicationStatus());
 
         localizationService.enrichLocalizedApplicationStatuses(wrapper, startingStatus);
 
-        //get array fo filestore download links
+        // get array of filestore download links
         List<String> fileStoreUrls = new ArrayList<>();
 
         String tenantId = wrapper.getIncidentRequest().getIncident().getTenantId();
         List<Document> verificationDocuments = wrapper.getIncidentRequest().getWorkflow().getVerificationDocuments();
 
-        for (Document doc : verificationDocuments) {
-            String fileStoreId = doc.getFileStoreId();
+        if (verificationDocuments != null && !verificationDocuments.isEmpty()) {
+            for (Document doc : verificationDocuments) {
+                if (doc.getFileStoreId() == null) {
+                    continue;
+                }
+                String fileStoreId = doc.getFileStoreId();
 
-            StringBuilder urlBuilder = new StringBuilder();
-            urlBuilder.append(config.getFileStoreHost())
-                    .append(config.getFileStoreDownloadEndpoint())
-                    .append("?tenantId=").append(tenantId)
-                    .append("&fileStoreId=").append(fileStoreId);
+                StringBuilder urlBuilder = new StringBuilder();
+                urlBuilder.append(config.getFileStoreHost())
+                          .append(config.getFileStoreDownloadEndpoint())
+                          .append("?tenantId=").append(tenantId)
+                          .append("&fileStoreId=").append(fileStoreId);
 
-            fileStoreUrls.add(urlBuilder.toString());
+                fileStoreUrls.add(urlBuilder.toString());
+            }
         }
 
-        wrapper.getIndexView().setDocumentUrls(fileStoreUrls);
-
+        indexView.setDocumentUrls(fileStoreUrls);
     }
 }
