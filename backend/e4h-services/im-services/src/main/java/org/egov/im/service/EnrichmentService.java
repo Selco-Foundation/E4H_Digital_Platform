@@ -162,12 +162,17 @@ public class EnrichmentService {
         Map<String, String> vendorDetails = notificationService.getHRMSEmployeeForIndexing(incidentRequest, null, "COMPLAINT_RESOLVER");
 
         // Get details of the user who last modified (last action)
-        String lastActionTakenByUser = wrapper.getIncidentRequest().getRequestInfo().getUserInfo().getName();
+        String lastActionTakenByUserUuid = incidentRequest.getIncident().getAuditDetails().getLastModifiedBy();
+        Map<String, String> lastActionTakenByUser = notificationService.getHRMSEmployeeForIndexing(
+                incidentRequest,
+                Collections.singletonList(lastActionTakenByUserUuid),
+                ""
+        );
 
         // Set fields in IndexView if values exist
         Optional.ofNullable(hcrDetails.get("employeeUserName")).ifPresent(indexView::setNinHfrId);
         Optional.ofNullable(vendorDetails.get("employeeUserName")).ifPresent(indexView::setMappedVendor);
-        indexView.setLastActionTakenBy(lastActionTakenByUser);
+        Optional.ofNullable(lastActionTakenByUser.get("employeeName")).ifPresent(indexView::setLastActionTakenBy);
     }
 
     /**
