@@ -68,12 +68,13 @@ public class IMService {
         validator.validateCreate(request, mdmsData);
         enrichmentService.enrichCreateRequest(request);
         String startingStatus = request.getIncident().getApplicationStatus();
-        ProcessInstance updatedProcessInstance = workflowService.updateWorkflowStatus(request, mdmsData);
-        producer.push(tenantId,config.getCreateTopic(),request);
         IncidentRequestWrapper wrapper = IncidentRequestWrapper.builder()
                 .incidentRequest(request)
-                .processInstance(updatedProcessInstance)
+                .indexView(new IndexView())
                 .build();
+        ProcessInstance updatedProcessInstance = workflowService.updateWorkflowStatus(wrapper, mdmsData);
+        producer.push(tenantId,config.getCreateTopic(),wrapper.getIncidentRequest());
+        wrapper.setProcessInstance(updatedProcessInstance);
         enrichmentService.enrichFieldsForIndexing(wrapper);
         producer.push(tenantId,config.getCreateTopicIndexer(),wrapper);
         enrichmentService.enrichFieldsForAuditIndexing(wrapper,startingStatus);
@@ -138,12 +139,13 @@ public class IMService {
         validator.validateUpdate(request, mdmsData);
         enrichmentService.enrichUpdateRequest(request);
         String startingStatus = request.getIncident().getApplicationStatus();
-        ProcessInstance updatedProcessInstance = workflowService.updateWorkflowStatus(request, mdmsData);
-        producer.push(tenantId,config.getUpdateTopic(),request);
         IncidentRequestWrapper wrapper = IncidentRequestWrapper.builder()
                 .incidentRequest(request)
-                .processInstance(updatedProcessInstance)
+                .indexView(new IndexView())
                 .build();
+        ProcessInstance updatedProcessInstance = workflowService.updateWorkflowStatus(wrapper, mdmsData);
+        producer.push(tenantId,config.getUpdateTopic(),wrapper.getIncidentRequest());
+        wrapper.setProcessInstance(updatedProcessInstance);
         enrichmentService.enrichFieldsForIndexing(wrapper);
         producer.push(tenantId,config.getUpdateTopicIndexer(),wrapper);
         enrichmentService.enrichFieldsForAuditIndexing(wrapper,startingStatus);
