@@ -39,7 +39,7 @@ public class AssetValidator {
 
     public void validateCreateAsset(AssetCreateRequest request) {
         Map<String, String> errorMap = new HashMap<>();
-        validateExistingDuplicates(request.getAssetDetail().getAsset(), errorMap);
+//        validateExistingDuplicates(request.getAssetDetail().getAsset(), errorMap);
         if (!CollectionUtils.isEmpty(errorMap))
             throw new CustomException(errorMap);
         Map<String, Object> mdmsData = mdmsUtil.getMDMSData(request.getRequestInfo(), request.getAssetDetail().getAsset().getTenantId());

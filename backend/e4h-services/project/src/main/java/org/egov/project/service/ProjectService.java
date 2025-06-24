@@ -486,7 +486,7 @@ public class ProjectService {
         handleNormalUpdate(enrichedRequest, updatedProject, existingProject);
 
         // Step 7: After successful workflow transition, if action is APPROVED_BY_QC_SPOC
-        if ("APPROVED_BY_QC_SPOC".equalsIgnoreCase(request.getAction())) {
+        if ("APPROVED_BY_QC_SPOC".equalsIgnoreCase(request.getWorkflow().getAction())) {
             // fetch facility for associated projectId -> facility search api to get associtaed facility
             ProjectFacilitySearch projectFacilitySearch = ProjectFacilitySearch.builder()
                     .projectId(new ArrayList<>(Arrays.asList(existingProject.getId())))
@@ -533,20 +533,27 @@ public class ProjectService {
                     }
                     if (!assetsToUpdate.isEmpty()) {
                         for (Asset asset : assetsToUpdate) {
-                            String assetUpdateEndpoint = projectConfiguration.getAssetHost() +
-                                    projectConfiguration.getAssetUpdateUrl().replace("{assetID}", asset.getAssetId());
-                            StringBuilder assetUpdateUri = new StringBuilder(assetUpdateEndpoint);
+                            try {
+                                String assetUpdateEndpoint = projectConfiguration.getAssetHost() +
+                                        projectConfiguration.getAssetUpdateUrl().replace("{assetID}", asset.getAssetId());
+                                StringBuilder assetUpdateUri = new StringBuilder(assetUpdateEndpoint);
 
-                            AssetCreate  assetCreate = AssetCreate.builder().asset(asset).build();
-                            AssetCreateRequest createRequest = AssetCreateRequest.builder().
-                                    requestInfo(request.getRequestInfo()).assetDetail(assetCreate).build();
+                                AssetCreate assetCreate = AssetCreate.builder().asset(asset).build();
+                                AssetCreateRequest createRequest = AssetCreateRequest.builder().
+                                        requestInfo(request.getRequestInfo()).assetDetail(assetCreate).build();
 
-                            serviceRequestRepository.fetchResult(assetUpdateUri, createRequest);
+                                serviceRequestRepository.fetchResult(assetUpdateUri, createRequest);
+                            } catch (Exception e) {
+                                log.error("Failed to update asset {}: {}", asset.getAssetId(), e.getMessage());
+                            }
                         }
                     }
+                } catch (ServiceCallException e) {
+                    log.error("Service call failed while processing assets for project {}: {}", existingProject.getId(), e.getMessage());
+                    throw new CustomException("ASSET_UPDATE_FAILED", "Failed to update asset operational status");
                 } catch (Exception e) {
-                    log.error("Error fetching or updating assets: ", e);
-                    throw new RuntimeException("Failed to process assets during workflow transition.", e);
+                    log.error("Unexpected error while processing assets for project {}: {}", existingProject.getId(), e.getMessage(), e);
+                    throw new CustomException("ASSET_PROCESSING_ERROR", "An error occurred while processing assets");
                 }
             }
         }

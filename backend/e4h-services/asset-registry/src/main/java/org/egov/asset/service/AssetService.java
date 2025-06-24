@@ -162,11 +162,19 @@ public class AssetService {
     }
 
     public Asset updateAsset(String assetId, AssetCreateRequest request) {
+        if (request == null || request.getAssetDetail() == null || request.getAssetDetail().getAsset() == null) {
+            throw new CustomException("INVALID_REQUEST", "Asset request cannot be null");
+        }
         Asset updated = request.getAssetDetail().getAsset();
         if (!assetId.equals(updated.getAssetId())) {
-            throw new IllegalArgumentException("ID mismatch");
+            throw new CustomException("ASSET_ID_MISMATCH", "Provided assetId does not match the asset's ID");
         }
 
+        // Update audit details
+        if (updated.getAuditDetails() != null) {
+            updated.getAuditDetails().setLastModifiedBy(request.getRequestInfo().getUserInfo().getUserName());
+            updated.getAuditDetails().setLastModifiedTime(System.currentTimeMillis());
+        }
         assetRepository.pushUpdateAsset(updated);
         return updated;
     }

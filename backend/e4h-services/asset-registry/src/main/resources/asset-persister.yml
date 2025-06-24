@@ -6,7 +6,7 @@ serviceMaps:
       fromTopic: save-asset
       isTransaction: true
       queryMaps:
-        - query: INSERT INTO asset (asset_id, tenant_id, system, facility_id, asset_type_id, serial_number, model_number, brand_id, asset_details, warranty_start_date, warranty_duration, warranty_end_date, wf_status, is_active, is_operational, additional_details, created_by, created_time, last_modified_by, last_modified_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+        - query: INSERT INTO asset (asset_id, tenant_id, system, facility_id, asset_type_id, serial_number, model_number, brand_id, asset_details, warranty_start_date, warranty_duration, warranty_end_date, wf_status, is_active, is_operational, additional_details, created_by, created_time, last_modified_by, last_modified_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
           basePath: $
           jsonMaps:
             - jsonPath: $.assetId

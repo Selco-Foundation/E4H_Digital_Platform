@@ -148,7 +148,7 @@ public class V1ApiController {
         Asset updatedAsset = assetService.updateAsset(assetID, body);
         AssetCreateUpdateResponse response = new AssetCreateUpdateResponse();
         response.setAsset(updatedAsset);
-        return new ResponseEntity<AssetCreateUpdateResponse>(HttpStatus.NOT_IMPLEMENTED);
+        return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
     @RequestMapping(value = "/v1/asset/amc/_update", method = RequestMethod.POST)
