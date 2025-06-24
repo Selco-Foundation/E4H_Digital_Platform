@@ -515,11 +515,13 @@ public class ProjectService {
     public List<Transaction> getTransactionsForProject(List<String> projectIds) {
         if (projectIds == null || projectIds.isEmpty()) return Collections.emptyList();
 
-        String inSql = String.join(",", Collections.nCopies(projectIds.size(), "?"));
         String sql = "SELECT id, project_id, process_instance_id, created_by, last_modified_by, created_time, last_modified_time " +
-                "FROM project_transaction WHERE project_id IN (" + inSql + ")";
+                "FROM project_transaction WHERE project_id = ANY(?)";
 
-        return jdbcTemplate.query(sql, projectIds.toArray(), (rs, rowNum) -> {
+        return jdbcTemplate.query(sql, ps -> {
+            java.sql.Array sqlArray = ps.getConnection().createArrayOf("text", projectIds.toArray(new String[0]));
+            ps.setArray(1, sqlArray);
+        }, (rs, rowNum) -> {
             Transaction transaction = new Transaction();
             transaction.setTransactionId(rs.getString("id"));
             transaction.setProjectId(rs.getString("project_id"));
@@ -538,7 +540,7 @@ public class ProjectService {
         if (transactionIds == null || transactionIds.isEmpty()) return Collections.emptyList();
 
         String inSql = String.join(",", Collections.nCopies(transactionIds.size(), "?"));
-        String sql = "SELECT id, transaction_id, comment, asset_type, created_by, last_modified_by, created_time, last_modified_time " +
+        String sql = "SELECT id, transaction_id, comment_message, asset_type, created_by, last_modified_by, created_time, last_modified_time " +
                 "FROM project_transaction_comment WHERE transaction_id IN (" + inSql + ")";
 
         return jdbcTemplate.query(sql, transactionIds.toArray(), (rs, rowNum) -> {
