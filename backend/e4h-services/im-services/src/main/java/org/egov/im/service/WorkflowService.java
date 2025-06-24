@@ -140,9 +140,7 @@ public class WorkflowService {
         long definedTotalSla = slaService.computeTotalSla(applicationStatus, this.getStates());
         long totalSlaRemaining = definedTotalSla - businessHoursElapsed;
 
-        if(applicationStatus.contains("ASSIGNMENT"))
-            wrapper.getIndexView().setDefinedTotalSla(definedTotalSla);
-
+        wrapper.getIndexView().setDefinedTotalSla(definedTotalSla);
         processInstance.getState().setTotalSlaRemaining(totalSlaRemaining);
     }
 
