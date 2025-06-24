@@ -17,6 +17,7 @@ from app.decorators.rbac_validator import get_authorized_request_info
 from app.ingest.excel_data_writer import ExcelDataWriter
 from app.processor.factory.boundary_data_processor_factory import BoundaryDataProcessorFactory
 from app.processor.factory.vendor_data_processor_factory import VendorDataProcessorFactory
+from app.schemas.request_info import RequestInfo
 from app.utils.convertor import request_info_from_json, create_vendor_request, create_facility_payload, \
     get_project_creation_payload, get_user_creation_payload, get_staff_creation_payload, create_project_payload, \
     get_installation_spoc_creation_payload
@@ -618,7 +619,7 @@ def get_hrms_employee_info(codes: List[str], db_conn) -> Dict[str, str]:
         logger.error(f"Error fetching HRMS employee info: {e}")
         return {}
 
-def get_tenant_mapping(request_info: dict) -> Dict:
+def get_tenant_mapping(request_info: RequestInfo, tenant_id: str) -> Dict:
     """
     Fetch tenant mapping from MDMS for PHC subtypes
     """
@@ -628,7 +629,7 @@ def get_tenant_mapping(request_info: dict) -> Dict:
         search_payload = {
             "RequestInfo": request_info.model_dump(by_alias=True, exclude_none=True),
             "MdmsCriteria": {
-                "tenantId": "pg",
+                "tenantId": tenant_id,
                 "moduleDetails": [
                     {
                         "moduleName": "tenant",
@@ -668,8 +669,7 @@ async def upload_legacy_ticket_excel_sheet(
     migration_id = str(uuid.uuid4())
 
     # Fetch tenant mapping once for the entire batch
-    tenant_mapping = get_tenant_mapping(request_info_obj)
-    print(f"Total tenant mappings fetched: {len(tenant_mapping)}")
+    tenant_mapping = get_tenant_mapping(request_info_obj, "pg")
 
     try:
         input_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
@@ -703,6 +703,9 @@ async def upload_legacy_ticket_excel_sheet(
 
         for idx, row in df.iterrows():
             try:
+                if df.at[idx, 'status'] in ['duplicate', 'error']:
+                    continue
+
                 employee_code = str(row.get("NIN_HFR ID", "")).strip()
                 tenant_id = employee_info.get(employee_code)
                 if not tenant_id:
@@ -714,6 +717,15 @@ async def upload_legacy_ticket_excel_sheet(
                 df.at[idx, 'employee_info'] = 'Found'
 
                 employee_tenant_mapping = tenant_mapping.get(tenant_id,{})
+                if not employee_tenant_mapping:
+                    dynamic_mapping = get_tenant_mapping(request_info_obj, tenant_id)
+                    if dynamic_mapping:
+                        tenant_mapping.update(dynamic_mapping)
+                        employee_tenant_mapping = tenant_mapping.get(tenant_id, {})
+                    else :
+                        df.at[idx, 'status'] = 'failed'
+                        df.at[idx, 'error'] = f'Tenant mapping not found for tenant ID: {tenant_id}'
+                        continue
 
                 # Extract tenant-based fields
                 phc_subtype = employee_tenant_mapping.get("centreType", "")
@@ -751,14 +763,15 @@ async def upload_legacy_ticket_excel_sheet(
                     incident_payload["legacyId"] = str(unique_id).strip()
 
                 # Optional: Convert Actual_Reported_Date to epoch
-                reported_date = row.get("Actual_Reported_Date (mm/dd/yyyy)", None)
+                reported_date = row.get("Actual_Reported_Date", None)
+
                 if pd.notnull(reported_date):
-                    try:
-                        dt = pd.to_datetime(reported_date, errors='coerce', format="%m/%d/%Y")
-                    except Exception:
-                        dt = pd.to_datetime(reported_date, errors='coerce')
-                    if pd.notnull(dt):
-                        incident_payload["filedDate"] = int(dt.timestamp() * 1000)
+                        if isinstance(reported_date, str):
+                            dt = pd.to_datetime(reported_date, format="%d/%m/%Y", errors='coerce')
+                        else:
+                            dt = pd.to_datetime(reported_date, errors='coerce')
+                        if pd.notnull(dt):
+                            incident_payload["filedDate"] = int(dt.timestamp() * 1000)
 
                 request_info = {
                     "apiId": "Rainmaker",
@@ -810,7 +823,6 @@ async def upload_legacy_ticket_excel_sheet(
                         "verificationDocuments": []
                     }
                 }
-                print(payload)
 
                 # Call the im-services create API
                 create_incident_url = f"{im_services_url}/im-services/v2/request/_create"
@@ -850,3 +862,75 @@ async def upload_legacy_ticket_excel_sheet(
     finally:
         if input_temp_file and os.path.exists(input_temp_file.name):
             os.unlink(input_temp_file.name)
+
+
+@router.post("/check_duplicates")
+async def check_duplicate_tickets(
+        legacy_ticket_file: UploadFile = File(...),
+        legacy_ticket_sheet_name: str = Form(default="Duplication Template"),
+):
+    input_temp_file = None
+    try:
+        # Save uploaded file temporarily
+        input_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
+        content = await legacy_ticket_file.read()
+        input_temp_file.write(content)
+        input_temp_file.close()
+        excel_path = input_temp_file.name
+
+        # Read Excel file
+        df = pd.read_excel(excel_path, sheet_name=legacy_ticket_sheet_name)
+        df.columns = df.columns.str.strip()
+        df = df.reindex(columns=df.columns.tolist() + ['status', 'error'], fill_value='')
+
+        conn = psycopg2.connect(**DB_CONFIG)
+        cursor = conn.cursor()
+
+        # Step 1: Fetch NIN_HFR ID -> tenantId mapping
+        nin_hfr_ids = df["NIN_HFR ID"].dropna().astype(str).str.strip().unique().tolist()
+        cursor.execute("SELECT code, tenantid FROM eg_hrms_employee WHERE code IN %s", (tuple(nin_hfr_ids),))
+        code_tenant_map = dict(cursor.fetchall())
+
+        # Step 2: Check each row for incident duplication
+        for idx, row in df.iterrows():
+            code = str(row.get("NIN_HFR ID", "")).strip()
+            ticket_type = str(row.get("Ticket Type", "")).strip()
+            ticket_subtype = str(row.get("Ticket Sub Type", "")).strip()
+
+            tenant_id = code_tenant_map.get(code)
+            if not tenant_id:
+                df.at[idx, 'status'] = 'error'
+                df.at[idx, 'error'] = 'Invalid NIN_HFR ID (not in eg_hrms_employee)'
+                continue
+
+            # Step 3: Check for matching incidents
+            cursor.execute("""
+                SELECT 1 FROM eg_incident_v2 
+                WHERE tenantid = %s 
+                AND incidenttype = %s 
+                AND incidentsubtype = %s 
+                AND applicationstatus NOT IN ('CLOSEDAFTERRESOLUTION', 'RESOLVED', 'REJECTED')
+                LIMIT 1
+            """, (tenant_id, ticket_type, ticket_subtype))
+            exists = cursor.fetchone()
+
+            if exists:
+                df.at[idx, 'status'] = 'duplicate'
+
+        conn.close()
+
+        # Save updated Excel
+        df.to_excel(excel_path, index=False, sheet_name=legacy_ticket_sheet_name)
+
+        return FileResponse(
+            path=excel_path,
+            filename=legacy_ticket_file.filename,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error during duplicate check: {str(e)}")
+
+    finally:
+        if input_temp_file and os.path.exists(input_temp_file.name):
+            pass
