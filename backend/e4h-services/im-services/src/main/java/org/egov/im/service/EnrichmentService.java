@@ -220,4 +220,43 @@ public class EnrichmentService {
     }
 
 
+    public void enrichFieldsForAuditIndexing(IncidentRequestWrapper wrapper, String startingStatus) {
+        // Ensure IndexView is initialized
+        IndexView indexView = wrapper.getIndexView();
+        if (indexView == null) {
+            indexView = new IndexView();
+            wrapper.setIndexView(indexView);
+        }
+
+        indexView.setUuid(UUID.randomUUID().toString());
+        indexView.setStartingStatus(startingStatus);
+        indexView.setEndingStatus(wrapper.getIncidentRequest().getIncident().getApplicationStatus());
+
+        localizationService.enrichLocalizedApplicationStatuses(wrapper, startingStatus);
+
+        // get array of filestore download links
+        List<String> fileStoreUrls = new ArrayList<>();
+
+        String tenantId = wrapper.getIncidentRequest().getIncident().getTenantId();
+        List<Document> verificationDocuments = wrapper.getIncidentRequest().getWorkflow().getVerificationDocuments();
+
+        if (verificationDocuments != null && !verificationDocuments.isEmpty()) {
+            for (Document doc : verificationDocuments) {
+                if (doc.getFileStoreId() == null) {
+                    continue;
+                }
+                String fileStoreId = doc.getFileStoreId();
+
+                StringBuilder urlBuilder = new StringBuilder();
+                urlBuilder.append(config.getFileStoreHost())
+                          .append(config.getFileStoreDownloadEndpoint())
+                          .append("?tenantId=").append(tenantId)
+                          .append("&fileStoreId=").append(fileStoreId);
+
+                fileStoreUrls.add(urlBuilder.toString());
+            }
+        }
+
+        indexView.setDocumentUrls(fileStoreUrls);
+    }
 }
