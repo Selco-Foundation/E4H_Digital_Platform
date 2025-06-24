@@ -260,7 +260,7 @@ def get_installation_spoc_creation_payload(request_info: RequestInfo, name:str, 
         ],
     }
 
-def get_user_creation_payload(request_info: RequestInfo, row: Series):
+def get_user_creation_payload_staff(request_info: RequestInfo, row: Series):
     current_date = datetime.datetime.now()
     current_timestamp = int(time.mktime(current_date.timetuple()) * 1000)
 
@@ -277,9 +277,9 @@ def get_user_creation_payload(request_info: RequestInfo, row: Series):
                     "mobileNumber": row.get("Phone Number", ""),
                     "emailId": row.get("Email Address", ""),
                     "roles": [
-                        {"code": "INSTALLATION_SUPERVISOR", "name": "Installation supervisor"},
-                        {"code": "INSTALLATION_REPORT_VIEWER", "name": "Installation report viewer"},
-                        {"code": "HRMS_ADMIN", "name": "Hrms admin"}
+                        {"code": "INSTALLATION_REPORT_PART_A_EDITOR", "name": "Installation Report Part A Editor"},
+                        {"code": "INSTALLATION_REPORT_PART_A_REVIEWER", "name": "Installation Report Part A Reviewer"},
+                        {"code": "EMPLOYEE", "name": "employee"}
                     ],
                     "tenantId": "in",
                 },
@@ -288,13 +288,65 @@ def get_user_creation_payload(request_info: RequestInfo, row: Series):
                     {
                         "hierarchy": "ADMIN",
                         "roles": [
-                            {"value": "INSTALLATION_SUPERVISOR", "label": "Installation supervisor"},
-                            {"value": "INSTALLATION_REPORT_VIEWER", "label": "Installation report viewer"},
-                            {"value": "HRMS_ADMIN", "label": "Hrms admin"}
+                            {"code": "INSTALLATION_REPORT_PART_A_EDITOR", "name": "Installation Report Part A Editor"},
+                            {"code": "INSTALLATION_REPORT_PART_A_REVIEWER", "name": "Installation Report Part A Reviewer"},
+                            {"code": "EMPLOYEE", "name": "employee"}
                         ],
                         "boundaryType": "City",
                         "boundary": "in",
-                        "furnishedRolesList": "INSTALLATION_SUPERVISOR, INSTALLATION_REPORT_VIEWER, HRMS_ADMIN",
+                        "furnishedRolesList": "INSTALLATION_REPORT_PART_A_EDITOR, INSTALLATION_REPORT_PART_A_REVIEWER, EMPLOYEE",
+                        "tenantId": "in",
+                    }
+                ],
+                "assignments": [
+                    {
+                        "fromDate": current_timestamp,
+                        "toDate": "",
+                        "isCurrentAssignment": True,
+                        "department": "DEPT_1",
+                        "designation": "DESIG_01"
+                    }
+                ],
+                "serviceHistory": [],
+                "education": [],
+                "tests": [],
+            }
+        ],
+    }
+
+def get_user_creation_payload_supervisors(request_info: RequestInfo, row: Series):
+    current_date = datetime.datetime.now()
+    current_timestamp = int(time.mktime(current_date.timetuple()) * 1000)
+
+    return {
+        "RequestInfo": request_info.model_dump(by_alias=True, exclude_none=True),
+        "Employees": [
+            {
+                "tenantId": "in",
+                "employeeStatus": "EMPLOYED",
+                "dateOfAppointment": current_timestamp,
+                "employeeType": "PERMANENT",
+                "user": {
+                    "name": row.get("Name", ""),
+                    "mobileNumber": row.get("Phone Number", ""),
+                    "emailId": row.get("Email Address", ""),
+                    "roles": [
+                        {"code": "INSTALLATION_REPORT_PART_B_EDITOR", "name": "Installation Report Part B Editor"},
+                        {"code": "EMPLOYEE", "name": "employee"}
+                    ],
+                    "tenantId": "in",
+                },
+                "code": row.get("Name", ""),
+                "jurisdictions": [
+                    {
+                        "hierarchy": "ADMIN",
+                        "roles": [
+                            {"code": "INSTALLATION_REPORT_PART_B_EDITOR", "name": "Installation Report Part B Editor"},
+                            {"code": "EMPLOYEE", "name": "employee"}
+                        ],
+                        "boundaryType": "City",
+                        "boundary": "in",
+                        "furnishedRolesList": "INSTALLATION_REPORT_PART_B_EDITOR, EMPLOYEE",
                         "tenantId": "in",
                     }
                 ],
@@ -389,16 +441,16 @@ def create_facility_payload(request_info: RequestInfo, row: Series, facility_sch
 
 
 
-def convert_response_to_facility(response: Dict[str, Any]):
+def convert_response_to_facility(response: Dict[str, Any], role_type: str):
     return {
         "Country": "India",
         "State": response["address"]["state"],
         "District": response["address"]["district"],
         "Block": response["address"]["block"],
-        "Boundary Code (Mandatory)": response["facility_details"]["boundaryCode"],
+        "Boundary Code (Mandatory)": response["boundaryCode"],
         "Health Centre Name (Mandatory)": response["facility_name"],
         "Type of HC (Mandatory)": response["facility_type"],
-        "HFR ID": response["facility_details"]["hfrId"],
+        "HFR ID": response["facility_details"]["hfr_id"],
         "NIN ID": "",
         "Facility ID": response["facility_id"],
         "HC PoC Name (Mandatory)": response["facility_details"]["pocName"],
@@ -409,7 +461,7 @@ def convert_response_to_facility(response: Dict[str, Any]):
         "Address": (response["address"]["addressNumber"] or "") + " " + (response["address"]["addressLine1"] or "") + " " \
            + (response["address"]["addressLine2"] or "") + " " + (response["address"]["landmark"] or "") + " " \
            + (response["address"]["city"] or "") + " " + (response["address"]["pincode"] or ""),
-        "Role": "Supervisor",
+        "Role": role_type,
         "Name": "",
         "Gender": "",
         "Phone Number": "",

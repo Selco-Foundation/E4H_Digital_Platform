@@ -15,7 +15,7 @@ from app.processor.factory.boundary_data_processor_factory import BoundaryDataPr
 from app.processor.factory.vendor_data_processor_factory import VendorDataProcessorFactory
 from app.producer.producer import Producer
 from app.utils.convertor import request_info_from_json, create_vendor_request, create_facility_payload, \
-    get_project_creation_payload, get_user_creation_payload, get_staff_creation_payload, create_project_payload, \
+    get_project_creation_payload, get_user_creation_payload_staff, get_user_creation_payload_supervisors, get_staff_creation_payload, create_project_payload, \
     get_installation_spoc_creation_payload, get_staff_search_payload
 from app.utils.facility_service_client import FacilityServiceClient
 from app.utils.mdms_client import MDMSClient
@@ -318,6 +318,115 @@ async def upload_facilities_with_workstream(
         )
 
 
+@router.post('/facilityWithStaff',
+             summary='Upload and process facility with staff Excel file',
+             response_description="Returns processed Excel file with validation results")
+async def upload_facility_with_staff_excel_sheet(
+        facility_with_staff: UploadFile = File(
+            description="Excel file containing facility with staff data"),
+        facility_sheet: str = Form(default="Facilities_Staff",
+                                    description="Name of the sheet containing facility data"),
+        request_info: str = Form(default=""),
+        work_stream_project_id:str = Form(default="")
+):
+    input_temp_file = None
+    output_temp_file = None
+    request_info = request_info_from_json(request_info)
+    get_authorized_request_info(request_info)
+
+    try:
+        # Create input temporary file
+        input_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
+        content = await facility_with_staff.read()
+        input_temp_file.write(content)
+        input_temp_file.close()
+        facility_with_staff_file_path = input_temp_file.name
+
+        # Create output file with timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_filename = f"facility_with_staff_ingestion_results_{timestamp}.xlsx"
+        output_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
+        output_temp_file.close()
+        output_file_path = output_temp_file.name
+
+        # Copy input to output file first
+        with open(facility_with_staff_file_path, 'rb') as src, open(output_file_path, 'wb') as dst:
+            dst.write(src.read())
+
+        # Read the Excel file
+        df = pd.read_excel(facility_with_staff_file_path, sheet_name=facility_sheet)
+
+        # Add status and error columns if they don't exist
+        if 'status' not in df.columns:
+            df['status'] = ''
+        if 'error' not in df.columns:
+            df['error'] = ''
+
+        # Process each row if services are available
+        if project_service_url and not df.empty:
+            project_client = ProjectServiceClient(project_service_url)
+            hrms_client = HRMSServiceClient(hrms_service_url)
+            work_stream_project = project_client.search_project(request_info, work_stream_project_id)
+            work_stream = work_stream_project["Project"][0]
+            for index, row in df.iterrows():
+                if row.get("status", "") != "success":
+                    try:
+                        # Create project of type facility
+                        facility_creation_payload = get_project_creation_payload(request_info, row.get('Health Centre Name (Mandatory)', ''), "Facility",
+                                                                                 work_stream_project_id, work_stream["startDate"],work_stream["endDate"],"")
+                        facility_creation_response = project_client.create_project(facility_creation_payload)
+                        facility = json.loads(facility_creation_response.text)
+                        if facility_creation_response.status_code in [200, 201, 202]:
+                            df.at[index, 'status'] = 'success'
+                            # Create User
+                            user_creation_payload = get_user_creation_payload_staff(request_info, row)
+                            user_creation_response = hrms_client.create_user(user_creation_payload)
+                            user = json.loads(user_creation_response.text)
+                            if user_creation_response.status_code in [200, 201, 202]:
+                                df.at[index, 'status'] = 'success'
+                                # Create staff
+                                staff_creation_payload = get_staff_creation_payload(request_info, user["Employees"][0]["uuid"], facility["Project"][0]["id"])
+                                staff_creation_response = project_client.create_project_staff(staff_creation_payload)
+                                if staff_creation_response.status_code in [200, 201, 202]:
+                                    df.at[index,'status'] = 'success'
+                                    df.at[index, 'error'] = ''
+                                else:
+                                    df.at[index, 'status'] = 'failed'
+                                    df.at[index, 'error'] = f"Staff Creation Error: {staff_creation_response.status_code} - {staff_creation_response.text}"
+                            else:
+                                df.at[index, 'status'] = 'failed'
+                                df.at[index, 'error'] = f"User Creation Error: {user_creation_response.status_code} - {user.get('Errors', [{}])[0].get('message', 'Unknown error')}"
+                        else:
+                            df.at[index, 'status'] = 'failed'
+                            df.at[index, 'error'] = f"Facility Creation Error: {facility_creation_response.status_code} - {facility_creation_response.text}"
+                    except Exception as e:
+                        df.at[index, 'status'] = 'failed'
+                        df.at[index, 'error'] = f"Processing Error: {str(e)}"
+
+        # Write data to the same sheet name that was read
+        with pd.ExcelWriter(output_file_path, engine='openpyxl', mode='a') as writer:
+            # Remove the existing sheet if it exists
+            if facility_sheet in writer.book.sheetnames:
+                idx = writer.book.sheetnames.index(facility_sheet)
+                writer.book.remove(writer.book.worksheets[idx])
+            # Write data to the sheet
+            df.to_excel(writer, sheet_name=facility_sheet, index=False)
+
+        return FileResponse(
+            path=output_file_path,
+            filename=output_filename,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+    except Exception as e:
+        logger.error(f"Error processing facility data: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to process facility data: {str(e)}"
+        )
+    finally:
+        if input_temp_file and os.path.exists(input_temp_file.name):
+            os.unlink(input_temp_file.name)
+
 
 
 @router.post('/facilityWithSupervisors',
@@ -373,34 +482,196 @@ async def upload_facility_with_supervisors_excel_sheet(
             for index, row in df.iterrows():
                 if row.get("status", "") != "success":
                     try:
-                        # Create project of type facility
-                        facility_creation_payload = get_project_creation_payload(request_info, row.get('Health Centre Name (Mandatory)', ''), "Facility",
+                        existing_facility = project_client.search_project_facility(request_info, work_stream_project_id)
+                        facility_list = existing_facility.get('ProjectFacilities', [])
+
+                        facility_created = False
+                        if facility_list:
+                            facility = facility_list[0]
+                            facility_created = False  # existing, not newly created
+                        else:
+                            # Create facility if not found
+                            facility_creation_payload = get_project_creation_payload(request_info, row.get('Health Centre Name (Mandatory)', ''), "Facility",
                                                                                  work_stream_project_id, work_stream["startDate"],work_stream["endDate"],"")
-                        facility_creation_response = project_client.create_project(facility_creation_payload)
-                        facility = json.loads(facility_creation_response.text)
-                        if facility_creation_response.status_code in [200, 201, 202]:
+                            facility_creation_response = project_client.create_project(facility_creation_payload)
+                            if facility_creation_response.status_code not in [200, 201, 202]:
+                                df.at[index, 'status'] = 'failed'
+                                df.at[index, 'error'] = (
+                                    f"Facility Creation Error: {facility_creation_response.status_code} - {facility_creation_response.text}"
+                                )
+                                continue
+
+                            facility = json.loads(facility_creation_response.text)
+                            facility_created = True
+
+                        # 🧠 Correctly extract project ID based on the structure
+                        if facility_created:
+                            project_id = facility["Project"][0]["id"]
+                        else:
+                            project_id = facility["projectId"]
+                        # Create User
+                        user_creation_payload = get_user_creation_payload_supervisors(request_info, row)
+                        user_creation_response = hrms_client.create_user(user_creation_payload)
+                        user = json.loads(user_creation_response.text)
+                        if user_creation_response.status_code in [200, 201, 202]:
                             df.at[index, 'status'] = 'success'
-                            # Create User
-                            user_creation_payload = get_user_creation_payload(request_info, row)
-                            user_creation_response = hrms_client.create_user(user_creation_payload)
-                            user = json.loads(user_creation_response.text)
-                            if user_creation_response.status_code in [200, 201, 202]:
-                                df.at[index, 'status'] = 'success'
-                                # Create staff
-                                staff_creation_payload = get_staff_creation_payload(request_info, user["Employees"][0]["uuid"], facility["Project"][0]["id"])
-                                staff_creation_response = project_client.create_project_staff(staff_creation_payload)
-                                if staff_creation_response.status_code in [200, 201, 202]:
+                            # Create staff
+                            staff_creation_payload = get_staff_creation_payload(request_info, user["Employees"][0]["uuid"], project_id)
+                            staff_creation_response = project_client.create_project_staff(staff_creation_payload)
+                            if staff_creation_response.status_code in [200, 201, 202]:
+                                df.at[index,'status'] = 'success'
+                                df.at[index, 'error'] = ''
+                            else:
+                                df.at[index, 'status'] = 'failed'
+                                df.at[index, 'error'] = f"Staff Creation Error: {staff_creation_response.status_code} - {staff_creation_response.text}"
+                        else:
+                            df.at[index, 'status'] = 'failed'
+                            df.at[index, 'error'] = f"User Creation Error: {user_creation_response.status_code} - {user.get('Errors', [{}])[0].get('message', 'Unknown error')}"
+                    except Exception as e:
+                        df.at[index, 'status'] = 'failed'
+                        df.at[index, 'error'] = f"Processing Error: {str(e)}"
+
+        # Write data to the same sheet name that was read
+        with pd.ExcelWriter(output_file_path, engine='openpyxl', mode='a') as writer:
+            # Remove the existing sheet if it exists
+            if facility_sheet in writer.book.sheetnames:
+                idx = writer.book.sheetnames.index(facility_sheet)
+                writer.book.remove(writer.book.worksheets[idx])
+            # Write data to the sheet
+            df.to_excel(writer, sheet_name=facility_sheet, index=False)
+
+        return FileResponse(
+            path=output_file_path,
+            filename=output_filename,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+    except Exception as e:
+        logger.error(f"Error processing facility data: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to process facility data: {str(e)}"
+        )
+    finally:
+        if input_temp_file and os.path.exists(input_temp_file.name):
+            os.unlink(input_temp_file.name)
+
+@router.post('/facilityWithSupervisorUpdateWorkflowState',
+             summary='Upload and process facility with supervisors Excel file',
+             response_description="Returns processed Excel file with validation results")
+async def upload_facility_with_supervisors_workflow_state_excel_sheet(
+        facility_with_supervisors: UploadFile = File(
+            description="Excel file containing facility with supervisors data"),
+        facility_sheet: str = Form(default="Facilities_Supervisors",
+                                    description="Name of the sheet containing facility data"),
+        request_info: str = Form(default=""),
+        work_stream_project_id:str = Form(default="")
+):
+    input_temp_file = None
+    output_temp_file = None
+    request_info = request_info_from_json(request_info)
+    get_authorized_request_info(request_info)
+
+    try:
+        # Create input temporary file
+        input_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
+        content = await facility_with_supervisors.read()
+        input_temp_file.write(content)
+        input_temp_file.close()
+        facility_with_supervisors_file_path = input_temp_file.name
+
+        # Create output file with timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_filename = f"facility_with_supervisor_ingestion_results_{timestamp}.xlsx"
+        output_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
+        output_temp_file.close()
+        output_file_path = output_temp_file.name
+
+        # Copy input to output file first
+        with open(facility_with_supervisors_file_path, 'rb') as src, open(output_file_path, 'wb') as dst:
+            dst.write(src.read())
+
+        # Read the Excel file
+        df = pd.read_excel(facility_with_supervisors_file_path, sheet_name=facility_sheet)
+
+        # Add status and error columns if they don't exist
+        if 'status' not in df.columns:
+            df['status'] = ''
+        if 'error' not in df.columns:
+            df['error'] = ''
+
+        # Process each row if services are available
+        if project_service_url and not df.empty:
+            project_client = ProjectServiceClient(project_service_url)
+            hrms_client = HRMSServiceClient(hrms_service_url)
+            work_stream_project = project_client.search_project(request_info, work_stream_project_id)
+            work_stream = work_stream_project["Project"][0]
+            for index, row in df.iterrows():
+                if row.get("status", "") != "success":
+                    try:
+                        existing_facility = project_client.search_project_facility(request_info, work_stream_project_id)
+                        facility_list = existing_facility.get('ProjectFacilities', [])
+
+                        facility_created = False
+                        if facility_list:
+                            facility = facility_list[0]
+                            facility_created = False  # existing, not newly created
+                        else:
+                            # Create facility if not found
+                            facility_creation_payload = get_project_creation_payload(request_info, row.get('Health Centre Name (Mandatory)', ''), "Facility",
+                                                                                 work_stream_project_id, work_stream["startDate"],work_stream["endDate"],"")
+                            facility_creation_response = project_client.create_project(facility_creation_payload)
+                            if facility_creation_response.status_code not in [200, 201, 202]:
+                                df.at[index, 'status'] = 'failed'
+                                df.at[index, 'error'] = (
+                                    f"Facility Creation Error: {facility_creation_response.status_code} - {facility_creation_response.text}"
+                                )
+                                continue
+
+                            facility = json.loads(facility_creation_response.text)
+                            facility_created = True
+
+                        # 🧠 Correctly extract project ID based on the structure
+                        if facility_created:
+                            project_id = facility["Project"][0]["id"]
+                        else:
+                            project_id = facility["projectId"]
+                        # Create User
+                        user_creation_payload = get_user_creation_payload_supervisors(request_info, row)
+                        user_creation_response = hrms_client.create_user(user_creation_payload)
+                        user = json.loads(user_creation_response.text)
+                        if user_creation_response.status_code in [200, 201, 202]:
+                            df.at[index, 'status'] = 'success'
+                            # Create staff
+                            staff_creation_payload = get_staff_creation_payload(request_info, user["Employees"][0]["uuid"], project_id)
+                            staff_creation_response = project_client.create_project_staff(staff_creation_payload)
+                            if staff_creation_response.status_code in [200, 201, 202]:
+                                df.at[index,'status'] = 'success'
+                                df.at[index, 'error'] = ''
+
+                                # Validate Role column exists
+                                if 'Role' not in df.columns:
+                                    df.at[index, 'status'] = 'failed'
+                                    df.at[index, 'error'] = "Role column is required for workflow state updates"
+                                    continue
+                                # update workflow state
+                                if df.at[index,'Role'] == 'Supervisor':
+                                    update_workflow_state_response = project_client.update_workflow(request_info, work_stream_project_id, 'ASSIGNED_TO_FIELD_SUPERVISOR')
+                                else:
+                                    update_workflow_state_response = project_client.update_workflow(request_info, work_stream_project_id,
+                                                                                                    'ASSIGNED_TO_FIELD_STAFF')
+                                if update_workflow_state_response.status_code in [200, 201, 202]:
                                     df.at[index,'status'] = 'success'
                                     df.at[index, 'error'] = ''
                                 else:
                                     df.at[index, 'status'] = 'failed'
-                                    df.at[index, 'error'] = f"Staff Creation Error: {staff_creation_response.status_code} - {staff_creation_response.text}"
+                                    df.at[
+                                        index, 'error'] = f"Update Workflow state Error: {update_workflow_state_response.status_code} - {update_workflow_state_response.text}"
                             else:
                                 df.at[index, 'status'] = 'failed'
-                                df.at[index, 'error'] = f"User Creation Error: {user_creation_response.status_code} - {user.get('Errors', [{}])[0].get('message', 'Unknown error')}"
+                                df.at[index, 'error'] = f"Staff Creation Error: {staff_creation_response.status_code} - {staff_creation_response.text}"
                         else:
                             df.at[index, 'status'] = 'failed'
-                            df.at[index, 'error'] = f"Facility Creation Error: {facility_creation_response.status_code} - {facility_creation_response.text}"
+                            df.at[index, 'error'] = f"User Creation Error: {user_creation_response.status_code} - {user.get('Errors', [{}])[0].get('message', 'Unknown error')}"
                     except Exception as e:
                         df.at[index, 'status'] = 'failed'
                         df.at[index, 'error'] = f"Processing Error: {str(e)}"
