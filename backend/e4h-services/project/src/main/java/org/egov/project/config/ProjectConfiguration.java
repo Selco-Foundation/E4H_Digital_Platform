@@ -233,4 +233,13 @@ public class ProjectConfiguration {
 
     @Value("${egov.workflow.business.service}")
     private String businessService;
+
+    @Value("${egov.asset.host}")
+    private String assetHost;
+
+    @Value("${egov.asset.search.url}")
+    private String assetSearchUrl;
+
+    @Value("${egov.asset.update.url}")
+    private String assetUpdateUrl;
 }

@@ -76,6 +76,9 @@ public class Asset {
     @JsonProperty("isActive")
     private Boolean isActive = null;
 
+    @JsonProperty("isOperational")
+    private Boolean isOperational = null;
+
     @JsonProperty("documents")
     private List<Document> documents = null;
 

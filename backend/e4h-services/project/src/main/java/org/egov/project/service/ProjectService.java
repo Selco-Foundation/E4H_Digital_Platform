@@ -1,5 +1,6 @@
 package org.egov.project.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.validation.Valid;
@@ -21,23 +22,23 @@ import org.egov.project.repository.ProjectRepository;
 import org.egov.project.service.enrichment.ProjectEnrichment;
 import org.egov.project.util.ProjectServiceUtil;
 import org.egov.project.validator.project.ProjectValidator;
-import org.egov.project.web.models.ProjectStatusWrapper;
-import org.egov.project.web.models.ProjectWorkflowRequest;
-import org.egov.project.web.models.ProjectSortCriteria;
+import org.egov.project.web.models.*;
 import org.egov.tracer.model.CustomException;
+import org.egov.tracer.model.ServiceCallException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
 public class ProjectService {
 
+    @Qualifier("objectMapper")
+    private final ObjectMapper mapper;
 
     private final ProjectRepository projectRepository;
 
@@ -57,10 +58,12 @@ public class ProjectService {
 
     private final ProjectWorkflowService workflowService;
 
+    private final ServiceRequestRepository serviceRequestRepository;
+
     @Autowired
     public ProjectService(
             ProjectRepository projectRepository,
-            ProjectValidator projectValidator, ProjectEnrichment projectEnrichment, ProjectConfiguration projectConfiguration, Producer producer, ProjectServiceUtil projectServiceUtil, ProjectWorkflowService workflowService, @Lazy ProjectFacilityService projectFacilityService) {
+            ProjectValidator projectValidator, ProjectEnrichment projectEnrichment, ProjectConfiguration projectConfiguration, Producer producer, ProjectServiceUtil projectServiceUtil, ProjectWorkflowService workflowService, @Lazy ProjectFacilityService projectFacilityService, ServiceRequestRepository serviceRequestRepository, @Qualifier("objectMapper") ObjectMapper mapper) {
         this.projectRepository = projectRepository;
         this.projectValidator = projectValidator;
         this.projectEnrichment = projectEnrichment;
@@ -68,6 +71,8 @@ public class ProjectService {
         this.producer = producer;
         this.projectServiceUtil = projectServiceUtil;
         this.workflowService = workflowService;
+        this.serviceRequestRepository = serviceRequestRepository;
+        this.mapper = mapper;
         this.objectMapper = new ObjectMapper();
         this.projectFacilityService = projectFacilityService;
     }
@@ -462,6 +467,72 @@ public class ProjectService {
 
         // 6. Perform enriched update using standard handler
         handleNormalUpdate(enrichedRequest, updatedProject, existingProject);
+
+        // Step 7: After successful workflow transition, if action is APPROVED_BY_QC_SPOC
+        if ("APPROVED_BY_QC_SPOC".equalsIgnoreCase(request.getAction())) {
+            // fetch facility for associated projectId -> facility search api to get associtaed facility
+            ProjectFacilitySearch projectFacilitySearch = ProjectFacilitySearch.builder()
+                    .projectId(new ArrayList<>(Arrays.asList(existingProject.getId())))
+                    .facilityId(null)
+                    .build();
+
+            ProjectFacilitySearchRequest projectFacilitySearchRequest = ProjectFacilitySearchRequest.builder()
+                    .projectFacility(projectFacilitySearch)
+                    .requestInfo(request.getRequestInfo())
+                    .build();
+
+            SearchResponse<ProjectFacility> facilitySearchResponse = projectFacilityService.search(
+                    projectFacilitySearchRequest,
+                    100, 0,
+                    existingProject.getTenantId(),
+                    null,
+                    false
+            );
+
+            // once facility is fetched we need to fetch assets for that facility
+            ProjectFacility facility = facilitySearchResponse.getResponse().get(0);
+            if (facility != null) {
+
+                // Fetch assets for the facility
+                AssetSearchCriteria assetSearchCriteria = AssetSearchCriteria.builder()
+                        .facilityID(facility.getFacilityId())
+                        .tenantId(existingProject.getTenantId())
+                        .build();
+
+                AssetSearchRequest assetSearchRequest = AssetSearchRequest.builder().
+                        requestInfo(request.getRequestInfo()).criteria(assetSearchCriteria).build();
+
+                StringBuilder assetSearchUri = new StringBuilder(projectConfiguration.getAssetHost()).append(projectConfiguration.getAssetSearchUrl());
+
+                try {
+                    List<Asset> assets = serviceRequestRepository.fetchResult(assetSearchUri, assetSearchRequest, new TypeReference<List<Asset>>() {});
+                    // then update all those assets with isOperational = true
+                    List<Asset> assetsToUpdate = new ArrayList<>();
+                    if (assets != null ) {
+                        for (Asset asset : assets) {
+                            asset.setIsOperational(true);
+                            assetsToUpdate.add(asset);
+                        }
+                    }
+                    if (!assetsToUpdate.isEmpty()) {
+                        for (Asset asset : assetsToUpdate) {
+                            String assetUpdateEndpoint = projectConfiguration.getAssetHost() +
+                                    projectConfiguration.getAssetUpdateUrl().replace("{assetID}", asset.getAssetId());
+                            StringBuilder assetUpdateUri = new StringBuilder(assetUpdateEndpoint);
+
+                            AssetCreate  assetCreate = AssetCreate.builder().asset(asset).build();
+                            AssetCreateRequest createRequest = AssetCreateRequest.builder().
+                                    requestInfo(request.getRequestInfo()).assetDetail(assetCreate).build();
+
+                            serviceRequestRepository.fetchResult(assetUpdateUri, createRequest);
+                        }
+                    }
+                } catch (Exception e) {
+                    log.error("Error fetching or updating assets: ", e);
+                    throw new RuntimeException("Failed to process assets during workflow transition.", e);
+                }
+            }
+        }
 
         return new ProjectStatusWrapper(updatedProject, updatedWorkflow.getState().getState());
     }

@@ -161,4 +161,13 @@ public class AssetService {
         });
     }
 
+    public Asset updateAsset(String assetId, AssetCreateRequest request) {
+        Asset updated = request.getAssetDetail().getAsset();
+        if (!assetId.equals(updated.getAssetId())) {
+            throw new IllegalArgumentException("ID mismatch");
+        }
+
+        assetRepository.pushUpdateAsset(updated);
+        return updated;
+    }
 }
