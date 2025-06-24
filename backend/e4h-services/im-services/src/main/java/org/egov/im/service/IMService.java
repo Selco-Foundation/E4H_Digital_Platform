@@ -71,13 +71,14 @@ public class IMService {
         Object mdmsData = mdmsUtils.mDMSCall(request);
         validator.validateCreate(request, mdmsData);
         enrichmentService.enrichCreateRequest(request);
-        ProcessInstance updatedProcessInstance = workflowService.updateWorkflowStatus(request, mdmsData);
-        ProcessInstance trimmedUpdatedProcessInstance = imUtils.trimRolesFromProcessInstance(updatedProcessInstance);
-        producer.push(tenantId,config.getCreateTopic(),request);
         IncidentRequestWrapper wrapper = IncidentRequestWrapper.builder()
                 .incidentRequest(request)
-                .processInstance(trimmedUpdatedProcessInstance)
+                .indexView(new IndexView())
                 .build();
+        ProcessInstance updatedProcessInstance = workflowService.updateWorkflowStatus(wrapper, mdmsData);
+        ProcessInstance trimmedUpdatedProcessInstance = imUtils.trimRolesFromProcessInstance(updatedProcessInstance);
+        producer.push(tenantId,config.getCreateTopic(),wrapper.getIncidentRequest());
+        wrapper.setProcessInstance(trimmedUpdatedProcessInstance);
         enrichmentService.enrichFieldsForIndexing(wrapper);
         producer.push(tenantId,config.getCreateTopicIndexer(),wrapper);
         return request;
@@ -139,13 +140,14 @@ public class IMService {
         Object mdmsData = mdmsUtils.mDMSCall(request);
         validator.validateUpdate(request, mdmsData);
         enrichmentService.enrichUpdateRequest(request);
-        ProcessInstance updatedProcessInstance = workflowService.updateWorkflowStatus(request, mdmsData);
-        ProcessInstance trimmedUpdatedProcessInstance = imUtils.trimRolesFromProcessInstance(updatedProcessInstance);
-        producer.push(tenantId,config.getUpdateTopic(),request);
         IncidentRequestWrapper wrapper = IncidentRequestWrapper.builder()
                 .incidentRequest(request)
-                .processInstance(trimmedUpdatedProcessInstance)
+                .indexView(new IndexView())
                 .build();
+        ProcessInstance updatedProcessInstance = workflowService.updateWorkflowStatus(wrapper, mdmsData);
+        ProcessInstance trimmedUpdatedProcessInstance = imUtils.trimRolesFromProcessInstance(updatedProcessInstance);
+        producer.push(tenantId,config.getUpdateTopic(),wrapper.getIncidentRequest());
+        wrapper.setProcessInstance(trimmedUpdatedProcessInstance);
         enrichmentService.enrichFieldsForIndexing(wrapper);
         producer.push(tenantId,config.getUpdateTopicIndexer(),wrapper);
         return request;

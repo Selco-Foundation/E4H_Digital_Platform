@@ -91,17 +91,19 @@ public class WorkflowService {
      * return the updated status of the application
      *
      * */
-    public ProcessInstance updateWorkflowStatus(IncidentRequest incidentRequest, Object mdmsData) {
+    public ProcessInstance updateWorkflowStatus(IncidentRequestWrapper wrapper, Object mdmsData) {
+        IncidentRequest incidentRequest = wrapper.getIncidentRequest();
         Priority priority = slaService.getPriorityFromMDMS(incidentRequest, mdmsData);
         ProcessInstance processInstance = getProcessInstanceForIM(incidentRequest, priority);
         ProcessInstanceRequest workflowRequest = new ProcessInstanceRequest(incidentRequest.getRequestInfo(), Collections.singletonList(processInstance));
         ProcessInstance updatedProcessInstance = callWorkFlow(workflowRequest);
         incidentRequest.getIncident().setApplicationStatus(updatedProcessInstance.getState().getApplicationStatus());
-        enrichTotalSla(incidentRequest, updatedProcessInstance);
+        enrichTotalSla(wrapper, updatedProcessInstance);
         return updatedProcessInstance;
     }
 
-    private void enrichTotalSla(IncidentRequest request, ProcessInstance processInstance) {
+    private void enrichTotalSla(IncidentRequestWrapper wrapper, ProcessInstance processInstance) {
+        IncidentRequest request = wrapper.getIncidentRequest();
         Long createdTime = request.getIncident().getAuditDetails().getCreatedTime();
         String applicationStatus = request.getIncident().getApplicationStatus();
         ZonedDateTime created = ZonedDateTime.ofInstant(Instant.ofEpochMilli(createdTime), ZoneId.of("Asia/Kolkata"));
@@ -135,11 +137,11 @@ public class WorkflowService {
         BusinessHoursUtil util = new BusinessHoursUtil(businessHourList);
         long businessHoursElapsed = util.calculateBusinessDuration(created, now);
 
-        Long definedTotalSla = slaService.computeTotalSla(applicationStatus, this.getStates());
-        Long totalSlaRemaining = definedTotalSla - businessHoursElapsed;
+        long definedTotalSla = slaService.computeTotalSla(applicationStatus, this.getStates());
+        long totalSlaRemaining = definedTotalSla - businessHoursElapsed;
 
-//        if(applicationStatus.contains("ASSIGNMENT"))
-//            processInstance.getState().setDefinedTotalSla(definedTotalSla);
+        if(applicationStatus.contains("ASSIGNMENT"))
+            wrapper.getIndexView().setDefinedTotalSla(definedTotalSla);
 
         processInstance.getState().setTotalSlaRemaining(totalSlaRemaining);
     }
