@@ -87,4 +87,34 @@ public class LocalizationService {
         indexView.setApplicationStatusLocalized(imResponse.getMessageByCode(appStatusCode));
         indexView.setTenantIdLocalized(commonResponse.getMessageByCode(tenantCode));
     }
+
+    public void enrichLocalizedApplicationStatuses(IncidentRequestWrapper wrapper,String startingStatus) {
+        Incident incident = wrapper.getIncidentRequest().getIncident();
+        RequestInfo requestInfo = wrapper.getIncidentRequest().getRequestInfo();
+
+        String tenantId = incident.getTenantId();
+        String stateTenant = tenantId.split("\\.")[0];
+        String locale = "en_IN";
+
+        String startingStatusCode = Optional.ofNullable(startingStatus)
+                .map(String::toUpperCase)
+                .map(status -> "CS_COMMON_" + status)
+                .orElse("");
+
+        String endingStatusCode = Optional.ofNullable(wrapper.getIncidentRequest().getIncident().getApplicationStatus())
+                .map(String::toUpperCase)
+                .map(status -> "CS_COMMON_" + status)
+                .orElse("");
+
+        String imCodes = String.join(",", startingStatusCode, endingStatusCode);
+
+        LocalizationResponse imResponse = getLocalizationMessages(requestInfo, stateTenant, "rainmaker-im", locale, imCodes);
+
+        wrapper.getIndexView().setStartingStatusLocalized(imResponse.getMessageByCode(startingStatusCode));
+        wrapper.getIndexView().setEndingStatusLocalized(imResponse.getMessageByCode(endingStatusCode));
+
+    }
+
+
+
 }

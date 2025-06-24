@@ -3,6 +3,8 @@ package org.egov.im.web.models;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 
+import java.util.List;
+
 @Getter
 @Setter
 @AllArgsConstructor
@@ -36,6 +38,27 @@ public class IndexView {
 
     @JsonProperty("lastActionTakenBy")
     private String lastActionTakenBy;
+
+    @JsonProperty("overallSla")
+    private Long overallSla;
+
+    @JsonProperty("startingStatus")
+    private String startingStatus;
+
+    @JsonProperty("endingStatus")
+    private String endingStatus;
+
+    @JsonProperty("startingStatus_localized")
+    private String startingStatusLocalized;
+
+    @JsonProperty("endingStatus_localized")
+    private String endingStatusLocalized;
+
+    @JsonProperty("uuid")
+    private String uuid;
+
+    @JsonProperty("documentUrls")
+    private List<String> documentUrls ;
 
     @JsonProperty("definedTotalSla")
     private Long definedTotalSla;
