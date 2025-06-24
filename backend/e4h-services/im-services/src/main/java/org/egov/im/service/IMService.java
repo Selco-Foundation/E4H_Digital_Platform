@@ -8,11 +8,8 @@ import org.egov.im.producer.Producer;
 import org.egov.im.repository.IMRepository;
 import org.egov.im.util.MDMSUtils;
 import org.egov.im.validator.ServiceRequestValidator;
-import org.egov.im.web.models.IncidentRequestWrapper;
-import org.egov.im.web.models.IncidentWrapper;
+import org.egov.im.web.models.*;
 import org.egov.im.web.controllers.*;
-import org.egov.im.web.models.RequestSearchCriteria;
-import org.egov.im.web.models.IncidentRequest;
 import org.egov.im.web.models.workflow.ProcessInstance;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.CollectionUtils;
@@ -40,11 +37,13 @@ public class IMService {
 
     private MDMSUtils mdmsUtils;
 
+    private LocalizationService localizationService;
+
 
     @Autowired
     public IMService(EnrichmentService enrichmentService, UserService userService, WorkflowService workflowService,
                       ServiceRequestValidator serviceRequestValidator, ServiceRequestValidator validator, Producer producer,
-                      IMConfiguration config, IMRepository repository, MDMSUtils mdmsUtils) {
+                      IMConfiguration config, IMRepository repository, MDMSUtils mdmsUtils, LocalizationService localizationService) {
         this.enrichmentService = enrichmentService;
         this.userService = userService;
         this.workflowService = workflowService;
@@ -54,6 +53,7 @@ public class IMService {
         this.config = config;
         this.repository = repository;
         this.mdmsUtils = mdmsUtils;
+        this.localizationService = localizationService;
     }
 
 
@@ -67,9 +67,18 @@ public class IMService {
         Object mdmsData = mdmsUtils.mDMSCall(request);
         validator.validateCreate(request, mdmsData);
         enrichmentService.enrichCreateRequest(request);
-        ProcessInstance updatedProcessInstance = workflowService.updateWorkflowStatus(request, mdmsData);
-        producer.push(tenantId,config.getCreateTopic(),request);
-        producer.push(tenantId,config.getCreateTopicIndexer(),new IncidentRequestWrapper(request,updatedProcessInstance));
+        String startingStatus = request.getIncident().getApplicationStatus();
+        IncidentRequestWrapper wrapper = IncidentRequestWrapper.builder()
+                .incidentRequest(request)
+                .indexView(new IndexView())
+                .build();
+        ProcessInstance updatedProcessInstance = workflowService.updateWorkflowStatus(wrapper, mdmsData);
+        producer.push(tenantId,config.getCreateTopic(),wrapper.getIncidentRequest());
+        wrapper.setProcessInstance(updatedProcessInstance);
+        enrichmentService.enrichFieldsForIndexing(wrapper);
+        producer.push(tenantId,config.getCreateTopicIndexer(),wrapper);
+        enrichmentService.enrichFieldsForAuditIndexing(wrapper,startingStatus);
+        producer.push(tenantId,config.getAuditCreateTopicIndexer(),wrapper);
         return request;
     }
 
@@ -129,10 +138,18 @@ public class IMService {
         Object mdmsData = mdmsUtils.mDMSCall(request);
         validator.validateUpdate(request, mdmsData);
         enrichmentService.enrichUpdateRequest(request);
-        ProcessInstance updatedProcessInstance = workflowService.updateWorkflowStatus(request, mdmsData);
-        producer.push(tenantId,config.getUpdateTopic(),request);
-        producer.push(tenantId,config.getUpdateTopicIndexer(),new IncidentRequestWrapper(request,updatedProcessInstance));
-
+        String startingStatus = request.getIncident().getApplicationStatus();
+        IncidentRequestWrapper wrapper = IncidentRequestWrapper.builder()
+                .incidentRequest(request)
+                .indexView(new IndexView())
+                .build();
+        ProcessInstance updatedProcessInstance = workflowService.updateWorkflowStatus(wrapper, mdmsData);
+        producer.push(tenantId,config.getUpdateTopic(),wrapper.getIncidentRequest());
+        wrapper.setProcessInstance(updatedProcessInstance);
+        enrichmentService.enrichFieldsForIndexing(wrapper);
+        producer.push(tenantId,config.getUpdateTopicIndexer(),wrapper);
+        enrichmentService.enrichFieldsForAuditIndexing(wrapper,startingStatus);
+        producer.push(tenantId,config.getAuditCreateTopicIndexer(),wrapper);
         return request;
     }
 

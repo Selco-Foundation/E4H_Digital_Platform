@@ -8,12 +8,11 @@ import org.egov.im.web.models.*;
 import org.egov.im.web.models.Idgen.IdResponse;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static org.egov.im.util.IMConstants.USERTYPE_CITIZEN;
@@ -30,12 +29,24 @@ public class EnrichmentService {
 
     private UserService userService;
 
+    private LocalizationService localizationService;
+
+    private NotificationService notificationService;
+
+    private WorkflowService workflowService;
+
+    private SLAService slaService;
+
     @Autowired
-    public EnrichmentService(IMUtils utils, IdGenRepository idGenRepository, IMConfiguration config, UserService userService) {
+    public EnrichmentService(IMUtils utils, IdGenRepository idGenRepository, IMConfiguration config, UserService userService, LocalizationService localizationService, NotificationService notificationService, @Lazy WorkflowService workflowService, SLAService slaService) {
         this.utils = utils;
         this.idGenRepository = idGenRepository;
         this.config = config;
         this.userService = userService;
+        this.localizationService = localizationService;
+        this.notificationService = notificationService;
+        this.workflowService = workflowService;
+        this.slaService = slaService;
     }
 
 
@@ -133,6 +144,31 @@ public class EnrichmentService {
 
     }
 
+    public void enrichFieldsForIndexing(IncidentRequestWrapper wrapper) {
+        IncidentRequest incidentRequest = wrapper.getIncidentRequest();
+
+        // Enrich localized fields first (will populate IndexView inside the wrapper)
+        localizationService.enrichLocalizedFieldsForIndexing(wrapper);
+
+        // Ensure IndexView is initialized and reused (not replaced)
+        IndexView indexView = wrapper.getIndexView();
+        if (indexView == null) {
+            indexView = new IndexView();
+            wrapper.setIndexView(indexView);
+        }
+
+        // Fetch HCR and Vendor details
+        Map<String, String> hcrDetails = notificationService.getHRMSEmployeeForIndexing(incidentRequest, null, "COMPLAINANT");
+        Map<String, String> vendorDetails = notificationService.getHRMSEmployeeForIndexing(incidentRequest, null, "COMPLAINT_RESOLVER");
+
+        // Get details of the user who last modified (last action)
+        String lastActionTakenByUser = wrapper.getIncidentRequest().getRequestInfo().getUserInfo().getName();
+
+        // Set fields in IndexView if values exist
+        Optional.ofNullable(hcrDetails.get("employeeUserName")).ifPresent(indexView::setNinHfrId);
+        Optional.ofNullable(vendorDetails.get("employeeUserName")).ifPresent(indexView::setMappedVendor);
+        indexView.setLastActionTakenBy(lastActionTakenByUser);
+    }
 
     /**
      * Returns a list of numbers generated from idgen
@@ -179,4 +215,43 @@ public class EnrichmentService {
     }
 
 
+    public void enrichFieldsForAuditIndexing(IncidentRequestWrapper wrapper, String startingStatus) {
+        // Ensure IndexView is initialized
+        IndexView indexView = wrapper.getIndexView();
+        if (indexView == null) {
+            indexView = new IndexView();
+            wrapper.setIndexView(indexView);
+        }
+
+        indexView.setUuid(UUID.randomUUID().toString());
+        indexView.setStartingStatus(startingStatus);
+        indexView.setEndingStatus(wrapper.getIncidentRequest().getIncident().getApplicationStatus());
+
+        localizationService.enrichLocalizedApplicationStatuses(wrapper, startingStatus);
+
+        // get array of filestore download links
+        List<String> fileStoreUrls = new ArrayList<>();
+
+        String tenantId = wrapper.getIncidentRequest().getIncident().getTenantId();
+        List<Document> verificationDocuments = wrapper.getIncidentRequest().getWorkflow().getVerificationDocuments();
+
+        if (verificationDocuments != null && !verificationDocuments.isEmpty()) {
+            for (Document doc : verificationDocuments) {
+                if (doc.getFileStoreId() == null) {
+                    continue;
+                }
+                String fileStoreId = doc.getFileStoreId();
+
+                StringBuilder urlBuilder = new StringBuilder();
+                urlBuilder.append(config.getFileStoreHost())
+                          .append(config.getFileStoreDownloadEndpoint())
+                          .append("?tenantId=").append(tenantId)
+                          .append("&fileStoreId=").append(fileStoreId);
+
+                fileStoreUrls.add(urlBuilder.toString());
+            }
+        }
+
+        indexView.setDocumentUrls(fileStoreUrls);
+    }
 }

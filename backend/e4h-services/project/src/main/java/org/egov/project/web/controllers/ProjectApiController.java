@@ -27,7 +27,10 @@ import org.springframework.stereotype.Controller;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 
 @Controller
@@ -486,6 +489,23 @@ public class ProjectApiController {
 
         List<Project> projects = projectService.searchProject(projectSearchRequest, urlParams, workflowStatuses, sortCriteria);
         Integer count = projectService.countAllProjects(projectSearchRequest, urlParams, workflowStatuses);
+
+        // Fetch all transactions by projectIds
+        List<String> projectIds = projects.stream().map(Project::getId).toList();
+        List<Transaction> allTransactions = projectService.getTransactionsForProject(projectIds);
+
+        // Fetch all comments by transactionIds
+        List<String> txnIds = allTransactions.stream().map(Transaction::getTransactionId).toList();
+        List<Comment> allComments = projectService.getCommentsForTransaction(txnIds);
+
+        // Group transactions by projectId
+        Map<String, List<Transaction>> txnsByProjectId = allTransactions.stream()
+                .collect(Collectors.groupingBy(Transaction::getProjectId));
+
+        // Group comments by transactionId
+        Map<String, List<Comment>> commentsByTxnId = allComments.stream()
+                .collect(Collectors.groupingBy(Comment::getTransactionId));
+
         ObjectMapper mapper = new ObjectMapper();
         List<ProjectStatusWrapper> projectStatusWrappers = projects.stream()
                 .map(project -> {
@@ -494,11 +514,19 @@ public class ProjectApiController {
                     if (additionalDetails != null && additionalDetails.has("status")) {
                         status = additionalDetails.get("status").asText();
                     }
-                    return new ProjectStatusWrapper(project, status);
+
+                    List<Transaction> txns = txnsByProjectId.getOrDefault(project.getId(), Collections.emptyList());
+                    for (Transaction txn : txns) {
+                        txn.setComments(commentsByTxnId.getOrDefault(txn.getTransactionId(), Collections.emptyList()));
+                    }
+
+                    return ProjectStatusWrapper.builder()
+                            .project(project)
+                            .status(status)
+                            .transactions(txns)
+                            .build();
                 })
                 .toList();
-
-
 
         ResponseInfo responseInfo = ResponseInfoFactory.createResponseInfo(projectSearchRequest.getRequestInfo(), true);
         ProjectStatusResponse projectResponse = ProjectStatusResponse.builder()

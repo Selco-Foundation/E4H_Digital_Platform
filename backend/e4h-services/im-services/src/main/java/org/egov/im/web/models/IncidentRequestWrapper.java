@@ -31,5 +31,7 @@ public class IncidentRequestWrapper {
         @JsonProperty("updatedProcessInstance")
         private ProcessInstance processInstance = null;
 
-
+        @Valid
+        @JsonProperty("indexView")
+        private IndexView indexView;
 }

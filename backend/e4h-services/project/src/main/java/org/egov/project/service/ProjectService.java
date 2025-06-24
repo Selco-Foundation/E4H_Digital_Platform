@@ -28,10 +28,10 @@ import org.egov.tracer.model.ServiceCallException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -58,12 +58,14 @@ public class ProjectService {
 
     private final ProjectWorkflowService workflowService;
 
+    private final JdbcTemplate jdbcTemplate;
+
     private final ServiceRequestRepository serviceRequestRepository;
 
     @Autowired
     public ProjectService(
             ProjectRepository projectRepository,
-            ProjectValidator projectValidator, ProjectEnrichment projectEnrichment, ProjectConfiguration projectConfiguration, Producer producer, ProjectServiceUtil projectServiceUtil, ProjectWorkflowService workflowService, @Lazy ProjectFacilityService projectFacilityService, ServiceRequestRepository serviceRequestRepository, @Qualifier("objectMapper") ObjectMapper mapper) {
+            ProjectValidator projectValidator, ProjectEnrichment projectEnrichment, ProjectConfiguration projectConfiguration, Producer producer, ProjectServiceUtil projectServiceUtil, ProjectWorkflowService workflowService, @Lazy ProjectFacilityService projectFacilityService, JdbcTemplate jdbcTemplate, ServiceRequestRepository serviceRequestRepository, @Qualifier("objectMapper") ObjectMapper mapper) {
         this.projectRepository = projectRepository;
         this.projectValidator = projectValidator;
         this.projectEnrichment = projectEnrichment;
@@ -71,6 +73,7 @@ public class ProjectService {
         this.producer = producer;
         this.projectServiceUtil = projectServiceUtil;
         this.workflowService = workflowService;
+        this.jdbcTemplate = jdbcTemplate;
         this.serviceRequestRepository = serviceRequestRepository;
         this.mapper = mapper;
         this.objectMapper = new ObjectMapper();
@@ -424,10 +427,24 @@ public class ProjectService {
         // 2. Call workflow transition
         ProcessInstance updatedWorkflow = workflowService.transitionWorkflow(
                 existingProject,
-                request.getAction(),
-                request.getDocuments(),
-                request.getRequestInfo()
+                request.getWorkflow().getAction(),
+                request.getWorkflow().getDocuments(),
+                request.getRequestInfo(),
+                request.getWorkflow().getComments()
         );
+
+        for(Transaction transaction: request.getTransactions()) {
+            transaction.setProcessInstanceId(updatedWorkflow.getId());
+            String userUUID = request.getRequestInfo().getUserInfo().getUuid();
+            transaction.setProjectId(request.getProjectId());
+            transaction.setAuditDetails(projectServiceUtil.getAuditDetails(userUUID, null, true));
+            if(transaction.getTransactionId() == null || transaction.getTransactionId().isEmpty()) {
+                transaction.setTransactionId(UUID.randomUUID().toString());
+            }
+            if(transaction.getComments() != null) handleCommentUpdate(transaction.getComments(), transaction.getTransactionId(), userUUID);
+        }
+
+        handleTransactionUpdate(request.getTransactions());
 
         // 3. Inject workflow status into additionalDetails map
         Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(
@@ -534,7 +551,7 @@ public class ProjectService {
             }
         }
 
-        return new ProjectStatusWrapper(updatedProject, updatedWorkflow.getState().getState());
+        return new ProjectStatusWrapper(updatedProject, updatedWorkflow.getState().getState(), null);
     }
 
 
@@ -552,5 +569,68 @@ public class ProjectService {
             map.put(key, value);
             return map;
         }
+    }
+
+    private void handleTransactionUpdate(List<Transaction> transactions) {
+        producer.push(projectConfiguration.getTransactionPersistTopic(), new TransactionRequest(transactions));
+    }
+
+    public void handleCommentUpdate(List<Comment> comments, String txId, String uuid) {
+        comments.forEach(comment -> {
+            comment.setAuditDetails(projectServiceUtil.getAuditDetails(uuid, null, true));
+            if (comment.getCmtId() == null) {
+                comment.setCmtId(UUID.randomUUID());
+            }
+            comment.setTransactionId(txId);
+        });
+
+        producer.push(projectConfiguration.getCommentPersistTopic(), new CommentRequest(comments));
+    }
+
+    public List<Transaction> getTransactionsForProject(List<String> projectIds) {
+        if (projectIds == null || projectIds.isEmpty()) return Collections.emptyList();
+
+        String sql = "SELECT id, project_id, process_instance_id, created_by, last_modified_by, created_time, last_modified_time " +
+                "FROM project_transaction WHERE project_id = ANY(?)";
+
+        return jdbcTemplate.query(sql, ps -> {
+            java.sql.Array sqlArray = ps.getConnection().createArrayOf("text", projectIds.toArray(new String[0]));
+            ps.setArray(1, sqlArray);
+        }, (rs, rowNum) -> {
+            Transaction transaction = new Transaction();
+            transaction.setTransactionId(rs.getString("id"));
+            transaction.setProjectId(rs.getString("project_id"));
+            transaction.setProcessInstanceId(rs.getString("process_instance_id"));
+            AuditDetails auditDetails = new AuditDetails();
+            auditDetails.setCreatedBy(rs.getString("created_by"));
+            auditDetails.setLastModifiedBy(rs.getString("last_modified_by"));
+            auditDetails.setCreatedTime(rs.getLong("created_time"));
+            auditDetails.setLastModifiedTime(rs.getLong("last_modified_time"));
+            transaction.setAuditDetails(auditDetails);
+            return transaction;
+        });
+    }
+
+    public List<Comment> getCommentsForTransaction(List<String> transactionIds) {
+        if (transactionIds == null || transactionIds.isEmpty()) return Collections.emptyList();
+
+        String inSql = String.join(",", Collections.nCopies(transactionIds.size(), "?"));
+        String sql = "SELECT id, transaction_id, comment_message, asset_type, created_by, last_modified_by, created_time, last_modified_time " +
+                "FROM project_transaction_comment WHERE transaction_id IN (" + inSql + ")";
+
+        return jdbcTemplate.query(sql, transactionIds.toArray(), (rs, rowNum) -> {
+            Comment comment = new Comment();
+            comment.setCmtId(UUID.fromString(rs.getString("id")));
+            comment.setTransactionId(rs.getString("transaction_id"));
+            comment.setCmtMsg(rs.getString("comment_message"));
+            comment.setAssetType(rs.getString("asset_type"));
+            AuditDetails auditDetails = new AuditDetails();
+            auditDetails.setCreatedBy(rs.getString("created_by"));
+            auditDetails.setLastModifiedBy(rs.getString("last_modified_by"));
+            auditDetails.setCreatedTime(rs.getLong("created_time"));
+            auditDetails.setLastModifiedTime(rs.getLong("last_modified_time"));
+            comment.setAuditDetails(auditDetails);
+            return comment;
+        });
     }
 }

@@ -8,6 +8,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.egov.common.contract.models.Document;
+import org.egov.common.contract.models.Workflow;
 import org.egov.common.contract.request.RequestInfo;
 
 import java.util.List;
@@ -26,11 +27,10 @@ public class ProjectWorkflowRequest {
     @NotNull
     private String projectId;
 
-    @JsonProperty("action")
-    @NotNull
-    private String action;
+    @JsonProperty
+    private Workflow workflow;
 
-    @JsonProperty("documents")
-    private List<Document> documents;
+    @JsonProperty("transactions")
+    private List<Transaction> transactions;
 }
 

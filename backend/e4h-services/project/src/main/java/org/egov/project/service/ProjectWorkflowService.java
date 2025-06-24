@@ -33,7 +33,7 @@ public class ProjectWorkflowService {
         this.repository = repository;
     }
 
-    public ProcessInstance transitionWorkflow(Project project, String action, List<Document> documents, RequestInfo requestInfo) {
+    public ProcessInstance transitionWorkflow(Project project, String action, List<Document> documents, RequestInfo requestInfo, String workflowComment) {
         ProcessInstance instance = ProcessInstance.builder()
                 .businessId(project.getId())
                 .tenantId(project.getTenantId())
@@ -41,6 +41,7 @@ public class ProjectWorkflowService {
                 .businessService(config.getBusinessService())
                 .action(action)
                 .documents(documents)
+                .comment(workflowComment)
                 .build();
 
         ProcessInstanceRequest wfRequest = ProcessInstanceRequest.builder()

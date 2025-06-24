@@ -2,6 +2,7 @@ package org.egov.im.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jayway.jsonpath.JsonPath;
+import lombok.Getter;
 import org.apache.commons.lang3.StringUtils;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.common.contract.request.User;
@@ -36,23 +37,27 @@ public class WorkflowService {
     private NotificationService notificationService;
     private MDMSUtils mdmsUtils;
 
+    private SLAService slaService;
+
     private static final Map<Priority, String> PRIORITY_BUSINESS_SERVICE_MAP = Map.of(
             Priority.HIGH, IM_BUSINESSSERVICE_HIGH,
             Priority.MEDIUM, IM_BUSINESSSERVICE_MEDIUM,
             Priority.LOW, IM_BUSINESSSERVICE_LOW
     );
 
+    @Getter
     private List<State> states;
 
     @Autowired
     public WorkflowService(IMConfiguration imConfiguration,
                            ServiceRequestRepository repository,
-                           ObjectMapper mapper, NotificationService notificationService, MDMSUtils mdmsUtils) {
+                           ObjectMapper mapper, NotificationService notificationService, MDMSUtils mdmsUtils, SLAService slaService) {
         this.imConfiguration = imConfiguration;
         this.repository = repository;
         this.mapper = mapper;
         this.notificationService = notificationService;
         this.mdmsUtils = mdmsUtils;
+        this.slaService = slaService;
     }
 
     /*
@@ -86,17 +91,19 @@ public class WorkflowService {
      * return the updated status of the application
      *
      * */
-    public ProcessInstance updateWorkflowStatus(IncidentRequest incidentRequest, Object mdmsData) {
-        Priority priority = getPriorityFromMDMS(incidentRequest, mdmsData);
+    public ProcessInstance updateWorkflowStatus(IncidentRequestWrapper wrapper, Object mdmsData) {
+        IncidentRequest incidentRequest = wrapper.getIncidentRequest();
+        Priority priority = slaService.getPriorityFromMDMS(incidentRequest, mdmsData);
         ProcessInstance processInstance = getProcessInstanceForIM(incidentRequest, priority);
         ProcessInstanceRequest workflowRequest = new ProcessInstanceRequest(incidentRequest.getRequestInfo(), Collections.singletonList(processInstance));
         ProcessInstance updatedProcessInstance = callWorkFlow(workflowRequest);
         incidentRequest.getIncident().setApplicationStatus(updatedProcessInstance.getState().getApplicationStatus());
-        updatedProcessInstance.getState().setTotalSlaRemaining(calculateTotalSla(incidentRequest));
+        enrichTotalSla(wrapper, updatedProcessInstance);
         return updatedProcessInstance;
     }
 
-    private Long calculateTotalSla(IncidentRequest request) {
+    private void enrichTotalSla(IncidentRequestWrapper wrapper, ProcessInstance processInstance) {
+        IncidentRequest request = wrapper.getIncidentRequest();
         Long createdTime = request.getIncident().getAuditDetails().getCreatedTime();
         String applicationStatus = request.getIncident().getApplicationStatus();
         ZonedDateTime created = ZonedDateTime.ofInstant(Instant.ofEpochMilli(createdTime), ZoneId.of("Asia/Kolkata"));
@@ -130,7 +137,11 @@ public class WorkflowService {
         BusinessHoursUtil util = new BusinessHoursUtil(businessHourList);
         long businessHoursElapsed = util.calculateBusinessDuration(created, now);
 
-        return computeTotalSla(applicationStatus) - businessHoursElapsed;
+        long definedTotalSla = slaService.computeTotalSla(applicationStatus, this.getStates());
+        long totalSlaRemaining = definedTotalSla - businessHoursElapsed;
+
+        wrapper.getIndexView().setDefinedTotalSla(definedTotalSla);
+        processInstance.getState().setTotalSlaRemaining(totalSlaRemaining);
     }
 
     /**
@@ -264,36 +275,6 @@ public class WorkflowService {
         workflow.setAssignes(assignee);
     }
 
-    private long computeTotalSla(String currentState) {
-        Map<String, Long> stateToSlaMap = new HashMap<>();
-
-        // Populate the map: state name → SLA millis
-        for (State state : this.states) {
-            String key = state.getApplicationStatus(); // or use state.getState()
-            if (key != null && state.getSla() != null) {
-                stateToSlaMap.put(key, state.getSla());
-            }
-        }
-
-        long totalSla = 0;
-
-        if (PENDINGFORASSIGNMENT.equals(currentState) || PENDINGATVENDOR.equals(currentState)) {
-            totalSla += stateToSlaMap.getOrDefault(PENDINGFORASSIGNMENT, 0L);
-            totalSla += stateToSlaMap.getOrDefault(PENDINGATVENDOR, 0L);
-        } else if (currentState.startsWith(PENDING_ASSIGNMENT_PREFIX)) {
-            String suffix = currentState.replace(PENDING_ASSIGNMENT_PREFIX, "");
-            String resolutionState = PENDING_RESOLUTION_PREFIX + suffix;
-            totalSla += stateToSlaMap.getOrDefault(currentState, 0L);
-            totalSla += stateToSlaMap.getOrDefault(resolutionState, 0L);
-        } else if (currentState.startsWith(PENDING_RESOLUTION_PREFIX)) {
-            String suffix = currentState.replace(PENDING_RESOLUTION_PREFIX, "");
-            String assignmentState = PENDING_ASSIGNMENT_PREFIX + suffix;
-            totalSla += stateToSlaMap.getOrDefault(currentState, 0L);
-            totalSla += stateToSlaMap.getOrDefault(assignmentState, 0L);
-        }
-        return totalSla;
-    }
-
     /**
      * @param processInstances
      */
@@ -337,42 +318,6 @@ public class WorkflowService {
         response = mapper.convertValue(optional, ProcessInstanceResponse.class);
         return response.getProcessInstances().get(0);
     }
-
-    private Priority getPriorityFromMDMS(IncidentRequest request, Object mdmsData) {
-        String serviceCode = request.getIncident().getIncidentSubType();
-        String assetType = request.getIncident().getIncidentType();
-
-        String jsonPath = MDMS_SERVICEDEF_SEARCH.replace("{SERVICEDEF}", serviceCode);
-
-        List<Object> res;
-        try {
-            res = JsonPath.read(mdmsData, jsonPath);
-        } catch (Exception e) {
-            throw new CustomException("JSONPATH_ERROR", "Failed to parse mdms response");
-        }
-
-        if (CollectionUtils.isEmpty(res)) {
-            throw new CustomException("INVALID_SERVICECODE", "The service code: " + serviceCode + " is not present in MDMS");
-        }
-
-        for (Object obj : res) {
-            if (obj instanceof Map) {
-                Map<String, Object> map = (Map<String, Object>) obj;
-
-                String menuPath = String.valueOf(map.get("menuPath"));
-                String mdmsServiceCode = String.valueOf(map.get("serviceCode"));
-
-                if (assetType.equals(menuPath) && serviceCode.equals(mdmsServiceCode)) {
-                    String priorityStr = String.valueOf(map.get("priority"));
-                    return Priority.fromString(priorityStr);
-                }
-            }
-        }
-
-        throw new CustomException("PRIORITY_NOT_FOUND", "Priority not found for assetType: " + assetType + " and serviceCode: " + serviceCode);
-    }
-
-
 
     public StringBuilder getprocessInstanceSearchURL(String tenantId, String IncidentId) {
 
