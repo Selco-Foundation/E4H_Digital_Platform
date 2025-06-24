@@ -429,8 +429,10 @@ public class ProjectService {
             String userUUID = request.getRequestInfo().getUserInfo().getUuid();
             transaction.setProjectId(request.getProjectId());
             transaction.setAuditDetails(projectServiceUtil.getAuditDetails(userUUID, null, true));
-            if(transaction.getTxId() == null) transaction.setTxId(UUID.randomUUID().toString());
-            if(transaction.getComments() != null) handleCommentUpdate(transaction.getComments(), transaction.getTxId(), userUUID);
+            if(transaction.getTransactionId() == null || transaction.getTransactionId().isEmpty()) {
+                transaction.setTransactionId(UUID.randomUUID().toString());
+            }
+            if(transaction.getComments() != null) handleCommentUpdate(transaction.getComments(), transaction.getTransactionId(), userUUID);
         }
 
         handleTransactionUpdate(request.getTransactions());
@@ -501,7 +503,9 @@ public class ProjectService {
     public void handleCommentUpdate(List<Comment> comments, String txId, String uuid) {
         comments.forEach(comment -> {
             comment.setAuditDetails(projectServiceUtil.getAuditDetails(uuid, null, true));
-            comment.setCmtId(UUID.randomUUID());
+            if (comment.getCmtId() == null) {
+                comment.setCmtId(UUID.randomUUID());
+            }
             comment.setTransactionId(txId);
         });
 
@@ -517,7 +521,7 @@ public class ProjectService {
 
         return jdbcTemplate.query(sql, projectIds.toArray(), (rs, rowNum) -> {
             Transaction transaction = new Transaction();
-            transaction.setTxId(rs.getString("id"));
+            transaction.setTransactionId(rs.getString("id"));
             transaction.setProjectId(rs.getString("project_id"));
             transaction.setProcessInstanceId(rs.getString("process_instance_id"));
             AuditDetails auditDetails = new AuditDetails();
@@ -541,7 +545,7 @@ public class ProjectService {
             Comment comment = new Comment();
             comment.setCmtId(UUID.fromString(rs.getString("id")));
             comment.setTransactionId(rs.getString("transaction_id"));
-            comment.setCmtMsg(rs.getString("comment"));
+            comment.setCmtMsg(rs.getString("comment_message"));
             comment.setAssetType(rs.getString("asset_type"));
             AuditDetails auditDetails = new AuditDetails();
             auditDetails.setCreatedBy(rs.getString("created_by"));

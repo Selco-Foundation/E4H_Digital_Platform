@@ -495,7 +495,7 @@ public class ProjectApiController {
         List<Transaction> allTransactions = projectService.getTransactionsForProject(projectIds);
 
         // Fetch all comments by transactionIds
-        List<String> txnIds = allTransactions.stream().map(Transaction::getTxId).toList();
+        List<String> txnIds = allTransactions.stream().map(Transaction::getTransactionId).toList();
         List<Comment> allComments = projectService.getCommentsForTransaction(txnIds);
 
         // Group transactions by projectId
@@ -517,7 +517,7 @@ public class ProjectApiController {
 
                     List<Transaction> txns = txnsByProjectId.getOrDefault(project.getId(), Collections.emptyList());
                     for (Transaction txn : txns) {
-                        txn.setComments(commentsByTxnId.getOrDefault(txn.getTxId(), Collections.emptyList()));
+                        txn.setComments(commentsByTxnId.getOrDefault(txn.getTransactionId(), Collections.emptyList()));
                     }
 
                     return ProjectStatusWrapper.builder()

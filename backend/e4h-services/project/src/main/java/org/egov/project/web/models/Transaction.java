@@ -18,17 +18,17 @@ import java.util.List;
 public class Transaction {
 
     @JsonProperty("transactionId")
-    String txId;
+    private String transactionId;
 
     @JsonProperty("processInstanceId")
-    String processInstanceId;
+    private String processInstanceId;
 
     @JsonProperty("comments")
-    List<Comment> comments;
+    private List<Comment> comments;
 
     @JsonProperty("projectId")
-    String projectId;
+    private String projectId;
 
     @JsonProperty("auditDetails")
-    AuditDetails auditDetails;
+    private AuditDetails auditDetails;
 }

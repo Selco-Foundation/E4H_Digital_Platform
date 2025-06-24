@@ -809,9 +809,7 @@ serviceMaps:
           basePath: $.comments.*
           jsonMaps:
             - jsonPath: $.comments.*.commentId
-              type: UUID
             - jsonPath: $.comments.*.transactionId
-              type: UUID
             - jsonPath: $.comments.*.commentMessage
             - jsonPath: $.comments.*.assetType
             - jsonPath: $.comments.*.auditDetails.createdBy
