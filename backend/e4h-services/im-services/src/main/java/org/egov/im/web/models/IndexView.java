@@ -39,8 +39,8 @@ public class IndexView {
     @JsonProperty("lastActionTakenBy")
     private String lastActionTakenBy;
 
-    @JsonProperty("overallSla")
-    private Long overallSla;
+    @JsonProperty("definedTotalSla")
+    private Long definedTotalSla;
 
     @JsonProperty("startingStatus")
     private String startingStatus;
@@ -60,6 +60,4 @@ public class IndexView {
     @JsonProperty("documentUrls")
     private List<String> documentUrls ;
 
-    @JsonProperty("definedTotalSla")
-    private Long definedTotalSla;
 }
