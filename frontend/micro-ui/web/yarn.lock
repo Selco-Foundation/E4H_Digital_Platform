@@ -6632,7 +6632,7 @@ deep-object-diff@^1.1.0:
   resolved "https://registry.yarnpkg.com/deep-object-diff/-/deep-object-diff-1.1.9.tgz#6df7ef035ad6a0caa44479c536ed7b02570f4595"
   integrity sha512-Rn+RuwkmkDwCi2/oXOFS9Gsr5lJZu/yTGpK7wAaAIE75CC+LCGEZHpY6VQJa/RoJcrmaA/docWJZvYohlNkWPA==
 
-deepmerge@^4.0.0, deepmerge@^4.2.2:
+deepmerge@^4.2.2:
   version "4.3.1"
   resolved "https://registry.yarnpkg.com/deepmerge/-/deepmerge-4.3.1.tgz#44b5f2147cd3b00d4b56137685966f26fd25dd4a"
   integrity sha512-3sUqbMEc77XqpdNO7FRyRog+eW3ph+GYCbj+rK+uYyRMuwsVy0rMiVtPn+QJlKFvWP/1PYpapqYn0Me2knFn+A==
@@ -8984,11 +8984,6 @@ history@^4.9.0:
     tiny-warning "^1.0.0"
     value-equal "^1.0.1"
 
-hls.js@^1.5.20:
-  version "1.6.5"
-  resolved "https://registry.yarnpkg.com/hls.js/-/hls.js-1.6.5.tgz#0912177e0663836c0f9469739c8deb3d8e598778"
-  integrity sha512-KMn5n7JBK+olC342740hDPHnGWfE8FiHtGMOdJPfUjRdARTWj9OB+8c13fnsf9sk1VtpuU2fKSgUjHvg4rNbzQ==
-
 hmac-drbg@^1.0.1:
   version "1.0.1"
   resolved "https://registry.yarnpkg.com/hmac-drbg/-/hmac-drbg-1.0.1.tgz#d2745701025a6c775a6c545793ed502fc0c649a1"
@@ -10886,11 +10881,6 @@ load-json-file@^4.0.0:
     pify "^3.0.0"
     strip-bom "^3.0.0"
 
-load-script@^1.0.0:
-  version "1.0.0"
-  resolved "https://registry.yarnpkg.com/load-script/-/load-script-1.0.0.tgz#0491939e0bee5643ee494a7e3da3d2bac70c6ca4"
-  integrity sha512-kPEjMFtZvwL9TaZo0uZ2ml+Ye9HUMmPwbYRJ324qF9tqMejwykJ5ggTyvzmrbBeapCAbk98BSbTeovHEEP1uCA==
-
 loader-runner@^2.4.0:
   version "2.4.0"
   resolved "https://registry.yarnpkg.com/loader-runner/-/loader-runner-2.4.0.tgz#ed47066bfe534d7e84c4c7b9998c2a75607d9357"
@@ -11234,11 +11224,6 @@ memfs@^3.1.2:
   integrity sha512-EGowvkkgbMcIChjMTMkESFDbZeSh8xZ7kNSF0hAiAN4Jh6jgHCRS0Ga/+C8y6Au+oqpezRHCfPsmJ2+DwAgiwQ==
   dependencies:
     fs-monkey "^1.0.4"
-
-memoize-one@^5.1.1:
-  version "5.2.1"
-  resolved "https://registry.yarnpkg.com/memoize-one/-/memoize-one-5.2.1.tgz#8337aa3c4335581839ec01c3d594090cebe8f00e"
-  integrity sha512-zYiwtZUcYyXKo/np96AGZAckk+FWWsUdJ3cHGGmld7+AhvcWmQyGCYUh1hc4Q/pkOhb65dQR/pqCyK0cOaHz4Q==
 
 memoize-one@^6.0.0:
   version "6.0.0"
@@ -13870,17 +13855,6 @@ react-list@^0.8.13:
   version "0.8.18"
   resolved "https://registry.yarnpkg.com/react-list/-/react-list-0.8.18.tgz#682b6957ad680db496a376e75cd37b1d38409857"
   integrity sha512-1OSdDvzuKuwDJvQNuhXxxL+jTmmdtKg1i6KtYgxI9XR98kbOql1FcSGP+Lcvo91fk3cYng+Z6YkC6X9HRJwxfw==
-
-react-player@^2.16.0:
-  version "2.16.0"
-  resolved "https://registry.yarnpkg.com/react-player/-/react-player-2.16.0.tgz#89070700b03f5a5ded9f0b3165d4717390796481"
-  integrity sha512-mAIPHfioD7yxO0GNYVFD1303QFtI3lyyQZLY229UEAp/a10cSW+hPcakg0Keq8uWJxT2OiT/4Gt+Lc9bD6bJmQ==
-  dependencies:
-    deepmerge "^4.0.0"
-    load-script "^1.0.0"
-    memoize-one "^5.1.1"
-    prop-types "^15.7.2"
-    react-fast-compare "^3.0.1"
 
 react-popper-tooltip@^3.1.1:
   version "3.1.1"
