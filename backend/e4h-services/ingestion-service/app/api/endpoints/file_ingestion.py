@@ -664,75 +664,58 @@ async def upload_legacy_ticket_excel_sheet(
 ):
     tenant_creator_mapping = {
         "Karnataka": {
-            "mobileNumber": "1111111114",
-            "uuid": "364d43fe-b513-40d9-b0e6-4be305095530",
-            "id": 5546,
-            "name": "Vendor Beehyv",
+            "mobileNumber": "1111111111",
+            "uuid": "c74f6c26-3240-4bcc-ace9-8fe7fadaf294",
+            "id": 5560,
             "tenantId" : "pg"
         },
-        "Manipur": {
-            "mobileNumber": "1111111112",
-            "uuid": "df03db3b-0803-4d1b-93c4-b07921a647f0",
-            "id": 5548,
-            "name": "Ingestion System",
-            "tenantId": "mn"
-
-        },
         "Assam": {
-            "mobileNumber": "1111111113",
-            "uuid": "c41be573-d6e6-4270-90ea-ee5bd48d94fc",
-            "id": 5549,
-            "name": "Ingestion System",
+            "mobileNumber": "1111111111",
+            "uuid": "803fbb9c-62c3-4135-b3c5-5a6eb167eb55",
+            "id": 5561,
             "tenantId": "as"
-
+        },
+        "Manipur": {
+            "mobileNumber": "1111111111",
+            "uuid": "eefd7d28-50ab-48a6-b608-b9d34e729c31",
+            "id": 5562,
+            "tenantId": "mn"
         },
         "Gujarat": {
-            "mobileNumber": "1111111111",
-            "uuid": "130d0938-c7a2-41ff-ba5c-8d8bfd30486a",
-            "id": 5550,
-            "name": "Ingestion System",
+            "mobileNumber": "1111111120",
+            "uuid": "fbe228f4-6d73-43df-b865-5e02baddd0c6",
+            "id": 5563,
             "tenantId": "gj"
-
         },
         "Meghalaya": {
-            "mobileNumber": "1111111111",
-            "uuid": "045be118-e3e4-47c1-9633-772ade0863e6",
-            "id": 5551,
-            "name": "Ingestion System",
+            "mobileNumber": "1111111120",
+            "uuid": "46f70d2f-c635-4c21-a43e-1541aadda1aa",
+            "id": 5564,
             "tenantId": "ml"
-
         },
         "Mizoram": {
-            "mobileNumber": "1111111111",
-            "uuid": "59caef17-0c44-4f49-abbc-10009fed63cb",
-            "id": 5552,
-            "name": "Ingestion System",
+            "mobileNumber": "1111111120",
+            "uuid": "a1809350-af2a-402b-91e9-8ace6c1c66e9",
+            "id": 5565,
             "tenantId": "mz"
-
         },
         "Nagaland": {
-            "mobileNumber": "1111111115",
-            "uuid": "a73cab99-730a-4d5a-8e60-0dd0e5f7b8e5",
-            "id": 5553,
-            "name": "Ingestion System",
+            "mobileNumber": "1111111120",
+            "uuid": "ae1bcdf0-038d-4888-8d65-9f820e20445d",
+            "id": 5566,
             "tenantId": "nl"
-
         },
         "Odisha": {
-            "mobileNumber": "1111111115",
-            "uuid": "3224d907-1710-47e7-a84e-9869e50fded2",
-            "id": 5554,
-            "name": "Ingestion System",
+            "mobileNumber": "1111111120",
+            "uuid": "8645cf91-27e3-45cf-a809-d360f6b3a585",
+            "id": 5567,
             "tenantId": "or"
-
         },
         "Sikkim": {
-            "mobileNumber": "1111111111",
-            "uuid": "dd0014ca-822b-41eb-a2c0-7db0710badde",
-            "id": 5547,
-            "name": "Ingestion System",
+            "mobileNumber": "1111111120",
+            "uuid": "617f9fe2-c612-4205-9be6-5d578311f67a",
+            "id": 5568,
             "tenantId": "sk"
-
         }
     }
     input_temp_file = None
@@ -865,16 +848,15 @@ async def upload_legacy_ticket_excel_sheet(
                 reported_date = row.get("Actual_Reported_Date (mm/dd/yyyy)", None)
 
                 if pd.notnull(reported_date):
-                        if isinstance(reported_date, str):
-                            dt = pd.to_datetime(reported_date, format="%d/%m/%Y", errors='coerce')
-                        else:
-                            dt = pd.to_datetime(reported_date, errors='coerce')
-                        if pd.notnull(dt):
-                            incident_payload["filedDate"] = int(dt.timestamp() * 1000)
+                    if isinstance(reported_date, str):
+                        dt = pd.to_datetime(reported_date, format="%d/%m/%Y", errors='coerce')
+                    else:
+                        dt = pd.to_datetime(reported_date, errors='coerce')
+                    if pd.notnull(dt):
+                        incident_payload["filedDate"] = int(dt.timestamp() * 1000)
 
 
                 creator_id = creator_info.get("id")
-                creator_name = creator_info.get("name")
                 creator_mobile_number = creator_info.get("mobileNumber")
                 request_info = {
                     "apiId": "Rainmaker",
@@ -882,8 +864,8 @@ async def upload_legacy_ticket_excel_sheet(
                     "userInfo": {
                         "id": creator_id,
                         "uuid": creator_uuid,
-                        "userName": "selco_ingestion_system",
-                        "name": creator_name,
+                        "userName": "selco_admin",
+                        "name": "Ingestion System",
                         "mobileNumber": creator_mobile_number,
                         "emailId": None,
                         "locale": None,
