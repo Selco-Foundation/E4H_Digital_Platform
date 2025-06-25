@@ -239,4 +239,13 @@ public class ProjectConfiguration {
 
     @Value("${project.management.comment.kafka.create.topic}")
     private String commentPersistTopic;
+
+    @Value("${egov.asset.host}")
+    private String assetHost;
+
+    @Value("${egov.asset.search.url}")
+    private String assetSearchUrl;
+
+    @Value("${egov.asset.update.url}")
+    private String assetUpdateUrl;
 }

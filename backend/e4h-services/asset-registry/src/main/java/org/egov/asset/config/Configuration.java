@@ -92,4 +92,7 @@ public class Configuration {
     //Kafka topics
     @Value("${asset.create.topic}")
     private String createAssetTopic;
+
+    @Value("${asset.update.topic}")
+    private String updateAssetTopic;
 }
