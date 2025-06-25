@@ -45,7 +45,6 @@ public class Asset {
     private String serialNumber = null;
 
     @JsonProperty("modelNumber")
-    @NotNull
     private String modelNumber = null;
 
     @JsonProperty("brandID")
@@ -56,11 +55,9 @@ public class Asset {
     private Map<String, Object> assetDetails = null;
 
     @JsonProperty("warrantyStartDate")
-    @NotNull
     private Date warrantyStartDate = null;
 
     @JsonProperty("warrantyDuration")
-    @NotNull
     private Integer warrantyDuration = null;
 
     @JsonProperty("warrantyEndDate")
