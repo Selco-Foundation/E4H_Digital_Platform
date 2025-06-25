@@ -814,11 +814,10 @@ async def upload_legacy_ticket_excel_sheet(
                 district = employee_tenant_mapping.get("city", {}).get("districtCode", "")
                 ticket_type = str(row.get("Ticket Type")).strip()
                 ticket_subtype = str(row.get("Ticket Sub Type")).strip()
-                system_functional = df["Is the solar system working?"].str.strip().map({
+                system_functional = {
                     "Yes": "FUNCTIONAL",
                     "No": "NONFUNCTIONAL"
-                })
-
+                }.get(str(row.get("Is the solar system working?", "")).strip(), "")
 
                 if not ticket_type or not ticket_subtype:
                     df.at[idx, 'status'] = 'failed'
@@ -863,7 +862,7 @@ async def upload_legacy_ticket_excel_sheet(
                     incident_payload["legacyId"] = str(unique_id).strip()
 
                 # Optional: Convert Actual_Reported_Date to epoch
-                reported_date = row.get("Actual_Reported_Date", None)
+                reported_date = row.get("Actual_Reported_Date (mm/dd/yyyy)", None)
 
                 if pd.notnull(reported_date):
                         if isinstance(reported_date, str):
