@@ -816,7 +816,7 @@ async def upload_legacy_ticket_excel_sheet(
                 ticket_subtype = str(row.get("Ticket Sub Type")).strip()
                 system_functional = {
                     "Yes": "FUNCTIONAL",
-                    "No": "NONFUNCTIONAL"
+                    "No": "NON_FUNCTIONAL"
                 }.get(str(row.get("Is the solar system working?", "")).strip(), "")
 
                 if not ticket_type or not ticket_subtype:
