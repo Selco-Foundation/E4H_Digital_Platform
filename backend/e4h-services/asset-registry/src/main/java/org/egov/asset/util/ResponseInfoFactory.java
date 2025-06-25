@@ -9,14 +9,14 @@ import static org.egov.asset.config.ServiceConstants.*;
 @Component
 public class ResponseInfoFactory {
 
-    public ResponseInfo createResponseInfoFromRequestInfo(final RequestInfo requestInfo, final Boolean success) {
+    public ResponseInfo createResponseInfoFromRequestInfo(final RequestInfo requestInfo, final boolean success) {
 
         final String apiId = requestInfo != null ? requestInfo.getApiId() : "";
         final String ver = requestInfo != null ? requestInfo.getVer() : "";
         Long ts = null;
         if (requestInfo != null)
             ts = requestInfo.getTs();
-        final String resMsgId = RES_MSG_ID; // FIXME : Hard-coded
+        final String resMsgId = RES_MSG_ID;
         final String msgId = requestInfo != null ? requestInfo.getMsgId() : "";
         final String responseStatus = success ? SUCCESSFUL : FAILED;
 

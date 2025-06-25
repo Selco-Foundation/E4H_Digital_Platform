@@ -19,7 +19,7 @@ import jakarta.validation.Valid;
 @NoArgsConstructor
 @Builder
 public class AssetWorkflowUpdate {
-    @JsonProperty("tenant_id")
+    @JsonProperty("tenantId")
 
     private String tenantId = null;
 

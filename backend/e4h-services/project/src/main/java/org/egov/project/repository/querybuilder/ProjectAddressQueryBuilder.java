@@ -10,11 +10,14 @@ import org.egov.common.models.project.Project;
 import org.egov.common.models.project.ProjectSearch;
 import org.egov.project.config.ProjectConfiguration;
 import org.egov.project.web.models.ProjectSearchCriteria;
+import org.egov.project.web.models.ProjectSortCriteria;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static org.egov.project.util.ProjectConstants.DOT;
 
@@ -209,7 +212,12 @@ public class ProjectAddressQueryBuilder {
      * @param isCountQuery     Boolean flag indicating if the query is for counting records.
      * @return The constructed SQL query string.
      */
-    public String getProjectSearchQuery(@NotNull @Valid ProjectSearch projectSearch, ProjectSearchURLParams urlParams, List<Object> preparedStmtList, Boolean isCountQuery) {
+    public String getProjectSearchQuery(@NotNull @Valid ProjectSearch projectSearch,
+                                        ProjectSearchURLParams urlParams,
+                                        List<Object> preparedStmtList,
+                                        Boolean isCountQuery,
+                                        List<String> workflowStatuses)
+    {
         // Use a ternary operator to select between PROJECTS_COUNT_QUERY and FETCH_PROJECT_ADDRESS_QUERY based on isCountQuery flag.
         String query = isCountQuery ? PROJECTS_COUNT_QUERY : FETCH_PROJECT_ADDRESS_QUERY;
         StringBuilder queryBuilder = new StringBuilder(query);
@@ -271,6 +279,15 @@ public class ProjectAddressQueryBuilder {
 
         // Add clause if includeDeleted is true in request parameter
         addIsDeletedCondition(preparedStmtList, queryBuilder, urlParams.getIncludeDeleted());
+
+        // Check if workflowStatuses filter is provided
+        if (workflowStatuses != null && !workflowStatuses.isEmpty()) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            queryBuilder.append(" prj.status IN (");
+            String placeholders = workflowStatuses.stream().map(ws -> "?").collect(Collectors.joining(", "));
+            queryBuilder.append(placeholders).append(") ");
+            preparedStmtList.addAll(workflowStatuses);
+        }
 
         // Close the query with a closing bracket
         queryBuilder.append(" )");
@@ -407,7 +424,33 @@ public class ProjectAddressQueryBuilder {
     }
 
     /* Returns query to get total projects count based on project search params */
-    public String getSearchCountQueryString(ProjectSearch projectSearch, ProjectSearchURLParams urlParams, List<Object> preparedStatement) {
-        return getProjectSearchQuery(projectSearch, urlParams, preparedStatement, Boolean.TRUE);
+    public String getSearchCountQueryString(ProjectSearch projectSearch,
+                                            ProjectSearchURLParams urlParams,
+                                            List<Object> preparedStatement,
+                                            List<String> workflowStatuses) {
+        return getProjectSearchQuery(projectSearch, urlParams, preparedStatement, Boolean.TRUE, workflowStatuses);
+    }
+
+    public String getProjectSearchAndSortQuery(ProjectSearch projectSearch, ProjectSearchURLParams urlParams, List<Object> preparedStmtList, Boolean isCountQuery, List<String> workflowStatuses, ProjectSortCriteria sortParam) {
+        String query = getProjectSearchQuery(projectSearch, urlParams, preparedStmtList, isCountQuery, workflowStatuses);
+        // Adding sort criteria
+        String sortField = null;
+        if (sortParam != null && sortParam.getSortBy() != null) {
+            String userSortField = sortParam.getSortBy();
+            sortField = userSortField.startsWith("project_") ? userSortField : "project_" + userSortField;
+        }
+        // Determine sort order (default DESC if invalid or null)
+        ProjectSortCriteria.SortDirection sortDirection = (sortParam != null && sortParam.getSortDirection() != null)
+                ? sortParam.getSortDirection()
+                : ProjectSortCriteria.SortDirection.DESC;
+        // Default sorting field
+        String defaultSortField = "project_lastModifiedTime";
+        String defaultSortOrder = ProjectSortCriteria.SortDirection.DESC.name();
+        if (sortField != null) {
+            query += " ORDER BY " + sortField + " " + sortDirection;
+        } else {
+            query += " ORDER BY " + defaultSortField + " " + defaultSortOrder;
+        }
+        return query;
     }
 }

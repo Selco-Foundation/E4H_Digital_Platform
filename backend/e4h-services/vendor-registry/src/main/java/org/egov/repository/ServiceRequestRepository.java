@@ -1,25 +1,23 @@
 package org.egov.repository;
 
-import java.util.Map;
-
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import lombok.extern.slf4j.Slf4j;
 import org.egov.tracer.model.ServiceCallException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
+import java.util.Map;
 
-import lombok.extern.slf4j.Slf4j;
 
 @Repository
 @Slf4j
 public class ServiceRequestRepository {
 
-	private ObjectMapper mapper;
-
-	private RestTemplate restTemplate;
+    private final ObjectMapper mapper;
+    private final RestTemplate restTemplate;
 
 	@Autowired
 	public ServiceRequestRepository(ObjectMapper mapper, RestTemplate restTemplate) {

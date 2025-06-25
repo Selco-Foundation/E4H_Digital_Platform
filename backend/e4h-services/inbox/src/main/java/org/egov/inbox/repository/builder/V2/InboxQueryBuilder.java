@@ -1,14 +1,7 @@
 package org.egov.inbox.repository.builder.V2;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.stream.Collectors;
+import java.util.*;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import org.egov.inbox.util.ErrorConstants;
 import org.egov.inbox.util.MDMSUtil;
 import org.egov.inbox.web.model.InboxRequest;
@@ -25,7 +18,6 @@ import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.jayway.jsonpath.JsonPath;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -90,40 +82,43 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
 
         //add filter for inbox SLA
         if (inboxRequest.getInbox().getModuleSearchCriteria().containsKey("nearingSLA") && isSLA) {
-            Map<String, Object> runTimeMappings = new HashMap<>();
-            Map<String, Object> slaComparison = generateSLAComparison(System.currentTimeMillis());
-            runTimeMappings.put("sla_comparison", slaComparison);
-            baseEsQuery.put("runtime_mappings", runTimeMappings);
+
+            Map<String, Object> query = (Map<String, Object>) baseEsQuery.get("query");
+            Map<String, Object> boolClause = (Map<String, Object>) query.get("bool");
+
+            List<Map<String, Object>> mustNotClauseList = (List<Map<String, Object>>) boolClause.getOrDefault("must_not", new ArrayList<>());
+
+            // Exclude terminated tickets
+            Map<String, Object> terminateClause = new HashMap<>();
+            terminateClause.put("term", Collections.singletonMap("Data.currentProcessInstance.state.isTerminateState", true));
+            mustNotClauseList.add(terminateClause);
+
+            // Exclude businessService = 'Incident'
+            Map<String, Object> excludeIncidentTerm = new HashMap<>();
+            excludeIncidentTerm.put("term", Collections.singletonMap("Data.currentProcessInstance.businessService.keyword", "Incident"));
+            mustNotClauseList.add(excludeIncidentTerm);
+
+            boolClause.put("must_not", mustNotClauseList);
+
+            // Add nearing SLA painless script
+            Map<String, Object> scriptInner = new HashMap<>();
+            scriptInner.put("source",
+                    "doc.containsKey('Data.slaRemaining') && " +
+                            "doc.containsKey('Data.stateSla') && " +
+                            "doc['Data.stateSla'].size() > 0 && " +
+                            "doc['Data.stateSla'].value > 0 && " +
+                            "(doc['Data.slaRemaining'].value / doc['Data.stateSla'].value) <= 0.3");
+            scriptInner.put("lang", "painless");
+
+            Map<String, Object> scriptClause = new HashMap<>();
+            scriptClause.put("script", scriptInner);
+
+            mustClauseList.add(Collections.singletonMap("script", scriptClause));
         }
 
+
         return baseEsQuery;
-    }
 
-    public Map<String, Object> generateSLAComparison(long currentTime) {
-        Map<String, Object> slaComparison = new HashMap<>();
-        slaComparison.put("type", "long");
-
-        Map<String, Object> script = new HashMap<>();
-        String scriptSource =
-                "long sla = doc.containsKey('Data.currentProcessInstance.businesssServiceSla') " +
-                        "&& doc['Data.currentProcessInstance.businesssServiceSla'].size() > 0 " +
-                        "? doc['Data.currentProcessInstance.businesssServiceSla'].value : 0; " +
-
-                        "long createdTime = doc.containsKey('Data.currentProcessInstance.auditDetails.createdTime') " +
-                        "&& doc['Data.currentProcessInstance.auditDetails.createdTime'].size() > 0 " +
-                        "? doc['Data.currentProcessInstance.auditDetails.createdTime'].value : 0; " +
-
-                        "emit(sla + createdTime - params.currentTime);";
-
-        script.put("source", scriptSource);
-
-        Map<String, Object> params = new HashMap<>();
-        params.put("currentTime", currentTime);
-        script.put("params", params);
-
-        slaComparison.put("script", script);
-
-        return slaComparison;
     }
 
     public Map<String, Object> getESQueryForSimpleSearch(SearchRequest searchRequest, Boolean isPaginationRequired) {
@@ -311,29 +306,55 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
     }
 
     @Override
-    public Map<String, Object> getNearingSlaCountQuery(InboxRequest inboxRequest, Long businessServiceSla) {
+    public Map<String, Object> getNearingSlaCountQuery(InboxRequest inboxRequest, Long businessServiceSla, String businessService) {
         Map<String, Object> baseEsQuery = getESQuery(inboxRequest, Boolean.FALSE, Boolean.FALSE);
-        Long currenTimeInMillis = System.currentTimeMillis();
-        Long lteParam = currenTimeInMillis;
-        Long slotLimit = businessServiceSla - 40 * (businessServiceSla / 100);
-        Long gteParam = currenTimeInMillis - slotLimit;
 
-        appendNearingSlaCountClause(baseEsQuery, gteParam, lteParam);
-        log.info("+++++++++++++++NEARING SLA QUERY+++++++++++++++++", baseEsQuery);
+        Map<String, Object> query = (Map<String, Object>) baseEsQuery.get("query");
+        Map<String, Object> bool = (Map<String, Object>) query.get("bool");
+
+        // Ensure must_not clause exists
+        List<Object> mustNotClauseList = (List<Object>) bool.getOrDefault("must_not", new ArrayList<>());
+
+        // Add isTerminateState filter to must_not
+        Map<String, Object> terminateTerm = new HashMap<>();
+        terminateTerm.put("Data.currentProcessInstance.state.isTerminateState", true);
+        Map<String, Object> mustNotTermWrapper = new HashMap<>();
+        mustNotTermWrapper.put("term", terminateTerm);
+        mustNotClauseList.add(mustNotTermWrapper);
+
+        bool.put("must_not", mustNotClauseList);
+
+        // Add to must clause
+        List<Object> mustClauseList = (List<Object>) bool.get("must");
+
+        // Add businessService term filter
+        Map<String, Object> serviceTerm = new HashMap<>();
+        serviceTerm.put("Data.currentProcessInstance.businessService.keyword", businessService);
+        Map<String, Object> termWrapper = new HashMap<>();
+        termWrapper.put("term", serviceTerm);
+        mustClauseList.add(termWrapper);
+
+        // Build the painless script
+        Map<String, Object> innerScript = new HashMap<>();
+        innerScript.put("source",
+                "doc.containsKey('Data.slaRemaining') && " +
+                        "doc.containsKey('Data.stateSla') && " +
+                        "doc['Data.stateSla'].size() > 0 && " +
+                        "doc['Data.stateSla'].value > 0 && " +
+                        "(doc['Data.slaRemaining'].value / doc['Data.stateSla'].value) <= 0.3");
+        innerScript.put("lang", "painless");
+
+        Map<String, Object> script = new HashMap<>();
+        script.put("script", innerScript);
+
+        mustClauseList.add(Collections.singletonMap("script", script));
+
+        bool.put("must", mustClauseList);
+
+        log.info("Nearing SLA Query: " + baseEsQuery);
         return baseEsQuery;
     }
 
-    private void appendNearingSlaCountClause(Map<String, Object> baseEsQuery, Long gteParam, Long lteParam) {
-        List mustClause = JsonPath.read(baseEsQuery, "$.query.bool.must");
-        Map<String, Object> rangeObject = new HashMap<>();
-        Map<String, Object> rangeClause = new HashMap<>();
-        rangeClause.put("gte", gteParam);
-        rangeClause.put("lte", lteParam);
-        rangeObject.put("Data.auditDetails.lastModifiedTime", rangeClause);
-        HashMap<String, Object> rangeMap = new HashMap<>();
-        rangeMap.put("range", rangeObject);
-        mustClause.add(rangeMap);
-    }
 
     private void appendStatusCountAggsNode(Map<String, Object> baseEsQuery) {
         Map<String, Object> aggsNode = new HashMap<>();
@@ -406,26 +427,9 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
                 return termClause;
             }
         } else if (operator.equals(SearchParam.Operator.LTE) || operator.equals(SearchParam.Operator.GTE)) {
-            Map<String, Object> rangeClause = new HashMap<>();
-            rangeClause.put("range", new HashMap<>());
-            Map<String, Object> innerTermClause = (Map<String, Object>) rangeClause.get("range");
-            Map<String, Object> comparatorMap = new HashMap<>();
-
-            if (operator.equals(SearchParam.Operator.LTE)) {
-                comparatorMap.put("lte", params.get(key));
-            } else if (operator.equals(SearchParam.Operator.GTE)) {
-                comparatorMap.put("gte", params.get(key));
-            }
-            innerTermClause.put(addDataPathToSearchParamKey(key, nameToPathMap), comparatorMap);
-            return rangeClause;
+            return new HashMap<>();
         } else if (operator.equals(SearchParam.Operator.SLA_COMPARE)) {
-            Map<String, Object> rangeClause = new HashMap<>();
-            rangeClause.put("range", new HashMap<>());
-            Map<String, Object> innerTermClause = (Map<String, Object>) rangeClause.get("range");
-            Map<String, Object> comparatorMap = new HashMap<>();
-            comparatorMap.put("sla_comparison", params.get(key));
-            innerTermClause.put(addDataPathToSearchParamKey(key, nameToPathMap), comparatorMap);
-            return rangeClause;
+            return new HashMap<>();
         } else if (operator.equals(SearchParam.Operator.MULTI_MATCH)) {
             String searchValue = params.get("search").toString();
             Map<String, Object> multiMatch = new HashMap<>();
@@ -451,7 +455,12 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
                 Map<String, Object> wildcardClause = new HashMap<>();
                 wildcardClause.put("wildcard", new HashMap<>());
                 Map<String, Object> innerWildcardClause = (Map<String, Object>) wildcardClause.get("wildcard");
-                innerWildcardClause.put(addDataPathToSearchParamKey(key, nameToPathMap), "*" + item + "*");
+                if(key.equals("tenantId")) {
+                    innerWildcardClause.put(addDataPathToSearchParamKey(key, nameToPathMap), item + ".*");
+                }
+                else{
+                    innerWildcardClause.put(addDataPathToSearchParamKey(key, nameToPathMap),  "*" + item + "*");
+                }
                 wildcardClauses.add(wildcardClause);
             }
 
@@ -460,7 +469,12 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
             Map<String, Object> wildcardClause = new HashMap<>();
             wildcardClause.put("wildcard", new HashMap<>());
             Map<String, Object> innerWildcardClause = (Map<String, Object>) wildcardClause.get("wildcard");
-            innerWildcardClause.put(addDataPathToSearchParamKey(key, nameToPathMap), "*" + value + "*");
+            if(key.equals("tenantId")) {
+                innerWildcardClause.put(addDataPathToSearchParamKey(key, nameToPathMap), value + ".*");
+            }
+            else{
+                innerWildcardClause.put(addDataPathToSearchParamKey(key, nameToPathMap), "*" + value + "*");
+            }
             wildcardClauses.add(wildcardClause);
             return wildcardClauses;
         }

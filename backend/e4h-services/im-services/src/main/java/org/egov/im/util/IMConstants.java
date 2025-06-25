@@ -14,6 +14,12 @@ public class IMConstants {
 
     public static final String IM_BUSINESSSERVICE = "Incident";
 
+    public static final String IM_BUSINESSSERVICE_HIGH = "Incident_High";
+
+    public static final String IM_BUSINESSSERVICE_MEDIUM = "Incident_Medium";
+
+    public static final String IM_BUSINESSSERVICE_LOW = "Incident_Low";
+
     public static final String USERTYPE_EMPLOYEE = "EMPLOYEE";
 
     public static final String USERTYPE_CITIZEN = "CITIZEN";
@@ -37,6 +43,8 @@ public class IMConstants {
     public static final String HRMS_DESIGNATION_JSONPATH = "$.Employees.*.assignments[?(@.department=='{department}')].designation";
 
     public static final String HRMS_EMP_NAME_JSONPATH = "$.Employees.*.user.name";
+
+    public static final String HRMS_EMP_USERNAME_JSONPATH = "$.Employees.*.user.userName";
     
     public static final String HRMS_EMP_MOBILE_JSONPATH = "$.Employees.*.user.mobileNumber";
     
@@ -167,5 +175,7 @@ public class IMConstants {
     public static final String DEPARTMENT = "department";
 
 
+    public static final String PENDING_ASSIGNMENT_PREFIX = "PENDING_ASSIGNMENT_";
 
+    public static final String PENDING_RESOLUTION_PREFIX = "PENDING_RESOLUTION_";
 }

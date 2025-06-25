@@ -2,8 +2,6 @@ package org.egov.asset.web.models;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -21,10 +19,16 @@ import org.springframework.validation.annotation.Validated;
 @NoArgsConstructor
 @Builder
 public class PanelDetails {
-    @JsonProperty("capacity")
-    @NotNull
-    @DecimalMin(value = "0.0", inclusive = true)
-    private Double capacity = null;
+    @JsonProperty("totalCapacity")
+    private Double totalCapacity;
 
+    @JsonProperty("totalCapacityUnit")
+    private String totalCapacityUnit;
+
+    @JsonProperty("panelCapacity")
+    private Double panelCapacity;
+
+    @JsonProperty("capacityUnit")
+    private String capacityUnit;
 
 }

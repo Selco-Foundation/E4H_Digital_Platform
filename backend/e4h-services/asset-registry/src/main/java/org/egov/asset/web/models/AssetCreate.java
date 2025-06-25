@@ -22,15 +22,6 @@ import jakarta.validation.constraints.NotNull;
 public class AssetCreate {
     @JsonProperty("Asset")
     @NotNull
-
     @Valid
     private Asset asset = null;
-
-    @JsonProperty("workflow")
-    @NotNull
-
-    @Valid
-    private Workflow workflow = null;
-
-
 }

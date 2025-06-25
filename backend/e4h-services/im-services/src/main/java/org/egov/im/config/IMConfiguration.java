@@ -116,6 +116,9 @@ public class IMConfiguration {
     @Value("${im.kafka.update.topic.indexer}")
     private String updateTopicIndexer;
 
+    @Value("${im.audit.kafka.create.topic.indexer}")
+    private String auditCreateTopicIndexer;
+
     @Value("${im.default.offset}")
     private Integer defaultOffset;
 
@@ -233,6 +236,23 @@ public class IMConfiguration {
     @Value("${video.max.size}")
     private Integer maxVideoSizeInMB;
 
+    @Value("${digit.ui.host}")
+    private String digitUIHost;
+
+    @Value("${digit.ui.feedback}")
+    private String digitUIFeedback;
+
+    @Value("${digit.ui.tenant}")
+    private String digitUiTenantJson;
+
+    private Map<String, List<String>> digitUITenant;
+
+    @PostConstruct
+    public void init() throws JsonProcessingException {
+        ObjectMapper mapper = new ObjectMapper();
+        digitUITenant = mapper.readValue(digitUiTenantJson, new TypeReference<>() {});
+    }
+
     @Value("${video.list.size}")
     private Integer videoListSize;
 
@@ -256,24 +276,12 @@ public class IMConfiguration {
     @Value("${egov.filestore.upload.endpoint}")
     private String fileStoreUploadEndpoint;
 
+    @Value("${egov.filestore.download.endpoint}")
+    private String fileStoreDownloadEndpoint;
+
     @Value("${ffprobe.path}")
     private String ffprobePath;
 
-    @Value("${digit.ui.host}")
-    private String digitUIHost;
-
-    @Value("${digit.ui.feedback}")
-    private String digitUIFeedback;
-
-    @Value("${digit.ui.tenant}")
-    private String digitUiTenantJson;
-
-    private Map<String, List<String>> digitUITenant;
-
-    @PostConstruct
-    public void init() throws JsonProcessingException {
-        ObjectMapper mapper = new ObjectMapper();
-        digitUITenant = mapper.readValue(digitUiTenantJson, new TypeReference<>() {});
-    }
-
+    @Value("${ffmpeg.cpulimitpercentage}")
+    private String ffmpegCpuLimitPercentage;
 }

@@ -1,14 +1,19 @@
 package org.egov.project.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.egov.common.contract.models.AuditDetails;
 import org.egov.common.contract.request.RequestInfo;
+import org.egov.common.contract.workflow.ProcessInstance;
 import org.egov.common.models.core.ProjectSearchURLParams;
+import org.egov.common.models.core.SearchResponse;
+import org.egov.common.models.project.*;
 import org.egov.common.models.project.Project;
 import org.egov.common.models.project.ProjectRequest;
+import org.egov.common.models.project.ProjectSearch;
 import org.egov.common.models.project.ProjectSearchRequest;
 import org.egov.common.producer.Producer;
 import org.egov.project.config.ProjectConfiguration;
@@ -16,14 +21,14 @@ import org.egov.project.repository.ProjectRepository;
 import org.egov.project.service.enrichment.ProjectEnrichment;
 import org.egov.project.util.ProjectServiceUtil;
 import org.egov.project.validator.project.ProjectValidator;
+import org.egov.project.web.models.*;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.*;
 
 @Service
 @Slf4j
@@ -38,23 +43,32 @@ public class ProjectService {
 
     private final ProjectConfiguration projectConfiguration;
 
+    private final ProjectFacilityService projectFacilityService;
+
     private final Producer producer;
 
     private final ProjectServiceUtil projectServiceUtil;
 
     private final ObjectMapper objectMapper;
 
+    private final ProjectWorkflowService workflowService;
+
+    private final JdbcTemplate jdbcTemplate;
+
     @Autowired
     public ProjectService(
             ProjectRepository projectRepository,
-            ProjectValidator projectValidator, ProjectEnrichment projectEnrichment, ProjectConfiguration projectConfiguration, Producer producer, ProjectServiceUtil projectServiceUtil) {
+            ProjectValidator projectValidator, ProjectEnrichment projectEnrichment, ProjectConfiguration projectConfiguration, Producer producer, ProjectServiceUtil projectServiceUtil, ProjectWorkflowService workflowService, @Lazy ProjectFacilityService projectFacilityService, JdbcTemplate jdbcTemplate) {
         this.projectRepository = projectRepository;
         this.projectValidator = projectValidator;
         this.projectEnrichment = projectEnrichment;
         this.projectConfiguration = projectConfiguration;
         this.producer = producer;
         this.projectServiceUtil = projectServiceUtil;
+        this.workflowService = workflowService;
+        this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = new ObjectMapper();
+        this.projectFacilityService = projectFacilityService;
     }
 
     public List<String> validateProjectIds(List<String> productIds) {
@@ -115,9 +129,31 @@ public class ProjectService {
         return projects;
     }
 
-    public List<Project> searchProject(ProjectSearchRequest projectSearchRequest, @Valid ProjectSearchURLParams urlParams) {
-        projectValidator.validateSearchV2ProjectRequest(projectSearchRequest, urlParams);
-        return projectRepository.getProjects(projectSearchRequest.getProject(), urlParams);
+    public List<Project> searchProject(ProjectSearchRequest projectSearchRequest, @Valid ProjectSearchURLParams urlParams, List<String> workflowStatuses, @Valid ProjectSortCriteria sortCriteria) throws Exception {
+        projectValidator.validateSearchV2ProjectRequest(projectSearchRequest, urlParams, sortCriteria);
+        List<Project> projects = projectRepository.getProjects(projectSearchRequest.getProject(), urlParams, workflowStatuses, sortCriteria);
+        projects = getCountFacilitiesProject(projects, projectSearchRequest.getRequestInfo());
+        return projects;
+    }
+
+    public List<Project> getCountFacilitiesProject(List<Project> listProjects, RequestInfo requestInfo) throws Exception {
+        for (Project project : listProjects) {
+            List<String> listProjectId = new ArrayList<>();
+            listProjectId.add(project.getId());
+            ProjectFacilitySearch projectFacilitySearch = ProjectFacilitySearch.builder().projectId(listProjectId).facilityId(null).build();
+            ProjectFacilitySearchRequest projectFacilitySearchRequest = ProjectFacilitySearchRequest.builder().projectFacility(projectFacilitySearch).requestInfo(requestInfo).build();
+            SearchResponse<ProjectFacility> searchResponse = projectFacilityService.search(
+                    projectFacilitySearchRequest,
+                    100,
+                    0,
+                    project.getTenantId(),
+                    null,
+                    false);
+            Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(project.getAdditionalDetails(), "countFacilities", searchResponse.getTotalCount()+"");
+            project.setAdditionalDetails(enrichedAdditionalDetails);
+        }
+
+        return listProjects;
     }
 
     public ProjectRequest updateProject(ProjectRequest request) {
@@ -343,7 +379,183 @@ public class ProjectService {
     }
 
 
-    public Integer countAllProjects(ProjectSearchRequest projectSearchRequest, ProjectSearchURLParams urlParams) {
-        return projectRepository.getProjectCount(projectSearchRequest.getProject(), urlParams);
+    public Integer countAllProjects(ProjectSearchRequest request,
+                                    ProjectSearchURLParams urlParams,
+                                    List<String> workflowStatuses) {
+        return projectRepository.getProjectCount(request.getProject(), urlParams, workflowStatuses);
+    }
+
+    public ProjectStatusWrapper updateProjectWorkflow(ProjectWorkflowRequest request) throws Exception {
+        // 1. Fetch the existing project
+        ProjectSearch searchCriteria = ProjectSearch.builder()
+                .id(List.of(request.getProjectId()))
+                .build();
+
+        ProjectSearchRequest searchRequest = ProjectSearchRequest.builder()
+                .project(searchCriteria)
+                .requestInfo(request.getRequestInfo())
+                .build();
+
+
+        ProjectSearchURLParams urlParams = ProjectSearchURLParams.builder()
+                                                                .limit(1)
+                                                                .offset(0)
+                                                                .tenantId("in")
+                                                                .includeAncestors(false)
+                                                                .includeDescendants(false)
+                                                                .build();
+        List<String> workflowStatuses = null;
+        ProjectSortCriteria sortCriteria = null;
+
+        List<Project> projects = searchProject(searchRequest, urlParams, workflowStatuses, sortCriteria);
+
+        if (projects == null || projects.isEmpty()) {
+            throw new CustomException("PROJECT_NOT_FOUND", "Project not found with ID: " + request.getProjectId());
+        }
+
+        Project existingProject = projects.get(0);
+
+        // 2. Call workflow transition
+        ProcessInstance updatedWorkflow = workflowService.transitionWorkflow(
+                existingProject,
+                request.getWorkflow().getAction(),
+                request.getWorkflow().getDocuments(),
+                request.getRequestInfo(),
+                request.getWorkflow().getComments()
+        );
+
+        for(Transaction transaction: request.getTransactions()) {
+            transaction.setProcessInstanceId(updatedWorkflow.getId());
+            String userUUID = request.getRequestInfo().getUserInfo().getUuid();
+            transaction.setProjectId(request.getProjectId());
+            transaction.setAuditDetails(projectServiceUtil.getAuditDetails(userUUID, null, true));
+            if(transaction.getTransactionId() == null || transaction.getTransactionId().isEmpty()) {
+                transaction.setTransactionId(UUID.randomUUID().toString());
+            }
+            if(transaction.getComments() != null) handleCommentUpdate(transaction.getComments(), transaction.getTransactionId(), userUUID);
+        }
+
+        handleTransactionUpdate(request.getTransactions());
+
+        // 3. Inject workflow status into additionalDetails map
+        Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(
+                existingProject.getAdditionalDetails(),
+                "status",
+                updatedWorkflow.getState().getState()
+        );
+
+        // 4. Create a new Project instance with enriched additionalDetails
+        Project updatedProject = Project.builder()
+                .id(existingProject.getId())
+                .tenantId(existingProject.getTenantId())
+                .projectNumber(existingProject.getProjectNumber())
+                .startDate(existingProject.getStartDate())
+                .endDate(existingProject.getEndDate())
+                .projectType(existingProject.getProjectType())
+                .projectSubType(existingProject.getProjectSubType())
+                .department(existingProject.getDepartment())
+                .description(existingProject.getDescription())
+                .referenceID(existingProject.getReferenceID())
+                .projectTypeId(existingProject.getProjectTypeId())
+                .address(existingProject.getAddress())
+                .isTaskEnabled(existingProject.getIsTaskEnabled())
+                .parent(existingProject.getParent())
+                .projectHierarchy(existingProject.getProjectHierarchy())
+                .natureOfWork(existingProject.getNatureOfWork())
+                .additionalDetails(enrichedAdditionalDetails)
+                .rowVersion(existingProject.getRowVersion())
+                .isDeleted(existingProject.getIsDeleted())
+                .build();
+
+        // 5. Create project request wrapper
+        ProjectRequest enrichedRequest = ProjectRequest.builder()
+                .requestInfo(request.getRequestInfo())
+                .projects(List.of(updatedProject))
+                .build();
+
+        // 6. Perform enriched update using standard handler
+        handleNormalUpdate(enrichedRequest, updatedProject, existingProject);
+
+        return new ProjectStatusWrapper(updatedProject, updatedWorkflow.getState().getState(), null);
+    }
+
+
+
+    private Object mergeIntoAdditionalDetails(Object additionalDetails, String key, String value) {
+        if (additionalDetails instanceof ObjectNode) {
+            ((ObjectNode) additionalDetails).put(key, value);
+            return additionalDetails;
+        } else if (additionalDetails instanceof Map) {
+            ((Map<String, Object>) additionalDetails).put(key, value);
+            return additionalDetails;
+        } else {
+            // default to HashMap if null or unknown type
+            Map<String, Object> map = new HashMap<>();
+            map.put(key, value);
+            return map;
+        }
+    }
+
+    private void handleTransactionUpdate(List<Transaction> transactions) {
+        producer.push(projectConfiguration.getTransactionPersistTopic(), new TransactionRequest(transactions));
+    }
+
+    public void handleCommentUpdate(List<Comment> comments, String txId, String uuid) {
+        comments.forEach(comment -> {
+            comment.setAuditDetails(projectServiceUtil.getAuditDetails(uuid, null, true));
+            if (comment.getCmtId() == null) {
+                comment.setCmtId(UUID.randomUUID());
+            }
+            comment.setTransactionId(txId);
+        });
+
+        producer.push(projectConfiguration.getCommentPersistTopic(), new CommentRequest(comments));
+    }
+
+    public List<Transaction> getTransactionsForProject(List<String> projectIds) {
+        if (projectIds == null || projectIds.isEmpty()) return Collections.emptyList();
+
+        String sql = "SELECT id, project_id, process_instance_id, created_by, last_modified_by, created_time, last_modified_time " +
+                "FROM project_transaction WHERE project_id = ANY(?)";
+
+        return jdbcTemplate.query(sql, ps -> {
+            java.sql.Array sqlArray = ps.getConnection().createArrayOf("text", projectIds.toArray(new String[0]));
+            ps.setArray(1, sqlArray);
+        }, (rs, rowNum) -> {
+            Transaction transaction = new Transaction();
+            transaction.setTransactionId(rs.getString("id"));
+            transaction.setProjectId(rs.getString("project_id"));
+            transaction.setProcessInstanceId(rs.getString("process_instance_id"));
+            AuditDetails auditDetails = new AuditDetails();
+            auditDetails.setCreatedBy(rs.getString("created_by"));
+            auditDetails.setLastModifiedBy(rs.getString("last_modified_by"));
+            auditDetails.setCreatedTime(rs.getLong("created_time"));
+            auditDetails.setLastModifiedTime(rs.getLong("last_modified_time"));
+            transaction.setAuditDetails(auditDetails);
+            return transaction;
+        });
+    }
+
+    public List<Comment> getCommentsForTransaction(List<String> transactionIds) {
+        if (transactionIds == null || transactionIds.isEmpty()) return Collections.emptyList();
+
+        String inSql = String.join(",", Collections.nCopies(transactionIds.size(), "?"));
+        String sql = "SELECT id, transaction_id, comment_message, asset_type, created_by, last_modified_by, created_time, last_modified_time " +
+                "FROM project_transaction_comment WHERE transaction_id IN (" + inSql + ")";
+
+        return jdbcTemplate.query(sql, transactionIds.toArray(), (rs, rowNum) -> {
+            Comment comment = new Comment();
+            comment.setCmtId(UUID.fromString(rs.getString("id")));
+            comment.setTransactionId(rs.getString("transaction_id"));
+            comment.setCmtMsg(rs.getString("comment_message"));
+            comment.setAssetType(rs.getString("asset_type"));
+            AuditDetails auditDetails = new AuditDetails();
+            auditDetails.setCreatedBy(rs.getString("created_by"));
+            auditDetails.setLastModifiedBy(rs.getString("last_modified_by"));
+            auditDetails.setCreatedTime(rs.getLong("created_time"));
+            auditDetails.setLastModifiedTime(rs.getLong("last_modified_time"));
+            comment.setAuditDetails(auditDetails);
+            return comment;
+        });
     }
 }

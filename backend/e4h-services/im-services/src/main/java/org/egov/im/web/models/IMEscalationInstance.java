@@ -3,6 +3,7 @@ package org.egov.im.web.models;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -35,6 +36,7 @@ import lombok.ToString;
 @Builder
 @EqualsAndHashCode(of = {"id"})
 @ToString
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class IMEscalationInstance   {
 
         @Size(max=64)

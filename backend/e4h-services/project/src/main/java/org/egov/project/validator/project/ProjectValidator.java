@@ -12,6 +12,7 @@ import org.egov.common.models.project.*;
 import org.egov.project.config.ProjectConfiguration;
 import org.egov.project.util.BoundaryV2Util;
 import org.egov.project.util.MDMSUtils;
+import org.egov.project.web.models.ProjectSortCriteria;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -99,7 +100,7 @@ public class ProjectValidator {
     }
 
     /* Validates Project search request body */
-    public void validateSearchV2ProjectRequest(ProjectSearchRequest projectSearchRequest, @Valid ProjectSearchURLParams urlParams) {
+    public void validateSearchV2ProjectRequest(ProjectSearchRequest projectSearchRequest, @Valid ProjectSearchURLParams urlParams, @Valid ProjectSortCriteria sortCriteria) {
         Map<String, String> errorMap = new HashMap<>();
         RequestInfo requestInfo = projectSearchRequest.getRequestInfo();
         ProjectSearch projectSearch = projectSearchRequest.getProject();
@@ -119,19 +120,6 @@ public class ProjectValidator {
         // Check if tenant ID is present in the request
         checkTenantId(urlParams);
 
-        // Validate if at least one project search field is present
-        if (CollectionUtils.isEmpty(projectSearch.getId())
-                && StringUtils.isBlank(projectSearch.getProjectTypeId())
-                && StringUtils.isBlank(projectSearch.getName())
-                && StringUtils.isBlank(projectSearch.getSubProjectTypeId())
-                && (projectSearch.getStartDate() == null || projectSearch.getStartDate() == 0)
-                && (projectSearch.getEndDate() == null || projectSearch.getEndDate() == 0)
-                && (projectSearch.getCreatedFrom() == null || projectSearch.getCreatedFrom() == 0)
-                && (projectSearch.getBoundaryCode() == null || StringUtils.isBlank(projectSearch.getBoundaryCode()))) {
-            log.error("Any one project search field is required for Project Search");
-            throw new CustomException("PROJECT_SEARCH_FIELDS", "Any one project search field is required");
-        }
-
         // Validate that start date is less than or equal to end date
         if ((projectSearch.getStartDate() != null && projectSearch.getEndDate() != null && projectSearch.getEndDate() != 0)
                 && (projectSearch.getStartDate().compareTo(projectSearch.getEndDate()) > 0)) {
@@ -144,6 +132,15 @@ public class ProjectValidator {
                 && (projectSearch.getEndDate() != null && projectSearch.getEndDate() != 0)) {
             log.error("Start date is required if end date is passed");
             throw new CustomException("INVALID_DATE", "Start date is required if end date is passed");
+        }
+
+        if (sortCriteria != null && sortCriteria.getSortDirection() != null) {
+            ProjectSortCriteria.SortDirection sortDirection = sortCriteria.getSortDirection();
+            if (sortDirection != ProjectSortCriteria.SortDirection.ASC &&
+                    sortDirection != ProjectSortCriteria.SortDirection.DESC) {
+                log.error("Invalid sort direction: {}", sortCriteria.getSortDirection());
+                throw new CustomException("INVALID_SORT_DIRECTION", "sortDirection must be either 'ASC' or 'DESC'");
+            }
         }
 
         // If there are any collected errors, throw a CustomException with the error map

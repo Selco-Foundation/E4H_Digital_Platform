@@ -25,7 +25,7 @@ import java.util.Map;
 @NoArgsConstructor
 @Builder
 public class AssetAMC {
-    @JsonProperty("tenant_id")
+    @JsonProperty("tenantId")
 
     private String tenantId = null;
 

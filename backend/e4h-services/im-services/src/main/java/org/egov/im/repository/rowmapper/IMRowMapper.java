@@ -56,6 +56,7 @@ public class IMRowMapper implements ResultSetExtractor<List<Incident>> {
                 Long lastmodifiedtime = rs.getLong("ser_lastmodifiedtime");
                 String accountId = rs.getString("ser_accountid");
                 String reporterTenant = rs.getString("ser_reportertenant");
+                String systemFunctional = rs.getString("ser_systemfunctional");
                 User u=new User();
                 u.setTenantId(reporterTenant);
                 u.setUuid(accountId);
@@ -80,6 +81,7 @@ public class IMRowMapper implements ResultSetExtractor<List<Incident>> {
                         .reporter(u)
                         .reporterType(reporterType)
                         .auditDetails(auditDetails)
+                        .systemFunctional(systemFunctional)
                         .build();
 
                 JsonNode additionalDetails = getAdditionalDetail("ser_additionaldetails",rs);

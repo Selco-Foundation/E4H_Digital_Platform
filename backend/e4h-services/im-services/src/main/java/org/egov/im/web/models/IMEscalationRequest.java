@@ -3,6 +3,7 @@ package org.egov.im.web.models;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 
@@ -31,9 +32,10 @@ import lombok.ToString;
 @NoArgsConstructor
 @Builder
 @ToString
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class IMEscalationRequest {
    
-        @JsonProperty("IMEscalationInstances")
+        @JsonProperty("ProcessInstances")
         @Valid
         @NotNull
         private List<IMEscalationInstance> imEscalationInstance;

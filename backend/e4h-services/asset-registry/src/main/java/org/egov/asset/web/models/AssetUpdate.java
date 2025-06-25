@@ -21,7 +21,7 @@ import java.time.LocalDate;
 @Builder
 public class AssetUpdate {
     
-    @JsonProperty("tenant_id")
+    @JsonProperty("tenantId")
     @NotNull
     private String tenantId = null;
 

@@ -68,4 +68,10 @@ public class InboxConstants {
     public static final String SORT_KEY = "sort";
 
     public static final String TENANTID_KEY = "tenantId";
+
+    public static final String SLA_REMAINING = "slaRemaining";
+
+    public static final String STATE_SLA = "stateSLA";
+
+    public static final String TOTAL_SLA_REMAINING = "totalSlaRemaining";
 }
