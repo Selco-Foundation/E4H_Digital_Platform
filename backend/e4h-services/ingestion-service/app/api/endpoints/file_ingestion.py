@@ -619,38 +619,40 @@ def get_hrms_employee_info(codes: List[str], db_conn) -> Dict[str, str]:
         logger.error(f"Error fetching HRMS employee info: {e}")
         return {}
 
-def get_tenant_mapping(request_info: RequestInfo, tenant_id: str) -> Dict:
+def get_tenant_mapping(request_info: RequestInfo, tenant_ids: List[str]) -> Dict:
     """
     Fetch tenant mapping from MDMS for PHC subtypes
     """
-    print(mdms_url)
-    try:
-        search_url = f"{mdms_url}/egov-mdms-service/v1/_search"
-        search_payload = {
-            "RequestInfo": request_info.model_dump(by_alias=True, exclude_none=True),
-            "MdmsCriteria": {
-                "tenantId": tenant_id,
-                "moduleDetails": [
-                    {
-                        "moduleName": "tenant",
-                        "masterDetails": [
-                            {
-                                "name": "tenants"
-                            }
-                        ]
-                    }
-                ]
+    all_tenant_data = {}
+
+    for tenant_id in tenant_ids:
+        try:
+            search_url = f"{mdms_url}/egov-mdms-service/v1/_search"
+            search_payload = {
+                "RequestInfo": request_info.model_dump(by_alias=True, exclude_none=True),
+                "MdmsCriteria": {
+                    "tenantId": tenant_id,
+                    "moduleDetails": [
+                        {
+                            "moduleName": "tenant",
+                            "masterDetails": [
+                                {
+                                    "name": "tenants"
+                                }
+                            ]
+                        }
+                    ]
+                }
             }
-        }
-        response = requests.post(search_url, json=search_payload)
-        if response.status_code == 200:
-            data = response.json()
-            tenants = data.get("MdmsRes", {}).get("tenant", {}).get("tenants", [])
-            return {tenant.get("code"): tenant for tenant in tenants if tenant.get("code")}
-        return {}
-    except Exception as e:
-        logger.error(f"Error fetching tenant mapping from MDMS: {e}")
-        return {}
+            response = requests.post(search_url, json=search_payload)
+            if response.status_code == 200:
+                data = response.json()
+                tenants = data.get("MdmsRes", {}).get("tenant", {}).get("tenants", [])
+                all_tenant_data.update({t["code"]: t for t in tenants if t.get("code") and t["code"] not in all_tenant_data})
+        except Exception as e:
+            logger.error(f"Error fetching tenant mapping from MDMS: {e}")
+
+    return all_tenant_data
 
 @router.post('/legacy_ticket_ingestion',
              summary='Upload and ingest legacy tickets Excel file',
@@ -660,6 +662,79 @@ async def upload_legacy_ticket_excel_sheet(
         legacy_ticket_sheet_name: str = Form(default="Legacy Tickets", description="Name of the sheet containing Legacy Tickets"),
         request_info: str = Form(default="")
 ):
+    tenant_creator_mapping = {
+        "Karnataka": {
+            "mobileNumber": "1111111114",
+            "uuid": "364d43fe-b513-40d9-b0e6-4be305095530",
+            "id": 5546,
+            "name": "Vendor Beehyv",
+            "tenantId" : "pg"
+        },
+        "Manipur": {
+            "mobileNumber": "1111111112",
+            "uuid": "df03db3b-0803-4d1b-93c4-b07921a647f0",
+            "id": 5548,
+            "name": "Ingestion System",
+            "tenantId": "mn"
+
+        },
+        "Assam": {
+            "mobileNumber": "1111111113",
+            "uuid": "c41be573-d6e6-4270-90ea-ee5bd48d94fc",
+            "id": 5549,
+            "name": "Ingestion System",
+            "tenantId": "as"
+
+        },
+        "Gujarat": {
+            "mobileNumber": "1111111111",
+            "uuid": "130d0938-c7a2-41ff-ba5c-8d8bfd30486a",
+            "id": 5550,
+            "name": "Ingestion System",
+            "tenantId": "gj"
+
+        },
+        "Meghalaya": {
+            "mobileNumber": "1111111111",
+            "uuid": "045be118-e3e4-47c1-9633-772ade0863e6",
+            "id": 5551,
+            "name": "Ingestion System",
+            "tenantId": "ml"
+
+        },
+        "Mizoram": {
+            "mobileNumber": "1111111111",
+            "uuid": "59caef17-0c44-4f49-abbc-10009fed63cb",
+            "id": 5552,
+            "name": "Ingestion System",
+            "tenantId": "mz"
+
+        },
+        "Nagaland": {
+            "mobileNumber": "1111111115",
+            "uuid": "a73cab99-730a-4d5a-8e60-0dd0e5f7b8e5",
+            "id": 5553,
+            "name": "Ingestion System",
+            "tenantId": "nl"
+
+        },
+        "Odisha": {
+            "mobileNumber": "1111111115",
+            "uuid": "3224d907-1710-47e7-a84e-9869e50fded2",
+            "id": 5554,
+            "name": "Ingestion System",
+            "tenantId": "or"
+
+        },
+        "Sikkim": {
+            "mobileNumber": "1111111111",
+            "uuid": "dd0014ca-822b-41eb-a2c0-7db0710badde",
+            "id": 5547,
+            "name": "Ingestion System",
+            "tenantId": "sk"
+
+        }
+    }
     input_temp_file = None
     output_temp_file = None
     request_info_obj = request_info_from_json(request_info)
@@ -668,8 +743,6 @@ async def upload_legacy_ticket_excel_sheet(
     # Generate a unique migrationId for this batch
     migration_id = str(uuid.uuid4())
 
-    # Fetch tenant mapping once for the entire batch
-    tenant_mapping = get_tenant_mapping(request_info_obj, "pg")
 
     try:
         input_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
@@ -686,7 +759,19 @@ async def upload_legacy_ticket_excel_sheet(
 
         df = pd.read_excel(excel_file_path, sheet_name=legacy_ticket_sheet_name)
         df.columns = df.columns.str.strip()
-        df = df.reindex(columns=df.columns.tolist() + ['status', 'error', 'ticket_id', 'employee_info'], fill_value='')
+        df = df.reindex(columns=df.columns.tolist() + ['ticket_id', 'employee_info'], fill_value='')
+
+
+        unique_states = df["State"].dropna().str.strip().unique()
+
+        tenant_ids = []
+
+        for state in unique_states:
+            tenant_id = tenant_creator_mapping.get(state).get("tenantId")
+            tenant_ids.append(tenant_id)
+
+        # Fetch tenant mapping once for the entire batch
+        tenant_mapping = get_tenant_mapping(request_info_obj, tenant_ids)
 
 
         codes = []
@@ -703,7 +788,7 @@ async def upload_legacy_ticket_excel_sheet(
 
         for idx, row in df.iterrows():
             try:
-                if df.at[idx, 'status'] in ['duplicate', 'error']:
+                if df.at[idx, 'status'] in ['duplicate', 'error'] and df.at[idx, 'Allow Duplicate'] in ['No']:
                     continue
 
                 employee_code = str(row.get("NIN_HFR ID", "")).strip()
@@ -718,25 +803,38 @@ async def upload_legacy_ticket_excel_sheet(
 
                 employee_tenant_mapping = tenant_mapping.get(tenant_id,{})
                 if not employee_tenant_mapping:
-                    dynamic_mapping = get_tenant_mapping(request_info_obj, tenant_id)
-                    if dynamic_mapping:
-                        tenant_mapping.update(dynamic_mapping)
-                        employee_tenant_mapping = tenant_mapping.get(tenant_id, {})
-                    else :
-                        df.at[idx, 'status'] = 'failed'
-                        df.at[idx, 'error'] = f'Tenant mapping not found for tenant ID: {tenant_id}'
-                        continue
+                    df.at[idx, 'status'] = 'failed'
+                    df.at[idx, 'error'] = f'Tenant mapping not found for tenant ID: {tenant_id}'
+                    continue
 
                 # Extract tenant-based fields
                 phc_subtype = employee_tenant_mapping.get("centreType", "")
                 block = employee_tenant_mapping.get("city", {}).get("districtName", "")
                 tenant_id = employee_tenant_mapping.get("code", "")
                 district = employee_tenant_mapping.get("city", {}).get("districtCode", "")
+                ticket_type = str(row.get("Ticket Type")).strip()
+                ticket_subtype = str(row.get("Ticket Sub Type")).strip()
+                system_functional = df["Is the solar system working?"].str.strip().map({
+                    "Yes": "FUNCTIONAL",
+                    "No": "NONFUNCTIONAL"
+                })
+
+
+                if not ticket_type or not ticket_subtype:
+                    df.at[idx, 'status'] = 'failed'
+                    df.at[idx, 'error'] = f"Missing Ticket Type or Ticket Sub Type"
+                    continue
+
+                state = str(row.get("State", "")).strip()
+                creator_info = tenant_creator_mapping.get(state, {})
+                creator_tenant_id = creator_info.get("tenantId")
+                creator_uuid = creator_info.get("uuid")
 
                 incident_payload = {
-                    "incidentType": str(row.get("Ticket Type", "")).strip(),
-                    "incidentSubtype": str(row.get("Ticket Sub Type", "")).strip(),
+                    "incidentType": ticket_type,
+                    "incidentSubtype": ticket_subtype,
                     "comments": str(row.get("Comments", "")).strip(),
+                    "systemFunctional": system_functional,
                     "tenantId": tenant_id,
                     "migrationId": migration_id,
                     "district": district,
@@ -752,10 +850,12 @@ async def upload_legacy_ticket_excel_sheet(
                     },
                     "source": "web",
                     "reporter": {
-                        "uuid": "cd831d19-3799-4e73-a52a-237930f1e450",
-                        "tenantId": "pg"
+                        "uuid": creator_uuid,
+                        "tenantId": creator_tenant_id
                     }
                 }
+
+
 
                 # Optional: Set legacyId if present
                 unique_id = row.get("Unique_ID", None)
@@ -773,15 +873,19 @@ async def upload_legacy_ticket_excel_sheet(
                         if pd.notnull(dt):
                             incident_payload["filedDate"] = int(dt.timestamp() * 1000)
 
+
+                creator_id = creator_info.get("id")
+                creator_name = creator_info.get("name")
+                creator_mobile_number = creator_info.get("mobileNumber")
                 request_info = {
                     "apiId": "Rainmaker",
                     "authToken": "79967889-fbf5-42c6-9bd3-4adc0dbe7692",
                     "userInfo": {
-                        "id": 95,
-                        "uuid": "cd831d19-3799-4e73-a52a-237930f1e450",
-                        "userName": employee_code,
-                        "name": "Akhila",
-                        "mobileNumber": "9901224633",
+                        "id": creator_id,
+                        "uuid": creator_uuid,
+                        "userName": "selco_ingestion_system",
+                        "name": creator_name,
+                        "mobileNumber": creator_mobile_number,
                         "emailId": None,
                         "locale": None,
                         "type": "EMPLOYEE",
@@ -789,26 +893,16 @@ async def upload_legacy_ticket_excel_sheet(
                             {
                                 "name": "Complainant",
                                 "code": "COMPLAINANT",
-                                "tenantId": "pg"
+                                "tenantId": creator_tenant_id
                             },
                             {
                                 "name": "Employee",
                                 "code": "EMPLOYEE",
-                                "tenantId": "pg"
-                            },
-                            {
-                                "name": "Complaint Assessor",
-                                "code": "COMPLAINT_ASSESSOR",
-                                "tenantId": "pg"
-                            },
-                            {
-                                "name": "Super User",
-                                "code": "SUPERUSER",
-                                "tenantId": "pg"
+                                "tenantId": creator_tenant_id
                             }
                         ],
                         "active": True,
-                        "tenantId": "pg",
+                        "tenantId": creator_tenant_id,
                         "permanentCity": None
                     },
                     "msgId": "1744021633700|en_IN",
@@ -836,6 +930,7 @@ async def upload_legacy_ticket_excel_sheet(
                     df.at[idx, 'status'] = 'success'
                     df.at[idx, 'error'] = ''
                     df.at[idx, 'ticket_id'] = incident_id or ''
+                    logger.info(f"Ticket created: {incident_id} for {employee_code}")
                 else:
                     df.at[idx, 'status'] = 'failed'
                     try:
