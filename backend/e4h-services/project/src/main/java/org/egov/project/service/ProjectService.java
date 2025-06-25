@@ -509,59 +509,65 @@ public class ProjectService {
             // once facility is fetched we need to fetch assets for that facility
             ProjectFacility facility = facilitySearchResponse.getResponse().get(0);
             if (facility != null) {
-
-                // Fetch assets for the facility
-                AssetSearchCriteria assetSearchCriteria = AssetSearchCriteria.builder()
-                        .facilityID(facility.getFacilityId())
-                        .tenantId(existingProject.getTenantId())
-                        .build();
-
-                AssetSearchRequest assetSearchRequest = AssetSearchRequest.builder().
-                        requestInfo(request.getRequestInfo()).criteria(assetSearchCriteria).build();
-
-                StringBuilder assetSearchUri = new StringBuilder(projectConfiguration.getAssetHost()).append(projectConfiguration.getAssetSearchUrl());
-
-                try {
-                    List<Asset> assets = serviceRequestRepository.fetchResult(assetSearchUri, assetSearchRequest, new TypeReference<List<Asset>>() {});
-                    // then update all those assets with isOperational = true
-                    List<Asset> assetsToUpdate = new ArrayList<>();
-                    if (assets != null ) {
-                        for (Asset asset : assets) {
-                            asset.setIsOperational(true);
-                            assetsToUpdate.add(asset);
-                        }
-                    }
-                    if (!assetsToUpdate.isEmpty()) {
-                        for (Asset asset : assetsToUpdate) {
-                            try {
-                                String assetUpdateEndpoint = projectConfiguration.getAssetHost() +
-                                        projectConfiguration.getAssetUpdateUrl().replace("{assetID}", asset.getAssetId());
-                                StringBuilder assetUpdateUri = new StringBuilder(assetUpdateEndpoint);
-
-                                AssetCreate assetCreate = AssetCreate.builder().asset(asset).build();
-                                AssetCreateRequest createRequest = AssetCreateRequest.builder().
-                                        requestInfo(request.getRequestInfo()).assetDetail(assetCreate).build();
-
-                                serviceRequestRepository.fetchResult(assetUpdateUri, createRequest);
-                            } catch (Exception e) {
-                                log.error("Failed to update asset {}: {}", asset.getAssetId(), e.getMessage());
-                            }
-                        }
-                    }
-                } catch (ServiceCallException e) {
-                    log.error("Service call failed while processing assets for project {}: {}", existingProject.getId(), e.getMessage());
-                    throw new CustomException("ASSET_UPDATE_FAILED", "Failed to update asset operational status");
-                } catch (Exception e) {
-                    log.error("Unexpected error while processing assets for project {}: {}", existingProject.getId(), e.getMessage(), e);
-                    throw new CustomException("ASSET_PROCESSING_ERROR", "An error occurred while processing assets");
-                }
+                updateAssetsForFacility(existingProject, request.getRequestInfo(), facility.getFacilityId());
             }
         }
 
         return new ProjectStatusWrapper(updatedProject, updatedWorkflow.getState().getState(), null);
     }
 
+    private void updateAssetsForFacility(Project existingProject, RequestInfo requestInfo, String facilityId) throws CustomException {
+        AssetSearchCriteria assetSearchCriteria = AssetSearchCriteria.builder()
+                .facilityID(facilityId)
+                .tenantId(existingProject.getTenantId())
+                .build();
 
+        AssetSearchRequest assetSearchRequest = AssetSearchRequest.builder()
+                .requestInfo(requestInfo)
+                .criteria(assetSearchCriteria)
+                .build();
+
+        StringBuilder assetSearchUri = new StringBuilder(projectConfiguration.getAssetHost())
+                .append(projectConfiguration.getAssetSearchUrl());
+
+        try {
+            List<Asset> assets = serviceRequestRepository.fetchResult(assetSearchUri, assetSearchRequest, new TypeReference<List<Asset>>() {});
+            if (assets != null && !assets.isEmpty()) {
+                for (Asset asset : assets) {
+                    updateAssetOperationalStatus(asset, requestInfo);
+                }
+            }
+        } catch (ServiceCallException e) {
+            log.error("Service call failed while processing assets for project {}: {}", existingProject.getId(), e.getMessage());
+            throw new CustomException("ASSET_UPDATE_FAILED", "Failed to update asset operational status");
+        } catch (Exception e) {
+            log.error("Unexpected error while processing assets for project {}: {}", existingProject.getId(), e.getMessage(), e);
+            throw new CustomException("ASSET_PROCESSING_ERROR", "An error occurred while processing assets");
+        }
+    }
+
+    private void updateAssetOperationalStatus(Asset asset, RequestInfo requestInfo) {
+        try {
+            asset.setIsOperational(true);
+
+            String assetUpdateEndpoint = projectConfiguration.getAssetHost() +
+                    projectConfiguration.getAssetUpdateUrl().replace("{assetID}", asset.getAssetId());
+            StringBuilder assetUpdateUri = new StringBuilder(assetUpdateEndpoint);
+
+            AssetCreate assetCreate = AssetCreate.builder()
+                    .asset(asset)
+                    .build();
+
+            AssetCreateRequest createRequest = AssetCreateRequest.builder()
+                    .requestInfo(requestInfo)
+                    .assetDetail(assetCreate)
+                    .build();
+
+            serviceRequestRepository.fetchResult(assetUpdateUri, createRequest);
+        } catch (Exception e) {
+            log.error("Failed to update asset {}: {}", asset.getAssetId(), e.getMessage());
+        }
+    }
 
     private Object mergeIntoAdditionalDetails(Object additionalDetails, String key, String value) {
         if (additionalDetails instanceof ObjectNode) {

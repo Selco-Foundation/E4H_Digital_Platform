@@ -170,6 +170,12 @@ public class AssetService {
             throw new CustomException("ASSET_ID_MISMATCH", "Provided assetId does not match the asset's ID");
         }
 
+        // Check whether asset exists in the database
+        List<Asset> existingAssets = searchAssets(Asset.builder().assetId(updated.getAssetId()).tenantId(updated.getTenantId()).build(), 10, 0);
+        if (existingAssets == null || existingAssets.isEmpty()) {
+            throw new CustomException("ASSET_NOT_FOUND", "Asset with ID " + assetId + " does not exist");
+        }
+
         // Update audit details
         if (updated.getAuditDetails() != null) {
             updated.getAuditDetails().setLastModifiedBy(request.getRequestInfo().getUserInfo().getUserName());
