@@ -108,7 +108,7 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
   const [selectedRejectReason, setSelectedRejectReason] = useState(null);
   const [selectedSendBackReason, setSelectedSendBackReason] = useState(null);
   const state = Digit.ULBService.getStateId();
-  const reopenReasonMenu = [t(`CS_REOPEN_OPTION_ONE`), t(`CS_REOPEN_OPTION_TWO`), t(`CS_REOPEN_OPTION_THREE`), t(`CS_REOPEN_OPTION_FOUR`)];
+  const reopenReasonMenu = [t(`CS_REOPEN_OPTION_ONE`), t(`CS_REOPEN_OPTION_TWO`), t(`CS_REOPEN_OPTION_THREE`), t(`CS_REOPEN_OPTION_FOUR`), t(`CS_REOPEN_OPTION_FIVE`)];
   const { isMdmsLoading, data: rejectSendBackReasons } = Digit.Hooks.pgr.useMDMS(state, "Incident", ["RejectReasons", "SendBackReasons"]);
   const [dataState, setDataState] = useState({ newArr: [], mappedArray: [] });
   // const uploadFile = useCallback( () => {
@@ -916,8 +916,7 @@ export const ComplaintDetails = (props) => {
       {toast && assignResponse && assignResponse?.IncidentWrappers && <Toast label={t(`CS_ACTION_${selectedAction}_TEXT`)} onClose={closeToast} />}
       {!isLoading &&
         complaintDetails?.incident?.applicationStatus !== "CLOSEDAFTERRESOLUTION" &&
-        workflowDetails?.data?.nextActions?.length > 0 &&
-        currentOwner === currentLoginUser && (
+        workflowDetails?.data?.nextActions?.length > 0 && (
           <ActionBar style={{ marginLeft: isIpadView ? "250px" : "none" }}>
             {displayMenu && workflowDetails?.data?.nextActions ? (
               <Menu options={workflowDetails?.data?.nextActions.map((action) => action.action)} t={t} onSelect={onActionSelect} />
