@@ -25,7 +25,7 @@ export const CreateComplaint = ({ parentUrl }) => {
   const [uploadedImages, setUploadedImagesIds] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
   const specificFileConstraint = [
-    { type: "video", maxSize: 100, maxFiles: 2 },
+    { type: "video", maxSize: 50, maxFiles: 2 },
     { type: "image", maxSize: 10, maxFiles: 5 },
   ];
   const [district, setDistrict] = useState(null);
