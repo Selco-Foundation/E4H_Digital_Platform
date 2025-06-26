@@ -825,6 +825,9 @@ async def upload_legacy_ticket_excel_sheet(
                     "Yes": "FUNCTIONAL",
                     "No": "NON_FUNCTIONAL"
                 }.get(str(row.get("Is the solar system working?", "")).strip(), "")
+                comments = str(row.get("Comments", "")).strip()
+                if len(comments) > 256:
+                    comments = comments[:256]
 
                 if not ticket_type or not ticket_subtype:
                     df.at[idx, 'status'] = 'failed'
@@ -848,7 +851,7 @@ async def upload_legacy_ticket_excel_sheet(
                 incident_payload = {
                     "incidentType": mapped_type,
                     "incidentSubtype": mapped_subtype,
-                    "comments": str(row.get("Comments", "")).strip(),
+                    "comments": comments,
                     "systemFunctional": system_functional,
                     "tenantId": tenant_id,
                     "migrationId": migration_id,
