@@ -29,7 +29,7 @@ export const CreateComplaint = ({ parentUrl }) => {
   const [imageState, setImageState] = useState({ newArr: [], mappedArray: [] });
   const [videoState, setVideoState] = useState({ newArr: [], mappedArray: [] });
   const specificFileConstraint = [
-    { type: "video", maxSize: 100, maxFiles: 2 },
+    { type: "video", maxSize: 50, maxFiles: 2 },
     { type: "image", maxSize: 10, maxFiles: 5 },
   ];
   const [district, setDistrict] = useState(null);
