@@ -1,3 +1,0 @@
-ALTER TABLE eg_incident_v2 ADD COLUMN filed_date BIGINT;
-ALTER TABLE eg_incident_v2 ADD COLUMN legacy_id CHARACTER VARYING(256);
-ALTER TABLE eg_incident_v2 ADD COLUMN migration_id CHARACTER VARYING(256); 
