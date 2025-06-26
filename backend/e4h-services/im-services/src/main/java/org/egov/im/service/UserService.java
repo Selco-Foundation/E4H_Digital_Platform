@@ -1,9 +1,11 @@
 package org.egov.im.service;
 
-
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.egov.common.contract.request.RequestInfo;
-
+import org.egov.common.contract.request.User;
 import org.egov.im.config.IMConfiguration;
+import org.egov.im.repository.IdGenRepository;
 import org.egov.im.util.UserUtils;
 import org.egov.im.web.models.*;
 import org.egov.im.web.models.user.CreateUserRequest;
@@ -11,20 +13,17 @@ import org.egov.im.web.models.user.UserDetailResponse;
 import org.egov.im.web.models.user.UserSearchRequest;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
-import org.springframework.util.StringUtils;
-
-import lombok.extern.slf4j.Slf4j;
 
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import static org.egov.im.util.IMConstants.USERTYPE_EMPLOYEE;
 
-@org.springframework.stereotype.Service
+@Service
 @Slf4j
 public class UserService {
-
 
     private UserUtils userUtils;
 
@@ -61,12 +60,37 @@ public class UserService {
             uuids.add(incidentWrapper.getIncident().getAccountId());
         });
 
-        Map<String, User> idToUserMap = searchBulkUser(new LinkedList<>(uuids));
+        try {
+            Map<String, User> idToUserMap = searchBulkUser(new LinkedList<>(uuids));
 
-        incidentWrappers.forEach(incidentWrapper -> {
-        	incidentWrapper.getIncident().setReporter(idToUserMap.get(incidentWrapper.getIncident().getAccountId()));
-        });
-
+            incidentWrappers.forEach(incidentWrapper -> {
+                User user = idToUserMap.get(incidentWrapper.getIncident().getAccountId());
+                if (user != null) {
+                    incidentWrapper.getIncident().setReporter(user);
+                } else {
+                    // Create minimal user object if user service fails
+                    log.warn("User not found for accountId: {}, creating minimal user object", 
+                            incidentWrapper.getIncident().getAccountId());
+                    User minimalUser = User.builder()
+                            .uuid(incidentWrapper.getIncident().getAccountId())
+                            .name("Unknown User")
+                            .mobileNumber("N/A")
+                            .build();
+                    incidentWrapper.getIncident().setReporter(minimalUser);
+                }
+            });
+        } catch (Exception e) {
+            log.error("Failed to enrich users, continuing with minimal user objects: {}", e.getMessage());
+            // Create minimal user objects for all incidents when user service fails
+            incidentWrappers.forEach(incidentWrapper -> {
+                User minimalUser = User.builder()
+                        .uuid(incidentWrapper.getIncident().getAccountId())
+                        .name("Unknown User")
+                        .mobileNumber("N/A")
+                        .build();
+                incidentWrapper.getIncident().setReporter(minimalUser);
+            });
+        }
     }
 
 
@@ -228,18 +252,25 @@ public class UserService {
 
         String mobileNumber = criteria.getMobileNumber();
 
-        UserSearchRequest userSearchRequest =new UserSearchRequest();
-        userSearchRequest.setActive(true);
-        userSearchRequest.setUserType(USERTYPE_EMPLOYEE);
-        userSearchRequest.setTenantId(tenantId);
-        userSearchRequest.setMobileNumber(mobileNumber);
+        try {
+            UserSearchRequest userSearchRequest =new UserSearchRequest();
+            userSearchRequest.setActive(true);
+            userSearchRequest.setUserType(USERTYPE_EMPLOYEE);
+            userSearchRequest.setTenantId(tenantId);
+            userSearchRequest.setMobileNumber(mobileNumber);
 
-        StringBuilder uri = new StringBuilder(config.getUserHost()).append(config.getUserSearchEndpoint());
-        UserDetailResponse userDetailResponse = userUtils.userCall(userSearchRequest,uri);
-        List<User> users = userDetailResponse.getUser();
+            StringBuilder uri = new StringBuilder(config.getUserHost()).append(config.getUserSearchEndpoint());
+            UserDetailResponse userDetailResponse = userUtils.userCall(userSearchRequest,uri);
+            List<User> users = userDetailResponse.getUser();
 
-        Set<String> userIds = users.stream().map(User::getUuid).collect(Collectors.toSet());
-        criteria.setUserIds(userIds);
+            Set<String> userIds = users.stream().map(User::getUuid).collect(Collectors.toSet());
+            criteria.setUserIds(userIds);
+        } catch (Exception e) {
+            log.warn("Failed to enrich user IDs for mobile number {}, continuing without user IDs: {}", 
+                    mobileNumber, e.getMessage());
+            // Continue without user IDs - set empty set
+            criteria.setUserIds(new HashSet<>());
+        }
     }
 
 

@@ -3,6 +3,7 @@ package org.egov.im.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jayway.jsonpath.JsonPath;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.common.contract.request.User;
@@ -180,33 +181,45 @@ public class WorkflowService {
                 serviceRequestIds.add(pgrEntity.getIncident().getIncidentId());
             });
 
-            RequestInfoWrapper requestInfoWrapper = RequestInfoWrapper.builder().requestInfo(requestInfo).build();
-
-            StringBuilder searchUrl = getprocessInstanceSearchURL(tenantId, StringUtils.join(serviceRequestIds, ','));
-            Object result = repository.fetchResult(searchUrl, requestInfoWrapper);
-
-
-            ProcessInstanceResponse processInstanceResponse = null;
             try {
-                processInstanceResponse = mapper.convertValue(result, ProcessInstanceResponse.class);
-            } catch (IllegalArgumentException e) {
-                throw new CustomException("PARSING ERROR", "Failed to parse response of workflow processInstance search");
+                RequestInfoWrapper requestInfoWrapper = RequestInfoWrapper.builder().requestInfo(requestInfo).build();
+
+                StringBuilder searchUrl = getprocessInstanceSearchURL(tenantId, StringUtils.join(serviceRequestIds, ','));
+                Object result = repository.fetchResult(searchUrl, requestInfoWrapper);
+
+                ProcessInstanceResponse processInstanceResponse = null;
+                try {
+                    processInstanceResponse = mapper.convertValue(result, ProcessInstanceResponse.class);
+                } catch (IllegalArgumentException e) {
+                    throw new CustomException("PARSING ERROR", "Failed to parse response of workflow processInstance search");
+                }
+
+                if (CollectionUtils.isEmpty(processInstanceResponse.getProcessInstances()) || processInstanceResponse.getProcessInstances().size() != serviceRequestIds.size()) {
+                    log.warn("Workflow data not found for some incidents, continuing without workflow enrichment");
+                    // Continue without workflow enrichment
+                    tenantSpecificWrappers.forEach(pgrEntity -> {
+                        pgrEntity.setWorkflow(null);
+                    });
+                } else {
+                    Map<String, Workflow> businessIdToWorkflow = getWorkflow(processInstanceResponse.getProcessInstances());
+
+                    tenantSpecificWrappers.forEach(pgrEntity -> {
+                        pgrEntity.setWorkflow(businessIdToWorkflow.get(pgrEntity.getIncident().getIncidentId()));
+                    });
+                }
+            } catch (Exception e) {
+                log.warn("Failed to enrich workflow for tenant {}, continuing without workflow data: {}", 
+                        tenantId, e.getMessage());
+                // Continue without workflow enrichment
+                tenantSpecificWrappers.forEach(pgrEntity -> {
+                    pgrEntity.setWorkflow(null);
+                });
             }
-
-            if (CollectionUtils.isEmpty(processInstanceResponse.getProcessInstances()) || processInstanceResponse.getProcessInstances().size() != serviceRequestIds.size())
-                throw new CustomException("WORKFLOW_NOT_FOUND", "The workflow object is not found");
-
-            Map<String, Workflow> businessIdToWorkflow = getWorkflow(processInstanceResponse.getProcessInstances());
-
-            tenantSpecificWrappers.forEach(pgrEntity -> {
-                pgrEntity.setWorkflow(businessIdToWorkflow.get(pgrEntity.getIncident().getIncidentId()));
-            });
 
             enrichedServiceWrappers.addAll(tenantSpecificWrappers);
         }
 
         return enrichedServiceWrappers;
-
     }
 
     private Map<String, List<IncidentWrapper>> getTenantIdToServiceWrapperMap(List<IncidentWrapper> incidentWrappers) {

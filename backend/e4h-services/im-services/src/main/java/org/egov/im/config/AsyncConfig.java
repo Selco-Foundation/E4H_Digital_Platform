@@ -17,21 +17,19 @@ public class AsyncConfig implements AsyncConfigurer {
     public Executor getAsyncExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
 
-        int availableProcessors = 2;
+        int availableProcessors = Runtime.getRuntime().availableProcessors();
         log.info("Available processors: {}", availableProcessors);
 
-        executor.setCorePoolSize(availableProcessors);
-
-        executor.setMaxPoolSize(availableProcessors * 2);
-
-        executor.setQueueCapacity(availableProcessors * 5);
+        executor.setCorePoolSize(Math.max(4, availableProcessors));
+        executor.setMaxPoolSize(Math.max(8, availableProcessors * 2));
+        executor.setQueueCapacity(Math.max(20, availableProcessors * 10));
 
         executor.setThreadNamePrefix("AsyncIOExecutor-");
 
         executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
 
         executor.setTaskDecorator(runnable -> () -> {
-            log.info("Task started on thread: {}", Thread.currentThread().getName());
+            log.debug("Task started on thread: {}", Thread.currentThread().getName());
 
             try {
                 runnable.run();
@@ -39,7 +37,7 @@ public class AsyncConfig implements AsyncConfigurer {
                 log.error("Error executing task on thread: {}", Thread.currentThread().getName(), ex);
                 throw ex;
             } finally {
-                log.info("Task completed on thread: {}", Thread.currentThread().getName());
+                log.debug("Task completed on thread: {}", Thread.currentThread().getName());
             }
         });
 

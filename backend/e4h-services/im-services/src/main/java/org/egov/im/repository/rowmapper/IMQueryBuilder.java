@@ -102,7 +102,7 @@ public class IMQueryBuilder {
         Set<String> phcType = criteria.getPhcType();
          if (!CollectionUtils.isEmpty(phcType)){
             addClauseIfRequired(preparedStmtList, builder);
-            builder.append(" ser.tenantid IN (").append(createQuery(phcType)).append(")");
+            builder.append(" ser.phctype IN (").append(createQuery(phcType)).append(")");
             addToPreparedStatement(preparedStmtList, phcType);
         }
 

@@ -14,6 +14,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -33,14 +34,47 @@ public class ServiceRequestRepository {
     public Object fetchResult(StringBuilder uri, Object request) {
         mapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
         Object response = null;
-        try {
-            response = restTemplate.postForObject(uri.toString(), request, Map.class);
-        } catch (HttpClientErrorException e) {
-            log.error("External Service threw an Exception: ", e);
-            throw new ServiceCallException(e.getResponseBodyAsString());
-        } catch (Exception e) {
-            log.error("Exception while fetching from searcher: ", e);
+        
+        // Retry configuration
+        int maxRetries = 3;
+        int retryCount = 0;
+        
+        while (retryCount < maxRetries) {
+            try {
+                log.debug("Attempting to fetch result from: {} (attempt {})", uri.toString(), retryCount + 1);
+                response = restTemplate.postForObject(uri.toString(), request, Map.class);
+                break; // Success, exit retry loop
+            } catch (HttpClientErrorException e) {
+                log.error("HTTP Client Error while fetching from searcher: {} - {}", uri.toString(), e.getMessage());
+                throw new ServiceCallException(e.getResponseBodyAsString());
+            } catch (ResourceAccessException e) {
+                retryCount++;
+                log.warn("Connection error while fetching from searcher: {} (attempt {}/{}) - {}", 
+                        uri.toString(), retryCount, maxRetries, e.getMessage());
+                
+                if (retryCount >= maxRetries) {
+                    log.error("Max retries reached for searcher call: {}", uri.toString());
+                    // Return null or empty response instead of throwing exception for non-critical calls
+                    if (uri.toString().contains("/user/_details") || uri.toString().contains("/user/_search")) {
+                        log.warn("User service unavailable, returning empty response for: {}", uri.toString());
+                        return Map.of(); // Return empty map for user service calls
+                    }
+                    throw new ServiceCallException("Service temporarily unavailable after " + maxRetries + " retries: " + e.getMessage());
+                }
+                
+                // Wait before retry (exponential backoff)
+                try {
+                    Thread.sleep(100 * retryCount); // 100ms, 200ms, 300ms
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw new ServiceCallException("Request interrupted during retry");
+                }
+            } catch (Exception e) {
+                log.error("Unexpected exception while fetching from searcher: {} - {}", uri.toString(), e.getMessage(), e);
+                throw new ServiceCallException("Unexpected error: " + e.getMessage());
+            }
         }
+        
         return response;
     }
 
