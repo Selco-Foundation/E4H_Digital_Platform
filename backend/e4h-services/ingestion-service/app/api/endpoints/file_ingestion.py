@@ -654,14 +654,38 @@ def get_tenant_mapping(request_info: RequestInfo, tenant_ids: List[str]) -> Dict
 
     return all_tenant_data
 
+def create_mapping_dicts(mapping_file: UploadFile, sheet_name: str):
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as temp_file:
+        temp_file.write(mapping_file.file.read())
+        temp_file_path = temp_file.name
+
+    mapping_df = pd.read_excel(temp_file_path, sheet_name=sheet_name)
+    mapping_df.columns = mapping_df.columns.str.strip()
+    mapping_df = mapping_df.astype(str).apply(lambda x: x.str.strip())
+
+    os.unlink(temp_file_path)
+
+    subtype_mapping = {
+        (row['Existing Issue Type'], row['Existing Ticket Sub Type ( Saure eMitra)']):
+        (row['New Issue Type'], row['New Ticket Sub type'])
+        for _, row in mapping_df.iterrows()
+    }
+
+    return subtype_mapping
+
+
 @router.post('/legacy_ticket_ingestion',
              summary='Upload and ingest legacy tickets Excel file',
              response_description="Returns processed Excel file with ingestion results")
 async def upload_legacy_ticket_excel_sheet(
         legacy_ticket_file: UploadFile = File(description="Excel file containing Legacy Tickets"),
         legacy_ticket_sheet_name: str = Form(default="Legacy Tickets", description="Name of the sheet containing Legacy Tickets"),
+        mapping_type_subtype_file: UploadFile = File(description="Excel file containing Legacy Tickets"),
+        mapping_type_subtype_sheet_name: str = Form(default="Mapping Old_New_v1.0", description="Name of the sheet containing Legacy Tickets"),
         request_info: str = Form(default="")
 ):
+    subtype_mapping = create_mapping_dicts(mapping_type_subtype_file, mapping_type_subtype_sheet_name)
+
     tenant_creator_mapping = {
         "Karnataka": {
             "mobileNumber": "1111111111",
@@ -771,7 +795,7 @@ async def upload_legacy_ticket_excel_sheet(
 
         for idx, row in df.iterrows():
             try:
-                if df.at[idx, 'status'] in ['duplicate', 'error'] and df.at[idx, 'Allow Duplicate'] in ['No']:
+                if df.at[idx, 'status'] in ['duplicate', 'error']:
                     continue
 
                 employee_code = str(row.get("NIN_HFR ID", "")).strip()
@@ -812,9 +836,18 @@ async def upload_legacy_ticket_excel_sheet(
                 creator_tenant_id = creator_info.get("tenantId")
                 creator_uuid = creator_info.get("uuid")
 
+                mapped_pair = subtype_mapping.get((ticket_type, ticket_subtype))
+
+                if mapped_pair:
+                    mapped_type, mapped_subtype = mapped_pair
+                else:
+                    df.at[idx, 'status'] = 'failed'
+                    df.at[idx, 'error'] = f"Mapping not found for Ticket Type: '{ticket_type}' and Sub Type: '{ticket_subtype}'"
+                    continue
+
                 incident_payload = {
-                    "incidentType": ticket_type,
-                    "incidentSubtype": ticket_subtype,
+                    "incidentType": mapped_type,
+                    "incidentSubtype": mapped_subtype,
                     "comments": str(row.get("Comments", "")).strip(),
                     "systemFunctional": system_functional,
                     "tenantId": tenant_id,
