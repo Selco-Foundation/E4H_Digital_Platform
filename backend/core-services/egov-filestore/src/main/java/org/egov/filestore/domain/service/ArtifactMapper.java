@@ -175,7 +175,7 @@ public class ArtifactMapper {
      * Generates a folder name based on module and tenant.
      */
     private String getFolderNameForVideo(String tenantId) {
-        return tenantId;
+        return String.format("%s/", tenantId);
     }
 
     /**
