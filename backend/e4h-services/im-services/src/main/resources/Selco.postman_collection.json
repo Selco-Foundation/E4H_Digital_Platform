@@ -1,0 +1,624 @@
+{
+	"info": {
+		"_postman_id": "477cad85-49cd-41bf-baec-c5fe99c73cbe",
+		"name": "Selco",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "41985468"
+	},
+	"item": [
+		{
+			"name": "http://localhost:8281/user/v1/_search?tenantId=pg",
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"requestInfo\": {\n    \"apiId\": \"Rainmaker\",\n    \"ver\": \".01\",\n    \"action\": \"POST\",\n    \"msgId\": \"8c11c5ca-03bd-11e7-93ae-92361f002671\",\n    \"userInfo\": {\n      \"id\": 32\n    },\n    \"authToken\": \"5eb3655f-31b1-4cd5-b8c2-4f9c033510d4\"\n  },\n  \"tenantId\": \"pg\",\n  \"userType\": \"SYSTEM\",\n  \"userName\": \"CRONJOB\",\n  \"pageSize\": \"1\",\n  \"roleCodes\": [\"SYSTEM\"]\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8281/user/v1/_search?tenantId=pg",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8281",
+					"path": [
+						"user",
+						"v1",
+						"_search"
+					],
+					"query": [
+						{
+							"key": "tenantId",
+							"value": "pg"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Create Request",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "User-Agent",
+						"value": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:136.0) Gecko/20100101 Firefox/136.0"
+					},
+					{
+						"key": "Accept",
+						"value": "application/json, text/plain, */*"
+					},
+					{
+						"key": "Accept-Language",
+						"value": "en-US,en;q=0.5"
+					},
+					{
+						"key": "Accept-Encoding",
+						"value": "gzip, deflate, br, zstd"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json;charset=utf-8"
+					},
+					{
+						"key": "Origin",
+						"value": "https://e4h-dev.selcofoundation.org"
+					},
+					{
+						"key": "Connection",
+						"value": "keep-alive"
+					},
+					{
+						"key": "Referer",
+						"value": "https://e4h-dev.selcofoundation.org/digit-ui/employee/im/incident/create"
+					},
+					{
+						"key": "Sec-Fetch-Dest",
+						"value": "empty"
+					},
+					{
+						"key": "Sec-Fetch-Mode",
+						"value": "cors"
+					},
+					{
+						"key": "Sec-Fetch-Site",
+						"value": "same-origin"
+					},
+					{
+						"key": "TE",
+						"value": "trailers"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"incident\": {\n        \"district\": \"RAICHUR\",\n        \"tenantId\": \"pg.dummy\",\n        \"incidentType\": \"ARRAY JUNCTION BOX\",\n        \"incidentSubtype\": \"Burnedshortcircuit\",\n        \"phcType\": \"pg.dummy\",\n        \"phcSubType\": \"Primary Health Centre\",\n        \"comments\": \"\",\n        \"block\": \"Raichur\",\n        \"additionalDetail\": {\n            \"fileStoreId\": [],\n            \"reopenreason\": [],\n            \"rejectReason\": [],\n            \"sendBackReason\": [],\n            \"sendBackSubReason\": []\n        },\n        \"source\": \"web\",\n        \"reporter\": {\n            \"uuid\": \"cd831d19-3799-4e73-a52a-237930f1e450\",\n            \"tenantId\": \"pg\"\n        }\n    },\n    \"workflow\": {\n        \"action\": \"APPLY\",\n        \"verificationDocuments\": []\n    },\n    \"RequestInfo\": {\n        \"apiId\": \"Rainmaker\",\n        \"authToken\": \"79967889-fbf5-42c6-9bd3-4adc0dbe7692\",\n        \"userInfo\": {\n            \"id\": 95,\n            \"uuid\": \"cd831d19-3799-4e73-a52a-237930f1e450\",\n            \"userName\": \"7346864311\",\n            \"name\": \"Akhila\",\n            \"mobileNumber\": \"9901224633\",\n            \"emailId\": null,\n            \"locale\": null,\n            \"type\": \"EMPLOYEE\",\n            \"roles\": [\n                {\n                    \"name\": \"Complainant\",\n                    \"code\": \"COMPLAINANT\",\n                    \"tenantId\": \"pg\"\n                },\n                {\n                    \"name\": \"Employee\",\n                    \"code\": \"EMPLOYEE\",\n                    \"tenantId\": \"pg\"\n                },\n                {\n                    \"name\": \"Complaint Assessor\",\n                    \"code\": \"COMPLAINT_ASSESSOR\",\n                    \"tenantId\": \"pg\"\n                },\n                {\n                    \"name\": \"Super User\",\n                    \"code\": \"SUPERUSER\",\n                    \"tenantId\": \"pg\"\n                }\n            ],\n            \"active\": true,\n            \"tenantId\": \"pg\",\n            \"permanentCity\": null\n        },\n        \"msgId\": \"1744021633700|en_IN\",\n        \"plainAccessRequest\": {}\n    }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://e4h-dev.selcofoundation.org/im-services/v2/request/_create",
+					"protocol": "https",
+					"host": [
+						"e4h-dev",
+						"selcofoundation",
+						"org"
+					],
+					"path": [
+						"im-services",
+						"v2",
+						"request",
+						"_create"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Update Request",
+			"request": {
+				"method": "GET",
+				"header": []
+			},
+			"response": []
+		},
+		{
+			"name": "Facility Service",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"RequestInfo\": {\n        \"apiId\": \"org.egov.facility\",\n        \"ver\": \"1.0\",\n        \"ts\": 0,\n        \"action\": \"create\",\n        \"msgId\": \"20250507\",\n        \"authToken\": \"sample-auth-token\",\n        \"userInfo\": {\n            \"uuid\": \"user-uuid\",\n            \"type\": \"EMPLOYEE\",\n            \"userName\": \"testuser\",\n            \"tenantId\": \"in\"\n        }\n    },\n    \"facility\": {\n        \"tenant_id\": \"in\",\n        \"facility_name\": \"Gejjalgetta PHC\",\n        \"facility_type\": \"PHC\",\n        \"facility_category\": \"HEALTH\",\n        \"facility_subtype\": \"TYPE_A\",\n        \"facility_ownership\": \"GOVERNMENT\",\n        \"facility_region\": \"RURAL\",\n        \"isActive\": true,\n        \"address\": {\n            \"tenantId\": \"in\",\n            \"latitude\": 17.385044,\n            \"longitude\": 78.486671,\n            \"addressNumber\": \"12\",\n            \"addressLine1\": \"Main Road\",\n            \"addressLine2\": \"Colony Area\",\n            \"landmark\": \"Near Water Tank\",\n            \"city\": \"Hyderabad\",\n            \"pincode\": \"500001\"\n        },\n        \"facility_details\": {\n            \"boundaryCode\": \"India_Telangana_Hyderabad_Gachibowli\",\n            \"vendorCode\": \"VND001\",\n            \"solutionDesignType\": \"type_7\",\n            \"pocName\": \"Dr Asha\",\n            \"pocContact\": \"9876543210\",\n            \"hfrId\": \"HFR123\"\n        }\n    }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8081/facility-service/v2/facility/create",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8081",
+					"path": [
+						"facility-service",
+						"v2",
+						"facility",
+						"create"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "New Request",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:8081/facility-service/actuator",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8081",
+					"path": [
+						"facility-service",
+						"actuator"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Inbox Search",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "User-Agent",
+						"value": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:139.0) Gecko/20100101 Firefox/139.0"
+					},
+					{
+						"key": "Accept",
+						"value": "application/json, text/plain, */*"
+					},
+					{
+						"key": "Accept-Language",
+						"value": "en-US,en;q=0.5"
+					},
+					{
+						"key": "Accept-Encoding",
+						"value": "gzip, deflate, br, zstd"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json;charset=utf-8"
+					},
+					{
+						"key": "Origin",
+						"value": "https://saura-emitra-uat.selcofoundation.org"
+					},
+					{
+						"key": "Connection",
+						"value": "keep-alive"
+					},
+					{
+						"key": "Referer",
+						"value": "https://saura-emitra-uat.selcofoundation.org/digit-ui/employee"
+					},
+					{
+						"key": "Sec-Fetch-Dest",
+						"value": "empty"
+					},
+					{
+						"key": "Sec-Fetch-Mode",
+						"value": "cors"
+					},
+					{
+						"key": "Sec-Fetch-Site",
+						"value": "same-origin"
+					},
+					{
+						"key": "TE",
+						"value": "trailers"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"inbox\": {\n        \"tenantId\": \"pg\",\n        \"processSearchCriteria\": {\n            \"businessService\": [\n                \"Incident\"\n            ],\n            \"moduleName\": \"Incident\",\n            \"tenantId\": \"pg\"\n        },\n        \"moduleSearchCriteria\": {\n            \"tenantId\": \"pg\"\n        },\n        \"limit\": 10,\n        \"offset\": 0\n    },\n    \"RequestInfo\": {\n        \"apiId\": \"Rainmaker\",\n        \"authToken\": \"e7acb2be-2118-4dcf-bb05-794bf454821e\",\n        \"userInfo\": {\n            \"id\": 95,\n            \"uuid\": \"d2a12218-c71b-4aa3-b7e4-a811c522ef0c\",\n            \"userName\": \"7346864311\",\n            \"name\": \"CRM uat\",\n            \"mobileNumber\": \"9901224633\",\n            \"emailId\": \"crm@gmail.com\",\n            \"type\": \"EMPLOYEE\",\n            \"roles\": [\n                {\n                    \"name\": \"Complainant\",\n                    \"code\": \"COMPLAINANT\",\n                    \"tenantId\": \"pg\"\n                },\n                {\n                    \"name\": \"Employee\",\n                    \"code\": \"EMPLOYEE\",\n                    \"tenantId\": \"pg\"\n                },\n                {\n                    \"name\": \"Complaint Assessor\",\n                    \"code\": \"COMPLAINT_ASSESSOR\",\n                    \"tenantId\": \"pg\"\n                },\n                {\n                    \"name\": \"Complaint facilitator 2\",\n                    \"code\": \"COMPLAINT_FACILITATOR_2\",\n                    \"tenantId\": \"pg\"\n                },\n                {\n                    \"name\": \"Super User\",\n                    \"code\": \"SUPERUSER\",\n                    \"tenantId\": \"pg\"\n                }\n            ],\n            \"tenantId\": \"pg\"\n        },\n        \"msgId\": \"1749470770511^|en_IN\",\n        \"plainAccessRequest\": {}\n    }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "localhost:9011/inbox/v2/_search?_=1749470770511",
+					"host": [
+						"localhost"
+					],
+					"port": "9011",
+					"path": [
+						"inbox",
+						"v2",
+						"_search"
+					],
+					"query": [
+						{
+							"key": "_",
+							"value": "1749470770511"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Priority SLA",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"RequestInfo\": {\n        \"apiId\": \"Rainmaker\",\n        \"authToken\": \"79967889-fbf5-42c6-9bd3-4adc0dbe7692\",\n        \"userInfo\": {\n            \"id\": 95,\n            \"uuid\": \"cd831d19-3799-4e73-a52a-237930f1e450\",\n            \"userName\": \"7346864311\",\n            \"name\": \"Akhila\",\n            \"mobileNumber\": \"9901224633\",\n            \"emailId\": null,\n            \"locale\": null,\n            \"type\": \"EMPLOYEE\",\n            \"roles\": [\n                {\n                    \"name\": \"Complainant\",\n                    \"code\": \"COMPLAINANT\",\n                    \"tenantId\": \"pg\"\n                },\n                {\n                    \"name\": \"Employee\",\n                    \"code\": \"EMPLOYEE\",\n                    \"tenantId\": \"pg\"\n                },\n                {\n                    \"name\": \"Complaint Assessor\",\n                    \"code\": \"COMPLAINT_ASSESSOR\",\n                    \"tenantId\": \"pg\"\n                },\n                {\n                    \"name\": \"Super User\",\n                    \"code\": \"SUPERUSER\",\n                    \"tenantId\": \"pg\"\n                }\n            ],\n            \"active\": true,\n            \"tenantId\": \"pg\",\n            \"permanentCity\": null\n        },\n        \"msgId\": \"1744021633700|en_IN\",\n        \"plainAccessRequest\": {}\n    },\n    \"tenantId\": \"pg\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/im-services-analytics/v1/computeSLA?transform=false",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"im-services-analytics",
+						"v1",
+						"computeSLA"
+					],
+					"query": [
+						{
+							"key": "transform",
+							"value": "false"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "User Role Update",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "authority",
+						"value": "digit-lts.digit.org"
+					},
+					{
+						"key": "accept",
+						"value": "application/json, text/plain, */*"
+					},
+					{
+						"key": "accept-language",
+						"value": "en-US,en;q=0.9"
+					},
+					{
+						"key": "content-type",
+						"value": "application/json;charset=UTF-8"
+					},
+					{
+						"key": "cookie",
+						"value": "_ga=GA1.1.24958639.1705385219; _ga_V8656WJB3Z=GS1.1.1705387149.1.0.1705387163.0.0.0; __cuid=fbea9e1d7aa64a6081daea421f2810c8; amp_fef1e8=a8820a05-e48e-4cad-a2b8-fd9fc70558cfR...1hniiufbl.1hniiufbm.5e.3.5h; _ga_H9YC8FEN6F=GS1.1.1708947094.10.1.1708947115.39.0.0"
+					},
+					{
+						"key": "origin",
+						"value": "https://digit-lts.digit.org"
+					},
+					{
+						"key": "referer",
+						"value": "https://digit-lts.digit.org/digit-ui/employee/user/profile"
+					},
+					{
+						"key": "sec-ch-ua",
+						"value": "\"Chromium\";v=\"122\", \"Not(A:Brand\";v=\"24\", \"Google Chrome\";v=\"122\""
+					},
+					{
+						"key": "sec-ch-ua-mobile",
+						"value": "?0"
+					},
+					{
+						"key": "sec-ch-ua-platform",
+						"value": "\"Windows\""
+					},
+					{
+						"key": "sec-fetch-dest",
+						"value": "empty"
+					},
+					{
+						"key": "sec-fetch-mode",
+						"value": "cors"
+					},
+					{
+						"key": "sec-fetch-site",
+						"value": "same-origin"
+					},
+					{
+						"key": "user-agent",
+						"value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"user\": {\n        \"id\": 174,\n        \"userName\": \"state_program_manager\",\n        \"password\":\"Beehyv@123\",\n        \"salutation\": null,\n        \"name\": \"beehyv_supervisor\",\n        \"gender\": null,\n        \"mobileNumber\": \"7878569805\",\n        \"emailId\": \"beehyvsupervisor@gmail.com\",\n        \"altContactNumber\": null,\n        \"pan\": null,\n        \"aadhaarNumber\": null,\n        \"permanentAddress\": null,\n        \"permanentCity\": null,\n        \"permanentPinCode\": null,\n        \"correspondenceAddress\": null,\n        \"correspondenceCity\": null,\n        \"correspondencePinCode\": null,\n        \"alternatemobilenumber\": null,\n        \"active\": true,\n        \"locale\": null,\n        \"type\": \"EMPLOYEE\",\n        \"accountLocked\": false,\n        \"accountLockedDate\": 0,\n        \"fatherOrHusbandName\": null,\n        \"relationship\": null,\n        \"signature\": null,\n        \"bloodGroup\": null,\n        \"photo\": null,\n        \"identificationMark\": null,\n        \"createdBy\": 0,\n        \"lastModifiedBy\": 0,\n        \"tenantId\": \"pg\",\n        \"roles\": [\n            {\n                \"code\": \"INSTALLATION_SUPERVISOR\",\n                \"name\": \"Installation supervisor\",\n                \"tenantId\": \"pg\"\n            },\n            {\n                \"code\": \"EMPLOYEE\",\n                \"name\": \"Employee\",\n                \"tenantId\": \"pg\"\n            },\n            {\n                \"code\": \"INSTALLATION_REPORT_VIEWER\",\n                \"name\": \"Installation report viewer\",\n                \"tenantId\": \"pg\"\n            },\n            {\n                \"code\": \"HRMS_ADMIN\",\n                \"name\": \"HRMS Admin\",\n                \"tenantId\": \"pg\"\n            }\n        ],\n        \"uuid\": \"ae1c4224-0282-4227-ae5f-a426de094731\",\n        \"createdDate\": \"10-06-2025 14:36:02\",\n        \"lastModifiedDate\": \"10-06-2025 14:36:02\",\n        \"pwdExpiryDate\": \"08-09-2025 14:36:02\"\n    },\n    \"RequestInfo\": {\n        \"apiId\": \"Rainmaker\",\n        \"action\": \"\",\n        \"did\": 1,\n        \"key\": \"\",\n        \"msgId\": \"20170310130900|en_IN\",\n        \"requesterId\": \"\",\n        \"ts\": 1513579888683,\n        \"ver\": \".01\",\n        \"authToken\": \"{{authToken}}\",\n        \"userInfo\": {\n            \"id\": 24226,\n            \"uuid\": \"11b0e02b-0145-4de2-bc42-c97b96264807\",\n            \"userName\": \"amr008\",\n            \"name\": \"leela\",\n            \"mobileNumber\": \"9814424443\",\n            \"emailId\": \"leela@llgmail.com\",\n            \"locale\": null,\n            \"type\": \"EMPLOYEE\",\n            \"roles\": [\n                {\n                    \"name\": \"CSC Collection Operator\",\n                    \"code\": \"CSC_COLL_OPERATOR\",\n                    \"tenantId\": \"kl\"\n                }\n            ],\n            \"active\": true,\n            \"tenantId\": \"kl\"\n        }\n    }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8031/user/users/_updatenovalidate",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8031",
+					"path": [
+						"user",
+						"users",
+						"_updatenovalidate"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "User Search",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"RequestInfo\": {\n        \"apiId\": null,\n        \"ver\": null,\n        \"ts\": null,\n        \"action\": \"POST\",\n        \"did\": null,\n        \"key\": null,\n        \"msgId\": \"5bfa85e7-dfa1-47c8-98b2-747bf552be86\",\n        \"userInfo\": {\n            \"id\": 95,\n            \"userName\": null,\n            \"uuid\": null,\n            \"locale\": \"string\",\n            \"type\": \"EMPLOYEE\",\n            \"name\": null,\n            \"mobileNumber\": \"9449595098\",\n            \"alternatemobilenumber\": null,\n            \"emailId\": null,\n            \"roles\": [\n                {\n                    \"code\": \"COMPLAINT_RESOLVER\",\n                    \"name\": \"Complaint Resolver\"\n                }\n            ],\n            \"active\": true,\n            \"tenantId\": \"pg\",\n            \"permanentCity\": \"Kaikoo\"\n        }\n    },\n    \"pageSize\": \"2000\",\n    \"type\": \"EMPLOYEE\",\n    \"active\": \"true\",\n    \"tenantId\": \"pg\",\n    \"id\": [\n        \"172\"\n    ]\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8281/user/_search",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8281",
+					"path": [
+						"user",
+						"_search"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Hrms Search",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "accept",
+						"value": "application/json, text/plain, */*"
+					},
+					{
+						"key": "accept-language",
+						"value": "en-GB,en-US;q=0.9,en;q=0.8"
+					},
+					{
+						"key": "cache-control",
+						"value": "no-cache"
+					},
+					{
+						"key": "content-type",
+						"value": "application/json;charset=UTF-8"
+					},
+					{
+						"key": "origin",
+						"value": "https://saura-emitra-uat.selcofoundation.org"
+					},
+					{
+						"key": "pragma",
+						"value": "no-cache"
+					},
+					{
+						"key": "priority",
+						"value": "u=1, i"
+					},
+					{
+						"key": "referer",
+						"value": "https://saura-emitra-uat.selcofoundation.org/nagaland/employee/im/complaint/details/NL-IN1310000486-0001/nl.aniashuahwc"
+					},
+					{
+						"key": "sec-ch-ua",
+						"value": "\"Chromium\";v=\"136\", \"Google Chrome\";v=\"136\", \"Not.A/Brand\";v=\"99\""
+					},
+					{
+						"key": "sec-ch-ua-mobile",
+						"value": "?0"
+					},
+					{
+						"key": "sec-ch-ua-platform",
+						"value": "\"Windows\""
+					},
+					{
+						"key": "sec-fetch-dest",
+						"value": "empty"
+					},
+					{
+						"key": "sec-fetch-mode",
+						"value": "cors"
+					},
+					{
+						"key": "sec-fetch-site",
+						"value": "same-origin"
+					},
+					{
+						"key": "user-agent",
+						"value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36"
+					},
+					{
+						"key": "Cookie",
+						"value": "_dd_s=logs=1&id=6d07486d-1937-4901-bdd7-eb3a27fea30b&created=1748331117970&expire=1748332038248"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"RequestInfo\": {\n        \"apiId\": \"Rainmaker\",\n        \"authToken\": \"8b3b2d6e-734c-43d7-a44e-1ff5829a9c99\",\n        \"msgId\": \"1748331138261|en_IN\",\n        \"plainAccessRequest\": {}\n    }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8051/egov-hrms/employees/_search?tenantId=pg&code=7878569885",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8051",
+					"path": [
+						"egov-hrms",
+						"employees",
+						"_search"
+					],
+					"query": [
+						{
+							"key": "tenantId",
+							"value": "pg"
+						},
+						{
+							"key": "code",
+							"value": "7878569885"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Localisation Burst",
+			"request": {
+				"method": "GET",
+				"header": []
+			},
+			"response": []
+		},
+		{
+			"name": "Business Service Create",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"RequestInfo\": {\n    \"apiId\": \"Rainmaker\",\n    \"authToken\": \"sample-authtoken\",\n    \"userInfo\": {\n      \"id\": 1,\n      \"uuid\": \"sample-uuid\",\n      \"userName\": \"admin\",\n      \"name\": \"Admin\",\n      \"mobileNumber\": \"9999999999\",\n      \"type\": \"EMPLOYEE\",\n      \"roles\": [\n        {\n          \"name\": \"System\",\n          \"code\": \"SYSTEM\",\n          \"tenantId\": \"in\"\n        }\n      ],\n      \"active\": true,\n      \"tenantId\": \"in\"\n    }\n  },\n  \"BusinessServices\": [\n    {\n      \"tenantId\": \"in\",\n      \"businessService\": \"FACILITY_INSTALLATION\",\n      \"business\": \"project-services\",\n      \"businessServiceSla\": 604800000,\n      \"states\": [\n        {\n          \"tenantId\": \"in\",\n          \"state\": null,\n          \"isStartState\": true,\n          \"isStateUpdatable\": true,\n          \"isTerminateState\": false,\n          \"actions\": [\n            {\n              \"action\": \"ASSIGN\",\n              \"nextState\": \"ASSIGNED_TO_FIELD_STAFF\",\n              \"roles\": [\"INSTALLATION_REPORT_PART_A_EDITOR\"],\n              \"active\": true\n            }\n          ]\n        },\n        {\n          \"tenantId\": \"in\",\n          \"state\": \"ASSIGNED_TO_FIELD_STAFF\",\n          \"isStateUpdatable\": true,\n          \"isTerminateState\": false,\n          \"actions\": [\n            {\n              \"action\": \"CREATE_AND_SAVE_DRAFT\",\n              \"nextState\": \"DRAFT_IN_PROGRESS\",\n              \"roles\": [\"INSTALLATION_REPORT_PART_A_EDITOR\"],\n              \"active\": true\n            }\n          ]\n        },\n        {\n          \"tenantId\": \"in\",\n          \"state\": \"DRAFT_IN_PROGRESS\",\n          \"actions\": [\n            {\n              \"action\": \"SUBMIT_REPORT_A\",\n              \"nextState\": \"SUBMITTED_BY_FIELD_STAFF\",\n              \"roles\": [\"INSTALLATION_REPORT_PART_A_EDITOR\"],\n              \"active\": true\n            }\n          ]\n        },\n        {\n          \"tenantId\": \"in\",\n          \"state\": \"SUBMITTED_BY_FIELD_STAFF\",\n          \"actions\": [\n            {\n              \"action\": \"REJECT\",\n              \"nextState\": \"REJECTED_BY_FIELD_SUPERVISOR\",\n              \"roles\": [\"INSTALLATION_REPORT_PART_A_REVIEWER\"],\n              \"active\": true\n            },\n            {\n              \"action\": \"SUBMIT_REPORT_B\",\n              \"nextState\": \"FINAL_REPORT_IN_PROGRESS\",\n              \"roles\": [\"INSTALLATION_REPORT_PART_A_EDITOR\"],\n              \"active\": true\n            },\n            {\n              \"action\": \"CREATE_AND_SAVE_DRAFT\",\n              \"nextState\": \"SUBMITTED_BY_FIELD_STAFF\",\n              \"roles\": [\"INSTALLATION_REPORT_PART_B_EDITOR\"],\n              \"active\": true\n            }\n          ]\n        },\n        {\n          \"tenantId\": \"in\",\n          \"state\": \"REJECTED_BY_FIELD_SUPERVISOR\",\n          \"actions\": [\n            {\n              \"action\": \"SUBMIT_REPORT_A\",\n              \"nextState\": \"SUBMITTED_BY_FIELD_STAFF\",\n              \"roles\": [\"INSTALLATION_REPORT_PART_A_EDITOR\"],\n              \"active\": true\n            }\n          ]\n        },\n        {\n          \"tenantId\": \"in\",\n          \"state\": \"FINAL_REPORT_IN_PROGRESS\",\n          \"actions\": [\n            {\n              \"action\": \"SUBMIT_REPORT_B\",\n              \"nextState\": \"SUBMITTED_BY_SUPERVISOR\",\n              \"roles\": [\"INSTALLATION_REPORT_PART_B_EDITOR\"],\n              \"active\": true\n            }\n          ]\n        },\n        {\n          \"tenantId\": \"in\",\n          \"state\": \"SUBMITTED_BY_SUPERVISOR\",\n          \"actions\": [\n            {\n              \"action\": \"REJECT_AND_ASSIGN_FOR_FIELD_QC\",\n              \"nextState\": \"REJECTED_BY_QC_SPOC\",\n              \"roles\": [\"INSTALLATION_REPORT_APPROVER_QC_TEAM\"],\n              \"active\": true\n            },\n            {\n              \"action\": \"APPROVE\",\n              \"nextState\": \"APPROVED_BY_QC_SPOC\",\n              \"roles\": [\"INSTALLATION_REPORT_APPROVER_QC_TEAM\"],\n              \"active\": true\n            }\n          ]\n        },\n        {\n          \"tenantId\": \"in\",\n          \"state\": \"REJECTED_BY_QC_SPOC\",\n          \"actions\": [\n            {\n              \"action\": \"SUBMIT_REPORT_B\",\n              \"nextState\": \"SUBMITTED_BY_SUPERVISOR\",\n              \"roles\": [\"INSTALLATION_REPORT_PART_B_EDITOR\"],\n              \"active\": true\n            }\n          ]\n        },\n        {\n          \"tenantId\": \"in\",\n          \"state\": \"APPROVED_BY_QC_SPOC\",\n          \"isTerminateState\": true,\n          \"actions\": []\n        }\n      ]\n    }\n  ]\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8089/egov-workflow-v2/egov-wf/businessservice/_create",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8089",
+					"path": [
+						"egov-workflow-v2",
+						"egov-wf",
+						"businessservice",
+						"_create"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "User creation",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"RequestInfo\": {\n        \"apiId\": \"Rainmaker\",\n        \"ver\": \".01\",\n        \"ts\": null,\n        \"action\": \"_update\",\n        \"did\": \"1\",\n        \"key\": \"\",\n        \"msgId\": \"20170310130900|en_IN\",\n        \"authToken\": \"b7407b5d-cb7c-43ce-b994-efc48f7b7004\"\n    },\n    \"user\": {\n        \"userName\": \"7346864311\",\n        \"name\": \"field supervisor\",\n        \"gender\": \"male\",\n        \"mobileNumber\": \"1111111111\",\n        \"type\": \"EMPLOYEE\",\n        \"active\": true,\n        \"password\": \"Beehyv@123\",\n        \"roles\": [\n            {\n                \"name\": \"Installation Report Part A Editor\",\n                \"code\": \"INSTALLATION_REPORT_PART_A_EDITOR\",\n                \"tenantId\": \"in\"\n            },\n            {\n                \"name\": \"Installation Report Part B Editor\",\n                \"code\": \"INSTALLATION_REPORT_PART_B_EDITOR\",\n                \"tenantId\": \"in\"\n            },\n            {\n                \"name\": \"Employee\",\n                \"code\": \"EMPLOYEE\",\n                \"tenantId\": \"in\"\n            }\n        ],\n        \"tenantId\": \"in\"\n    }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8281/user/users/_createnovalidate",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8281",
+					"path": [
+						"user",
+						"users",
+						"_createnovalidate"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

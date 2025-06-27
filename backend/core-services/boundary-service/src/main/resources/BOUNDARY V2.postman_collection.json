@@ -1,0 +1,401 @@
+{
+	"info": {
+		"_postman_id": "b712955f-ced1-4541-8e9f-85baab549b79",
+		"name": "BOUNDARY V2",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "41985468"
+	},
+	"item": [
+		{
+			"name": "BNDRY-CREATE-PF",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"RequestInfo\": {\n        \"apiId\": \"stribi\",\n        \"ver\": \"stribi\",\n        \"ts\": 0,\n        \"action\": \"stribi\",\n        \"did\": \"stribi\",\n        \"key\": \"stribi\",\n        \"msgId\": \"stribi\",\n        \"requesterId\": \"stribi\",\n        \"authToken\": \"authToken\",\n        \"userInfo\": {\n            \"tenantId\": \"stribi\",\n            \"id\": 0,\n            \"uuid\": \"stribi\"\n        }\n    },\n    \"Boundary\": [\n        {\n            \"tenantId\": \"in\",\n            \"code\": \"India\",\n            \"geometry\": null\n        },\n        {\n            \"tenantId\": \"in\",\n            \"code\": \"Telangana\",\n            \"geometry\": null\n        },\n        {\n            \"tenantId\": \"in\",\n            \"code\": \"Hyderabad\",\n            \"geometry\": null\n        },\n        {\n            \"tenantId\": \"in\",\n            \"code\": \"Block 1\",\n            \"geometry\": null\n        },\n        {\n            \"tenantId\": \"in\",\n            \"code\": \"Block 2\",\n            \"geometry\": null\n        }\n    ]\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8081/boundary-service/boundary/_create",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8081",
+					"path": [
+						"boundary-service",
+						"boundary",
+						"_create"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "BNDRY-SEARCH-PF",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"RequestInfo\": {\n\n    }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8082/boundary-service/boundary/_search?tenantId=in&codes=India_Telangana_Hyderabad_Gachibowli",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8082",
+					"path": [
+						"boundary-service",
+						"boundary",
+						"_search"
+					],
+					"query": [
+						{
+							"key": "tenantId",
+							"value": "in"
+						},
+						{
+							"key": "codes",
+							"value": "India_Telangana_Hyderabad_Gachibowli"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "BHD-CREATE-PF",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"RequestInfo\": {\n        \"apiId\": \"Rainmaker\",\n        \"authToken\": \"2a57ee8c-410c-4023-a9d3-5111b4f6e304\",\n        \"userInfo\": {\n            \"id\": 595,\n            \"uuid\": \"1fda5623-448a-4a59-ad17-657986742d67\",\n            \"userName\": \"UNIFIED_DEV_USERR\",\n            \"name\": \"Unified dev user\",\n            \"mobileNumber\": \"8788788851\",\n            \"emailId\": \"\",\n            \"locale\": null,\n            \"type\": \"EMPLOYEE\",\n            \"roles\": [\n                {\n                    \"name\": \"Localisation admin\",\n                    \"code\": \"LOC_ADMIN\",\n                    \"tenantId\": \"pg\"\n                },\n                {\n                    \"name\": \"Employee\",\n                    \"code\": \"EMPLOYEE\",\n                    \"tenantId\": \"pg\"\n                },\n                {\n                    \"name\": \"MDMS Admin\",\n                    \"code\": \"MDMS_ADMIN\",\n                    \"tenantId\": \"pg\"\n                },\n                {\n                    \"name\": \"SUPER USER\",\n                    \"code\": \"SUPERUSER\",\n                    \"tenantId\": \"pg\"\n                }\n            ],\n            \"active\": true,\n            \"tenantId\": \"pg\",\n            \"permanentCity\": null\n        },\n        \"msgId\": \"1695889012604|en_IN\",\n        \"plainAccessRequest\": {}\n    },\n    \"BoundaryHierarchy\": {\n        \"tenantId\": \"in\",\n        \"hierarchyType\": \"SELCO\",\n        \"boundaryHierarchy\": [\n            {\n                \"active\": true,\n                \"boundaryType\": \"Country\",\n                \"parentBoundaryType\": null\n            },\n            {\n                \"active\": true,\n                \"boundaryType\": \"State\",\n                \"parentBoundaryType\": \"Country\"\n            },\n            {\n                \"active\": true,\n                \"boundaryType\": \"District\",\n                \"parentBoundaryType\": \"State\"\n            },\n            {\n                \"active\": true,\n                \"boundaryType\": \"Block\",\n                \"parentBoundaryType\": \"District\"\n            }\n        ]\n    }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8081/boundary-service/boundary-hierarchy-definition/_create",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8081",
+					"path": [
+						"boundary-service",
+						"boundary-hierarchy-definition",
+						"_create"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "BR-CREATE-PF",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"RequestInfo\": {\n        \"apiId\": \"Rainmaker\",\n        \"authToken\": \"2a57ee8c-410c-4023-a9d3-5111b4f6e304\",\n        \"userInfo\": {\n            \"id\": 595,\n            \"uuid\": \"1fda5623-448a-4a59-ad17-657986742d67\",\n            \"userName\": \"UNIFIED_DEV_USERR\",\n            \"name\": \"Unified dev user\",\n            \"mobileNumber\": \"8788788851\",\n            \"emailId\": \"\",\n            \"locale\": null,\n            \"type\": \"EMPLOYEE\",\n            \"roles\": [\n                {\n                    \"name\": \"Localisation IEV\",\n                    \"code\": \"LOC_IEV\",\n                    \"tenantId\": \"pg\"\n                },\n                {\n                    \"name\": \"Employee\",\n                    \"code\": \"EMPLOYEE\",\n                    \"tenantId\": \"pg\"\n                },\n                {\n                    \"name\": \"MDMS IEV\",\n                    \"code\": \"MDMS_IEV\",\n                    \"tenantId\": \"pg\"\n                },\n                {\n                    \"name\": \"SUPER USER\",\n                    \"code\": \"SUPERUSER\",\n                    \"tenantId\": \"pg\"\n                }\n            ],\n            \"active\": true,\n            \"tenantId\": \"pg\",\n            \"permanentCity\": null\n        },\n        \"msgId\": \"1695889012604|en_IN\",\n        \"plainAccessRequest\": {}\n    },\n    // \"BoundaryRelationship\": {\n    //     \"tenantId\": \"in\",\n    //     \"code\": \"India\",\n    //     \"hierarchyType\": \"SELCO\",\n    //     \"boundaryType\": \"Country\",\n    //     \"parent\": null\n    // }\n\n    // \"BoundaryRelationship\": {\n    //     \"tenantId\": \"in\",\n    //     \"code\": \"Telangana\",\n    //     \"hierarchyType\": \"SELCO\",\n    //     \"boundaryType\": \"State\",\n    //     \"parent\": \"India\"\n    // }\n\n    // \"BoundaryRelationship\": {\n    //     \"tenantId\": \"in\",\n    //     \"code\": \"Hyderabad\",\n    //     \"hierarchyType\": \"SELCO\",\n    //     \"boundaryType\": \"District\",\n    //     \"parent\": \"Telangana\"\n    // }\n\n    \"BoundaryRelationship\": {\n        \"tenantId\": \"in\",\n        \"code\": \"Block 2\",\n        \"hierarchyType\": \"SELCO\",\n        \"boundaryType\": \"Block\",\n        \"parent\": \"Hyderabad\"\n    }\n\n    // \"BoundaryRelationship\": {\n    //     \"tenantId\": \"bi\",\n    //     \"code\": \"Arewa Quarters\",\n    //     \"hierarchyType\": \"IEV\",\n    //     \"boundaryType\": \"Settlement\",\n    //     \"parent\": \"Narayi\"\n    // }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8081/boundary-service/boundary-relationships/_create",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8081",
+					"path": [
+						"boundary-service",
+						"boundary-relationships",
+						"_create"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "http://localhost:8080/boundary-service/boundary/boundary-relationships/_create",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"RequestInfo\": {\n        \"apiId\": \"Rainmaker\",\n        \"authToken\": \"2a57ee8c-410c-4023-a9d3-5111b4f6e304\",\n        \"userInfo\": {\n            \"id\": 595,\n            \"uuid\": \"1fda5623-448a-4a59-ad17-657986742d67\",\n            \"userName\": \"UNIFIED_DEV_USERR\",\n            \"name\": \"Unified dev user\",\n            \"mobileNumber\": \"8788788851\",\n            \"emailId\": \"\",\n            \"locale\": null,\n            \"type\": \"EMPLOYEE\",\n            \"roles\": [\n                {\n                    \"name\": \"Localisation admin\",\n                    \"code\": \"LOC_ADMIN\",\n                    \"tenantId\": \"pg\"\n                },\n                {\n                    \"name\": \"Employee\",\n                    \"code\": \"EMPLOYEE\",\n                    \"tenantId\": \"pg\"\n                },\n                {\n                    \"name\": \"MDMS Admin\",\n                    \"code\": \"MDMS_ADMIN\",\n                    \"tenantId\": \"pg\"\n                },\n                {\n                    \"name\": \"SUPER USER\",\n                    \"code\": \"SUPERUSER\",\n                    \"tenantId\": \"pg\"\n                }\n            ],\n            \"active\": true,\n            \"tenantId\": \"pg\",\n            \"permanentCity\": null\n        },\n        \"msgId\": \"1695889012604|en_IN\",\n        \"plainAccessRequest\": {}\n    },\n    \"BoundaryRelationship\": {\n        \"tenantId\" : \"mz\",\n        \"code\": \"India\",\n        \"hierarchyType\": \"ADMIN\",\n        \"boundaryType\": \"Country\",\n        \"parent\": null\n    }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/boundary-service/boundary/boundary-relationships/_update",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"boundary-service",
+						"boundary",
+						"boundary-relationships",
+						"_update"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "BNDRY-UPDATE-PF",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"RequestInfo\": {\n        \"apiId\": \"string\",\n        \"ver\": \"string\",\n        \"ts\": 0,\n        \"action\": \"string\",\n        \"did\": \"string\",\n        \"key\": \"string\",\n        \"msgId\": \"string\",\n        \"requesterId\": \"string\",\n        \"authToken\": \"string\",\n        \"userInfo\": {\n            \"tenantId\": \"string\",\n            \"id\": 0,\n            \"uuid\": \"string\"\n        }\n    },\n    \"Boundary\": [\n        {\n            \"id\": \"7b65460e-1ae1-47c4-b1ba-e6e8513afd31\",\n            \"tenantId\": \"mz\",\n            \"code\": \"COUNTRY_CODE_MOZAMBIQUE\",\n            \"geometry\": {\n                \"type\": \"Polygon\",\n                \"coordinates\": [\n                    [\n                        [\n                            77.17291599436169,\n                            28.56784947815504\n                        ],\n                        [\n                            70.11625206763327,\n                            22.50321664965992\n                        ],\n                        [\n                            77.5811911123439,\n                            13.05708693840623\n                        ],\n                        [\n                            86.42557425986286,\n                            23.774571851935193\n                        ],\n                        [\n                            77.17291599436169,\n                            28.56784947815504\n                        ]\n                    ]\n                ]\n            },\n            \"auditDetails\": {\n                \"createdBy\": \"string\",\n                \"lastModifiedBy\": \"string\",\n                \"createdTime\": 1721899911771,\n                \"lastModifiedTime\": 1721899911771\n            },\n            \"additionalDetails\": null\n        }\n    ]\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/boundary-service/boundary/_update",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"boundary-service",
+						"boundary",
+						"_update"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "BR-SEARCH-OPEN",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"RequestInfo\": {\n        \"apiId\": \"Rainmaker\",\n        \"authToken\": \"0f3612d4-d365-40b0-99db-e450445adf72\",\n        \"userInfo\": {\n            \"id\": 595,\n            \"uuid\": \"1fda5623-448a-4a59-ad17-657986742d67\",\n            \"userName\": \"UNIFIED_DEV_USERR\",\n            \"name\": \"Unified dev user\",\n            \"mobileNumber\": \"8788788851\",\n            \"emailId\": \"\",\n            \"locale\": null,\n            \"type\": \"EMPLOYEE\",\n            \"roles\": [\n                {\n                    \"name\": \"Localisation admin\",\n                    \"code\": \"LOC_ADMIN\",\n                    \"tenantId\": \"mz\"\n                },\n                {\n                    \"name\": \"Employee\",\n                    \"code\": \"EMPLOYEE\",\n                    \"tenantId\": \"mz\"\n                },\n                {\n                    \"name\": \"MDMS Admin\",\n                    \"code\": \"MDMS_ADMIN\",\n                    \"tenantId\": \"mz\"\n                },\n                {\n                    \"name\": \"SUPER USER\",\n                    \"code\": \"SUPERUSER\",\n                    \"tenantId\": \"mz\"\n                }\n            ],\n            \"active\": true,\n            \"tenantId\": \"mz\",\n            \"permanentCity\": null\n        },\n        \"msgId\": \"1695889012604|en_IN\",\n        \"plainAccessRequest\": {}\n    }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://salama.digit.org/boundary-service/boundary-relationships/_search?includeChildren=true&includeParents=true&tenantId=mz&hierarchyType=IRS",
+					"protocol": "https",
+					"host": [
+						"salama",
+						"digit",
+						"org"
+					],
+					"path": [
+						"boundary-service",
+						"boundary-relationships",
+						"_search"
+					],
+					"query": [
+						{
+							"key": "boundaryType",
+							"value": "Aldeia",
+							"disabled": true
+						},
+						{
+							"key": "code",
+							"value": "6buSv5gdmv4TVwVGUegWer",
+							"disabled": true
+						},
+						{
+							"key": "includeChildren",
+							"value": "true"
+						},
+						{
+							"key": "includeParents",
+							"value": "true"
+						},
+						{
+							"key": "",
+							"value": "ADMIN",
+							"disabled": true
+						},
+						{
+							"key": "tenantId",
+							"value": "mz"
+						},
+						{
+							"key": "hierarchyType",
+							"value": "IRS"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "BR-SEARCH-PF Copy",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"RequestInfo\": {\n        \"apiId\": \"Rainmaker\",\n        \"authToken\": \"authToken\",\n        \"userInfo\": {\n            \"id\": 595,\n            \"uuid\": \"1fda5623-448a-4a59-ad17-657986742d67\",\n            \"userName\": \"UNIFIED_DEV_USERR\",\n            \"name\": \"Unified dev user\",\n            \"mobileNumber\": \"8788788851\",\n            \"emailId\": \"\",\n            \"locale\": null,\n            \"type\": \"EMPLOYEE\",\n            \"roles\": [\n                {\n                    \"name\": \"Localisation admin\",\n                    \"code\": \"LOC_ADMIN\",\n                    \"tenantId\": \"mz\"\n                },\n                {\n                    \"name\": \"Employee\",\n                    \"code\": \"EMPLOYEE\",\n                    \"tenantId\": \"mz\"\n                },\n                {\n                    \"name\": \"MDMS Admin\",\n                    \"code\": \"MDMS_ADMIN\",\n                    \"tenantId\": \"mz\"\n                },\n                {\n                    \"name\": \"SUPER USER\",\n                    \"code\": \"SUPERUSER\",\n                    \"tenantId\": \"mz\"\n                }\n            ],\n            \"active\": true,\n            \"tenantId\": \"mz\",\n            \"permanentCity\": null\n        },\n        \"msgId\": \"1695889012604|en_IN\",\n        \"plainAccessRequest\": {}\n    }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/boundary-service/boundary-relationships/_search?tenantId=cg&codes=Republic of Congo&includeChildren=true&hierarchyType=ADMIN&includeParents=true&boundaryType=Pays",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"boundary-service",
+						"boundary-relationships",
+						"_search"
+					],
+					"query": [
+						{
+							"key": "tenantId",
+							"value": "cg"
+						},
+						{
+							"key": "codes",
+							"value": "Republic of Congo"
+						},
+						{
+							"key": "includeChildren",
+							"value": "true"
+						},
+						{
+							"key": "hierarchyType",
+							"value": "ADMIN"
+						},
+						{
+							"key": "includeParents",
+							"value": "true"
+						},
+						{
+							"key": "boundaryType",
+							"value": "Pays"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "BNDRY-SEARCH-ALL",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n           \"apiId\": \"org.egov.boundary\",\n           \"ver\": \"1.0\",\n           \"ts\": \"\",\n           \"action\": \"search\",\n           \"did\": \"\",\n           \"key\": \"\",\n           \"msgId\": \"\",\n           \"authToken\": \"your-auth-token\"\n         }",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8081/boundary-service/boundary/getAllBoundaries?page=0&size=1&tenantId=in&hierarchyType=SELCO&boundaryType=Block",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8081",
+					"path": [
+						"boundary-service",
+						"boundary",
+						"getAllBoundaries"
+					],
+					"query": [
+						{
+							"key": "page",
+							"value": "0"
+						},
+						{
+							"key": "size",
+							"value": "1"
+						},
+						{
+							"key": "tenantId",
+							"value": "in"
+						},
+						{
+							"key": "hierarchyType",
+							"value": "SELCO"
+						},
+						{
+							"key": "boundaryType",
+							"value": "Block"
+						}
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
