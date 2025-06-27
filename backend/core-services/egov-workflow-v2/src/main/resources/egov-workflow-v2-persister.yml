@@ -44,6 +44,10 @@ serviceMaps:
 
       - jsonPath: $.ProcessInstances.*.rating
 
+      - jsonPath: $.ProcessInstances.*.reopenReason
+
+      - jsonPath: $.ProcessInstances.*.sendBackReason
+
 
     - query: INSERT INTO eg_wf_document_v2( id, tenantid, active, documenttype,documentUid, processinstanceid, filestoreid, createdby, lastmodifiedby, createdtime, lastmodifiedtime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
       basePath: ProcessInstances.*.documents.*

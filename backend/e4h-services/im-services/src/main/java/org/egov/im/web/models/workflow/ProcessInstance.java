@@ -96,6 +96,12 @@ public class ProcessInstance {
     @JsonProperty("businesssServiceSla")
     private Long businesssServiceSla = null;
 
+    @JsonProperty("reopenreason")
+    private String reopenReason = null;
+
+    @JsonProperty("sendbackreason")
+    private String sendBackReason = null;
+
     public ProcessInstance addDocumentsItem(Document documentsItem) {
         if (this.documents == null) {
             this.documents = new ArrayList<>();

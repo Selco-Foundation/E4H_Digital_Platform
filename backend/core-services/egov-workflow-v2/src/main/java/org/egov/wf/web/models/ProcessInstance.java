@@ -109,6 +109,12 @@ public class ProcessInstance   {
         @JsonProperty("escalated")
         private Boolean escalated = false;
 
+        @JsonProperty("sendBackReason")
+        private String sendBackReason;
+
+        @JsonProperty("reopenReason")
+        private String reopenReason;
+
 
         public ProcessInstance addDocumentsItem(Document documentsItem) {
             if (this.documents == null) {

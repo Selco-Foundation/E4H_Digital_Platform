@@ -253,6 +253,14 @@ public class WorkflowService {
             processInstance.setRating(workflow.getRating());
         }
 
+        if(request.getWorkflow().getAction().equalsIgnoreCase("REOPEN")) {
+            processInstance.setReopenReason(workflow.getReopenReason());
+        }
+
+        if(request.getWorkflow().getAction().equalsIgnoreCase("SENDBACK") && workflow.getSendBackReason()!=null) {
+            processInstance.setSendBackReason(workflow.getSendBackReason().getReason());
+        }
+
         if (!CollectionUtils.isEmpty(workflow.getAssignes())) {
             List<User> users = new ArrayList<>();
 

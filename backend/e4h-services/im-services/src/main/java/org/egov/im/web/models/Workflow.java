@@ -51,6 +51,9 @@ public class Workflow   {
         @JsonProperty("sendBackReason")
         private SendBackReason sendBackReason;
 
+        @JsonProperty("reopenreason")
+        private String reopenReason;
+
         public Workflow addAssignesItem(String assignesItem) {
             if (this.assignes == null) {
             this.assignes = new ArrayList<>();
