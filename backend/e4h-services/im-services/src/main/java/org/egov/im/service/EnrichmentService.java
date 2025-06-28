@@ -226,6 +226,13 @@ public class EnrichmentService {
         indexView.setUuid(UUID.randomUUID().toString());
         indexView.setStartingStatus(startingStatus);
         indexView.setEndingStatus(wrapper.getIncidentRequest().getIncident().getApplicationStatus());
+        indexView.setComments(
+                (wrapper.getIncidentRequest().getWorkflow().getComments() != null &&
+                        !wrapper.getIncidentRequest().getWorkflow().getComments().isEmpty())
+                        ? wrapper.getIncidentRequest().getWorkflow().getComments()
+                        : wrapper.getIncidentRequest().getIncident().getComments()
+        );
+
 
         localizationService.enrichLocalizedApplicationStatuses(wrapper, startingStatus);
 
