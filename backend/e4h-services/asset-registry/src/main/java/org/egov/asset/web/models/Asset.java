@@ -64,7 +64,6 @@ public class Asset {
     private Integer warrantyDuration = null;
 
     @JsonProperty("warrantyEndDate")
-    @NotNull
     private Date warrantyEndDate = null;
 
     @JsonProperty("wfStatus")
