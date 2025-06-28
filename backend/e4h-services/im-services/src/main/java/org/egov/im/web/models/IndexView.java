@@ -59,4 +59,7 @@ public class IndexView {
 
     @JsonProperty("definedTotalSla")
     private Long definedTotalSla;
+
+    @JsonProperty("comments")
+    private String comments;
 }
