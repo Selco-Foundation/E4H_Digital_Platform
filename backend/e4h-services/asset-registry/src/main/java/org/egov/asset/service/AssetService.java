@@ -161,4 +161,27 @@ public class AssetService {
         });
     }
 
+    public Asset updateAsset(String assetId, AssetCreateRequest request) {
+        if (request == null || request.getAssetDetail() == null || request.getAssetDetail().getAsset() == null) {
+            throw new CustomException("INVALID_REQUEST", "Asset request cannot be null");
+        }
+        Asset updated = request.getAssetDetail().getAsset();
+        if (!assetId.equals(updated.getAssetId())) {
+            throw new CustomException("ASSET_ID_MISMATCH", "Provided assetId does not match the asset's ID");
+        }
+
+        // Check whether asset exists in the database
+        List<Asset> existingAssets = searchAssets(Asset.builder().assetId(updated.getAssetId()).tenantId(updated.getTenantId()).build(), 10, 0);
+        if (existingAssets == null || existingAssets.isEmpty()) {
+            throw new CustomException("ASSET_NOT_FOUND", "Asset with ID " + assetId + " does not exist");
+        }
+
+        // Update audit details
+        if (updated.getAuditDetails() != null) {
+            updated.getAuditDetails().setLastModifiedBy(request.getRequestInfo().getUserInfo().getUserName());
+            updated.getAuditDetails().setLastModifiedTime(System.currentTimeMillis());
+        }
+        assetRepository.pushUpdateAsset(updated);
+        return updated;
+    }
 }

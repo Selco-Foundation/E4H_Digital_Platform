@@ -1,5 +1,6 @@
 package org.egov.project.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import lombok.RequiredArgsConstructor;
@@ -38,4 +39,19 @@ public class ServiceRequestRepository {
         }
         return response;
     }
+
+    public <T> T fetchResult(StringBuilder uri, Object request, TypeReference<T> responseType) {
+        mapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
+        try {
+            String jsonResponse = restTemplate.postForObject(uri.toString(), request, String.class);
+            return mapper.readValue(jsonResponse, responseType);
+        } catch (HttpClientErrorException e) {
+            log.error("External Service threw an Exception: ", e);
+            throw new ServiceCallException(e.getResponseBodyAsString());
+        } catch (Exception e) {
+            log.error("Error during service call: ", e);
+            throw new ServiceCallException();
+        }
+    }
+
 }
