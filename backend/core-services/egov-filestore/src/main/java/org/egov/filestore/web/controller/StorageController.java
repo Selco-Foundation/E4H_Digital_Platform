@@ -179,14 +179,24 @@ public class StorageController {
 
     @GetMapping("/file")
     public ResponseEntity<Void> getS3SignedUrlFile( @RequestParam String tenantId, @RequestParam String fileStoreId) {
+        if (tenantId == null || tenantId.trim().isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+        if (fileStoreId == null || fileStoreId.trim().isEmpty()) {
+        	return ResponseEntity.badRequest().build();
+        }
         try {
             String signedUrl = storageService.retrieveSignedUrl(fileStoreId, tenantId);
+            if (signedUrl == null || signedUrl.trim().isEmpty()) {
+                logger.warn("No signed URL found for fileStoreId: {} and tenantId: {}", fileStoreId, tenantId);
+                return ResponseEntity.notFound().build();
+            }
             return ResponseEntity.status(HttpStatus.TEMPORARY_REDIRECT)  // 307 redirect
                     .location(URI.create(signedUrl))
                     .build();
         } catch (Exception e) {
             // TODO Auto-generated catch block
-            logger.error("Error while retrieving file: " + e.getMessage());
+            logger.error("Error while retrieving signed URL for fileStoreId: {} and tenantId: {}", fileStoreId, tenantId, e);
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .contentType(MediaType.TEXT_HTML)
                     .body(null); // Will be handled by static HTML below
