@@ -654,6 +654,49 @@ def get_tenant_mapping(request_info: RequestInfo, tenant_ids: List[str]) -> Dict
 
     return all_tenant_data
 
+
+def get_block_mapping_from_mdms(request_info: RequestInfo, tenant_ids: List[str]) -> Dict[str, dict]:
+    """
+    Fetch block mapping from MDMS where moduleName is 'Incident' and masterDetails name is 'Block'.
+    Returns a dictionary with 'code' from each 'data' object as the key.
+    """
+    block_mapping = {}
+
+    for tenant_id in tenant_ids:
+        try:
+            search_url = f"{mdms_url}/egov-mdms-service/v1/_search"
+            search_payload = {
+                "RequestInfo": request_info.model_dump(by_alias=True, exclude_none=True),
+                "MdmsCriteria": {
+                    "tenantId": tenant_id,
+                    "moduleDetails": [
+                        {
+                            "moduleName": "Incident",
+                            "masterDetails": [
+                                {
+                                    "name": "Block"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            }
+
+            response = requests.post(search_url, json=search_payload)
+            if response.status_code == 200:
+                data = response.json()
+                mdms_blocks = data.get("MdmsRes", {}).get("Incident", {}).get("Block", [])
+
+                for block in mdms_blocks:
+                    code = block.get("code")
+                    if code and code not in block_mapping:
+                        block_mapping[code] = block
+
+        except Exception as e:
+            logger.error(f"Error fetching block mapping from MDMS for tenant {tenant_id}: {e}")
+
+    return block_mapping
+
 def create_mapping_dicts(mapping_file: UploadFile, sheet_name: str):
     with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as temp_file:
         temp_file.write(mapping_file.file.read())
@@ -779,6 +822,7 @@ async def upload_legacy_ticket_excel_sheet(
 
         # Fetch tenant mapping once for the entire batch
         tenant_mapping = get_tenant_mapping(request_info_obj, tenant_ids)
+        block_mapping = get_block_mapping_from_mdms(request_info_obj, tenant_ids)
 
 
         codes = []
@@ -816,7 +860,8 @@ async def upload_legacy_ticket_excel_sheet(
 
                 # Extract tenant-based fields
                 phc_subtype = employee_tenant_mapping.get("centreType", "")
-                block = employee_tenant_mapping.get("city", {}).get("districtName", "")
+                block_code = employee_tenant_mapping.get("city", {}).get("blockCode", "")
+                block = block_mapping.get(block_code).get("name")
                 tenant_id = employee_tenant_mapping.get("code", "")
                 district = employee_tenant_mapping.get("city", {}).get("districtCode", "")
                 ticket_type = str(row.get("Ticket Type")).strip()
