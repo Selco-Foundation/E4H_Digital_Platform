@@ -3,12 +3,15 @@ package org.egov.filestore.web.controller;
 import static org.springframework.http.MediaType.APPLICATION_JSON_UTF8_VALUE;
 
 import java.io.IOException;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.request.RequestInfo;
@@ -26,6 +29,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
@@ -170,6 +174,31 @@ public class StorageController {
         } catch (Exception e) {
             log.error("Error retrieving HLS chunk: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @GetMapping("/file")
+    public ResponseEntity<Void> getS3SignedUrlFile( @RequestParam String tenantId, @RequestParam String fileStoreId) {
+        if (tenantId == null || tenantId.trim().isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+        if (fileStoreId == null || fileStoreId.trim().isEmpty()) {
+        	return ResponseEntity.badRequest().build();
+        }
+        try {
+            String signedUrl = storageService.retrieveSignedUrl(fileStoreId, tenantId);
+            if (signedUrl == null || signedUrl.trim().isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+            return ResponseEntity.status(HttpStatus.TEMPORARY_REDIRECT)  // 307 redirect
+                    .location(URI.create(signedUrl))
+                    .build();
+        } catch (Exception e) {
+            // TODO Auto-generated catch block
+            logger.error("Error while retrieving signed URL for fileStoreId: {} and tenantId: {}", fileStoreId, tenantId, e);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .contentType(MediaType.TEXT_HTML)
+                    .body(null); // Will be handled by static HTML below
         }
     }
 }
