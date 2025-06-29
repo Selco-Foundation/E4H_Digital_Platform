@@ -188,7 +188,6 @@ public class StorageController {
         try {
             String signedUrl = storageService.retrieveSignedUrl(fileStoreId, tenantId);
             if (signedUrl == null || signedUrl.trim().isEmpty()) {
-                logger.error("No signed URL found for fileStoreId: {} and tenantId: {}", fileStoreId, tenantId);
                 return ResponseEntity.notFound().build();
             }
             return ResponseEntity.status(HttpStatus.TEMPORARY_REDIRECT)  // 307 redirect
