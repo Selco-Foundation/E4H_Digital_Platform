@@ -1,0 +1,474 @@
+{
+	"info": {
+		"_postman_id": "fc67b8cc-7d18-4cbc-99f1-3677fd6ccb3d",
+		"name": "Ingestion",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "41748143",
+		"_collection_link": "https://galactic-water-645352.postman.co/workspace/Team-Workspace~5448bf65-62e6-4a87-8405-bfe5a72e2b65/collection/41748143-fc67b8cc-7d18-4cbc-99f1-3677fd6ccb3d?action=share&source=collection_link&creator=41748143"
+	},
+	"item": [
+		{
+			"name": "Project Creation",
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "project_file",
+							"type": "file",
+							"src": "/home/bhcp0116/project_ingestion_results_20250519_130305.xlsx"
+						},
+						{
+							"key": "request_info",
+							"value": "{\n\n    \"apiId\": \"some-api-id\",\n\n    \"ver\": \"1.0\",\n\n    \"ts\": 1609459200000,\n\n    \"action\": \"CREATE\",\n\n    \"did\": \"some-device-id\",\n\n    \"key\": \"some-key\",\n\n    \"msgId\": \"some-msg-id\",\n\n    \"authToken\": \"some-auth-token\",\n\n    \"userInfo\": {\n\n        \"uuid\": \"789\",\n\n        \"userName\": \"John Doe\",\n\n        \"roles\": [\n\n            {\n\n                \"name\": \"ADMIN\",\n                \"tenantId\": \"in\"\n            }\n\n        ],\n\n        \"tenantId\": \"in\"\n    }\n\n}\n ",
+							"type": "text"
+						},
+						{
+							"key": "boundary_sheet_name",
+							"value": "Boundary Data Output",
+							"type": "text",
+							"disabled": true
+						},
+						{
+							"key": "boundary_codes",
+							"value": "A",
+							"type": "text",
+							"disabled": true
+						},
+						{
+							"key": "parent_project_id",
+							"value": "caf3fb85-fbb8-4b65-8d37-3d491ac89937",
+							"type": "text",
+							"disabled": true
+						},
+						{
+							"key": "project_id",
+							"value": "caf3fb85-fbb8-4b65-8d37-3d491ac89937",
+							"type": "text",
+							"disabled": true
+						}
+					]
+				},
+				"url": {
+					"raw": "http://0.0.0.0:8000/ingestion-service/ingest/projects",
+					"protocol": "http",
+					"host": [
+						"0",
+						"0",
+						"0",
+						"0"
+					],
+					"port": "8000",
+					"path": [
+						"ingestion-service",
+						"ingest",
+						"projects"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Vendor Creation",
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "vendor_file",
+							"type": "file",
+							"src": "/home/bhcp0116/Downloads/backup_home/bhcp0116/Downloads/tech-docs-installation-selco/Data Collection Templates/E4H_Vendor_Data_Template.xlsx"
+						},
+						{
+							"key": "vendor_sheet_name",
+							"value": "Vendor Input",
+							"type": "text"
+						},
+						{
+							"key": "boundary_sheet_name",
+							"value": "Boundary Code",
+							"type": "text"
+						},
+						{
+							"key": "request_info",
+							"value": "{\n\n    \"apiId\": \"some-api-id\",\n\n    \"ver\": \"1.0\",\n\n    \"ts\": 1609459200000,\n\n    \"action\": \"CREATE\",\n\n    \"did\": \"some-device-id\",\n\n    \"key\": \"some-key\",\n\n    \"msgId\": \"some-msg-id\",\n\n    \"authToken\": \"some-auth-token\",\n\n    \"userInfo\": {\n\n        \"uuid\": \"789\",\n\n        \"userName\": \"John Doe\",\n\n        \"roles\": [\n\n            {\n\n                \"name\": \"ADMIN\",\n                \"tenantId\": \"in\"\n            }\n\n        ],\n\n        \"tenantId\": \"in\"\n    }\n\n}\n ",
+							"type": "text"
+						},
+						{
+							"key": "parent_project_id",
+							"value": "caf3fb85-fbb8-4b65-8d37-3d491ac89937",
+							"type": "text",
+							"disabled": true
+						},
+						{
+							"key": "project_id",
+							"value": "caf3fb85-fbb8-4b65-8d37-3d491ac89937",
+							"type": "text",
+							"disabled": true
+						}
+					]
+				},
+				"url": {
+					"raw": "http://0.0.0.0:8000/ingestion-service/ingest/vendors",
+					"protocol": "http",
+					"host": [
+						"0",
+						"0",
+						"0",
+						"0"
+					],
+					"port": "8000",
+					"path": [
+						"ingestion-service",
+						"ingest",
+						"vendors"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Boundary Ingestion",
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "boundary_file",
+							"type": "file",
+							"src": "/home/bhcp0116/Downloads/backup_home/bhcp0116/Downloads/tech-docs-installation-selco/Data Collection Templates/E4H_Boundary_Data_Template.xlsx"
+						},
+						{
+							"key": "boundary_sheet_name",
+							"value": "Boundary Data",
+							"type": "text"
+						},
+						{
+							"key": "request_info",
+							"value": "{\n\n    \"apiId\": \"some-api-id\",\n\n    \"ver\": \"1.0\",\n\n    \"ts\": 1609459200000,\n\n    \"action\": \"CREATE\",\n\n    \"did\": \"some-device-id\",\n\n    \"key\": \"some-key\",\n\n    \"msgId\": \"some-msg-id\",\n\n    \"authToken\": \"some-auth-token\",\n\n    \"userInfo\": {\n\n        \"uuid\": \"789\",\n\n        \"userName\": \"John Doe\",\n\n        \"roles\": [\n\n            {\n\n                \"name\": \"ADMIN\",\n                \"tenantId\": \"in\"\n            }\n\n        ],\n\n        \"tenantId\": \"in\"\n    }\n\n}\n ",
+							"type": "text"
+						},
+						{
+							"key": "boundary_codes",
+							"value": "A",
+							"type": "text",
+							"disabled": true
+						},
+						{
+							"key": "parent_project_id",
+							"value": "caf3fb85-fbb8-4b65-8d37-3d491ac89937",
+							"type": "text",
+							"disabled": true
+						},
+						{
+							"key": "project_id",
+							"value": "caf3fb85-fbb8-4b65-8d37-3d491ac89937",
+							"type": "text",
+							"disabled": true
+						}
+					]
+				},
+				"url": {
+					"raw": "http://0.0.0.0:8000/ingestion-service/ingest/boundaries",
+					"protocol": "http",
+					"host": [
+						"0",
+						"0",
+						"0",
+						"0"
+					],
+					"port": "8000",
+					"path": [
+						"ingestion-service",
+						"ingest",
+						"boundaries"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Facility Selection Ingestion",
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "facility_selection_file",
+							"type": "file",
+							"src": "/home/bhcp0116/Downloads/backup_home/bhcp0116/facility_selection_template_20250528_112812.xlsx"
+						},
+						{
+							"key": "facility_selection_sheet_name",
+							"value": "Facility Selection Template",
+							"type": "text"
+						},
+						{
+							"key": "request_info",
+							"value": "{\n\n    \"apiId\": \"some-api-id\",\n\n    \"ver\": \"1.0\",\n\n    \"ts\": 1609459200000,\n\n    \"action\": \"CREATE\",\n\n    \"did\": \"some-device-id\",\n\n    \"key\": \"some-key\",\n\n    \"msgId\": \"some-msg-id\",\n\n    \"authToken\": \"some-auth-token\",\n\n    \"userInfo\": {\n\n        \"uuid\": \"789\",\n\n        \"userName\": \"John Doe\",\n\n        \"roles\": [\n\n            {\n\n                \"name\": \"ADMIN\",\n                \"tenantId\": \"in\"\n            }\n\n        ],\n\n        \"tenantId\": \"in\"\n    }\n\n}\n ",
+							"type": "text"
+						},
+						{
+							"key": "boundary_codes",
+							"value": "A",
+							"type": "text",
+							"disabled": true
+						},
+						{
+							"key": "parent_project_id",
+							"value": "caf3fb85-fbb8-4b65-8d37-3d491ac89937",
+							"type": "text",
+							"disabled": true
+						},
+						{
+							"key": "project_id",
+							"value": "caf3fb85-fbb8-4b65-8d37-3d491ac89937",
+							"type": "text",
+							"disabled": true
+						}
+					]
+				},
+				"url": {
+					"raw": "http://0.0.0.0:8000/ingestion-service/ingest/facilitySelection",
+					"protocol": "http",
+					"host": [
+						"0",
+						"0",
+						"0",
+						"0"
+					],
+					"port": "8000",
+					"path": [
+						"ingestion-service",
+						"ingest",
+						"facilitySelection"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Facility Ingestion",
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "facility_file",
+							"type": "file",
+							"src": "/home/bhcp0116/Downloads/backup_home/bhcp0116/facility_ingestion_template_20250527_161415.xlsx"
+						},
+						{
+							"key": "facility_sheet_name",
+							"value": "FacilityIngestionTemplate",
+							"type": "text"
+						},
+						{
+							"key": "request_info",
+							"value": "{\n\n    \"apiId\": \"some-api-id\",\n\n    \"ver\": \"1.0\",\n\n    \"ts\": 1609459200000,\n\n    \"action\": \"CREATE\",\n\n    \"did\": \"some-device-id\",\n\n    \"key\": \"some-key\",\n\n    \"msgId\": \"some-msg-id\",\n\n    \"authToken\": \"some-auth-token\",\n\n    \"userInfo\": {\n\n        \"uuid\": \"789\",\n\n        \"userName\": \"John Doe\",\n\n        \"roles\": [\n\n            {\n\n                \"name\": \"ADMIN\",\n                \"tenantId\": \"in\"\n            }\n\n        ],\n\n        \"tenantId\": \"in\"\n    }\n\n}\n ",
+							"type": "text"
+						},
+						{
+							"key": "boundary_codes",
+							"value": "A",
+							"type": "text",
+							"disabled": true
+						},
+						{
+							"key": "parent_project_id",
+							"value": "caf3fb85-fbb8-4b65-8d37-3d491ac89937",
+							"type": "text",
+							"disabled": true
+						},
+						{
+							"key": "project_id",
+							"value": "caf3fb85-fbb8-4b65-8d37-3d491ac89937",
+							"type": "text",
+							"disabled": true
+						}
+					]
+				},
+				"url": {
+					"raw": "http://0.0.0.0:8000/ingestion-service/ingest/facilities",
+					"protocol": "http",
+					"host": [
+						"0",
+						"0",
+						"0",
+						"0"
+					],
+					"port": "8000",
+					"path": [
+						"ingestion-service",
+						"ingest",
+						"facilities"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Facility Selection Template",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "project_file",
+							"type": "file",
+							"src": "/home/bhcp0116/Selco/Project Schema.xlsx",
+							"disabled": true
+						},
+						{
+							"key": "request_info",
+							"value": "{\n\n    \"apiId\": \"some-api-id\",\n\n    \"ver\": \"1.0\",\n\n    \"ts\": 1609459200000,\n\n    \"action\": \"CREATE\",\n\n    \"did\": \"some-device-id\",\n\n    \"key\": \"some-key\",\n\n    \"msgId\": \"some-msg-id\",\n\n    \"authToken\": \"some-auth-token\",\n\n    \"userInfo\": {\n\n        \"uuid\": \"789\",\n\n        \"userName\": \"John Doe\",\n\n        \"roles\": [\n\n            {\n\n                \"name\": \"ADMIN\",\n                \"tenantId\": \"in\"\n            }\n\n        ],\n\n        \"tenantId\": \"in\"\n    }\n\n}\n ",
+							"type": "text"
+						},
+						{
+							"key": "boundary_sheet_name",
+							"value": "Boundary Data Output",
+							"type": "text",
+							"disabled": true
+						},
+						{
+							"key": "boundary_codes",
+							"value": "A",
+							"type": "text"
+						},
+						{
+							"key": "parent_project_id",
+							"value": "caf3fb85-fbb8-4b65-8d37-3d491ac89937",
+							"type": "text"
+						},
+						{
+							"key": "project_id",
+							"value": "caf3fb85-fbb8-4b65-8d37-3d491ac89937",
+							"type": "text",
+							"disabled": true
+						}
+					]
+				},
+				"url": {
+					"raw": "http://0.0.0.0:8000/ingestion-service/template/facilitySelection",
+					"protocol": "http",
+					"host": [
+						"0",
+						"0",
+						"0",
+						"0"
+					],
+					"port": "8000",
+					"path": [
+						"ingestion-service",
+						"template",
+						"facilitySelection"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Facility Ingestion Template",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "project_file",
+							"type": "file",
+							"src": "/home/bhcp0116/Selco/Project Schema.xlsx",
+							"disabled": true
+						},
+						{
+							"key": "request_info",
+							"value": "{\n\n    \"apiId\": \"some-api-id\",\n\n    \"ver\": \"1.0\",\n\n    \"ts\": 1609459200000,\n\n    \"action\": \"CREATE\",\n\n    \"did\": \"some-device-id\",\n\n    \"key\": \"some-key\",\n\n    \"msgId\": \"some-msg-id\",\n\n    \"authToken\": \"some-auth-token\",\n\n    \"userInfo\": {\n\n        \"uuid\": \"789\",\n\n        \"userName\": \"John Doe\",\n\n        \"roles\": [\n\n            {\n\n                \"name\": \"ADMIN\",\n                \"tenantId\": \"in\"\n            }\n\n        ],\n\n        \"tenantId\": \"in\"\n    }\n\n}\n ",
+							"type": "text"
+						},
+						{
+							"key": "boundary_sheet_name",
+							"value": "Boundary Data Output",
+							"type": "text",
+							"disabled": true
+						},
+						{
+							"key": "boundary_codes",
+							"value": "A",
+							"type": "text",
+							"disabled": true
+						},
+						{
+							"key": "parent_project_id",
+							"value": "caf3fb85-fbb8-4b65-8d37-3d491ac89937",
+							"type": "text",
+							"disabled": true
+						},
+						{
+							"key": "project_id",
+							"value": "caf3fb85-fbb8-4b65-8d37-3d491ac89937",
+							"type": "text",
+							"disabled": true
+						}
+					]
+				},
+				"url": {
+					"raw": "http://0.0.0.0:8000/ingestion-service/template/facilityIngestion",
+					"protocol": "http",
+					"host": [
+						"0",
+						"0",
+						"0",
+						"0"
+					],
+					"port": "8000",
+					"path": [
+						"ingestion-service",
+						"template",
+						"facilityIngestion"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
