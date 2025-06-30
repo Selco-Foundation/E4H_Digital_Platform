@@ -59,4 +59,7 @@ public class IndexView {
 
     @JsonProperty("documentUrls")
     private List<String> documentUrls ;
+
+    @JsonProperty("comments")
+    private String comments;
 }
