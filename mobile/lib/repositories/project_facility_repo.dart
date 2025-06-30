@@ -1,44 +1,64 @@
 import 'dart:async';
 
-import 'package:dio/dio.dart';
+import 'package:isar/isar.dart';
 
+import '../data/nosql/cache_project_facility.dart';
 import '../data/remote_client.dart';
-import '../model/dataModel.dart';
 import '../model/entities/project_facility.dart';
 import '../utils/envConfig.dart';
 
-class ProjectFacilityRemoteRepository {
-  ProjectFacilityRemoteRepository();
+class FacilityNotFoundException implements Exception {
+  final String projectId;
+  FacilityNotFoundException(this.projectId);
+
+  @override
+  String toString() => 'No facility found for project "$projectId".';
+}
+
+class ProjectFacilityRepository {
+  ProjectFacilityRepository();
 
   final dio = DioClient().dio;
 
-  FutureOr<List<ProjectFacilityModel>> search(ProjectFacilitySearchModel body,
-      Map<DataModelType, Map<ApiOperation, String>>? actionMap) async {
-    try {
-      Response response;
-      String searchPath =
-          actionMap![DataModelType.projectFacility]![ApiOperation.search]!;
+  FutureOr<CacheProjectFacility> search(
+    ProjectFacilitySearchModel body,
+    Isar isar,
+  ) async {
+    final projectId = body.projectId!.first;
 
-      response = await dio.post(
-        searchPath,
-        queryParameters: {
-          'tenantId': envConfig.variables.tenantId,
-          'limit': 100,
-          'offset': 0
-        },
-        data: {"ProjectFacility": body.toMap()},
-      );
-
-      final responseMap = response.data['ProjectFacilities'];
-
-      List<ProjectFacilityModel> projectFacilityList = [];
-      for (final facility in responseMap) {
-        projectFacilityList.add(ProjectFacilityModelMapper.fromMap(facility));
-      }
-
-      return projectFacilityList;
-    } catch (err) {
-      rethrow;
+    final existing = await isar.cacheProjectFacilitys
+        .where()
+        .projectIdEqualTo(projectId)
+        .findFirst();
+    if (existing != null) {
+      return existing;
     }
+
+    const String searchPath = "project/facility/v1/_search";
+    final response = await dio.post(
+      searchPath,
+      queryParameters: {
+        'tenantId': envConfig.variables.tenantId,
+        'limit': 1,
+        'offset': 0,
+      },
+      data: {"ProjectFacility": body.toMap()},
+    );
+
+    final List<dynamic>? responseMap = response.data['ProjectFacilities'];
+    if (responseMap == null || responseMap.isEmpty) {
+      throw FacilityNotFoundException(projectId);
+    }
+
+    final facilityModel = ProjectFacilityModelMapper.fromMap(responseMap.first);
+    final newEntry = CacheProjectFacility(
+      projectId: projectId,
+      facilityId: facilityModel.facilityId,
+    );
+
+    await isar.writeTxn(() async {
+      await isar.cacheProjectFacilitys.put(newEntry);
+    });
+    return newEntry;
   }
 }

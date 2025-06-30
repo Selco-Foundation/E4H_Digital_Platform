@@ -61,7 +61,7 @@ class CacheMediaUploadBloc
             .findFirst();
 
         if (existing != null) {
-          existing.photoPath = event.entry.photoPath;
+          existing.filePath = event.entry.filePath;
           existing.updatedAt = DateTime.now();
           await isar.cacheMediaUploads.put(existing);
         } else {
@@ -93,22 +93,22 @@ class CacheMediaUploadBloc
             .findFirst();
 
         if (existing != null) {
-          existing.photoPath = event.entry.photoPath;
+          existing.filePath = event.entry.filePath;
           existing.latitude = event.entry.latitude;
           existing.longitude = event.entry.longitude;
           existing.updatedAt = DateTime.now();
           await isar.cacheMediaUploads.put(existing);
         } else {
-          final newEntry = CacheMediaUpload(
-            projectId: event.entry.projectId,
-            assetType: event.entry.assetType,
-            itemNumber: event.entry.itemNumber,
-            itemType: event.entry.itemType,
-            photoPath: event.entry.photoPath,
-            latitude: event.entry.latitude,
-            longitude: event.entry.longitude,
-          );
-          await isar.cacheMediaUploads.put(newEntry);
+          // final newEntry = CacheMediaUpload(
+          //   projectId: event.entry.projectId,
+          //   assetType: event.entry.assetType,
+          //   itemNumber: event.entry.itemNumber,
+          //   itemType: event.entry.itemType,
+          //   filePath: event.entry.filePath,
+          //   latitude: event.entry.latitude,
+          //   longitude: event.entry.longitude,
+          // );
+          await isar.cacheMediaUploads.put(event.entry);
         }
       });
 

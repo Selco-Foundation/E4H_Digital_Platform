@@ -103,6 +103,9 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
       context
           .read<CacheAssetCountBloc>()
           .add(CacheAssetCountEvent.get(proj.project.id, assetTypeTitle));
+      context.read<CacheAddNewAssetBloc>().add(
+            CacheAddNewAssetEvent.get(proj.project.id, assetTypeTitle),
+          );
     });
 
     context.read<AppInitialization>().state.maybeWhen(
@@ -196,16 +199,41 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
     final theme = Theme.of(context);
     final textTheme = theme.digitTextTheme(context);
 
-    return BlocListener<DigitScannerBloc, DigitScannerState>(
-      listener: (ctx, scanState) {
-        if (scanState.qrCodes.isNotEmpty && _scanningIndex != null) {
-          _updateAsset(_scanningIndex!, scanState.qrCodes.last);
-          ctx
-              .read<DigitScannerBloc>()
-              .add(const DigitScannerEvent.handleScanner(qrCode: []));
-          _scanningIndex = null;
-        }
-      },
+    return MultiBlocListener(
+      listeners: [
+        BlocListener<DigitScannerBloc, DigitScannerState>(
+          listener: (ctx, scanState) {
+            if (scanState.qrCodes.isNotEmpty && _scanningIndex != null) {
+              _updateAsset(_scanningIndex!, scanState.qrCodes.last);
+              ctx
+                  .read<DigitScannerBloc>()
+                  .add(const DigitScannerEvent.handleScanner(qrCode: []));
+              _scanningIndex = null;
+            }
+          },
+        ),
+        BlocListener<CacheAddNewAssetBloc, CacheAddNewAssetState>(
+          listener: (context, state) {
+            state.maybeWhen(
+                loaded: (entries) {
+                  setState(() {
+                    _assets.clear(); // replace existing with cached entries
+                    for (final entry in entries) {
+                      _assets.add(AssetModel(
+                        serialNumber: entry.serialNumber,
+                        capacity: entry.itemNumber,
+                        unit: assetCapacityUom, // already initialized
+                        latitude: entry.latitude,
+                        longitude: entry.longitude,
+                        photoPath: entry.photoPath,
+                      ));
+                    }
+                  });
+                },
+                orElse: () {});
+          },
+        ),
+      ],
       child: BlocBuilder<AssetTypeBloc, AssetTypeState>(
         builder: (ctx, assetTypeState) {
           final assetType = assetTypeState.when(
@@ -412,7 +440,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                 flex: 2,
                 child: DigitButton(
                   label: 'Scan',
-                  type: DigitButtonType.primary,
+                  type: DigitButtonType.secondary,
                   onPressed: () {
                     setState(() => _scanningIndex = index);
                     context
@@ -448,7 +476,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                   if (imageFile.isEmpty) return;
                   final ok = await _ensureLocationLoaded();
                   if (!ok) {
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    context.showSnackBar(
                       const SnackBar(content: Text('Could not fetch location')),
                     );
                   }

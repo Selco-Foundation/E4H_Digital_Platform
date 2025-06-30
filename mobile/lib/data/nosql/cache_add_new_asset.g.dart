@@ -17,48 +17,58 @@ const CacheAddNewAssetSchema = CollectionSchema(
   name: r'CacheAddNewAsset',
   id: -3761941355099299172,
   properties: {
-    r'assetType': PropertySchema(
+    r'assetId': PropertySchema(
       id: 0,
+      name: r'assetId',
+      type: IsarType.string,
+    ),
+    r'assetType': PropertySchema(
+      id: 1,
       name: r'assetType',
       type: IsarType.string,
     ),
     r'createdAt': PropertySchema(
-      id: 1,
+      id: 2,
       name: r'createdAt',
       type: IsarType.dateTime,
     ),
+    r'documentType': PropertySchema(
+      id: 3,
+      name: r'documentType',
+      type: IsarType.string,
+    ),
     r'itemNumber': PropertySchema(
-      id: 2,
+      id: 4,
       name: r'itemNumber',
       type: IsarType.string,
     ),
     r'latitude': PropertySchema(
-      id: 3,
+      id: 5,
       name: r'latitude',
       type: IsarType.string,
     ),
     r'longitude': PropertySchema(
-      id: 4,
+      id: 6,
       name: r'longitude',
       type: IsarType.string,
     ),
     r'photoPath': PropertySchema(
-      id: 5,
+      id: 7,
       name: r'photoPath',
       type: IsarType.string,
     ),
     r'projectId': PropertySchema(
-      id: 6,
+      id: 8,
       name: r'projectId',
       type: IsarType.string,
     ),
     r'serialNumber': PropertySchema(
-      id: 7,
+      id: 9,
       name: r'serialNumber',
       type: IsarType.string,
     ),
     r'updatedAt': PropertySchema(
-      id: 8,
+      id: 10,
       name: r'updatedAt',
       type: IsarType.dateTime,
     )
@@ -110,7 +120,19 @@ int _cacheAddNewAssetEstimateSize(
   Map<Type, List<int>> allOffsets,
 ) {
   var bytesCount = offsets.last;
+  {
+    final value = object.assetId;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
   bytesCount += 3 + object.assetType.length * 3;
+  {
+    final value = object.documentType;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
   bytesCount += 3 + object.itemNumber.length * 3;
   bytesCount += 3 + object.latitude.length * 3;
   bytesCount += 3 + object.longitude.length * 3;
@@ -126,15 +148,17 @@ void _cacheAddNewAssetSerialize(
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
 ) {
-  writer.writeString(offsets[0], object.assetType);
-  writer.writeDateTime(offsets[1], object.createdAt);
-  writer.writeString(offsets[2], object.itemNumber);
-  writer.writeString(offsets[3], object.latitude);
-  writer.writeString(offsets[4], object.longitude);
-  writer.writeString(offsets[5], object.photoPath);
-  writer.writeString(offsets[6], object.projectId);
-  writer.writeString(offsets[7], object.serialNumber);
-  writer.writeDateTime(offsets[8], object.updatedAt);
+  writer.writeString(offsets[0], object.assetId);
+  writer.writeString(offsets[1], object.assetType);
+  writer.writeDateTime(offsets[2], object.createdAt);
+  writer.writeString(offsets[3], object.documentType);
+  writer.writeString(offsets[4], object.itemNumber);
+  writer.writeString(offsets[5], object.latitude);
+  writer.writeString(offsets[6], object.longitude);
+  writer.writeString(offsets[7], object.photoPath);
+  writer.writeString(offsets[8], object.projectId);
+  writer.writeString(offsets[9], object.serialNumber);
+  writer.writeDateTime(offsets[10], object.updatedAt);
 }
 
 CacheAddNewAsset _cacheAddNewAssetDeserialize(
@@ -144,17 +168,19 @@ CacheAddNewAsset _cacheAddNewAssetDeserialize(
   Map<Type, List<int>> allOffsets,
 ) {
   final object = CacheAddNewAsset(
-    assetType: reader.readString(offsets[0]),
-    itemNumber: reader.readString(offsets[2]),
-    latitude: reader.readString(offsets[3]),
-    longitude: reader.readString(offsets[4]),
-    photoPath: reader.readString(offsets[5]),
-    projectId: reader.readString(offsets[6]),
-    serialNumber: reader.readString(offsets[7]),
+    assetId: reader.readStringOrNull(offsets[0]),
+    assetType: reader.readString(offsets[1]),
+    documentType: reader.readStringOrNull(offsets[3]),
+    itemNumber: reader.readString(offsets[4]),
+    latitude: reader.readString(offsets[5]),
+    longitude: reader.readString(offsets[6]),
+    photoPath: reader.readString(offsets[7]),
+    projectId: reader.readString(offsets[8]),
+    serialNumber: reader.readString(offsets[9]),
   );
-  object.createdAt = reader.readDateTime(offsets[1]);
+  object.createdAt = reader.readDateTime(offsets[2]);
   object.id = id;
-  object.updatedAt = reader.readDateTimeOrNull(offsets[8]);
+  object.updatedAt = reader.readDateTimeOrNull(offsets[10]);
   return object;
 }
 
@@ -166,13 +192,13 @@ P _cacheAddNewAssetDeserializeProp<P>(
 ) {
   switch (propertyId) {
     case 0:
-      return (reader.readString(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 1:
-      return (reader.readDateTime(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 2:
-      return (reader.readString(offset)) as P;
+      return (reader.readDateTime(offset)) as P;
     case 3:
-      return (reader.readString(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 4:
       return (reader.readString(offset)) as P;
     case 5:
@@ -182,6 +208,10 @@ P _cacheAddNewAssetDeserializeProp<P>(
     case 7:
       return (reader.readString(offset)) as P;
     case 8:
+      return (reader.readString(offset)) as P;
+    case 9:
+      return (reader.readString(offset)) as P;
+    case 10:
       return (reader.readDateTimeOrNull(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -373,6 +403,160 @@ extension CacheAddNewAssetQueryWhere
 extension CacheAddNewAssetQueryFilter
     on QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QFilterCondition> {
   QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      assetIdIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'assetId',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      assetIdIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'assetId',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      assetIdEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'assetId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      assetIdGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'assetId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      assetIdLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'assetId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      assetIdBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'assetId',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      assetIdStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'assetId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      assetIdEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'assetId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      assetIdContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'assetId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      assetIdMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'assetId',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      assetIdIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'assetId',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      assetIdIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'assetId',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
       assetTypeEqualTo(
     String value, {
     bool caseSensitive = true,
@@ -560,6 +744,160 @@ extension CacheAddNewAssetQueryFilter
         includeLower: includeLower,
         upper: upper,
         includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      documentTypeIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'documentType',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      documentTypeIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'documentType',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      documentTypeEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'documentType',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      documentTypeGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'documentType',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      documentTypeLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'documentType',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      documentTypeBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'documentType',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      documentTypeStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'documentType',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      documentTypeEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'documentType',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      documentTypeContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'documentType',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      documentTypeMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'documentType',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      documentTypeIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'documentType',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      documentTypeIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'documentType',
+        value: '',
       ));
     });
   }
@@ -1520,6 +1858,20 @@ extension CacheAddNewAssetQueryLinks
 extension CacheAddNewAssetQuerySortBy
     on QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QSortBy> {
   QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
+      sortByAssetId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'assetId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
+      sortByAssetIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'assetId', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
       sortByAssetType() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'assetType', Sort.asc);
@@ -1544,6 +1896,20 @@ extension CacheAddNewAssetQuerySortBy
       sortByCreatedAtDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'createdAt', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
+      sortByDocumentType() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'documentType', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
+      sortByDocumentTypeDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'documentType', Sort.desc);
     });
   }
 
@@ -1649,6 +2015,20 @@ extension CacheAddNewAssetQuerySortBy
 extension CacheAddNewAssetQuerySortThenBy
     on QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QSortThenBy> {
   QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
+      thenByAssetId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'assetId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
+      thenByAssetIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'assetId', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
       thenByAssetType() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'assetType', Sort.asc);
@@ -1673,6 +2053,20 @@ extension CacheAddNewAssetQuerySortThenBy
       thenByCreatedAtDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'createdAt', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
+      thenByDocumentType() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'documentType', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
+      thenByDocumentTypeDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'documentType', Sort.desc);
     });
   }
 
@@ -1790,6 +2184,13 @@ extension CacheAddNewAssetQuerySortThenBy
 
 extension CacheAddNewAssetQueryWhereDistinct
     on QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QDistinct> {
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QDistinct> distinctByAssetId(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'assetId', caseSensitive: caseSensitive);
+    });
+  }
+
   QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QDistinct>
       distinctByAssetType({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
@@ -1801,6 +2202,13 @@ extension CacheAddNewAssetQueryWhereDistinct
       distinctByCreatedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'createdAt');
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QDistinct>
+      distinctByDocumentType({bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'documentType', caseSensitive: caseSensitive);
     });
   }
 
@@ -1862,6 +2270,12 @@ extension CacheAddNewAssetQueryProperty
     });
   }
 
+  QueryBuilder<CacheAddNewAsset, String?, QQueryOperations> assetIdProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'assetId');
+    });
+  }
+
   QueryBuilder<CacheAddNewAsset, String, QQueryOperations> assetTypeProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'assetType');
@@ -1872,6 +2286,13 @@ extension CacheAddNewAssetQueryProperty
       createdAtProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'createdAt');
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, String?, QQueryOperations>
+      documentTypeProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'documentType');
     });
   }
 

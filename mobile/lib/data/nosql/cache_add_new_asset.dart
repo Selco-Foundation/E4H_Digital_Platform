@@ -11,6 +11,9 @@ class CacheAddNewAsset {
 
   @Index()
   late String assetType;
+  late String? documentType = "ASSET";
+
+  late String? assetId;
 
   late String itemNumber; // capacity;
   late String serialNumber;
@@ -37,6 +40,8 @@ class CacheAddNewAsset {
 
   CacheAddNewAsset({
     required this.projectId,
+    this.assetId,
+    this.documentType,
     required this.assetType,
     required this.itemNumber, // this.capacity,
     required this.serialNumber,

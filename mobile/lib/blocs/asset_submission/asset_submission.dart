@@ -1,20 +1,23 @@
-// lib/blocs/asset_submission/asset_submission_event.dart
-
-// lib/blocs/asset_submission/asset_submission_bloc.dart
-
 import 'dart:async';
 import 'dart:io';
 
 import 'package:bloc/bloc.dart';
-import 'package:dio/dio.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:isar/isar.dart';
-import 'package:selco/data/nosql/cache_add_new_asset.dart';
-import 'package:selco/data/nosql/cache_asset_detail.dart';
-import 'package:selco/data/nosql/cache_media_upload.dart';
-import 'package:selco/data/nosql/cache_specification.dart';
+import 'package:selco/data/nosql/cache_completion_report.dart';
 
+import '../../data/nosql/cache_add_new_asset.dart';
+import '../../data/nosql/cache_asset_detail.dart';
+import '../../data/nosql/cache_media_upload.dart';
+import '../../data/nosql/cache_specification.dart';
+import '../../data/nosql/cache_sync_record.dart';
+import '../../data/nosql/cache_unsubmitted_project.dart';
+import '../../model/entities/project_facility.dart';
+import '../../model/project_workflow/project_workflow.dart';
+import '../../repositories/app_init_Repo.dart';
 import '../../repositories/assetRepo.dart';
+import '../../repositories/project_facility_repo.dart';
+import '../../repositories/project_repo.dart';
 import '../../utils/utils.dart';
 
 part 'asset_submission.freezed.dart';
@@ -22,145 +25,113 @@ part 'asset_submission.freezed.dart';
 class AssetSubmissionBloc
     extends Bloc<AssetSubmissionEvent, AssetSubmissionState> {
   final Isar _isar;
+  final UnsubmittedProjectRepository _draftRepo;
 
   AssetSubmissionBloc(this._isar)
-      : super(const AssetSubmissionState.initial()) {
+      : _draftRepo = UnsubmittedProjectRepository(_isar),
+        super(const AssetSubmissionState.initial()) {
     on<_SubmitAll>(_onSubmitAll);
+    on<_SubmitAllDrafts>(_onSubmitAllDrafts);
   }
 
-  /// Reads from Isar: all CacheAddNewAsset where projectId == [projectId]
-  Future<List<CacheAddNewAsset>> _fetchAllCachedAssets(String projectId) async {
-    return await _isar.cacheAddNewAssets
-        .where()
-        .projectIdEqualTo(projectId)
-        .findAll();
-  }
-
-  // FutureOr<void> _onSubmitAll(
-  //   _SubmitAll event,
-  //   Emitter<AssetSubmissionState> emit,
-  // ) async {
-  //   emit(const AssetSubmissionState.loading());
-  //
-  //   try {
-  //     // get the facilityId
-  //
-  //     // 1) Fetch cached assets from Isar
-  //     final allAssets = await _fetchAllCachedAssets(event.projectId);
-  //
-  //     if (allAssets.isEmpty) {
-  //       emit(const AssetSubmissionState.failure(
-  //           "No assets found in cache for this project."));
-  //       return;
-  //     }
-  //
-  //     // 2) Construct an AssetRepository instance (using global EnvConfig)
-  //     final repo = AssetRepository();
-  //
-  //     // 3) Loop over each cached asset, upload → create
-  //     for (final saved in allAssets) {
-  //       final localPath = saved.photoPath;
-  //       if (localPath == null || localPath.isEmpty) {
-  //         continue; // no image, skip
-  //       }
-  //
-  //       final fileOnDisk = File(localPath);
-  //       if (!await fileOnDisk.exists()) {
-  //         continue; // file does not exist, skip
-  //       }
-  //
-  //       // 3a) Upload photo → get fileStoreId
-  //       late final String fileStoreId;
-  //       try {
-  //         fileStoreId = await repo.uploadFile(fileOnDisk);
-  //       } catch (e) {
-  //         emit(AssetSubmissionState.failure(
-  //             "Failed to upload file for ${saved.serialNumber}: $e"));
-  //         return;
-  //       }
-  //
-  //       // 3b) Build the JSON payload for “create asset”.
-  //       //     Fill in all required fields. This skeleton assumes you provided
-  //       //     everything via the event. Adjust as your API expects.
-  //       final createPayload = <String, dynamic>{
-  //         "assetDetail": {
-  //           "Asset": {
-  //             "tenantId": "pg", // envConfig.variables.tenantId,
-  //             "facilityID": "FAC/2025/000106",
-  //             "assetTypeID": saved.assetType.toUpperCase(),
-  //             "system": event.systemCode,
-  //             "serialNumber": saved.serialNumber,
-  //             "modelNumber": event.modelNumber ?? "",
-  //             "brandID": event.brandId ?? "",
-  //             "assetDetails": {
-  //               "totalCapacity": event.totalCapacity ?? 0.0,
-  //               "totalCapacityUnit": event.totalCapacityUnit ?? "",
-  //               "panelCapacity": event.panelCapacity ?? 0.0,
-  //               "capacityUnit": event.capacityUnit ?? "",
-  //             },
-  //             "warrantyStartDate": event.warrantyStartDate ?? "",
-  //             "warrantyDuration": event.warrantyDuration ?? 0,
-  //             "warrantyEndDate": event.warrantyEndDate ?? "",
-  //             "wfStatus": "CREATED",
-  //             "isActive": true,
-  //             "documents": [
-  //               {
-  //                 "documentType": "PHOTO",
-  //                 "fileStore": fileStoreId,
-  //                 "documentUid": "DOC-${saved.serialNumber}",
-  //                 "additionalDetails": {},
-  //                 "geoLocation": {
-  //                   "latitude": saved.latitude,
-  //                   "longitude": saved.longitude
-  //                 },
-  //               }
-  //             ],
-  //             "additionalDetails": event.additionalDetails ?? {}
-  //           }
-  //         }
-  //       };
-  //
-  //       // 3c) Actually call createAsset
-  //       try {
-  //         await repo.createAsset(createPayload);
-  //       } catch (err) {
-  //         String errorMessage = 'Unknown error occurred';
-  //         if (err is DioException) {
-  //           errorMessage = err.response?.data?['error_description'] ??
-  //               err.response?.data?['error'] ??
-  //               err.message ??
-  //               'Network error occurred';
-  //         } else if (err is Exception) {
-  //           errorMessage = err.toString();
-  //         }
-  //         emit(AssetSubmissionState.failure(
-  //             "Failed to create asset for ${saved.serialNumber}: ${errorMessage}"));
-  //         return;
-  //       }
-  //     }
-  //
-  //     // 4) If we reach here, everything succeeded
-  //     emit(const AssetSubmissionState.success());
-  //   } catch (e) {
-  //     emit(AssetSubmissionState.failure(e.toString()));
-  //   }
-  // }
-
-  FutureOr<void> _onSubmitAll(
+  Future<void> _onSubmitAll(
     _SubmitAll event,
+    Emitter<AssetSubmissionState> emit,
+  ) =>
+      _handleSubmit(
+        projectId: event.projectId,
+        userType: event.userType,
+        emit: emit,
+        deleteDraftAfter: false,
+      );
+
+  Future<void> upsertSyncRecord(String userType) async {
+    final now = DateTime.now().toUtc();
+
+    await _isar.writeTxn(() async {
+      final existing = await _isar.cacheSyncRecords
+          .where()
+          .userTypeEqualTo(userType)
+          .findFirst();
+
+      if (existing != null) {
+        existing.syncedAt = now;
+        await _isar.cacheSyncRecords.put(existing);
+      } else {
+        final record = CacheSyncRecord(userType: userType, syncedAt: now);
+        await _isar.cacheSyncRecords.put(record);
+      }
+    });
+  }
+
+  Future<void> _onSubmitAllDrafts(
+    _SubmitAllDrafts event,
     Emitter<AssetSubmissionState> emit,
   ) async {
     emit(const AssetSubmissionState.loading());
+    // save last sync date as now
+    await upsertSyncRecord(event.userType);
+    final localEntries = await _isar.cacheUnsubmittedProjects
+        .where()
+        .filter()
+        .userTypeEqualTo(event.userType)
+        .findAll();
+
+    final localWorkflows = localEntries
+        .map((e) => ProjectWorkflow(project: e.project, status: e.status))
+        .toList();
+
+    if (localWorkflows.isEmpty) {
+      emit(const AssetSubmissionState.failure("No drafts to sync."));
+      return;
+    }
+
+    final total = localWorkflows.length;
+    int completed = 0;
+
+    for (final draft in localWorkflows) {
+      emit(AssetSubmissionState.progress(
+        completed: completed * 2 + 1,
+        total: total * 2,
+      ));
+
+      final success = await _handleSubmit(
+        projectId: draft.project.id,
+        userType: event.userType,
+        emit: emit,
+        deleteDraftAfter: true,
+      );
+
+      if (!success) return;
+
+      completed++;
+      emit(AssetSubmissionState.progress(
+        completed: completed * 2,
+        total: total * 2,
+      ));
+    }
+
+    emit(const AssetSubmissionState.success());
+  }
+
+  Future<bool> _handleSubmit({
+    required String projectId,
+    required String userType,
+    required Emitter<AssetSubmissionState> emit,
+    required bool deleteDraftAfter,
+  }) async {
+    emit(const AssetSubmissionState.loading());
     try {
-      final projectId = event.projectId;
-      final facilityId = "FAC/2025/000106";
+      final facilityId = (await ProjectFacilityRepository().search(
+        ProjectFacilitySearchModel(projectId: [projectId]),
+        _isar,
+      ))
+          .facilityId;
 
       final repo = AssetRepository();
-      // Define types
       const types = ['inverter', 'battery', 'panel'];
 
       for (final type in types) {
-        // 1) Fetch cached assets
         final assets = await _isar.cacheAddNewAssets
             .where()
             .projectIdEqualTo(projectId)
@@ -170,9 +141,9 @@ class AssetSubmissionBloc
         if (assets.isEmpty) {
           emit(AssetSubmissionState.failure(
               "No cached assets found for type $type."));
-          return;
+          return false;
         }
-        // 2) Fetch spec & detail
+
         final spec = await _isar.cacheSpecifications
             .where()
             .projectIdEqualTo(projectId)
@@ -188,187 +159,175 @@ class AssetSubmissionBloc
         if (spec == null || detail == null) {
           emit(AssetSubmissionState.failure(
               "Missing specification or detail for type $type."));
-          return;
+          return false;
         }
-        // 3) For each asset of this type
-        for (final saved in assets) {
-          final localPath = saved.photoPath;
-          if (localPath.isEmpty) continue;
-          final fileOnDisk = File(localPath);
-          if (!await fileOnDisk.exists()) continue;
 
-          // 3a) Upload main photo
-          late String photoFileStoreId;
-          try {
-            photoFileStoreId = await repo.uploadFile(fileOnDisk);
-          } catch (e) {
-            emit(AssetSubmissionState.failure(
-                "Failed to upload photo for ${saved.serialNumber} ($type): $e"));
-            return;
+        final documents = <Map<String, dynamic>>[];
+        for (final saved in assets) {
+          if (saved.photoPath.isNotEmpty) {
+            final file = File(saved.photoPath);
+            if (await file.exists()) {
+              final photoId = await repo.uploadFile(file);
+              final geo = <String, dynamic>{};
+              if (saved.latitude.isNotEmpty && saved.longitude.isNotEmpty) {
+                geo['latitude'] = saved.latitude;
+                geo['longitude'] = saved.longitude;
+              }
+              documents.add({
+                "documentType": saved.documentType,
+                "fileStore": photoId,
+                "documentUid": "DOC-PHOTO-${saved.serialNumber}",
+                if (geo.isNotEmpty) "geoLocation": geo,
+              });
+            }
           }
 
-          // 3b) Fetch any other cached media for this asset to include in documents
-          // For example, invoices or warranty cards stored in CacheMediaUpload.
-          // Assume CacheMediaUpload.itemNumber matches saved.serialNumber, or adjust as needed.
           final mediaEntries = await _isar.cacheMediaUploads
               .where()
               .projectIdEqualTo(projectId)
               .filter()
               .assetTypeEqualTo(type)
-              .and()
-              .itemNumberEqualTo(saved.serialNumber)
               .findAll();
-
-          // Build documents array: start with any additional docs, then the photo
-          final List<Map<String, dynamic>> documents = [];
-
-          // a) Add other media entries first
           for (final m in mediaEntries) {
-            // Upload each file
-            late String mediaFileStoreId;
-            try {
-              final mediaFile = File(m.photoPath);
-              if (!await mediaFile.exists()) {
-                continue;
-              }
-              mediaFileStoreId = await repo.uploadFile(mediaFile);
-            } catch (e) {
-              emit(AssetSubmissionState.failure(
-                  "Failed to upload document for ${saved.serialNumber} ($type): $e"));
-              return;
-            }
-            // Geo if present
-            final geoMap = <String, dynamic>{};
+            if (m.filePath.isEmpty) continue;
+            final mediaFile = File(m.filePath);
+            if (!await mediaFile.exists()) continue;
+            final mediaId = await repo.uploadFile(mediaFile);
+            final geo = <String, dynamic>{};
             if (m.latitude.isNotEmpty && m.longitude.isNotEmpty) {
-              geoMap['latitude'] = m.latitude;
-              geoMap['longitude'] = m.longitude;
+              geo['latitude'] = m.latitude;
+              geo['longitude'] = m.longitude;
             }
-            // Determine documentType and additionalDetails from m.itemType or other fields.
-            // E.g., if m.itemType == 'INVOICE', additionalDetails might come from CacheMediaUpload?
-            Map<String, dynamic> additionalDetails = {};
-            // If CacheMediaUpload has fields for invoiceNumber etc, include here.
-            // For now assume none; adapt if you store those in cache.
             documents.add({
-              "documentType": m.itemType, // e.g. "INVOICE" or "WARRANTY_CARD"
-              "fileStore": mediaFileStoreId,
-              "documentUid": "DOC-${m.itemType}-${saved.serialNumber}",
-              if (geoMap.isNotEmpty) "geoLocation": geoMap,
-              if (additionalDetails.isNotEmpty)
-                "additionalDetails": additionalDetails,
+              "documentType": m.itemType,
+              "fileStore": mediaId,
+              "documentUid":
+                  "DOC-${m.itemType}-${m.id}-${m.itemNumber}-${m.assetType}-${DateTime.now().toUtc().toIso8601String()}",
+              if (geo.isNotEmpty) "geoLocation": geo,
             });
           }
 
-          // b) Add main photo as a document (type "PHOTO")
-          final photoGeo = <String, dynamic>{};
-          if (saved.latitude.isNotEmpty && saved.longitude.isNotEmpty) {
-            photoGeo['latitude'] = saved.latitude;
-            photoGeo['longitude'] = saved.longitude;
-          }
-          documents.add({
-            "documentType": "PHOTO",
-            "fileStore": photoFileStoreId,
-            "documentUid": "DOC-PHOTO-${saved.serialNumber}",
-            if (photoGeo.isNotEmpty) "geoLocation": photoGeo,
-            "additionalDetails": {}, // or include if needed
-          });
-
-          // 3c) Prepare warranty dates: if detail.warranty is a duration string or date string?
-          // Suppose detail.warranty stores duration in months as string; use now + duration.
           final now = DateTime.now().toUtc();
-          final durYear = parseWarrantyYears(detail.warranty);
-          final isoStart = now.toIso8601String();
-          final isoEnd =
-              now.add(Duration(days: 30 * 12 * durYear)).toIso8601String();
+          final startIso = now.toIso8601String();
+          final years = userType == USER_TYPES.FIELD_STAFF.name
+              ? 0
+              : parseWarrantyYears(detail.warranty!);
+          final endIso = userType == USER_TYPES.FIELD_STAFF.name
+              ? ""
+              : now.add(Duration(days: 365 * years)).toIso8601String();
 
-          // 3d) Build Asset map matching sample payload
-          final assetMap = <String, dynamic>{
-            "tenantId": 'pg', // or envConfig.variables.tenantId
-            "facilityID": facilityId,
-            "assetTypeID": type.toUpperCase(),
-            "system": spec.system,
-            "serialNumber": saved.serialNumber,
-            "modelNumber": detail.model,
-            "brandID": detail.brand,
-            "assetDetails": {
-              "totalCapacity": spec.totalCapacity,
-              "totalCapacityUnit": spec.totalCapacityUnit,
-              "totalCapacityUOM": spec.totalCapacityUnit,
-              // If panel-specific fields:
-              if (type == 'PANEL') ...{
-                "panelCapacity": saved.itemNumber,
-                "capacityUnit": 'Wp',
-              },
-              if (type == 'BATTERY') ...{
-                "batteryVoltage": '1',
-                "batteryCapacity": '125',
-                "voltageUnit": 'Volts',
-                "capacityUnit": 'Ah',
-                "batteryType": 'Lithium'
-              },
-              if (type == 'INVERTER') ...{
-                // inverterDetails.setCurrentUnit((String) map.get("currentUnit"));
-                // inverterDetails.setVoltageUnit((String) map.get("voltageUnit"));
-                // String inverterCap = (String) map.get("invertorCapacity");
-                // if (inverterCap == null) {
-                // inverterCap = (String) map.get("inverterCapacity");
-                // }
-                // inverterDetails.setInverterCapacity(inverterCap);
-                //
-                // inverterDetails.setInverterCapacityUnit((String) map.get("invertorCapacityUnit"));
-                // inverterDetails.setOutputPhase((String) map.get("outputPhase"));
-                //
-                // inverterDetails.setChargeControllerCurrent(getDoubleValue(map.get("chargeControllerCurrent")));
-                // inverterDetails.setChargeControllerVoltage(getDoubleValue(map.get("chargeControllerVoltage")));
-
-                "currentUnit": '1',
-                "voltageUnit": 'Volts',
-                "inverterCapacity": saved.itemNumber,
-                "invertorCapacityUnit": 'kVA',
-                "outputPhase": '',
-                "chargeControllerCurrent": '',
-                "chargeControllerVoltage": ''
+          final payload = {
+            "assetDetail": {
+              "Asset": {
+                if (saved.assetId != null) ...{
+                  "assetId": saved.assetId,
+                },
+                "tenantId": envConfig.variables.tenantId,
+                "facilityID": facilityId,
+                "assetTypeID": type.toUpperCase(),
+                "system": spec.system,
+                "serialNumber": saved.serialNumber,
+                "brandID": detail.brand,
+                "assetDetails": {
+                  "totalCapacity": spec.totalCapacity,
+                  "totalCapacityUnit": spec.totalCapacityUnit,
+                  if (type == 'panel') ...{
+                    "panelCapacity": saved.itemNumber,
+                    "capacityUnit": "Wp",
+                  },
+                  if (type == 'battery') ...{
+                    "batteryVoltage": "1",
+                    "batteryCapacity": "125",
+                    "voltageUnit": "Volts",
+                    "capacityUnit": "Ah",
+                    "batteryType": "Lithium",
+                  },
+                  if (type == 'inverter') ...{
+                    "totalCapacityUOM": spec.totalCapacityUnit,
+                    "inverterCapacity": saved.itemNumber,
+                    "invertorCapacityUnit": "kVA",
+                    "voltageUnit": "Volts",
+                    "currentUnit": "1",
+                  },
+                },
+                if (userType == USER_TYPES.SUPERVISOR) ...{
+                  "warrantyStartDate": startIso,
+                  "warrantyDuration": detail.warranty!, // years,
+                  "warrantyEndDate": endIso,
+                  "modelNumber": detail.model,
+                } else ...{
+                  //todo to be removed completely as only supervisors can submit below task
+                  "warrantyStartDate": "2025-06-26T09:05:44.877103Z",
+                  "warrantyDuration": 25,
+                  "warrantyEndDate": "2050-06-20T09:05:44.877103Z",
+                  "modelNumber": detail.model ?? "",
+                },
+                "wfStatus": "CREATED",
+                "isActive": true,
+                "documents": documents,
               }
-            },
-            "warrantyStartDate": isoStart,
-            "warrantyDuration": durYear,
-            "warrantyEndDate": isoEnd,
-            "wfStatus": "CREATED",
-            "isActive": true,
-            "documents": documents,
-            "additionalDetails": {
-              // You can fetch additionalDetails from another cache if you have
-            },
-          };
-
-          final fullPayload = {
-            "assetDetail": {"Asset": assetMap},
-          };
-
-          // 3e) Send create request
-          try {
-            // Use data: fullPayload so Dio serializes JSON
-            await repo.createAsset(fullPayload);
-          } catch (err) {
-            String errorMessage = 'Unknown error occurred';
-            if (err is DioException) {
-              errorMessage = err.response?.data?['error_description'] ??
-                  err.response?.data?['error'] ??
-                  err.message ??
-                  'Network error occurred';
-            } else if (err is Exception) {
-              errorMessage = err.toString();
             }
-            emit(AssetSubmissionState.failure(
-                "Failed to create asset for ${saved.serialNumber}: ${errorMessage}"));
-            return;
-          }
+          };
+
+          await repo.createOrUpdateAsset(
+              payload: payload, assetId: saved.assetId);
         }
       }
 
-      // If all loops succeed:
-      emit(const AssetSubmissionState.success());
+      final remoteRepo = ProjectRemoteRepository();
+      await remoteRepo.updateProjectWorkflow(
+        projectId: projectId,
+        action: WORKFLOW_ACTIONS.CREATE_AND_SAVE_DRAFT.name,
+      );
+      final completionDocuments = <Map<String, dynamic>>[];
+      final completionReport = await _isar.cacheCompletionReports
+          .where()
+          .projectIdEqualTo(projectId)
+          .findFirst();
+      if (completionReport != null) {
+        if (completionReport.filePath.isNotEmpty) {
+          final completionFile = File(completionReport.filePath);
+          if (await completionFile.exists()) {
+            final photoId = await repo.uploadFile(completionFile);
+            final geo = <String, dynamic>{};
+            if (completionReport.latitude.isNotEmpty &&
+                completionReport.longitude.isNotEmpty) {
+              geo['latitude'] = completionReport.latitude;
+              geo['longitude'] = completionReport.longitude;
+            }
+            completionDocuments.add({
+              "documentType": "INSTALLATION REPORT",
+              "fileStore": photoId,
+              "documentUid": "INSTALLATION-REPORT-${photoId}",
+              if (geo.isNotEmpty) "geoLocation": geo,
+            });
+          }
+        }
+        await remoteRepo.updateProjectWorkflow(
+          projectId: projectId,
+          action: userType == USER_TYPES.FIELD_STAFF
+              ? WORKFLOW_ACTIONS.SUBMIT_REPORT_A.name
+              : WORKFLOW_ACTIONS.SUBMIT_REPORT_B.name,
+          documents: completionDocuments,
+        );
+      } else {
+        await remoteRepo.updateProjectWorkflow(
+          projectId: projectId,
+          action: userType == USER_TYPES.FIELD_STAFF
+              ? WORKFLOW_ACTIONS.SUBMIT_REPORT_A.name
+              : WORKFLOW_ACTIONS.SUBMIT_REPORT_B.name,
+        );
+      }
+
+      if (deleteDraftAfter) {
+        await _draftRepo.delete(projectId, userType);
+      }
+
+      if (!deleteDraftAfter) emit(const AssetSubmissionState.success());
+      return true;
     } catch (e) {
       emit(AssetSubmissionState.failure(e.toString()));
+      return false;
     }
   }
 }
@@ -377,20 +336,23 @@ class AssetSubmissionBloc
 class AssetSubmissionEvent with _$AssetSubmissionEvent {
   const factory AssetSubmissionEvent.submitAll({
     required String projectId,
+    required String userType,
   }) = _SubmitAll;
+
+  const factory AssetSubmissionEvent.submitAllDrafts({
+    required String userType,
+  }) = _SubmitAllDrafts;
 }
 
 @freezed
 class AssetSubmissionState with _$AssetSubmissionState {
-  /// Initial: not yet started
   const factory AssetSubmissionState.initial() = _Initial;
-
-  /// In progress: uploading/creating
   const factory AssetSubmissionState.loading() = _Loading;
-
-  /// All assets successfully created
   const factory AssetSubmissionState.success() = _Success;
-
-  /// Some failure occurred; [errorMessage] explains why.
   const factory AssetSubmissionState.failure(String errorMessage) = _Failure;
+
+  const factory AssetSubmissionState.progress({
+    required int completed,
+    required int total,
+  }) = _Progress;
 }

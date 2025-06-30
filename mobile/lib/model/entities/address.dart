@@ -1,9 +1,11 @@
 // Generated using mason. Do not modify by hand
 import 'package:dart_mappable/dart_mappable.dart';
+import 'package:isar/isar.dart';
 
 import 'address_type.dart';
 import 'locality.dart';
 
+part 'address.g.dart';
 part 'address.mapper.dart';
 
 @MappableClass(ignoreNull: true, discriminatorValue: MappableClass.useAsDefault)
@@ -38,30 +40,33 @@ class AddressSearchModel with AddressSearchModelMappable {
   }) : super();
 }
 
+@Embedded()
 @MappableClass(ignoreNull: true, discriminatorValue: MappableClass.useAsDefault)
 class AddressModel with AddressModelMappable {
   static const schemaName = 'Address';
 
-  final String? id;
-  final String? relatedClientReferenceId;
-  final String? doorNo;
-  final double? latitude;
-  final double? longitude;
-  final double? locationAccuracy;
-  final String? addressLine1;
-  final String? addressLine2;
-  final String? landmark;
-  final String? city;
-  final String? pincode;
-  final String? buildingName;
-  final String? street;
-  final String? boundaryType;
-  final String? boundary;
-  final bool? nonRecoverableError;
-  final String? tenantId;
-  final int? rowVersion;
-  final AddressType? type;
-  final LocalityModel? locality;
+  String? id;
+  String? relatedClientReferenceId;
+  String? doorNo;
+  double? latitude;
+  double? longitude;
+  double? locationAccuracy;
+  String? addressLine1;
+  String? addressLine2;
+  String? landmark;
+  String? city;
+  String? pincode;
+  String? buildingName;
+  String? street;
+  String? boundaryType;
+  String? boundary;
+  bool? nonRecoverableError;
+  String? tenantId;
+  int? rowVersion;
+  @ignore
+  AddressType? type;
+  @ignore
+  LocalityModel? locality;
 
   AddressModel({
     this.id,

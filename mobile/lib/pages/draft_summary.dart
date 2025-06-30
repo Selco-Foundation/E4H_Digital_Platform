@@ -9,7 +9,7 @@ import '../widgets/button/footer_button.dart';
 import '../widgets/cards/view_asset_summary.dart';
 import '../widgets/header/back_navigation_help_header.dart';
 
-@RoutePage()
+@RoutePage() //todo to delete the page, no longer using it
 class DraftSummaryPage extends StatefulWidget {
   const DraftSummaryPage({super.key});
 

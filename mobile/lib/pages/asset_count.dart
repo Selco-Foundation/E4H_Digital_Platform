@@ -6,8 +6,8 @@ import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:selco/blocs/app_init/app_init.dart';
 
+import '../blocs/app_init/app_init.dart';
 import '../blocs/cache_asset_count/cache_asset_count.dart';
 import '../blocs/cache_project_asset/cache_project_asset.dart';
 import '../blocs/selected_project/selected_project.dart';
@@ -45,16 +45,6 @@ class _AssetCountPageState extends State<AssetCountPage> {
       _currentProjectId = project.project.id;
       _dispatchInitialLoad(project.project.id);
     });
-
-    // 2) Listen to any future changes in the selected project
-    // context.read<SelectedProjectBloc>().stream.listen((state) {
-    //   state.whenOrNull(selected: (project) {
-    //     if (_currentProjectId != project.id) {
-    //       _currentProjectId = project.id;
-    //       _dispatchInitialLoad(project.id);
-    //     }
-    //   });
-    // });
   }
 
   void _dispatchInitialLoad(String projectId) {
@@ -65,10 +55,6 @@ class _AssetCountPageState extends State<AssetCountPage> {
           ),
         );
 
-    // Load inverter count
-    // context
-    //     .read<CacheAssetCountBloc>()
-    //     .add(CacheAssetCountEvent.get(projectId, 'inverter'));
     context.read<CacheAssetCountBloc>().add(
           CacheAssetCountEvent.getAll(projectId),
         );

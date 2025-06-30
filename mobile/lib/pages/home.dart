@@ -5,9 +5,12 @@ import 'package:digit_ui_components/widgets/molecules/show_pop_up.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../blocs/cache_sync_record/cache_sync_record.dart';
 import '../blocs/report_type/report_type.dart';
+import '../blocs/user_type/user_type.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
+import '../utils/utils.dart';
 import '../widgets/header/back_navigation_help_header.dart';
 import '../widgets/home/home_item_card.dart';
 
@@ -20,10 +23,22 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  late final String _userType;
+  late String pendingRecords = "0";
+
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _showPopup(context));
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _userType = context.read<UserTypeBloc>().state.maybeWhen(
+            supervisor: () => USER_TYPES.SUPERVISOR.name,
+            orElse: () => USER_TYPES.FIELD_STAFF.name,
+          );
+      context
+          .read<CacheSyncRecordBloc>()
+          .add(CacheSyncRecordEvent.fetch(_userType));
+      _showPopup(context);
+    });
   }
 
   void _showPopup(BuildContext context) {
@@ -32,62 +47,73 @@ class _HomePageState extends State<HomePage> {
 
     showCustomPopup(
       context: context,
-      builder: (ctx) => Popup(
-        type: PopUpType.alert,
-        onCrossTap: () => Navigator.of(ctx).pop(),
-        title: "Data not synced!",
-        // description:
-        //     "Your data has not been synced since 28/01/2025. Sync now!",
-        onOutsideTap: () => Navigator.of(ctx).pop(),
-        actionAlignment: MainAxisAlignment.center,
-        actions: [],
-        additionalWidgets: [
-          Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Text("Your data has not been synced since 02/06/2025. Sync now!",
-                  textAlign: TextAlign.center,
-                  style: textTheme.bodyL.copyWith(
-                      color: const Light().textPrimary,
-                      fontWeight: FontWeight.w600)),
-            ],
-          ),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Expanded(
-                flex: 1,
-                child: DigitButton(
-                  label: "Skip",
-                  onPressed: () => Navigator.of(ctx).pop(),
-                  type: DigitButtonType.secondary,
-                  size: DigitButtonSize.large,
-                  mainAxisSize: MainAxisSize.min,
-                ),
+      builder: (ctx) => BlocBuilder<CacheSyncRecordBloc, CacheSyncRecordState>(
+        builder: (context, state) {
+          String description = state.maybeWhen(
+            loaded: (record, pending) {
+              final dt = record.syncedAt;
+              final formatted = "${dt.day.toString().padLeft(2, '0')}/"
+                  "${dt.month.toString().padLeft(2, '0')}/"
+                  "${dt.year}";
+              return "Your data was last synced on $formatted.";
+            },
+            loading: () => "---",
+            orElse: () => "Your data has not been synced. Sync now!",
+          );
+          return Popup(
+            type: PopUpType.alert,
+            onCrossTap: () => Navigator.of(ctx).pop(),
+            title: "Data not synced!",
+            onOutsideTap: () => Navigator.of(ctx).pop(),
+            actionAlignment: MainAxisAlignment.center,
+            actions: [],
+            additionalWidgets: [
+              Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text("$description",
+                      textAlign: TextAlign.center,
+                      style: textTheme.bodyL.copyWith(
+                          color: const Light().textPrimary,
+                          fontWeight: FontWeight.w600)),
+                ],
               ),
-              const SizedBox(width: spacer5),
-              Expanded(
-                flex: 1,
-                child: DigitButton(
-                  label: "Sync Data",
-                  onPressed: () {
-                    Navigator.of(ctx).pop();
-                    context
-                        .read<ReportTypeBloc>()
-                        .add(const ReportTypeEvent.typeSelected("draft"));
-                    context.router.push(const DraftRoute());
-
-                    ///context.router.push(const AssetSummaryRoute());
-                  },
-                  type: DigitButtonType.primary,
-                  size: DigitButtonSize.large,
-                  mainAxisSize: MainAxisSize.min,
-                ),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    flex: 1,
+                    child: DigitButton(
+                      label: "Skip",
+                      onPressed: () => Navigator.of(ctx).pop(),
+                      type: DigitButtonType.secondary,
+                      size: DigitButtonSize.large,
+                      mainAxisSize: MainAxisSize.min,
+                    ),
+                  ),
+                  const SizedBox(width: spacer5),
+                  Expanded(
+                    flex: 1,
+                    child: DigitButton(
+                      label: "Sync Data",
+                      onPressed: () {
+                        Navigator.of(ctx).pop();
+                        context
+                            .read<ReportTypeBloc>()
+                            .add(const ReportTypeEvent.typeSelected("draft"));
+                        context.router.push(const DraftRoute());
+                      },
+                      type: DigitButtonType.primary,
+                      size: DigitButtonSize.large,
+                      mainAxisSize: MainAxisSize.min,
+                    ),
+                  ),
+                ],
               ),
             ],
-          ),
-        ],
+          );
+        },
       ),
     );
   }
@@ -150,15 +176,27 @@ class _HomePageState extends State<HomePage> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: spacer2)
                   .copyWith(top: spacer2),
-              child: const Column(
+              child: Column(
                 children: [
-                  InfoCard(
-                    title: "Data Sync Pending!",
-                    type: InfoType.warning,
-                    description: 'There are 90 records yet to be synced',
+                  BlocBuilder<CacheSyncRecordBloc, CacheSyncRecordState>(
+                    builder: (context, state) {
+                      pendingRecords = state.maybeWhen(
+                        loaded: (record, pending) => pending.toString(),
+                        loading: () => "---",
+                        orElse: () => "---",
+                        notFound: (val) => "$val",
+                      );
+
+                      return InfoCard(
+                        title: "Data Sync Pending!",
+                        type: InfoType.warning,
+                        description:
+                            'There are $pendingRecords record${pendingRecords == '1' ? '' : 's'} yet to be synced',
+                      );
+                    },
                   ),
-                  SizedBox(height: spacer3),
-                  InfoCard(
+                  const SizedBox(height: spacer3),
+                  const InfoCard(
                     title: "Facilities assigned",
                     type: InfoType.info,
                     description:

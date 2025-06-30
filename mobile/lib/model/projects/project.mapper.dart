@@ -369,7 +369,8 @@ class ProjectModelMapper extends ClassMapperBase<ProjectModel> {
   final String id = 'ProjectModel';
 
   static String _$id(ProjectModel v) => v.id;
-  static const Field<ProjectModel, String> _f$id = Field('id', _$id);
+  static const Field<ProjectModel, String> _f$id =
+      Field('id', _$id, opt: true, def: '');
   static String? _$projectType(ProjectModel v) => v.projectType;
   static const Field<ProjectModel, String> _f$projectType =
       Field('projectType', _$projectType, opt: true);

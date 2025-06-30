@@ -22,6 +22,7 @@ mixin _$ReportTypeState {
     required TResult Function() newReport,
     required TResult Function() inbox,
     required TResult Function() submitted,
+    required TResult Function() sendBack,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -30,6 +31,7 @@ mixin _$ReportTypeState {
     TResult? Function()? newReport,
     TResult? Function()? inbox,
     TResult? Function()? submitted,
+    TResult? Function()? sendBack,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -38,6 +40,7 @@ mixin _$ReportTypeState {
     TResult Function()? newReport,
     TResult Function()? inbox,
     TResult Function()? submitted,
+    TResult Function()? sendBack,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -47,6 +50,7 @@ mixin _$ReportTypeState {
     required TResult Function(ReportTypeNew value) newReport,
     required TResult Function(ReportTypeInbox value) inbox,
     required TResult Function(ReportTypeSubmitted value) submitted,
+    required TResult Function(ReportTypeSendBack value) sendBack,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -55,6 +59,7 @@ mixin _$ReportTypeState {
     TResult? Function(ReportTypeNew value)? newReport,
     TResult? Function(ReportTypeInbox value)? inbox,
     TResult? Function(ReportTypeSubmitted value)? submitted,
+    TResult? Function(ReportTypeSendBack value)? sendBack,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -63,6 +68,7 @@ mixin _$ReportTypeState {
     TResult Function(ReportTypeNew value)? newReport,
     TResult Function(ReportTypeInbox value)? inbox,
     TResult Function(ReportTypeSubmitted value)? submitted,
+    TResult Function(ReportTypeSendBack value)? sendBack,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -128,6 +134,7 @@ class _$ReportTypeInitialImpl implements ReportTypeInitial {
     required TResult Function() newReport,
     required TResult Function() inbox,
     required TResult Function() submitted,
+    required TResult Function() sendBack,
   }) {
     return initial();
   }
@@ -139,6 +146,7 @@ class _$ReportTypeInitialImpl implements ReportTypeInitial {
     TResult? Function()? newReport,
     TResult? Function()? inbox,
     TResult? Function()? submitted,
+    TResult? Function()? sendBack,
   }) {
     return initial?.call();
   }
@@ -150,6 +158,7 @@ class _$ReportTypeInitialImpl implements ReportTypeInitial {
     TResult Function()? newReport,
     TResult Function()? inbox,
     TResult Function()? submitted,
+    TResult Function()? sendBack,
     required TResult orElse(),
   }) {
     if (initial != null) {
@@ -165,6 +174,7 @@ class _$ReportTypeInitialImpl implements ReportTypeInitial {
     required TResult Function(ReportTypeNew value) newReport,
     required TResult Function(ReportTypeInbox value) inbox,
     required TResult Function(ReportTypeSubmitted value) submitted,
+    required TResult Function(ReportTypeSendBack value) sendBack,
   }) {
     return initial(this);
   }
@@ -176,6 +186,7 @@ class _$ReportTypeInitialImpl implements ReportTypeInitial {
     TResult? Function(ReportTypeNew value)? newReport,
     TResult? Function(ReportTypeInbox value)? inbox,
     TResult? Function(ReportTypeSubmitted value)? submitted,
+    TResult? Function(ReportTypeSendBack value)? sendBack,
   }) {
     return initial?.call(this);
   }
@@ -187,6 +198,7 @@ class _$ReportTypeInitialImpl implements ReportTypeInitial {
     TResult Function(ReportTypeNew value)? newReport,
     TResult Function(ReportTypeInbox value)? inbox,
     TResult Function(ReportTypeSubmitted value)? submitted,
+    TResult Function(ReportTypeSendBack value)? sendBack,
     required TResult orElse(),
   }) {
     if (initial != null) {
@@ -242,6 +254,7 @@ class _$ReportTypeNewImpl implements ReportTypeNew {
     required TResult Function() newReport,
     required TResult Function() inbox,
     required TResult Function() submitted,
+    required TResult Function() sendBack,
   }) {
     return newReport();
   }
@@ -253,6 +266,7 @@ class _$ReportTypeNewImpl implements ReportTypeNew {
     TResult? Function()? newReport,
     TResult? Function()? inbox,
     TResult? Function()? submitted,
+    TResult? Function()? sendBack,
   }) {
     return newReport?.call();
   }
@@ -264,6 +278,7 @@ class _$ReportTypeNewImpl implements ReportTypeNew {
     TResult Function()? newReport,
     TResult Function()? inbox,
     TResult Function()? submitted,
+    TResult Function()? sendBack,
     required TResult orElse(),
   }) {
     if (newReport != null) {
@@ -279,6 +294,7 @@ class _$ReportTypeNewImpl implements ReportTypeNew {
     required TResult Function(ReportTypeNew value) newReport,
     required TResult Function(ReportTypeInbox value) inbox,
     required TResult Function(ReportTypeSubmitted value) submitted,
+    required TResult Function(ReportTypeSendBack value) sendBack,
   }) {
     return newReport(this);
   }
@@ -290,6 +306,7 @@ class _$ReportTypeNewImpl implements ReportTypeNew {
     TResult? Function(ReportTypeNew value)? newReport,
     TResult? Function(ReportTypeInbox value)? inbox,
     TResult? Function(ReportTypeSubmitted value)? submitted,
+    TResult? Function(ReportTypeSendBack value)? sendBack,
   }) {
     return newReport?.call(this);
   }
@@ -301,6 +318,7 @@ class _$ReportTypeNewImpl implements ReportTypeNew {
     TResult Function(ReportTypeNew value)? newReport,
     TResult Function(ReportTypeInbox value)? inbox,
     TResult Function(ReportTypeSubmitted value)? submitted,
+    TResult Function(ReportTypeSendBack value)? sendBack,
     required TResult orElse(),
   }) {
     if (newReport != null) {
@@ -356,6 +374,7 @@ class _$ReportTypeInboxImpl implements ReportTypeInbox {
     required TResult Function() newReport,
     required TResult Function() inbox,
     required TResult Function() submitted,
+    required TResult Function() sendBack,
   }) {
     return inbox();
   }
@@ -367,6 +386,7 @@ class _$ReportTypeInboxImpl implements ReportTypeInbox {
     TResult? Function()? newReport,
     TResult? Function()? inbox,
     TResult? Function()? submitted,
+    TResult? Function()? sendBack,
   }) {
     return inbox?.call();
   }
@@ -378,6 +398,7 @@ class _$ReportTypeInboxImpl implements ReportTypeInbox {
     TResult Function()? newReport,
     TResult Function()? inbox,
     TResult Function()? submitted,
+    TResult Function()? sendBack,
     required TResult orElse(),
   }) {
     if (inbox != null) {
@@ -393,6 +414,7 @@ class _$ReportTypeInboxImpl implements ReportTypeInbox {
     required TResult Function(ReportTypeNew value) newReport,
     required TResult Function(ReportTypeInbox value) inbox,
     required TResult Function(ReportTypeSubmitted value) submitted,
+    required TResult Function(ReportTypeSendBack value) sendBack,
   }) {
     return inbox(this);
   }
@@ -404,6 +426,7 @@ class _$ReportTypeInboxImpl implements ReportTypeInbox {
     TResult? Function(ReportTypeNew value)? newReport,
     TResult? Function(ReportTypeInbox value)? inbox,
     TResult? Function(ReportTypeSubmitted value)? submitted,
+    TResult? Function(ReportTypeSendBack value)? sendBack,
   }) {
     return inbox?.call(this);
   }
@@ -415,6 +438,7 @@ class _$ReportTypeInboxImpl implements ReportTypeInbox {
     TResult Function(ReportTypeNew value)? newReport,
     TResult Function(ReportTypeInbox value)? inbox,
     TResult Function(ReportTypeSubmitted value)? submitted,
+    TResult Function(ReportTypeSendBack value)? sendBack,
     required TResult orElse(),
   }) {
     if (inbox != null) {
@@ -471,6 +495,7 @@ class _$ReportTypeSubmittedImpl implements ReportTypeSubmitted {
     required TResult Function() newReport,
     required TResult Function() inbox,
     required TResult Function() submitted,
+    required TResult Function() sendBack,
   }) {
     return submitted();
   }
@@ -482,6 +507,7 @@ class _$ReportTypeSubmittedImpl implements ReportTypeSubmitted {
     TResult? Function()? newReport,
     TResult? Function()? inbox,
     TResult? Function()? submitted,
+    TResult? Function()? sendBack,
   }) {
     return submitted?.call();
   }
@@ -493,6 +519,7 @@ class _$ReportTypeSubmittedImpl implements ReportTypeSubmitted {
     TResult Function()? newReport,
     TResult Function()? inbox,
     TResult Function()? submitted,
+    TResult Function()? sendBack,
     required TResult orElse(),
   }) {
     if (submitted != null) {
@@ -508,6 +535,7 @@ class _$ReportTypeSubmittedImpl implements ReportTypeSubmitted {
     required TResult Function(ReportTypeNew value) newReport,
     required TResult Function(ReportTypeInbox value) inbox,
     required TResult Function(ReportTypeSubmitted value) submitted,
+    required TResult Function(ReportTypeSendBack value) sendBack,
   }) {
     return submitted(this);
   }
@@ -519,6 +547,7 @@ class _$ReportTypeSubmittedImpl implements ReportTypeSubmitted {
     TResult? Function(ReportTypeNew value)? newReport,
     TResult? Function(ReportTypeInbox value)? inbox,
     TResult? Function(ReportTypeSubmitted value)? submitted,
+    TResult? Function(ReportTypeSendBack value)? sendBack,
   }) {
     return submitted?.call(this);
   }
@@ -530,6 +559,7 @@ class _$ReportTypeSubmittedImpl implements ReportTypeSubmitted {
     TResult Function(ReportTypeNew value)? newReport,
     TResult Function(ReportTypeInbox value)? inbox,
     TResult Function(ReportTypeSubmitted value)? submitted,
+    TResult Function(ReportTypeSendBack value)? sendBack,
     required TResult orElse(),
   }) {
     if (submitted != null) {
@@ -541,6 +571,126 @@ class _$ReportTypeSubmittedImpl implements ReportTypeSubmitted {
 
 abstract class ReportTypeSubmitted implements ReportTypeState {
   const factory ReportTypeSubmitted() = _$ReportTypeSubmittedImpl;
+}
+
+/// @nodoc
+abstract class _$$ReportTypeSendBackImplCopyWith<$Res> {
+  factory _$$ReportTypeSendBackImplCopyWith(_$ReportTypeSendBackImpl value,
+          $Res Function(_$ReportTypeSendBackImpl) then) =
+      __$$ReportTypeSendBackImplCopyWithImpl<$Res>;
+}
+
+/// @nodoc
+class __$$ReportTypeSendBackImplCopyWithImpl<$Res>
+    extends _$ReportTypeStateCopyWithImpl<$Res, _$ReportTypeSendBackImpl>
+    implements _$$ReportTypeSendBackImplCopyWith<$Res> {
+  __$$ReportTypeSendBackImplCopyWithImpl(_$ReportTypeSendBackImpl _value,
+      $Res Function(_$ReportTypeSendBackImpl) _then)
+      : super(_value, _then);
+}
+
+/// @nodoc
+
+class _$ReportTypeSendBackImpl implements ReportTypeSendBack {
+  const _$ReportTypeSendBackImpl();
+
+  @override
+  String toString() {
+    return 'ReportTypeState.sendBack()';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType && other is _$ReportTypeSendBackImpl);
+  }
+
+  @override
+  int get hashCode => runtimeType.hashCode;
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function() initial,
+    required TResult Function() newReport,
+    required TResult Function() inbox,
+    required TResult Function() submitted,
+    required TResult Function() sendBack,
+  }) {
+    return sendBack();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function()? initial,
+    TResult? Function()? newReport,
+    TResult? Function()? inbox,
+    TResult? Function()? submitted,
+    TResult? Function()? sendBack,
+  }) {
+    return sendBack?.call();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function()? initial,
+    TResult Function()? newReport,
+    TResult Function()? inbox,
+    TResult Function()? submitted,
+    TResult Function()? sendBack,
+    required TResult orElse(),
+  }) {
+    if (sendBack != null) {
+      return sendBack();
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(ReportTypeInitial value) initial,
+    required TResult Function(ReportTypeNew value) newReport,
+    required TResult Function(ReportTypeInbox value) inbox,
+    required TResult Function(ReportTypeSubmitted value) submitted,
+    required TResult Function(ReportTypeSendBack value) sendBack,
+  }) {
+    return sendBack(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(ReportTypeInitial value)? initial,
+    TResult? Function(ReportTypeNew value)? newReport,
+    TResult? Function(ReportTypeInbox value)? inbox,
+    TResult? Function(ReportTypeSubmitted value)? submitted,
+    TResult? Function(ReportTypeSendBack value)? sendBack,
+  }) {
+    return sendBack?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(ReportTypeInitial value)? initial,
+    TResult Function(ReportTypeNew value)? newReport,
+    TResult Function(ReportTypeInbox value)? inbox,
+    TResult Function(ReportTypeSubmitted value)? submitted,
+    TResult Function(ReportTypeSendBack value)? sendBack,
+    required TResult orElse(),
+  }) {
+    if (sendBack != null) {
+      return sendBack(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class ReportTypeSendBack implements ReportTypeState {
+  const factory ReportTypeSendBack() = _$ReportTypeSendBackImpl;
 }
 
 /// @nodoc

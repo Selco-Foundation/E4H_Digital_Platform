@@ -4,8 +4,13 @@ import 'package:path_provider/path_provider.dart';
 import 'package:selco/data/nosql/cache_add_new_asset.dart';
 import 'package:selco/data/nosql/cache_asset_count.dart';
 import 'package:selco/data/nosql/cache_asset_detail.dart';
+import 'package:selco/data/nosql/cache_completion_report.dart';
 import 'package:selco/data/nosql/cache_media_upload.dart';
+import 'package:selco/data/nosql/cache_project_facility.dart';
+import 'package:selco/data/nosql/cache_project_workflow.dart';
 import 'package:selco/data/nosql/cache_specification.dart';
+import 'package:selco/data/nosql/cache_sync_record.dart';
+import 'package:selco/data/nosql/cache_unsubmitted_project.dart';
 
 import '../data/nosql/cache_project_asset.dart';
 import '../data/nosql/localization.dart';
@@ -44,7 +49,12 @@ class Constants {
           CacheSpecificationSchema,
           CacheAssetDetailSchema,
           CacheAddNewAssetSchema,
-          CacheMediaUploadSchema
+          CacheMediaUploadSchema,
+          CacheProjectFacilitySchema,
+          CacheProjectWorkflowSchema,
+          CacheUnsubmittedProjectSchema,
+          CacheSyncRecordSchema,
+          CacheCompletionReportSchema,
         ],
         name: 'HCM',
         inspector: true,

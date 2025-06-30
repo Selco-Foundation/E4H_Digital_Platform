@@ -3,22 +3,6 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'report_type.freezed.dart';
 
-// states
-@freezed
-class ReportTypeState with _$ReportTypeState {
-  const factory ReportTypeState.initial() = ReportTypeInitial;
-  const factory ReportTypeState.newReport() = ReportTypeNew;
-  const factory ReportTypeState.inbox() = ReportTypeInbox;
-  const factory ReportTypeState.submitted() = ReportTypeSubmitted;
-}
-
-// events
-@freezed
-class ReportTypeEvent with _$ReportTypeEvent {
-  const factory ReportTypeEvent.typeSelected(String reportType) =
-      ReportTypeSelected;
-}
-
 // bloc
 class ReportTypeBloc extends Bloc<ReportTypeEvent, ReportTypeState> {
   ReportTypeBloc() : super(const ReportTypeState.initial()) {
@@ -39,8 +23,28 @@ class ReportTypeBloc extends Bloc<ReportTypeEvent, ReportTypeState> {
       case 'submitted':
         emit(const ReportTypeState.submitted());
         break;
+      case 'send-back':
+        emit(const ReportTypeState.sendBack());
+        break;
       default:
         emit(const ReportTypeState.initial());
     }
   }
+}
+
+// states
+@freezed
+class ReportTypeState with _$ReportTypeState {
+  const factory ReportTypeState.initial() = ReportTypeInitial;
+  const factory ReportTypeState.newReport() = ReportTypeNew;
+  const factory ReportTypeState.inbox() = ReportTypeInbox;
+  const factory ReportTypeState.submitted() = ReportTypeSubmitted;
+  const factory ReportTypeState.sendBack() = ReportTypeSendBack;
+}
+
+// events
+@freezed
+class ReportTypeEvent with _$ReportTypeEvent {
+  const factory ReportTypeEvent.typeSelected(String reportType) =
+      ReportTypeSelected;
 }

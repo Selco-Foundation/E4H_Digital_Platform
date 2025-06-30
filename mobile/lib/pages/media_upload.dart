@@ -9,7 +9,6 @@ import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:file_picker/src/platform_file.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:selco/utils/extensions.dart';
 
 import '../blocs/asset_type/asset_type.dart';
 import '../blocs/cache_asset_count/cache_asset_count.dart';
@@ -18,6 +17,7 @@ import '../blocs/selected_project/selected_project.dart';
 import '../data/nosql/cache_asset_count.dart';
 import '../data/nosql/cache_media_upload.dart';
 import '../router/app_router.dart';
+import '../utils/extensions.dart';
 import '../utils/i18_key_constants.dart' as i18;
 import '../utils/utils.dart';
 import '../widgets/button/footer_button.dart';
@@ -144,7 +144,7 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
                       assetType: assetType.toLowerCase(),
                       itemNumber: file.name,
                       itemType: 'image',
-                      photoPath: copiedPath,
+                      filePath: copiedPath,
                       longitude: _longitude.toString(),
                       latitude: _longitude.toString());
                   context
@@ -159,7 +159,7 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
                       assetType: assetType.toLowerCase(),
                       itemNumber: file.name,
                       itemType: 'video',
-                      photoPath: copiedPath,
+                      filePath: copiedPath,
                       longitude: _longitude.toString() ?? '--',
                       latitude: _longitude.toString() ?? '--',
                     );
