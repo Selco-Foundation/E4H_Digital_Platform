@@ -224,7 +224,7 @@ const HlsPlayer = ({ src, originalSrc, fileStoreId, activeVideoRef }) => {
         onPlay={handleVideoPlay}
         onError={(_, e) => {
           console.debug(e);
-          if (e.type === "networkError" && e.details === "levelLoadError" ) {
+          if (e.type === "networkError" && (e.details?.includes?.("LoadError") || e.details?.includes?.("LoadTimeOut"))) {
             setPlayerError(true);
           }
         }}
