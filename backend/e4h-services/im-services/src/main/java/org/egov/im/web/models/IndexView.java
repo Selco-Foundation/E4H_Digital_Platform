@@ -65,4 +65,11 @@ public class IndexView {
 
     @JsonProperty("comments")
     private String comments;
+
+    @JsonProperty("sendBackReason")
+    private String sendBackReason;
+
+    @JsonProperty("sendBackSubReason")
+    private String sendBackSubReason;
+
 }
