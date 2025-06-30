@@ -65,7 +65,8 @@ int parseWarrantyMonths(String s) {
   return 1;
 }
 
-int parseWarrantyYears(String s) {
+int parseWarrantyYears(String? s) {
+  if (s == null || s.isEmpty || s.length < 1) return 1;
   final regex = RegExp(r'^P(?:(\d+)Y)?(?:(\d+)M)?');
   final match = regex.firstMatch(s);
   if (match != null) {
@@ -78,16 +79,38 @@ int parseWarrantyYears(String s) {
 }
 
 enum WORKFLOW_STATUS_FIELD_STAFF {
+  ASSIGNED_TO_FIELD_STAFF,
   REJECTED_BY_FIELD_SUPERVISOR,
-  APPROVED_BY_QC_SPOC
+  APPROVED_BY_QC_SPOC,
+  APPROVED_BY_SUPERVISOR,
+  SUBMITTED_BY_FIELD_STAFF,
 }
 
 enum WORKFLOW_STATUS_FIELD_SUPERVISOR {
+  ASSIGNED_TO_FIELD_SUPERVISOR,
   SUBMITTED_BY_FIELD_STAFF,
   SUBMITTED_BY_SUPERVISOR,
   REJECTED_BY_QC_SPOC,
   APPROVED_BY_QC_SPOC
 }
+
+enum WORKFLOW_ACTIONS {
+  CREATE_AND_SAVE_DRAFT,
+  SUBMIT_REPORT_A,
+  SUBMIT_REPORT_B
+}
+
+enum REPORT_TYPES {
+  NEW_REPORT,
+  INBOX,
+  SUBMITTED,
+  REVIEW,
+  REJECTED,
+  APPROVED,
+  ADD_MORE,
+}
+
+enum USER_TYPES { SUPERVISOR, FIELD_STAFF }
 
 class DioErrorParser {
   static Exception parse(DioError dioErr) {

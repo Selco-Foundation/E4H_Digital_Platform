@@ -91,14 +91,14 @@ class CacheAssetDetailBloc
           existing.updatedAt = DateTime.now();
           await isar.cacheAssetDetails.put(existing);
         } else {
-          final newEntry = CacheAssetDetail(
-            projectId: event.entry.projectId,
-            assetType: event.entry.assetType,
-            warranty: event.entry.warranty,
-            brand: event.entry.brand,
-            model: event.entry.model,
-          );
-          await isar.cacheAssetDetails.put(newEntry);
+          // final newEntry = CacheAssetDetail(
+          //   projectId: event.entry.projectId,
+          //   assetType: event.entry.assetType,
+          //   warranty: event.entry.warranty,
+          //   brand: event.entry.brand,
+          //   model: event.entry.model,
+          // );
+          await isar.cacheAssetDetails.put(event.entry);
         }
       });
 

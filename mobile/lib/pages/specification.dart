@@ -23,7 +23,6 @@ import '../utils/i18_key_constants.dart' as i18;
 import '../widgets/button/footer_button.dart';
 import '../widgets/cards/stepper.dart';
 import '../widgets/header/back_navigation_help_header.dart';
-import '../widgets/navigation/navbar.dart';
 
 @RoutePage()
 class SpecificationPage extends StatefulWidget {
@@ -122,7 +121,6 @@ class _SpecificationPageState extends State<SpecificationPage> {
                 totalCapacityUomField?.options?.firstOrNull ?? '';
 
             return Scaffold(
-                appBar: const Navbar(),
                 body: ScrollableContent(
                     header: const BackNavigationHelpHeaderWidget(
                       showBackNavigation: true,
@@ -148,81 +146,81 @@ class _SpecificationPageState extends State<SpecificationPage> {
                       },
                     ),
                     children: [
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: spacer2, vertical: spacer4),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: spacer2, vertical: spacer4),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                AppStepper(context: context, activeIndex: 2)
-                              ],
-                            ),
-                            const SizedBox(height: spacer4),
-                            DigitCard(children: [
-                              Text(
-                                specHeading,
-                                style: textTheme.headingXl.copyWith(
-                                    color: theme.colorTheme.primary.primary2),
-                              ),
-                              LabeledField(
-                                label: 'System',
-                                labelStyle: textTheme.headingS.copyWith(
-                                    color: theme.colorTheme.text.primary),
-                                capitalizedFirstLetter: false,
-                                child: DigitTextFormInput(
-                                  controller: TextEditingController(),
-                                  isDisabled: true,
-                                  readOnly: true,
-                                  initialValue: systemList.last.data.name,
-                                  keyboardType: TextInputType.none,
-                                ),
-                              ),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    flex: 3,
-                                    child: LabeledField(
-                                      label: 'Total Capacity',
-                                      labelStyle: textTheme.headingS.copyWith(
-                                          color: theme.colorTheme.text.primary),
-                                      capitalizedFirstLetter: false,
-                                      child: DigitTextFormInput(
-                                        keyboardType: TextInputType.none,
-                                        controller: TextEditingController(),
-                                        isDisabled: true,
-                                        readOnly: true,
-                                        initialValue: totalCapacity,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: spacer6),
-                                  Expanded(
-                                    flex: 1,
-                                    child: LabeledField(
-                                      label: 'Unit',
-                                      labelStyle: textTheme.headingS.copyWith(
-                                          color: theme.colorTheme.text.primary),
-                                      capitalizedFirstLetter: false,
-                                      child: DigitTextFormInput(
-                                        controller: TextEditingController(),
-                                        isDisabled: true,
-                                        readOnly: true,
-                                        initialValue: totalCapacityUom,
-                                        keyboardType: TextInputType.text,
-                                        onChange: (value) {},
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ])
+                            AppStepper(context: context, activeIndex: 2)
                           ],
                         ),
-                      )
-                    ]));
+                        const SizedBox(height: spacer4),
+                        DigitCard(children: [
+                          Text(
+                            specHeading,
+                            style: textTheme.headingXl.copyWith(
+                                color: theme.colorTheme.primary.primary2),
+                          ),
+                          LabeledField(
+                            label: 'System',
+                            labelStyle: textTheme.headingS
+                                .copyWith(color: theme.colorTheme.text.primary),
+                            capitalizedFirstLetter: false,
+                            child: DigitTextFormInput(
+                              controller: TextEditingController(),
+                              isDisabled: true,
+                              readOnly: true,
+                              initialValue: systemList.last.data.name,
+                              keyboardType: TextInputType.none,
+                            ),
+                          ),
+                          Row(
+                            children: [
+                              Expanded(
+                                flex: 3,
+                                child: LabeledField(
+                                  label: 'Total Capacity',
+                                  labelStyle: textTheme.headingS.copyWith(
+                                      color: theme.colorTheme.text.primary),
+                                  capitalizedFirstLetter: false,
+                                  child: DigitTextFormInput(
+                                    keyboardType: TextInputType.none,
+                                    controller: TextEditingController(),
+                                    isDisabled: true,
+                                    readOnly: true,
+                                    initialValue: totalCapacity,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: spacer6),
+                              Expanded(
+                                flex: 1,
+                                child: LabeledField(
+                                  label: 'Unit',
+                                  labelStyle: textTheme.headingS.copyWith(
+                                      color: theme.colorTheme.text.primary),
+                                  capitalizedFirstLetter: false,
+                                  child: DigitTextFormInput(
+                                    controller: TextEditingController(),
+                                    isDisabled: true,
+                                    readOnly: true,
+                                    initialValue: totalCapacityUom,
+                                    keyboardType: TextInputType.text,
+                                    onChange: (value) {},
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ])
+                      ],
+                    ),
+                  )
+                ]));
           },
         );
       },

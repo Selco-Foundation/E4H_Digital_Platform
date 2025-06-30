@@ -102,9 +102,19 @@ int _cacheAssetDetailEstimateSize(
   var bytesCount = offsets.last;
   bytesCount += 3 + object.assetType.length * 3;
   bytesCount += 3 + object.brand.length * 3;
-  bytesCount += 3 + object.model.length * 3;
+  {
+    final value = object.model;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
   bytesCount += 3 + object.projectId.length * 3;
-  bytesCount += 3 + object.warranty.length * 3;
+  {
+    final value = object.warranty;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
   return bytesCount;
 }
 
@@ -132,9 +142,9 @@ CacheAssetDetail _cacheAssetDetailDeserialize(
   final object = CacheAssetDetail(
     assetType: reader.readString(offsets[0]),
     brand: reader.readString(offsets[1]),
-    model: reader.readString(offsets[3]),
+    model: reader.readStringOrNull(offsets[3]),
     projectId: reader.readString(offsets[4]),
-    warranty: reader.readString(offsets[6]),
+    warranty: reader.readStringOrNull(offsets[6]),
   );
   object.createdAt = reader.readDateTime(offsets[2]);
   object.id = id;
@@ -156,13 +166,13 @@ P _cacheAssetDetailDeserializeProp<P>(
     case 2:
       return (reader.readDateTime(offset)) as P;
     case 3:
-      return (reader.readString(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 4:
       return (reader.readString(offset)) as P;
     case 5:
       return (reader.readDateTimeOrNull(offset)) as P;
     case 6:
-      return (reader.readString(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
   }
@@ -737,8 +747,26 @@ extension CacheAssetDetailQueryFilter
   }
 
   QueryBuilder<CacheAssetDetail, CacheAssetDetail, QAfterFilterCondition>
+      modelIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'model',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAssetDetail, CacheAssetDetail, QAfterFilterCondition>
+      modelIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'model',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAssetDetail, CacheAssetDetail, QAfterFilterCondition>
       modelEqualTo(
-    String value, {
+    String? value, {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
@@ -752,7 +780,7 @@ extension CacheAssetDetailQueryFilter
 
   QueryBuilder<CacheAssetDetail, CacheAssetDetail, QAfterFilterCondition>
       modelGreaterThan(
-    String value, {
+    String? value, {
     bool include = false,
     bool caseSensitive = true,
   }) {
@@ -768,7 +796,7 @@ extension CacheAssetDetailQueryFilter
 
   QueryBuilder<CacheAssetDetail, CacheAssetDetail, QAfterFilterCondition>
       modelLessThan(
-    String value, {
+    String? value, {
     bool include = false,
     bool caseSensitive = true,
   }) {
@@ -784,8 +812,8 @@ extension CacheAssetDetailQueryFilter
 
   QueryBuilder<CacheAssetDetail, CacheAssetDetail, QAfterFilterCondition>
       modelBetween(
-    String lower,
-    String upper, {
+    String? lower,
+    String? upper, {
     bool includeLower = true,
     bool includeUpper = true,
     bool caseSensitive = true,
@@ -1083,8 +1111,26 @@ extension CacheAssetDetailQueryFilter
   }
 
   QueryBuilder<CacheAssetDetail, CacheAssetDetail, QAfterFilterCondition>
+      warrantyIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'warranty',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAssetDetail, CacheAssetDetail, QAfterFilterCondition>
+      warrantyIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'warranty',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAssetDetail, CacheAssetDetail, QAfterFilterCondition>
       warrantyEqualTo(
-    String value, {
+    String? value, {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
@@ -1098,7 +1144,7 @@ extension CacheAssetDetailQueryFilter
 
   QueryBuilder<CacheAssetDetail, CacheAssetDetail, QAfterFilterCondition>
       warrantyGreaterThan(
-    String value, {
+    String? value, {
     bool include = false,
     bool caseSensitive = true,
   }) {
@@ -1114,7 +1160,7 @@ extension CacheAssetDetailQueryFilter
 
   QueryBuilder<CacheAssetDetail, CacheAssetDetail, QAfterFilterCondition>
       warrantyLessThan(
-    String value, {
+    String? value, {
     bool include = false,
     bool caseSensitive = true,
   }) {
@@ -1130,8 +1176,8 @@ extension CacheAssetDetailQueryFilter
 
   QueryBuilder<CacheAssetDetail, CacheAssetDetail, QAfterFilterCondition>
       warrantyBetween(
-    String lower,
-    String upper, {
+    String? lower,
+    String? upper, {
     bool includeLower = true,
     bool includeUpper = true,
     bool caseSensitive = true,
@@ -1515,7 +1561,7 @@ extension CacheAssetDetailQueryProperty
     });
   }
 
-  QueryBuilder<CacheAssetDetail, String, QQueryOperations> modelProperty() {
+  QueryBuilder<CacheAssetDetail, String?, QQueryOperations> modelProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'model');
     });
@@ -1534,7 +1580,7 @@ extension CacheAssetDetailQueryProperty
     });
   }
 
-  QueryBuilder<CacheAssetDetail, String, QQueryOperations> warrantyProperty() {
+  QueryBuilder<CacheAssetDetail, String?, QQueryOperations> warrantyProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'warranty');
     });

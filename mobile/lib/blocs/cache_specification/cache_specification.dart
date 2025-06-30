@@ -96,14 +96,14 @@ class CacheSpecificationBloc
           existing.updatedAt = DateTime.now();
           await isar.cacheSpecifications.put(existing);
         } else {
-          final newEntry = CacheSpecification(
-            projectId: event.entry.projectId,
-            assetType: event.entry.assetType,
-            system: event.entry.system,
-            totalCapacity: event.entry.totalCapacity,
-            totalCapacityUnit: event.entry.totalCapacityUnit,
-          );
-          await isar.cacheSpecifications.put(newEntry);
+          // final newEntry = CacheSpecification(
+          //   projectId: event.entry.projectId,
+          //   assetType: event.entry.assetType,
+          //   system: event.entry.system,
+          //   totalCapacity: event.entry.totalCapacity,
+          //   totalCapacityUnit: event.entry.totalCapacityUnit,
+          // );
+          await isar.cacheSpecifications.put(event.entry);
         }
       });
 

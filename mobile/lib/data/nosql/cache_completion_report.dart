@@ -1,30 +1,21 @@
 import 'package:isar/isar.dart';
 
-part 'cache_media_upload.g.dart';
+part 'cache_completion_report.g.dart';
 
 @Collection()
-class CacheMediaUpload {
+class CacheCompletionReport {
   Id id = Isar.autoIncrement;
 
   @Index()
   late String projectId;
-
-  @Index()
-  late String assetType;
-
-  late String itemNumber;
-  late String itemType;
   late String filePath;
   late String latitude;
   late String longitude;
   DateTime createdAt = DateTime.now();
   DateTime? updatedAt;
 
-  CacheMediaUpload({
+  CacheCompletionReport({
     required this.projectId,
-    required this.assetType,
-    required this.itemNumber,
-    required this.itemType,
     required this.filePath,
     required this.latitude,
     required this.longitude,
