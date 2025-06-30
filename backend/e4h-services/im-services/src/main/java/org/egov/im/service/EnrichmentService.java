@@ -168,6 +168,12 @@ public class EnrichmentService {
         Optional.ofNullable(hcrDetails.get("employeeUserName")).ifPresent(indexView::setNinHfrId);
         Optional.ofNullable(vendorDetails.get("employeeUserName")).ifPresent(indexView::setMappedVendor);
         indexView.setLastActionTakenBy(lastActionTakenByUser);
+        indexView.setComments(
+                (wrapper.getIncidentRequest().getWorkflow().getComments() != null &&
+                        !wrapper.getIncidentRequest().getWorkflow().getComments().isEmpty())
+                        ? wrapper.getIncidentRequest().getWorkflow().getComments()
+                        : wrapper.getIncidentRequest().getIncident().getComments()
+        );
     }
 
     /**
