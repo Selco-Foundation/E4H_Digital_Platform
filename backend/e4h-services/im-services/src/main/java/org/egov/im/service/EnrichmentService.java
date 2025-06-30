@@ -175,6 +175,13 @@ public class EnrichmentService {
                         ? wrapper.getIncidentRequest().getWorkflow().getComments()
                         : wrapper.getIncidentRequest().getIncident().getComments()
         );
+
+        if (wrapper.getIncidentRequest().getWorkflow().getSendBackReason() != null) {
+            SendBackReason reason = wrapper.getIncidentRequest().getWorkflow().getSendBackReason();
+            indexView.setSendBackReason(reason.getReason());
+            indexView.setSendBackSubReason(reason.getSubReason());
+        }
+
     }
 
     /**
