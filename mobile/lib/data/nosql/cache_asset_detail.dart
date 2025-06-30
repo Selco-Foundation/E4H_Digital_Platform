@@ -12,9 +12,9 @@ class CacheAssetDetail {
   @Index()
   late String assetType;
 
-  late String warranty;
+  late String? warranty;
   late String brand;
-  late String model;
+  late String? model;
 
   DateTime createdAt = DateTime.now();
   DateTime? updatedAt;
@@ -22,8 +22,8 @@ class CacheAssetDetail {
   CacheAssetDetail({
     required this.projectId,
     required this.assetType,
-    required this.warranty,
+    this.warranty,
     required this.brand,
-    required this.model,
+    this.model,
   });
 }

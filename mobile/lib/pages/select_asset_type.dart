@@ -30,6 +30,7 @@ class SelectAssetTypePage extends StatefulWidget {
 
 class _SelectAssetTypePageState extends State<SelectAssetTypePage> {
   String? _currentProjectId;
+  String? selectedAssetType;
 
   @override
   void initState() {
@@ -144,17 +145,22 @@ class _SelectAssetTypePageState extends State<SelectAssetTypePage> {
                             ),
                             capitalizedFirstLetter: false,
                             child: DigitDropdown(
-                                onSelect: (DropdownItem selected) {
-                                  context.read<AssetTypeBloc>().add(
-                                      AssetTypeEvent.typeSelected(
-                                          selected.code));
-                                },
-                                items: assetTypeList
-                                    .map((type) => DropdownItem(
-                                          name: type.data.name,
-                                          code: type.data.code,
-                                        ))
-                                    .toList()),
+                              onSelect: (DropdownItem selected) {
+                                selectedAssetType = selected.code;
+                                context.read<AssetTypeBloc>().add(
+                                    AssetTypeEvent.typeSelected(selected.code));
+                              },
+                              selectedOption: DropdownItem(
+                                name: selectedAssetType ?? "",
+                                code: selectedAssetType ?? "",
+                              ),
+                              items: assetTypeList
+                                  .map((type) => DropdownItem(
+                                        name: type.data.name,
+                                        code: type.data.code,
+                                      ))
+                                  .toList(),
+                            ),
                           ),
                         ])
                       ],

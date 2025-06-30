@@ -48,7 +48,7 @@ class AuthRepository {
   Future<SendOtpResponse> sendOtp(Map<String, dynamic> body) async {
     final dio = DioClient().dio;
     if (envConfig.variables.envType == EnvType.dev) {
-      return _loadLocalSendOtp();
+      // return _loadLocalSendOtp();
     }
     try {
       final response = await dio.post('user-otp/v1/_send', data: {"otp": body});

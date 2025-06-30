@@ -1,8 +1,10 @@
 // Generated using mason. Do not modify by hand
 import 'package:dart_mappable/dart_mappable.dart';
+import 'package:isar/isar.dart';
 
 import '../entities/address.dart';
 
+part 'project.g.dart';
 part 'project.mapper.dart';
 
 @MappableClass(ignoreNull: true, discriminatorValue: MappableClass.useAsDefault)
@@ -72,32 +74,32 @@ class ProjectSearchModel with ProjectSearchModelMappable {
   int? get endDate => endDateTime?.millisecondsSinceEpoch;
 }
 
+@Embedded()
 @MappableClass(ignoreNull: true, discriminatorValue: MappableClass.useAsDefault)
 class ProjectModel with ProjectModelMappable {
   static const schemaName = 'Project';
+  String id;
+  String? projectType;
+  String? projectTypeId;
+  String? projectNumber;
+  String? subProjectTypeId;
+  bool? isTaskEnabled;
+  String? parent;
+  String? name;
+  String? department;
+  String? description;
+  String? referenceId;
+  String? projectHierarchy;
+  bool? nonRecoverableError;
+  String? tenantId;
+  int? rowVersion;
+  AddressModel? address;
 
-  final String id;
-  final String? projectType;
-  final String? projectTypeId;
-  final String? projectNumber;
-  final String? subProjectTypeId;
-  final bool? isTaskEnabled;
-  final String? parent;
-  final String? name;
-  final String? department;
-  final String? description;
-  final String? referenceId;
-  final String? projectHierarchy;
-  final bool? nonRecoverableError;
-  final String? tenantId;
-  final int? rowVersion;
-  final AddressModel? address;
-
-  final DateTime? startDateTime;
-  final DateTime? endDateTime;
+  DateTime? startDateTime;
+  DateTime? endDateTime;
 
   ProjectModel({
-    required this.id,
+    this.id = '',
     this.projectType,
     this.projectTypeId,
     this.projectNumber,

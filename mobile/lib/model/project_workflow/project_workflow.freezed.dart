@@ -22,7 +22,7 @@ ProjectWorkflow _$ProjectWorkflowFromJson(Map<String, dynamic> json) {
 mixin _$ProjectWorkflow {
   @ProjectModelConverter()
   ProjectModel get project => throw _privateConstructorUsedError;
-  String? get state => throw _privateConstructorUsedError;
+  String? get status => throw _privateConstructorUsedError;
 
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
   @JsonKey(ignore: true)
@@ -36,7 +36,7 @@ abstract class $ProjectWorkflowCopyWith<$Res> {
           ProjectWorkflow value, $Res Function(ProjectWorkflow) then) =
       _$ProjectWorkflowCopyWithImpl<$Res, ProjectWorkflow>;
   @useResult
-  $Res call({@ProjectModelConverter() ProjectModel project, String? state});
+  $Res call({@ProjectModelConverter() ProjectModel project, String? status});
 }
 
 /// @nodoc
@@ -53,16 +53,16 @@ class _$ProjectWorkflowCopyWithImpl<$Res, $Val extends ProjectWorkflow>
   @override
   $Res call({
     Object? project = null,
-    Object? state = freezed,
+    Object? status = freezed,
   }) {
     return _then(_value.copyWith(
       project: null == project
           ? _value.project
           : project // ignore: cast_nullable_to_non_nullable
               as ProjectModel,
-      state: freezed == state
-          ? _value.state
-          : state // ignore: cast_nullable_to_non_nullable
+      status: freezed == status
+          ? _value.status
+          : status // ignore: cast_nullable_to_non_nullable
               as String?,
     ) as $Val);
   }
@@ -76,7 +76,7 @@ abstract class _$$ProjectWorkflowImplCopyWith<$Res>
       __$$ProjectWorkflowImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({@ProjectModelConverter() ProjectModel project, String? state});
+  $Res call({@ProjectModelConverter() ProjectModel project, String? status});
 }
 
 /// @nodoc
@@ -91,16 +91,16 @@ class __$$ProjectWorkflowImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? project = null,
-    Object? state = freezed,
+    Object? status = freezed,
   }) {
     return _then(_$ProjectWorkflowImpl(
       project: null == project
           ? _value.project
           : project // ignore: cast_nullable_to_non_nullable
               as ProjectModel,
-      state: freezed == state
-          ? _value.state
-          : state // ignore: cast_nullable_to_non_nullable
+      status: freezed == status
+          ? _value.status
+          : status // ignore: cast_nullable_to_non_nullable
               as String?,
     ));
   }
@@ -110,7 +110,7 @@ class __$$ProjectWorkflowImplCopyWithImpl<$Res>
 @JsonSerializable()
 class _$ProjectWorkflowImpl implements _ProjectWorkflow {
   const _$ProjectWorkflowImpl(
-      {@ProjectModelConverter() required this.project, this.state});
+      {@ProjectModelConverter() required this.project, this.status});
 
   factory _$ProjectWorkflowImpl.fromJson(Map<String, dynamic> json) =>
       _$$ProjectWorkflowImplFromJson(json);
@@ -119,11 +119,11 @@ class _$ProjectWorkflowImpl implements _ProjectWorkflow {
   @ProjectModelConverter()
   final ProjectModel project;
   @override
-  final String? state;
+  final String? status;
 
   @override
   String toString() {
-    return 'ProjectWorkflow(project: $project, state: $state)';
+    return 'ProjectWorkflow(project: $project, status: $status)';
   }
 
   @override
@@ -132,12 +132,12 @@ class _$ProjectWorkflowImpl implements _ProjectWorkflow {
         (other.runtimeType == runtimeType &&
             other is _$ProjectWorkflowImpl &&
             (identical(other.project, project) || other.project == project) &&
-            (identical(other.state, state) || other.state == state));
+            (identical(other.status, status) || other.status == status));
   }
 
   @JsonKey(ignore: true)
   @override
-  int get hashCode => Object.hash(runtimeType, project, state);
+  int get hashCode => Object.hash(runtimeType, project, status);
 
   @JsonKey(ignore: true)
   @override
@@ -157,7 +157,7 @@ class _$ProjectWorkflowImpl implements _ProjectWorkflow {
 abstract class _ProjectWorkflow implements ProjectWorkflow {
   const factory _ProjectWorkflow(
       {@ProjectModelConverter() required final ProjectModel project,
-      final String? state}) = _$ProjectWorkflowImpl;
+      final String? status}) = _$ProjectWorkflowImpl;
 
   factory _ProjectWorkflow.fromJson(Map<String, dynamic> json) =
       _$ProjectWorkflowImpl.fromJson;
@@ -166,7 +166,7 @@ abstract class _ProjectWorkflow implements ProjectWorkflow {
   @ProjectModelConverter()
   ProjectModel get project;
   @override
-  String? get state;
+  String? get status;
   @override
   @JsonKey(ignore: true)
   _$$ProjectWorkflowImplCopyWith<_$ProjectWorkflowImpl> get copyWith =>

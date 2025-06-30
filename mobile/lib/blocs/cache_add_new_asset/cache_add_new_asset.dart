@@ -53,13 +53,16 @@ class CacheAddNewAssetBloc
             .projectIdEqualTo(event.entry.projectId)
             .filter()
             .assetTypeEqualTo(event.entry.assetType)
+            .serialNumberEqualTo(event.entry.serialNumber)
             .findFirst();
 
         if (existing != null) {
           // Overwrite fields if desired
           existing.itemNumber = event.entry.itemNumber;
-          existing.serialNumber = event.entry.serialNumber;
+          // existing.serialNumber = event.entry.serialNumber;
           existing.photoPath = event.entry.photoPath;
+          existing.longitude = event.entry.longitude;
+          existing.latitude = event.entry.latitude;
           existing.updatedAt = DateTime.now();
           await isar.cacheAddNewAssets.put(existing);
         } else {
@@ -83,27 +86,28 @@ class CacheAddNewAssetBloc
             .projectIdEqualTo(event.entry.projectId)
             .filter()
             .assetTypeEqualTo(event.entry.assetType)
+            .serialNumberEqualTo(event.entry.serialNumber)
             .findFirst();
 
         if (existing != null) {
           existing.itemNumber = event.entry.itemNumber;
-          existing.serialNumber = event.entry.serialNumber;
+          // existing.serialNumber = event.entry.serialNumber;
           existing.photoPath = event.entry.photoPath;
           existing.longitude = event.entry.longitude;
           existing.latitude = event.entry.latitude;
           existing.updatedAt = DateTime.now();
           await isar.cacheAddNewAssets.put(existing);
         } else {
-          final newEntry = CacheAddNewAsset(
-            projectId: event.entry.projectId,
-            assetType: event.entry.assetType,
-            itemNumber: event.entry.itemNumber,
-            serialNumber: event.entry.serialNumber,
-            photoPath: event.entry.photoPath,
-            latitude: event.entry.latitude,
-            longitude: event.entry.longitude,
-          );
-          await isar.cacheAddNewAssets.put(newEntry);
+          // final newEntry = CacheAddNewAsset(
+          //   projectId: event.entry.projectId,
+          //   assetType: event.entry.assetType,
+          //   itemNumber: event.entry.itemNumber,
+          //   serialNumber: event.entry.serialNumber,
+          //   photoPath: event.entry.photoPath,
+          //   latitude: event.entry.latitude,
+          //   longitude: event.entry.longitude,
+          // );
+          await isar.cacheAddNewAssets.put(event.entry);
         }
       });
 

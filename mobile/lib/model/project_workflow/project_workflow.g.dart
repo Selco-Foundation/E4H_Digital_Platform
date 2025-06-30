@@ -11,12 +11,12 @@ _$ProjectWorkflowImpl _$$ProjectWorkflowImplFromJson(
     _$ProjectWorkflowImpl(
       project: const ProjectModelConverter()
           .fromJson(json['project'] as Map<String, dynamic>),
-      state: json['state'] as String?,
+      status: json['status'] as String?,
     );
 
 Map<String, dynamic> _$$ProjectWorkflowImplToJson(
         _$ProjectWorkflowImpl instance) =>
     <String, dynamic>{
       'project': const ProjectModelConverter().toJson(instance.project),
-      'state': instance.state,
+      'status': instance.status,
     };

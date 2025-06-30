@@ -11,13 +11,15 @@ import 'package:digit_ui_components/widgets/molecules/show_pop_up.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+import 'package:recase/recase.dart';
+import 'package:selco/blocs/user_type/user_type.dart';
 import 'package:selco/model/project_workflow/project_workflow.dart';
 
 import '../blocs/asset_summary/asset_summary.dart';
 import '../blocs/asset_type/asset_type.dart';
+import '../blocs/project/project.dart';
 import '../blocs/report_type/report_type.dart';
 import '../blocs/selected_project/selected_project.dart';
-import '../data/secure_storage/secureStore.dart';
 import '../model/asset_summary/asset_summary.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
@@ -38,6 +40,7 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
   String projectName = "";
   String status = "";
   String assetType = "";
+  String userType = "";
   ProjectWorkflow? selectedProject;
 
   @override
@@ -53,13 +56,17 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
             panel: () => 'panel',
           );
 
+      userType = context.read<UserTypeBloc>().state.maybeWhen(
+          supervisor: () => USER_TYPES.SUPERVISOR.name,
+          orElse: () => USER_TYPES.FIELD_STAFF.name);
+
       // Assumes SelectedProjectBloc holds the current project
       final selectedProjectState = context.read<SelectedProjectBloc>().state;
       selectedProjectState.whenOrNull(selected: (proj) {
         final projectId = proj.project.id;
         selectedProject = proj;
         projectName = proj.project.name ?? '---';
-        status = proj.state ?? "---";
+        status = proj.status ?? "---";
         context.read<AssetSummaryBloc>().add(
               AssetSummaryEvent.load(
                 projectId: projectId,
@@ -94,7 +101,7 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
             ),
             footer: BlocBuilder<ReportTypeBloc, ReportTypeState>(
               builder: (context, reportState) {
-                if (reportState is ReportTypeInbox) {
+                if (reportState is ReportTypeSendBack) {
                   return FooterButton(
                     showSuffixIcon: false,
                     text: "Send back",
@@ -180,8 +187,12 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
                     showSuffixIcon: false,
                     text: context.translate(i18.common.coreCommonNext),
                     onPress: () {
-                      final SecureStore storage = SecureStore();
-                      storage.addToDraftProjects(selectedProject!);
+                      // final SecureStore storage = SecureStore();
+                      // storage.addToDraftProjects(selectedProject!);
+                      final project = selectedProject!; // your ProjectWorkflow
+                      context.read<ProjectBloc>().add(
+                            ProjectEvent.addUnSubmitted(project, userType),
+                          );
                       context.router.push(const DataSaveSuccessRoute());
                     },
                   );
@@ -266,7 +277,9 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
                     color: Theme.of(context).colorTheme.primary.primary2,
                   ),
                 ),
-                const Icon(Icons.edit),
+                editButton(
+                    context: context,
+                    onTap: () => context.router.push(const AddNewAssetRoute())),
               ],
             ),
             const SizedBox(height: spacer2),
@@ -325,7 +338,7 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: spacer1),
         child: Image.file(
-          File(m.photoPath),
+          File(m.filePath),
           width: 100,
           height: 100,
           fit: BoxFit.cover,
@@ -386,7 +399,7 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
             ),
             Row(
               children: [
-                KeyColumn(keys: [assetType]),
+                KeyColumn(keys: [assetType.titleCase]),
                 ValueColumn(values: [countValue]),
               ],
             ),
@@ -415,10 +428,19 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
         // Details: Warranty, Brand, Model
         DigitCard(
           children: [
-            Text(
-              'Details',
-              style: textTheme.headingM.copyWith(
-                  color: Theme.of(context).colorTheme.primary.primary2),
+            Row(
+              children: [
+                Text(
+                  'Details',
+                  style: textTheme.headingM.copyWith(
+                      color: Theme.of(context).colorTheme.primary.primary2),
+                ),
+                const Spacer(),
+                editButton(
+                    context: context,
+                    onTap: () =>
+                        context.router.push(const AssetTypeDetailRoute())),
+              ],
             ),
             Row(
               children: [
@@ -450,7 +472,10 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
                       color: Theme.of(context).colorTheme.primary.primary2,
                     ),
                   ),
-                  const Icon(Icons.edit),
+                  editButton(
+                      context: context,
+                      onTap: () =>
+                          context.router.push(const MediaUploadRoute())),
                 ],
               ),
               const SizedBox(height: spacer2),
@@ -476,7 +501,10 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
                       color: Theme.of(context).colorTheme.primary.primary2,
                     ),
                   ),
-                  const Icon(Icons.edit),
+                  editButton(
+                      context: context,
+                      onTap: () =>
+                          context.router.push(const MediaUploadRoute())),
                 ],
               ),
               const SizedBox(height: spacer2),
@@ -489,7 +517,22 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
   }
 }
 
-/// KeyColumn (re-use)
+Widget editButton({required BuildContext context, required Function() onTap}) {
+  return GestureDetector(
+    onTap: onTap,
+    child: Row(
+      children: [
+        Icon(Icons.edit, size: spacer5, color: const Light().alertError),
+        const SizedBox(width: spacer1),
+        Text(
+          context.translate(i18.common.coreCommonEdit),
+          style: TextStyle(color: const Light().alertError),
+        ),
+      ],
+    ),
+  );
+}
+
 class KeyColumn extends StatelessWidget {
   final List<String> keys;
 
@@ -519,7 +562,6 @@ class KeyColumn extends StatelessWidget {
   }
 }
 
-/// ValueColumn (re-use)
 class ValueColumn extends StatelessWidget {
   final List<String> values;
 

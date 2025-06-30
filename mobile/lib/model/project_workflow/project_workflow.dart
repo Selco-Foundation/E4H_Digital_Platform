@@ -9,7 +9,7 @@ part 'project_workflow.g.dart';
 class ProjectWorkflow with _$ProjectWorkflow {
   const factory ProjectWorkflow({
     @ProjectModelConverter() required ProjectModel project,
-    String? state,
+    String? status,
   }) = _ProjectWorkflow;
 
   factory ProjectWorkflow.fromJson(Map<String, dynamic> json) =>

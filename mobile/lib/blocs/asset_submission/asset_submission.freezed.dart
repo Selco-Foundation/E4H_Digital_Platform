@@ -16,36 +16,42 @@ final _privateConstructorUsedError = UnsupportedError(
 
 /// @nodoc
 mixin _$AssetSubmissionEvent {
-  String get projectId => throw _privateConstructorUsedError;
+  String get userType => throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(String projectId) submitAll,
+    required TResult Function(String projectId, String userType) submitAll,
+    required TResult Function(String userType) submitAllDrafts,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(String projectId)? submitAll,
+    TResult? Function(String projectId, String userType)? submitAll,
+    TResult? Function(String userType)? submitAllDrafts,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(String projectId)? submitAll,
+    TResult Function(String projectId, String userType)? submitAll,
+    TResult Function(String userType)? submitAllDrafts,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
     required TResult Function(_SubmitAll value) submitAll,
+    required TResult Function(_SubmitAllDrafts value) submitAllDrafts,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_SubmitAll value)? submitAll,
+    TResult? Function(_SubmitAllDrafts value)? submitAllDrafts,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_SubmitAll value)? submitAll,
+    TResult Function(_SubmitAllDrafts value)? submitAllDrafts,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -61,7 +67,7 @@ abstract class $AssetSubmissionEventCopyWith<$Res> {
           $Res Function(AssetSubmissionEvent) then) =
       _$AssetSubmissionEventCopyWithImpl<$Res, AssetSubmissionEvent>;
   @useResult
-  $Res call({String projectId});
+  $Res call({String userType});
 }
 
 /// @nodoc
@@ -78,12 +84,12 @@ class _$AssetSubmissionEventCopyWithImpl<$Res,
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? projectId = null,
+    Object? userType = null,
   }) {
     return _then(_value.copyWith(
-      projectId: null == projectId
-          ? _value.projectId
-          : projectId // ignore: cast_nullable_to_non_nullable
+      userType: null == userType
+          ? _value.userType
+          : userType // ignore: cast_nullable_to_non_nullable
               as String,
     ) as $Val);
   }
@@ -97,7 +103,7 @@ abstract class _$$SubmitAllImplCopyWith<$Res>
       __$$SubmitAllImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({String projectId});
+  $Res call({String projectId, String userType});
 }
 
 /// @nodoc
@@ -112,11 +118,16 @@ class __$$SubmitAllImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? projectId = null,
+    Object? userType = null,
   }) {
     return _then(_$SubmitAllImpl(
       projectId: null == projectId
           ? _value.projectId
           : projectId // ignore: cast_nullable_to_non_nullable
+              as String,
+      userType: null == userType
+          ? _value.userType
+          : userType // ignore: cast_nullable_to_non_nullable
               as String,
     ));
   }
@@ -125,14 +136,16 @@ class __$$SubmitAllImplCopyWithImpl<$Res>
 /// @nodoc
 
 class _$SubmitAllImpl implements _SubmitAll {
-  const _$SubmitAllImpl({required this.projectId});
+  const _$SubmitAllImpl({required this.projectId, required this.userType});
 
   @override
   final String projectId;
+  @override
+  final String userType;
 
   @override
   String toString() {
-    return 'AssetSubmissionEvent.submitAll(projectId: $projectId)';
+    return 'AssetSubmissionEvent.submitAll(projectId: $projectId, userType: $userType)';
   }
 
   @override
@@ -141,11 +154,13 @@ class _$SubmitAllImpl implements _SubmitAll {
         (other.runtimeType == runtimeType &&
             other is _$SubmitAllImpl &&
             (identical(other.projectId, projectId) ||
-                other.projectId == projectId));
+                other.projectId == projectId) &&
+            (identical(other.userType, userType) ||
+                other.userType == userType));
   }
 
   @override
-  int get hashCode => Object.hash(runtimeType, projectId);
+  int get hashCode => Object.hash(runtimeType, projectId, userType);
 
   @JsonKey(ignore: true)
   @override
@@ -156,27 +171,30 @@ class _$SubmitAllImpl implements _SubmitAll {
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(String projectId) submitAll,
+    required TResult Function(String projectId, String userType) submitAll,
+    required TResult Function(String userType) submitAllDrafts,
   }) {
-    return submitAll(projectId);
+    return submitAll(projectId, userType);
   }
 
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(String projectId)? submitAll,
+    TResult? Function(String projectId, String userType)? submitAll,
+    TResult? Function(String userType)? submitAllDrafts,
   }) {
-    return submitAll?.call(projectId);
+    return submitAll?.call(projectId, userType);
   }
 
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(String projectId)? submitAll,
+    TResult Function(String projectId, String userType)? submitAll,
+    TResult Function(String userType)? submitAllDrafts,
     required TResult orElse(),
   }) {
     if (submitAll != null) {
-      return submitAll(projectId);
+      return submitAll(projectId, userType);
     }
     return orElse();
   }
@@ -185,6 +203,7 @@ class _$SubmitAllImpl implements _SubmitAll {
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
     required TResult Function(_SubmitAll value) submitAll,
+    required TResult Function(_SubmitAllDrafts value) submitAllDrafts,
   }) {
     return submitAll(this);
   }
@@ -193,6 +212,7 @@ class _$SubmitAllImpl implements _SubmitAll {
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_SubmitAll value)? submitAll,
+    TResult? Function(_SubmitAllDrafts value)? submitAllDrafts,
   }) {
     return submitAll?.call(this);
   }
@@ -201,6 +221,7 @@ class _$SubmitAllImpl implements _SubmitAll {
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_SubmitAll value)? submitAll,
+    TResult Function(_SubmitAllDrafts value)? submitAllDrafts,
     required TResult orElse(),
   }) {
     if (submitAll != null) {
@@ -211,13 +232,156 @@ class _$SubmitAllImpl implements _SubmitAll {
 }
 
 abstract class _SubmitAll implements AssetSubmissionEvent {
-  const factory _SubmitAll({required final String projectId}) = _$SubmitAllImpl;
+  const factory _SubmitAll(
+      {required final String projectId,
+      required final String userType}) = _$SubmitAllImpl;
 
-  @override
   String get projectId;
+  @override
+  String get userType;
   @override
   @JsonKey(ignore: true)
   _$$SubmitAllImplCopyWith<_$SubmitAllImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class _$$SubmitAllDraftsImplCopyWith<$Res>
+    implements $AssetSubmissionEventCopyWith<$Res> {
+  factory _$$SubmitAllDraftsImplCopyWith(_$SubmitAllDraftsImpl value,
+          $Res Function(_$SubmitAllDraftsImpl) then) =
+      __$$SubmitAllDraftsImplCopyWithImpl<$Res>;
+  @override
+  @useResult
+  $Res call({String userType});
+}
+
+/// @nodoc
+class __$$SubmitAllDraftsImplCopyWithImpl<$Res>
+    extends _$AssetSubmissionEventCopyWithImpl<$Res, _$SubmitAllDraftsImpl>
+    implements _$$SubmitAllDraftsImplCopyWith<$Res> {
+  __$$SubmitAllDraftsImplCopyWithImpl(
+      _$SubmitAllDraftsImpl _value, $Res Function(_$SubmitAllDraftsImpl) _then)
+      : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? userType = null,
+  }) {
+    return _then(_$SubmitAllDraftsImpl(
+      userType: null == userType
+          ? _value.userType
+          : userType // ignore: cast_nullable_to_non_nullable
+              as String,
+    ));
+  }
+}
+
+/// @nodoc
+
+class _$SubmitAllDraftsImpl implements _SubmitAllDrafts {
+  const _$SubmitAllDraftsImpl({required this.userType});
+
+  @override
+  final String userType;
+
+  @override
+  String toString() {
+    return 'AssetSubmissionEvent.submitAllDrafts(userType: $userType)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$SubmitAllDraftsImpl &&
+            (identical(other.userType, userType) ||
+                other.userType == userType));
+  }
+
+  @override
+  int get hashCode => Object.hash(runtimeType, userType);
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$SubmitAllDraftsImplCopyWith<_$SubmitAllDraftsImpl> get copyWith =>
+      __$$SubmitAllDraftsImplCopyWithImpl<_$SubmitAllDraftsImpl>(
+          this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function(String projectId, String userType) submitAll,
+    required TResult Function(String userType) submitAllDrafts,
+  }) {
+    return submitAllDrafts(userType);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function(String projectId, String userType)? submitAll,
+    TResult? Function(String userType)? submitAllDrafts,
+  }) {
+    return submitAllDrafts?.call(userType);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function(String projectId, String userType)? submitAll,
+    TResult Function(String userType)? submitAllDrafts,
+    required TResult orElse(),
+  }) {
+    if (submitAllDrafts != null) {
+      return submitAllDrafts(userType);
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(_SubmitAll value) submitAll,
+    required TResult Function(_SubmitAllDrafts value) submitAllDrafts,
+  }) {
+    return submitAllDrafts(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(_SubmitAll value)? submitAll,
+    TResult? Function(_SubmitAllDrafts value)? submitAllDrafts,
+  }) {
+    return submitAllDrafts?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(_SubmitAll value)? submitAll,
+    TResult Function(_SubmitAllDrafts value)? submitAllDrafts,
+    required TResult orElse(),
+  }) {
+    if (submitAllDrafts != null) {
+      return submitAllDrafts(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class _SubmitAllDrafts implements AssetSubmissionEvent {
+  const factory _SubmitAllDrafts({required final String userType}) =
+      _$SubmitAllDraftsImpl;
+
+  @override
+  String get userType;
+  @override
+  @JsonKey(ignore: true)
+  _$$SubmitAllDraftsImplCopyWith<_$SubmitAllDraftsImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
 
@@ -229,6 +393,7 @@ mixin _$AssetSubmissionState {
     required TResult Function() loading,
     required TResult Function() success,
     required TResult Function(String errorMessage) failure,
+    required TResult Function(int completed, int total) progress,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -237,6 +402,7 @@ mixin _$AssetSubmissionState {
     TResult? Function()? loading,
     TResult? Function()? success,
     TResult? Function(String errorMessage)? failure,
+    TResult? Function(int completed, int total)? progress,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -245,6 +411,7 @@ mixin _$AssetSubmissionState {
     TResult Function()? loading,
     TResult Function()? success,
     TResult Function(String errorMessage)? failure,
+    TResult Function(int completed, int total)? progress,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -254,6 +421,7 @@ mixin _$AssetSubmissionState {
     required TResult Function(_Loading value) loading,
     required TResult Function(_Success value) success,
     required TResult Function(_Failure value) failure,
+    required TResult Function(_Progress value) progress,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -262,6 +430,7 @@ mixin _$AssetSubmissionState {
     TResult? Function(_Loading value)? loading,
     TResult? Function(_Success value)? success,
     TResult? Function(_Failure value)? failure,
+    TResult? Function(_Progress value)? progress,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -270,6 +439,7 @@ mixin _$AssetSubmissionState {
     TResult Function(_Loading value)? loading,
     TResult Function(_Success value)? success,
     TResult Function(_Failure value)? failure,
+    TResult Function(_Progress value)? progress,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -336,6 +506,7 @@ class _$InitialImpl implements _Initial {
     required TResult Function() loading,
     required TResult Function() success,
     required TResult Function(String errorMessage) failure,
+    required TResult Function(int completed, int total) progress,
   }) {
     return initial();
   }
@@ -347,6 +518,7 @@ class _$InitialImpl implements _Initial {
     TResult? Function()? loading,
     TResult? Function()? success,
     TResult? Function(String errorMessage)? failure,
+    TResult? Function(int completed, int total)? progress,
   }) {
     return initial?.call();
   }
@@ -358,6 +530,7 @@ class _$InitialImpl implements _Initial {
     TResult Function()? loading,
     TResult Function()? success,
     TResult Function(String errorMessage)? failure,
+    TResult Function(int completed, int total)? progress,
     required TResult orElse(),
   }) {
     if (initial != null) {
@@ -373,6 +546,7 @@ class _$InitialImpl implements _Initial {
     required TResult Function(_Loading value) loading,
     required TResult Function(_Success value) success,
     required TResult Function(_Failure value) failure,
+    required TResult Function(_Progress value) progress,
   }) {
     return initial(this);
   }
@@ -384,6 +558,7 @@ class _$InitialImpl implements _Initial {
     TResult? Function(_Loading value)? loading,
     TResult? Function(_Success value)? success,
     TResult? Function(_Failure value)? failure,
+    TResult? Function(_Progress value)? progress,
   }) {
     return initial?.call(this);
   }
@@ -395,6 +570,7 @@ class _$InitialImpl implements _Initial {
     TResult Function(_Loading value)? loading,
     TResult Function(_Success value)? success,
     TResult Function(_Failure value)? failure,
+    TResult Function(_Progress value)? progress,
     required TResult orElse(),
   }) {
     if (initial != null) {
@@ -450,6 +626,7 @@ class _$LoadingImpl implements _Loading {
     required TResult Function() loading,
     required TResult Function() success,
     required TResult Function(String errorMessage) failure,
+    required TResult Function(int completed, int total) progress,
   }) {
     return loading();
   }
@@ -461,6 +638,7 @@ class _$LoadingImpl implements _Loading {
     TResult? Function()? loading,
     TResult? Function()? success,
     TResult? Function(String errorMessage)? failure,
+    TResult? Function(int completed, int total)? progress,
   }) {
     return loading?.call();
   }
@@ -472,6 +650,7 @@ class _$LoadingImpl implements _Loading {
     TResult Function()? loading,
     TResult Function()? success,
     TResult Function(String errorMessage)? failure,
+    TResult Function(int completed, int total)? progress,
     required TResult orElse(),
   }) {
     if (loading != null) {
@@ -487,6 +666,7 @@ class _$LoadingImpl implements _Loading {
     required TResult Function(_Loading value) loading,
     required TResult Function(_Success value) success,
     required TResult Function(_Failure value) failure,
+    required TResult Function(_Progress value) progress,
   }) {
     return loading(this);
   }
@@ -498,6 +678,7 @@ class _$LoadingImpl implements _Loading {
     TResult? Function(_Loading value)? loading,
     TResult? Function(_Success value)? success,
     TResult? Function(_Failure value)? failure,
+    TResult? Function(_Progress value)? progress,
   }) {
     return loading?.call(this);
   }
@@ -509,6 +690,7 @@ class _$LoadingImpl implements _Loading {
     TResult Function(_Loading value)? loading,
     TResult Function(_Success value)? success,
     TResult Function(_Failure value)? failure,
+    TResult Function(_Progress value)? progress,
     required TResult orElse(),
   }) {
     if (loading != null) {
@@ -564,6 +746,7 @@ class _$SuccessImpl implements _Success {
     required TResult Function() loading,
     required TResult Function() success,
     required TResult Function(String errorMessage) failure,
+    required TResult Function(int completed, int total) progress,
   }) {
     return success();
   }
@@ -575,6 +758,7 @@ class _$SuccessImpl implements _Success {
     TResult? Function()? loading,
     TResult? Function()? success,
     TResult? Function(String errorMessage)? failure,
+    TResult? Function(int completed, int total)? progress,
   }) {
     return success?.call();
   }
@@ -586,6 +770,7 @@ class _$SuccessImpl implements _Success {
     TResult Function()? loading,
     TResult Function()? success,
     TResult Function(String errorMessage)? failure,
+    TResult Function(int completed, int total)? progress,
     required TResult orElse(),
   }) {
     if (success != null) {
@@ -601,6 +786,7 @@ class _$SuccessImpl implements _Success {
     required TResult Function(_Loading value) loading,
     required TResult Function(_Success value) success,
     required TResult Function(_Failure value) failure,
+    required TResult Function(_Progress value) progress,
   }) {
     return success(this);
   }
@@ -612,6 +798,7 @@ class _$SuccessImpl implements _Success {
     TResult? Function(_Loading value)? loading,
     TResult? Function(_Success value)? success,
     TResult? Function(_Failure value)? failure,
+    TResult? Function(_Progress value)? progress,
   }) {
     return success?.call(this);
   }
@@ -623,6 +810,7 @@ class _$SuccessImpl implements _Success {
     TResult Function(_Loading value)? loading,
     TResult Function(_Success value)? success,
     TResult Function(_Failure value)? failure,
+    TResult Function(_Progress value)? progress,
     required TResult orElse(),
   }) {
     if (success != null) {
@@ -705,6 +893,7 @@ class _$FailureImpl implements _Failure {
     required TResult Function() loading,
     required TResult Function() success,
     required TResult Function(String errorMessage) failure,
+    required TResult Function(int completed, int total) progress,
   }) {
     return failure(errorMessage);
   }
@@ -716,6 +905,7 @@ class _$FailureImpl implements _Failure {
     TResult? Function()? loading,
     TResult? Function()? success,
     TResult? Function(String errorMessage)? failure,
+    TResult? Function(int completed, int total)? progress,
   }) {
     return failure?.call(errorMessage);
   }
@@ -727,6 +917,7 @@ class _$FailureImpl implements _Failure {
     TResult Function()? loading,
     TResult Function()? success,
     TResult Function(String errorMessage)? failure,
+    TResult Function(int completed, int total)? progress,
     required TResult orElse(),
   }) {
     if (failure != null) {
@@ -742,6 +933,7 @@ class _$FailureImpl implements _Failure {
     required TResult Function(_Loading value) loading,
     required TResult Function(_Success value) success,
     required TResult Function(_Failure value) failure,
+    required TResult Function(_Progress value) progress,
   }) {
     return failure(this);
   }
@@ -753,6 +945,7 @@ class _$FailureImpl implements _Failure {
     TResult? Function(_Loading value)? loading,
     TResult? Function(_Success value)? success,
     TResult? Function(_Failure value)? failure,
+    TResult? Function(_Progress value)? progress,
   }) {
     return failure?.call(this);
   }
@@ -764,6 +957,7 @@ class _$FailureImpl implements _Failure {
     TResult Function(_Loading value)? loading,
     TResult Function(_Success value)? success,
     TResult Function(_Failure value)? failure,
+    TResult Function(_Progress value)? progress,
     required TResult orElse(),
   }) {
     if (failure != null) {
@@ -779,5 +973,168 @@ abstract class _Failure implements AssetSubmissionState {
   String get errorMessage;
   @JsonKey(ignore: true)
   _$$FailureImplCopyWith<_$FailureImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class _$$ProgressImplCopyWith<$Res> {
+  factory _$$ProgressImplCopyWith(
+          _$ProgressImpl value, $Res Function(_$ProgressImpl) then) =
+      __$$ProgressImplCopyWithImpl<$Res>;
+  @useResult
+  $Res call({int completed, int total});
+}
+
+/// @nodoc
+class __$$ProgressImplCopyWithImpl<$Res>
+    extends _$AssetSubmissionStateCopyWithImpl<$Res, _$ProgressImpl>
+    implements _$$ProgressImplCopyWith<$Res> {
+  __$$ProgressImplCopyWithImpl(
+      _$ProgressImpl _value, $Res Function(_$ProgressImpl) _then)
+      : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? completed = null,
+    Object? total = null,
+  }) {
+    return _then(_$ProgressImpl(
+      completed: null == completed
+          ? _value.completed
+          : completed // ignore: cast_nullable_to_non_nullable
+              as int,
+      total: null == total
+          ? _value.total
+          : total // ignore: cast_nullable_to_non_nullable
+              as int,
+    ));
+  }
+}
+
+/// @nodoc
+
+class _$ProgressImpl implements _Progress {
+  const _$ProgressImpl({required this.completed, required this.total});
+
+  @override
+  final int completed;
+  @override
+  final int total;
+
+  @override
+  String toString() {
+    return 'AssetSubmissionState.progress(completed: $completed, total: $total)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$ProgressImpl &&
+            (identical(other.completed, completed) ||
+                other.completed == completed) &&
+            (identical(other.total, total) || other.total == total));
+  }
+
+  @override
+  int get hashCode => Object.hash(runtimeType, completed, total);
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$ProgressImplCopyWith<_$ProgressImpl> get copyWith =>
+      __$$ProgressImplCopyWithImpl<_$ProgressImpl>(this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function() initial,
+    required TResult Function() loading,
+    required TResult Function() success,
+    required TResult Function(String errorMessage) failure,
+    required TResult Function(int completed, int total) progress,
+  }) {
+    return progress(completed, total);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function()? initial,
+    TResult? Function()? loading,
+    TResult? Function()? success,
+    TResult? Function(String errorMessage)? failure,
+    TResult? Function(int completed, int total)? progress,
+  }) {
+    return progress?.call(completed, total);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function()? initial,
+    TResult Function()? loading,
+    TResult Function()? success,
+    TResult Function(String errorMessage)? failure,
+    TResult Function(int completed, int total)? progress,
+    required TResult orElse(),
+  }) {
+    if (progress != null) {
+      return progress(completed, total);
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(_Initial value) initial,
+    required TResult Function(_Loading value) loading,
+    required TResult Function(_Success value) success,
+    required TResult Function(_Failure value) failure,
+    required TResult Function(_Progress value) progress,
+  }) {
+    return progress(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(_Initial value)? initial,
+    TResult? Function(_Loading value)? loading,
+    TResult? Function(_Success value)? success,
+    TResult? Function(_Failure value)? failure,
+    TResult? Function(_Progress value)? progress,
+  }) {
+    return progress?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(_Initial value)? initial,
+    TResult Function(_Loading value)? loading,
+    TResult Function(_Success value)? success,
+    TResult Function(_Failure value)? failure,
+    TResult Function(_Progress value)? progress,
+    required TResult orElse(),
+  }) {
+    if (progress != null) {
+      return progress(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class _Progress implements AssetSubmissionState {
+  const factory _Progress(
+      {required final int completed,
+      required final int total}) = _$ProgressImpl;
+
+  int get completed;
+  int get total;
+  @JsonKey(ignore: true)
+  _$$ProgressImplCopyWith<_$ProgressImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
