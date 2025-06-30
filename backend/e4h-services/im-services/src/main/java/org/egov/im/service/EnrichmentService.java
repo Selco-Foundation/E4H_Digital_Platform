@@ -166,8 +166,15 @@ public class EnrichmentService {
 
         // Set fields in IndexView if values exist
         Optional.ofNullable(hcrDetails.get("employeeUserName")).ifPresent(indexView::setNinHfrId);
-        Optional.ofNullable(vendorDetails.get("employeeUserName")).ifPresent(indexView::setMappedVendor);
+        Optional.ofNullable(vendorDetails.get("employeeUserName")).ifPresent(indexView::setMappedVendorUserName);
+        Optional.ofNullable(vendorDetails.get("employeeName")).ifPresent(indexView::setMappedVendorName);
         indexView.setLastActionTakenBy(lastActionTakenByUser);
+        indexView.setComments(
+                (wrapper.getIncidentRequest().getWorkflow().getComments() != null &&
+                        !wrapper.getIncidentRequest().getWorkflow().getComments().isEmpty())
+                        ? wrapper.getIncidentRequest().getWorkflow().getComments()
+                        : wrapper.getIncidentRequest().getIncident().getComments()
+        );
     }
 
     /**
