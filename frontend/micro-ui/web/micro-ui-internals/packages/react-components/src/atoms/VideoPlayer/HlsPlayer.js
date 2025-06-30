@@ -16,6 +16,7 @@ const HlsPlayer = ({ src, originalSrc, fileStoreId, activeVideoRef }) => {
   const [bitrateOptions, setBitrateOptions] = useState([]);
   const [selectedBitrate, setSelectedBitrate] = useState("Auto");
   const [hlsInstance, setHlsInstance] = useState(null);
+  const [playerError, setPlayerError] = useState(false);
 
   // Reference to store the explicitly requested quality level
   const requestedLevelRef = useRef(-1);
@@ -52,40 +53,26 @@ const HlsPlayer = ({ src, originalSrc, fileStoreId, activeVideoRef }) => {
             let quality = "original";
             const requestedLevel = requestedLevelRef.current;
 
-            // If auto mode is explicitly selected
+            // Find the highest level by height
+            const maxLevel = hls.levels.reduce((max, level) => (level.height > max.height ? level : max), { height: 0 });
+            const maxLevelIndex = hls.levels.findIndex(level => level.height === maxLevel.height);
+
             if (requestedLevel === -1) {
               // Use the level HLS.js has adaptively selected
               const loadLevel = hls.loadLevel !== -1 ? hls.loadLevel : hls.currentLevel;
               const autoLevel = loadLevel !== -1 && hls.levels[loadLevel] ? hls.levels[loadLevel] : hls.levels[0];
 
               if (autoLevel) {
-                quality = `${autoLevel.height}p`;
+                // If autoLevel is the highest, use 'original', else use its height
+                quality = (hls.levels.indexOf(autoLevel) === maxLevelIndex) ? "original" : `${autoLevel.height}p`;
               }
             } else if (requestedLevel >= 0 && hls.levels[requestedLevel]) {
               // For manual quality selection, use the explicitly selected level
-              quality = `${hls.levels[requestedLevel].height}p`;
-
-              // If this is the highest quality, use "original"
-              const maxLevel = hls.levels.reduce((max, level) => (level.height > max.height ? level : max), { height: 0 });
-
-              if (hls.levels[requestedLevel].height === maxLevel.height) {
-                quality = "original";
-              }
+              // If this is the highest quality, use 'original', else use its height
+              quality = (requestedLevel === maxLevelIndex) ? "original" : `${hls.levels[requestedLevel].height}p`;
             }
 
-            // console.debug(
-            //   "TS Request Quality:",
-            //   quality,
-            //   "Requested Level:",
-            //   requestedLevel,
-            //   "HLS Current Level:",
-            //   hls.currentLevel,
-            //   "HLS Load Level:",
-            //   hls.loadLevel
-            // );
-
             const modifiedTsUrl = `/filestore/v1/files/get-hls?tenantId=${tenantId}&fileStoreId=${fileStoreId}&filename=${tsFilename}&quality=${quality}`;
-            // console.debug("Modified TS Chunk URL:", modifiedTsUrl);
             xhr.open("GET", modifiedTsUrl, true);
           }
         },
@@ -208,6 +195,15 @@ const HlsPlayer = ({ src, originalSrc, fileStoreId, activeVideoRef }) => {
     attachEventListeners();
   }, []);
 
+  if (playerError) {
+    return (
+      <div className="video-error-fallback">
+        <p>This video is still being processed and will be available shortly.</p>
+        <p>In the meantime, you can <a href={originalSrc} target="_blank" rel="noopener noreferrer">download the original file</a>.</p>
+      </div>
+    );
+  }
+
   return (
     <div ref={containerRef} className="video-container show-controls">
       <ReactPlayer
@@ -224,6 +220,12 @@ const HlsPlayer = ({ src, originalSrc, fileStoreId, activeVideoRef }) => {
         onDuration={setDuration}
         onDisablePIP={() => setPip(false)}
         onPlay={handleVideoPlay}
+        onError={(_, e) => {
+          console.debug(e);
+          if (e.type === "networkError" && (e.details?.includes?.("LoadError") || e.details?.includes?.("LoadTimeOut"))) {
+            setPlayerError(true);
+          }
+        }}
         config={{
           file: {
             forceHLS: true,
