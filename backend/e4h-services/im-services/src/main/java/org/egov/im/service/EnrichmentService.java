@@ -249,8 +249,7 @@ public class EnrichmentService {
                 String fileStoreId = doc.getFileStoreId();
 
                 StringBuilder urlBuilder = new StringBuilder();
-                urlBuilder.append(config.getFileStoreHost())
-                          .append(config.getFileStoreDownloadEndpoint())
+                urlBuilder.append(config.getFileStoreDownloadEndpoint())
                           .append("?tenantId=").append(tenantId)
                           .append("&fileStoreId=").append(fileStoreId);
 
