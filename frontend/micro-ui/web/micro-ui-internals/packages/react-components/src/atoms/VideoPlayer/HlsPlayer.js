@@ -197,14 +197,12 @@ const HlsPlayer = ({ src, originalSrc, fileStoreId, activeVideoRef }) => {
 
   if (playerError) {
     return (
-      <div>
-        <p>Video Still Processing...</p>
-        <p>You can download it by clicking <a style={{color:"revert", textDecoration:"revert"}} target="_blank" href={originalSrc}>here</a></p>
+      <div className="video-error-fallback">
+        <p>This video is still being processed and will be available shortly.</p>
+        <p>In the meantime, you can <a href={originalSrc} target="_blank" rel="noopener noreferrer">download the original file</a>.</p>
       </div>
     );
   }
-  
-  console.debug(playerError);
 
   return (
     <div ref={containerRef} className="video-container show-controls">
