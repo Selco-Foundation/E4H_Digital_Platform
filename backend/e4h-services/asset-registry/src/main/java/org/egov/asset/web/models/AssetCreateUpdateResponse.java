@@ -22,7 +22,4 @@ public class AssetCreateUpdateResponse {
 
     @JsonProperty("Asset")
     private Asset asset;
-
-    @JsonProperty("Assets")
-    private List<Asset> assets;
 }
