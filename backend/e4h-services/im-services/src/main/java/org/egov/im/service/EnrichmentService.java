@@ -244,26 +244,16 @@ public class EnrichmentService {
         localizationService.enrichLocalizedApplicationStatuses(wrapper, startingStatus);
 
         // get array of filestore download links
-        List<String> fileStoreUrls = new ArrayList<>();
-
         String tenantId = wrapper.getIncidentRequest().getIncident().getTenantId();
         List<Document> verificationDocuments = wrapper.getIncidentRequest().getWorkflow().getVerificationDocuments();
 
-        if (verificationDocuments != null && !verificationDocuments.isEmpty()) {
-            for (Document doc : verificationDocuments) {
-                if (doc.getFileStoreId() == null) {
-                    continue;
-                }
-                String fileStoreId = doc.getFileStoreId();
-
-                StringBuilder urlBuilder = new StringBuilder();
-                urlBuilder.append(config.getFileStoreDownloadEndpoint())
-                          .append("?tenantId=").append(tenantId)
-                          .append("&fileStoreId=").append(fileStoreId);
-
-                fileStoreUrls.add(urlBuilder.toString());
-            }
-        }
+        String fileStoreUrls = verificationDocuments == null ? "" :
+                verificationDocuments.stream()
+                        .filter(doc -> doc.getFileStoreId() != null)
+                        .filter(doc -> !"HLS".equalsIgnoreCase(doc.getDocumentType()))
+                        .map(doc -> String.format("%s?tenantId=%s&fileStoreId=%s",
+                                config.getFileStoreDownloadEndpoint(), tenantId, doc.getFileStoreId()))
+                        .collect(Collectors.joining(" , "));
 
         indexView.setDocumentUrls(fileStoreUrls);
     }

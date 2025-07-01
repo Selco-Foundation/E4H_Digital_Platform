@@ -58,7 +58,7 @@ public class IndexView {
     private String uuid;
 
     @JsonProperty("documentUrls")
-    private List<String> documentUrls ;
+    private String documentUrls ;
 
     @JsonProperty("definedTotalSla")
     private Long definedTotalSla;
