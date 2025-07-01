@@ -199,7 +199,7 @@ const HlsPlayer = ({ src, originalSrc, fileStoreId, activeVideoRef }) => {
     return (
       <div className="video-error-fallback">
         <p>This video is still being processed and will be available shortly.</p>
-        <p>In the meantime, you can <a href={originalSrc} target="_blank" rel="noopener noreferrer">download the original file</a>.</p>
+        <p>In the meantime, you can <a style={{color:"revert", textDecoration:"revert"}} href={originalSrc} target="_blank" rel="noopener noreferrer">download the original file</a>.</p>
       </div>
     );
   }
