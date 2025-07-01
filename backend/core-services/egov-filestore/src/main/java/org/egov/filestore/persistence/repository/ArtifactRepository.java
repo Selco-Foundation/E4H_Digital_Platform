@@ -186,4 +186,16 @@ public class ArtifactRepository {
                 })
                 .orElse(null);
     }
+
+    public String findS3SignedUrl(String fileStoreId, String tenantId) throws IOException {
+        Artifact artifact = fileStoreJpaRepository.findByFileStoreIdAndTenantId(fileStoreId, tenantId);
+        if (artifact == null)
+            throw new CustomException("NOT_FOUND", "Invalid filestoreid or tenantid");
+
+        MinioRepository repo = (MinioRepository) cloudFilesManager;
+        String fileLocation = artifact.getFileLocation().getFileName();
+        String fileName = fileLocation.substring(fileLocation.indexOf('/') + 1, fileLocation.length());
+        String signedUrl = repo.getSignedUrl(fileName);
+        return signedUrl;
+    }
 }

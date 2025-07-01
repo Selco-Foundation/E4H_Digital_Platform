@@ -220,7 +220,7 @@ public class MinioRepository implements CloudFilesManager {
 		return url.toString();
 	}
 	
-	private String getSignedUrl(String fileName) {
+	public String getSignedUrl(String fileName) {
 
 		String signedUrl = null;
 		try {

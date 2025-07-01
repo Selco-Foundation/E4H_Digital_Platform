@@ -56,6 +56,10 @@ public class StorageService {
 		return artifactRepository.find(fileStoreId, tenantId);
 	}
 
+	public String retrieveSignedUrl(String fileStoreId, String tenantId) throws IOException {
+		return artifactRepository.findS3SignedUrl(fileStoreId, tenantId);
+	}
+
 	public Resource retrieve(String fileStoreId, String quality, String fileName, String tenantId)  {
 		// tenantId was intentionally added teice as a hack , as this wil be trimmed out down the line
 		String fileSource = String.format("%s/%s/%s/hls/%s/%s",
