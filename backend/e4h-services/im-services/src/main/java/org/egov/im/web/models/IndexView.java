@@ -33,8 +33,11 @@ public class IndexView {
     @JsonProperty("nin_hfr_id")
     private String ninHfrId;
 
-    @JsonProperty("mappedVendor")
-    private String mappedVendor;
+    @JsonProperty("mappedVendorUserName")
+    private String mappedVendorUserName;
+
+    @JsonProperty("mappedVendorName")
+    private String mappedVendorName;
 
     @JsonProperty("lastActionTakenBy")
     private String lastActionTakenBy;
@@ -59,4 +62,14 @@ public class IndexView {
 
     @JsonProperty("definedTotalSla")
     private Long definedTotalSla;
+
+    @JsonProperty("comments")
+    private String comments;
+
+    @JsonProperty("sendBackReason")
+    private String sendBackReason;
+
+    @JsonProperty("sendBackSubReason")
+    private String sendBackSubReason;
+
 }

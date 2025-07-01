@@ -166,8 +166,22 @@ public class EnrichmentService {
 
         // Set fields in IndexView if values exist
         Optional.ofNullable(hcrDetails.get("employeeUserName")).ifPresent(indexView::setNinHfrId);
-        Optional.ofNullable(vendorDetails.get("employeeUserName")).ifPresent(indexView::setMappedVendor);
+        Optional.ofNullable(vendorDetails.get("employeeUserName")).ifPresent(indexView::setMappedVendorUserName);
+        Optional.ofNullable(vendorDetails.get("employeeName")).ifPresent(indexView::setMappedVendorName);
         indexView.setLastActionTakenBy(lastActionTakenByUser);
+        indexView.setComments(
+                (wrapper.getIncidentRequest().getWorkflow().getComments() != null &&
+                        !wrapper.getIncidentRequest().getWorkflow().getComments().isEmpty())
+                        ? wrapper.getIncidentRequest().getWorkflow().getComments()
+                        : wrapper.getIncidentRequest().getIncident().getComments()
+        );
+
+        if (wrapper.getIncidentRequest().getWorkflow().getSendBackReason() != null) {
+            SendBackReason reason = wrapper.getIncidentRequest().getWorkflow().getSendBackReason();
+            indexView.setSendBackReason(reason.getReason());
+            indexView.setSendBackSubReason(reason.getSubReason());
+        }
+
     }
 
     /**
@@ -243,8 +257,7 @@ public class EnrichmentService {
                 String fileStoreId = doc.getFileStoreId();
 
                 StringBuilder urlBuilder = new StringBuilder();
-                urlBuilder.append(config.getFileStoreHost())
-                          .append(config.getFileStoreDownloadEndpoint())
+                urlBuilder.append(config.getFileStoreDownloadEndpoint())
                           .append("?tenantId=").append(tenantId)
                           .append("&fileStoreId=").append(fileStoreId);
 

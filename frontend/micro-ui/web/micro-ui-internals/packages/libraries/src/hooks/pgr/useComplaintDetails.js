@@ -55,7 +55,7 @@ const getDetailsRow = ({ id, incident, complaintType }) => ({
   CS_ADDCOMPLAINT_HEALTH_CARE_CENTRE: `${incident?.phcType}`,
   CS_COMPLAINT_COMMENTS: incident?.comments,
   CS_ADDCOMPLAINT_HEALTH_CARE_SUB_TYPE: `${incident?.phcSubType}`,
-  CS_COMPLAINT_FILED_DATE: Digit.DateUtils.ConvertEpochToDate(incident.auditDetails.createdTime),
+  CS_COMPLAINT_FILED_DATE: incident.filedDate ? Digit.DateUtils.ConvertEpochToDate(incident.filedDate) : Digit.DateUtils.ConvertEpochToDate(incident.auditDetails.createdTime),
 })
 
 const isEmptyOrNull = (obj) => obj === undefined || obj === null || Object.keys(obj).length === 0;
