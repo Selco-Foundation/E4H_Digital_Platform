@@ -70,7 +70,9 @@ class AssetRepository {
   }
 
   Future<void> createOrUpdateAsset(
-      {required Map<String, dynamic> payload, String? assetId}) async {
+      {required Map<String, dynamic> payload,
+      String? assetId,
+      required Isar isar}) async {
     try {
       final isCreate = (assetId != null && assetId.isNotEmpty) ? false : true;
       print(jsonEncode(payload)); //todo to be removed
@@ -78,103 +80,49 @@ class AssetRepository {
       print("url $url");
       final response =
           await _dio.post("/asset-registry/v1/asset/$url", data: payload);
+      print("response ${response.data}");
+      print("response statusCode ${response.statusCode}");
+      print("response statusMessage ${response.statusMessage}");
       if (response.statusCode != 200 && response.statusCode != 201) {
         throw Exception(
             "${isCreate ? 'Create' : 'Update'} Asset responded with status ${response.statusCode}");
+      } else {
+        // extract the payload of assetId and serialNumber, and save it
+        // ✅ Handle response data: could be "asset" or "Asset"
+        final responseData = response.data;
+        final assetData = responseData['asset'] ?? responseData['Asset'];
+
+        if (assetData == null) {
+          throw Exception("Asset data missing in response");
+        }
+
+        final serialNumber = assetData['serialNumber']?.toString();
+        final assetType = assetData['assetTypeID']?.toString();
+
+        if (serialNumber == null || assetType == null) {
+          throw Exception("Missing one of serialNumber or assetType");
+        }
+
+        // ✅ Update assetId in Isar this applies to create, but also done for update just incase Id cases
+        await isar.writeTxn(() async {
+          final existing = await isar.cacheAddNewAssets
+              .where()
+              .assetTypeEqualTo(assetType.toLowerCase())
+              .filter()
+              .serialNumberEqualTo(serialNumber)
+              .findFirst();
+
+          if (existing != null) {
+            existing.assetId = assetData['assetId'];
+            await isar.cacheAddNewAssets.put(existing);
+          }
+        });
       }
     } on DioError catch (e) {
+      print(e.message);
       throw DioErrorParser.parse(e);
     }
   }
-
-  // Future<void> syncRemoteToLocal(String projectId, Isar isar) async {
-  //   final facilityId = (await ProjectFacilityRepository().search(
-  //     ProjectFacilitySearchModel(projectId: [projectId]),
-  //     isar,
-  //   ))
-  //       .facilityId;
-  //
-  //   final response = await _dio.post(
-  //       "/asset-registry/v1/asset/_search?tenantId=${envConfig.variables.tenantId}",
-  //       data: {
-  //         "criteria": {
-  //           "tenantId": "${envConfig.variables.tenantId}",
-  //           "facilityID": "$facilityId"
-  //         }
-  //       });
-  //
-  //   if (response.statusCode != 200) {
-  //     throw Exception("Failed to fetch project assets");
-  //   }
-  //
-  //   final json = jsonDecode(response.data); // Expected: List/Map of assets
-  //
-  //   await isar.writeTxn(() async {
-  //     for (final asset in json) {
-  //       final type = asset['assetTypeID']?.toLowerCase();
-  //
-  //       // ✅ Add Specification
-  //       final spec = CacheSpecification(
-  //         projectId: projectId,
-  //         assetType: type,
-  //         totalCapacity: asset['assetDetails']?['totalCapacity'],
-  //         totalCapacityUnit: asset['assetDetails']?['totalCapacityUnit'] ??
-  //             asset['assetDetails']?['totalCapacityUOM'],
-  //         system: asset['system'],
-  //       );
-  //       await isar.cacheSpecifications.put(spec);
-  //
-  //       // ✅ Add Detail
-  //       final detail = CacheAssetDetail(
-  //         projectId: projectId,
-  //         assetType: type,
-  //         model: asset['modelNumber'],
-  //         brand: asset['brandID'],
-  //         warranty: asset['warrantyDuration']?.toString(),
-  //       );
-  //       await isar.cacheAssetDetails.put(detail);
-  //
-  //       // ✅ Add Count
-  //       final count = CacheAssetCount(
-  //         projectId: projectId,
-  //         assetType: type,
-  //         count: asset['count'],
-  //         progress: asset['progress'],
-  //       );
-  //       await isar.cacheAssetCounts.put(count);
-  //
-  //       // ✅ Add Media uploads (if any)
-  //       for (final media in asset['documents']) {
-  //         if (media['documentType'] == "ASSET") {
-  //           // ✅ Add CacheAddNewAsset
-  //           final newAsset = CacheAddNewAsset(
-  //             projectId: projectId,
-  //             assetType: type,
-  //             itemNumber: asset[
-  //                 'itemNumber'], // todo confirm and update should be index
-  //             serialNumber: asset['serialNumber'],
-  //             photoPath: media['fileStore'], // Optional
-  //             latitude: media['geoLocation']?['latitude'] ?? "",
-  //             longitude: media['geoLocation']?['longitude'] ?? "",
-  //           );
-  //           await isar.cacheAddNewAssets.put(newAsset);
-  //         } else {
-  //           final mediaEntry = CacheMediaUpload(
-  //             projectId: projectId,
-  //             assetType: type,
-  //             filePath:
-  //                 media['fileStore'], // You may want to cache this locally
-  //             itemType: media['documentType'],
-  //             latitude: media['geoLocation']?['latitude'] ?? "",
-  //             longitude: media['geoLocation']?['longitude'] ?? "",
-  //             itemNumber: '',
-  //           );
-  //           await isar.cacheMediaUploads.put(mediaEntry);
-  //         }
-  //       }
-  //     }
-  //   });
-  // }
 
   /// Fetch remote assets and upsert into all your Isar caches,
   /// clearing only the matching CacheAddNewAsset per serialNumber,
@@ -331,7 +279,10 @@ class AssetRepository {
             // insert new ASSET docs
             for (final doc in (asset['documents'] as List<dynamic>)) {
               final d = doc as Map<String, dynamic>;
+              print("document Type ${d['documentType']}");
+              print("fileStore ${d['fileStore']}");
               if (d['documentType'] == 'PHOTO') {
+                print("document Type ${d['documentType']}");
                 //todo CHANGE TO 'ASSET'
                 await isar.cacheAddNewAssets.put(
                   CacheAddNewAsset(
@@ -341,7 +292,11 @@ class AssetRepository {
                             ?.toString() ??
                         '',
                     serialNumber: serial,
-                    photoPath: d['fileStore'] as String? ?? '',
+                    photoPath: d['fileStore'] != null
+                        ? //'${envConfig.variables.baseUrl}/filestore/v1/files/file?tenantId=in&fileStoreId=${d['fileStore']}'
+                        // '${envConfig.variables.baseUrl}/filestore/v1/files/file?tenantId=in&fileStoreId=4d4a5ad7-7c9e-4953-b095-271c9c34ffe6'
+                        'https://nanoskill.s3.eu-west-2.amazonaws.com/1.png'
+                        : '', // d['fileStore']?.String() ?? '',
                     latitude: d['geoLocation']?['latitude']?.toString() ?? '',
                     longitude: d['geoLocation']?['longitude']?.toString() ?? '',
                   ),

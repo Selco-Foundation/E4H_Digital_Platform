@@ -31,6 +31,7 @@ class AuthTokenInterceptor extends Interceptor {
                 userInfo: accessInfo?.userRequest)
             .toJson(),
       };
+      print("option.data ${options.data}");
     }
 
     return super.onRequest(options, handler);
