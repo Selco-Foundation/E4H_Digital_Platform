@@ -64,7 +64,7 @@ class Common {
   //
   String get coreCommonSubmit => 'Submit';
 
-  String get coreCommonSave => 'CORE_COMMON_SAVE';
+  String get coreCommonSave => 'Save'; //'CORE_COMMON_SAVE';
   //
   // String get coreCommonCancel => 'CORE_COMMON_CANCEL';
   //
@@ -74,15 +74,15 @@ class Common {
   //
   // String get corecommonclose => 'CORE_COMMON_CLOSE';
   //
-  String get coreCommonOk => 'CORE_COMMON_OK';
+  String get coreCommonOk => 'Ok'; //'CORE_COMMON_OK';
   //
   // String get coreCommonNA => 'CORE_COMMON_NA';
   //
   String get coreCommonProfile => 'Profile'; // 'CORE_COMMON_PROFILE';
   //
-  String get coreCommonLogout => 'CORE_COMMON_LOGOUT';
+  String get coreCommonLogout => 'Logout'; // 'CORE_COMMON_LOGOUT';
 
-  String get coreCommonLogin => 'CORE_COMMON_LOGIN';
+  String get coreCommonLogin => 'Login'; // 'CORE_COMMON_LOGIN';
 
   // String get coreCommonBack => 'CORE_COMMON_BACK';
   //

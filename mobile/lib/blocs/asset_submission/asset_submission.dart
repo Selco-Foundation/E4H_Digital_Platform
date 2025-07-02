@@ -128,6 +128,8 @@ class AssetSubmissionBloc
       ))
           .facilityId;
 
+      print("facilityId ${facilityId}");
+
       final repo = AssetRepository();
       const types = ['inverter', 'battery', 'panel'];
 
@@ -232,15 +234,23 @@ class AssetSubmissionBloc
                   "totalCapacity": spec.totalCapacity,
                   "totalCapacityUnit": spec.totalCapacityUnit,
                   if (type == 'panel') ...{
-                    "panelCapacity": saved.itemNumber,
+                    // "panelCapacity": saved.itemNumber, //todo update values in mdms data
                     "capacityUnit": "Wp",
+
+                    "panelCapacity": "34.1", // saved.itemNumber,
+
+                    "totalCapacity":
+                        67.2, //todo update values in mdms data to be removed
+                    "totalCapacityUnit":
+                        "kWp", //todo update values in mdms data to be removed
                   },
                   if (type == 'battery') ...{
-                    "batteryVoltage": "1",
+                    "batteryVoltage": "12",
                     "batteryCapacity": "125",
                     "voltageUnit": "Volts",
                     "capacityUnit": "Ah",
                     "batteryType": "Lithium",
+                    "totalCapacityUOM": "kWh",
                   },
                   if (type == 'inverter') ...{
                     "totalCapacityUOM": spec.totalCapacityUnit,
@@ -252,13 +262,14 @@ class AssetSubmissionBloc
                 },
                 if (userType == USER_TYPES.SUPERVISOR) ...{
                   "warrantyStartDate": startIso,
-                  "warrantyDuration": detail.warranty!, // years,
+                  "warrantyDuration":
+                      parseWarrantyYears(detail.warranty!), // years,
                   "warrantyEndDate": endIso,
                   "modelNumber": detail.model,
                 } else ...{
                   //todo to be removed completely as only supervisors can submit below task
                   "warrantyStartDate": "2025-06-26T09:05:44.877103Z",
-                  "warrantyDuration": 25,
+                  "warrantyDuration": "25",
                   "warrantyEndDate": "2050-06-20T09:05:44.877103Z",
                   "modelNumber": detail.model ?? "",
                 },
@@ -270,15 +281,15 @@ class AssetSubmissionBloc
           };
 
           await repo.createOrUpdateAsset(
-              payload: payload, assetId: saved.assetId);
+              payload: payload, assetId: saved.assetId, isar: _isar);
         }
       }
 
       final remoteRepo = ProjectRemoteRepository();
-      await remoteRepo.updateProjectWorkflow(
-        projectId: projectId,
-        action: WORKFLOW_ACTIONS.CREATE_AND_SAVE_DRAFT.name,
-      );
+      // await remoteRepo.updateProjectWorkflow(
+      //   projectId: projectId,
+      //   action: WORKFLOW_ACTIONS.CREATE_AND_SAVE_DRAFT.name,
+      // );
       final completionDocuments = <Map<String, dynamic>>[];
       final completionReport = await _isar.cacheCompletionReports
           .where()

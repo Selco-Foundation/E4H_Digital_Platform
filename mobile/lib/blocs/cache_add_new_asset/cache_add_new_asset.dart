@@ -59,10 +59,10 @@ class CacheAddNewAssetBloc
         if (existing != null) {
           // Overwrite fields if desired
           existing.itemNumber = event.entry.itemNumber;
-          // existing.serialNumber = event.entry.serialNumber;
           existing.photoPath = event.entry.photoPath;
           existing.longitude = event.entry.longitude;
           existing.latitude = event.entry.latitude;
+          existing.documentType = "ASSET";
           existing.updatedAt = DateTime.now();
           await isar.cacheAddNewAssets.put(existing);
         } else {
@@ -92,6 +92,7 @@ class CacheAddNewAssetBloc
         if (existing != null) {
           existing.itemNumber = event.entry.itemNumber;
           // existing.serialNumber = event.entry.serialNumber;
+          existing.documentType = "ASSET";
           existing.photoPath = event.entry.photoPath;
           existing.longitude = event.entry.longitude;
           existing.latitude = event.entry.latitude;
@@ -116,6 +117,7 @@ class CacheAddNewAssetBloc
           .projectIdEqualTo(event.entry.projectId)
           .filter()
           .assetTypeEqualTo(event.entry.assetType)
+          .serialNumberEqualTo(event.entry.serialNumber)
           .findFirst();
 
       if (updatedEntry != null) {
