@@ -145,7 +145,7 @@ public class V1ApiController {
         @Valid @RequestBody AssetCreateRequest body,
         @Parameter(in = ParameterIn.PATH, description = "Unique identifier of the asset", required = true, schema = @Schema())
         @PathVariable("assetID") String assetID) {
-        validator.validateCreateAsset(body);
+        validator.validateAsset(assetID, body);
         Asset updatedAsset = assetService.updateAsset(assetID, body);
         AssetCreateUpdateResponse response = new AssetCreateUpdateResponse();
         response.setAsset(updatedAsset);

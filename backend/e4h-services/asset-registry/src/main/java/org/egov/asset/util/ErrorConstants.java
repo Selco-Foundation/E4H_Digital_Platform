@@ -162,4 +162,9 @@ public class ErrorConstants {
     public static final String ASSET_PANEL_CAPACITY_UNIT_REQUIRED_CODE = "ERR_PANEL_CAPACITY_UNIT_REQUIRED";
     public static final String ASSET_PANEL_CAPACITY_UNIT_REQUIRED_MSG = "Capacity Unit is required";
 
+    public static final String ASSET_ID_MISMATCH_CODE = "ERR_ASSET_ID_MISMATCH";
+    public static final String ASSET_ID_MISMATCH_MSG = "Provided assetId does not match the asset's ID";
+
+    public static final String ASSET_NOT_FOUND_CODE = "ERR_ASSET_NOT_FOUND";
+    public static final String ASSET_NOT_FOUND_MSG = "Provided asset does not exist or invalid";
 }
