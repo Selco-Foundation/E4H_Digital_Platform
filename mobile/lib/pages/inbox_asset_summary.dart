@@ -9,6 +9,7 @@ import 'package:selco/utils/extensions.dart';
 
 import '../blocs/asset_type/asset_type.dart';
 import '../blocs/cache_asset/cache_asset.dart';
+import '../blocs/inbox_type/inbox_type.dart';
 import '../blocs/overall_asset_summary/overall_asset_summary.dart';
 import '../blocs/report_type/report_type.dart';
 import '../blocs/selected_project/selected_project.dart';
@@ -110,86 +111,104 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
                   showBackNavigation: true,
                   showHelp: false,
                 ),
-                footer: DigitCard(
-                    margin: const EdgeInsets.only(top: spacer2),
-                    children: [
-                      DigitButton(
-                        mainAxisSize: MainAxisSize.max,
-                        label: "Add more details",
-                        type: DigitButtonType.primary,
-                        size: DigitButtonSize.large,
-                        onPressed: () {
-                          context
-                              .read<ReportTypeBloc>()
-                              .add(const ReportTypeEvent.typeSelected("inbox"));
-                          context.router.push(const AssetCountRoute());
-                        },
-                      ),
-                      DigitButton(
-                        mainAxisSize: MainAxisSize.max,
-                        label: "Send Back",
-                        type: DigitButtonType.secondary,
-                        size: DigitButtonSize.large,
-                        onPressed: () => showCustomPopup(
-                          context: context,
-                          builder: (ctx) => Popup(
-                            onCrossTap: () {
-                              Navigator.of(ctx).pop();
-                            },
-                            title:
-                                "Are you sure you want send to back the report?",
-                            description:
-                                "If you send back the report now, you cannot add any more rejection reasons or add more details to the report until it is sent back from the field",
-                            onOutsideTap: () {
-                              Navigator.of(ctx).pop();
-                            },
-                            type: PopUpType.simple,
-                            actionAlignment: MainAxisAlignment.center,
-                            actions: [],
-                            additionalWidgets: [
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.center,
+                footer: BlocBuilder<InboxTypeBloc, InboxTypeState>(
+                  builder: (context, state) {
+                    return state.maybeWhen(
+                        approved: () => const SizedBox.shrink(),
+                        orElse: () => DigitCard(
+                                margin: const EdgeInsets.only(top: spacer2),
                                 children: [
-                                  Expanded(
-                                    flex: 1,
-                                    child: DigitButton(
-                                      label: "Close",
-                                      onPressed: () {
-                                        Navigator.of(ctx).pop();
-                                      },
-                                      type: DigitButtonType.secondary,
-                                      size: DigitButtonSize.large,
-                                      mainAxisSize: MainAxisSize.min,
+                                  DigitButton(
+                                    mainAxisSize: MainAxisSize.max,
+                                    label: "Add more details",
+                                    type: DigitButtonType.primary,
+                                    size: DigitButtonSize.large,
+                                    onPressed: () {
+                                      context.read<ReportTypeBloc>().add(
+                                          const ReportTypeEvent.typeSelected(
+                                              "inbox"));
+                                      context.router
+                                          .push(const AssetCountRoute());
+                                    },
+                                  ),
+                                  DigitButton(
+                                    mainAxisSize: MainAxisSize.max,
+                                    label: "Send Back",
+                                    type: DigitButtonType.secondary,
+                                    size: DigitButtonSize.large,
+                                    onPressed: () => showCustomPopup(
+                                      context: context,
+                                      builder: (ctx) => Popup(
+                                        onCrossTap: () {
+                                          Navigator.of(ctx).pop();
+                                        },
+                                        title:
+                                            "Are you sure you want send to back the report?",
+                                        description:
+                                            "If you send back the report now, you cannot add any more rejection reasons or add more details to the report until it is sent back from the field",
+                                        onOutsideTap: () {
+                                          Navigator.of(ctx).pop();
+                                        },
+                                        type: PopUpType.simple,
+                                        actionAlignment:
+                                            MainAxisAlignment.center,
+                                        actions: [],
+                                        additionalWidgets: [
+                                          Row(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.center,
+                                            children: [
+                                              Expanded(
+                                                flex: 1,
+                                                child: DigitButton(
+                                                  label: "Close",
+                                                  onPressed: () {
+                                                    Navigator.of(ctx).pop();
+                                                  },
+                                                  type:
+                                                      DigitButtonType.secondary,
+                                                  size: DigitButtonSize.large,
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                ),
+                                              ),
+                                              const SizedBox(width: spacer5),
+                                              Expanded(
+                                                flex: 1,
+                                                child: DigitButton(
+                                                  label: "Send back",
+                                                  onPressed: () {
+                                                    Navigator.of(ctx).pop();
+                                                    context
+                                                        .read<AssetTypeBloc>()
+                                                        .add(
+                                                            const AssetTypeEvent
+                                                                .typeSelected(
+                                                                "inverter"));
+                                                    context
+                                                        .read<ReportTypeBloc>()
+                                                        .add(
+                                                            const ReportTypeEvent
+                                                                .typeSelected(
+                                                                "send-back"));
+                                                    context.router.push(
+                                                        const AssetSummaryRoute());
+                                                  },
+                                                  type: DigitButtonType.primary,
+                                                  size: DigitButtonSize.large,
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
-                                  const SizedBox(width: spacer5),
-                                  Expanded(
-                                    flex: 1,
-                                    child: DigitButton(
-                                      label: "Send back",
-                                      onPressed: () {
-                                        Navigator.of(ctx).pop();
-                                        context.read<AssetTypeBloc>().add(
-                                            const AssetTypeEvent.typeSelected(
-                                                "inverter"));
-                                        context.read<ReportTypeBloc>().add(
-                                            const ReportTypeEvent.typeSelected(
-                                                "send-back"));
-                                        context.router
-                                            .push(const AssetSummaryRoute());
-                                      },
-                                      type: DigitButtonType.primary,
-                                      size: DigitButtonSize.large,
-                                      mainAxisSize: MainAxisSize.min,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ]),
+                                ]));
+                  },
+                ),
                 children: [
                   Padding(
                     padding: const EdgeInsets.symmetric(

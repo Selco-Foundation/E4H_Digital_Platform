@@ -126,9 +126,13 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
           body: ScrollableContent(
             enableFixedDigitButton: true,
             backgroundColor: theme.colorTheme.generic.background,
-            header: const BackNavigationHelpHeaderWidget(
+            header: BackNavigationHelpHeaderWidget(
               showBackNavigation: true,
               showHelp: false,
+              defaultPopRoute: false,
+              handleback: () {
+                context.router.replace(const AddNewAssetRoute());
+              },
             ),
             footer: FooterButton(
               isDisabled: isDisabled,
