@@ -1,0 +1,146 @@
+@startuml
+title Boundary Data Ingestion Sequence
+
+actor "E4H Admin" as Admin
+participant "Data Ingestion Script" as Script
+participant "MDMS Service" as MDMSSvc
+participant "Boundary Service" as BoundarySvc
+
+skinparam sequenceMessageAlign center
+
+Admin -> Script : Submit Excel File \n (Boundary data rows)
+activate Script
+
+Script -> Script : Read & Parse Excel data
+note right of Script
+  df = pd.load_excel()
+  if "status" in df.columns:
+    df = df[df["status"]=="fail"]
+end note
+
+Script -> MDMSSvc : **Fetch Boundary Ingestion Schema** \n Request: {module: "data-ingestion", master: "BoundaryIngestionSchema"}
+activate MDMSSvc #LightBlue
+note left of MDMSSvc
+  {
+    "columns": [
+      {
+        "name": "Country",
+        "required": true,
+        "type": "string",
+        "pattern": "^[a-zA-Z\s]+$",
+        "mdmsSource": {
+          "module": "common-masters",
+          "master": "CountryInfo",
+          "path": "$.name",
+          "filterType": "ONE_OF"
+        }
+      },
+      {
+        "name": "State",
+        "type": "string",
+        "pattern": "^[a-zA-Z\s]+$",
+        "required": true
+      },
+      {
+        "name": "District",
+        "type": "string",
+        "pattern": "^[a-zA-Z\s]+$",
+        "required": true
+      },
+      {
+        "name": "Block",
+        "type": "string",
+        "pattern": "^[a-zA-Z\s]+$",
+        "required": true
+      }
+    ]
+  }
+end note
+MDMSSvc --> Script : Return: response
+deactivate MDMSSvc #LightBlue
+note right of Script
+  columns = response.columns
+  columnDataSourceMap = {};
+end note
+
+loop for column in columns
+  alt "mdmsSource" in column
+    Script -> MDMSSvc : Request: { module: column["mdmsSource"].module, master: column["mdmsSource"].master }
+    activate MDMSSvc #LightBlue
+    note right of MDMSSvc
+      {
+        "code": "IN",
+        "name": "India"
+      }
+    end note
+    MDMSSvc --> Script : Return: response
+    note right of Script
+      //# transform function//
+      //# returns {values: List, filterType: string}//
+      columnDataSourceMap[column.name] = transform(response, column) 
+    end note
+    deactivate MDMSSvc #LightBlue
+  end
+end
+
+note right of Script #LightYellow
+  **Phase 1: Synchronous Validations**
+  Validate rows using schema and fetched data.
+end note
+
+Script -> Script : **Perform Synchronous Validations**
+note right of Script
+  hasError = False
+end note
+loop for column in df.columns
+  note right of Script
+    if column.required:
+      is_required_mask = df[column.name].isna()
+      if is_require_mask.any():
+        df.loc[is_require_mask, column.name+"_error"] = "required field"
+        hasError = True
+    if column.pattern:
+      pattern_mask = ~df[column.name].str.fullMatch(rf"{column.pattern}")
+      if pattern_mask.any():
+        df.loc[pattern_mask, column.name+"_error"] = f"doesn't match the pattern: {column.pattern}"
+        hasError = True
+    if "mdmsSource" in column:
+      if column["mdmsSource"].filterType == FilterType.ONE_OF:
+        value_mask = ~df[column.name].isin(columnDataSourceMap[column.name])
+        if value_mask.any():
+          df.loc[value_mask, column.name+"_error"] = f"doesn't match the values: {columnDataSourceMap[column.name]}"
+          hasError = True
+  end note
+end
+alt hasError
+  Script -> Script : Prepare Excel with "status" and "error" column
+else no error
+  note right of Script #LightYellow
+    **Phase 2: Boundary Creation**
+    Create boundaries; track row statuses.
+  end note
+  Script -> Script : Create Boundary Request
+  note right of Script
+    boundaries = {}
+    //# generate list of Boundary objs//
+    for row in df.iterrows():
+      //# generate 4 boundaries per row//
+      //# boundaries.add() for each generated boundary//
+  end note
+  Script -> BoundarySvc : **Create Boundary** \n Request: Create boundary with boundaries list `/boundary/_create`
+  activate BoundarySvc #MediumPurple
+  BoundarySvc --> Script : Return: `status` (Success/Fail, ID, Error)
+  deactivate BoundarySvc #MediumPurple
+alt (df["status"] == "success").all()
+  Script -> BoundarySvc : Process boundary relationships
+  note right of Script
+    //#generate all boundary relationships//
+  end note
+  BoundarySvc -> Script : response
+  Script -> Script : Prepare Excel with "status" and "error" column
+end
+  Script -> Script : Prepare Excel with "status" and "error" column
+end
+  Script --> Admin : Return: Annotated Excel
+  deactivate Script
+@enduml

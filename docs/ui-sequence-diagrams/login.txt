@@ -1,0 +1,20 @@
+@startuml
+title 2. Login - Login Button
+
+participant MobileApp as "Mobile App"
+participant EgovUser as "egov-user (Backend)"
+
+activate MobileApp
+note over MobileApp: User enters Username and Password on UI
+note over MobileApp: User taps "Login" Button on UI
+
+MobileApp -> EgovUser: Sends Login Request (Username, Password) to /user/oauth/token
+activate EgovUser
+EgovUser --> MobileApp: Sends Response (e.g., Auth Token or Error)
+deactivate EgovUser
+note over MobileApp: Handles login response and displays result to User
+
+deactivate MobileApp
+
+@enduml
+
