@@ -152,6 +152,7 @@ public class IMService {
         producer.push(tenantId,config.getUpdateTopic(),wrapper.getIncidentRequest());
         wrapper.setProcessInstance(trimmedUpdatedProcessInstance);
         enrichmentService.enrichFieldsForIndexing(wrapper);
+        imUtils.updateBusinessService(wrapper,mdmsData);
         producer.push(tenantId,config.getUpdateTopicIndexer(),wrapper);
         enrichmentService.enrichFieldsForAuditIndexing(wrapper,startingStatus);
         producer.push(tenantId,config.getAuditCreateTopicIndexer(),wrapper);
