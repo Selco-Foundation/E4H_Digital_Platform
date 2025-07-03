@@ -130,43 +130,47 @@ const Summary = ({ sectionName, count, specifications, details, items, images, v
                 <div>
                   <strong>Capacity</strong>: {item.capacity}
                 </div>
-                {item.image && (
+                {item.documents && item.documents.length > 0 && (
                   <div>
-                    <strong>Image</strong>:<br />
-                    <img src={item.image} alt={`panel-${index}`} style={{ width: "100px", marginTop: "8px" }} />
+                    <strong>Images</strong>:<br />
+                    <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                      {item.documents.map((doc, idx) => (
+                        <img src={doc} alt={`panel-${idx}`} style={{ width: "100px", marginTop: "8px" }} />
+                      ))}
+                    </div>
                   </div>
                 )}
               </Section>
             ))}
 
-            <Section title={`${sectionName} Images`}>
-              <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-                {images.map((img, idx) => (
-                  <img key={idx} src={img} alt={`image-${idx}`} style={{ width: "100px", height: "100px", objectFit: "cover" }} />
-                ))}
-              </div>
-            </Section>
+            {/*<Section title={`${sectionName} Images`}>*/}
+            {/*  <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>*/}
+            {/*    {images.map((img, idx) => (*/}
+            {/*      <img key={idx} src={img} alt={`image-${idx}`} style={{ width: "100px", height: "100px", objectFit: "cover" }} />*/}
+            {/*    ))}*/}
+            {/*  </div>*/}
+            {/*</Section>*/}
 
-            <Section title={`${sectionName} Videos`}>
-              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                {videos.map((video, idx) => (
-                  <div
-                    key={idx}
-                    style={{ border: "1px solid #ccc", padding: "10px", display: "flex", alignItems: "center", gap: "10px", width: "300px" }}
-                  >
-                    <video width="50" height="50" controls>
-                      <source src={video.url} type="video/mp4" />
-                    </video>
-                    <div>
-                      <div>
-                        <strong>{video.name}</strong>
-                      </div>
-                      <div style={{ fontSize: "12px", color: "#666" }}>{video.size}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </Section>
+            {/*<Section title={`${sectionName} Videos`}>*/}
+            {/*  <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>*/}
+            {/*    {videos.map((video, idx) => (*/}
+            {/*      <div*/}
+            {/*        key={idx}*/}
+            {/*        style={{ border: "1px solid #ccc", padding: "10px", display: "flex", alignItems: "center", gap: "10px", width: "300px" }}*/}
+            {/*      >*/}
+            {/*        <video width="50" height="50" controls>*/}
+            {/*          <source src={video.url} type="video/mp4" />*/}
+            {/*        </video>*/}
+            {/*        <div>*/}
+            {/*          <div>*/}
+            {/*            <strong>{video.name}</strong>*/}
+            {/*          </div>*/}
+            {/*          <div style={{ fontSize: "12px", color: "#666" }}>{video.size}</div>*/}
+            {/*        </div>*/}
+            {/*      </div>*/}
+            {/*    ))}*/}
+            {/*  </div>*/}
+            {/*</Section>*/}
           </div>
         )
       )}

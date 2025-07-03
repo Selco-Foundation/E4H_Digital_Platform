@@ -82,5 +82,20 @@ export const QCService = {
       params : params,
       headers : headers,
     });
+  },
+
+  fetchImageFromFileStore : async (fileStoreId) => {
+    const endpoint = `/filestore/v1/files/url`;
+    const params = {
+      tenantId : "in",
+      fileStoreIds : fileStoreId
+    }
+
+    return await Request({
+      url : endpoint,
+      method : "GET",
+      params : params,
+    })
   }
+
 }

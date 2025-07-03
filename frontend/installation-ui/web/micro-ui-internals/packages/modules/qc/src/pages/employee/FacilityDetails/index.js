@@ -1,9 +1,15 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Summary from "./component/Summary";
-import SystemParameterReport from "./component/SystemParameterReport";
 import ApproveButton from "./component/ApproveButton";
+import AuditTrial from "./component/AuditTrial";
+import { useSelector } from "react-redux";
+import { QCService } from "../Service/QCService";
 
-const FacilityDetails = ({t, facility}) => {
+const FacilityDetails = ({t}) => {
+
+  const selectedFacility = useSelector((state) => state.qc.reports.selectedFacility);
+  const [fetchedData, setData] = useState([]);
+
   const [pdfFile, setPdfFile] = useState({
     name: "Alkod.pdf",
     size: "3.5 MB"
@@ -12,148 +18,158 @@ const FacilityDetails = ({t, facility}) => {
   const handleRemovePdf = () => {
     setPdfFile(null);
   };
+
   const handleApprove = () => {
     alert("Approved!");
   };
 
-  const facilityDetails = [
-    {
-      facilityName: "Panels",
-      count: 2,
-      specifications: {
-        system: "AC",
-        capacity: "1 KVA",
-        voltage: "1 Volt"
-      },
-      details: {
-        count: 2,
-        warrantyStartDate: "21/03/25",
-        warrantyDuration: "15 Years",
-        brand: "Brand 1",
-        modelNumber: "Model 1"
-      },
-      items: [
-        {
-          serialNumber: "SR5955340958",
-          capacity: "1 KVA",
-          image: "https://via.placeholder.com/100?text=Panel+1"
-        },
-        {
-          serialNumber: "SR5955340958",
-          capacity: "1 KVA",
-          image: "https://via.placeholder.com/100?text=Panel+2"
-        }
-      ],
-      images: [
-        "https://via.placeholder.com/100?text=Img+1",
-        "https://via.placeholder.com/100?text=Img+2",
-        "https://via.placeholder.com/100?text=Img+3",
-        "https://via.placeholder.com/100?text=Img+4"
-      ],
-      videos: [
-        {
-          name: "Video_1.mp4",
-          size: "3.5 MB",
-          url: "https://www.w3schools.com/html/mov_bbb.mp4"
-        },
-        {
-          name: "Video_2.mp4",
-          size: "3.5 MB",
-          url: "https://www.w3schools.com/html/movie.mp4"
-        }
-      ]
-    },
-    {
-      facilityName: "Battery",
-      count: 3,
-      specifications: {
-        system: "DC",
-        capacity: "2 KVA",
-        voltage: "12 Volt"
-      },
-      details: {
-        count: 3,
-        warrantyStartDate: "15/07/24",
-        warrantyDuration: "10 Years",
-        brand: "PowerSafe",
-        modelNumber: "Model B2"
-      },
-      items: [
-        {
-          serialNumber: "BBX93485732",
-          capacity: "2 KVA",
-          image: "https://via.placeholder.com/100?text=Battery+1"
-        },
-        {
-          serialNumber: "BBX93485733",
-          capacity: "2 KVA",
-          image: "https://via.placeholder.com/100?text=Battery+2"
-        },
-        {
-          serialNumber: "BBX93485734",
-          capacity: "2 KVA",
-          image: "https://via.placeholder.com/100?text=Battery+3"
-        }
-      ],
-      images: [
-        "https://via.placeholder.com/100?text=Batt+Img+1",
-        "https://via.placeholder.com/100?text=Batt+Img+2"
-      ],
-      videos: [
-        {
-          name: "Battery_Intro.mp4",
-          size: "2.3 MB",
-          url: "https://www.w3schools.com/html/mov_bbb.mp4"
-        }
-      ]
-    },
-    {
-      facilityName: "Inverter",
-      count: 1,
-      specifications: {
-        system: "Hybrid",
-        capacity: "3 KVA",
-        voltage: "220 Volt"
-      },
-      details: {
-        count: 1,
-        warrantyStartDate: "01/01/23",
-        warrantyDuration: "8 Years",
-        brand: "InverTech",
-        modelNumber: "Inv-H3000"
-      },
-      items: [
-        {
-          serialNumber: "INV8837461",
-          capacity: "3 KVA",
-          image: "https://via.placeholder.com/100?text=Inverter"
-        }
-      ],
-      images: [
-        "https://via.placeholder.com/100?text=Inv+Front",
-        "https://via.placeholder.com/100?text=Inv+Back"
-      ],
-      videos: [
-        {
-          name: "Inverter_Setup.mp4",
-          size: "4.0 MB",
-          url: "https://www.w3schools.com/html/movie.mp4"
-        }
-      ]
+  const getAssetName = (assetTypeID) => {
+    switch(assetTypeID) {
+      case "PANEL":
+        return "Panel";
+      case "BATTERY":
+        return "Battery";
+      case "INVERTER":
+        return "Inverter";
     }
-  ]
-  const hospitalDetails = {
-    name:"Alok Hospital",
-    district: "District 1",
-    taluk: "Taluk 1",
-    healthFacilityType: "Loc 1",
-    status: "Pending Approval",
   }
+
+  const getAssetCapacity = (assetTypeID, assetDetails) => {
+    switch(assetTypeID) {
+      case "PANEL":
+        return assetDetails?.panelCapacity + " " + assetDetails?.capacityUnit;
+      case "BATTERY":
+        return assetDetails?.batteryCapacity + " " + assetDetails?.capacityUnit;
+      case "INVERTER":
+        return assetDetails?.inverterCapacity + " " + assetDetails?.capacityUnit;
+    }
+  }
+
+  const fetchFileStoreDocuments = async (documents) => {
+    const fetchedDocuments = [];
+    for (const document of documents) {
+      if (document?.documentType.toUpperCase() === "PHOTO" || document?.documentType.toUpperCase() === "IMAGE") {
+        await QCService.fetchImageFromFileStore(document?.fileStore)
+          .then((response) => {
+            fetchedDocuments.push(Digit.Utils.getFileUrl(response[document?.fileStore]))
+          })
+      }
+    }
+
+    return fetchedDocuments;
+  }
+
+  const formatData = async (data) => {
+    const dataMap = new Map();
+
+    for (const row of data) {
+      const assetType = row?.assetTypeID;
+
+      if (dataMap.has(assetType)) {
+        dataMap.set(assetType, {
+          ...dataMap.get(assetType),
+          count: dataMap.get(assetType).count + 1,
+          details: {
+            ...dataMap.get(assetType).details,
+            count: dataMap.get(assetType).details.count + 1
+          },
+          items: [
+            ...dataMap.get(assetType).items,
+            {
+              assetId: row?.assetId,
+              serialNumber: row?.serialNumber,
+              capacity: getAssetCapacity(assetType, row?.assetDetails),
+              documents: await fetchFileStoreDocuments(row?.documents)
+            }
+          ]
+        })
+      } else {
+        dataMap.set(assetType, {
+          assetName: getAssetName(assetType),
+          count: 1,
+          specifications: {
+            system: row?.system,
+            capacity: getAssetCapacity(assetType, row?.assetDetails)
+          },
+          details: {
+            count: 1,
+            warrantyStartDate: new Date(row?.warrantyStartDate).toLocaleDateString("en-IN", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+            }),
+            warrantyDuration: row?.warrantyDuration + " Years",
+            brand: row?.brandID,
+            modelNumber: row?.modelNumber
+          },
+          items: [
+            {
+              assetId: row?.assetId,
+              serialNumber: row?.serialNumber,
+              capacity: getAssetCapacity(assetType, row?.assetDetails),
+              documents: await fetchFileStoreDocuments(row?.documents)
+            }
+          ]
+        })
+      }
+    }
+
+    return dataMap.values().toArray();
+  }
+
+  useEffect(async () => {
+    await QCService.fetchAssets(selectedFacility?.facilityId)
+      .then(async (response) => {
+        await formatData(response)
+          .then((data) => {
+            setData(data);
+          })
+      })
+      .catch((error) => {
+        console.debug("Error fetching assets", error);
+      })
+  }, []);
+
+  const hospitalDetails = {
+    ...selectedFacility,
+    healthFacilityType: "Loc 1"
+  }
+
+  const auditTrail = [
+    {
+      status: "Submitted",
+      date: "25/05/25",
+    },
+    {
+      status: "Rejected",
+      date: "05/05/25",
+      reasons: [
+        {
+          section: "Inverter",
+          reasons: [
+            { title: "Rejection Reason 1", details: "Additional Details" },
+            { title: "Rejection Reason 2", details: "Additional Details" },
+          ],
+        },
+        {
+          section: "Panel",
+          reasons: [
+            { title: "Rejection Reason 1", details: "Additional Details" },
+            { title: "Rejection Reason 2", details: "Additional Details" },
+          ],
+        },
+      ],
+    },
+    {
+      status: "Submitted",
+      date: "25/04/25",
+    },
+  ];
 
   return (
     <div style={{marginTop: "20px"}}>
       <div style={{fontSize: "24px", fontWeight: "bold", marginBottom: "20px", color: "#004d66"}}>
-        {hospitalDetails.name}
+          {hospitalDetails.facility}
       </div>
       <div style={{
         marginTop: "15px",
@@ -169,8 +185,8 @@ const FacilityDetails = ({t, facility}) => {
           {hospitalDetails.district}
         </div>
         <div style={{display: "flex", alignItems: "center", marginTop: "15px"}}>
-          <div style={{width: "30%"}}><strong>Taluk</strong></div>
-          {hospitalDetails.taluk}
+          <div style={{width: "30%"}}><strong>Block</strong></div>
+          {hospitalDetails.block}
         </div>
         <div style={{display: "flex", alignItems: "center", marginTop: "15px"}}>
           <div style={{width: "30%"}}><strong>Health Facility Type</strong></div>
@@ -181,15 +197,16 @@ const FacilityDetails = ({t, facility}) => {
           {hospitalDetails.status}
         </div>
       </div>
-      {facilityDetails && facilityDetails.map((detail) => {
+
+      {auditTrail && <AuditTrial t={t} auditTrial={auditTrail} />}
+
+      {fetchedData && fetchedData.map((asset) => {
         return <Summary
-          sectionName={detail.facilityName}
-          count={detail.count}
-          specifications={detail.specifications}
-          details={detail.details}
-          items={detail.items}
-          images={detail.images}
-          videos={detail.videos}
+          sectionName={asset?.assetName}
+          count={asset?.count}
+          specifications={asset?.specifications}
+          details={asset?.details}
+          items={asset?.items}
         />
       })}
       {pdfFile && <Summary pdf={pdfFile} onPdfRemove={handleRemovePdf} isReport={true} />}
