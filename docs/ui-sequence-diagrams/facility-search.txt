@@ -1,0 +1,38 @@
+@startuml
+title 5. Select Health Facility
+
+participant MobileApp as "Mobile App"
+participant ProjectService as "project-service (Backend)"
+participant EgovMdms as "egov-mdms (Backend)"
+participant EgovFilestore as "egov-filestore (Backend)"
+
+MobileApp -> MobileApp: Display full page loading indicator
+activate MobileApp
+
+MobileApp -> ProjectService: Call to /project/v1/_search (Search Box Text, Sort Direction)
+activate ProjectService
+ProjectService --> MobileApp: Project Data (Paginated)
+deactivate ProjectService
+
+MobileApp -> EgovMdms: Call to /egov-mdms-service/v1/_search (tenantId, moduleName, masterName)
+activate EgovMdms
+note right of EgovMdms: Request for common-masters.SolutionDesignDocuments
+EgovMdms --> MobileApp: Response: { tenantId: "in", module:"common-masters", SolutionDesignDocuments: [{id: #, filestoreId: "abc-123", solutionDesignType:"TypeA"}, {id: #, filestoreId: "def-456", solutionDesignType:"TypeB"}]}
+deactivate EgovMdms
+
+loop For each SolutionDesignDocument with filestoreId
+    MobileApp -> EgovFilestore: Fetch file using filestoreId (e.g., "abc-123", "def-456")
+    activate EgovFilestore
+    EgovFilestore --> MobileApp: File Content/URL
+    deactivate EgovFilestore
+end
+
+note over MobileApp: Use fetched files along with fetched project data for display
+
+MobileApp -> MobileApp: Hide full page loading indicator
+MobileApp -> MobileApp: Display Health Facility data and loaded files
+
+deactivate MobileApp
+
+@enduml
+

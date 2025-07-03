@@ -1,0 +1,35 @@
+@startuml
+title Asset Summary : Submit
+
+participant MobileApp as "Mobile App"
+participant AssetRegistry as "asset-registry (Backend)"
+participant ProjectService as "project-service (Backend)"
+database SqliteDb as "sqlitedb (Local Database)"
+
+activate MobileApp
+
+loop For each asset (note: assets.length = sum of asset count of all asset types)
+    alt Internet Available
+        MobileApp -> AssetRegistry: Call to /asset-registry/v1/asset/_create (Asset Data)
+        note left: Use facility ID from the selected project
+        activate AssetRegistry
+        AssetRegistry --> MobileApp: Asset Creation Confirmation
+        deactivate AssetRegistry
+    else No Internet
+        MobileApp -> SqliteDb: Store Asset Data Locally
+        activate SqliteDb
+        SqliteDb --> MobileApp: Local Storage Confirmation
+        deactivate SqliteDb
+    end
+end
+
+MobileApp -> ProjectService: Call to /project/v1/project/workflow/update (Project ID, SHARE Action)
+activate ProjectService
+note right of ProjectService: Run this on the selected project of type facility installation
+ProjectService --> MobileApp: Workflow Update Confirmation
+deactivate ProjectService
+
+deactivate MobileApp
+
+@enduml
+

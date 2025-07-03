@@ -26,7 +26,7 @@ public class StorageService {
 	private final CloudFilesManager cloudFilesManager;
 
 	private static final String UPLOAD_MESSAGE =
-			"Received upload request for  module: %s, tag: %s with file count: %s";
+			"Received upload request for  module: {}, tag: {} with file count: {}";
 
 	private final ArtifactRepository artifactRepository;
 	private final ArtifactMapper artifactMapper;
@@ -54,6 +54,10 @@ public class StorageService {
 
 	public Resource retrieve(String fileStoreId, String tenantId) throws IOException {
 		return artifactRepository.find(fileStoreId, tenantId);
+	}
+
+	public String retrieveSignedUrl(String fileStoreId, String tenantId) throws IOException {
+		return artifactRepository.findS3SignedUrl(fileStoreId, tenantId);
 	}
 
 	public Resource retrieve(String fileStoreId, String quality, String fileName, String tenantId)  {

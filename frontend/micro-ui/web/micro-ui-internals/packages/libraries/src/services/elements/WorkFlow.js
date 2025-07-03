@@ -18,8 +18,8 @@ const getThumbnails = async (ids, tenantId, documents = []) => {
     documents.forEach((doc) => {
       const fileUrl = urlMap.get(doc.fileStoreId);
       if (fileUrl) {
-        if (doc.documentType === "HLS" || doc.documentType.toLowerCase().startsWith("video")) {
-          const videoKey = doc.documentUid;
+        if (doc.documentType === "HLS" || doc.documentType.toLowerCase().startsWith("video") || doc.documentType === "VIDEO") {
+          const videoKey = doc.documentUid || doc.fileStoreId;
 
           if (!videos.has(videoKey)) {
             videos.set(videoKey, { master: null, original: null, fileStoreId: null });
@@ -77,9 +77,39 @@ const getThumbnailsV2 = async (ids, tenantId, documents = []) => {
 
   const res = await Digit.UploadServices.Filefetch(ids, tenantId);
   if (res.data.fileStoreIds && res.data.fileStoreIds.length !== 0) {
+    // Create a Map to store file URLs by fileStoreId
+    const urlMap = new Map(res.data.fileStoreIds.map((file) => [file.id, file.url]));
+
+    // Separate images and videos based on documentType (matching by fileStoreId)
+    const images = [];
+    const videos = new Map();
+
+    documents.forEach((doc) => {
+      const fileUrl = urlMap.get(doc.fileStoreId);
+      if (fileUrl) {
+        if (doc.documentType === "HLS" || doc.documentType.toLowerCase().startsWith("video") || doc.documentType === "VIDEO") {
+          const videoKey = doc.documentUid || doc.fileStoreId;
+
+          if (!videos.has(videoKey)) {
+            videos.set(videoKey, { master: null, original: null, fileStoreId: null });
+          }
+
+          if (doc.documentType === "HLS") {
+            videos.get(videoKey).master = Digit.Utils.getFileUrl(fileUrl);
+          } else {
+            videos.get(videoKey).fileStoreId = doc.fileStoreId;
+            videos.get(videoKey).original = Digit.Utils.getFileUrl(fileUrl);
+          }
+        } else {
+          images.push(Digit.Utils.getFileUrl(fileUrl));
+        }
+      }
+    });
+
     return {
-      thumbs: res.data.fileStoreIds.map((o) => o.url.split(",")[3] || o.url.split(",")[0]),
-      images: res.data.fileStoreIds.map((o) => Digit.Utils.getFileUrl(o.url))
+      thumbs: Array.from(urlMap.values()).map((url) => url.split(",")[3] || url.split(",")[0]),
+      images,
+      videos: Array.from(videos.values()),
     };
   } else {
     return null;
@@ -209,7 +239,7 @@ export const WorkflowService = {
             // wfComment: instance?.wfComments?.map(e => e?.comment),
             comment:instance?.comment,
             wfDocuments: instance?.documents,
-            thumbnailsToShow: { thumbs: instance?.thumbnailsToShow?.thumbs, fullImage: instance?.thumbnailsToShow?.images },
+            thumbnailsToShow: { thumbs: instance?.thumbnailsToShow?.thumbs, fullImage: instance?.thumbnailsToShow?.images, videos: instance?.thumbnailsToShow?.videos },
             assignes: instance.assignes,
             caption: instance.assignes ? instance.assignes?.map((assignee) => ({ name: assignee.name, mobileNumber: assignee.mobileNumber })) : null,
             auditDetails: {
@@ -245,7 +275,7 @@ export const WorkflowService = {
     const workflow = await Digit.WorkflowService.getByBusinessId(tenantId, id);
     const applicationProcessInstance = cloneDeep(workflow?.ProcessInstances);
     const getLocationDetails = window.location.href.includes("/obps/") || window.location.href.includes("noc/inbox");
-    const moduleCodeData = getLocationDetails ? applicationProcessInstance?.[0]?.businessService : moduleCode;
+    const moduleCodeData = getLocationDetails ? applicationProcessInstance?.[0]?.businessService : workflow?.ProcessInstances[0]?.businessService || moduleCode;
     const businessServiceResponse = (await Digit.WorkflowService.init(tenantId, moduleCodeData))?.BusinessServices[0]?.states;
     if (workflow && workflow.ProcessInstances) {
       const processInstances = workflow.ProcessInstances;

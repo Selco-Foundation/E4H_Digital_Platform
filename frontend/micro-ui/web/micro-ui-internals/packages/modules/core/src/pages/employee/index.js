@@ -125,8 +125,8 @@ const EmployeeApp = ({
             <div
               style={
                 window.location.href.includes("/im/inbox")
-                  ? { display: "flex", justifyContent: "center", marginBottom: "15px", marginTop: "10px" }
-                  : { display: "flex", justifyContent: "center", marginBottom: "58px", marginTop: "-26px" }
+                  ? { display: "flex", justifyContent: "center", gap: "1rem", marginBottom: "15px", marginTop: "10px" }
+                  : { display: "flex", justifyContent: "center", gap: "1rem", marginBottom: "58px", marginTop: "-26px" }
               }
             >
               {logos.map((logo, index) => (

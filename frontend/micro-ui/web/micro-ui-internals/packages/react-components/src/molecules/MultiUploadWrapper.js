@@ -97,6 +97,7 @@ const MultiUploadWrapper = ({
   disabled,
   ulb,
   specificFileConstraint,
+  multiple = true,
 }) => {
   const FILES_UPLOADED = "FILES_UPLOADED";
   const TARGET_FILE_REMOVAL = "TARGET_FILE_REMOVAL";
@@ -278,7 +279,9 @@ const MultiUploadWrapper = ({
   }, [isUploading]);
 
   useEffect(() => {
-    requestSpecifcFileRemoval ? dispatch({ type: TARGET_FILE_REMOVAL, payload: requestSpecifcFileRemoval }) : null;
+    if (requestSpecifcFileRemoval) {
+      dispatch({ type: TARGET_FILE_REMOVAL, payload: requestSpecifcFileRemoval })
+    }
   }, [requestSpecifcFileRemoval]);
 
   return (
@@ -291,7 +294,7 @@ const MultiUploadWrapper = ({
           dispatch({ type: TARGET_FILE_REMOVAL, payload: fileDetailsData });
         }}
         uploadedFiles={state}
-        multiple={true}
+        multiple={multiple}
         showHintBelow={showHintBelow}
         hintText={hintText}
         extraStyleName={extraStyleName}

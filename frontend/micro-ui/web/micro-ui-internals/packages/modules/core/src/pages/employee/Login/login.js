@@ -62,7 +62,7 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
     }
 
     /*  RAIN-6489 Logic to navigate to National DSS home incase user has only one role [NATADMIN]*/
-    if (user?.info?.roles && user?.info?.roles?.length > 0 &&  user?.info?.roles?.every((e) => e.code === "NATADMIN")) {
+    if (user?.info?.roles && user?.info?.roles?.length > 0 && user?.info?.roles?.every((e) => e.code === "NATADMIN")) {
       redirectPath = `/${window.contextPath}/employee/dss/landing/NURT_DASHBOARD`;
     }
     /*  RAIN-6489 Logic to navigate to National DSS home incase user has only one role [NATADMIN]*/

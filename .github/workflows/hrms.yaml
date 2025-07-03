@@ -3,17 +3,20 @@ on:
   push:
     branches:
       - develop
-      - main
+      - staging
     tags:
       - 'v*'
     paths:
-      - 'backend/business-services/egov-hrms/**'
+      - 'backend/e4h-services/egov-hrms/**'
   workflow_dispatch:
-  workflow_call:
+
+permissions:
+  security-events: write
+  contents: read
 
 jobs:
   docker_image-build:
-    if: (github.event_name == 'push' && (startsWith(github.ref, 'refs/heads/develop') || startsWith(github.ref, 'refs/heads/main') || startsWith(github.ref, 'refs/tags/v'))) || github.event_name == 'workflow_dispatch'
+    if: (github.event_name == 'push' && (startsWith(github.ref, 'refs/heads/develop') || startsWith(github.ref, 'refs/heads/staging') || startsWith(github.ref, 'refs/tags/v'))) || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -38,7 +41,7 @@ jobs:
 
       - name: Git commit_hash for service
         run: |
-          commit_hash=$(git log -1 --pretty=format:%H -- backend/business-services/egov-hrms)
+          commit_hash=$(git log -1 --pretty=format:%H -- backend/e4h-services/egov-hrms)
           echo "commit_hash=$commit_hash" >> $GITHUB_ENV
 
       # Login to Docker Container Registry
@@ -47,11 +50,24 @@ jobs:
 
       - name: Build and Push Docker image for hrms-Service
         run: |
-          docker build --build-arg WORK_DIR="backend/business-services/egov-hrms" -t selcohub/hrms:${{ env.VERSION }}-${{ env.commit_hash }} -f build/maven/Dockerfile .
+          docker build --build-arg WORK_DIR="backend/e4h-services/egov-hrms" -t selcohub/hrms:${{ env.VERSION }}-${{ env.commit_hash }} -f build/maven/Dockerfile .
           docker push selcohub/hrms:${{ env.VERSION }}-${{ env.commit_hash }}
 
       - name: Build and Push Docker image for hrms-Service-DB
         run: |
           docker build  -t selcohub/hrms-db:${{ env.VERSION }}-${{ env.commit_hash }} -f  Dockerfile .
           docker push selcohub/hrms-db:${{ env.VERSION }}-${{ env.commit_hash }}
-        working-directory: backend/business-services/egov-hrms/src/main/resources/db
+        working-directory: backend/e4h-services/egov-hrms/src/main/resources/db
+
+  Workflow_Trigger:
+    if: startsWith(github.ref, 'refs/heads/develop')
+    runs-on: ubuntu-latest
+    needs: docker_image-build
+    steps:
+      - name: Trigger Deployment Pipeline
+        run: |
+          curl -X POST \
+          -H "Accept: application/vnd.github.v3+json" \
+          -H "Authorization: token ${{ secrets.GHUB_TOKEN }}" \
+          https://api.github.com/repos/Selco-Foundation/DIGIT-DevOps/actions/workflows/Dev.yaml/dispatches \
+          -d '{"ref":"Selco-Dev"}'

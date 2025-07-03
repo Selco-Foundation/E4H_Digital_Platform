@@ -24,7 +24,14 @@ export const CreateComplaint = ({ parentUrl }) => {
   const [uploadedFile, setUploadedFile] = useState([]);
   const [uploadedImages, setUploadedImagesIds] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
-  const specificFileConstraint = { type: "video", maxSize: 100, maxFiles: 5 };
+  const [isImageUploading, setIsImageUploading] = useState(false);
+  const [isVideoUploading, setIsVideoUploading] = useState(false);
+  const [imageState, setImageState] = useState({ newArr: [], mappedArray: [] });
+  const [videoState, setVideoState] = useState({ newArr: [], mappedArray: [] });
+  const specificFileConstraint = [
+    { type: "video", maxSize: 50, maxFiles: 2 },
+    { type: "image", maxSize: 10, maxFiles: 5 },
+  ];
   const [district, setDistrict] = useState(null);
   const [block, setBlock] = useState(null);
   const [error, setError] = useState(null);
@@ -40,6 +47,8 @@ export const CreateComplaint = ({ parentUrl }) => {
   const [disbaledUpload, setDisableUpload] = useState(true);
   const [phcMenuNew, setPhcMenu] = useState([]);
   const [subType, setSubType] = useState(JSON?.parse(sessionStorage.getItem("subType")) || {});
+  const [systemFunctionality, setSystemFunctionality] = useState();
+  const [systemFunctionalityMenu, setSystemFunctionalityMenu] = useState([]);
   const [dataState, setDataState] = useState({ newArr: [], mappedArray: [] });
   let sortedSubMenu = [];
   if (subTypeMenu !== null) {
@@ -73,10 +82,10 @@ export const CreateComplaint = ({ parentUrl }) => {
   }
   const state = Digit.ULBService.getStateId();
   const [selectTenant, setSelectTenant] = useState(Digit.SessionStorage.get("Employee.tenantId") || null);
-  const { data: mdmsData } = Digit.Hooks.pgr.useMDMS(state, "Incident", ["District", "Block"]);
+  const { data: mdmsData } = Digit.Hooks.pgr.useMDMS(state, "Incident", ["District", "Block", "SystemFunctionality"]);
   const { data: phcMenu } = Digit.Hooks.pgr.useMDMS(state, "tenant", ["tenants"]);
   let blockNew = mdmsData?.Incident?.Block;
-
+  
   useEffect(() => {
     const fetchDistrictMenu = async () => {
       const response = phcMenu?.Incident?.District;
@@ -98,7 +107,21 @@ export const CreateComplaint = ({ parentUrl }) => {
         );
       }
     };
+    const fetchSystemFunctionalMenu = async () => {
+      const response = mdmsData?.Incident?.SystemFunctionality;
+      if (response) {
+        setSystemFunctionalityMenu(
+          response.filter(def => def.active)
+            .sort((a, b) => a.name.localeCompare(b.name))
+            .map((def) => ({
+              key: def.code,
+              name: t(def.name),
+            }))
+        );
+      }
+    }
     fetchDistrictMenu();
+    fetchSystemFunctionalMenu();
   }, [state, mdmsData, t]);
 
   useEffect(() => {
@@ -168,12 +191,13 @@ export const CreateComplaint = ({ parentUrl }) => {
   const client = useQueryClient();
 
   useEffect(() => {
-    if (complaintType?.key && subType?.key && healthCareType?.code && healthcentre?.code && district?.key && block.key && !isUploading) {
+    const isAnyUploading = isImageUploading || isVideoUploading;
+    if (complaintType?.key && subType?.key && systemFunctionality?.key && healthCareType?.code && healthcentre?.code && district?.key && block.key && !isAnyUploading) {
       setSubmitValve(true);
     } else {
       setSubmitValve(false);
     }
-  }, [complaintType, subType, healthcentre, healthCareType, district, block, isUploading]);
+  }, [complaintType, subType, systemFunctionality, healthcentre, healthCareType, district, block, isImageUploading, isVideoUploading]);
   async function selectedType(value) {
     setDisableUpload(false);
     if (value.key !== complaintType.key) {
@@ -217,6 +241,10 @@ export const CreateComplaint = ({ parentUrl }) => {
   function selectedSubType(value) {
     sessionStorage.setItem("subType", JSON.stringify(value));
     setSubType(value);
+  }
+
+  function selectedSystemFunctionality(value) {
+    setSystemFunctionality(value);
   }
   async function selectedHealthCentre(value) {
     setHealthCentre(value);
@@ -275,7 +303,6 @@ export const CreateComplaint = ({ parentUrl }) => {
 
   const wrapperSubmit = (data) => {
     const abc = handleButtonClick();
-
     if (!canSubmit) return;
     setSubmitted(true);
     !submitted && !abc && onSubmit(data);
@@ -287,6 +314,7 @@ export const CreateComplaint = ({ parentUrl }) => {
       ...data,
       complaintType,
       subType,
+      systemFunctionality,
       district,
       block,
       healthCareType,
@@ -305,6 +333,7 @@ export const CreateComplaint = ({ parentUrl }) => {
   const centerTypeRef = useRef(null);
   const ticketTypeRef = useRef(null);
   const ticketSubTypeRef = useRef(null);
+  const systemFunctionalityRef = useRef(null);
   const fieldsToValidate = [
     { field: district, ref: districtRef },
     { field: block, ref: blockRef },
@@ -312,6 +341,7 @@ export const CreateComplaint = ({ parentUrl }) => {
     { field: healthCareType, ref: centerTypeRef },
     { field: complaintType, ref: ticketTypeRef },
     { field: subType, ref: ticketSubTypeRef },
+    { field: systemFunctionality, ref: systemFunctionalityRef },
   ];
   const getData = (state) => {
     let data = Object.fromEntries(state);
@@ -321,6 +351,26 @@ export const CreateComplaint = ({ parentUrl }) => {
     let newArr = Object.values(data);
 
     setDataState({ newArr, mappedArray });
+  };
+
+  const getImageData = (state) => {
+    let data = Object.fromEntries(state);
+    const mappedArray = state.map((item) => {
+      return item[1];
+    });
+    let newArr = Object.values(data);
+
+    setImageState({ newArr, mappedArray });
+  };
+
+  const getVideoData = (state) => {
+    let data = Object.fromEntries(state);
+    const mappedArray = state.map((item) => {
+      return item[1];
+    });
+    let newArr = Object.values(data);
+
+    setVideoState({ newArr, mappedArray });
   };
   const handleButtonClick = () => {
     const hasEmptyFields = fieldsToValidate.some(({ field }) => field === null || Object.keys(field).length === 0);
@@ -337,12 +387,32 @@ export const CreateComplaint = ({ parentUrl }) => {
       return false; // None of the fields are empty
     }
   };
-  function selectfile(arr, newArr) {
+  function selectfile(imageArr, imageMappedArr, videoArr, videoMappedArr) {
     let file = [];
     let videoCount = 0;
 
-    if (arr && newArr.length > 0) {
-      file = newArr.flatMap((e) => {
+    console.log("Processing files - Images:", imageMappedArr.length, "Videos:", videoMappedArr.length);
+
+    // Process image files
+    if (imageArr && imageMappedArr.length > 0) {
+      const imageFiles = imageMappedArr.flatMap((e) => {
+        if (!e?.file || !e?.fileStoreId) return [];
+
+        const { file, fileStoreId } = e;
+        const { type } = file;
+
+        const documentType = type.includes(".sheet") ? ".xlsx" : type.includes(".document") ? ".docs" : type;
+
+        console.log("Processing image file:", file.name, "Type:", type, "FileStoreId:", fileStoreId.fileStoreId);
+        return [{ fileStoreId: fileStoreId.fileStoreId, documentUid: "", documentType, additionalDetails: {} }];
+      });
+      file = [...file, ...imageFiles];
+      console.log("Added", imageFiles.length, "image files to payload");
+    }
+
+    // Process video files
+    if (videoArr && videoMappedArr.length > 0) {
+      const videoFiles = videoMappedArr.flatMap((e) => {
         if (!e?.file || !e?.fileStoreId) return [];
 
         const { file, fileStoreId } = e;
@@ -353,6 +423,7 @@ export const CreateComplaint = ({ parentUrl }) => {
         if (type.includes("video")) {
           videoCount++;
           const videoUid = `video${videoCount}`;
+          console.log("Processing video file:", file.name, "Type:", type, "FileStoreId:", fileStoreId.fileStoreId, "MasterFileStoreId:", fileStoreId.masterFileStoreId);
           return [
             { fileStoreId: fileStoreId.masterFileStoreId, documentUid: videoUid, documentType: "HLS", additionalDetails: {} },
             { fileStoreId: fileStoreId.fileStoreId, documentUid: videoUid, documentType, additionalDetails: {} },
@@ -361,24 +432,25 @@ export const CreateComplaint = ({ parentUrl }) => {
 
         return [{ fileStoreId: fileStoreId.fileStoreId, documentUid: "", documentType, additionalDetails: {} }];
       });
-
-      // Remove Duplicates Efficiently Using Set()
-      const seen = new Set();
-      file = file.filter((doc) => {
-        if (!doc.fileStoreId || seen.has(doc.fileStoreId)) return false;
-        seen.add(doc.fileStoreId);
-        return true;
-      });
-
-      setUploadedFile(file);
+      file = [...file, ...videoFiles];
+      console.log("Added", videoFiles.length, "video file entries to payload");
     }
+
+    // Remove Duplicates Efficiently Using Set()
+    const seen = new Set();
+    file = file.filter((doc) => {
+      if (!doc.fileStoreId || seen.has(doc.fileStoreId)) return false;
+      seen.add(doc.fileStoreId);
+      return true;
+    });
+
+    console.log("Final uploaded files count:", file.length, "Files:", file);
+    setUploadedFile(file);
   }
 
   useEffect(() => {
-    if (dataState.newArr && dataState.mappedArray) {
-      selectfile(dataState.newArr, dataState.mappedArray);
-    }
-  }, [dataState]);
+    selectfile(imageState.newArr, imageState.mappedArray, videoState.newArr, videoState.mappedArray);
+  }, [imageState, videoState]);
   const config = [
     {
       head: t("TICKET_LOCATION"),
@@ -493,6 +565,24 @@ export const CreateComplaint = ({ parentUrl }) => {
             />
           ),
         },
+        {
+          label: t("SYSTEM_FUNCTIONAL"),
+          type: "dropdown",
+          isMandatory: true,
+          populators: (
+            <div>
+              <Dropdown
+                ref={systemFunctionalityRef}
+                option={systemFunctionalityMenu}
+                optionKey="name"
+                id="systemFunctionality"
+                selected={systemFunctionality}
+                select={selectedSystemFunctionality}
+                required={true}
+              />
+            </div>
+          ),
+        }
       ],
     },
     {
@@ -513,25 +603,54 @@ export const CreateComplaint = ({ parentUrl }) => {
           },
         },
         {
-          label: t("INCIDENT_UPLOAD_FILE"),
+          label: t("INCIDENT_UPLOAD_IMAGE"),
           populators: (
             <div>
               <MultiUploadWrapper
                 t={t}
                 module="Incident"
                 tenantId={tenantId}
-                getFormState={(state, loading) => getData(state, loading)}
-                onUploadStatusChange={setIsUploading}
+                getFormState={(state, loading) => getImageData(state, loading)}
+                onUploadStatusChange={setIsImageUploading}
                 allowedFileTypesRegex={/(jpg|jpeg|png|image)$/i}
-                allowedMaxSizeInMB={10}
+                allowedMaxSizeInMB={50}
                 maxFilesAllowed={5}
                 disabled={disbaledUpload}
-                ulb={Digit.SessionStorage.get("Employee.tenantId") !== stateTenantId ? Digit.SessionStorage.get("Employee.tenantId") : healthcentre?.code}
-                acceptFiles={".png, .image, .jpg, .jpeg"}
-                specificFileConstraint={specificFileConstraint}
+                ulb={
+                  Digit.SessionStorage.get("Employee.tenantId") !== stateTenantId ? Digit.SessionStorage.get("Employee.tenantId") : healthcentre?.code
+                }
+                acceptFiles={".png, .jpg, .jpeg, image/*"}
+                multiple={true}
+                specificFileConstraint={specificFileConstraint[1]}
               />
               {/* <ImageUploadHandler tenantId={tenant} uploadedImages={uploadedImages} onPhotoChange={handleUpload} disabled={disbaled}/> */}
-              <div style={{ marginLeft: "20px", marginTop: "10px", fontSize: "12px" }}>{t("CS_IMAGE_BASED_FILES_ARE_ACCEPTED")}</div>
+              <div style={{ marginTop: "10px", marginBottom: "20px", fontSize: "12px", color: "#b5b4b4" }}>{t("CS_MAXIMUM_IMAGES")}</div>
+            </div>
+          ),
+        },
+        {
+          label: t("INCIDENT_UPLOAD_VIDEO"),
+          populators: (
+            <div>
+              <MultiUploadWrapper
+                t={t}
+                module="Incident"
+                tenantId={tenantId}
+                getFormState={(state, loading) => getVideoData(state, loading)}
+                onUploadStatusChange={setIsVideoUploading}
+                allowedFileTypesRegex={/(mp4|mov|avi|wmv|video)$/i}
+                allowedMaxSizeInMB={50}
+                maxFilesAllowed={2}
+                disabled={disbaledUpload}
+                ulb={
+                  Digit.SessionStorage.get("Employee.tenantId") !== stateTenantId ? Digit.SessionStorage.get("Employee.tenantId") : healthcentre?.code
+                }
+                acceptFiles={".mp4, .avi, .mov, .wmv, video/*"}
+                multiple={false}
+                specificFileConstraint={specificFileConstraint[0]}
+              />
+              {/* <ImageUploadHandler tenantId={tenant} uploadedImages={uploadedImages} onPhotoChange={handleUpload} disabled={disbaled}/> */}
+              <div style={{ marginTop: "10px", fontSize: "12px", color: "#b5b4b4" }}>{t("CS_MAXIMUM_VIDEOS")}</div>
             </div>
           ),
         },

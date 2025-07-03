@@ -1,0 +1,197 @@
+@startuml
+title Vendor Data Ingestion Sequence
+
+actor "E4H Admin" as Admin
+participant "Data Ingestion Script" as Script
+participant "MDMS Service" as MDMSSvc
+participant "Organisation Service" as OrganisationSvc
+
+skinparam sequenceMessageAlign center
+
+Admin -> Script : Submit Excel File \n (Vendor data rows)
+activate Script
+
+Script -> Script : Read & Parse Excel data
+note right of Script
+  df = pd.load_excel()
+  if "status" in df.columns:
+    df = df[df["status"]=="fail"]
+end note
+
+Script -> MDMSSvc : **Fetch Vendor Ingestion Schema** \n Request: {module: "data-ingestion", master: "VendorIngestionSchema"}
+activate MDMSSvc #LightBlue
+note left of MDMSSvc
+  {
+    "columns": [
+      {
+        "name": "Country Boundary Code",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "Vendor Name",
+        "type": "string",
+        "required": true,
+        "pattern": "^[a-zA-Z\\s]+$"
+      },
+      {
+        "name": "Vendor Code",
+        "type": "string",
+        "required": true,
+        "pattern": "^[a-zA-Z\\s]+$"
+      },
+      {
+        "name": "Vendor Type",
+        "type": "string",
+        "required": true,
+        "mdmsSource": {
+          "module": "organization",
+          "master": "VendorType",
+          "path": "$.type",
+          "filterType": "ONE_OF"
+        }
+      },
+      {
+        "name": "Vendor Subtype",
+        "type": "string",
+        "required": false
+      },
+      {
+        "name": "Identifier Type",
+        "type": "string",
+        "required": true,
+        "mdmsSource": {
+          "module": "common-masters",
+          "master": "OrgTaxIdentifier",
+          "path": "$.code",
+          "filterType": "ONE_OF"
+        }
+      },
+      {
+        "name": "Identifier Value",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "HQ Address",
+        "type": "string",
+        "required": true,
+        "pattern": "^[a-zA-Z\\s]+$"
+      },
+      {
+        "name": "Pincode",
+        "type": "string",
+        "pattern": "^[0-9]{6}$",
+        "required": true
+      },
+      {
+        "name": "PoC Phone",
+        "type": "string",
+        "pattern": "^\\d{10}$",
+        "required": true
+      },
+      {
+        "name": "PoC Name",
+        "type": "string",
+        "required": true,
+        "pattern": "^[a-zA-Z\\s]+$"
+      }
+    ]
+  }
+end note
+MDMSSvc --> Script : Return: response
+deactivate MDMSSvc #LightBlue
+note right of Script
+  columns = response.columns
+  columnDataSourceMap = {};
+end note
+
+loop for column in columns
+  alt "mdmsSource" in column
+    Script -> MDMSSvc : Request: { module: column["mdmsSource"].module, master: column["mdmsSource"].master }
+    activate MDMSSvc #LightBlue
+    note right of MDMSSvc
+      example: {
+          "tenantId": "in",
+          "moduleName": "common-masters",
+          "OrgTaxIdentifier": [
+            {
+              "code": "PAN",
+              "description": "PAN",
+              "active": true,
+              "effectiveFrom": 1677044852,
+              "effectiveTo": null
+            },
+            {
+              "code": "GSTIN",
+              "description": "GSTIN",
+              "active": true,
+              "effectiveFrom": 1677044852,
+              "effectiveTo": null
+            }
+          ]
+        }
+    end note
+    MDMSSvc --> Script : Return: response
+    note right of Script
+      //# transform function//
+      //# returns {values: List, filterType: string}//
+      columnDataSourceMap[column.name] = transform(response, column) 
+    end note
+    deactivate MDMSSvc #LightBlue
+  end
+end
+
+note right of Script #LightYellow
+  **Phase 1: Synchronous Validations**
+  Validate rows using schema and fetched data.
+end note
+
+Script -> Script : **Perform Synchronous Validations**
+note right of Script
+  hasError = False
+end note
+loop for column in df.columns
+  note right of Script
+    if column.required:
+      is_required_mask = df[column.name].isna()
+      if is_require_mask.any():
+        df.loc[is_require_mask, column.name+"_error"] = "required field"
+        hasError = True
+    if column.pattern:
+      pattern_mask = ~df[column.name].str.fullMatch(rf"{column.pattern}")
+      if pattern_mask.any():
+        df.loc[pattern_mask, column.name+"_error"] = f"doesn't match the pattern: {column.pattern}"
+        hasError = True
+    if "mdmsSource" in column:
+      if column["mdmsSource"].filterType == FilterType.ONE_OF:
+        value_mask = ~df[column.name].isin(columnDataSourceMap[column.name])
+        if value_mask.any():
+          df.loc[value_mask, column.name+"_error"] = f"doesn't match the values: {columnDataSourceMap[column.name]}"
+          hasError = True
+  end note
+end
+alt hasError
+  Script -> Script : Prepare Excel with "status" and "error" column
+else no error
+  note right of Script #LightYellow
+    **Phase 2: Vendor Creation**
+    Create Vendors; track row statuses.
+  end note
+  loop for index, row in df.iterrows()
+  Script -> Script : Create Vendor Request from row
+  Script -> OrganisationSvc : **Create Vendor** \n Request:`/org-services/organisation/v1/_create`
+  activate OrganisationSvc #MediumPurple
+  OrganisationSvc --> Script : Return: `status` (Success/Fail, ID, Error)
+  deactivate OrganisationSvc #MediumPurple
+  note right of Script
+    df.loc[index, "status"] = response.status
+    if response.status == "fail":
+      df.loc[index, "error"] = response.errorMsg
+  end note
+  end
+  Script -> Script : Prepare Excel with "status" and "error" column
+end
+  Script --> Admin : Return: Annotated Excel
+  deactivate Script
+@enduml

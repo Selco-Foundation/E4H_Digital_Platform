@@ -17,4 +17,25 @@ public class Properties {
     @Value("${filename.usenumbers}")
     private Boolean useNumbers;
 
+    @Value("${video.upload.retry}")
+    private Integer videoUploadRetry;
+
+    // MinIO HTTP Client Optimization Properties
+    @Value("${minio.connection.pool.max}")
+    private Integer minioConnectionPoolMax;
+
+    @Value("${minio.connection.pool.keepalive.minutes}")
+    private Integer minioConnectionPoolKeepAliveMinutes;
+
+    @Value("${minio.connect.timeout.seconds}")
+    private Integer minioConnectTimeoutSeconds;
+
+    @Value("${minio.write.timeout.seconds}")
+    private Integer minioWriteTimeoutSeconds;
+
+    @Value("${minio.read.timeout.seconds}")
+    private Integer minioReadTimeoutSeconds;
+
+    @Value("${minio.retry.delay.ms}")
+    private Integer minioRetryDelayMs;
 }

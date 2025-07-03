@@ -8,6 +8,7 @@ export const Complaint = {
     reporterName,
     complaintType,
     subType,
+    systemFunctionality,
     healthcentre,
     healthCareType,
     tenantId,
@@ -25,6 +26,7 @@ export const Complaint = {
         tenantId: tenantIdNew,
         incidentType: complaintType?.key,
         incidentSubtype: subType?.key,
+        systemFunctional: systemFunctionality?.key,
         phcType: healthcentre?.code || healthcentre?.key || healthcentre?.name,
         phcSubType: healthCareType?.centreTypeKey || healthCareType?.centreType,
         comments: comments,
@@ -33,8 +35,7 @@ export const Complaint = {
           fileStoreId: uploadedFile,
           reopenreason: [],
           rejectReason: [],
-          sendBackReason: [],
-          sendBackSubReason: [],
+          sendBackReason: []
         },
         source: Digit.Utils.browser.isWebview() ? "mobile" : "web",
       },
@@ -88,8 +89,7 @@ export const Complaint = {
     tenantId,
     selectedReopenReason,
     selectedRejectReason,
-    selectedSendBackReason,
-    selectedSendBackSubReason
+    selectedSendBackReason
   ) => {
     complaintDetails.workflow.action = action;
     complaintDetails.workflow.assignes = employeeData ? [employeeData.uuid] : null;
@@ -99,8 +99,7 @@ export const Complaint = {
       rejectReason: selectedRejectReason && { value: selectedRejectReason?.localizedCode },
       sendBackReason: selectedSendBackReason && {
         value: {
-          reason: selectedSendBackReason?.localizedCode,
-          subReason: selectedSendBackSubReason?.localizedCode,
+          reason: selectedSendBackReason?.localizedCode
         },
       },
     };

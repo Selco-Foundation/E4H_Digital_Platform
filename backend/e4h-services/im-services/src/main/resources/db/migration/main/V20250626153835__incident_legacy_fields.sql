@@ -1,0 +1,3 @@
+ALTER TABLE eg_incident_v2 ADD COLUMN fileddate BIGINT;
+ALTER TABLE eg_incident_v2 ADD COLUMN legacyid CHARACTER VARYING(256);
+ALTER TABLE eg_incident_v2 ADD COLUMN migrationid CHARACTER VARYING(256);
