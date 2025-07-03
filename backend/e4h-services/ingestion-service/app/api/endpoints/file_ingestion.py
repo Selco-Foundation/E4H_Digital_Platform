@@ -716,7 +716,16 @@ def create_mapping_dicts(mapping_file: UploadFile, sheet_name: str):
 
     return subtype_mapping
 
-
+def get_user_info_for_mizoram(usernames: List[str], db_conn) -> Dict[str, str]:
+    try:
+        with db_conn.cursor() as cursor:
+            sql = "SELECT username, tenantid FROM eg_user WHERE username = ANY (%s)"
+            cursor.execute(sql, (usernames,))
+            rows = cursor.fetchall()
+            return {row[0]: row[1] for row in rows}
+    except Exception as e:
+        logger.error(f"Error fetching user info for Mizoram: {e}")
+        return {}
 @router.post('/legacy_ticket_ingestion',
              summary='Upload and ingest legacy tickets Excel file',
              response_description="Returns processed Excel file with ingestion results")
@@ -829,12 +838,26 @@ async def upload_legacy_ticket_excel_sheet(
 
         for index, row in df.iterrows():
             code = str(row.get("NIN_HFR ID", "")).strip()
-            if code:
+            status = str(df.at[index, 'status']).strip()
+            if code and status not in ['duplicate', 'error']:
                 codes.append(code)
 
         conn = psycopg2.connect(**DB_CONFIG)
 
         employee_info = get_hrms_employee_info(codes, conn)
+
+        usernames = []
+
+        for index, row in df.iterrows():
+            state = str(row.get("State", "")).strip()
+            status = str(df.at[index, 'status']).strip()
+
+            if state == "Mizoram" and status not in ['duplicate', 'error']:
+                username = str(row.get("Actual User Name", "")).strip()
+                if username:
+                    usernames.append(username)
+
+        user_info = get_user_info_for_mizoram(usernames, conn)
 
 
         for idx, row in df.iterrows():
@@ -842,11 +865,18 @@ async def upload_legacy_ticket_excel_sheet(
                 if df.at[idx, 'status'] in ['duplicate', 'error']:
                     continue
 
-                employee_code = str(row.get("NIN_HFR ID", "")).strip()
-                tenant_id = employee_info.get(employee_code)
+                state = str(row.get("State", "")).strip()
+                if state == "Mizoram":
+                    user_name = str(row.get("Actual User Name", "")).strip()
+                    tenant_id = user_info.get(user_name)
+                    identifier = user_name
+                else:
+                    employee_code = str(row.get("NIN_HFR ID", "")).strip()
+                    tenant_id = employee_info.get(employee_code)
+                    identifier = employee_code
                 if not tenant_id:
                     df.at[idx, 'status'] = 'failed'
-                    df.at[idx, 'error'] = f'Employee not found for code: {employee_code}'
+                    df.at[idx, 'error'] = f'Employee not found for code: {identifier}'
                     df.at[idx, 'employee_info'] = 'Not found'
                     continue
 
@@ -879,7 +909,6 @@ async def upload_legacy_ticket_excel_sheet(
                     df.at[idx, 'error'] = f"Missing Ticket Type or Ticket Sub Type"
                     continue
 
-                state = str(row.get("State", "")).strip()
                 creator_info = tenant_creator_mapping.get(state, {})
                 creator_tenant_id = creator_info.get("tenantId")
                 creator_uuid = creator_info.get("uuid")
@@ -945,8 +974,8 @@ async def upload_legacy_ticket_excel_sheet(
                     "userInfo": {
                         "id": creator_id,
                         "uuid": creator_uuid,
-                        "userName": "selco_admin",
-                        "name": "Ingestion System",
+                        "userName": "selco_system_admin",
+                        "name": "Selco System Admin",
                         "mobileNumber": creator_mobile_number,
                         "emailId": None,
                         "locale": None,
@@ -992,7 +1021,7 @@ async def upload_legacy_ticket_excel_sheet(
                     df.at[idx, 'status'] = 'success'
                     df.at[idx, 'error'] = ''
                     df.at[idx, 'ticket_id'] = incident_id or ''
-                    logger.info(f"Ticket created: {incident_id} for {employee_code}")
+                    logger.info(f"Ticket created: {incident_id} for {identifier}")
                 else:
                     df.at[idx, 'status'] = 'failed'
                     try:
