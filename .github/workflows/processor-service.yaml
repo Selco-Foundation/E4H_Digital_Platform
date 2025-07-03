@@ -50,7 +50,7 @@ jobs:
 
       - name: Build and Push Docker image for Processor-Service
         run: |
-          docker build --build-arg WORK_DIR="backend/e4h-services/processor-services" -t selcohub/processor-services:${{ env.VERSION }}-${{ env.commit_hash }} -f build/adhoc/Dockerfile .
+          docker build --build-arg WORK_DIR="backend/e4h-services/processor-services" -t selcohub/processor-services:${{ env.VERSION }}-${{ env.commit_hash }} -f build/maven/Dockerfile .
           docker push selcohub/processor-services:${{ env.VERSION }}-${{ env.commit_hash }}
 
 #  Workflow_Trigger:
