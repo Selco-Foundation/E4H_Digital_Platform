@@ -2,19 +2,16 @@ import React, { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Route, useRouteMatch } from "react-router-dom";
 import FieldPlanTable from "./FieldPlanTable";
-import { Link } from "react-router-dom";
 import FacilityTable from "./FacilityTable";
 import FacilityDetails from "./FacilityDetails";
 import { Employee } from "../../constants/Routes";
 import { BreadCrumb } from "@egovernments/digit-ui-react-components";
-import { useDispatch, useSelector } from "react-redux";
-import { setSelectedFieldPlan } from "../../redux/actions/index";
+import { useSelector } from "react-redux";
 
 const QCApp = () => {
   const { t } = useTranslation();
   const { path } = useRouteMatch();
   const match = useRouteMatch();
-  const dispatch = useDispatch();
   const navigator = useSelector((state) => state.qc.reports);
 
   const breadcrumbConfig = {
@@ -29,13 +26,13 @@ const QCApp = () => {
       show: true,
     },
     facility: {
-      content: navigator.selectedFieldPlan,
-      path: match.url + `/field-plan/${navigator.selectedFieldPlan}/facilities`,
+      content: navigator.selectedFieldPlan?.name,
+      path: match.url + `/field-plan/${encodeURIComponent(navigator.selectedFieldPlan?.name)}/facilities`,
       show: true,
     },
     facilityDetails: {
-      content: navigator.selectedFacility,
-      path: match.url + `/field-plan/${navigator.selectedFieldPlan}/facilities/${navigator.selectedFacility}`,
+      content: navigator.selectedFacility?.facility,
+      path: match.url + `/field-plan/${encodeURIComponent(navigator.selectedFieldPlan?.name)}/facilities/${encodeURIComponent(navigator.selectedFacility?.facility)}`,
       show: true,
     },
   };
@@ -43,72 +40,6 @@ const QCApp = () => {
   useEffect(() => {
     Digit.UserService.setType("employee");
   }, []);
-
-  const GetCell = (value) => <span className="cell-text">{value}</span>;
-
-  const GetProgress = (value) => {
-    return (
-      <div style={{ display: "flex", gap: `${value > 99 ? "10px" : "20px"}` }}>
-        <div>{value}%</div>
-        <div style={{ width: "100px", height: "20px", background: "#E0E0E0", borderRadius: "5px" }}>
-          <div style={{ position: "absolute", height: "20px", width: `${value}px`, background: "#00703C", borderRadius: "5px" }}></div>
-        </div>
-      </div>
-    );
-  };
-
-  const columns = [
-    {
-      Header: "Field Plan Code",
-      Cell: ({ row }) => {
-        return (
-          <div>
-            <span className="link" onClick={() => dispatch(setSelectedFieldPlan(row.original["code"]))}>
-              <Link to={`${path}/field-plan/${row.original["code"]}/facilities`} style={{ color: "#C84C0E" }}>
-                {row.original["code"]}
-              </Link>
-            </span>
-          </div>
-        );
-      },
-    },
-    {
-      Header: "Activity Type",
-      Cell: ({ row }) => {
-        return GetCell(`${row.original["type"].toUpperCase()}`);
-      },
-    },
-    {
-      Header: "Health Facilities",
-      Cell: ({ row }) => {
-        return GetCell(`${row.original["facilities"].toUpperCase()}`);
-      },
-    },
-    {
-      Header: "Start Date",
-      Cell: ({ row }) => {
-        return GetCell(`${row.original["start"].toUpperCase()}`);
-      },
-    },
-    {
-      Header: "End Date",
-      Cell: ({ row }) => {
-        return GetCell(`${row.original["end"].toUpperCase()}`);
-      },
-    },
-    {
-      Header: "Completion Rate",
-      Cell: ({ row }) => {
-        return GetProgress(`${row.original["completion"]}`);
-      },
-    },
-  ];
-
-  const data = [
-    { code: "MH-QC_HO-2024-200centres", type: "Installation", facilities: "200", start: "08/05/2025", end: "08/10/2025", completion: 40 },
-    { code: "MH-QC_HO-2024-201centres", type: "Installation", facilities: "100", start: "08/03/2025", end: "22/05/2025", completion: 20 },
-    { code: "MH-QC_HO-2024-202centres", type: "Installation", facilities: "400", start: "01/05/2024", end: "01/03/2025", completion: 100 },
-  ];
 
   return (
     <div className="ground-container">
@@ -130,8 +61,6 @@ const QCApp = () => {
       <Route path={`${path}/field-plan`} exact={true}>
         <FieldPlanTable
           t={t}
-          columns={columns}
-          data={data}
           getCellProps={(cellInfo) => {
             return {
               style: {

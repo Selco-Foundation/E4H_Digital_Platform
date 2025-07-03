@@ -1,16 +1,16 @@
 import { FACILITY_SELECT, FIELD_PLAN_SELECT } from "../../constants/ReduxActions";
 
-const setSelectedFieldPlan = (fieldPlanId) => (dispatch) => {
+const setSelectedFieldPlan = (fieldPlan) => (dispatch) => {
   dispatch({
     type: FIELD_PLAN_SELECT,
-    payload: fieldPlanId,
+    payload: fieldPlan,
   })
 }
 
-const setSelectedFacility = (fieldPlanId) => (dispatch) => {
+const setSelectedFacility = (fieldPlan) => (dispatch) => {
   dispatch({
     type: FACILITY_SELECT,
-    payload: fieldPlanId,
+    payload: fieldPlan,
   })
 }
 

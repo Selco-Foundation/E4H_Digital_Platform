@@ -1,9 +1,7 @@
 import React from "react";
 import { TextInput, Label, SubmitBar } from "@egovernments/digit-ui-react-components";
 import { useTranslation } from "react-i18next";
-// export const isCodePresent = (array, codeToCheck) => {
-//   return array.some((item) => item.code === codeToCheck);
-// };
+
 const SearchCentre = ({ centreName, setCentreName, onSubmit, onClear }) => {
   const { t } = useTranslation();
 
