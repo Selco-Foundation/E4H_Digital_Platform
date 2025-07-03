@@ -5,6 +5,9 @@ import org.egov.im.web.models.Priority;
 import org.egov.im.web.models.workflow.State;
 import org.egov.tracer.model.CustomException;
 import com.jayway.jsonpath.JsonPath;
+
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
@@ -14,6 +17,7 @@ import java.util.Map;
 
 import static org.egov.im.util.IMConstants.*;
 
+@Slf4j
 @Service
 public class SLAService {
 
