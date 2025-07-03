@@ -81,10 +81,10 @@ public class SLAService {
                 );
             }
         }
-        throw new CustomException(
-            "PRIORITY_NOT_FOUND",
-            "Priority not found for assetType: " + assetType + " and serviceCode: " + serviceCode
-        );
+        // Log when default priority is used - could indicate missing MDMS configuration
+        log.warn("No priority found in MDMS for assetType: {} and serviceCode: {}, using default priority: MEDIUM",
+                 assetType, serviceCode);
+        return Priority.MEDIUM;
     }
 
     private String getStringValue(Map<String, Object> map, String key) {
