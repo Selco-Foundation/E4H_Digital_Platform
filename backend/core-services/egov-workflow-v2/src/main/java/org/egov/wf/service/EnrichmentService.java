@@ -68,8 +68,11 @@ public class EnrichmentService {
             String tenantId = processStateAndAction.getProcessInstanceFromRequest().getTenantId();
             processStateAndAction.getProcessInstanceFromRequest().setId(UUID.randomUUID().toString());
             if(processStateAndAction.getAction().getNextState().equalsIgnoreCase(processStateAndAction.getAction().getCurrentState())){
-                auditDetails.setCreatedBy(processStateAndAction.getProcessInstanceFromDb().getAuditDetails().getCreatedBy());
-                auditDetails.setCreatedTime(processStateAndAction.getProcessInstanceFromDb().getAuditDetails().getCreatedTime());
+                ProcessInstance dbInstance = processStateAndAction.getProcessInstanceFromDb();
+                if (dbInstance != null && dbInstance.getAuditDetails() != null) {
+                    auditDetails.setCreatedBy(dbInstance.getAuditDetails().getCreatedBy());
+                    auditDetails.setCreatedTime(dbInstance.getAuditDetails().getCreatedTime());
+                }
             }
             processStateAndAction.getProcessInstanceFromRequest().setAuditDetails(auditDetails);
             processStateAndAction.getProcessInstanceFromRequest().setAssigner(requestInfo.getUserInfo());
