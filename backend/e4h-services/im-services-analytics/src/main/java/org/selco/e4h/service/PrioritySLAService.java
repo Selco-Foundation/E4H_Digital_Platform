@@ -91,15 +91,23 @@ public class PrioritySLAService {
         long businessElapsedFromCreated = calculateBusinessMillis(createdTime, now, bh);
         long businessElapsedFromModified = calculateBusinessMillis(lastModifiedTime, now, bh);
 
-        String existingBusinessService = (String) currentProcessInstance.get(BUSINESS_SERVICE);
-        TenantServiceStateKey stateKey = new TenantServiceStateKey(tenantId, existingBusinessService, state);
-        Duration stateSlaDuration = slaMap.getOrDefault(stateKey, Duration.ZERO);
-        long stateSla = stateSlaDuration.toMillis();
-
 
         String incidentType = (String) incident.get("incidentType");
         String incidentSubType = (String) incident.get("incidentSubType");
         String key = buildIncidentKey(incidentType, incidentSubType);
+
+        String existingBusinessService =null;
+        if(incidentPriorityMap.containsKey(key)) {
+             existingBusinessService = "Incident_" + incidentPriorityMap.get(key);
+        }
+        else{
+             existingBusinessService = "Incident_Medium";
+        }
+
+        TenantServiceStateKey stateKey = new TenantServiceStateKey(tenantId, existingBusinessService, state);
+        Duration stateSlaDuration = slaMap.getOrDefault(stateKey, Duration.ZERO);
+        long stateSla = stateSlaDuration.toMillis();
+
 
 
         String priority;
