@@ -21,11 +21,7 @@ WORKDIR /opt/egov
 RUN set -e && \
     apt update && \
     apt install -y software-properties-common wget cpulimit && \
-    wget https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz && \
-    tar -xf ffmpeg-release-amd64-static.tar.xz && \
-    cd ffmpeg-*-amd64-static && \
-    mv ffmpeg ffprobe /usr/local/bin/ && \
-    rm -rf /var/lib/apt/lists/* ffmpeg-release-amd64-static.tar.xz ffmpeg-*-amd64-static
+    apt install -y ffmpeg
 
 COPY --from=build /app/target/*.jar /app/start.sh /opt/egov/
 
