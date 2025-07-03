@@ -437,29 +437,33 @@ paths:
           schema:
             $ref: >-
               https://raw.githubusercontent.com/egovernments/egov-services/master/docs/common/contracts/v1-1-1.yml#/definitions/ErrorRes
-  /project/v1/workflow/update:
+  /v1/project/workflow/update:
     post:
       summary: Update project workflow status
-      description: Update the workflow status of a project by performing a workflow
-        action
-      parameters:
-        - name: ProjectWorkflowUpdate
-          in: body
-          description: Workflow action and documents for project workflow update
-          required: true
-          schema:
-            $ref: '#/definitions/ProjectWorkflowUpdateRequest'
+      description: Update the workflow status of a project by performing a workflow action
+      parameters: []
+      requestBody:
+        description: Workflow action and documents for project workflow update
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/definitions/ProjectWorkflowRequest'
       tags: [Project]
       responses:
+        '200':
+          description: Project workflow update request accepted
+          schema:
+            $ref: '#/definitions/ProjectStatusResponse'
         '202':
           description: Project workflow update request accepted
           schema:
-            $ref: '#/definitions/ProjectResponse'
+            $ref: '#/definitions/ProjectStatusResponse'
         '400':
           description: Invalid Input body
           schema:
-            $ref: >-
-              https://raw.githubusercontent.com/egovernments/egov-services/master/docs/common/contracts/v1-1-1.yml#/definitions/ErrorRes
+            $ref: 'https://raw.githubusercontent.com/egovernments/egov-services/master/docs/common/contracts/v1-1-1.yml#/definitions/ErrorRes'
+# Remove the old /project/v1/workflow/update path definition if it exists. 
 parameters:
   # TODO is tenantId required as a query param if it can be determine from requestInfo->userInfo
   tenantId:
