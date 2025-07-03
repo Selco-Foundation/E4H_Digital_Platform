@@ -42,7 +42,6 @@ public class IMService {
 
     private LocalizationService localizationService;
 
-
     @Autowired
     public IMService(EnrichmentService enrichmentService, UserService userService, WorkflowService workflowService,
                       ServiceRequestValidator serviceRequestValidator, ServiceRequestValidator validator, Producer producer,
