@@ -81,10 +81,7 @@ public class SLAService {
                 );
             }
         }
-        throw new CustomException(
-            "PRIORITY_NOT_FOUND",
-            "Priority not found for assetType: " + assetType + " and serviceCode: " + serviceCode
-        );
+        return Priority.MEDIUM;
     }
 
     private String getStringValue(Map<String, Object> map, String key) {
