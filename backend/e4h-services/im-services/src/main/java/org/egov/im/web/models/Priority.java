@@ -14,4 +14,10 @@ public enum Priority {
             throw new CustomException("INVALID_PRIORITY", "Priority value is invalid: " + value);
         }
     }
+
+    public String toFormattedString() {
+        String lower = this.name().toLowerCase();
+        return Character.toUpperCase(lower.charAt(0)) + lower.substring(1);
+    }
+
 }
