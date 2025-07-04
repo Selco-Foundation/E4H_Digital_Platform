@@ -59,7 +59,7 @@ public class ProjectWorkflowService {
 
 
      public ProcessInstance getProcessInstanceById( String processInstanceId, String tenantId, RequestInfo requestInfo) {
-        String url = config.getWfHost() + "/egov-workflow-v2/egov-wf/process/_search"
+        String url = config.getWfHost() + config.getWfSearchPath()
             + "?tenantId=" + tenantId
             + "&ids=" + processInstanceId;
 
