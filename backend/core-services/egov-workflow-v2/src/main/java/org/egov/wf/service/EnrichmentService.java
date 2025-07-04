@@ -68,8 +68,21 @@ public class EnrichmentService {
             String tenantId = processStateAndAction.getProcessInstanceFromRequest().getTenantId();
             processStateAndAction.getProcessInstanceFromRequest().setId(UUID.randomUUID().toString());
             if(processStateAndAction.getAction().getNextState().equalsIgnoreCase(processStateAndAction.getAction().getCurrentState())){
-                auditDetails.setCreatedBy(processStateAndAction.getProcessInstanceFromDb().getAuditDetails().getCreatedBy());
-                auditDetails.setCreatedTime(processStateAndAction.getProcessInstanceFromDb().getAuditDetails().getCreatedTime());
+                ProcessInstance dbInstance = processStateAndAction.getProcessInstanceFromDb();
+                if (dbInstance == null) {
+                    log.error("ProcessInstanceFromDb is null for businessId: {}, tenantId: {}, action: {}",
+                        processStateAndAction.getProcessInstanceFromRequest().getBusinessId(),
+                        processStateAndAction.getProcessInstanceFromRequest().getTenantId(),
+                        processStateAndAction.getAction().getAction());
+                } else if (dbInstance.getAuditDetails() == null) {
+                    log.error("AuditDetails is null for businessId: {}, tenantId: {}, action: {}",
+                        dbInstance.getBusinessId(),
+                        dbInstance.getTenantId(),
+                        processStateAndAction.getAction().getAction());
+                } else {
+                    auditDetails.setCreatedBy(dbInstance.getAuditDetails().getCreatedBy());
+                    auditDetails.setCreatedTime(dbInstance.getAuditDetails().getCreatedTime());
+                }
             }
             processStateAndAction.getProcessInstanceFromRequest().setAuditDetails(auditDetails);
             processStateAndAction.getProcessInstanceFromRequest().setAssigner(requestInfo.getUserInfo());
