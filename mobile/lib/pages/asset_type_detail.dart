@@ -142,9 +142,13 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
               );
               return Scaffold(
                   body: ScrollableContent(
-                      header: const BackNavigationHelpHeaderWidget(
+                      header: BackNavigationHelpHeaderWidget(
                         showBackNavigation: true,
                         showHelp: false,
+                        defaultPopRoute: false,
+                        handleback: () {
+                          context.router.replace(const SpecificationRoute());
+                        },
                       ),
                       enableFixedDigitButton: true,
                       backgroundColor: theme.colorTheme.generic.background,

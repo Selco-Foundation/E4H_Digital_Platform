@@ -1,3 +1,285 @@
+// import 'package:digit_ui_components/digit_components.dart';
+// import 'package:digit_ui_components/theme/digit_extended_theme.dart';
+// import 'package:digit_ui_components/widgets/atoms/pop_up_card.dart';
+// import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
+// import 'package:digit_ui_components/widgets/molecules/show_pop_up.dart';
+// import 'package:flutter/material.dart';
+// import 'package:flutter_bloc/flutter_bloc.dart';
+// import 'package:selco/utils/extensions.dart';
+//
+// import '../blocs/asset_type/asset_type.dart';
+// import '../blocs/cache_asset/cache_asset.dart';
+// import '../blocs/inbox_type/inbox_type.dart';
+// import '../blocs/overall_asset_summary/overall_asset_summary.dart';
+// import '../blocs/report_type/report_type.dart';
+// import '../blocs/selected_project/selected_project.dart';
+// import '../router/app_router.dart';
+// import '../widgets/cards/element_asset_summary.dart';
+// import '../widgets/header/back_navigation_help_header.dart';
+//
+// @RoutePage()
+// class InboxAssetSummaryPage extends StatefulWidget {
+//   const InboxAssetSummaryPage({super.key});
+//
+//   @override
+//   State<InboxAssetSummaryPage> createState() => _InboxAssetSummaryPageState();
+// }
+//
+// class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
+//   @override
+//   void initState() {
+//     super.initState();
+//
+//     WidgetsBinding.instance.addPostFrameCallback((_) {
+//       final selState = context.read<SelectedProjectBloc>().state;
+//       selState.whenOrNull(selected: (project) {
+//         context.read<CacheAssetBloc>().add(
+//               CacheAssetEvent.start(project.project.id),
+//             );
+//       });
+//     });
+//   }
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     final theme = Theme.of(context);
+//     final textTheme = theme.digitTextTheme(context);
+//
+//     final selectedProjectState = context.watch<SelectedProjectBloc>().state;
+//     final projectId = selectedProjectState.whenOrNull(
+//       selected: (project) => project.project.id,
+//     );
+//
+//     return Scaffold(
+//       body: BlocConsumer<CacheAssetBloc, CacheAssetState>(
+//         listener: (context, cacheState) {
+//           cacheState.whenOrNull(
+//             success: () {
+//               if (projectId != null) {
+//                 context.read<OverallAssetSummaryBloc>().add(
+//                       OverallAssetSummaryEvent.loadCounts(projectId: projectId),
+//                     );
+//               }
+//             },
+//             failure: (error) {
+//               context.showSnackBar(
+//                 SnackBar(content: Text("Sync failed: $error")),
+//               );
+//             },
+//           );
+//         },
+//         builder: (context, cacheState) {
+//           final isSyncing =
+//               cacheState.maybeWhen(loading: () => true, orElse: () => false);
+//
+//           return BlocBuilder<OverallAssetSummaryBloc, OverallAssetSummaryState>(
+//             builder: (context, summaryState) {
+//               // Show loader while syncing or summary is loading
+//               final isSummaryLoading = summaryState.maybeWhen(
+//                 loading: () => true,
+//                 orElse: () => false,
+//               );
+//
+//               if (isSyncing || isSummaryLoading) {
+//                 return const Center(child: CircularProgressIndicator());
+//               }
+//
+//               final errorMessage = summaryState.maybeWhen(
+//                 error: (msg) => msg,
+//                 orElse: () => null,
+//               );
+//
+//               if (errorMessage != null) {
+//                 return Center(child: Text("Error: $errorMessage"));
+//               }
+//
+//               int battery = 0, inverter = 0, panel = 0;
+//
+//               summaryState.maybeWhen(
+//                 loaded: (b, i, p) {
+//                   battery = b;
+//                   inverter = i;
+//                   panel = p;
+//                 },
+//                 orElse: () {},
+//               );
+//
+//               return ScrollableContent(
+//                 enableFixedDigitButton: true,
+//                 backgroundColor: theme.colorTheme.generic.background,
+//                 header: const BackNavigationHelpHeaderWidget(
+//                   showBackNavigation: true,
+//                   showHelp: false,
+//                 ),
+//                 footer: BlocBuilder<InboxTypeBloc, InboxTypeState>(
+//                   builder: (context, state) {
+//                     return state.maybeWhen(
+//                         approved: () => const SizedBox.shrink(),
+//                         orElse: () => DigitCard(
+//                                 margin: const EdgeInsets.only(top: spacer2),
+//                                 children: [
+//                                   DigitButton(
+//                                     mainAxisSize: MainAxisSize.max,
+//                                     label: "Add more details",
+//                                     type: DigitButtonType.primary,
+//                                     size: DigitButtonSize.large,
+//                                     onPressed: () {
+//                                       context.read<ReportTypeBloc>().add(
+//                                           const ReportTypeEvent.typeSelected(
+//                                               "inbox"));
+//                                       context.router
+//                                           .push(const AssetCountRoute());
+//                                     },
+//                                   ),
+//                                   DigitButton(
+//                                     mainAxisSize: MainAxisSize.max,
+//                                     label: "Send Back",
+//                                     type: DigitButtonType.secondary,
+//                                     size: DigitButtonSize.large,
+//                                     onPressed: () => showCustomPopup(
+//                                       context: context,
+//                                       builder: (ctx) => Popup(
+//                                         onCrossTap: () {
+//                                           Navigator.of(ctx).pop();
+//                                         },
+//                                         title:
+//                                             "Are you sure you want send to back the report?",
+//                                         description:
+//                                             "If you send back the report now, you cannot add any more rejection reasons or add more details to the report until it is sent back from the field",
+//                                         onOutsideTap: () {
+//                                           Navigator.of(ctx).pop();
+//                                         },
+//                                         type: PopUpType.simple,
+//                                         actionAlignment:
+//                                             MainAxisAlignment.center,
+//                                         actions: [],
+//                                         additionalWidgets: [
+//                                           Row(
+//                                             crossAxisAlignment:
+//                                                 CrossAxisAlignment.center,
+//                                             children: [
+//                                               Expanded(
+//                                                 flex: 1,
+//                                                 child: DigitButton(
+//                                                   label: "Close",
+//                                                   onPressed: () {
+//                                                     Navigator.of(ctx).pop();
+//                                                   },
+//                                                   type:
+//                                                       DigitButtonType.secondary,
+//                                                   size: DigitButtonSize.large,
+//                                                   mainAxisSize:
+//                                                       MainAxisSize.min,
+//                                                 ),
+//                                               ),
+//                                               const SizedBox(width: spacer5),
+//                                               Expanded(
+//                                                 flex: 1,
+//                                                 child: DigitButton(
+//                                                   label: "Send back",
+//                                                   onPressed: () {
+//                                                     Navigator.of(ctx).pop();
+//                                                     context
+//                                                         .read<AssetTypeBloc>()
+//                                                         .add(
+//                                                             const AssetTypeEvent
+//                                                                 .typeSelected(
+//                                                                 "inverter"));
+//                                                     context
+//                                                         .read<ReportTypeBloc>()
+//                                                         .add(
+//                                                             const ReportTypeEvent
+//                                                                 .typeSelected(
+//                                                                 "send-back"));
+//                                                     context.router.push(
+//                                                         const AssetSummaryRoute());
+//                                                   },
+//                                                   type: DigitButtonType.primary,
+//                                                   size: DigitButtonSize.large,
+//                                                   mainAxisSize:
+//                                                       MainAxisSize.min,
+//                                                 ),
+//                                               ),
+//                                             ],
+//                                           ),
+//                                         ],
+//                                       ),
+//                                     ),
+//                                   ),
+//                                 ]));
+//                   },
+//                 ),
+//                 children: [
+//                   Padding(
+//                     padding: const EdgeInsets.symmetric(
+//                         vertical: spacer2, horizontal: spacer4),
+//                     child: Column(
+//                       crossAxisAlignment: CrossAxisAlignment.start,
+//                       children: [
+//                         Text(
+//                           'Summary Overview',
+//                           style: textTheme.headingXl.copyWith(
+//                               color: theme.colorTheme.primary.primary2),
+//                         ),
+//                         const SizedBox(height: spacer4),
+//                         DigitCard(
+//                           children: [
+//                             ElementAssetSummary(
+//                                 count: battery,
+//                                 text: 'Batteries',
+//                                 onPress: () {
+//                                   context.read<AssetTypeBloc>().add(
+//                                       const AssetTypeEvent.typeSelected(
+//                                           "BATTERY"));
+//                                   context.read<ReportTypeBloc>().add(
+//                                       const ReportTypeEvent.typeSelected(
+//                                           "send-back"));
+//                                   context.router
+//                                       .push(const AssetSummaryRoute());
+//                                 }),
+//                             ElementAssetSummary(
+//                               count: inverter,
+//                               text: 'Inverters',
+//                               onPress: () {
+//                                 context.read<AssetTypeBloc>().add(
+//                                     const AssetTypeEvent.typeSelected(
+//                                         "INVERTER"));
+//                                 context.read<ReportTypeBloc>().add(
+//                                     const ReportTypeEvent.typeSelected(
+//                                         "send-back"));
+//                                 context.router.push(const AssetSummaryRoute());
+//                               },
+//                             ),
+//                             ElementAssetSummary(
+//                               count: panel,
+//                               text: 'Panels',
+//                               lastCard: true,
+//                               onPress: () {
+//                                 context.read<AssetTypeBloc>().add(
+//                                     const AssetTypeEvent.typeSelected("PANEL"));
+//                                 context.read<ReportTypeBloc>().add(
+//                                     const ReportTypeEvent.typeSelected(
+//                                         "send-back"));
+//                                 context.router.push(const AssetSummaryRoute());
+//                               },
+//                             ),
+//                           ],
+//                         ),
+//                       ],
+//                     ),
+//                   ),
+//                 ],
+//               );
+//             },
+//           );
+//         },
+//       ),
+//     );
+//   }
+// }
+
+import 'dart:async';
+
 import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:digit_ui_components/widgets/atoms/pop_up_card.dart';
@@ -5,7 +287,6 @@ import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:digit_ui_components/widgets/molecules/show_pop_up.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:selco/utils/extensions.dart';
 
 import '../blocs/asset_type/asset_type.dart';
 import '../blocs/cache_asset/cache_asset.dart';
@@ -13,7 +294,10 @@ import '../blocs/inbox_type/inbox_type.dart';
 import '../blocs/overall_asset_summary/overall_asset_summary.dart';
 import '../blocs/report_type/report_type.dart';
 import '../blocs/selected_project/selected_project.dart';
+import '../repositories/project_repo.dart';
 import '../router/app_router.dart';
+import '../utils/extensions.dart';
+import '../utils/utils.dart';
 import '../widgets/cards/element_asset_summary.dart';
 import '../widgets/header/back_navigation_help_header.dart';
 
@@ -29,15 +313,110 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
   @override
   void initState() {
     super.initState();
-
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final selState = context.read<SelectedProjectBloc>().state;
-      selState.whenOrNull(selected: (project) {
-        context.read<CacheAssetBloc>().add(
-              CacheAssetEvent.start(project.project.id),
-            );
+      context.read<SelectedProjectBloc>().state.whenOrNull(selected: (proj) {
+        context
+            .read<CacheAssetBloc>()
+            .add(CacheAssetEvent.start(proj.project.id));
       });
     });
+  }
+
+  // Future<void> _sendBackReport(BuildContext popupCtx) async {
+  //   Navigator.of(popupCtx).pop(); // dismiss popup
+  //
+  //   final projectState = context.read<SelectedProjectBloc>().state;
+  //   final projectId = projectState.whenOrNull(
+  //     selected: (proj) => proj.project.id,
+  //   );
+  //   if (projectId == null) {
+  //     context.showSnackBar(
+  //       const SnackBar(content: Text("No project selected")),
+  //     );
+  //     return;
+  //   }
+  //
+  //   // show a loading indicator over the popup
+  //   showDialog(
+  //     context: context,
+  //     barrierDismissible: false,
+  //     builder: (_) => const Center(child: CircularProgressIndicator()),
+  //   );
+  //
+  //   try {
+  //     final repo = ProjectRemoteRepository();
+  //     await repo.updateProjectWorkflow(
+  //       projectId: projectId,
+  //       action: WORKFLOW_ACTIONS.SUBMIT_REPORT_B.name,
+  //     );
+  //
+  //     // close the loading dialog
+  //     Navigator.of(context).pop();
+  //
+  //     context.showSnackBar(
+  //       const SnackBar(content: Text("Report sent back successfully")),
+  //     );
+  //     context.router.replace(const InboxRoute());
+  //   } catch (e) {
+  //     Navigator.of(context).pop();
+  //     context.showSnackBar(
+  //       SnackBar(content: Text("Failed to send back: $e")),
+  //     );
+  //   }
+  // }
+
+  Future<void> _sendBackReport(BuildContext popupCtx) async {
+    // 1. Dismiss the confirmation popup
+    Navigator.of(popupCtx).pop();
+
+    // 2. Grab projectId
+    final projectId = context
+        .read<SelectedProjectBloc>()
+        .state
+        .whenOrNull(selected: (p) => p.project.id);
+    if (projectId == null) {
+      context.showSnackBar(
+        const SnackBar(content: Text("No project selected")),
+      );
+      return;
+    }
+
+    // 3. Show a full‐screen loading spinner and capture its BuildContext
+    BuildContext? dialogCtx;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        dialogCtx = ctx;
+        return const Center(child: CircularProgressIndicator());
+      },
+    );
+
+    try {
+      // 4. Call your API
+      final repo = ProjectRemoteRepository();
+      await repo.updateProjectWorkflow(
+        projectId: projectId,
+        action: WORKFLOW_ACTIONS.SUBMIT_REPORT_B.name,
+      );
+
+      // 5. On success: pop the spinner only
+      if (dialogCtx != null && mounted) {
+        Navigator.of(dialogCtx!).pop();
+      }
+
+      context.showSnackBar(
+        const SnackBar(content: Text("Report sent back successfully")),
+      );
+      context.router.replace(const InboxRoute());
+    } catch (e) {
+      if (dialogCtx != null && mounted) {
+        Navigator.of(dialogCtx!).pop();
+      }
+      context.showSnackBar(
+        SnackBar(content: Text("Failed to send back: $e")),
+      );
+    }
   }
 
   @override
@@ -45,19 +424,18 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
     final theme = Theme.of(context);
     final textTheme = theme.digitTextTheme(context);
 
-    final selectedProjectState = context.watch<SelectedProjectBloc>().state;
-    final projectId = selectedProjectState.whenOrNull(
-      selected: (project) => project.project.id,
-    );
-
     return Scaffold(
       body: BlocConsumer<CacheAssetBloc, CacheAssetState>(
         listener: (context, cacheState) {
           cacheState.whenOrNull(
             success: () {
-              if (projectId != null) {
+              final pid = context
+                  .read<SelectedProjectBloc>()
+                  .state
+                  .whenOrNull(selected: (p) => p.project.id);
+              if (pid != null) {
                 context.read<OverallAssetSummaryBloc>().add(
-                      OverallAssetSummaryEvent.loadCounts(projectId: projectId),
+                      OverallAssetSummaryEvent.loadCounts(projectId: pid),
                     );
               }
             },
@@ -74,11 +452,8 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
 
           return BlocBuilder<OverallAssetSummaryBloc, OverallAssetSummaryState>(
             builder: (context, summaryState) {
-              // Show loader while syncing or summary is loading
               final isSummaryLoading = summaryState.maybeWhen(
-                loading: () => true,
-                orElse: () => false,
-              );
+                  loading: () => true, orElse: () => false);
 
               if (isSyncing || isSummaryLoading) {
                 return const Center(child: CircularProgressIndicator());
@@ -88,13 +463,11 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
                 error: (msg) => msg,
                 orElse: () => null,
               );
-
               if (errorMessage != null) {
                 return Center(child: Text("Error: $errorMessage"));
               }
 
               int battery = 0, inverter = 0, panel = 0;
-
               summaryState.maybeWhen(
                 loaded: (b, i, p) {
                   battery = b;
@@ -112,101 +485,74 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
                   showHelp: false,
                 ),
                 footer: BlocBuilder<InboxTypeBloc, InboxTypeState>(
-                  builder: (context, state) {
-                    return state.maybeWhen(
-                        approved: () => const SizedBox.shrink(),
-                        orElse: () => DigitCard(
-                                margin: const EdgeInsets.only(top: spacer2),
-                                children: [
-                                  DigitButton(
-                                    mainAxisSize: MainAxisSize.max,
-                                    label: "Add more details",
-                                    type: DigitButtonType.primary,
-                                    size: DigitButtonSize.large,
-                                    onPressed: () {
-                                      context.read<ReportTypeBloc>().add(
-                                          const ReportTypeEvent.typeSelected(
-                                              "inbox"));
-                                      context.router
-                                          .push(const AssetCountRoute());
-                                    },
-                                  ),
-                                  DigitButton(
-                                    mainAxisSize: MainAxisSize.max,
-                                    label: "Send Back",
-                                    type: DigitButtonType.secondary,
-                                    size: DigitButtonSize.large,
-                                    onPressed: () => showCustomPopup(
-                                      context: context,
-                                      builder: (ctx) => Popup(
-                                        onCrossTap: () {
-                                          Navigator.of(ctx).pop();
-                                        },
-                                        title:
-                                            "Are you sure you want send to back the report?",
-                                        description:
-                                            "If you send back the report now, you cannot add any more rejection reasons or add more details to the report until it is sent back from the field",
-                                        onOutsideTap: () {
-                                          Navigator.of(ctx).pop();
-                                        },
-                                        type: PopUpType.simple,
-                                        actionAlignment:
-                                            MainAxisAlignment.center,
-                                        actions: [],
-                                        additionalWidgets: [
-                                          Row(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.center,
-                                            children: [
-                                              Expanded(
-                                                flex: 1,
-                                                child: DigitButton(
-                                                  label: "Close",
-                                                  onPressed: () {
-                                                    Navigator.of(ctx).pop();
-                                                  },
-                                                  type:
-                                                      DigitButtonType.secondary,
-                                                  size: DigitButtonSize.large,
-                                                  mainAxisSize:
-                                                      MainAxisSize.min,
-                                                ),
-                                              ),
-                                              const SizedBox(width: spacer5),
-                                              Expanded(
-                                                flex: 1,
-                                                child: DigitButton(
-                                                  label: "Send back",
-                                                  onPressed: () {
-                                                    Navigator.of(ctx).pop();
-                                                    context
-                                                        .read<AssetTypeBloc>()
-                                                        .add(
-                                                            const AssetTypeEvent
-                                                                .typeSelected(
-                                                                "inverter"));
-                                                    context
-                                                        .read<ReportTypeBloc>()
-                                                        .add(
-                                                            const ReportTypeEvent
-                                                                .typeSelected(
-                                                                "send-back"));
-                                                    context.router.push(
-                                                        const AssetSummaryRoute());
-                                                  },
-                                                  type: DigitButtonType.primary,
-                                                  size: DigitButtonSize.large,
-                                                  mainAxisSize:
-                                                      MainAxisSize.min,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
+                  builder: (context, inboxState) {
+                    return inboxState.maybeWhen(
+                      approved: () => const SizedBox.shrink(),
+                      orElse: () => DigitCard(
+                        margin: const EdgeInsets.only(top: spacer2),
+                        children: [
+                          DigitButton(
+                            mainAxisSize: MainAxisSize.max,
+                            label: "Add more details",
+                            type: DigitButtonType.primary,
+                            size: DigitButtonSize.large,
+                            onPressed: () {
+                              context.read<ReportTypeBloc>().add(
+                                  const ReportTypeEvent.typeSelected("inbox"));
+                              context.router.push(const AssetCountRoute());
+                            },
+                          ),
+                          DigitButton(
+                            mainAxisSize: MainAxisSize.max,
+                            label: "Send Back",
+                            type: DigitButtonType.secondary,
+                            size: DigitButtonSize.large,
+                            onPressed: () => showCustomPopup(
+                              context: context,
+                              builder: (ctx) => Popup(
+                                onCrossTap: () => Navigator.of(ctx).pop(),
+                                title:
+                                    "Are you sure you want to send back the report?",
+                                description:
+                                    "If you send back the report now, you cannot add any more rejection reasons or add more details until it is sent back from the field",
+                                type: PopUpType.simple,
+                                actionAlignment: MainAxisAlignment.center,
+                                actions: [],
+                                additionalWidgets: [
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        flex: 1,
+                                        child: DigitButton(
+                                          label: "Close",
+                                          onPressed: () {
+                                            Navigator.of(ctx).pop();
+                                          },
+                                          type: DigitButtonType.secondary,
+                                          size: DigitButtonSize.large,
+                                          mainAxisSize: MainAxisSize.min,
+                                        ),
                                       ),
-                                    ),
+                                      const SizedBox(width: spacer5),
+                                      Expanded(
+                                        flex: 1,
+                                        child: DigitButton(
+                                          label: "Send back",
+                                          onPressed: () => _sendBackReport(ctx),
+                                          type: DigitButtonType.primary,
+                                          size: DigitButtonSize.large,
+                                          mainAxisSize: MainAxisSize.min,
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                ]));
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
                   },
                 ),
                 children: [
@@ -225,18 +571,18 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
                         DigitCard(
                           children: [
                             ElementAssetSummary(
-                                count: battery,
-                                text: 'Batteries',
-                                onPress: () {
-                                  context.read<AssetTypeBloc>().add(
-                                      const AssetTypeEvent.typeSelected(
-                                          "BATTERY"));
-                                  context.read<ReportTypeBloc>().add(
-                                      const ReportTypeEvent.typeSelected(
-                                          "send-back"));
-                                  context.router
-                                      .push(const AssetSummaryRoute());
-                                }),
+                              count: battery,
+                              text: 'Batteries',
+                              onPress: () {
+                                context.read<AssetTypeBloc>().add(
+                                    const AssetTypeEvent.typeSelected(
+                                        "BATTERY"));
+                                context.read<ReportTypeBloc>().add(
+                                    const ReportTypeEvent.typeSelected(
+                                        "send-back"));
+                                context.router.push(const AssetSummaryRoute());
+                              },
+                            ),
                             ElementAssetSummary(
                               count: inverter,
                               text: 'Inverters',

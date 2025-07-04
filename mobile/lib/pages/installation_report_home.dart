@@ -5,8 +5,11 @@ import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../blocs/project/project.dart';
 import '../blocs/report_type/report_type.dart';
+import '../blocs/user_type/user_type.dart';
 import '../router/app_router.dart';
+import '../utils/utils.dart';
 import '../widgets/header/back_navigation_help_header.dart';
 
 @RoutePage()
@@ -21,75 +24,108 @@ class InstallationReportPage extends StatefulWidget {
 
 class _InstallationReportPageState extends State<InstallationReportPage> {
   @override
+  void initState() {
+    super.initState();
+    // Fire the fetch event once when the page is first shown
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final userType = context.read<UserTypeBloc>().state.maybeWhen(
+            supervisor: () => USER_TYPES.SUPERVISOR.name,
+            orElse: () => USER_TYPES.FIELD_STAFF.name,
+          );
+
+      context.read<ProjectBloc>().add(
+            ProjectEvent.fetchAllReportCounts(userType: userType),
+          );
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final textTheme = theme.digitTextTheme(context);
 
-    return Scaffold(
-      body: ScrollableContent(
-        footer: const PoweredByDigit(version: ''),
-        backgroundColor: theme.colorTheme.generic.background,
-        children: [
-          const BackNavigationHelpHeaderWidget(
-            showHelp: true,
-            showBackNavigation: true,
+    return BlocBuilder<ProjectBloc, ProjectState>(
+      builder: (context, state) {
+        return Scaffold(
+          body: ScrollableContent(
+            footer: const PoweredByDigit(version: ''),
+            backgroundColor: theme.colorTheme.generic.background,
+            children: [
+              const BackNavigationHelpHeaderWidget(
+                showHelp: true,
+                showBackNavigation: true,
+              ),
+              const SizedBox(height: spacer3),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: spacer4, vertical: spacer1),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Installation Report',
+                      textAlign: TextAlign.start,
+                      style: textTheme.headingXl.copyWith(
+                        color: const DigitColors().light.primary2,
+                      ),
+                    ),
+                    const SizedBox(height: spacer4),
+                    ReportCard(
+                      badgeCount: state.maybeWhen(
+                          orElse: () => 0,
+                          reportCountsLoaded:
+                              (newCount, inboxCount, submittedCount) =>
+                                  newCount),
+                      onPress: () {
+                        context.read<ReportTypeBloc>().add(
+                            const ReportTypeEvent.typeSelected("new-report"));
+                        context.router.push(const SelectHealthFacilityRoute());
+                      },
+                      icon: Icons.add_box_outlined,
+                      heading: 'New Report',
+                      description:
+                          'View list of assigned health facilities, search for health facility and create installation report',
+                    ),
+                    ReportCard(
+                      onPress: () {
+                        context
+                            .read<ReportTypeBloc>()
+                            .add(const ReportTypeEvent.typeSelected("inbox"));
+                        context.router.push(const InboxRoute());
+                      },
+                      badgeCount: state.maybeWhen(
+                          orElse: () => 0,
+                          reportCountsLoaded:
+                              (newCount, inboxCount, submittedCount) =>
+                                  inboxCount),
+                      icon: Icons.toc,
+                      heading: 'Inbox',
+                      description:
+                          'View reports that have been approved/rejected',
+                    ),
+                    ReportCard(
+                      onPress: () {
+                        context
+                            .read<ReportTypeBloc>()
+                            .add(const ReportTypeEvent.typeSelected("draft"));
+                        context.router.push(const DraftRoute());
+                      },
+                      icon: Icons.assignment_late,
+                      badgeCount: state.maybeWhen(
+                          orElse: () => 0,
+                          reportCountsLoaded:
+                              (newCount, inboxCount, submittedCount) =>
+                                  submittedCount),
+                      heading: 'Submitted Reports',
+                      description: 'View reports that have been submitted',
+                    ),
+                  ],
+                ),
+              )
+            ],
           ),
-          const SizedBox(height: spacer3),
-          Padding(
-            padding: const EdgeInsets.symmetric(
-                horizontal: spacer4, vertical: spacer1),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Installation Report',
-                  textAlign: TextAlign.start,
-                  style: textTheme.headingXl.copyWith(
-                    color: const DigitColors().light.primary2,
-                  ),
-                ),
-                const SizedBox(height: spacer4),
-                ReportCard(
-                  onPress: () {
-                    context
-                        .read<ReportTypeBloc>()
-                        .add(const ReportTypeEvent.typeSelected("new-report"));
-                    context.router.push(const SelectHealthFacilityRoute());
-                  },
-                  icon: Icons.add_box_outlined,
-                  heading: 'New Report',
-                  description:
-                      'View list of assigned health facilities, search for health facility and create installation report',
-                ),
-                ReportCard(
-                  onPress: () {
-                    context
-                        .read<ReportTypeBloc>()
-                        .add(const ReportTypeEvent.typeSelected("inbox"));
-                    context.router.push(const InboxRoute());
-                  },
-                  badgeCount: 2,
-                  icon: Icons.toc,
-                  heading: 'Inbox',
-                  description: 'View reports that have been approved/rejected',
-                ),
-                ReportCard(
-                  onPress: () {
-                    context
-                        .read<ReportTypeBloc>()
-                        .add(const ReportTypeEvent.typeSelected("draft"));
-                    context.router.push(const DraftRoute());
-                  },
-                  icon: Icons.assignment_late,
-                  badgeCount: 0,
-                  heading: 'Submitted Reports',
-                  description: 'View reports that have been submitted',
-                ),
-              ],
-            ),
-          )
-        ],
-      ),
+        );
+      },
     );
   }
 }
