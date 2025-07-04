@@ -32,6 +32,10 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
     on<FetchAllReportCountsEvent>(_onFetchAllReportCounts);
 
     on<GetNewlyAssignedEvent>(_onGetNewlyAssigned);
+
+    on<FetchProjectsSortedEvent>(_handleFetchProjectsSorted);
+
+    on<FetchProjectsBySearchEvent>(_handleFetchProjectsBySearch);
   }
 
   FutureOr<void> _selectProject(
@@ -210,6 +214,56 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
       emit(const ProjectState.newlyAssignedLoaded(0));
     }
   }
+
+  Future<void> _handleFetchProjectsSorted(
+    FetchProjectsSortedEvent event,
+    Emitter<ProjectState> emit,
+  ) async {
+    emit(const ProjectState.loading());
+
+    final repo = ProjectRepository(isar);
+    final body = ProjectSearchModel(
+      tenantId: envConfig.variables.tenantId,
+    );
+
+    try {
+      final remoteList = await repo.fetchByWorkflow(
+        body: body,
+        workflowStatuses: event.workflowStatuses,
+        sortDirection: event.sortDirection,
+      );
+      emit(ProjectState.fetched(remoteList));
+    } catch (_) {
+      emit(const ProjectState.fetched([]));
+    }
+  }
+
+  Future<void> _handleFetchProjectsBySearch(
+    FetchProjectsBySearchEvent event,
+    Emitter<ProjectState> emit,
+  ) async {
+    // only search when you have at least 3 characters
+    if (event.query.length < 3) {
+      emit(const ProjectState.initial());
+    }
+
+    emit(const ProjectState.searchLoading());
+    final remote = ProjectRemoteRepository();
+    final body = ProjectSearchModel(
+      tenantId: envConfig.variables.tenantId,
+      name: event.query,
+    );
+
+    try {
+      final results = await remote.searchByWorkflow(
+        body: body,
+        workflowStatuses: event.workflowStatuses,
+      );
+      emit(ProjectState.searchResults(results));
+    } catch (_) {
+      emit(const ProjectState.searchResults([]));
+    }
+  }
 }
 
 @freezed
@@ -237,6 +291,16 @@ class ProjectEvent with _$ProjectEvent {
   const factory ProjectEvent.getNewlyAssigned({
     required String userType,
   }) = GetNewlyAssignedEvent;
+
+  const factory ProjectEvent.fetchProjectsSorted({
+    required List<String> workflowStatuses,
+    required String sortDirection, // ASC or DESC
+  }) = FetchProjectsSortedEvent;
+
+  const factory ProjectEvent.fetchProjectsBySearch({
+    required String query,
+    required List<String> workflowStatuses,
+  }) = FetchProjectsBySearchEvent;
 }
 
 @freezed
@@ -267,4 +331,13 @@ class ProjectState with _$ProjectState {
 
   const factory ProjectState.newlyAssignedLoaded(int count) =
       NewlyAssignedLoaded;
+
+  const factory ProjectState.sorted({
+    required List<ProjectWorkflow> projectsList,
+    required String sortDirection,
+  }) = ProjectSortedState;
+
+  const factory ProjectState.searchLoading() = ProjectSearchLoading;
+  const factory ProjectState.searchResults(List<ProjectWorkflow> results) =
+      ProjectSearchResults;
 }

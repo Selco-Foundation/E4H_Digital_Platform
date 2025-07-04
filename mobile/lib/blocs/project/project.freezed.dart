@@ -29,6 +29,11 @@ mixin _$ProjectEvent {
         deleteUnSubmitted,
     required TResult Function(String userType) fetchAllReportCounts,
     required TResult Function(String userType) getNewlyAssigned,
+    required TResult Function(
+            List<String> workflowStatuses, String sortDirection)
+        fetchProjectsSorted,
+    required TResult Function(String query, List<String> workflowStatuses)
+        fetchProjectsBySearch,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -41,6 +46,10 @@ mixin _$ProjectEvent {
     TResult? Function(String projectId, String userType)? deleteUnSubmitted,
     TResult? Function(String userType)? fetchAllReportCounts,
     TResult? Function(String userType)? getNewlyAssigned,
+    TResult? Function(List<String> workflowStatuses, String sortDirection)?
+        fetchProjectsSorted,
+    TResult? Function(String query, List<String> workflowStatuses)?
+        fetchProjectsBySearch,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -52,6 +61,10 @@ mixin _$ProjectEvent {
     TResult Function(String projectId, String userType)? deleteUnSubmitted,
     TResult Function(String userType)? fetchAllReportCounts,
     TResult Function(String userType)? getNewlyAssigned,
+    TResult Function(List<String> workflowStatuses, String sortDirection)?
+        fetchProjectsSorted,
+    TResult Function(String query, List<String> workflowStatuses)?
+        fetchProjectsBySearch,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -66,6 +79,10 @@ mixin _$ProjectEvent {
     required TResult Function(FetchAllReportCountsEvent value)
         fetchAllReportCounts,
     required TResult Function(GetNewlyAssignedEvent value) getNewlyAssigned,
+    required TResult Function(FetchProjectsSortedEvent value)
+        fetchProjectsSorted,
+    required TResult Function(FetchProjectsBySearchEvent value)
+        fetchProjectsBySearch,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -78,6 +95,8 @@ mixin _$ProjectEvent {
     TResult? Function(DeleteUnSubmittedEvent value)? deleteUnSubmitted,
     TResult? Function(FetchAllReportCountsEvent value)? fetchAllReportCounts,
     TResult? Function(GetNewlyAssignedEvent value)? getNewlyAssigned,
+    TResult? Function(FetchProjectsSortedEvent value)? fetchProjectsSorted,
+    TResult? Function(FetchProjectsBySearchEvent value)? fetchProjectsBySearch,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -90,6 +109,8 @@ mixin _$ProjectEvent {
     TResult Function(DeleteUnSubmittedEvent value)? deleteUnSubmitted,
     TResult Function(FetchAllReportCountsEvent value)? fetchAllReportCounts,
     TResult Function(GetNewlyAssignedEvent value)? getNewlyAssigned,
+    TResult Function(FetchProjectsSortedEvent value)? fetchProjectsSorted,
+    TResult Function(FetchProjectsBySearchEvent value)? fetchProjectsBySearch,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -190,6 +211,11 @@ class _$ProjectSelectEventImpl implements ProjectSelectEvent {
         deleteUnSubmitted,
     required TResult Function(String userType) fetchAllReportCounts,
     required TResult Function(String userType) getNewlyAssigned,
+    required TResult Function(
+            List<String> workflowStatuses, String sortDirection)
+        fetchProjectsSorted,
+    required TResult Function(String query, List<String> workflowStatuses)
+        fetchProjectsBySearch,
   }) {
     return selectProject(projectId);
   }
@@ -205,6 +231,10 @@ class _$ProjectSelectEventImpl implements ProjectSelectEvent {
     TResult? Function(String projectId, String userType)? deleteUnSubmitted,
     TResult? Function(String userType)? fetchAllReportCounts,
     TResult? Function(String userType)? getNewlyAssigned,
+    TResult? Function(List<String> workflowStatuses, String sortDirection)?
+        fetchProjectsSorted,
+    TResult? Function(String query, List<String> workflowStatuses)?
+        fetchProjectsBySearch,
   }) {
     return selectProject?.call(projectId);
   }
@@ -219,6 +249,10 @@ class _$ProjectSelectEventImpl implements ProjectSelectEvent {
     TResult Function(String projectId, String userType)? deleteUnSubmitted,
     TResult Function(String userType)? fetchAllReportCounts,
     TResult Function(String userType)? getNewlyAssigned,
+    TResult Function(List<String> workflowStatuses, String sortDirection)?
+        fetchProjectsSorted,
+    TResult Function(String query, List<String> workflowStatuses)?
+        fetchProjectsBySearch,
     required TResult orElse(),
   }) {
     if (selectProject != null) {
@@ -239,6 +273,10 @@ class _$ProjectSelectEventImpl implements ProjectSelectEvent {
     required TResult Function(FetchAllReportCountsEvent value)
         fetchAllReportCounts,
     required TResult Function(GetNewlyAssignedEvent value) getNewlyAssigned,
+    required TResult Function(FetchProjectsSortedEvent value)
+        fetchProjectsSorted,
+    required TResult Function(FetchProjectsBySearchEvent value)
+        fetchProjectsBySearch,
   }) {
     return selectProject(this);
   }
@@ -254,6 +292,8 @@ class _$ProjectSelectEventImpl implements ProjectSelectEvent {
     TResult? Function(DeleteUnSubmittedEvent value)? deleteUnSubmitted,
     TResult? Function(FetchAllReportCountsEvent value)? fetchAllReportCounts,
     TResult? Function(GetNewlyAssignedEvent value)? getNewlyAssigned,
+    TResult? Function(FetchProjectsSortedEvent value)? fetchProjectsSorted,
+    TResult? Function(FetchProjectsBySearchEvent value)? fetchProjectsBySearch,
   }) {
     return selectProject?.call(this);
   }
@@ -269,6 +309,8 @@ class _$ProjectSelectEventImpl implements ProjectSelectEvent {
     TResult Function(DeleteUnSubmittedEvent value)? deleteUnSubmitted,
     TResult Function(FetchAllReportCountsEvent value)? fetchAllReportCounts,
     TResult Function(GetNewlyAssignedEvent value)? getNewlyAssigned,
+    TResult Function(FetchProjectsSortedEvent value)? fetchProjectsSorted,
+    TResult Function(FetchProjectsBySearchEvent value)? fetchProjectsBySearch,
     required TResult orElse(),
   }) {
     if (selectProject != null) {
@@ -378,6 +420,11 @@ class _$FetchProjectsByWorkflowEventImpl
         deleteUnSubmitted,
     required TResult Function(String userType) fetchAllReportCounts,
     required TResult Function(String userType) getNewlyAssigned,
+    required TResult Function(
+            List<String> workflowStatuses, String sortDirection)
+        fetchProjectsSorted,
+    required TResult Function(String query, List<String> workflowStatuses)
+        fetchProjectsBySearch,
   }) {
     return fetchProjectsByWorkflow(workflowStatuses);
   }
@@ -393,6 +440,10 @@ class _$FetchProjectsByWorkflowEventImpl
     TResult? Function(String projectId, String userType)? deleteUnSubmitted,
     TResult? Function(String userType)? fetchAllReportCounts,
     TResult? Function(String userType)? getNewlyAssigned,
+    TResult? Function(List<String> workflowStatuses, String sortDirection)?
+        fetchProjectsSorted,
+    TResult? Function(String query, List<String> workflowStatuses)?
+        fetchProjectsBySearch,
   }) {
     return fetchProjectsByWorkflow?.call(workflowStatuses);
   }
@@ -407,6 +458,10 @@ class _$FetchProjectsByWorkflowEventImpl
     TResult Function(String projectId, String userType)? deleteUnSubmitted,
     TResult Function(String userType)? fetchAllReportCounts,
     TResult Function(String userType)? getNewlyAssigned,
+    TResult Function(List<String> workflowStatuses, String sortDirection)?
+        fetchProjectsSorted,
+    TResult Function(String query, List<String> workflowStatuses)?
+        fetchProjectsBySearch,
     required TResult orElse(),
   }) {
     if (fetchProjectsByWorkflow != null) {
@@ -427,6 +482,10 @@ class _$FetchProjectsByWorkflowEventImpl
     required TResult Function(FetchAllReportCountsEvent value)
         fetchAllReportCounts,
     required TResult Function(GetNewlyAssignedEvent value) getNewlyAssigned,
+    required TResult Function(FetchProjectsSortedEvent value)
+        fetchProjectsSorted,
+    required TResult Function(FetchProjectsBySearchEvent value)
+        fetchProjectsBySearch,
   }) {
     return fetchProjectsByWorkflow(this);
   }
@@ -442,6 +501,8 @@ class _$FetchProjectsByWorkflowEventImpl
     TResult? Function(DeleteUnSubmittedEvent value)? deleteUnSubmitted,
     TResult? Function(FetchAllReportCountsEvent value)? fetchAllReportCounts,
     TResult? Function(GetNewlyAssignedEvent value)? getNewlyAssigned,
+    TResult? Function(FetchProjectsSortedEvent value)? fetchProjectsSorted,
+    TResult? Function(FetchProjectsBySearchEvent value)? fetchProjectsBySearch,
   }) {
     return fetchProjectsByWorkflow?.call(this);
   }
@@ -457,6 +518,8 @@ class _$FetchProjectsByWorkflowEventImpl
     TResult Function(DeleteUnSubmittedEvent value)? deleteUnSubmitted,
     TResult Function(FetchAllReportCountsEvent value)? fetchAllReportCounts,
     TResult Function(GetNewlyAssignedEvent value)? getNewlyAssigned,
+    TResult Function(FetchProjectsSortedEvent value)? fetchProjectsSorted,
+    TResult Function(FetchProjectsBySearchEvent value)? fetchProjectsBySearch,
     required TResult orElse(),
   }) {
     if (fetchProjectsByWorkflow != null) {
@@ -574,6 +637,11 @@ class _$AddUnSubmittedEventImpl implements AddUnSubmittedEvent {
         deleteUnSubmitted,
     required TResult Function(String userType) fetchAllReportCounts,
     required TResult Function(String userType) getNewlyAssigned,
+    required TResult Function(
+            List<String> workflowStatuses, String sortDirection)
+        fetchProjectsSorted,
+    required TResult Function(String query, List<String> workflowStatuses)
+        fetchProjectsBySearch,
   }) {
     return addUnSubmitted(workflow, userType);
   }
@@ -589,6 +657,10 @@ class _$AddUnSubmittedEventImpl implements AddUnSubmittedEvent {
     TResult? Function(String projectId, String userType)? deleteUnSubmitted,
     TResult? Function(String userType)? fetchAllReportCounts,
     TResult? Function(String userType)? getNewlyAssigned,
+    TResult? Function(List<String> workflowStatuses, String sortDirection)?
+        fetchProjectsSorted,
+    TResult? Function(String query, List<String> workflowStatuses)?
+        fetchProjectsBySearch,
   }) {
     return addUnSubmitted?.call(workflow, userType);
   }
@@ -603,6 +675,10 @@ class _$AddUnSubmittedEventImpl implements AddUnSubmittedEvent {
     TResult Function(String projectId, String userType)? deleteUnSubmitted,
     TResult Function(String userType)? fetchAllReportCounts,
     TResult Function(String userType)? getNewlyAssigned,
+    TResult Function(List<String> workflowStatuses, String sortDirection)?
+        fetchProjectsSorted,
+    TResult Function(String query, List<String> workflowStatuses)?
+        fetchProjectsBySearch,
     required TResult orElse(),
   }) {
     if (addUnSubmitted != null) {
@@ -623,6 +699,10 @@ class _$AddUnSubmittedEventImpl implements AddUnSubmittedEvent {
     required TResult Function(FetchAllReportCountsEvent value)
         fetchAllReportCounts,
     required TResult Function(GetNewlyAssignedEvent value) getNewlyAssigned,
+    required TResult Function(FetchProjectsSortedEvent value)
+        fetchProjectsSorted,
+    required TResult Function(FetchProjectsBySearchEvent value)
+        fetchProjectsBySearch,
   }) {
     return addUnSubmitted(this);
   }
@@ -638,6 +718,8 @@ class _$AddUnSubmittedEventImpl implements AddUnSubmittedEvent {
     TResult? Function(DeleteUnSubmittedEvent value)? deleteUnSubmitted,
     TResult? Function(FetchAllReportCountsEvent value)? fetchAllReportCounts,
     TResult? Function(GetNewlyAssignedEvent value)? getNewlyAssigned,
+    TResult? Function(FetchProjectsSortedEvent value)? fetchProjectsSorted,
+    TResult? Function(FetchProjectsBySearchEvent value)? fetchProjectsBySearch,
   }) {
     return addUnSubmitted?.call(this);
   }
@@ -653,6 +735,8 @@ class _$AddUnSubmittedEventImpl implements AddUnSubmittedEvent {
     TResult Function(DeleteUnSubmittedEvent value)? deleteUnSubmitted,
     TResult Function(FetchAllReportCountsEvent value)? fetchAllReportCounts,
     TResult Function(GetNewlyAssignedEvent value)? getNewlyAssigned,
+    TResult Function(FetchProjectsSortedEvent value)? fetchProjectsSorted,
+    TResult Function(FetchProjectsBySearchEvent value)? fetchProjectsBySearch,
     required TResult orElse(),
   }) {
     if (addUnSubmitted != null) {
@@ -768,6 +852,11 @@ class _$LoadUnSubmittedEventImpl implements LoadUnSubmittedEvent {
         deleteUnSubmitted,
     required TResult Function(String userType) fetchAllReportCounts,
     required TResult Function(String userType) getNewlyAssigned,
+    required TResult Function(
+            List<String> workflowStatuses, String sortDirection)
+        fetchProjectsSorted,
+    required TResult Function(String query, List<String> workflowStatuses)
+        fetchProjectsBySearch,
   }) {
     return loadUnSubmitted(statuses, userType);
   }
@@ -783,6 +872,10 @@ class _$LoadUnSubmittedEventImpl implements LoadUnSubmittedEvent {
     TResult? Function(String projectId, String userType)? deleteUnSubmitted,
     TResult? Function(String userType)? fetchAllReportCounts,
     TResult? Function(String userType)? getNewlyAssigned,
+    TResult? Function(List<String> workflowStatuses, String sortDirection)?
+        fetchProjectsSorted,
+    TResult? Function(String query, List<String> workflowStatuses)?
+        fetchProjectsBySearch,
   }) {
     return loadUnSubmitted?.call(statuses, userType);
   }
@@ -797,6 +890,10 @@ class _$LoadUnSubmittedEventImpl implements LoadUnSubmittedEvent {
     TResult Function(String projectId, String userType)? deleteUnSubmitted,
     TResult Function(String userType)? fetchAllReportCounts,
     TResult Function(String userType)? getNewlyAssigned,
+    TResult Function(List<String> workflowStatuses, String sortDirection)?
+        fetchProjectsSorted,
+    TResult Function(String query, List<String> workflowStatuses)?
+        fetchProjectsBySearch,
     required TResult orElse(),
   }) {
     if (loadUnSubmitted != null) {
@@ -817,6 +914,10 @@ class _$LoadUnSubmittedEventImpl implements LoadUnSubmittedEvent {
     required TResult Function(FetchAllReportCountsEvent value)
         fetchAllReportCounts,
     required TResult Function(GetNewlyAssignedEvent value) getNewlyAssigned,
+    required TResult Function(FetchProjectsSortedEvent value)
+        fetchProjectsSorted,
+    required TResult Function(FetchProjectsBySearchEvent value)
+        fetchProjectsBySearch,
   }) {
     return loadUnSubmitted(this);
   }
@@ -832,6 +933,8 @@ class _$LoadUnSubmittedEventImpl implements LoadUnSubmittedEvent {
     TResult? Function(DeleteUnSubmittedEvent value)? deleteUnSubmitted,
     TResult? Function(FetchAllReportCountsEvent value)? fetchAllReportCounts,
     TResult? Function(GetNewlyAssignedEvent value)? getNewlyAssigned,
+    TResult? Function(FetchProjectsSortedEvent value)? fetchProjectsSorted,
+    TResult? Function(FetchProjectsBySearchEvent value)? fetchProjectsBySearch,
   }) {
     return loadUnSubmitted?.call(this);
   }
@@ -847,6 +950,8 @@ class _$LoadUnSubmittedEventImpl implements LoadUnSubmittedEvent {
     TResult Function(DeleteUnSubmittedEvent value)? deleteUnSubmitted,
     TResult Function(FetchAllReportCountsEvent value)? fetchAllReportCounts,
     TResult Function(GetNewlyAssignedEvent value)? getNewlyAssigned,
+    TResult Function(FetchProjectsSortedEvent value)? fetchProjectsSorted,
+    TResult Function(FetchProjectsBySearchEvent value)? fetchProjectsBySearch,
     required TResult orElse(),
   }) {
     if (loadUnSubmitted != null) {
@@ -956,6 +1061,11 @@ class _$DeleteUnSubmittedEventImpl implements DeleteUnSubmittedEvent {
         deleteUnSubmitted,
     required TResult Function(String userType) fetchAllReportCounts,
     required TResult Function(String userType) getNewlyAssigned,
+    required TResult Function(
+            List<String> workflowStatuses, String sortDirection)
+        fetchProjectsSorted,
+    required TResult Function(String query, List<String> workflowStatuses)
+        fetchProjectsBySearch,
   }) {
     return deleteUnSubmitted(projectId, userType);
   }
@@ -971,6 +1081,10 @@ class _$DeleteUnSubmittedEventImpl implements DeleteUnSubmittedEvent {
     TResult? Function(String projectId, String userType)? deleteUnSubmitted,
     TResult? Function(String userType)? fetchAllReportCounts,
     TResult? Function(String userType)? getNewlyAssigned,
+    TResult? Function(List<String> workflowStatuses, String sortDirection)?
+        fetchProjectsSorted,
+    TResult? Function(String query, List<String> workflowStatuses)?
+        fetchProjectsBySearch,
   }) {
     return deleteUnSubmitted?.call(projectId, userType);
   }
@@ -985,6 +1099,10 @@ class _$DeleteUnSubmittedEventImpl implements DeleteUnSubmittedEvent {
     TResult Function(String projectId, String userType)? deleteUnSubmitted,
     TResult Function(String userType)? fetchAllReportCounts,
     TResult Function(String userType)? getNewlyAssigned,
+    TResult Function(List<String> workflowStatuses, String sortDirection)?
+        fetchProjectsSorted,
+    TResult Function(String query, List<String> workflowStatuses)?
+        fetchProjectsBySearch,
     required TResult orElse(),
   }) {
     if (deleteUnSubmitted != null) {
@@ -1005,6 +1123,10 @@ class _$DeleteUnSubmittedEventImpl implements DeleteUnSubmittedEvent {
     required TResult Function(FetchAllReportCountsEvent value)
         fetchAllReportCounts,
     required TResult Function(GetNewlyAssignedEvent value) getNewlyAssigned,
+    required TResult Function(FetchProjectsSortedEvent value)
+        fetchProjectsSorted,
+    required TResult Function(FetchProjectsBySearchEvent value)
+        fetchProjectsBySearch,
   }) {
     return deleteUnSubmitted(this);
   }
@@ -1020,6 +1142,8 @@ class _$DeleteUnSubmittedEventImpl implements DeleteUnSubmittedEvent {
     TResult? Function(DeleteUnSubmittedEvent value)? deleteUnSubmitted,
     TResult? Function(FetchAllReportCountsEvent value)? fetchAllReportCounts,
     TResult? Function(GetNewlyAssignedEvent value)? getNewlyAssigned,
+    TResult? Function(FetchProjectsSortedEvent value)? fetchProjectsSorted,
+    TResult? Function(FetchProjectsBySearchEvent value)? fetchProjectsBySearch,
   }) {
     return deleteUnSubmitted?.call(this);
   }
@@ -1035,6 +1159,8 @@ class _$DeleteUnSubmittedEventImpl implements DeleteUnSubmittedEvent {
     TResult Function(DeleteUnSubmittedEvent value)? deleteUnSubmitted,
     TResult Function(FetchAllReportCountsEvent value)? fetchAllReportCounts,
     TResult Function(GetNewlyAssignedEvent value)? getNewlyAssigned,
+    TResult Function(FetchProjectsSortedEvent value)? fetchProjectsSorted,
+    TResult Function(FetchProjectsBySearchEvent value)? fetchProjectsBySearch,
     required TResult orElse(),
   }) {
     if (deleteUnSubmitted != null) {
@@ -1135,6 +1261,11 @@ class _$FetchAllReportCountsEventImpl implements FetchAllReportCountsEvent {
         deleteUnSubmitted,
     required TResult Function(String userType) fetchAllReportCounts,
     required TResult Function(String userType) getNewlyAssigned,
+    required TResult Function(
+            List<String> workflowStatuses, String sortDirection)
+        fetchProjectsSorted,
+    required TResult Function(String query, List<String> workflowStatuses)
+        fetchProjectsBySearch,
   }) {
     return fetchAllReportCounts(userType);
   }
@@ -1150,6 +1281,10 @@ class _$FetchAllReportCountsEventImpl implements FetchAllReportCountsEvent {
     TResult? Function(String projectId, String userType)? deleteUnSubmitted,
     TResult? Function(String userType)? fetchAllReportCounts,
     TResult? Function(String userType)? getNewlyAssigned,
+    TResult? Function(List<String> workflowStatuses, String sortDirection)?
+        fetchProjectsSorted,
+    TResult? Function(String query, List<String> workflowStatuses)?
+        fetchProjectsBySearch,
   }) {
     return fetchAllReportCounts?.call(userType);
   }
@@ -1164,6 +1299,10 @@ class _$FetchAllReportCountsEventImpl implements FetchAllReportCountsEvent {
     TResult Function(String projectId, String userType)? deleteUnSubmitted,
     TResult Function(String userType)? fetchAllReportCounts,
     TResult Function(String userType)? getNewlyAssigned,
+    TResult Function(List<String> workflowStatuses, String sortDirection)?
+        fetchProjectsSorted,
+    TResult Function(String query, List<String> workflowStatuses)?
+        fetchProjectsBySearch,
     required TResult orElse(),
   }) {
     if (fetchAllReportCounts != null) {
@@ -1184,6 +1323,10 @@ class _$FetchAllReportCountsEventImpl implements FetchAllReportCountsEvent {
     required TResult Function(FetchAllReportCountsEvent value)
         fetchAllReportCounts,
     required TResult Function(GetNewlyAssignedEvent value) getNewlyAssigned,
+    required TResult Function(FetchProjectsSortedEvent value)
+        fetchProjectsSorted,
+    required TResult Function(FetchProjectsBySearchEvent value)
+        fetchProjectsBySearch,
   }) {
     return fetchAllReportCounts(this);
   }
@@ -1199,6 +1342,8 @@ class _$FetchAllReportCountsEventImpl implements FetchAllReportCountsEvent {
     TResult? Function(DeleteUnSubmittedEvent value)? deleteUnSubmitted,
     TResult? Function(FetchAllReportCountsEvent value)? fetchAllReportCounts,
     TResult? Function(GetNewlyAssignedEvent value)? getNewlyAssigned,
+    TResult? Function(FetchProjectsSortedEvent value)? fetchProjectsSorted,
+    TResult? Function(FetchProjectsBySearchEvent value)? fetchProjectsBySearch,
   }) {
     return fetchAllReportCounts?.call(this);
   }
@@ -1214,6 +1359,8 @@ class _$FetchAllReportCountsEventImpl implements FetchAllReportCountsEvent {
     TResult Function(DeleteUnSubmittedEvent value)? deleteUnSubmitted,
     TResult Function(FetchAllReportCountsEvent value)? fetchAllReportCounts,
     TResult Function(GetNewlyAssignedEvent value)? getNewlyAssigned,
+    TResult Function(FetchProjectsSortedEvent value)? fetchProjectsSorted,
+    TResult Function(FetchProjectsBySearchEvent value)? fetchProjectsBySearch,
     required TResult orElse(),
   }) {
     if (fetchAllReportCounts != null) {
@@ -1311,6 +1458,11 @@ class _$GetNewlyAssignedEventImpl implements GetNewlyAssignedEvent {
         deleteUnSubmitted,
     required TResult Function(String userType) fetchAllReportCounts,
     required TResult Function(String userType) getNewlyAssigned,
+    required TResult Function(
+            List<String> workflowStatuses, String sortDirection)
+        fetchProjectsSorted,
+    required TResult Function(String query, List<String> workflowStatuses)
+        fetchProjectsBySearch,
   }) {
     return getNewlyAssigned(userType);
   }
@@ -1326,6 +1478,10 @@ class _$GetNewlyAssignedEventImpl implements GetNewlyAssignedEvent {
     TResult? Function(String projectId, String userType)? deleteUnSubmitted,
     TResult? Function(String userType)? fetchAllReportCounts,
     TResult? Function(String userType)? getNewlyAssigned,
+    TResult? Function(List<String> workflowStatuses, String sortDirection)?
+        fetchProjectsSorted,
+    TResult? Function(String query, List<String> workflowStatuses)?
+        fetchProjectsBySearch,
   }) {
     return getNewlyAssigned?.call(userType);
   }
@@ -1340,6 +1496,10 @@ class _$GetNewlyAssignedEventImpl implements GetNewlyAssignedEvent {
     TResult Function(String projectId, String userType)? deleteUnSubmitted,
     TResult Function(String userType)? fetchAllReportCounts,
     TResult Function(String userType)? getNewlyAssigned,
+    TResult Function(List<String> workflowStatuses, String sortDirection)?
+        fetchProjectsSorted,
+    TResult Function(String query, List<String> workflowStatuses)?
+        fetchProjectsBySearch,
     required TResult orElse(),
   }) {
     if (getNewlyAssigned != null) {
@@ -1360,6 +1520,10 @@ class _$GetNewlyAssignedEventImpl implements GetNewlyAssignedEvent {
     required TResult Function(FetchAllReportCountsEvent value)
         fetchAllReportCounts,
     required TResult Function(GetNewlyAssignedEvent value) getNewlyAssigned,
+    required TResult Function(FetchProjectsSortedEvent value)
+        fetchProjectsSorted,
+    required TResult Function(FetchProjectsBySearchEvent value)
+        fetchProjectsBySearch,
   }) {
     return getNewlyAssigned(this);
   }
@@ -1375,6 +1539,8 @@ class _$GetNewlyAssignedEventImpl implements GetNewlyAssignedEvent {
     TResult? Function(DeleteUnSubmittedEvent value)? deleteUnSubmitted,
     TResult? Function(FetchAllReportCountsEvent value)? fetchAllReportCounts,
     TResult? Function(GetNewlyAssignedEvent value)? getNewlyAssigned,
+    TResult? Function(FetchProjectsSortedEvent value)? fetchProjectsSorted,
+    TResult? Function(FetchProjectsBySearchEvent value)? fetchProjectsBySearch,
   }) {
     return getNewlyAssigned?.call(this);
   }
@@ -1390,6 +1556,8 @@ class _$GetNewlyAssignedEventImpl implements GetNewlyAssignedEvent {
     TResult Function(DeleteUnSubmittedEvent value)? deleteUnSubmitted,
     TResult Function(FetchAllReportCountsEvent value)? fetchAllReportCounts,
     TResult Function(GetNewlyAssignedEvent value)? getNewlyAssigned,
+    TResult Function(FetchProjectsSortedEvent value)? fetchProjectsSorted,
+    TResult Function(FetchProjectsBySearchEvent value)? fetchProjectsBySearch,
     required TResult orElse(),
   }) {
     if (getNewlyAssigned != null) {
@@ -1410,6 +1578,444 @@ abstract class GetNewlyAssignedEvent implements ProjectEvent {
 }
 
 /// @nodoc
+abstract class _$$FetchProjectsSortedEventImplCopyWith<$Res> {
+  factory _$$FetchProjectsSortedEventImplCopyWith(
+          _$FetchProjectsSortedEventImpl value,
+          $Res Function(_$FetchProjectsSortedEventImpl) then) =
+      __$$FetchProjectsSortedEventImplCopyWithImpl<$Res>;
+  @useResult
+  $Res call({List<String> workflowStatuses, String sortDirection});
+}
+
+/// @nodoc
+class __$$FetchProjectsSortedEventImplCopyWithImpl<$Res>
+    extends _$ProjectEventCopyWithImpl<$Res, _$FetchProjectsSortedEventImpl>
+    implements _$$FetchProjectsSortedEventImplCopyWith<$Res> {
+  __$$FetchProjectsSortedEventImplCopyWithImpl(
+      _$FetchProjectsSortedEventImpl _value,
+      $Res Function(_$FetchProjectsSortedEventImpl) _then)
+      : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? workflowStatuses = null,
+    Object? sortDirection = null,
+  }) {
+    return _then(_$FetchProjectsSortedEventImpl(
+      workflowStatuses: null == workflowStatuses
+          ? _value._workflowStatuses
+          : workflowStatuses // ignore: cast_nullable_to_non_nullable
+              as List<String>,
+      sortDirection: null == sortDirection
+          ? _value.sortDirection
+          : sortDirection // ignore: cast_nullable_to_non_nullable
+              as String,
+    ));
+  }
+}
+
+/// @nodoc
+
+class _$FetchProjectsSortedEventImpl implements FetchProjectsSortedEvent {
+  const _$FetchProjectsSortedEventImpl(
+      {required final List<String> workflowStatuses,
+      required this.sortDirection})
+      : _workflowStatuses = workflowStatuses;
+
+  final List<String> _workflowStatuses;
+  @override
+  List<String> get workflowStatuses {
+    if (_workflowStatuses is EqualUnmodifiableListView)
+      return _workflowStatuses;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_workflowStatuses);
+  }
+
+  @override
+  final String sortDirection;
+
+  @override
+  String toString() {
+    return 'ProjectEvent.fetchProjectsSorted(workflowStatuses: $workflowStatuses, sortDirection: $sortDirection)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$FetchProjectsSortedEventImpl &&
+            const DeepCollectionEquality()
+                .equals(other._workflowStatuses, _workflowStatuses) &&
+            (identical(other.sortDirection, sortDirection) ||
+                other.sortDirection == sortDirection));
+  }
+
+  @override
+  int get hashCode => Object.hash(runtimeType,
+      const DeepCollectionEquality().hash(_workflowStatuses), sortDirection);
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$FetchProjectsSortedEventImplCopyWith<_$FetchProjectsSortedEventImpl>
+      get copyWith => __$$FetchProjectsSortedEventImplCopyWithImpl<
+          _$FetchProjectsSortedEventImpl>(this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function(String projectId) selectProject,
+    required TResult Function(List<String> workflowStatuses)
+        fetchProjectsByWorkflow,
+    required TResult Function(ProjectWorkflow workflow, String userType)
+        addUnSubmitted,
+    required TResult Function(List<String> statuses, String userType)
+        loadUnSubmitted,
+    required TResult Function(String projectId, String userType)
+        deleteUnSubmitted,
+    required TResult Function(String userType) fetchAllReportCounts,
+    required TResult Function(String userType) getNewlyAssigned,
+    required TResult Function(
+            List<String> workflowStatuses, String sortDirection)
+        fetchProjectsSorted,
+    required TResult Function(String query, List<String> workflowStatuses)
+        fetchProjectsBySearch,
+  }) {
+    return fetchProjectsSorted(workflowStatuses, sortDirection);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function(String projectId)? selectProject,
+    TResult? Function(List<String> workflowStatuses)? fetchProjectsByWorkflow,
+    TResult? Function(ProjectWorkflow workflow, String userType)?
+        addUnSubmitted,
+    TResult? Function(List<String> statuses, String userType)? loadUnSubmitted,
+    TResult? Function(String projectId, String userType)? deleteUnSubmitted,
+    TResult? Function(String userType)? fetchAllReportCounts,
+    TResult? Function(String userType)? getNewlyAssigned,
+    TResult? Function(List<String> workflowStatuses, String sortDirection)?
+        fetchProjectsSorted,
+    TResult? Function(String query, List<String> workflowStatuses)?
+        fetchProjectsBySearch,
+  }) {
+    return fetchProjectsSorted?.call(workflowStatuses, sortDirection);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function(String projectId)? selectProject,
+    TResult Function(List<String> workflowStatuses)? fetchProjectsByWorkflow,
+    TResult Function(ProjectWorkflow workflow, String userType)? addUnSubmitted,
+    TResult Function(List<String> statuses, String userType)? loadUnSubmitted,
+    TResult Function(String projectId, String userType)? deleteUnSubmitted,
+    TResult Function(String userType)? fetchAllReportCounts,
+    TResult Function(String userType)? getNewlyAssigned,
+    TResult Function(List<String> workflowStatuses, String sortDirection)?
+        fetchProjectsSorted,
+    TResult Function(String query, List<String> workflowStatuses)?
+        fetchProjectsBySearch,
+    required TResult orElse(),
+  }) {
+    if (fetchProjectsSorted != null) {
+      return fetchProjectsSorted(workflowStatuses, sortDirection);
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(ProjectSelectEvent value) selectProject,
+    required TResult Function(FetchProjectsByWorkflowEvent value)
+        fetchProjectsByWorkflow,
+    required TResult Function(AddUnSubmittedEvent value) addUnSubmitted,
+    required TResult Function(LoadUnSubmittedEvent value) loadUnSubmitted,
+    required TResult Function(DeleteUnSubmittedEvent value) deleteUnSubmitted,
+    required TResult Function(FetchAllReportCountsEvent value)
+        fetchAllReportCounts,
+    required TResult Function(GetNewlyAssignedEvent value) getNewlyAssigned,
+    required TResult Function(FetchProjectsSortedEvent value)
+        fetchProjectsSorted,
+    required TResult Function(FetchProjectsBySearchEvent value)
+        fetchProjectsBySearch,
+  }) {
+    return fetchProjectsSorted(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(ProjectSelectEvent value)? selectProject,
+    TResult? Function(FetchProjectsByWorkflowEvent value)?
+        fetchProjectsByWorkflow,
+    TResult? Function(AddUnSubmittedEvent value)? addUnSubmitted,
+    TResult? Function(LoadUnSubmittedEvent value)? loadUnSubmitted,
+    TResult? Function(DeleteUnSubmittedEvent value)? deleteUnSubmitted,
+    TResult? Function(FetchAllReportCountsEvent value)? fetchAllReportCounts,
+    TResult? Function(GetNewlyAssignedEvent value)? getNewlyAssigned,
+    TResult? Function(FetchProjectsSortedEvent value)? fetchProjectsSorted,
+    TResult? Function(FetchProjectsBySearchEvent value)? fetchProjectsBySearch,
+  }) {
+    return fetchProjectsSorted?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(ProjectSelectEvent value)? selectProject,
+    TResult Function(FetchProjectsByWorkflowEvent value)?
+        fetchProjectsByWorkflow,
+    TResult Function(AddUnSubmittedEvent value)? addUnSubmitted,
+    TResult Function(LoadUnSubmittedEvent value)? loadUnSubmitted,
+    TResult Function(DeleteUnSubmittedEvent value)? deleteUnSubmitted,
+    TResult Function(FetchAllReportCountsEvent value)? fetchAllReportCounts,
+    TResult Function(GetNewlyAssignedEvent value)? getNewlyAssigned,
+    TResult Function(FetchProjectsSortedEvent value)? fetchProjectsSorted,
+    TResult Function(FetchProjectsBySearchEvent value)? fetchProjectsBySearch,
+    required TResult orElse(),
+  }) {
+    if (fetchProjectsSorted != null) {
+      return fetchProjectsSorted(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class FetchProjectsSortedEvent implements ProjectEvent {
+  const factory FetchProjectsSortedEvent(
+      {required final List<String> workflowStatuses,
+      required final String sortDirection}) = _$FetchProjectsSortedEventImpl;
+
+  List<String> get workflowStatuses;
+  String get sortDirection;
+  @JsonKey(ignore: true)
+  _$$FetchProjectsSortedEventImplCopyWith<_$FetchProjectsSortedEventImpl>
+      get copyWith => throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class _$$FetchProjectsBySearchEventImplCopyWith<$Res> {
+  factory _$$FetchProjectsBySearchEventImplCopyWith(
+          _$FetchProjectsBySearchEventImpl value,
+          $Res Function(_$FetchProjectsBySearchEventImpl) then) =
+      __$$FetchProjectsBySearchEventImplCopyWithImpl<$Res>;
+  @useResult
+  $Res call({String query, List<String> workflowStatuses});
+}
+
+/// @nodoc
+class __$$FetchProjectsBySearchEventImplCopyWithImpl<$Res>
+    extends _$ProjectEventCopyWithImpl<$Res, _$FetchProjectsBySearchEventImpl>
+    implements _$$FetchProjectsBySearchEventImplCopyWith<$Res> {
+  __$$FetchProjectsBySearchEventImplCopyWithImpl(
+      _$FetchProjectsBySearchEventImpl _value,
+      $Res Function(_$FetchProjectsBySearchEventImpl) _then)
+      : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? query = null,
+    Object? workflowStatuses = null,
+  }) {
+    return _then(_$FetchProjectsBySearchEventImpl(
+      query: null == query
+          ? _value.query
+          : query // ignore: cast_nullable_to_non_nullable
+              as String,
+      workflowStatuses: null == workflowStatuses
+          ? _value._workflowStatuses
+          : workflowStatuses // ignore: cast_nullable_to_non_nullable
+              as List<String>,
+    ));
+  }
+}
+
+/// @nodoc
+
+class _$FetchProjectsBySearchEventImpl implements FetchProjectsBySearchEvent {
+  const _$FetchProjectsBySearchEventImpl(
+      {required this.query, required final List<String> workflowStatuses})
+      : _workflowStatuses = workflowStatuses;
+
+  @override
+  final String query;
+  final List<String> _workflowStatuses;
+  @override
+  List<String> get workflowStatuses {
+    if (_workflowStatuses is EqualUnmodifiableListView)
+      return _workflowStatuses;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_workflowStatuses);
+  }
+
+  @override
+  String toString() {
+    return 'ProjectEvent.fetchProjectsBySearch(query: $query, workflowStatuses: $workflowStatuses)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$FetchProjectsBySearchEventImpl &&
+            (identical(other.query, query) || other.query == query) &&
+            const DeepCollectionEquality()
+                .equals(other._workflowStatuses, _workflowStatuses));
+  }
+
+  @override
+  int get hashCode => Object.hash(runtimeType, query,
+      const DeepCollectionEquality().hash(_workflowStatuses));
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$FetchProjectsBySearchEventImplCopyWith<_$FetchProjectsBySearchEventImpl>
+      get copyWith => __$$FetchProjectsBySearchEventImplCopyWithImpl<
+          _$FetchProjectsBySearchEventImpl>(this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function(String projectId) selectProject,
+    required TResult Function(List<String> workflowStatuses)
+        fetchProjectsByWorkflow,
+    required TResult Function(ProjectWorkflow workflow, String userType)
+        addUnSubmitted,
+    required TResult Function(List<String> statuses, String userType)
+        loadUnSubmitted,
+    required TResult Function(String projectId, String userType)
+        deleteUnSubmitted,
+    required TResult Function(String userType) fetchAllReportCounts,
+    required TResult Function(String userType) getNewlyAssigned,
+    required TResult Function(
+            List<String> workflowStatuses, String sortDirection)
+        fetchProjectsSorted,
+    required TResult Function(String query, List<String> workflowStatuses)
+        fetchProjectsBySearch,
+  }) {
+    return fetchProjectsBySearch(query, workflowStatuses);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function(String projectId)? selectProject,
+    TResult? Function(List<String> workflowStatuses)? fetchProjectsByWorkflow,
+    TResult? Function(ProjectWorkflow workflow, String userType)?
+        addUnSubmitted,
+    TResult? Function(List<String> statuses, String userType)? loadUnSubmitted,
+    TResult? Function(String projectId, String userType)? deleteUnSubmitted,
+    TResult? Function(String userType)? fetchAllReportCounts,
+    TResult? Function(String userType)? getNewlyAssigned,
+    TResult? Function(List<String> workflowStatuses, String sortDirection)?
+        fetchProjectsSorted,
+    TResult? Function(String query, List<String> workflowStatuses)?
+        fetchProjectsBySearch,
+  }) {
+    return fetchProjectsBySearch?.call(query, workflowStatuses);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function(String projectId)? selectProject,
+    TResult Function(List<String> workflowStatuses)? fetchProjectsByWorkflow,
+    TResult Function(ProjectWorkflow workflow, String userType)? addUnSubmitted,
+    TResult Function(List<String> statuses, String userType)? loadUnSubmitted,
+    TResult Function(String projectId, String userType)? deleteUnSubmitted,
+    TResult Function(String userType)? fetchAllReportCounts,
+    TResult Function(String userType)? getNewlyAssigned,
+    TResult Function(List<String> workflowStatuses, String sortDirection)?
+        fetchProjectsSorted,
+    TResult Function(String query, List<String> workflowStatuses)?
+        fetchProjectsBySearch,
+    required TResult orElse(),
+  }) {
+    if (fetchProjectsBySearch != null) {
+      return fetchProjectsBySearch(query, workflowStatuses);
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(ProjectSelectEvent value) selectProject,
+    required TResult Function(FetchProjectsByWorkflowEvent value)
+        fetchProjectsByWorkflow,
+    required TResult Function(AddUnSubmittedEvent value) addUnSubmitted,
+    required TResult Function(LoadUnSubmittedEvent value) loadUnSubmitted,
+    required TResult Function(DeleteUnSubmittedEvent value) deleteUnSubmitted,
+    required TResult Function(FetchAllReportCountsEvent value)
+        fetchAllReportCounts,
+    required TResult Function(GetNewlyAssignedEvent value) getNewlyAssigned,
+    required TResult Function(FetchProjectsSortedEvent value)
+        fetchProjectsSorted,
+    required TResult Function(FetchProjectsBySearchEvent value)
+        fetchProjectsBySearch,
+  }) {
+    return fetchProjectsBySearch(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(ProjectSelectEvent value)? selectProject,
+    TResult? Function(FetchProjectsByWorkflowEvent value)?
+        fetchProjectsByWorkflow,
+    TResult? Function(AddUnSubmittedEvent value)? addUnSubmitted,
+    TResult? Function(LoadUnSubmittedEvent value)? loadUnSubmitted,
+    TResult? Function(DeleteUnSubmittedEvent value)? deleteUnSubmitted,
+    TResult? Function(FetchAllReportCountsEvent value)? fetchAllReportCounts,
+    TResult? Function(GetNewlyAssignedEvent value)? getNewlyAssigned,
+    TResult? Function(FetchProjectsSortedEvent value)? fetchProjectsSorted,
+    TResult? Function(FetchProjectsBySearchEvent value)? fetchProjectsBySearch,
+  }) {
+    return fetchProjectsBySearch?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(ProjectSelectEvent value)? selectProject,
+    TResult Function(FetchProjectsByWorkflowEvent value)?
+        fetchProjectsByWorkflow,
+    TResult Function(AddUnSubmittedEvent value)? addUnSubmitted,
+    TResult Function(LoadUnSubmittedEvent value)? loadUnSubmitted,
+    TResult Function(DeleteUnSubmittedEvent value)? deleteUnSubmitted,
+    TResult Function(FetchAllReportCountsEvent value)? fetchAllReportCounts,
+    TResult Function(GetNewlyAssignedEvent value)? getNewlyAssigned,
+    TResult Function(FetchProjectsSortedEvent value)? fetchProjectsSorted,
+    TResult Function(FetchProjectsBySearchEvent value)? fetchProjectsBySearch,
+    required TResult orElse(),
+  }) {
+    if (fetchProjectsBySearch != null) {
+      return fetchProjectsBySearch(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class FetchProjectsBySearchEvent implements ProjectEvent {
+  const factory FetchProjectsBySearchEvent(
+          {required final String query,
+          required final List<String> workflowStatuses}) =
+      _$FetchProjectsBySearchEventImpl;
+
+  String get query;
+  List<String> get workflowStatuses;
+  @JsonKey(ignore: true)
+  _$$FetchProjectsBySearchEventImplCopyWith<_$FetchProjectsBySearchEventImpl>
+      get copyWith => throw _privateConstructorUsedError;
+}
+
+/// @nodoc
 mixin _$ProjectState {
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
@@ -1425,6 +2031,11 @@ mixin _$ProjectState {
             int newReportCount, int inboxCount, int submittedCount)
         reportCountsLoaded,
     required TResult Function(int count) newlyAssignedLoaded,
+    required TResult Function(
+            List<ProjectWorkflow> projectsList, String sortDirection)
+        sorted,
+    required TResult Function() searchLoading,
+    required TResult Function(List<ProjectWorkflow> results) searchResults,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -1439,6 +2050,10 @@ mixin _$ProjectState {
     TResult? Function(int newReportCount, int inboxCount, int submittedCount)?
         reportCountsLoaded,
     TResult? Function(int count)? newlyAssignedLoaded,
+    TResult? Function(List<ProjectWorkflow> projectsList, String sortDirection)?
+        sorted,
+    TResult? Function()? searchLoading,
+    TResult? Function(List<ProjectWorkflow> results)? searchResults,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -1453,6 +2068,10 @@ mixin _$ProjectState {
     TResult Function(int newReportCount, int inboxCount, int submittedCount)?
         reportCountsLoaded,
     TResult Function(int count)? newlyAssignedLoaded,
+    TResult Function(List<ProjectWorkflow> projectsList, String sortDirection)?
+        sorted,
+    TResult Function()? searchLoading,
+    TResult Function(List<ProjectWorkflow> results)? searchResults,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -1467,6 +2086,9 @@ mixin _$ProjectState {
     required TResult Function(_UnSubmittedDeleted value) unSubmittedDeleted,
     required TResult Function(ReportCountsLoaded value) reportCountsLoaded,
     required TResult Function(NewlyAssignedLoaded value) newlyAssignedLoaded,
+    required TResult Function(ProjectSortedState value) sorted,
+    required TResult Function(ProjectSearchLoading value) searchLoading,
+    required TResult Function(ProjectSearchResults value) searchResults,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -1480,6 +2102,9 @@ mixin _$ProjectState {
     TResult? Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
     TResult? Function(ReportCountsLoaded value)? reportCountsLoaded,
     TResult? Function(NewlyAssignedLoaded value)? newlyAssignedLoaded,
+    TResult? Function(ProjectSortedState value)? sorted,
+    TResult? Function(ProjectSearchLoading value)? searchLoading,
+    TResult? Function(ProjectSearchResults value)? searchResults,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -1493,6 +2118,9 @@ mixin _$ProjectState {
     TResult Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
     TResult Function(ReportCountsLoaded value)? reportCountsLoaded,
     TResult Function(NewlyAssignedLoaded value)? newlyAssignedLoaded,
+    TResult Function(ProjectSortedState value)? sorted,
+    TResult Function(ProjectSearchLoading value)? searchLoading,
+    TResult Function(ProjectSearchResults value)? searchResults,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -1567,6 +2195,11 @@ class _$ProjectInitialStateImpl implements _ProjectInitialState {
             int newReportCount, int inboxCount, int submittedCount)
         reportCountsLoaded,
     required TResult Function(int count) newlyAssignedLoaded,
+    required TResult Function(
+            List<ProjectWorkflow> projectsList, String sortDirection)
+        sorted,
+    required TResult Function() searchLoading,
+    required TResult Function(List<ProjectWorkflow> results) searchResults,
   }) {
     return initial();
   }
@@ -1584,6 +2217,10 @@ class _$ProjectInitialStateImpl implements _ProjectInitialState {
     TResult? Function(int newReportCount, int inboxCount, int submittedCount)?
         reportCountsLoaded,
     TResult? Function(int count)? newlyAssignedLoaded,
+    TResult? Function(List<ProjectWorkflow> projectsList, String sortDirection)?
+        sorted,
+    TResult? Function()? searchLoading,
+    TResult? Function(List<ProjectWorkflow> results)? searchResults,
   }) {
     return initial?.call();
   }
@@ -1601,6 +2238,10 @@ class _$ProjectInitialStateImpl implements _ProjectInitialState {
     TResult Function(int newReportCount, int inboxCount, int submittedCount)?
         reportCountsLoaded,
     TResult Function(int count)? newlyAssignedLoaded,
+    TResult Function(List<ProjectWorkflow> projectsList, String sortDirection)?
+        sorted,
+    TResult Function()? searchLoading,
+    TResult Function(List<ProjectWorkflow> results)? searchResults,
     required TResult orElse(),
   }) {
     if (initial != null) {
@@ -1621,6 +2262,9 @@ class _$ProjectInitialStateImpl implements _ProjectInitialState {
     required TResult Function(_UnSubmittedDeleted value) unSubmittedDeleted,
     required TResult Function(ReportCountsLoaded value) reportCountsLoaded,
     required TResult Function(NewlyAssignedLoaded value) newlyAssignedLoaded,
+    required TResult Function(ProjectSortedState value) sorted,
+    required TResult Function(ProjectSearchLoading value) searchLoading,
+    required TResult Function(ProjectSearchResults value) searchResults,
   }) {
     return initial(this);
   }
@@ -1637,6 +2281,9 @@ class _$ProjectInitialStateImpl implements _ProjectInitialState {
     TResult? Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
     TResult? Function(ReportCountsLoaded value)? reportCountsLoaded,
     TResult? Function(NewlyAssignedLoaded value)? newlyAssignedLoaded,
+    TResult? Function(ProjectSortedState value)? sorted,
+    TResult? Function(ProjectSearchLoading value)? searchLoading,
+    TResult? Function(ProjectSearchResults value)? searchResults,
   }) {
     return initial?.call(this);
   }
@@ -1653,6 +2300,9 @@ class _$ProjectInitialStateImpl implements _ProjectInitialState {
     TResult Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
     TResult Function(ReportCountsLoaded value)? reportCountsLoaded,
     TResult Function(NewlyAssignedLoaded value)? newlyAssignedLoaded,
+    TResult Function(ProjectSortedState value)? sorted,
+    TResult Function(ProjectSearchLoading value)? searchLoading,
+    TResult Function(ProjectSearchResults value)? searchResults,
     required TResult orElse(),
   }) {
     if (initial != null) {
@@ -1717,6 +2367,11 @@ class _$ProjectLoadingStateImpl implements _ProjectLoadingState {
             int newReportCount, int inboxCount, int submittedCount)
         reportCountsLoaded,
     required TResult Function(int count) newlyAssignedLoaded,
+    required TResult Function(
+            List<ProjectWorkflow> projectsList, String sortDirection)
+        sorted,
+    required TResult Function() searchLoading,
+    required TResult Function(List<ProjectWorkflow> results) searchResults,
   }) {
     return loading();
   }
@@ -1734,6 +2389,10 @@ class _$ProjectLoadingStateImpl implements _ProjectLoadingState {
     TResult? Function(int newReportCount, int inboxCount, int submittedCount)?
         reportCountsLoaded,
     TResult? Function(int count)? newlyAssignedLoaded,
+    TResult? Function(List<ProjectWorkflow> projectsList, String sortDirection)?
+        sorted,
+    TResult? Function()? searchLoading,
+    TResult? Function(List<ProjectWorkflow> results)? searchResults,
   }) {
     return loading?.call();
   }
@@ -1751,6 +2410,10 @@ class _$ProjectLoadingStateImpl implements _ProjectLoadingState {
     TResult Function(int newReportCount, int inboxCount, int submittedCount)?
         reportCountsLoaded,
     TResult Function(int count)? newlyAssignedLoaded,
+    TResult Function(List<ProjectWorkflow> projectsList, String sortDirection)?
+        sorted,
+    TResult Function()? searchLoading,
+    TResult Function(List<ProjectWorkflow> results)? searchResults,
     required TResult orElse(),
   }) {
     if (loading != null) {
@@ -1771,6 +2434,9 @@ class _$ProjectLoadingStateImpl implements _ProjectLoadingState {
     required TResult Function(_UnSubmittedDeleted value) unSubmittedDeleted,
     required TResult Function(ReportCountsLoaded value) reportCountsLoaded,
     required TResult Function(NewlyAssignedLoaded value) newlyAssignedLoaded,
+    required TResult Function(ProjectSortedState value) sorted,
+    required TResult Function(ProjectSearchLoading value) searchLoading,
+    required TResult Function(ProjectSearchResults value) searchResults,
   }) {
     return loading(this);
   }
@@ -1787,6 +2453,9 @@ class _$ProjectLoadingStateImpl implements _ProjectLoadingState {
     TResult? Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
     TResult? Function(ReportCountsLoaded value)? reportCountsLoaded,
     TResult? Function(NewlyAssignedLoaded value)? newlyAssignedLoaded,
+    TResult? Function(ProjectSortedState value)? sorted,
+    TResult? Function(ProjectSearchLoading value)? searchLoading,
+    TResult? Function(ProjectSearchResults value)? searchResults,
   }) {
     return loading?.call(this);
   }
@@ -1803,6 +2472,9 @@ class _$ProjectLoadingStateImpl implements _ProjectLoadingState {
     TResult Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
     TResult Function(ReportCountsLoaded value)? reportCountsLoaded,
     TResult Function(NewlyAssignedLoaded value)? newlyAssignedLoaded,
+    TResult Function(ProjectSortedState value)? sorted,
+    TResult Function(ProjectSearchLoading value)? searchLoading,
+    TResult Function(ProjectSearchResults value)? searchResults,
     required TResult orElse(),
   }) {
     if (loading != null) {
@@ -1901,6 +2573,11 @@ class _$ProjectFetchedStateImpl implements ProjectFetchedState {
             int newReportCount, int inboxCount, int submittedCount)
         reportCountsLoaded,
     required TResult Function(int count) newlyAssignedLoaded,
+    required TResult Function(
+            List<ProjectWorkflow> projectsList, String sortDirection)
+        sorted,
+    required TResult Function() searchLoading,
+    required TResult Function(List<ProjectWorkflow> results) searchResults,
   }) {
     return fetched(projectsList);
   }
@@ -1918,6 +2595,10 @@ class _$ProjectFetchedStateImpl implements ProjectFetchedState {
     TResult? Function(int newReportCount, int inboxCount, int submittedCount)?
         reportCountsLoaded,
     TResult? Function(int count)? newlyAssignedLoaded,
+    TResult? Function(List<ProjectWorkflow> projectsList, String sortDirection)?
+        sorted,
+    TResult? Function()? searchLoading,
+    TResult? Function(List<ProjectWorkflow> results)? searchResults,
   }) {
     return fetched?.call(projectsList);
   }
@@ -1935,6 +2616,10 @@ class _$ProjectFetchedStateImpl implements ProjectFetchedState {
     TResult Function(int newReportCount, int inboxCount, int submittedCount)?
         reportCountsLoaded,
     TResult Function(int count)? newlyAssignedLoaded,
+    TResult Function(List<ProjectWorkflow> projectsList, String sortDirection)?
+        sorted,
+    TResult Function()? searchLoading,
+    TResult Function(List<ProjectWorkflow> results)? searchResults,
     required TResult orElse(),
   }) {
     if (fetched != null) {
@@ -1955,6 +2640,9 @@ class _$ProjectFetchedStateImpl implements ProjectFetchedState {
     required TResult Function(_UnSubmittedDeleted value) unSubmittedDeleted,
     required TResult Function(ReportCountsLoaded value) reportCountsLoaded,
     required TResult Function(NewlyAssignedLoaded value) newlyAssignedLoaded,
+    required TResult Function(ProjectSortedState value) sorted,
+    required TResult Function(ProjectSearchLoading value) searchLoading,
+    required TResult Function(ProjectSearchResults value) searchResults,
   }) {
     return fetched(this);
   }
@@ -1971,6 +2659,9 @@ class _$ProjectFetchedStateImpl implements ProjectFetchedState {
     TResult? Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
     TResult? Function(ReportCountsLoaded value)? reportCountsLoaded,
     TResult? Function(NewlyAssignedLoaded value)? newlyAssignedLoaded,
+    TResult? Function(ProjectSortedState value)? sorted,
+    TResult? Function(ProjectSearchLoading value)? searchLoading,
+    TResult? Function(ProjectSearchResults value)? searchResults,
   }) {
     return fetched?.call(this);
   }
@@ -1987,6 +2678,9 @@ class _$ProjectFetchedStateImpl implements ProjectFetchedState {
     TResult Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
     TResult Function(ReportCountsLoaded value)? reportCountsLoaded,
     TResult Function(NewlyAssignedLoaded value)? newlyAssignedLoaded,
+    TResult Function(ProjectSortedState value)? sorted,
+    TResult Function(ProjectSearchLoading value)? searchLoading,
+    TResult Function(ProjectSearchResults value)? searchResults,
     required TResult orElse(),
   }) {
     if (fetched != null) {
@@ -2085,6 +2779,11 @@ class _$ProjectSelectedStateImpl implements ProjectSelectedState {
             int newReportCount, int inboxCount, int submittedCount)
         reportCountsLoaded,
     required TResult Function(int count) newlyAssignedLoaded,
+    required TResult Function(
+            List<ProjectWorkflow> projectsList, String sortDirection)
+        sorted,
+    required TResult Function() searchLoading,
+    required TResult Function(List<ProjectWorkflow> results) searchResults,
   }) {
     return selected(projectId);
   }
@@ -2102,6 +2801,10 @@ class _$ProjectSelectedStateImpl implements ProjectSelectedState {
     TResult? Function(int newReportCount, int inboxCount, int submittedCount)?
         reportCountsLoaded,
     TResult? Function(int count)? newlyAssignedLoaded,
+    TResult? Function(List<ProjectWorkflow> projectsList, String sortDirection)?
+        sorted,
+    TResult? Function()? searchLoading,
+    TResult? Function(List<ProjectWorkflow> results)? searchResults,
   }) {
     return selected?.call(projectId);
   }
@@ -2119,6 +2822,10 @@ class _$ProjectSelectedStateImpl implements ProjectSelectedState {
     TResult Function(int newReportCount, int inboxCount, int submittedCount)?
         reportCountsLoaded,
     TResult Function(int count)? newlyAssignedLoaded,
+    TResult Function(List<ProjectWorkflow> projectsList, String sortDirection)?
+        sorted,
+    TResult Function()? searchLoading,
+    TResult Function(List<ProjectWorkflow> results)? searchResults,
     required TResult orElse(),
   }) {
     if (selected != null) {
@@ -2139,6 +2846,9 @@ class _$ProjectSelectedStateImpl implements ProjectSelectedState {
     required TResult Function(_UnSubmittedDeleted value) unSubmittedDeleted,
     required TResult Function(ReportCountsLoaded value) reportCountsLoaded,
     required TResult Function(NewlyAssignedLoaded value) newlyAssignedLoaded,
+    required TResult Function(ProjectSortedState value) sorted,
+    required TResult Function(ProjectSearchLoading value) searchLoading,
+    required TResult Function(ProjectSearchResults value) searchResults,
   }) {
     return selected(this);
   }
@@ -2155,6 +2865,9 @@ class _$ProjectSelectedStateImpl implements ProjectSelectedState {
     TResult? Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
     TResult? Function(ReportCountsLoaded value)? reportCountsLoaded,
     TResult? Function(NewlyAssignedLoaded value)? newlyAssignedLoaded,
+    TResult? Function(ProjectSortedState value)? sorted,
+    TResult? Function(ProjectSearchLoading value)? searchLoading,
+    TResult? Function(ProjectSearchResults value)? searchResults,
   }) {
     return selected?.call(this);
   }
@@ -2171,6 +2884,9 @@ class _$ProjectSelectedStateImpl implements ProjectSelectedState {
     TResult Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
     TResult Function(ReportCountsLoaded value)? reportCountsLoaded,
     TResult Function(NewlyAssignedLoaded value)? newlyAssignedLoaded,
+    TResult Function(ProjectSortedState value)? sorted,
+    TResult Function(ProjectSearchLoading value)? searchLoading,
+    TResult Function(ProjectSearchResults value)? searchResults,
     required TResult orElse(),
   }) {
     if (selected != null) {
@@ -2275,6 +2991,11 @@ class _$UnSubmittedLoadedImpl implements _UnSubmittedLoaded {
             int newReportCount, int inboxCount, int submittedCount)
         reportCountsLoaded,
     required TResult Function(int count) newlyAssignedLoaded,
+    required TResult Function(
+            List<ProjectWorkflow> projectsList, String sortDirection)
+        sorted,
+    required TResult Function() searchLoading,
+    required TResult Function(List<ProjectWorkflow> results) searchResults,
   }) {
     return unSubmittedLoaded(unSubmitted);
   }
@@ -2292,6 +3013,10 @@ class _$UnSubmittedLoadedImpl implements _UnSubmittedLoaded {
     TResult? Function(int newReportCount, int inboxCount, int submittedCount)?
         reportCountsLoaded,
     TResult? Function(int count)? newlyAssignedLoaded,
+    TResult? Function(List<ProjectWorkflow> projectsList, String sortDirection)?
+        sorted,
+    TResult? Function()? searchLoading,
+    TResult? Function(List<ProjectWorkflow> results)? searchResults,
   }) {
     return unSubmittedLoaded?.call(unSubmitted);
   }
@@ -2309,6 +3034,10 @@ class _$UnSubmittedLoadedImpl implements _UnSubmittedLoaded {
     TResult Function(int newReportCount, int inboxCount, int submittedCount)?
         reportCountsLoaded,
     TResult Function(int count)? newlyAssignedLoaded,
+    TResult Function(List<ProjectWorkflow> projectsList, String sortDirection)?
+        sorted,
+    TResult Function()? searchLoading,
+    TResult Function(List<ProjectWorkflow> results)? searchResults,
     required TResult orElse(),
   }) {
     if (unSubmittedLoaded != null) {
@@ -2329,6 +3058,9 @@ class _$UnSubmittedLoadedImpl implements _UnSubmittedLoaded {
     required TResult Function(_UnSubmittedDeleted value) unSubmittedDeleted,
     required TResult Function(ReportCountsLoaded value) reportCountsLoaded,
     required TResult Function(NewlyAssignedLoaded value) newlyAssignedLoaded,
+    required TResult Function(ProjectSortedState value) sorted,
+    required TResult Function(ProjectSearchLoading value) searchLoading,
+    required TResult Function(ProjectSearchResults value) searchResults,
   }) {
     return unSubmittedLoaded(this);
   }
@@ -2345,6 +3077,9 @@ class _$UnSubmittedLoadedImpl implements _UnSubmittedLoaded {
     TResult? Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
     TResult? Function(ReportCountsLoaded value)? reportCountsLoaded,
     TResult? Function(NewlyAssignedLoaded value)? newlyAssignedLoaded,
+    TResult? Function(ProjectSortedState value)? sorted,
+    TResult? Function(ProjectSearchLoading value)? searchLoading,
+    TResult? Function(ProjectSearchResults value)? searchResults,
   }) {
     return unSubmittedLoaded?.call(this);
   }
@@ -2361,6 +3096,9 @@ class _$UnSubmittedLoadedImpl implements _UnSubmittedLoaded {
     TResult Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
     TResult Function(ReportCountsLoaded value)? reportCountsLoaded,
     TResult Function(NewlyAssignedLoaded value)? newlyAssignedLoaded,
+    TResult Function(ProjectSortedState value)? sorted,
+    TResult Function(ProjectSearchLoading value)? searchLoading,
+    TResult Function(ProjectSearchResults value)? searchResults,
     required TResult orElse(),
   }) {
     if (unSubmittedLoaded != null) {
@@ -2457,6 +3195,11 @@ class _$UnSubmittedAddedImpl implements _UnSubmittedAdded {
             int newReportCount, int inboxCount, int submittedCount)
         reportCountsLoaded,
     required TResult Function(int count) newlyAssignedLoaded,
+    required TResult Function(
+            List<ProjectWorkflow> projectsList, String sortDirection)
+        sorted,
+    required TResult Function() searchLoading,
+    required TResult Function(List<ProjectWorkflow> results) searchResults,
   }) {
     return unSubmittedAdded(entry);
   }
@@ -2474,6 +3217,10 @@ class _$UnSubmittedAddedImpl implements _UnSubmittedAdded {
     TResult? Function(int newReportCount, int inboxCount, int submittedCount)?
         reportCountsLoaded,
     TResult? Function(int count)? newlyAssignedLoaded,
+    TResult? Function(List<ProjectWorkflow> projectsList, String sortDirection)?
+        sorted,
+    TResult? Function()? searchLoading,
+    TResult? Function(List<ProjectWorkflow> results)? searchResults,
   }) {
     return unSubmittedAdded?.call(entry);
   }
@@ -2491,6 +3238,10 @@ class _$UnSubmittedAddedImpl implements _UnSubmittedAdded {
     TResult Function(int newReportCount, int inboxCount, int submittedCount)?
         reportCountsLoaded,
     TResult Function(int count)? newlyAssignedLoaded,
+    TResult Function(List<ProjectWorkflow> projectsList, String sortDirection)?
+        sorted,
+    TResult Function()? searchLoading,
+    TResult Function(List<ProjectWorkflow> results)? searchResults,
     required TResult orElse(),
   }) {
     if (unSubmittedAdded != null) {
@@ -2511,6 +3262,9 @@ class _$UnSubmittedAddedImpl implements _UnSubmittedAdded {
     required TResult Function(_UnSubmittedDeleted value) unSubmittedDeleted,
     required TResult Function(ReportCountsLoaded value) reportCountsLoaded,
     required TResult Function(NewlyAssignedLoaded value) newlyAssignedLoaded,
+    required TResult Function(ProjectSortedState value) sorted,
+    required TResult Function(ProjectSearchLoading value) searchLoading,
+    required TResult Function(ProjectSearchResults value) searchResults,
   }) {
     return unSubmittedAdded(this);
   }
@@ -2527,6 +3281,9 @@ class _$UnSubmittedAddedImpl implements _UnSubmittedAdded {
     TResult? Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
     TResult? Function(ReportCountsLoaded value)? reportCountsLoaded,
     TResult? Function(NewlyAssignedLoaded value)? newlyAssignedLoaded,
+    TResult? Function(ProjectSortedState value)? sorted,
+    TResult? Function(ProjectSearchLoading value)? searchLoading,
+    TResult? Function(ProjectSearchResults value)? searchResults,
   }) {
     return unSubmittedAdded?.call(this);
   }
@@ -2543,6 +3300,9 @@ class _$UnSubmittedAddedImpl implements _UnSubmittedAdded {
     TResult Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
     TResult Function(ReportCountsLoaded value)? reportCountsLoaded,
     TResult Function(NewlyAssignedLoaded value)? newlyAssignedLoaded,
+    TResult Function(ProjectSortedState value)? sorted,
+    TResult Function(ProjectSearchLoading value)? searchLoading,
+    TResult Function(ProjectSearchResults value)? searchResults,
     required TResult orElse(),
   }) {
     if (unSubmittedAdded != null) {
@@ -2612,6 +3372,11 @@ class _$UnSubmittedDeletedImpl implements _UnSubmittedDeleted {
             int newReportCount, int inboxCount, int submittedCount)
         reportCountsLoaded,
     required TResult Function(int count) newlyAssignedLoaded,
+    required TResult Function(
+            List<ProjectWorkflow> projectsList, String sortDirection)
+        sorted,
+    required TResult Function() searchLoading,
+    required TResult Function(List<ProjectWorkflow> results) searchResults,
   }) {
     return unSubmittedDeleted();
   }
@@ -2629,6 +3394,10 @@ class _$UnSubmittedDeletedImpl implements _UnSubmittedDeleted {
     TResult? Function(int newReportCount, int inboxCount, int submittedCount)?
         reportCountsLoaded,
     TResult? Function(int count)? newlyAssignedLoaded,
+    TResult? Function(List<ProjectWorkflow> projectsList, String sortDirection)?
+        sorted,
+    TResult? Function()? searchLoading,
+    TResult? Function(List<ProjectWorkflow> results)? searchResults,
   }) {
     return unSubmittedDeleted?.call();
   }
@@ -2646,6 +3415,10 @@ class _$UnSubmittedDeletedImpl implements _UnSubmittedDeleted {
     TResult Function(int newReportCount, int inboxCount, int submittedCount)?
         reportCountsLoaded,
     TResult Function(int count)? newlyAssignedLoaded,
+    TResult Function(List<ProjectWorkflow> projectsList, String sortDirection)?
+        sorted,
+    TResult Function()? searchLoading,
+    TResult Function(List<ProjectWorkflow> results)? searchResults,
     required TResult orElse(),
   }) {
     if (unSubmittedDeleted != null) {
@@ -2666,6 +3439,9 @@ class _$UnSubmittedDeletedImpl implements _UnSubmittedDeleted {
     required TResult Function(_UnSubmittedDeleted value) unSubmittedDeleted,
     required TResult Function(ReportCountsLoaded value) reportCountsLoaded,
     required TResult Function(NewlyAssignedLoaded value) newlyAssignedLoaded,
+    required TResult Function(ProjectSortedState value) sorted,
+    required TResult Function(ProjectSearchLoading value) searchLoading,
+    required TResult Function(ProjectSearchResults value) searchResults,
   }) {
     return unSubmittedDeleted(this);
   }
@@ -2682,6 +3458,9 @@ class _$UnSubmittedDeletedImpl implements _UnSubmittedDeleted {
     TResult? Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
     TResult? Function(ReportCountsLoaded value)? reportCountsLoaded,
     TResult? Function(NewlyAssignedLoaded value)? newlyAssignedLoaded,
+    TResult? Function(ProjectSortedState value)? sorted,
+    TResult? Function(ProjectSearchLoading value)? searchLoading,
+    TResult? Function(ProjectSearchResults value)? searchResults,
   }) {
     return unSubmittedDeleted?.call(this);
   }
@@ -2698,6 +3477,9 @@ class _$UnSubmittedDeletedImpl implements _UnSubmittedDeleted {
     TResult Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
     TResult Function(ReportCountsLoaded value)? reportCountsLoaded,
     TResult Function(NewlyAssignedLoaded value)? newlyAssignedLoaded,
+    TResult Function(ProjectSortedState value)? sorted,
+    TResult Function(ProjectSearchLoading value)? searchLoading,
+    TResult Function(ProjectSearchResults value)? searchResults,
     required TResult orElse(),
   }) {
     if (unSubmittedDeleted != null) {
@@ -2811,6 +3593,11 @@ class _$ReportCountsLoadedImpl implements ReportCountsLoaded {
             int newReportCount, int inboxCount, int submittedCount)
         reportCountsLoaded,
     required TResult Function(int count) newlyAssignedLoaded,
+    required TResult Function(
+            List<ProjectWorkflow> projectsList, String sortDirection)
+        sorted,
+    required TResult Function() searchLoading,
+    required TResult Function(List<ProjectWorkflow> results) searchResults,
   }) {
     return reportCountsLoaded(newReportCount, inboxCount, submittedCount);
   }
@@ -2828,6 +3615,10 @@ class _$ReportCountsLoadedImpl implements ReportCountsLoaded {
     TResult? Function(int newReportCount, int inboxCount, int submittedCount)?
         reportCountsLoaded,
     TResult? Function(int count)? newlyAssignedLoaded,
+    TResult? Function(List<ProjectWorkflow> projectsList, String sortDirection)?
+        sorted,
+    TResult? Function()? searchLoading,
+    TResult? Function(List<ProjectWorkflow> results)? searchResults,
   }) {
     return reportCountsLoaded?.call(newReportCount, inboxCount, submittedCount);
   }
@@ -2845,6 +3636,10 @@ class _$ReportCountsLoadedImpl implements ReportCountsLoaded {
     TResult Function(int newReportCount, int inboxCount, int submittedCount)?
         reportCountsLoaded,
     TResult Function(int count)? newlyAssignedLoaded,
+    TResult Function(List<ProjectWorkflow> projectsList, String sortDirection)?
+        sorted,
+    TResult Function()? searchLoading,
+    TResult Function(List<ProjectWorkflow> results)? searchResults,
     required TResult orElse(),
   }) {
     if (reportCountsLoaded != null) {
@@ -2865,6 +3660,9 @@ class _$ReportCountsLoadedImpl implements ReportCountsLoaded {
     required TResult Function(_UnSubmittedDeleted value) unSubmittedDeleted,
     required TResult Function(ReportCountsLoaded value) reportCountsLoaded,
     required TResult Function(NewlyAssignedLoaded value) newlyAssignedLoaded,
+    required TResult Function(ProjectSortedState value) sorted,
+    required TResult Function(ProjectSearchLoading value) searchLoading,
+    required TResult Function(ProjectSearchResults value) searchResults,
   }) {
     return reportCountsLoaded(this);
   }
@@ -2881,6 +3679,9 @@ class _$ReportCountsLoadedImpl implements ReportCountsLoaded {
     TResult? Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
     TResult? Function(ReportCountsLoaded value)? reportCountsLoaded,
     TResult? Function(NewlyAssignedLoaded value)? newlyAssignedLoaded,
+    TResult? Function(ProjectSortedState value)? sorted,
+    TResult? Function(ProjectSearchLoading value)? searchLoading,
+    TResult? Function(ProjectSearchResults value)? searchResults,
   }) {
     return reportCountsLoaded?.call(this);
   }
@@ -2897,6 +3698,9 @@ class _$ReportCountsLoadedImpl implements ReportCountsLoaded {
     TResult Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
     TResult Function(ReportCountsLoaded value)? reportCountsLoaded,
     TResult Function(NewlyAssignedLoaded value)? newlyAssignedLoaded,
+    TResult Function(ProjectSortedState value)? sorted,
+    TResult Function(ProjectSearchLoading value)? searchLoading,
+    TResult Function(ProjectSearchResults value)? searchResults,
     required TResult orElse(),
   }) {
     if (reportCountsLoaded != null) {
@@ -2997,6 +3801,11 @@ class _$NewlyAssignedLoadedImpl implements NewlyAssignedLoaded {
             int newReportCount, int inboxCount, int submittedCount)
         reportCountsLoaded,
     required TResult Function(int count) newlyAssignedLoaded,
+    required TResult Function(
+            List<ProjectWorkflow> projectsList, String sortDirection)
+        sorted,
+    required TResult Function() searchLoading,
+    required TResult Function(List<ProjectWorkflow> results) searchResults,
   }) {
     return newlyAssignedLoaded(count);
   }
@@ -3014,6 +3823,10 @@ class _$NewlyAssignedLoadedImpl implements NewlyAssignedLoaded {
     TResult? Function(int newReportCount, int inboxCount, int submittedCount)?
         reportCountsLoaded,
     TResult? Function(int count)? newlyAssignedLoaded,
+    TResult? Function(List<ProjectWorkflow> projectsList, String sortDirection)?
+        sorted,
+    TResult? Function()? searchLoading,
+    TResult? Function(List<ProjectWorkflow> results)? searchResults,
   }) {
     return newlyAssignedLoaded?.call(count);
   }
@@ -3031,6 +3844,10 @@ class _$NewlyAssignedLoadedImpl implements NewlyAssignedLoaded {
     TResult Function(int newReportCount, int inboxCount, int submittedCount)?
         reportCountsLoaded,
     TResult Function(int count)? newlyAssignedLoaded,
+    TResult Function(List<ProjectWorkflow> projectsList, String sortDirection)?
+        sorted,
+    TResult Function()? searchLoading,
+    TResult Function(List<ProjectWorkflow> results)? searchResults,
     required TResult orElse(),
   }) {
     if (newlyAssignedLoaded != null) {
@@ -3051,6 +3868,9 @@ class _$NewlyAssignedLoadedImpl implements NewlyAssignedLoaded {
     required TResult Function(_UnSubmittedDeleted value) unSubmittedDeleted,
     required TResult Function(ReportCountsLoaded value) reportCountsLoaded,
     required TResult Function(NewlyAssignedLoaded value) newlyAssignedLoaded,
+    required TResult Function(ProjectSortedState value) sorted,
+    required TResult Function(ProjectSearchLoading value) searchLoading,
+    required TResult Function(ProjectSearchResults value) searchResults,
   }) {
     return newlyAssignedLoaded(this);
   }
@@ -3067,6 +3887,9 @@ class _$NewlyAssignedLoadedImpl implements NewlyAssignedLoaded {
     TResult? Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
     TResult? Function(ReportCountsLoaded value)? reportCountsLoaded,
     TResult? Function(NewlyAssignedLoaded value)? newlyAssignedLoaded,
+    TResult? Function(ProjectSortedState value)? sorted,
+    TResult? Function(ProjectSearchLoading value)? searchLoading,
+    TResult? Function(ProjectSearchResults value)? searchResults,
   }) {
     return newlyAssignedLoaded?.call(this);
   }
@@ -3083,6 +3906,9 @@ class _$NewlyAssignedLoadedImpl implements NewlyAssignedLoaded {
     TResult Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
     TResult Function(ReportCountsLoaded value)? reportCountsLoaded,
     TResult Function(NewlyAssignedLoaded value)? newlyAssignedLoaded,
+    TResult Function(ProjectSortedState value)? sorted,
+    TResult Function(ProjectSearchLoading value)? searchLoading,
+    TResult Function(ProjectSearchResults value)? searchResults,
     required TResult orElse(),
   }) {
     if (newlyAssignedLoaded != null) {
@@ -3100,4 +3926,614 @@ abstract class NewlyAssignedLoaded implements ProjectState {
   @JsonKey(ignore: true)
   _$$NewlyAssignedLoadedImplCopyWith<_$NewlyAssignedLoadedImpl> get copyWith =>
       throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class _$$ProjectSortedStateImplCopyWith<$Res> {
+  factory _$$ProjectSortedStateImplCopyWith(_$ProjectSortedStateImpl value,
+          $Res Function(_$ProjectSortedStateImpl) then) =
+      __$$ProjectSortedStateImplCopyWithImpl<$Res>;
+  @useResult
+  $Res call({List<ProjectWorkflow> projectsList, String sortDirection});
+}
+
+/// @nodoc
+class __$$ProjectSortedStateImplCopyWithImpl<$Res>
+    extends _$ProjectStateCopyWithImpl<$Res, _$ProjectSortedStateImpl>
+    implements _$$ProjectSortedStateImplCopyWith<$Res> {
+  __$$ProjectSortedStateImplCopyWithImpl(_$ProjectSortedStateImpl _value,
+      $Res Function(_$ProjectSortedStateImpl) _then)
+      : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? projectsList = null,
+    Object? sortDirection = null,
+  }) {
+    return _then(_$ProjectSortedStateImpl(
+      projectsList: null == projectsList
+          ? _value._projectsList
+          : projectsList // ignore: cast_nullable_to_non_nullable
+              as List<ProjectWorkflow>,
+      sortDirection: null == sortDirection
+          ? _value.sortDirection
+          : sortDirection // ignore: cast_nullable_to_non_nullable
+              as String,
+    ));
+  }
+}
+
+/// @nodoc
+
+class _$ProjectSortedStateImpl implements ProjectSortedState {
+  const _$ProjectSortedStateImpl(
+      {required final List<ProjectWorkflow> projectsList,
+      required this.sortDirection})
+      : _projectsList = projectsList;
+
+  final List<ProjectWorkflow> _projectsList;
+  @override
+  List<ProjectWorkflow> get projectsList {
+    if (_projectsList is EqualUnmodifiableListView) return _projectsList;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_projectsList);
+  }
+
+  @override
+  final String sortDirection;
+
+  @override
+  String toString() {
+    return 'ProjectState.sorted(projectsList: $projectsList, sortDirection: $sortDirection)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$ProjectSortedStateImpl &&
+            const DeepCollectionEquality()
+                .equals(other._projectsList, _projectsList) &&
+            (identical(other.sortDirection, sortDirection) ||
+                other.sortDirection == sortDirection));
+  }
+
+  @override
+  int get hashCode => Object.hash(runtimeType,
+      const DeepCollectionEquality().hash(_projectsList), sortDirection);
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$ProjectSortedStateImplCopyWith<_$ProjectSortedStateImpl> get copyWith =>
+      __$$ProjectSortedStateImplCopyWithImpl<_$ProjectSortedStateImpl>(
+          this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function() initial,
+    required TResult Function() loading,
+    required TResult Function(List<ProjectWorkflow> projectsList) fetched,
+    required TResult Function(String projectId) selected,
+    required TResult Function(List<ProjectWorkflow> unSubmitted)
+        unSubmittedLoaded,
+    required TResult Function(CacheUnsubmittedProject entry) unSubmittedAdded,
+    required TResult Function() unSubmittedDeleted,
+    required TResult Function(
+            int newReportCount, int inboxCount, int submittedCount)
+        reportCountsLoaded,
+    required TResult Function(int count) newlyAssignedLoaded,
+    required TResult Function(
+            List<ProjectWorkflow> projectsList, String sortDirection)
+        sorted,
+    required TResult Function() searchLoading,
+    required TResult Function(List<ProjectWorkflow> results) searchResults,
+  }) {
+    return sorted(projectsList, sortDirection);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function()? initial,
+    TResult? Function()? loading,
+    TResult? Function(List<ProjectWorkflow> projectsList)? fetched,
+    TResult? Function(String projectId)? selected,
+    TResult? Function(List<ProjectWorkflow> unSubmitted)? unSubmittedLoaded,
+    TResult? Function(CacheUnsubmittedProject entry)? unSubmittedAdded,
+    TResult? Function()? unSubmittedDeleted,
+    TResult? Function(int newReportCount, int inboxCount, int submittedCount)?
+        reportCountsLoaded,
+    TResult? Function(int count)? newlyAssignedLoaded,
+    TResult? Function(List<ProjectWorkflow> projectsList, String sortDirection)?
+        sorted,
+    TResult? Function()? searchLoading,
+    TResult? Function(List<ProjectWorkflow> results)? searchResults,
+  }) {
+    return sorted?.call(projectsList, sortDirection);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function()? initial,
+    TResult Function()? loading,
+    TResult Function(List<ProjectWorkflow> projectsList)? fetched,
+    TResult Function(String projectId)? selected,
+    TResult Function(List<ProjectWorkflow> unSubmitted)? unSubmittedLoaded,
+    TResult Function(CacheUnsubmittedProject entry)? unSubmittedAdded,
+    TResult Function()? unSubmittedDeleted,
+    TResult Function(int newReportCount, int inboxCount, int submittedCount)?
+        reportCountsLoaded,
+    TResult Function(int count)? newlyAssignedLoaded,
+    TResult Function(List<ProjectWorkflow> projectsList, String sortDirection)?
+        sorted,
+    TResult Function()? searchLoading,
+    TResult Function(List<ProjectWorkflow> results)? searchResults,
+    required TResult orElse(),
+  }) {
+    if (sorted != null) {
+      return sorted(projectsList, sortDirection);
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(_ProjectInitialState value) initial,
+    required TResult Function(_ProjectLoadingState value) loading,
+    required TResult Function(ProjectFetchedState value) fetched,
+    required TResult Function(ProjectSelectedState value) selected,
+    required TResult Function(_UnSubmittedLoaded value) unSubmittedLoaded,
+    required TResult Function(_UnSubmittedAdded value) unSubmittedAdded,
+    required TResult Function(_UnSubmittedDeleted value) unSubmittedDeleted,
+    required TResult Function(ReportCountsLoaded value) reportCountsLoaded,
+    required TResult Function(NewlyAssignedLoaded value) newlyAssignedLoaded,
+    required TResult Function(ProjectSortedState value) sorted,
+    required TResult Function(ProjectSearchLoading value) searchLoading,
+    required TResult Function(ProjectSearchResults value) searchResults,
+  }) {
+    return sorted(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(_ProjectInitialState value)? initial,
+    TResult? Function(_ProjectLoadingState value)? loading,
+    TResult? Function(ProjectFetchedState value)? fetched,
+    TResult? Function(ProjectSelectedState value)? selected,
+    TResult? Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
+    TResult? Function(_UnSubmittedAdded value)? unSubmittedAdded,
+    TResult? Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
+    TResult? Function(ReportCountsLoaded value)? reportCountsLoaded,
+    TResult? Function(NewlyAssignedLoaded value)? newlyAssignedLoaded,
+    TResult? Function(ProjectSortedState value)? sorted,
+    TResult? Function(ProjectSearchLoading value)? searchLoading,
+    TResult? Function(ProjectSearchResults value)? searchResults,
+  }) {
+    return sorted?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(_ProjectInitialState value)? initial,
+    TResult Function(_ProjectLoadingState value)? loading,
+    TResult Function(ProjectFetchedState value)? fetched,
+    TResult Function(ProjectSelectedState value)? selected,
+    TResult Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
+    TResult Function(_UnSubmittedAdded value)? unSubmittedAdded,
+    TResult Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
+    TResult Function(ReportCountsLoaded value)? reportCountsLoaded,
+    TResult Function(NewlyAssignedLoaded value)? newlyAssignedLoaded,
+    TResult Function(ProjectSortedState value)? sorted,
+    TResult Function(ProjectSearchLoading value)? searchLoading,
+    TResult Function(ProjectSearchResults value)? searchResults,
+    required TResult orElse(),
+  }) {
+    if (sorted != null) {
+      return sorted(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class ProjectSortedState implements ProjectState {
+  const factory ProjectSortedState(
+      {required final List<ProjectWorkflow> projectsList,
+      required final String sortDirection}) = _$ProjectSortedStateImpl;
+
+  List<ProjectWorkflow> get projectsList;
+  String get sortDirection;
+  @JsonKey(ignore: true)
+  _$$ProjectSortedStateImplCopyWith<_$ProjectSortedStateImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class _$$ProjectSearchLoadingImplCopyWith<$Res> {
+  factory _$$ProjectSearchLoadingImplCopyWith(_$ProjectSearchLoadingImpl value,
+          $Res Function(_$ProjectSearchLoadingImpl) then) =
+      __$$ProjectSearchLoadingImplCopyWithImpl<$Res>;
+}
+
+/// @nodoc
+class __$$ProjectSearchLoadingImplCopyWithImpl<$Res>
+    extends _$ProjectStateCopyWithImpl<$Res, _$ProjectSearchLoadingImpl>
+    implements _$$ProjectSearchLoadingImplCopyWith<$Res> {
+  __$$ProjectSearchLoadingImplCopyWithImpl(_$ProjectSearchLoadingImpl _value,
+      $Res Function(_$ProjectSearchLoadingImpl) _then)
+      : super(_value, _then);
+}
+
+/// @nodoc
+
+class _$ProjectSearchLoadingImpl implements ProjectSearchLoading {
+  const _$ProjectSearchLoadingImpl();
+
+  @override
+  String toString() {
+    return 'ProjectState.searchLoading()';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$ProjectSearchLoadingImpl);
+  }
+
+  @override
+  int get hashCode => runtimeType.hashCode;
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function() initial,
+    required TResult Function() loading,
+    required TResult Function(List<ProjectWorkflow> projectsList) fetched,
+    required TResult Function(String projectId) selected,
+    required TResult Function(List<ProjectWorkflow> unSubmitted)
+        unSubmittedLoaded,
+    required TResult Function(CacheUnsubmittedProject entry) unSubmittedAdded,
+    required TResult Function() unSubmittedDeleted,
+    required TResult Function(
+            int newReportCount, int inboxCount, int submittedCount)
+        reportCountsLoaded,
+    required TResult Function(int count) newlyAssignedLoaded,
+    required TResult Function(
+            List<ProjectWorkflow> projectsList, String sortDirection)
+        sorted,
+    required TResult Function() searchLoading,
+    required TResult Function(List<ProjectWorkflow> results) searchResults,
+  }) {
+    return searchLoading();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function()? initial,
+    TResult? Function()? loading,
+    TResult? Function(List<ProjectWorkflow> projectsList)? fetched,
+    TResult? Function(String projectId)? selected,
+    TResult? Function(List<ProjectWorkflow> unSubmitted)? unSubmittedLoaded,
+    TResult? Function(CacheUnsubmittedProject entry)? unSubmittedAdded,
+    TResult? Function()? unSubmittedDeleted,
+    TResult? Function(int newReportCount, int inboxCount, int submittedCount)?
+        reportCountsLoaded,
+    TResult? Function(int count)? newlyAssignedLoaded,
+    TResult? Function(List<ProjectWorkflow> projectsList, String sortDirection)?
+        sorted,
+    TResult? Function()? searchLoading,
+    TResult? Function(List<ProjectWorkflow> results)? searchResults,
+  }) {
+    return searchLoading?.call();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function()? initial,
+    TResult Function()? loading,
+    TResult Function(List<ProjectWorkflow> projectsList)? fetched,
+    TResult Function(String projectId)? selected,
+    TResult Function(List<ProjectWorkflow> unSubmitted)? unSubmittedLoaded,
+    TResult Function(CacheUnsubmittedProject entry)? unSubmittedAdded,
+    TResult Function()? unSubmittedDeleted,
+    TResult Function(int newReportCount, int inboxCount, int submittedCount)?
+        reportCountsLoaded,
+    TResult Function(int count)? newlyAssignedLoaded,
+    TResult Function(List<ProjectWorkflow> projectsList, String sortDirection)?
+        sorted,
+    TResult Function()? searchLoading,
+    TResult Function(List<ProjectWorkflow> results)? searchResults,
+    required TResult orElse(),
+  }) {
+    if (searchLoading != null) {
+      return searchLoading();
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(_ProjectInitialState value) initial,
+    required TResult Function(_ProjectLoadingState value) loading,
+    required TResult Function(ProjectFetchedState value) fetched,
+    required TResult Function(ProjectSelectedState value) selected,
+    required TResult Function(_UnSubmittedLoaded value) unSubmittedLoaded,
+    required TResult Function(_UnSubmittedAdded value) unSubmittedAdded,
+    required TResult Function(_UnSubmittedDeleted value) unSubmittedDeleted,
+    required TResult Function(ReportCountsLoaded value) reportCountsLoaded,
+    required TResult Function(NewlyAssignedLoaded value) newlyAssignedLoaded,
+    required TResult Function(ProjectSortedState value) sorted,
+    required TResult Function(ProjectSearchLoading value) searchLoading,
+    required TResult Function(ProjectSearchResults value) searchResults,
+  }) {
+    return searchLoading(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(_ProjectInitialState value)? initial,
+    TResult? Function(_ProjectLoadingState value)? loading,
+    TResult? Function(ProjectFetchedState value)? fetched,
+    TResult? Function(ProjectSelectedState value)? selected,
+    TResult? Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
+    TResult? Function(_UnSubmittedAdded value)? unSubmittedAdded,
+    TResult? Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
+    TResult? Function(ReportCountsLoaded value)? reportCountsLoaded,
+    TResult? Function(NewlyAssignedLoaded value)? newlyAssignedLoaded,
+    TResult? Function(ProjectSortedState value)? sorted,
+    TResult? Function(ProjectSearchLoading value)? searchLoading,
+    TResult? Function(ProjectSearchResults value)? searchResults,
+  }) {
+    return searchLoading?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(_ProjectInitialState value)? initial,
+    TResult Function(_ProjectLoadingState value)? loading,
+    TResult Function(ProjectFetchedState value)? fetched,
+    TResult Function(ProjectSelectedState value)? selected,
+    TResult Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
+    TResult Function(_UnSubmittedAdded value)? unSubmittedAdded,
+    TResult Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
+    TResult Function(ReportCountsLoaded value)? reportCountsLoaded,
+    TResult Function(NewlyAssignedLoaded value)? newlyAssignedLoaded,
+    TResult Function(ProjectSortedState value)? sorted,
+    TResult Function(ProjectSearchLoading value)? searchLoading,
+    TResult Function(ProjectSearchResults value)? searchResults,
+    required TResult orElse(),
+  }) {
+    if (searchLoading != null) {
+      return searchLoading(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class ProjectSearchLoading implements ProjectState {
+  const factory ProjectSearchLoading() = _$ProjectSearchLoadingImpl;
+}
+
+/// @nodoc
+abstract class _$$ProjectSearchResultsImplCopyWith<$Res> {
+  factory _$$ProjectSearchResultsImplCopyWith(_$ProjectSearchResultsImpl value,
+          $Res Function(_$ProjectSearchResultsImpl) then) =
+      __$$ProjectSearchResultsImplCopyWithImpl<$Res>;
+  @useResult
+  $Res call({List<ProjectWorkflow> results});
+}
+
+/// @nodoc
+class __$$ProjectSearchResultsImplCopyWithImpl<$Res>
+    extends _$ProjectStateCopyWithImpl<$Res, _$ProjectSearchResultsImpl>
+    implements _$$ProjectSearchResultsImplCopyWith<$Res> {
+  __$$ProjectSearchResultsImplCopyWithImpl(_$ProjectSearchResultsImpl _value,
+      $Res Function(_$ProjectSearchResultsImpl) _then)
+      : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? results = null,
+  }) {
+    return _then(_$ProjectSearchResultsImpl(
+      null == results
+          ? _value._results
+          : results // ignore: cast_nullable_to_non_nullable
+              as List<ProjectWorkflow>,
+    ));
+  }
+}
+
+/// @nodoc
+
+class _$ProjectSearchResultsImpl implements ProjectSearchResults {
+  const _$ProjectSearchResultsImpl(final List<ProjectWorkflow> results)
+      : _results = results;
+
+  final List<ProjectWorkflow> _results;
+  @override
+  List<ProjectWorkflow> get results {
+    if (_results is EqualUnmodifiableListView) return _results;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_results);
+  }
+
+  @override
+  String toString() {
+    return 'ProjectState.searchResults(results: $results)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$ProjectSearchResultsImpl &&
+            const DeepCollectionEquality().equals(other._results, _results));
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(runtimeType, const DeepCollectionEquality().hash(_results));
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$ProjectSearchResultsImplCopyWith<_$ProjectSearchResultsImpl>
+      get copyWith =>
+          __$$ProjectSearchResultsImplCopyWithImpl<_$ProjectSearchResultsImpl>(
+              this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function() initial,
+    required TResult Function() loading,
+    required TResult Function(List<ProjectWorkflow> projectsList) fetched,
+    required TResult Function(String projectId) selected,
+    required TResult Function(List<ProjectWorkflow> unSubmitted)
+        unSubmittedLoaded,
+    required TResult Function(CacheUnsubmittedProject entry) unSubmittedAdded,
+    required TResult Function() unSubmittedDeleted,
+    required TResult Function(
+            int newReportCount, int inboxCount, int submittedCount)
+        reportCountsLoaded,
+    required TResult Function(int count) newlyAssignedLoaded,
+    required TResult Function(
+            List<ProjectWorkflow> projectsList, String sortDirection)
+        sorted,
+    required TResult Function() searchLoading,
+    required TResult Function(List<ProjectWorkflow> results) searchResults,
+  }) {
+    return searchResults(results);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function()? initial,
+    TResult? Function()? loading,
+    TResult? Function(List<ProjectWorkflow> projectsList)? fetched,
+    TResult? Function(String projectId)? selected,
+    TResult? Function(List<ProjectWorkflow> unSubmitted)? unSubmittedLoaded,
+    TResult? Function(CacheUnsubmittedProject entry)? unSubmittedAdded,
+    TResult? Function()? unSubmittedDeleted,
+    TResult? Function(int newReportCount, int inboxCount, int submittedCount)?
+        reportCountsLoaded,
+    TResult? Function(int count)? newlyAssignedLoaded,
+    TResult? Function(List<ProjectWorkflow> projectsList, String sortDirection)?
+        sorted,
+    TResult? Function()? searchLoading,
+    TResult? Function(List<ProjectWorkflow> results)? searchResults,
+  }) {
+    return searchResults?.call(results);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function()? initial,
+    TResult Function()? loading,
+    TResult Function(List<ProjectWorkflow> projectsList)? fetched,
+    TResult Function(String projectId)? selected,
+    TResult Function(List<ProjectWorkflow> unSubmitted)? unSubmittedLoaded,
+    TResult Function(CacheUnsubmittedProject entry)? unSubmittedAdded,
+    TResult Function()? unSubmittedDeleted,
+    TResult Function(int newReportCount, int inboxCount, int submittedCount)?
+        reportCountsLoaded,
+    TResult Function(int count)? newlyAssignedLoaded,
+    TResult Function(List<ProjectWorkflow> projectsList, String sortDirection)?
+        sorted,
+    TResult Function()? searchLoading,
+    TResult Function(List<ProjectWorkflow> results)? searchResults,
+    required TResult orElse(),
+  }) {
+    if (searchResults != null) {
+      return searchResults(results);
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(_ProjectInitialState value) initial,
+    required TResult Function(_ProjectLoadingState value) loading,
+    required TResult Function(ProjectFetchedState value) fetched,
+    required TResult Function(ProjectSelectedState value) selected,
+    required TResult Function(_UnSubmittedLoaded value) unSubmittedLoaded,
+    required TResult Function(_UnSubmittedAdded value) unSubmittedAdded,
+    required TResult Function(_UnSubmittedDeleted value) unSubmittedDeleted,
+    required TResult Function(ReportCountsLoaded value) reportCountsLoaded,
+    required TResult Function(NewlyAssignedLoaded value) newlyAssignedLoaded,
+    required TResult Function(ProjectSortedState value) sorted,
+    required TResult Function(ProjectSearchLoading value) searchLoading,
+    required TResult Function(ProjectSearchResults value) searchResults,
+  }) {
+    return searchResults(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(_ProjectInitialState value)? initial,
+    TResult? Function(_ProjectLoadingState value)? loading,
+    TResult? Function(ProjectFetchedState value)? fetched,
+    TResult? Function(ProjectSelectedState value)? selected,
+    TResult? Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
+    TResult? Function(_UnSubmittedAdded value)? unSubmittedAdded,
+    TResult? Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
+    TResult? Function(ReportCountsLoaded value)? reportCountsLoaded,
+    TResult? Function(NewlyAssignedLoaded value)? newlyAssignedLoaded,
+    TResult? Function(ProjectSortedState value)? sorted,
+    TResult? Function(ProjectSearchLoading value)? searchLoading,
+    TResult? Function(ProjectSearchResults value)? searchResults,
+  }) {
+    return searchResults?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(_ProjectInitialState value)? initial,
+    TResult Function(_ProjectLoadingState value)? loading,
+    TResult Function(ProjectFetchedState value)? fetched,
+    TResult Function(ProjectSelectedState value)? selected,
+    TResult Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
+    TResult Function(_UnSubmittedAdded value)? unSubmittedAdded,
+    TResult Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
+    TResult Function(ReportCountsLoaded value)? reportCountsLoaded,
+    TResult Function(NewlyAssignedLoaded value)? newlyAssignedLoaded,
+    TResult Function(ProjectSortedState value)? sorted,
+    TResult Function(ProjectSearchLoading value)? searchLoading,
+    TResult Function(ProjectSearchResults value)? searchResults,
+    required TResult orElse(),
+  }) {
+    if (searchResults != null) {
+      return searchResults(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class ProjectSearchResults implements ProjectState {
+  const factory ProjectSearchResults(final List<ProjectWorkflow> results) =
+      _$ProjectSearchResultsImpl;
+
+  List<ProjectWorkflow> get results;
+  @JsonKey(ignore: true)
+  _$$ProjectSearchResultsImplCopyWith<_$ProjectSearchResultsImpl>
+      get copyWith => throw _privateConstructorUsedError;
 }
