@@ -2,6 +2,7 @@ package org.egov.project.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.egov.common.contract.models.Document;
+import org.egov.common.contract.models.RequestInfoWrapper;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.common.contract.workflow.ProcessInstance;
 import org.egov.common.contract.workflow.ProcessInstanceRequest;
@@ -54,5 +55,24 @@ public class ProjectWorkflowService {
 
         ProcessInstanceResponse wfResponse = mapper.convertValue(response, ProcessInstanceResponse.class);
         return wfResponse.getProcessInstances().get(0);
+    }
+
+
+     public ProcessInstance getProcessInstanceById( String processInstanceId, String tenantId, RequestInfo requestInfo) {
+        String url = config.getWfHost() + "/egov-workflow-v2/egov-wf/process/_search"
+            + "?tenantId=" + tenantId
+            + "&ids=" + processInstanceId;
+
+        // Wrap RequestInfo in RequestInfoWrapper
+        RequestInfoWrapper requestInfoWrapper = new RequestInfoWrapper();
+        requestInfoWrapper.setRequestInfo(requestInfo);
+
+        // POST with requestInfoWrapper as body, query params in URL
+        Object response = repository.fetchResult(new StringBuilder(url), requestInfoWrapper);
+
+        ProcessInstanceResponse wfResponse = mapper.convertValue(response, ProcessInstanceResponse.class);
+        return (wfResponse.getProcessInstances() == null || wfResponse.getProcessInstances().isEmpty())
+            ? null
+            : wfResponse.getProcessInstances().get(0);
     }
 }

@@ -513,7 +513,7 @@ public class ProjectService {
             }
         }
 
-        return new ProjectStatusWrapper(updatedProject, updatedWorkflow.getState().getState(), null);
+        return new ProjectStatusWrapper(updatedProject, updatedWorkflow.getState().getState(), null, null);
     }
 
     private void updateAssetsForFacility(Project existingProject, RequestInfo requestInfo, String facilityId) throws CustomException {
