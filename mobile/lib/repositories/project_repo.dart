@@ -54,6 +54,8 @@ class ProjectRemoteRepository {
   FutureOr<List<ProjectWorkflow>> searchByWorkflow({
     required ProjectSearchModel body,
     required List<String> workflowStatuses,
+    int limit = 100,
+    offset = 0,
   }) async {
     try {
       Response response;
@@ -67,8 +69,8 @@ class ProjectRemoteRepository {
         searchPath,
         queryParameters: {
           'tenantId': envConfig.variables.tenantId,
-          'limit': 100,
-          'offset': 0,
+          'limit': limit,
+          'offset': offset,
           'includeDescendants': false,
           'includeAncestors': false
         },
@@ -84,6 +86,42 @@ class ProjectRemoteRepository {
         projectsList.add(ProjectWorkflow.fromJson(project));
       }
       return projectsList;
+    } catch (err) {
+      rethrow;
+    }
+  }
+
+  FutureOr<int> searchByWorkflowCount({
+    required ProjectSearchModel body,
+    required List<String> workflowStatuses,
+    int limit = 0,
+    offset = 0,
+  }) async {
+    try {
+      Response response;
+      String searchPath = "project/v2/_search";
+
+      if (envConfig.variables.envType == EnvType.dev) {
+        // return _loadLocalProjects();
+      }
+
+      response = await dio.post(
+        searchPath,
+        queryParameters: {
+          'tenantId': envConfig.variables.tenantId,
+          'limit': limit,
+          'offset': offset,
+          'includeDescendants': false,
+          'includeAncestors': false
+        },
+        data: {
+          'Project': body.toMap(),
+          'workflowStatus': workflowStatuses,
+        },
+      );
+
+      final count = response.data['totalCount'];
+      return count ?? 0;
     } catch (err) {
       rethrow;
     }
@@ -163,7 +201,7 @@ class ProjectRepository {
     } catch (_) {
       // on any error, fall back to cache
     }
-    return _readCache(workflowStatuses);
+    return readCache(workflowStatuses);
   }
 
   /// 1) Delete all cached entries matching any given status
@@ -192,7 +230,7 @@ class ProjectRepository {
   }
 
   /// Read cache entries matching any of the statuses
-  Future<List<ProjectWorkflow>> _readCache(
+  Future<List<ProjectWorkflow>> readCache(
     List<String> statuses,
   ) async {
     final col = _isar.cacheProjectWorkflows;

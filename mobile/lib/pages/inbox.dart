@@ -247,7 +247,8 @@ class _InboxPageState extends State<InboxPage> {
                     // ── PROJECT LIST ─────────────────────────────────────────────────
                     BlocBuilder<ProjectBloc, ProjectState>(
                       builder: (context, projectState) {
-                        return projectState.when(
+                        return projectState.maybeWhen(
+                          orElse: () => const SizedBox.shrink(),
                           initial: () => const Center(
                               child: Padding(
                             padding: EdgeInsets.only(top: spacer8),
@@ -337,11 +338,6 @@ class _InboxPageState extends State<InboxPage> {
                               ],
                             );
                           },
-                          selected: (_) => const SizedBox.shrink(),
-                          unSubmittedLoaded: (_) =>
-                              const SizedBox.shrink(), // not used here
-                          unSubmittedAdded: (_) => const SizedBox.shrink(),
-                          unSubmittedDeleted: () => const SizedBox.shrink(),
                         );
                       },
                     ),

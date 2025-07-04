@@ -93,9 +93,12 @@ class _SelectAssetTypePageState extends State<SelectAssetTypePage> {
         return ScrollableContent(
             enableFixedDigitButton: true,
             backgroundColor: theme.colorTheme.generic.background,
-            header: const BackNavigationHelpHeaderWidget(
+            header: BackNavigationHelpHeaderWidget(
               showBackNavigation: true,
               showHelp: false,
+              handleback: () {
+                context.router.replace(const AssetCountRoute());
+              },
             ),
             footer: FooterButton(
               showSuffixIcon: false,
