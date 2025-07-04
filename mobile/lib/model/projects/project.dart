@@ -17,6 +17,7 @@ class ProjectSearchModelWrapper with ProjectSearchModelWrapperMappable {
 @MappableClass(ignoreNull: true, discriminatorValue: MappableClass.useAsDefault)
 class ProjectSearchModel with ProjectSearchModelMappable {
   final String? id;
+  final String? name;
   final String? projectTypeId;
   final String? projectNumber;
   final String? subProjectTypeId;
@@ -30,6 +31,7 @@ class ProjectSearchModel with ProjectSearchModelMappable {
 
   ProjectSearchModel({
     this.id,
+    this.name,
     this.projectTypeId,
     this.projectNumber,
     this.subProjectTypeId,
@@ -51,6 +53,7 @@ class ProjectSearchModel with ProjectSearchModelMappable {
   @MappableConstructor()
   ProjectSearchModel.ignoreDeleted({
     this.id,
+    this.name,
     this.projectTypeId,
     this.projectNumber,
     this.subProjectTypeId,

@@ -51,12 +51,12 @@ class ProjectRemoteRepository {
   //   }
   // }
 
-  FutureOr<List<ProjectWorkflow>> searchByWorkflow({
-    required ProjectSearchModel body,
-    required List<String> workflowStatuses,
-    int limit = 100,
-    offset = 0,
-  }) async {
+  FutureOr<List<ProjectWorkflow>> searchByWorkflow(
+      {required ProjectSearchModel body,
+      required List<String> workflowStatuses,
+      int limit = 100,
+      offset = 0,
+      sortDirection = 'ASC'}) async {
     try {
       Response response;
       String searchPath = "project/v2/_search";
@@ -72,7 +72,8 @@ class ProjectRemoteRepository {
           'limit': limit,
           'offset': offset,
           'includeDescendants': false,
-          'includeAncestors': false
+          'includeAncestors': false,
+          'sort_direction': sortDirection
         },
         data: {
           'Project': body.toMap(),
@@ -185,14 +186,15 @@ class ProjectRepository {
   ProjectRepository(this._isar) : _remote = ProjectRemoteRepository();
 
   /// Remote-first fetch with cache fallback
-  Future<List<ProjectWorkflow>> fetchByWorkflow({
-    required ProjectSearchModel body,
-    required List<String> workflowStatuses,
-  }) async {
+  Future<List<ProjectWorkflow>> fetchByWorkflow(
+      {required ProjectSearchModel body,
+      required List<String> workflowStatuses,
+      sortDirection = 'ASC'}) async {
     try {
       final remoteList = await _remote.searchByWorkflow(
         body: body,
         workflowStatuses: workflowStatuses,
+        sortDirection: sortDirection,
       );
       if (remoteList.isNotEmpty) {
         await _replaceCache(workflowStatuses, remoteList);
