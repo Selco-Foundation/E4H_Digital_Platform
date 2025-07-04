@@ -1,139 +1,3 @@
-// import 'dart:async';
-//
-// import 'package:flutter_bloc/flutter_bloc.dart';
-// import 'package:freezed_annotation/freezed_annotation.dart';
-// import 'package:isar/isar.dart';
-// import 'package:selco/model/project_workflow/project_workflow.dart';
-//
-// import '../../data/nosql/cache_unsubmitted_project.dart';
-// import '../../model/projects/project.dart';
-// import '../../repositories/app_init_Repo.dart';
-// import '../../repositories/project_repo.dart';
-//
-// part 'project.freezed.dart';
-//
-// class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
-//   final Isar isar;
-//   ProjectBloc(this.isar) : super(const ProjectState.initial()) {
-// //    on<ProjectsFetchEvent>(_handleFetchProjects);
-//     on<ProjectSelectEvent>(_selectProject);
-//     on<FetchProjectsByWorkflowEvent>(_handleFetchProjectsByWorkflow);
-//
-//     on<AddUnSubmittedEvent>(_onAddUnSubmitted);
-//     on<LoadUnSubmittedEvent>(_onLoadUnSubmitted);
-//     on<DeleteUnSubmittedEvent>(_onDeleteUnSubmitted);
-//   }
-//
-//   // FutureOr<void> _handleFetchProjects(
-//   //     ProjectsFetchEvent event, Emitter<ProjectState> emit) async {
-//   //   // final projectStaffList = await ProjectStaffRemoteRepository()
-//   //   //     .searchStaff(ProjectStaffSearchModel(staffId: [event.uuid.toString()]));
-//   //
-//   //   ProjectSearchModel searchBody = ProjectSearchModel(
-//   //     tenantId: envConfig.variables.tenantId,
-//   //     projectTypeId: "Facility",
-//   //   );
-//   //
-//   //   final projectRemoteRepository = ProjectRemoteRepository();
-//   //   List<ProjectWorkflow> projectsList =
-//   //       await projectRemoteRepository.search(searchBody);
-//   //
-//   //   emit(ProjectState.fetched(projectsList));
-//   // }
-//
-//   FutureOr<void> _selectProject(
-//       ProjectSelectEvent event, Emitter<ProjectState> emit) {
-//     final projectId = event.projectId;
-//
-//     emit(ProjectState.selected(projectId));
-//   }
-//
-//   FutureOr<void> _handleFetchProjectsByWorkflow(
-//       FetchProjectsByWorkflowEvent event, Emitter<ProjectState> emit) async {
-//     final projectRepository = ProjectRepository(isar);
-//     ProjectSearchModel searchBody = ProjectSearchModel(
-//       tenantId: envConfig.variables.tenantId,
-//       // projectTypeId: "Facility",
-//     );
-//     List<ProjectWorkflow> projectsList =
-//         await projectRepository.fetchByWorkflow(
-//             workflowStatuses: event.workflowStatuses, body: searchBody);
-//
-//     emit(ProjectState.fetched(projectsList));
-//   }
-//
-//   Future<void> _onAddUnSubmitted(
-//     AddUnSubmittedEvent event,
-//     Emitter<ProjectState> emit,
-//   ) async {
-//     final _unsubRepo = UnsubmittedProjectRepository(isar);
-//     final entry = await _unsubRepo.addOrGet(event.workflow, event.userType);
-//     emit(ProjectState.unSubmittedAdded(entry));
-//   }
-//
-//   Future<void> _onLoadUnSubmitted(
-//     LoadUnSubmittedEvent event,
-//     Emitter<ProjectState> emit,
-//   ) async {
-//     final _unsubRepo = UnsubmittedProjectRepository(isar);
-//     ProjectSearchModel body = ProjectSearchModel(
-//       tenantId: envConfig.variables.tenantId,
-//       // projectTypeId: "Facility",
-//     );
-//     final unSubmitted = await _unsubRepo.fetchByWorkflowIncludeCache(
-//       workflowStatuses: event.statuses,
-//       userType: event.userType,
-//       body: body,
-//     );
-//     emit(ProjectState.unSubmittedLoaded(unSubmitted));
-//   }
-//
-//   Future<void> _onDeleteUnSubmitted(
-//     DeleteUnSubmittedEvent event,
-//     Emitter<ProjectState> emit,
-//   ) async {
-//     final unsubRepo = UnsubmittedProjectRepository(isar);
-//     await unsubRepo.delete(event.projectId, event.userType);
-//     emit(const ProjectState.unSubmittedDeleted());
-//   }
-// }
-//
-// @freezed
-// class ProjectEvent with _$ProjectEvent {
-//   // const factory ProjectEvent.fetchProjects({required String uuid}) =
-//   //     ProjectsFetchEvent;
-//
-//   const factory ProjectEvent.selectProject(String projectId) =
-//       ProjectSelectEvent;
-//
-//   const factory ProjectEvent.fetchProjectsByWorkflow({
-//     required List<String> workflowStatuses,
-//   }) = FetchProjectsByWorkflowEvent;
-//
-//   const factory ProjectEvent.addUnSubmitted(
-//       ProjectWorkflow workflow, String userType) = AddUnSubmittedEvent;
-//   const factory ProjectEvent.loadUnSubmitted(
-//       List<String> statuses, String userType) = LoadUnSubmittedEvent;
-//   const factory ProjectEvent.deleteUnSubmitted(
-//       String projectId, String userType) = DeleteUnSubmittedEvent;
-// }
-//
-// @freezed
-// class ProjectState with _$ProjectState {
-//   const factory ProjectState.initial() = _ProjectInitialState;
-//   const factory ProjectState.fetched(List<ProjectWorkflow> projectsList) =
-//       ProjectFetchedState;
-//   const factory ProjectState.selected(projectId) = ProjectSelectedState;
-//
-//   const factory ProjectState.unSubmittedLoaded(
-//       List<ProjectWorkflow> unSubmitted) = _UnSubmittedLoaded;
-//   const factory ProjectState.unSubmittedAdded(CacheUnsubmittedProject entry) =
-//       _UnSubmittedAdded;
-//   const factory ProjectState.unSubmittedDeleted() = _UnSubmittedDeleted;
-// }
-
-// lib/blocs/project/project.dart
-
 import 'dart:async';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -145,6 +9,7 @@ import '../../data/nosql/cache_unsubmitted_project.dart';
 import '../../model/projects/project.dart';
 import '../../repositories/app_init_Repo.dart';
 import '../../repositories/project_repo.dart';
+import '../../utils/utils.dart';
 
 part 'project.freezed.dart';
 
@@ -163,6 +28,10 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
     on<LoadUnSubmittedEvent>(_onLoadUnSubmitted);
 
     on<DeleteUnSubmittedEvent>(_onDeleteUnSubmitted);
+
+    on<FetchAllReportCountsEvent>(_onFetchAllReportCounts);
+
+    on<GetNewlyAssignedEvent>(_onGetNewlyAssigned);
   }
 
   FutureOr<void> _selectProject(
@@ -233,6 +102,114 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
     await repo.delete(event.projectId, event.userType);
     emit(const ProjectState.unSubmittedDeleted());
   }
+
+  Future<void> _onFetchAllReportCounts(
+    FetchAllReportCountsEvent event,
+    Emitter<ProjectState> emit,
+  ) async {
+    emit(const ProjectState.loading());
+
+    final repo = ProjectRepository(isar);
+    final remote = ProjectRemoteRepository();
+    final body = ProjectSearchModel(
+      tenantId: envConfig.variables.tenantId,
+    );
+
+    // 1) Build each status‐list based on userType
+    final isSupervisor = event.userType == USER_TYPES.SUPERVISOR.name;
+
+    final newStatuses = [
+      if (isSupervisor)
+        WORKFLOW_STATUS_FIELD_SUPERVISOR.ASSIGNED_TO_FIELD_SUPERVISOR.name
+      else
+        WORKFLOW_STATUS_FIELD_STAFF.ASSIGNED_TO_FIELD_STAFF.name,
+    ];
+
+    final inboxStatuses = isSupervisor
+        ? [
+            WORKFLOW_STATUS_FIELD_SUPERVISOR.SUBMITTED_BY_FIELD_STAFF.name,
+            WORKFLOW_STATUS_FIELD_SUPERVISOR.REJECTED_BY_QC_SPOC.name,
+            WORKFLOW_STATUS_FIELD_SUPERVISOR.APPROVED_BY_QC_SPOC.name,
+          ]
+        : [
+            WORKFLOW_STATUS_FIELD_STAFF.REJECTED_BY_FIELD_SUPERVISOR.name,
+            WORKFLOW_STATUS_FIELD_STAFF.APPROVED_BY_SUPERVISOR.name,
+            WORKFLOW_STATUS_FIELD_STAFF.APPROVED_BY_QC_SPOC.name,
+          ];
+
+    final submittedStatuses = isSupervisor
+        ? [
+            WORKFLOW_STATUS_FIELD_SUPERVISOR.SUBMITTED_BY_SUPERVISOR.name,
+          ]
+        : [
+            WORKFLOW_STATUS_FIELD_STAFF.SUBMITTED_BY_FIELD_STAFF.name,
+          ];
+
+    // 2) Helper to try remote.count → fallback to cache
+    Future<int> _fetchCount(List<String> statuses) async {
+      try {
+        return await remote.searchByWorkflowCount(
+          body: body,
+          workflowStatuses: statuses,
+        );
+      } catch (_) {
+        // readCache is your _readCache renamed to public
+        final cachedList = await repo.readCache(statuses);
+        return cachedList.length;
+      }
+    }
+
+    // 3) Fire them in parallel
+    final results = await Future.wait([
+      _fetchCount(newStatuses),
+      _fetchCount(inboxStatuses),
+      _fetchCount(submittedStatuses),
+    ]);
+
+    emit(ProjectState.reportCountsLoaded(
+      newReportCount: results[0],
+      inboxCount: results[1],
+      submittedCount: results[2],
+    ));
+  }
+
+  Future<void> _onGetNewlyAssigned(
+    GetNewlyAssignedEvent event,
+    Emitter<ProjectState> emit,
+  ) async {
+    emit(const ProjectState.loading());
+
+    final remote = ProjectRemoteRepository();
+    final repo = ProjectRepository(isar);
+    final body = ProjectSearchModel(
+      tenantId: envConfig.variables.tenantId,
+    );
+
+    final isSupervisor = event.userType == USER_TYPES.SUPERVISOR.name;
+    final newStatuses = [
+      if (isSupervisor)
+        WORKFLOW_STATUS_FIELD_SUPERVISOR.ASSIGNED_TO_FIELD_SUPERVISOR.name
+      else
+        WORKFLOW_STATUS_FIELD_STAFF.ASSIGNED_TO_FIELD_STAFF.name,
+    ];
+
+    try {
+      final count = await remote.searchByWorkflowCount(
+        body: body,
+        workflowStatuses: newStatuses,
+      );
+
+      if (count > 0) {
+        final cachedList = await repo.readCache(newStatuses);
+        final newlyAssigned = count - cachedList.length;
+        emit(ProjectState.newlyAssignedLoaded(newlyAssigned));
+      } else {
+        emit(const ProjectState.newlyAssignedLoaded(0));
+      }
+    } catch (_) {
+      emit(const ProjectState.newlyAssignedLoaded(0));
+    }
+  }
 }
 
 @freezed
@@ -252,6 +229,14 @@ class ProjectEvent with _$ProjectEvent {
 
   const factory ProjectEvent.deleteUnSubmitted(
       String projectId, String userType) = DeleteUnSubmittedEvent;
+
+  const factory ProjectEvent.fetchAllReportCounts({
+    required String userType,
+  }) = FetchAllReportCountsEvent;
+
+  const factory ProjectEvent.getNewlyAssigned({
+    required String userType,
+  }) = GetNewlyAssignedEvent;
 }
 
 @freezed
@@ -273,4 +258,13 @@ class ProjectState with _$ProjectState {
       _UnSubmittedAdded;
 
   const factory ProjectState.unSubmittedDeleted() = _UnSubmittedDeleted;
+
+  const factory ProjectState.reportCountsLoaded({
+    required int newReportCount,
+    required int inboxCount,
+    required int submittedCount,
+  }) = ReportCountsLoaded;
+
+  const factory ProjectState.newlyAssignedLoaded(int count) =
+      NewlyAssignedLoaded;
 }

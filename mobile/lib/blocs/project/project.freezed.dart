@@ -27,6 +27,8 @@ mixin _$ProjectEvent {
         loadUnSubmitted,
     required TResult Function(String projectId, String userType)
         deleteUnSubmitted,
+    required TResult Function(String userType) fetchAllReportCounts,
+    required TResult Function(String userType) getNewlyAssigned,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -37,6 +39,8 @@ mixin _$ProjectEvent {
         addUnSubmitted,
     TResult? Function(List<String> statuses, String userType)? loadUnSubmitted,
     TResult? Function(String projectId, String userType)? deleteUnSubmitted,
+    TResult? Function(String userType)? fetchAllReportCounts,
+    TResult? Function(String userType)? getNewlyAssigned,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -46,6 +50,8 @@ mixin _$ProjectEvent {
     TResult Function(ProjectWorkflow workflow, String userType)? addUnSubmitted,
     TResult Function(List<String> statuses, String userType)? loadUnSubmitted,
     TResult Function(String projectId, String userType)? deleteUnSubmitted,
+    TResult Function(String userType)? fetchAllReportCounts,
+    TResult Function(String userType)? getNewlyAssigned,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -57,6 +63,9 @@ mixin _$ProjectEvent {
     required TResult Function(AddUnSubmittedEvent value) addUnSubmitted,
     required TResult Function(LoadUnSubmittedEvent value) loadUnSubmitted,
     required TResult Function(DeleteUnSubmittedEvent value) deleteUnSubmitted,
+    required TResult Function(FetchAllReportCountsEvent value)
+        fetchAllReportCounts,
+    required TResult Function(GetNewlyAssignedEvent value) getNewlyAssigned,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -67,6 +76,8 @@ mixin _$ProjectEvent {
     TResult? Function(AddUnSubmittedEvent value)? addUnSubmitted,
     TResult? Function(LoadUnSubmittedEvent value)? loadUnSubmitted,
     TResult? Function(DeleteUnSubmittedEvent value)? deleteUnSubmitted,
+    TResult? Function(FetchAllReportCountsEvent value)? fetchAllReportCounts,
+    TResult? Function(GetNewlyAssignedEvent value)? getNewlyAssigned,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -77,6 +88,8 @@ mixin _$ProjectEvent {
     TResult Function(AddUnSubmittedEvent value)? addUnSubmitted,
     TResult Function(LoadUnSubmittedEvent value)? loadUnSubmitted,
     TResult Function(DeleteUnSubmittedEvent value)? deleteUnSubmitted,
+    TResult Function(FetchAllReportCountsEvent value)? fetchAllReportCounts,
+    TResult Function(GetNewlyAssignedEvent value)? getNewlyAssigned,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -175,6 +188,8 @@ class _$ProjectSelectEventImpl implements ProjectSelectEvent {
         loadUnSubmitted,
     required TResult Function(String projectId, String userType)
         deleteUnSubmitted,
+    required TResult Function(String userType) fetchAllReportCounts,
+    required TResult Function(String userType) getNewlyAssigned,
   }) {
     return selectProject(projectId);
   }
@@ -188,6 +203,8 @@ class _$ProjectSelectEventImpl implements ProjectSelectEvent {
         addUnSubmitted,
     TResult? Function(List<String> statuses, String userType)? loadUnSubmitted,
     TResult? Function(String projectId, String userType)? deleteUnSubmitted,
+    TResult? Function(String userType)? fetchAllReportCounts,
+    TResult? Function(String userType)? getNewlyAssigned,
   }) {
     return selectProject?.call(projectId);
   }
@@ -200,6 +217,8 @@ class _$ProjectSelectEventImpl implements ProjectSelectEvent {
     TResult Function(ProjectWorkflow workflow, String userType)? addUnSubmitted,
     TResult Function(List<String> statuses, String userType)? loadUnSubmitted,
     TResult Function(String projectId, String userType)? deleteUnSubmitted,
+    TResult Function(String userType)? fetchAllReportCounts,
+    TResult Function(String userType)? getNewlyAssigned,
     required TResult orElse(),
   }) {
     if (selectProject != null) {
@@ -217,6 +236,9 @@ class _$ProjectSelectEventImpl implements ProjectSelectEvent {
     required TResult Function(AddUnSubmittedEvent value) addUnSubmitted,
     required TResult Function(LoadUnSubmittedEvent value) loadUnSubmitted,
     required TResult Function(DeleteUnSubmittedEvent value) deleteUnSubmitted,
+    required TResult Function(FetchAllReportCountsEvent value)
+        fetchAllReportCounts,
+    required TResult Function(GetNewlyAssignedEvent value) getNewlyAssigned,
   }) {
     return selectProject(this);
   }
@@ -230,6 +252,8 @@ class _$ProjectSelectEventImpl implements ProjectSelectEvent {
     TResult? Function(AddUnSubmittedEvent value)? addUnSubmitted,
     TResult? Function(LoadUnSubmittedEvent value)? loadUnSubmitted,
     TResult? Function(DeleteUnSubmittedEvent value)? deleteUnSubmitted,
+    TResult? Function(FetchAllReportCountsEvent value)? fetchAllReportCounts,
+    TResult? Function(GetNewlyAssignedEvent value)? getNewlyAssigned,
   }) {
     return selectProject?.call(this);
   }
@@ -243,6 +267,8 @@ class _$ProjectSelectEventImpl implements ProjectSelectEvent {
     TResult Function(AddUnSubmittedEvent value)? addUnSubmitted,
     TResult Function(LoadUnSubmittedEvent value)? loadUnSubmitted,
     TResult Function(DeleteUnSubmittedEvent value)? deleteUnSubmitted,
+    TResult Function(FetchAllReportCountsEvent value)? fetchAllReportCounts,
+    TResult Function(GetNewlyAssignedEvent value)? getNewlyAssigned,
     required TResult orElse(),
   }) {
     if (selectProject != null) {
@@ -350,6 +376,8 @@ class _$FetchProjectsByWorkflowEventImpl
         loadUnSubmitted,
     required TResult Function(String projectId, String userType)
         deleteUnSubmitted,
+    required TResult Function(String userType) fetchAllReportCounts,
+    required TResult Function(String userType) getNewlyAssigned,
   }) {
     return fetchProjectsByWorkflow(workflowStatuses);
   }
@@ -363,6 +391,8 @@ class _$FetchProjectsByWorkflowEventImpl
         addUnSubmitted,
     TResult? Function(List<String> statuses, String userType)? loadUnSubmitted,
     TResult? Function(String projectId, String userType)? deleteUnSubmitted,
+    TResult? Function(String userType)? fetchAllReportCounts,
+    TResult? Function(String userType)? getNewlyAssigned,
   }) {
     return fetchProjectsByWorkflow?.call(workflowStatuses);
   }
@@ -375,6 +405,8 @@ class _$FetchProjectsByWorkflowEventImpl
     TResult Function(ProjectWorkflow workflow, String userType)? addUnSubmitted,
     TResult Function(List<String> statuses, String userType)? loadUnSubmitted,
     TResult Function(String projectId, String userType)? deleteUnSubmitted,
+    TResult Function(String userType)? fetchAllReportCounts,
+    TResult Function(String userType)? getNewlyAssigned,
     required TResult orElse(),
   }) {
     if (fetchProjectsByWorkflow != null) {
@@ -392,6 +424,9 @@ class _$FetchProjectsByWorkflowEventImpl
     required TResult Function(AddUnSubmittedEvent value) addUnSubmitted,
     required TResult Function(LoadUnSubmittedEvent value) loadUnSubmitted,
     required TResult Function(DeleteUnSubmittedEvent value) deleteUnSubmitted,
+    required TResult Function(FetchAllReportCountsEvent value)
+        fetchAllReportCounts,
+    required TResult Function(GetNewlyAssignedEvent value) getNewlyAssigned,
   }) {
     return fetchProjectsByWorkflow(this);
   }
@@ -405,6 +440,8 @@ class _$FetchProjectsByWorkflowEventImpl
     TResult? Function(AddUnSubmittedEvent value)? addUnSubmitted,
     TResult? Function(LoadUnSubmittedEvent value)? loadUnSubmitted,
     TResult? Function(DeleteUnSubmittedEvent value)? deleteUnSubmitted,
+    TResult? Function(FetchAllReportCountsEvent value)? fetchAllReportCounts,
+    TResult? Function(GetNewlyAssignedEvent value)? getNewlyAssigned,
   }) {
     return fetchProjectsByWorkflow?.call(this);
   }
@@ -418,6 +455,8 @@ class _$FetchProjectsByWorkflowEventImpl
     TResult Function(AddUnSubmittedEvent value)? addUnSubmitted,
     TResult Function(LoadUnSubmittedEvent value)? loadUnSubmitted,
     TResult Function(DeleteUnSubmittedEvent value)? deleteUnSubmitted,
+    TResult Function(FetchAllReportCountsEvent value)? fetchAllReportCounts,
+    TResult Function(GetNewlyAssignedEvent value)? getNewlyAssigned,
     required TResult orElse(),
   }) {
     if (fetchProjectsByWorkflow != null) {
@@ -533,6 +572,8 @@ class _$AddUnSubmittedEventImpl implements AddUnSubmittedEvent {
         loadUnSubmitted,
     required TResult Function(String projectId, String userType)
         deleteUnSubmitted,
+    required TResult Function(String userType) fetchAllReportCounts,
+    required TResult Function(String userType) getNewlyAssigned,
   }) {
     return addUnSubmitted(workflow, userType);
   }
@@ -546,6 +587,8 @@ class _$AddUnSubmittedEventImpl implements AddUnSubmittedEvent {
         addUnSubmitted,
     TResult? Function(List<String> statuses, String userType)? loadUnSubmitted,
     TResult? Function(String projectId, String userType)? deleteUnSubmitted,
+    TResult? Function(String userType)? fetchAllReportCounts,
+    TResult? Function(String userType)? getNewlyAssigned,
   }) {
     return addUnSubmitted?.call(workflow, userType);
   }
@@ -558,6 +601,8 @@ class _$AddUnSubmittedEventImpl implements AddUnSubmittedEvent {
     TResult Function(ProjectWorkflow workflow, String userType)? addUnSubmitted,
     TResult Function(List<String> statuses, String userType)? loadUnSubmitted,
     TResult Function(String projectId, String userType)? deleteUnSubmitted,
+    TResult Function(String userType)? fetchAllReportCounts,
+    TResult Function(String userType)? getNewlyAssigned,
     required TResult orElse(),
   }) {
     if (addUnSubmitted != null) {
@@ -575,6 +620,9 @@ class _$AddUnSubmittedEventImpl implements AddUnSubmittedEvent {
     required TResult Function(AddUnSubmittedEvent value) addUnSubmitted,
     required TResult Function(LoadUnSubmittedEvent value) loadUnSubmitted,
     required TResult Function(DeleteUnSubmittedEvent value) deleteUnSubmitted,
+    required TResult Function(FetchAllReportCountsEvent value)
+        fetchAllReportCounts,
+    required TResult Function(GetNewlyAssignedEvent value) getNewlyAssigned,
   }) {
     return addUnSubmitted(this);
   }
@@ -588,6 +636,8 @@ class _$AddUnSubmittedEventImpl implements AddUnSubmittedEvent {
     TResult? Function(AddUnSubmittedEvent value)? addUnSubmitted,
     TResult? Function(LoadUnSubmittedEvent value)? loadUnSubmitted,
     TResult? Function(DeleteUnSubmittedEvent value)? deleteUnSubmitted,
+    TResult? Function(FetchAllReportCountsEvent value)? fetchAllReportCounts,
+    TResult? Function(GetNewlyAssignedEvent value)? getNewlyAssigned,
   }) {
     return addUnSubmitted?.call(this);
   }
@@ -601,6 +651,8 @@ class _$AddUnSubmittedEventImpl implements AddUnSubmittedEvent {
     TResult Function(AddUnSubmittedEvent value)? addUnSubmitted,
     TResult Function(LoadUnSubmittedEvent value)? loadUnSubmitted,
     TResult Function(DeleteUnSubmittedEvent value)? deleteUnSubmitted,
+    TResult Function(FetchAllReportCountsEvent value)? fetchAllReportCounts,
+    TResult Function(GetNewlyAssignedEvent value)? getNewlyAssigned,
     required TResult orElse(),
   }) {
     if (addUnSubmitted != null) {
@@ -714,6 +766,8 @@ class _$LoadUnSubmittedEventImpl implements LoadUnSubmittedEvent {
         loadUnSubmitted,
     required TResult Function(String projectId, String userType)
         deleteUnSubmitted,
+    required TResult Function(String userType) fetchAllReportCounts,
+    required TResult Function(String userType) getNewlyAssigned,
   }) {
     return loadUnSubmitted(statuses, userType);
   }
@@ -727,6 +781,8 @@ class _$LoadUnSubmittedEventImpl implements LoadUnSubmittedEvent {
         addUnSubmitted,
     TResult? Function(List<String> statuses, String userType)? loadUnSubmitted,
     TResult? Function(String projectId, String userType)? deleteUnSubmitted,
+    TResult? Function(String userType)? fetchAllReportCounts,
+    TResult? Function(String userType)? getNewlyAssigned,
   }) {
     return loadUnSubmitted?.call(statuses, userType);
   }
@@ -739,6 +795,8 @@ class _$LoadUnSubmittedEventImpl implements LoadUnSubmittedEvent {
     TResult Function(ProjectWorkflow workflow, String userType)? addUnSubmitted,
     TResult Function(List<String> statuses, String userType)? loadUnSubmitted,
     TResult Function(String projectId, String userType)? deleteUnSubmitted,
+    TResult Function(String userType)? fetchAllReportCounts,
+    TResult Function(String userType)? getNewlyAssigned,
     required TResult orElse(),
   }) {
     if (loadUnSubmitted != null) {
@@ -756,6 +814,9 @@ class _$LoadUnSubmittedEventImpl implements LoadUnSubmittedEvent {
     required TResult Function(AddUnSubmittedEvent value) addUnSubmitted,
     required TResult Function(LoadUnSubmittedEvent value) loadUnSubmitted,
     required TResult Function(DeleteUnSubmittedEvent value) deleteUnSubmitted,
+    required TResult Function(FetchAllReportCountsEvent value)
+        fetchAllReportCounts,
+    required TResult Function(GetNewlyAssignedEvent value) getNewlyAssigned,
   }) {
     return loadUnSubmitted(this);
   }
@@ -769,6 +830,8 @@ class _$LoadUnSubmittedEventImpl implements LoadUnSubmittedEvent {
     TResult? Function(AddUnSubmittedEvent value)? addUnSubmitted,
     TResult? Function(LoadUnSubmittedEvent value)? loadUnSubmitted,
     TResult? Function(DeleteUnSubmittedEvent value)? deleteUnSubmitted,
+    TResult? Function(FetchAllReportCountsEvent value)? fetchAllReportCounts,
+    TResult? Function(GetNewlyAssignedEvent value)? getNewlyAssigned,
   }) {
     return loadUnSubmitted?.call(this);
   }
@@ -782,6 +845,8 @@ class _$LoadUnSubmittedEventImpl implements LoadUnSubmittedEvent {
     TResult Function(AddUnSubmittedEvent value)? addUnSubmitted,
     TResult Function(LoadUnSubmittedEvent value)? loadUnSubmitted,
     TResult Function(DeleteUnSubmittedEvent value)? deleteUnSubmitted,
+    TResult Function(FetchAllReportCountsEvent value)? fetchAllReportCounts,
+    TResult Function(GetNewlyAssignedEvent value)? getNewlyAssigned,
     required TResult orElse(),
   }) {
     if (loadUnSubmitted != null) {
@@ -889,6 +954,8 @@ class _$DeleteUnSubmittedEventImpl implements DeleteUnSubmittedEvent {
         loadUnSubmitted,
     required TResult Function(String projectId, String userType)
         deleteUnSubmitted,
+    required TResult Function(String userType) fetchAllReportCounts,
+    required TResult Function(String userType) getNewlyAssigned,
   }) {
     return deleteUnSubmitted(projectId, userType);
   }
@@ -902,6 +969,8 @@ class _$DeleteUnSubmittedEventImpl implements DeleteUnSubmittedEvent {
         addUnSubmitted,
     TResult? Function(List<String> statuses, String userType)? loadUnSubmitted,
     TResult? Function(String projectId, String userType)? deleteUnSubmitted,
+    TResult? Function(String userType)? fetchAllReportCounts,
+    TResult? Function(String userType)? getNewlyAssigned,
   }) {
     return deleteUnSubmitted?.call(projectId, userType);
   }
@@ -914,6 +983,8 @@ class _$DeleteUnSubmittedEventImpl implements DeleteUnSubmittedEvent {
     TResult Function(ProjectWorkflow workflow, String userType)? addUnSubmitted,
     TResult Function(List<String> statuses, String userType)? loadUnSubmitted,
     TResult Function(String projectId, String userType)? deleteUnSubmitted,
+    TResult Function(String userType)? fetchAllReportCounts,
+    TResult Function(String userType)? getNewlyAssigned,
     required TResult orElse(),
   }) {
     if (deleteUnSubmitted != null) {
@@ -931,6 +1002,9 @@ class _$DeleteUnSubmittedEventImpl implements DeleteUnSubmittedEvent {
     required TResult Function(AddUnSubmittedEvent value) addUnSubmitted,
     required TResult Function(LoadUnSubmittedEvent value) loadUnSubmitted,
     required TResult Function(DeleteUnSubmittedEvent value) deleteUnSubmitted,
+    required TResult Function(FetchAllReportCountsEvent value)
+        fetchAllReportCounts,
+    required TResult Function(GetNewlyAssignedEvent value) getNewlyAssigned,
   }) {
     return deleteUnSubmitted(this);
   }
@@ -944,6 +1018,8 @@ class _$DeleteUnSubmittedEventImpl implements DeleteUnSubmittedEvent {
     TResult? Function(AddUnSubmittedEvent value)? addUnSubmitted,
     TResult? Function(LoadUnSubmittedEvent value)? loadUnSubmitted,
     TResult? Function(DeleteUnSubmittedEvent value)? deleteUnSubmitted,
+    TResult? Function(FetchAllReportCountsEvent value)? fetchAllReportCounts,
+    TResult? Function(GetNewlyAssignedEvent value)? getNewlyAssigned,
   }) {
     return deleteUnSubmitted?.call(this);
   }
@@ -957,6 +1033,8 @@ class _$DeleteUnSubmittedEventImpl implements DeleteUnSubmittedEvent {
     TResult Function(AddUnSubmittedEvent value)? addUnSubmitted,
     TResult Function(LoadUnSubmittedEvent value)? loadUnSubmitted,
     TResult Function(DeleteUnSubmittedEvent value)? deleteUnSubmitted,
+    TResult Function(FetchAllReportCountsEvent value)? fetchAllReportCounts,
+    TResult Function(GetNewlyAssignedEvent value)? getNewlyAssigned,
     required TResult orElse(),
   }) {
     if (deleteUnSubmitted != null) {
@@ -979,6 +1057,359 @@ abstract class DeleteUnSubmittedEvent implements ProjectEvent {
 }
 
 /// @nodoc
+abstract class _$$FetchAllReportCountsEventImplCopyWith<$Res> {
+  factory _$$FetchAllReportCountsEventImplCopyWith(
+          _$FetchAllReportCountsEventImpl value,
+          $Res Function(_$FetchAllReportCountsEventImpl) then) =
+      __$$FetchAllReportCountsEventImplCopyWithImpl<$Res>;
+  @useResult
+  $Res call({String userType});
+}
+
+/// @nodoc
+class __$$FetchAllReportCountsEventImplCopyWithImpl<$Res>
+    extends _$ProjectEventCopyWithImpl<$Res, _$FetchAllReportCountsEventImpl>
+    implements _$$FetchAllReportCountsEventImplCopyWith<$Res> {
+  __$$FetchAllReportCountsEventImplCopyWithImpl(
+      _$FetchAllReportCountsEventImpl _value,
+      $Res Function(_$FetchAllReportCountsEventImpl) _then)
+      : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? userType = null,
+  }) {
+    return _then(_$FetchAllReportCountsEventImpl(
+      userType: null == userType
+          ? _value.userType
+          : userType // ignore: cast_nullable_to_non_nullable
+              as String,
+    ));
+  }
+}
+
+/// @nodoc
+
+class _$FetchAllReportCountsEventImpl implements FetchAllReportCountsEvent {
+  const _$FetchAllReportCountsEventImpl({required this.userType});
+
+  @override
+  final String userType;
+
+  @override
+  String toString() {
+    return 'ProjectEvent.fetchAllReportCounts(userType: $userType)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$FetchAllReportCountsEventImpl &&
+            (identical(other.userType, userType) ||
+                other.userType == userType));
+  }
+
+  @override
+  int get hashCode => Object.hash(runtimeType, userType);
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$FetchAllReportCountsEventImplCopyWith<_$FetchAllReportCountsEventImpl>
+      get copyWith => __$$FetchAllReportCountsEventImplCopyWithImpl<
+          _$FetchAllReportCountsEventImpl>(this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function(String projectId) selectProject,
+    required TResult Function(List<String> workflowStatuses)
+        fetchProjectsByWorkflow,
+    required TResult Function(ProjectWorkflow workflow, String userType)
+        addUnSubmitted,
+    required TResult Function(List<String> statuses, String userType)
+        loadUnSubmitted,
+    required TResult Function(String projectId, String userType)
+        deleteUnSubmitted,
+    required TResult Function(String userType) fetchAllReportCounts,
+    required TResult Function(String userType) getNewlyAssigned,
+  }) {
+    return fetchAllReportCounts(userType);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function(String projectId)? selectProject,
+    TResult? Function(List<String> workflowStatuses)? fetchProjectsByWorkflow,
+    TResult? Function(ProjectWorkflow workflow, String userType)?
+        addUnSubmitted,
+    TResult? Function(List<String> statuses, String userType)? loadUnSubmitted,
+    TResult? Function(String projectId, String userType)? deleteUnSubmitted,
+    TResult? Function(String userType)? fetchAllReportCounts,
+    TResult? Function(String userType)? getNewlyAssigned,
+  }) {
+    return fetchAllReportCounts?.call(userType);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function(String projectId)? selectProject,
+    TResult Function(List<String> workflowStatuses)? fetchProjectsByWorkflow,
+    TResult Function(ProjectWorkflow workflow, String userType)? addUnSubmitted,
+    TResult Function(List<String> statuses, String userType)? loadUnSubmitted,
+    TResult Function(String projectId, String userType)? deleteUnSubmitted,
+    TResult Function(String userType)? fetchAllReportCounts,
+    TResult Function(String userType)? getNewlyAssigned,
+    required TResult orElse(),
+  }) {
+    if (fetchAllReportCounts != null) {
+      return fetchAllReportCounts(userType);
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(ProjectSelectEvent value) selectProject,
+    required TResult Function(FetchProjectsByWorkflowEvent value)
+        fetchProjectsByWorkflow,
+    required TResult Function(AddUnSubmittedEvent value) addUnSubmitted,
+    required TResult Function(LoadUnSubmittedEvent value) loadUnSubmitted,
+    required TResult Function(DeleteUnSubmittedEvent value) deleteUnSubmitted,
+    required TResult Function(FetchAllReportCountsEvent value)
+        fetchAllReportCounts,
+    required TResult Function(GetNewlyAssignedEvent value) getNewlyAssigned,
+  }) {
+    return fetchAllReportCounts(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(ProjectSelectEvent value)? selectProject,
+    TResult? Function(FetchProjectsByWorkflowEvent value)?
+        fetchProjectsByWorkflow,
+    TResult? Function(AddUnSubmittedEvent value)? addUnSubmitted,
+    TResult? Function(LoadUnSubmittedEvent value)? loadUnSubmitted,
+    TResult? Function(DeleteUnSubmittedEvent value)? deleteUnSubmitted,
+    TResult? Function(FetchAllReportCountsEvent value)? fetchAllReportCounts,
+    TResult? Function(GetNewlyAssignedEvent value)? getNewlyAssigned,
+  }) {
+    return fetchAllReportCounts?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(ProjectSelectEvent value)? selectProject,
+    TResult Function(FetchProjectsByWorkflowEvent value)?
+        fetchProjectsByWorkflow,
+    TResult Function(AddUnSubmittedEvent value)? addUnSubmitted,
+    TResult Function(LoadUnSubmittedEvent value)? loadUnSubmitted,
+    TResult Function(DeleteUnSubmittedEvent value)? deleteUnSubmitted,
+    TResult Function(FetchAllReportCountsEvent value)? fetchAllReportCounts,
+    TResult Function(GetNewlyAssignedEvent value)? getNewlyAssigned,
+    required TResult orElse(),
+  }) {
+    if (fetchAllReportCounts != null) {
+      return fetchAllReportCounts(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class FetchAllReportCountsEvent implements ProjectEvent {
+  const factory FetchAllReportCountsEvent({required final String userType}) =
+      _$FetchAllReportCountsEventImpl;
+
+  String get userType;
+  @JsonKey(ignore: true)
+  _$$FetchAllReportCountsEventImplCopyWith<_$FetchAllReportCountsEventImpl>
+      get copyWith => throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class _$$GetNewlyAssignedEventImplCopyWith<$Res> {
+  factory _$$GetNewlyAssignedEventImplCopyWith(
+          _$GetNewlyAssignedEventImpl value,
+          $Res Function(_$GetNewlyAssignedEventImpl) then) =
+      __$$GetNewlyAssignedEventImplCopyWithImpl<$Res>;
+  @useResult
+  $Res call({String userType});
+}
+
+/// @nodoc
+class __$$GetNewlyAssignedEventImplCopyWithImpl<$Res>
+    extends _$ProjectEventCopyWithImpl<$Res, _$GetNewlyAssignedEventImpl>
+    implements _$$GetNewlyAssignedEventImplCopyWith<$Res> {
+  __$$GetNewlyAssignedEventImplCopyWithImpl(_$GetNewlyAssignedEventImpl _value,
+      $Res Function(_$GetNewlyAssignedEventImpl) _then)
+      : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? userType = null,
+  }) {
+    return _then(_$GetNewlyAssignedEventImpl(
+      userType: null == userType
+          ? _value.userType
+          : userType // ignore: cast_nullable_to_non_nullable
+              as String,
+    ));
+  }
+}
+
+/// @nodoc
+
+class _$GetNewlyAssignedEventImpl implements GetNewlyAssignedEvent {
+  const _$GetNewlyAssignedEventImpl({required this.userType});
+
+  @override
+  final String userType;
+
+  @override
+  String toString() {
+    return 'ProjectEvent.getNewlyAssigned(userType: $userType)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$GetNewlyAssignedEventImpl &&
+            (identical(other.userType, userType) ||
+                other.userType == userType));
+  }
+
+  @override
+  int get hashCode => Object.hash(runtimeType, userType);
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$GetNewlyAssignedEventImplCopyWith<_$GetNewlyAssignedEventImpl>
+      get copyWith => __$$GetNewlyAssignedEventImplCopyWithImpl<
+          _$GetNewlyAssignedEventImpl>(this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function(String projectId) selectProject,
+    required TResult Function(List<String> workflowStatuses)
+        fetchProjectsByWorkflow,
+    required TResult Function(ProjectWorkflow workflow, String userType)
+        addUnSubmitted,
+    required TResult Function(List<String> statuses, String userType)
+        loadUnSubmitted,
+    required TResult Function(String projectId, String userType)
+        deleteUnSubmitted,
+    required TResult Function(String userType) fetchAllReportCounts,
+    required TResult Function(String userType) getNewlyAssigned,
+  }) {
+    return getNewlyAssigned(userType);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function(String projectId)? selectProject,
+    TResult? Function(List<String> workflowStatuses)? fetchProjectsByWorkflow,
+    TResult? Function(ProjectWorkflow workflow, String userType)?
+        addUnSubmitted,
+    TResult? Function(List<String> statuses, String userType)? loadUnSubmitted,
+    TResult? Function(String projectId, String userType)? deleteUnSubmitted,
+    TResult? Function(String userType)? fetchAllReportCounts,
+    TResult? Function(String userType)? getNewlyAssigned,
+  }) {
+    return getNewlyAssigned?.call(userType);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function(String projectId)? selectProject,
+    TResult Function(List<String> workflowStatuses)? fetchProjectsByWorkflow,
+    TResult Function(ProjectWorkflow workflow, String userType)? addUnSubmitted,
+    TResult Function(List<String> statuses, String userType)? loadUnSubmitted,
+    TResult Function(String projectId, String userType)? deleteUnSubmitted,
+    TResult Function(String userType)? fetchAllReportCounts,
+    TResult Function(String userType)? getNewlyAssigned,
+    required TResult orElse(),
+  }) {
+    if (getNewlyAssigned != null) {
+      return getNewlyAssigned(userType);
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(ProjectSelectEvent value) selectProject,
+    required TResult Function(FetchProjectsByWorkflowEvent value)
+        fetchProjectsByWorkflow,
+    required TResult Function(AddUnSubmittedEvent value) addUnSubmitted,
+    required TResult Function(LoadUnSubmittedEvent value) loadUnSubmitted,
+    required TResult Function(DeleteUnSubmittedEvent value) deleteUnSubmitted,
+    required TResult Function(FetchAllReportCountsEvent value)
+        fetchAllReportCounts,
+    required TResult Function(GetNewlyAssignedEvent value) getNewlyAssigned,
+  }) {
+    return getNewlyAssigned(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(ProjectSelectEvent value)? selectProject,
+    TResult? Function(FetchProjectsByWorkflowEvent value)?
+        fetchProjectsByWorkflow,
+    TResult? Function(AddUnSubmittedEvent value)? addUnSubmitted,
+    TResult? Function(LoadUnSubmittedEvent value)? loadUnSubmitted,
+    TResult? Function(DeleteUnSubmittedEvent value)? deleteUnSubmitted,
+    TResult? Function(FetchAllReportCountsEvent value)? fetchAllReportCounts,
+    TResult? Function(GetNewlyAssignedEvent value)? getNewlyAssigned,
+  }) {
+    return getNewlyAssigned?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(ProjectSelectEvent value)? selectProject,
+    TResult Function(FetchProjectsByWorkflowEvent value)?
+        fetchProjectsByWorkflow,
+    TResult Function(AddUnSubmittedEvent value)? addUnSubmitted,
+    TResult Function(LoadUnSubmittedEvent value)? loadUnSubmitted,
+    TResult Function(DeleteUnSubmittedEvent value)? deleteUnSubmitted,
+    TResult Function(FetchAllReportCountsEvent value)? fetchAllReportCounts,
+    TResult Function(GetNewlyAssignedEvent value)? getNewlyAssigned,
+    required TResult orElse(),
+  }) {
+    if (getNewlyAssigned != null) {
+      return getNewlyAssigned(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class GetNewlyAssignedEvent implements ProjectEvent {
+  const factory GetNewlyAssignedEvent({required final String userType}) =
+      _$GetNewlyAssignedEventImpl;
+
+  String get userType;
+  @JsonKey(ignore: true)
+  _$$GetNewlyAssignedEventImplCopyWith<_$GetNewlyAssignedEventImpl>
+      get copyWith => throw _privateConstructorUsedError;
+}
+
+/// @nodoc
 mixin _$ProjectState {
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
@@ -990,6 +1421,10 @@ mixin _$ProjectState {
         unSubmittedLoaded,
     required TResult Function(CacheUnsubmittedProject entry) unSubmittedAdded,
     required TResult Function() unSubmittedDeleted,
+    required TResult Function(
+            int newReportCount, int inboxCount, int submittedCount)
+        reportCountsLoaded,
+    required TResult Function(int count) newlyAssignedLoaded,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -1001,6 +1436,9 @@ mixin _$ProjectState {
     TResult? Function(List<ProjectWorkflow> unSubmitted)? unSubmittedLoaded,
     TResult? Function(CacheUnsubmittedProject entry)? unSubmittedAdded,
     TResult? Function()? unSubmittedDeleted,
+    TResult? Function(int newReportCount, int inboxCount, int submittedCount)?
+        reportCountsLoaded,
+    TResult? Function(int count)? newlyAssignedLoaded,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -1012,6 +1450,9 @@ mixin _$ProjectState {
     TResult Function(List<ProjectWorkflow> unSubmitted)? unSubmittedLoaded,
     TResult Function(CacheUnsubmittedProject entry)? unSubmittedAdded,
     TResult Function()? unSubmittedDeleted,
+    TResult Function(int newReportCount, int inboxCount, int submittedCount)?
+        reportCountsLoaded,
+    TResult Function(int count)? newlyAssignedLoaded,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -1024,6 +1465,8 @@ mixin _$ProjectState {
     required TResult Function(_UnSubmittedLoaded value) unSubmittedLoaded,
     required TResult Function(_UnSubmittedAdded value) unSubmittedAdded,
     required TResult Function(_UnSubmittedDeleted value) unSubmittedDeleted,
+    required TResult Function(ReportCountsLoaded value) reportCountsLoaded,
+    required TResult Function(NewlyAssignedLoaded value) newlyAssignedLoaded,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -1035,6 +1478,8 @@ mixin _$ProjectState {
     TResult? Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
     TResult? Function(_UnSubmittedAdded value)? unSubmittedAdded,
     TResult? Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
+    TResult? Function(ReportCountsLoaded value)? reportCountsLoaded,
+    TResult? Function(NewlyAssignedLoaded value)? newlyAssignedLoaded,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -1046,6 +1491,8 @@ mixin _$ProjectState {
     TResult Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
     TResult Function(_UnSubmittedAdded value)? unSubmittedAdded,
     TResult Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
+    TResult Function(ReportCountsLoaded value)? reportCountsLoaded,
+    TResult Function(NewlyAssignedLoaded value)? newlyAssignedLoaded,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -1116,6 +1563,10 @@ class _$ProjectInitialStateImpl implements _ProjectInitialState {
         unSubmittedLoaded,
     required TResult Function(CacheUnsubmittedProject entry) unSubmittedAdded,
     required TResult Function() unSubmittedDeleted,
+    required TResult Function(
+            int newReportCount, int inboxCount, int submittedCount)
+        reportCountsLoaded,
+    required TResult Function(int count) newlyAssignedLoaded,
   }) {
     return initial();
   }
@@ -1130,6 +1581,9 @@ class _$ProjectInitialStateImpl implements _ProjectInitialState {
     TResult? Function(List<ProjectWorkflow> unSubmitted)? unSubmittedLoaded,
     TResult? Function(CacheUnsubmittedProject entry)? unSubmittedAdded,
     TResult? Function()? unSubmittedDeleted,
+    TResult? Function(int newReportCount, int inboxCount, int submittedCount)?
+        reportCountsLoaded,
+    TResult? Function(int count)? newlyAssignedLoaded,
   }) {
     return initial?.call();
   }
@@ -1144,6 +1598,9 @@ class _$ProjectInitialStateImpl implements _ProjectInitialState {
     TResult Function(List<ProjectWorkflow> unSubmitted)? unSubmittedLoaded,
     TResult Function(CacheUnsubmittedProject entry)? unSubmittedAdded,
     TResult Function()? unSubmittedDeleted,
+    TResult Function(int newReportCount, int inboxCount, int submittedCount)?
+        reportCountsLoaded,
+    TResult Function(int count)? newlyAssignedLoaded,
     required TResult orElse(),
   }) {
     if (initial != null) {
@@ -1162,6 +1619,8 @@ class _$ProjectInitialStateImpl implements _ProjectInitialState {
     required TResult Function(_UnSubmittedLoaded value) unSubmittedLoaded,
     required TResult Function(_UnSubmittedAdded value) unSubmittedAdded,
     required TResult Function(_UnSubmittedDeleted value) unSubmittedDeleted,
+    required TResult Function(ReportCountsLoaded value) reportCountsLoaded,
+    required TResult Function(NewlyAssignedLoaded value) newlyAssignedLoaded,
   }) {
     return initial(this);
   }
@@ -1176,6 +1635,8 @@ class _$ProjectInitialStateImpl implements _ProjectInitialState {
     TResult? Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
     TResult? Function(_UnSubmittedAdded value)? unSubmittedAdded,
     TResult? Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
+    TResult? Function(ReportCountsLoaded value)? reportCountsLoaded,
+    TResult? Function(NewlyAssignedLoaded value)? newlyAssignedLoaded,
   }) {
     return initial?.call(this);
   }
@@ -1190,6 +1651,8 @@ class _$ProjectInitialStateImpl implements _ProjectInitialState {
     TResult Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
     TResult Function(_UnSubmittedAdded value)? unSubmittedAdded,
     TResult Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
+    TResult Function(ReportCountsLoaded value)? reportCountsLoaded,
+    TResult Function(NewlyAssignedLoaded value)? newlyAssignedLoaded,
     required TResult orElse(),
   }) {
     if (initial != null) {
@@ -1250,6 +1713,10 @@ class _$ProjectLoadingStateImpl implements _ProjectLoadingState {
         unSubmittedLoaded,
     required TResult Function(CacheUnsubmittedProject entry) unSubmittedAdded,
     required TResult Function() unSubmittedDeleted,
+    required TResult Function(
+            int newReportCount, int inboxCount, int submittedCount)
+        reportCountsLoaded,
+    required TResult Function(int count) newlyAssignedLoaded,
   }) {
     return loading();
   }
@@ -1264,6 +1731,9 @@ class _$ProjectLoadingStateImpl implements _ProjectLoadingState {
     TResult? Function(List<ProjectWorkflow> unSubmitted)? unSubmittedLoaded,
     TResult? Function(CacheUnsubmittedProject entry)? unSubmittedAdded,
     TResult? Function()? unSubmittedDeleted,
+    TResult? Function(int newReportCount, int inboxCount, int submittedCount)?
+        reportCountsLoaded,
+    TResult? Function(int count)? newlyAssignedLoaded,
   }) {
     return loading?.call();
   }
@@ -1278,6 +1748,9 @@ class _$ProjectLoadingStateImpl implements _ProjectLoadingState {
     TResult Function(List<ProjectWorkflow> unSubmitted)? unSubmittedLoaded,
     TResult Function(CacheUnsubmittedProject entry)? unSubmittedAdded,
     TResult Function()? unSubmittedDeleted,
+    TResult Function(int newReportCount, int inboxCount, int submittedCount)?
+        reportCountsLoaded,
+    TResult Function(int count)? newlyAssignedLoaded,
     required TResult orElse(),
   }) {
     if (loading != null) {
@@ -1296,6 +1769,8 @@ class _$ProjectLoadingStateImpl implements _ProjectLoadingState {
     required TResult Function(_UnSubmittedLoaded value) unSubmittedLoaded,
     required TResult Function(_UnSubmittedAdded value) unSubmittedAdded,
     required TResult Function(_UnSubmittedDeleted value) unSubmittedDeleted,
+    required TResult Function(ReportCountsLoaded value) reportCountsLoaded,
+    required TResult Function(NewlyAssignedLoaded value) newlyAssignedLoaded,
   }) {
     return loading(this);
   }
@@ -1310,6 +1785,8 @@ class _$ProjectLoadingStateImpl implements _ProjectLoadingState {
     TResult? Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
     TResult? Function(_UnSubmittedAdded value)? unSubmittedAdded,
     TResult? Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
+    TResult? Function(ReportCountsLoaded value)? reportCountsLoaded,
+    TResult? Function(NewlyAssignedLoaded value)? newlyAssignedLoaded,
   }) {
     return loading?.call(this);
   }
@@ -1324,6 +1801,8 @@ class _$ProjectLoadingStateImpl implements _ProjectLoadingState {
     TResult Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
     TResult Function(_UnSubmittedAdded value)? unSubmittedAdded,
     TResult Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
+    TResult Function(ReportCountsLoaded value)? reportCountsLoaded,
+    TResult Function(NewlyAssignedLoaded value)? newlyAssignedLoaded,
     required TResult orElse(),
   }) {
     if (loading != null) {
@@ -1418,6 +1897,10 @@ class _$ProjectFetchedStateImpl implements ProjectFetchedState {
         unSubmittedLoaded,
     required TResult Function(CacheUnsubmittedProject entry) unSubmittedAdded,
     required TResult Function() unSubmittedDeleted,
+    required TResult Function(
+            int newReportCount, int inboxCount, int submittedCount)
+        reportCountsLoaded,
+    required TResult Function(int count) newlyAssignedLoaded,
   }) {
     return fetched(projectsList);
   }
@@ -1432,6 +1915,9 @@ class _$ProjectFetchedStateImpl implements ProjectFetchedState {
     TResult? Function(List<ProjectWorkflow> unSubmitted)? unSubmittedLoaded,
     TResult? Function(CacheUnsubmittedProject entry)? unSubmittedAdded,
     TResult? Function()? unSubmittedDeleted,
+    TResult? Function(int newReportCount, int inboxCount, int submittedCount)?
+        reportCountsLoaded,
+    TResult? Function(int count)? newlyAssignedLoaded,
   }) {
     return fetched?.call(projectsList);
   }
@@ -1446,6 +1932,9 @@ class _$ProjectFetchedStateImpl implements ProjectFetchedState {
     TResult Function(List<ProjectWorkflow> unSubmitted)? unSubmittedLoaded,
     TResult Function(CacheUnsubmittedProject entry)? unSubmittedAdded,
     TResult Function()? unSubmittedDeleted,
+    TResult Function(int newReportCount, int inboxCount, int submittedCount)?
+        reportCountsLoaded,
+    TResult Function(int count)? newlyAssignedLoaded,
     required TResult orElse(),
   }) {
     if (fetched != null) {
@@ -1464,6 +1953,8 @@ class _$ProjectFetchedStateImpl implements ProjectFetchedState {
     required TResult Function(_UnSubmittedLoaded value) unSubmittedLoaded,
     required TResult Function(_UnSubmittedAdded value) unSubmittedAdded,
     required TResult Function(_UnSubmittedDeleted value) unSubmittedDeleted,
+    required TResult Function(ReportCountsLoaded value) reportCountsLoaded,
+    required TResult Function(NewlyAssignedLoaded value) newlyAssignedLoaded,
   }) {
     return fetched(this);
   }
@@ -1478,6 +1969,8 @@ class _$ProjectFetchedStateImpl implements ProjectFetchedState {
     TResult? Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
     TResult? Function(_UnSubmittedAdded value)? unSubmittedAdded,
     TResult? Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
+    TResult? Function(ReportCountsLoaded value)? reportCountsLoaded,
+    TResult? Function(NewlyAssignedLoaded value)? newlyAssignedLoaded,
   }) {
     return fetched?.call(this);
   }
@@ -1492,6 +1985,8 @@ class _$ProjectFetchedStateImpl implements ProjectFetchedState {
     TResult Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
     TResult Function(_UnSubmittedAdded value)? unSubmittedAdded,
     TResult Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
+    TResult Function(ReportCountsLoaded value)? reportCountsLoaded,
+    TResult Function(NewlyAssignedLoaded value)? newlyAssignedLoaded,
     required TResult orElse(),
   }) {
     if (fetched != null) {
@@ -1586,6 +2081,10 @@ class _$ProjectSelectedStateImpl implements ProjectSelectedState {
         unSubmittedLoaded,
     required TResult Function(CacheUnsubmittedProject entry) unSubmittedAdded,
     required TResult Function() unSubmittedDeleted,
+    required TResult Function(
+            int newReportCount, int inboxCount, int submittedCount)
+        reportCountsLoaded,
+    required TResult Function(int count) newlyAssignedLoaded,
   }) {
     return selected(projectId);
   }
@@ -1600,6 +2099,9 @@ class _$ProjectSelectedStateImpl implements ProjectSelectedState {
     TResult? Function(List<ProjectWorkflow> unSubmitted)? unSubmittedLoaded,
     TResult? Function(CacheUnsubmittedProject entry)? unSubmittedAdded,
     TResult? Function()? unSubmittedDeleted,
+    TResult? Function(int newReportCount, int inboxCount, int submittedCount)?
+        reportCountsLoaded,
+    TResult? Function(int count)? newlyAssignedLoaded,
   }) {
     return selected?.call(projectId);
   }
@@ -1614,6 +2116,9 @@ class _$ProjectSelectedStateImpl implements ProjectSelectedState {
     TResult Function(List<ProjectWorkflow> unSubmitted)? unSubmittedLoaded,
     TResult Function(CacheUnsubmittedProject entry)? unSubmittedAdded,
     TResult Function()? unSubmittedDeleted,
+    TResult Function(int newReportCount, int inboxCount, int submittedCount)?
+        reportCountsLoaded,
+    TResult Function(int count)? newlyAssignedLoaded,
     required TResult orElse(),
   }) {
     if (selected != null) {
@@ -1632,6 +2137,8 @@ class _$ProjectSelectedStateImpl implements ProjectSelectedState {
     required TResult Function(_UnSubmittedLoaded value) unSubmittedLoaded,
     required TResult Function(_UnSubmittedAdded value) unSubmittedAdded,
     required TResult Function(_UnSubmittedDeleted value) unSubmittedDeleted,
+    required TResult Function(ReportCountsLoaded value) reportCountsLoaded,
+    required TResult Function(NewlyAssignedLoaded value) newlyAssignedLoaded,
   }) {
     return selected(this);
   }
@@ -1646,6 +2153,8 @@ class _$ProjectSelectedStateImpl implements ProjectSelectedState {
     TResult? Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
     TResult? Function(_UnSubmittedAdded value)? unSubmittedAdded,
     TResult? Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
+    TResult? Function(ReportCountsLoaded value)? reportCountsLoaded,
+    TResult? Function(NewlyAssignedLoaded value)? newlyAssignedLoaded,
   }) {
     return selected?.call(this);
   }
@@ -1660,6 +2169,8 @@ class _$ProjectSelectedStateImpl implements ProjectSelectedState {
     TResult Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
     TResult Function(_UnSubmittedAdded value)? unSubmittedAdded,
     TResult Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
+    TResult Function(ReportCountsLoaded value)? reportCountsLoaded,
+    TResult Function(NewlyAssignedLoaded value)? newlyAssignedLoaded,
     required TResult orElse(),
   }) {
     if (selected != null) {
@@ -1760,6 +2271,10 @@ class _$UnSubmittedLoadedImpl implements _UnSubmittedLoaded {
         unSubmittedLoaded,
     required TResult Function(CacheUnsubmittedProject entry) unSubmittedAdded,
     required TResult Function() unSubmittedDeleted,
+    required TResult Function(
+            int newReportCount, int inboxCount, int submittedCount)
+        reportCountsLoaded,
+    required TResult Function(int count) newlyAssignedLoaded,
   }) {
     return unSubmittedLoaded(unSubmitted);
   }
@@ -1774,6 +2289,9 @@ class _$UnSubmittedLoadedImpl implements _UnSubmittedLoaded {
     TResult? Function(List<ProjectWorkflow> unSubmitted)? unSubmittedLoaded,
     TResult? Function(CacheUnsubmittedProject entry)? unSubmittedAdded,
     TResult? Function()? unSubmittedDeleted,
+    TResult? Function(int newReportCount, int inboxCount, int submittedCount)?
+        reportCountsLoaded,
+    TResult? Function(int count)? newlyAssignedLoaded,
   }) {
     return unSubmittedLoaded?.call(unSubmitted);
   }
@@ -1788,6 +2306,9 @@ class _$UnSubmittedLoadedImpl implements _UnSubmittedLoaded {
     TResult Function(List<ProjectWorkflow> unSubmitted)? unSubmittedLoaded,
     TResult Function(CacheUnsubmittedProject entry)? unSubmittedAdded,
     TResult Function()? unSubmittedDeleted,
+    TResult Function(int newReportCount, int inboxCount, int submittedCount)?
+        reportCountsLoaded,
+    TResult Function(int count)? newlyAssignedLoaded,
     required TResult orElse(),
   }) {
     if (unSubmittedLoaded != null) {
@@ -1806,6 +2327,8 @@ class _$UnSubmittedLoadedImpl implements _UnSubmittedLoaded {
     required TResult Function(_UnSubmittedLoaded value) unSubmittedLoaded,
     required TResult Function(_UnSubmittedAdded value) unSubmittedAdded,
     required TResult Function(_UnSubmittedDeleted value) unSubmittedDeleted,
+    required TResult Function(ReportCountsLoaded value) reportCountsLoaded,
+    required TResult Function(NewlyAssignedLoaded value) newlyAssignedLoaded,
   }) {
     return unSubmittedLoaded(this);
   }
@@ -1820,6 +2343,8 @@ class _$UnSubmittedLoadedImpl implements _UnSubmittedLoaded {
     TResult? Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
     TResult? Function(_UnSubmittedAdded value)? unSubmittedAdded,
     TResult? Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
+    TResult? Function(ReportCountsLoaded value)? reportCountsLoaded,
+    TResult? Function(NewlyAssignedLoaded value)? newlyAssignedLoaded,
   }) {
     return unSubmittedLoaded?.call(this);
   }
@@ -1834,6 +2359,8 @@ class _$UnSubmittedLoadedImpl implements _UnSubmittedLoaded {
     TResult Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
     TResult Function(_UnSubmittedAdded value)? unSubmittedAdded,
     TResult Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
+    TResult Function(ReportCountsLoaded value)? reportCountsLoaded,
+    TResult Function(NewlyAssignedLoaded value)? newlyAssignedLoaded,
     required TResult orElse(),
   }) {
     if (unSubmittedLoaded != null) {
@@ -1926,6 +2453,10 @@ class _$UnSubmittedAddedImpl implements _UnSubmittedAdded {
         unSubmittedLoaded,
     required TResult Function(CacheUnsubmittedProject entry) unSubmittedAdded,
     required TResult Function() unSubmittedDeleted,
+    required TResult Function(
+            int newReportCount, int inboxCount, int submittedCount)
+        reportCountsLoaded,
+    required TResult Function(int count) newlyAssignedLoaded,
   }) {
     return unSubmittedAdded(entry);
   }
@@ -1940,6 +2471,9 @@ class _$UnSubmittedAddedImpl implements _UnSubmittedAdded {
     TResult? Function(List<ProjectWorkflow> unSubmitted)? unSubmittedLoaded,
     TResult? Function(CacheUnsubmittedProject entry)? unSubmittedAdded,
     TResult? Function()? unSubmittedDeleted,
+    TResult? Function(int newReportCount, int inboxCount, int submittedCount)?
+        reportCountsLoaded,
+    TResult? Function(int count)? newlyAssignedLoaded,
   }) {
     return unSubmittedAdded?.call(entry);
   }
@@ -1954,6 +2488,9 @@ class _$UnSubmittedAddedImpl implements _UnSubmittedAdded {
     TResult Function(List<ProjectWorkflow> unSubmitted)? unSubmittedLoaded,
     TResult Function(CacheUnsubmittedProject entry)? unSubmittedAdded,
     TResult Function()? unSubmittedDeleted,
+    TResult Function(int newReportCount, int inboxCount, int submittedCount)?
+        reportCountsLoaded,
+    TResult Function(int count)? newlyAssignedLoaded,
     required TResult orElse(),
   }) {
     if (unSubmittedAdded != null) {
@@ -1972,6 +2509,8 @@ class _$UnSubmittedAddedImpl implements _UnSubmittedAdded {
     required TResult Function(_UnSubmittedLoaded value) unSubmittedLoaded,
     required TResult Function(_UnSubmittedAdded value) unSubmittedAdded,
     required TResult Function(_UnSubmittedDeleted value) unSubmittedDeleted,
+    required TResult Function(ReportCountsLoaded value) reportCountsLoaded,
+    required TResult Function(NewlyAssignedLoaded value) newlyAssignedLoaded,
   }) {
     return unSubmittedAdded(this);
   }
@@ -1986,6 +2525,8 @@ class _$UnSubmittedAddedImpl implements _UnSubmittedAdded {
     TResult? Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
     TResult? Function(_UnSubmittedAdded value)? unSubmittedAdded,
     TResult? Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
+    TResult? Function(ReportCountsLoaded value)? reportCountsLoaded,
+    TResult? Function(NewlyAssignedLoaded value)? newlyAssignedLoaded,
   }) {
     return unSubmittedAdded?.call(this);
   }
@@ -2000,6 +2541,8 @@ class _$UnSubmittedAddedImpl implements _UnSubmittedAdded {
     TResult Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
     TResult Function(_UnSubmittedAdded value)? unSubmittedAdded,
     TResult Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
+    TResult Function(ReportCountsLoaded value)? reportCountsLoaded,
+    TResult Function(NewlyAssignedLoaded value)? newlyAssignedLoaded,
     required TResult orElse(),
   }) {
     if (unSubmittedAdded != null) {
@@ -2065,6 +2608,10 @@ class _$UnSubmittedDeletedImpl implements _UnSubmittedDeleted {
         unSubmittedLoaded,
     required TResult Function(CacheUnsubmittedProject entry) unSubmittedAdded,
     required TResult Function() unSubmittedDeleted,
+    required TResult Function(
+            int newReportCount, int inboxCount, int submittedCount)
+        reportCountsLoaded,
+    required TResult Function(int count) newlyAssignedLoaded,
   }) {
     return unSubmittedDeleted();
   }
@@ -2079,6 +2626,9 @@ class _$UnSubmittedDeletedImpl implements _UnSubmittedDeleted {
     TResult? Function(List<ProjectWorkflow> unSubmitted)? unSubmittedLoaded,
     TResult? Function(CacheUnsubmittedProject entry)? unSubmittedAdded,
     TResult? Function()? unSubmittedDeleted,
+    TResult? Function(int newReportCount, int inboxCount, int submittedCount)?
+        reportCountsLoaded,
+    TResult? Function(int count)? newlyAssignedLoaded,
   }) {
     return unSubmittedDeleted?.call();
   }
@@ -2093,6 +2643,9 @@ class _$UnSubmittedDeletedImpl implements _UnSubmittedDeleted {
     TResult Function(List<ProjectWorkflow> unSubmitted)? unSubmittedLoaded,
     TResult Function(CacheUnsubmittedProject entry)? unSubmittedAdded,
     TResult Function()? unSubmittedDeleted,
+    TResult Function(int newReportCount, int inboxCount, int submittedCount)?
+        reportCountsLoaded,
+    TResult Function(int count)? newlyAssignedLoaded,
     required TResult orElse(),
   }) {
     if (unSubmittedDeleted != null) {
@@ -2111,6 +2664,8 @@ class _$UnSubmittedDeletedImpl implements _UnSubmittedDeleted {
     required TResult Function(_UnSubmittedLoaded value) unSubmittedLoaded,
     required TResult Function(_UnSubmittedAdded value) unSubmittedAdded,
     required TResult Function(_UnSubmittedDeleted value) unSubmittedDeleted,
+    required TResult Function(ReportCountsLoaded value) reportCountsLoaded,
+    required TResult Function(NewlyAssignedLoaded value) newlyAssignedLoaded,
   }) {
     return unSubmittedDeleted(this);
   }
@@ -2125,6 +2680,8 @@ class _$UnSubmittedDeletedImpl implements _UnSubmittedDeleted {
     TResult? Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
     TResult? Function(_UnSubmittedAdded value)? unSubmittedAdded,
     TResult? Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
+    TResult? Function(ReportCountsLoaded value)? reportCountsLoaded,
+    TResult? Function(NewlyAssignedLoaded value)? newlyAssignedLoaded,
   }) {
     return unSubmittedDeleted?.call(this);
   }
@@ -2139,6 +2696,8 @@ class _$UnSubmittedDeletedImpl implements _UnSubmittedDeleted {
     TResult Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
     TResult Function(_UnSubmittedAdded value)? unSubmittedAdded,
     TResult Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
+    TResult Function(ReportCountsLoaded value)? reportCountsLoaded,
+    TResult Function(NewlyAssignedLoaded value)? newlyAssignedLoaded,
     required TResult orElse(),
   }) {
     if (unSubmittedDeleted != null) {
@@ -2150,4 +2709,395 @@ class _$UnSubmittedDeletedImpl implements _UnSubmittedDeleted {
 
 abstract class _UnSubmittedDeleted implements ProjectState {
   const factory _UnSubmittedDeleted() = _$UnSubmittedDeletedImpl;
+}
+
+/// @nodoc
+abstract class _$$ReportCountsLoadedImplCopyWith<$Res> {
+  factory _$$ReportCountsLoadedImplCopyWith(_$ReportCountsLoadedImpl value,
+          $Res Function(_$ReportCountsLoadedImpl) then) =
+      __$$ReportCountsLoadedImplCopyWithImpl<$Res>;
+  @useResult
+  $Res call({int newReportCount, int inboxCount, int submittedCount});
+}
+
+/// @nodoc
+class __$$ReportCountsLoadedImplCopyWithImpl<$Res>
+    extends _$ProjectStateCopyWithImpl<$Res, _$ReportCountsLoadedImpl>
+    implements _$$ReportCountsLoadedImplCopyWith<$Res> {
+  __$$ReportCountsLoadedImplCopyWithImpl(_$ReportCountsLoadedImpl _value,
+      $Res Function(_$ReportCountsLoadedImpl) _then)
+      : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? newReportCount = null,
+    Object? inboxCount = null,
+    Object? submittedCount = null,
+  }) {
+    return _then(_$ReportCountsLoadedImpl(
+      newReportCount: null == newReportCount
+          ? _value.newReportCount
+          : newReportCount // ignore: cast_nullable_to_non_nullable
+              as int,
+      inboxCount: null == inboxCount
+          ? _value.inboxCount
+          : inboxCount // ignore: cast_nullable_to_non_nullable
+              as int,
+      submittedCount: null == submittedCount
+          ? _value.submittedCount
+          : submittedCount // ignore: cast_nullable_to_non_nullable
+              as int,
+    ));
+  }
+}
+
+/// @nodoc
+
+class _$ReportCountsLoadedImpl implements ReportCountsLoaded {
+  const _$ReportCountsLoadedImpl(
+      {required this.newReportCount,
+      required this.inboxCount,
+      required this.submittedCount});
+
+  @override
+  final int newReportCount;
+  @override
+  final int inboxCount;
+  @override
+  final int submittedCount;
+
+  @override
+  String toString() {
+    return 'ProjectState.reportCountsLoaded(newReportCount: $newReportCount, inboxCount: $inboxCount, submittedCount: $submittedCount)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$ReportCountsLoadedImpl &&
+            (identical(other.newReportCount, newReportCount) ||
+                other.newReportCount == newReportCount) &&
+            (identical(other.inboxCount, inboxCount) ||
+                other.inboxCount == inboxCount) &&
+            (identical(other.submittedCount, submittedCount) ||
+                other.submittedCount == submittedCount));
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(runtimeType, newReportCount, inboxCount, submittedCount);
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$ReportCountsLoadedImplCopyWith<_$ReportCountsLoadedImpl> get copyWith =>
+      __$$ReportCountsLoadedImplCopyWithImpl<_$ReportCountsLoadedImpl>(
+          this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function() initial,
+    required TResult Function() loading,
+    required TResult Function(List<ProjectWorkflow> projectsList) fetched,
+    required TResult Function(String projectId) selected,
+    required TResult Function(List<ProjectWorkflow> unSubmitted)
+        unSubmittedLoaded,
+    required TResult Function(CacheUnsubmittedProject entry) unSubmittedAdded,
+    required TResult Function() unSubmittedDeleted,
+    required TResult Function(
+            int newReportCount, int inboxCount, int submittedCount)
+        reportCountsLoaded,
+    required TResult Function(int count) newlyAssignedLoaded,
+  }) {
+    return reportCountsLoaded(newReportCount, inboxCount, submittedCount);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function()? initial,
+    TResult? Function()? loading,
+    TResult? Function(List<ProjectWorkflow> projectsList)? fetched,
+    TResult? Function(String projectId)? selected,
+    TResult? Function(List<ProjectWorkflow> unSubmitted)? unSubmittedLoaded,
+    TResult? Function(CacheUnsubmittedProject entry)? unSubmittedAdded,
+    TResult? Function()? unSubmittedDeleted,
+    TResult? Function(int newReportCount, int inboxCount, int submittedCount)?
+        reportCountsLoaded,
+    TResult? Function(int count)? newlyAssignedLoaded,
+  }) {
+    return reportCountsLoaded?.call(newReportCount, inboxCount, submittedCount);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function()? initial,
+    TResult Function()? loading,
+    TResult Function(List<ProjectWorkflow> projectsList)? fetched,
+    TResult Function(String projectId)? selected,
+    TResult Function(List<ProjectWorkflow> unSubmitted)? unSubmittedLoaded,
+    TResult Function(CacheUnsubmittedProject entry)? unSubmittedAdded,
+    TResult Function()? unSubmittedDeleted,
+    TResult Function(int newReportCount, int inboxCount, int submittedCount)?
+        reportCountsLoaded,
+    TResult Function(int count)? newlyAssignedLoaded,
+    required TResult orElse(),
+  }) {
+    if (reportCountsLoaded != null) {
+      return reportCountsLoaded(newReportCount, inboxCount, submittedCount);
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(_ProjectInitialState value) initial,
+    required TResult Function(_ProjectLoadingState value) loading,
+    required TResult Function(ProjectFetchedState value) fetched,
+    required TResult Function(ProjectSelectedState value) selected,
+    required TResult Function(_UnSubmittedLoaded value) unSubmittedLoaded,
+    required TResult Function(_UnSubmittedAdded value) unSubmittedAdded,
+    required TResult Function(_UnSubmittedDeleted value) unSubmittedDeleted,
+    required TResult Function(ReportCountsLoaded value) reportCountsLoaded,
+    required TResult Function(NewlyAssignedLoaded value) newlyAssignedLoaded,
+  }) {
+    return reportCountsLoaded(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(_ProjectInitialState value)? initial,
+    TResult? Function(_ProjectLoadingState value)? loading,
+    TResult? Function(ProjectFetchedState value)? fetched,
+    TResult? Function(ProjectSelectedState value)? selected,
+    TResult? Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
+    TResult? Function(_UnSubmittedAdded value)? unSubmittedAdded,
+    TResult? Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
+    TResult? Function(ReportCountsLoaded value)? reportCountsLoaded,
+    TResult? Function(NewlyAssignedLoaded value)? newlyAssignedLoaded,
+  }) {
+    return reportCountsLoaded?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(_ProjectInitialState value)? initial,
+    TResult Function(_ProjectLoadingState value)? loading,
+    TResult Function(ProjectFetchedState value)? fetched,
+    TResult Function(ProjectSelectedState value)? selected,
+    TResult Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
+    TResult Function(_UnSubmittedAdded value)? unSubmittedAdded,
+    TResult Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
+    TResult Function(ReportCountsLoaded value)? reportCountsLoaded,
+    TResult Function(NewlyAssignedLoaded value)? newlyAssignedLoaded,
+    required TResult orElse(),
+  }) {
+    if (reportCountsLoaded != null) {
+      return reportCountsLoaded(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class ReportCountsLoaded implements ProjectState {
+  const factory ReportCountsLoaded(
+      {required final int newReportCount,
+      required final int inboxCount,
+      required final int submittedCount}) = _$ReportCountsLoadedImpl;
+
+  int get newReportCount;
+  int get inboxCount;
+  int get submittedCount;
+  @JsonKey(ignore: true)
+  _$$ReportCountsLoadedImplCopyWith<_$ReportCountsLoadedImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class _$$NewlyAssignedLoadedImplCopyWith<$Res> {
+  factory _$$NewlyAssignedLoadedImplCopyWith(_$NewlyAssignedLoadedImpl value,
+          $Res Function(_$NewlyAssignedLoadedImpl) then) =
+      __$$NewlyAssignedLoadedImplCopyWithImpl<$Res>;
+  @useResult
+  $Res call({int count});
+}
+
+/// @nodoc
+class __$$NewlyAssignedLoadedImplCopyWithImpl<$Res>
+    extends _$ProjectStateCopyWithImpl<$Res, _$NewlyAssignedLoadedImpl>
+    implements _$$NewlyAssignedLoadedImplCopyWith<$Res> {
+  __$$NewlyAssignedLoadedImplCopyWithImpl(_$NewlyAssignedLoadedImpl _value,
+      $Res Function(_$NewlyAssignedLoadedImpl) _then)
+      : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? count = null,
+  }) {
+    return _then(_$NewlyAssignedLoadedImpl(
+      null == count
+          ? _value.count
+          : count // ignore: cast_nullable_to_non_nullable
+              as int,
+    ));
+  }
+}
+
+/// @nodoc
+
+class _$NewlyAssignedLoadedImpl implements NewlyAssignedLoaded {
+  const _$NewlyAssignedLoadedImpl(this.count);
+
+  @override
+  final int count;
+
+  @override
+  String toString() {
+    return 'ProjectState.newlyAssignedLoaded(count: $count)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$NewlyAssignedLoadedImpl &&
+            (identical(other.count, count) || other.count == count));
+  }
+
+  @override
+  int get hashCode => Object.hash(runtimeType, count);
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$NewlyAssignedLoadedImplCopyWith<_$NewlyAssignedLoadedImpl> get copyWith =>
+      __$$NewlyAssignedLoadedImplCopyWithImpl<_$NewlyAssignedLoadedImpl>(
+          this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function() initial,
+    required TResult Function() loading,
+    required TResult Function(List<ProjectWorkflow> projectsList) fetched,
+    required TResult Function(String projectId) selected,
+    required TResult Function(List<ProjectWorkflow> unSubmitted)
+        unSubmittedLoaded,
+    required TResult Function(CacheUnsubmittedProject entry) unSubmittedAdded,
+    required TResult Function() unSubmittedDeleted,
+    required TResult Function(
+            int newReportCount, int inboxCount, int submittedCount)
+        reportCountsLoaded,
+    required TResult Function(int count) newlyAssignedLoaded,
+  }) {
+    return newlyAssignedLoaded(count);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function()? initial,
+    TResult? Function()? loading,
+    TResult? Function(List<ProjectWorkflow> projectsList)? fetched,
+    TResult? Function(String projectId)? selected,
+    TResult? Function(List<ProjectWorkflow> unSubmitted)? unSubmittedLoaded,
+    TResult? Function(CacheUnsubmittedProject entry)? unSubmittedAdded,
+    TResult? Function()? unSubmittedDeleted,
+    TResult? Function(int newReportCount, int inboxCount, int submittedCount)?
+        reportCountsLoaded,
+    TResult? Function(int count)? newlyAssignedLoaded,
+  }) {
+    return newlyAssignedLoaded?.call(count);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function()? initial,
+    TResult Function()? loading,
+    TResult Function(List<ProjectWorkflow> projectsList)? fetched,
+    TResult Function(String projectId)? selected,
+    TResult Function(List<ProjectWorkflow> unSubmitted)? unSubmittedLoaded,
+    TResult Function(CacheUnsubmittedProject entry)? unSubmittedAdded,
+    TResult Function()? unSubmittedDeleted,
+    TResult Function(int newReportCount, int inboxCount, int submittedCount)?
+        reportCountsLoaded,
+    TResult Function(int count)? newlyAssignedLoaded,
+    required TResult orElse(),
+  }) {
+    if (newlyAssignedLoaded != null) {
+      return newlyAssignedLoaded(count);
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(_ProjectInitialState value) initial,
+    required TResult Function(_ProjectLoadingState value) loading,
+    required TResult Function(ProjectFetchedState value) fetched,
+    required TResult Function(ProjectSelectedState value) selected,
+    required TResult Function(_UnSubmittedLoaded value) unSubmittedLoaded,
+    required TResult Function(_UnSubmittedAdded value) unSubmittedAdded,
+    required TResult Function(_UnSubmittedDeleted value) unSubmittedDeleted,
+    required TResult Function(ReportCountsLoaded value) reportCountsLoaded,
+    required TResult Function(NewlyAssignedLoaded value) newlyAssignedLoaded,
+  }) {
+    return newlyAssignedLoaded(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(_ProjectInitialState value)? initial,
+    TResult? Function(_ProjectLoadingState value)? loading,
+    TResult? Function(ProjectFetchedState value)? fetched,
+    TResult? Function(ProjectSelectedState value)? selected,
+    TResult? Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
+    TResult? Function(_UnSubmittedAdded value)? unSubmittedAdded,
+    TResult? Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
+    TResult? Function(ReportCountsLoaded value)? reportCountsLoaded,
+    TResult? Function(NewlyAssignedLoaded value)? newlyAssignedLoaded,
+  }) {
+    return newlyAssignedLoaded?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(_ProjectInitialState value)? initial,
+    TResult Function(_ProjectLoadingState value)? loading,
+    TResult Function(ProjectFetchedState value)? fetched,
+    TResult Function(ProjectSelectedState value)? selected,
+    TResult Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
+    TResult Function(_UnSubmittedAdded value)? unSubmittedAdded,
+    TResult Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
+    TResult Function(ReportCountsLoaded value)? reportCountsLoaded,
+    TResult Function(NewlyAssignedLoaded value)? newlyAssignedLoaded,
+    required TResult orElse(),
+  }) {
+    if (newlyAssignedLoaded != null) {
+      return newlyAssignedLoaded(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class NewlyAssignedLoaded implements ProjectState {
+  const factory NewlyAssignedLoaded(final int count) =
+      _$NewlyAssignedLoadedImpl;
+
+  int get count;
+  @JsonKey(ignore: true)
+  _$$NewlyAssignedLoadedImplCopyWith<_$NewlyAssignedLoadedImpl> get copyWith =>
+      throw _privateConstructorUsedError;
 }

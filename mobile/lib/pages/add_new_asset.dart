@@ -1008,8 +1008,14 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
 
               return Scaffold(
                 body: ScrollableContent(
-                  header: const BackNavigationHelpHeaderWidget(
-                      showBackNavigation: true, showHelp: false),
+                  header: BackNavigationHelpHeaderWidget(
+                    showBackNavigation: true,
+                    showHelp: false,
+                    defaultPopRoute: false,
+                    handleback: () {
+                      context.router.replace(const AssetTypeDetailRoute());
+                    },
+                  ),
                   enableFixedDigitButton: true,
                   backgroundColor: theme.colorTheme.generic.background,
                   footer: FooterButton(

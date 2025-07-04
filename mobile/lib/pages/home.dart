@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../blocs/cache_sync_record/cache_sync_record.dart';
+import '../blocs/project/project.dart';
 import '../blocs/report_type/report_type.dart';
 import '../blocs/user_type/user_type.dart';
 import '../router/app_router.dart';
@@ -25,6 +26,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   late final String _userType;
   late String pendingRecords = "0";
+  late String assignedFacility = "0";
 
   @override
   void initState() {
@@ -33,6 +35,9 @@ class _HomePageState extends State<HomePage> {
       _userType = context.read<UserTypeBloc>().state.maybeWhen(
             supervisor: () => USER_TYPES.SUPERVISOR.name,
             orElse: () => USER_TYPES.FIELD_STAFF.name,
+          );
+      context.read<ProjectBloc>().add(
+            ProjectEvent.getNewlyAssigned(userType: _userType),
           );
       context
           .read<CacheSyncRecordBloc>()
@@ -196,12 +201,19 @@ class _HomePageState extends State<HomePage> {
                     },
                   ),
                   const SizedBox(height: spacer3),
-                  const InfoCard(
-                    title: "Facilities assigned",
-                    type: InfoType.info,
-                    description:
-                        '10 more facilities have been assigned to you.',
-                  ),
+                  BlocBuilder<ProjectBloc, ProjectState>(
+                      builder: (context, state) {
+                    assignedFacility = state.maybeWhen(
+                      newlyAssignedLoaded: (count) => "$count",
+                      orElse: () => "0",
+                    );
+                    return InfoCard(
+                      title: "Facilities assigned",
+                      type: InfoType.info,
+                      description:
+                          '$assignedFacility more facilit${assignedFacility == '1' ? 'y' : 'ies'} have been assigned to you.',
+                    );
+                  }),
                 ],
               ),
             ),
