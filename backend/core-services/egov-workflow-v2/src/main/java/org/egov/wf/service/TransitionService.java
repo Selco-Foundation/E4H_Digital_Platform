@@ -166,13 +166,11 @@ public class TransitionService {
         BusinessServiceSearchCriteria criteria = new BusinessServiceSearchCriteria();
         String businessService = processInstances.get(0).getBusinessService();
         if (fetchedProcessInstances.size()>0) {
-            for( ProcessInstance p : fetchedProcessInstances){
-                if(p.getAction().equals("APPLY")){
-                    businessService = p.getBusinessService();
+
+                    businessService = fetchedProcessInstances.get(0).getBusinessService();
                     processInstances.get(0).setBusinessService(businessService);
-                    break;
-                }
-            }
+
+
 
         }
         criteria.setTenantId(tenantId);
