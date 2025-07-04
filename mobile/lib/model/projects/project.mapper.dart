@@ -156,6 +156,9 @@ class ProjectSearchModelMapper extends ClassMapperBase<ProjectSearchModel> {
   static String? _$id(ProjectSearchModel v) => v.id;
   static const Field<ProjectSearchModel, String> _f$id =
       Field('id', _$id, opt: true);
+  static String? _$name(ProjectSearchModel v) => v.name;
+  static const Field<ProjectSearchModel, String> _f$name =
+      Field('name', _$name, opt: true);
   static String? _$projectTypeId(ProjectSearchModel v) => v.projectTypeId;
   static const Field<ProjectSearchModel, String> _f$projectTypeId =
       Field('projectTypeId', _$projectTypeId, opt: true);
@@ -196,6 +199,7 @@ class ProjectSearchModelMapper extends ClassMapperBase<ProjectSearchModel> {
   @override
   final MappableFields<ProjectSearchModel> fields = const {
     #id: _f$id,
+    #name: _f$name,
     #projectTypeId: _f$projectTypeId,
     #projectNumber: _f$projectNumber,
     #subProjectTypeId: _f$subProjectTypeId,
@@ -215,6 +219,7 @@ class ProjectSearchModelMapper extends ClassMapperBase<ProjectSearchModel> {
   static ProjectSearchModel _instantiate(DecodingData data) {
     return ProjectSearchModel.ignoreDeleted(
         id: data.dec(_f$id),
+        name: data.dec(_f$name),
         projectTypeId: data.dec(_f$projectTypeId),
         projectNumber: data.dec(_f$projectNumber),
         subProjectTypeId: data.dec(_f$subProjectTypeId),
@@ -284,6 +289,7 @@ abstract class ProjectSearchModelCopyWith<$R, $In extends ProjectSearchModel,
     $Out> implements ClassCopyWith<$R, $In, $Out> {
   $R call(
       {String? id,
+      String? name,
       String? projectTypeId,
       String? projectNumber,
       String? subProjectTypeId,
@@ -309,6 +315,7 @@ class _ProjectSearchModelCopyWithImpl<$R, $Out>
   @override
   $R call(
           {Object? id = $none,
+          Object? name = $none,
           Object? projectTypeId = $none,
           Object? projectNumber = $none,
           Object? subProjectTypeId = $none,
@@ -321,6 +328,7 @@ class _ProjectSearchModelCopyWithImpl<$R, $Out>
           Object? endDate = $none}) =>
       $apply(FieldCopyWithData({
         if (id != $none) #id: id,
+        if (name != $none) #name: name,
         if (projectTypeId != $none) #projectTypeId: projectTypeId,
         if (projectNumber != $none) #projectNumber: projectNumber,
         if (subProjectTypeId != $none) #subProjectTypeId: subProjectTypeId,
@@ -336,6 +344,7 @@ class _ProjectSearchModelCopyWithImpl<$R, $Out>
   ProjectSearchModel $make(CopyWithData data) =>
       ProjectSearchModel.ignoreDeleted(
           id: data.get(#id, or: $value.id),
+          name: data.get(#name, or: $value.name),
           projectTypeId: data.get(#projectTypeId, or: $value.projectTypeId),
           projectNumber: data.get(#projectNumber, or: $value.projectNumber),
           subProjectTypeId:
