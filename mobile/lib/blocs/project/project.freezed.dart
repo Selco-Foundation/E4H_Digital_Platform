@@ -34,6 +34,7 @@ mixin _$ProjectEvent {
         fetchProjectsSorted,
     required TResult Function(String query, List<String> workflowStatuses)
         fetchProjectsBySearch,
+    required TResult Function(String projectId, String userType) checkIfInCache,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -50,6 +51,7 @@ mixin _$ProjectEvent {
         fetchProjectsSorted,
     TResult? Function(String query, List<String> workflowStatuses)?
         fetchProjectsBySearch,
+    TResult? Function(String projectId, String userType)? checkIfInCache,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -65,6 +67,7 @@ mixin _$ProjectEvent {
         fetchProjectsSorted,
     TResult Function(String query, List<String> workflowStatuses)?
         fetchProjectsBySearch,
+    TResult Function(String projectId, String userType)? checkIfInCache,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -83,6 +86,7 @@ mixin _$ProjectEvent {
         fetchProjectsSorted,
     required TResult Function(FetchProjectsBySearchEvent value)
         fetchProjectsBySearch,
+    required TResult Function(ProjectCheckIfInCache value) checkIfInCache,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -97,6 +101,7 @@ mixin _$ProjectEvent {
     TResult? Function(GetNewlyAssignedEvent value)? getNewlyAssigned,
     TResult? Function(FetchProjectsSortedEvent value)? fetchProjectsSorted,
     TResult? Function(FetchProjectsBySearchEvent value)? fetchProjectsBySearch,
+    TResult? Function(ProjectCheckIfInCache value)? checkIfInCache,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -111,6 +116,7 @@ mixin _$ProjectEvent {
     TResult Function(GetNewlyAssignedEvent value)? getNewlyAssigned,
     TResult Function(FetchProjectsSortedEvent value)? fetchProjectsSorted,
     TResult Function(FetchProjectsBySearchEvent value)? fetchProjectsBySearch,
+    TResult Function(ProjectCheckIfInCache value)? checkIfInCache,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -216,6 +222,7 @@ class _$ProjectSelectEventImpl implements ProjectSelectEvent {
         fetchProjectsSorted,
     required TResult Function(String query, List<String> workflowStatuses)
         fetchProjectsBySearch,
+    required TResult Function(String projectId, String userType) checkIfInCache,
   }) {
     return selectProject(projectId);
   }
@@ -235,6 +242,7 @@ class _$ProjectSelectEventImpl implements ProjectSelectEvent {
         fetchProjectsSorted,
     TResult? Function(String query, List<String> workflowStatuses)?
         fetchProjectsBySearch,
+    TResult? Function(String projectId, String userType)? checkIfInCache,
   }) {
     return selectProject?.call(projectId);
   }
@@ -253,6 +261,7 @@ class _$ProjectSelectEventImpl implements ProjectSelectEvent {
         fetchProjectsSorted,
     TResult Function(String query, List<String> workflowStatuses)?
         fetchProjectsBySearch,
+    TResult Function(String projectId, String userType)? checkIfInCache,
     required TResult orElse(),
   }) {
     if (selectProject != null) {
@@ -277,6 +286,7 @@ class _$ProjectSelectEventImpl implements ProjectSelectEvent {
         fetchProjectsSorted,
     required TResult Function(FetchProjectsBySearchEvent value)
         fetchProjectsBySearch,
+    required TResult Function(ProjectCheckIfInCache value) checkIfInCache,
   }) {
     return selectProject(this);
   }
@@ -294,6 +304,7 @@ class _$ProjectSelectEventImpl implements ProjectSelectEvent {
     TResult? Function(GetNewlyAssignedEvent value)? getNewlyAssigned,
     TResult? Function(FetchProjectsSortedEvent value)? fetchProjectsSorted,
     TResult? Function(FetchProjectsBySearchEvent value)? fetchProjectsBySearch,
+    TResult? Function(ProjectCheckIfInCache value)? checkIfInCache,
   }) {
     return selectProject?.call(this);
   }
@@ -311,6 +322,7 @@ class _$ProjectSelectEventImpl implements ProjectSelectEvent {
     TResult Function(GetNewlyAssignedEvent value)? getNewlyAssigned,
     TResult Function(FetchProjectsSortedEvent value)? fetchProjectsSorted,
     TResult Function(FetchProjectsBySearchEvent value)? fetchProjectsBySearch,
+    TResult Function(ProjectCheckIfInCache value)? checkIfInCache,
     required TResult orElse(),
   }) {
     if (selectProject != null) {
@@ -425,6 +437,7 @@ class _$FetchProjectsByWorkflowEventImpl
         fetchProjectsSorted,
     required TResult Function(String query, List<String> workflowStatuses)
         fetchProjectsBySearch,
+    required TResult Function(String projectId, String userType) checkIfInCache,
   }) {
     return fetchProjectsByWorkflow(workflowStatuses);
   }
@@ -444,6 +457,7 @@ class _$FetchProjectsByWorkflowEventImpl
         fetchProjectsSorted,
     TResult? Function(String query, List<String> workflowStatuses)?
         fetchProjectsBySearch,
+    TResult? Function(String projectId, String userType)? checkIfInCache,
   }) {
     return fetchProjectsByWorkflow?.call(workflowStatuses);
   }
@@ -462,6 +476,7 @@ class _$FetchProjectsByWorkflowEventImpl
         fetchProjectsSorted,
     TResult Function(String query, List<String> workflowStatuses)?
         fetchProjectsBySearch,
+    TResult Function(String projectId, String userType)? checkIfInCache,
     required TResult orElse(),
   }) {
     if (fetchProjectsByWorkflow != null) {
@@ -486,6 +501,7 @@ class _$FetchProjectsByWorkflowEventImpl
         fetchProjectsSorted,
     required TResult Function(FetchProjectsBySearchEvent value)
         fetchProjectsBySearch,
+    required TResult Function(ProjectCheckIfInCache value) checkIfInCache,
   }) {
     return fetchProjectsByWorkflow(this);
   }
@@ -503,6 +519,7 @@ class _$FetchProjectsByWorkflowEventImpl
     TResult? Function(GetNewlyAssignedEvent value)? getNewlyAssigned,
     TResult? Function(FetchProjectsSortedEvent value)? fetchProjectsSorted,
     TResult? Function(FetchProjectsBySearchEvent value)? fetchProjectsBySearch,
+    TResult? Function(ProjectCheckIfInCache value)? checkIfInCache,
   }) {
     return fetchProjectsByWorkflow?.call(this);
   }
@@ -520,6 +537,7 @@ class _$FetchProjectsByWorkflowEventImpl
     TResult Function(GetNewlyAssignedEvent value)? getNewlyAssigned,
     TResult Function(FetchProjectsSortedEvent value)? fetchProjectsSorted,
     TResult Function(FetchProjectsBySearchEvent value)? fetchProjectsBySearch,
+    TResult Function(ProjectCheckIfInCache value)? checkIfInCache,
     required TResult orElse(),
   }) {
     if (fetchProjectsByWorkflow != null) {
@@ -642,6 +660,7 @@ class _$AddUnSubmittedEventImpl implements AddUnSubmittedEvent {
         fetchProjectsSorted,
     required TResult Function(String query, List<String> workflowStatuses)
         fetchProjectsBySearch,
+    required TResult Function(String projectId, String userType) checkIfInCache,
   }) {
     return addUnSubmitted(workflow, userType);
   }
@@ -661,6 +680,7 @@ class _$AddUnSubmittedEventImpl implements AddUnSubmittedEvent {
         fetchProjectsSorted,
     TResult? Function(String query, List<String> workflowStatuses)?
         fetchProjectsBySearch,
+    TResult? Function(String projectId, String userType)? checkIfInCache,
   }) {
     return addUnSubmitted?.call(workflow, userType);
   }
@@ -679,6 +699,7 @@ class _$AddUnSubmittedEventImpl implements AddUnSubmittedEvent {
         fetchProjectsSorted,
     TResult Function(String query, List<String> workflowStatuses)?
         fetchProjectsBySearch,
+    TResult Function(String projectId, String userType)? checkIfInCache,
     required TResult orElse(),
   }) {
     if (addUnSubmitted != null) {
@@ -703,6 +724,7 @@ class _$AddUnSubmittedEventImpl implements AddUnSubmittedEvent {
         fetchProjectsSorted,
     required TResult Function(FetchProjectsBySearchEvent value)
         fetchProjectsBySearch,
+    required TResult Function(ProjectCheckIfInCache value) checkIfInCache,
   }) {
     return addUnSubmitted(this);
   }
@@ -720,6 +742,7 @@ class _$AddUnSubmittedEventImpl implements AddUnSubmittedEvent {
     TResult? Function(GetNewlyAssignedEvent value)? getNewlyAssigned,
     TResult? Function(FetchProjectsSortedEvent value)? fetchProjectsSorted,
     TResult? Function(FetchProjectsBySearchEvent value)? fetchProjectsBySearch,
+    TResult? Function(ProjectCheckIfInCache value)? checkIfInCache,
   }) {
     return addUnSubmitted?.call(this);
   }
@@ -737,6 +760,7 @@ class _$AddUnSubmittedEventImpl implements AddUnSubmittedEvent {
     TResult Function(GetNewlyAssignedEvent value)? getNewlyAssigned,
     TResult Function(FetchProjectsSortedEvent value)? fetchProjectsSorted,
     TResult Function(FetchProjectsBySearchEvent value)? fetchProjectsBySearch,
+    TResult Function(ProjectCheckIfInCache value)? checkIfInCache,
     required TResult orElse(),
   }) {
     if (addUnSubmitted != null) {
@@ -857,6 +881,7 @@ class _$LoadUnSubmittedEventImpl implements LoadUnSubmittedEvent {
         fetchProjectsSorted,
     required TResult Function(String query, List<String> workflowStatuses)
         fetchProjectsBySearch,
+    required TResult Function(String projectId, String userType) checkIfInCache,
   }) {
     return loadUnSubmitted(statuses, userType);
   }
@@ -876,6 +901,7 @@ class _$LoadUnSubmittedEventImpl implements LoadUnSubmittedEvent {
         fetchProjectsSorted,
     TResult? Function(String query, List<String> workflowStatuses)?
         fetchProjectsBySearch,
+    TResult? Function(String projectId, String userType)? checkIfInCache,
   }) {
     return loadUnSubmitted?.call(statuses, userType);
   }
@@ -894,6 +920,7 @@ class _$LoadUnSubmittedEventImpl implements LoadUnSubmittedEvent {
         fetchProjectsSorted,
     TResult Function(String query, List<String> workflowStatuses)?
         fetchProjectsBySearch,
+    TResult Function(String projectId, String userType)? checkIfInCache,
     required TResult orElse(),
   }) {
     if (loadUnSubmitted != null) {
@@ -918,6 +945,7 @@ class _$LoadUnSubmittedEventImpl implements LoadUnSubmittedEvent {
         fetchProjectsSorted,
     required TResult Function(FetchProjectsBySearchEvent value)
         fetchProjectsBySearch,
+    required TResult Function(ProjectCheckIfInCache value) checkIfInCache,
   }) {
     return loadUnSubmitted(this);
   }
@@ -935,6 +963,7 @@ class _$LoadUnSubmittedEventImpl implements LoadUnSubmittedEvent {
     TResult? Function(GetNewlyAssignedEvent value)? getNewlyAssigned,
     TResult? Function(FetchProjectsSortedEvent value)? fetchProjectsSorted,
     TResult? Function(FetchProjectsBySearchEvent value)? fetchProjectsBySearch,
+    TResult? Function(ProjectCheckIfInCache value)? checkIfInCache,
   }) {
     return loadUnSubmitted?.call(this);
   }
@@ -952,6 +981,7 @@ class _$LoadUnSubmittedEventImpl implements LoadUnSubmittedEvent {
     TResult Function(GetNewlyAssignedEvent value)? getNewlyAssigned,
     TResult Function(FetchProjectsSortedEvent value)? fetchProjectsSorted,
     TResult Function(FetchProjectsBySearchEvent value)? fetchProjectsBySearch,
+    TResult Function(ProjectCheckIfInCache value)? checkIfInCache,
     required TResult orElse(),
   }) {
     if (loadUnSubmitted != null) {
@@ -1066,6 +1096,7 @@ class _$DeleteUnSubmittedEventImpl implements DeleteUnSubmittedEvent {
         fetchProjectsSorted,
     required TResult Function(String query, List<String> workflowStatuses)
         fetchProjectsBySearch,
+    required TResult Function(String projectId, String userType) checkIfInCache,
   }) {
     return deleteUnSubmitted(projectId, userType);
   }
@@ -1085,6 +1116,7 @@ class _$DeleteUnSubmittedEventImpl implements DeleteUnSubmittedEvent {
         fetchProjectsSorted,
     TResult? Function(String query, List<String> workflowStatuses)?
         fetchProjectsBySearch,
+    TResult? Function(String projectId, String userType)? checkIfInCache,
   }) {
     return deleteUnSubmitted?.call(projectId, userType);
   }
@@ -1103,6 +1135,7 @@ class _$DeleteUnSubmittedEventImpl implements DeleteUnSubmittedEvent {
         fetchProjectsSorted,
     TResult Function(String query, List<String> workflowStatuses)?
         fetchProjectsBySearch,
+    TResult Function(String projectId, String userType)? checkIfInCache,
     required TResult orElse(),
   }) {
     if (deleteUnSubmitted != null) {
@@ -1127,6 +1160,7 @@ class _$DeleteUnSubmittedEventImpl implements DeleteUnSubmittedEvent {
         fetchProjectsSorted,
     required TResult Function(FetchProjectsBySearchEvent value)
         fetchProjectsBySearch,
+    required TResult Function(ProjectCheckIfInCache value) checkIfInCache,
   }) {
     return deleteUnSubmitted(this);
   }
@@ -1144,6 +1178,7 @@ class _$DeleteUnSubmittedEventImpl implements DeleteUnSubmittedEvent {
     TResult? Function(GetNewlyAssignedEvent value)? getNewlyAssigned,
     TResult? Function(FetchProjectsSortedEvent value)? fetchProjectsSorted,
     TResult? Function(FetchProjectsBySearchEvent value)? fetchProjectsBySearch,
+    TResult? Function(ProjectCheckIfInCache value)? checkIfInCache,
   }) {
     return deleteUnSubmitted?.call(this);
   }
@@ -1161,6 +1196,7 @@ class _$DeleteUnSubmittedEventImpl implements DeleteUnSubmittedEvent {
     TResult Function(GetNewlyAssignedEvent value)? getNewlyAssigned,
     TResult Function(FetchProjectsSortedEvent value)? fetchProjectsSorted,
     TResult Function(FetchProjectsBySearchEvent value)? fetchProjectsBySearch,
+    TResult Function(ProjectCheckIfInCache value)? checkIfInCache,
     required TResult orElse(),
   }) {
     if (deleteUnSubmitted != null) {
@@ -1266,6 +1302,7 @@ class _$FetchAllReportCountsEventImpl implements FetchAllReportCountsEvent {
         fetchProjectsSorted,
     required TResult Function(String query, List<String> workflowStatuses)
         fetchProjectsBySearch,
+    required TResult Function(String projectId, String userType) checkIfInCache,
   }) {
     return fetchAllReportCounts(userType);
   }
@@ -1285,6 +1322,7 @@ class _$FetchAllReportCountsEventImpl implements FetchAllReportCountsEvent {
         fetchProjectsSorted,
     TResult? Function(String query, List<String> workflowStatuses)?
         fetchProjectsBySearch,
+    TResult? Function(String projectId, String userType)? checkIfInCache,
   }) {
     return fetchAllReportCounts?.call(userType);
   }
@@ -1303,6 +1341,7 @@ class _$FetchAllReportCountsEventImpl implements FetchAllReportCountsEvent {
         fetchProjectsSorted,
     TResult Function(String query, List<String> workflowStatuses)?
         fetchProjectsBySearch,
+    TResult Function(String projectId, String userType)? checkIfInCache,
     required TResult orElse(),
   }) {
     if (fetchAllReportCounts != null) {
@@ -1327,6 +1366,7 @@ class _$FetchAllReportCountsEventImpl implements FetchAllReportCountsEvent {
         fetchProjectsSorted,
     required TResult Function(FetchProjectsBySearchEvent value)
         fetchProjectsBySearch,
+    required TResult Function(ProjectCheckIfInCache value) checkIfInCache,
   }) {
     return fetchAllReportCounts(this);
   }
@@ -1344,6 +1384,7 @@ class _$FetchAllReportCountsEventImpl implements FetchAllReportCountsEvent {
     TResult? Function(GetNewlyAssignedEvent value)? getNewlyAssigned,
     TResult? Function(FetchProjectsSortedEvent value)? fetchProjectsSorted,
     TResult? Function(FetchProjectsBySearchEvent value)? fetchProjectsBySearch,
+    TResult? Function(ProjectCheckIfInCache value)? checkIfInCache,
   }) {
     return fetchAllReportCounts?.call(this);
   }
@@ -1361,6 +1402,7 @@ class _$FetchAllReportCountsEventImpl implements FetchAllReportCountsEvent {
     TResult Function(GetNewlyAssignedEvent value)? getNewlyAssigned,
     TResult Function(FetchProjectsSortedEvent value)? fetchProjectsSorted,
     TResult Function(FetchProjectsBySearchEvent value)? fetchProjectsBySearch,
+    TResult Function(ProjectCheckIfInCache value)? checkIfInCache,
     required TResult orElse(),
   }) {
     if (fetchAllReportCounts != null) {
@@ -1463,6 +1505,7 @@ class _$GetNewlyAssignedEventImpl implements GetNewlyAssignedEvent {
         fetchProjectsSorted,
     required TResult Function(String query, List<String> workflowStatuses)
         fetchProjectsBySearch,
+    required TResult Function(String projectId, String userType) checkIfInCache,
   }) {
     return getNewlyAssigned(userType);
   }
@@ -1482,6 +1525,7 @@ class _$GetNewlyAssignedEventImpl implements GetNewlyAssignedEvent {
         fetchProjectsSorted,
     TResult? Function(String query, List<String> workflowStatuses)?
         fetchProjectsBySearch,
+    TResult? Function(String projectId, String userType)? checkIfInCache,
   }) {
     return getNewlyAssigned?.call(userType);
   }
@@ -1500,6 +1544,7 @@ class _$GetNewlyAssignedEventImpl implements GetNewlyAssignedEvent {
         fetchProjectsSorted,
     TResult Function(String query, List<String> workflowStatuses)?
         fetchProjectsBySearch,
+    TResult Function(String projectId, String userType)? checkIfInCache,
     required TResult orElse(),
   }) {
     if (getNewlyAssigned != null) {
@@ -1524,6 +1569,7 @@ class _$GetNewlyAssignedEventImpl implements GetNewlyAssignedEvent {
         fetchProjectsSorted,
     required TResult Function(FetchProjectsBySearchEvent value)
         fetchProjectsBySearch,
+    required TResult Function(ProjectCheckIfInCache value) checkIfInCache,
   }) {
     return getNewlyAssigned(this);
   }
@@ -1541,6 +1587,7 @@ class _$GetNewlyAssignedEventImpl implements GetNewlyAssignedEvent {
     TResult? Function(GetNewlyAssignedEvent value)? getNewlyAssigned,
     TResult? Function(FetchProjectsSortedEvent value)? fetchProjectsSorted,
     TResult? Function(FetchProjectsBySearchEvent value)? fetchProjectsBySearch,
+    TResult? Function(ProjectCheckIfInCache value)? checkIfInCache,
   }) {
     return getNewlyAssigned?.call(this);
   }
@@ -1558,6 +1605,7 @@ class _$GetNewlyAssignedEventImpl implements GetNewlyAssignedEvent {
     TResult Function(GetNewlyAssignedEvent value)? getNewlyAssigned,
     TResult Function(FetchProjectsSortedEvent value)? fetchProjectsSorted,
     TResult Function(FetchProjectsBySearchEvent value)? fetchProjectsBySearch,
+    TResult Function(ProjectCheckIfInCache value)? checkIfInCache,
     required TResult orElse(),
   }) {
     if (getNewlyAssigned != null) {
@@ -1681,6 +1729,7 @@ class _$FetchProjectsSortedEventImpl implements FetchProjectsSortedEvent {
         fetchProjectsSorted,
     required TResult Function(String query, List<String> workflowStatuses)
         fetchProjectsBySearch,
+    required TResult Function(String projectId, String userType) checkIfInCache,
   }) {
     return fetchProjectsSorted(workflowStatuses, sortDirection);
   }
@@ -1700,6 +1749,7 @@ class _$FetchProjectsSortedEventImpl implements FetchProjectsSortedEvent {
         fetchProjectsSorted,
     TResult? Function(String query, List<String> workflowStatuses)?
         fetchProjectsBySearch,
+    TResult? Function(String projectId, String userType)? checkIfInCache,
   }) {
     return fetchProjectsSorted?.call(workflowStatuses, sortDirection);
   }
@@ -1718,6 +1768,7 @@ class _$FetchProjectsSortedEventImpl implements FetchProjectsSortedEvent {
         fetchProjectsSorted,
     TResult Function(String query, List<String> workflowStatuses)?
         fetchProjectsBySearch,
+    TResult Function(String projectId, String userType)? checkIfInCache,
     required TResult orElse(),
   }) {
     if (fetchProjectsSorted != null) {
@@ -1742,6 +1793,7 @@ class _$FetchProjectsSortedEventImpl implements FetchProjectsSortedEvent {
         fetchProjectsSorted,
     required TResult Function(FetchProjectsBySearchEvent value)
         fetchProjectsBySearch,
+    required TResult Function(ProjectCheckIfInCache value) checkIfInCache,
   }) {
     return fetchProjectsSorted(this);
   }
@@ -1759,6 +1811,7 @@ class _$FetchProjectsSortedEventImpl implements FetchProjectsSortedEvent {
     TResult? Function(GetNewlyAssignedEvent value)? getNewlyAssigned,
     TResult? Function(FetchProjectsSortedEvent value)? fetchProjectsSorted,
     TResult? Function(FetchProjectsBySearchEvent value)? fetchProjectsBySearch,
+    TResult? Function(ProjectCheckIfInCache value)? checkIfInCache,
   }) {
     return fetchProjectsSorted?.call(this);
   }
@@ -1776,6 +1829,7 @@ class _$FetchProjectsSortedEventImpl implements FetchProjectsSortedEvent {
     TResult Function(GetNewlyAssignedEvent value)? getNewlyAssigned,
     TResult Function(FetchProjectsSortedEvent value)? fetchProjectsSorted,
     TResult Function(FetchProjectsBySearchEvent value)? fetchProjectsBySearch,
+    TResult Function(ProjectCheckIfInCache value)? checkIfInCache,
     required TResult orElse(),
   }) {
     if (fetchProjectsSorted != null) {
@@ -1898,6 +1952,7 @@ class _$FetchProjectsBySearchEventImpl implements FetchProjectsBySearchEvent {
         fetchProjectsSorted,
     required TResult Function(String query, List<String> workflowStatuses)
         fetchProjectsBySearch,
+    required TResult Function(String projectId, String userType) checkIfInCache,
   }) {
     return fetchProjectsBySearch(query, workflowStatuses);
   }
@@ -1917,6 +1972,7 @@ class _$FetchProjectsBySearchEventImpl implements FetchProjectsBySearchEvent {
         fetchProjectsSorted,
     TResult? Function(String query, List<String> workflowStatuses)?
         fetchProjectsBySearch,
+    TResult? Function(String projectId, String userType)? checkIfInCache,
   }) {
     return fetchProjectsBySearch?.call(query, workflowStatuses);
   }
@@ -1935,6 +1991,7 @@ class _$FetchProjectsBySearchEventImpl implements FetchProjectsBySearchEvent {
         fetchProjectsSorted,
     TResult Function(String query, List<String> workflowStatuses)?
         fetchProjectsBySearch,
+    TResult Function(String projectId, String userType)? checkIfInCache,
     required TResult orElse(),
   }) {
     if (fetchProjectsBySearch != null) {
@@ -1959,6 +2016,7 @@ class _$FetchProjectsBySearchEventImpl implements FetchProjectsBySearchEvent {
         fetchProjectsSorted,
     required TResult Function(FetchProjectsBySearchEvent value)
         fetchProjectsBySearch,
+    required TResult Function(ProjectCheckIfInCache value) checkIfInCache,
   }) {
     return fetchProjectsBySearch(this);
   }
@@ -1976,6 +2034,7 @@ class _$FetchProjectsBySearchEventImpl implements FetchProjectsBySearchEvent {
     TResult? Function(GetNewlyAssignedEvent value)? getNewlyAssigned,
     TResult? Function(FetchProjectsSortedEvent value)? fetchProjectsSorted,
     TResult? Function(FetchProjectsBySearchEvent value)? fetchProjectsBySearch,
+    TResult? Function(ProjectCheckIfInCache value)? checkIfInCache,
   }) {
     return fetchProjectsBySearch?.call(this);
   }
@@ -1993,6 +2052,7 @@ class _$FetchProjectsBySearchEventImpl implements FetchProjectsBySearchEvent {
     TResult Function(GetNewlyAssignedEvent value)? getNewlyAssigned,
     TResult Function(FetchProjectsSortedEvent value)? fetchProjectsSorted,
     TResult Function(FetchProjectsBySearchEvent value)? fetchProjectsBySearch,
+    TResult Function(ProjectCheckIfInCache value)? checkIfInCache,
     required TResult orElse(),
   }) {
     if (fetchProjectsBySearch != null) {
@@ -2016,11 +2076,227 @@ abstract class FetchProjectsBySearchEvent implements ProjectEvent {
 }
 
 /// @nodoc
+abstract class _$$ProjectCheckIfInCacheImplCopyWith<$Res> {
+  factory _$$ProjectCheckIfInCacheImplCopyWith(
+          _$ProjectCheckIfInCacheImpl value,
+          $Res Function(_$ProjectCheckIfInCacheImpl) then) =
+      __$$ProjectCheckIfInCacheImplCopyWithImpl<$Res>;
+  @useResult
+  $Res call({String projectId, String userType});
+}
+
+/// @nodoc
+class __$$ProjectCheckIfInCacheImplCopyWithImpl<$Res>
+    extends _$ProjectEventCopyWithImpl<$Res, _$ProjectCheckIfInCacheImpl>
+    implements _$$ProjectCheckIfInCacheImplCopyWith<$Res> {
+  __$$ProjectCheckIfInCacheImplCopyWithImpl(_$ProjectCheckIfInCacheImpl _value,
+      $Res Function(_$ProjectCheckIfInCacheImpl) _then)
+      : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? projectId = null,
+    Object? userType = null,
+  }) {
+    return _then(_$ProjectCheckIfInCacheImpl(
+      projectId: null == projectId
+          ? _value.projectId
+          : projectId // ignore: cast_nullable_to_non_nullable
+              as String,
+      userType: null == userType
+          ? _value.userType
+          : userType // ignore: cast_nullable_to_non_nullable
+              as String,
+    ));
+  }
+}
+
+/// @nodoc
+
+class _$ProjectCheckIfInCacheImpl implements ProjectCheckIfInCache {
+  const _$ProjectCheckIfInCacheImpl(
+      {required this.projectId, required this.userType});
+
+  @override
+  final String projectId;
+  @override
+  final String userType;
+
+  @override
+  String toString() {
+    return 'ProjectEvent.checkIfInCache(projectId: $projectId, userType: $userType)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$ProjectCheckIfInCacheImpl &&
+            (identical(other.projectId, projectId) ||
+                other.projectId == projectId) &&
+            (identical(other.userType, userType) ||
+                other.userType == userType));
+  }
+
+  @override
+  int get hashCode => Object.hash(runtimeType, projectId, userType);
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$ProjectCheckIfInCacheImplCopyWith<_$ProjectCheckIfInCacheImpl>
+      get copyWith => __$$ProjectCheckIfInCacheImplCopyWithImpl<
+          _$ProjectCheckIfInCacheImpl>(this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function(String projectId) selectProject,
+    required TResult Function(List<String> workflowStatuses)
+        fetchProjectsByWorkflow,
+    required TResult Function(ProjectWorkflow workflow, String userType)
+        addUnSubmitted,
+    required TResult Function(List<String> statuses, String userType)
+        loadUnSubmitted,
+    required TResult Function(String projectId, String userType)
+        deleteUnSubmitted,
+    required TResult Function(String userType) fetchAllReportCounts,
+    required TResult Function(String userType) getNewlyAssigned,
+    required TResult Function(
+            List<String> workflowStatuses, String sortDirection)
+        fetchProjectsSorted,
+    required TResult Function(String query, List<String> workflowStatuses)
+        fetchProjectsBySearch,
+    required TResult Function(String projectId, String userType) checkIfInCache,
+  }) {
+    return checkIfInCache(projectId, userType);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function(String projectId)? selectProject,
+    TResult? Function(List<String> workflowStatuses)? fetchProjectsByWorkflow,
+    TResult? Function(ProjectWorkflow workflow, String userType)?
+        addUnSubmitted,
+    TResult? Function(List<String> statuses, String userType)? loadUnSubmitted,
+    TResult? Function(String projectId, String userType)? deleteUnSubmitted,
+    TResult? Function(String userType)? fetchAllReportCounts,
+    TResult? Function(String userType)? getNewlyAssigned,
+    TResult? Function(List<String> workflowStatuses, String sortDirection)?
+        fetchProjectsSorted,
+    TResult? Function(String query, List<String> workflowStatuses)?
+        fetchProjectsBySearch,
+    TResult? Function(String projectId, String userType)? checkIfInCache,
+  }) {
+    return checkIfInCache?.call(projectId, userType);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function(String projectId)? selectProject,
+    TResult Function(List<String> workflowStatuses)? fetchProjectsByWorkflow,
+    TResult Function(ProjectWorkflow workflow, String userType)? addUnSubmitted,
+    TResult Function(List<String> statuses, String userType)? loadUnSubmitted,
+    TResult Function(String projectId, String userType)? deleteUnSubmitted,
+    TResult Function(String userType)? fetchAllReportCounts,
+    TResult Function(String userType)? getNewlyAssigned,
+    TResult Function(List<String> workflowStatuses, String sortDirection)?
+        fetchProjectsSorted,
+    TResult Function(String query, List<String> workflowStatuses)?
+        fetchProjectsBySearch,
+    TResult Function(String projectId, String userType)? checkIfInCache,
+    required TResult orElse(),
+  }) {
+    if (checkIfInCache != null) {
+      return checkIfInCache(projectId, userType);
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(ProjectSelectEvent value) selectProject,
+    required TResult Function(FetchProjectsByWorkflowEvent value)
+        fetchProjectsByWorkflow,
+    required TResult Function(AddUnSubmittedEvent value) addUnSubmitted,
+    required TResult Function(LoadUnSubmittedEvent value) loadUnSubmitted,
+    required TResult Function(DeleteUnSubmittedEvent value) deleteUnSubmitted,
+    required TResult Function(FetchAllReportCountsEvent value)
+        fetchAllReportCounts,
+    required TResult Function(GetNewlyAssignedEvent value) getNewlyAssigned,
+    required TResult Function(FetchProjectsSortedEvent value)
+        fetchProjectsSorted,
+    required TResult Function(FetchProjectsBySearchEvent value)
+        fetchProjectsBySearch,
+    required TResult Function(ProjectCheckIfInCache value) checkIfInCache,
+  }) {
+    return checkIfInCache(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(ProjectSelectEvent value)? selectProject,
+    TResult? Function(FetchProjectsByWorkflowEvent value)?
+        fetchProjectsByWorkflow,
+    TResult? Function(AddUnSubmittedEvent value)? addUnSubmitted,
+    TResult? Function(LoadUnSubmittedEvent value)? loadUnSubmitted,
+    TResult? Function(DeleteUnSubmittedEvent value)? deleteUnSubmitted,
+    TResult? Function(FetchAllReportCountsEvent value)? fetchAllReportCounts,
+    TResult? Function(GetNewlyAssignedEvent value)? getNewlyAssigned,
+    TResult? Function(FetchProjectsSortedEvent value)? fetchProjectsSorted,
+    TResult? Function(FetchProjectsBySearchEvent value)? fetchProjectsBySearch,
+    TResult? Function(ProjectCheckIfInCache value)? checkIfInCache,
+  }) {
+    return checkIfInCache?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(ProjectSelectEvent value)? selectProject,
+    TResult Function(FetchProjectsByWorkflowEvent value)?
+        fetchProjectsByWorkflow,
+    TResult Function(AddUnSubmittedEvent value)? addUnSubmitted,
+    TResult Function(LoadUnSubmittedEvent value)? loadUnSubmitted,
+    TResult Function(DeleteUnSubmittedEvent value)? deleteUnSubmitted,
+    TResult Function(FetchAllReportCountsEvent value)? fetchAllReportCounts,
+    TResult Function(GetNewlyAssignedEvent value)? getNewlyAssigned,
+    TResult Function(FetchProjectsSortedEvent value)? fetchProjectsSorted,
+    TResult Function(FetchProjectsBySearchEvent value)? fetchProjectsBySearch,
+    TResult Function(ProjectCheckIfInCache value)? checkIfInCache,
+    required TResult orElse(),
+  }) {
+    if (checkIfInCache != null) {
+      return checkIfInCache(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class ProjectCheckIfInCache implements ProjectEvent {
+  const factory ProjectCheckIfInCache(
+      {required final String projectId,
+      required final String userType}) = _$ProjectCheckIfInCacheImpl;
+
+  String get projectId;
+  String get userType;
+  @JsonKey(ignore: true)
+  _$$ProjectCheckIfInCacheImplCopyWith<_$ProjectCheckIfInCacheImpl>
+      get copyWith => throw _privateConstructorUsedError;
+}
+
+/// @nodoc
 mixin _$ProjectState {
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
+    required TResult Function(bool isInCache) inCache,
     required TResult Function(List<ProjectWorkflow> projectsList) fetched,
     required TResult Function(String projectId) selected,
     required TResult Function(List<ProjectWorkflow> unSubmitted)
@@ -2042,6 +2318,7 @@ mixin _$ProjectState {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
+    TResult? Function(bool isInCache)? inCache,
     TResult? Function(List<ProjectWorkflow> projectsList)? fetched,
     TResult? Function(String projectId)? selected,
     TResult? Function(List<ProjectWorkflow> unSubmitted)? unSubmittedLoaded,
@@ -2060,6 +2337,7 @@ mixin _$ProjectState {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
+    TResult Function(bool isInCache)? inCache,
     TResult Function(List<ProjectWorkflow> projectsList)? fetched,
     TResult Function(String projectId)? selected,
     TResult Function(List<ProjectWorkflow> unSubmitted)? unSubmittedLoaded,
@@ -2079,6 +2357,7 @@ mixin _$ProjectState {
   TResult map<TResult extends Object?>({
     required TResult Function(_ProjectInitialState value) initial,
     required TResult Function(_ProjectLoadingState value) loading,
+    required TResult Function(ProjectInCache value) inCache,
     required TResult Function(ProjectFetchedState value) fetched,
     required TResult Function(ProjectSelectedState value) selected,
     required TResult Function(_UnSubmittedLoaded value) unSubmittedLoaded,
@@ -2095,6 +2374,7 @@ mixin _$ProjectState {
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_ProjectInitialState value)? initial,
     TResult? Function(_ProjectLoadingState value)? loading,
+    TResult? Function(ProjectInCache value)? inCache,
     TResult? Function(ProjectFetchedState value)? fetched,
     TResult? Function(ProjectSelectedState value)? selected,
     TResult? Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
@@ -2111,6 +2391,7 @@ mixin _$ProjectState {
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_ProjectInitialState value)? initial,
     TResult Function(_ProjectLoadingState value)? loading,
+    TResult Function(ProjectInCache value)? inCache,
     TResult Function(ProjectFetchedState value)? fetched,
     TResult Function(ProjectSelectedState value)? selected,
     TResult Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
@@ -2185,6 +2466,7 @@ class _$ProjectInitialStateImpl implements _ProjectInitialState {
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
+    required TResult Function(bool isInCache) inCache,
     required TResult Function(List<ProjectWorkflow> projectsList) fetched,
     required TResult Function(String projectId) selected,
     required TResult Function(List<ProjectWorkflow> unSubmitted)
@@ -2209,6 +2491,7 @@ class _$ProjectInitialStateImpl implements _ProjectInitialState {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
+    TResult? Function(bool isInCache)? inCache,
     TResult? Function(List<ProjectWorkflow> projectsList)? fetched,
     TResult? Function(String projectId)? selected,
     TResult? Function(List<ProjectWorkflow> unSubmitted)? unSubmittedLoaded,
@@ -2230,6 +2513,7 @@ class _$ProjectInitialStateImpl implements _ProjectInitialState {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
+    TResult Function(bool isInCache)? inCache,
     TResult Function(List<ProjectWorkflow> projectsList)? fetched,
     TResult Function(String projectId)? selected,
     TResult Function(List<ProjectWorkflow> unSubmitted)? unSubmittedLoaded,
@@ -2255,6 +2539,7 @@ class _$ProjectInitialStateImpl implements _ProjectInitialState {
   TResult map<TResult extends Object?>({
     required TResult Function(_ProjectInitialState value) initial,
     required TResult Function(_ProjectLoadingState value) loading,
+    required TResult Function(ProjectInCache value) inCache,
     required TResult Function(ProjectFetchedState value) fetched,
     required TResult Function(ProjectSelectedState value) selected,
     required TResult Function(_UnSubmittedLoaded value) unSubmittedLoaded,
@@ -2274,6 +2559,7 @@ class _$ProjectInitialStateImpl implements _ProjectInitialState {
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_ProjectInitialState value)? initial,
     TResult? Function(_ProjectLoadingState value)? loading,
+    TResult? Function(ProjectInCache value)? inCache,
     TResult? Function(ProjectFetchedState value)? fetched,
     TResult? Function(ProjectSelectedState value)? selected,
     TResult? Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
@@ -2293,6 +2579,7 @@ class _$ProjectInitialStateImpl implements _ProjectInitialState {
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_ProjectInitialState value)? initial,
     TResult Function(_ProjectLoadingState value)? loading,
+    TResult Function(ProjectInCache value)? inCache,
     TResult Function(ProjectFetchedState value)? fetched,
     TResult Function(ProjectSelectedState value)? selected,
     TResult Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
@@ -2357,6 +2644,7 @@ class _$ProjectLoadingStateImpl implements _ProjectLoadingState {
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
+    required TResult Function(bool isInCache) inCache,
     required TResult Function(List<ProjectWorkflow> projectsList) fetched,
     required TResult Function(String projectId) selected,
     required TResult Function(List<ProjectWorkflow> unSubmitted)
@@ -2381,6 +2669,7 @@ class _$ProjectLoadingStateImpl implements _ProjectLoadingState {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
+    TResult? Function(bool isInCache)? inCache,
     TResult? Function(List<ProjectWorkflow> projectsList)? fetched,
     TResult? Function(String projectId)? selected,
     TResult? Function(List<ProjectWorkflow> unSubmitted)? unSubmittedLoaded,
@@ -2402,6 +2691,7 @@ class _$ProjectLoadingStateImpl implements _ProjectLoadingState {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
+    TResult Function(bool isInCache)? inCache,
     TResult Function(List<ProjectWorkflow> projectsList)? fetched,
     TResult Function(String projectId)? selected,
     TResult Function(List<ProjectWorkflow> unSubmitted)? unSubmittedLoaded,
@@ -2427,6 +2717,7 @@ class _$ProjectLoadingStateImpl implements _ProjectLoadingState {
   TResult map<TResult extends Object?>({
     required TResult Function(_ProjectInitialState value) initial,
     required TResult Function(_ProjectLoadingState value) loading,
+    required TResult Function(ProjectInCache value) inCache,
     required TResult Function(ProjectFetchedState value) fetched,
     required TResult Function(ProjectSelectedState value) selected,
     required TResult Function(_UnSubmittedLoaded value) unSubmittedLoaded,
@@ -2446,6 +2737,7 @@ class _$ProjectLoadingStateImpl implements _ProjectLoadingState {
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_ProjectInitialState value)? initial,
     TResult? Function(_ProjectLoadingState value)? loading,
+    TResult? Function(ProjectInCache value)? inCache,
     TResult? Function(ProjectFetchedState value)? fetched,
     TResult? Function(ProjectSelectedState value)? selected,
     TResult? Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
@@ -2465,6 +2757,7 @@ class _$ProjectLoadingStateImpl implements _ProjectLoadingState {
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_ProjectInitialState value)? initial,
     TResult Function(_ProjectLoadingState value)? loading,
+    TResult Function(ProjectInCache value)? inCache,
     TResult Function(ProjectFetchedState value)? fetched,
     TResult Function(ProjectSelectedState value)? selected,
     TResult Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
@@ -2486,6 +2779,216 @@ class _$ProjectLoadingStateImpl implements _ProjectLoadingState {
 
 abstract class _ProjectLoadingState implements ProjectState {
   const factory _ProjectLoadingState() = _$ProjectLoadingStateImpl;
+}
+
+/// @nodoc
+abstract class _$$ProjectInCacheImplCopyWith<$Res> {
+  factory _$$ProjectInCacheImplCopyWith(_$ProjectInCacheImpl value,
+          $Res Function(_$ProjectInCacheImpl) then) =
+      __$$ProjectInCacheImplCopyWithImpl<$Res>;
+  @useResult
+  $Res call({bool isInCache});
+}
+
+/// @nodoc
+class __$$ProjectInCacheImplCopyWithImpl<$Res>
+    extends _$ProjectStateCopyWithImpl<$Res, _$ProjectInCacheImpl>
+    implements _$$ProjectInCacheImplCopyWith<$Res> {
+  __$$ProjectInCacheImplCopyWithImpl(
+      _$ProjectInCacheImpl _value, $Res Function(_$ProjectInCacheImpl) _then)
+      : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? isInCache = null,
+  }) {
+    return _then(_$ProjectInCacheImpl(
+      null == isInCache
+          ? _value.isInCache
+          : isInCache // ignore: cast_nullable_to_non_nullable
+              as bool,
+    ));
+  }
+}
+
+/// @nodoc
+
+class _$ProjectInCacheImpl implements ProjectInCache {
+  const _$ProjectInCacheImpl(this.isInCache);
+
+  @override
+  final bool isInCache;
+
+  @override
+  String toString() {
+    return 'ProjectState.inCache(isInCache: $isInCache)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$ProjectInCacheImpl &&
+            (identical(other.isInCache, isInCache) ||
+                other.isInCache == isInCache));
+  }
+
+  @override
+  int get hashCode => Object.hash(runtimeType, isInCache);
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$ProjectInCacheImplCopyWith<_$ProjectInCacheImpl> get copyWith =>
+      __$$ProjectInCacheImplCopyWithImpl<_$ProjectInCacheImpl>(
+          this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function() initial,
+    required TResult Function() loading,
+    required TResult Function(bool isInCache) inCache,
+    required TResult Function(List<ProjectWorkflow> projectsList) fetched,
+    required TResult Function(String projectId) selected,
+    required TResult Function(List<ProjectWorkflow> unSubmitted)
+        unSubmittedLoaded,
+    required TResult Function(CacheUnsubmittedProject entry) unSubmittedAdded,
+    required TResult Function() unSubmittedDeleted,
+    required TResult Function(
+            int newReportCount, int inboxCount, int submittedCount)
+        reportCountsLoaded,
+    required TResult Function(int count) newlyAssignedLoaded,
+    required TResult Function(
+            List<ProjectWorkflow> projectsList, String sortDirection)
+        sorted,
+    required TResult Function() searchLoading,
+    required TResult Function(List<ProjectWorkflow> results) searchResults,
+  }) {
+    return inCache(isInCache);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function()? initial,
+    TResult? Function()? loading,
+    TResult? Function(bool isInCache)? inCache,
+    TResult? Function(List<ProjectWorkflow> projectsList)? fetched,
+    TResult? Function(String projectId)? selected,
+    TResult? Function(List<ProjectWorkflow> unSubmitted)? unSubmittedLoaded,
+    TResult? Function(CacheUnsubmittedProject entry)? unSubmittedAdded,
+    TResult? Function()? unSubmittedDeleted,
+    TResult? Function(int newReportCount, int inboxCount, int submittedCount)?
+        reportCountsLoaded,
+    TResult? Function(int count)? newlyAssignedLoaded,
+    TResult? Function(List<ProjectWorkflow> projectsList, String sortDirection)?
+        sorted,
+    TResult? Function()? searchLoading,
+    TResult? Function(List<ProjectWorkflow> results)? searchResults,
+  }) {
+    return inCache?.call(isInCache);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function()? initial,
+    TResult Function()? loading,
+    TResult Function(bool isInCache)? inCache,
+    TResult Function(List<ProjectWorkflow> projectsList)? fetched,
+    TResult Function(String projectId)? selected,
+    TResult Function(List<ProjectWorkflow> unSubmitted)? unSubmittedLoaded,
+    TResult Function(CacheUnsubmittedProject entry)? unSubmittedAdded,
+    TResult Function()? unSubmittedDeleted,
+    TResult Function(int newReportCount, int inboxCount, int submittedCount)?
+        reportCountsLoaded,
+    TResult Function(int count)? newlyAssignedLoaded,
+    TResult Function(List<ProjectWorkflow> projectsList, String sortDirection)?
+        sorted,
+    TResult Function()? searchLoading,
+    TResult Function(List<ProjectWorkflow> results)? searchResults,
+    required TResult orElse(),
+  }) {
+    if (inCache != null) {
+      return inCache(isInCache);
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(_ProjectInitialState value) initial,
+    required TResult Function(_ProjectLoadingState value) loading,
+    required TResult Function(ProjectInCache value) inCache,
+    required TResult Function(ProjectFetchedState value) fetched,
+    required TResult Function(ProjectSelectedState value) selected,
+    required TResult Function(_UnSubmittedLoaded value) unSubmittedLoaded,
+    required TResult Function(_UnSubmittedAdded value) unSubmittedAdded,
+    required TResult Function(_UnSubmittedDeleted value) unSubmittedDeleted,
+    required TResult Function(ReportCountsLoaded value) reportCountsLoaded,
+    required TResult Function(NewlyAssignedLoaded value) newlyAssignedLoaded,
+    required TResult Function(ProjectSortedState value) sorted,
+    required TResult Function(ProjectSearchLoading value) searchLoading,
+    required TResult Function(ProjectSearchResults value) searchResults,
+  }) {
+    return inCache(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(_ProjectInitialState value)? initial,
+    TResult? Function(_ProjectLoadingState value)? loading,
+    TResult? Function(ProjectInCache value)? inCache,
+    TResult? Function(ProjectFetchedState value)? fetched,
+    TResult? Function(ProjectSelectedState value)? selected,
+    TResult? Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
+    TResult? Function(_UnSubmittedAdded value)? unSubmittedAdded,
+    TResult? Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
+    TResult? Function(ReportCountsLoaded value)? reportCountsLoaded,
+    TResult? Function(NewlyAssignedLoaded value)? newlyAssignedLoaded,
+    TResult? Function(ProjectSortedState value)? sorted,
+    TResult? Function(ProjectSearchLoading value)? searchLoading,
+    TResult? Function(ProjectSearchResults value)? searchResults,
+  }) {
+    return inCache?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(_ProjectInitialState value)? initial,
+    TResult Function(_ProjectLoadingState value)? loading,
+    TResult Function(ProjectInCache value)? inCache,
+    TResult Function(ProjectFetchedState value)? fetched,
+    TResult Function(ProjectSelectedState value)? selected,
+    TResult Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
+    TResult Function(_UnSubmittedAdded value)? unSubmittedAdded,
+    TResult Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
+    TResult Function(ReportCountsLoaded value)? reportCountsLoaded,
+    TResult Function(NewlyAssignedLoaded value)? newlyAssignedLoaded,
+    TResult Function(ProjectSortedState value)? sorted,
+    TResult Function(ProjectSearchLoading value)? searchLoading,
+    TResult Function(ProjectSearchResults value)? searchResults,
+    required TResult orElse(),
+  }) {
+    if (inCache != null) {
+      return inCache(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class ProjectInCache implements ProjectState {
+  const factory ProjectInCache(final bool isInCache) = _$ProjectInCacheImpl;
+
+  bool get isInCache;
+  @JsonKey(ignore: true)
+  _$$ProjectInCacheImplCopyWith<_$ProjectInCacheImpl> get copyWith =>
+      throw _privateConstructorUsedError;
 }
 
 /// @nodoc
@@ -2563,6 +3066,7 @@ class _$ProjectFetchedStateImpl implements ProjectFetchedState {
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
+    required TResult Function(bool isInCache) inCache,
     required TResult Function(List<ProjectWorkflow> projectsList) fetched,
     required TResult Function(String projectId) selected,
     required TResult Function(List<ProjectWorkflow> unSubmitted)
@@ -2587,6 +3091,7 @@ class _$ProjectFetchedStateImpl implements ProjectFetchedState {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
+    TResult? Function(bool isInCache)? inCache,
     TResult? Function(List<ProjectWorkflow> projectsList)? fetched,
     TResult? Function(String projectId)? selected,
     TResult? Function(List<ProjectWorkflow> unSubmitted)? unSubmittedLoaded,
@@ -2608,6 +3113,7 @@ class _$ProjectFetchedStateImpl implements ProjectFetchedState {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
+    TResult Function(bool isInCache)? inCache,
     TResult Function(List<ProjectWorkflow> projectsList)? fetched,
     TResult Function(String projectId)? selected,
     TResult Function(List<ProjectWorkflow> unSubmitted)? unSubmittedLoaded,
@@ -2633,6 +3139,7 @@ class _$ProjectFetchedStateImpl implements ProjectFetchedState {
   TResult map<TResult extends Object?>({
     required TResult Function(_ProjectInitialState value) initial,
     required TResult Function(_ProjectLoadingState value) loading,
+    required TResult Function(ProjectInCache value) inCache,
     required TResult Function(ProjectFetchedState value) fetched,
     required TResult Function(ProjectSelectedState value) selected,
     required TResult Function(_UnSubmittedLoaded value) unSubmittedLoaded,
@@ -2652,6 +3159,7 @@ class _$ProjectFetchedStateImpl implements ProjectFetchedState {
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_ProjectInitialState value)? initial,
     TResult? Function(_ProjectLoadingState value)? loading,
+    TResult? Function(ProjectInCache value)? inCache,
     TResult? Function(ProjectFetchedState value)? fetched,
     TResult? Function(ProjectSelectedState value)? selected,
     TResult? Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
@@ -2671,6 +3179,7 @@ class _$ProjectFetchedStateImpl implements ProjectFetchedState {
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_ProjectInitialState value)? initial,
     TResult Function(_ProjectLoadingState value)? loading,
+    TResult Function(ProjectInCache value)? inCache,
     TResult Function(ProjectFetchedState value)? fetched,
     TResult Function(ProjectSelectedState value)? selected,
     TResult Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
@@ -2769,6 +3278,7 @@ class _$ProjectSelectedStateImpl implements ProjectSelectedState {
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
+    required TResult Function(bool isInCache) inCache,
     required TResult Function(List<ProjectWorkflow> projectsList) fetched,
     required TResult Function(String projectId) selected,
     required TResult Function(List<ProjectWorkflow> unSubmitted)
@@ -2793,6 +3303,7 @@ class _$ProjectSelectedStateImpl implements ProjectSelectedState {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
+    TResult? Function(bool isInCache)? inCache,
     TResult? Function(List<ProjectWorkflow> projectsList)? fetched,
     TResult? Function(String projectId)? selected,
     TResult? Function(List<ProjectWorkflow> unSubmitted)? unSubmittedLoaded,
@@ -2814,6 +3325,7 @@ class _$ProjectSelectedStateImpl implements ProjectSelectedState {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
+    TResult Function(bool isInCache)? inCache,
     TResult Function(List<ProjectWorkflow> projectsList)? fetched,
     TResult Function(String projectId)? selected,
     TResult Function(List<ProjectWorkflow> unSubmitted)? unSubmittedLoaded,
@@ -2839,6 +3351,7 @@ class _$ProjectSelectedStateImpl implements ProjectSelectedState {
   TResult map<TResult extends Object?>({
     required TResult Function(_ProjectInitialState value) initial,
     required TResult Function(_ProjectLoadingState value) loading,
+    required TResult Function(ProjectInCache value) inCache,
     required TResult Function(ProjectFetchedState value) fetched,
     required TResult Function(ProjectSelectedState value) selected,
     required TResult Function(_UnSubmittedLoaded value) unSubmittedLoaded,
@@ -2858,6 +3371,7 @@ class _$ProjectSelectedStateImpl implements ProjectSelectedState {
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_ProjectInitialState value)? initial,
     TResult? Function(_ProjectLoadingState value)? loading,
+    TResult? Function(ProjectInCache value)? inCache,
     TResult? Function(ProjectFetchedState value)? fetched,
     TResult? Function(ProjectSelectedState value)? selected,
     TResult? Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
@@ -2877,6 +3391,7 @@ class _$ProjectSelectedStateImpl implements ProjectSelectedState {
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_ProjectInitialState value)? initial,
     TResult Function(_ProjectLoadingState value)? loading,
+    TResult Function(ProjectInCache value)? inCache,
     TResult Function(ProjectFetchedState value)? fetched,
     TResult Function(ProjectSelectedState value)? selected,
     TResult Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
@@ -2981,6 +3496,7 @@ class _$UnSubmittedLoadedImpl implements _UnSubmittedLoaded {
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
+    required TResult Function(bool isInCache) inCache,
     required TResult Function(List<ProjectWorkflow> projectsList) fetched,
     required TResult Function(String projectId) selected,
     required TResult Function(List<ProjectWorkflow> unSubmitted)
@@ -3005,6 +3521,7 @@ class _$UnSubmittedLoadedImpl implements _UnSubmittedLoaded {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
+    TResult? Function(bool isInCache)? inCache,
     TResult? Function(List<ProjectWorkflow> projectsList)? fetched,
     TResult? Function(String projectId)? selected,
     TResult? Function(List<ProjectWorkflow> unSubmitted)? unSubmittedLoaded,
@@ -3026,6 +3543,7 @@ class _$UnSubmittedLoadedImpl implements _UnSubmittedLoaded {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
+    TResult Function(bool isInCache)? inCache,
     TResult Function(List<ProjectWorkflow> projectsList)? fetched,
     TResult Function(String projectId)? selected,
     TResult Function(List<ProjectWorkflow> unSubmitted)? unSubmittedLoaded,
@@ -3051,6 +3569,7 @@ class _$UnSubmittedLoadedImpl implements _UnSubmittedLoaded {
   TResult map<TResult extends Object?>({
     required TResult Function(_ProjectInitialState value) initial,
     required TResult Function(_ProjectLoadingState value) loading,
+    required TResult Function(ProjectInCache value) inCache,
     required TResult Function(ProjectFetchedState value) fetched,
     required TResult Function(ProjectSelectedState value) selected,
     required TResult Function(_UnSubmittedLoaded value) unSubmittedLoaded,
@@ -3070,6 +3589,7 @@ class _$UnSubmittedLoadedImpl implements _UnSubmittedLoaded {
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_ProjectInitialState value)? initial,
     TResult? Function(_ProjectLoadingState value)? loading,
+    TResult? Function(ProjectInCache value)? inCache,
     TResult? Function(ProjectFetchedState value)? fetched,
     TResult? Function(ProjectSelectedState value)? selected,
     TResult? Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
@@ -3089,6 +3609,7 @@ class _$UnSubmittedLoadedImpl implements _UnSubmittedLoaded {
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_ProjectInitialState value)? initial,
     TResult Function(_ProjectLoadingState value)? loading,
+    TResult Function(ProjectInCache value)? inCache,
     TResult Function(ProjectFetchedState value)? fetched,
     TResult Function(ProjectSelectedState value)? selected,
     TResult Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
@@ -3185,6 +3706,7 @@ class _$UnSubmittedAddedImpl implements _UnSubmittedAdded {
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
+    required TResult Function(bool isInCache) inCache,
     required TResult Function(List<ProjectWorkflow> projectsList) fetched,
     required TResult Function(String projectId) selected,
     required TResult Function(List<ProjectWorkflow> unSubmitted)
@@ -3209,6 +3731,7 @@ class _$UnSubmittedAddedImpl implements _UnSubmittedAdded {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
+    TResult? Function(bool isInCache)? inCache,
     TResult? Function(List<ProjectWorkflow> projectsList)? fetched,
     TResult? Function(String projectId)? selected,
     TResult? Function(List<ProjectWorkflow> unSubmitted)? unSubmittedLoaded,
@@ -3230,6 +3753,7 @@ class _$UnSubmittedAddedImpl implements _UnSubmittedAdded {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
+    TResult Function(bool isInCache)? inCache,
     TResult Function(List<ProjectWorkflow> projectsList)? fetched,
     TResult Function(String projectId)? selected,
     TResult Function(List<ProjectWorkflow> unSubmitted)? unSubmittedLoaded,
@@ -3255,6 +3779,7 @@ class _$UnSubmittedAddedImpl implements _UnSubmittedAdded {
   TResult map<TResult extends Object?>({
     required TResult Function(_ProjectInitialState value) initial,
     required TResult Function(_ProjectLoadingState value) loading,
+    required TResult Function(ProjectInCache value) inCache,
     required TResult Function(ProjectFetchedState value) fetched,
     required TResult Function(ProjectSelectedState value) selected,
     required TResult Function(_UnSubmittedLoaded value) unSubmittedLoaded,
@@ -3274,6 +3799,7 @@ class _$UnSubmittedAddedImpl implements _UnSubmittedAdded {
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_ProjectInitialState value)? initial,
     TResult? Function(_ProjectLoadingState value)? loading,
+    TResult? Function(ProjectInCache value)? inCache,
     TResult? Function(ProjectFetchedState value)? fetched,
     TResult? Function(ProjectSelectedState value)? selected,
     TResult? Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
@@ -3293,6 +3819,7 @@ class _$UnSubmittedAddedImpl implements _UnSubmittedAdded {
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_ProjectInitialState value)? initial,
     TResult Function(_ProjectLoadingState value)? loading,
+    TResult Function(ProjectInCache value)? inCache,
     TResult Function(ProjectFetchedState value)? fetched,
     TResult Function(ProjectSelectedState value)? selected,
     TResult Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
@@ -3362,6 +3889,7 @@ class _$UnSubmittedDeletedImpl implements _UnSubmittedDeleted {
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
+    required TResult Function(bool isInCache) inCache,
     required TResult Function(List<ProjectWorkflow> projectsList) fetched,
     required TResult Function(String projectId) selected,
     required TResult Function(List<ProjectWorkflow> unSubmitted)
@@ -3386,6 +3914,7 @@ class _$UnSubmittedDeletedImpl implements _UnSubmittedDeleted {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
+    TResult? Function(bool isInCache)? inCache,
     TResult? Function(List<ProjectWorkflow> projectsList)? fetched,
     TResult? Function(String projectId)? selected,
     TResult? Function(List<ProjectWorkflow> unSubmitted)? unSubmittedLoaded,
@@ -3407,6 +3936,7 @@ class _$UnSubmittedDeletedImpl implements _UnSubmittedDeleted {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
+    TResult Function(bool isInCache)? inCache,
     TResult Function(List<ProjectWorkflow> projectsList)? fetched,
     TResult Function(String projectId)? selected,
     TResult Function(List<ProjectWorkflow> unSubmitted)? unSubmittedLoaded,
@@ -3432,6 +3962,7 @@ class _$UnSubmittedDeletedImpl implements _UnSubmittedDeleted {
   TResult map<TResult extends Object?>({
     required TResult Function(_ProjectInitialState value) initial,
     required TResult Function(_ProjectLoadingState value) loading,
+    required TResult Function(ProjectInCache value) inCache,
     required TResult Function(ProjectFetchedState value) fetched,
     required TResult Function(ProjectSelectedState value) selected,
     required TResult Function(_UnSubmittedLoaded value) unSubmittedLoaded,
@@ -3451,6 +3982,7 @@ class _$UnSubmittedDeletedImpl implements _UnSubmittedDeleted {
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_ProjectInitialState value)? initial,
     TResult? Function(_ProjectLoadingState value)? loading,
+    TResult? Function(ProjectInCache value)? inCache,
     TResult? Function(ProjectFetchedState value)? fetched,
     TResult? Function(ProjectSelectedState value)? selected,
     TResult? Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
@@ -3470,6 +4002,7 @@ class _$UnSubmittedDeletedImpl implements _UnSubmittedDeleted {
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_ProjectInitialState value)? initial,
     TResult Function(_ProjectLoadingState value)? loading,
+    TResult Function(ProjectInCache value)? inCache,
     TResult Function(ProjectFetchedState value)? fetched,
     TResult Function(ProjectSelectedState value)? selected,
     TResult Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
@@ -3583,6 +4116,7 @@ class _$ReportCountsLoadedImpl implements ReportCountsLoaded {
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
+    required TResult Function(bool isInCache) inCache,
     required TResult Function(List<ProjectWorkflow> projectsList) fetched,
     required TResult Function(String projectId) selected,
     required TResult Function(List<ProjectWorkflow> unSubmitted)
@@ -3607,6 +4141,7 @@ class _$ReportCountsLoadedImpl implements ReportCountsLoaded {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
+    TResult? Function(bool isInCache)? inCache,
     TResult? Function(List<ProjectWorkflow> projectsList)? fetched,
     TResult? Function(String projectId)? selected,
     TResult? Function(List<ProjectWorkflow> unSubmitted)? unSubmittedLoaded,
@@ -3628,6 +4163,7 @@ class _$ReportCountsLoadedImpl implements ReportCountsLoaded {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
+    TResult Function(bool isInCache)? inCache,
     TResult Function(List<ProjectWorkflow> projectsList)? fetched,
     TResult Function(String projectId)? selected,
     TResult Function(List<ProjectWorkflow> unSubmitted)? unSubmittedLoaded,
@@ -3653,6 +4189,7 @@ class _$ReportCountsLoadedImpl implements ReportCountsLoaded {
   TResult map<TResult extends Object?>({
     required TResult Function(_ProjectInitialState value) initial,
     required TResult Function(_ProjectLoadingState value) loading,
+    required TResult Function(ProjectInCache value) inCache,
     required TResult Function(ProjectFetchedState value) fetched,
     required TResult Function(ProjectSelectedState value) selected,
     required TResult Function(_UnSubmittedLoaded value) unSubmittedLoaded,
@@ -3672,6 +4209,7 @@ class _$ReportCountsLoadedImpl implements ReportCountsLoaded {
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_ProjectInitialState value)? initial,
     TResult? Function(_ProjectLoadingState value)? loading,
+    TResult? Function(ProjectInCache value)? inCache,
     TResult? Function(ProjectFetchedState value)? fetched,
     TResult? Function(ProjectSelectedState value)? selected,
     TResult? Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
@@ -3691,6 +4229,7 @@ class _$ReportCountsLoadedImpl implements ReportCountsLoaded {
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_ProjectInitialState value)? initial,
     TResult Function(_ProjectLoadingState value)? loading,
+    TResult Function(ProjectInCache value)? inCache,
     TResult Function(ProjectFetchedState value)? fetched,
     TResult Function(ProjectSelectedState value)? selected,
     TResult Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
@@ -3791,6 +4330,7 @@ class _$NewlyAssignedLoadedImpl implements NewlyAssignedLoaded {
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
+    required TResult Function(bool isInCache) inCache,
     required TResult Function(List<ProjectWorkflow> projectsList) fetched,
     required TResult Function(String projectId) selected,
     required TResult Function(List<ProjectWorkflow> unSubmitted)
@@ -3815,6 +4355,7 @@ class _$NewlyAssignedLoadedImpl implements NewlyAssignedLoaded {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
+    TResult? Function(bool isInCache)? inCache,
     TResult? Function(List<ProjectWorkflow> projectsList)? fetched,
     TResult? Function(String projectId)? selected,
     TResult? Function(List<ProjectWorkflow> unSubmitted)? unSubmittedLoaded,
@@ -3836,6 +4377,7 @@ class _$NewlyAssignedLoadedImpl implements NewlyAssignedLoaded {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
+    TResult Function(bool isInCache)? inCache,
     TResult Function(List<ProjectWorkflow> projectsList)? fetched,
     TResult Function(String projectId)? selected,
     TResult Function(List<ProjectWorkflow> unSubmitted)? unSubmittedLoaded,
@@ -3861,6 +4403,7 @@ class _$NewlyAssignedLoadedImpl implements NewlyAssignedLoaded {
   TResult map<TResult extends Object?>({
     required TResult Function(_ProjectInitialState value) initial,
     required TResult Function(_ProjectLoadingState value) loading,
+    required TResult Function(ProjectInCache value) inCache,
     required TResult Function(ProjectFetchedState value) fetched,
     required TResult Function(ProjectSelectedState value) selected,
     required TResult Function(_UnSubmittedLoaded value) unSubmittedLoaded,
@@ -3880,6 +4423,7 @@ class _$NewlyAssignedLoadedImpl implements NewlyAssignedLoaded {
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_ProjectInitialState value)? initial,
     TResult? Function(_ProjectLoadingState value)? loading,
+    TResult? Function(ProjectInCache value)? inCache,
     TResult? Function(ProjectFetchedState value)? fetched,
     TResult? Function(ProjectSelectedState value)? selected,
     TResult? Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
@@ -3899,6 +4443,7 @@ class _$NewlyAssignedLoadedImpl implements NewlyAssignedLoaded {
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_ProjectInitialState value)? initial,
     TResult Function(_ProjectLoadingState value)? loading,
+    TResult Function(ProjectInCache value)? inCache,
     TResult Function(ProjectFetchedState value)? fetched,
     TResult Function(ProjectSelectedState value)? selected,
     TResult Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
@@ -4015,6 +4560,7 @@ class _$ProjectSortedStateImpl implements ProjectSortedState {
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
+    required TResult Function(bool isInCache) inCache,
     required TResult Function(List<ProjectWorkflow> projectsList) fetched,
     required TResult Function(String projectId) selected,
     required TResult Function(List<ProjectWorkflow> unSubmitted)
@@ -4039,6 +4585,7 @@ class _$ProjectSortedStateImpl implements ProjectSortedState {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
+    TResult? Function(bool isInCache)? inCache,
     TResult? Function(List<ProjectWorkflow> projectsList)? fetched,
     TResult? Function(String projectId)? selected,
     TResult? Function(List<ProjectWorkflow> unSubmitted)? unSubmittedLoaded,
@@ -4060,6 +4607,7 @@ class _$ProjectSortedStateImpl implements ProjectSortedState {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
+    TResult Function(bool isInCache)? inCache,
     TResult Function(List<ProjectWorkflow> projectsList)? fetched,
     TResult Function(String projectId)? selected,
     TResult Function(List<ProjectWorkflow> unSubmitted)? unSubmittedLoaded,
@@ -4085,6 +4633,7 @@ class _$ProjectSortedStateImpl implements ProjectSortedState {
   TResult map<TResult extends Object?>({
     required TResult Function(_ProjectInitialState value) initial,
     required TResult Function(_ProjectLoadingState value) loading,
+    required TResult Function(ProjectInCache value) inCache,
     required TResult Function(ProjectFetchedState value) fetched,
     required TResult Function(ProjectSelectedState value) selected,
     required TResult Function(_UnSubmittedLoaded value) unSubmittedLoaded,
@@ -4104,6 +4653,7 @@ class _$ProjectSortedStateImpl implements ProjectSortedState {
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_ProjectInitialState value)? initial,
     TResult? Function(_ProjectLoadingState value)? loading,
+    TResult? Function(ProjectInCache value)? inCache,
     TResult? Function(ProjectFetchedState value)? fetched,
     TResult? Function(ProjectSelectedState value)? selected,
     TResult? Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
@@ -4123,6 +4673,7 @@ class _$ProjectSortedStateImpl implements ProjectSortedState {
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_ProjectInitialState value)? initial,
     TResult Function(_ProjectLoadingState value)? loading,
+    TResult Function(ProjectInCache value)? inCache,
     TResult Function(ProjectFetchedState value)? fetched,
     TResult Function(ProjectSelectedState value)? selected,
     TResult Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
@@ -4195,6 +4746,7 @@ class _$ProjectSearchLoadingImpl implements ProjectSearchLoading {
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
+    required TResult Function(bool isInCache) inCache,
     required TResult Function(List<ProjectWorkflow> projectsList) fetched,
     required TResult Function(String projectId) selected,
     required TResult Function(List<ProjectWorkflow> unSubmitted)
@@ -4219,6 +4771,7 @@ class _$ProjectSearchLoadingImpl implements ProjectSearchLoading {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
+    TResult? Function(bool isInCache)? inCache,
     TResult? Function(List<ProjectWorkflow> projectsList)? fetched,
     TResult? Function(String projectId)? selected,
     TResult? Function(List<ProjectWorkflow> unSubmitted)? unSubmittedLoaded,
@@ -4240,6 +4793,7 @@ class _$ProjectSearchLoadingImpl implements ProjectSearchLoading {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
+    TResult Function(bool isInCache)? inCache,
     TResult Function(List<ProjectWorkflow> projectsList)? fetched,
     TResult Function(String projectId)? selected,
     TResult Function(List<ProjectWorkflow> unSubmitted)? unSubmittedLoaded,
@@ -4265,6 +4819,7 @@ class _$ProjectSearchLoadingImpl implements ProjectSearchLoading {
   TResult map<TResult extends Object?>({
     required TResult Function(_ProjectInitialState value) initial,
     required TResult Function(_ProjectLoadingState value) loading,
+    required TResult Function(ProjectInCache value) inCache,
     required TResult Function(ProjectFetchedState value) fetched,
     required TResult Function(ProjectSelectedState value) selected,
     required TResult Function(_UnSubmittedLoaded value) unSubmittedLoaded,
@@ -4284,6 +4839,7 @@ class _$ProjectSearchLoadingImpl implements ProjectSearchLoading {
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_ProjectInitialState value)? initial,
     TResult? Function(_ProjectLoadingState value)? loading,
+    TResult? Function(ProjectInCache value)? inCache,
     TResult? Function(ProjectFetchedState value)? fetched,
     TResult? Function(ProjectSelectedState value)? selected,
     TResult? Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
@@ -4303,6 +4859,7 @@ class _$ProjectSearchLoadingImpl implements ProjectSearchLoading {
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_ProjectInitialState value)? initial,
     TResult Function(_ProjectLoadingState value)? loading,
+    TResult Function(ProjectInCache value)? inCache,
     TResult Function(ProjectFetchedState value)? fetched,
     TResult Function(ProjectSelectedState value)? selected,
     TResult Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
@@ -4401,6 +4958,7 @@ class _$ProjectSearchResultsImpl implements ProjectSearchResults {
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
+    required TResult Function(bool isInCache) inCache,
     required TResult Function(List<ProjectWorkflow> projectsList) fetched,
     required TResult Function(String projectId) selected,
     required TResult Function(List<ProjectWorkflow> unSubmitted)
@@ -4425,6 +4983,7 @@ class _$ProjectSearchResultsImpl implements ProjectSearchResults {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
+    TResult? Function(bool isInCache)? inCache,
     TResult? Function(List<ProjectWorkflow> projectsList)? fetched,
     TResult? Function(String projectId)? selected,
     TResult? Function(List<ProjectWorkflow> unSubmitted)? unSubmittedLoaded,
@@ -4446,6 +5005,7 @@ class _$ProjectSearchResultsImpl implements ProjectSearchResults {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
+    TResult Function(bool isInCache)? inCache,
     TResult Function(List<ProjectWorkflow> projectsList)? fetched,
     TResult Function(String projectId)? selected,
     TResult Function(List<ProjectWorkflow> unSubmitted)? unSubmittedLoaded,
@@ -4471,6 +5031,7 @@ class _$ProjectSearchResultsImpl implements ProjectSearchResults {
   TResult map<TResult extends Object?>({
     required TResult Function(_ProjectInitialState value) initial,
     required TResult Function(_ProjectLoadingState value) loading,
+    required TResult Function(ProjectInCache value) inCache,
     required TResult Function(ProjectFetchedState value) fetched,
     required TResult Function(ProjectSelectedState value) selected,
     required TResult Function(_UnSubmittedLoaded value) unSubmittedLoaded,
@@ -4490,6 +5051,7 @@ class _$ProjectSearchResultsImpl implements ProjectSearchResults {
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_ProjectInitialState value)? initial,
     TResult? Function(_ProjectLoadingState value)? loading,
+    TResult? Function(ProjectInCache value)? inCache,
     TResult? Function(ProjectFetchedState value)? fetched,
     TResult? Function(ProjectSelectedState value)? selected,
     TResult? Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
@@ -4509,6 +5071,7 @@ class _$ProjectSearchResultsImpl implements ProjectSearchResults {
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_ProjectInitialState value)? initial,
     TResult Function(_ProjectLoadingState value)? loading,
+    TResult Function(ProjectInCache value)? inCache,
     TResult Function(ProjectFetchedState value)? fetched,
     TResult Function(ProjectSelectedState value)? selected,
     TResult Function(_UnSubmittedLoaded value)? unSubmittedLoaded,

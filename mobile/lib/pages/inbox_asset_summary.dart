@@ -197,16 +197,16 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
                 orElse: () {},
               );
 
-              return ScrollableContent(
-                enableFixedDigitButton: true,
-                backgroundColor: theme.colorTheme.generic.background,
-                header: const BackNavigationHelpHeaderWidget(
-                  showBackNavigation: true,
-                  showHelp: false,
-                ),
-                footer: BlocBuilder<InboxTypeBloc, InboxTypeState>(
-                  builder: (context, inboxState) {
-                    return inboxState.maybeWhen(
+              return BlocBuilder<InboxTypeBloc, InboxTypeState>(
+                builder: (context, inboxState) {
+                  return ScrollableContent(
+                    enableFixedDigitButton: true,
+                    backgroundColor: theme.colorTheme.generic.background,
+                    header: const BackNavigationHelpHeaderWidget(
+                      showBackNavigation: true,
+                      showHelp: false,
+                    ),
+                    footer: inboxState.maybeWhen(
                       approved: () => const SizedBox.shrink(),
                       orElse: () => DigitCard(
                         margin: const EdgeInsets.only(top: spacer2),
@@ -272,69 +272,92 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
                           ),
                         ],
                       ),
-                    );
-                  },
-                ),
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                        vertical: spacer2, horizontal: spacer4),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Summary Overview',
-                          style: textTheme.headingXl.copyWith(
-                              color: theme.colorTheme.primary.primary2),
-                        ),
-                        const SizedBox(height: spacer4),
-                        DigitCard(
+                    ),
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                            vertical: spacer2, horizontal: spacer4),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            ElementAssetSummary(
-                              count: battery,
-                              text: 'Batteries',
-                              onPress: () {
-                                context.read<AssetTypeBloc>().add(
-                                    const AssetTypeEvent.typeSelected(
-                                        "BATTERY"));
-                                context.read<ReportTypeBloc>().add(
-                                    const ReportTypeEvent.typeSelected(
-                                        "send-back"));
-                                context.router.push(const AssetSummaryRoute());
-                              },
+                            Text(
+                              'Summary Overview',
+                              style: textTheme.headingXl.copyWith(
+                                  color: theme.colorTheme.primary.primary2),
                             ),
-                            ElementAssetSummary(
-                              count: inverter,
-                              text: 'Inverters',
-                              onPress: () {
-                                context.read<AssetTypeBloc>().add(
-                                    const AssetTypeEvent.typeSelected(
-                                        "INVERTER"));
-                                context.read<ReportTypeBloc>().add(
-                                    const ReportTypeEvent.typeSelected(
-                                        "send-back"));
-                                context.router.push(const AssetSummaryRoute());
-                              },
-                            ),
-                            ElementAssetSummary(
-                              count: panel,
-                              text: 'Panels',
-                              lastCard: true,
-                              onPress: () {
-                                context.read<AssetTypeBloc>().add(
-                                    const AssetTypeEvent.typeSelected("PANEL"));
-                                context.read<ReportTypeBloc>().add(
-                                    const ReportTypeEvent.typeSelected(
-                                        "send-back"));
-                                context.router.push(const AssetSummaryRoute());
-                              },
+                            const SizedBox(height: spacer4),
+                            DigitCard(
+                              children: [
+                                ElementAssetSummary(
+                                  count: battery,
+                                  text: 'Batteries',
+                                  onPress: () {
+                                    context.read<AssetTypeBloc>().add(
+                                        const AssetTypeEvent.typeSelected(
+                                            "BATTERY"));
+
+                                    inboxState.maybeWhen(
+                                        rejected: () => {
+                                              context
+                                                  .read<ReportTypeBloc>()
+                                                  .add(const ReportTypeEvent
+                                                      .typeSelected(
+                                                      "send-back"))
+                                            },
+                                        orElse: () {});
+                                    context.router
+                                        .push(const AssetSummaryRoute());
+                                  },
+                                ),
+                                ElementAssetSummary(
+                                  count: inverter,
+                                  text: 'Inverters',
+                                  onPress: () {
+                                    context.read<AssetTypeBloc>().add(
+                                        const AssetTypeEvent.typeSelected(
+                                            "INVERTER"));
+                                    inboxState.maybeWhen(
+                                        rejected: () => {
+                                              context
+                                                  .read<ReportTypeBloc>()
+                                                  .add(const ReportTypeEvent
+                                                      .typeSelected(
+                                                      "send-back"))
+                                            },
+                                        orElse: () {});
+                                    context.router
+                                        .push(const AssetSummaryRoute());
+                                  },
+                                ),
+                                ElementAssetSummary(
+                                  count: panel,
+                                  text: 'Panels',
+                                  lastCard: true,
+                                  onPress: () {
+                                    context.read<AssetTypeBloc>().add(
+                                        const AssetTypeEvent.typeSelected(
+                                            "PANEL"));
+                                    inboxState.maybeWhen(
+                                        rejected: () => {
+                                              context
+                                                  .read<ReportTypeBloc>()
+                                                  .add(const ReportTypeEvent
+                                                      .typeSelected(
+                                                      "send-back"))
+                                            },
+                                        orElse: () {});
+                                    context.router
+                                        .push(const AssetSummaryRoute());
+                                  },
+                                ),
+                              ],
                             ),
                           ],
                         ),
-                      ],
-                    ),
-                  ),
-                ],
+                      ),
+                    ],
+                  );
+                },
               );
             },
           );
