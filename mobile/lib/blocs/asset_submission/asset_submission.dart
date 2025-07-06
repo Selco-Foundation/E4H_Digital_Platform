@@ -128,8 +128,6 @@ class AssetSubmissionBloc
       ))
           .facilityId;
 
-      print("facilityId ${facilityId}");
-
       final repo = AssetRepository();
       const types = ['inverter', 'battery', 'panel'];
 

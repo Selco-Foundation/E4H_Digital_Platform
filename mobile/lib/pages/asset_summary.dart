@@ -12,15 +12,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:recase/recase.dart';
-import 'package:selco/blocs/user_type/user_type.dart';
-import 'package:selco/model/project_workflow/project_workflow.dart';
+import 'package:selco/blocs/inbox_type/inbox_type.dart';
 
 import '../blocs/asset_summary/asset_summary.dart';
 import '../blocs/asset_type/asset_type.dart';
 import '../blocs/project/project.dart';
 import '../blocs/report_type/report_type.dart';
 import '../blocs/selected_project/selected_project.dart';
+import '../blocs/user_type/user_type.dart';
 import '../model/asset_summary/asset_summary.dart';
+import '../model/project_workflow/project_workflow.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
 import '../utils/i18_key_constants.dart' as i18;
@@ -73,6 +74,9 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
                 assetType: assetType,
               ),
             );
+
+        context.read<ProjectBloc>().add(ProjectEvent.checkIfInCache(
+            projectId: projectId, userType: userType));
       });
     });
   }
@@ -99,104 +103,245 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
               showBackNavigation: true,
               showHelp: false,
             ),
-            footer: BlocBuilder<ReportTypeBloc, ReportTypeState>(
-              builder: (context, reportState) {
-                if (reportState is ReportTypeSendBack) {
-                  return FooterButton(
-                    showSuffixIcon: false,
-                    text: "Send back",
-                    onPress: () => showCustomPopup(
-                      context: context,
-                      builder: (ctx) => Popup(
-                        onCrossTap: () => Navigator.of(ctx).pop(),
-                        title: "Send back",
-                        onOutsideTap: () => Navigator.of(ctx).pop(),
-                        type: PopUpType.simple,
-                        actionAlignment: MainAxisAlignment.center,
-                        actions: const [],
-                        additionalWidgets: [
-                          LabeledField(
-                            label: 'Reason',
-                            child: DigitDropdown(
-                              onSelect: (DropdownItem sel) {
-                                // handle reason selection
-                              },
-                              items: const [
-                                DropdownItem(name: 'Option A', code: 'a'),
-                                DropdownItem(name: 'Option B', code: 'b'),
-                                DropdownItem(name: 'Option C', code: 'c'),
-                              ],
+            // footer: BlocBuilder<ReportTypeBloc, ReportTypeState>(
+            //   builder: (context, reportState) {
+            //     if (reportState is ReportTypeSendBack) {
+            //       return FooterButton(
+            //         showSuffixIcon: false,
+            //         text: "Send back",
+            //         onPress: () => showCustomPopup(
+            //           context: context,
+            //           builder: (ctx) => Popup(
+            //             onCrossTap: () => Navigator.of(ctx).pop(),
+            //             title: "Send back",
+            //             onOutsideTap: () => Navigator.of(ctx).pop(),
+            //             type: PopUpType.simple,
+            //             actionAlignment: MainAxisAlignment.center,
+            //             actions: const [],
+            //             additionalWidgets: [
+            //               LabeledField(
+            //                 label: 'Reason',
+            //                 child: DigitDropdown(
+            //                   onSelect: (DropdownItem sel) {
+            //                     // handle reason selection
+            //                   },
+            //                   items: const [
+            //                     DropdownItem(name: 'Option A', code: 'a'),
+            //                     DropdownItem(name: 'Option B', code: 'b'),
+            //                     DropdownItem(name: 'Option C', code: 'c'),
+            //                   ],
+            //                 ),
+            //               ),
+            //               InputField(
+            //                 type: InputType.textArea,
+            //                 controller: TextEditingController(),
+            //                 innerLabel:
+            //                     'Additional Details for Selected Reason',
+            //                 textAreaScroll: TextAreaScroll.vertical,
+            //               ),
+            //               Row(
+            //                 mainAxisAlignment: MainAxisAlignment.center,
+            //                 children: [
+            //                   GestureDetector(
+            //                     onTap: () {},
+            //                     child: Text(
+            //                       'Add Reason',
+            //                       style: textTheme.headingM.copyWith(
+            //                           color: theme.colorTheme.primary.primary1),
+            //                     ),
+            //                   ),
+            //                 ],
+            //               ),
+            //               Row(
+            //                 crossAxisAlignment: CrossAxisAlignment.center,
+            //                 children: [
+            //                   Expanded(
+            //                     flex: 1,
+            //                     child: DigitButton(
+            //                       label: "Back",
+            //                       onPressed: () {
+            //                         Navigator.of(ctx).pop();
+            //                       },
+            //                       type: DigitButtonType.secondary,
+            //                       size: DigitButtonSize.large,
+            //                       mainAxisSize: MainAxisSize.min,
+            //                     ),
+            //                   ),
+            //                   const SizedBox(width: spacer5),
+            //                   Expanded(
+            //                     flex: 1,
+            //                     child: DigitButton(
+            //                       label: "Submit",
+            //                       onPressed: () {
+            //                         Navigator.of(ctx).pop();
+            //                       },
+            //                       type: DigitButtonType.primary,
+            //                       size: DigitButtonSize.large,
+            //                       mainAxisSize: MainAxisSize.min,
+            //                     ),
+            //                   ),
+            //                 ],
+            //               ),
+            //             ],
+            //           ),
+            //         ),
+            //       );
+            //     } else {
+            //       final inboxState = context.read<InboxTypeBloc>().state;
+            //       final showNextButton = inboxState.maybeWhen(
+            //         approved: () => false,
+            //         orElse: () => true,
+            //       );
+            //       return !showNextButton
+            //           ? const SizedBox.shrink()
+            //           : FooterButton(
+            //               showSuffixIcon: false,
+            //               text: context.translate(i18.common.coreCommonNext),
+            //               onPress: () {
+            //                 // final SecureStore storage = SecureStore();
+            //                 // storage.addToDraftProjects(selectedProject!);
+            //                 final project =
+            //                     selectedProject!; // your ProjectWorkflow
+            //                 context.read<ProjectBloc>().add(
+            //                       ProjectEvent.addUnSubmitted(
+            //                           project, userType),
+            //                     );
+            //                 context.router.push(const DataSaveSuccessRoute());
+            //               },
+            //             );
+            //     }
+            //   },
+            // ),
+
+            footer: BlocBuilder<ProjectBloc, ProjectState>(
+              builder: (context, projectState) {
+                return BlocBuilder<ReportTypeBloc, ReportTypeState>(
+                  builder: (context, reportState) {
+                    return BlocBuilder<InboxTypeBloc, InboxTypeState>(
+                      builder: (context, inboxState) {
+                        final isApproved = inboxState.maybeWhen(
+                          approved: () => true,
+                          orElse: () => false,
+                        );
+
+                        final isSubmitted = reportState.maybeWhen(
+                          submitted: () => true,
+                          orElse: () => false,
+                        );
+
+                        final isInCache = projectState.maybeWhen(
+                          inCache: (cached) => cached,
+                          orElse: () => false,
+                        );
+
+                        final shouldShowFooter =
+                            !isApproved && (!isSubmitted || isInCache);
+
+                        if (!shouldShowFooter) return const SizedBox.shrink();
+
+                        return reportState.maybeWhen(
+                          sendBack: () => FooterButton(
+                            showSuffixIcon: false,
+                            text: "Send back",
+                            onPress: () => showCustomPopup(
+                              context: context,
+                              builder: (ctx) => Popup(
+                                onCrossTap: () => Navigator.of(ctx).pop(),
+                                title: "Send back",
+                                onOutsideTap: () => Navigator.of(ctx).pop(),
+                                type: PopUpType.simple,
+                                actionAlignment: MainAxisAlignment.center,
+                                actions: const [],
+                                additionalWidgets: [
+                                  LabeledField(
+                                    label: 'Reason',
+                                    child: DigitDropdown(
+                                      onSelect: (DropdownItem sel) {
+                                        // handle reason selection
+                                      },
+                                      items: const [
+                                        DropdownItem(
+                                            name: 'Option A', code: 'a'),
+                                        DropdownItem(
+                                            name: 'Option B', code: 'b'),
+                                        DropdownItem(
+                                            name: 'Option C', code: 'c'),
+                                      ],
+                                    ),
+                                  ),
+                                  InputField(
+                                    type: InputType.textArea,
+                                    controller: TextEditingController(),
+                                    innerLabel:
+                                        'Additional Details for Selected Reason',
+                                    textAreaScroll: TextAreaScroll.vertical,
+                                  ),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      GestureDetector(
+                                        onTap: () {},
+                                        child: Text(
+                                          'Add Reason',
+                                          style: textTheme.headingM.copyWith(
+                                              color: theme
+                                                  .colorTheme.primary.primary1),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.center,
+                                    children: [
+                                      Expanded(
+                                        flex: 1,
+                                        child: DigitButton(
+                                          label: "Back",
+                                          onPressed: () {
+                                            Navigator.of(ctx).pop();
+                                          },
+                                          type: DigitButtonType.secondary,
+                                          size: DigitButtonSize.large,
+                                          mainAxisSize: MainAxisSize.min,
+                                        ),
+                                      ),
+                                      const SizedBox(width: spacer5),
+                                      Expanded(
+                                        flex: 1,
+                                        child: DigitButton(
+                                          label: "Submit",
+                                          onPressed: () {
+                                            Navigator.of(ctx).pop();
+                                          },
+                                          type: DigitButtonType.primary,
+                                          size: DigitButtonSize.large,
+                                          mainAxisSize: MainAxisSize.min,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                          InputField(
-                            type: InputType.textArea,
-                            controller: TextEditingController(),
-                            innerLabel:
-                                'Additional Details for Selected Reason',
-                            textAreaScroll: TextAreaScroll.vertical,
+                          orElse: () => FooterButton(
+                            showSuffixIcon: false,
+                            text: context.translate(i18.common.coreCommonNext),
+                            onPress: () {
+                              final project = selectedProject!;
+                              context.read<ProjectBloc>().add(
+                                    ProjectEvent.addUnSubmitted(
+                                        project, userType),
+                                  );
+                              context.router.push(const DataSaveSuccessRoute());
+                            },
                           ),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              GestureDetector(
-                                onTap: () {},
-                                child: Text(
-                                  'Add Reason',
-                                  style: textTheme.headingM.copyWith(
-                                      color: theme.colorTheme.primary.primary1),
-                                ),
-                              ),
-                            ],
-                          ),
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              Expanded(
-                                flex: 1,
-                                child: DigitButton(
-                                  label: "Back",
-                                  onPressed: () {
-                                    Navigator.of(ctx).pop();
-                                  },
-                                  type: DigitButtonType.secondary,
-                                  size: DigitButtonSize.large,
-                                  mainAxisSize: MainAxisSize.min,
-                                ),
-                              ),
-                              const SizedBox(width: spacer5),
-                              Expanded(
-                                flex: 1,
-                                child: DigitButton(
-                                  label: "Submit",
-                                  onPressed: () {
-                                    Navigator.of(ctx).pop();
-                                  },
-                                  type: DigitButtonType.primary,
-                                  size: DigitButtonSize.large,
-                                  mainAxisSize: MainAxisSize.min,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                } else {
-                  return FooterButton(
-                    showSuffixIcon: false,
-                    text: context.translate(i18.common.coreCommonNext),
-                    onPress: () {
-                      // final SecureStore storage = SecureStore();
-                      // storage.addToDraftProjects(selectedProject!);
-                      final project = selectedProject!; // your ProjectWorkflow
-                      context.read<ProjectBloc>().add(
-                            ProjectEvent.addUnSubmitted(project, userType),
-                          );
-                      context.router.push(const DataSaveSuccessRoute());
-                    },
-                  );
-                }
+                        );
+                      },
+                    );
+                  },
+                );
               },
             ),
             children: [

@@ -36,6 +36,8 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
     on<FetchProjectsSortedEvent>(_handleFetchProjectsSorted);
 
     on<FetchProjectsBySearchEvent>(_handleFetchProjectsBySearch);
+
+    on<ProjectCheckIfInCache>(_checkIfInCache);
   }
 
   FutureOr<void> _selectProject(
@@ -264,6 +266,25 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
       emit(const ProjectState.searchResults([]));
     }
   }
+
+  Future<void> _checkIfInCache(
+    ProjectCheckIfInCache event,
+    Emitter<ProjectState> emit,
+  ) async {
+    emit(const ProjectState.loading());
+
+    final col = isar.cacheUnsubmittedProjects;
+    final cached = await col
+        .where()
+        .projectIdEqualTo(event.projectId)
+        .filter()
+        .userTypeEqualTo(event.userType)
+        .findAll();
+
+    final isInCache = cached.isNotEmpty;
+
+    emit(ProjectState.inCache(isInCache));
+  }
 }
 
 @freezed
@@ -301,6 +322,11 @@ class ProjectEvent with _$ProjectEvent {
     required String query,
     required List<String> workflowStatuses,
   }) = FetchProjectsBySearchEvent;
+
+  const factory ProjectEvent.checkIfInCache({
+    required String projectId,
+    required String userType,
+  }) = ProjectCheckIfInCache;
 }
 
 @freezed
@@ -309,6 +335,8 @@ class ProjectState with _$ProjectState {
 
   /// new loading state
   const factory ProjectState.loading() = _ProjectLoadingState;
+
+  const factory ProjectState.inCache(bool isInCache) = ProjectInCache;
 
   const factory ProjectState.fetched(List<ProjectWorkflow> projectsList) =
       ProjectFetchedState;
