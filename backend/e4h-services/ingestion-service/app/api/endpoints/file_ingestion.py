@@ -39,6 +39,7 @@ project_service_url = os.getenv("PROJECT_SERVICE_URL")
 facility_service_url = os.getenv("FACILITY_SERVICE_URL")
 hrms_service_url = os.getenv("HRMS_SERVICE_URL")
 im_services_url = os.getenv("IM_SERVICES_URL")
+ENVIRONMENT = os.getenv("ENVIRONMENT", "uat").lower()
 
 DB_CONFIG = {
     "host": os.getenv("DB_HOST"),
@@ -726,328 +727,195 @@ def get_user_info_for_mizoram(usernames: List[str], db_conn) -> Dict[str, str]:
     except Exception as e:
         logger.error(f"Error fetching user info for Mizoram: {e}")
         return {}
-@router.post('/legacy_ticket_ingestion',
-             summary='Upload and ingest legacy tickets Excel file',
-             response_description="Returns processed Excel file with ingestion results")
-async def upload_legacy_ticket_excel_sheet(
-        legacy_ticket_file: UploadFile = File(description="Excel file containing Legacy Tickets"),
-        legacy_ticket_sheet_name: str = Form(default="Legacy Tickets", description="Name of the sheet containing Legacy Tickets"),
-        mapping_type_subtype_file: UploadFile = File(description="Excel file containing Legacy Tickets"),
-        mapping_type_subtype_sheet_name: str = Form(default="Mapping Old_New_v1.0", description="Name of the sheet containing Legacy Tickets"),
-        request_info: str = Form(default="")
-):
-    subtype_mapping = create_mapping_dicts(mapping_type_subtype_file, mapping_type_subtype_sheet_name)
 
-    tenant_creator_mapping = {
-        "Karnataka": {
-            "mobileNumber": "1111111111",
-            "uuid": "c74f6c26-3240-4bcc-ace9-8fe7fadaf294",
-            "id": 5560,
-            "tenantId" : "pg"
-        },
-        "Assam": {
-            "mobileNumber": "1111111111",
-            "uuid": "803fbb9c-62c3-4135-b3c5-5a6eb167eb55",
-            "id": 5561,
-            "tenantId": "as"
-        },
-        "Manipur": {
-            "mobileNumber": "1111111111",
-            "uuid": "eefd7d28-50ab-48a6-b608-b9d34e729c31",
-            "id": 5562,
-            "tenantId": "mn"
-        },
-        "Gujarat": {
-            "mobileNumber": "1111111120",
-            "uuid": "fbe228f4-6d73-43df-b865-5e02baddd0c6",
-            "id": 5563,
-            "tenantId": "gj"
-        },
-        "Meghalaya": {
-            "mobileNumber": "1111111120",
-            "uuid": "46f70d2f-c635-4c21-a43e-1541aadda1aa",
-            "id": 5564,
-            "tenantId": "ml"
-        },
-        "Mizoram": {
-            "mobileNumber": "1111111120",
-            "uuid": "a1809350-af2a-402b-91e9-8ace6c1c66e9",
-            "id": 5565,
-            "tenantId": "mz"
-        },
-        "Nagaland": {
-            "mobileNumber": "1111111120",
-            "uuid": "ae1bcdf0-038d-4888-8d65-9f820e20445d",
-            "id": 5566,
-            "tenantId": "nl"
-        },
-        "Odisha": {
-            "mobileNumber": "1111111120",
-            "uuid": "8645cf91-27e3-45cf-a809-d360f6b3a585",
-            "id": 5567,
-            "tenantId": "or"
-        },
-        "Sikkim": {
-            "mobileNumber": "1111111120",
-            "uuid": "617f9fe2-c612-4205-9be6-5d578311f67a",
-            "id": 5568,
-            "tenantId": "sk"
-        }
+TENANT_CREATOR_MAPPING = {
+    "uat": {
+        "Karnataka":{"mobileNumber":"1111111111","uuid":"c74f6c26-3240-4bcc-ace9-8fe7fadaf294","id":5560,"tenantId":"pg"},
+        "Assam":{"mobileNumber":"1111111111","uuid":"803fbb9c-62c3-4135-b3c5-5a6eb167eb55","id":5561,"tenantId":"as"},
+        "Manipur":{"mobileNumber":"1111111111","uuid":"eefd7d28-50ab-48a6-b608-b9d34e729c31","id":5562,"tenantId":"mn"},
+        "Gujarat":{"mobileNumber":"1111111120","uuid":"fbe228f4-6d73-43df-b865-5e02baddd0c6","id":5563,"tenantId":"gj"},
+        "Meghalaya":{"mobileNumber":"1111111120","uuid":"46f70d2f-c635-4c21-a43e-1541aadda1aa","id":5564,"tenantId":"ml"},
+        "Mizoram":{"mobileNumber":"1111111120","uuid":"a1809350-af2a-402b-91e9-8ace6c1c66e9","id":5565,"tenantId":"mz"},
+        "Nagaland":{"mobileNumber":"1111111120","uuid":"ae1bcdf0-038d-4888-8d65-9f820e20445d","id":5566,"tenantId":"nl"},
+        "Odisha":{"mobileNumber":"1111111120","uuid":"8645cf91-27e3-45cf-a809-d360f6b3a585","id":5567,"tenantId":"or"},
+        "Sikkim":{"mobileNumber":"1111111120","uuid":"617f9fe2-c612-4205-9be6-5d578311f67a","id":5568,"tenantId":"sk"},
+    },
+    "prod": {
+        "Karnataka": {"uuid": "a4602b6f-def4-4d1d-a840-41f3ac22efef", "id": 4277, "tenantId": "pg"},
+        "Assam": {"uuid": "5eb01201-a1d0-44d2-b8aa-9a9bfd34da0c", "id": 4281, "tenantId": "as"},
+        "Manipur": {"uuid": "012a9c98-4363-431a-b4a6-df5e5c4c76f5", "id": 4282, "tenantId": "mn"},
+        "Gujarat": {"uuid": "17a90f4d-e261-4a50-995b-ea7492c1e5c5", "id": 4285, "tenantId": "gj"},
+        "Meghalaya": {"uuid": "938ce75c-24dc-4103-a88b-aa5a74c66c66", "id": 4278, "tenantId": "ml"},
+        "Mizoram": {"uuid": "c423a808-085d-4af2-bcf2-096e82fffcf2", "id": 4279, "tenantId": "mz"},
+        "Nagaland": {"uuid": "afc60457-6086-4320-a138-a6be445c4809", "id": 4283, "tenantId": "nl"},
+        "Odisha": {"uuid": "53967e59-c463-4321-9508-e2937914127a", "id": 4280, "tenantId": "or"},
+        "Sikkim": {"uuid": "abbb7aff-0483-4335-a382-e277c39193a4", "id": 4284, "tenantId": "sk"},
     }
-    input_temp_file = None
-    output_temp_file = None
+}
+
+@router.post("/legacy_ticket_ingestion", summary="Upload and ingest legacy tickets Excel file")
+async def upload_legacy_ticket_excel_sheet(
+    legacy_ticket_file: UploadFile = File(...),
+    legacy_ticket_sheet_name: str = Form(default="Legacy Tickets"),
+    mapping_type_subtype_file: UploadFile = File(...),
+    mapping_type_subtype_sheet_name: str = Form(default="Mapping Old_New_v1.0"),
+    request_info: str = Form(default="")
+):
+    migration_id = str(uuid.uuid4())
     request_info_obj = request_info_from_json(request_info)
     get_authorized_request_info(request_info_obj)
 
-    # Generate a unique migrationId for this batch
-    migration_id = str(uuid.uuid4())
+    subtype_mapping = create_mapping_dicts(mapping_type_subtype_file, mapping_type_subtype_sheet_name)
+    tenant_creator_mapping = TENANT_CREATOR_MAPPING.get(ENVIRONMENT, {})
 
-
-    try:
-        input_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
-        content = await legacy_ticket_file.read()
-        input_temp_file.write(content)
-        input_temp_file.close()
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as input_temp_file:
+        input_temp_file.write(await legacy_ticket_file.read())
         excel_file_path = input_temp_file.name
 
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_filename = f"legacy_ticket_ingestion_results_{timestamp}.xlsx"
-        output_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
-        output_temp_file.close()
-        output_file_path = output_temp_file.name
+    df = pd.read_excel(excel_file_path, sheet_name=legacy_ticket_sheet_name)
+    df.columns = df.columns.str.strip()
+    df = df.reindex(columns=df.columns.tolist() + ['ticket_id', 'employee_info'], fill_value='')
 
-        df = pd.read_excel(excel_file_path, sheet_name=legacy_ticket_sheet_name)
-        df.columns = df.columns.str.strip()
-        df = df.reindex(columns=df.columns.tolist() + ['ticket_id', 'employee_info'], fill_value='')
+    unique_states = df["State"].dropna().str.strip().unique()
+    tenant_ids = [tenant_creator_mapping.get(state, {}).get("tenantId") for state in unique_states]
 
+    tenant_mapping = get_tenant_mapping(request_info_obj, tenant_ids)
+    block_mapping = get_block_mapping_from_mdms(request_info_obj, tenant_ids)
 
-        unique_states = df["State"].dropna().str.strip().unique()
+    conn = psycopg2.connect(**DB_CONFIG)
+    codes = [str(row.get("NIN_HFR ID", "")).strip() for i, row in df.iterrows()
+             if str(df.at[i, 'status']).strip().lower() not in ['duplicate', 'error']]
+    employee_info = get_hrms_employee_info(codes, conn)
 
-        tenant_ids = []
+    usernames = [str(row.get("Actual User Name", "")).strip() for i, row in df.iterrows()
+                 if str(row.get("State", "")).strip() == "Mizoram" and str(df.at[i, 'status']).strip().lower() not in ['duplicate', 'error']]
+    user_info = get_user_info_for_mizoram(usernames, conn)
 
-        for state in unique_states:
-            tenant_id = tenant_creator_mapping.get(state).get("tenantId")
-            tenant_ids.append(tenant_id)
+    for idx, row in df.iterrows():
+        try:
+            status = str(df.at[idx, 'status']).strip().lower()
+            if status in ['duplicate', 'error']:
+                continue
 
-        # Fetch tenant mapping once for the entire batch
-        tenant_mapping = get_tenant_mapping(request_info_obj, tenant_ids)
-        block_mapping = get_block_mapping_from_mdms(request_info_obj, tenant_ids)
-
-
-        codes = []
-
-        for index, row in df.iterrows():
-            code = str(row.get("NIN_HFR ID", "")).strip()
-            status = str(df.at[index, 'status']).strip()
-            if code and status not in ['duplicate', 'error']:
-                codes.append(code)
-
-        conn = psycopg2.connect(**DB_CONFIG)
-
-        employee_info = get_hrms_employee_info(codes, conn)
-
-        usernames = []
-
-        for index, row in df.iterrows():
             state = str(row.get("State", "")).strip()
-            status = str(df.at[index, 'status']).strip()
+            if state == "Mizoram":
+                identifier = str(row.get("Actual User Name", "")).strip()
+                tenant_id = user_info.get(identifier)
+            else:
+                identifier = str(row.get("NIN_HFR ID", "")).strip()
+                tenant_id = employee_info.get(identifier)
 
-            if state == "Mizoram" and status not in ['duplicate', 'error']:
-                username = str(row.get("Actual User Name", "")).strip()
-                if username:
-                    usernames.append(username)
-
-        user_info = get_user_info_for_mizoram(usernames, conn)
-
-
-        for idx, row in df.iterrows():
-            try:
-                if df.at[idx, 'status'] in ['duplicate', 'error']:
-                    continue
-
-                state = str(row.get("State", "")).strip()
-                if state == "Mizoram":
-                    user_name = str(row.get("Actual User Name", "")).strip()
-                    tenant_id = user_info.get(user_name)
-                    identifier = user_name
-                else:
-                    employee_code = str(row.get("NIN_HFR ID", "")).strip()
-                    tenant_id = employee_info.get(employee_code)
-                    identifier = employee_code
-                if not tenant_id:
-                    df.at[idx, 'status'] = 'failed'
-                    df.at[idx, 'error'] = f'Employee not found for code: {identifier}'
-                    df.at[idx, 'employee_info'] = 'Not found'
-                    continue
-
-                df.at[idx, 'employee_info'] = 'Found'
-
-                employee_tenant_mapping = tenant_mapping.get(tenant_id,{})
-                if not employee_tenant_mapping:
-                    df.at[idx, 'status'] = 'failed'
-                    df.at[idx, 'error'] = f'Tenant mapping not found for tenant ID: {tenant_id}'
-                    continue
-
-                # Extract tenant-based fields
-                phc_subtype = employee_tenant_mapping.get("centreType", "")
-                block_code = employee_tenant_mapping.get("city", {}).get("blockCode", "")
-                block = block_mapping.get(block_code).get("name")
-                tenant_id = employee_tenant_mapping.get("code", "")
-                district = employee_tenant_mapping.get("city", {}).get("districtCode", "")
-                ticket_type = str(row.get("Ticket Type")).strip()
-                ticket_subtype = str(row.get("Ticket Sub Type")).strip()
-                system_functional = {
-                    "Yes": "FUNCTIONAL",
-                    "No": "NON_FUNCTIONAL"
-                }.get(str(row.get("Is the solar system working?", "")).strip(), "")
-                comments = str(row.get("Comments", "")).strip()
-                if len(comments) > 256:
-                    comments = comments[:256]
-
-                if not ticket_type or not ticket_subtype:
-                    df.at[idx, 'status'] = 'failed'
-                    df.at[idx, 'error'] = f"Missing Ticket Type or Ticket Sub Type"
-                    continue
-
-                creator_info = tenant_creator_mapping.get(state, {})
-                creator_tenant_id = creator_info.get("tenantId")
-                creator_uuid = creator_info.get("uuid")
-
-                mapped_pair = subtype_mapping.get((ticket_type, ticket_subtype))
-
-                if mapped_pair:
-                    mapped_type, mapped_subtype = mapped_pair
-                else:
-                    df.at[idx, 'status'] = 'failed'
-                    df.at[idx, 'error'] = f"Mapping not found for Ticket Type: '{ticket_type}' and Sub Type: '{ticket_subtype}'"
-                    continue
-
-                incident_payload = {
-                    "incidentType": mapped_type,
-                    "incidentSubtype": mapped_subtype,
-                    "comments": comments,
-                    "systemFunctional": system_functional,
-                    "tenantId": tenant_id,
-                    "migrationId": migration_id,
-                    "district": district,
-                    "block": block,
-                    "phcType": tenant_id,
-                    "phcSubType": phc_subtype,
-                    "additionalDetail": {
-                        "fileStoreId": [],
-                        "reopenreason": [],
-                        "rejectReason": [],
-                        "sendBackReason": [],
-                        "sendBackSubReason": []
-                    },
-                    "source": "web",
-                    "reporter": {
-                        "uuid": creator_uuid,
-                        "tenantId": creator_tenant_id
-                    }
-                }
-
-
-
-                # Optional: Set legacyId if present
-                unique_id = row.get("Unique_ID", None)
-                if pd.notnull(unique_id):
-                    incident_payload["legacyId"] = str(unique_id).strip()
-
-                # Optional: Convert Actual_Reported_Date to epoch
-                reported_date = row.get("Actual_Reported_Date (mm/dd/yyyy)", None)
-
-                if pd.notnull(reported_date):
-                    if isinstance(reported_date, str):
-                        dt = pd.to_datetime(reported_date, format="%d/%m/%Y", errors='coerce')
-                    else:
-                        dt = pd.to_datetime(reported_date, errors='coerce')
-                    if pd.notnull(dt):
-                        incident_payload["filedDate"] = int(dt.timestamp() * 1000)
-
-
-                creator_id = creator_info.get("id")
-                creator_mobile_number = creator_info.get("mobileNumber")
-                request_info = {
-                    "apiId": "Rainmaker",
-                    "authToken": "79967889-fbf5-42c6-9bd3-4adc0dbe7692",
-                    "userInfo": {
-                        "id": creator_id,
-                        "uuid": creator_uuid,
-                        "userName": "selco_system_admin",
-                        "name": "Selco System Admin",
-                        "mobileNumber": creator_mobile_number,
-                        "emailId": None,
-                        "locale": None,
-                        "type": "EMPLOYEE",
-                        "roles": [
-                            {
-                                "name": "Complainant",
-                                "code": "COMPLAINANT",
-                                "tenantId": creator_tenant_id
-                            },
-                            {
-                                "name": "Employee",
-                                "code": "EMPLOYEE",
-                                "tenantId": creator_tenant_id
-                            }
-                        ],
-                        "active": True,
-                        "tenantId": creator_tenant_id,
-                        "permanentCity": None
-                    },
-                    "msgId": "1744021633700|en_IN",
-                    "plainAccessRequest": {}
-                }
-
-                payload = {
-                    "RequestInfo": request_info,
-                    "incident": incident_payload,
-                    "workflow": {
-                        "action": "APPLY",
-                        "verificationDocuments": []
-                    }
-                }
-
-                # Call the im-services create API
-                create_incident_url = f"{im_services_url}/im-services/v2/request/_create"
-                headers = {"Content-Type": "application/json"}
-                response = requests.post(create_incident_url, json=payload, headers=headers)
-                if response.status_code in (200, 201):
-                    resp_json = response.json()
-                    # Try to extract ticket/incident id from response
-                    incident = resp_json.get("IncidentWrappers", {})[0].get("incident")
-                    incident_id = incident.get("incidentId")
-                    df.at[idx, 'status'] = 'success'
-                    df.at[idx, 'error'] = ''
-                    df.at[idx, 'ticket_id'] = incident_id or ''
-                    logger.info(f"Ticket created: {incident_id} for {identifier}")
-                else:
-                    df.at[idx, 'status'] = 'failed'
-                    try:
-                        error_msg = response.json().get('Errors', [{}])[0].get('message', response.text)
-                    except Exception:
-                        error_msg = response.text
-                    df.at[idx, 'error'] = error_msg
-            except Exception as e:
+            if not tenant_id:
                 df.at[idx, 'status'] = 'failed'
-                df.at[idx, 'error'] = str(e)
+                df.at[idx, 'error'] = f'Employee not found for code: {identifier}'
+                df.at[idx, 'employee_info'] = 'Not found'
+                continue
 
-        # Write results to output Excel
-        with pd.ExcelWriter(output_file_path, engine='openpyxl') as writer:
-            df.to_excel(writer, sheet_name=legacy_ticket_sheet_name, index=False)
+            df.at[idx, 'employee_info'] = 'Found'
 
-        return FileResponse(
-            path=output_file_path,
-            filename=output_filename,
-            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
-    except Exception as e:
-        logger.error(f"Error processing legacy ticket data: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to process legacy ticket data: {str(e)}")
-    finally:
-        if input_temp_file and os.path.exists(input_temp_file.name):
-            os.unlink(input_temp_file.name)
+            tenant_details = tenant_mapping.get(tenant_id, {})
+            if not tenant_details:
+                df.at[idx, 'status'] = 'failed'
+                df.at[idx, 'error'] = f'Tenant mapping not found for tenant ID: {tenant_id}'
+                continue
+
+            incident_payload = build_incident_payload(row, identifier, tenant_details, block_mapping, migration_id,
+                                                      tenant_creator_mapping.get(state, {}), subtype_mapping)
+            response = submit_incident_payload(incident_payload)
+            process_response(response, df, idx, identifier)
+
+        except Exception as e:
+            df.at[idx, 'status'] = 'failed'
+            df.at[idx, 'error'] = str(e)
+
+    return write_and_return_excel(df, legacy_ticket_sheet_name)
+
+def build_incident_payload(row, identifier, tenant_details, block_mapping, migration_id, creator_info, subtype_mapping):
+    ticket_type = str(row.get("Ticket Type", "")).strip()
+    ticket_subtype = str(row.get("Ticket Sub Type", "")).strip()
+    system_functional = {"Yes": "FUNCTIONAL", "No": "NON_FUNCTIONAL"}.get(
+        str(row.get("Is the solar system working?", "")).strip(), "")
+    comments = str(row.get("Comments", "")).strip()[:256]
+    mapped_pair = subtype_mapping.get((ticket_type, ticket_subtype))
+
+    if not ticket_type or not ticket_subtype or not mapped_pair:
+        raise ValueError("Missing or invalid Ticket Type/Sub Type")
+
+    block_code = tenant_details.get("city", {}).get("blockCode", "")
+    block = block_mapping.get(block_code, {}).get("name", "")
+
+    incident_payload = {
+        "incidentType": mapped_pair[0],
+        "incidentSubtype": mapped_pair[1],
+        "comments": comments,
+        "systemFunctional": system_functional,
+        "tenantId": tenant_details.get("code", ""),
+        "migrationId": migration_id,
+        "district": tenant_details.get("city", {}).get("districtCode", ""),
+        "block": block,
+        "phcType": tenant_details.get("code", ""),
+        "phcSubType": tenant_details.get("centreType", ""),
+        "additionalDetail": {"fileStoreId": [], "reopenreason": [], "rejectReason": [],
+                              "sendBackReason": [], "sendBackSubReason": []},
+        "source": "web",
+        "reporter": {
+            "uuid": creator_info.get("uuid"),
+            "tenantId": creator_info.get("tenantId")
+        }
+    }
+
+    if pd.notnull(row.get("Unique_ID")):
+        incident_payload["legacyId"] = str(row.get("Unique_ID")).strip()
+
+    reported_date = row.get("Actual_Reported_Date (mm/dd/yyyy)", None)
+    if pd.notnull(reported_date):
+        dt = pd.to_datetime(reported_date, format="%d/%m/%Y", errors='coerce') if isinstance(reported_date, str) else pd.to_datetime(reported_date, errors='coerce')
+        if pd.notnull(dt):
+            incident_payload["filedDate"] = int(dt.timestamp() * 1000)
+
+    return incident_payload
+
+def submit_incident_payload(payload):
+    return requests.post(
+        f"{os.getenv('IM_SERVICES_URL')}/im-services/v2/request/_create",
+        json={
+            "RequestInfo": {
+                "apiId": "Rainmaker",
+                "authToken": os.getenv("SYSTEM_AUTH_TOKEN"),
+                "userInfo": payload["reporter"] | {
+                    "id": 1,
+                    "userName": "system",
+                    "name": "System",
+                    "type": "EMPLOYEE",
+                    "roles": [{"name": "Employee", "code": "EMPLOYEE", "tenantId": payload["tenantId"]}],
+                    "active": True,
+                    "tenantId": payload["tenantId"]
+                },
+                "msgId": str(uuid.uuid4()),
+                "plainAccessRequest": {}
+            },
+            "incident": payload,
+            "workflow": {"action": "APPLY", "verificationDocuments": []}
+        },
+        headers={"Content-Type": "application/json"}
+    )
+
+def process_response(response, df, idx, identifier):
+    if response.status_code in [200, 201]:
+        incident = response.json().get("IncidentWrappers", [{}])[0].get("incident")
+        df.at[idx, 'status'] = 'success'
+        df.at[idx, 'error'] = ''
+        df.at[idx, 'ticket_id'] = incident.get("incidentId", '')
+    else:
+        error_msg = response.json().get('Errors', [{}])[0].get('message', response.text)
+        df.at[idx, 'status'] = 'failed'
+        df.at[idx, 'error'] = error_msg
+
+def write_and_return_excel(df, sheet_name):
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_path = f"/tmp/legacy_ticket_ingestion_results_{timestamp}.xlsx"
+    df.to_excel(output_path, sheet_name=sheet_name, index=False)
+    return FileResponse(output_path, filename=os.path.basename(output_path), media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 
 @router.post("/check_duplicates")
