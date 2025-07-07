@@ -40,6 +40,14 @@ facility_service_url = os.getenv("FACILITY_SERVICE_URL")
 hrms_service_url = os.getenv("HRMS_SERVICE_URL")
 im_services_url = os.getenv("IM_SERVICES_URL")
 ENVIRONMENT = os.getenv("ENVIRONMENT", "uat").lower()
+base_path = os.path.dirname(os.path.abspath(__file__))
+config_path = os.path.abspath(os.path.join(base_path, "..", "..", "config"))
+
+with open(os.path.join(config_path, "tenant_creator_mapping.json"), 'r') as f:
+    TENANT_CREATOR_MAPPING = json.load(f).get(ENVIRONMENT, {})
+
+with open(os.path.join(config_path, "user_profiles.json"), 'r') as f:
+    USER_PROFILE = json.load(f).get(ENVIRONMENT, {})
 
 DB_CONFIG = {
     "host": os.getenv("DB_HOST"),
@@ -728,30 +736,6 @@ def get_user_info_for_mizoram(usernames: List[str], db_conn) -> Dict[str, str]:
         logger.error(f"Error fetching user info for Mizoram: {e}")
         return {}
 
-TENANT_CREATOR_MAPPING = {
-    "uat": {
-        "Karnataka":{"mobileNumber":"1111111111","uuid":"c74f6c26-3240-4bcc-ace9-8fe7fadaf294","id":5560,"tenantId":"pg"},
-        "Assam":{"mobileNumber":"1111111111","uuid":"803fbb9c-62c3-4135-b3c5-5a6eb167eb55","id":5561,"tenantId":"as"},
-        "Manipur":{"mobileNumber":"1111111111","uuid":"eefd7d28-50ab-48a6-b608-b9d34e729c31","id":5562,"tenantId":"mn"},
-        "Gujarat":{"mobileNumber":"1111111120","uuid":"fbe228f4-6d73-43df-b865-5e02baddd0c6","id":5563,"tenantId":"gj"},
-        "Meghalaya":{"mobileNumber":"1111111120","uuid":"46f70d2f-c635-4c21-a43e-1541aadda1aa","id":5564,"tenantId":"ml"},
-        "Mizoram":{"mobileNumber":"1111111120","uuid":"a1809350-af2a-402b-91e9-8ace6c1c66e9","id":5565,"tenantId":"mz"},
-        "Nagaland":{"mobileNumber":"1111111120","uuid":"ae1bcdf0-038d-4888-8d65-9f820e20445d","id":5566,"tenantId":"nl"},
-        "Odisha":{"mobileNumber":"1111111120","uuid":"8645cf91-27e3-45cf-a809-d360f6b3a585","id":5567,"tenantId":"or"},
-        "Sikkim":{"mobileNumber":"1111111120","uuid":"617f9fe2-c612-4205-9be6-5d578311f67a","id":5568,"tenantId":"sk"},
-    },
-    "prod": {
-        "Karnataka": {"uuid": "a4602b6f-def4-4d1d-a840-41f3ac22efef", "id": 4277, "tenantId": "pg"},
-        "Assam": {"uuid": "5eb01201-a1d0-44d2-b8aa-9a9bfd34da0c", "id": 4281, "tenantId": "as"},
-        "Manipur": {"uuid": "012a9c98-4363-431a-b4a6-df5e5c4c76f5", "id": 4282, "tenantId": "mn"},
-        "Gujarat": {"uuid": "17a90f4d-e261-4a50-995b-ea7492c1e5c5", "id": 4285, "tenantId": "gj"},
-        "Meghalaya": {"uuid": "938ce75c-24dc-4103-a88b-aa5a74c66c66", "id": 4278, "tenantId": "ml"},
-        "Mizoram": {"uuid": "c423a808-085d-4af2-bcf2-096e82fffcf2", "id": 4279, "tenantId": "mz"},
-        "Nagaland": {"uuid": "afc60457-6086-4320-a138-a6be445c4809", "id": 4283, "tenantId": "nl"},
-        "Odisha": {"uuid": "53967e59-c463-4321-9508-e2937914127a", "id": 4280, "tenantId": "or"},
-        "Sikkim": {"uuid": "abbb7aff-0483-4335-a382-e277c39193a4", "id": 4284, "tenantId": "sk"},
-    }
-}
 
 @router.post("/legacy_ticket_ingestion", summary="Upload and ingest legacy tickets Excel file")
 async def upload_legacy_ticket_excel_sheet(
@@ -766,7 +750,7 @@ async def upload_legacy_ticket_excel_sheet(
     get_authorized_request_info(request_info_obj)
 
     subtype_mapping = create_mapping_dicts(mapping_type_subtype_file, mapping_type_subtype_sheet_name)
-    tenant_creator_mapping = TENANT_CREATOR_MAPPING.get(ENVIRONMENT, {})
+    tenant_creator_mapping = TENANT_CREATOR_MAPPING
 
     with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as input_temp_file:
         input_temp_file.write(await legacy_ticket_file.read())
@@ -821,7 +805,7 @@ async def upload_legacy_ticket_excel_sheet(
 
             incident_payload = build_incident_payload(row, identifier, tenant_details, block_mapping, migration_id,
                                                       tenant_creator_mapping.get(state, {}), subtype_mapping)
-            response = submit_incident_payload(incident_payload)
+            response = submit_incident_payload(incident_payload, tenant_creator_mapping.get(state, {}))
             process_response(response, df, idx, identifier)
 
         except Exception as e:
@@ -875,23 +859,41 @@ def build_incident_payload(row, identifier, tenant_details, block_mapping, migra
 
     return incident_payload
 
-def submit_incident_payload(payload):
+def submit_incident_payload(payload, creator):
+    profile = USER_PROFILE
+
     return requests.post(
-        f"{os.getenv('IM_SERVICES_URL')}/im-services/v2/request/_create",
+        f"{im_services_url}/im-services/v2/request/_create",
         json={
             "RequestInfo": {
                 "apiId": "Rainmaker",
-                "authToken": os.getenv("SYSTEM_AUTH_TOKEN"),
-                "userInfo": payload["reporter"] | {
-                    "id": 1,
-                    "userName": "system",
-                    "name": "System",
+                "authToken": "79967889-fbf5-42c6-9bd3-4adc0dbe7692",
+                "userInfo": {
+                    "id": creator.get("id"),
+                    "uuid": creator.get("uuid"),
+                    "userName": profile["userName"],
+                    "name": profile["name"],
+                    "mobileNumber": creator.get("mobileNumber"),
+                    "emailId": None,
+                    "locale": None,
                     "type": "EMPLOYEE",
-                    "roles": [{"name": "Employee", "code": "EMPLOYEE", "tenantId": payload["tenantId"]}],
+                    "roles": [
+                        {
+                            "name": "Complainant",
+                            "code": "COMPLAINANT",
+                            "tenantId": creator.get("tenantId")
+                        },
+                        {
+                            "name": "Employee",
+                            "code": "EMPLOYEE",
+                            "tenantId": creator.get("tenantId")
+                        }
+                    ],
                     "active": True,
-                    "tenantId": payload["tenantId"]
+                    "tenantId": creator.get("tenantId"),
+                    "permanentCity": None
                 },
-                "msgId": str(uuid.uuid4()),
+                "msgId": "1744021633700|en_IN",
                 "plainAccessRequest": {}
             },
             "incident": payload,
