@@ -56,6 +56,9 @@ class ProjectTaskApiControllerTest {
     @MockBean
     private ProjectService projectService;
 
+    @MockBean
+    private ProjectWorkflowService projectWorkflowService;
+
     @Test
     @DisplayName("should project task create request pass if API operation is create")
     void shouldProjectTaskCreateRequestPassIfApiOperationIsCreate() throws Exception {

@@ -73,10 +73,13 @@ public class TransitionService {
 
             if(currentState==null){
                 for (State state : businessService.getStates()) {
-                    if (state.getIsStartState() != null) {
+                    if (state.getIsStartState() != null && state.getIsStartState()) {
                         processStateAndAction.setCurrentState(state);
                         break;
                     }
+                }
+                if (processStateAndAction.getCurrentState() == null) {
+                    throw new CustomException("START_STATE_NOT_FOUND", "No start state found in business service config");
                 }
             }
             else processStateAndAction.setCurrentState(currentState);

@@ -66,6 +66,9 @@ class ProjectStaffApiControllerTest {
     @MockBean
     private ProjectService projectService;
 
+    @MockBean
+    private ProjectWorkflowService projectWorkflowService;
+
     @Test
     @DisplayName("should create project staff and return with 202 accepted")
     void shouldCreateProjectStaffAndReturnWith202Accepted() throws Exception {
