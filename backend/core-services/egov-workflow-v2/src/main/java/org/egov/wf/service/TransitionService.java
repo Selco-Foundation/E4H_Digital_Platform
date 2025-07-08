@@ -73,7 +73,7 @@ public class TransitionService {
 
             if(currentState==null){
                 for (State state : businessService.getStates()) {
-                    if (state.getIsStartState() != null && state.getIsStartState()) {
+                    if(StringUtils.isEmpty(state.getState())) {
                         processStateAndAction.setCurrentState(state);
                         break;
                     }
