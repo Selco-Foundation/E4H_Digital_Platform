@@ -70,6 +70,9 @@ class ProjectFacilityApiControllerTest {
     @MockBean
     private ProjectService projectService;
 
+    @MockBean
+    private ProjectWorkflowService projectWorkflowService;
+
     @BeforeEach
     void setUp() {
         when(projectConfiguration.getBulkCreateProjectFacilityTopic())
