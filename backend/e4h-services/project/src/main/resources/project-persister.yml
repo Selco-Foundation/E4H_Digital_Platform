@@ -709,7 +709,7 @@ serviceMaps:
     - version: 1.0
       name: Projects
       description: Persists project in project table
-      fromTopic: save-project
+      fromTopic: save-project-health
       isTransaction: true
       isAuditEnabled: true
       module: PROJECT
