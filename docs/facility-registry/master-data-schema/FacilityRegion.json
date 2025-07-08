@@ -1,0 +1,16 @@
+{
+  "tenantId": "pg",
+  "module": "facility",
+  "FacilityRegion": [
+    {
+      "active": true,
+      "code": "RURAL",
+      "name": "Rural"
+    },
+    {
+      "active": true,
+      "code": "URBAN",
+      "name": "Urban"
+    }
+  ]
+}

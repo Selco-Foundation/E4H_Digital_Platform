@@ -7,7 +7,7 @@ serviceMaps:
     isTransaction: true
     queryMaps:
 
-    - query: INSERT INTO eg_incident_v2(id, tenantid, incidenttype, incidentsubtype, incidentid, additionaldetails, applicationstatus, district, block, phctype, phcsubtype, createdby, createdtime, lastmodifiedby, lastmodifiedtime, comments) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+    - query: INSERT INTO eg_incident_v2(id, tenantid, incidenttype, incidentsubtype, incidentid, additionaldetails, applicationstatus, district, block, phctype, phcsubtype, createdby, createdtime, lastmodifiedby, lastmodifiedtime, comments, filed_date, legacy_id, migration_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
       basePath: incident
       jsonMaps:
       - jsonPath: $.incident.id
@@ -44,6 +44,12 @@ serviceMaps:
 
       - jsonPath: $.incident.comments
 
+      - jsonPath: $.incident.filedDate
+
+      - jsonPath: $.incident.legacyId
+
+      - jsonPath: $.incident.migrationId
+
 
   - version: 1.0
     description: Updates im service request in tables
@@ -51,7 +57,7 @@ serviceMaps:
     isTransaction: true
     queryMaps:
 
-    - query: UPDATE eg_incident_v2 SET incidenttype=?, incidentid=?, incidentsubtype=?, additionaldetails=?, applicationstatus=?, district=? , block=? , phctype=? , phcsubtype=?, lastmodifiedby=?, lastmodifiedtime=?, comments=? WHERE id=?;
+    - query: UPDATE eg_incident_v2 SET incidenttype=?, incidentid=?, incidentsubtype=?, additionaldetails=?, applicationstatus=?, district=? , block=? , phctype=? , phcsubtype=?, lastmodifiedby=?, lastmodifiedtime=?, comments=?, filed_date=?, legacy_id=?, migration_id=? WHERE id=?;
       basePath: incident
       jsonMaps:
       - jsonPath: $.incident.incidentType
@@ -79,5 +85,11 @@ serviceMaps:
       - jsonPath: $.incident.auditDetails.lastModifiedTime
 
       - jsonPath: $.incident.comments
+
+      - jsonPath: $.incident.filedDate
+
+      - jsonPath: $.incident.legacyId
+
+      - jsonPath: $.incident.migrationId
 
       - jsonPath: $.incident.id

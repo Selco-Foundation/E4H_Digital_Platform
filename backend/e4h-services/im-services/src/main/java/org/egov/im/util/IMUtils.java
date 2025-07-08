@@ -1,21 +1,30 @@
 package org.egov.im.util;
 
 import org.egov.common.utils.MultiStateInstanceUtil;
+import org.egov.im.service.SLAService;
 import org.egov.im.web.models.AuditDetails;
 import org.egov.im.web.models.Incident;
+import org.egov.im.web.models.IncidentRequestWrapper;
+import org.egov.im.web.models.Priority;
+import org.egov.im.web.models.workflow.ProcessInstance;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+
+import java.util.ArrayList;
+import java.util.Objects;
 
 @Component
 public class IMUtils {
 
 
     private MultiStateInstanceUtil multiStateInstanceUtil;
+    private SLAService slaService;
 
     @Autowired
-    public IMUtils(MultiStateInstanceUtil multiStateInstanceUtil) {
+    public IMUtils(MultiStateInstanceUtil multiStateInstanceUtil, SLAService slaService) {
         this.multiStateInstanceUtil = multiStateInstanceUtil;
+        this.slaService = slaService;
     }
 
     /**
@@ -54,4 +63,22 @@ public class IMUtils {
         return finalQuery;
     }
 
+    public ProcessInstance trimRolesFromProcessInstance(ProcessInstance processInstance) {
+        if(processInstance.getAssigner()!=null)
+            processInstance.getAssigner().setRoles(new ArrayList<>());
+        if (processInstance.getAssignes() != null) {
+            processInstance.getAssignes().stream()
+                    .filter(Objects::nonNull)
+                    .forEach(assignee -> assignee.setRoles(new ArrayList<>()));
+        }
+        return processInstance;
+    }
+
+    public void updateBusinessService(IncidentRequestWrapper wrapper, Object mdmsData) {
+        if(wrapper.getProcessInstance().getBusinessService().equals("Incident")) {
+            Priority priority = slaService.getPriorityFromMDMS(wrapper.getIncidentRequest(), mdmsData);
+            String businessService = "Incident_" + priority.toFormattedString();
+            wrapper.getProcessInstance().setBusinessService(businessService);
+        }
+    }
 }

@@ -58,7 +58,7 @@ public class ServiceRequestRepository {
 
 	public Object fetchESResult(StringBuilder uri, Object request) {
 		Object response = null;
-		//log.debug("URI: " + uri.toString());
+		log.debug("URI: " + uri.toString());
 		try {
 			final HttpHeaders headers = new HttpHeaders();
 			headers.add("Authorization", esAuthUtil.getESEncodedCredentials());
@@ -70,7 +70,7 @@ public class ServiceRequestRepository {
 			//log.error("External Service threw an Exception: ", e);
 			throw new ServiceCallException(e.getResponseBodyAsString());
 		} catch (Exception e) {
-			//log.error("Exception while fetching from searcher: ", e);
+			log.debug("Exception while fetching from searcher: ", e);
 			throw new ServiceCallException(e.getMessage());
 		}
 

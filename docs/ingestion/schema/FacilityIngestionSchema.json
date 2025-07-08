@@ -1,0 +1,69 @@
+{
+  "tenantId": "in",
+  "module": "data-ingestion",
+  "FacilityIngestionSchema": {
+    "columns": [
+      { "name": "Country", "type": "string", "required": false },
+      { "name": "State", "type": "string", "required": false },
+      { "name": "District", "type": "string", "required": false },
+      { "name": "Block", "type": "string", "required": false },
+      {
+        "name": "Boundary Code",
+        "type": "string",
+        "required": true,
+        "svcSource": {
+          "key": "boundaryCode",
+          "filterType": "ONE_OF"
+        }
+      },
+      {
+        "name": "Health Centre Name",
+        "type": "string",
+        "required": true,
+        "pattern": "^[a-zA-Z\\s]+$"
+      },
+      {
+        "name": "Type of HC",
+        "type": "string",
+        "required": true
+      },
+      { "name": "HFR ID", "type": "string", "required": false },
+      { "name": "NIN ID", "type": "string", "required": false },
+      { "name": "Vendor Code", "type": "string", "required": true },
+      { "name": "Solution Design Type", "type": "string", "required": true },
+      {
+        "name": "HC PoC Name",
+        "type": "string",
+        "required": true,
+        "pattern": "^[a-zA-Z\\s]+$"
+      },
+      {
+        "name": "HC PoC Designation",
+        "type": "string",
+        "required": false,
+        "pattern": "^[a-zA-Z\\s]+$"
+      },
+      {
+        "name": "HC PoC Contact number",
+        "type": "string",
+        "required": true,
+        "pattern": "^\\d{10}$"
+      },
+      { "name": "Latitude", "type": "number", "required": false },
+      { "name": "Longitude", "type": "number", "required": false },
+      { "name": "Address", "type": "string", "required": false }
+    ],
+    "rowConstraints": [
+      {
+        "type": "atLeastOneRequired",
+        "fields": ["HFR ID", "NIN ID"],
+        "message": "At least one of HFR ID or NIN ID must be provided."
+      },
+      {
+        "type": "allOrNoneRequired",
+        "fields": ["Latitude", "Longitude"],
+        "message": "Latitude and Longitude "
+      }
+    ]
+  }
+}

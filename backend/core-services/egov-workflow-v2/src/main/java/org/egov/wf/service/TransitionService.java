@@ -159,9 +159,18 @@ public class TransitionService {
 
 
     private BusinessService getBusinessService(List<ProcessInstance> processInstances){
-        BusinessServiceSearchCriteria criteria = new BusinessServiceSearchCriteria();
+        ProcessInstanceSearchCriteria pInsSearchCriteria = new ProcessInstanceSearchCriteria();
         String tenantId = processInstances.get(0).getTenantId();
+        pInsSearchCriteria.setTenantId(tenantId);
+        pInsSearchCriteria.setBusinessIds(Collections.singletonList(processInstances.get(0).getBusinessId()));
+        List<ProcessInstance> fetchedProcessInstances = repository.getProcessInstances(pInsSearchCriteria);
+        
+        BusinessServiceSearchCriteria criteria = new BusinessServiceSearchCriteria();
         String businessService = processInstances.get(0).getBusinessService();
+        if (fetchedProcessInstances.size()>0) {
+            businessService = fetchedProcessInstances.get(0).getBusinessService();
+            processInstances.get(0).setBusinessService(businessService);
+        }
         criteria.setTenantId(tenantId);
         criteria.setBusinessServices(Collections.singletonList(businessService));
         List<BusinessService> businessServices = businessServiceRepository.getBusinessServices(criteria);
@@ -173,20 +182,4 @@ public class TransitionService {
                     businessService + " and tenantId: "+tenantId);
         return businessServices.get(0);
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 }

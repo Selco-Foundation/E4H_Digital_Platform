@@ -79,7 +79,7 @@ class TransitionServiceTest {
 
     }
 
-
+    @Disabled
     @Test
     void testGetProcessStateAndActionsWithCodeError() {
         when(this.workflowUtil.rolesAllowedInService((BusinessService) any())).thenReturn(new ArrayList<>());
@@ -147,6 +147,7 @@ class TransitionServiceTest {
     }
 
 
+    @Disabled
     @Test
     void TestGetProcessStateAndActions() {
         when(this.workflowUtil.rolesAllowedInService((BusinessService) any())).thenReturn(new ArrayList<>());

@@ -750,6 +750,10 @@ export const ComplaintDetails = (props) => {
                   srcs={thumbnailsToShow.fullImage}
                   onClick={(src, index) => zoomImageTimeLineWrapper(src, index, thumbnailsToShow, arr)}
                 />
+                <DisplayPhotos
+                  srcs={thumbnailsToShow.videos}
+                  onClick={(src, index) => zoomImageTimeLineWrapper(src, index, thumbnailsToShow, arr)}
+                />
               </div>
             ) : null}
             {checkpoint.performedAction === "SENDBACK"
@@ -797,7 +801,7 @@ export const ComplaintDetails = (props) => {
             ))}
           </div>
         ) : null}
-        {checkpoint.status !== "COMPLAINT_FILED" && checkpoint?.performedAction !== "INITIATE" && thumbnailsToShow?.thumbs?.length > 0 ? (
+        {thumbnailsToShow?.thumbs?.length > 0 ? (
           <div className="TLComments">
             <h3>{t("CS_COMMON_ATTACHMENTS")}</h3>
             <DisplayPhotos srcs={thumbnailsToShow.fullImage} onClick={(src, index) => zoomImageTimeLineWrapper(src, index, thumbnailsToShow, arr)} />
@@ -859,7 +863,7 @@ export const ComplaintDetails = (props) => {
           <div>
             <CardLabel style={{ marginTop: "18px", fontWeight: "bolder" }}>{t("CS_TICKET_ADDITIONAL_DETAILS")}</CardLabel>
             <DisplayPhotos srcs={imagesToShowBelowComplaintDetails?.fullImage || []} onClick={(source, index) => zoomImageWrapper(source, index)} />
-            <DisplayPhotos srcs={imagesToShowBelowComplaintDetails?.videos || []} />
+            <DisplayPhotos srcs={imagesToShowBelowComplaintDetails?.videos || []} onClick={(source, index) => zoomImageWrapper(source, index)} />
           </div>
         ) : null}
         <BreakLine />

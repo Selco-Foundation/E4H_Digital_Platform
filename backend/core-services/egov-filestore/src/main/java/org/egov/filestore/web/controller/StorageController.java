@@ -183,7 +183,7 @@ public class StorageController {
             return ResponseEntity.badRequest().build();
         }
         if (fileStoreId == null || fileStoreId.trim().isEmpty()) {
-        	return ResponseEntity.badRequest().build();
+            return ResponseEntity.badRequest().build();
         }
         try {
             String signedUrl = storageService.retrieveSignedUrl(fileStoreId, tenantId);

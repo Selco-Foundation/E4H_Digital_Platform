@@ -1,0 +1,36 @@
+{
+  "tenantId": "pg",
+  "module": "asset",
+  "Brand": [
+    {
+      "asset_type_code": "INVERTER",
+      "code": "GROWATT",
+      "name": "Growatt",
+      "active": true
+    },
+    {
+      "asset_type_code": "INVERTER",
+      "code": "SUNGROW",
+      "name": "Sungrow",
+      "active": true
+    },
+    {
+      "asset_type_code": "BATTERY",
+      "code": "PYLON_TECH",
+      "name": "Pylontech",
+      "active": true
+    },
+    {
+      "asset_type_code": "BATTER",
+      "code": "SOLAR_EDGE",
+      "name": "SolarEdge",
+      "active": true
+    },
+    {
+      "asset_type_code": "PANEL",
+      "code": "ENPHASE_ENERGY",
+      "name": "Enphase Energy",
+      "active": true
+    }
+  ]
+}

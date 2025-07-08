@@ -6,6 +6,7 @@ import org.egov.common.contract.request.RequestInfo;
 import org.egov.im.config.IMConfiguration;
 import org.egov.im.producer.Producer;
 import org.egov.im.repository.IMRepository;
+import org.egov.im.util.IMUtils;
 import org.egov.im.util.MDMSUtils;
 import org.egov.im.validator.ServiceRequestValidator;
 import org.egov.im.web.models.*;
@@ -37,13 +38,14 @@ public class IMService {
 
     private MDMSUtils mdmsUtils;
 
-    private LocalizationService localizationService;
+    private IMUtils imUtils;
 
+    private LocalizationService localizationService;
 
     @Autowired
     public IMService(EnrichmentService enrichmentService, UserService userService, WorkflowService workflowService,
                       ServiceRequestValidator serviceRequestValidator, ServiceRequestValidator validator, Producer producer,
-                      IMConfiguration config, IMRepository repository, MDMSUtils mdmsUtils, LocalizationService localizationService) {
+                      IMConfiguration config, IMRepository repository, MDMSUtils mdmsUtils, IMUtils imUtils, LocalizationService localizationService) {
         this.enrichmentService = enrichmentService;
         this.userService = userService;
         this.workflowService = workflowService;
@@ -53,6 +55,7 @@ public class IMService {
         this.config = config;
         this.repository = repository;
         this.mdmsUtils = mdmsUtils;
+        this.imUtils = imUtils;
         this.localizationService = localizationService;
     }
 
@@ -73,8 +76,9 @@ public class IMService {
                 .indexView(new IndexView())
                 .build();
         ProcessInstance updatedProcessInstance = workflowService.updateWorkflowStatus(wrapper, mdmsData);
+        ProcessInstance trimmedUpdatedProcessInstance = imUtils.trimRolesFromProcessInstance(updatedProcessInstance);
         producer.push(tenantId,config.getCreateTopic(),wrapper.getIncidentRequest());
-        wrapper.setProcessInstance(updatedProcessInstance);
+        wrapper.setProcessInstance(trimmedUpdatedProcessInstance);
         enrichmentService.enrichFieldsForIndexing(wrapper);
         producer.push(tenantId,config.getCreateTopicIndexer(),wrapper);
         enrichmentService.enrichFieldsForAuditIndexing(wrapper,startingStatus);
@@ -144,9 +148,11 @@ public class IMService {
                 .indexView(new IndexView())
                 .build();
         ProcessInstance updatedProcessInstance = workflowService.updateWorkflowStatus(wrapper, mdmsData);
+        ProcessInstance trimmedUpdatedProcessInstance = imUtils.trimRolesFromProcessInstance(updatedProcessInstance);
         producer.push(tenantId,config.getUpdateTopic(),wrapper.getIncidentRequest());
-        wrapper.setProcessInstance(updatedProcessInstance);
+        wrapper.setProcessInstance(trimmedUpdatedProcessInstance);
         enrichmentService.enrichFieldsForIndexing(wrapper);
+        imUtils.updateBusinessService(wrapper,mdmsData);
         producer.push(tenantId,config.getUpdateTopicIndexer(),wrapper);
         enrichmentService.enrichFieldsForAuditIndexing(wrapper,startingStatus);
         producer.push(tenantId,config.getAuditCreateTopicIndexer(),wrapper);

@@ -75,20 +75,11 @@ public class NotificationConsumer {
        		Workflow workflow = new Workflow();
 			try {
 				log.info("Consuming record: " + record);
-				List<Map<String, Object>> processInstancesRaw = (List<Map<String, Object>>) record.get("ProcessInstances");
-				List<IMEscalationInstance> escalationInstances = processInstancesRaw.stream()
-						.map(instanceRaw -> mapper.convertValue(instanceRaw, IMEscalationInstance.class))
-						.toList();
-				processInstanceRequest.setImEscalationInstance(escalationInstances);
+				processInstanceRequest = mapper.convertValue(record, IMEscalationRequest.class);
+				requestInfo.setAuthToken(processInstanceRequest.getImEscalationInstance().get(0).getAuthToken());
+				requestInfo.setUserInfo(processInstanceRequest.getImEscalationInstance().get(0).getUserInfo());
 
-				Map<String, Object> requestInfoRaw = (Map<String, Object>) record.get("RequestInfo");
-				requestInfo = mapper.convertValue(requestInfoRaw, RequestInfo.class);
-
-				for (IMEscalationInstance instance : escalationInstances) {
-					instance.setAuthToken((String) requestInfoRaw.get("authToken"));
-					instance.setUserInfo(requestInfo.getUserInfo());
-				}
-			RequestSearchCriteria criteria = new RequestSearchCriteria();
+				RequestSearchCriteria criteria = new RequestSearchCriteria();
 			criteria.setTenantId(processInstanceRequest.getImEscalationInstance().get(0).getTenantId());
 			criteria.setIncidentId(processInstanceRequest.getImEscalationInstance().get(0).getBusinessId());
 			incidents = imService.search(requestInfo,criteria);
@@ -103,7 +94,7 @@ public class NotificationConsumer {
 
         if (!incidents.isEmpty()) {
         	log.info("inside update");
-        	workflow.setAssignes(new ArrayList<>());
+			workflow.setAssignes(new ArrayList<>());
             	workflow.setAction("CLOSE"); 
             	workflow.setVerificationDocuments(null);
         	IncidentRequest incidentRequest=new IncidentRequest();

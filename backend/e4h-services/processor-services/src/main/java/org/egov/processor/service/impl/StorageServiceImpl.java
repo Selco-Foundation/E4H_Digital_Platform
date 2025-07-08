@@ -64,19 +64,24 @@ public class StorageServiceImpl implements StorageService {
         return tempFiles;
     }
 
-    @Async
     public void createAndSaveChunks(String fileStoreId, File resource, ProcessingContext context) {
         try {
             log.info("File received: {}, Filename: {}", resource, resource.getName());
-            // Process the video asynchronously
-            videoService.processVideoAsync(resource, context.withVideoId(fileStoreId));
+            
+            // Only process videos, skip images
+            if (isVideoFile(resource)) {
+                // Process the video asynchronously
+                videoService.processVideoAsync(resource, context.withVideoId(fileStoreId));
+            } else {
+                log.info("Skipping video processing for image file: {}", resource.getName());
+            }
 
         } catch (CustomException ex) {
             log.error("Custom Exception for fileStoreId {}: {}", fileStoreId, ex.getMessage(), ex);
             throw ex;
         } catch (Exception ex) {
             log.error("Unexpected error while processing fileStoreId {}: {}", fileStoreId, ex.getMessage(), ex);
-            throw new CustomException("Unexpected error processing video", ex.getMessage());
+            throw new CustomException("Unexpected error processing file", ex.getMessage());
         }
     }
 
@@ -107,5 +112,11 @@ public class StorageServiceImpl implements StorageService {
             log.info("deleting all temporary files ");
             storageUtil.deleteFiles(tempFiles);
         }
+    }
+
+    private boolean isVideoFile(File file) {
+        String fileName = file.getName().toLowerCase();
+        return fileName.endsWith(".mp4") || fileName.endsWith(".avi") || 
+               fileName.endsWith(".mov") || fileName.endsWith(".wmv");
     }
 }

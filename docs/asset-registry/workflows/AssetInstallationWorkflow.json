@@ -1,0 +1,76 @@
+{
+  "BusinessServices": [
+    {
+      "businessService": "asset-installation",
+      "business": "asset-registry",
+      "businessServiceSla": null,
+      "states": [
+        {
+          "state": null,
+          "sla": null,
+          "applicationStatus": null,
+          "isStartState": true,
+          "isTerminateState": false,
+          "isStateUpdatable": true,
+          "actions": [
+            {
+              "action": "CREATE",
+              "nextState": "INSTALLATION_IN_PROGRESS",
+              "roles": ["INSTALLATION_REPORT_CREATOR"]
+            }
+          ]
+        },
+        {
+          "state": "INSTALLATION_IN_PROGRESS",
+          "sla": null,
+          "applicationStatus": null,
+          "isStartState": false,
+          "isTerminateState": false,
+          "isStateUpdatable": true,
+          "actions": [
+            {
+              "action": "SHARE",
+              "nextState": "INSTALLATION_IN_PROGRESS",
+              "roles": ["INSTALLATION_REPORT_A_APPROVER"]
+            },
+            {
+              "action": "REJECT",
+              "nextState": "INSTALLATION_IN_PROGRESS",
+              "roles": ["INSTALLATION_REPORT_CREATOR"]
+            },
+            {
+              "action": "MODIFY",
+              "nextState": "INSTALLATION_IN_PROGRESS",
+              "roles": ["INSTALLATION_REPORT_CREATOR"]
+            },
+            {
+              "action": "CREATE",
+              "nextState": "INSTALLATION_IN_PROGRESS",
+              "roles": ["INSTALLATION_REPORT_A_APPROVER"]
+            },
+            {
+              "action": "SHARE",
+              "nextState": "INSTALLED_PENDING_REVIEW",
+              "roles": ["INSTALLATION_REPORT_APPROVER"]
+            }
+          ]
+        },
+        {
+          "state": "INSTALLED_PENDING_REVIEW",
+          "sla": null,
+          "applicationStatus": null,
+          "isStartState": false,
+          "isTerminateState": true,
+          "isStateUpdatable": true,
+          "actions": [
+            {
+              "action": "APPROVE",
+              "nextState": "OPERATIONAL",
+              "roles": ["INSTALLATION_REPORT_APPROVER"]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

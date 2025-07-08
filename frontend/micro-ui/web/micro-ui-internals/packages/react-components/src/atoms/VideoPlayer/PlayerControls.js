@@ -207,7 +207,7 @@ const PlayerControls = ({
             <SkipBackwardIcon />
           </button>
           <button className="play-pause" onClick={togglePlayPause} aria-label="Play/Pause">
-            {isPlaying ? <PauseIcon /> : <PlayIcon />}
+            {isPlaying ? <PauseIcon color="currentColor"/> : <PlayIcon color="currentColor"/>}
           </button>
           <button className="skip-forward" onClick={() => handleSkip("forward")} aria-label="Skip Forward">
             <SkipForwardIcon />

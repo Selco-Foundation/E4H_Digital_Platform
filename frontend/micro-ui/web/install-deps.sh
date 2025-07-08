@@ -8,6 +8,6 @@ cd $INTERNALS && echo "installing packages" && yarn install && echo "starting bu
 cd ..
 
 rm -rf node_modules
-rm -f yarn.lock
+# rm -f yarn.lock
 
 # yarn install

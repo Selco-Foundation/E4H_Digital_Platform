@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "react-query";
-import React,{useEffect,useState} from "react";
+import React from "react";
 import { filterFunctions } from "./newFilterFn";
 import { getSearchFields } from "./searchFields";
 import { InboxGeneral } from "../../services/elements/InboxService";
@@ -35,17 +35,13 @@ const callMiddlewares = async (data, middlewares) => {
 };
 
 const useNewInboxGeneral = ({ tenantId, ModuleCode, filters, middleware = [], config = {} }) => {
-const [trigger, setTrigger] = useState(Date.now());
   const client = useQueryClient();
   const { t } = useTranslation();
   const { fetchFilters, searchResponseKey, businessIdAliasForSearch, businessIdsParamForSearch } = inboxConfig()[ModuleCode];
   let { workflowFilters, searchFilters, limit, offset, sortBy, sortOrder, applicationNumber, assignee} = fetchFilters(filters);
-  useEffect(()=>{
-   console.log("ddddfffuseNewInboxGeneral")
-   setTrigger(Date.now()); 
-  },[])
+  
   const query = useQuery(
-    ["INBOX", workflowFilters, searchFilters, ModuleCode, limit, offset, sortBy, sortOrder, applicationNumber, assignee,trigger],
+    ["INBOX", workflowFilters, searchFilters, ModuleCode, limit, offset, sortBy, sortOrder, applicationNumber, assignee],
     () =>
       InboxGeneral.Search({
         inbox: { tenantId, processSearchCriteria: workflowFilters, moduleSearchCriteria: { ...searchFilters, sortBy, sortOrder,  applicationNumber, assignee }, limit, offset },
@@ -65,6 +61,10 @@ const [trigger, setTrigger] = useState(Date.now());
         }
       },
       retry: true,
+      staleTime: 30000,
+      cacheTime: 300000,
+      refetchOnWindowFocus: false,
+      refetchOnMount: false,
       ...config,
     }
   );
