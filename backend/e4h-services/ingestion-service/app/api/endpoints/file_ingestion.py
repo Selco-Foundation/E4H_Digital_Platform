@@ -2,17 +2,22 @@ import json
 import os
 import tempfile
 from datetime import datetime
+import uuid
+from typing import Optional, Dict, List
 
 import pandas as pd
 from fastapi import APIRouter, File, Form, UploadFile, HTTPException
 from fastapi.responses import FileResponse
+import psycopg2
 from starlette.responses import JSONResponse
+import requests
 
 from app.core.logging import AppLogger
 from app.decorators.rbac_validator import get_authorized_request_info
 from app.ingest.excel_data_writer import ExcelDataWriter
 from app.processor.factory.boundary_data_processor_factory import BoundaryDataProcessorFactory
 from app.processor.factory.vendor_data_processor_factory import VendorDataProcessorFactory
+from app.schemas.request_info import RequestInfo
 from app.utils.convertor import request_info_from_json, create_vendor_request, create_facility_payload, \
     get_project_creation_payload, get_user_creation_payload, get_staff_creation_payload, create_project_payload, \
     get_installation_spoc_creation_payload
@@ -33,6 +38,24 @@ org_service_url = os.getenv("VENDOR_SERVICE_URL")
 project_service_url = os.getenv("PROJECT_SERVICE_URL")
 facility_service_url = os.getenv("FACILITY_SERVICE_URL")
 hrms_service_url = os.getenv("HRMS_SERVICE_URL")
+im_services_url = os.getenv("IM_SERVICES_URL")
+ENVIRONMENT = os.getenv("ENVIRONMENT", "uat").lower()
+base_path = os.path.dirname(os.path.abspath(__file__))
+config_path = os.path.abspath(os.path.join(base_path, "..", "..", "config"))
+
+with open(os.path.join(config_path, "tenant_creator_mapping.json"), 'r') as f:
+    TENANT_CREATOR_MAPPING = json.load(f).get(ENVIRONMENT, {})
+
+with open(os.path.join(config_path, "user_profiles.json"), 'r') as f:
+    USER_PROFILE = json.load(f).get(ENVIRONMENT, {})
+
+DB_CONFIG = {
+    "host": os.getenv("DB_HOST"),
+    "port": int(os.getenv("DB_PORT", 5432)),
+    "database": os.getenv("DB_NAME"),
+    "user": os.getenv("DB_USER"),
+    "password": os.getenv("DB_PASSWORD")
+}
 
 @router.post('/vendors',
              summary='Upload and process vendor Excel file with multiple sheets',
@@ -396,7 +419,7 @@ async def upload_facility_with_supervisors_excel_sheet(
                                     df.at[index, 'error'] = f"Staff Creation Error: {staff_creation_response.status_code} - {staff_creation_response.text}"
                             else:
                                 df.at[index, 'status'] = 'failed'
-                                df.at[index, 'error'] = f"User Creation Error: {user_creation_response.status_code} - {user["Errors"]}"
+                                df.at[index, 'error'] = f"User Creation Error: {user_creation_response.status_code} - {user['Errors']}"
                         else:
                             df.at[index, 'status'] = 'failed'
                             df.at[index, 'error'] = f"Facility Creation Error: {facility_creation_response.status_code} - {facility_creation_response.text}"
@@ -592,3 +615,378 @@ async def upload_facility_selection_excel_sheet(
     finally:
         if input_temp_file and os.path.exists(input_temp_file.name):
             os.unlink(input_temp_file.name)
+            
+
+def get_hrms_employee_info(codes: List[str], db_conn) -> Dict[str, str]:
+    try:
+        with db_conn.cursor() as cursor:
+            sql = "SELECT code, tenantid  FROM eg_hrms_employee WHERE code = ANY (%s)"
+            cursor.execute(sql, (codes,))
+            rows = cursor.fetchall()
+            return {row[0]: row[1] for row in rows}
+    except Exception as e:
+        logger.error(f"Error fetching HRMS employee info: {e}")
+        return {}
+
+def get_tenant_mapping(request_info: RequestInfo, tenant_ids: List[str]) -> Dict:
+    """
+    Fetch tenant mapping from MDMS for PHC subtypes
+    """
+    all_tenant_data = {}
+
+    for tenant_id in tenant_ids:
+        try:
+            search_url = f"{mdms_url}/egov-mdms-service/v1/_search"
+            search_payload = {
+                "RequestInfo": request_info.model_dump(by_alias=True, exclude_none=True),
+                "MdmsCriteria": {
+                    "tenantId": tenant_id,
+                    "moduleDetails": [
+                        {
+                            "moduleName": "tenant",
+                            "masterDetails": [
+                                {
+                                    "name": "tenants"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            }
+            response = requests.post(search_url, json=search_payload)
+            if response.status_code == 200:
+                data = response.json()
+                tenants = data.get("MdmsRes", {}).get("tenant", {}).get("tenants", [])
+                all_tenant_data.update({t["code"]: t for t in tenants if t.get("code") and t["code"] not in all_tenant_data})
+        except Exception as e:
+            logger.error(f"Error fetching tenant mapping from MDMS: {e}")
+
+    return all_tenant_data
+
+
+def get_block_mapping_from_mdms(request_info: RequestInfo, tenant_ids: List[str]) -> Dict[str, dict]:
+    """
+    Fetch block mapping from MDMS where moduleName is 'Incident' and masterDetails name is 'Block'.
+    Returns a dictionary with 'code' from each 'data' object as the key.
+    """
+    block_mapping = {}
+
+    for tenant_id in tenant_ids:
+        try:
+            search_url = f"{mdms_url}/egov-mdms-service/v1/_search"
+            search_payload = {
+                "RequestInfo": request_info.model_dump(by_alias=True, exclude_none=True),
+                "MdmsCriteria": {
+                    "tenantId": tenant_id,
+                    "moduleDetails": [
+                        {
+                            "moduleName": "Incident",
+                            "masterDetails": [
+                                {
+                                    "name": "Block"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            }
+
+            response = requests.post(search_url, json=search_payload)
+            if response.status_code == 200:
+                data = response.json()
+                mdms_blocks = data.get("MdmsRes", {}).get("Incident", {}).get("Block", [])
+
+                for block in mdms_blocks:
+                    code = block.get("code")
+                    if code and code not in block_mapping:
+                        block_mapping[code] = block
+
+        except Exception as e:
+            logger.error(f"Error fetching block mapping from MDMS for tenant {tenant_id}: {e}")
+
+    return block_mapping
+
+def create_mapping_dicts(mapping_file: UploadFile, sheet_name: str):
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as temp_file:
+        temp_file.write(mapping_file.file.read())
+        temp_file_path = temp_file.name
+
+    mapping_df = pd.read_excel(temp_file_path, sheet_name=sheet_name)
+    mapping_df.columns = mapping_df.columns.str.strip()
+    mapping_df = mapping_df.astype(str).apply(lambda x: x.str.strip())
+
+    os.unlink(temp_file_path)
+
+    subtype_mapping = {
+        (row['Existing Issue Type'], row['Existing Ticket Sub Type ( Saure eMitra)']):
+        (row['New Issue Type'], row['New Ticket Sub type'])
+        for _, row in mapping_df.iterrows()
+    }
+
+    return subtype_mapping
+
+def get_user_info_for_mizoram(usernames: List[str], db_conn) -> Dict[str, str]:
+    try:
+        with db_conn.cursor() as cursor:
+            sql = "SELECT username, tenantid FROM eg_user WHERE username = ANY (%s)"
+            cursor.execute(sql, (usernames,))
+            rows = cursor.fetchall()
+            return {row[0]: row[1] for row in rows}
+    except Exception as e:
+        logger.error(f"Error fetching user info for Mizoram: {e}")
+        return {}
+
+
+@router.post("/legacy_ticket_ingestion", summary="Upload and ingest legacy tickets Excel file")
+async def upload_legacy_ticket_excel_sheet(
+    legacy_ticket_file: UploadFile = File(...),
+    legacy_ticket_sheet_name: str = Form(default="Legacy Tickets"),
+    mapping_type_subtype_file: UploadFile = File(...),
+    mapping_type_subtype_sheet_name: str = Form(default="Mapping Old_New_v1.0"),
+    request_info: str = Form(default="")
+):
+    migration_id = str(uuid.uuid4())
+    request_info_obj = request_info_from_json(request_info)
+    get_authorized_request_info(request_info_obj)
+
+    subtype_mapping = create_mapping_dicts(mapping_type_subtype_file, mapping_type_subtype_sheet_name)
+    tenant_creator_mapping = TENANT_CREATOR_MAPPING
+
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as input_temp_file:
+        input_temp_file.write(await legacy_ticket_file.read())
+        excel_file_path = input_temp_file.name
+
+    df = pd.read_excel(excel_file_path, sheet_name=legacy_ticket_sheet_name)
+    df.columns = df.columns.str.strip()
+    df = df.reindex(columns=df.columns.tolist() + ['ticket_id', 'employee_info'], fill_value='')
+
+    unique_states = df["State"].dropna().str.strip().unique()
+    tenant_ids = [tenant_creator_mapping.get(state, {}).get("tenantId") for state in unique_states]
+
+    tenant_mapping = get_tenant_mapping(request_info_obj, tenant_ids)
+    block_mapping = get_block_mapping_from_mdms(request_info_obj, tenant_ids)
+
+    conn = psycopg2.connect(**DB_CONFIG)
+    codes = [str(row.get("NIN_HFR ID", "")).strip() for i, row in df.iterrows()
+             if str(df.at[i, 'status']).strip().lower() not in ['duplicate', 'error']]
+    employee_info = get_hrms_employee_info(codes, conn)
+
+    usernames = [str(row.get("Actual User Name", "")).strip() for i, row in df.iterrows()
+                 if str(row.get("State", "")).strip() == "Mizoram" and str(df.at[i, 'status']).strip().lower() not in ['duplicate', 'error']]
+    user_info = get_user_info_for_mizoram(usernames, conn)
+
+    for idx, row in df.iterrows():
+        try:
+            status = str(df.at[idx, 'status']).strip().lower()
+            if status in ['duplicate', 'error']:
+                continue
+
+            state = str(row.get("State", "")).strip()
+            if state == "Mizoram":
+                identifier = str(row.get("Actual User Name", "")).strip()
+                tenant_id = user_info.get(identifier)
+            else:
+                identifier = str(row.get("NIN_HFR ID", "")).strip()
+                tenant_id = employee_info.get(identifier)
+
+            if not tenant_id:
+                df.at[idx, 'status'] = 'failed'
+                df.at[idx, 'error'] = f'Employee not found for code: {identifier}'
+                df.at[idx, 'employee_info'] = 'Not found'
+                continue
+
+            df.at[idx, 'employee_info'] = 'Found'
+
+            tenant_details = tenant_mapping.get(tenant_id, {})
+            if not tenant_details:
+                df.at[idx, 'status'] = 'failed'
+                df.at[idx, 'error'] = f'Tenant mapping not found for tenant ID: {tenant_id}'
+                continue
+
+            incident_payload = build_incident_payload(row, identifier, tenant_details, block_mapping, migration_id,
+                                                      tenant_creator_mapping.get(state, {}), subtype_mapping)
+            response = submit_incident_payload(incident_payload, tenant_creator_mapping.get(state, {}))
+            process_response(response, df, idx, identifier)
+
+        except Exception as e:
+            df.at[idx, 'status'] = 'failed'
+            df.at[idx, 'error'] = str(e)
+
+    return write_and_return_excel(df, legacy_ticket_sheet_name)
+
+def build_incident_payload(row, identifier, tenant_details, block_mapping, migration_id, creator_info, subtype_mapping):
+    ticket_type = str(row.get("Ticket Type", "")).strip()
+    ticket_subtype = str(row.get("Ticket Sub Type", "")).strip()
+    system_functional = {"Yes": "FUNCTIONAL", "No": "NON_FUNCTIONAL"}.get(
+        str(row.get("Is the solar system working?", "")).strip(), "")
+    comments = str(row.get("Comments", "")).strip()[:256]
+    mapped_pair = subtype_mapping.get((ticket_type, ticket_subtype))
+
+    if not ticket_type or not ticket_subtype or not mapped_pair:
+        raise ValueError("Missing or invalid Ticket Type/Sub Type")
+
+    block_code = tenant_details.get("city", {}).get("blockCode", "")
+    block = block_mapping.get(block_code, {}).get("name", "")
+
+    incident_payload = {
+        "incidentType": mapped_pair[0],
+        "incidentSubtype": mapped_pair[1],
+        "comments": comments,
+        "systemFunctional": system_functional,
+        "tenantId": tenant_details.get("code", ""),
+        "migrationId": migration_id,
+        "district": tenant_details.get("city", {}).get("districtCode", ""),
+        "block": block,
+        "phcType": tenant_details.get("code", ""),
+        "phcSubType": tenant_details.get("centreType", ""),
+        "additionalDetail": {"fileStoreId": [], "reopenreason": [], "rejectReason": [],
+                              "sendBackReason": [], "sendBackSubReason": []},
+        "source": "web",
+        "reporter": {
+            "uuid": creator_info.get("uuid"),
+            "tenantId": creator_info.get("tenantId")
+        }
+    }
+
+    if pd.notnull(row.get("Unique_ID")):
+        incident_payload["legacyId"] = str(row.get("Unique_ID")).strip()
+
+    reported_date = row.get("Actual_Reported_Date (mm/dd/yyyy)", None)
+    if pd.notnull(reported_date):
+        dt = pd.to_datetime(reported_date, format="%d/%m/%Y", errors='coerce') if isinstance(reported_date, str) else pd.to_datetime(reported_date, errors='coerce')
+        if pd.notnull(dt):
+            incident_payload["filedDate"] = int(dt.timestamp() * 1000)
+
+    return incident_payload
+
+def submit_incident_payload(payload, creator):
+    profile = USER_PROFILE
+
+    return requests.post(
+        f"{im_services_url}/im-services/v2/request/_create",
+        json={
+            "RequestInfo": {
+                "apiId": "Rainmaker",
+                "authToken": "79967889-fbf5-42c6-9bd3-4adc0dbe7692",
+                "userInfo": {
+                    "id": creator.get("id"),
+                    "uuid": creator.get("uuid"),
+                    "userName": profile["userName"],
+                    "name": profile["name"],
+                    "mobileNumber": creator.get("mobileNumber"),
+                    "emailId": None,
+                    "locale": None,
+                    "type": "EMPLOYEE",
+                    "roles": [
+                        {
+                            "name": "Complainant",
+                            "code": "COMPLAINANT",
+                            "tenantId": creator.get("tenantId")
+                        },
+                        {
+                            "name": "Employee",
+                            "code": "EMPLOYEE",
+                            "tenantId": creator.get("tenantId")
+                        }
+                    ],
+                    "active": True,
+                    "tenantId": creator.get("tenantId"),
+                    "permanentCity": None
+                },
+                "msgId": "1744021633700|en_IN",
+                "plainAccessRequest": {}
+            },
+            "incident": payload,
+            "workflow": {"action": "APPLY", "verificationDocuments": []}
+        },
+        headers={"Content-Type": "application/json"}
+    )
+
+def process_response(response, df, idx, identifier):
+    if response.status_code in [200, 201]:
+        incident = response.json().get("IncidentWrappers", [{}])[0].get("incident")
+        df.at[idx, 'status'] = 'success'
+        df.at[idx, 'error'] = ''
+        df.at[idx, 'ticket_id'] = incident.get("incidentId", '')
+    else:
+        error_msg = response.json().get('Errors', [{}])[0].get('message', response.text)
+        df.at[idx, 'status'] = 'failed'
+        df.at[idx, 'error'] = error_msg
+
+def write_and_return_excel(df, sheet_name):
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_path = f"/tmp/legacy_ticket_ingestion_results_{timestamp}.xlsx"
+    df.to_excel(output_path, sheet_name=sheet_name, index=False)
+    return FileResponse(output_path, filename=os.path.basename(output_path), media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+
+@router.post("/check_duplicates")
+async def check_duplicate_tickets(
+        legacy_ticket_file: UploadFile = File(...),
+        legacy_ticket_sheet_name: str = Form(default="Duplication Template"),
+):
+    input_temp_file = None
+    try:
+        # Save uploaded file temporarily
+        input_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
+        content = await legacy_ticket_file.read()
+        input_temp_file.write(content)
+        input_temp_file.close()
+        excel_path = input_temp_file.name
+
+        # Read Excel file
+        df = pd.read_excel(excel_path, sheet_name=legacy_ticket_sheet_name)
+        df.columns = df.columns.str.strip()
+        df = df.reindex(columns=df.columns.tolist() + ['status', 'error'], fill_value='')
+
+        conn = psycopg2.connect(**DB_CONFIG)
+        cursor = conn.cursor()
+
+        # Step 1: Fetch NIN_HFR ID -> tenantId mapping
+        nin_hfr_ids = df["NIN_HFR ID"].dropna().astype(str).str.strip().unique().tolist()
+        cursor.execute("SELECT code, tenantid FROM eg_hrms_employee WHERE code IN %s", (tuple(nin_hfr_ids),))
+        code_tenant_map = dict(cursor.fetchall())
+
+        # Step 2: Check each row for incident duplication
+        for idx, row in df.iterrows():
+            code = str(row.get("NIN_HFR ID", "")).strip()
+            ticket_type = str(row.get("Ticket Type", "")).strip()
+            ticket_subtype = str(row.get("Ticket Sub Type", "")).strip()
+
+            tenant_id = code_tenant_map.get(code)
+            if not tenant_id:
+                df.at[idx, 'status'] = 'error'
+                df.at[idx, 'error'] = 'Invalid NIN_HFR ID (not in eg_hrms_employee)'
+                continue
+
+            # Step 3: Check for matching incidents
+            cursor.execute("""
+                SELECT 1 FROM eg_incident_v2 
+                WHERE tenantid = %s 
+                AND incidenttype = %s 
+                AND incidentsubtype = %s 
+                AND applicationstatus NOT IN ('CLOSEDAFTERRESOLUTION', 'RESOLVED', 'REJECTED')
+                LIMIT 1
+            """, (tenant_id, ticket_type, ticket_subtype))
+            exists = cursor.fetchone()
+
+            if exists:
+                df.at[idx, 'status'] = 'duplicate'
+
+        conn.close()
+
+        # Save updated Excel
+        df.to_excel(excel_path, index=False, sheet_name=legacy_ticket_sheet_name)
+
+        return FileResponse(
+            path=excel_path,
+            filename=legacy_ticket_file.filename,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error during duplicate check: {str(e)}")
+
+    finally:
+        if input_temp_file and os.path.exists(input_temp_file.name):
+            pass

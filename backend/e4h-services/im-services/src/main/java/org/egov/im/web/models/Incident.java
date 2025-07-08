@@ -118,5 +118,4 @@ public class Incident   {
         @SafeHtml
         @JsonProperty("migrationId")
         private String migrationId = null;
-
 }
