@@ -435,9 +435,7 @@ public class ProjectService {
                     request.getWorkflow().getComments()
             );
         } catch (Exception e) {
-            log.error("Failed to transition workflow for project {} with action {}: {}", 
-                    request.getProjectId(), request.getWorkflow().getAction(), e.getMessage(), e);
-            throw new CustomException("WORKFLOW_TRANSITION_FAILED", 
+            throw new CustomException("WORKFLOW_TRANSITION_FAILED",
                     "Failed to transition workflow for project: " + request.getProjectId());
         }
 
@@ -516,8 +514,7 @@ public class ProjectService {
                         false
                 );
             } catch (Exception e) {
-                log.error("Failed to fetch facilities for project {}: {}", existingProject.getId(), e.getMessage(), e);
-                throw new CustomException("FACILITY_FETCH_FAILED", 
+                throw new CustomException("FACILITY_FETCH_FAILED",
                         "Failed to fetch facilities for project: " + existingProject.getId());
             }
 
