@@ -10,6 +10,7 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import org.egov.common.contract.response.ResponseInfo;
+import org.egov.common.contract.workflow.ProcessInstance;
 import org.egov.common.models.core.ProjectSearchURLParams;
 import org.egov.common.models.core.SearchResponse;
 import org.egov.common.models.core.URLParams;
@@ -27,9 +28,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 
@@ -56,6 +55,8 @@ public class ProjectApiController {
 
     private final ProjectService projectService;
 
+    private final ProjectWorkflowService projectWorkflowService;
+
     @Autowired
     public ProjectApiController(ObjectMapper objectMapper, HttpServletRequest httpServletRequest,
                                 ProjectStaffService projectStaffService,
@@ -63,7 +64,7 @@ public class ProjectApiController {
                                 ProjectBeneficiaryService projectBeneficiaryService,
                                 ProjectFacilityService projectFacilityService, Producer producer,
                                 ProjectConfiguration projectConfiguration,
-                                ProjectService projectService) {
+                                ProjectService projectService, ProjectWorkflowService projectWorkflowService) {
         this.objectMapper = objectMapper;
         this.httpServletRequest = httpServletRequest;
         this.projectStaffService = projectStaffService;
@@ -73,6 +74,7 @@ public class ProjectApiController {
         this.producer = producer;
         this.projectConfiguration = projectConfiguration;
         this.projectService = projectService;
+        this.projectWorkflowService = projectWorkflowService;
     }
 
     @RequestMapping(value = "/beneficiary/v1/bulk/_create", method = RequestMethod.POST)
@@ -507,26 +509,41 @@ public class ProjectApiController {
                 .collect(Collectors.groupingBy(Comment::getTransactionId));
 
         ObjectMapper mapper = new ObjectMapper();
-        List<ProjectStatusWrapper> projectStatusWrappers = projects.stream()
-                .map(project -> {
-                    String status = null;
-                    ObjectNode additionalDetails = mapper.convertValue(project.getAdditionalDetails(), ObjectNode.class);
-                    if (additionalDetails != null && additionalDetails.has("status")) {
-                        status = additionalDetails.get("status").asText();
-                    }
+        List<ProjectStatusWrapper> projectStatusWrappers = new ArrayList<>();
+        for (Project project : projects) {
+            String status = null;
+            ObjectNode additionalDetails = mapper.convertValue(project.getAdditionalDetails(), ObjectNode.class);
+            if (additionalDetails != null && additionalDetails.has("status")) {
+                status = additionalDetails.get("status").asText();
+            }
 
-                    List<Transaction> txns = txnsByProjectId.getOrDefault(project.getId(), Collections.emptyList());
-                    for (Transaction txn : txns) {
-                        txn.setComments(commentsByTxnId.getOrDefault(txn.getTransactionId(), Collections.emptyList()));
-                    }
+            List<Transaction> txns = txnsByProjectId.getOrDefault(project.getId(), Collections.emptyList());
+            for (Transaction txn : txns) {
+                txn.setComments(commentsByTxnId.getOrDefault(txn.getTransactionId(), Collections.emptyList()));
+            }
 
-                    return ProjectStatusWrapper.builder()
-                            .project(project)
-                            .status(status)
-                            .transactions(txns)
-                            .build();
-                })
-                .toList();
+            ProcessInstance processInstance = null;
+            if (!txns.isEmpty()) {
+                Transaction latestTxn = txns.stream()
+                    .max(Comparator.comparing(t -> t.getAuditDetails().getLastModifiedTime()))
+                    .orElse(null);
+                if (latestTxn != null && latestTxn.getProcessInstanceId() != null) {
+                    processInstance = projectWorkflowService.getProcessInstanceById(
+                        latestTxn.getProcessInstanceId(),
+                        project.getTenantId(),
+                        projectSearchRequest.getRequestInfo()
+                    );
+                }
+            }
+
+            ProjectStatusWrapper wrapper = ProjectStatusWrapper.builder()
+                .project(project)
+                .status(status)
+                .transactions(txns)
+                .processInstance(processInstance)
+                .build();
+            projectStatusWrappers.add(wrapper);
+        }
 
         ResponseInfo responseInfo = ResponseInfoFactory.createResponseInfo(projectSearchRequest.getRequestInfo(), true);
         ProjectStatusResponse projectResponse = ProjectStatusResponse.builder()

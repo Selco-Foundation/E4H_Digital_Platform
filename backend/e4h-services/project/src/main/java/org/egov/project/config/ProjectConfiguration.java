@@ -228,6 +228,9 @@ public class ProjectConfiguration {
     @Value("${egov.workflow.transition.path}")
     private String wfTransitionPath;
 
+    @Value("${egov.workflow.search.path}")
+    private String wfSearchPath;
+
     @Value("${egov.workflow.module.name}")
     private String moduleName;
 
