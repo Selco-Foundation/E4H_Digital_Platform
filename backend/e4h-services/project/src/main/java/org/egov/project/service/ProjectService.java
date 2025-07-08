@@ -425,13 +425,21 @@ public class ProjectService {
         Project existingProject = projects.get(0);
 
         // 2. Call workflow transition
-        ProcessInstance updatedWorkflow = workflowService.transitionWorkflow(
-                existingProject,
-                request.getWorkflow().getAction(),
-                request.getWorkflow().getDocuments(),
-                request.getRequestInfo(),
-                request.getWorkflow().getComments()
-        );
+        ProcessInstance updatedWorkflow;
+        try {
+            updatedWorkflow = workflowService.transitionWorkflow(
+                    existingProject,
+                    request.getWorkflow().getAction(),
+                    request.getWorkflow().getDocuments(),
+                    request.getRequestInfo(),
+                    request.getWorkflow().getComments()
+            );
+        } catch (Exception e) {
+            log.error("Failed to transition workflow for project {} with action {}: {}", 
+                    request.getProjectId(), request.getWorkflow().getAction(), e.getMessage(), e);
+            throw new CustomException("WORKFLOW_TRANSITION_FAILED", 
+                    "Failed to transition workflow for project: " + request.getProjectId());
+        }
 
         for(Transaction transaction: request.getTransactions()) {
             transaction.setProcessInstanceId(updatedWorkflow.getId());
@@ -498,16 +506,26 @@ public class ProjectService {
                     .requestInfo(request.getRequestInfo())
                     .build();
 
-            SearchResponse<ProjectFacility> facilitySearchResponse = projectFacilityService.search(
-                    projectFacilitySearchRequest,
-                    100, 0,
-                    existingProject.getTenantId(),
-                    null,
-                    false
-            );
+            SearchResponse<ProjectFacility> facilitySearchResponse;
+            try {
+                facilitySearchResponse = projectFacilityService.search(
+                        projectFacilitySearchRequest,
+                        100, 0,
+                        existingProject.getTenantId(),
+                        null,
+                        false
+                );
+            } catch (Exception e) {
+                log.error("Failed to fetch facilities for project {}: {}", existingProject.getId(), e.getMessage(), e);
+                throw new CustomException("FACILITY_FETCH_FAILED", 
+                        "Failed to fetch facilities for project: " + existingProject.getId());
+            }
 
             // once facility is fetched we need to fetch assets for that facility
-            ProjectFacility facility = facilitySearchResponse.getResponse().get(0);
+            ProjectFacility facility = null;
+            if (facilitySearchResponse != null && facilitySearchResponse.getResponse() != null && !facilitySearchResponse.getResponse().isEmpty()) {
+                facility = facilitySearchResponse.getResponse().get(0);
+            }
             if (facility != null) {
                 updateAssetsForFacility(existingProject, request.getRequestInfo(), facility.getFacilityId());
             }
