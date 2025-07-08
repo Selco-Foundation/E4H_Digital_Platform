@@ -166,6 +166,7 @@ public class TransitionService {
         String businessService = processInstances.get(0).getBusinessService();
         if (fetchedProcessInstances.size()>0) {
             businessService = fetchedProcessInstances.get(0).getBusinessService();
+            processInstances.get(0).setBusinessService(businessService);
         }
         criteria.setTenantId(tenantId);
         criteria.setBusinessServices(Collections.singletonList(businessService));
@@ -178,20 +179,4 @@ public class TransitionService {
                     businessService + " and tenantId: "+tenantId);
         return businessServices.get(0);
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 }
