@@ -26,6 +26,7 @@ class CacheAssetBloc extends Bloc<CacheAssetEvent, CacheAssetState> {
       await _repo.syncRemoteToLocal(event.projectId, _isar);
       emit(const CacheAssetState.success());
     } catch (e) {
+      print(e.toString());
       emit(CacheAssetState.failure(e.toString()));
     }
   }

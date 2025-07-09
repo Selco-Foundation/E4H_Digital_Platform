@@ -13,6 +13,7 @@ import '../data/nosql/cache_asset_detail.dart';
 import '../data/nosql/cache_media_upload.dart';
 import '../data/nosql/cache_specification.dart';
 import '../data/remote_client.dart';
+import '../model/asset/asset.dart';
 import '../model/entities/project_facility.dart';
 import '../repositories/project_facility_repo.dart';
 import '../utils/envConfig.dart';
@@ -69,7 +70,7 @@ class AssetRepository {
     }
   }
 
-  Future<void> createOrUpdateAsset(
+  Future<void> createOrUpdateAsset2(
       {required Map<String, dynamic> payload,
       String? assetId,
       required Isar isar}) async {
@@ -124,10 +125,80 @@ class AssetRepository {
     }
   }
 
+  /// Creates or updates an asset on the server, then writes back the returned
+  /// assetId into Isar and returns the server's canonical Asset model.
+  Future<Asset> createOrUpdateAsset({
+    required Asset asset,
+    required Isar isar,
+  }) async {
+    // Determine create vs update
+    final isCreate = asset.assetId == null || asset.assetId!.isEmpty;
+    final endpoint = isCreate ? '_create' : '${asset.assetId}/_update';
+
+    // Build the nested payload
+    final payload = {
+      'assetDetail': {
+        'Asset': asset.toJson(),
+      },
+    };
+
+    try {
+      print('Request payload: ${jsonEncode(payload)}');
+      final response = await _dio.post(
+        '/asset-registry/v1/asset/$endpoint',
+        data: payload,
+      );
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.data}');
+
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        throw Exception(
+          '${isCreate ? 'Create' : 'Update'} Asset responded with status '
+          '${response.statusCode}',
+        );
+      }
+
+      // The API may wrap the asset under "asset" or "Asset"
+      final data = response.data as Map<String, dynamic>;
+      final assetJson = data['asset'] ?? data['Asset'];
+      if (assetJson == null) {
+        throw Exception('Asset data missing in response');
+      }
+
+      // Parse the returned JSON into our model
+      final updatedAsset = Asset.fromJson(
+        Map<String, dynamic>.from(assetJson as Map),
+      );
+
+      // Persist the returned assetId back into Isar
+      if (updatedAsset.assetId != null && updatedAsset.assetId!.isNotEmpty) {
+        await isar.writeTxn(() async {
+          final existing = await isar.cacheAddNewAssets
+              .where()
+              .assetTypeEqualTo(asset.assetTypeID!)
+              .filter()
+              .serialNumberEqualTo(asset.serialNumber!)
+              .findFirst();
+
+          if (existing != null) {
+            existing.assetId = updatedAsset.assetId;
+            await isar.cacheAddNewAssets.put(existing);
+          }
+        });
+      }
+
+      return updatedAsset;
+    } on DioError catch (e) {
+      // Bubble up a parsed error
+      print(e.message);
+      throw DioErrorParser.parse(e);
+    }
+  }
+
   /// Fetch remote assets and upsert into all your Isar caches,
   /// clearing only the matching CacheAddNewAsset per serialNumber,
   /// and wholesale-clearing media before re-inserting.
-  Future<void> syncRemoteToLocal(String projectId, Isar isar) async {
+  Future<void> syncRemoteToLocal2(String projectId, Isar isar) async {
     try {
       // 1) look up facilityId
       final facilityId = (await ProjectFacilityRepository()
@@ -293,10 +364,12 @@ class AssetRepository {
                         '',
                     serialNumber: serial,
                     photoPath: d['fileStore'] != null
-                        ? //'${envConfig.variables.baseUrl}/filestore/v1/files/file?tenantId=in&fileStoreId=${d['fileStore']}'
+                        //    ? //'${envConfig.variables.baseUrl}/filestore/v1/files/file?tenantId=in&fileStoreId=${d['fileStore']}'
                         // '${envConfig.variables.baseUrl}/filestore/v1/files/file?tenantId=in&fileStoreId=4d4a5ad7-7c9e-4953-b095-271c9c34ffe6'
-                        'https://nanoskill.s3.eu-west-2.amazonaws.com/1.png'
-                        : '', // d['fileStore']?.String() ?? '',
+                        //    'https://nanoskill.s3.eu-west-2.amazonaws.com/1.png'
+                        //    : '', //
+                        ? d['fileStore']?.String()
+                        : '',
                     latitude: d['geoLocation']?['latitude']?.toString() ?? '',
                     longitude: d['geoLocation']?['longitude']?.toString() ?? '',
                   ),
@@ -351,6 +424,212 @@ class AssetRepository {
         }
       });
     } on DioError catch (e) {
+      throw DioErrorParser.parse(e);
+    }
+  }
+
+  Future<void> syncRemoteToLocal(String projectId, Isar isar) async {
+    try {
+      // 1) facilityId lookup as before
+      final facilityId = (await ProjectFacilityRepository().search(
+        ProjectFacilitySearchModel(projectId: [projectId]),
+        isar,
+      ))
+          .facilityId;
+
+      print("facilityId $facilityId");
+
+      // 2) fetch JSON, parse into Asset models
+      final resp = await _dio.post(
+        '/asset-registry/v1/asset/_search?tenantId=${envConfig.variables.tenantId}',
+        data: {
+          'criteria': {
+            'tenantId': envConfig.variables.tenantId,
+            'facilityID': facilityId,
+          }
+        },
+      );
+      print("resp ${resp.data}");
+      if (resp.statusCode != 200 && resp.statusCode != 201) {
+        throw Exception('Failed to fetch assets');
+      }
+      final List<dynamic> rawList = resp.data as List<dynamic>;
+
+      // parse each raw Map into our Asset model
+      final assets = rawList
+          .cast<Map<String, dynamic>>()
+          .map((m) => Asset.fromJson(m))
+          .toList();
+
+      // 3) group by assetTypeID
+      final byType = <String, List<Asset>>{};
+      for (var asset in assets) {
+        final type = asset.assetTypeID?.toLowerCase() ?? 'unknown';
+        byType.putIfAbsent(type, () => []).add(asset);
+      }
+
+      print("byType $byType");
+
+      // 4) perform one big Isar transaction
+      await isar.writeTxn(() async {
+        for (var entry in byType.entries) {
+          final type = entry.key;
+          final list = entry.value;
+
+          print("entry $entry");
+          print("type $type");
+          print("assets $assets");
+
+          // — upsert count
+          final countValue = list.length;
+          print("countValue $countValue of ${entry.key}");
+          var countEntry = await isar.cacheAssetCounts
+              .where()
+              .projectIdEqualTo(projectId)
+              .filter()
+              .assetTypeEqualTo(type)
+              .findFirst();
+          print("existingCount $countEntry");
+          if (countEntry != null) {
+            countEntry
+              ..count = countValue
+              ..updatedAt = DateTime.now();
+            await isar.cacheAssetCounts.put(countEntry);
+          } else {
+            await isar.cacheAssetCounts.put(
+              CacheAssetCount(
+                projectId: projectId,
+                assetType: type,
+                count: countValue,
+              ),
+            );
+          }
+
+          // — upsert spec & detail
+          final first = list.first;
+          final det = first.assetDetails!;
+          final spec = CacheSpecification(
+            projectId: projectId,
+            assetType: type,
+            totalCapacity: det.totalCapacity ?? 0,
+            totalCapacityUnit:
+                det.totalCapacityUnit ?? det.totalCapacityUOM ?? '',
+            system: first.system ?? '',
+          );
+          var specEntry = await isar.cacheSpecifications
+              .where()
+              .projectIdEqualTo(projectId)
+              .filter()
+              .assetTypeEqualTo(type)
+              .findFirst();
+          print("specEntry $specEntry");
+          if (specEntry != null) {
+            specEntry
+              ..system = spec.system
+              ..totalCapacity = spec.totalCapacity
+              ..totalCapacityUnit = spec.totalCapacityUnit
+              ..updatedAt = DateTime.now();
+            await isar.cacheSpecifications.put(specEntry);
+          } else {
+            await isar.cacheSpecifications.put(spec);
+          }
+
+          final detail = CacheAssetDetail(
+            projectId: projectId,
+            assetType: type,
+            brand: first.brandID ?? '',
+            model: first.modelNumber,
+            warranty: first.warrantyDuration?.toString(),
+          );
+          var detailEntry = await isar.cacheAssetDetails
+              .where()
+              .projectIdEqualTo(projectId)
+              .filter()
+              .assetTypeEqualTo(type)
+              .findFirst();
+          print("detailEntry $detailEntry");
+          if (detailEntry != null) {
+            detailEntry
+              ..brand = detail.brand
+              ..model = detail.model
+              ..warranty = detail.warranty
+              ..updatedAt = DateTime.now();
+            await isar.cacheAssetDetails.put(detailEntry);
+          } else {
+            await isar.cacheAssetDetails.put(detail);
+          }
+
+          // — upsert each asset’s “main photo” in CacheAddNewAsset
+          for (var asset in list) {
+            final serial = asset.system ?? '';
+            // delete old by serial
+            final oldList = await isar.cacheAddNewAssets
+                .where()
+                .projectIdEqualTo(projectId)
+                .filter()
+                .assetTypeEqualTo(type)
+                .and()
+                .serialNumberEqualTo(serial)
+                .findAll();
+            for (var old in oldList) {
+              await isar.cacheAddNewAssets.delete(old.id);
+            }
+
+            // find all PHOTO documents
+            for (var doc in asset.documents ?? []) {
+              if (doc.documentType == 'PHOTO') {
+                //todo CHANGE TO 'ASSET'
+                print("document Type ${doc.documentType}");
+                print("fileStore ${doc.fileStore}");
+                await isar.cacheAddNewAssets.put(
+                  CacheAddNewAsset(
+                    projectId: projectId,
+                    assetType: type,
+                    itemNumber:
+                        asset.assetDetails?.inverterCapacity?.toString() ?? '',
+                    serialNumber: serial ?? '',
+                    photoPath: doc.fileStore ?? '',
+                    latitude: doc.geoLocation?.latitude?.toString() ?? '',
+                    longitude: doc.geoLocation?.longitude?.toString() ?? '',
+                  ),
+                );
+              }
+            }
+          }
+
+          // — clear & re‑insert media uploads
+          final oldMedia = await isar.cacheMediaUploads
+              .where()
+              .projectIdEqualTo(projectId)
+              .filter()
+              .assetTypeEqualTo(type)
+              .findAll();
+          for (var m in oldMedia) {
+            await isar.cacheMediaUploads.delete(m.id);
+          }
+          print("oldMedia $oldMedia");
+          for (var asset in list) {
+            for (var doc in asset.documents ?? []) {
+              if (doc.documentType != 'ASSET') {
+                //todo CHANGE TO 'ASSET'
+                await isar.cacheMediaUploads.put(
+                  CacheMediaUpload(
+                    projectId: projectId,
+                    assetType: type,
+                    itemNumber: '',
+                    itemType: doc.documentType ?? '',
+                    filePath: doc.fileStore ?? '',
+                    latitude: doc.geoLocation?.latitude?.toString() ?? '',
+                    longitude: doc.geoLocation?.longitude?.toString() ?? '',
+                  ),
+                );
+              }
+            }
+          }
+        }
+      });
+    } on DioError catch (e) {
+      print(e);
       throw DioErrorParser.parse(e);
     }
   }

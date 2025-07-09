@@ -22,6 +22,7 @@ mixin _$CacheMediaUploadEvent {
     required TResult Function(CacheMediaUpload entry) add,
     required TResult Function(CacheMediaUpload entry) update,
     required TResult Function(int id) delete,
+    required TResult Function(String projectId, String assetType) deleteAll,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -30,6 +31,7 @@ mixin _$CacheMediaUploadEvent {
     TResult? Function(CacheMediaUpload entry)? add,
     TResult? Function(CacheMediaUpload entry)? update,
     TResult? Function(int id)? delete,
+    TResult? Function(String projectId, String assetType)? deleteAll,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -38,6 +40,7 @@ mixin _$CacheMediaUploadEvent {
     TResult Function(CacheMediaUpload entry)? add,
     TResult Function(CacheMediaUpload entry)? update,
     TResult Function(int id)? delete,
+    TResult Function(String projectId, String assetType)? deleteAll,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -47,6 +50,7 @@ mixin _$CacheMediaUploadEvent {
     required TResult Function(CacheMediaUploadEventAdd value) add,
     required TResult Function(CacheMediaUploadEventUpdate value) update,
     required TResult Function(CacheMediaUploadEventDelete value) delete,
+    required TResult Function(CacheMediaUploadEventDeleteAll value) deleteAll,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -55,6 +59,7 @@ mixin _$CacheMediaUploadEvent {
     TResult? Function(CacheMediaUploadEventAdd value)? add,
     TResult? Function(CacheMediaUploadEventUpdate value)? update,
     TResult? Function(CacheMediaUploadEventDelete value)? delete,
+    TResult? Function(CacheMediaUploadEventDeleteAll value)? deleteAll,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -63,6 +68,7 @@ mixin _$CacheMediaUploadEvent {
     TResult Function(CacheMediaUploadEventAdd value)? add,
     TResult Function(CacheMediaUploadEventUpdate value)? update,
     TResult Function(CacheMediaUploadEventDelete value)? delete,
+    TResult Function(CacheMediaUploadEventDeleteAll value)? deleteAll,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -169,6 +175,7 @@ class _$CacheMediaUploadEventGetImpl implements CacheMediaUploadEventGet {
     required TResult Function(CacheMediaUpload entry) add,
     required TResult Function(CacheMediaUpload entry) update,
     required TResult Function(int id) delete,
+    required TResult Function(String projectId, String assetType) deleteAll,
   }) {
     return get(projectId, assetType);
   }
@@ -180,6 +187,7 @@ class _$CacheMediaUploadEventGetImpl implements CacheMediaUploadEventGet {
     TResult? Function(CacheMediaUpload entry)? add,
     TResult? Function(CacheMediaUpload entry)? update,
     TResult? Function(int id)? delete,
+    TResult? Function(String projectId, String assetType)? deleteAll,
   }) {
     return get?.call(projectId, assetType);
   }
@@ -191,6 +199,7 @@ class _$CacheMediaUploadEventGetImpl implements CacheMediaUploadEventGet {
     TResult Function(CacheMediaUpload entry)? add,
     TResult Function(CacheMediaUpload entry)? update,
     TResult Function(int id)? delete,
+    TResult Function(String projectId, String assetType)? deleteAll,
     required TResult orElse(),
   }) {
     if (get != null) {
@@ -206,6 +215,7 @@ class _$CacheMediaUploadEventGetImpl implements CacheMediaUploadEventGet {
     required TResult Function(CacheMediaUploadEventAdd value) add,
     required TResult Function(CacheMediaUploadEventUpdate value) update,
     required TResult Function(CacheMediaUploadEventDelete value) delete,
+    required TResult Function(CacheMediaUploadEventDeleteAll value) deleteAll,
   }) {
     return get(this);
   }
@@ -217,6 +227,7 @@ class _$CacheMediaUploadEventGetImpl implements CacheMediaUploadEventGet {
     TResult? Function(CacheMediaUploadEventAdd value)? add,
     TResult? Function(CacheMediaUploadEventUpdate value)? update,
     TResult? Function(CacheMediaUploadEventDelete value)? delete,
+    TResult? Function(CacheMediaUploadEventDeleteAll value)? deleteAll,
   }) {
     return get?.call(this);
   }
@@ -228,6 +239,7 @@ class _$CacheMediaUploadEventGetImpl implements CacheMediaUploadEventGet {
     TResult Function(CacheMediaUploadEventAdd value)? add,
     TResult Function(CacheMediaUploadEventUpdate value)? update,
     TResult Function(CacheMediaUploadEventDelete value)? delete,
+    TResult Function(CacheMediaUploadEventDeleteAll value)? deleteAll,
     required TResult orElse(),
   }) {
     if (get != null) {
@@ -321,6 +333,7 @@ class _$CacheMediaUploadEventAddImpl implements CacheMediaUploadEventAdd {
     required TResult Function(CacheMediaUpload entry) add,
     required TResult Function(CacheMediaUpload entry) update,
     required TResult Function(int id) delete,
+    required TResult Function(String projectId, String assetType) deleteAll,
   }) {
     return add(entry);
   }
@@ -332,6 +345,7 @@ class _$CacheMediaUploadEventAddImpl implements CacheMediaUploadEventAdd {
     TResult? Function(CacheMediaUpload entry)? add,
     TResult? Function(CacheMediaUpload entry)? update,
     TResult? Function(int id)? delete,
+    TResult? Function(String projectId, String assetType)? deleteAll,
   }) {
     return add?.call(entry);
   }
@@ -343,6 +357,7 @@ class _$CacheMediaUploadEventAddImpl implements CacheMediaUploadEventAdd {
     TResult Function(CacheMediaUpload entry)? add,
     TResult Function(CacheMediaUpload entry)? update,
     TResult Function(int id)? delete,
+    TResult Function(String projectId, String assetType)? deleteAll,
     required TResult orElse(),
   }) {
     if (add != null) {
@@ -358,6 +373,7 @@ class _$CacheMediaUploadEventAddImpl implements CacheMediaUploadEventAdd {
     required TResult Function(CacheMediaUploadEventAdd value) add,
     required TResult Function(CacheMediaUploadEventUpdate value) update,
     required TResult Function(CacheMediaUploadEventDelete value) delete,
+    required TResult Function(CacheMediaUploadEventDeleteAll value) deleteAll,
   }) {
     return add(this);
   }
@@ -369,6 +385,7 @@ class _$CacheMediaUploadEventAddImpl implements CacheMediaUploadEventAdd {
     TResult? Function(CacheMediaUploadEventAdd value)? add,
     TResult? Function(CacheMediaUploadEventUpdate value)? update,
     TResult? Function(CacheMediaUploadEventDelete value)? delete,
+    TResult? Function(CacheMediaUploadEventDeleteAll value)? deleteAll,
   }) {
     return add?.call(this);
   }
@@ -380,6 +397,7 @@ class _$CacheMediaUploadEventAddImpl implements CacheMediaUploadEventAdd {
     TResult Function(CacheMediaUploadEventAdd value)? add,
     TResult Function(CacheMediaUploadEventUpdate value)? update,
     TResult Function(CacheMediaUploadEventDelete value)? delete,
+    TResult Function(CacheMediaUploadEventDeleteAll value)? deleteAll,
     required TResult orElse(),
   }) {
     if (add != null) {
@@ -471,6 +489,7 @@ class _$CacheMediaUploadEventUpdateImpl implements CacheMediaUploadEventUpdate {
     required TResult Function(CacheMediaUpload entry) add,
     required TResult Function(CacheMediaUpload entry) update,
     required TResult Function(int id) delete,
+    required TResult Function(String projectId, String assetType) deleteAll,
   }) {
     return update(entry);
   }
@@ -482,6 +501,7 @@ class _$CacheMediaUploadEventUpdateImpl implements CacheMediaUploadEventUpdate {
     TResult? Function(CacheMediaUpload entry)? add,
     TResult? Function(CacheMediaUpload entry)? update,
     TResult? Function(int id)? delete,
+    TResult? Function(String projectId, String assetType)? deleteAll,
   }) {
     return update?.call(entry);
   }
@@ -493,6 +513,7 @@ class _$CacheMediaUploadEventUpdateImpl implements CacheMediaUploadEventUpdate {
     TResult Function(CacheMediaUpload entry)? add,
     TResult Function(CacheMediaUpload entry)? update,
     TResult Function(int id)? delete,
+    TResult Function(String projectId, String assetType)? deleteAll,
     required TResult orElse(),
   }) {
     if (update != null) {
@@ -508,6 +529,7 @@ class _$CacheMediaUploadEventUpdateImpl implements CacheMediaUploadEventUpdate {
     required TResult Function(CacheMediaUploadEventAdd value) add,
     required TResult Function(CacheMediaUploadEventUpdate value) update,
     required TResult Function(CacheMediaUploadEventDelete value) delete,
+    required TResult Function(CacheMediaUploadEventDeleteAll value) deleteAll,
   }) {
     return update(this);
   }
@@ -519,6 +541,7 @@ class _$CacheMediaUploadEventUpdateImpl implements CacheMediaUploadEventUpdate {
     TResult? Function(CacheMediaUploadEventAdd value)? add,
     TResult? Function(CacheMediaUploadEventUpdate value)? update,
     TResult? Function(CacheMediaUploadEventDelete value)? delete,
+    TResult? Function(CacheMediaUploadEventDeleteAll value)? deleteAll,
   }) {
     return update?.call(this);
   }
@@ -530,6 +553,7 @@ class _$CacheMediaUploadEventUpdateImpl implements CacheMediaUploadEventUpdate {
     TResult Function(CacheMediaUploadEventAdd value)? add,
     TResult Function(CacheMediaUploadEventUpdate value)? update,
     TResult Function(CacheMediaUploadEventDelete value)? delete,
+    TResult Function(CacheMediaUploadEventDeleteAll value)? deleteAll,
     required TResult orElse(),
   }) {
     if (update != null) {
@@ -621,6 +645,7 @@ class _$CacheMediaUploadEventDeleteImpl implements CacheMediaUploadEventDelete {
     required TResult Function(CacheMediaUpload entry) add,
     required TResult Function(CacheMediaUpload entry) update,
     required TResult Function(int id) delete,
+    required TResult Function(String projectId, String assetType) deleteAll,
   }) {
     return delete(id);
   }
@@ -632,6 +657,7 @@ class _$CacheMediaUploadEventDeleteImpl implements CacheMediaUploadEventDelete {
     TResult? Function(CacheMediaUpload entry)? add,
     TResult? Function(CacheMediaUpload entry)? update,
     TResult? Function(int id)? delete,
+    TResult? Function(String projectId, String assetType)? deleteAll,
   }) {
     return delete?.call(id);
   }
@@ -643,6 +669,7 @@ class _$CacheMediaUploadEventDeleteImpl implements CacheMediaUploadEventDelete {
     TResult Function(CacheMediaUpload entry)? add,
     TResult Function(CacheMediaUpload entry)? update,
     TResult Function(int id)? delete,
+    TResult Function(String projectId, String assetType)? deleteAll,
     required TResult orElse(),
   }) {
     if (delete != null) {
@@ -658,6 +685,7 @@ class _$CacheMediaUploadEventDeleteImpl implements CacheMediaUploadEventDelete {
     required TResult Function(CacheMediaUploadEventAdd value) add,
     required TResult Function(CacheMediaUploadEventUpdate value) update,
     required TResult Function(CacheMediaUploadEventDelete value) delete,
+    required TResult Function(CacheMediaUploadEventDeleteAll value) deleteAll,
   }) {
     return delete(this);
   }
@@ -669,6 +697,7 @@ class _$CacheMediaUploadEventDeleteImpl implements CacheMediaUploadEventDelete {
     TResult? Function(CacheMediaUploadEventAdd value)? add,
     TResult? Function(CacheMediaUploadEventUpdate value)? update,
     TResult? Function(CacheMediaUploadEventDelete value)? delete,
+    TResult? Function(CacheMediaUploadEventDeleteAll value)? deleteAll,
   }) {
     return delete?.call(this);
   }
@@ -680,6 +709,7 @@ class _$CacheMediaUploadEventDeleteImpl implements CacheMediaUploadEventDelete {
     TResult Function(CacheMediaUploadEventAdd value)? add,
     TResult Function(CacheMediaUploadEventUpdate value)? update,
     TResult Function(CacheMediaUploadEventDelete value)? delete,
+    TResult Function(CacheMediaUploadEventDeleteAll value)? deleteAll,
     required TResult orElse(),
   }) {
     if (delete != null) {
@@ -696,6 +726,177 @@ abstract class CacheMediaUploadEventDelete implements CacheMediaUploadEvent {
   int get id;
   @JsonKey(ignore: true)
   _$$CacheMediaUploadEventDeleteImplCopyWith<_$CacheMediaUploadEventDeleteImpl>
+      get copyWith => throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class _$$CacheMediaUploadEventDeleteAllImplCopyWith<$Res> {
+  factory _$$CacheMediaUploadEventDeleteAllImplCopyWith(
+          _$CacheMediaUploadEventDeleteAllImpl value,
+          $Res Function(_$CacheMediaUploadEventDeleteAllImpl) then) =
+      __$$CacheMediaUploadEventDeleteAllImplCopyWithImpl<$Res>;
+  @useResult
+  $Res call({String projectId, String assetType});
+}
+
+/// @nodoc
+class __$$CacheMediaUploadEventDeleteAllImplCopyWithImpl<$Res>
+    extends _$CacheMediaUploadEventCopyWithImpl<$Res,
+        _$CacheMediaUploadEventDeleteAllImpl>
+    implements _$$CacheMediaUploadEventDeleteAllImplCopyWith<$Res> {
+  __$$CacheMediaUploadEventDeleteAllImplCopyWithImpl(
+      _$CacheMediaUploadEventDeleteAllImpl _value,
+      $Res Function(_$CacheMediaUploadEventDeleteAllImpl) _then)
+      : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? projectId = null,
+    Object? assetType = null,
+  }) {
+    return _then(_$CacheMediaUploadEventDeleteAllImpl(
+      null == projectId
+          ? _value.projectId
+          : projectId // ignore: cast_nullable_to_non_nullable
+              as String,
+      null == assetType
+          ? _value.assetType
+          : assetType // ignore: cast_nullable_to_non_nullable
+              as String,
+    ));
+  }
+}
+
+/// @nodoc
+
+class _$CacheMediaUploadEventDeleteAllImpl
+    implements CacheMediaUploadEventDeleteAll {
+  const _$CacheMediaUploadEventDeleteAllImpl(this.projectId, this.assetType);
+
+  @override
+  final String projectId;
+  @override
+  final String assetType;
+
+  @override
+  String toString() {
+    return 'CacheMediaUploadEvent.deleteAll(projectId: $projectId, assetType: $assetType)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$CacheMediaUploadEventDeleteAllImpl &&
+            (identical(other.projectId, projectId) ||
+                other.projectId == projectId) &&
+            (identical(other.assetType, assetType) ||
+                other.assetType == assetType));
+  }
+
+  @override
+  int get hashCode => Object.hash(runtimeType, projectId, assetType);
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$CacheMediaUploadEventDeleteAllImplCopyWith<
+          _$CacheMediaUploadEventDeleteAllImpl>
+      get copyWith => __$$CacheMediaUploadEventDeleteAllImplCopyWithImpl<
+          _$CacheMediaUploadEventDeleteAllImpl>(this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function(String projectId, String assetType) get,
+    required TResult Function(CacheMediaUpload entry) add,
+    required TResult Function(CacheMediaUpload entry) update,
+    required TResult Function(int id) delete,
+    required TResult Function(String projectId, String assetType) deleteAll,
+  }) {
+    return deleteAll(projectId, assetType);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function(String projectId, String assetType)? get,
+    TResult? Function(CacheMediaUpload entry)? add,
+    TResult? Function(CacheMediaUpload entry)? update,
+    TResult? Function(int id)? delete,
+    TResult? Function(String projectId, String assetType)? deleteAll,
+  }) {
+    return deleteAll?.call(projectId, assetType);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function(String projectId, String assetType)? get,
+    TResult Function(CacheMediaUpload entry)? add,
+    TResult Function(CacheMediaUpload entry)? update,
+    TResult Function(int id)? delete,
+    TResult Function(String projectId, String assetType)? deleteAll,
+    required TResult orElse(),
+  }) {
+    if (deleteAll != null) {
+      return deleteAll(projectId, assetType);
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(CacheMediaUploadEventGet value) get,
+    required TResult Function(CacheMediaUploadEventAdd value) add,
+    required TResult Function(CacheMediaUploadEventUpdate value) update,
+    required TResult Function(CacheMediaUploadEventDelete value) delete,
+    required TResult Function(CacheMediaUploadEventDeleteAll value) deleteAll,
+  }) {
+    return deleteAll(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(CacheMediaUploadEventGet value)? get,
+    TResult? Function(CacheMediaUploadEventAdd value)? add,
+    TResult? Function(CacheMediaUploadEventUpdate value)? update,
+    TResult? Function(CacheMediaUploadEventDelete value)? delete,
+    TResult? Function(CacheMediaUploadEventDeleteAll value)? deleteAll,
+  }) {
+    return deleteAll?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(CacheMediaUploadEventGet value)? get,
+    TResult Function(CacheMediaUploadEventAdd value)? add,
+    TResult Function(CacheMediaUploadEventUpdate value)? update,
+    TResult Function(CacheMediaUploadEventDelete value)? delete,
+    TResult Function(CacheMediaUploadEventDeleteAll value)? deleteAll,
+    required TResult orElse(),
+  }) {
+    if (deleteAll != null) {
+      return deleteAll(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class CacheMediaUploadEventDeleteAll implements CacheMediaUploadEvent {
+  const factory CacheMediaUploadEventDeleteAll(
+          final String projectId, final String assetType) =
+      _$CacheMediaUploadEventDeleteAllImpl;
+
+  String get projectId;
+  String get assetType;
+  @JsonKey(ignore: true)
+  _$$CacheMediaUploadEventDeleteAllImplCopyWith<
+          _$CacheMediaUploadEventDeleteAllImpl>
       get copyWith => throw _privateConstructorUsedError;
 }
 
