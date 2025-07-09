@@ -1,0 +1,10 @@
+{
+  "uat": {
+    "userName": "selco_admin",
+    "name": "Ingestion System"
+  },
+  "prod": {
+    "userName": "selco_system_admin",
+    "name": "Selco System Admin"
+  }
+}

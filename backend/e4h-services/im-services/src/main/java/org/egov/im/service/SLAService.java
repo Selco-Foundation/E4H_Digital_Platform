@@ -5,6 +5,9 @@ import org.egov.im.web.models.Priority;
 import org.egov.im.web.models.workflow.State;
 import org.egov.tracer.model.CustomException;
 import com.jayway.jsonpath.JsonPath;
+
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
@@ -14,6 +17,7 @@ import java.util.Map;
 
 import static org.egov.im.util.IMConstants.*;
 
+@Slf4j
 @Service
 public class SLAService {
 
@@ -81,10 +85,10 @@ public class SLAService {
                 );
             }
         }
-        throw new CustomException(
-            "PRIORITY_NOT_FOUND",
-            "Priority not found for assetType: " + assetType + " and serviceCode: " + serviceCode
-        );
+        // Log when default priority is used - could indicate missing MDMS configuration
+        log.warn("No priority found in MDMS for assetType: {} and serviceCode: {}, using default priority: MEDIUM",
+                 assetType, serviceCode);
+        return Priority.MEDIUM;
     }
 
     private String getStringValue(Map<String, Object> map, String key) {

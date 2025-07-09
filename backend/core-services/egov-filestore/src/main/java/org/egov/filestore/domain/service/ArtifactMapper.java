@@ -175,9 +175,7 @@ public class ArtifactMapper {
      * Generates a folder name based on module and tenant.
      */
     private String getFolderNameForVideo(String tenantId) {
-        return String.format("%s/%s/",
-                minioConfig.getBucketName(),
-                tenantId);
+        return String.format("%s/", tenantId);
     }
 
     /**

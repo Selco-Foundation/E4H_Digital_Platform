@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Generated schema for Root",
+  "type": "object",
+  "properties": {
+    "tenantId": {
+      "type": "string"
+    },
+    "module": {
+      "type": "string"
+    },
+    "Brand": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "asset_type_code": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "required": ["asset_type_code", "code", "name", "active"]
+      }
+    }
+  },
+  "required": ["tenantId", "module", "Brand"]
+}

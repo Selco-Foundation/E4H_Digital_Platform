@@ -65,15 +65,22 @@ public class StorageService {
                         int index = storageResponse.getFiles().indexOf(fileMetadata);
                         File tempFile = filesToStore.get(index);
 
-                        // Process the video synchronously and return response
-                        StorageResponse response =
-                                videoService.processVideo(tempFile, context.withVideoId(fileStoreId));
+                        // Check if this is a video file that needs processing
+                        if (isVideoFile(tempFile)) {
+                            // Process the video synchronously and return response
+                            StorageResponse response =
+                                    videoService.processVideo(tempFile, context.withVideoId(fileStoreId));
 
-                        String masterFileStoreId = response.getFiles().get(0).getFileStoreId();
+                            String masterFileStoreId = response.getFiles().get(0).getFileStoreId();
 
-                        return fileMetadata.toBuilder()
-                                .masterFileStoreId(masterFileStoreId)
-                                .build();
+                            return fileMetadata.toBuilder()
+                                    .masterFileStoreId(masterFileStoreId)
+                                    .build();
+                        } else {
+                            // For images, return the file metadata as-is (no processing needed)
+                            log.info("Skipping video processing for image file: {}", tempFile.getName());
+                            return fileMetadata;
+                        }
 
                     } catch (CustomException ex) {
                         log.error("Custom Exception for fileStoreId {}: {}", fileStoreId, ex.getMessage(), ex);
@@ -81,7 +88,7 @@ public class StorageService {
 
                     } catch (Exception ex) {
                         log.error("Unexpected error while processing fileStoreId {}: {}", fileStoreId, ex.getMessage(), ex);
-                        throw new CustomException("Unexpected error processing video", ex.getMessage());
+                        throw new CustomException("Unexpected error processing file", ex.getMessage());
                     }
                 })
                 .toList();
@@ -103,6 +110,12 @@ public class StorageService {
             }
         });
         return tempFiles;
+    }
+
+    private boolean isVideoFile(File file) {
+        String fileName = file.getName().toLowerCase();
+        return fileName.endsWith(".mp4") || fileName.endsWith(".avi") || 
+               fileName.endsWith(".mov") || fileName.endsWith(".wmv");
     }
 
 }

@@ -1,0 +1,50 @@
+@startuml
+autonumber
+skinparam responseMessageBelowArrow true
+
+title "Update Facility"
+
+Actor User as U
+participant Client as FUI
+
+box HFR Services
+participant FacilitySvc as FS #gold
+end box
+
+box DIGIT Services #lightgray
+participant MDMS as M #lightgreen
+participant PersisterSvc as P #lightgreen
+Database PostgreSQL as DB #gray
+end box
+
+U -> FUI: Modify facility details
+
+FUI -> FS++: POST /v2/facility/update\nwith RequestInfo and FacilityUpdate
+
+FS -> M++: Fetch MDMS data for:\n- facility_type\n- facility_category\n- facility_ownership\n- facility_region\n- solar_solution_design_type
+return master data
+
+FS -> FS: validate facility fields using master data
+alt  facility validation failed
+  FS -> FUI: return 400 : Bad Request
+  destroy FS
+else  facility validation passed
+  FS -> FS: validate facility_details against HealthFacilityDetails JSON Schema
+  alt  health facility validation failed
+    FS -> FUI: return 400 : Bad Request
+     destroy FS
+  else  health facility validation passed
+    FS -> FS: enrich data
+    FS -> P++: Persist facility data  
+    
+    P -> DB: update facility records
+    alt facility record doesn't exist
+      P -> FS: return 404 : Not Found
+      FS -> FUI: return 404 : Not Found
+    else facility record updated successfully
+      P -> FS: return success
+      FS -> FUI: return 200 : OK
+    end
+  end
+end
+@enduml

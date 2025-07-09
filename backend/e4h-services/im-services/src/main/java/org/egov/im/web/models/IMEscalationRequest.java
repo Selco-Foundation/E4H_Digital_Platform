@@ -35,7 +35,7 @@ import lombok.ToString;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class IMEscalationRequest {
    
-        @JsonProperty("ProcessInstances")
+        @JsonProperty("IMEscalationInstances")
         @Valid
         @NotNull
         private List<IMEscalationInstance> imEscalationInstance;
