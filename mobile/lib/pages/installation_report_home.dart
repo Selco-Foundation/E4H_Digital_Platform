@@ -23,12 +23,14 @@ class InstallationReportPage extends StatefulWidget {
 }
 
 class _InstallationReportPageState extends State<InstallationReportPage> {
+  late var userType = "";
+
   @override
   void initState() {
     super.initState();
     // Fire the fetch event once when the page is first shown
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final userType = context.read<UserTypeBloc>().state.maybeWhen(
+      userType = context.read<UserTypeBloc>().state.maybeWhen(
             supervisor: () => USER_TYPES.SUPERVISOR.name,
             orElse: () => USER_TYPES.FIELD_STAFF.name,
           );
@@ -100,25 +102,26 @@ class _InstallationReportPageState extends State<InstallationReportPage> {
                                   inboxCount),
                       icon: Icons.toc,
                       heading: 'Inbox',
-                      description:
-                          'View reports that have been approved/rejected',
+                      description: userType == USER_TYPES.SUPERVISOR.name
+                          ? 'Review reports from field and view reports that have been approved/rejected'
+                          : 'View reports that have been approved/rejected',
                     ),
                     ReportCard(
-                      onPress: () {
-                        context
-                            .read<ReportTypeBloc>()
-                            .add(const ReportTypeEvent.typeSelected("draft"));
-                        context.router.push(const DraftRoute());
-                      },
-                      icon: Icons.assignment_late,
-                      badgeCount: state.maybeWhen(
-                          orElse: () => 0,
-                          reportCountsLoaded:
-                              (newCount, inboxCount, submittedCount) =>
-                                  submittedCount),
-                      heading: 'Submitted Reports',
-                      description: 'View reports that have been submitted',
-                    ),
+                        onPress: () {
+                          context
+                              .read<ReportTypeBloc>()
+                              .add(const ReportTypeEvent.typeSelected("draft"));
+                          context.router.push(const DraftRoute());
+                        },
+                        icon: Icons.assignment_late,
+                        badgeCount: state.maybeWhen(
+                            orElse: () => 0,
+                            reportCountsLoaded:
+                                (newCount, inboxCount, submittedCount) =>
+                                    submittedCount),
+                        heading: 'Pending Approval',
+                        description:
+                            'View all reports (both synced and unsynced) that have been submitted but are pending approval. '),
                   ],
                 ),
               )

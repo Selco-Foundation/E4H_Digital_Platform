@@ -46,6 +46,8 @@ dependencies:
   shared_preferences: ^2.2.3
   digit_scanner: ^1.0.5
   qr_flutter: ^4.1.0
+  shimmer: ^3.0.0
+  cached_network_image: ^3.4.0
 
 dependency_overrides:
   camera_android_camerax: ^0.5.0

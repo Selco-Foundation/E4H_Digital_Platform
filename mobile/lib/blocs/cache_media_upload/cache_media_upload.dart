@@ -17,6 +17,7 @@ class CacheMediaUploadBloc
     on<CacheMediaUploadEventAdd>(_addCacheMediaUpload);
     on<CacheMediaUploadEventUpdate>(_updateCacheMediaUpload);
     on<CacheMediaUploadEventDelete>(_deleteCacheMediaUpload);
+    on<CacheMediaUploadEventDeleteAll>(_deleteAllCacheMediaUpload);
   }
 
   Future<void> _getCacheMediaUpload(
@@ -144,6 +145,30 @@ class CacheMediaUploadBloc
       emit(CacheMediaUploadState.error(e.toString()));
     }
   }
+
+  Future<void> _deleteAllCacheMediaUpload(
+    CacheMediaUploadEventDeleteAll event,
+    Emitter<CacheMediaUploadState> emit,
+  ) async {
+    emit(const CacheMediaUploadState.loading());
+    try {
+      await isar.writeTxn(() async {
+        final q = isar.cacheMediaUploads
+            .where()
+            .projectIdEqualTo(event.projectId)
+            .filter()
+            .assetTypeEqualTo(event.assetType);
+        final all = await q.findAll();
+        // delete them by id
+        for (final e in all) {
+          await isar.cacheMediaUploads.delete(e.id);
+        }
+      });
+      emit(const CacheMediaUploadState.deleted());
+    } catch (e) {
+      emit(CacheMediaUploadState.error(e.toString()));
+    }
+  }
 }
 
 /// Events for CacheMediaUploadBloc
@@ -160,6 +185,10 @@ class CacheMediaUploadEvent with _$CacheMediaUploadEvent {
       CacheMediaUploadEventUpdate;
   const factory CacheMediaUploadEvent.delete(int id) =
       CacheMediaUploadEventDelete;
+  const factory CacheMediaUploadEvent.deleteAll(
+    String projectId,
+    String assetType,
+  ) = CacheMediaUploadEventDeleteAll;
 }
 
 /// States for CacheMediaUploadBloc
