@@ -1000,8 +1000,6 @@ async def update_incidents_from_excel(
         incidents_file: UploadFile = File(description="Excel file containing incidents to update"),
         incidents_sheet_name: str = Form(default="Incidents",
                                          description="Name of the sheet containing incident data"),
-        mapping_type_subtype_file: UploadFile = File(...),
-        mapping_type_subtype_sheet_name: str = Form(default="Mapping Old_New_v1.0"),
         request_info: str = Form(default="", description="Request info in JSON format")
 ):
     temp_file = None
@@ -1021,7 +1019,6 @@ async def update_incidents_from_excel(
                 df[col] = ''
 
         incident_client = IMServiceClient(im_services_url)
-        subtype_mapping = create_mapping_dicts(mapping_type_subtype_file, mapping_type_subtype_sheet_name)
 
         for index, row in df.iterrows():
             if pd.isna(row.get('Ticket No.')) and row.get('Current Status') != 'Pending For Assignment':
@@ -1036,6 +1033,7 @@ async def update_incidents_from_excel(
 
                 dt = datetime.strptime(row.get("Filed Date"), "%b %d, %Y @ %H:%M:%S.%f")
 
+
                 update_data = {
                     "new_status": "REJECTED",
                     "action": "REJECT",
@@ -1044,10 +1042,12 @@ async def update_incidents_from_excel(
                     "filed_date" : dt.strftime("%d/%m/%Y")
                 }
 
-                update_payload = create_update_payload(search_response, update_data, subtype_mapping)
+                update_payload = create_update_payload(search_response, update_data)
                 update_response = incident_client.update_incident(update_payload)
 
-                process_update_response(update_response, df, index, update_data)
+                df.at[index, 'status'] = 'success'
+                df.at[index, 'updated_status'] = update_data['new_status']
+                df.at[index, 'error'] = ''
 
             except Exception as e:
                 df.at[index, 'status'] = 'failed'
@@ -1072,19 +1072,3 @@ async def update_incidents_from_excel(
     finally:
         if temp_file and os.path.exists(temp_file.name):
             os.unlink(temp_file.name)
-
-def process_update_response(response, df, idx, update_data):
-    try:
-        response_json = response.json()
-
-        if 'Errors' in response_json and response_json['Errors']:
-            error_msg = response_json['Errors'][0].get('message', str(response_json['Errors'][0]))
-            df.at[idx, 'status'] = 'failed'
-            df.at[idx, 'error'] = error_msg
-        else:
-            df.at[idx, 'status'] = 'success'
-            df.at[idx, 'error'] = ''
-            df.at[idx, 'updated_status'] = update_data.get('new_status', '')
-    except Exception as e:
-        df.at[idx, 'status'] = 'failed'
-        df.at[idx, 'error'] = str(e)

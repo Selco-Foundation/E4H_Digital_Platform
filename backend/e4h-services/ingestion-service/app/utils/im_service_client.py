@@ -44,7 +44,7 @@ class IMServiceClient:
         try:
             response = requests.post(url, headers=headers, json=payload)
             print(f"Incident updated successfully: {json.loads(response.text)}")
-            return response
+            return response.json()
         except requests.exceptions.HTTPError as http_err:
             print(f"HTTP error occurred: {http_err}")
             raise http_err
