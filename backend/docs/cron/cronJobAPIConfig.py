@@ -9,7 +9,7 @@ USER_HOST = "http://egov-user.core-dev:8080"
 WORKFLOW_HOST = "http://egov-workflow-v2.core-dev:8080"
 
 # Business services to loop through
-business_services = ["Incident_Low", "Incident_High", "Incident_Medium"]
+business_services = ["Incident","Incident_Low", "Incident_High", "Incident_Medium"]
 
 # Ensure at least one tenant ID is provided
 if len(sys.argv) < 2:
