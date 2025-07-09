@@ -8,6 +8,7 @@ import 'package:selco/data/nosql/cache_unsubmitted_project.dart';
 
 import '../data/nosql/cache_project_workflow.dart';
 import '../data/remote_client.dart';
+import '../model/document/document.dart';
 import '../model/project_workflow/project_workflow.dart';
 import '../model/projects/project.dart';
 import '../utils/envConfig.dart';
@@ -131,7 +132,7 @@ class ProjectRemoteRepository {
   Future<void> updateProjectWorkflow({
     required String projectId,
     required String action,
-    List<Map<String, dynamic>>? documents,
+    List<Document>? documents,
   }) async {
     final url = 'project/v1/project/workflow/update';
 
@@ -139,7 +140,7 @@ class ProjectRemoteRepository {
       'projectId': projectId,
       'workflow': {
         'action': action,
-        if (documents != null) ...{"documents": []}
+        if (documents != null) ...{"documents": documents}
       }
     };
 

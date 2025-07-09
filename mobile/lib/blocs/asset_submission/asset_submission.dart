@@ -4,14 +4,16 @@ import 'dart:io';
 import 'package:bloc/bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:isar/isar.dart';
-import 'package:selco/data/nosql/cache_completion_report.dart';
+import 'package:selco/model/document/document.dart';
 
 import '../../data/nosql/cache_add_new_asset.dart';
 import '../../data/nosql/cache_asset_detail.dart';
+import '../../data/nosql/cache_completion_report.dart';
 import '../../data/nosql/cache_media_upload.dart';
 import '../../data/nosql/cache_specification.dart';
 import '../../data/nosql/cache_sync_record.dart';
 import '../../data/nosql/cache_unsubmitted_project.dart';
+import '../../model/asset/asset.dart';
 import '../../model/entities/project_facility.dart';
 import '../../model/project_workflow/project_workflow.dart';
 import '../../repositories/app_init_Repo.dart';
@@ -162,23 +164,35 @@ class AssetSubmissionBloc
           return false;
         }
 
-        final documents = <Map<String, dynamic>>[];
+        final documents = <Document>[];
         for (final saved in assets) {
           if (saved.photoPath.isNotEmpty) {
             final file = File(saved.photoPath);
             if (await file.exists()) {
               final photoId = await repo.uploadFile(file);
-              final geo = <String, dynamic>{};
-              if (saved.latitude.isNotEmpty && saved.longitude.isNotEmpty) {
-                geo['latitude'] = saved.latitude;
-                geo['longitude'] = saved.longitude;
-              }
-              documents.add({
-                "documentType": saved.documentType,
-                "fileStore": photoId,
-                "documentUid": "DOC-PHOTO-${saved.serialNumber}",
-                if (geo.isNotEmpty) "geoLocation": geo,
-              });
+              // final geo = <String, dynamic>{};
+              // if (saved.latitude.isNotEmpty && saved.longitude.isNotEmpty) {
+              //   geo['latitude'] = saved.latitude;
+              //   geo['longitude'] = saved.longitude;
+              // }
+              // documents.add({
+              //   "documentType": saved.documentType,
+              //   "fileStore": photoId,
+              //   "documentUid": "DOC-PHOTO-${saved.serialNumber}",
+              //   if (geo.isNotEmpty) "geoLocation": geo,
+              // });
+              documents.add(Document(
+                // id: 'DOCUMENT-0199',
+                documentType: saved.documentType,
+                fileStore: photoId,
+                documentUid: "DOC-PHOTO-${saved.serialNumber}",
+                additionalDetails: null,
+                geoLocation: GeoLocation(
+                  latitude: saved.latitude,
+                  longitude: saved.longitude,
+                  //additionalDetails: null,
+                ),
+              ));
             }
           }
 
@@ -193,18 +207,32 @@ class AssetSubmissionBloc
             final mediaFile = File(m.filePath);
             if (!await mediaFile.exists()) continue;
             final mediaId = await repo.uploadFile(mediaFile);
-            final geo = <String, dynamic>{};
-            if (m.latitude.isNotEmpty && m.longitude.isNotEmpty) {
-              geo['latitude'] = m.latitude;
-              geo['longitude'] = m.longitude;
-            }
-            documents.add({
-              "documentType": m.itemType,
-              "fileStore": mediaId,
-              "documentUid":
+            // final geo = <String, dynamic>{};
+            // if (m.latitude.isNotEmpty && m.longitude.isNotEmpty) {
+            //   geo['latitude'] = m.latitude;
+            //   geo['longitude'] = m.longitude;
+            // }
+            // documents.add({
+            //   "documentType": m.itemType,
+            //   "fileStore": mediaId,
+            //   "documentUid":
+            //       "DOC-${m.itemType}-${m.id}-${m.itemNumber}-${m.assetType}-${DateTime.now().toUtc().toIso8601String()}",
+            //   if (geo.isNotEmpty) "geoLocation": geo,
+            // });
+
+            documents.add(Document(
+              // id: 'DOCUMENT-0199',
+              documentType: m.itemType,
+              fileStore: mediaId,
+              documentUid:
                   "DOC-${m.itemType}-${m.id}-${m.itemNumber}-${m.assetType}-${DateTime.now().toUtc().toIso8601String()}",
-              if (geo.isNotEmpty) "geoLocation": geo,
-            });
+              additionalDetails: null,
+              geoLocation: GeoLocation(
+                latitude: m.latitude,
+                longitude: m.longitude,
+                //additionalDetails: null,
+              ),
+            ));
           }
 
           final now = DateTime.now().toUtc();
@@ -216,7 +244,7 @@ class AssetSubmissionBloc
               ? ""
               : now.add(Duration(days: 365 * years)).toIso8601String();
 
-          final payload = {
+          final payload2 = {
             "assetDetail": {
               "Asset": {
                 if (saved.assetId != null) ...{
@@ -278,8 +306,70 @@ class AssetSubmissionBloc
             }
           };
 
-          await repo.createOrUpdateAsset(
-              payload: payload, assetId: saved.assetId, isar: _isar);
+          // 1) Build AssetDetails with every field explicitly
+          final assetDetails = AssetDetails(
+            totalCapacity: spec.totalCapacity,
+            totalCapacityUnit: spec.totalCapacityUnit,
+            totalCapacityUOM: spec.totalCapacityUnit,
+
+            capacityUnit: type == 'panel'
+                ? "Wp"
+                : type == 'battery'
+                    ? "Ah"
+                    : null, // from mdms
+            panelCapacity: type == 'panel'
+                ? 34.1
+                : null, // saved.itemNumber, // "panelCapacity": saved.itemNumber,
+
+            // totalCapacity: 67.2, //todo update values in mdms data to be removed
+            // totalCapacityUnit: "kWp", //todo update values in mdms data to be removed
+
+            batteryVoltage: type == 'battery' ? 12 : null,
+            batteryCapacity: type == 'battery'
+                ? 125
+                : null, // double.parse(saved.itemNumber)
+            voltageUnit:
+                (type == 'battery' || type == 'inverter') ? "Volts" : null,
+            batteryType: type == 'battery' ? "Lithium" : null,
+
+            inverterCapacity:
+                type == 'inverter' ? double.parse(saved.itemNumber) : null,
+            inverterCapacityUnit: type == 'inverter' ? 'kVA' : null,
+            currentUnit: type == 'inverter' ? '1' : null,
+          );
+
+          // 2) Build the Asset itself
+          final assetModel = Asset(
+            assetId: saved.assetId,
+            tenantId: envConfig.variables.tenantId,
+            facilityID: facilityId,
+            assetTypeID: type.toUpperCase(),
+            system: spec.system,
+            serialNumber: saved.serialNumber,
+            brandID: detail.brand,
+            assetDetails: assetDetails,
+            warrantyStartDate:
+                userType == USER_TYPES.SUPERVISOR ? startIso : null,
+            warrantyDuration: userType == USER_TYPES.SUPERVISOR
+                ? parseWarrantyYears(detail.warranty!)
+                : null,
+            warrantyEndDate: userType == USER_TYPES.SUPERVISOR ? endIso : null,
+            modelNumber: detail.model,
+            wfStatus: "CREATED",
+            isActive: true,
+            documents: documents,
+          );
+
+          await repo.createOrUpdateAsset(asset: assetModel, isar: _isar);
+
+          // final payload = {
+          //   'assetDetail': {
+          //     'Asset': assetModel.toJson(),
+          //   },
+          // };
+          //
+          // await repo.createOrUpdateAsset(
+          //     payload: payload, assetId: saved.assetId, isar: _isar);
         }
       }
 
@@ -288,7 +378,7 @@ class AssetSubmissionBloc
       //   projectId: projectId,
       //   action: WORKFLOW_ACTIONS.CREATE_AND_SAVE_DRAFT.name,
       // );
-      final completionDocuments = <Map<String, dynamic>>[];
+      final completionDocuments = <Document>[];
       final completionReport = await _isar.cacheCompletionReports
           .where()
           .projectIdEqualTo(projectId)
@@ -298,18 +388,31 @@ class AssetSubmissionBloc
           final completionFile = File(completionReport.filePath);
           if (await completionFile.exists()) {
             final photoId = await repo.uploadFile(completionFile);
-            final geo = <String, dynamic>{};
-            if (completionReport.latitude.isNotEmpty &&
-                completionReport.longitude.isNotEmpty) {
-              geo['latitude'] = completionReport.latitude;
-              geo['longitude'] = completionReport.longitude;
-            }
-            completionDocuments.add({
-              "documentType": "INSTALLATION REPORT",
-              "fileStore": photoId,
-              "documentUid": "INSTALLATION-REPORT-${photoId}",
-              if (geo.isNotEmpty) "geoLocation": geo,
-            });
+            // final geo = <String, dynamic>{};
+            // if (completionReport.latitude.isNotEmpty &&
+            //     completionReport.longitude.isNotEmpty) {
+            //   geo['latitude'] = completionReport.latitude;
+            //   geo['longitude'] = completionReport.longitude;
+            // }
+            completionDocuments.add(
+                //     {
+                //   "documentType": "INSTALLATION REPORT",
+                //   "fileStore": photoId,
+                //   "documentUid": "INSTALLATION-REPORT-${photoId}",
+                //   if (geo.isNotEmpty) "geoLocation": geo,
+                // }
+                Document(
+              // id: 'DOCUMENT-0199',
+              documentType: "INSTALLATION REPORT",
+              fileStore: photoId,
+              documentUid: "INSTALLATION-REPORT-${photoId}",
+              // additionalDetails: null,
+              geoLocation: GeoLocation(
+                latitude: completionReport.latitude,
+                longitude: completionReport.longitude,
+                //additionalDetails: null,
+              ),
+            ));
           }
         }
         await remoteRepo.updateProjectWorkflow(

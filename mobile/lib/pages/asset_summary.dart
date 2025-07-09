@@ -13,6 +13,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:recase/recase.dart';
 import 'package:selco/blocs/inbox_type/inbox_type.dart';
+import 'package:selco/widgets/images/cached_image.dart';
 
 import '../blocs/asset_summary/asset_summary.dart';
 import '../blocs/asset_type/asset_type.dart';
@@ -458,14 +459,8 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
                     // Show the saved image:
                     if (asset.photoPath.isNotEmpty)
                       Padding(
-                        padding: const EdgeInsets.only(bottom: spacer3),
-                        child: Image.file(
-                          File(asset.photoPath),
-                          width: 100,
-                          height: 100,
-                          fit: BoxFit.cover,
-                        ),
-                      )
+                          padding: const EdgeInsets.only(bottom: spacer3),
+                          child: assetImageCard(filePath: asset.photoPath))
                     else
                       const SizedBox.shrink(),
                   ],
@@ -482,12 +477,7 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
         summary.mediaEntries.where((m) => m.itemType == 'image').map((m) {
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: spacer1),
-        child: Image.file(
-          File(m.filePath),
-          width: 100,
-          height: 100,
-          fit: BoxFit.cover,
-        ),
+        child: assetImageCard(filePath: m.filePath),
       );
     }).toList();
 
@@ -660,6 +650,17 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
       ],
     );
   }
+}
+
+Widget assetImageCard({required String filePath}) {
+  return isValidUuid(filePath)
+      ? CachedImage("$fileStoreFileUrl${filePath}", width: 100, height: 100)
+      : Image.file(
+          File(filePath),
+          width: 100,
+          height: 100,
+          fit: BoxFit.cover,
+        );
 }
 
 Widget editButton({required BuildContext context, required Function() onTap}) {
