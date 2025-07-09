@@ -98,7 +98,7 @@ public class PrioritySLAService {
 
         String existingBusinessService =null;
         if(incidentPriorityMap.containsKey(key)) {
-             existingBusinessService = "Incident_" + incidentPriorityMap.get(key);
+             existingBusinessService = "Incident_" + capitalize(incidentPriorityMap.get(key));
         }
         else{
              existingBusinessService = "Incident_Medium";
