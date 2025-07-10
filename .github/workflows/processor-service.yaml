@@ -61,7 +61,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
-            WORK_DIR=backend/e4h-services/processor-services
+            WORK_DIR=E4H_Digital_Platform/backend/e4h-services/processor-services
             
 
 #  Workflow_Trigger:
