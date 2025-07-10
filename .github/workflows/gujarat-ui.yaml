@@ -54,7 +54,7 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
-          context: .
+          context: frontend/micro-ui
           file: web/docker/testfile/Dockerfile
           push: true
           tags: selcohub/gujarat-ui:${{ env.VERSION }}-${{ env.commit_hash }}
@@ -62,7 +62,6 @@ jobs:
           cache-to: type=gha,mode=max  # max- stores all the layers including the intermediate layers in multi-stage
           build-args: |
             PUBLIC_PATH="/gujarat/"
-            WORK_DIR=frontend/micro-ui
             
 
 #  Workflow_Trigger:
