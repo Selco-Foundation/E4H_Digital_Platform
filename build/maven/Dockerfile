@@ -5,8 +5,6 @@ WORKDIR /app
 
 # copy the project files
 COPY ${WORK_DIR}/pom.xml ./pom.xml
-RUN pwd && cd backend/e4h-services/processor-services
-RUN pwd
 COPY build/maven/start.sh ./start.sh
 
 # not useful for stateless builds
