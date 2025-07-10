@@ -146,7 +146,8 @@ public class PrioritySLAService {
                     slaRemaining,
                     totalSlaRemaining,
                     stateSla,
-                    updatedBusinessService
+                    updatedBusinessService,
+                    totalSla.toMillis()
             );
         }
     }
