@@ -60,7 +60,6 @@ jobs:
           tags: selcohub/processor-services:${{ env.VERSION }}-${{ env.commit_hash }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          builder: buildx
           build-args: |
             WORK_DIR=backend/e4h-services/processor-services
             
