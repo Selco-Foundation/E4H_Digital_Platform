@@ -61,7 +61,7 @@ jobs:
           cache-from: type=gha   # Stores cache in GitHub Actions .
           cache-to: type=gha,mode=max  # max- stores all the layers including the intermediate layers in multi-stage
           build-args: |
-            PUBLIC_PATH="/gujarat/"
+            PUBLIC_PATH=/gujarat/
             WORK_DIR=frontend/micro-ui/
 
 #  Workflow_Trigger:
