@@ -1,16 +1,16 @@
-
+# syntax=docker/dockerfile:1.4
 FROM maven:3.8.4-openjdk-17-slim AS build
 ARG WORK_DIR
 WORKDIR /app
 
 # copy the project files
-COPY ${WORK_DIR}/pom.xml ./pom.xml
-COPY build/maven/start.sh ./start.sh
+COPY --link ${WORK_DIR}/pom.xml ./pom.xml
+COPY --link build/maven/start.sh ./start.sh
 
 # not useful for stateless builds
 # RUN mvn -B dependency:go-offline
 
-COPY ${WORK_DIR}/src ./src
+COPY --link ${WORK_DIR}/src ./src
 RUN mvn -B -f /app/pom.xml package
 
 
