@@ -20,6 +20,7 @@ export const QCService = {
     const headers = {
       "Content-Type" : "application/json"
     }
+
     return await Request({
       url : endpoint,
       data : queryObj,
@@ -78,6 +79,7 @@ export const QCService = {
       url : endpoint,
       data : queryObj,
       method : "POST",
+      userService : true,
       auth : true,
       params : params,
       headers : headers,
@@ -85,7 +87,7 @@ export const QCService = {
   },
 
   fetchImageFromFileStore : async (fileStoreId) => {
-    const endpoint = `/filestore/v1/files/url`;
+    const endpoint = "/filestore/v1/files/url";
     const params = {
       tenantId : "in",
       fileStoreIds : fileStoreId
@@ -96,6 +98,38 @@ export const QCService = {
       method : "GET",
       params : params,
     })
+  },
+
+  updateProjectWorkflow : async (projectId, action, comment) => {
+    const endpoint = "/project/v1/project/workflow/update";
+
+    const queryObj = {
+      workflow: {
+        action: action,
+        comment: comment
+      },
+      transactions: [
+        {
+          comments: [
+            {
+              commentMessage: comment
+            }
+          ]
+        }
+      ]
+    }
+    const headers = {
+      "Content-Type" : "application/json"
+    }
+
+    return await Request({
+      url : endpoint,
+      data : queryObj,
+      method : "POST",
+      userService : true,
+      auth : true,
+      headers : headers,
+    });
   }
 
 }

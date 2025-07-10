@@ -1,19 +1,35 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Section from "./Section";
 import RejectionReasonModal from "./RejectionReasonModal";
 import SystemParameterReport from "./SystemParameterReport";
 import SingleRejectionReasonModal from "./SingleRejectionReasonModal";
+import { useDispatch, useSelector } from "react-redux";
+import { setRejectionReasons } from "../../../../redux/actions";
 
-const Summary = ({ sectionName, count, specifications, details, items, images, videos, pdf, onPdfRemove, isReport }) => {
+const Summary = ({ sectionName, count, specifications, details, items, images, videos, pdf, isReport }) => {
+
   const [expanded, setExpanded] = useState(false);
   const [showRejectionModal, setShowRejectionModal] = useState(false);
-  const [rejectionData, setRejectionData] = useState([{ id: Date.now(), type: "", note: "" }]);
+  const rejectionReasons = useSelector((state) => state.qc.rejectionReasons);
+  const [rejectionData, setRejectionData] = useState(rejectionReasons?.[sectionName] || []);
   const [activeReasonId, setActiveReasonId] = useState(null);
+  const dispatch = useDispatch();
 
   const handleSave = (data) => {
-    console.log('Saved Rejection Reasons:', data);
-    setRejectionData(data);
+    setRejectionData([...rejectionData, ...data?.filter((reason) => reason?.reason?.trim())]);
   };
+
+  const handleUpdate = (reason) => {
+    setRejectionData(rejectionData.map((r) => r.id === reason.id ? reason : r));
+  };
+
+  const handleDelete = (reason) => {
+    setRejectionData(rejectionData.filter((r) => r.id !== reason.id));
+  };
+
+  useEffect(() => {
+    dispatch(setRejectionReasons(sectionName, rejectionData))
+  }, [rejectionData]);
 
   return (
     <div
@@ -38,12 +54,11 @@ const Summary = ({ sectionName, count, specifications, details, items, images, v
           justifyContent: "space-between",
           alignItems: "center",
           backgroundColor: "#fff",
-          cursor: "pointer",
           borderBottom: expanded ? "1px solid #eee" : "none",
         }}
       >
         <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-          <h2 style={{ margin: 0, color: "#004d66" }}>{isReport ? `System Parameter Report` : `${sectionName} Summary`}</h2>
+          <h2 style={{ margin: 0, color: "#004d66" }}>{isReport ? `Installation Completion Report` : `${sectionName} Summary`}</h2>
           <button
             style={{
               width: "32px",
@@ -80,7 +95,7 @@ const Summary = ({ sectionName, count, specifications, details, items, images, v
 
       {expanded && (
         isReport ? (
-          pdf && <SystemParameterReport pdf={pdf} onRemove={onPdfRemove} />
+          pdf && <SystemParameterReport pdf={pdf} />
         ) : (
           <div style={{ padding: "20px" }}>
             <Section title="Count">
@@ -179,13 +194,12 @@ const Summary = ({ sectionName, count, specifications, details, items, images, v
         <RejectionReasonModal
           onClose={() => setShowRejectionModal(false)}
           onSave={handleSave}
-          existingReasons={rejectionData}
         />
       )}
 
-      {rejectionData.filter((reason) => reason.type.trim()).length > 0 && (
+      {rejectionData.filter((reason) => reason.reason.trim()).length > 0 && (
         <div style={{display: "flex", gap: "10px", alignItems: "center", paddingLeft: "20px", paddingRight: "20px"}}>
-          {rejectionData.filter((reason) => reason.type.trim()).map((reason, index) => (
+          {rejectionData.filter((reason) => reason.reason.trim()).map((reason, index) => (
             <div key={reason.id}>
               <div>
                 <button
@@ -206,9 +220,9 @@ const Summary = ({ sectionName, count, specifications, details, items, images, v
               {activeReasonId && activeReasonId === reason.id && (
                 <SingleRejectionReasonModal
                   onClose={() => setActiveReasonId(null)}
-                  onSave={handleSave}
-                  existingReasons={rejectionData}
-                  id={reason.id}
+                  onUpdate={handleUpdate}
+                  onDelete={handleDelete}
+                  existingReason={reason}
                   name={`Reason ${index + 1}`}
                 />
               )}

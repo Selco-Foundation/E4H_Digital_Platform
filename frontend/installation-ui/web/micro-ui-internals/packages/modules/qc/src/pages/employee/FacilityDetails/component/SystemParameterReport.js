@@ -1,6 +1,6 @@
 import React from "react";
 
-const SystemParameterReport = ({ pdf, onRemove }) => {
+const SystemParameterReport = ({ pdf }) => {
   return (
     <div>
       <div style={{ padding: "20px" }}>
@@ -21,22 +21,6 @@ const SystemParameterReport = ({ pdf, onRemove }) => {
               <div style={{ color: '#666', fontSize: '14px' }}>{pdf.size}</div>
             </div>
           </div>
-          <button
-            onClick={onRemove}
-            style={{
-              background: 'none',
-              border: '1px solid #eee',
-              fontSize: '16px',
-              color: '#555',
-              position: 'absolute',
-              top: '6px',
-              right: '6px',
-              cursor: 'pointer'
-            }}
-            aria-label="Remove PDF"
-          >
-            X
-          </button>
         </div>
       </div>
     </div>

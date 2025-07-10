@@ -1,27 +1,21 @@
 import React, { useEffect, useState } from "react";
 import Summary from "./component/Summary";
-import ApproveButton from "./component/ApproveButton";
+import QCActions from "./component/QCActions";
 import AuditTrial from "./component/AuditTrial";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { QCService } from "../Service/QCService";
+import { clearRejectionReasons } from "../../../redux/actions";
 
 const FacilityDetails = ({t}) => {
 
-  const selectedFacility = useSelector((state) => state.qc.reports.selectedFacility);
+  const selectedFacility = useSelector((state) => state.qc.common.selectedFacility);
   const [fetchedData, setData] = useState([]);
+  const dispatch = useDispatch();
 
   const [pdfFile, setPdfFile] = useState({
     name: "Alkod.pdf",
     size: "3.5 MB"
   });
-
-  const handleRemovePdf = () => {
-    setPdfFile(null);
-  };
-
-  const handleApprove = () => {
-    alert("Approved!");
-  };
 
   const getAssetName = (assetTypeID) => {
     switch(assetTypeID) {
@@ -130,6 +124,12 @@ const FacilityDetails = ({t}) => {
       })
   }, []);
 
+  useEffect(() => {
+    return () => {
+      dispatch(clearRejectionReasons());
+    }
+  }, []);
+
   const hospitalDetails = {
     ...selectedFacility,
     healthFacilityType: "Loc 1"
@@ -209,8 +209,10 @@ const FacilityDetails = ({t}) => {
           items={asset?.items}
         />
       })}
-      {pdfFile && <Summary pdf={pdfFile} onPdfRemove={handleRemovePdf} isReport={true} />}
-      <ApproveButton />
+
+      {pdfFile && <Summary sectionName="InstallationCompletionReport" pdf={pdfFile} isReport={true} />}
+
+      <QCActions />
     </div>
   );
 }

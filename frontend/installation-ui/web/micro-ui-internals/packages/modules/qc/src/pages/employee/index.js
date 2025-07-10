@@ -12,7 +12,7 @@ const QCApp = () => {
   const { t } = useTranslation();
   const { path } = useRouteMatch();
   const match = useRouteMatch();
-  const navigator = useSelector((state) => state.qc.reports);
+  const navigator = useSelector((state) => state.qc.common);
 
   const breadcrumbConfig = {
     home: {

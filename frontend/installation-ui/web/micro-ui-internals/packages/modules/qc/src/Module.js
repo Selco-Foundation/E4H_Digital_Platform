@@ -16,10 +16,11 @@ const QCModule = ({ stateCode, userType, tenants }) => {
   const moduleCode = "QC";
   const language = Digit.StoreData.getCurrentLanguage();
   const { isLoading, data: store } = Digit.Services.useStore({ stateCode, moduleCode, language });
-  const qcStore = useSelector((state) => state.qc.reports);
+  const qcStore = useSelector((state) => state.qc);
 
   useEffect(() => {
-    localStorage.setItem("qcStore", JSON.stringify(qcStore));
+    sessionStorage.setItem("qcStore", JSON.stringify(qcStore?.common));
+    sessionStorage.setItem("rejectionReasons", JSON.stringify(qcStore?.rejectionReasons));
   }, [qcStore]);
 
   if (isLoading) {

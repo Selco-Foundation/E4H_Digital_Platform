@@ -10,7 +10,7 @@ import { QCService } from "../Service/QCService";
 const FacilityTable = ({ t, getCellProps, onNextPage, onPrevPage, currentPage, totalRecords, pageSizeLimit, onPageSizeChange }) => {
   const [mainCheck, setMainCheck] = useState(false);
   const dispatch = useDispatch();
-  const selectedFieldPlan = useSelector((state) => state.qc.reports.selectedFieldPlan);
+  const selectedFieldPlan = useSelector((state) => state.qc.common.selectedFieldPlan);
   const [filters, setFilters] = useState({
     district: null,
     block: null,
@@ -85,14 +85,14 @@ const FacilityTable = ({ t, getCellProps, onNextPage, onPrevPage, currentPage, t
       setSelectedFacilities(
         refactoredData
           .filter((row) => row?.status.toUpperCase() !== "APPROVED" && row?.status.toUpperCase() !== "SCHEDULED")
-          .map((row) => row.facilityId)
+          .map((row) => row.id)
       );
     } else {
       setSelectedFacilities([]);
     }
   };
 
-  const sideCheckboxChange = (sideCheckboxId, facilityId) => {
+  const sideCheckboxChange = (sideCheckboxId, id) => {
     const newSideCheck = sideCheck;
     Object.keys(newSideCheck).forEach((side) => {
       if(side === sideCheckboxId)
@@ -102,11 +102,10 @@ const FacilityTable = ({ t, getCellProps, onNextPage, onPrevPage, currentPage, t
     setSideCheck(newSideCheck);
     setMainCheck(false);
 
-    const existing = selectedFacilities.filter((facility) => facility === facilityId);
-    if (existing.length > 0) {
-      setSelectedFacilities(selectedFacilities.filter((facility) => facility !== facilityId));
+    if (selectedFacilities.some((facilityId) => facilityId === id)) {
+      setSelectedFacilities(selectedFacilities.filter((facilityId) => facilityId !== id));
     } else {
-      setSelectedFacilities([...selectedFacilities, facilityId]);
+      setSelectedFacilities([...selectedFacilities, id]);
     }
   };
 
@@ -123,7 +122,7 @@ const FacilityTable = ({ t, getCellProps, onNextPage, onPrevPage, currentPage, t
           <div style={{ marginTop: "-1.2em" }}>
             <CheckBox
               checked={sideCheck[`${row.original["id"]}`]}
-              onChange={() => sideCheckboxChange(`${row.original["id"]}`, row.original["facilityId"])}
+              onChange={() => sideCheckboxChange(`${row.original["id"]}`, row.original["id"])}
             />
           </div>
         ) : (

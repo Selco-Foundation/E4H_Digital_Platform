@@ -7,20 +7,21 @@ const reasonOptions = [
   "Incorrect Brand"
 ];
 
-const SingleRejectionReasonModal = ({ name, onClose, onSave, existingReasons, id }) => {
-  const [reasons, setReasons] = useState(existingReasons);
+const SingleRejectionReasonModal = ({ name, onClose, onUpdate, onDelete, existingReason }) => {
+
+  const [reason, setReason] = useState(existingReason);
 
   const updateReason = (id, key, value) => {
-    setReasons(reasons.map(r => r.id === id ? { ...r, [key]: value } : r));
+    setReason({ ...reason, [key]: value });
   };
 
-  const deleteReason = (id) => {
-    onSave(reasons.length === 1 ? [{ id: Date.now(), type: "", note: "" }] :  reasons.filter(r => r.id !== id));
+  const handleDeletion = (id) => {
+    onDelete(reason)
     onClose();
   };
 
   const handleSave = () => {
-    onSave(reasons);
+    onUpdate(reason);
     onClose();
   };
 
@@ -31,33 +32,28 @@ const SingleRejectionReasonModal = ({ name, onClose, onSave, existingReasons, id
           <h2 style={{ margin: 0 }}>Rejection Reason</h2>
           <button onClick={onClose} style={styles.closeBtn}>✕</button>
         </div>
-
-        {reasons.filter(r => r.id === id)
-          .map((reason) => (
-            <div key={reason.id} style={styles.reasonBlock}>
-              <div style={styles.reasonHeader}>
-                <strong>{name}</strong>
-                <button onClick={() => deleteReason(reason.id)} style={styles.trashBtn}>🗑</button>
-              </div>
-              <select
-                value={reason.type}
-                onChange={(e) => updateReason(reason.id, 'type', e.target.value)}
-                style={styles.select}
-              >
-                <option value="">Select a reason</option>
-                {reasonOptions.map((opt, i) => (
-                  <option key={i} value={opt}>{opt}</option>
-                ))}
-              </select>
-              <textarea
-                placeholder="Additional details for selected reason..."
-                value={reason.note}
-                onChange={(e) => updateReason(reason.id, 'note', e.target.value)}
-                style={styles.textarea}
-              />
+          <div key={reason.id} style={styles.reasonBlock}>
+            <div style={styles.reasonHeader}>
+              <strong>{name}</strong>
+              <button onClick={handleDeletion} style={styles.trashBtn}>🗑</button>
             </div>
-        ))}
-
+            <select
+              value={reason.reason}
+              onChange={(e) => updateReason(reason.id, 'reason', e.target.value)}
+              style={styles.select}
+            >
+              <option value="">Select a reason</option>
+              {reasonOptions.map((opt, i) => (
+                <option key={i} value={opt}>{opt}</option>
+              ))}
+            </select>
+            <textarea
+              placeholder="Additional details for selected reason..."
+              value={reason.comment}
+              onChange={(e) => updateReason(reason.id, 'comment', e.target.value)}
+              style={styles.textarea}
+            />
+          </div>
         <div style={styles.footer}>
           <button onClick={onClose} style={styles.cancelBtn}>Cancel</button>
           <button onClick={handleSave} style={styles.saveBtn}>Save</button>
@@ -96,7 +92,7 @@ const styles = {
     width: '100%', padding: 8, marginBottom: 8, fontSize: 14
   },
   textarea: {
-    width: '100%', padding: 8, fontSize: 14, minHeight: 60, resize: 'vertical'
+    width: '100%', padding: 8, fontSize: 14, minHeight: 60, resize: 'vertical', border: '1px solid #ccc'
   },
   addBtn: {
     display: 'flex', alignItems: 'center', justifyContent: 'center',

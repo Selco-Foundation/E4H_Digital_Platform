@@ -7,11 +7,12 @@ const reasonOptions = [
   "Incorrect Brand"
 ];
 
-const RejectionReasonModal = ({ onClose, onSave, existingReasons }) => {
-  const [reasons, setReasons] = useState(existingReasons);
+const RejectionReasonModal = ({ onClose, onSave }) => {
+
+  const [reasons, setReasons] = useState([{ id: Date.now(), reason: "", comment: "" }]);
 
   const addReason = () => {
-    setReasons([...reasons, { id: Date.now(), type: "", note: "" }]);
+    setReasons([...reasons, { id: Date.now(), reason: "", comment: "" }]);
   };
 
   const updateReason = (id, key, value) => {
@@ -42,8 +43,8 @@ const RejectionReasonModal = ({ onClose, onSave, existingReasons }) => {
               <button onClick={() => deleteReason(reason.id)} style={styles.trashBtn}>🗑</button>
             </div>
             <select
-              value={reason.type}
-              onChange={(e) => updateReason(reason.id, 'type', e.target.value)}
+              value={reason.reason}
+              onChange={(e) => updateReason(reason.id, 'reason', e.target.value)}
               style={styles.select}
             >
               <option value="">Select a reason</option>
@@ -53,9 +54,9 @@ const RejectionReasonModal = ({ onClose, onSave, existingReasons }) => {
             </select>
             <textarea
               placeholder="Additional details for selected reason..."
-              value={reason.note}
-              onChange={(e) => updateReason(reason.id, 'note', e.target.value)}
-              style={styles.textarea}
+              value={reason.comment}
+              onChange={(e) => updateReason(reason.id, 'comment', e.target.value)}
+              style={styles?.textarea}
             />
           </div>
         ))}
@@ -100,7 +101,7 @@ const styles = {
     width: '100%', padding: 8, marginBottom: 8, fontSize: 14
   },
   textarea: {
-    width: '100%', padding: 8, fontSize: 14, minHeight: 60, resize: 'vertical'
+    width: '100%', padding: 8, fontSize: 14, minHeight: 60, resize: 'vertical', border: '1px solid #ccc'
   },
   addBtn: {
     display: 'flex', alignItems: 'center', justifyContent: 'center',
