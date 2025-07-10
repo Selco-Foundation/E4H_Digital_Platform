@@ -62,7 +62,7 @@ jobs:
           cache-to: type=gha,mode=max  # max- stores all the layers including the intermediate layers in multi-stage
           build-args: |
             PUBLIC_PATH="/gujarat/"
-            
+            WORK_DIR=.
 
 #  Workflow_Trigger:
 #    if: startsWith(github.ref, 'refs/heads/develop')
