@@ -9,24 +9,25 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:isar/isar.dart';
 import 'package:location/location.dart';
-import 'package:selco/blocs/auth/user_otp.dart';
-import 'package:selco/blocs/cache_add_new_asset/cache_add_new_asset.dart';
-import 'package:selco/blocs/cache_asset_detail/cache_asset_detail.dart';
-import 'package:selco/blocs/cache_completion_report/cache_completion_report.dart';
-import 'package:selco/blocs/cache_media_upload/cache_media_upload.dart';
-import 'package:selco/blocs/cache_specification/cache_specification.dart';
-import 'package:selco/blocs/cache_sync_record/cache_sync_record.dart';
-import 'package:selco/blocs/overall_asset_summary/overall_asset_summary.dart';
 
 import 'blocs/app_init/app_init.dart';
+import 'blocs/asset_rejection/asset_rejection.dart';
 import 'blocs/asset_submission/asset_submission.dart';
 import 'blocs/asset_summary/asset_summary.dart';
 import 'blocs/auth/authbloc.dart';
+import 'blocs/auth/user_otp.dart';
+import 'blocs/cache_add_new_asset/cache_add_new_asset.dart';
 import 'blocs/cache_asset/cache_asset.dart';
 import 'blocs/cache_asset_count/cache_asset_count.dart';
+import 'blocs/cache_asset_detail/cache_asset_detail.dart';
+import 'blocs/cache_completion_report/cache_completion_report.dart';
+import 'blocs/cache_media_upload/cache_media_upload.dart';
 import 'blocs/cache_project_asset/cache_project_asset.dart';
+import 'blocs/cache_specification/cache_specification.dart';
+import 'blocs/cache_sync_record/cache_sync_record.dart';
 import 'blocs/localization/app_localization.dart';
 import 'blocs/localization/localization.dart';
+import 'blocs/overall_asset_summary/overall_asset_summary.dart';
 import 'blocs/project/project.dart';
 import 'blocs/user_type/user_type.dart';
 import 'data/app_shared_preferences.dart';
@@ -118,6 +119,7 @@ class _MainAppState extends State<MainApp> {
             BlocProvider(create: (context) => CacheAssetBloc(widget.isar)),
             BlocProvider(
                 create: (context) => CacheCompletionReportBloc(widget.isar)),
+            BlocProvider(create: (context) => RejectionBloc())
           ],
           child: BlocBuilder<AppInitialization, InitState>(
             builder: (context, state) => state.maybeWhen(

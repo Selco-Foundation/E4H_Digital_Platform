@@ -1,7 +1,9 @@
 import 'package:isar/isar.dart';
 
+import '../../model/comment/comment.dart';
 import '../../model/entities/address.dart';
 import '../../model/projects/project.dart';
+import '../../model/transaction/transaction.dart';
 
 part 'cache_project_workflow.g.dart';
 

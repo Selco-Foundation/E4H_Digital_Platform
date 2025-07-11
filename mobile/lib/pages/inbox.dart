@@ -127,49 +127,6 @@ class _InboxPageState extends State<InboxPage> {
                           style: textTheme.headingXl.copyWith(
                               color: theme.colorTheme.primary.primary2),
                         ),
-                        const SizedBox(width: spacer8),
-                        GestureDetector(
-                          onTap: () {
-                            // Select User role
-                            context
-                                .read<UserTypeBloc>()
-                                .add(const UserTypeEvent.typeSelected("user"));
-                            setState(() {
-                              _selectedTabIndex = 0;
-                            });
-                            context
-                                .read<InboxTypeBloc>()
-                                .add(const InboxTypeEvent.typeSelected(1));
-                            _fetchProjects(
-                                context.read<UserTypeBloc>().state, 0);
-                          },
-                          child: Text(
-                            'User',
-                            style: textTheme.bodyS.copyWith(
-                                color: theme.colorTheme.paper.secondary),
-                          ),
-                        ),
-                        const SizedBox(width: spacer4),
-                        GestureDetector(
-                          onTap: () {
-                            // Select Supervisor role
-                            context.read<UserTypeBloc>().add(
-                                const UserTypeEvent.typeSelected("supervisor"));
-                            setState(() {
-                              _selectedTabIndex = 0;
-                            });
-                            context
-                                .read<InboxTypeBloc>()
-                                .add(const InboxTypeEvent.typeSelected(0));
-                            _fetchProjects(
-                                context.read<UserTypeBloc>().state, 0);
-                          },
-                          child: Text(
-                            'Supervisor',
-                            style: textTheme.bodyS.copyWith(
-                                color: theme.colorTheme.paper.secondary),
-                          ),
-                        ),
                       ],
                     ),
                     const SizedBox(height: spacer4),

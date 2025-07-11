@@ -113,6 +113,12 @@ const ProjectModelSchema = Schema(
       id: 19,
       name: r'tenantId',
       type: IsarType.string,
+    ),
+    r'transactions': PropertySchema(
+      id: 20,
+      name: r'transactions',
+      type: IsarType.objectList,
+      target: r'Transaction',
     )
   },
   estimateSize: _projectModelEstimateSize,
@@ -202,6 +208,20 @@ int _projectModelEstimateSize(
       bytesCount += 3 + value.length * 3;
     }
   }
+  {
+    final list = object.transactions;
+    if (list != null) {
+      bytesCount += 3 + list.length * 3;
+      {
+        final offsets = allOffsets[Transaction]!;
+        for (var i = 0; i < list.length; i++) {
+          final value = list[i];
+          bytesCount +=
+              TransactionSchema.estimateSize(value, offsets, allOffsets);
+        }
+      }
+    }
+  }
   return bytesCount;
 }
 
@@ -236,6 +256,12 @@ void _projectModelSerialize(
   writer.writeDateTime(offsets[17], object.startDateTime);
   writer.writeString(offsets[18], object.subProjectTypeId);
   writer.writeString(offsets[19], object.tenantId);
+  writer.writeObjectList<Transaction>(
+    offsets[20],
+    allOffsets,
+    TransactionSchema.serialize,
+    object.transactions,
+  );
 }
 
 ProjectModel _projectModelDeserialize(
@@ -267,6 +293,12 @@ ProjectModel _projectModelDeserialize(
     startDate: reader.readLongOrNull(offsets[16]),
     subProjectTypeId: reader.readStringOrNull(offsets[18]),
     tenantId: reader.readStringOrNull(offsets[19]),
+    transactions: reader.readObjectList<Transaction>(
+      offsets[20],
+      TransactionSchema.deserialize,
+      allOffsets,
+      Transaction(),
+    ),
   );
   object.endDateTime = reader.readDateTimeOrNull(offsets[4]);
   object.startDateTime = reader.readDateTimeOrNull(offsets[17]);
@@ -324,6 +356,13 @@ P _projectModelDeserializeProp<P>(
       return (reader.readStringOrNull(offset)) as P;
     case 19:
       return (reader.readStringOrNull(offset)) as P;
+    case 20:
+      return (reader.readObjectList<Transaction>(
+        offset,
+        TransactionSchema.deserialize,
+        allOffsets,
+        Transaction(),
+      )) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
   }
@@ -2595,6 +2634,113 @@ extension ProjectModelQueryFilter
       ));
     });
   }
+
+  QueryBuilder<ProjectModel, ProjectModel, QAfterFilterCondition>
+      transactionsIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'transactions',
+      ));
+    });
+  }
+
+  QueryBuilder<ProjectModel, ProjectModel, QAfterFilterCondition>
+      transactionsIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'transactions',
+      ));
+    });
+  }
+
+  QueryBuilder<ProjectModel, ProjectModel, QAfterFilterCondition>
+      transactionsLengthEqualTo(int length) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'transactions',
+        length,
+        true,
+        length,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<ProjectModel, ProjectModel, QAfterFilterCondition>
+      transactionsIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'transactions',
+        0,
+        true,
+        0,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<ProjectModel, ProjectModel, QAfterFilterCondition>
+      transactionsIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'transactions',
+        0,
+        false,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<ProjectModel, ProjectModel, QAfterFilterCondition>
+      transactionsLengthLessThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'transactions',
+        0,
+        true,
+        length,
+        include,
+      );
+    });
+  }
+
+  QueryBuilder<ProjectModel, ProjectModel, QAfterFilterCondition>
+      transactionsLengthGreaterThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'transactions',
+        length,
+        include,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<ProjectModel, ProjectModel, QAfterFilterCondition>
+      transactionsLengthBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'transactions',
+        lower,
+        includeLower,
+        upper,
+        includeUpper,
+      );
+    });
+  }
 }
 
 extension ProjectModelQueryObject
@@ -2603,6 +2749,13 @@ extension ProjectModelQueryObject
       FilterQuery<AddressModel> q) {
     return QueryBuilder.apply(this, (query) {
       return query.object(q, r'address');
+    });
+  }
+
+  QueryBuilder<ProjectModel, ProjectModel, QAfterFilterCondition>
+      transactionsElement(FilterQuery<Transaction> q) {
+    return QueryBuilder.apply(this, (query) {
+      return query.object(q, r'transactions');
     });
   }
 }

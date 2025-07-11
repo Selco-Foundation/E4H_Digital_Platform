@@ -63,7 +63,9 @@ const CacheProjectWorkflowSchema = CollectionSchema(
   links: {},
   embeddedSchemas: {
     r'ProjectModel': ProjectModelSchema,
-    r'AddressModel': AddressModelSchema
+    r'AddressModel': AddressModelSchema,
+    r'Transaction': TransactionSchema,
+    r'Comment': CommentSchema
   },
   getId: _cacheProjectWorkflowGetId,
   getLinks: _cacheProjectWorkflowGetLinks,
