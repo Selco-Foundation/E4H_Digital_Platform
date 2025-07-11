@@ -42,49 +42,6 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
     });
   }
 
-  // Future<void> _sendBackReport(BuildContext popupCtx) async {
-  //   Navigator.of(popupCtx).pop(); // dismiss popup
-  //
-  //   final projectState = context.read<SelectedProjectBloc>().state;
-  //   final projectId = projectState.whenOrNull(
-  //     selected: (proj) => proj.project.id,
-  //   );
-  //   if (projectId == null) {
-  //     context.showSnackBar(
-  //       const SnackBar(content: Text("No project selected")),
-  //     );
-  //     return;
-  //   }
-  //
-  //   // show a loading indicator over the popup
-  //   showDialog(
-  //     context: context,
-  //     barrierDismissible: false,
-  //     builder: (_) => const Center(child: CircularProgressIndicator()),
-  //   );
-  //
-  //   try {
-  //     final repo = ProjectRemoteRepository();
-  //     await repo.updateProjectWorkflow(
-  //       projectId: projectId,
-  //       action: WORKFLOW_ACTIONS.SUBMIT_REPORT_B.name,
-  //     );
-  //
-  //     // close the loading dialog
-  //     Navigator.of(context).pop();
-  //
-  //     context.showSnackBar(
-  //       const SnackBar(content: Text("Report sent back successfully")),
-  //     );
-  //     context.router.replace(const InboxRoute());
-  //   } catch (e) {
-  //     Navigator.of(context).pop();
-  //     context.showSnackBar(
-  //       SnackBar(content: Text("Failed to send back: $e")),
-  //     );
-  //   }
-  // }
-
   Future<void> _sendBackReport(BuildContext popupCtx) async {
     // 1. Dismiss the confirmation popup
     Navigator.of(popupCtx).pop();

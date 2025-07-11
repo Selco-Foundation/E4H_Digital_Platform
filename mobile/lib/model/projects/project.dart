@@ -3,6 +3,7 @@ import 'package:dart_mappable/dart_mappable.dart';
 import 'package:isar/isar.dart';
 
 import '../entities/address.dart';
+import '../transaction/transaction.dart';
 
 part 'project.g.dart';
 part 'project.mapper.dart';
@@ -97,6 +98,7 @@ class ProjectModel with ProjectModelMappable {
   String? tenantId;
   int? rowVersion;
   AddressModel? address;
+  List<Transaction>? transactions;
 
   DateTime? startDateTime;
   DateTime? endDateTime;
@@ -118,6 +120,7 @@ class ProjectModel with ProjectModelMappable {
     this.tenantId,
     this.rowVersion,
     this.address,
+    this.transactions,
     int? startDate,
     int? endDate,
   })  : startDateTime = startDate == null

@@ -170,22 +170,10 @@ class AssetSubmissionBloc
             final file = File(saved.photoPath);
             if (await file.exists()) {
               final photoId = await repo.uploadFile(file);
-              // final geo = <String, dynamic>{};
-              // if (saved.latitude.isNotEmpty && saved.longitude.isNotEmpty) {
-              //   geo['latitude'] = saved.latitude;
-              //   geo['longitude'] = saved.longitude;
-              // }
-              // documents.add({
-              //   "documentType": saved.documentType,
-              //   "fileStore": photoId,
-              //   "documentUid": "DOC-PHOTO-${saved.serialNumber}",
-              //   if (geo.isNotEmpty) "geoLocation": geo,
-              // });
               documents.add(Document(
-                // id: 'DOCUMENT-0199',
                 documentType: saved.documentType,
                 fileStore: photoId,
-                documentUid: "DOC-PHOTO-${saved.serialNumber}",
+                documentUid: "DOC-ASSET-${saved.serialNumber}",
                 additionalDetails: null,
                 geoLocation: GeoLocation(
                   latitude: saved.latitude,
@@ -207,18 +195,6 @@ class AssetSubmissionBloc
             final mediaFile = File(m.filePath);
             if (!await mediaFile.exists()) continue;
             final mediaId = await repo.uploadFile(mediaFile);
-            // final geo = <String, dynamic>{};
-            // if (m.latitude.isNotEmpty && m.longitude.isNotEmpty) {
-            //   geo['latitude'] = m.latitude;
-            //   geo['longitude'] = m.longitude;
-            // }
-            // documents.add({
-            //   "documentType": m.itemType,
-            //   "fileStore": mediaId,
-            //   "documentUid":
-            //       "DOC-${m.itemType}-${m.id}-${m.itemNumber}-${m.assetType}-${DateTime.now().toUtc().toIso8601String()}",
-            //   if (geo.isNotEmpty) "geoLocation": geo,
-            // });
 
             documents.add(Document(
               // id: 'DOCUMENT-0199',
@@ -243,68 +219,6 @@ class AssetSubmissionBloc
           final endIso = userType == USER_TYPES.FIELD_STAFF.name
               ? ""
               : now.add(Duration(days: 365 * years)).toIso8601String();
-
-          final payload2 = {
-            "assetDetail": {
-              "Asset": {
-                if (saved.assetId != null) ...{
-                  "assetId": saved.assetId,
-                },
-                "tenantId": envConfig.variables.tenantId,
-                "facilityID": facilityId,
-                "assetTypeID": type.toUpperCase(),
-                "system": spec.system,
-                "serialNumber": saved.serialNumber,
-                "brandID": detail.brand,
-                "assetDetails": {
-                  "totalCapacity": spec.totalCapacity,
-                  "totalCapacityUnit": spec.totalCapacityUnit,
-                  if (type == 'panel') ...{
-                    // "panelCapacity": saved.itemNumber, //todo update values in mdms data
-                    "capacityUnit": "Wp",
-
-                    "panelCapacity": "34.1", // saved.itemNumber,
-
-                    "totalCapacity":
-                        67.2, //todo update values in mdms data to be removed
-                    "totalCapacityUnit":
-                        "kWp", //todo update values in mdms data to be removed
-                  },
-                  if (type == 'battery') ...{
-                    "batteryVoltage": "12",
-                    "batteryCapacity": "125",
-                    "voltageUnit": "Volts",
-                    "capacityUnit": "Ah",
-                    "batteryType": "Lithium",
-                    "totalCapacityUOM": "kWh",
-                  },
-                  if (type == 'inverter') ...{
-                    "totalCapacityUOM": spec.totalCapacityUnit,
-                    "inverterCapacity": saved.itemNumber,
-                    "invertorCapacityUnit": "kVA",
-                    "voltageUnit": "Volts",
-                    "currentUnit": "1",
-                  },
-                },
-                if (userType == USER_TYPES.SUPERVISOR) ...{
-                  "warrantyStartDate": startIso,
-                  "warrantyDuration":
-                      parseWarrantyYears(detail.warranty!), // years,
-                  "warrantyEndDate": endIso,
-                  "modelNumber": detail.model,
-                } else ...{
-                  //todo to be removed completely as only supervisors can submit below task
-                  "warrantyStartDate": "2025-06-26T09:05:44.877103Z",
-                  "warrantyDuration": "25",
-                  "warrantyEndDate": "2050-06-20T09:05:44.877103Z",
-                  "modelNumber": detail.model ?? "",
-                },
-                "wfStatus": "CREATED",
-                "isActive": true,
-                "documents": documents,
-              }
-            }
-          };
 
           // 1) Build AssetDetails with every field explicitly
           final assetDetails = AssetDetails(
@@ -361,23 +275,10 @@ class AssetSubmissionBloc
           );
 
           await repo.createOrUpdateAsset(asset: assetModel, isar: _isar);
-
-          // final payload = {
-          //   'assetDetail': {
-          //     'Asset': assetModel.toJson(),
-          //   },
-          // };
-          //
-          // await repo.createOrUpdateAsset(
-          //     payload: payload, assetId: saved.assetId, isar: _isar);
         }
       }
 
       final remoteRepo = ProjectRemoteRepository();
-      // await remoteRepo.updateProjectWorkflow(
-      //   projectId: projectId,
-      //   action: WORKFLOW_ACTIONS.CREATE_AND_SAVE_DRAFT.name,
-      // );
       final completionDocuments = <Document>[];
       final completionReport = await _isar.cacheCompletionReports
           .where()
@@ -388,20 +289,7 @@ class AssetSubmissionBloc
           final completionFile = File(completionReport.filePath);
           if (await completionFile.exists()) {
             final photoId = await repo.uploadFile(completionFile);
-            // final geo = <String, dynamic>{};
-            // if (completionReport.latitude.isNotEmpty &&
-            //     completionReport.longitude.isNotEmpty) {
-            //   geo['latitude'] = completionReport.latitude;
-            //   geo['longitude'] = completionReport.longitude;
-            // }
-            completionDocuments.add(
-                //     {
-                //   "documentType": "INSTALLATION REPORT",
-                //   "fileStore": photoId,
-                //   "documentUid": "INSTALLATION-REPORT-${photoId}",
-                //   if (geo.isNotEmpty) "geoLocation": geo,
-                // }
-                Document(
+            completionDocuments.add(Document(
               // id: 'DOCUMENT-0199',
               documentType: "INSTALLATION REPORT",
               fileStore: photoId,
