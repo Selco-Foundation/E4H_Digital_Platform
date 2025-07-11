@@ -274,7 +274,7 @@ public class AssetValidator {
 
     private void validateWarranty(Asset asset, Map<String, String> errorMap, Object mdmsWarrantyDurationData) {
         if (mdmsWarrantyDurationData == null || !(mdmsWarrantyDurationData instanceof List) || ((List<?>) mdmsWarrantyDurationData).isEmpty()) {
-            errorMap.put(ErrorConstants.ASSET_WARRANTY_DURATION_MDMS_DATA_CODE, ErrorConstants.ASSET_WARRANTY_DURATION_MDMS_DATA_MSG);
+//            errorMap.put(ErrorConstants.ASSET_WARRANTY_DURATION_MDMS_DATA_CODE, ErrorConstants.ASSET_WARRANTY_DURATION_MDMS_DATA_MSG);
             return;
         }
 
