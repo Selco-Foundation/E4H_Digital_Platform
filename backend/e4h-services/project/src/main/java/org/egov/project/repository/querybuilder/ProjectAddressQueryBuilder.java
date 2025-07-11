@@ -263,6 +263,13 @@ public class ProjectAddressQueryBuilder {
             preparedStmtList.add(urlParams.getLastChangedSince());
         }
 
+        // Check if parent is provided
+        if (StringUtils.isNotBlank(projectSearch.getParent())) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            queryBuilder.append(" prj.parent =? ");
+            preparedStmtList.add(projectSearch.getParent());
+        }
+
         // Check if createdFrom date is provided
         if (urlParams.getCreatedFrom() != null && urlParams.getCreatedFrom() != 0) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
