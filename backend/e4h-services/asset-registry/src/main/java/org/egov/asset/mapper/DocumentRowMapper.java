@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 //import digit.models.coremodels.Document;
 import org.egov.asset.web.models.Document;
+import org.egov.asset.web.models.GeoLocation;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Component;
 import java.io.IOException;
@@ -35,6 +36,16 @@ public class DocumentRowMapper {
             }
         } catch (IOException e) {
             throw new RuntimeException("Error parsing JSONB fields", e);
+        }
+        // Map latitude and longitude to geoLocation
+        double latitude = rs.getDouble("latitude");
+        double longitude = rs.getDouble("longitude");
+        if (!rs.wasNull()) {
+            GeoLocation geoLocation = GeoLocation.builder()
+                    .latitude(latitude)
+                    .longitude(longitude)
+                    .build();
+            document.setGeoLocation(geoLocation);
         }
         return document;
     }
