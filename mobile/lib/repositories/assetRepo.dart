@@ -15,6 +15,7 @@ import '../data/nosql/cache_specification.dart';
 import '../data/remote_client.dart';
 import '../model/asset/asset.dart';
 import '../model/entities/project_facility.dart';
+import '../model/transaction/transaction.dart';
 import '../repositories/project_facility_repo.dart';
 import '../utils/envConfig.dart';
 import '../utils/utils.dart';
@@ -538,7 +539,7 @@ class AssetRepository {
             projectId: projectId,
             assetType: type,
             brand: first.brandID ?? '',
-            model: first.modelNumber,
+            model: first.modelNumber ?? '',
             warranty: first.warrantyDuration?.toString(),
           );
           var detailEntry = await isar.cacheAssetDetails
@@ -561,7 +562,7 @@ class AssetRepository {
 
           // — upsert each asset’s “main photo” in CacheAddNewAsset
           for (var asset in list) {
-            final serial = asset.system ?? '';
+            final serial = asset.serialNumber ?? '';
             // delete old by serial
             final oldList = await isar.cacheAddNewAssets
                 .where()
@@ -577,7 +578,7 @@ class AssetRepository {
 
             // find all PHOTO documents
             for (var doc in asset.documents ?? []) {
-              if (doc.documentType == 'PHOTO') {
+              if (doc.documentType == 'PHOTO' || doc.documentType == 'ASSET') {
                 //todo CHANGE TO 'ASSET'
                 print("document Type ${doc.documentType}");
                 print("fileStore ${doc.fileStore}");
@@ -610,7 +611,7 @@ class AssetRepository {
           print("oldMedia $oldMedia");
           for (var asset in list) {
             for (var doc in asset.documents ?? []) {
-              if (doc.documentType != 'ASSET') {
+              if (doc.documentType != 'ASSET' && doc.documentType != 'PHOTO') {
                 //todo CHANGE TO 'ASSET'
                 await isar.cacheMediaUploads.put(
                   CacheMediaUpload(
@@ -631,6 +632,36 @@ class AssetRepository {
     } on DioError catch (e) {
       print(e);
       throw DioErrorParser.parse(e);
+    }
+  }
+
+  /// Submit “reject” with reasons
+  Future<void> submitRejection({
+    required String projectId,
+    String action = "REJECT",
+    required List<Transaction> transactions,
+  }) async {
+    final payload = {
+      'projectId': projectId,
+      'workflow': {'action': action},
+      'transactions': transactions.map((t) {
+        final jsonString = t.toJson();
+        final m = jsonDecode(jsonString) as Map<String, dynamic>;
+        m.removeWhere((k, v) => v == null);
+      }).toList(),
+    };
+
+    try {
+      final resp = await _dio.post(
+        '/project/v1/project/workflow/update',
+        data: payload,
+      );
+      if (resp.statusCode != 200 && resp.statusCode != 201) {
+        throw Exception('Reject responded ${resp.statusCode}');
+      }
+    } on DioError catch (dioErr) {
+      final msg = dioErr.response?.data?.toString() ?? dioErr.message;
+      throw DioErrorParser.parse(dioErr);
     }
   }
 

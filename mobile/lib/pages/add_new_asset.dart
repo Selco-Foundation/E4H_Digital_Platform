@@ -198,9 +198,9 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
       return _fileCache[path];
     }
 
-    if (path.startsWith(RegExp(r'https?://'))) {
+    if (isValidUuid(path) /* path.startsWith(RegExp(r'https?://')) */) {
       try {
-        final uri = Uri.parse(path);
+        final uri = Uri.parse("$fileStoreFileUrl$path");
         final response = await http.get(uri);
         if (response.statusCode == 200) {
           final dir = await getTemporaryDirectory();

@@ -2,8 +2,6 @@ import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:flutter/material.dart';
 
-import '../../utils/asset_images.dart';
-
 class Navbar extends StatelessWidget implements PreferredSizeWidget {
   final bool showMenu;
   final bool showLeading;
@@ -37,10 +35,14 @@ class Navbar extends StatelessWidget implements PreferredSizeWidget {
       title: Row(
         mainAxisAlignment: MainAxisAlignment.start,
         children: [
-          Image.asset(
-            AssetImages.DIGIT_LOGO,
-            height: spacer4,
-          ),
+          // Image.asset(
+          //   AssetImages.DIGIT_LOGO,
+          //   height: spacer4,
+          // ),
+          Text("E4H",
+              style: textTheme.headingM.copyWith(
+                color: const DigitColors().light.paperPrimary,
+              )),
           const SizedBox(width: spacer2),
           Container(
             width: 1, // to-do Need to ask about this vertical line
@@ -48,7 +50,7 @@ class Navbar extends StatelessWidget implements PreferredSizeWidget {
             color: const DigitColors().light.paperPrimary,
           ),
           const SizedBox(width: spacer2), // Reduced spacing
-          Text("SELCO",
+          Text("Asset Management",
               style: textTheme.bodyS.copyWith(
                 color: const DigitColors().light.paperPrimary,
               )),
