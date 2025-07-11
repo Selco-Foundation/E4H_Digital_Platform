@@ -134,11 +134,12 @@ public class UpdateService {
 		}
 	}
 
-	public void updateSlaFields(String incidentId, long slaRemaining, long totalSlaRemaining, long stateSla, String businessService) {
+	public void updateSlaFields(String incidentId, long slaRemaining, long totalSlaRemaining, long stateSla, String businessService, long totalSla) {
 		Map<String, Object> dataMap = new HashMap<>();
 		dataMap.put("slaRemaining", slaRemaining);
 		dataMap.put("totalSlaRemaining", totalSlaRemaining);
 		dataMap.put("stateSla", stateSla);
+		dataMap.put("definedTotalSla", totalSla);
 
 		if (businessService != null) {
 			Map<String, Object> currentProcessInstance = new HashMap<>();
