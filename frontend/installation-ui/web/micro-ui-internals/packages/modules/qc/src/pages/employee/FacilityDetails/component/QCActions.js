@@ -5,10 +5,16 @@ import { QCService } from "../../Service/QCService";
 const QCActions = () => {
 
   const rejectionReasons = useSelector((state) => state.qc.rejectionReasons);
+  const selectedFieldPlan = useSelector((state) => state.qc.common.selectedFieldPlan)
 
   const handleApprove = async () => {
-    const response = await QCService.updateProjectWorkflow("", "APPROVE", "");
-    console.log("Approved");
+    await QCService.updateProjectWorkflow(selectedFieldPlan.id, "APPROVE", "")
+      .then(response => {
+        console.debug("Approved", response);
+      })
+      .catch(error => {
+        console.error("Error approving", error);
+      })
   }
 
   const handleReject = async () => {
@@ -19,8 +25,13 @@ const QCActions = () => {
         rejectionReasonsToUpload[key] = rejectionReasons[key];
       }
     })
-    const response = await QCService.updateProjectWorkflow("", "APPROVE", JSON.stringify(rejectionReasonsToUpload));
-    console.log("Rejected");
+    await QCService.updateProjectWorkflow(selectedFieldPlan.id, "REJECT_AND_ASSIGN_FOR_FIELD_QC", JSON.stringify(rejectionReasonsToUpload))
+      .then(response => {
+        console.debug("Rejecting", response);
+      })
+      .catch(error => {
+        console.error("Error rejecting", error);
+      })
   }
 
   const handleFlagForQC = () => {

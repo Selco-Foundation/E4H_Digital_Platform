@@ -3,13 +3,8 @@ import Axios from "axios";
 
 export const QCService = {
 
-  fetchFieldPlans : async () => {
+  fetchProjects : async (queryFilter) => {
     const endpoint = "/project/v2/_search";
-    const queryObj = {
-      Project : {
-        projectTypeId: "FieldPlan"
-      }
-    };
     const params = {
       tenantId : "in",
       offset : 0,
@@ -23,7 +18,7 @@ export const QCService = {
 
     return await Request({
       url : endpoint,
-      data : queryObj,
+      data : queryFilter,
       userService : true,
       method : "POST",
       auth : true,
@@ -32,13 +27,8 @@ export const QCService = {
     });
   },
 
-  fetchFacilities : async (...projectIds) => {
+  fetchFacilities : async (queryFilter) => {
     const endpoint = "/project/facility/v1/_search";
-    const queryObj = {
-      "ProjectFacility": {
-        "projectId": [...projectIds]
-      }
-    };
     const params = {
       tenantId : "in",
       offset : 0,
@@ -51,7 +41,7 @@ export const QCService = {
 
     return await Request({
       url : endpoint,
-      data : queryObj,
+      data : queryFilter,
       method : "POST",
       userService : true,
       auth : true,
@@ -102,8 +92,8 @@ export const QCService = {
 
   updateProjectWorkflow : async (projectId, action, comment) => {
     const endpoint = "/project/v1/project/workflow/update";
-
     const queryObj = {
+      projectId: projectId,
       workflow: {
         action: action,
         comment: comment

@@ -7,11 +7,17 @@ import { Link, useRouteMatch } from "react-router-dom";
 import { useDispatch } from "react-redux";
 
 const FieldPlanTable = ({ t, getCellProps, onNextPage, onPrevPage, currentPage, totalRecords, pageSizeLimit, onPageSizeChange }) => {
+
   const [centreNameToSearch, setCentreNameToSearch] = useState("");
   const [fetchedData, setData] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
   const dispatch = useDispatch();
   const { path } = useRouteMatch();
+  const [queryFilter, setQueryFilter] = useState({
+    Project : {
+      projectTypeId: "FieldPlan"
+    }
+  });
 
   const submitFunc = () => {
     setFilteredData(fetchedData.filter((row) => row.code.includes(centreNameToSearch)));
@@ -23,12 +29,12 @@ const FieldPlanTable = ({ t, getCellProps, onNextPage, onPrevPage, currentPage, 
   };
 
   useEffect(async () => {
-    await QCService.fetchFieldPlans()
+    await QCService.fetchProjects(queryFilter)
       .then((response) => {
         setData(response?.Project);
       })
       .catch((error) => {
-        console.debug("Error fetching field plans", error);
+        console.error("Error fetching field plans", error);
       })
   }, []);
 
@@ -107,12 +113,14 @@ const FieldPlanTable = ({ t, getCellProps, onNextPage, onPrevPage, currentPage, 
   const refactoredData = fetchedData?.map((row) => {
     return {
       id: row?.project?.id,
-      name: row?.project?.projectNumber,
+      name: row?.project?.name || row?.project?.projectNumber,
       projectType: row?.project?.projectType,
       facilitiesCount: row?.project?.additionalDetails?.countFacilities,
       startDate: formatDate(row?.project?.startDate),
       endDate: formatDate(row?.project?.endDate),
-      completionRate: 30
+      completionRate: 30,
+      status: row?.status,
+      transactions: row?.transactions
     };
   })
 

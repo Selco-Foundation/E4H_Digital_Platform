@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { CheckBox, Table } from "@egovernments/digit-ui-react-components";
 import Filter from "./component/Filter";
 import InfoCard from "./component/InfoCard";
@@ -8,6 +8,7 @@ import { setSelectedFacility } from "../../../redux/actions";
 import { QCService } from "../Service/QCService";
 
 const FacilityTable = ({ t, getCellProps, onNextPage, onPrevPage, currentPage, totalRecords, pageSizeLimit, onPageSizeChange }) => {
+
   const [mainCheck, setMainCheck] = useState(false);
   const dispatch = useDispatch();
   const selectedFieldPlan = useSelector((state) => state.qc.common.selectedFieldPlan);
@@ -21,39 +22,86 @@ const FacilityTable = ({ t, getCellProps, onNextPage, onPrevPage, currentPage, t
   const [refactoredData, setRefactoredData] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
   const [sideCheck, setSideCheck] = useState({});
+  const [projectQueryFilter, setProjectQueryFilter] = useState({
+    Project : {
+      projectTypeId: "Facility",
+      parent: selectedFieldPlan.id,
+    }
+  });
+  const [facilityQueryFilter, setFacilityQueryFilter] = useState({
+    ProjectFacility: {
+      projectId: []
+    }
+  })
+  const projectMap = useRef(new Map());
 
   useEffect(async () => {
-    await QCService.fetchFacilities(selectedFieldPlan?.id)
-      .then((response) => {
-        setData(response?.ProjectFacilities)
-        const refactoredDataCopy = response?.ProjectFacilities?.map((row, index) => {
-          return {
-            id: index+1,
-            facilityId: row?.facilityId,
-            facility: row?.id,
-            project: selectedFieldPlan?.name,
-            block: "Konark",
-            district: "Raigarh",
-            assigned: "Sufi",
-            status: index % 2 === 0 ? "Pending Installation" : "Pending Approval",
-          }
-        });
+    await QCService.fetchProjects(projectQueryFilter)
+    .then((response) => {
 
-        setFilteredData(refactoredDataCopy);
-        setRefactoredData(refactoredDataCopy);
-        const newSideCheck = {};
-        refactoredDataCopy.forEach((row) => {
-          if(row?.status.toUpperCase() !== "APPROVED" && row?.status.toUpperCase() !== "SCHEDULED") {
-            newSideCheck[`${row?.id}`] = false;
-          }
+      setData(response?.Project);
+      setFacilityQueryFilter({
+        ProjectFacility: {
+          projectId: response?.Project?.map((row) => row.project.id)
+        }
+      })
+
+      projectMap.current = new Map();
+      response?.Project?.forEach((row) => {
+        projectMap.current.set(row.project.id, row);
+      })
+    })
+    .catch((error) => {
+      console.error("Error fetching facilities", error);
+    })
+
+  }, [projectQueryFilter]);
+
+  useEffect(async () => {
+
+    if (facilityQueryFilter.ProjectFacility.projectId.length > 0) {
+      await QCService.fetchFacilities(facilityQueryFilter)
+        .then((response) => {
+
+          response?.ProjectFacilities?.forEach((row) => {
+            projectMap.current.set(
+              row.projectId,
+              {...projectMap.current.get(row.projectId), facility: row}
+            );
+          })
+
+          const refactoredDataCopy = Array.from(projectMap.current.values()).map((row, index) => {
+            return {
+              id: index+1,
+              facilityId: row?.facility?.facilityId,
+              facilityProjectId: row?.facility?.id,
+              projectName: selectedFieldPlan?.name,
+              projectId:row?.project?.id,
+              parentId:row?.project?.parent,
+              block: row?.project?.address?.boundary || "-",
+              district: row?.project?.address?.city || "-",
+              assigned: row?.workflow?.assignes || "-",
+              status: t(row?.status) || "-",
+            }
+          });
+
+          setFilteredData(refactoredDataCopy);
+          setRefactoredData(refactoredDataCopy);
+          const newSideCheck = {};
+          refactoredDataCopy.forEach((row) => {
+            if (row?.status === t("SUBMITTED_BY_SUPERVISOR")) {
+              newSideCheck[`${row?.id}`] = false;
+            }
+          })
+          setSideCheck(newSideCheck);
+
         })
-        setSideCheck(newSideCheck);
+        .catch((error) => {
+          console.error("Error fetching facilities", error);
+        })
+    }
 
-      })
-      .catch((error) => {
-        console.debug("Error fetching facilities", error);
-      })
-  }, []);
+  }, [facilityQueryFilter]);
 
   const onFilterApply = () => {
     const filterDistricts = filters.district !== null ? refactoredData.filter((row) => row?.district === filters.district) : refactoredData;
@@ -84,7 +132,7 @@ const FacilityTable = ({ t, getCellProps, onNextPage, onPrevPage, currentPage, t
     if(!prevMainCheck) {
       setSelectedFacilities(
         refactoredData
-          .filter((row) => row?.status.toUpperCase() !== "APPROVED" && row?.status.toUpperCase() !== "SCHEDULED")
+          .filter((row) => row?.status === t("SUBMITTED_BY_SUPERVISOR"))
           .map((row) => row.id)
       );
     } else {
@@ -118,7 +166,7 @@ const FacilityTable = ({ t, getCellProps, onNextPage, onPrevPage, currentPage, t
         </div>
       ),
       Cell: ({ row }) => {
-        return row.original["status"].toUpperCase() !== "APPROVED" && row.original["status"].toUpperCase() !== "SCHEDULED" ? (
+        return row.original["status"] === t("SUBMITTED_BY_SUPERVISOR") ? (
           <div style={{ marginTop: "-1.2em" }}>
             <CheckBox
               checked={sideCheck[`${row.original["id"]}`]}
@@ -137,10 +185,10 @@ const FacilityTable = ({ t, getCellProps, onNextPage, onPrevPage, currentPage, t
           <div>
             <span className="link" onClick={() => dispatch(setSelectedFacility(row.original))}>
               <Link
-                to={`/${window.contextPath}/employee/qc/field-plan/${encodeURIComponent(row.original["project"])}/facilities/${encodeURIComponent(row.original["facility"])}`}
+                to={`/${window.contextPath}/employee/qc/field-plan/${encodeURIComponent(row.original["projectName"])}/facilities/${encodeURIComponent(row.original["facilityId"])}`}
                 style={{ color: "#C84C0E" }}
               >
-                {row.original["facility"]}
+                {row.original["facilityId"]}
               </Link>
             </span>
           </div>
