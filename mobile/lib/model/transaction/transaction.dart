@@ -1,5 +1,3 @@
-// lib/model/project/transaction.dart
-
 import 'package:dart_mappable/dart_mappable.dart';
 import 'package:isar/isar.dart';
 

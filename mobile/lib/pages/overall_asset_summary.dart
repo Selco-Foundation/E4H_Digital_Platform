@@ -15,6 +15,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../blocs/asset_submission/asset_submission.dart';
 import '../blocs/asset_summary/asset_summary.dart';
 import '../blocs/asset_type/asset_type.dart';
+import '../blocs/cache_asset/cache_asset.dart';
 import '../blocs/cache_completion_report/cache_completion_report.dart';
 import '../blocs/overall_asset_summary/overall_asset_summary.dart';
 import '../blocs/selected_project/selected_project.dart';
@@ -64,6 +65,9 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
       final selState = context.read<SelectedProjectBloc>().state;
       selState.whenOrNull(selected: (project) {
         _currentProjectId = project.project.id;
+        context
+            .read<CacheAssetBloc>()
+            .add(CacheAssetEvent.start(project.project.id));
         context.read<OverallAssetSummaryBloc>().add(
               OverallAssetSummaryEvent.loadCounts(
                   projectId: project.project.id),
