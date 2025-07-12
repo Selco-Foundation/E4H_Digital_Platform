@@ -145,10 +145,8 @@ class AssetRepository {
 
     try {
       print('Request payload: ${jsonEncode(payload)}');
-      final response = await _dio.post(
-        '/asset-registry/v1/asset/$endpoint',
-        data: payload,
-      );
+      final response =
+          await _dio.post('/asset-registry/v1/asset/$endpoint', data: payload);
       print('Response status: ${response.statusCode}');
       print('Response body: ${response.data}');
 
@@ -437,7 +435,7 @@ class AssetRepository {
         isar,
       ))
           .facilityId;
-
+      print("projectId $projectId");
       print("facilityId $facilityId");
 
       // 2) fetch JSON, parse into Asset models

@@ -42,15 +42,8 @@ class CacheAssetEvent with _$CacheAssetEvent {
 /// STATES
 @freezed
 class CacheAssetState with _$CacheAssetState {
-  /// Before anything
   const factory CacheAssetState.initial() = _Initial;
-
-  /// While in progress
   const factory CacheAssetState.loading() = _Loading;
-
-  /// All done
   const factory CacheAssetState.success() = _Success;
-
-  /// Something broke
   const factory CacheAssetState.failure(String error) = _Failure;
 }

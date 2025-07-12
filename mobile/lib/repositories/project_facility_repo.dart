@@ -30,6 +30,7 @@ class ProjectFacilityRepository {
         .where()
         .projectIdEqualTo(projectId)
         .findFirst();
+    print("existing ${existing}");
     if (existing != null) {
       return existing;
     }
@@ -44,6 +45,8 @@ class ProjectFacilityRepository {
       },
       data: {"ProjectFacility": body.toMap()},
     );
+
+    print("response.data ${response.data}");
 
     final List<dynamic>? responseMap = response.data['ProjectFacilities'];
     if (responseMap == null || responseMap.isEmpty) {

@@ -25,7 +25,7 @@ class Document with _$Document {
     @JsonKey(name: 'fileStore', fromJson: _anyToString) String? fileStore,
     @JsonKey(name: 'documentUid', fromJson: _anyToString) String? documentUid,
     Map<String, dynamic>? additionalDetails,
-    GeoLocation? geoLocation,
+    @JsonKey(name: 'geoLocation') GeoLocation? geoLocation,
   }) = _Document;
 
   factory Document.fromJson(Map<String, dynamic> json) =>

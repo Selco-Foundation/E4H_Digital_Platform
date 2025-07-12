@@ -4,7 +4,6 @@ import 'dart:io';
 import 'package:bloc/bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:isar/isar.dart';
-import 'package:selco/model/document/document.dart';
 
 import '../../data/nosql/cache_add_new_asset.dart';
 import '../../data/nosql/cache_asset_detail.dart';
@@ -14,6 +13,7 @@ import '../../data/nosql/cache_specification.dart';
 import '../../data/nosql/cache_sync_record.dart';
 import '../../data/nosql/cache_unsubmitted_project.dart';
 import '../../model/asset/asset.dart';
+import '../../model/document/document.dart';
 import '../../model/entities/project_facility.dart';
 import '../../model/project_workflow/project_workflow.dart';
 import '../../repositories/app_init_Repo.dart';
@@ -211,6 +211,8 @@ class AssetSubmissionBloc
             ));
           }
 
+          print("documents $documents");
+
           final now = DateTime.now().toUtc();
           final startIso = now.toIso8601String();
           final years = userType == USER_TYPES.FIELD_STAFF.name
@@ -252,6 +254,16 @@ class AssetSubmissionBloc
             currentUnit: type == 'inverter' ? '1' : null,
           );
 
+          print("assetDetails $assetDetails");
+
+          // String myId = type == "inverter"
+          //     ? 'ASSET-0212'
+          //     : type == 'battery'
+          //         ? 'ASSET-0213'
+          //         : type == 'panel'
+          //             ? 'ASSET-0214'
+          //             : '';
+
           // 2) Build the Asset itself
           final assetModel = Asset(
             assetId: saved.assetId,
@@ -262,18 +274,20 @@ class AssetSubmissionBloc
             serialNumber: saved.serialNumber,
             brandID: detail.brand,
             assetDetails: assetDetails,
-            warrantyStartDate:
-                userType == USER_TYPES.SUPERVISOR ? startIso : null,
-            warrantyDuration: userType == USER_TYPES.SUPERVISOR
-                ? parseWarrantyYears(detail.warranty!)
-                : null,
-            warrantyEndDate: userType == USER_TYPES.SUPERVISOR ? endIso : null,
+            warrantyStartDate: userType == USER_TYPES.SUPERVISOR.name
+                ? startIso
+                : "", // : null,
+            warrantyDuration: userType == USER_TYPES.SUPERVISOR.name
+                ? parseWarrantyYears(detail.warranty)
+                : 1, //null,
+            warrantyEndDate:
+                userType == USER_TYPES.SUPERVISOR.name ? endIso : "",
             modelNumber: detail.model,
             wfStatus: "CREATED",
             isActive: true,
             documents: documents,
           );
-
+          print("assetModel $assetModel");
           await repo.createOrUpdateAsset(asset: assetModel, isar: _isar);
         }
       }
@@ -291,7 +305,7 @@ class AssetSubmissionBloc
             final photoId = await repo.uploadFile(completionFile);
             completionDocuments.add(Document(
               // id: 'DOCUMENT-0199',
-              documentType: "INSTALLATION REPORT",
+              documentType: "INSTALLATION_REPORT",
               fileStore: photoId,
               documentUid: "INSTALLATION-REPORT-${photoId}",
               // additionalDetails: null,
@@ -305,7 +319,7 @@ class AssetSubmissionBloc
         }
         await remoteRepo.updateProjectWorkflow(
           projectId: projectId,
-          action: userType == USER_TYPES.FIELD_STAFF
+          action: userType == USER_TYPES.FIELD_STAFF.name
               ? WORKFLOW_ACTIONS.SUBMIT_REPORT_A.name
               : WORKFLOW_ACTIONS.SUBMIT_REPORT_B.name,
           documents: completionDocuments,
@@ -313,7 +327,7 @@ class AssetSubmissionBloc
       } else {
         await remoteRepo.updateProjectWorkflow(
           projectId: projectId,
-          action: userType == USER_TYPES.FIELD_STAFF
+          action: userType == USER_TYPES.FIELD_STAFF.name
               ? WORKFLOW_ACTIONS.SUBMIT_REPORT_A.name
               : WORKFLOW_ACTIONS.SUBMIT_REPORT_B.name,
         );
