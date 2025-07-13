@@ -6,6 +6,7 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:isar/isar.dart';
+import 'package:selco/data/nosql/cache_unsubmitted_project.dart';
 
 import '../data/nosql/cache_add_new_asset.dart';
 import '../data/nosql/cache_asset_count.dart';
@@ -169,16 +170,19 @@ class AssetRepository {
         Map<String, dynamic>.from(assetJson as Map),
       );
 
+      print("updatedAsset $updatedAsset");
+      print("updated AssetId ${updatedAsset.assetId}");
+
       // Persist the returned assetId back into Isar
       if (updatedAsset.assetId != null && updatedAsset.assetId!.isNotEmpty) {
         await isar.writeTxn(() async {
           final existing = await isar.cacheAddNewAssets
               .where()
-              .assetTypeEqualTo(asset.assetTypeID!)
+              .assetTypeEqualTo(asset.assetTypeID!.toLowerCase())
               .filter()
               .serialNumberEqualTo(asset.serialNumber!)
               .findFirst();
-
+          print("existing $existing");
           if (existing != null) {
             existing.assetId = updatedAsset.assetId;
             await isar.cacheAddNewAssets.put(existing);
@@ -427,9 +431,22 @@ class AssetRepository {
     }
   }
 
-  Future<void> syncRemoteToLocal(String projectId, Isar isar) async {
+  Future<void> syncRemoteToLocal(
+      {required String projectId,
+      required String userType,
+      required Isar isar}) async {
     try {
-      // 1) facilityId lookup as before
+      final draft = await isar.cacheUnsubmittedProjects
+          .where()
+          .projectIdEqualTo(projectId)
+          .filter()
+          .userTypeEqualTo(userType)
+          .findFirst();
+      if (draft != null) {
+        // there’s already an unsubmitted draft; skip the whole sync
+        return;
+      }
+      // 1) facilityId lookup
       final facilityId = (await ProjectFacilityRepository().search(
         ProjectFacilitySearchModel(projectId: [projectId]),
         isar,

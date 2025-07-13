@@ -405,9 +405,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../blocs/cache_asset/cache_asset.dart';
 import '../blocs/overall_asset_summary/overall_asset_summary.dart';
 import '../blocs/selected_project/selected_project.dart';
+import '../blocs/user_type/user_type.dart';
 import '../model/comment/comment.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
+import '../utils/utils.dart';
 import '../widgets/button/footer_button.dart';
 import '../widgets/header/back_navigation_help_header.dart';
 
@@ -420,17 +422,25 @@ class SubmitForApprovalPage extends StatefulWidget {
 }
 
 class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
+  late String userType = "";
+
   @override
   void initState() {
     super.initState();
     // Kick off the cache sync
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      userType = context.read<UserTypeBloc>().state.maybeWhen(
+            supervisor: () => USER_TYPES.SUPERVISOR.name,
+            orElse: () => USER_TYPES.FIELD_STAFF.name,
+          );
       final projectId = context
           .read<SelectedProjectBloc>()
           .state
           .whenOrNull(selected: (wf) => wf.project.id);
       if (projectId != null) {
-        context.read<CacheAssetBloc>().add(CacheAssetEvent.start(projectId));
+        context
+            .read<CacheAssetBloc>()
+            .add(CacheAssetEvent.start(projectId, userType));
       }
     });
   }

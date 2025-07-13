@@ -43,6 +43,7 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
   String? _currentProjectId;
   double? _latitude;
   double? _longitude;
+  late String userType = "";
   StreamSubscription<LocationState>? _locSub;
 
   @override
@@ -62,12 +63,16 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
     });
     // As soon as this page appears, grab the selected project ID and tell OverallAssetSummaryBloc to load counts.
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      userType = context.read<UserTypeBloc>().state.maybeWhen(
+            supervisor: () => USER_TYPES.SUPERVISOR.name,
+            orElse: () => USER_TYPES.FIELD_STAFF.name,
+          );
       final selState = context.read<SelectedProjectBloc>().state;
       selState.whenOrNull(selected: (project) {
         _currentProjectId = project.project.id;
         context
             .read<CacheAssetBloc>()
-            .add(CacheAssetEvent.start(project.project.id));
+            .add(CacheAssetEvent.start(project.project.id, userType));
         context.read<OverallAssetSummaryBloc>().add(
               OverallAssetSummaryEvent.loadCounts(
                   projectId: project.project.id),

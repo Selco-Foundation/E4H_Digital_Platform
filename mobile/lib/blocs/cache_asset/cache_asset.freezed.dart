@@ -17,19 +17,20 @@ final _privateConstructorUsedError = UnsupportedError(
 /// @nodoc
 mixin _$CacheAssetEvent {
   String get projectId => throw _privateConstructorUsedError;
+  String get userType => throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(String projectId) start,
+    required TResult Function(String projectId, String userType) start,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(String projectId)? start,
+    TResult? Function(String projectId, String userType)? start,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(String projectId)? start,
+    TResult Function(String projectId, String userType)? start,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -61,7 +62,7 @@ abstract class $CacheAssetEventCopyWith<$Res> {
           CacheAssetEvent value, $Res Function(CacheAssetEvent) then) =
       _$CacheAssetEventCopyWithImpl<$Res, CacheAssetEvent>;
   @useResult
-  $Res call({String projectId});
+  $Res call({String projectId, String userType});
 }
 
 /// @nodoc
@@ -78,11 +79,16 @@ class _$CacheAssetEventCopyWithImpl<$Res, $Val extends CacheAssetEvent>
   @override
   $Res call({
     Object? projectId = null,
+    Object? userType = null,
   }) {
     return _then(_value.copyWith(
       projectId: null == projectId
           ? _value.projectId
           : projectId // ignore: cast_nullable_to_non_nullable
+              as String,
+      userType: null == userType
+          ? _value.userType
+          : userType // ignore: cast_nullable_to_non_nullable
               as String,
     ) as $Val);
   }
@@ -96,7 +102,7 @@ abstract class _$$StartSyncImplCopyWith<$Res>
       __$$StartSyncImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({String projectId});
+  $Res call({String projectId, String userType});
 }
 
 /// @nodoc
@@ -111,11 +117,16 @@ class __$$StartSyncImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? projectId = null,
+    Object? userType = null,
   }) {
     return _then(_$StartSyncImpl(
       null == projectId
           ? _value.projectId
           : projectId // ignore: cast_nullable_to_non_nullable
+              as String,
+      null == userType
+          ? _value.userType
+          : userType // ignore: cast_nullable_to_non_nullable
               as String,
     ));
   }
@@ -124,14 +135,16 @@ class __$$StartSyncImplCopyWithImpl<$Res>
 /// @nodoc
 
 class _$StartSyncImpl implements _StartSync {
-  const _$StartSyncImpl(this.projectId);
+  const _$StartSyncImpl(this.projectId, this.userType);
 
   @override
   final String projectId;
+  @override
+  final String userType;
 
   @override
   String toString() {
-    return 'CacheAssetEvent.start(projectId: $projectId)';
+    return 'CacheAssetEvent.start(projectId: $projectId, userType: $userType)';
   }
 
   @override
@@ -140,11 +153,13 @@ class _$StartSyncImpl implements _StartSync {
         (other.runtimeType == runtimeType &&
             other is _$StartSyncImpl &&
             (identical(other.projectId, projectId) ||
-                other.projectId == projectId));
+                other.projectId == projectId) &&
+            (identical(other.userType, userType) ||
+                other.userType == userType));
   }
 
   @override
-  int get hashCode => Object.hash(runtimeType, projectId);
+  int get hashCode => Object.hash(runtimeType, projectId, userType);
 
   @JsonKey(ignore: true)
   @override
@@ -155,27 +170,27 @@ class _$StartSyncImpl implements _StartSync {
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(String projectId) start,
+    required TResult Function(String projectId, String userType) start,
   }) {
-    return start(projectId);
+    return start(projectId, userType);
   }
 
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(String projectId)? start,
+    TResult? Function(String projectId, String userType)? start,
   }) {
-    return start?.call(projectId);
+    return start?.call(projectId, userType);
   }
 
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(String projectId)? start,
+    TResult Function(String projectId, String userType)? start,
     required TResult orElse(),
   }) {
     if (start != null) {
-      return start(projectId);
+      return start(projectId, userType);
     }
     return orElse();
   }
@@ -210,10 +225,13 @@ class _$StartSyncImpl implements _StartSync {
 }
 
 abstract class _StartSync implements CacheAssetEvent {
-  const factory _StartSync(final String projectId) = _$StartSyncImpl;
+  const factory _StartSync(final String projectId, final String userType) =
+      _$StartSyncImpl;
 
   @override
   String get projectId;
+  @override
+  String get userType;
   @override
   @JsonKey(ignore: true)
   _$$StartSyncImplCopyWith<_$StartSyncImpl> get copyWith =>
