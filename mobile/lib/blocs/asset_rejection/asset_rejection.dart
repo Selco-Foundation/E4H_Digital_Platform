@@ -23,7 +23,7 @@ class RejectionBloc extends Bloc<RejectionEvent, RejectionState> {
     try {
       await _repo.submitRejection(
         projectId: event.projectId,
-        action: event.action!,
+        action: event.action ?? '',
         transactions: event.transactions,
       );
       emit(const RejectionState.success());

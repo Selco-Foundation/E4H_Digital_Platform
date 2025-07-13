@@ -77,11 +77,12 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
     );
 
     try {
-      // 4. Call your API
       final repo = ProjectRemoteRepository();
       await repo.updateProjectWorkflow(
         projectId: projectId,
-        action: WORKFLOW_ACTIONS.SUBMIT_REPORT_B.name,
+        action: userType == USER_TYPES.SUPERVISOR.name
+            ? WORKFLOW_ACTIONS.SUBMIT_REPORT_B.name
+            : WORKFLOW_ACTIONS.SUBMIT_REPORT_A.name,
       );
 
       // 5. On success: pop the spinner only
@@ -92,7 +93,7 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
       context.showSnackBar(
         const SnackBar(content: Text("Report sent back successfully")),
       );
-      context.router.replace(const InboxRoute());
+      context.router.popAndPush(const InboxRoute());
     } catch (e) {
       if (dialogCtx != null && mounted) {
         Navigator.of(dialogCtx!).pop();

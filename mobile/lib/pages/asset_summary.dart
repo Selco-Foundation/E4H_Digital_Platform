@@ -444,7 +444,7 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
                     Padding(
                       padding: const EdgeInsets.only(bottom: spacer3),
                       child: Text(
-                        asset.serialNumber,
+                        truncateText(asset.serialNumber, maxLength: 18),
                         style: textTheme.bodyS.copyWith(
                           color: Theme.of(context).colorTheme.text.primary,
                         ),
@@ -515,7 +515,7 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
             const KeyColumn(keys: ['Name', 'Status']),
             ValueColumn(values: [
               truncateText(projectName, maxLength: 18),
-              truncateText(status, maxLength: 19),
+              truncateText(status, maxLength: 18),
             ]),
           ]),
         ]),

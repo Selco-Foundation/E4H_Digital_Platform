@@ -426,9 +426,6 @@ class ProjectModelMapper extends ClassMapperBase<ProjectModel> {
   static AddressModel? _$address(ProjectModel v) => v.address;
   static const Field<ProjectModel, AddressModel> _f$address =
       Field('address', _$address, opt: true);
-  static List<Transaction>? _$transactions(ProjectModel v) => v.transactions;
-  static const Field<ProjectModel, List<Transaction>> _f$transactions =
-      Field('transactions', _$transactions, opt: true);
   static int? _$startDate(ProjectModel v) => v.startDate;
   static const Field<ProjectModel, int> _f$startDate =
       Field('startDate', _$startDate, opt: true);
@@ -460,7 +457,6 @@ class ProjectModelMapper extends ClassMapperBase<ProjectModel> {
     #tenantId: _f$tenantId,
     #rowVersion: _f$rowVersion,
     #address: _f$address,
-    #transactions: _f$transactions,
     #startDate: _f$startDate,
     #endDate: _f$endDate,
     #startDateTime: _f$startDateTime,
@@ -487,7 +483,6 @@ class ProjectModelMapper extends ClassMapperBase<ProjectModel> {
         tenantId: data.dec(_f$tenantId),
         rowVersion: data.dec(_f$rowVersion),
         address: data.dec(_f$address),
-        transactions: data.dec(_f$transactions),
         startDate: data.dec(_f$startDate),
         endDate: data.dec(_f$endDate));
   }
@@ -545,8 +540,6 @@ extension ProjectModelValueCopy<$R, $Out>
 abstract class ProjectModelCopyWith<$R, $In extends ProjectModel, $Out>
     implements ClassCopyWith<$R, $In, $Out> {
   AddressModelCopyWith<$R, AddressModel, AddressModel>? get address;
-  ListCopyWith<$R, Transaction,
-      TransactionCopyWith<$R, Transaction, Transaction>>? get transactions;
   $R call(
       {String? id,
       String? projectType,
@@ -564,7 +557,6 @@ abstract class ProjectModelCopyWith<$R, $In extends ProjectModel, $Out>
       String? tenantId,
       int? rowVersion,
       AddressModel? address,
-      List<Transaction>? transactions,
       int? startDate,
       int? endDate});
   ProjectModelCopyWith<$R2, $In, $Out2> $chain<$R2, $Out2>(Then<$Out2, $R2> t);
@@ -581,13 +573,6 @@ class _ProjectModelCopyWithImpl<$R, $Out>
   @override
   AddressModelCopyWith<$R, AddressModel, AddressModel>? get address =>
       $value.address?.copyWith.$chain((v) => call(address: v));
-  @override
-  ListCopyWith<$R, Transaction,
-          TransactionCopyWith<$R, Transaction, Transaction>>?
-      get transactions => $value.transactions != null
-          ? ListCopyWith($value.transactions!, (v, t) => v.copyWith.$chain(t),
-              (v) => call(transactions: v))
-          : null;
   @override
   $R call(
           {String? id,
@@ -606,7 +591,6 @@ class _ProjectModelCopyWithImpl<$R, $Out>
           Object? tenantId = $none,
           Object? rowVersion = $none,
           Object? address = $none,
-          Object? transactions = $none,
           Object? startDate = $none,
           Object? endDate = $none}) =>
       $apply(FieldCopyWithData({
@@ -627,7 +611,6 @@ class _ProjectModelCopyWithImpl<$R, $Out>
         if (tenantId != $none) #tenantId: tenantId,
         if (rowVersion != $none) #rowVersion: rowVersion,
         if (address != $none) #address: address,
-        if (transactions != $none) #transactions: transactions,
         if (startDate != $none) #startDate: startDate,
         if (endDate != $none) #endDate: endDate
       }));
@@ -652,7 +635,6 @@ class _ProjectModelCopyWithImpl<$R, $Out>
       tenantId: data.get(#tenantId, or: $value.tenantId),
       rowVersion: data.get(#rowVersion, or: $value.rowVersion),
       address: data.get(#address, or: $value.address),
-      transactions: data.get(#transactions, or: $value.transactions),
       startDate: data.get(#startDate, or: $value.startDate),
       endDate: data.get(#endDate, or: $value.endDate));
 

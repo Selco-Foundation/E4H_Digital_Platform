@@ -1,14 +1,11 @@
-import 'package:dart_mappable/dart_mappable.dart';
-import 'package:isar/isar.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 
 import '../comment/comment.dart';
 
 part 'transaction.g.dart';
-part 'transaction.mapper.dart';
 
-@embedded
-@MappableClass(discriminatorValue: MappableClass.useAsDefault, ignoreNull: true)
-class Transaction with TransactionMappable {
+@JsonSerializable(explicitToJson: true)
+class Transaction {
   final String? transactionId;
   final String? processInstanceId;
   final String? projectId;
@@ -20,4 +17,8 @@ class Transaction with TransactionMappable {
     this.projectId,
     this.comments,
   });
+
+  factory Transaction.fromJson(Map<String, dynamic> json) =>
+      _$TransactionFromJson(json);
+  Map<String, dynamic> toJson() => _$TransactionToJson(this);
 }

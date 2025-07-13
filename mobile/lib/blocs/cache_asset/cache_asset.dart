@@ -9,9 +9,9 @@ part 'cache_asset.freezed.dart';
 /// BLOC
 class CacheAssetBloc extends Bloc<CacheAssetEvent, CacheAssetState> {
   final AssetRepository _repo;
-  final Isar _isar;
+  final Isar isar;
 
-  CacheAssetBloc(this._isar)
+  CacheAssetBloc(this.isar)
       : _repo = AssetRepository(),
         super(const CacheAssetState.initial()) {
     on<_StartSync>(_onStartSync);
@@ -24,7 +24,7 @@ class CacheAssetBloc extends Bloc<CacheAssetEvent, CacheAssetState> {
     emit(const CacheAssetState.loading());
     try {
       await _repo.syncRemoteToLocal(
-          projectId: event.projectId, isar: _isar, userType: event.userType);
+          projectId: event.projectId, isar: isar, userType: event.userType);
       emit(const CacheAssetState.success());
     } catch (e) {
       print(e.toString());

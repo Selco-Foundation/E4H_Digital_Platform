@@ -660,8 +660,10 @@ class AssetRepository {
       'projectId': projectId,
       'workflow': {'action': action},
       'transactions': transactions.map((t) {
-        final jsonString = t.toJson();
-        final m = jsonDecode(jsonString) as Map<String, dynamic>;
+        // final jsonString = t.toJson();
+        // final m = jsonDecode(jsonString) as Map<String, dynamic>;
+        // final m = jsonString as Map<String, dynamic>;
+        final m = Map<String, dynamic>.from(t.toJson());
         m.removeWhere((k, v) => v == null);
       }).toList(),
     };

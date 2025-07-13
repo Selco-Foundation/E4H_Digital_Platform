@@ -91,6 +91,7 @@ class WelcomeContent extends StatelessWidget {
         imagePath: AssetImages.WELCOME_5,
       ),
     ];
+    final lastIndex = menuItems.length - 1;
 
     return Padding(
       padding:
@@ -108,49 +109,54 @@ class WelcomeContent extends StatelessWidget {
                 'Through this application you will be able to:',
                 style: textTheme.bodyL,
               ),
-              ...menuItems.map((item) => Column(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(vertical: spacer5),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Image.asset(
-                              item.imagePath,
-                              height: spacer12 * 2,
-                              width: spacer12 * 2,
-                            ),
-                            const SizedBox(width: spacer6),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(item.title,
-                                      style: textTheme.headingS.copyWith(
-                                          color: DigitColors().light.primary2)),
-                                  const SizedBox(height: spacer3),
-                                  Padding(
-                                    padding:
-                                        const EdgeInsets.only(right: spacer7),
-                                    child: Text(
-                                      item.description,
-                                      style: textTheme.headingXS.copyWith(
-                                          color: const DigitColors()
-                                              .light
-                                              .textSecondary),
-                                    ),
+              // ...menuItems.map((item) => Column(
+              ...menuItems.asMap().entries.map((entry) {
+                final index = entry.key;
+                final item = entry.value;
+
+                return Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(vertical: spacer5),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Image.asset(
+                            item.imagePath,
+                            height: spacer12 * 2,
+                            width: spacer12 * 2,
+                          ),
+                          const SizedBox(width: spacer6),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(item.title,
+                                    style: textTheme.headingS.copyWith(
+                                        color: DigitColors().light.primary2)),
+                                const SizedBox(height: spacer3),
+                                Padding(
+                                  padding:
+                                      const EdgeInsets.only(right: spacer7),
+                                  child: Text(
+                                    item.description,
+                                    style: textTheme.headingXS.copyWith(
+                                        color: const DigitColors()
+                                            .light
+                                            .textSecondary),
                                   ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-                      const DigitDivider(
-                        dividerType: DividerType.small,
-                      ),
-                    ],
-                  )),
+                    ),
+                    if (index != lastIndex)
+                      const DigitDivider(dividerType: DividerType.small),
+                  ],
+                );
+              })
             ],
           ),
         ],

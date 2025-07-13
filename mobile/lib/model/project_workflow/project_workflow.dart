@@ -1,6 +1,8 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:selco/model/workflow/workflow.dart';
 
 import '../projects/project.dart';
+import '../transaction/transaction.dart';
 
 part 'project_workflow.freezed.dart';
 part 'project_workflow.g.dart';
@@ -10,6 +12,8 @@ class ProjectWorkflow with _$ProjectWorkflow {
   const factory ProjectWorkflow({
     @ProjectModelConverter() required ProjectModel project,
     String? status,
+    List<Transaction>? transactions,
+    Workflow? workflow,
   }) = _ProjectWorkflow;
 
   factory ProjectWorkflow.fromJson(Map<String, dynamic> json) =>
