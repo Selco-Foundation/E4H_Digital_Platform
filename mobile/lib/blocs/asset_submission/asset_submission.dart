@@ -146,6 +146,11 @@ class AssetSubmissionBloc
           return false;
         }
 
+        print("[$type] found ${assets.length} cached assets");
+        for (var a in assets) {
+          print("    serial=${a.serialNumber} photoPath='${a.photoPath}'");
+        }
+
         final spec = await _isar.cacheSpecifications
             .where()
             .projectIdEqualTo(projectId)
@@ -170,6 +175,7 @@ class AssetSubmissionBloc
             final file = File(saved.photoPath);
             if (await file.exists()) {
               final photoId = await repo.uploadFile(file);
+              print("photoId $photoId");
               documents.add(Document(
                 documentType: saved.documentType,
                 fileStore: photoId,
@@ -190,6 +196,13 @@ class AssetSubmissionBloc
               .filter()
               .assetTypeEqualTo(type)
               .findAll();
+
+          print("[$type] found ${mediaEntries.length} cached media uploads");
+          for (var m in mediaEntries) {
+            print(
+                "    media id=${m.id} filePath='${m.filePath}' itemType='${m.itemType}'");
+          }
+
           for (final m in mediaEntries) {
             if (m.filePath.isEmpty) continue;
             final mediaFile = File(m.filePath);
@@ -298,11 +311,14 @@ class AssetSubmissionBloc
           .where()
           .projectIdEqualTo(projectId)
           .findFirst();
+      print("completionReport $completionReport");
+      //print("completionReport ${completionReport!.filePath}");
       if (completionReport != null) {
         if (completionReport.filePath.isNotEmpty) {
-          final completionFile = File(completionReport.filePath);
-          if (await completionFile.exists()) {
-            final photoId = await repo.uploadFile(completionFile);
+          final completionFile = await getCachedFile(
+              completionReport.filePath); // File(completionReport.filePath);
+          if (await completionFile != null) {
+            final photoId = await repo.uploadFile(completionFile!);
             completionDocuments.add(Document(
               // id: 'DOCUMENT-0199',
               documentType: "INSTALLATION_REPORT",
@@ -315,6 +331,7 @@ class AssetSubmissionBloc
                 //additionalDetails: null,
               ),
             ));
+            print("completionReport $completionReport");
           }
         }
         await remoteRepo.updateProjectWorkflow(
