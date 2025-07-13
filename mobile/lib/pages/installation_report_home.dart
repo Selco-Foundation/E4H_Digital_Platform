@@ -108,9 +108,8 @@ class _InstallationReportPageState extends State<InstallationReportPage> {
                     ),
                     ReportCard(
                         onPress: () {
-                          context
-                              .read<ReportTypeBloc>()
-                              .add(const ReportTypeEvent.typeSelected("draft"));
+                          context.read<ReportTypeBloc>().add(
+                              const ReportTypeEvent.typeSelected("submitted"));
                           context.router.push(const DraftRoute());
                         },
                         icon: Icons.assignment_late,

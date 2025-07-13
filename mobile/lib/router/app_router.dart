@@ -8,7 +8,6 @@ import '../pages/authenticated.dart';
 import '../pages/data_save_success.dart';
 import '../pages/download_status.dart';
 import '../pages/draft.dart';
-import '../pages/draft_summary.dart';
 import '../pages/enter_otp.dart';
 import '../pages/forgot_password.dart';
 import '../pages/home.dart';
@@ -91,7 +90,6 @@ class AppRouter extends _$AppRouter {
               page: SubmittedSaveSuccessRoute.page,
               path: Routes.submittedSaveSuccess),
           AutoRoute(page: DraftRoute.page, path: Routes.draft),
-          AutoRoute(page: DraftSummaryRoute.page, path: Routes.draftSummary),
         ])
       ];
 }
