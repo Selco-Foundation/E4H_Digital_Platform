@@ -18,6 +18,7 @@ import '../blocs/asset_type/asset_type.dart';
 import '../blocs/cache_asset/cache_asset.dart';
 import '../blocs/cache_completion_report/cache_completion_report.dart';
 import '../blocs/overall_asset_summary/overall_asset_summary.dart';
+import '../blocs/report_type/report_type.dart';
 import '../blocs/selected_project/selected_project.dart';
 import '../blocs/user_type/user_type.dart';
 import '../data/nosql/cache_completion_report.dart';
@@ -400,27 +401,59 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                             .push(const AssetSummaryRoute());
                                       },
                                     ),
-                                    ElementAssetSummary(
-                                      count: panelCount,
-                                      text: 'Panels',
-                                      onPress: () {
-                                        context.read<AssetTypeBloc>().add(
-                                            const AssetTypeEvent.typeSelected(
-                                                "PANEL"));
-                                        context.router
-                                            .push(const AssetSummaryRoute());
+                                    BlocBuilder<ReportTypeBloc,
+                                        ReportTypeState>(
+                                      builder: (context, reportState) {
+                                        return reportState.maybeWhen(
+                                            submitted: () =>
+                                                ElementAssetSummary(
+                                                  lastCard: true,
+                                                  count: panelCount,
+                                                  text: 'Panels',
+                                                  onPress: () {
+                                                    context
+                                                        .read<AssetTypeBloc>()
+                                                        .add(
+                                                            const AssetTypeEvent
+                                                                .typeSelected(
+                                                                "PANEL"));
+                                                    context.router.push(
+                                                        const AssetSummaryRoute());
+                                                  },
+                                                ),
+                                            orElse: () => Column(
+                                                  children: [
+                                                    ElementAssetSummary(
+                                                      count: panelCount,
+                                                      text: 'Panels',
+                                                      onPress: () {
+                                                        context
+                                                            .read<
+                                                                AssetTypeBloc>()
+                                                            .add(const AssetTypeEvent
+                                                                .typeSelected(
+                                                                "PANEL"));
+                                                        context.router.push(
+                                                            const AssetSummaryRoute());
+                                                      },
+                                                    ),
+                                                    DigitButton(
+                                                      mainAxisSize:
+                                                          MainAxisSize.max,
+                                                      label: 'Add More Assets',
+                                                      prefixIcon: Icons.add_box,
+                                                      onPressed: () {
+                                                        context.router.push(
+                                                            const SelectAssetTypeRoute());
+                                                      },
+                                                      type: DigitButtonType
+                                                          .primary,
+                                                      size: DigitButtonSize
+                                                          .medium,
+                                                    )
+                                                  ],
+                                                ));
                                       },
-                                    ),
-                                    DigitButton(
-                                      mainAxisSize: MainAxisSize.max,
-                                      label: 'Add More Assets',
-                                      prefixIcon: Icons.add_box,
-                                      onPressed: () {
-                                        context.router
-                                            .push(const SelectAssetTypeRoute());
-                                      },
-                                      type: DigitButtonType.primary,
-                                      size: DigitButtonSize.medium,
                                     ),
                                   ],
                                 );
@@ -447,6 +480,7 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                               theme.colorTheme.text.secondary),
                                     ),
                                     FileUploadWidget(
+                                      allowedExtensions: ["pdf"],
                                       showPreview: true,
                                       allowMultiples: false,
                                       label: 'Upload',

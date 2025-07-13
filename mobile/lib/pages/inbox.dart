@@ -75,7 +75,8 @@ class _InboxPageState extends State<InboxPage> {
         // User role
         if (tabIndex == 0) {
           workflowStatuses = [
-            WORKFLOW_STATUS_FIELD_STAFF.REJECTED_BY_FIELD_SUPERVISOR.name
+            WORKFLOW_STATUS_FIELD_STAFF.REJECTED_BY_FIELD_SUPERVISOR.name,
+            WORKFLOW_STATUS_FIELD_STAFF.REJECTED_BY_QC_SPOC.name
           ];
         } else if (tabIndex == 1) {
           workflowStatuses = [
@@ -90,6 +91,19 @@ class _InboxPageState extends State<InboxPage> {
           ProjectEvent.fetchProjectsByWorkflow(
               workflowStatuses: workflowStatuses),
         );
+  }
+
+  void _onTabChanged(int index, UserTypeState userState) {
+    final bloc = context.read<InboxTypeBloc>();
+
+    if (userState is UserTypeSupervisor) {
+      bloc.add(InboxTypeEvent.typeSelected(index));
+    } else {
+      // user tabs are shifted by +1
+      bloc.add(InboxTypeEvent.typeSelected(index + 1));
+    }
+
+    _fetchProjects(userState, index);
   }
 
   @override
@@ -142,16 +156,8 @@ class _InboxPageState extends State<InboxPage> {
                                 _selectedTabIndex = index;
                               });
                               // Update InboxTypeBloc
-                              if (userState.maybeWhen(
-                                  supervisor: () => true,
-                                  orElse: () => false)) {
-                                context
-                                    .read<InboxTypeBloc>()
-                                    .add(InboxTypeEvent.typeSelected(index));
-                              } else {
-                                context.read<InboxTypeBloc>().add(
-                                    InboxTypeEvent.typeSelected(index + 1));
-                              }
+                              print("index $index");
+                              _onTabChanged(index, userState);
                               // Fetch with new tab index
                               _fetchProjects(userState, index);
                             },
