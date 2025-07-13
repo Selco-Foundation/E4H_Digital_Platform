@@ -63,7 +63,7 @@ class ProjectRemoteRepository {
       String searchPath = "project/v2/_search";
 
       if (envConfig.variables.envType == EnvType.dev) {
-        // return _loadLocalProjects();
+        return _loadLocalProjects();
       }
 
       response = await dio.post(
@@ -164,7 +164,9 @@ class ProjectRemoteRepository {
   Future<List<ProjectWorkflow>> _loadLocalProjects() async {
     try {
       final jsonString =
-          await rootBundle.loadString('assets/mocks/mockProjects.json');
+          // await rootBundle.loadString('assets/mocks/mockProjects.json');
+          await rootBundle.loadString(
+              'assets/mocks/mockRejectedProject.json'); // Testing rejected Facilities
       final jsonResponse = json.decode(jsonString);
       final responseMap = jsonResponse['Project'];
 

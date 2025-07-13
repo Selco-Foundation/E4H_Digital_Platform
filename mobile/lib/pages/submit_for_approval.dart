@@ -1,411 +1,27 @@
-// import 'package:digit_ui_components/digit_components.dart';
-// import 'package:digit_ui_components/theme/digit_extended_theme.dart';
-// import 'package:digit_ui_components/widgets/atoms/upload_popUp.dart';
-// import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
-// import 'package:flutter/material.dart';
-//
-// import '../router/app_router.dart';
-// import '../widgets/button/footer_button.dart';
-// import '../widgets/cards/rejected_edit_summary.dart';
-// import '../widgets/header/back_navigation_help_header.dart';
-//
-// @RoutePage()
-// class SubmitForApprovalPage extends StatefulWidget {
-//   const SubmitForApprovalPage({super.key});
-//
-//   @override
-//   State<SubmitForApprovalPage> createState() => _SubmitForApprovalPageState();
-// }
-//
-// class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
-//   @override
-//   Widget build(BuildContext context) {
-//     final theme = Theme.of(context);
-//     final textTheme = theme.digitTextTheme(context);
-//
-//     return Scaffold(
-//       body: ScrollableContent(
-//         enableFixedDigitButton: true,
-//         backgroundColor: theme.colorTheme.generic.background,
-//         header: const BackNavigationHelpHeaderWidget(
-//           showBackNavigation: true,
-//           showHelp: false,
-//         ),
-//         footer: FooterButton(
-//           showSuffixIcon: false,
-//           text: "Re-Submit for Approval",
-//           onPress: () {
-//             context.router.replace(const SubmittedSaveSuccessRoute());
-//           },
-//         ),
-//         children: [
-//           Padding(
-//             padding: const EdgeInsets.symmetric(
-//                 vertical: spacer2, horizontal: spacer4),
-//             child: Column(
-//               crossAxisAlignment: CrossAxisAlignment.start,
-//               children: [
-//                 Text(
-//                   'Summary',
-//                   style: textTheme.headingXl
-//                       .copyWith(color: theme.colorTheme.primary.primary2),
-//                 ),
-//                 const SizedBox(height: spacer4),
-//                 const RejectedEditAssetSummary(text: 'Battery', count: 2),
-//                 const SizedBox(height: spacer4),
-//                 DigitCard(children: [
-//                   Text(
-//                     'Installation Completion Report',
-//                     style: textTheme.headingM
-//                         .copyWith(color: theme.colorTheme.primary.primary2),
-//                   ),
-//                   Text(
-//                     'Please scan and upload the installation completion report',
-//                     style: textTheme.bodyS
-//                         .copyWith(color: theme.colorTheme.text.secondary),
-//                   ),
-//                   FileUploadWidget(
-//                     showPreview: true,
-//                     allowMultiples: false,
-//                     label: 'Upload',
-//                     onFilesSelected: (files) {
-//                       return {};
-//                     },
-//                   ),
-//                 ]),
-//                 const SizedBox(height: spacer4),
-//                 Text(
-//                   'Defect List',
-//                   style: textTheme.headingXl
-//                       .copyWith(color: theme.colorTheme.primary.primary2),
-//                 ),
-//                 const SizedBox(height: spacer4),
-//                 DigitCard(children: [
-//                   Padding(
-//                     padding: const EdgeInsets.symmetric(horizontal: spacer2)
-//                         .copyWith(bottom: spacer2),
-//                     child: Column(
-//                       children: [
-//                         DigitCheckbox(
-//                           label: "Inverter S.No Incorrect",
-//                           onChanged: (value) {},
-//                         ),
-//                         const SizedBox(height: spacer6),
-//                         DigitCheckbox(
-//                           label: "Panel S No Incorrect",
-//                           onChanged: (value) {},
-//                         ),
-//                         const SizedBox(height: spacer6),
-//                         DigitCheckbox(
-//                           label: "System Functionality Incorrect",
-//                           onChanged: (value) {},
-//                         ),
-//                       ],
-//                     ),
-//                   ),
-//                 ]),
-//                 const SizedBox(height: spacer2),
-//               ],
-//             ),
-//           ),
-//         ],
-//       ),
-//     );
-//   }
-// }
-
-// lib/pages/submit_for_approval_page.dart
-
-// import 'package:digit_ui_components/digit_components.dart';
-// import 'package:digit_ui_components/theme/digit_extended_theme.dart';
-// import 'package:digit_ui_components/widgets/atoms/digit_divider.dart';
-// import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
-// import 'package:flutter/material.dart';
-// import 'package:flutter_bloc/flutter_bloc.dart';
-//
-// import '../blocs/cache_asset/cache_asset.dart';
-// import '../blocs/overall_asset_summary/overall_asset_summary.dart';
-// import '../blocs/selected_project/selected_project.dart';
-// import '../router/app_router.dart';
-// import '../utils/extensions.dart';
-// import '../widgets/button/footer_button.dart';
-// import '../widgets/header/back_navigation_help_header.dart';
-//
-// @RoutePage()
-// class SubmitForApprovalPage extends StatefulWidget {
-//   const SubmitForApprovalPage({super.key});
-//
-//   @override
-//   State<SubmitForApprovalPage> createState() => _SubmitForApprovalPageState();
-// }
-//
-// class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
-//   @override
-//   void initState() {
-//     super.initState();
-//     // 1) Kick off the CacheAssetBloc sync as soon as we have a selected project
-//     WidgetsBinding.instance.addPostFrameCallback((_) {
-//       final projectId = context
-//           .read<SelectedProjectBloc>()
-//           .state
-//           .whenOrNull(selected: (p) => p.project.id);
-//       if (projectId != null) {
-//         context.read<CacheAssetBloc>().add(CacheAssetEvent.start(projectId));
-//       }
-//     });
-//   }
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     final theme = Theme.of(context);
-//     final textTheme = theme.digitTextTheme(context);
-//
-//     return Scaffold(
-//       body: BlocListener<CacheAssetBloc, CacheAssetState>(
-//         listener: (context, cacheState) {
-//           cacheState.whenOrNull(
-//             success: () {
-//               // once cache sync is done, trigger overall counts load
-//               final projectId = context
-//                   .read<SelectedProjectBloc>()
-//                   .state
-//                   .whenOrNull(selected: (p) => p.project.id);
-//               if (projectId != null) {
-//                 context.read<OverallAssetSummaryBloc>().add(
-//                       OverallAssetSummaryEvent.loadCounts(projectId: projectId),
-//                     );
-//               }
-//             },
-//             failure: (error) {
-//               context.showSnackBar(
-//                 SnackBar(content: Text("Sync failed: $error")),
-//               );
-//             },
-//             loading: () {
-//               // BuildContext? dialogCtx;
-//               // showDialog(
-//               //   context: context,
-//               //   barrierDismissible: false,
-//               //   builder: (ctx) {
-//               //     dialogCtx = ctx;
-//               //     return const Center(child: CircularProgressIndicator());
-//               //   },
-//               // );
-//               return const Center(child: CircularProgressIndicator());
-//             },
-//             // we don't need to do anything on loading here
-//           );
-//         },
-//         child: ScrollableContent(
-//           enableFixedDigitButton: true,
-//           backgroundColor: theme.colorTheme.generic.background,
-//           header: const BackNavigationHelpHeaderWidget(
-//               showBackNavigation: true, showHelp: false),
-//           footer: FooterButton(
-//             showSuffixIcon: false,
-//             text: "Re-Submit for Approval",
-//             onPress: () =>
-//                 context.router.replace(const SubmittedSaveSuccessRoute()),
-//           ),
-//           children: [
-//             Padding(
-//               padding: const EdgeInsets.symmetric(
-//                   vertical: spacer2, horizontal: spacer4),
-//               child: Column(
-//                 crossAxisAlignment: CrossAxisAlignment.start,
-//                 children: [
-//                   Text(
-//                     'Summary',
-//                     style: textTheme.headingXl.copyWith(
-//                       color: theme.colorTheme.primary.primary2,
-//                     ),
-//                   ),
-//                   const SizedBox(height: spacer4),
-//                   const RejectedEditAssetSummary(),
-//                 ],
-//               ),
-//             ),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-// }
-//
-// class RejectedEditAssetSummary extends StatelessWidget {
-//   const RejectedEditAssetSummary({super.key});
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     final theme = Theme.of(context);
-//     final textTheme = theme.digitTextTheme(context);
-//
-//     return BlocBuilder<OverallAssetSummaryBloc, OverallAssetSummaryState>(
-//       builder: (context, state) {
-//         // treat initial as loading
-//         final isLoading = state.maybeWhen(
-//           initial: () => true,
-//           loading: () => true,
-//           orElse: () => false,
-//         );
-//         final errorMessage = state.maybeWhen(
-//           error: (msg) => msg,
-//           orElse: () => null,
-//         );
-//         int battery = 0, inverter = 0, panel = 0;
-//         state.maybeWhen(
-//           loaded: (b, i, p) {
-//             battery = b;
-//             inverter = i;
-//             panel = p;
-//           },
-//           orElse: () {},
-//         );
-//
-//         if (isLoading) {
-//           return const Center(child: CircularProgressIndicator());
-//         }
-//         if (errorMessage != null) {
-//           return DigitCard(
-//             children: [
-//               Center(
-//                 child: Text(
-//                   'Error loading counts:\n$errorMessage',
-//                   style: textTheme.bodyL
-//                       .copyWith(color: theme.colorTheme.alert.error),
-//                   textAlign: TextAlign.center,
-//                 ),
-//               ),
-//               const SizedBox(height: spacer6),
-//             ],
-//           );
-//         }
-//
-//         return DigitCard(
-//           children: [
-//             _rejectCard(context, 'Inverters', inverter),
-//             _rejectCard(context, 'Batteries', battery),
-//             _rejectCard(context, 'Panels', panel, isLast: true),
-//           ],
-//         );
-//       },
-//     );
-//   }
-//
-//   Widget _rejectCard(BuildContext context, String assetType, int count,
-//       {bool isLast = false}) {
-//     final theme = Theme.of(context);
-//     final textTheme = Theme.of(context).digitTextTheme(context);
-//
-//     return Column(
-//       crossAxisAlignment: CrossAxisAlignment.start,
-//       children: [
-//         Stack(
-//           alignment: Alignment.center,
-//           children: [
-//             Align(
-//               alignment: Alignment.centerLeft,
-//               child: Text(assetType, style: textTheme.headingS),
-//             ),
-//             Center(child: Text('$count', style: textTheme.bodyL)),
-//           ],
-//         ),
-//         if (count > 0) ...[
-//           const SizedBox(height: spacer4),
-//           Container(
-//             decoration: BoxDecoration(
-//               color: theme.colorTheme.generic.background,
-//               border: Border.all(color: theme.colorTheme.generic.divider),
-//               borderRadius: BorderRadius.circular(spacer1),
-//             ),
-//             child: Padding(
-//               padding: const EdgeInsets.symmetric(
-//                   horizontal: spacer3, vertical: spacer4),
-//               child: Column(
-//                 crossAxisAlignment: CrossAxisAlignment.start,
-//                 children: [
-//                   SizedBox(width: context.width),
-//                   Text(
-//                     'Rejection Reason(s)',
-//                     style: textTheme.headingM
-//                         .copyWith(color: theme.colorTheme.text.primary),
-//                   ),
-//                   const SizedBox(height: spacer5),
-//                   _rejectionReason(context, 'Serial Number incorrect', 1),
-//                   const SizedBox(height: spacer4),
-//                   _rejectionReason(context, 'Additional Reason 2', 2),
-//                 ],
-//               ),
-//             ),
-//           ),
-//           const SizedBox(height: spacer5),
-//           Row(
-//             mainAxisAlignment: MainAxisAlignment.center,
-//             children: [
-//               Expanded(
-//                 child: DigitButton(
-//                   label: 'Edit',
-//                   onPressed: () {
-//                     // navigate to your edit screen
-//                   },
-//                   type: DigitButtonType.secondary,
-//                   size: DigitButtonSize.medium,
-//                   prefixIcon: Icons.edit,
-//                   mainAxisSize: MainAxisSize.min,
-//                 ),
-//               ),
-//             ],
-//           ),
-//         ],
-//         const SizedBox(height: spacer5),
-//         if (!isLast) const DigitDivider(dividerType: DividerType.small),
-//       ],
-//     );
-//   }
-//
-//   Widget _rejectionReason(BuildContext context, String reason, int index) {
-//     final theme = Theme.of(context);
-//     final labelStyle = Theme.of(context)
-//         .digitTextTheme(context)
-//         .label
-//         .copyWith(color: theme.colorTheme.primary.primary2);
-//     final valueStyle = Theme.of(context)
-//         .digitTextTheme(context)
-//         .label
-//         .copyWith(color: theme.colorTheme.text.primary);
-//     return Column(
-//       crossAxisAlignment: CrossAxisAlignment.start,
-//       children: [
-//         Container(
-//           decoration: BoxDecoration(
-//             border: Border.all(color: theme.colorTheme.primary.primary2),
-//             borderRadius: BorderRadius.circular(spacer2),
-//             color: theme.colorTheme.generic.background,
-//           ),
-//           child: Padding(
-//             padding: const EdgeInsets.symmetric(
-//                 vertical: spacer1, horizontal: spacer3),
-//             child: Text('Reason $index', style: labelStyle),
-//           ),
-//         ),
-//         const SizedBox(height: spacer2),
-//         Text(reason, style: valueStyle),
-//       ],
-//     );
-//   }
-// }
+import 'dart:async';
+import 'dart:io';
 
 import 'package:digit_ui_components/digit_components.dart';
+import 'package:digit_ui_components/services/location_bloc.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:digit_ui_components/widgets/atoms/digit_divider.dart';
+import 'package:digit_ui_components/widgets/atoms/upload_popUp.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
+import 'package:file_picker/src/platform_file.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:http/http.dart' as http;
+import 'package:isar/isar.dart';
+import 'package:path/path.dart' show basename;
+import 'package:path_provider/path_provider.dart';
+import 'package:recase/recase.dart';
 
+import '../blocs/asset_type/asset_type.dart';
 import '../blocs/cache_asset/cache_asset.dart';
 import '../blocs/overall_asset_summary/overall_asset_summary.dart';
 import '../blocs/selected_project/selected_project.dart';
 import '../blocs/user_type/user_type.dart';
+import '../data/nosql/cache_completion_report.dart';
 import '../model/comment/comment.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
@@ -423,48 +39,187 @@ class SubmitForApprovalPage extends StatefulWidget {
 
 class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
   late String userType = "";
+  late String projectId = "";
+  String? filePath = "";
+  double? _latitude;
+  double? _longitude;
+  bool rejection1 = false;
+  bool rejection2 = false;
+  bool rejection3 = false;
+
+  // for completion report upload
+  List<PlatformFile> _initialCompletion = [];
+  final Map<String, File> _fileCache = {};
+
+  StreamSubscription<LocationState>? _locSub;
 
   @override
   void initState() {
     super.initState();
+    userType = context.read<UserTypeBloc>().state.maybeWhen(
+          supervisor: () => USER_TYPES.SUPERVISOR.name,
+          orElse: () => USER_TYPES.FIELD_STAFF.name,
+        );
     // Kick off the cache sync
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      userType = context.read<UserTypeBloc>().state.maybeWhen(
-            supervisor: () => USER_TYPES.SUPERVISOR.name,
-            orElse: () => USER_TYPES.FIELD_STAFF.name,
-          );
-      final projectId = context
+      projectId = context
           .read<SelectedProjectBloc>()
           .state
-          .whenOrNull(selected: (wf) => wf.project.id);
-      if (projectId != null) {
-        context
-            .read<CacheAssetBloc>()
-            .add(CacheAssetEvent.start(projectId, userType));
-      }
+          .whenOrNull(selected: (wf) => wf.project.id)!;
+      context
+          .read<CacheAssetBloc>()
+          .add(CacheAssetEvent.start(projectId, userType));
+
+      // after sync, load counts & initial completion file
+      // context.read<CacheAssetBloc>().stream.where((s) {
+      //   return s.maybeWhen(success: () => true, orElse: () => false);
+      // }).first.then((_) {
+      //   context
+      //       .read<OverallAssetSummaryBloc>()
+      //       .add(OverallAssetSummaryEvent.loadCounts(projectId: projectId));
+      _loadInitialCompletion();
+      // });
     });
+  }
+
+  Future<void> _loadInitialCompletion() async {
+    final isar = context.read<CacheAssetBloc>().isar;
+
+    print("projectId $projectId");
+    // 1) Try your local cache first
+    final cached = await isar.cacheCompletionReports
+        .where()
+        .projectIdEqualTo(projectId)
+        .findFirst();
+
+    if (cached?.filePath!.isNotEmpty == true) {
+      // whether it's a uuid or a path, _getCachedFile will handle it
+      final file = await _getCachedFile(cached!.filePath);
+      if (file != null) {
+        setState(() {
+          _initialCompletion = [
+            PlatformFile(
+              name: basename(file.path),
+              path: file.path,
+              size: file.lengthSync(),
+            )
+          ];
+        });
+        return;
+      }
+    }
+
+    // 2) Fallback to workflow.documents
+    final wf = context.read<SelectedProjectBloc>().state.whenOrNull(
+          selected: (wf) => wf,
+        );
+    final docs = wf?.workflow?.documents ?? [];
+
+    final files = <PlatformFile>[];
+    for (final doc in docs) {
+      final key = doc.fileStore;
+      if (key != null) {
+        final file = await _getCachedFile(key);
+        if (file != null) {
+          files.add(PlatformFile(
+            name: basename(file.path),
+            path: file.path,
+            size: await file.length(),
+          ));
+        }
+      }
+    }
+
+    if (files.isNotEmpty) {
+      if (!mounted) return;
+      setState(() {
+        _initialCompletion = files;
+      });
+    }
+  }
+
+  Future<File?> _getCachedFile(String idOrPath) async {
+    if (_fileCache.containsKey(idOrPath)) return _fileCache[idOrPath];
+    if (isValidUuid(idOrPath)) {
+      try {
+        final uri = Uri.parse('$fileStoreFileUrl$idOrPath');
+        final resp = await http.get(uri);
+        if (resp.statusCode == 200) {
+          final dir = await getTemporaryDirectory();
+          final file = File('${dir.path}/${uri.pathSegments.last}');
+          await file.writeAsBytes(resp.bodyBytes);
+          _fileCache[idOrPath] = file;
+          return file;
+        }
+      } catch (_) {}
+    } else {
+      final file = File(idOrPath);
+      if (await file.exists()) {
+        _fileCache[idOrPath] = file;
+        return file;
+      }
+    }
+    return null;
+  }
+
+  void _handleUpload(PlatformFile platformFile) async {
+    final file = File(platformFile.path!);
+    final copiedPath = await copyFileToLocalDir(file);
+    setState(() {
+      filePath = copiedPath;
+    });
+    debugPrint("filePath: $filePath");
+  }
+
+  @override
+  void dispose() {
+    _locSub?.cancel();
+    super.dispose();
+  }
+
+  Future<bool> _ensureLocationLoaded(
+      {Duration timeout = const Duration(seconds: 10)}) async {
+    final locBloc = context.read<LocationBloc>();
+    // If already have coords, return immediately
+    if (locBloc.state.latitude != null && locBloc.state.longitude != null) {
+      return true;
+    }
+    try {
+      final state = await locBloc.stream
+          .firstWhere((s) => s.latitude != null && s.longitude != null)
+          .timeout(timeout);
+      // local vars already updated in listener above, but set again to be safe
+      setState(() {
+        _latitude = state.latitude;
+        _longitude = state.longitude;
+      });
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final textTheme = theme.digitTextTheme(context);
 
+    final allChecked = rejection1 && rejection2 && rejection3;
+
+    print("userType $userType");
     return Scaffold(
       body: BlocListener<CacheAssetBloc, CacheAssetState>(
         listener: (context, cacheState) {
           cacheState.whenOrNull(
             success: () {
-              final projectId = context
-                  .read<SelectedProjectBloc>()
-                  .state
-                  .whenOrNull(selected: (wf) => wf.project.id);
-              if (projectId != null) {
-                context.read<OverallAssetSummaryBloc>().add(
-                      OverallAssetSummaryEvent.loadCounts(projectId: projectId),
-                    );
-              }
+              context.read<OverallAssetSummaryBloc>().add(
+                    OverallAssetSummaryEvent.loadCounts(projectId: projectId),
+                  );
             },
             failure: (error) {
+              context.read<OverallAssetSummaryBloc>().add(
+                    OverallAssetSummaryEvent.loadCounts(projectId: projectId),
+                  );
               context.showSnackBar(
                 SnackBar(content: Text("Sync failed: $error")),
               );
@@ -481,25 +236,102 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
           ),
           footer: FooterButton(
             showSuffixIcon: false,
+            isDisabled: !allChecked,
             text: "Re-Submit for Approval",
             onPress: () =>
                 context.router.replace(const SubmittedSaveSuccessRoute()),
           ),
           children: [
-            const Padding(
-              padding:
-                  EdgeInsets.symmetric(vertical: spacer2, horizontal: spacer4),
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                  vertical: spacer2, horizontal: spacer4),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Summary',
-                      style: TextStyle(
-                        // pick up your theme here
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      )),
-                  SizedBox(height: spacer4),
-                  RejectedEditAssetSummary(),
+                  Text(
+                    'Summary',
+                    style: textTheme.headingXl
+                        .copyWith(color: theme.colorTheme.primary.primary2),
+                  ),
+                  const SizedBox(height: spacer4),
+                  const RejectedEditAssetSummary(),
+                  if (userType == USER_TYPES.SUPERVISOR.name) ...[
+                    const SizedBox(height: spacer4),
+                    DigitCard(
+                      children: [
+                        Text(
+                          'Installation Completion Report',
+                          style: textTheme.headingM.copyWith(
+                              color: theme.colorTheme.primary.primary2),
+                        ),
+                        Text(
+                          'Please scan and upload the installation completion report',
+                          style: textTheme.bodyS
+                              .copyWith(color: theme.colorTheme.text.secondary),
+                        ),
+                        FileUploadWidget(
+                          openFile: true,
+                          initialFiles: _initialCompletion,
+                          allowedExtensions: const ['pdf'],
+                          showPreview: true,
+                          allowMultiples: false,
+                          label: 'Upload',
+                          onFilesSelected: (files) {
+                            if (files.isEmpty || files.first.path == null)
+                              return <PlatformFile, String?>{};
+                            _ensureLocationLoaded();
+                            _handleUpload(files.first);
+                            return <PlatformFile, String?>{};
+                          },
+                        ),
+                        RejectionReasonsList(
+                          comments: context
+                                  .read<SelectedProjectBloc>()
+                                  .state
+                                  .whenOrNull(
+                                    selected: (wf) => wf.transactions
+                                        ?.expand(
+                                            (tx) => tx.comments ?? <Comment>[])
+                                        .toList(),
+                                  ) ??
+                              <Comment>[],
+                          excludeStandardTypes: true,
+                        ),
+                      ],
+                    ),
+                  ],
+                  const SizedBox(height: spacer4),
+                  Text(
+                    "Rejection List",
+                    style: textTheme.headingXl
+                        .copyWith(color: theme.colorTheme.primary.primary2),
+                  ),
+                  const SizedBox(height: spacer1),
+                  DigitCard(children: [
+                    DigitCheckbox(
+                        label: 'Inverter Rejection reason 1',
+                        onChanged: (value) {
+                          setState(() {
+                            rejection1 = value;
+                          });
+                        }),
+                    const SizedBox(height: spacer1),
+                    DigitCheckbox(
+                        label: 'Inverter Rejection reason 2',
+                        onChanged: (value) {
+                          setState(() {
+                            rejection2 = value;
+                          });
+                        }),
+                    const SizedBox(height: spacer1),
+                    DigitCheckbox(
+                        label: 'Panel  Rejection reason 1',
+                        onChanged: (value) {
+                          setState(() {
+                            rejection3 = value;
+                          });
+                        }),
+                  ])
                 ],
               ),
             ),
@@ -526,10 +358,11 @@ class RejectedEditAssetSummary extends StatelessWidget {
 
     // 2) Build a map: AssetType (title case) → List<Comment>
     final commentsByType = <String, List<Comment>>{};
-    if (workflow?.project.transactions != null) {
-      for (final tx in workflow!.project.transactions!) {
+    if (workflow?.transactions != null) {
+      for (final tx in workflow!.transactions!) {
         for (final c in tx.comments ?? []) {
-          final t = c.assetType?.titleCase ?? 'Unknown';
+          final t =
+              c.assetType != null ? ReCase(c.assetType!).titleCase : 'Unknown';
           commentsByType.putIfAbsent(t, () => []).add(c);
         }
       }
@@ -573,31 +406,77 @@ class RejectedEditAssetSummary extends StatelessWidget {
         }
 
         // 3) Render one _rejectCard per type
-        return DigitCard(
-          children: [
-            _rejectCard(
-              context: context,
-              assetType: 'Inverter',
-              count: inverter,
-              comments: commentsByType['Inverter'],
-            ),
-            _rejectCard(
-              context: context,
-              assetType: 'Battery',
-              count: battery,
-              comments: commentsByType['Battery'],
-            ),
-            _rejectCard(
-              context: context,
-              assetType: 'Panel',
-              count: panel,
-              comments: commentsByType['Panel'],
-              isLast: true,
-            ),
-          ],
-        );
+        // return DigitCard(
+        //   children: [
+        //     _rejectCard(
+        //       context: context,
+        //       assetType: 'Inverter',
+        //       count: inverter,
+        //       comments: commentsByType['Inverter'],
+        //     ),
+        //     _rejectCard(
+        //       context: context,
+        //       assetType: 'Battery',
+        //       count: battery,
+        //       comments: commentsByType['Battery'],
+        //     ),
+        //     _rejectCard(
+        //       context: context,
+        //       assetType: 'Panel',
+        //       count: panel,
+        //       comments: commentsByType['Panel'],
+        //       isLast: true,
+        //     ),
+        //   ],
+        // );
+        return DigitCard(children: [
+          _oneCard(context, 'Inverter', inverter, commentsByType['Inverter']),
+          _oneCard(context, 'Battery', battery, commentsByType['Battery']),
+          _oneCard(context, 'Panel', panel, commentsByType['Panel'],
+              isLast: true),
+        ]);
       },
     );
+  }
+
+  Widget _oneCard(
+      BuildContext ctx, String assetType, int count, List<Comment>? comments,
+      {bool isLast = false}) {
+    final theme = Theme.of(ctx);
+    final textTheme = theme.digitTextTheme(ctx);
+    final has = comments != null && comments.isNotEmpty;
+
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Stack(alignment: Alignment.center, children: [
+        Align(
+            alignment: Alignment.centerLeft,
+            child: Text('${assetType}s', style: textTheme.headingS)),
+        Center(child: Text('$count', style: textTheme.bodyL)),
+      ]),
+      if (has) RejectionReasonsList(comments: comments),
+      if (count > 0) ...[
+        const SizedBox(height: spacer5),
+        Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Expanded(
+            child: DigitButton(
+              label: 'Edit',
+              onPressed: () {
+                ctx
+                    .read<AssetTypeBloc>()
+                    .add(AssetTypeEvent.typeSelected(assetType.toUpperCase()));
+                ctx.router.push(const AssetSummaryRoute());
+              },
+              type: DigitButtonType.secondary,
+              size: DigitButtonSize.medium,
+              prefixIcon: Icons.edit,
+              mainAxisSize: MainAxisSize.min,
+            ),
+          ),
+        ]),
+      ],
+      const SizedBox(height: spacer5),
+      if (!isLast) const DigitDivider(dividerType: DividerType.small),
+    ]);
   }
 
   Widget _rejectCard({
@@ -621,7 +500,10 @@ class RejectedEditAssetSummary extends StatelessWidget {
           children: [
             Align(
               alignment: Alignment.centerLeft,
-              child: Text(assetType + 's', style: textTheme.headingS),
+              child: assetType.toLowerCase() ==
+                      ASSET_TYPES.BATTERY.name.toLowerCase()
+                  ? Text('Batteries', style: textTheme.headingS)
+                  : Text('${assetType}s', style: textTheme.headingS),
             ),
             Center(child: Text('$count', style: textTheme.bodyL)),
           ],
@@ -631,6 +513,7 @@ class RejectedEditAssetSummary extends StatelessWidget {
         if (hasComments) ...[
           const SizedBox(height: spacer4),
           Container(
+            width: context.width,
             decoration: BoxDecoration(
               color: theme.colorTheme.generic.background,
               border: Border.all(color: theme.colorTheme.generic.divider),
@@ -658,7 +541,9 @@ class RejectedEditAssetSummary extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: spacer5),
+        ],
+        if (count > 0) const SizedBox(height: spacer5),
+        if (count > 0)
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -666,7 +551,9 @@ class RejectedEditAssetSummary extends StatelessWidget {
                 child: DigitButton(
                   label: 'Edit',
                   onPressed: () {
-                    // navigate to your edit screen
+                    context.read<AssetTypeBloc>().add(
+                        AssetTypeEvent.typeSelected(assetType.toUpperCase()));
+                    context.router.push(const AssetSummaryRoute());
                   },
                   type: DigitButtonType.secondary,
                   size: DigitButtonSize.medium,
@@ -676,8 +563,6 @@ class RejectedEditAssetSummary extends StatelessWidget {
               ),
             ],
           ),
-        ],
-
         const SizedBox(height: spacer5),
         if (!isLast) const DigitDivider(dividerType: DividerType.small),
       ],
@@ -691,6 +576,102 @@ class RejectedEditAssetSummary extends StatelessWidget {
         .label
         .copyWith(color: theme.colorTheme.primary.primary2);
     final valueStyle = Theme.of(context)
+        .digitTextTheme(context)
+        .label
+        .copyWith(color: theme.colorTheme.text.primary);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            border: Border.all(color: theme.colorTheme.primary.primary2),
+            borderRadius: BorderRadius.circular(spacer2),
+            color: theme.colorTheme.generic.background,
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+                vertical: spacer1, horizontal: spacer3),
+            child: Text('Reason $index', style: labelStyle),
+          ),
+        ),
+        const SizedBox(height: spacer2),
+        Text(reason, style: valueStyle),
+      ],
+    );
+  }
+}
+
+/// Extracted widget to render a card of rejection reasons.
+class RejectionReasonsList extends StatelessWidget {
+  final List<Comment>? comments;
+  final bool excludeStandardTypes;
+
+  const RejectionReasonsList({
+    Key? key,
+    required this.comments,
+    this.excludeStandardTypes = false,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final textTheme = theme.digitTextTheme(context);
+
+    if (comments == null || comments!.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final filtered = excludeStandardTypes
+        ? comments!.where((c) {
+            final t = c.assetType?.toLowerCase();
+            return t != 'inverter' && t != 'battery' && t != 'panel';
+          }).toList()
+        : comments!;
+
+    if (filtered.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      children: [
+        const SizedBox(height: spacer2),
+        Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: theme.colorTheme.generic.background,
+            border: Border.all(color: theme.colorTheme.generic.divider),
+            borderRadius: BorderRadius.circular(spacer1),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+                horizontal: spacer3, vertical: spacer4),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Rejection Reason(s)',
+                  style: textTheme.headingM
+                      .copyWith(color: theme.colorTheme.text.primary),
+                ),
+                const SizedBox(height: spacer5),
+                for (var i = 0; i < filtered.length; i++) ...[
+                  _oneReason(context, filtered[i].commentMessage!, i + 1),
+                  if (i < filtered.length - 1) const SizedBox(height: spacer4),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _oneReason(BuildContext context, String reason, int index) {
+    final theme = Theme.of(context);
+    final labelStyle = theme
+        .digitTextTheme(context)
+        .label
+        .copyWith(color: theme.colorTheme.primary.primary2);
+    final valueStyle = theme
         .digitTextTheme(context)
         .label
         .copyWith(color: theme.colorTheme.text.primary);
