@@ -2,12 +2,13 @@ import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
-import 'package:selco/repositories/app_init_Repo.dart';
 import 'package:uuid/uuid.dart';
 
 import '../blocs/app_init/app_init.dart';
 import '../data/app_shared_preferences.dart';
+import '../repositories/app_init_Repo.dart';
 
 getSelectedLanguage(Initialized state, int index) {
   if (AppSharedPreferences().getSelectedLocale == null) {
@@ -123,6 +124,46 @@ bool isValidUuid(String value) {
   } catch (_) {
     return false;
   }
+}
+
+/// A simple in‑memory cache of downloaded files.
+final Map<String, File> _fileCache = {};
+
+/// Tries to turn [idOrPath] into a local [File]:
+/// 1. If it's already in `_fileCache`, return it.
+/// 2. If `isValidUuid(idOrPath)` is true, downloads from
+///    `$fileStoreFileUrl$idOrPath` and caches it.
+/// 3. Otherwise treats `idOrPath` as a filesystem path and returns the file if it exists.
+/// Returns `null` if neither download nor local file exists.
+Future<File?> getCachedFile(String idOrPath) async {
+  if (_fileCache.containsKey(idOrPath)) return _fileCache[idOrPath];
+
+  // 1) If it's a UUID, try downloading from your file store
+  if (isValidUuid(idOrPath)) {
+    try {
+      final uri = Uri.parse('$fileStoreFileUrl$idOrPath');
+      final resp = await http.get(uri);
+      if (resp.statusCode == 200) {
+        final dir = await getTemporaryDirectory();
+        final file = File('${dir.path}/${uri.pathSegments.last}');
+        await file.writeAsBytes(resp.bodyBytes);
+        _fileCache[idOrPath] = file;
+        return file;
+      }
+    } catch (_) {
+      // swallow any network/download errors
+    }
+  }
+
+  // 2) Otherwise, treat as a local path
+  final file = File(idOrPath);
+  if (await file.exists()) {
+    _fileCache[idOrPath] = file;
+    return file;
+  }
+
+  // nothing found
+  return null;
 }
 
 String fileStoreFileUrl =

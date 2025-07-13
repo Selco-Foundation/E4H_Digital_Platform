@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:recase/recase.dart';
+import 'package:selco/widgets/video/video_card.dart';
 
 import '../blocs/asset_rejection/asset_rejection.dart';
 import '../blocs/asset_summary/asset_summary.dart';
@@ -483,22 +484,9 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
 
     final videoWidgets = summary.mediaEntries
         .where((m) => m.itemType == 'video')
-        .map((m) => Padding(
-              padding: const EdgeInsets.only(bottom: spacer3),
-              child: Row(
-                children: [
-                  Icon(Icons.play_circle_fill,
-                      color: Theme.of(context).colorTheme.primary.primary1),
-                  const SizedBox(width: spacer2),
-                  Text(
-                    m.itemNumber,
-                    style: textTheme.bodyS.copyWith(
-                      color: Theme.of(context).colorTheme.text.primary,
-                    ),
-                  ),
-                ],
-              ),
-            ))
+        .map(
+          (m) => videoCard(context: context, filePath: m.itemNumber),
+        )
         .toList();
 
     return Column(
@@ -651,11 +639,15 @@ Widget editButton({
           final bool isInboxReport =
               reportState.maybeWhen(inbox: () => true, orElse: () => false);
 
+          final bool isSendBackReport =
+              reportState.maybeWhen(sendBack: () => true, orElse: () => false);
+
           final isApprovedReport =
               inboxState.maybeWhen(approved: () => true, orElse: () => false);
 
-          final bool hideEditButton =
-              isSubmittedReport || (isInboxReport && isApprovedReport);
+          final bool hideEditButton = isSubmittedReport ||
+              (isInboxReport && isApprovedReport) ||
+              isSendBackReport;
           return hideEditButton
               ? const SizedBox.shrink()
               : GestureDetector(

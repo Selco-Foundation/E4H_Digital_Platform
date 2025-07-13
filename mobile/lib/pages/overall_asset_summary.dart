@@ -11,6 +11,7 @@ import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:file_picker/src/platform_file.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:selco/widgets/video/video_card.dart';
 
 import '../blocs/asset_submission/asset_submission.dart';
 import '../blocs/asset_summary/asset_summary.dart';
@@ -137,7 +138,7 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                     const SnackBar(
                         content: Text("All assets submitted successfully")),
                   );
-                  context.router.replace(const SubmittedSaveSuccessRoute());
+                  context.router.popAndPush(const SubmittedSaveSuccessRoute());
                 },
                 failure: (error) {
                   context.showSnackBar(
@@ -264,146 +265,153 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
 
                 // ── MAIN CONTENT ────────────────────────────────────────────────────
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                        vertical: spacer2, horizontal: spacer4),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Summary',
-                          style: textTheme.headingXl.copyWith(
-                              color: theme.colorTheme.primary.primary2),
-                        ),
-                        const SizedBox(height: spacer4),
+                  BlocBuilder<ReportTypeBloc, ReportTypeState>(
+                    builder: (context, reportState) {
+                      bool isNewReport = reportState.maybeWhen(
+                          newReport: () => true, orElse: () => false);
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(
+                            vertical: spacer2, horizontal: spacer4),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Summary',
+                              style: textTheme.headingXl.copyWith(
+                                  color: theme.colorTheme.primary.primary2),
+                            ),
+                            const SizedBox(height: spacer4),
 
-                        // ── BLOC BUILDER FOR THE COUNTS ─────────────────────────────────────
-                        BlocBuilder<OverallAssetSummaryBloc,
-                            OverallAssetSummaryState>(
-                          builder: (context, state) {
-                            return state.when(
-                              initial: () {
-                                return DigitCard(
-                                  children: [
-                                    const ElementAssetSummary(
-                                        count: 0, text: 'Batteries'),
-                                    const ElementAssetSummary(
-                                      count: 0,
-                                      text: 'Inverters',
-                                    ),
-                                    const ElementAssetSummary(
-                                        count: 0, text: 'Panels'),
-                                    const SizedBox(height: spacer6),
-                                    DigitButton(
-                                      mainAxisSize: MainAxisSize.max,
-                                      label: 'Add More Assets',
-                                      prefixIcon: Icons.add_box,
-                                      onPressed: () {}, // disabled
-                                      type: DigitButtonType.primary,
-                                      size: DigitButtonSize.medium,
-                                    ),
-                                  ],
-                                );
-                              },
-                              loading: () {
-                                return DigitCard(
-                                  children: [
-                                    const Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceEvenly,
+                            // ── BLOC BUILDER FOR THE COUNTS ─────────────────────────────────────
+
+                            BlocBuilder<OverallAssetSummaryBloc,
+                                OverallAssetSummaryState>(
+                              builder: (context, state) {
+                                return state.when(
+                                  initial: () {
+                                    return DigitCard(
+                                      children: [
+                                        const ElementAssetSummary(
+                                            count: 0, text: 'Batteries'),
+                                        const ElementAssetSummary(
+                                          count: 0,
+                                          text: 'Inverters',
+                                        ),
+                                        const ElementAssetSummary(
+                                            count: 0, text: 'Panels'),
+                                        const SizedBox(height: spacer6),
+                                        DigitButton(
+                                          mainAxisSize: MainAxisSize.max,
+                                          label: 'Add More Assets',
+                                          prefixIcon: Icons.add_box,
+                                          onPressed: () {}, // disabled
+                                          type: DigitButtonType.primary,
+                                          size: DigitButtonSize.medium,
+                                        ),
+                                      ],
+                                    );
+                                  },
+                                  loading: () {
+                                    return DigitCard(
+                                      children: [
+                                        const Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceEvenly,
+                                          children: [
+                                            ElementAssetSummary(
+                                                count: 0, text: 'Batteries'),
+                                            ElementAssetSummary(
+                                                count: 0, text: 'Inverters'),
+                                            ElementAssetSummary(
+                                                count: 0, text: 'Panels'),
+                                          ],
+                                        ),
+                                        const SizedBox(height: spacer6),
+                                        const Center(
+                                            child: CircularProgressIndicator()),
+                                        const SizedBox(height: spacer6),
+                                        DigitButton(
+                                          mainAxisSize: MainAxisSize.max,
+                                          label: 'Add More Assets',
+                                          prefixIcon: Icons.add_box,
+                                          onPressed: () {},
+                                          type: DigitButtonType.primary,
+                                          size: DigitButtonSize.medium,
+                                        ),
+                                      ],
+                                    );
+                                  },
+                                  error: (message) {
+                                    return DigitCard(
+                                      children: [
+                                        Center(
+                                          child: Text(
+                                            'Error loading counts:\n$message',
+                                            style: textTheme.bodyL.copyWith(
+                                                color: theme
+                                                    .colorTheme.alert.error),
+                                            textAlign: TextAlign.center,
+                                          ),
+                                        ),
+                                        const SizedBox(height: spacer6),
+                                        DigitButton(
+                                          mainAxisSize: MainAxisSize.max,
+                                          label: 'Retry',
+                                          prefixIcon: Icons.refresh,
+                                          onPressed: () {
+                                            final selState = context
+                                                .read<SelectedProjectBloc>()
+                                                .state;
+                                            selState.whenOrNull(
+                                                selected: (project) {
+                                              context
+                                                  .read<
+                                                      OverallAssetSummaryBloc>()
+                                                  .add(
+                                                    OverallAssetSummaryEvent
+                                                        .loadCounts(
+                                                      projectId:
+                                                          project.project.id,
+                                                    ),
+                                                  );
+                                            });
+                                          },
+                                          type: DigitButtonType.primary,
+                                          size: DigitButtonSize.medium,
+                                        ),
+                                      ],
+                                    );
+                                  },
+                                  loaded: (int batteryCount, int inverterCount,
+                                      int panelCount) {
+                                    return DigitCard(
                                       children: [
                                         ElementAssetSummary(
-                                            count: 0, text: 'Batteries'),
+                                          count: batteryCount,
+                                          text: 'Batteries',
+                                          onPress: () {
+                                            context.read<AssetTypeBloc>().add(
+                                                const AssetTypeEvent
+                                                    .typeSelected("BATTERY"));
+                                            context.router.push(
+                                                const AssetSummaryRoute());
+                                          },
+                                        ),
                                         ElementAssetSummary(
-                                            count: 0, text: 'Inverters'),
-                                        ElementAssetSummary(
-                                            count: 0, text: 'Panels'),
-                                      ],
-                                    ),
-                                    const SizedBox(height: spacer6),
-                                    const Center(
-                                        child: CircularProgressIndicator()),
-                                    const SizedBox(height: spacer6),
-                                    DigitButton(
-                                      mainAxisSize: MainAxisSize.max,
-                                      label: 'Add More Assets',
-                                      prefixIcon: Icons.add_box,
-                                      onPressed: () {},
-                                      type: DigitButtonType.primary,
-                                      size: DigitButtonSize.medium,
-                                    ),
-                                  ],
-                                );
-                              },
-                              error: (message) {
-                                return DigitCard(
-                                  children: [
-                                    Center(
-                                      child: Text(
-                                        'Error loading counts:\n$message',
-                                        style: textTheme.bodyL.copyWith(
-                                            color:
-                                                theme.colorTheme.alert.error),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ),
-                                    const SizedBox(height: spacer6),
-                                    DigitButton(
-                                      mainAxisSize: MainAxisSize.max,
-                                      label: 'Retry',
-                                      prefixIcon: Icons.refresh,
-                                      onPressed: () {
-                                        final selState = context
-                                            .read<SelectedProjectBloc>()
-                                            .state;
-                                        selState.whenOrNull(
-                                            selected: (project) {
-                                          context
-                                              .read<OverallAssetSummaryBloc>()
-                                              .add(
-                                                OverallAssetSummaryEvent
-                                                    .loadCounts(
-                                                  projectId: project.project.id,
-                                                ),
-                                              );
-                                        });
-                                      },
-                                      type: DigitButtonType.primary,
-                                      size: DigitButtonSize.medium,
-                                    ),
-                                  ],
-                                );
-                              },
-                              loaded: (int batteryCount, int inverterCount,
-                                  int panelCount) {
-                                return DigitCard(
-                                  children: [
-                                    ElementAssetSummary(
-                                      count: batteryCount,
-                                      text: 'Batteries',
-                                      onPress: () {
-                                        context.read<AssetTypeBloc>().add(
-                                            const AssetTypeEvent.typeSelected(
-                                                "BATTERY"));
-                                        context.router
-                                            .push(const AssetSummaryRoute());
-                                      },
-                                    ),
-                                    ElementAssetSummary(
-                                      count: inverterCount,
-                                      text: 'Inverters',
-                                      onPress: () {
-                                        context.read<AssetTypeBloc>().add(
-                                            const AssetTypeEvent.typeSelected(
-                                                "INVERTER"));
-                                        context.router
-                                            .push(const AssetSummaryRoute());
-                                      },
-                                    ),
-                                    BlocBuilder<ReportTypeBloc,
-                                        ReportTypeState>(
-                                      builder: (context, reportState) {
-                                        return reportState.maybeWhen(
+                                          count: inverterCount,
+                                          text: 'Inverters',
+                                          onPress: () {
+                                            context.read<AssetTypeBloc>().add(
+                                                const AssetTypeEvent
+                                                    .typeSelected("INVERTER"));
+                                            context.router.push(
+                                                const AssetSummaryRoute());
+                                          },
+                                        ),
+                                        // BlocBuilder<ReportTypeBloc,
+                                        //     ReportTypeState>(
+                                        //   builder: (context, reportState) {
+                                        reportState.maybeWhen(
                                             submitted: () =>
                                                 ElementAssetSummary(
                                                   lastCard: true,
@@ -451,57 +459,76 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                                           .medium,
                                                     )
                                                   ],
-                                                ));
-                                      },
-                                    ),
-                                  ],
+                                                ))
+                                        // },
+                                        //),
+                                      ],
+                                    );
+                                  },
                                 );
                               },
-                            );
-                          },
-                        ),
+                            ),
 
-                        const SizedBox(height: spacer4),
-                        userState.maybeWhen(
-                            orElse: () => Container(),
-                            supervisor: () => DigitCard(
-                                  children: [
-                                    Text(
-                                      'Installation Completion Report',
-                                      style: textTheme.headingM.copyWith(
-                                          color: theme
-                                              .colorTheme.primary.primary2),
-                                    ),
-                                    Text(
-                                      'Please scan and upload the installation completion report',
-                                      style: textTheme.bodyS.copyWith(
-                                          color:
-                                              theme.colorTheme.text.secondary),
-                                    ),
-                                    FileUploadWidget(
-                                      allowedExtensions: ["pdf"],
-                                      showPreview: true,
-                                      allowMultiples: false,
-                                      label: 'Upload',
-                                      onFilesSelected: (files) {
-                                        if (files.isEmpty ||
-                                            files.first.path == null)
-                                          return <PlatformFile, String?>{};
-                                        _ensureLocationLoaded();
-                                        // if (!ok) {
-                                        //   context.showSnackBar(
-                                        //     const SnackBar(content: Text('Could not fetch location')),
-                                        //   );
-                                        // }
-                                        // Handle file copying outside of the callback
-                                        _handleUpload(files.first);
-                                        return <PlatformFile, String?>{};
-                                      },
-                                    ),
-                                  ],
-                                ))
-                      ],
-                    ),
+                            const SizedBox(height: spacer4),
+                            userState.maybeWhen(
+                                orElse: () => Container(),
+                                supervisor: () => Column(
+                                      children: [
+                                        isNewReport
+                                            ? DigitCard(
+                                                children: [
+                                                  Text(
+                                                    'Installation Completion Report',
+                                                    style: textTheme.headingM
+                                                        .copyWith(
+                                                            color: theme
+                                                                .colorTheme
+                                                                .primary
+                                                                .primary2),
+                                                  ),
+                                                  Text(
+                                                    'Please scan and upload the installation completion report',
+                                                    style: textTheme.bodyS
+                                                        .copyWith(
+                                                            color: theme
+                                                                .colorTheme
+                                                                .text
+                                                                .secondary),
+                                                  ),
+                                                  FileUploadWidget(
+                                                    allowedExtensions: ["pdf"],
+                                                    showPreview: true,
+                                                    allowMultiples: false,
+                                                    label: 'Upload',
+                                                    onFilesSelected: (files) {
+                                                      if (files.isEmpty ||
+                                                          files.first.path ==
+                                                              null)
+                                                        return <PlatformFile,
+                                                            String?>{};
+                                                      _ensureLocationLoaded();
+                                                      // if (!ok) {
+                                                      //   context.showSnackBar(
+                                                      //     const SnackBar(content: Text('Could not fetch location')),
+                                                      //   );
+                                                      // }
+                                                      // Handle file copying outside of the callback
+                                                      _handleUpload(
+                                                          files.first);
+                                                      return <PlatformFile,
+                                                          String?>{};
+                                                    },
+                                                  ),
+                                                ],
+                                              )
+                                            : videoCard(
+                                                context: context, filePath: ""),
+                                      ],
+                                    ))
+                          ],
+                        ),
+                      );
+                    },
                   ),
                 ],
               );
