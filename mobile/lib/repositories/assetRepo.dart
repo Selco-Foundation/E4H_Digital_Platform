@@ -44,6 +44,7 @@ class AssetRepository {
   final Dio _dio = DioClient().dio;
 
   Future<String> uploadFile(File file) async {
+    return "hellobowrld";
     final fileName = file.path.split(Platform.pathSeparator).last;
     final mimeType = _lookupMimeType(fileName);
 
