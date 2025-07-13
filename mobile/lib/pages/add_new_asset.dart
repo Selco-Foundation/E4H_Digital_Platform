@@ -22,6 +22,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
+import 'package:recase/recase.dart';
 
 import '../blocs/app_init/app_init.dart';
 import '../blocs/asset_type/asset_type.dart';
@@ -66,7 +67,7 @@ class AddNewAssetPage extends StatefulWidget {
 class _AddNewAssetPageState extends State<AddNewAssetPage> {
   String? _currentProjectId;
   final List<AssetModel> _assets = [AssetModel(serialNumber: '')];
-  String assetTypeTitle = "";
+  String currentAssetType = "";
   late List<String> assetCapacity = [];
   late String assetCapacityUom = "";
   late List<AssetType> assetTypeList = [];
@@ -99,7 +100,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
       }
     });
 
-    assetTypeTitle = context.read<AssetTypeBloc>().state.when(
+    currentAssetType = context.read<AssetTypeBloc>().state.when(
           initial: () => '',
           inverter: () => 'inverter',
           battery: () => 'battery',
@@ -110,9 +111,9 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
       _currentProjectId = proj.project.id;
       context
           .read<CacheAssetCountBloc>()
-          .add(CacheAssetCountEvent.get(proj.project.id, assetTypeTitle));
+          .add(CacheAssetCountEvent.get(proj.project.id, currentAssetType));
       context.read<CacheAddNewAssetBloc>().add(
-            CacheAddNewAssetEvent.get(proj.project.id, assetTypeTitle),
+            CacheAddNewAssetEvent.get(proj.project.id, currentAssetType),
           );
     });
 
@@ -123,12 +124,12 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
             assetTypeList = assetType
                 .map((at) => at.data)
                 .where((at) =>
-                    at.code.toUpperCase() == assetTypeTitle.toUpperCase())
+                    at.code.toUpperCase() == currentAssetType.toUpperCase())
                 .toList();
 
             final systemCode = system.lastOrNull?.data.code;
             selectedAssetType = assetTypeList.firstWhereOrNull((asset) =>
-                asset.code.toUpperCase() == assetTypeTitle.toUpperCase());
+                asset.code.toUpperCase() == currentAssetType.toUpperCase());
 
             final fields = selectedAssetType!.formFields;
             final assetCapacityField = fields.firstWhereOrNull(
@@ -198,7 +199,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
       return _fileCache[path];
     }
 
-    if (isValidUuid(path) /* path.startsWith(RegExp(r'https?://')) */) {
+    if (isValidUuid(path)) {
       try {
         final uri = Uri.parse("$fileStoreFileUrl$path");
         final response = await http.get(uri);
@@ -274,30 +275,16 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
       ],
       child: BlocBuilder<AssetTypeBloc, AssetTypeState>(
         builder: (ctx, assetTypeState) {
-          final assetType = assetTypeState.when(
-            initial: () => '',
-            inverter: () => 'inverter',
-            battery: () => 'battery',
-            panel: () => 'panel',
-          );
-          final heading = assetTypeState.when(
-            initial: () => 'Asset',
-            inverter: () => 'Inverter',
-            battery: () => 'Battery',
-            panel: () => 'Panel',
-          );
-
-          if (_currentProjectId != null && assetType.isNotEmpty) {
-            context
-                .read<CacheAssetCountBloc>()
-                .add(CacheAssetCountEvent.get(_currentProjectId!, assetType));
+          if (_currentProjectId != null && currentAssetType.isNotEmpty) {
+            context.read<CacheAssetCountBloc>().add(
+                CacheAssetCountEvent.get(_currentProjectId!, currentAssetType));
           }
 
           return BlocSelector<CacheAssetCountBloc, CacheAssetCountState, int>(
             selector: (st) => st.maybeWhen(
               loaded: (entries) =>
                   entries
-                      .firstWhereOrNull((e) => e.assetType == assetType)
+                      .firstWhereOrNull((e) => e.assetType == currentAssetType)
                       ?.count ??
                   0,
               orElse: () => 0,
@@ -314,7 +301,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                     showHelp: false,
                     defaultPopRoute: false,
                     handleback: () {
-                      context.router.replace(const AssetTypeDetailRoute());
+                      context.router.popAndPush(const AssetTypeDetailRoute());
                     },
                   ),
                   enableFixedDigitButton: true,
@@ -323,12 +310,27 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                     showSuffixIcon: false,
                     text: context.translate(i18.common.coreCommonNext),
                     isDisabled: isDisabled,
-                    onPress: () {
+                    onPress: () async {
                       if (isDisabled) return;
+
+                      context.read<CacheAddNewAssetBloc>().add(
+                          CacheAddNewAssetEvent.deleteAll(
+                              _currentProjectId!, currentAssetType));
+
+                      // 2) await completion (either deleted or error)
+                      await context
+                          .read<CacheAddNewAssetBloc>()
+                          .stream
+                          .firstWhere((state) => state.maybeWhen(
+                                deleted: () => true,
+                                error: (_) => true,
+                                orElse: () => false,
+                              ));
+
                       for (final asset in _assets) {
                         final newAsset = CacheAddNewAsset(
                           projectId: _currentProjectId!,
-                          assetType: assetType,
+                          assetType: currentAssetType,
                           itemNumber: asset.capacity,
                           serialNumber: asset.serialNumber,
                           documentType: "ASSET",
@@ -345,7 +347,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                               CacheAssetCountEvent.update(
                                 CacheAssetCount(
                                   projectId: _currentProjectId!,
-                                  assetType: assetType,
+                                  assetType: currentAssetType,
                                   progress: 5,
                                 ),
                               ),
@@ -369,10 +371,10 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                           ),
                           const SizedBox(height: spacer4),
                           assetTypeState.maybeWhen(
-                              battery: () =>
-                                  _batteryCapacity(theme, textTheme, heading),
-                              panel: () =>
-                                  _panelCapacity(theme, textTheme, heading),
+                              battery: () => _batteryCapacity(
+                                  theme, textTheme, currentAssetType.titleCase),
+                              panel: () => _panelCapacity(
+                                  theme, textTheme, currentAssetType.titleCase),
                               orElse: () => const SizedBox()),
                           ..._assets.asMap().entries.map((e) {
                             return Padding(
@@ -381,11 +383,11 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                                 context: context,
                                 theme: theme,
                                 textTheme: textTheme,
-                                heading: heading,
+                                heading: currentAssetType.titleCase,
                                 index: e.key,
                                 asset: e.value,
                                 maxAsset: maxAssets,
-                                assetType: assetType,
+                                assetType: currentAssetType,
                               ),
                             );
                           }),
@@ -515,9 +517,6 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
               label: 'Supporting Photo',
               capitalizedFirstLetter: false,
               child: FutureBuilder<File?>(
-                // future: asset.photoPath != null
-                //     ? _getCachedFile(asset.photoPath!)
-                //     : Future.value(null),
                 future: _cachedImageFutures.putIfAbsent(
                   index,
                   () => asset.photoPath != null

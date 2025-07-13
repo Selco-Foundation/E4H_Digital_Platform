@@ -4,6 +4,8 @@ const common = Common();
 const login = Login();
 const forgotPassword = ForgotPassword();
 const home = Home();
+const scanner = Scanner();
+
 const searchBeneficiary = SearchBeneficiary();
 const beneficiaryDetails = BeneficiaryDetails();
 const householdLocation = HouseholdLocation();
@@ -131,6 +133,44 @@ class Common {
   // String get coreCommonDownload => 'CORE_COMMON_DOWNLOAD';
   // String get coreCommonDownloadFailed => 'CORE_COMMON_DOWNLOAD_FAILED';
   // String get noMatchFound => 'CORE_COMMON_NO_MATCH_FOUND';
+}
+
+class Scanner {
+  const Scanner();
+
+  String get unableToScan => 'UNABLE_TO_SCAN';
+
+  String get scanValidResource => 'SCAN_VALID_RESOURCE';
+
+  // String get scannedResourceCountMisMatch => 'SCANNED_RESOURCE_COUNT_MISMATCH';
+
+  String get resourceAlreadyScanned => 'RESOURCE_ALREADY_SCANNED';
+
+  String get scannerLabel => 'Scan QR code'; // 'SCANNER_LABEL';
+
+  String get noOfResourceScanned =>
+      'No. of Resource Scanned'; //'NO_OF_RESOURCE_SCANNED';
+
+  String get resourcesScanned => 'Resources Scanned'; //'RESOURCES_SCANNED';
+  String get resourceScanned => 'Resource Scanned'; //'RESOURCE_SCANNED';
+
+  String get saveScannedResource =>
+      'Save Scanned Resource'; // 'SAVE_SCANNED_RESOURCE';
+
+  String get flashOn => 'Flash on'; // 'FLASH_ON';
+
+  String get flashOff => 'Flash off'; //'FLASH_OFF';
+
+  // String get scannerDialogTitle => 'SCANNER_DIALOG_TITLE';
+  //
+  // String get scannerDialogContent => 'SCANNER_DIALOG_CONTENT';
+  //
+  // String get scannerDialogPrimaryAction => 'SCANNER_DIALOG_PRIMARY_ACTION';
+  String get manualScan => 'Can’t scan the QR Code?'; // 'MANUAL_SCAN';
+  String get enterManualCode => 'Enter Serial Number'; // 'ENTER_MANUAL_CODE';
+  String get resourceCode => 'Serial Number'; // 'RESOURCE_CODE';
+  String get coreCommonSubmit => 'Submit'; //'Core_common_submit'; add to core
+  String get coreCommonSubmit2 => 'Submit'; // 'CORE_COMMON_SUBMIT';
 }
 
 class HomeShowcase {

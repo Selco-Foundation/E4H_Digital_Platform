@@ -1,167 +1,16 @@
-// import 'package:digit_ui_components/digit_components.dart';
-// import 'package:digit_ui_components/theme/digit_extended_theme.dart';
-// import 'package:flutter/material.dart';
-// import 'package:flutter_bloc/flutter_bloc.dart';
-// import 'package:selco/blocs/user_type/user_type.dart';
-// import 'package:selco/utils/utils.dart';
-//
-// import '../blocs/asset_submission/asset_submission.dart';
-// import '../blocs/project/project.dart';
-// import '../blocs/selected_project/selected_project.dart';
-// import '../router/app_router.dart';
-// import '../widgets/button/footer_button.dart';
-// import '../widgets/cards/inbox_report_card.dart';
-// import '../widgets/header/back_navigation_help_header.dart';
-//
-// @RoutePage()
-// class DraftPage extends StatefulWidget {
-//   const DraftPage({super.key});
-//
-//   @override
-//   State<DraftPage> createState() => _DraftPageState();
-// }
-//
-// class _DraftPageState extends State<DraftPage> {
-//   late String userType = "";
-//
-//   @override
-//   void initState() {
-//     super.initState();
-//     WidgetsBinding.instance.addPostFrameCallback((_) {
-//       // Trigger the Bloc to load “draft” workflows (Unsubmitted) for this user:
-//       userType = context.read<UserTypeBloc>().state.maybeWhen(
-//             supervisor: () => USER_TYPES.SUPERVISOR.name,
-//             orElse: () => USER_TYPES.FIELD_STAFF.name,
-//           );
-//       context.read<ProjectBloc>().add(
-//             ProjectEvent.loadUnSubmitted(
-//               [
-//                 userType == USER_TYPES.FIELD_STAFF.name
-//                     ? WORKFLOW_STATUS_FIELD_STAFF.SUBMITTED_BY_FIELD_STAFF.name
-//                     : WORKFLOW_STATUS_FIELD_SUPERVISOR
-//                         .ASSIGNED_TO_FIELD_SUPERVISOR.name
-//               ],
-//               userType,
-//             ),
-//           );
-//     });
-//   }
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     final theme = Theme.of(context);
-//     final textTheme = theme.digitTextTheme(context);
-//
-//     return Scaffold(
-//       body: ScrollableContent(
-//         enableFixedDigitButton: true,
-//         backgroundColor: theme.colorTheme.generic.background,
-//         header: const BackNavigationHelpHeaderWidget(
-//           showBackNavigation: true,
-//           showHelp: false,
-//         ),
-//         footer: FooterButton(
-//           showSuffixIcon: false,
-//           text: 'Sync',
-//           onPress: () {
-//             context.read<AssetSubmissionBloc>().add(
-//                   AssetSubmissionEvent.submitAllDrafts(userType: userType),
-//                 );
-//             // context.router.replace(const SubmittedSaveSuccessRoute());
-//           },
-//         ),
-//         children: [
-//           Padding(
-//             padding: const EdgeInsets.symmetric(
-//               vertical: spacer4,
-//               horizontal: spacer4,
-//             ),
-//             child: Column(
-//               crossAxisAlignment: CrossAxisAlignment.start,
-//               children: [
-//                 Text(
-//                   'Submitted Reports',
-//                   style: textTheme.headingXl
-//                       .copyWith(color: theme.colorTheme.primary.primary2),
-//                 ),
-//                 const SizedBox(height: spacer4),
-//                 BlocBuilder<ProjectBloc, ProjectState>(
-//                   builder: (context, state) {
-//                     return state.maybeWhen(
-//                       // when the Bloc has loaded drafts:
-//                       unSubmittedLoaded: (drafts) {
-//                         if (drafts.isEmpty) {
-//                           return Center(
-//                             child: Text(
-//                               'No unsynced reports found.',
-//                               style: textTheme.bodyL.copyWith(
-//                                 color: theme.colorTheme.text.primary,
-//                               ),
-//                             ),
-//                           );
-//                         }
-//                         return Column(
-//                           children: drafts.map((project) {
-//                             return Column(
-//                               children: [
-//                                 InboxReportCard(
-//                                   onPress: () {
-//                                     context.read<SelectedProjectBloc>().add(
-//                                         SelectedProjectEvent.select(project));
-//                                     context.router
-//                                         .push(const OverallAssetSummaryRoute());
-//                                   },
-//                                   title: project.project.name ?? "",
-//                                   dateAssigned: project.project.startDateTime ??
-//                                       DateTime.now(),
-//                                   status: project.status ?? '---',
-//                                 ),
-//                                 const SizedBox(height: spacer6),
-//                               ],
-//                             );
-//                           }).toList(),
-//                         );
-//                       },
-//
-//                       // while loading
-//                       initial: () => const Center(
-//                         child: Padding(
-//                           padding: EdgeInsets.only(top: spacer4),
-//                           child: CircularProgressIndicator(),
-//                         ),
-//                       ),
-//                       // other states you might have
-//                       orElse: () => const Center(
-//                         child: Padding(
-//                           padding: EdgeInsets.only(top: spacer4),
-//                           child: CircularProgressIndicator(),
-//                         ),
-//                       ),
-//                     );
-//                   },
-//                 ),
-//               ],
-//             ),
-//           ),
-//         ],
-//       ),
-//     );
-//   }
-// }
-
 import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:digit_ui_components/widgets/atoms/pop_up_card.dart';
 import 'package:digit_ui_components/widgets/molecules/show_pop_up.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:selco/blocs/user_type/user_type.dart';
-import 'package:selco/utils/utils.dart';
 
 import '../blocs/asset_submission/asset_submission.dart';
 import '../blocs/project/project.dart';
 import '../blocs/selected_project/selected_project.dart';
+import '../blocs/user_type/user_type.dart';
 import '../router/app_router.dart';
+import '../utils/utils.dart';
 import '../widgets/button/footer_button.dart';
 import '../widgets/cards/inbox_report_card.dart';
 import '../widgets/header/back_navigation_help_header.dart';

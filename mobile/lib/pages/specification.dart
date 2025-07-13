@@ -127,7 +127,7 @@ class _SpecificationPageState extends State<SpecificationPage> {
                       showHelp: false,
                       defaultPopRoute: false,
                       handleback: () {
-                        context.router.replace(const SelectAssetTypeRoute());
+                        context.router.popAndPush(const SelectAssetTypeRoute());
                       },
                     ),
                     enableFixedDigitButton: true,

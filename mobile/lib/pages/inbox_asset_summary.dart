@@ -14,6 +14,7 @@ import '../blocs/inbox_type/inbox_type.dart';
 import '../blocs/overall_asset_summary/overall_asset_summary.dart';
 import '../blocs/report_type/report_type.dart';
 import '../blocs/selected_project/selected_project.dart';
+import '../blocs/user_type/user_type.dart';
 import '../repositories/project_repo.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
@@ -30,14 +31,20 @@ class InboxAssetSummaryPage extends StatefulWidget {
 }
 
 class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
+  late String userType = "";
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      userType = context.read<UserTypeBloc>().state.maybeWhen(
+            supervisor: () => USER_TYPES.SUPERVISOR.name,
+            orElse: () => USER_TYPES.FIELD_STAFF.name,
+          );
       context.read<SelectedProjectBloc>().state.whenOrNull(selected: (proj) {
         context
             .read<CacheAssetBloc>()
-            .add(CacheAssetEvent.start(proj.project.id));
+            .add(CacheAssetEvent.start(proj.project.id, userType));
       });
     });
   }
