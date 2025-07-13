@@ -10,7 +10,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:recase/recase.dart';
-import 'package:selco/widgets/video/video_card.dart';
 
 import '../blocs/asset_rejection/asset_rejection.dart';
 import '../blocs/asset_summary/asset_summary.dart';
@@ -29,6 +28,7 @@ import '../utils/extensions.dart';
 import '../utils/i18_key_constants.dart' as i18;
 import '../utils/utils.dart';
 import '../widgets/button/footer_button.dart';
+import '../widgets/files/video_card.dart';
 import '../widgets/header/back_navigation_help_header.dart';
 import '../widgets/images/cached_image.dart';
 
