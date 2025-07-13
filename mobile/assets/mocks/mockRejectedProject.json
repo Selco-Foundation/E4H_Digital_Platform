@@ -1,0 +1,468 @@
+{
+  "totalCount": 2,
+  "ResponseInfo": {
+    "apiId": "Rainmaker",
+    "ver": null,
+    "ts": 1752400764283,
+    "resMsgId": null,
+    "msgId": null,
+    "status": "successful"
+  },
+  "Project": [
+    {
+      "project": {
+        "id": "900339bd-432c-4b8e-beb7-c0b3f80e5688",
+        "tenantId": "in",
+        "projectNumber": "PROJ/2025/0962",
+        "name": "Testing Rejection",
+        "projectType": "FieldPlan",
+        "projectSubType": "",
+        "department": "",
+        "description": "",
+        "referenceID": "1",
+        "projectTypeId": null,
+        "documents": null,
+        "address": {
+          "id": "1e4d4186-a8ce-493b-823f-5f5a62bc9d00",
+          "tenantId": "in",
+          "clientReferenceId": null,
+          "doorNo": null,
+          "latitude": 0.0,
+          "longitude": 0.0,
+          "locationAccuracy": 0.0,
+          "type": null,
+          "addressLine1": null,
+          "addressLine2": null,
+          "landmark": null,
+          "city": null,
+          "pincode": null,
+          "buildingName": null,
+          "street": null,
+          "boundaryType": "Block",
+          "boundary": "India_Telangana_Hyderabad_Gachibowli",
+          "locality": null
+        },
+        "startDate": 1715510400000,
+        "endDate": 1718192400000,
+        "isTaskEnabled": false,
+        "parent": "f7ebee1e-726b-4225-ac5e-d0ab3b6eb0c7",
+        "projectHierarchy": "f7ebee1e-726b-4225-ac5e-d0ab3b6eb0c7.900339bd-432c-4b8e-beb7-c0b3f80e5688",
+        "natureOfWork": null,
+        "ancestors": null,
+        "descendants": null,
+        "targets": null,
+        "additionalDetails": {
+          "status": "SUBMITTED_BY_SUPERVISOR",
+          "countFacilities": "1"
+        },
+        "isDeleted": false,
+        "rowVersion": 0,
+        "auditDetails": {
+          "createdBy": "stribi",
+          "lastModifiedBy": "0d665a8d-03b1-4f45-b5bc-88237f7f6573",
+          "createdTime": 1752250799618,
+          "lastModifiedTime": 1752255153644
+        }
+      },
+      "status": "SUBMITTED_BY_SUPERVISOR",
+      "transactions": [
+        {
+          "transactionId": "078ca43f-1559-4b9b-aa4a-226e16ca0f68",
+          "processInstanceId": "e6c47900-a7d6-4fcb-b88c-37f07ee578a7",
+          "comments": [
+            {
+              "commentId": "660b0ca8-78de-414b-baec-7e267a2073f0",
+              "commentMessage": "Initial remark by field staff",
+              "assetType": "Battery",
+              "transactionId": "078ca43f-1559-4b9b-aa4a-226e16ca0f68",
+              "auditDetails": {
+                "createdBy": "7d6d6816-b205-4e71-81ed-8da2c250edd9",
+                "lastModifiedBy": "7d6d6816-b205-4e71-81ed-8da2c250edd9",
+                "createdTime": 1752251012282,
+                "lastModifiedTime": 1752251012282
+              }
+            }
+          ],
+          "projectId": "900339bd-432c-4b8e-beb7-c0b3f80e5688",
+          "auditDetails": {
+            "createdBy": "7d6d6816-b205-4e71-81ed-8da2c250edd9",
+            "lastModifiedBy": "7d6d6816-b205-4e71-81ed-8da2c250edd9",
+            "createdTime": 1752251012282,
+            "lastModifiedTime": 1752251012282
+          }
+        },
+        {
+          "transactionId": "ae95642b-c462-4d3e-887b-ff9b7547f995",
+          "processInstanceId": "e8ed13e1-9924-4d85-bcf7-c7c426a65104",
+          "comments": [
+            {
+              "commentId": "14de2b7d-0f33-4701-949a-ca7ede5b4754",
+              "commentMessage": "Initial remark by field staff",
+              "assetType": "Inverter",
+              "transactionId": "ae95642b-c462-4d3e-887b-ff9b7547f995",
+              "auditDetails": {
+                "createdBy": "0d665a8d-03b1-4f45-b5bc-88237f7f6573",
+                "lastModifiedBy": "0d665a8d-03b1-4f45-b5bc-88237f7f6573",
+                "createdTime": 1752255153232,
+                "lastModifiedTime": 1752255153232
+              }
+            }
+          ],
+          "projectId": "900339bd-432c-4b8e-beb7-c0b3f80e5688",
+          "auditDetails": {
+            "createdBy": "0d665a8d-03b1-4f45-b5bc-88237f7f6573",
+            "lastModifiedBy": "0d665a8d-03b1-4f45-b5bc-88237f7f6573",
+            "createdTime": 1752255153231,
+            "lastModifiedTime": 1752255153231
+          }
+        },
+        {
+          "transactionId": "ae95642b-c462-4d3e-887b-ff9b7547f995",
+          "processInstanceId": "e8ed13e1-9924-4d85-bcf7-c7c426a65104",
+          "comments": [
+            {
+              "commentId": "14de2b7d-0f33-4701-949a-ca7ede5b4754",
+              "commentMessage": "Second remark by field staff",
+              "assetType": "Inverter",
+              "transactionId": "ae95642b-c462-4d3e-887b-ff9b7547f995",
+              "auditDetails": {
+                "createdBy": "0d665a8d-03b1-4f45-b5bc-88237f7f6573",
+                "lastModifiedBy": "0d665a8d-03b1-4f45-b5bc-88237f7f6573",
+                "createdTime": 1752255153232,
+                "lastModifiedTime": 1752255153232
+              }
+            }
+          ],
+          "projectId": "900339bd-432c-4b8e-beb7-c0b3f80e5688",
+          "auditDetails": {
+            "createdBy": "0d665a8d-03b1-4f45-b5bc-88237f7f6573",
+            "lastModifiedBy": "0d665a8d-03b1-4f45-b5bc-88237f7f6573",
+            "createdTime": 1752255153231,
+            "lastModifiedTime": 1752255153231
+          }
+        },
+        {
+          "transactionId": "ae95642b-c462-4d3e-887b-ff9b7547f995",
+          "processInstanceId": "e8ed13e1-9924-4d85-bcf7-c7c426a65104",
+          "comments": [
+            {
+              "commentId": "14de2b7d-0f33-4701-949a-ca7ede5b4754",
+              "commentMessage": "Third remark by field staff",
+              "assetType": "Inverter",
+              "transactionId": "ae95642b-c462-4d3e-887b-ff9b7547f995",
+              "auditDetails": {
+                "createdBy": "0d665a8d-03b1-4f45-b5bc-88237f7f6573",
+                "lastModifiedBy": "0d665a8d-03b1-4f45-b5bc-88237f7f6573",
+                "createdTime": 1752255153232,
+                "lastModifiedTime": 1752255153232
+              }
+            }
+          ],
+          "projectId": "900339bd-432c-4b8e-beb7-c0b3f80e5688",
+          "auditDetails": {
+            "createdBy": "0d665a8d-03b1-4f45-b5bc-88237f7f6573",
+            "lastModifiedBy": "0d665a8d-03b1-4f45-b5bc-88237f7f6573",
+            "createdTime": 1752255153231,
+            "lastModifiedTime": 1752255153231
+          }
+        },
+        {
+          "transactionId": "ae95642b-c462-4d3e-887b-ff9b7547f995",
+          "processInstanceId": "e8ed13e1-9924-4d85-bcf7-c7c426a65104",
+          "comments": [
+            {
+              "commentId": "14de2b7d-0f33-4701-949a-ca7ede5b4754",
+              "commentMessage": "Third remark by field staff",
+              "assetType": "Panel",
+              "transactionId": "ae95642b-c462-4d3e-887b-ff9b7547f995",
+              "auditDetails": {
+                "createdBy": "0d665a8d-03b1-4f45-b5bc-88237f7f6573",
+                "lastModifiedBy": "0d665a8d-03b1-4f45-b5bc-88237f7f6573",
+                "createdTime": 1752255153232,
+                "lastModifiedTime": 1752255153232
+              }
+            }
+          ],
+          "projectId": "900339bd-432c-4b8e-beb7-c0b3f80e5688",
+          "auditDetails": {
+            "createdBy": "0d665a8d-03b1-4f45-b5bc-88237f7f6573",
+            "lastModifiedBy": "0d665a8d-03b1-4f45-b5bc-88237f7f6573",
+            "createdTime": 1752255153231,
+            "lastModifiedTime": 1752255153231
+          }
+        },
+        {
+          "transactionId": "ae95642b-c462-4d3e-887b-ff9b7547f995",
+          "processInstanceId": "e8ed13e1-9924-4d85-bcf7-c7c426a65104",
+          "comments": [
+            {
+              "commentId": "14de2b7d-0f33-4701-949a-ca7ede5b4754",
+              "commentMessage": "Alright, feedback by electrician",
+              "assetType": "Electrician",
+              "transactionId": "ae95642b-c462-4d3e-887b-ff9b7547f995",
+              "auditDetails": {
+                "createdBy": "0d665a8d-03b1-4f45-b5bc-88237f7f6573",
+                "lastModifiedBy": "0d665a8d-03b1-4f45-b5bc-88237f7f6573",
+                "createdTime": 1752255153232,
+                "lastModifiedTime": 1752255153232
+              }
+            }
+          ],
+          "projectId": "900339bd-432c-4b8e-beb7-c0b3f80e5688",
+          "auditDetails": {
+            "createdBy": "0d665a8d-03b1-4f45-b5bc-88237f7f6573",
+            "lastModifiedBy": "0d665a8d-03b1-4f45-b5bc-88237f7f6573",
+            "createdTime": 1752255153231,
+            "lastModifiedTime": 1752255153231
+          }
+        }
+      ],
+      "workflow": {
+        "id": "e8ed13e1-9924-4d85-bcf7-c7c426a65104",
+        "tenantId": "in",
+        "businessService": "FACILITY_INSTALLATION",
+        "businessId": "900339bd-432c-4b8e-beb7-c0b3f80e5688",
+        "action": "SUBMIT_REPORT_B",
+        "moduleName": "project-services",
+        "state": {
+          "auditDetails": null,
+          "uuid": "0e7ae12d-562a-47b1-95bb-b2d1ec16ceee",
+          "tenantId": "in",
+          "businessServiceId": "75959acf-836c-4c7c-980e-ad14fc643a4d",
+          "sla": null,
+          "state": "SUBMITTED_BY_SUPERVISOR",
+          "applicationStatus": null,
+          "docUploadRequired": false,
+          "isStartState": false,
+          "isTerminateState": false,
+          "isStateUpdatable": null,
+          "actions": [
+            {
+              "auditDetails": null,
+              "uuid": "99f5259c-3e78-450a-8a05-979323f4e57b",
+              "tenantId": "in",
+              "currentState": "0e7ae12d-562a-47b1-95bb-b2d1ec16ceee",
+              "action": "REJECT_AND_ASSIGN_FOR_FIELD_QC",
+              "nextState": "bfb1c653-3109-4937-b7a5-5a349d306f53",
+              "roles": [
+                "INSTALLATION_REPORT_APPROVER_QC_TEAM"
+              ]
+            },
+            {
+              "auditDetails": null,
+              "uuid": "902f9cac-b9e9-4914-8e5f-86ca077de0cd",
+              "tenantId": "in",
+              "currentState": "0e7ae12d-562a-47b1-95bb-b2d1ec16ceee",
+              "action": "APPROVE",
+              "nextState": "e0f9b0d9-e784-487c-917c-b07429a69d2e",
+              "roles": [
+                "INSTALLATION_REPORT_APPROVER_QC_TEAM"
+              ]
+            }
+          ]
+        },
+        "comment": null,
+        "documents": [
+          {
+            "id": "89240a66-a868-4b66-ac15-f37dc78ac10d",
+            "documentType": "image",
+            "fileStore": "4d4a5ad7-7c9e-4953-b095-271c9c34ffe6",
+            "documentUid": "DOC-image-3-images (2).jpeg-battery-2025-06-28T13:37:20.010101Z",
+            "additionalDetails": null
+          }
+        ],
+        "assignes": null
+      }
+    },
+    {
+      "project": {
+        "id": "b8a2db7b-faf7-4539-a574-32d97d780530",
+        "tenantId": "in",
+        "projectNumber": "PROJ/2025/0964",
+        "name": null,
+        "projectType": "Facility",
+        "projectSubType": "",
+        "department": "",
+        "description": "",
+        "referenceID": "1",
+        "projectTypeId": null,
+        "documents": null,
+        "address": {
+          "id": "9e8768ce-f9d7-4c05-8133-5a5b27a6e9e7",
+          "tenantId": "in",
+          "clientReferenceId": null,
+          "doorNo": null,
+          "latitude": 0.0,
+          "longitude": 0.0,
+          "locationAccuracy": 0.0,
+          "type": null,
+          "addressLine1": null,
+          "addressLine2": null,
+          "landmark": null,
+          "city": null,
+          "pincode": null,
+          "buildingName": null,
+          "street": null,
+          "boundaryType": "Block",
+          "boundary": "India_Telangana_Hyderabad_Gachibowli",
+          "locality": null
+        },
+        "startDate": 1715510400000,
+        "endDate": 1718192400000,
+        "isTaskEnabled": false,
+        "parent": "f6fd8409-d16a-4a27-9927-e1943a3c9d2c",
+        "projectHierarchy": "f7ebee1e-726b-4225-ac5e-d0ab3b6eb0c7.f6fd8409-d16a-4a27-9927-e1943a3c9d2c.b8a2db7b-faf7-4539-a574-32d97d780530",
+        "natureOfWork": null,
+        "ancestors": null,
+        "descendants": null,
+        "targets": null,
+        "additionalDetails": {
+          "status": "SUBMITTED_BY_SUPERVISOR",
+          "countFacilities": "1"
+        },
+        "isDeleted": false,
+        "rowVersion": 0,
+        "auditDetails": {
+          "createdBy": "stribi",
+          "lastModifiedBy": "7d6d6816-b205-4e71-81ed-8da2c250edd9",
+          "createdTime": 1752251266649,
+          "lastModifiedTime": 1752251467003
+        }
+      },
+      "status": "SUBMITTED_BY_SUPERVISOR",
+      "transactions": [
+        {
+          "transactionId": "3c6b7b79-d00c-47d8-9cf2-8537dd3f3310",
+          "processInstanceId": "0f239687-4ba5-4792-b2fb-3a07a4fb934f",
+          "comments": [
+            {
+              "commentId": "9fb0cf1b-a118-4eb9-9c65-d779f4e346b7",
+              "commentMessage": "Initial remark by field staff",
+              "assetType": "Electrical",
+              "transactionId": "3c6b7b79-d00c-47d8-9cf2-8537dd3f3310",
+              "auditDetails": {
+                "createdBy": "7d6d6816-b205-4e71-81ed-8da2c250edd9",
+                "lastModifiedBy": "7d6d6816-b205-4e71-81ed-8da2c250edd9",
+                "createdTime": 1752251329860,
+                "lastModifiedTime": 1752251329860
+              }
+            }
+          ],
+          "projectId": "b8a2db7b-faf7-4539-a574-32d97d780530",
+          "auditDetails": {
+            "createdBy": "7d6d6816-b205-4e71-81ed-8da2c250edd9",
+            "lastModifiedBy": "7d6d6816-b205-4e71-81ed-8da2c250edd9",
+            "createdTime": 1752251329860,
+            "lastModifiedTime": 1752251329860
+          }
+        },
+        {
+          "transactionId": "a7464964-43b6-4e9b-a28a-677c0ed6c070",
+          "processInstanceId": "c26d4649-fad9-4c05-a5ee-f9b1c527abfd",
+          "comments": [
+            {
+              "commentId": "bbd5094f-3bc9-4c62-8402-35edde378124",
+              "commentMessage": "Initial remark by field staff",
+              "assetType": "Electrical",
+              "transactionId": "a7464964-43b6-4e9b-a28a-677c0ed6c070",
+              "auditDetails": {
+                "createdBy": "7d6d6816-b205-4e71-81ed-8da2c250edd9",
+                "lastModifiedBy": "7d6d6816-b205-4e71-81ed-8da2c250edd9",
+                "createdTime": 1752251348905,
+                "lastModifiedTime": 1752251348905
+              }
+            }
+          ],
+          "projectId": "b8a2db7b-faf7-4539-a574-32d97d780530",
+          "auditDetails": {
+            "createdBy": "7d6d6816-b205-4e71-81ed-8da2c250edd9",
+            "lastModifiedBy": "7d6d6816-b205-4e71-81ed-8da2c250edd9",
+            "createdTime": 1752251348905,
+            "lastModifiedTime": 1752251348905
+          }
+        },
+        {
+          "transactionId": "8ac33d0e-f3ba-4e6e-9cf1-6e19d44b755d",
+          "processInstanceId": "813ec57b-8f07-44eb-9833-0f88a048e4dd",
+          "comments": [
+            {
+              "commentId": "3bc1dbe5-dfba-4692-b42f-d85edc13549e",
+              "commentMessage": "Initial remark by field staff",
+              "assetType": "Electrical",
+              "transactionId": "8ac33d0e-f3ba-4e6e-9cf1-6e19d44b755d",
+              "auditDetails": {
+                "createdBy": "7d6d6816-b205-4e71-81ed-8da2c250edd9",
+                "lastModifiedBy": "7d6d6816-b205-4e71-81ed-8da2c250edd9",
+                "createdTime": 1752251466992,
+                "lastModifiedTime": 1752251466992
+              }
+            }
+          ],
+          "projectId": "b8a2db7b-faf7-4539-a574-32d97d780530",
+          "auditDetails": {
+            "createdBy": "7d6d6816-b205-4e71-81ed-8da2c250edd9",
+            "lastModifiedBy": "7d6d6816-b205-4e71-81ed-8da2c250edd9",
+            "createdTime": 1752251466992,
+            "lastModifiedTime": 1752251466992
+          }
+        }
+      ],
+      "workflow": {
+        "id": "813ec57b-8f07-44eb-9833-0f88a048e4dd",
+        "tenantId": "in",
+        "businessService": "FACILITY_INSTALLATION",
+        "businessId": "b8a2db7b-faf7-4539-a574-32d97d780530",
+        "action": "SUBMIT_REPORT_B",
+        "moduleName": "project-services",
+        "state": {
+          "auditDetails": null,
+          "uuid": "0e7ae12d-562a-47b1-95bb-b2d1ec16ceee",
+          "tenantId": "in",
+          "businessServiceId": "75959acf-836c-4c7c-980e-ad14fc643a4d",
+          "sla": null,
+          "state": "SUBMITTED_BY_SUPERVISOR",
+          "applicationStatus": null,
+          "docUploadRequired": false,
+          "isStartState": false,
+          "isTerminateState": false,
+          "isStateUpdatable": null,
+          "actions": [
+            {
+              "auditDetails": null,
+              "uuid": "99f5259c-3e78-450a-8a05-979323f4e57b",
+              "tenantId": "in",
+              "currentState": "0e7ae12d-562a-47b1-95bb-b2d1ec16ceee",
+              "action": "REJECT_AND_ASSIGN_FOR_FIELD_QC",
+              "nextState": "bfb1c653-3109-4937-b7a5-5a349d306f53",
+              "roles": [
+                "INSTALLATION_REPORT_APPROVER_QC_TEAM"
+              ]
+            },
+            {
+              "auditDetails": null,
+              "uuid": "902f9cac-b9e9-4914-8e5f-86ca077de0cd",
+              "tenantId": "in",
+              "currentState": "0e7ae12d-562a-47b1-95bb-b2d1ec16ceee",
+              "action": "APPROVE",
+              "nextState": "e0f9b0d9-e784-487c-917c-b07429a69d2e",
+              "roles": [
+                "INSTALLATION_REPORT_APPROVER_QC_TEAM"
+              ]
+            }
+          ]
+        },
+        "comment": null,
+        "documents": [
+          {
+            "id": "78dd6961-b601-4fbe-a376-1e249a050f6b",
+            "documentType": "image",
+            "fileStore": "4d4a5ad7-7c9e-4953-b095-271c9c34ffe6",
+            "documentUid": "DOC-image-3-images (2).jpeg-battery-2025-06-28T13:37:20.010101Z",
+            "additionalDetails": null
+          }
+        ],
+        "assignes": null
+      }
+    }
+  ]
+}

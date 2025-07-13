@@ -23,6 +23,8 @@ mixin _$ProjectWorkflow {
   @ProjectModelConverter()
   ProjectModel get project => throw _privateConstructorUsedError;
   String? get status => throw _privateConstructorUsedError;
+  List<Transaction>? get transactions => throw _privateConstructorUsedError;
+  Workflow? get workflow => throw _privateConstructorUsedError;
 
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
   @JsonKey(ignore: true)
@@ -36,7 +38,11 @@ abstract class $ProjectWorkflowCopyWith<$Res> {
           ProjectWorkflow value, $Res Function(ProjectWorkflow) then) =
       _$ProjectWorkflowCopyWithImpl<$Res, ProjectWorkflow>;
   @useResult
-  $Res call({@ProjectModelConverter() ProjectModel project, String? status});
+  $Res call(
+      {@ProjectModelConverter() ProjectModel project,
+      String? status,
+      List<Transaction>? transactions,
+      Workflow? workflow});
 }
 
 /// @nodoc
@@ -54,6 +60,8 @@ class _$ProjectWorkflowCopyWithImpl<$Res, $Val extends ProjectWorkflow>
   $Res call({
     Object? project = null,
     Object? status = freezed,
+    Object? transactions = freezed,
+    Object? workflow = freezed,
   }) {
     return _then(_value.copyWith(
       project: null == project
@@ -64,6 +72,14 @@ class _$ProjectWorkflowCopyWithImpl<$Res, $Val extends ProjectWorkflow>
           ? _value.status
           : status // ignore: cast_nullable_to_non_nullable
               as String?,
+      transactions: freezed == transactions
+          ? _value.transactions
+          : transactions // ignore: cast_nullable_to_non_nullable
+              as List<Transaction>?,
+      workflow: freezed == workflow
+          ? _value.workflow
+          : workflow // ignore: cast_nullable_to_non_nullable
+              as Workflow?,
     ) as $Val);
   }
 }
@@ -76,7 +92,11 @@ abstract class _$$ProjectWorkflowImplCopyWith<$Res>
       __$$ProjectWorkflowImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({@ProjectModelConverter() ProjectModel project, String? status});
+  $Res call(
+      {@ProjectModelConverter() ProjectModel project,
+      String? status,
+      List<Transaction>? transactions,
+      Workflow? workflow});
 }
 
 /// @nodoc
@@ -92,6 +112,8 @@ class __$$ProjectWorkflowImplCopyWithImpl<$Res>
   $Res call({
     Object? project = null,
     Object? status = freezed,
+    Object? transactions = freezed,
+    Object? workflow = freezed,
   }) {
     return _then(_$ProjectWorkflowImpl(
       project: null == project
@@ -102,6 +124,14 @@ class __$$ProjectWorkflowImplCopyWithImpl<$Res>
           ? _value.status
           : status // ignore: cast_nullable_to_non_nullable
               as String?,
+      transactions: freezed == transactions
+          ? _value._transactions
+          : transactions // ignore: cast_nullable_to_non_nullable
+              as List<Transaction>?,
+      workflow: freezed == workflow
+          ? _value.workflow
+          : workflow // ignore: cast_nullable_to_non_nullable
+              as Workflow?,
     ));
   }
 }
@@ -110,7 +140,11 @@ class __$$ProjectWorkflowImplCopyWithImpl<$Res>
 @JsonSerializable()
 class _$ProjectWorkflowImpl implements _ProjectWorkflow {
   const _$ProjectWorkflowImpl(
-      {@ProjectModelConverter() required this.project, this.status});
+      {@ProjectModelConverter() required this.project,
+      this.status,
+      final List<Transaction>? transactions,
+      this.workflow})
+      : _transactions = transactions;
 
   factory _$ProjectWorkflowImpl.fromJson(Map<String, dynamic> json) =>
       _$$ProjectWorkflowImplFromJson(json);
@@ -120,10 +154,22 @@ class _$ProjectWorkflowImpl implements _ProjectWorkflow {
   final ProjectModel project;
   @override
   final String? status;
+  final List<Transaction>? _transactions;
+  @override
+  List<Transaction>? get transactions {
+    final value = _transactions;
+    if (value == null) return null;
+    if (_transactions is EqualUnmodifiableListView) return _transactions;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(value);
+  }
+
+  @override
+  final Workflow? workflow;
 
   @override
   String toString() {
-    return 'ProjectWorkflow(project: $project, status: $status)';
+    return 'ProjectWorkflow(project: $project, status: $status, transactions: $transactions, workflow: $workflow)';
   }
 
   @override
@@ -132,12 +178,17 @@ class _$ProjectWorkflowImpl implements _ProjectWorkflow {
         (other.runtimeType == runtimeType &&
             other is _$ProjectWorkflowImpl &&
             (identical(other.project, project) || other.project == project) &&
-            (identical(other.status, status) || other.status == status));
+            (identical(other.status, status) || other.status == status) &&
+            const DeepCollectionEquality()
+                .equals(other._transactions, _transactions) &&
+            (identical(other.workflow, workflow) ||
+                other.workflow == workflow));
   }
 
   @JsonKey(ignore: true)
   @override
-  int get hashCode => Object.hash(runtimeType, project, status);
+  int get hashCode => Object.hash(runtimeType, project, status,
+      const DeepCollectionEquality().hash(_transactions), workflow);
 
   @JsonKey(ignore: true)
   @override
@@ -157,7 +208,9 @@ class _$ProjectWorkflowImpl implements _ProjectWorkflow {
 abstract class _ProjectWorkflow implements ProjectWorkflow {
   const factory _ProjectWorkflow(
       {@ProjectModelConverter() required final ProjectModel project,
-      final String? status}) = _$ProjectWorkflowImpl;
+      final String? status,
+      final List<Transaction>? transactions,
+      final Workflow? workflow}) = _$ProjectWorkflowImpl;
 
   factory _ProjectWorkflow.fromJson(Map<String, dynamic> json) =
       _$ProjectWorkflowImpl.fromJson;
@@ -167,6 +220,10 @@ abstract class _ProjectWorkflow implements ProjectWorkflow {
   ProjectModel get project;
   @override
   String? get status;
+  @override
+  List<Transaction>? get transactions;
+  @override
+  Workflow? get workflow;
   @override
   @JsonKey(ignore: true)
   _$$ProjectWorkflowImplCopyWith<_$ProjectWorkflowImpl> get copyWith =>

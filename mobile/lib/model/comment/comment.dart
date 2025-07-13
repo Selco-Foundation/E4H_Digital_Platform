@@ -1,12 +1,9 @@
-import 'package:dart_mappable/dart_mappable.dart';
-import 'package:isar/isar.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'comment.g.dart';
-part 'comment.mapper.dart';
 
-@embedded
-@MappableClass(discriminatorValue: MappableClass.useAsDefault, ignoreNull: true)
-class Comment with CommentMappable {
+@JsonSerializable()
+class Comment {
   final String? commentId;
   final String? commentMessage;
   final String? assetType;
@@ -18,4 +15,8 @@ class Comment with CommentMappable {
     this.assetType,
     this.transactionId,
   });
+
+  factory Comment.fromJson(Map<String, dynamic> json) =>
+      _$CommentFromJson(json);
+  Map<String, dynamic> toJson() => _$CommentToJson(this);
 }

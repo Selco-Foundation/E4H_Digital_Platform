@@ -86,9 +86,7 @@ const CacheUnsubmittedProjectSchema = CollectionSchema(
   links: {},
   embeddedSchemas: {
     r'ProjectModel': ProjectModelSchema,
-    r'AddressModel': AddressModelSchema,
-    r'Transaction': TransactionSchema,
-    r'Comment': CommentSchema
+    r'AddressModel': AddressModelSchema
   },
   getId: _cacheUnsubmittedProjectGetId,
   getLinks: _cacheUnsubmittedProjectGetLinks,

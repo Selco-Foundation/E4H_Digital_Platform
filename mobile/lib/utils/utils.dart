@@ -109,10 +109,12 @@ enum REPORT_TYPES {
   REVIEW,
   REJECTED,
   APPROVED,
-  ADD_MORE,
+  ADD_MORE
 }
 
 enum USER_TYPES { SUPERVISOR, FIELD_STAFF }
+
+enum ASSET_TYPES { BATTERY, INVERTER, PANEL }
 
 bool isValidUuid(String value) {
   try {

@@ -2,12 +2,44 @@ import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:digit_ui_components/widgets/molecules/panel_cards.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../blocs/inbox_type/inbox_type.dart';
+import '../blocs/report_type/report_type.dart';
 import '../router/app_router.dart';
 
 @RoutePage()
-class DataSaveSuccessPage extends StatelessWidget {
+class DataSaveSuccessPage extends StatefulWidget {
   const DataSaveSuccessPage({super.key});
+
+  @override
+  State<DataSaveSuccessPage> createState() => _DataSaveSuccessPageState();
+}
+
+class _DataSaveSuccessPageState extends State<DataSaveSuccessPage> {
+  bool rejectedReport = false;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Delay until after the first frame so that context.read<T>() is safe:
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final reportState = context.read<ReportTypeBloc>().state;
+      final inboxState = context.read<InboxTypeBloc>().state;
+
+      final isInboxReport =
+          reportState.maybeWhen(inbox: () => true, orElse: () => false);
+
+      final isRejectedReport =
+          inboxState.maybeWhen(rejected: () => true, orElse: () => false);
+
+      setState(() {
+        rejectedReport = isInboxReport && isRejectedReport;
+      });
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -21,17 +53,24 @@ class DataSaveSuccessPage extends StatelessWidget {
               animate: true,
               repeat: true,
               type: PanelType.success,
-              title: 'Data Saved Successfully',
-              description:
-                  'The data has been saved successfully on your device. Please click submit to submit the report for approval on the health facility summary page.',
+              title: rejectedReport
+                  ? 'Submitted for Approval'
+                  : 'Data Saved Successfully',
+              description: rejectedReport
+                  ? 'The data has been recorded successfully. '
+                  : 'The data has been saved successfully on your device. Please click submit to submit the report for approval on the health facility summary page.',
               actions: [
                 DigitButton(
-                  type: DigitButtonType.primary,
-                  size: DigitButtonSize.large,
-                  label: 'Next',
-                  onPressed: () =>
-                      context.router.push(const OverallAssetSummaryRoute()),
-                ),
+                    type: DigitButtonType.primary,
+                    size: DigitButtonSize.large,
+                    label: rejectedReport ? 'Back to Landing Page' : 'Next',
+                    onPressed: () {
+                      if (rejectedReport) {
+                        context.router.replaceAll([const HomeRoute()]);
+                      } else {
+                        context.router.push(const OverallAssetSummaryRoute());
+                      }
+                    }),
               ],
             ),
           )

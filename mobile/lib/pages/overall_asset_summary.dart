@@ -233,7 +233,6 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
 
                                     summaryState.whenOrNull(
                                       loaded: (summary) {
-                                        print("userType $userType");
                                         if (userType ==
                                             USER_TYPES.SUPERVISOR.name) {
                                           context

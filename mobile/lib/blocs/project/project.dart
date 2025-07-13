@@ -47,7 +47,6 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
 
   FutureOr<void> _handleFetchProjectsByWorkflow(
       FetchProjectsByWorkflowEvent event, Emitter<ProjectState> emit) async {
-    // new: immediately show loading
     emit(const ProjectState.loading());
 
     final projectRepository = ProjectRepository(isar);
@@ -60,6 +59,7 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
         workflowStatuses: event.workflowStatuses,
         body: searchBody,
       );
+      print(projectsList[0].project.name);
       emit(ProjectState.fetched(projectsList));
     } catch (_) {
       // on error, you may choose to emit an error or empty
