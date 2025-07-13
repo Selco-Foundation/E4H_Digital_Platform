@@ -16,6 +16,7 @@ class CacheAddNewAssetBloc
     on<CacheAddNewAssetEventAdd>(_addCacheAssetDetail);
     on<CacheAddNewAssetEventUpdate>(_updateCacheAssetDetail);
     on<CacheAddNewAssetEventDelete>(_deleteCacheAssetDetail);
+    on<CacheAddNewAssetEventDeleteAll>(_deleteAllCacheAssetDetail);
   }
 
   Future<void> _getCacheAssetDetail(
@@ -141,6 +142,29 @@ class CacheAddNewAssetBloc
       emit(CacheAddNewAssetState.error(e.toString()));
     }
   }
+
+  Future<void> _deleteAllCacheAssetDetail(
+    CacheAddNewAssetEventDeleteAll event,
+    Emitter<CacheAddNewAssetState> emit,
+  ) async {
+    emit(const CacheAddNewAssetState.loading());
+    try {
+      await isar.writeTxn(() async {
+        final q = isar.cacheAddNewAssets
+            .where()
+            .projectIdEqualTo(event.projectId)
+            .filter()
+            .assetTypeEqualTo(event.assetType);
+        final all = await q.findAll();
+        for (final e in all) {
+          await isar.cacheAddNewAssets.delete(e.id);
+        }
+      });
+      emit(const CacheAddNewAssetState.deleted());
+    } catch (e) {
+      emit(CacheAddNewAssetState.error(e.toString()));
+    }
+  }
 }
 
 /// Events for CacheAddNewAssetBloc
@@ -157,6 +181,10 @@ class CacheAddNewAssetEvent with _$CacheAddNewAssetEvent {
       CacheAddNewAssetEventUpdate;
   const factory CacheAddNewAssetEvent.delete(int id) =
       CacheAddNewAssetEventDelete;
+  const factory CacheAddNewAssetEvent.deleteAll(
+    String projectId,
+    String assetType,
+  ) = CacheAddNewAssetEventDeleteAll;
 }
 
 /// States for CacheAddNewAssetBloc

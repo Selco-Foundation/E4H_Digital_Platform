@@ -230,6 +230,7 @@ mixin _$Document {
   String? get documentUid => throw _privateConstructorUsedError;
   Map<String, dynamic>? get additionalDetails =>
       throw _privateConstructorUsedError;
+  @JsonKey(name: 'geoLocation')
   GeoLocation? get geoLocation => throw _privateConstructorUsedError;
 
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -250,7 +251,7 @@ abstract class $DocumentCopyWith<$Res> {
       @JsonKey(name: 'fileStore', fromJson: _anyToString) String? fileStore,
       @JsonKey(name: 'documentUid', fromJson: _anyToString) String? documentUid,
       Map<String, dynamic>? additionalDetails,
-      GeoLocation? geoLocation});
+      @JsonKey(name: 'geoLocation') GeoLocation? geoLocation});
 
   $GeoLocationCopyWith<$Res>? get geoLocation;
 }
@@ -331,7 +332,7 @@ abstract class _$$DocumentImplCopyWith<$Res>
       @JsonKey(name: 'fileStore', fromJson: _anyToString) String? fileStore,
       @JsonKey(name: 'documentUid', fromJson: _anyToString) String? documentUid,
       Map<String, dynamic>? additionalDetails,
-      GeoLocation? geoLocation});
+      @JsonKey(name: 'geoLocation') GeoLocation? geoLocation});
 
   @override
   $GeoLocationCopyWith<$Res>? get geoLocation;
@@ -393,7 +394,7 @@ class _$DocumentImpl implements _Document {
       @JsonKey(name: 'fileStore', fromJson: _anyToString) this.fileStore,
       @JsonKey(name: 'documentUid', fromJson: _anyToString) this.documentUid,
       final Map<String, dynamic>? additionalDetails,
-      this.geoLocation})
+      @JsonKey(name: 'geoLocation') this.geoLocation})
       : _additionalDetails = additionalDetails;
 
   factory _$DocumentImpl.fromJson(Map<String, dynamic> json) =>
@@ -423,6 +424,7 @@ class _$DocumentImpl implements _Document {
   }
 
   @override
+  @JsonKey(name: 'geoLocation')
   final GeoLocation? geoLocation;
 
   @override
@@ -475,15 +477,16 @@ class _$DocumentImpl implements _Document {
 
 abstract class _Document implements Document {
   const factory _Document(
-      {@JsonKey(name: 'id', fromJson: _anyToString) final String? id,
-      @JsonKey(name: 'documentType', fromJson: _anyToString)
-      final String? documentType,
-      @JsonKey(name: 'fileStore', fromJson: _anyToString)
-      final String? fileStore,
-      @JsonKey(name: 'documentUid', fromJson: _anyToString)
-      final String? documentUid,
-      final Map<String, dynamic>? additionalDetails,
-      final GeoLocation? geoLocation}) = _$DocumentImpl;
+          {@JsonKey(name: 'id', fromJson: _anyToString) final String? id,
+          @JsonKey(name: 'documentType', fromJson: _anyToString)
+          final String? documentType,
+          @JsonKey(name: 'fileStore', fromJson: _anyToString)
+          final String? fileStore,
+          @JsonKey(name: 'documentUid', fromJson: _anyToString)
+          final String? documentUid,
+          final Map<String, dynamic>? additionalDetails,
+          @JsonKey(name: 'geoLocation') final GeoLocation? geoLocation}) =
+      _$DocumentImpl;
 
   factory _Document.fromJson(Map<String, dynamic> json) =
       _$DocumentImpl.fromJson;
@@ -503,6 +506,7 @@ abstract class _Document implements Document {
   @override
   Map<String, dynamic>? get additionalDetails;
   @override
+  @JsonKey(name: 'geoLocation')
   GeoLocation? get geoLocation;
   @override
   @JsonKey(ignore: true)

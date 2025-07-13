@@ -147,7 +147,7 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
                         showHelp: false,
                         defaultPopRoute: false,
                         handleback: () {
-                          context.router.replace(const SpecificationRoute());
+                          context.router.popAndPush(const SpecificationRoute());
                         },
                       ),
                       enableFixedDigitButton: true,

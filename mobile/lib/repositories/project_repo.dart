@@ -155,7 +155,7 @@ class ProjectRemoteRepository {
             'Workflow update failed (${resp.statusCode}): ${resp.data}');
       }
     } on DioError catch (dioErr) {
-      final msg = dioErr.response?.data?.toString() ?? dioErr.message;
+      // final msg = dioErr.response?.data?.toString() ?? dioErr.message;
       // throw Exception('Workflow update network error: $msg');
       throw DioErrorParser.parse(dioErr);
     }

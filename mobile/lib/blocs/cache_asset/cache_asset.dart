@@ -23,7 +23,8 @@ class CacheAssetBloc extends Bloc<CacheAssetEvent, CacheAssetState> {
   ) async {
     emit(const CacheAssetState.loading());
     try {
-      await _repo.syncRemoteToLocal(event.projectId, _isar);
+      await _repo.syncRemoteToLocal(
+          projectId: event.projectId, isar: _isar, userType: event.userType);
       emit(const CacheAssetState.success());
     } catch (e) {
       print(e.toString());
@@ -36,7 +37,8 @@ class CacheAssetBloc extends Bloc<CacheAssetEvent, CacheAssetState> {
 @freezed
 class CacheAssetEvent with _$CacheAssetEvent {
   /// Start a full “remote → local” sync for [projectId]
-  const factory CacheAssetEvent.start(String projectId) = _StartSync;
+  const factory CacheAssetEvent.start(String projectId, String userType) =
+      _StartSync;
 }
 
 /// STATES
