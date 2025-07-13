@@ -1,5 +1,3 @@
-// lib/pages/overall_asset_summary.dart
-
 import 'dart:async';
 import 'dart:io';
 
@@ -11,7 +9,8 @@ import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:file_picker/src/platform_file.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:selco/widgets/video/video_card.dart';
+import 'package:isar/isar.dart';
+import 'package:path/path.dart' show basename;
 
 import '../blocs/asset_submission/asset_submission.dart';
 import '../blocs/asset_summary/asset_summary.dart';
@@ -29,6 +28,7 @@ import '../utils/i18_key_constants.dart' as i18;
 import '../utils/utils.dart';
 import '../widgets/button/footer_button.dart';
 import '../widgets/cards/element_asset_summary.dart';
+import '../widgets/files/pdf_card.dart';
 import '../widgets/header/back_navigation_help_header.dart';
 
 @RoutePage()
@@ -46,6 +46,8 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
   double? _latitude;
   double? _longitude;
   late String userType = "";
+  List<PlatformFile> _initialCompletion = [];
+  final Map<String, File> _fileCache = {};
   StreamSubscription<LocationState>? _locSub;
 
   @override
@@ -75,6 +77,7 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
         context
             .read<CacheAssetBloc>()
             .add(CacheAssetEvent.start(project.project.id, userType));
+        _loadInitialCompletion();
         context.read<OverallAssetSummaryBloc>().add(
               OverallAssetSummaryEvent.loadCounts(
                   projectId: project.project.id),
@@ -83,14 +86,14 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
     });
   }
 
-  void _handleUpload(PlatformFile platformFile) async {
-    final file = File(platformFile.path!);
-    final copiedPath = await copyFileToLocalDir(file);
-    setState(() {
-      filePath = copiedPath;
-    });
-    debugPrint("filePath: $filePath");
-  }
+  // void handleUpload(PlatformFile platformFile) async {
+  //   final file = File(platformFile.path!);
+  //   final copiedPath = await copyFileToLocalDir(file);
+  //   setState(() {
+  //     filePath = copiedPath;
+  //   });
+  //   debugPrint("filePath: $filePath");
+  // }
 
   @override
   void dispose() {
@@ -120,10 +123,90 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
     }
   }
 
+  Future<void> _loadInitialCompletion() async {
+    final isar = context.read<CacheAssetBloc>().isar;
+
+    // 1) Try local cache
+    final cached = await isar.cacheCompletionReports
+        .where()
+        .projectIdEqualTo(_currentProjectId!)
+        .findFirst();
+
+    if (cached?.filePath.isNotEmpty == true) {
+      final f = await getCachedFile(cached!.filePath);
+      if (f != null) {
+        // persist into app's data directory too
+        final p = await copyFileToLocalDir(f);
+        if (!mounted) return;
+        setState(() {
+          filePath = p;
+          _initialCompletion = [
+            PlatformFile(
+              name: basename(p),
+              path: p,
+              size: File(p).lengthSync(),
+            )
+          ];
+        });
+        return;
+      }
+    }
+
+    // 2) Fallback: any server‐side docs on the workflow
+    final wf = context
+        .read<SelectedProjectBloc>()
+        .state
+        .whenOrNull(selected: (wf) => wf);
+    final docs = wf?.workflow?.documents ?? [];
+
+    final files = <PlatformFile>[];
+    for (final doc in docs) {
+      if (doc.fileStore != null) {
+        final f = await getCachedFile(doc.fileStore!);
+        if (f != null) {
+          final p = await copyFileToLocalDir(f);
+          files.add(PlatformFile(
+            name: basename(p),
+            path: p,
+            size: File(p).lengthSync(),
+          ));
+          filePath = p;
+        }
+      }
+    }
+
+    if (files.isNotEmpty && mounted) {
+      setState(() => _initialCompletion = files);
+    }
+  }
+
+  void _handleUpload(PlatformFile pf) async {
+    final f = File(pf.path!);
+    final dest = await copyFileToLocalDir(f);
+    setState(() {
+      filePath = dest;
+      _initialCompletion = [
+        PlatformFile(
+          name: basename(dest),
+          path: dest,
+          size: File(dest).lengthSync(),
+        )
+      ];
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final textTheme = theme.digitTextTheme(context);
+
+    /// Returns a human‑readable size, or '—' if the file is missing.
+    String _displaySize() {
+      if (filePath == null || filePath!.isEmpty) return '0 KB';
+      final f = File(filePath!);
+      if (!f.existsSync()) return '0 KB';
+      return '${(f.lengthSync() / 1024).toStringAsFixed(1)} KB';
+    }
 
     return BlocBuilder<UserTypeBloc, UserTypeState>(
       builder: (context, userState) {
@@ -408,9 +491,6 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                                 const AssetSummaryRoute());
                                           },
                                         ),
-                                        // BlocBuilder<ReportTypeBloc,
-                                        //     ReportTypeState>(
-                                        //   builder: (context, reportState) {
                                         reportState.maybeWhen(
                                             submitted: () =>
                                                 ElementAssetSummary(
@@ -460,8 +540,6 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                                     )
                                                   ],
                                                 ))
-                                        // },
-                                        //),
                                       ],
                                     );
                                   },
@@ -496,6 +574,8 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                                                 .secondary),
                                                   ),
                                                   FileUploadWidget(
+                                                    initialFiles:
+                                                        _initialCompletion,
                                                     allowedExtensions: ["pdf"],
                                                     showPreview: true,
                                                     allowMultiples: false,
@@ -503,16 +583,11 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                                     onFilesSelected: (files) {
                                                       if (files.isEmpty ||
                                                           files.first.path ==
-                                                              null)
+                                                              null) {
                                                         return <PlatformFile,
                                                             String?>{};
+                                                      }
                                                       _ensureLocationLoaded();
-                                                      // if (!ok) {
-                                                      //   context.showSnackBar(
-                                                      //     const SnackBar(content: Text('Could not fetch location')),
-                                                      //   );
-                                                      // }
-                                                      // Handle file copying outside of the callback
                                                       _handleUpload(
                                                           files.first);
                                                       return <PlatformFile,
@@ -521,8 +596,12 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                                   ),
                                                 ],
                                               )
-                                            : videoCard(
-                                                context: context, filePath: ""),
+                                            : pdfCard(
+                                                context: context,
+                                                filePath:
+                                                    filePath ?? 'No report yet',
+                                                fileSize: _displaySize(),
+                                              ),
                                       ],
                                     ))
                           ],

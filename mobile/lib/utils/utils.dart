@@ -54,6 +54,13 @@ String truncateText(String text, {int maxLength = 16}) {
   return text;
 }
 
+String truncateTextFromStart(String text, {int maxLength = 16}) {
+  if (text.length <= maxLength) return text;
+  final keep = maxLength - 3; // room for “...”
+  if (keep <= 0) return '...';
+  return '...${text.substring(text.length - keep)}';
+}
+
 int parseWarrantyMonths(String s) {
   // Matches patterns like PnY, PnM, or PnYnM
   final regex = RegExp(r'^P(?:(\d+)Y)?(?:(\d+)M)?');
