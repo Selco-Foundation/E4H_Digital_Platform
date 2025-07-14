@@ -439,18 +439,9 @@ public class ProjectService {
                     "Failed to transition workflow for project: " + request.getProjectId());
         }
 
-        for(Transaction transaction: request.getTransactions()) {
-            transaction.setProcessInstanceId(updatedWorkflow.getId());
-            String userUUID = request.getRequestInfo().getUserInfo().getUuid();
-            transaction.setProjectId(request.getProjectId());
-            transaction.setAuditDetails(projectServiceUtil.getAuditDetails(userUUID, null, true));
-            if(transaction.getTransactionId() == null || transaction.getTransactionId().isEmpty()) {
-                transaction.setTransactionId(UUID.randomUUID().toString());
-            }
-            if(transaction.getComments() != null) handleCommentUpdate(transaction.getComments(), transaction.getTransactionId(), userUUID);
+        if(request.getTransactions() != null && !request.getTransactions().isEmpty()) {
+            handleTransactionsAndComment(request, updatedWorkflow);
         }
-
-        handleTransactionUpdate(request.getTransactions());
 
         // 3. Inject workflow status into additionalDetails map
         Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(
@@ -480,6 +471,7 @@ public class ProjectService {
                 .additionalDetails(enrichedAdditionalDetails)
                 .rowVersion(existingProject.getRowVersion())
                 .isDeleted(existingProject.getIsDeleted())
+                .name(existingProject.getName())
                 .build();
 
         // 5. Create project request wrapper
@@ -529,6 +521,20 @@ public class ProjectService {
         }
 
         return new ProjectStatusWrapper(updatedProject, updatedWorkflow.getState().getState(), null, null);
+    }
+
+    private void handleTransactionsAndComment(ProjectWorkflowRequest request, ProcessInstance updatedWorkflow) {
+        for(Transaction transaction: request.getTransactions()) {
+            transaction.setProcessInstanceId(updatedWorkflow.getId());
+            String userUUID = request.getRequestInfo().getUserInfo().getUuid();
+            transaction.setProjectId(request.getProjectId());
+            transaction.setAuditDetails(projectServiceUtil.getAuditDetails(userUUID, null, true));
+            if(transaction.getTransactionId() == null || transaction.getTransactionId().isEmpty()) {
+                transaction.setTransactionId(UUID.randomUUID().toString());
+            }
+            if(transaction.getComments() != null) handleCommentUpdate(transaction.getComments(), transaction.getTransactionId(), userUUID);
+        }
+        handleTransactionUpdate(request.getTransactions());
     }
 
     private void updateAssetsForFacility(Project existingProject, RequestInfo requestInfo, String facilityId) throws CustomException {
