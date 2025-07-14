@@ -484,7 +484,7 @@ public class ProjectService {
         handleNormalUpdate(enrichedRequest, updatedProject, existingProject);
 
         // Step 7: After successful workflow transition, if action is APPROVED_BY_QC_SPOC
-        if ("APPROVED_BY_QC_SPOC".equalsIgnoreCase(request.getWorkflow().getAction())) {
+        if ("APPROVE".equalsIgnoreCase(request.getWorkflow().getAction())) {
             // fetch facility for associated projectId -> facility search api to get associtaed facility
             ProjectFacilitySearch projectFacilitySearch = ProjectFacilitySearch.builder()
                     .projectId(new ArrayList<>(Arrays.asList(existingProject.getId())))
