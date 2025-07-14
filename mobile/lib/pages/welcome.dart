@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 
 import '../router/app_router.dart';
 import '../utils/asset_images.dart';
+import '../utils/extensions.dart';
+import '../utils/i18_key_constants.dart' as i18;
 import '../widgets/button/footer_button.dart';
 import '../widgets/navigation/navbar.dart';
 
@@ -26,7 +28,7 @@ class _WelcomePageState extends State<WelcomePage> {
         enableFixedDigitButton: true,
         backgroundColor: theme.colorTheme.generic.background,
         footer: FooterButton(
-            text: "Proceed",
+            text: context.translate(i18.common.coreCommonProceed),
             onPress: () {
               context.router.replace(const LoginRoute());
             }),
@@ -59,35 +61,30 @@ class WelcomeContent extends StatelessWidget {
     final theme = Theme.of(context);
     final textTheme = theme.digitTextTheme(context);
 
-    const List<MenuItem> menuItems = [
+    List<MenuItem> menuItems = [
       MenuItem(
-        title: "View Health Facilities",
-        description:
-            "You can view the health facilities assigned to you for installation",
+        title: context.translate(i18.welcome.welcomeMenuTitleOne),
+        description: context.translate(i18.welcome.welcomeMenuDescOne),
         imagePath: AssetImages.WELCOME_1,
       ),
       MenuItem(
-        title: "Create Reports",
-        description:
-            "Create installation reports for the health facilities assigned to you (online and offline)",
+        title: context.translate(i18.welcome.welcomeMenuTitleTwo),
+        description: context.translate(i18.welcome.welcomeMenuDescTwo),
         imagePath: AssetImages.WELCOME_2,
       ),
       MenuItem(
-        title: "Save Reports",
-        description:
-            "Save installation reports offline until ready for submission",
+        title: context.translate(i18.welcome.welcomeMenuTitleThree),
+        description: context.translate(i18.welcome.welcomeMenuDescThree),
         imagePath: AssetImages.WELCOME_3,
       ),
       MenuItem(
-        title: "Submit for Approval",
-        description:
-            "Save installation reports offline until ready for submission",
+        title: context.translate(i18.welcome.welcomeMenuTitleFour),
+        description: context.translate(i18.welcome.welcomeMenuDescFour),
         imagePath: AssetImages.WELCOME_4,
       ),
       MenuItem(
-        title: "Edit Reports",
-        description:
-            "Save installation reports offline until ready for submission",
+        title: context.translate(i18.welcome.welcomeMenuTitleFive),
+        description: context.translate(i18.welcome.welcomeMenuDescFive),
         imagePath: AssetImages.WELCOME_5,
       ),
     ];
@@ -101,12 +98,12 @@ class WelcomeContent extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Welcome!',
+              Text(context.translate(i18.welcome.welcomeTitle),
                   style: textTheme.headingXl
                       .copyWith(color: const DigitColors().light.primary2)),
               const SizedBox(height: spacer3),
               Text(
-                'Through this application you will be able to:',
+                context.translate(i18.welcome.welcomeDescription),
                 style: textTheme.bodyL,
               ),
               // ...menuItems.map((item) => Column(
@@ -133,7 +130,9 @@ class WelcomeContent extends StatelessWidget {
                               children: [
                                 Text(item.title,
                                     style: textTheme.headingS.copyWith(
-                                        color: DigitColors().light.primary2)),
+                                        color: const DigitColors()
+                                            .light
+                                            .primary2)),
                                 const SizedBox(height: spacer3),
                                 Padding(
                                   padding:

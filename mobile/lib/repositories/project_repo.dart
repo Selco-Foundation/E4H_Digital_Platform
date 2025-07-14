@@ -63,7 +63,7 @@ class ProjectRemoteRepository {
       String searchPath = "project/v2/_search";
 
       if (envConfig.variables.envType == EnvType.dev) {
-        return _loadLocalProjects();
+        // return _loadLocalProjects();
       }
 
       response = await dio.post(

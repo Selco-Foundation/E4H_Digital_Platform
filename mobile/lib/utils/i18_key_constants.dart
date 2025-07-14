@@ -1,6 +1,7 @@
 library i18;
 
 const common = Common();
+const welcome = Welcome();
 const login = Login();
 const forgotPassword = ForgotPassword();
 const home = Home();
@@ -52,6 +53,7 @@ const referBeneficiary = ReferBeneficiary();
 class Common {
   const Common();
 
+  String get coreCommonProceed => 'CORE_COMMON_PROCEED';
   // String get coreCommonContinue => 'CORE_COMMON_CONTINUE';
   //
   // String get coreCommonAge => 'CORE_COMMON_AGE';
@@ -64,7 +66,7 @@ class Common {
   //
   // String get coreCommonMobileNumber => 'CORE_COMMON_MOBILE_NUMBER';
   //
-  String get coreCommonSubmit => 'Submit';
+  String get coreCommonSubmit => 'Submit'; //'CORE_COMMON_SUBMIT';
 
   String get coreCommonSave => 'Save'; //'CORE_COMMON_SAVE';
   //
@@ -104,14 +106,16 @@ class Common {
   //
   // String get coreCommonDataSyncRetry => 'CORE_COMMON_DATA_SYNC_RETRY';
   //
-  String get connectionLabel => 'CORE_COMMON_CONNECTION_LABEL';
+  String get connectionLabel =>
+      'CORE_COMMON_CONNECTION_LABEL'; //todo to be confirmed
   //
-  String get connectionContent => 'CORE_COMMON_CONNECTION_CONTENT';
+  String get connectionContent =>
+      'CORE_COMMON_CONNECTION_CONTENT'; //todo to be confirmed
   //
   // String get coreCommonSkip => 'CORE_COMMON_SKIP';
 
-  String get coreCommonNext => 'Next';
-  String get coreCommonEdit => 'Edit';
+  String get coreCommonNext => 'Next'; // 'CORE_COMMON_NEXT';
+  String get coreCommonEdit => 'CORE_COMMON_EDIT'; // 'Edit';
   //
   // String get coreCommonYes => 'CORE_COMMON_YES';
   //
@@ -133,6 +137,22 @@ class Common {
   // String get coreCommonDownload => 'CORE_COMMON_DOWNLOAD';
   // String get coreCommonDownloadFailed => 'CORE_COMMON_DOWNLOAD_FAILED';
   // String get noMatchFound => 'CORE_COMMON_NO_MATCH_FOUND';
+}
+
+class Welcome {
+  const Welcome();
+  String get welcomeTitle => 'WELCOME_TITLE';
+  String get welcomeDescription => 'WELCOME_DESCRIPTION';
+  String get welcomeMenuTitleOne => 'WELCOME_MENU_TITLE_ONE';
+  String get welcomeMenuDescOne => 'WELCOME_MENU_DESCRIPTION_ONE';
+  String get welcomeMenuTitleTwo => 'WELCOME_MENU_TITLE_TWO';
+  String get welcomeMenuDescTwo => 'WELCOME_MENU_DESCRIPTION_TWO';
+  String get welcomeMenuTitleThree => 'WELCOME_MENU_TITLE_THREE';
+  String get welcomeMenuDescThree => 'WELCOME_MENU_DESCRIPTION_THREE';
+  String get welcomeMenuTitleFour => 'WELCOME_MENU_TITLE_FOUR';
+  String get welcomeMenuDescFour => 'WELCOME_MENU_DESCRIPTION_FOUR';
+  String get welcomeMenuTitleFive => 'WELCOME_MENU_TITLE_FIVE';
+  String get welcomeMenuDescFive => 'WELCOME_MENU_DESCRIPTION_FIVE';
 }
 
 class Scanner {
