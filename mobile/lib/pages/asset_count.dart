@@ -43,6 +43,7 @@ class _AssetCountPageState extends State<AssetCountPage> {
     final selState = context.read<SelectedProjectBloc>().state;
     selState.whenOrNull(selected: (project) {
       _currentProjectId = project.project.id;
+      debugPrint("_currentProjectId $_currentProjectId");
       _dispatchInitialLoad(project.project.id);
     });
   }
