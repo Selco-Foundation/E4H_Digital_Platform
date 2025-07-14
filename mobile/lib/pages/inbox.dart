@@ -240,6 +240,8 @@ class _InboxPageState extends State<InboxPage> {
                                           return inboxState.when(
                                             submitted: () => InboxReportCard(
                                                 onPress: () {
+                                                  print(project.project.id);
+                                                  return;
                                                   context
                                                       .read<
                                                           SelectedProjectBloc>()
@@ -264,6 +266,8 @@ class _InboxPageState extends State<InboxPage> {
                                               dateAssigned:
                                                   DateTime(2024, 1, 25),
                                               onPress: () {
+                                                print(project.project.id);
+                                                return;
                                                 context
                                                     .read<SelectedProjectBloc>()
                                                     .add(
@@ -276,6 +280,8 @@ class _InboxPageState extends State<InboxPage> {
                                             ),
                                             approved: () => InboxReportCard(
                                                 onPress: () {
+                                                  print(project.project.id);
+                                                  return;
                                                   context
                                                       .read<
                                                           SelectedProjectBloc>()

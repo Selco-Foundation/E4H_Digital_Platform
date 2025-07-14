@@ -40,7 +40,9 @@ class _DraftPageState extends State<DraftPage> {
                 userType == USER_TYPES.FIELD_STAFF.name
                     ? WORKFLOW_STATUS_FIELD_STAFF.SUBMITTED_BY_FIELD_STAFF.name
                     : WORKFLOW_STATUS_FIELD_SUPERVISOR
-                        .ASSIGNED_TO_FIELD_SUPERVISOR.name
+                        .SUBMITTED_BY_SUPERVISOR.name
+                // WORKFLOW_STATUS_FIELD_SUPERVISOR
+                //     .ASSIGNED_TO_FIELD_SUPERVISOR.name
               ],
               userType,
             ),

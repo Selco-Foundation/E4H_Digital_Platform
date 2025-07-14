@@ -55,7 +55,7 @@ class LocalizationBloc extends Bloc<LocalizationEvent, LocalizationState> {
       final Map<String, String> queryParam = {
         'locale': 'en_IN', // event.locale.toString(),
         'module': moduleNameList.join(','),
-        'tenantId': envConfig.variables.tenantId // 'mz'
+        'tenantId': envConfig.variables.tenantId
       };
 
       //initialize appLocalizations for searching ISAR or setting locmodel
