@@ -37,6 +37,19 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+
+    // Manifest merger options
+    packagingOptions {
+        jniLibs {
+            useLegacyPackaging = true
+        }
+        resources {
+            excludes += setOf(
+                "**/AndroidManifest.xml",
+                "META-INF/*.kotlin_module"
+            )
+        }
+    }
 }
 
 flutter {
