@@ -5,10 +5,13 @@ import { QCService } from "../../Service/QCService";
 const QCActions = () => {
 
   const rejectionReasons = useSelector((state) => state.qc.rejectionReasons);
-  const selectedFieldPlan = useSelector((state) => state.qc.common.selectedFieldPlan)
+  const selectedFacility = useSelector((state) => state.qc.common.selectedFacility)
 
   const handleApprove = async () => {
-    await QCService.updateProjectWorkflow(selectedFieldPlan.id, "APPROVE", "")
+    await QCService.updateProjectWorkflow(
+      selectedFacility?.projectId, "APPROVE",
+      [], "Approved by QC"
+    )
       .then(response => {
         console.debug("Approved", response);
       })
@@ -18,14 +21,27 @@ const QCActions = () => {
   }
 
   const handleReject = async () => {
-    console.debug("Rejection Reasons", rejectionReasons);
     const rejectionReasonsToUpload = {};
     Object.keys(rejectionReasons).forEach(key => {
       if (rejectionReasons[key].length > 0) {
         rejectionReasonsToUpload[key] = rejectionReasons[key];
       }
     })
-    await QCService.updateProjectWorkflow(selectedFieldPlan.id, "REJECT_AND_ASSIGN_FOR_FIELD_QC", JSON.stringify(rejectionReasonsToUpload))
+
+    let comments = [];
+    Object.keys(rejectionReasonsToUpload).forEach(key => {
+      rejectionReasonsToUpload[key].forEach(rejectionReason => {
+        comments = [...comments, {
+          commentMessage : rejectionReason.reason,
+          assetType : key,
+        }]
+      })
+    })
+
+    await QCService.updateProjectWorkflow(
+      selectedFacility?.projectId, "REJECT_AND_ASSIGN_FOR_FIELD_QC",
+      comments, "Rejected by QC"
+    )
       .then(response => {
         console.debug("Rejecting", response);
       })

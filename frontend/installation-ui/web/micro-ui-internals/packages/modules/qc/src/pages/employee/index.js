@@ -31,8 +31,8 @@ const QCApp = () => {
       show: true,
     },
     facilityDetails: {
-      content: navigator.selectedFacility?.facilityId,
-      path: match.url + `/field-plan/${encodeURIComponent(navigator.selectedFieldPlan?.name)}/facilities/${encodeURIComponent(navigator.selectedFacility?.facilityId)}`,
+      content: navigator.selectedFacility?.facilityName,
+      path: match.url + `/field-plan/${encodeURIComponent(navigator.selectedFieldPlan?.name)}/facilities/${encodeURIComponent(navigator.selectedFacility?.facilityName)}`,
       show: true,
     },
   };

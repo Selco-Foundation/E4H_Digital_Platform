@@ -74,6 +74,7 @@ const FacilityTable = ({ t, getCellProps, onNextPage, onPrevPage, currentPage, t
             return {
               id: index+1,
               facilityId: row?.facility?.facilityId,
+              facilityName: row?.project?.name || row?.facility?.facilityId,
               facilityProjectId: row?.facility?.id,
               projectName: selectedFieldPlan?.name,
               projectId:row?.project?.id,
@@ -185,10 +186,10 @@ const FacilityTable = ({ t, getCellProps, onNextPage, onPrevPage, currentPage, t
           <div>
             <span className="link" onClick={() => dispatch(setSelectedFacility(row.original))}>
               <Link
-                to={`/${window.contextPath}/employee/qc/field-plan/${encodeURIComponent(row.original["projectName"])}/facilities/${encodeURIComponent(row.original["facilityId"])}`}
+                to={`/${window.contextPath}/employee/qc/field-plan/${encodeURIComponent(row.original["projectName"])}/facilities/${encodeURIComponent(row.original["facilityName"])}`}
                 style={{ color: "#C84C0E" }}
               >
-                {row.original["facilityId"]}
+                {row.original["facilityName"]}
               </Link>
             </span>
           </div>

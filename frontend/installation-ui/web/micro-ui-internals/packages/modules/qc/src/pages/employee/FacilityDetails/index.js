@@ -9,7 +9,6 @@ import { clearRejectionReasons } from "../../../redux/actions";
 const FacilityDetails = ({t}) => {
 
   const selectedFacility = useSelector((state) => state.qc.common.selectedFacility);
-  const selectedFieldPlan = useSelector((state) => state.qc.common.selectedFieldPlan);
   const [fetchedData, setData] = useState([]);
   const dispatch = useDispatch();
 
@@ -43,7 +42,7 @@ const FacilityDetails = ({t}) => {
   const fetchFileStoreDocuments = async (documents) => {
     const fetchedDocuments = [];
     for (const document of documents) {
-      if (document?.documentType.toUpperCase() === "PHOTO" || document?.documentType.toUpperCase() === "IMAGE") {
+      if (document?.documentType?.toUpperCase() === "ASSET") {
         await QCService.fetchImageFromFileStore(document?.fileStore)
           .then((response) => {
             fetchedDocuments.push(Digit.Utils.getFileUrl(response[document?.fileStore]))
@@ -213,7 +212,7 @@ const FacilityDetails = ({t}) => {
 
       {pdfFile && <Summary sectionName="InstallationCompletionReport" pdf={pdfFile} isReport={true} />}
 
-      {selectedFieldPlan?.status && selectedFieldPlan?.status.toUpperCase() === "SUBMITTED_BY_SUPERVISOR" && <QCActions />}
+      {selectedFacility?.status && selectedFacility?.status.toUpperCase() === "SUBMITTED_BY_SUPERVISOR" && <QCActions />}
 
     </div>
   );

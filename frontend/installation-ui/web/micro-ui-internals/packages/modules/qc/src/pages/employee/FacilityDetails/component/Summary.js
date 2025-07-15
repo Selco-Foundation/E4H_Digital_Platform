@@ -14,6 +14,7 @@ const Summary = ({ sectionName, count, specifications, details, items, images, v
   const [rejectionData, setRejectionData] = useState(rejectionReasons?.[sectionName] || []);
   const [activeReasonId, setActiveReasonId] = useState(null);
   const dispatch = useDispatch();
+  const selectedFacility = useSelector((state) => state.qc.common.selectedFacility);
 
   const handleSave = (data) => {
     setRejectionData([...rejectionData, ...data?.filter((reason) => reason?.reason?.trim())]);
@@ -76,20 +77,22 @@ const Summary = ({ sectionName, count, specifications, details, items, images, v
           </button>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          <button
-            style={{
-              border: "1px solid #d35400",
-              backgroundColor: "white",
-              color: "#d35400",
-              padding: "8px 14px",
-              borderRadius: "2px",
-              fontWeight: "bold",
-              cursor: "pointer",
-            }}
-            onClick={() => setShowRejectionModal(true)}
-          >
-            Add Rejection Reason
-          </button>
+          {selectedFacility?.status && selectedFacility?.status.toUpperCase() === "SUBMITTED_BY_SUPERVISOR" && (
+            <button
+              style={{
+                border: "1px solid #d35400",
+                backgroundColor: "white",
+                color: "#d35400",
+                padding: "8px 14px",
+                borderRadius: "2px",
+                fontWeight: "bold",
+                cursor: "pointer",
+              }}
+              onClick={() => setShowRejectionModal(true)}
+            >
+              Add Rejection Reason
+            </button>
+          )}
         </div>
       </div>
 
