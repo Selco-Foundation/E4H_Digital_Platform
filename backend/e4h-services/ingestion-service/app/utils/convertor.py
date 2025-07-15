@@ -507,18 +507,24 @@ def get_incident_request_info():
     }
 
 
-def create_update_payload(search_response: dict, update_data: dict) -> dict:
+def create_update_payload(search_response: dict, update_data: dict, subtype_mapping) -> dict:
     incident_wrapper = search_response.get("IncidentWrappers", [{}])[0]
     incident = incident_wrapper.get("incident", {})
     workflow = incident_wrapper.get("workflow", {})
 
     request_info = get_incident_request_info()
 
+    original_type = incident.get('incidentType', '')
+    original_subtype = incident.get('incidentSubType', '')
+
+    # Apply mapping if exists
+    mapped_type, mapped_subtype = subtype_mapping.get(original_subtype, (original_type, original_subtype))
+
     details = {
         "CS_COMPLAINT_DETAILS_TICKET_NO": incident.get("incidentId"),
         "CS_COMPLAINT_DETAILS_APPLICATION_STATUS": f"CS_COMMON_{incident.get('applicationStatus', 'PENDINGFORASSIGNMENT')}",
-        "CS_ADDCOMPLAINT_TICKET_TYPE": f"SERVICEDEFS.{incident.get('incidentType', '').upper()}",
-        "CS_ADDCOMPLAINT_TICKET_SUB_TYPE": f"SERVICEDEFS.{incident.get('incidentSubType', '').upper()}",
+        "CS_ADDCOMPLAINT_TICKET_TYPE": f"SERVICEDEFS.{mapped_type.upper()}",
+        "CS_ADDCOMPLAINT_TICKET_SUB_TYPE": f"SERVICEDEFS.{mapped_subtype.upper()}",
         "CS_ADDCOMPLAINT_SYSTEM_FUNCTIONAL": incident.get("systemFunctional", "NON_FUNCTIONAL"),
         "CS_ADDCOMPLAINT_DISTRICT": incident.get("district", ""),
         "CS_ADDCOMPLAINT_BLOCK": incident.get("block", ""),
@@ -544,6 +550,9 @@ def create_update_payload(search_response: dict, update_data: dict) -> dict:
         "rejectReason": existing_reject_reasons
     }
 
+    incident["incidentType"] = mapped_type
+    incident["incidentSubType"] = mapped_subtype
+
     # Create workflow object
     workflow.update({
         "action": update_data.get("action", "REJECT"),
@@ -554,7 +563,7 @@ def create_update_payload(search_response: dict, update_data: dict) -> dict:
 
     audit = {
         "details": incident.get("auditDetails", {}),
-        "incidentType": incident.get("incidentSubType", "")
+        "incidentType": mapped_subtype
     }
 
     return {
