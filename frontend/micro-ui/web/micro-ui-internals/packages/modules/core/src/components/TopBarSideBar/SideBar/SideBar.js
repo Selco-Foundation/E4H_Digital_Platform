@@ -400,6 +400,7 @@ const Sidebar = ({ data }) => {
                     `${subItems?.item?.navigationURL}`
                   );
                 }}
+                style={trimModuleName === "Home" ? {minHeight: "60px"} : {}}
               >
                 <div
                   className={`actions level-${level} ${
@@ -409,7 +410,7 @@ const Sidebar = ({ data }) => {
                   data-for={`jk-side-${key}`}
                 >
                   {flag && <div className="link-icon">{leftIcon}</div>}
-                  <span className="trimModuleName"> {trimModuleName} </span>
+                  <span className="trimModuleName" style={trimModuleName === "Home" ? {marginTop: "10px"} : {}}> {trimModuleName} </span>
                   {trimModuleName?.includes("...") && (
                     <ReactTooltip
                       textColor="white"
