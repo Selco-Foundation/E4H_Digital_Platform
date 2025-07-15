@@ -1,4 +1,4 @@
-name: Maharastra-UI Image Build workflow
+name: Maharashtra-UI Image Build workflow
 on:
   push:
     branches:
@@ -56,11 +56,11 @@ jobs:
           context: .
           file: frontend/micro-ui/web/docker/testfile/Dockerfile
           push: true
-          tags: selcohub/maharastra-ui:${{ env.VERSION }}-${{ env.commit_hash }}
+          tags: selcohub/maharashtra-ui:${{ env.VERSION }}-${{ env.commit_hash }}
           cache-from: type=gha   # Stores cache in GitHub Actions .
           cache-to: type=gha,mode=max  # max- stores all the layers including the intermediate layers in multi-stage
           build-args: |
-            PUBLIC_PATH=/maharastra/
+            PUBLIC_PATH=/maharashtra/
             WORK_DIR=frontend/micro-ui/
 
 #  Workflow_Trigger:
