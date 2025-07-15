@@ -9,9 +9,10 @@ COPY --link build/maven/start.sh ./start.sh
 
 # not useful for stateless builds
 # RUN mvn -B dependency:go-offline
+RUN --mount=type=cache,target=/root/.m2 mvn -B dependency:go-offline #Downloads all dependencies
 
 COPY --link ${WORK_DIR}/src ./src
-RUN mvn -B -f /app/pom.xml package
+RUN --mount=type=cache,target=/root/.m2 mvn -B package
 
 
 # Create runtime image
