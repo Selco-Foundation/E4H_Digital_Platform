@@ -432,6 +432,30 @@ const Sidebar = ({ data }) => {
             );
           }
         })}
+        {flag && (
+          <div>
+            <div className={`sidebar-link`}>
+              <div className="actions">
+                <Phone />
+                <div data-tip="React-tooltip" data-for={`jk-side-$}`} style={{display:"flex",flexDirection:"column"}}>
+                  <span>{t("CS_COMMON_HELPLINE")} </span>
+                  <span>{crmHelplineNumber} </span>
+                </div>
+              </div>
+            </div>
+            <div onClick={handleLogout} className={`sidebar-link`}>
+              <div className="actions">
+                <LogoutIcon></LogoutIcon>
+                <div style={{display:"flex",flexDirection:"column", color:"white"}}>
+                  <span>{t("CS_COMMON_LOGOUT")} </span>
+                </div>
+              </div>
+            </div>
+            {showDialog && (
+              <LogoutDialog onSelect={handleOnSubmit} onCancel={handleOnCancel} onDismiss={handleOnCancel}></LogoutDialog>
+            )}
+          </div>
+        )}
       </div>
     );
   };
@@ -442,35 +466,7 @@ const Sidebar = ({ data }) => {
       onMouseEnter={openSidebar}
       onMouseLeave={closeSidebar}
     >
-
       {renderSidebarItems(data)}
-      <div className="submenu-container" style={{marginBottom:"0px"}}>
-          <div onClick={""} className={`sidebar-link`}>
-            <div className="actions">
-            <Phone />
-              <div data-tip="React-tooltip" data-for={`jk-side-$}`} style={{display:"flex",flexDirection:"column"}}>
-                <span>{t("CS_COMMON_HELPLINE")} </span>
-                <span>{crmHelplineNumber} </span>
-              </div>
-            </div>
-            {/* <div> {item.links && subnav ? <ArrowVectorDown /> : item.links ? <ArrowForward /> : null} </div> */}
-          </div>
-        </div>
-        <div className="submenu-container" style={{marginBottom:"0px"}}>
-          <div onClick={""} className={`sidebar-link`}>
-            <div className="actions">
-            <LogoutIcon></LogoutIcon>
-              <div onClick={(e)=> {handleLogout()}}style={{display:"flex",flexDirection:"column", color:"white"}}>
-                <span>{t("CS_COMMON_LOGOUT")} </span>
-               
-              </div>
-            </div>
-            {/* <div> {item.links && subnav ? <ArrowVectorDown /> : item.links ? <ArrowForward /> : null} </div> */}
-          </div>
-          {showDialog && (
-        <LogoutDialog onSelect={handleOnSubmit} onCancel={handleOnCancel} onDismiss={handleOnCancel}></LogoutDialog>
-      )}
-        </div>
     </div>
   );
 };
