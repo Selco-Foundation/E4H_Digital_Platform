@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:digit_ui_components/digit_components.dart';
@@ -376,6 +377,8 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
                                     .toList(),
                               )
                             ];
+
+                            print("transactions ${jsonEncode(transactions)}");
 
                             Navigator.of(ctx).pop();
                             context.read<RejectionBloc>().add(

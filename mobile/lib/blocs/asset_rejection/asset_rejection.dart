@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:bloc/bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
@@ -21,9 +23,9 @@ class RejectionBloc extends Bloc<RejectionEvent, RejectionState> {
   ) async {
     emit(const RejectionState.loading());
     try {
+      print("event.transaction ${jsonEncode(event.transactions)}");
       await _repo.submitRejection(
         projectId: event.projectId,
-        action: event.action ?? '',
         transactions: event.transactions,
       );
       emit(const RejectionState.success());
@@ -37,7 +39,6 @@ class RejectionBloc extends Bloc<RejectionEvent, RejectionState> {
 class RejectionEvent with _$RejectionEvent {
   const factory RejectionEvent.submitRejection({
     required String projectId,
-    String? action,
     required List<Transaction> transactions,
   }) = _SubmitRejection;
 }
