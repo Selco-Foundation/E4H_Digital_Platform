@@ -1073,14 +1073,16 @@ async def update_incidents_from_excel(
 
 def process_update_response(response, df, idx, update_data):
     try:
-        if response.status_code in [200, 201]:
+        response_json = response.json()
+
+        if 'Errors' in response_json and response_json['Errors']:
+            error_msg = response_json['Errors'][0].get('message', str(response_json['Errors'][0]))
+            df.at[idx, 'status'] = 'failed'
+            df.at[idx, 'error'] = error_msg
+        else:
             df.at[idx, 'status'] = 'success'
             df.at[idx, 'error'] = ''
             df.at[idx, 'updated_status'] = update_data.get('new_status', '')
-        else:
-            error_msg = response.json().get('Errors', [{}])[0].get('message', response.text)
-            df.at[idx, 'status'] = 'failed'
-            df.at[idx, 'error'] = error_msg
     except Exception as e:
         df.at[idx, 'status'] = 'failed'
         df.at[idx, 'error'] = str(e)
