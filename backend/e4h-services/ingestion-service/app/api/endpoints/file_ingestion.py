@@ -1045,9 +1045,7 @@ async def update_incidents_from_excel(
                 update_payload = create_update_payload(search_response, update_data)
                 update_response = incident_client.update_incident(update_payload)
 
-                df.at[index, 'status'] = 'success'
-                df.at[index, 'updated_status'] = update_data['new_status']
-                df.at[index, 'error'] = ''
+                process_update_response(update_response, df, index, update_data)
 
             except Exception as e:
                 df.at[index, 'status'] = 'failed'
@@ -1072,3 +1070,17 @@ async def update_incidents_from_excel(
     finally:
         if temp_file and os.path.exists(temp_file.name):
             os.unlink(temp_file.name)
+
+def process_update_response(response, df, idx, update_data):
+    try:
+        if response.status_code in [200, 201]:
+            df.at[idx, 'status'] = 'success'
+            df.at[idx, 'error'] = ''
+            df.at[idx, 'updated_status'] = update_data.get('new_status', '')
+        else:
+            error_msg = response.json().get('Errors', [{}])[0].get('message', response.text)
+            df.at[idx, 'status'] = 'failed'
+            df.at[idx, 'error'] = error_msg
+    except Exception as e:
+        df.at[idx, 'status'] = 'failed'
+        df.at[idx, 'error'] = str(e)
