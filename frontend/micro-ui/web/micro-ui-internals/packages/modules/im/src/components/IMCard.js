@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { EmployeeModuleCard } from "@selco/digit-ui-react-components";
 
 
-const IMCard = () => {
+const IMCard = ({tenants}) => {
   const stateTenantId = Digit.ULBService.getStateId();
   const { t } = useTranslation();
   const [total, setTotal] = useState("-");
@@ -42,8 +42,8 @@ const IMCard = () => {
   if (!Digit.Utils.pgrAccess()) {
     return null;
   }
-  
-  console.log("total", total)
+
+  Digit.SessionStorage.set("IM_TENANTS", tenants);
   sessionStorage.setItem("inboxTotal", JSON.stringify(total?.totalCount));
   let tenantId = window.Digit.SessionStorage.get("Employee.tenantId");
   let newTenant = window.Digit.SessionStorage.get("Tenants")
