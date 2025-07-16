@@ -189,7 +189,7 @@ const Sidebar = ({ data }) => {
       );
 
     return (
-      <div className={`submenu-container level-${level}`} style={{width:"calc(100% +24px)"}}>
+      <div className={`submenu-container level-${level}`} style={{width:"calc(100% +24px)", marginBottom: "0px"}}>
         {keysArray.map((key, index) => {
           const subItems = items[key];
           const subItemKeys = subItems
@@ -438,7 +438,7 @@ const Sidebar = ({ data }) => {
             <div className={`sidebar-link`}>
               <div className="actions">
                 <Phone />
-                <div data-tip="React-tooltip" data-for={`jk-side-$}`} style={{display:"flex",flexDirection:"column"}}>
+                <div data-tip="React-tooltip" data-for={`jk-side-helpline}`} style={{display:"flex",flexDirection:"column"}}>
                   <span>{t("CS_COMMON_HELPLINE")} </span>
                   <span>{crmHelplineNumber} </span>
                 </div>
