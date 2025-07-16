@@ -9,8 +9,8 @@ class IMServiceClient:
     def __init__(self, base_url):
         self.base_url = base_url
 
-    def search_incident(self, incident_id: str):
-        url = f"{self.base_url}/im-services/v2/request/_search?tenantId=nl.aoyimkumhwc&incidentId={incident_id}"
+    def search_incident(self, incident_id: str, tenant_id: str):
+        url = f"{self.base_url}/im-services/v2/request/_search?tenantId={tenant_id}&incidentId={incident_id}"
         headers = {
             "Content-Type": "application/json;charset=UTF-8",
             "Accept": "application/json"

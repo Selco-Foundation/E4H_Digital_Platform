@@ -1029,9 +1029,15 @@ async def update_incidents_from_excel(
                 df.at[index, 'error'] = 'Missing ticket_no/Incorrect current status'
                 continue
 
+            if pd.isna(row.get('Tenant ID')):
+                df.at[index, 'status'] = 'skipped'
+                df.at[index, 'error'] = 'Missing Tenant ID'
+
+
             try:
                 search_response = incident_client.search_incident(
-                    incident_id=row['Ticket No.']
+                    incident_id=row['Ticket No.'],
+                    tenant_id=row['Tenant ID']
                 )
 
                 dt = datetime.strptime(row.get("Filed Date"), "%b %d, %Y @ %H:%M:%S.%f")
