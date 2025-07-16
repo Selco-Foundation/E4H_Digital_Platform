@@ -9,7 +9,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 15px 15px !important;
+  padding: 10px 6px 15px !important;
   color: #fff;
   font-size: 1rem;
   font-weight: 500;
@@ -131,9 +131,6 @@
   }
 
 
-  &.custom {
-    margin-left: 0.3rem;
-  }
   &:hover {
     color: white;
     opacity: 0.8;

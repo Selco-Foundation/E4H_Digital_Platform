@@ -152,7 +152,6 @@
       font-size: 14px;
       
       &.level-0 {
-        margin:0 0.3rem 0 0.3rem;
         &.select-level{
           border-top: 1px solid;
           border-bottom: 1px solid;
@@ -213,7 +212,6 @@
     .dropdown-link {
       height: 40px;
       display: flex;
-      margin-left: 40px;
       align-items: center;
       text-decoration: none;
       color: theme(colors.white);
@@ -234,7 +232,7 @@
         opacity: 0.8;
         cursor: pointer;
         svg {
-          fill: #fe7a51 !important;
+          fill: #fff !important;
         }
       }
 
@@ -254,11 +252,7 @@
         &.level-3{
 
         }
-        color: theme(colors.primary.main) !important;
         border-right: none;
-        svg {
-          fill: theme(colors.primary.main) !important;
-        }
       }
     }
     span {
