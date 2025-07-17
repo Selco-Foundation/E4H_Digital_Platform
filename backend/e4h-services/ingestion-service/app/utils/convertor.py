@@ -520,7 +520,7 @@ def create_update_payload(search_response: dict, update_data: dict, subtype_mapp
     # Apply mapping if exists
     mapped_pair = subtype_mapping.get((original_type, original_subtype))
     if not mapped_pair:
-        raise ValueError(f"No mapping found for type '{original_type}' and subtype '{original_subtype}'")
+        mapped_pair = (original_type, original_subtype)
 
     details = {
         "CS_COMPLAINT_DETAILS_TICKET_NO": incident.get("incidentId"),
