@@ -458,7 +458,7 @@ def get_mdms_code_by_name(schema_list: List[Dict[str, Any]], field_name: str, va
     raise ValueError(f"Field name '{field_name}' not found in MDMS schema.")
 
 
-def get_incident_request_info():
+def get_incident_request_info(tenantId):
     return {
         "apiId": "Rainmaker",
         "authToken": "222d0cf6-07c2-4d90-8a71-0292c200ae74",
@@ -475,31 +475,31 @@ def get_incident_request_info():
                 {
                     "name": "Super User",
                     "code": "SUPERUSER",
-                    "tenantId": "nl"
+                    "tenantId": tenantId
                 },
                 {
                     "name": "Employee",
                     "code": "EMPLOYEE",
-                    "tenantId": "nl"
+                    "tenantId": tenantId
                 },
                 {
                     "name": "Complainant",
                     "code": "COMPLAINANT",
-                    "tenantId": "nl"
+                    "tenantId": tenantId
                 },
                 {
                     "name": "Complaint Assessor",
                     "code": "COMPLAINT_ASSESSOR",
-                    "tenantId": "nl"
+                    "tenantId": tenantId
                 },
                 {
                     "name": "Complaint facilitator 2",
                     "code": "COMPLAINT_FACILITATOR_2",
-                    "tenantId": "nl"
+                    "tenantId": tenantId
                 }
             ],
             "active": True,
-            "tenantId": "nl",
+            "tenantId": tenantId,
             "permanentCity": None
         },
         "msgId": "1751897062350|en_IN",
@@ -512,13 +512,17 @@ def create_update_payload(search_response: dict, update_data: dict, subtype_mapp
     incident = incident_wrapper.get("incident", {})
     workflow = incident_wrapper.get("workflow", {})
 
-    request_info = get_incident_request_info()
+    tenantId = incident.get("tenantId", "").split(".")[0]
+    request_info = get_incident_request_info(tenantId)
 
     original_type = incident.get('incidentType', '')
     original_subtype = incident.get('incidentSubType', '')
 
     # Apply mapping if exists
-    mapped_pair = subtype_mapping.get((original_type, original_subtype))
+    key = f"{original_type.strip()}|{original_subtype.strip()}"
+    mapped_pair = subtype_mapping.get(key)
+
+    print(f"Mapped pair {mapped_pair}")
 
     details = {
         "CS_COMPLAINT_DETAILS_TICKET_NO": incident.get("incidentId"),
@@ -531,35 +535,34 @@ def create_update_payload(search_response: dict, update_data: dict, subtype_mapp
         "CS_ADDCOMPLAINT_HEALTH_CARE_CENTRE": incident.get("tenantId", ""),
         "CS_COMPLAINT_COMMENTS": incident.get("comments", ""),
         "CS_ADDCOMPLAINT_HEALTH_CARE_SUB_TYPE": incident.get("phcSubType", ""),
-        "CS_COMPLAINT_FILED_DATE": update_data.get("filed_date", "")
+        "CS_COMPLAINT_FILED_DATE": incident.get("filedDate", "")
     }
 
     additional_detail = incident.get("additionalDetail", {})
     existing_reject_reasons = additional_detail.get("rejectReason", [])
 
-    new_reason = update_data.get("reject_reason", "Duplication")
+    # new_reason = update_data.get("reject_reason", "Duplication")
 
-    if isinstance(existing_reject_reasons, list):
-        if new_reason not in existing_reject_reasons:
-            existing_reject_reasons.append(new_reason)
-    else:
-        existing_reject_reasons = [new_reason]
+    # if isinstance(existing_reject_reasons, list):
+    #     if new_reason not in existing_reject_reasons:
+    #         existing_reject_reasons.append(new_reason)
+    # else:
+    #     existing_reject_reasons = [new_reason]
 
-    incident["additionalDetail"] = {
-        **additional_detail,
-        "rejectReason": existing_reject_reasons
-    }
+    # incident["additionalDetail"] = {
+    #     **additional_detail,
+    #     "rejectReason": existing_reject_reasons
+    # }
 
-    incident["incidentType"] = mapped_pair[0]
-    incident["incidentSubType"] = mapped_pair[1]
+    incident["incidentSubType"] = mapped_pair
 
     # Create workflow object
-    workflow.update({
-        "action": update_data.get("action", "REJECT"),
-        "comments": update_data.get("comments", ""),
-        "rejectReason": update_data.get("reject_reason", "Duplication"),
-        "assignee": [request_info["userInfo"]["uuid"]]
-    })
+    # workflow.update({
+    #     "action": update_data.get("action", "REJECT"),
+    #     "comments": update_data.get("comments", ""),
+    #     "rejectReason": update_data.get("reject_reason", "Duplication"),
+    #     "assignee": [request_info["userInfo"]["uuid"]]
+    # })
 
     audit = {
         "details": incident.get("auditDetails", {}),

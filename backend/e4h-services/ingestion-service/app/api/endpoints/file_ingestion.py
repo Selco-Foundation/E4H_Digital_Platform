@@ -8,7 +8,7 @@ from typing import Optional, Dict, List
 import pandas as pd
 from fastapi import APIRouter, File, Form, UploadFile, HTTPException
 from fastapi.responses import FileResponse
-import psycopg2
+# import psycopg2
 from starlette.responses import JSONResponse
 import requests
 
@@ -719,12 +719,23 @@ def create_mapping_dicts(mapping_file: UploadFile, sheet_name: str):
     os.unlink(temp_file_path)
 
     subtype_mapping = {
-        (row['Existing Issue Type'], row['Existing Ticket Sub Type ( Saure eMitra)']):
-        (row['New Issue Type'], row['New Ticket Sub type'])
-        for _, row in mapping_df.iterrows()
+        f"{uppercase(item['Existing Issue Type'].strip())}|{item['Existing Ticket Sub Type ( Saure eMitra)'].strip()}": item["New Ticket Sub type"]
+        for _, item in mapping_df.iterrows()
     }
 
     return subtype_mapping
+
+# --- Capitalize Value ---
+def capitalize(value):
+    if not value:
+        return value
+    return ' '.join(word[0].upper() + word[1:].lower() if len(word) > 1 else word.upper()
+                    for word in value.split())
+
+def uppercase(text):
+    if not text:
+        return text
+    return ' '.join(word.upper() for word in text.split())
 
 def get_user_info_for_mizoram(usernames: List[str], db_conn) -> Dict[str, str]:
     try:
@@ -738,82 +749,82 @@ def get_user_info_for_mizoram(usernames: List[str], db_conn) -> Dict[str, str]:
         return {}
 
 
-@router.post("/legacy_ticket_ingestion", summary="Upload and ingest legacy tickets Excel file")
-async def upload_legacy_ticket_excel_sheet(
-    legacy_ticket_file: UploadFile = File(...),
-    legacy_ticket_sheet_name: str = Form(default="Legacy Tickets"),
-    mapping_type_subtype_file: UploadFile = File(...),
-    mapping_type_subtype_sheet_name: str = Form(default="Mapping Old_New_v1.0"),
-    request_info: str = Form(default="")
-):
-    migration_id = str(uuid.uuid4())
-    request_info_obj = request_info_from_json(request_info)
-    get_authorized_request_info(request_info_obj)
+# @router.post("/legacy_ticket_ingestion", summary="Upload and ingest legacy tickets Excel file")
+# async def upload_legacy_ticket_excel_sheet(
+#     legacy_ticket_file: UploadFile = File(...),
+#     legacy_ticket_sheet_name: str = Form(default="Legacy Tickets"),
+#     mapping_type_subtype_file: UploadFile = File(...),
+#     mapping_type_subtype_sheet_name: str = Form(default="Mapping Old_New_v1.0"),
+#     request_info: str = Form(default="")
+# ):
+#     migration_id = str(uuid.uuid4())
+#     request_info_obj = request_info_from_json(request_info)
+#     get_authorized_request_info(request_info_obj)
 
-    subtype_mapping = create_mapping_dicts(mapping_type_subtype_file, mapping_type_subtype_sheet_name)
-    tenant_creator_mapping = TENANT_CREATOR_MAPPING
+#     subtype_mapping = create_mapping_dicts(mapping_type_subtype_file, mapping_type_subtype_sheet_name)
+#     tenant_creator_mapping = TENANT_CREATOR_MAPPING
 
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as input_temp_file:
-        input_temp_file.write(await legacy_ticket_file.read())
-        excel_file_path = input_temp_file.name
+#     with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as input_temp_file:
+#         input_temp_file.write(await legacy_ticket_file.read())
+#         excel_file_path = input_temp_file.name
 
-    df = pd.read_excel(excel_file_path, sheet_name=legacy_ticket_sheet_name)
-    df.columns = df.columns.str.strip()
-    df = df.reindex(columns=df.columns.tolist() + ['ticket_id', 'employee_info'], fill_value='')
+#     df = pd.read_excel(excel_file_path, sheet_name=legacy_ticket_sheet_name)
+#     df.columns = df.columns.str.strip()
+#     df = df.reindex(columns=df.columns.tolist() + ['ticket_id', 'employee_info'], fill_value='')
 
-    unique_states = df["State"].dropna().str.strip().unique()
-    tenant_ids = [tenant_creator_mapping.get(state, {}).get("tenantId") for state in unique_states]
+#     unique_states = df["State"].dropna().str.strip().unique()
+#     tenant_ids = [tenant_creator_mapping.get(state, {}).get("tenantId") for state in unique_states]
 
-    tenant_mapping = get_tenant_mapping(request_info_obj, tenant_ids)
-    block_mapping = get_block_mapping_from_mdms(request_info_obj, tenant_ids)
+#     tenant_mapping = get_tenant_mapping(request_info_obj, tenant_ids)
+#     block_mapping = get_block_mapping_from_mdms(request_info_obj, tenant_ids)
 
-    conn = psycopg2.connect(**DB_CONFIG)
-    codes = [str(row.get("NIN_HFR ID", "")).strip() for i, row in df.iterrows()
-             if str(df.at[i, 'status']).strip().lower() not in ['duplicate', 'error']]
-    employee_info = get_hrms_employee_info(codes, conn)
+#     conn = psycopg2.connect(**DB_CONFIG)
+#     codes = [str(row.get("NIN_HFR ID", "")).strip() for i, row in df.iterrows()
+#              if str(df.at[i, 'status']).strip().lower() not in ['duplicate', 'error']]
+#     employee_info = get_hrms_employee_info(codes, conn)
 
-    usernames = [str(row.get("Actual User Name", "")).strip() for i, row in df.iterrows()
-                 if str(row.get("State", "")).strip() == "Mizoram" and str(df.at[i, 'status']).strip().lower() not in ['duplicate', 'error']]
-    user_info = get_user_info_for_mizoram(usernames, conn)
+#     usernames = [str(row.get("Actual User Name", "")).strip() for i, row in df.iterrows()
+#                  if str(row.get("State", "")).strip() == "Mizoram" and str(df.at[i, 'status']).strip().lower() not in ['duplicate', 'error']]
+#     user_info = get_user_info_for_mizoram(usernames, conn)
 
-    for idx, row in df.iterrows():
-        try:
-            status = str(df.at[idx, 'status']).strip().lower()
-            if status in ['duplicate', 'error']:
-                continue
+#     for idx, row in df.iterrows():
+#         try:
+#             status = str(df.at[idx, 'status']).strip().lower()
+#             if status in ['duplicate', 'error']:
+#                 continue
 
-            state = str(row.get("State", "")).strip()
-            if state == "Mizoram":
-                identifier = str(row.get("Actual User Name", "")).strip()
-                tenant_id = user_info.get(identifier)
-            else:
-                identifier = str(row.get("NIN_HFR ID", "")).strip()
-                tenant_id = employee_info.get(identifier)
+#             state = str(row.get("State", "")).strip()
+#             if state == "Mizoram":
+#                 identifier = str(row.get("Actual User Name", "")).strip()
+#                 tenant_id = user_info.get(identifier)
+#             else:
+#                 identifier = str(row.get("NIN_HFR ID", "")).strip()
+#                 tenant_id = employee_info.get(identifier)
 
-            if not tenant_id:
-                df.at[idx, 'status'] = 'failed'
-                df.at[idx, 'error'] = f'Employee not found for code: {identifier}'
-                df.at[idx, 'employee_info'] = 'Not found'
-                continue
+#             if not tenant_id:
+#                 df.at[idx, 'status'] = 'failed'
+#                 df.at[idx, 'error'] = f'Employee not found for code: {identifier}'
+#                 df.at[idx, 'employee_info'] = 'Not found'
+#                 continue
 
-            df.at[idx, 'employee_info'] = 'Found'
+#             df.at[idx, 'employee_info'] = 'Found'
 
-            tenant_details = tenant_mapping.get(tenant_id, {})
-            if not tenant_details:
-                df.at[idx, 'status'] = 'failed'
-                df.at[idx, 'error'] = f'Tenant mapping not found for tenant ID: {tenant_id}'
-                continue
+#             tenant_details = tenant_mapping.get(tenant_id, {})
+#             if not tenant_details:
+#                 df.at[idx, 'status'] = 'failed'
+#                 df.at[idx, 'error'] = f'Tenant mapping not found for tenant ID: {tenant_id}'
+#                 continue
 
-            incident_payload = build_incident_payload(row, identifier, tenant_details, block_mapping, migration_id,
-                                                      tenant_creator_mapping.get(state, {}), subtype_mapping)
-            response = submit_incident_payload(incident_payload, tenant_creator_mapping.get(state, {}))
-            process_response(response, df, idx, identifier)
+#             incident_payload = build_incident_payload(row, identifier, tenant_details, block_mapping, migration_id,
+#                                                       tenant_creator_mapping.get(state, {}), subtype_mapping)
+#             response = submit_incident_payload(incident_payload, tenant_creator_mapping.get(state, {}))
+#             process_response(response, df, idx, identifier)
 
-        except Exception as e:
-            df.at[idx, 'status'] = 'failed'
-            df.at[idx, 'error'] = str(e)
+#         except Exception as e:
+#             df.at[idx, 'status'] = 'failed'
+#             df.at[idx, 'error'] = str(e)
 
-    return write_and_return_excel(df, legacy_ticket_sheet_name)
+#     return write_and_return_excel(df, legacy_ticket_sheet_name)
 
 def build_incident_payload(row, identifier, tenant_details, block_mapping, migration_id, creator_info, subtype_mapping):
     ticket_type = str(row.get("Ticket Type", "")).strip()
@@ -921,76 +932,76 @@ def write_and_return_excel(df, sheet_name):
     return FileResponse(output_path, filename=os.path.basename(output_path), media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 
-@router.post("/check_duplicates")
-async def check_duplicate_tickets(
-        legacy_ticket_file: UploadFile = File(...),
-        legacy_ticket_sheet_name: str = Form(default="Duplication Template"),
-):
-    input_temp_file = None
-    try:
-        # Save uploaded file temporarily
-        input_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
-        content = await legacy_ticket_file.read()
-        input_temp_file.write(content)
-        input_temp_file.close()
-        excel_path = input_temp_file.name
+# @router.post("/check_duplicates")
+# async def check_duplicate_tickets(
+#         legacy_ticket_file: UploadFile = File(...),
+#         legacy_ticket_sheet_name: str = Form(default="Duplication Template"),
+# ):
+#     input_temp_file = None
+#     try:
+#         # Save uploaded file temporarily
+#         input_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
+#         content = await legacy_ticket_file.read()
+#         input_temp_file.write(content)
+#         input_temp_file.close()
+#         excel_path = input_temp_file.name
 
-        # Read Excel file
-        df = pd.read_excel(excel_path, sheet_name=legacy_ticket_sheet_name)
-        df.columns = df.columns.str.strip()
-        df = df.reindex(columns=df.columns.tolist() + ['status', 'error'], fill_value='')
+#         # Read Excel file
+#         df = pd.read_excel(excel_path, sheet_name=legacy_ticket_sheet_name)
+#         df.columns = df.columns.str.strip()
+#         df = df.reindex(columns=df.columns.tolist() + ['status', 'error'], fill_value='')
 
-        conn = psycopg2.connect(**DB_CONFIG)
-        cursor = conn.cursor()
+#         conn = psycopg2.connect(**DB_CONFIG)
+#         cursor = conn.cursor()
 
-        # Step 1: Fetch NIN_HFR ID -> tenantId mapping
-        nin_hfr_ids = df["NIN_HFR ID"].dropna().astype(str).str.strip().unique().tolist()
-        cursor.execute("SELECT code, tenantid FROM eg_hrms_employee WHERE code IN %s", (tuple(nin_hfr_ids),))
-        code_tenant_map = dict(cursor.fetchall())
+#         # Step 1: Fetch NIN_HFR ID -> tenantId mapping
+#         nin_hfr_ids = df["NIN_HFR ID"].dropna().astype(str).str.strip().unique().tolist()
+#         cursor.execute("SELECT code, tenantid FROM eg_hrms_employee WHERE code IN %s", (tuple(nin_hfr_ids),))
+#         code_tenant_map = dict(cursor.fetchall())
 
-        # Step 2: Check each row for incident duplication
-        for idx, row in df.iterrows():
-            code = str(row.get("NIN_HFR ID", "")).strip()
-            ticket_type = str(row.get("Ticket Type", "")).strip()
-            ticket_subtype = str(row.get("Ticket Sub Type", "")).strip()
+#         # Step 2: Check each row for incident duplication
+#         for idx, row in df.iterrows():
+#             code = str(row.get("NIN_HFR ID", "")).strip()
+#             ticket_type = str(row.get("Ticket Type", "")).strip()
+#             ticket_subtype = str(row.get("Ticket Sub Type", "")).strip()
 
-            tenant_id = code_tenant_map.get(code)
-            if not tenant_id:
-                df.at[idx, 'status'] = 'error'
-                df.at[idx, 'error'] = 'Invalid NIN_HFR ID (not in eg_hrms_employee)'
-                continue
+#             tenant_id = code_tenant_map.get(code)
+#             if not tenant_id:
+#                 df.at[idx, 'status'] = 'error'
+#                 df.at[idx, 'error'] = 'Invalid NIN_HFR ID (not in eg_hrms_employee)'
+#                 continue
 
-            # Step 3: Check for matching incidents
-            cursor.execute("""
-                SELECT 1 FROM eg_incident_v2 
-                WHERE tenantid = %s 
-                AND incidenttype = %s 
-                AND incidentsubtype = %s 
-                AND applicationstatus NOT IN ('CLOSEDAFTERRESOLUTION', 'RESOLVED', 'REJECTED')
-                LIMIT 1
-            """, (tenant_id, ticket_type, ticket_subtype))
-            exists = cursor.fetchone()
+#             # Step 3: Check for matching incidents
+#             cursor.execute("""
+#                 SELECT 1 FROM eg_incident_v2 
+#                 WHERE tenantid = %s 
+#                 AND incidenttype = %s 
+#                 AND incidentsubtype = %s 
+#                 AND applicationstatus NOT IN ('CLOSEDAFTERRESOLUTION', 'RESOLVED', 'REJECTED')
+#                 LIMIT 1
+#             """, (tenant_id, ticket_type, ticket_subtype))
+#             exists = cursor.fetchone()
 
-            if exists:
-                df.at[idx, 'status'] = 'duplicate'
+#             if exists:
+#                 df.at[idx, 'status'] = 'duplicate'
 
-        conn.close()
+#         conn.close()
 
-        # Save updated Excel
-        df.to_excel(excel_path, index=False, sheet_name=legacy_ticket_sheet_name)
+#         # Save updated Excel
+#         df.to_excel(excel_path, index=False, sheet_name=legacy_ticket_sheet_name)
 
-        return FileResponse(
-            path=excel_path,
-            filename=legacy_ticket_file.filename,
-            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
+#         return FileResponse(
+#             path=excel_path,
+#             filename=legacy_ticket_file.filename,
+#             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+#         )
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error during duplicate check: {str(e)}")
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=f"Error during duplicate check: {str(e)}")
 
-    finally:
-        if input_temp_file and os.path.exists(input_temp_file.name):
-            pass
+#     finally:
+#         if input_temp_file and os.path.exists(input_temp_file.name):
+#             pass
 
 
 @router.post('/incidents/update',
@@ -1022,9 +1033,10 @@ async def update_incidents_from_excel(
 
         incident_client = IMServiceClient(im_services_url)
         subtype_mapping = create_mapping_dicts(mapping_type_subtype_file, mapping_type_subtype_sheet_name)
-
+        # print(subtype_mapping)
         for index, row in df.iterrows():
-            if pd.isna(row.get('Ticket No.')) and row.get('Current Status') != 'Pending For Assignment':
+            print(row)
+            if pd.isna(row.get('Ticket No.')):
                 df.at[index, 'status'] = 'skipped'
                 df.at[index, 'error'] = 'Missing ticket_no/Incorrect current status'
                 continue
@@ -1036,21 +1048,16 @@ async def update_incidents_from_excel(
 
             try:
                 search_response = incident_client.search_incident(
-                    incident_id=row['Ticket No.'],
+                    incident_id=row['Incident ID'],
                     tenant_id=row['Tenant ID']
                 )
-
-                dt = datetime.strptime(row.get("Filed Date"), "%b %d, %Y @ %H:%M:%S.%f")
-
-                update_data = {
-                    "new_status": "REJECTED",
-                    "action": "REJECT",
-                    "comments": "rejected due to duplication",
-                    "reject_reason": "Duplication",
-                    "filed_date" : dt.strftime("%d/%m/%Y")
-                }
+                # print(search_response)
+                # dt = datetime.strptime(row.get("Filed Date"), "%b %d, %Y @ %H:%M:%S.%f")
+                # print(f"Doc incidentID {row.get('Ticket No.')} IncidentType : {row['Incident Type']} IncidentSubType : {row['Incident Sub Type']}")
+                update_data = {}
 
                 update_payload = create_update_payload(search_response, update_data, subtype_mapping)
+                print(f"update_payload {update_payload}")
                 update_response = incident_client.update_incident(update_payload)
 
                 process_update_response(update_response, df, index, update_data)

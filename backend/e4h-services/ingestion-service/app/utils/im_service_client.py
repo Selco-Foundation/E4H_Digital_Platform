@@ -10,13 +10,14 @@ class IMServiceClient:
         self.base_url = base_url
 
     def search_incident(self, incident_id: str, tenant_id: str):
+        # print(f"Doc incidentID {incident_id} tenant_id : {tenant_id}")
         url = f"{self.base_url}/im-services/v2/request/_search?tenantId={tenant_id}&incidentId={incident_id}"
         headers = {
             "Content-Type": "application/json;charset=UTF-8",
             "Accept": "application/json"
         }
 
-        request_info = get_incident_request_info()
+        request_info = get_incident_request_info(tenant_id)
 
         payload = {"RequestInfo": request_info}
         try:
