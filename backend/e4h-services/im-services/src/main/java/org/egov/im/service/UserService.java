@@ -263,6 +263,10 @@ public class UserService {
     public void loginReport(UserRequest userRequest) {
         try {
             User userInfo = userRequest.getUser();
+            if (userInfo.getRoles() == null || userInfo.getRoles().isEmpty()) {
+                log.info("No roles found for user: {}", userInfo.getUserName());
+                return;
+            }
             String roleCode = userInfo.getRoles().get(0).getCode();
 
             // Only proceed for COMPLAINANT or COMPLAINT RESOLVER
@@ -311,7 +315,7 @@ public class UserService {
         } catch (Exception e) {
             log.error("Error while processing login report for user: {}",
                     userRequest.getUser() != null ? userRequest.getUser().getUserName() : "", e);
-            throw new CustomException("LOGIN_REPORT_ERROR", "Unable to process login report ");
+            throw new CustomException("LOGIN_REPORT_ERROR", "Unable to process login report: " + e.getMessage());
         }
     }
 

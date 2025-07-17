@@ -27,13 +27,15 @@ export const UserService = {
     ) {
       throw new Error("ES_ERROR_USER_NOT_PERMITTED");
     }
-    await ServiceRequest({
-      serviceName: "userLoginReport",
-      url: Urls.userLoginReport,
-      method: "POST",
-      auth: true,
-      data: {authResponse},
-    });
+    if(authResponse) {
+      await ServiceRequest({
+        serviceName: "userLoginReport",
+        url: Urls.userLoginReport,
+        method: "POST",
+        auth: true,
+        data: {authResponse},
+      });
+    }
     return authResponse;
   },
   logoutUser: () => {

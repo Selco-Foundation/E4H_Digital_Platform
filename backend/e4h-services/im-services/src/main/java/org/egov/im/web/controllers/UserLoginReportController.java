@@ -25,9 +25,9 @@ public class UserLoginReportController {
             userService.loginReport(userRequest);
             return ResponseEntity.ok("Login report completed successfully");
         } catch (Exception e) {
-            log.error("Error during login report for user: {}", userRequest.getUser().getUserName(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Login report failed: " + e.getMessage());
+            String username = userRequest.getUser() != null ? userRequest.getUser().getUserName() : "";
+            log.error("Error during login report for user: {}", username, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Login report failed. Please try again.");
         }
     }
 
