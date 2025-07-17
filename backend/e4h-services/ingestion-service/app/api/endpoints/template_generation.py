@@ -1,6 +1,7 @@
+import os
+import tempfile
 from datetime import datetime
-from typing import Optional, List
-import psycopg2
+from typing import Optional, List, Dict, Any
 
 import pandas as pd
 from fastapi import APIRouter, Form, HTTPException, Depends
@@ -17,7 +18,6 @@ from app.utils.facility_service_client import FacilityServiceClient
 from app.utils.file_utils import create_temp_file, cleanup_temp_file
 from app.utils.mdms_client import MDMSClient
 from app.utils.project_service_client import ProjectServiceClient
-import os, tempfile, zipfile, qrcode, shutil
 
 router = APIRouter()
 logger = AppLogger().get_logger()
@@ -28,13 +28,6 @@ load_dotenv()
 mdms_url = os.getenv("MDMS_URL")
 project_service_url = os.getenv("PROJECT_SERVICE_URL")
 facility_service_url = os.getenv("FACILITY_SERVICE_URL")
-DB_CONFIG = {
-    "host": os.getenv("DB_HOST"),
-    "port": int(os.getenv("DB_PORT", 5432)),
-    "database": os.getenv("DB_NAME"),
-    "user": os.getenv("DB_USER"),
-    "password": os.getenv("DB_PASSWORD")
-}
 
 @router.get('/facilityIngestion',
             summary='Generate facility ingestion template Excel file with schema and boundary codes',
