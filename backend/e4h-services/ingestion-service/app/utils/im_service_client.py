@@ -38,7 +38,7 @@ class IMServiceClient:
             raise req_err
 
     def update_incident(self, payload: dict):
-        url = f"{self.base_url}/im-services/v2/request/_update"
+        url = f"{self.base_url}/im-services/v2/request/migration/_update"
         headers = {
             "Content-Type": "application/json"
         }

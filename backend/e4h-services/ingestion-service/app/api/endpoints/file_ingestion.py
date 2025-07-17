@@ -1035,7 +1035,7 @@ async def update_incidents_from_excel(
         subtype_mapping = create_mapping_dicts(mapping_type_subtype_file, mapping_type_subtype_sheet_name)
         # print(subtype_mapping)
         for index, row in df.iterrows():
-            print(row)
+            # print(row)
             if pd.isna(row.get('Ticket No.')):
                 df.at[index, 'status'] = 'skipped'
                 df.at[index, 'error'] = 'Missing ticket_no/Incorrect current status'
@@ -1056,11 +1056,18 @@ async def update_incidents_from_excel(
                 # print(f"Doc incidentID {row.get('Ticket No.')} IncidentType : {row['Incident Type']} IncidentSubType : {row['Incident Sub Type']}")
                 update_data = {}
 
-                update_payload = create_update_payload(search_response, update_data, subtype_mapping)
-                print(f"update_payload {update_payload}")
-                update_response = incident_client.update_incident(update_payload)
+                incident_wrapper = search_response.get("IncidentWrappers", [{}])[0]
+                incident = incident_wrapper.get("incident", {})
+                original_type = incident.get('incidentType', '')
+                original_subtype = incident.get('incidentSubType', '')
+                key = f"{original_type.strip()}|{original_subtype.strip()}"
+                mapped_pair = subtype_mapping.get(key)
+                if mapped_pair:
+                    update_payload = create_update_payload(search_response, update_data, subtype_mapping)
+                    # print(f"update_payload {update_payload}")
+                    update_response = incident_client.update_incident(update_payload)
 
-                process_update_response(update_response, df, index, update_data)
+                    process_update_response(update_response, df, index, update_data)
 
             except Exception as e:
                 df.at[index, 'status'] = 'failed'

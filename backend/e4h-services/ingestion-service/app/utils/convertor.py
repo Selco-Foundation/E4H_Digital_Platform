@@ -523,12 +523,12 @@ def create_update_payload(search_response: dict, update_data: dict, subtype_mapp
     mapped_pair = subtype_mapping.get(key)
 
     print(f"Mapped pair {mapped_pair}")
-
+    
     details = {
         "CS_COMPLAINT_DETAILS_TICKET_NO": incident.get("incidentId"),
         "CS_COMPLAINT_DETAILS_APPLICATION_STATUS": f"CS_COMMON_{incident.get('applicationStatus', 'PENDINGFORASSIGNMENT')}",
-        "CS_ADDCOMPLAINT_TICKET_TYPE": f"SERVICEDEFS.{mapped_pair[0].upper()}",
-        "CS_ADDCOMPLAINT_TICKET_SUB_TYPE": f"SERVICEDEFS.{mapped_pair[1].upper()}",
+        "CS_ADDCOMPLAINT_TICKET_TYPE": f"SERVICEDEFS.{original_type.upper()}",
+        "CS_ADDCOMPLAINT_TICKET_SUB_TYPE": f"SERVICEDEFS.{mapped_pair.upper()}",
         "CS_ADDCOMPLAINT_SYSTEM_FUNCTIONAL": incident.get("systemFunctional", "NON_FUNCTIONAL"),
         "CS_ADDCOMPLAINT_DISTRICT": incident.get("district", ""),
         "CS_ADDCOMPLAINT_BLOCK": incident.get("block", ""),
@@ -566,7 +566,7 @@ def create_update_payload(search_response: dict, update_data: dict, subtype_mapp
 
     audit = {
         "details": incident.get("auditDetails", {}),
-        "incidentType": mapped_pair[1]
+        "incidentType": original_type
     }
 
     return {
