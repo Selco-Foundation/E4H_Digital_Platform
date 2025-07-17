@@ -172,7 +172,7 @@ const routeSubscription = (pathname) => {
 const didEmployeeHasRole = (role = "") => {
   const tenantId = Digit.ULBService.getCurrentTenantId();
   const userInfo = Digit.UserService.getUser();
-  const isCRMUser = userInfo?.info?.roles?.some((role) => role.code === "COMPLAINT_FACILITATOR_2");
+  const isCRMUser = userInfo?.info?.roles?.some((role) => role.code === "COMPLAINT_ASSESSOR");
   const rolearray = userInfo?.info?.roles.filter((item) => {
     if (item.code === role && (item.tenantId === tenantId || isCRMUser)) return true;
   });
