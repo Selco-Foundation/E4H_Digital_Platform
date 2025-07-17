@@ -212,147 +212,159 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
       builder: (context, userState) {
         return Scaffold(
           // We want to listen for success/failure from AssetSubmissionBloc
-          body: BlocConsumer<AssetSubmissionBloc, AssetSubmissionState>(
-            listener: (context, assetSubmissionState) {
-              assetSubmissionState.whenOrNull(
-                success: () {
-                  // Show a snack bar and navigate to the success page
-                  context.showSnackBar(
-                    const SnackBar(
-                        content: Text("All assets submitted successfully")),
+          body: BlocBuilder<ReportTypeBloc, ReportTypeState>(
+            builder: (context, reportState) {
+              bool isNewReport = reportState.maybeWhen(
+                  newReport: () => true, orElse: () => false);
+              bool isInboxReport =
+                  reportState.maybeWhen(inbox: () => true, orElse: () => false);
+              return BlocConsumer<AssetSubmissionBloc, AssetSubmissionState>(
+                listener: (context, assetSubmissionState) {
+                  assetSubmissionState.whenOrNull(
+                    success: () {
+                      // Show a snack bar and navigate to the success page
+                      context.showSnackBar(
+                        const SnackBar(
+                            content: Text("All assets submitted successfully")),
+                      );
+                      context.router
+                          .popAndPush(const SubmittedSaveSuccessRoute());
+                    },
+                    failure: (error) {
+                      context.showSnackBar(
+                        SnackBar(content: Text("Submission failed: ${error}")),
+                      );
+                    },
+                    loading: () {
+                      // You could show a fullscreen overlay, but here we simply do nothing
+                    },
+                    progress: (completed, total) {
+                      // Optional: show overlay or log progress
+                      debugPrint("Progress: $completed / $total");
+                    },
+                    initial: () {},
                   );
-                  context.router.popAndPush(const SubmittedSaveSuccessRoute());
                 },
-                failure: (error) {
-                  context.showSnackBar(
-                    SnackBar(content: Text("Submission failed: ${error}")),
-                  );
-                },
-                loading: () {
-                  // You could show a fullscreen overlay, but here we simply do nothing
-                },
-                progress: (completed, total) {
-                  // Optional: show overlay or log progress
-                  debugPrint("Progress: $completed / $total");
-                },
-                initial: () {},
-              );
-            },
-            builder: (BuildContext context,
-                AssetSubmissionState assetSubmissionState) {
-              return ScrollableContent(
-                enableFixedDigitButton: true,
-                backgroundColor: theme.colorTheme.generic.background,
-                header: const BackNavigationHelpHeaderWidget(
-                  showBackNavigation: true,
-                  showHelp: false,
-                ),
+                builder: (BuildContext context,
+                    AssetSubmissionState assetSubmissionState) {
+                  return ScrollableContent(
+                    enableFixedDigitButton: true,
+                    backgroundColor: theme.colorTheme.generic.background,
+                    header: const BackNavigationHelpHeaderWidget(
+                      showBackNavigation: true,
+                      showHelp: false,
+                    ),
 
-                // ── FOOTER BUTTON ───────────────────────────────────────────────────
-                footer: BlocBuilder<OverallAssetSummaryBloc,
-                    OverallAssetSummaryState>(
-                  builder: (context, overallState) {
-                    // Determine if any count is zero (or not loaded yet)
-                    bool isDisabled = true;
-                    int batteryCount = 0, inverterCount = 0, panelCount = 0;
+                    // ── FOOTER BUTTON ───────────────────────────────────────────────────
+                    footer: BlocBuilder<OverallAssetSummaryBloc,
+                        OverallAssetSummaryState>(
+                      builder: (context, overallState) {
+                        // Determine if any count is zero (or not loaded yet)
+                        bool isDisabled = true;
+                        int batteryCount = 0, inverterCount = 0, panelCount = 0;
 
-                    overallState.when(
-                      initial: () {
-                        batteryCount = 0;
-                        inverterCount = 0;
-                        panelCount = 0;
+                        overallState.when(
+                          initial: () {
+                            batteryCount = 0;
+                            inverterCount = 0;
+                            panelCount = 0;
+                          },
+                          loading: () {
+                            batteryCount = 0;
+                            inverterCount = 0;
+                            panelCount = 0;
+                          },
+                          error: (_) {
+                            batteryCount = 0;
+                            inverterCount = 0;
+                            panelCount = 0;
+                          },
+                          loaded: (bCount, iCount, pCount) {
+                            batteryCount = bCount;
+                            inverterCount = iCount;
+                            panelCount = pCount;
+                          },
+                        );
+
+                        final String userType = userState.maybeWhen(
+                          supervisor: () => USER_TYPES.SUPERVISOR.name,
+                          orElse: () => USER_TYPES.FIELD_STAFF.name,
+                        );
+
+                        isDisabled = (batteryCount == 0 ||
+                            inverterCount == 0 ||
+                            panelCount == 0 ||
+                            (userType == USER_TYPES.SUPERVISOR.name &&
+                                filePath!.isEmpty));
+
+                        return reportState.maybeWhen(
+                          submitted: () => const SizedBox.shrink(),
+                          orElse: () => FooterButton(
+                              showSuffixIcon: false,
+                              text: assetSubmissionState.maybeWhen(
+                                  loading: () => 'Submitting...',
+                                  progress: (completed, total) =>
+                                      'Submitting... ($completed/$total)',
+                                  orElse: () => i18.common.coreCommonSubmit),
+                              isDisabled: assetSubmissionState.maybeWhen(
+                                loading: () => true,
+                                progress: (_, __) => true,
+                                orElse: () => isDisabled,
+                              ),
+                              onPress: assetSubmissionState.maybeWhen(
+                                  loading: () => () {},
+                                  progress: (_, __) => () {},
+                                  orElse: () => () {
+                                        if (isDisabled) return;
+
+                                        // Pull in the current projectId
+                                        final selState = context
+                                            .read<SelectedProjectBloc>()
+                                            .state;
+                                        selState.whenOrNull(
+                                            selected: (project) {
+                                          final summaryState = context
+                                              .read<AssetSummaryBloc>()
+                                              .state;
+
+                                          summaryState.whenOrNull(
+                                            loaded: (summary) {
+                                              if (userType ==
+                                                  USER_TYPES.SUPERVISOR.name) {
+                                                context
+                                                    .read<
+                                                        CacheCompletionReportBloc>()
+                                                    .add(
+                                                      CacheCompletionReportEvent.addOrUpdate(
+                                                          CacheCompletionReport(
+                                                              projectId:
+                                                                  _currentProjectId!,
+                                                              filePath:
+                                                                  filePath!,
+                                                              latitude: _latitude
+                                                                  .toString(),
+                                                              longitude: _longitude
+                                                                  .toString())),
+                                                    );
+                                              }
+                                              context
+                                                  .read<AssetSubmissionBloc>()
+                                                  .add(AssetSubmissionEvent
+                                                      .submitAll(
+                                                          projectId: project
+                                                              .project.id,
+                                                          userType: userType));
+                                            },
+                                          );
+                                        });
+                                      })),
+                        );
                       },
-                      loading: () {
-                        batteryCount = 0;
-                        inverterCount = 0;
-                        panelCount = 0;
-                      },
-                      error: (_) {
-                        batteryCount = 0;
-                        inverterCount = 0;
-                        panelCount = 0;
-                      },
-                      loaded: (bCount, iCount, pCount) {
-                        batteryCount = bCount;
-                        inverterCount = iCount;
-                        panelCount = pCount;
-                      },
-                    );
+                    ),
 
-                    final String userType = userState.maybeWhen(
-                      supervisor: () => USER_TYPES.SUPERVISOR.name,
-                      orElse: () => USER_TYPES.FIELD_STAFF.name,
-                    );
-
-                    isDisabled = (batteryCount == 0 ||
-                        inverterCount == 0 ||
-                        panelCount == 0 ||
-                        (userType == USER_TYPES.SUPERVISOR.name &&
-                            filePath!.isEmpty));
-
-                    return FooterButton(
-                        showSuffixIcon: false,
-                        text: assetSubmissionState.maybeWhen(
-                            loading: () => 'Submitting...',
-                            progress: (completed, total) =>
-                                'Submitting... ($completed/$total)',
-                            orElse: () => i18.common.coreCommonSubmit),
-                        isDisabled: assetSubmissionState.maybeWhen(
-                          loading: () => true,
-                          progress: (_, __) => true,
-                          orElse: () => isDisabled,
-                        ),
-                        onPress: assetSubmissionState.maybeWhen(
-                            loading: () => () {},
-                            progress: (_, __) => () {},
-                            orElse: () => () {
-                                  if (isDisabled) return;
-
-                                  // Pull in the current projectId
-                                  final selState =
-                                      context.read<SelectedProjectBloc>().state;
-                                  selState.whenOrNull(selected: (project) {
-                                    final summaryState =
-                                        context.read<AssetSummaryBloc>().state;
-
-                                    summaryState.whenOrNull(
-                                      loaded: (summary) {
-                                        if (userType ==
-                                            USER_TYPES.SUPERVISOR.name) {
-                                          context
-                                              .read<CacheCompletionReportBloc>()
-                                              .add(
-                                                CacheCompletionReportEvent
-                                                    .addOrUpdate(
-                                                        CacheCompletionReport(
-                                                            projectId:
-                                                                _currentProjectId!,
-                                                            filePath: filePath!,
-                                                            latitude:
-                                                                _latitude
-                                                                    .toString(),
-                                                            longitude: _longitude
-                                                                .toString())),
-                                              );
-                                        }
-                                        context.read<AssetSubmissionBloc>().add(
-                                            AssetSubmissionEvent.submitAll(
-                                                projectId: project.project.id,
-                                                userType: userType));
-                                      },
-                                    );
-                                  });
-                                }));
-                  },
-                ),
-
-                // ── MAIN CONTENT ────────────────────────────────────────────────────
-                children: [
-                  BlocBuilder<ReportTypeBloc, ReportTypeState>(
-                    builder: (context, reportState) {
-                      bool isNewReport = reportState.maybeWhen(
-                          newReport: () => true, orElse: () => false);
-                      return Padding(
+                    // ── MAIN CONTENT ────────────────────────────────────────────────────
+                    children: [
+                      Padding(
                         padding: const EdgeInsets.symmetric(
                             vertical: spacer2, horizontal: spacer4),
                         child: Column(
@@ -552,7 +564,7 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                 orElse: () => Container(),
                                 supervisor: () => Column(
                                       children: [
-                                        isNewReport
+                                        isNewReport || isInboxReport
                                             ? DigitCard(
                                                 children: [
                                                   Text(
@@ -606,10 +618,10 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                     ))
                           ],
                         ),
-                      );
-                    },
-                  ),
-                ],
+                      ),
+                    ],
+                  );
+                },
               );
             },
           ),

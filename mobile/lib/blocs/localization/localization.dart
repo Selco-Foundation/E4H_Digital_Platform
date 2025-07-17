@@ -46,11 +46,11 @@ class LocalizationBloc extends Bloc<LocalizationEvent, LocalizationState> {
       //   }
       // }
       List<String?> moduleNameList = [
-        'rainmaker-hrms',
-        'rainmaker-pg',
+        // 'rainmaker-hrms',
+        // 'rainmaker-pg',
         'rainmaker-common',
-        'rainmaker-im',
-        'rainmaker-hr'
+        // 'rainmaker-im',
+        // 'rainmaker-hr'
       ];
       final Map<String, String> queryParam = {
         'locale': 'en_IN', // event.locale.toString(),

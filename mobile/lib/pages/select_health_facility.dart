@@ -121,8 +121,6 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
                     loading: () =>
                         const Center(child: CircularProgressIndicator()),
                     fetched: (projectList) {
-                      print(
-                          "projectList[0].project.id ${projectList?[0]!.project!.id}");
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
