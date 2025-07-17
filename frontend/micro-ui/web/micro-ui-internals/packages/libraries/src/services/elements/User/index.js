@@ -27,6 +27,13 @@ export const UserService = {
     ) {
       throw new Error("ES_ERROR_USER_NOT_PERMITTED");
     }
+    await ServiceRequest({
+      serviceName: "userLoginReport",
+      url: Urls.userLoginReport,
+      method: "POST",
+      auth: true,
+      data: {authResponse},
+    });
     return authResponse;
   },
   logoutUser: () => {
@@ -140,6 +147,15 @@ export const UserService = {
       useCache: true,
       userService: true,
       data: data.pageSize ? { tenantId, ...data } : { tenantId, ...data, pageSize: "100" },
+    });
+  },
+  userLoginReport: async (authResponse) => {
+    return ServiceRequest({
+      serviceName: "userLoginReport",
+      url: Urls.userLoginReport,
+      method: "POST",
+      auth: true,
+      data: {authResponse},
     });
   },
 };
