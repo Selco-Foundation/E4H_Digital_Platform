@@ -1,0 +1,232 @@
+{
+  "messages": [
+    {
+      "code": "CORE_COMMON_EDIT",
+      "message": "Edit",
+      "module": "rainmaker-common",
+      "locale": "en_IN"
+    },
+    {
+      "code": "CORE_COMMON_HOME",
+      "message": "Home",
+      "module": "rainmaker-common",
+      "locale": "en_IN"
+    },
+    {
+      "code": "CORE_COMMON_LOGIN",
+      "message": "Login",
+      "module": "rainmaker-common",
+      "locale": "en_IN"
+    },
+    {
+      "code": "CORE_COMMON_LOGOUT",
+      "message": "Logout",
+      "module": "rainmaker-common",
+      "locale": "en_IN"
+    },
+    {
+      "code": "CORE_COMMON_NEXT",
+      "message": "Next",
+      "module": "rainmaker-common",
+      "locale": "en_IN"
+    },
+    {
+      "code": "CORE_COMMON_OK",
+      "message": "Ok",
+      "module": "rainmaker-common",
+      "locale": "en_IN"
+    },
+    {
+      "code": "CORE_COMMON_PROCEED",
+      "message": "Proceed",
+      "module": "rainmaker-common",
+      "locale": "en_IN"
+    },
+    {
+      "code": "CORE_COMMON_PROFILE",
+      "message": "Profile",
+      "module": "rainmaker-common",
+      "locale": "en_IN"
+    },
+    {
+      "code": "CORE_COMMON_SAVE",
+      "message": "Save",
+      "module": "rainmaker-common",
+      "locale": "en_IN"
+    },
+    {
+      "code": "CORE_COMMON_SUBMIT",
+      "message": "Submit",
+      "module": "rainmaker-common",
+      "locale": "en_IN"
+    },
+    {
+      "code": "Core_common_submit",
+      "message": "Submit",
+      "module": "rainmaker-common",
+      "locale": "en_IN"
+    },
+    {
+      "code": "ENTER_MANUAL_CODE",
+      "message": "Enter Serial Number",
+      "module": "rainmaker-common",
+      "locale": "en_IN"
+    },
+    {
+      "code": "FLASH_OFF",
+      "message": "Flash off",
+      "module": "rainmaker-common",
+      "locale": "en_IN"
+    },
+    {
+      "code": "FLASH_ON",
+      "message": "Flash on",
+      "module": "rainmaker-common",
+      "locale": "en_IN"
+    },
+    {
+      "code": "MANUAL_SCAN",
+      "message": "Can’t scan the QR Code?",
+      "module": "rainmaker-common",
+      "locale": "en_IN"
+    },
+    {
+      "code": "NO_OF_RESOURCE_SCANNED",
+      "message": "No. of Resource Scanned",
+      "module": "rainmaker-common",
+      "locale": "en_IN"
+    },
+    {
+      "code": "RESOURCES_SCANNED",
+      "message": "Resources Scanned",
+      "module": "rainmaker-common",
+      "locale": "en_IN"
+    },
+    {
+      "code": "RESOURCE_ALREADY_SCANNED",
+      "message": "Resource already scanned",
+      "module": "rainmaker-common",
+      "locale": "en_IN"
+    },
+    {
+      "code": "RESOURCE_CODE",
+      "message": "Serial Number",
+      "module": "rainmaker-common",
+      "locale": "en_IN"
+    },
+    {
+      "code": "RESOURCE_SCANNED",
+      "message": "Resource Scanned",
+      "module": "rainmaker-common",
+      "locale": "en_IN"
+    },
+    {
+      "code": "SAVE_SCANNED_RESOURCE",
+      "message": "Save Scanned Resource",
+      "module": "rainmaker-common",
+      "locale": "en_IN"
+    },
+    {
+      "code": "SCANNER_LABEL",
+      "message": "Scan QR code",
+      "module": "rainmaker-common",
+      "locale": "en_IN"
+    },
+    {
+      "code": "SCAN_VALID_RESOURCE",
+      "message": "Scan valid resource",
+      "module": "rainmaker-common",
+      "locale": "en_IN"
+    },
+    {
+      "code": "UNABLE_TO_SCAN",
+      "message": "Unable to scan",
+      "module": "rainmaker-common",
+      "locale": "en_IN"
+    },
+    {
+      "code": "WELCOME",
+      "message": "Welcome",
+      "module": "rainmaker-common",
+      "locale": "en_IN"
+    },
+    {
+      "code": "WELCOME_DESCRIPTION",
+      "message": "Through this application you will be able to:",
+      "module": "rainmaker-common",
+      "locale": "en_IN"
+    },
+    {
+      "code": "WELCOME_MENU_DESCRIPTION_FIVE",
+      "message": "Save installation reports offline until ready for submission",
+      "module": "rainmaker-common",
+      "locale": "en_IN"
+    },
+    {
+      "code": "WELCOME_MENU_DESCRIPTION_FOUR",
+      "message": "Save installation reports offline until ready for submission",
+      "module": "rainmaker-common",
+      "locale": "en_IN"
+    },
+    {
+      "code": "WELCOME_MENU_DESCRIPTION_ONE",
+      "message": "You can view the health facilities assigned to you for installation",
+      "module": "rainmaker-common",
+      "locale": "en_IN"
+    },
+    {
+      "code": "WELCOME_MENU_DESCRIPTION_THREE",
+      "message": "Save installation reports offline until ready for submission",
+      "module": "rainmaker-common",
+      "locale": "en_IN"
+    },
+    {
+      "code": "WELCOME_MENU_DESCRIPTION_TWO",
+      "message": "Create installation reports for the health facilities assigned to you (online and offline)",
+      "module": "rainmaker-common",
+      "locale": "en_IN"
+    },
+    {
+      "code": "WELCOME_MENU_TITLE_FIVE",
+      "message": "Edit Reports",
+      "module": "rainmaker-common",
+      "locale": "en_IN"
+    },
+    {
+      "code": "WELCOME_MENU_TITLE_FOUR",
+      "message": "Submit for Approval",
+      "module": "rainmaker-common",
+      "locale": "en_IN"
+    },
+    {
+      "code": "WELCOME_MENU_TITLE_ONE",
+      "message": "View Health Facilities",
+      "module": "rainmaker-common",
+      "locale": "en_IN"
+    },
+    {
+      "code": "WELCOME_MENU_TITLE_THREE",
+      "message": "Save Reports",
+      "module": "rainmaker-common",
+      "locale": "en_IN"
+    },
+    {
+      "code": "WELCOME_MENU_TITLE_TWO",
+      "message": "Create Reports",
+      "module": "rainmaker-common",
+      "locale": "en_IN"
+    },
+    {
+      "code": "WELCOME_PAGE_DESCRIPTION",
+      "message": "Through this application you will be able to:",
+      "module": "rainmaker-common",
+      "locale": "en_IN"
+    },
+    {
+      "code": "WELCOME_TITLE",
+      "message": "Welcome!",
+      "module": "rainmaker-common",
+      "locale": "en_IN"
+    }
+  ]
+}

@@ -57,8 +57,7 @@ class _LoginPageState extends State<LoginPage> {
                     Text(
                       context.translate(i18.common.coreCommonLogin).headerCase,
                       style: textTheme.headingXl.copyWith(
-                        color: theme
-                            .colorTheme.primary.primary2, // Use theme color
+                        color: theme.colorTheme.primary.primary2,
                       ),
                     ),
                     ReactiveWrapperField(

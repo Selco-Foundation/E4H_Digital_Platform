@@ -41,6 +41,11 @@
         "name": "Complaint Assessor",
         "code": "COMPLAINT_ASSESSOR",
         "tenantId": "pg"
+      },
+      {
+        "name": "Installation report viewer",
+        "code": "INSTALLATION_REPORT_PART_A_EDITOR",
+        "tenantId": "in"
       }
     ],
     "active": true,

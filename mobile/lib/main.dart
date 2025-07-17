@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:digit_scanner/blocs/app_localization.dart'
     as scanner_localization;
 import 'package:digit_ui_components/digit_components.dart';
@@ -144,6 +146,10 @@ class _MainAppState extends State<MainApp> {
                         final selectedLocale =
                             AppSharedPreferences().getSelectedLocale ??
                                 firstLanguage;
+
+                        print("selectedLocale ${selectedLocale!} ");
+                        print("languages ${jsonEncode(languages!)} ");
+
                         return MaterialApp.router(
                           scaffoldMessengerKey: scaffoldMessengerKey,
                           theme: DigitTheme.instance.mobileTheme,

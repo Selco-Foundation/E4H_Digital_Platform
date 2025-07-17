@@ -155,42 +155,44 @@ class Welcome {
   String get welcomeMenuDescFive => 'WELCOME_MENU_DESCRIPTION_FIVE';
 }
 
+class Login {
+  const Login();
+
+  String get labelText => 'LOGIN_LABEL_TEXT';
+
+  String get userIdPlaceholder => 'USER_ID_PLACEHOLDER';
+
+  String get passwordPlaceholder => 'PASSWORD_PLACEHOLDER';
+
+  String get actionLabel => 'LOGIN_ACTION_LABEL';
+
+  String get mobileNumberPlaceholder => 'MOBILE_NUMBER_PLACEHOLDER';
+
+  String get otpPlaceholder => 'OTP_PLACEHOLDER';
+}
+
 class Scanner {
   const Scanner();
 
   String get unableToScan => 'UNABLE_TO_SCAN';
-
   String get scanValidResource => 'SCAN_VALID_RESOURCE';
-
-  // String get scannedResourceCountMisMatch => 'SCANNED_RESOURCE_COUNT_MISMATCH';
-
   String get resourceAlreadyScanned => 'RESOURCE_ALREADY_SCANNED';
-
-  String get scannerLabel => 'Scan QR code'; // 'SCANNER_LABEL';
-
-  String get noOfResourceScanned =>
-      'No. of Resource Scanned'; //'NO_OF_RESOURCE_SCANNED';
-
-  String get resourcesScanned => 'Resources Scanned'; //'RESOURCES_SCANNED';
-  String get resourceScanned => 'Resource Scanned'; //'RESOURCE_SCANNED';
-
-  String get saveScannedResource =>
-      'Save Scanned Resource'; // 'SAVE_SCANNED_RESOURCE';
-
-  String get flashOn => 'Flash on'; // 'FLASH_ON';
-
-  String get flashOff => 'Flash off'; //'FLASH_OFF';
-
+  String get scannerLabel => 'SCANNER_LABEL';
+  String get noOfResourceScanned => 'NO_OF_RESOURCE_SCANNED';
+  String get resourcesScanned => 'RESOURCES_SCANNED';
+  String get resourceScanned => 'RESOURCE_SCANNED';
+  String get saveScannedResource => 'SAVE_SCANNED_RESOURCE';
+  String get flashOn => 'FLASH_ON';
+  String get flashOff => 'FLASH_OFF';
+  String get manualScan => 'MANUAL_SCAN';
+  String get enterManualCode => 'ENTER_MANUAL_CODE';
+  String get resourceCode => 'RESOURCE_CODE';
+  String get coreCommonSubmit => 'Core_common_submit';
+  String get coreCommonSubmit2 => 'CORE_COMMON_SUBMIT';
   // String get scannerDialogTitle => 'SCANNER_DIALOG_TITLE';
-  //
   // String get scannerDialogContent => 'SCANNER_DIALOG_CONTENT';
-  //
   // String get scannerDialogPrimaryAction => 'SCANNER_DIALOG_PRIMARY_ACTION';
-  String get manualScan => 'Can’t scan the QR Code?'; // 'MANUAL_SCAN';
-  String get enterManualCode => 'Enter Serial Number'; // 'ENTER_MANUAL_CODE';
-  String get resourceCode => 'Serial Number'; // 'RESOURCE_CODE';
-  String get coreCommonSubmit => 'Submit'; //'Core_common_submit'; add to core
-  String get coreCommonSubmit2 => 'Submit'; // 'CORE_COMMON_SUBMIT';
+  // String get scannedResourceCountMisMatch => 'SCANNED_RESOURCE_COUNT_MISMATCH';
 }
 
 class HomeShowcase {
@@ -572,22 +574,6 @@ class AdverseEvents {
   String get didYouReAdministerLabel => 'DID_YOU_RE_ADMINISTER';
 
   String get noOfTimesReAdministered => 'NO_OF_TIMES_RE_ADMINISTERED';
-}
-
-class Login {
-  const Login();
-
-  String get labelText => 'LOGIN_LABEL_TEXT';
-
-  String get userIdPlaceholder => 'USER_ID_PLACEHOLDER';
-
-  String get passwordPlaceholder => 'PASSWORD_PLACEHOLDER';
-
-  String get actionLabel => 'LOGIN_ACTION_LABEL';
-
-  String get mobileNumberPlaceholder => 'MOBILE_NUMBER_PLACEHOLDER';
-
-  String get otpPlaceholder => 'OTP_PLACEHOLDER';
 }
 
 class StockDetailsReturnedShowcase {

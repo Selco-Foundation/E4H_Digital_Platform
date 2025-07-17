@@ -1,18 +1,17 @@
-// lib/repositories/asset_repository.dart
-
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:isar/isar.dart';
-import 'package:selco/data/nosql/cache_unsubmitted_project.dart';
+import 'package:mime/mime.dart';
 
 import '../data/nosql/cache_add_new_asset.dart';
 import '../data/nosql/cache_asset_count.dart';
 import '../data/nosql/cache_asset_detail.dart';
 import '../data/nosql/cache_media_upload.dart';
 import '../data/nosql/cache_specification.dart';
+import '../data/nosql/cache_unsubmitted_project.dart';
 import '../data/remote_client.dart';
 import '../model/asset/asset.dart';
 import '../model/entities/project_facility.dart';
@@ -43,8 +42,7 @@ class AssetRepository {
 
   final Dio _dio = DioClient().dio;
 
-  Future<String> uploadFile(File file) async {
-    return "hellobowrld";
+  Future<String> uploadFile2(File file) async {
     final fileName = file.path.split(Platform.pathSeparator).last;
     final mimeType = _lookupMimeType(fileName);
 
@@ -64,6 +62,49 @@ class AssetRepository {
       if (response.statusCode == 200 || response.statusCode == 201) {
         final jsonMap = response.data as Map<String, dynamic>;
         return FileStoreResponse.fromJson(jsonMap).fileStoreId;
+      } else {
+        throw Exception(
+            "Filestore responded with status ${response.statusCode}");
+      }
+    } on DioError catch (e) {
+      throw DioErrorParser.parse(e);
+    }
+  }
+
+  Future<String> uploadFile(File file) async {
+    String fileName = file.path.split(Platform.pathSeparator).last;
+    String? mimeType = lookupMimeType(fileName);
+
+    // Determine MIME type from content if needed
+    if (mimeType == null) {
+      try {
+        final bytes = await file.readAsBytes();
+        mimeType = lookupMimeType('', headerBytes: bytes);
+      } catch (e) {
+        print("Error reading file for MIME type: $e");
+      }
+    }
+
+    // Handle extension for files without one
+    if (!fileName.contains('.')) {
+      final ext = _getExtensionFromMime(mimeType ?? 'application/octet-stream');
+      fileName = '$fileName.$ext';
+    }
+
+    final formData = FormData.fromMap({
+      "file": await MultipartFile.fromFile(
+        file.path,
+        filename: fileName,
+        contentType: mimeType != null ? MediaType.parse(mimeType) : null,
+      ),
+      "tenantId": envConfig.variables.tenantId,
+      "module": "Incident",
+    });
+
+    try {
+      final response = await _dio.post("/filestore/v1/files", data: formData);
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return FileStoreResponse.fromJson(response.data).fileStoreId;
       } else {
         throw Exception(
             "Filestore responded with status ${response.statusCode}");
@@ -677,6 +718,28 @@ class AssetRepository {
       final msg = dioErr.response?.data?.toString() ?? dioErr.message;
       throw DioErrorParser.parse(dioErr);
     }
+  }
+
+  String _getExtensionFromMime(String mimeType) {
+    const map = {
+      'image/jpeg': 'jpg',
+      'image/png': 'png',
+      'application/pdf': 'pdf',
+      'video/mp4': 'mp4',
+      'video/quicktime': 'mov',
+      'text/plain': 'txt',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+          'docx',
+      'application/msword': 'doc',
+      'application/vnd.ms-excel': 'xls',
+      'text/csv': 'csv',
+      'audio/mpeg': 'mp3',
+      'video/x-msvideo': 'avi',
+      'video/x-ms-wmv': 'wmv',
+      'application/x-mpegurl': 'm3u8',
+      'video/mp2t': 'ts',
+    };
+    return map[mimeType] ?? 'dat';
   }
 
   String _lookupMimeType(String fileName) {
