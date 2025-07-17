@@ -17,7 +17,7 @@ from app.utils.facility_service_client import FacilityServiceClient
 from app.utils.file_utils import create_temp_file, cleanup_temp_file
 from app.utils.mdms_client import MDMSClient
 from app.utils.project_service_client import ProjectServiceClient
-import os, tempfile, zipfile, qrcode
+import os, tempfile, zipfile, qrcode, shutil
 
 router = APIRouter()
 logger = AppLogger().get_logger()
@@ -339,6 +339,8 @@ async def get_facility_QR_for_autologin(
                     abs_file = os.path.join(root, file)
                     rel_path = os.path.relpath(abs_file, temp_dir)
                     zipf.write(abs_file, arcname=rel_path)
+
+        shutil.rmtree(temp_dir)
 
         return FileResponse(
             path=zip_path,

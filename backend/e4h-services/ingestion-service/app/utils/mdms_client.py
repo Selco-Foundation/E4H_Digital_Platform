@@ -4,7 +4,6 @@ import requests
 
 from app.schemas.request_info import RequestInfo
 from app.schemas.vendor_ingestion_shema_response import IngestionSchemaResponse
-from app.utils.convertor import convert_json_to_object
 
 class MDMSClient:
     def __init__(self, mdms_url: str):
@@ -102,7 +101,7 @@ class MDMSClient:
                 }
             }
             response = requests.post(search_url, json=search_payload)
-            if response.status_code == 200:
+            if response.status_code in [200, 201, 202]:
                 data = response.json()
                 tenants = data.get("MdmsRes", {}).get("tenant", {}).get("tenants", [])
                 all_tenant_data.update(
