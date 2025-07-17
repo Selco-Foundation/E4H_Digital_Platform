@@ -18,7 +18,7 @@ from app.ingest.excel_data_writer import ExcelDataWriter
 from app.processor.factory.boundary_data_processor_factory import BoundaryDataProcessorFactory
 from app.processor.factory.vendor_data_processor_factory import VendorDataProcessorFactory
 from app.schemas.request_info import RequestInfo
-from app.utils.convertor import request_info_from_json, create_vendor_request, create_facility_payload, \
+from app.utils.convertor import create_update_processinstance_payload, request_info_from_json, create_vendor_request, create_facility_payload, \
     get_project_creation_payload, get_user_creation_payload, get_staff_creation_payload, create_project_payload, \
     get_installation_spoc_creation_payload, create_update_payload
 from app.utils.facility_service_client import FacilityServiceClient
@@ -725,6 +725,25 @@ def create_mapping_dicts(mapping_file: UploadFile, sheet_name: str):
 
     return subtype_mapping
 
+def create_mapping_incident(mapping_file: UploadFile, sheet_name: str):
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as temp_file:
+        temp_file.write(mapping_file.file.read())
+        temp_file_path = temp_file.name
+
+    mapping_df = pd.read_excel(temp_file_path, sheet_name=sheet_name)
+    mapping_df.columns = mapping_df.columns.str.strip()
+    mapping_df = mapping_df.astype(str).apply(lambda x: x.str.strip())
+
+    os.unlink(temp_file_path)
+
+    incident_mapping = {
+        (item['Incident ID']):
+        (item['Incident Type'], item['Incident Sub Type'])
+        for _, item in mapping_df.iterrows()
+    }
+
+    return incident_mapping
+
 # --- Capitalize Value ---
 def capitalize(value):
     if not value:
@@ -736,6 +755,50 @@ def uppercase(text):
     if not text:
         return text
     return ' '.join(word.upper() for word in text.split())
+
+# --- Match and update business service ---
+def map_priority(priority):
+    return {
+        "High": "Incident_High",
+        "Medium": "Incident_Medium",
+        "Low": "Incident_Low"
+    }.get(priority, "Incident")
+
+def find_mdms_match(incidentType, incidentSubType, mdms_data):
+    try:
+        incident_type = incidentType
+        incident_subtype = incidentSubType
+
+        for item in mdms_data:
+            data = item.get("data", {})
+            if data.get("menuPath") == incident_type and data.get("serviceCode") == incident_subtype:
+                return data
+
+    except Exception as e:
+        print(f"⚠️ Matching error: {e}")
+    return None
+
+# --- Get MDMS Data ---
+def get_mdms_data():
+    url = "http://localhost:8285/egov-mdms-service/v2/_search"
+    headers = {"Content-Type": "application/json"}
+    payload = {
+        "RequestInfo": {
+            "authToken": "7febd0ac-f7a4-4f53-bddf-49a72e25f600"
+        },
+        "MdmsCriteria": {
+            "tenantId": "pg",
+            "schemaCode": "Incident.ServiceDefs",
+            "limit": 300
+        }
+    }
+
+    response = requests.post(url, headers=headers, json=payload)
+    if response.status_code == 200:
+        return response.json().get("mdms", [])
+    else:
+        print(f"❌ Failed to fetch MDMS data: {response.status_code}")
+        return []
 
 def get_user_info_for_mizoram(usernames: List[str], db_conn) -> Dict[str, str]:
     try:
@@ -1108,3 +1171,82 @@ def process_update_response(response, df, idx, update_data):
     except Exception as e:
         df.at[idx, 'status'] = 'failed'
         df.at[idx, 'error'] = str(e)
+
+
+@router.post('/processinstance/update',
+             summary='Update process instances from Excel file',
+             response_description='Returns processing results with status for each incident')
+async def update_processinstance_from_excel(
+        processinstance_file: UploadFile = File(description="Excel file containing incidents to update"),
+        process_sheet_name: str = Form(default="processInstance",
+                                         description="Name of the sheet containing incident data"),
+        incident_file: UploadFile = File(...),
+        incident_sheet_name: str = Form(default="Incident"),
+        request_info: str = Form(default="", description="Request info in JSON format")
+):
+    temp_file = None
+    request_info = request_info_from_json(request_info)
+    get_authorized_request_info(request_info)
+
+    try:
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
+        content = await processinstance_file.read()
+        temp_file.write(content)
+        temp_file.close()
+
+        df = pd.read_excel(temp_file.name, sheet_name=process_sheet_name)
+
+        for col in ['status', 'error', 'updated_status']:
+            if col not in df.columns:
+                df[col] = ''
+
+        incident_client = IMServiceClient(im_services_url)
+        incident_mapping = create_mapping_incident(incident_file, incident_sheet_name)
+
+        mdms_data = get_mdms_data()
+        print(f"mdms_data {mdms_data}")
+        if not mdms_data:
+            return
+        
+        # print(subtype_mapping)
+        for index, row in df.iterrows():
+            print(row)
+            try:
+                mapped_pair = incident_mapping.get((row['businessid']))
+                print(f"mapped_pair {mapped_pair}")
+                if mapped_pair:
+                    matched_mdms = find_mdms_match(mapped_pair[0], mapped_pair[1], mdms_data)
+                    print(f"matched_mdms {matched_mdms}")
+                    if matched_mdms:
+                        new_service = map_priority(matched_mdms.get("priority"))
+                        print(f"new_service {new_service}")                        
+                        if new_service:
+                            update_payload = create_update_processinstance_payload(row, new_service)
+                            print(f"update_payload {update_payload}")
+                            # update_response = incident_client.update_processinstance(update_payload)
+
+                            # process_update_response(update_response, df, index, update_data)
+
+            except Exception as e:
+                df.at[index, 'status'] = 'failed'
+                df.at[index, 'error'] = str(e)
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_filename = f"incident_update_results_{timestamp}.xlsx"
+        output_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
+
+        df.to_excel(output_temp_file.name, sheet_name=process_sheet_name, index=False)
+
+        return FileResponse(
+            path=output_temp_file.name,
+            filename=output_filename,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to process incident updates: {str(e)}"
+        )
+    finally:
+        if temp_file and os.path.exists(temp_file.name):
+            os.unlink(temp_file.name)

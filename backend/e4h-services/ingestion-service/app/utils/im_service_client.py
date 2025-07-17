@@ -17,7 +17,7 @@ class IMServiceClient:
             "Accept": "application/json"
         }
 
-        request_info = get_incident_request_info(tenant_id)
+        request_info = get_incident_request_info()
 
         payload = {"RequestInfo": request_info}
         try:
@@ -39,6 +39,29 @@ class IMServiceClient:
 
     def update_incident(self, payload: dict):
         url = f"{self.base_url}/im-services/v2/request/migration/_update"
+        headers = {
+            "Content-Type": "application/json"
+        }
+        try:
+            response = requests.post(url, headers=headers, json=payload)
+            print(f"Incident updated successfully: {json.loads(response.text)}")
+            return response
+        except requests.exceptions.HTTPError as http_err:
+            print(f"HTTP error occurred: {http_err}")
+            raise http_err
+        except requests.exceptions.ConnectionError as conn_err:
+            print(f"Connection error occurred: {conn_err}")
+            raise conn_err
+        except requests.exceptions.Timeout as timeout_err:
+            print(f"Timeout error occurred: {timeout_err}")
+            raise timeout_err
+        except requests.exceptions.RequestException as req_err:
+            print(f"An error occurred: {req_err}")
+            raise req_err
+        
+
+    def update_processinstance(self, payload: dict):
+        url = "http://localhost:8280/egov-workflow-v2/egov-wf/migration/_update"
         headers = {
             "Content-Type": "application/json"
         }

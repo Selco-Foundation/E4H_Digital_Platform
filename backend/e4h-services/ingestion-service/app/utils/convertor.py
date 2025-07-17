@@ -458,7 +458,7 @@ def get_mdms_code_by_name(schema_list: List[Dict[str, Any]], field_name: str, va
     raise ValueError(f"Field name '{field_name}' not found in MDMS schema.")
 
 
-def get_incident_request_info(tenantId):
+def get_incident_request_info():
     return {
         "apiId": "Rainmaker",
         "authToken": "222d0cf6-07c2-4d90-8a71-0292c200ae74",
@@ -475,31 +475,31 @@ def get_incident_request_info(tenantId):
                 {
                     "name": "Super User",
                     "code": "SUPERUSER",
-                    "tenantId": tenantId
+                    "tenantId": "pg"
                 },
                 {
                     "name": "Employee",
                     "code": "EMPLOYEE",
-                    "tenantId": tenantId
+                    "tenantId": "pg"
                 },
                 {
                     "name": "Complainant",
                     "code": "COMPLAINANT",
-                    "tenantId": tenantId
+                    "tenantId": "pg"
                 },
                 {
                     "name": "Complaint Assessor",
                     "code": "COMPLAINT_ASSESSOR",
-                    "tenantId": tenantId
+                    "tenantId": "pg"
                 },
                 {
                     "name": "Complaint facilitator 2",
                     "code": "COMPLAINT_FACILITATOR_2",
-                    "tenantId": tenantId
+                    "tenantId": "pg"
                 }
             ],
             "active": True,
-            "tenantId": tenantId,
+            "tenantId": "pg",
             "permanentCity": None
         },
         "msgId": "1751897062350|en_IN",
@@ -512,8 +512,7 @@ def create_update_payload(search_response: dict, update_data: dict, subtype_mapp
     incident = incident_wrapper.get("incident", {})
     workflow = incident_wrapper.get("workflow", {})
 
-    tenantId = incident.get("tenantId", "").split(".")[0]
-    request_info = get_incident_request_info(tenantId)
+    request_info = get_incident_request_info()
 
     original_type = incident.get('incidentType', '')
     original_subtype = incident.get('incidentSubType', '')
@@ -538,31 +537,7 @@ def create_update_payload(search_response: dict, update_data: dict, subtype_mapp
         "CS_COMPLAINT_FILED_DATE": incident.get("filedDate", "")
     }
 
-    additional_detail = incident.get("additionalDetail", {})
-    existing_reject_reasons = additional_detail.get("rejectReason", [])
-
-    # new_reason = update_data.get("reject_reason", "Duplication")
-
-    # if isinstance(existing_reject_reasons, list):
-    #     if new_reason not in existing_reject_reasons:
-    #         existing_reject_reasons.append(new_reason)
-    # else:
-    #     existing_reject_reasons = [new_reason]
-
-    # incident["additionalDetail"] = {
-    #     **additional_detail,
-    #     "rejectReason": existing_reject_reasons
-    # }
-
     incident["incidentSubType"] = mapped_pair
-
-    # Create workflow object
-    # workflow.update({
-    #     "action": update_data.get("action", "REJECT"),
-    #     "comments": update_data.get("comments", ""),
-    #     "rejectReason": update_data.get("reject_reason", "Duplication"),
-    #     "assignee": [request_info["userInfo"]["uuid"]]
-    # })
 
     audit = {
         "details": incident.get("auditDetails", {}),
@@ -576,4 +551,22 @@ def create_update_payload(search_response: dict, update_data: dict, subtype_mapp
         "audit": audit,
         "RequestInfo": request_info
 
+    }
+
+
+def create_update_processinstance_payload(process, newService) -> dict:
+    request_info = get_incident_request_info()
+    processInstance = {
+        "id": process['id'],
+        "tenantId": process['tenantid'],
+        "businessService": newService,
+        "businessId": process['businessid'],
+        "status": process['status'],
+        "action": "APPLY",
+        "moduleName": "im-services"
+    }
+
+    return {
+        "ProcessInstances": [processInstance],
+        "RequestInfo": request_info
     }
