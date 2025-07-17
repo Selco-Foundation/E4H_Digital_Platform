@@ -4,7 +4,6 @@ import requests
 
 from app.schemas.request_info import RequestInfo
 from app.schemas.vendor_ingestion_shema_response import IngestionSchemaResponse
-from app.utils.convertor import convert_json_to_object
 
 class MDMSClient:
     def __init__(self, mdms_url: str):
