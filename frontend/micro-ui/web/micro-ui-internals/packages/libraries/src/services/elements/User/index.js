@@ -27,15 +27,6 @@ export const UserService = {
     ) {
       throw new Error("ES_ERROR_USER_NOT_PERMITTED");
     }
-    if(authResponse) {
-      await ServiceRequest({
-        serviceName: "userLoginReport",
-        url: Urls.userLoginReport,
-        method: "POST",
-        auth: true,
-        data: {authResponse},
-      });
-    }
     return authResponse;
   },
   logoutUser: () => {
@@ -154,10 +145,10 @@ export const UserService = {
   userLoginReport: async (authResponse) => {
     return ServiceRequest({
       serviceName: "userLoginReport",
-      url: Urls.userLoginReport,
+      url: Urls.UserLoginReport,
       method: "POST",
       auth: true,
-      data: {authResponse},
+      data: authResponse,
     });
   },
 };
