@@ -134,7 +134,7 @@ const EmployeeHome = ({ modules }) => {
       <div className="ground-container moduleCardWrapper gridModuleWrapper">
         {modules.map(({ code }, index) => {
           const Card = Digit.ComponentRegistryService.getComponent(`${code}Card`) || (() => <React.Fragment />);
-          return <Card key={index} />;
+          return <Card key={index}/>;
         })}
       </div>
     </div>

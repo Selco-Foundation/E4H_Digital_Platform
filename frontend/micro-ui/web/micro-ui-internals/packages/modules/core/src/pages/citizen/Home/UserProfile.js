@@ -337,26 +337,6 @@ const UserProfile = ({ stateCode, userType, cityDetails }) => {
         `
       }
     </style>
-      <section style={{ margin: userType === "citizen" ? "8px" : "24px" }}>
-        {userType === "citizen" ? (
-          <BackButton></BackButton>
-        ) : (
-          <BreadCrumb
-            crumbs={[
-              {
-                path: `/${window.contextPath}/employee`,
-                content: t("ES_COMMON_HOME"),
-                show: true,
-              },
-              {
-                path: `/${window.contextPath}/employee/user/profile`,
-                
-                show: url.includes("/user/profile"),
-              },
-            ]}
-          ></BreadCrumb>
-        )}
-      </section>
       <div
         style={{
           display: "flex",
