@@ -997,10 +997,10 @@ async def check_duplicate_tickets(
              summary='Update incidents from Excel file',
              response_description='Returns processing results with status for each incident')
 async def update_incidents_from_excel(
-        incidents_file: UploadFile = File(description="Excel file containing incidents to update"),
+        incidents_file: UploadFile = File(..., description="Excel file containing incidents to update"),
         incidents_sheet_name: str = Form(default="Incidents",
                                          description="Name of the sheet containing incident data"),
-        mapping_type_subtype_file: UploadFile = File(...),
+        mapping_type_subtype_file: UploadFile = File(..., description="Excel file containing type/subtype mappings"),
         mapping_type_subtype_sheet_name: str = Form(default="Mapping Old_New_v1.0"),
         request_info: str = Form(default="", description="Request info in JSON format")
 ):
@@ -1009,10 +1009,10 @@ async def update_incidents_from_excel(
     get_authorized_request_info(request_info)
 
     try:
-        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
-        content = await incidents_file.read()
-        temp_file.write(content)
-        temp_file.close()
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as temp_file:
+            content = await incidents_file.read()
+            temp_file.write(content)
+            temp_file_path = temp_file.name
 
         df = pd.read_excel(temp_file.name, sheet_name=incidents_sheet_name)
 
@@ -1032,6 +1032,7 @@ async def update_incidents_from_excel(
             if pd.isna(row.get('Tenant ID')):
                 df.at[index, 'status'] = 'skipped'
                 df.at[index, 'error'] = 'Missing Tenant ID'
+                continue
 
 
             try:
@@ -1040,7 +1041,12 @@ async def update_incidents_from_excel(
                     tenant_id=row['Tenant ID']
                 )
 
-                dt = datetime.strptime(row.get("Filed Date"), "%b %d, %Y @ %H:%M:%S.%f")
+                try:
+                    dt = datetime.strptime(row.get("Filed Date"), "%b %d, %Y @ %H:%M:%S.%f")
+                except (ValueError, TypeError) as e:
+                    df.at[index, 'status'] = 'failed'
+                    df.at[index, 'error'] = f'Invalid date format: {e}'
+                    continue
 
                 update_data = {
                     "new_status": "REJECTED",
@@ -1063,7 +1069,9 @@ async def update_incidents_from_excel(
         output_filename = f"incident_update_results_{timestamp}.xlsx"
         output_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
 
-        df.to_excel(output_temp_file.name, sheet_name=incidents_sheet_name, index=False)
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as output_temp_file:
+            df.to_excel(output_temp_file.name, sheet_name=incidents_sheet_name, index=False)
+            output_path = output_temp_file.name
 
         return FileResponse(
             path=output_temp_file.name,
@@ -1074,17 +1082,15 @@ async def update_incidents_from_excel(
         raise HTTPException(
             status_code=500,
             detail=f"Failed to process incident updates: {str(e)}"
-        )
+        ) from e
     finally:
         if temp_file and os.path.exists(temp_file.name):
             os.unlink(temp_file.name)
 
 def process_update_response(response, df, idx, update_data):
     try:
-        response_json = response.json()
-
-        if 'Errors' in response_json and response_json['Errors']:
-            error_msg = response_json['Errors'][0].get('message', str(response_json['Errors'][0]))
+        if 'Errors' in response and response['Errors']:
+            error_msg = response['Errors'][0].get('message', str(response['Errors'][0]))
             df.at[idx, 'status'] = 'failed'
             df.at[idx, 'error'] = error_msg
         else:

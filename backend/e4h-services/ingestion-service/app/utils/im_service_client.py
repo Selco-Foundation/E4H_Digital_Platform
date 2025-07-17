@@ -1,7 +1,6 @@
 import json
 import requests
 
-from app.schemas.request_info import RequestInfo
 from app.utils.convertor import get_incident_request_info
 
 
@@ -21,8 +20,10 @@ class IMServiceClient:
         payload = {"RequestInfo": request_info}
         try:
             response = requests.post(url, headers=headers, json=payload)
-            print(f"Incident searched successfully: {json.loads(response.text)}")
-            return response.json()
+            response.raise_for_status()
+            result = response.json()
+            print(f"Incident searched successfully: {result}")
+            return result
         except requests.exceptions.HTTPError as http_err:
             print(f"HTTP error occurred: {http_err}")
             raise http_err
@@ -43,8 +44,10 @@ class IMServiceClient:
         }
         try:
             response = requests.post(url, headers=headers, json=payload)
-            print(f"Incident updated successfully: {json.loads(response.text)}")
-            return response
+            response.raise_for_status()
+            result = response.json()
+            print(f"Incident updated successfully: {result}")
+            return result
         except requests.exceptions.HTTPError as http_err:
             print(f"HTTP error occurred: {http_err}")
             raise http_err
