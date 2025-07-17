@@ -1012,7 +1012,6 @@ async def update_incidents_from_excel(
         with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as temp_file:
             content = await incidents_file.read()
             temp_file.write(content)
-            temp_file_path = temp_file.name
 
         df = pd.read_excel(temp_file.name, sheet_name=incidents_sheet_name)
 
@@ -1024,7 +1023,7 @@ async def update_incidents_from_excel(
         subtype_mapping = create_mapping_dicts(mapping_type_subtype_file, mapping_type_subtype_sheet_name)
 
         for index, row in df.iterrows():
-            if pd.isna(row.get('Ticket No.')) and row.get('Current Status') != 'Pending For Assignment':
+            if pd.isna(row.get('Ticket No.')) or row.get('Current Status') != 'Pending For Assignment':
                 df.at[index, 'status'] = 'skipped'
                 df.at[index, 'error'] = 'Missing ticket_no/Incorrect current status'
                 continue
@@ -1067,11 +1066,9 @@ async def update_incidents_from_excel(
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         output_filename = f"incident_update_results_{timestamp}.xlsx"
-        output_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
 
         with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as output_temp_file:
             df.to_excel(output_temp_file.name, sheet_name=incidents_sheet_name, index=False)
-            output_path = output_temp_file.name
 
         return FileResponse(
             path=output_temp_file.name,
