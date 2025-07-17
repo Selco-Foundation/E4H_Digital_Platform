@@ -52,6 +52,21 @@ const ChangeCity = (prop) => {
         value: uniCode
       })
     });
+
+    //For CRM and State Manager, add all the tenant ids within the state.
+    const user = Digit.UserService.getUser();
+    if (user?.info?.roles?.some(role => ["COMPLAINT_ASSESSOR", "COMPLAINT_FACILITATOR_1"].includes(role.code))) {
+      const tenantIds = Digit.SessionStorage.get("IM_TENANTS");
+      tenantIds?.forEach(tenantId => {
+        if (!unique?.includes(tenantId?.code)) {
+          filteredArray.push({
+            label: prop?.t(tenantId?.i18nKey),
+            value: tenantId?.code
+          })
+        }
+      });
+    }
+
     selectedCities = filteredArray?.filter(select => select.value == Digit.SessionStorage.get("Employee.tenantId"));
     const convertedData = filteredArray.map(item => ({
       name: item.label,

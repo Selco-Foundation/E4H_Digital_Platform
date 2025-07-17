@@ -25,7 +25,7 @@ import ResponseCitizen from "./pages/citizen/Response";
 
 export const IMReducers = getRootReducer;
 
-const IMModule = ({ stateCode, userType, tenants }) => {
+const IMModule = ({ stateCode, userType }) => {
   const moduleCode = "IM";
   const language = Digit.StoreData.getCurrentLanguage();
   const { isLoading, data: store } = Digit.Services.useStore({ stateCode, moduleCode, language });
@@ -34,7 +34,6 @@ const IMModule = ({ stateCode, userType, tenants }) => {
     return <Loader />;
   }
 
-  Digit.SessionStorage.set("IM_TENANTS", tenants);
   if (userType === "citizen") {
     return <CitizenApp />;
   } else {
