@@ -79,3 +79,33 @@ class MDMSClient:
             result.append(column_info)
 
         return result
+
+    def get_tenant_mapping(self, request_info: RequestInfo, tenant_ids: List[str]) -> Dict:
+        all_tenant_data = {}
+
+        for tenant_id in tenant_ids:
+            search_url = f"{self.mdms_url}/egov-mdms-service/v1/_search"
+            search_payload = {
+                "RequestInfo": request_info.model_dump(by_alias=True, exclude_none=True),
+                "MdmsCriteria": {
+                    "tenantId": tenant_id,
+                    "moduleDetails": [
+                        {
+                            "moduleName": "tenant",
+                            "masterDetails": [
+                                {
+                                    "name": "tenants"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            }
+            response = requests.post(search_url, json=search_payload)
+            if response.status_code == 200:
+                data = response.json()
+                tenants = data.get("MdmsRes", {}).get("tenant", {}).get("tenants", [])
+                all_tenant_data.update(
+                    {t["code"]: t for t in tenants if t.get("code") and t["code"] not in all_tenant_data})
+
+        return all_tenant_data
