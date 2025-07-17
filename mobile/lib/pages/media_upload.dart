@@ -38,6 +38,8 @@ class MediaUploadPage extends StatefulWidget {
 
 class _MediaUploadPageState extends State<MediaUploadPage> {
   String? _currentProjectId;
+  int _imageKeyCounter = 0;
+  int _videoKeyCounter = 0;
   List<PlatformFile> _selectedImages = [];
   List<PlatformFile> _selectedVideos = [];
   double? _latitude;
@@ -93,6 +95,7 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
   @override
   void dispose() {
     _locSub?.cancel();
+    _fileCache.clear();
     super.dispose();
   }
 
@@ -170,6 +173,8 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
     setState(() {
       _selectedImages = images;
       _selectedVideos = videos;
+      _imageKeyCounter++;
+      _videoKeyCounter++;
     });
   }
 
@@ -283,20 +288,28 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
                         ),
                         const SizedBox(height: spacer2),
                         FileUploadWidget(
-                          key: ValueKey(_selectedImages.length),
+                          key: ValueKey('images-$_imageKeyCounter'),
                           label: 'Upload Images',
                           allowMultiples: true,
                           showPreview: true,
                           initialFiles: _selectedImages,
                           onFilesSelected: (files) {
+                            setState(() {
+                              _selectedImages = files;
+                              _imageKeyCounter++;
+                            });
+                            // DEBUG: Print current state
+                            print("Images: ${_selectedImages.length}");
+                            print("Videos: ${_selectedVideos.length}");
+                            print("Files: ${files.length}");
                             _ensureLocationLoaded().then((ok) {
                               if (!ok) {
                                 context.showSnackBar(const SnackBar(
                                     content: Text('Could not fetch location')));
                               }
-                              setState(() => _selectedImages = files);
                             });
-                            return <PlatformFile, String?>{};
+                            // return <PlatformFile, String?>{};
+                            return {for (final f in files) f: null};
                           },
                         ),
                       ]),
@@ -312,10 +325,10 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
                         ),
                         const SizedBox(height: spacer2),
                         FileUploadWidget(
-                          key: ValueKey(_selectedVideos.length),
+                          key: ValueKey('images-$_videoKeyCounter'),
                           label: 'Upload Videos',
                           allowMultiples: true,
-                          showPreview: true,
+                          showPreview: false,
                           allowedExtensions: const [
                             'mp4',
                             'mov',
@@ -329,14 +342,23 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
                           ],
                           initialFiles: _selectedVideos,
                           onFilesSelected: (files) {
+                            print("Files: ${files.length}");
+                            setState(() {
+                              _selectedVideos = files;
+                              _videoKeyCounter++;
+                            });
+                            // DEBUG: Print current state
+                            debugPrint("Images: ${_selectedImages.length}");
+                            debugPrint("Videos: ${_selectedVideos.length}");
                             _ensureLocationLoaded().then((ok) {
                               if (!ok) {
                                 context.showSnackBar(const SnackBar(
                                     content: Text('Could not fetch location')));
                               }
-                              setState(() => _selectedVideos = files);
                             });
-                            return <PlatformFile, String?>{};
+                            //return <PlatformFile, String?>{};
+                            // **Return a map of the newly selected files** (no errors):
+                            return {for (final f in files) f: null};
                           },
                         ),
                       ]),

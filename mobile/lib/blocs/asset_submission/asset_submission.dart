@@ -301,7 +301,7 @@ class AssetSubmissionBloc
             documents: documents,
           );
           print("assetModel $assetModel");
-          await repo.createOrUpdateAsset(asset: assetModel, isar: _isar);
+          // await repo.createOrUpdateAsset(asset: assetModel, isar: _isar);
         }
       }
 
