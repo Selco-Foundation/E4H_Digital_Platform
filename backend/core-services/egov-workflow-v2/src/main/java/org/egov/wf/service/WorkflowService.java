@@ -2,6 +2,7 @@ package org.egov.wf.service;
 
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.wf.config.WorkflowConfig;
+import org.egov.wf.producer.Producer;
 import org.egov.wf.repository.BusinessServiceRepository;
 import org.egov.wf.repository.WorKflowRepository;
 import org.egov.wf.util.WorkflowConstants;
@@ -44,12 +45,15 @@ public class WorkflowService {
     @Autowired
     private BusinessMasterService businessMasterService;
 
+    private Producer producer;
+
 
     @Autowired
     public WorkflowService(WorkflowConfig config, TransitionService transitionService,
                            EnrichmentService enrichmentService, WorkflowValidator workflowValidator,
                            StatusUpdateService statusUpdateService, WorKflowRepository workflowRepository,
-                           WorkflowUtil util,BusinessServiceRepository businessServiceRepository) {
+                           WorkflowUtil util,BusinessServiceRepository businessServiceRepository,
+                           Producer producer) {
         this.config = config;
         this.transitionService = transitionService;
         this.enrichmentService = enrichmentService;
@@ -58,6 +62,7 @@ public class WorkflowService {
         this.workflowRepository = workflowRepository;
         this.util = util;
         this.businessServiceRepository = businessServiceRepository;
+        this.producer = producer;
     }
 
 
@@ -279,5 +284,35 @@ public class WorkflowService {
         criteria.setIsEscalatedCount(true);
         count = workflowRepository.getEscalatedApplicationsCount(requestInfo,criteria);
         return count;
+    }
+
+    public List<ProcessInstance> proceedUpdateProcessInstance(RequestInfo requestInfo, List<ProcessInstance> processInstances){
+        for(ProcessInstance processInstance: processInstances){
+            Map<String,BusinessServiceStateMigration> bussinessServiceStateMap = new HashMap<>();
+            Map<String,BusinessServiceStateMigration> bussinessServiceIncidentMap = new HashMap<>();
+            List<BusinessServiceStateMigration> businessServicesAndStates = workflowRepository.getBusinessServicesAndStates();
+            businessServicesAndStates.forEach(businessServiceStateMigration -> {
+                if(businessServiceStateMigration.getBusinessService().trim().equals("Incident")){
+                    bussinessServiceIncidentMap.put(businessServiceStateMigration.getStateUuid(), businessServiceStateMigration);
+                }
+                else
+                    bussinessServiceStateMap.put(businessServiceStateMigration.getBusinessService()+"_"+businessServiceStateMigration.getTenantId()+"_"+businessServiceStateMigration.getApplicationStatus(), businessServiceStateMigration);
+            });
+
+            BusinessServiceStateMigration oldIncident = bussinessServiceIncidentMap.get(processInstance.getState().getApplicationStatus());
+            if(oldIncident==null)
+                return processInstances;
+
+            String tenantId = processInstance.getTenantId().split("\\.")[0];
+            BusinessServiceStateMigration newIncident = bussinessServiceStateMap.get(processInstance.getBusinessService()+"_"+tenantId+"_"+oldIncident.getApplicationStatus());
+            State state = State.builder().uuid(newIncident.getStateUuid()).sla(newIncident.getStateSla())
+                    .build();
+            processInstance.setState(state);
+            processInstance.setStateSla(newIncident.getStateSla());
+
+            ProcessInstanceRequest processInstanceRequest = new ProcessInstanceRequest(requestInfo, Collections.singletonList(processInstance));
+            producer.push(config.getUpdateProcessInstanceTopic(),processInstanceRequest);
+        }
+        return processInstances;
     }
 }
