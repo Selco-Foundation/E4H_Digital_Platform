@@ -15,7 +15,7 @@ class WorkflowConfigTest {
     @Test
     void testInitialize() {
         WorkflowConfig workflowConfig = new WorkflowConfig("UTC", 1, 1, 3, "Save Transition Topic",
-                "Save Business Service Topic", "2020-03-01", "localhost", "https://config.us-east-2.amazonaws.com", "localhost",
+                "Save Business Service Topic", "Update ProcessInstance Topic", "2020-03-01", "localhost", "https://config.us-east-2.amazonaws.com", "localhost",
                 "https://config.us-east-2.amazonaws.com", true, "MD", 3);
         workflowConfig.initialize();
         assertTrue(workflowConfig.getAssignedOnly());
@@ -39,7 +39,7 @@ class WorkflowConfigTest {
 
 
         WorkflowConfig workflowConfig = new WorkflowConfig("UTC", 1, 1, 3, "Save Transition Topic",
-                "Save Business Service Topic", "2020-03-01", "localhost", "https://config.us-east-2.amazonaws.com", "localhost",
+                "Save Business Service Topic", "Update ProcessInstance Topic", "2020-03-01", "localhost", "https://config.us-east-2.amazonaws.com", "localhost",
                 "https://config.us-east-2.amazonaws.com", true, "MD", 3);
         workflowConfig.initialize();
         assertTrue(workflowConfig.getAssignedOnly());
