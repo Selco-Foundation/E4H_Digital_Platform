@@ -516,3 +516,127 @@ def get_mdms_code_by_name(schema_list: List[Dict[str, Any]], field_name: str, va
             raise ValueError(f"Invalid value '{value}' for field '{field_name}' in MDMS schema.")
 
     raise ValueError(f"Field name '{field_name}' not found in MDMS schema.")
+
+def get_incident_data_update_request_info():
+    return {
+        "apiId": "Rainmaker",
+        "authToken": "222d0cf6-07c2-4d90-8a71-0292c200ae74",
+        "userInfo": {
+             "id": 4294,
+            "userName": "7204449839",
+            "salutation": None,
+            "name": "Revathi J",
+            "gender": "MALE",
+            "mobileNumber": "7204449839",
+            "emailId": "",
+            "altContactNumber": None,
+            "pan": None,
+            "aadhaarNumber": None,
+            "permanentAddress": None,
+            "permanentCity": None,
+            "permanentPinCode": None,
+            "correspondenceAddress": None,
+            "correspondenceCity": None,
+            "correspondencePinCode": None,
+            "alternatemobilenumber": None,
+            "active": True,
+            "locale": "en_IN",
+            "type": "EMPLOYEE",
+            "accountLocked": False,
+            "accountLockedDate": 0,
+            "fatherOrHusbandName": None,
+            "relationship": None,
+            "signature": None,
+            "bloodGroup": None,
+            "photo": None,
+            "identificationMark": None,
+            "createdBy": 0,
+            "lastModifiedBy": 4294,
+            "tenantId": "pg",
+            "roles": [
+                {
+                    "code": "COMPLAINANT",
+                    "name": "Complainant",
+                    "tenantId": "pg"
+                },
+                {
+                    "code": "EMPLOYEE",
+                    "name": "Employee",
+                    "tenantId": "pg"
+                },
+                {
+                    "code": "COMPLAINT_ASSESSOR",
+                    "name": "Complaint Assessor",
+                    "tenantId": "pg"
+                },
+                {
+                    "code": "COMPLAINT_FACILITATOR_2",
+                    "name": "Complaint facilitator 2",
+                    "tenantId": "pg"
+                },
+                {
+                    "code": "SUPERUSER",
+                    "name": "Super User",
+                    "tenantId": "pg"
+                }
+            ],
+            "uuid": "1e18f9bc-9702-4326-b66f-3732092e25d9",
+            "createdDate": "07-07-2025 12:57:24",
+            "lastModifiedDate": "07-07-2025 16:44:01",
+            "dob": "1994-02-08",
+            "pwdExpiryDate": "05-10-2025 12:57:24"
+        },
+        "msgId": "1751897062350|en_IN",
+        "plainAccessRequest": {}
+    }
+
+
+def create_incident_data_update_payload(search_response: dict, update_data: dict) -> dict:
+    incident_wrapper = search_response.get("IncidentWrappers", [{}])[0]
+    incident = incident_wrapper.get("incident", {})
+    workflow = incident_wrapper.get("workflow", {})
+    lastmodifiedTime = int(time.time() * 1000)
+    incident["auditDetails"]["lastModifiedTime"] = lastmodifiedTime
+    filed_date = incident.get("fileddate")
+
+    if pd.isna(filed_date) or int(filed_date) == 0:
+        formatted_date = ""
+    else :
+        dt = datetime.fromtimestamp(int(filed_date) / 1000)
+        formatted_date = dt.strftime("%d/%m/%Y")
+
+
+
+    request_info = get_incident_data_update_request_info()
+
+    original_type = incident.get('incidentType', '')
+    original_subtype = incident.get('incidentSubType', '')
+
+    details = {
+        "CS_COMPLAINT_DETAILS_TICKET_NO": incident.get("incidentId"),
+        "CS_COMPLAINT_DETAILS_APPLICATION_STATUS": f"CS_COMMON_{incident.get('applicationStatus', 'PENDINGFORASSIGNMENT')}",
+        "CS_ADDCOMPLAINT_TICKET_TYPE": f"SERVICEDEFS.{original_type.upper()}",
+        "CS_ADDCOMPLAINT_TICKET_SUB_TYPE": f"SERVICEDEFS.{original_subtype.upper()}",
+        "CS_ADDCOMPLAINT_SYSTEM_FUNCTIONAL": incident.get("systemFunctional", "NON_FUNCTIONAL"),
+        "CS_ADDCOMPLAINT_DISTRICT": incident.get("district", ""),
+        "CS_ADDCOMPLAINT_BLOCK": incident.get("block", ""),
+        "CS_ADDCOMPLAINT_HEALTH_CARE_CENTRE": incident.get("tenantId", ""),
+        "CS_COMPLAINT_COMMENTS": incident.get("comments", ""),
+        "CS_ADDCOMPLAINT_HEALTH_CARE_SUB_TYPE": incident.get("phcSubType", ""),
+        "CS_COMPLAINT_FILED_DATE": formatted_date
+    }
+    systemFunctional = update_data.get("systemFunctional")
+    incident["systemFunctional"] = systemFunctional
+
+    audit = {
+        "details": incident.get("auditDetails", {}),
+        "incidentType": original_subtype
+    }
+
+    return {
+        "details": details,
+        "workflow": workflow,
+        "incident": incident,
+        "audit": audit,
+        "RequestInfo": request_info
+    }
