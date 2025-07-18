@@ -22,6 +22,8 @@ const ChangeCity = (prop) => {
   const history = useHistory();
   const isDropdown = prop.dropdown || false;
   let selectedCities = [];
+  const { data: tenantsData } = Digit.Hooks.useTenants();
+  const { t } = prop;
 
   const handleChangeCity = (city) => {
     const loggedInData = Digit.SessionStorage.get("citizen.userRequestObject");
@@ -56,12 +58,11 @@ const ChangeCity = (prop) => {
     //For CRM and State Manager, add all the tenant ids within the state.
     const user = Digit.UserService.getUser();
     if (user?.info?.roles?.some(role => ["COMPLAINT_ASSESSOR", "COMPLAINT_FACILITATOR_1"].includes(role.code))) {
-      const tenantIds = Digit.SessionStorage.get("IM_TENANTS");
-      tenantIds?.forEach(tenantId => {
-        if (!unique?.includes(tenantId?.code)) {
+      tenantsData?.forEach(tenant => {
+        if (!unique?.includes(tenant?.code)) {
           filteredArray.push({
-            label: prop?.t(tenantId?.i18nKey),
-            value: tenantId?.code
+            label: t(tenant?.i18nKey),
+            value: tenant?.code
           })
         }
       });
@@ -74,7 +75,7 @@ const ChangeCity = (prop) => {
     }));
     Digit.SessionStorage.set("Tenants",convertedData)
     setSelectCityData(filteredArray);
-  }, [dropDownData]);
+  }, [dropDownData, tenantsData, t]);
 
   // if (isDropdown) {
   return (
