@@ -1,12 +1,79 @@
-#We would be calling the im service with request info data to create the legacy ticket. request info is for validation checks.
+import requests
 
+class IMServiceClient:
+    def __init__(self, base_url):
+        self.base_url = base_url
 
+    def search_incident(self, incident_id: str, tenant_id: str, request_info: dict):
+        url = f"{self.base_url}/im-services/v2/request/_search?tenantId={tenant_id}&incidentId={incident_id}"
+        headers = {
+            "Content-Type": "application/json;charset=UTF-8",
+            "Accept": "application/json"
+        }
+        payload = {"RequestInfo": request_info}
+        try:
+            response = requests.post(url, headers=headers, json=payload)
+            response.raise_for_status()
+            result = response.json()
+            print(f"Incident searched successfully: {result}")
+            return result
+        except requests.exceptions.HTTPError as http_err:
+            print(f"HTTP error occurred: {http_err}")
+            raise http_err
+        except requests.exceptions.ConnectionError as conn_err:
+            print(f"Connection error occurred: {conn_err}")
+            raise conn_err
+        except requests.exceptions.Timeout as timeout_err:
+            print(f"Timeout error occurred: {timeout_err}")
+            raise timeout_err
+        except requests.exceptions.RequestException as req_err:
+            print(f"An error occurred: {req_err}")
+            raise req_err
 
+    def update_incident(self, payload: dict):
+        url = f"{self.base_url}/im-services/v2/request/_update"
+        headers = {
+            "Content-Type": "application/json"
+        }
+        try:
+            response = requests.post(url, headers=headers, json=payload)
+            response.raise_for_status()
+            result = response.json()
+            print(f"Incident updated successfully: {result}")
+            return result
+        except requests.exceptions.HTTPError as http_err:
+            print(f"HTTP error occurred: {http_err}")
+            raise http_err
+        except requests.exceptions.ConnectionError as conn_err:
+            print(f"Connection error occurred: {conn_err}")
+            raise conn_err
+        except requests.exceptions.Timeout as timeout_err:
+            print(f"Timeout error occurred: {timeout_err}")
+            raise timeout_err
+        except requests.exceptions.RequestException as req_err:
+            print(f"An error occurred: {req_err}")
+            raise req_err
 
-
-
-
-
-
-
-
+    def update_incident_data(self, payload: dict):
+        url = f"{self.base_url}/im-services/v2/request/migration/_update"
+        headers = {
+            "Content-Type": "application/json"
+        }
+        try:
+            response = requests.post(url, headers=headers, json=payload)
+            response.raise_for_status()
+            result = response.json()
+            print(f"Incident updated successfully: {result}")
+            return result
+        except requests.exceptions.HTTPError as http_err:
+            print(f"HTTP error occurred: {http_err}")
+            raise http_err
+        except requests.exceptions.ConnectionError as conn_err:
+            print(f"Connection error occurred: {conn_err}")
+            raise conn_err
+        except requests.exceptions.Timeout as timeout_err:
+            print(f"Timeout error occurred: {timeout_err}")
+            raise timeout_err
+        except requests.exceptions.RequestException as req_err:
+            print(f"An error occurred: {req_err}")
+            raise req_err

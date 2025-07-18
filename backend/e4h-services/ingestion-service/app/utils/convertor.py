@@ -456,3 +456,123 @@ def get_mdms_code_by_name(schema_list: List[Dict[str, Any]], field_name: str, va
             raise ValueError(f"Invalid value '{value}' for field '{field_name}' in MDMS schema.")
 
     raise ValueError(f"Field name '{field_name}' not found in MDMS schema.")
+
+
+def get_incident_request_info():
+    return {
+        "apiId": "Rainmaker",
+        "authToken": "222d0cf6-07c2-4d90-8a71-0292c200ae74",
+        "userInfo": {
+            "id": 1863,
+            "uuid": "0d1d5451-60c1-43ac-85a0-930a0a0d3179",
+            "userName": "8974350748",
+            "name": "Tingpai S",
+            "mobileNumber": "8974350748",
+            "emailId": None,
+            "locale": None,
+            "type": "EMPLOYEE",
+            "roles": [
+                {
+                    "name": "Super User",
+                    "code": "SUPERUSER",
+                    "tenantId": "nl"
+                },
+                {
+                    "name": "Employee",
+                    "code": "EMPLOYEE",
+                    "tenantId": "nl"
+                },
+                {
+                    "name": "Complainant",
+                    "code": "COMPLAINANT",
+                    "tenantId": "nl"
+                },
+                {
+                    "name": "Complaint Assessor",
+                    "code": "COMPLAINT_ASSESSOR",
+                    "tenantId": "nl"
+                },
+                {
+                    "name": "Complaint facilitator 2",
+                    "code": "COMPLAINT_FACILITATOR_2",
+                    "tenantId": "nl"
+                }
+            ],
+            "active": True,
+            "tenantId": "nl",
+            "permanentCity": None
+        },
+        "msgId": "1751897062350|en_IN",
+        "plainAccessRequest": {}
+    }
+
+
+def create_update_payload(search_response: dict, update_data: dict, subtype_mapping) -> dict:
+    incident_wrapper = search_response.get("IncidentWrappers", [{}])[0]
+    incident = incident_wrapper.get("incident", {})
+    workflow = incident_wrapper.get("workflow", {})
+
+    request_info = get_incident_request_info()
+
+    original_type = incident.get('incidentType', '')
+    original_subtype = incident.get('incidentSubType', '')
+
+    # Apply mapping if exists
+    mapped_pair = subtype_mapping.get((original_type, original_subtype))
+    if not mapped_pair:
+        mapped_pair = (original_type, original_subtype)
+
+    details = {
+        "CS_COMPLAINT_DETAILS_TICKET_NO": incident.get("incidentId"),
+        "CS_COMPLAINT_DETAILS_APPLICATION_STATUS": f"CS_COMMON_{incident.get('applicationStatus', 'PENDINGFORASSIGNMENT')}",
+        "CS_ADDCOMPLAINT_TICKET_TYPE": f"SERVICEDEFS.{mapped_pair[0].upper()}",
+        "CS_ADDCOMPLAINT_TICKET_SUB_TYPE": f"SERVICEDEFS.{mapped_pair[1].upper()}",
+        "CS_ADDCOMPLAINT_SYSTEM_FUNCTIONAL": incident.get("systemFunctional", "NON_FUNCTIONAL"),
+        "CS_ADDCOMPLAINT_DISTRICT": incident.get("district", ""),
+        "CS_ADDCOMPLAINT_BLOCK": incident.get("block", ""),
+        "CS_ADDCOMPLAINT_HEALTH_CARE_CENTRE": incident.get("tenantId", ""),
+        "CS_COMPLAINT_COMMENTS": incident.get("comments", ""),
+        "CS_ADDCOMPLAINT_HEALTH_CARE_SUB_TYPE": incident.get("phcSubType", ""),
+        "CS_COMPLAINT_FILED_DATE": update_data.get("filed_date", "")
+    }
+
+    additional_detail = incident.get("additionalDetail", {})
+    existing_reject_reasons = additional_detail.get("rejectReason", [])
+
+    new_reason = update_data.get("reject_reason", "Duplication")
+
+    if isinstance(existing_reject_reasons, list):
+        if new_reason not in existing_reject_reasons:
+            existing_reject_reasons.append(new_reason)
+    else:
+        existing_reject_reasons = [new_reason]
+
+    incident["additionalDetail"] = {
+        **additional_detail,
+        "rejectReason": existing_reject_reasons
+    }
+
+    incident["incidentType"] = mapped_pair[0]
+    incident["incidentSubType"] = mapped_pair[1]
+
+    # Create workflow object
+    workflow.update({
+        "action": update_data.get("action", "REJECT"),
+        "comments": update_data.get("comments", ""),
+        "rejectReason": update_data.get("reject_reason", "Duplication"),
+        "assignee": [request_info["userInfo"]["uuid"]]
+    })
+
+    audit = {
+        "details": incident.get("auditDetails", {}),
+        "incidentType": mapped_pair[1]
+    }
+
+    return {
+        "details": details,
+        "workflow": workflow,
+        "incident": incident,
+        "audit": audit,
+        "RequestInfo": request_info
+
+    }

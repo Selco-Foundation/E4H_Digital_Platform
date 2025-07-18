@@ -20,8 +20,9 @@ from app.processor.factory.vendor_data_processor_factory import VendorDataProces
 from app.schemas.request_info import RequestInfo
 from app.utils.convertor import request_info_from_json, create_vendor_request, create_facility_payload, \
     get_project_creation_payload, get_user_creation_payload, get_staff_creation_payload, create_project_payload, \
-    get_installation_spoc_creation_payload
+    get_installation_spoc_creation_payload, create_update_payload, get_incident_request_info
 from app.utils.facility_service_client import FacilityServiceClient
+from app.utils.im_service_client import IMServiceClient
 from app.utils.mdms_client import MDMSClient
 from app.utils.organization_service_client import OrganizationServiceClient
 from app.utils.project_service_client import ProjectServiceClient
@@ -990,3 +991,111 @@ async def check_duplicate_tickets(
     finally:
         if input_temp_file and os.path.exists(input_temp_file.name):
             pass
+
+
+@router.post('/incidents/update',
+             summary='Update incidents from Excel file',
+             response_description='Returns processing results with status for each incident')
+async def update_incidents_from_excel(
+        incidents_file: UploadFile = File(..., description="Excel file containing incidents to update"),
+        incidents_sheet_name: str = Form(default="Incidents",
+                                         description="Name of the sheet containing incident data"),
+        mapping_type_subtype_file: UploadFile = File(..., description="Excel file containing type/subtype mappings"),
+        mapping_type_subtype_sheet_name: str = Form(default="Mapping Old_New_v1.0"),
+        request_info: str = Form(default="", description="Request info in JSON format")
+):
+    temp_file = None
+    request_info = request_info_from_json(request_info)
+    get_authorized_request_info(request_info)
+
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as temp_file:
+            content = await incidents_file.read()
+            temp_file.write(content)
+
+        df = pd.read_excel(temp_file.name, sheet_name=incidents_sheet_name)
+
+        for col in ['status', 'error', 'updated_status']:
+            if col not in df.columns:
+                df[col] = ''
+
+        incident_client = IMServiceClient(im_services_url)
+        subtype_mapping = create_mapping_dicts(mapping_type_subtype_file, mapping_type_subtype_sheet_name)
+
+        for index, row in df.iterrows():
+            if pd.isna(row.get('Ticket No.')) or row.get('Current Status') != 'Pending For Assignment':
+                df.at[index, 'status'] = 'skipped'
+                df.at[index, 'error'] = 'Missing ticket_no/Incorrect current status'
+                continue
+
+            if pd.isna(row.get('Tenant ID')):
+                df.at[index, 'status'] = 'skipped'
+                df.at[index, 'error'] = 'Missing Tenant ID'
+                continue
+
+            incident_request_info = get_incident_request_info()
+
+            try:
+                search_response = incident_client.search_incident(
+                    incident_id=row['Ticket No.'],
+                    tenant_id=row['Tenant ID'],
+                    request_info=incident_request_info
+                )
+
+                try:
+                    dt = datetime.strptime(row.get("Filed Date"), "%b %d, %Y @ %H:%M:%S.%f")
+                except (ValueError, TypeError) as e:
+                    df.at[index, 'status'] = 'failed'
+                    df.at[index, 'error'] = f'Invalid date format: {e}'
+                    continue
+
+                update_data = {
+                    "new_status": "REJECTED",
+                    "action": "REJECT",
+                    "comments": "rejected due to duplication",
+                    "reject_reason": "Duplication",
+                    "filed_date" : dt.strftime("%d/%m/%Y")
+                }
+
+                update_payload = create_update_payload(search_response, update_data, subtype_mapping)
+                update_response = incident_client.update_incident(update_payload)
+
+                process_update_response(update_response, df, index, update_data)
+
+            except Exception as e:
+                df.at[index, 'status'] = 'failed'
+                df.at[index, 'error'] = str(e)
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_filename = f"incident_update_results_{timestamp}.xlsx"
+
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as output_temp_file:
+            df.to_excel(output_temp_file.name, sheet_name=incidents_sheet_name, index=False)
+
+        return FileResponse(
+            path=output_temp_file.name,
+            filename=output_filename,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to process incident updates: {str(e)}"
+        ) from e
+    finally:
+        if temp_file and os.path.exists(temp_file.name):
+            os.unlink(temp_file.name)
+
+def process_update_response(response, df, idx, update_data):
+    try:
+        if 'Errors' in response and response['Errors']:
+            error_msg = response['Errors'][0].get('message', str(response['Errors'][0]))
+            df.at[idx, 'status'] = 'failed'
+            df.at[idx, 'error'] = error_msg
+        else:
+            df.at[idx, 'status'] = 'success'
+            df.at[idx, 'error'] = ''
+            df.at[idx, 'updated_status'] = update_data.get('new_status', '')
+    except Exception as e:
+        df.at[idx, 'status'] = 'failed'
+        df.at[idx, 'error'] = str(e)
