@@ -1,8 +1,12 @@
 import 'package:digit_ui_components/digit_components.dart';
+import 'package:digit_ui_components/models/RadioButtonModel.dart';
 import 'package:digit_ui_components/theme/ComponentTheme/digit_tab_bar_theme.dart';
+import 'package:digit_ui_components/theme/TextTheme/digit_text_theme.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:digit_ui_components/widgets/atoms/digit_tab.dart';
+import 'package:digit_ui_components/widgets/atoms/pop_up_card.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
+import 'package:digit_ui_components/widgets/molecules/show_pop_up.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -11,6 +15,7 @@ import '../blocs/project/project.dart';
 import '../blocs/report_type/report_type.dart';
 import '../blocs/selected_project/selected_project.dart';
 import '../blocs/user_type/user_type.dart';
+import '../model/project_workflow/project_workflow.dart';
 import '../router/app_router.dart';
 import '../utils/utils.dart';
 import '../widgets/cards/inbox_report_card.dart';
@@ -27,6 +32,8 @@ class InboxPage extends StatefulWidget {
 
 class _InboxPageState extends State<InboxPage> {
   int _selectedTabIndex = 0;
+  String _searchQuery = '';
+  String? _sortDirection;
 
   @override
   void initState() {
@@ -86,22 +93,45 @@ class _InboxPageState extends State<InboxPage> {
         }
       },
     );
-    // Dispatch fetch + loading state
-    context.read<ProjectBloc>().add(
-          ProjectEvent.fetchProjectsByWorkflow(
-              workflowStatuses: workflowStatuses),
-        );
+
+    // Choose search vs sort vs basic fetch && Dispatch fetch + loading state
+    if (_searchQuery.isNotEmpty) {
+      context.read<ProjectBloc>().add(
+            ProjectEvent.fetchProjectsBySearch(
+              query: _searchQuery,
+              workflowStatuses: workflowStatuses,
+            ),
+          );
+    } else if (_sortDirection != null) {
+      context.read<ProjectBloc>().add(
+            ProjectEvent.fetchProjectsSorted(
+              workflowStatuses: workflowStatuses,
+              sortDirection: _sortDirection!,
+            ),
+          );
+    } else {
+      context.read<ProjectBloc>().add(
+            ProjectEvent.fetchProjectsByWorkflow(
+                workflowStatuses: workflowStatuses),
+          );
+    }
   }
 
   void _onTabChanged(int index, UserTypeState userState) {
-    final bloc = context.read<InboxTypeBloc>();
+    setState(() {
+      _selectedTabIndex = index;
+      // reset search & sort when tab changes
+      _searchQuery = '';
+      _sortDirection = null;
+    });
 
-    if (userState is UserTypeSupervisor) {
-      bloc.add(InboxTypeEvent.typeSelected(index));
-    } else {
-      // user tabs are shifted by +1
-      bloc.add(InboxTypeEvent.typeSelected(index + 1));
-    }
+    context.read<InboxTypeBloc>().add(
+          userState.maybeWhen(
+            supervisor: () => InboxTypeEvent.typeSelected(index),
+            orElse: () => InboxTypeEvent.typeSelected(
+                index + 1), // user tabs are shifted by +1 as it's just 2
+          ),
+        );
 
     _fetchProjects(userState, index);
   }
@@ -151,16 +181,8 @@ class _InboxPageState extends State<InboxPage> {
                           return DigitTabBar(
                             tabs: tabs,
                             initialIndex: _selectedTabIndex,
-                            onTabSelected: (index) {
-                              setState(() {
-                                _selectedTabIndex = index;
-                              });
-                              // Update InboxTypeBloc
-                              print("index $index");
-                              _onTabChanged(index, userState);
-                              // Fetch with new tab index
-                              _fetchProjects(userState, index);
-                            },
+                            onTabSelected: (index) =>
+                                _onTabChanged(index, userState),
                             tabBarThemeData:
                                 DigitTabBarThemeData.defaultTheme(context)
                                     .copyWith(
@@ -180,6 +202,13 @@ class _InboxPageState extends State<InboxPage> {
                               child: DigitSearchFormInput(
                                 innerLabel: "Search Health Facility",
                                 suffixIcon: Icons.search,
+                                onChange: (text) {
+                                  setState(() {
+                                    _searchQuery = text;
+                                    _sortDirection = null; // clear sort
+                                  });
+                                  _fetchProjects(userState, _selectedTabIndex);
+                                },
                                 iconColor: const Light().primary2,
                                 enableBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(spacer1),
@@ -193,14 +222,23 @@ class _InboxPageState extends State<InboxPage> {
                                 ),
                               ),
                             ),
-                            Icon(
-                              Icons.import_export,
-                              color: theme.colorTheme.primary.primary1,
-                              size: spacer8,
+                            GestureDetector(
+                              onTap: () =>
+                                  _showSortPopup(textTheme, theme, userState),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.import_export,
+                                    color: theme.colorTheme.primary.primary1,
+                                    size: spacer8,
+                                  ),
+                                  Text("Sort",
+                                      style: textTheme.headingS.copyWith(
+                                          color: theme
+                                              .colorTheme.primary.primary1))
+                                ],
+                              ),
                             ),
-                            Text("Sort",
-                                style: textTheme.headingS.copyWith(
-                                    color: theme.colorTheme.primary.primary1))
                           ],
                         )
                       ],
@@ -211,99 +249,12 @@ class _InboxPageState extends State<InboxPage> {
                     BlocBuilder<ProjectBloc, ProjectState>(
                       builder: (context, projectState) {
                         return projectState.maybeWhen(
+                          initial: () => _loadingIndicator(),
+                          loading: () => _loadingIndicator(),
+                          fetched: (projectsList) =>
+                              _buildList(projectsList, userState),
+                          searchResults: (list) => _buildList(list, userState),
                           orElse: () => const SizedBox.shrink(),
-                          initial: () => const Center(
-                              child: Padding(
-                            padding: EdgeInsets.only(top: spacer8),
-                            child: CircularProgressIndicator(),
-                          )),
-                          loading: () => const Center(
-                              child: Padding(
-                            padding: EdgeInsets.only(top: spacer8),
-                            child: CircularProgressIndicator(),
-                          )),
-                          fetched: (projectsList) {
-                            if (projectsList.isEmpty) {
-                              return const Center(
-                                child: Text('No Projects to display'),
-                              );
-                            }
-                            return Column(
-                              children: [
-                                for (final project in projectsList)
-                                  Column(
-                                    children: [
-                                      // Display each project according to inboxState
-                                      BlocBuilder<InboxTypeBloc,
-                                          InboxTypeState>(
-                                        builder: (context, inboxState) {
-                                          return inboxState.when(
-                                            submitted: () => InboxReportCard(
-                                                onPress: () {
-                                                  print(project.project.id);
-                                                  context
-                                                      .read<
-                                                          SelectedProjectBloc>()
-                                                      .add(
-                                                        SelectedProjectEvent
-                                                            .select(project),
-                                                      );
-                                                  context.router.push(
-                                                      const InboxAssetSummaryRoute());
-                                                },
-                                                title: project.project.name ??
-                                                    '---',
-                                                dateAssigned:
-                                                    DateTime(2024, 1, 25),
-                                                status:
-                                                    project.status ?? '---'),
-                                            rejected: () =>
-                                                InboxReportRejectedCard(
-                                              title:
-                                                  project.project.name ?? '---',
-                                              status: project.status ?? '---',
-                                              dateAssigned:
-                                                  DateTime(2024, 1, 25),
-                                              onPress: () {
-                                                print(project.project.id);
-                                                context
-                                                    .read<SelectedProjectBloc>()
-                                                    .add(
-                                                      SelectedProjectEvent
-                                                          .select(project),
-                                                    );
-                                                context.router.push(
-                                                    const SubmitForApprovalRoute());
-                                              },
-                                            ),
-                                            approved: () => InboxReportCard(
-                                                onPress: () {
-                                                  print(project.project.id);
-                                                  context
-                                                      .read<
-                                                          SelectedProjectBloc>()
-                                                      .add(
-                                                        SelectedProjectEvent
-                                                            .select(project),
-                                                      );
-                                                  context.router.push(
-                                                      const InboxAssetSummaryRoute());
-                                                },
-                                                title: project.project.name ??
-                                                    '---',
-                                                dateAssigned:
-                                                    DateTime(2024, 1, 25),
-                                                status:
-                                                    project.status ?? '---'),
-                                          );
-                                        },
-                                      ),
-                                      const SizedBox(height: spacer5),
-                                    ],
-                                  ),
-                              ],
-                            );
-                          },
                         );
                       },
                     ),
@@ -316,6 +267,133 @@ class _InboxPageState extends State<InboxPage> {
           ),
         );
       },
+    );
+  }
+
+  Widget _loadingIndicator() => const Center(
+        child: Center(
+          child: Padding(
+            padding: EdgeInsets.only(top: spacer8),
+            child: CircularProgressIndicator(),
+          ),
+        ),
+      );
+
+  Widget _buildList(
+      List<ProjectWorkflow> projectsList, UserTypeState userState) {
+    if (projectsList.isEmpty) {
+      return const Center(
+        child: Text('No Projects to display'),
+      );
+    }
+    return Column(
+      children: [
+        for (final project in projectsList)
+          Column(
+            children: [
+              // Display each project according to inboxState
+              BlocBuilder<InboxTypeBloc, InboxTypeState>(
+                builder: (context, inboxState) {
+                  return inboxState.when(
+                    submitted: () => InboxReportCard(
+                        onPress: () {
+                          print(project.project.id);
+                          context.read<SelectedProjectBloc>().add(
+                                SelectedProjectEvent.select(project),
+                              );
+                          context.router.push(const InboxAssetSummaryRoute());
+                        },
+                        title: project.project.name ?? '---',
+                        dateAssigned: DateTime(2024, 1, 25),
+                        status: project.status ?? '---'),
+                    rejected: () => InboxReportRejectedCard(
+                      title: project.project.name ?? '---',
+                      status: project.status ?? '---',
+                      dateAssigned: DateTime(2024, 1, 25),
+                      onPress: () {
+                        print(project.project.id);
+                        context.read<SelectedProjectBloc>().add(
+                              SelectedProjectEvent.select(project),
+                            );
+                        context.router.push(const SubmitForApprovalRoute());
+                      },
+                    ),
+                    approved: () => InboxReportCard(
+                        onPress: () {
+                          print(project.project.id);
+                          context.read<SelectedProjectBloc>().add(
+                                SelectedProjectEvent.select(project),
+                              );
+                          context.router.push(const InboxAssetSummaryRoute());
+                        },
+                        title: project.project.name ?? '---',
+                        dateAssigned: DateTime(2024, 1, 25),
+                        status: project.status ?? '---'),
+                  );
+                },
+              ),
+              const SizedBox(height: spacer5),
+            ],
+          ),
+      ],
+    );
+  }
+
+  void _showSortPopup(
+      DigitTextTheme textTheme, ThemeData theme, UserTypeState userState) {
+    showCustomPopup(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, popupSetState) => Popup(
+          onCrossTap: () => Navigator.of(ctx).pop(),
+          title: 'Sort by',
+          type: PopUpType.simple,
+          additionalWidgets: [
+            RadioList(
+              groupValue: _sortDirection ?? '',
+              containerPadding: const EdgeInsets.symmetric(vertical: spacer2),
+              radioDigitButtons: [
+                RadioButtonModel(code: 'DESC', name: 'Newest first'),
+                RadioButtonModel(code: 'ASC', name: 'Oldest first'),
+              ],
+              onChanged: (val) =>
+                  popupSetState(() => _sortDirection = val.code),
+            ),
+            Row(
+              children: [
+                Expanded(
+                  child: DigitButton(
+                    label: 'Clear',
+                    type: DigitButtonType.secondary,
+                    size: DigitButtonSize.large,
+                    onPressed: () {
+                      setState(() {
+                        _sortDirection = null;
+                        _searchQuery = '';
+                      });
+                      Navigator.of(ctx).pop();
+                      _fetchProjects(userState, _selectedTabIndex);
+                    },
+                  ),
+                ),
+                const SizedBox(width: spacer5),
+                Expanded(
+                  child: DigitButton(
+                    type: DigitButtonType.primary,
+                    size: DigitButtonSize.large,
+                    label: 'Sort',
+                    isDisabled: _sortDirection == null,
+                    onPressed: () {
+                      Navigator.of(ctx).pop();
+                      _fetchProjects(userState, _selectedTabIndex);
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

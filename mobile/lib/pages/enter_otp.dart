@@ -3,6 +3,7 @@ import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:digit_ui_components/widgets/atoms/digit_otp.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:reactive_forms/reactive_forms.dart';
 import 'package:selco/blocs/auth/user_otp.dart';
@@ -95,6 +96,9 @@ class _EnterOtpPageState extends State<EnterOtpPage> {
                         },
                         builder: (field) => DigitOTPInput(
                           label: "Enter OTP",
+                          inputFormatter: [
+                            FilteringTextInputFormatter.digitsOnly
+                          ],
                           errorMessage: field.errorText,
                           onChanged: (input) {
                             form.control(_otp).value = input;
