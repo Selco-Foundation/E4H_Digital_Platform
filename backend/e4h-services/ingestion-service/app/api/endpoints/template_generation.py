@@ -288,7 +288,7 @@ async def get_facility_QR_for_autologin(
         mdms_content = mdms_client.get_tenant_mapping(request_info_obj, ["as", "gj", "ml", "mn", "mz", "nl", "or", "pg", "sk"])
 
 
-        base_url = "https://saura-emitra-uat.selcofoundation.org"
+        base_url = "https://saura-emitra-dryrun.selcofoundation.org"
         password = "Health@2026"
 
         temp_dir = tempfile.mkdtemp()
