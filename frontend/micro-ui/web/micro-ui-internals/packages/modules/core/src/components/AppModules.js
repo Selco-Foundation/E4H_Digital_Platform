@@ -46,7 +46,7 @@ export const AppModules = ({ stateCode, userType, modules, appTenants }) => {
           <ChangePassword />
         </Route>
         <Route>
-          <AppHome userType={userType} modules={modules} appTenants={appTenants} />
+          <AppHome userType={userType} modules={modules}/>
         </Route>
         {/* <Route path={`${path}/user-profile`}> <UserProfile /></Route> */}
       </Switch>

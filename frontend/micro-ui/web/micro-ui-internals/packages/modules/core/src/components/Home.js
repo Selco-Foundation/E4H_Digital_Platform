@@ -127,27 +127,23 @@ const CitizenHome = ({ modules, getCitizenMenu, fetchedCitizen, isLoading }) => 
   );
 };
 
-const getTenants = (codes, tenants) => {
-  return tenants.filter((tenant) => codes?.map?.((item) => item.code).includes(tenant.code));
-};
-
-const EmployeeHome = ({ modules, appTenants }) => {
+const EmployeeHome = ({ modules }) => {
   console.log("modulesmodules",modules)
   return (
     <div className="employee-app-container">
       <div className="ground-container moduleCardWrapper gridModuleWrapper">
-        {modules.map(({ code, tenants }, index) => {
+        {modules.map(({ code }, index) => {
           const Card = Digit.ComponentRegistryService.getComponent(`${code}Card`) || (() => <React.Fragment />);
-          return <Card key={index}  tenants={getTenants(tenants, appTenants)} />;
+          return <Card key={index}/>;
         })}
       </div>
     </div>
   );
 };
 
-export const AppHome = ({ userType, modules, getCitizenMenu, fetchedCitizen, isLoading, appTenants }) => {
+export const AppHome = ({ userType, modules, getCitizenMenu, fetchedCitizen, isLoading }) => {
   if (userType === "citizen") {
     return <CitizenHome modules={modules} getCitizenMenu={getCitizenMenu} fetchedCitizen={fetchedCitizen} isLoading={isLoading} />;
   }
-  return <EmployeeHome modules={modules} appTenants={appTenants} />;
+  return <EmployeeHome modules={modules} />;
 };
