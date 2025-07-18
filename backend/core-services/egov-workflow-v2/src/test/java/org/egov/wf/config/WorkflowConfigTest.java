@@ -21,7 +21,7 @@ class WorkflowConfigTest {
         assertTrue(workflowConfig.getAssignedOnly());
         assertEquals("https://config.us-east-2.amazonaws.com", workflowConfig.getUserSearchEndpoint());
         assertEquals("localhost", workflowConfig.getUserHost());
-        assertEquals("2020-03-01", workflowConfig.getUpdateBusinessServiceTopic());
+        assertEquals("Update ProcessInstance Topic", workflowConfig.getUpdateBusinessServiceTopic());
         assertEquals("UTC", workflowConfig.getTimeZone());
         assertEquals("MD", workflowConfig.getStateLevelTenantId());
         assertEquals("Save Transition Topic", workflowConfig.getSaveTransitionTopic());
@@ -45,7 +45,7 @@ class WorkflowConfigTest {
         assertTrue(workflowConfig.getAssignedOnly());
         assertEquals("https://config.us-east-2.amazonaws.com", workflowConfig.getUserSearchEndpoint());
         assertEquals("localhost", workflowConfig.getUserHost());
-        assertEquals("2020-03-01", workflowConfig.getUpdateBusinessServiceTopic());
+        assertEquals("Update ProcessInstance Topic", workflowConfig.getUpdateBusinessServiceTopic());
         assertEquals("UTC", workflowConfig.getTimeZone());
         assertEquals("MD", workflowConfig.getStateLevelTenantId());
         assertEquals("Save Transition Topic", workflowConfig.getSaveTransitionTopic());
