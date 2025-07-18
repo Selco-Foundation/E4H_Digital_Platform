@@ -4,11 +4,18 @@ package org.egov.im.service;
 import org.egov.common.contract.request.RequestInfo;
 
 import org.egov.im.config.IMConfiguration;
+import org.egov.im.producer.Producer;
+import org.egov.im.repository.ServiceRequestRepository;
+import org.egov.im.util.MDMSUtils;
 import org.egov.im.util.UserUtils;
 import org.egov.im.web.models.*;
 import org.egov.im.web.models.user.CreateUserRequest;
 import org.egov.im.web.models.user.UserDetailResponse;
 import org.egov.im.web.models.user.UserSearchRequest;
+import org.egov.mdms.model.MasterDetail;
+import org.egov.mdms.model.MdmsCriteria;
+import org.egov.mdms.model.MdmsCriteriaReq;
+import org.egov.mdms.model.ModuleDetail;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.CollectionUtils;
@@ -30,10 +37,19 @@ public class UserService {
 
     private IMConfiguration config;
 
+    private ServiceRequestRepository repository;
+
+    private MDMSUtils mdmsUtils;
+
+    private Producer producer;
+
     @Autowired
-    public UserService(UserUtils userUtils,IMConfiguration config) {
+    public UserService(UserUtils userUtils, IMConfiguration config, ServiceRequestRepository repository, MDMSUtils mdmsUtils, Producer producer) {
         this.userUtils = userUtils;
         this.config = config;
+        this.repository = repository;
+        this.mdmsUtils = mdmsUtils;
+        this.producer = producer;
     }
 
     /**
@@ -244,10 +260,98 @@ public class UserService {
 
 
 
+    public void loginReport(UserRequest userRequest) {
+        try {
+            User userInfo = userRequest.getUser();
+            if (userInfo.getRoles() == null || userInfo.getRoles().isEmpty()) {
+                log.info("No roles found for user");
+                return;
+            }
+            String roleCode = userInfo.getRoles().get(0).getCode();
 
+            // Only proceed for COMPLAINANT or COMPLAINT RESOLVER
+            if ("COMPLAINANT".equalsIgnoreCase(roleCode) || "COMPLAINT_RESOLVER".equalsIgnoreCase(roleCode)) {
 
+                UserLoginReport userLoginReport = new UserLoginReport();
+                userLoginReport.setUserName(userInfo.getUserName());
+                userLoginReport.setUserRole(roleCode);
+                userLoginReport.setCurrentOwnerName(userInfo.getName());
+                userLoginReport.setLastLoginDateTime(java.time.LocalDateTime.now().toString());
 
+                if ("COMPLAINANT".equalsIgnoreCase(roleCode)) {
+                    String tenantId = userInfo.getTenantId();
+                    String stateLevelTenantId = tenantId.split("\\.")[0];
 
+                    MasterDetail masterDetail = MasterDetail.builder().name("tenants").build();
+                    List<MasterDetail> masterDetails = Collections.singletonList(masterDetail);
 
+                    ModuleDetail moduleDetail = ModuleDetail.builder()
+                            .moduleName("tenant")
+                            .masterDetails(masterDetails)
+                            .build();
+                    List<ModuleDetail> moduleDetails = Collections.singletonList(moduleDetail);
 
+                    MdmsCriteria mdmsCriteria = MdmsCriteria.builder()
+                            .tenantId(stateLevelTenantId)
+                            .moduleDetails(moduleDetails)
+                            .build();
+
+                    MdmsCriteriaReq mdmsCriteriaReq = MdmsCriteriaReq.builder()
+                            .requestInfo(userRequest.getRequestInfo())
+                            .mdmsCriteria(mdmsCriteria)
+                            .build();
+
+                    Object result = repository.fetchResult(mdmsUtils.getMdmsSearchUrl(), mdmsCriteriaReq);
+                    setBlockAndDistrictFromMdms(result, tenantId, userLoginReport);
+
+                } else {
+                    userLoginReport.setHealthFacilityName("");
+                    userLoginReport.setBlock("");
+                    userLoginReport.setDistrict("");
+                    userLoginReport.setState("");
+                }
+                producer.push(userInfo.getTenantId(), config.getSaveTopicIndexer(), userLoginReport);
+            }
+        } catch (Exception e) {
+            log.error("Error while processing login report for user", e);
+            throw new CustomException("LOGIN_REPORT_ERROR", "Unable to process login report: " + e.getMessage());
+        }
+    }
+
+    private void setBlockAndDistrictFromMdms(Object mdmsResult, String tenantId, UserLoginReport userLoginReport) {
+        if (mdmsResult instanceof Map) {
+            Map<String, Object> resultMap = (Map<String, Object>) mdmsResult;
+            Map<String, Object> mdmsRes = (Map<String, Object>) resultMap.get("MdmsRes");
+            if (mdmsRes != null) {
+                Map<String, Object> tenantMap = (Map<String, Object>) mdmsRes.get("tenant");
+                if (tenantMap != null) {
+                    List<Map<String, Object>> tenants = (List<Map<String, Object>>) tenantMap.get("tenants");
+                    if (tenants != null) {
+                        for (Map<String, Object> tenant : tenants) {
+                            String code = (String) tenant.get("code");
+                            if (tenantId.equals(code)) {
+                                Map<String, Object> city = (Map<String, Object>) tenant.get("city");
+                                if (city != null) {
+                                    String block = (String) city.get("blockCode");
+                                    if (block != null && block.contains(".")) {
+                                        block = block.substring(block.indexOf('.') + 1);
+                                    }
+                                    String district = (String) city.get("districtName");
+
+                                    userLoginReport.setBlock(block);
+                                    userLoginReport.setDistrict(district);
+                                }
+                                String healthCenter = (String) tenant.get("name");
+                                String state = (String) tenant.get("address");
+
+                                userLoginReport.setHealthFacilityName(healthCenter);
+                                userLoginReport.setState(state);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 }

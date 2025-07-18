@@ -89,6 +89,15 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
     try {
       const { UserRequest: info, ...tokens } = await Digit.UserService.authenticate(requestData);
       Digit.SessionStorage.set("Employee.tenantId", info?.tenantId);
+
+      try {
+        await Digit.UserService.userLoginReport({
+          User: info
+        });
+      } catch (err) {
+        console.error("Login report failed", err);
+      }
+
       setUser({ info, ...tokens });
     } catch (err) {
       setShowToast(err?.response?.data?.error_description || "Invalid login credentials!");
