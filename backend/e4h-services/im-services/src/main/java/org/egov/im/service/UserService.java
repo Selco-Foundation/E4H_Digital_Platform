@@ -264,7 +264,7 @@ public class UserService {
         try {
             User userInfo = userRequest.getUser();
             if (userInfo.getRoles() == null || userInfo.getRoles().isEmpty()) {
-                log.info("No roles found for user: {}", userInfo.getUserName());
+                log.info("No roles found for user");
                 return;
             }
             String roleCode = userInfo.getRoles().get(0).getCode();
@@ -313,8 +313,7 @@ public class UserService {
                 producer.push(userInfo.getTenantId(), config.getSaveTopicIndexer(), userLoginReport);
             }
         } catch (Exception e) {
-            log.error("Error while processing login report for user: {}",
-                    userRequest.getUser() != null ? userRequest.getUser().getUserName() : "", e);
+            log.error("Error while processing login report for user", e);
             throw new CustomException("LOGIN_REPORT_ERROR", "Unable to process login report: " + e.getMessage());
         }
     }
