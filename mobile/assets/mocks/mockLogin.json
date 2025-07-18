@@ -1,8 +1,8 @@
 {
-  "access_token": "bd0731bb-f78a-4918-a9f3-874d52cf228b",
+  "access_token": "58e1439c-a0d7-4019-9f12-7b6a55e72f64",
   "token_type": "bearer",
-  "refresh_token": "5b6a4293-8e31-44ef-bf9d-72861c4c1a99",
-  "expires_in": 585734,
+  "refresh_token": "cc7f7568-63cf-428c-b5df-f02c1d860da8",
+  "expires_in": 604799,
   "scope": "read write",
   "ResponseInfo": {
     "api_id": "",
@@ -13,43 +13,33 @@
     "status": "Access Token generated successfully"
   },
   "UserRequest": {
-    "id": 95,
-    "uuid": "cd831d19-3799-4e73-a52a-237930f1e450",
+    "id": 180,
+    "uuid": "7d6d6816-b205-4e71-81ed-8da2c250edd9",
     "userName": "7346864311",
-    "name": "Akhila",
-    "mobileNumber": "9901224633",
-    "emailId": "",
-    "locale": "en_IN",
+    "name": "field supervisor",
+    "mobileNumber": "1111111111",
+    "emailId": null,
+    "locale": null,
     "type": "EMPLOYEE",
     "roles": [
       {
-        "name": "Complainant",
-        "code": "COMPLAINANT",
-        "tenantId": "pg"
-      },
-      {
         "name": "Employee",
         "code": "EMPLOYEE",
-        "tenantId": "pg"
+        "tenantId": "in"
       },
       {
-        "name": "Super User",
-        "code": "SUPERUSER",
-        "tenantId": "pg"
-      },
-      {
-        "name": "Complaint Assessor",
-        "code": "COMPLAINT_ASSESSOR",
-        "tenantId": "pg"
-      },
-      {
-        "name": "Installation report viewer",
+        "name": "Installation Report Part A editor",
         "code": "INSTALLATION_REPORT_PART_A_EDITOR",
+        "tenantId": "in"
+      },
+      {
+        "name": "Installation Report Part B editor",
+        "code": "INSTALLATION_REPORT_PART_B_EDITOR",
         "tenantId": "in"
       }
     ],
     "active": true,
-    "tenantId": "pg",
-    "permanentCity": "All"
+    "tenantId": "in",
+    "permanentCity": null
   }
 }

@@ -31,25 +31,46 @@ class SelectHealthFacilityPage extends StatefulWidget {
 
 class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
   String? _sortDirection;
+  String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final userType = context.read<UserTypeBloc>().state;
+      _fetchProject();
+    });
+  }
+
+  void _fetchProject() {
+    final userType = context.read<UserTypeBloc>().state;
+    final statuses = [
+      userType.maybeWhen(
+        supervisor: () =>
+            WORKFLOW_STATUS_FIELD_SUPERVISOR.ASSIGNED_TO_FIELD_SUPERVISOR.name,
+        orElse: () => WORKFLOW_STATUS_FIELD_STAFF.ASSIGNED_TO_FIELD_STAFF.name,
+      ),
+    ];
+
+    // Choose search vs sort vs basic fetch && Dispatch fetch + loading state
+    if (_searchQuery.isNotEmpty) {
       context.read<ProjectBloc>().add(
-            ProjectEvent.fetchProjectsByWorkflow(
-              workflowStatuses: [
-                userType.maybeWhen(
-                  supervisor: () => WORKFLOW_STATUS_FIELD_SUPERVISOR
-                      .ASSIGNED_TO_FIELD_SUPERVISOR.name,
-                  orElse: () =>
-                      WORKFLOW_STATUS_FIELD_STAFF.ASSIGNED_TO_FIELD_STAFF.name,
-                ),
-              ],
+            ProjectEvent.fetchProjectsBySearch(
+              query: _searchQuery,
+              workflowStatuses: statuses,
             ),
           );
-    });
+    } else if (_sortDirection != null) {
+      context.read<ProjectBloc>().add(
+            ProjectEvent.fetchProjectsSorted(
+              workflowStatuses: statuses,
+              sortDirection: _sortDirection!,
+            ),
+          );
+    } else {
+      context.read<ProjectBloc>().add(
+            ProjectEvent.fetchProjectsByWorkflow(workflowStatuses: statuses),
+          );
+    }
   }
 
   void _handleProjectTap(ProjectWorkflow project) {
@@ -61,6 +82,107 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
         .read<SelectedProjectBloc>()
         .add(SelectedProjectEvent.select(project));
     context.router.push(const AssetCountRoute());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final textTheme = theme.digitTextTheme(context);
+
+    return Scaffold(
+      body: ScrollableContent(
+        backgroundColor: theme.colorTheme.generic.background,
+        children: [
+          const BackNavigationHelpHeaderWidget(
+            showBackNavigation: true,
+            showHelp: false,
+          ),
+          Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: spacer4, vertical: spacer2),
+                child: _buildSearchAndSortControls(textTheme, theme),
+              ),
+              const SizedBox(height: spacer2),
+              BlocBuilder<ProjectBloc, ProjectState>(
+                builder: (context, state) {
+                  return state.maybeWhen(
+                    initial: () => _loadingIndicator(),
+                    loading: () => _loadingIndicator(),
+                    fetched: (projectList) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildProjectList(projectList),
+                        ],
+                      );
+                    },
+                    searchLoading: () => _loadingIndicator(),
+                    searchResults: (searchList) =>
+                        _buildProjectList(searchList),
+                    orElse: () => const SizedBox.shrink(),
+                  );
+                },
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _loadingIndicator() => const Center(
+        child: Center(
+          child: Padding(
+            padding: EdgeInsets.only(top: spacer8),
+            child: CircularProgressIndicator(),
+          ),
+        ),
+      );
+
+  Widget _buildSearchAndSortControls(
+      DigitTextTheme textTheme, ThemeData theme) {
+    return DigitCard(
+      children: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Select Health Facility',
+              style: textTheme.bodyL
+                  .copyWith(color: theme.colorTheme.text.primary),
+            ),
+            const SizedBox(height: spacer1),
+            Row(
+              children: [
+                Expanded(
+                  child: DigitSearchFormInput(
+                    suffixIcon: Icons.search,
+                    onChange: (text) {
+                      setState(() {
+                        _searchQuery = text;
+                        _sortDirection = null; // clear sort
+                      });
+                      _fetchProject();
+                    },
+                  ),
+                ),
+                const SizedBox(width: spacer2),
+                GestureDetector(
+                  onTap: () => _showSortPopup(textTheme, theme),
+                  child: Icon(
+                    Icons.import_export,
+                    color: theme.colorTheme.primary.primary1,
+                    size: spacer8,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ],
+    );
   }
 
   /// Extracted helper to render a vertical list of cards
@@ -92,114 +214,6 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final textTheme = theme.digitTextTheme(context);
-
-    return Scaffold(
-      body: ScrollableContent(
-        backgroundColor: theme.colorTheme.generic.background,
-        children: [
-          const BackNavigationHelpHeaderWidget(
-            showBackNavigation: true,
-            showHelp: false,
-          ),
-          Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: spacer4, vertical: spacer2),
-                child: _buildSearchAndSortControls(textTheme, theme),
-              ),
-              const SizedBox(height: spacer2),
-              BlocBuilder<ProjectBloc, ProjectState>(
-                builder: (context, state) {
-                  return state.maybeWhen(
-                    initial: () =>
-                        const Center(child: CircularProgressIndicator()),
-                    loading: () =>
-                        const Center(child: CircularProgressIndicator()),
-                    fetched: (projectList) {
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildProjectList(projectList),
-                        ],
-                      );
-                    },
-                    searchLoading: () =>
-                        const Center(child: CircularProgressIndicator()),
-                    searchResults: (searchList) {
-                      return _buildProjectList(searchList);
-                    },
-                    orElse: () => const SizedBox.shrink(),
-                  );
-                },
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Extracted header with search box + sort button
-  Widget _buildSearchAndSortControls(
-      DigitTextTheme textTheme, ThemeData theme) {
-    return DigitCard(
-      children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Select Health Facility',
-              style: textTheme.bodyL
-                  .copyWith(color: theme.colorTheme.text.primary),
-            ),
-            const SizedBox(height: spacer1),
-            Row(
-              children: [
-                Expanded(
-                  child: DigitSearchFormInput(
-                    suffixIcon: Icons.search,
-                    onChange: (text) {
-                      final userType = context.read<UserTypeBloc>().state;
-                      final statuses = [
-                        userType.maybeWhen(
-                          supervisor: () => WORKFLOW_STATUS_FIELD_SUPERVISOR
-                              .ASSIGNED_TO_FIELD_SUPERVISOR.name,
-                          orElse: () => WORKFLOW_STATUS_FIELD_STAFF
-                              .ASSIGNED_TO_FIELD_STAFF.name,
-                        ),
-                      ];
-                      context.read<ProjectBloc>().add(
-                            ProjectEvent.fetchProjectsBySearch(
-                              query: text,
-                              workflowStatuses: statuses,
-                            ),
-                          );
-                    },
-                  ),
-                ),
-                const SizedBox(width: spacer2),
-                GestureDetector(
-                  onTap: () => _showSortPopup(textTheme, theme),
-                  child: Icon(
-                    Icons.import_export,
-                    color: theme.colorTheme.primary.primary1,
-                    size: spacer8,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  /// Extracted sort popup logic
   void _showSortPopup(DigitTextTheme textTheme, ThemeData theme) {
     showCustomPopup(
       context: context,
