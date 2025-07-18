@@ -20,7 +20,7 @@ from app.processor.factory.vendor_data_processor_factory import VendorDataProces
 from app.schemas.request_info import RequestInfo
 from app.utils.convertor import request_info_from_json, create_vendor_request, create_facility_payload, \
     get_project_creation_payload, get_user_creation_payload, get_staff_creation_payload, create_project_payload, \
-    get_installation_spoc_creation_payload, create_update_payload
+    get_installation_spoc_creation_payload, create_update_payload, get_incident_request_info
 from app.utils.facility_service_client import FacilityServiceClient
 from app.utils.im_service_client import IMServiceClient
 from app.utils.mdms_client import MDMSClient
@@ -1033,11 +1033,13 @@ async def update_incidents_from_excel(
                 df.at[index, 'error'] = 'Missing Tenant ID'
                 continue
 
+            incident_request_info = get_incident_request_info()
 
             try:
                 search_response = incident_client.search_incident(
                     incident_id=row['Ticket No.'],
-                    tenant_id=row['Tenant ID']
+                    tenant_id=row['Tenant ID'],
+                    request_info=incident_request_info
                 )
 
                 try:
