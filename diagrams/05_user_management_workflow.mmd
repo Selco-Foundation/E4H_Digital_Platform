@@ -1,0 +1,296 @@
+sequenceDiagram
+    participant PM as Project Manager/SPOC
+    participant UI as Web Interface
+    participant API as API Gateway
+    participant US as User Service
+    participant NS as Notification Service
+    participant AUTH as Auth Service
+    participant AS as Audit Service
+    participant DB as Database
+    participant EMAIL as Email Service
+    participant NEW_USER as New User
+    
+    Note over PM,NEW_USER: User Creation and Team Management Workflow
+    
+    PM->>UI: Navigate to Team Management
+    UI->>API: GET /api/v1/users/my-team
+    API->>US: Get team members for user
+    US->>DB: Query team associations
+    DB-->>US: Return team member list
+    US-->>API: Return team data
+    API-->>UI: Display team dashboard
+    UI-->>PM: Show current team members and roles
+    
+    PM->>UI: Click "Add Team Member"
+    UI->>API: GET /api/v1/organizations
+    API->>US: Get available organizations
+    US->>DB: Query organizations user can access
+    DB-->>US: Return organization list
+    US-->>API: Return organizations
+    API-->>UI: Display organization options
+    UI-->>PM: Show organization selection
+    
+    alt Single User Creation
+        PM->>UI: Fill user creation form
+        Note over PM,UI: Email, Name, Phone, Organization, Roles
+        
+        PM->>UI: Submit user creation form
+        UI->>API: POST /api/v1/users
+        API->>US: Create new user
+        
+        US->>DB: Check if email already exists
+        alt Email Already Exists
+            DB-->>US: Return duplicate error
+            US-->>API: Return validation error
+            API-->>UI: Show error message
+            UI-->>PM: "User with this email already exists"
+        else Email Available
+            US->>DB: Begin transaction
+            US->>DB: Create user record
+            DB-->>US: Return user ID
+            
+            US->>AUTH: Generate email verification token
+            AUTH-->>US: Return verification token
+            
+            US->>DB: Store verification token
+            DB-->>US: Token stored
+            
+            US->>DB: Create team association
+            DB-->>US: Team association created
+            
+            US->>DB: Commit transaction
+            DB-->>US: User created successfully
+            
+            US->>AS: Log user creation audit
+            AS->>DB: Store audit record
+            DB-->>AS: Audit logged
+            
+            US->>NS: Send verification email
+            NS->>EMAIL: Queue verification email
+            EMAIL->>NEW_USER: Send verification email
+            
+            US-->>API: User created successfully
+            API-->>UI: Return success response
+            UI-->>PM: Show "User created, verification email sent"
+        end
+        
+    else Bulk User Creation via Excel
+        PM->>UI: Click "Bulk Create Users"
+        UI->>API: GET /api/v1/users/bulk-template
+        API->>US: Generate bulk creation template
+        US-->>API: Return Excel template
+        API-->>UI: Download template
+        UI-->>PM: Template downloaded
+        
+        PM->>PM: Fill user data in Excel template
+        PM->>UI: Upload completed user file
+        
+        UI->>API: POST /api/v1/users/bulk-create (multipart)
+        API->>US: Process bulk user creation
+        US->>US: Validate Excel format
+        
+        alt Invalid Excel Format
+            US-->>API: Return format error
+            API-->>UI: Show format error
+            UI-->>PM: "Invalid file format, use template"
+        else Valid Format
+            US->>US: Parse user data
+            
+            loop For each user row
+                US->>DB: Validate user data
+                US->>US: Check email uniqueness
+                US->>US: Validate phone number format
+                US->>US: Validate role assignments
+                
+                alt Validation Error
+                    US->>US: Add to error list
+                else Valid User
+                    US->>US: Add to valid users list
+                end
+            end
+            
+            alt Validation Errors Found
+                US->>US: Generate error report
+                US-->>API: Return bulk creation errors
+                API-->>UI: Show error summary
+                UI-->>PM: "Some users failed validation, download error report"
+                
+            else All Users Valid
+                US->>DB: Begin transaction
+                
+                loop For each valid user
+                    US->>DB: Create user record
+                    DB-->>US: Return user ID
+                    
+                    US->>AUTH: Generate verification token
+                    AUTH-->>US: Return token
+                    US->>DB: Store verification token
+                    
+                    US->>DB: Create team association
+                    DB-->>US: Association created
+                    
+                    US->>NS: Queue verification email
+                end
+                
+                US->>DB: Commit transaction
+                DB-->>US: All users created
+                
+                US->>AS: Log bulk creation audit
+                AS->>DB: Store audit record
+                DB-->>AS: Audit logged
+                
+                NS->>EMAIL: Send all verification emails
+                loop For each new user
+                    EMAIL->>NEW_USER: Send verification email
+                end
+                
+                US-->>API: Bulk creation successful
+                API-->>UI: Return success summary
+                UI-->>PM: Show "X users created successfully"
+            end
+        end
+    end
+    
+    Note over PM,NEW_USER: User Verification Process
+    
+    NEW_USER->>EMAIL: Receive verification email
+    NEW_USER->>NEW_USER: Click verification link
+    
+    NEW_USER->>API: GET /api/v1/auth/verify-email/{token}
+    API->>AUTH: Verify email token
+    AUTH->>DB: Validate token and check expiry
+    
+    alt Token Invalid or Expired
+        DB-->>AUTH: Return token error
+        AUTH-->>API: Return verification error
+        API-->>NEW_USER: Show "Invalid or expired verification link"
+        
+    else Token Valid
+        DB-->>AUTH: Token valid
+        AUTH->>DB: Begin transaction
+        AUTH->>DB: Update user status to ACTIVE
+        AUTH->>DB: Mark email as verified
+        AUTH->>DB: Remove verification token
+        DB-->>AUTH: User activated
+        AUTH->>DB: Commit transaction
+        
+        AUTH->>AS: Log email verification audit
+        AS->>DB: Store audit record
+        DB-->>AS: Audit logged
+        
+        AUTH-->>API: Email verified successfully
+        API-->>NEW_USER: Show "Email verified, set password"
+        
+        NEW_USER->>NEW_USER: Create password
+        NEW_USER->>API: POST /api/v1/auth/set-password
+        API->>AUTH: Set user password
+        AUTH->>AUTH: Hash password
+        AUTH->>DB: Store password hash
+        DB-->>AUTH: Password set
+        
+        AUTH-->>API: Password set successfully
+        API-->>NEW_USER: Show "Account setup complete"
+    end
+    
+    Note over PM,NEW_USER: Team Member Management
+    
+    PM->>UI: Manage existing team member
+    UI->>API: GET /api/v1/users/{id}
+    API->>US: Get user details
+    US->>DB: Query user information
+    DB-->>US: Return user data
+    US-->>API: Return user details
+    API-->>UI: Display user profile
+    UI-->>PM: Show user details and options
+    
+    alt Update User Roles
+        PM->>UI: Modify user roles
+        UI->>API: PUT /api/v1/users/{id}/roles
+        API->>US: Update user roles
+        
+        US->>DB: Begin transaction
+        US->>DB: Update user roles
+        DB-->>US: Roles updated
+        US->>DB: Commit transaction
+        
+        US->>AS: Log role change audit
+        AS->>DB: Store audit record
+        DB-->>AS: Audit logged
+        
+        US->>NS: Send role change notification
+        NS->>EMAIL: Send notification to user
+        EMAIL->>NEW_USER: Notify of role changes
+        
+        US-->>API: Roles updated successfully
+        API-->>UI: Return success response
+        UI-->>PM: Show "User roles updated"
+        
+    else Deactivate User
+        PM->>UI: Click "Deactivate User"
+        UI->>API: PUT /api/v1/users/{id}/status
+        Note over API: Body: { "status": "INACTIVE" }
+        API->>US: Deactivate user
+        
+        US->>DB: Check for active assignments
+        alt User Has Active Assignments
+            DB-->>US: Return assignment conflict
+            US-->>API: Return deactivation error
+            API-->>UI: Show error message
+            UI-->>PM: "Cannot deactivate: user has active assignments"
+            
+        else No Active Assignments
+            US->>DB: Begin transaction
+            US->>DB: Update user status to INACTIVE
+            US->>DB: Revoke active sessions
+            DB-->>US: User deactivated
+            US->>DB: Commit transaction
+            
+            US->>AS: Log user deactivation audit
+            AS->>DB: Store audit record
+            DB-->>AS: Audit logged
+            
+            US->>NS: Send deactivation notification
+            NS->>EMAIL: Notify user of deactivation
+            EMAIL->>NEW_USER: Account deactivated notification
+            
+            US-->>API: User deactivated successfully
+            API-->>UI: Return success response
+            UI-->>PM: Show "User deactivated"
+        end
+        
+    else Remove from Team
+        PM->>UI: Click "Remove from Team"
+        UI->>API: DELETE /api/v1/teams/members/{userId}
+        API->>US: Remove team association
+        
+        US->>DB: Check for active assignments in team
+        alt User Has Team Assignments
+            DB-->>US: Return assignment conflict
+            US-->>API: Return removal error
+            API-->>UI: Show error message
+            UI-->>PM: "Cannot remove: user has active team assignments"
+            
+        else No Team Assignments
+            US->>DB: Remove team association
+            DB-->>US: Association removed
+            
+            US->>AS: Log team removal audit
+            AS->>DB: Store audit record
+            DB-->>AS: Audit logged
+            
+            US-->>API: Removed from team successfully
+            API-->>UI: Return success response
+            UI-->>PM: Show "User removed from team"
+        end
+    end
+    
+    PM->>UI: View team activity and statistics
+    UI->>API: GET /api/v1/teams/my-team/statistics
+    API->>US: Get team performance data
+    US->>DB: Query team activity statistics
+    DB-->>US: Return team statistics
+    US-->>API: Return statistics
+    API-->>UI: Display team dashboard
+    UI-->>PM: Show team performance metrics
+    
+    Note over PM,NEW_USER: Team management completed with full audit trail 

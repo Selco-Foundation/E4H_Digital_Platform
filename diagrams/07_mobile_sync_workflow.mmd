@@ -1,0 +1,300 @@
+sequenceDiagram
+    participant FS as Field Staff
+    participant MOBILE as Mobile App
+    participant LOCAL_DB as Local Storage
+    participant API as API Gateway
+    participant SYNC as Sync Service
+    participant WS as Workflow Service
+    participant FS_SVC as File Service
+    participant NS as Notification Service
+    participant DB as Database
+    participant CACHE as Redis Cache
+    
+    Note over FS,CACHE: Mobile App Synchronization Workflow
+    
+    FS->>MOBILE: Open mobile app
+    MOBILE->>LOCAL_DB: Check last sync timestamp
+    LOCAL_DB-->>MOBILE: Return last sync: 2024-01-01 10:30:00
+    
+    MOBILE->>MOBILE: Check network connectivity
+    
+    alt Network Available
+        MOBILE->>API: POST /api/v1/auth/login
+        API-->>MOBILE: Return JWT token
+        MOBILE->>LOCAL_DB: Store authentication token
+        
+        MOBILE->>API: GET /api/v1/mobile/sync/facilities?since=2024-01-01T10:30:00Z
+        API->>SYNC: Process facility sync request
+        SYNC->>WS: Get facilities assigned to user since timestamp
+        
+        WS->>DB: Query facility assignments and updates
+        Note over WS,DB: Query includes: new assignments, status changes, facility updates
+        DB-->>WS: Return facility changes
+        
+        WS->>CACHE: Check for cached facility data
+        alt Cache Hit
+            CACHE-->>WS: Return cached data
+        else Cache Miss
+            WS->>DB: Fetch complete facility details
+            DB-->>WS: Return facility data
+            WS->>CACHE: Update cache
+        end
+        
+        WS-->>SYNC: Return facility sync data
+        SYNC-->>API: Return sync response
+        API-->>MOBILE: Download facility updates
+        
+        MOBILE->>LOCAL_DB: Begin local transaction
+        
+        loop For each facility update
+            alt New Facility Assignment
+                MOBILE->>LOCAL_DB: Insert new facility record
+                MOBILE->>LOCAL_DB: Download activity form templates
+                LOCAL_DB-->>MOBILE: Facility and templates stored
+                
+            else Facility Status Change
+                MOBILE->>LOCAL_DB: Update facility status
+                LOCAL_DB-->>MOBILE: Status updated
+                
+                alt Status Changed to ACTIVE
+                    MOBILE->>MOBILE: Show notification "New facility available"
+                else Status Changed to COMPLETED
+                    MOBILE->>LOCAL_DB: Mark local data as read-only
+                    LOCAL_DB-->>MOBILE: Data marked read-only
+                end
+                
+            else Facility Data Update
+                MOBILE->>LOCAL_DB: Update facility information
+                LOCAL_DB-->>MOBILE: Information updated
+            end
+        end
+        
+        MOBILE->>LOCAL_DB: Commit local transaction
+        MOBILE->>LOCAL_DB: Update last sync timestamp
+        LOCAL_DB-->>MOBILE: Sync timestamp updated
+        
+        Note over MOBILE,CACHE: Upload Pending Local Changes
+        
+        MOBILE->>LOCAL_DB: Get pending uploads (reports, photos)
+        LOCAL_DB-->>MOBILE: Return unsynchronized data
+        
+        loop For each pending report
+            MOBILE->>MOBILE: Prepare upload data (report + attachments)
+            
+            MOBILE->>API: POST /api/v1/activity-reports (multipart)
+            API->>WS: Process report submission
+            
+            WS->>FS_SVC: Process file uploads
+            FS_SVC->>FS_SVC: Validate and store files
+            FS_SVC-->>WS: Return file URLs
+            
+            WS->>DB: Begin transaction
+            WS->>DB: Create activity_reports record
+            WS->>DB: Update facility_activities status
+            DB-->>WS: Report saved
+            WS->>DB: Commit transaction
+            
+            WS-->>API: Report uploaded successfully
+            API-->>MOBILE: Return success response
+            
+            MOBILE->>LOCAL_DB: Mark report as synchronized
+            MOBILE->>LOCAL_DB: Delete local files (keep metadata)
+            LOCAL_DB-->>MOBILE: Local cleanup completed
+        end
+        
+        MOBILE->>LOCAL_DB: Get pending progress updates
+        LOCAL_DB-->>MOBILE: Return auto-saved progress
+        
+        loop For each progress update
+            MOBILE->>API: POST /api/v1/facility-activities/{id}/progress
+            API->>WS: Update progress
+            WS->>DB: Store progress snapshot
+            DB-->>WS: Progress saved
+            WS-->>API: Progress updated
+            API-->>MOBILE: Progress synchronized
+            
+            MOBILE->>LOCAL_DB: Mark progress as synchronized
+            LOCAL_DB-->>MOBILE: Progress update cleared
+        end
+        
+        MOBILE-->>FS: Show "Sync completed successfully"
+        
+    else Network Unavailable (Offline Mode)
+        MOBILE-->>FS: Show "Working offline"
+        MOBILE->>LOCAL_DB: Enable offline mode
+        LOCAL_DB-->>MOBILE: Offline mode enabled
+        
+        Note over MOBILE,LOCAL_DB: Continue working with cached data
+    end
+    
+    Note over FS,CACHE: Offline Data Collection
+    
+    FS->>MOBILE: Select facility to work on
+    MOBILE->>LOCAL_DB: Load facility and form template
+    LOCAL_DB-->>MOBILE: Return facility data and form
+    MOBILE-->>FS: Display activity form
+    
+    loop Data Collection (Offline)
+        FS->>MOBILE: Fill form fields
+        FS->>MOBILE: Take photos/videos
+        MOBILE->>LOCAL_DB: Auto-save progress locally
+        LOCAL_DB-->>MOBILE: Progress saved
+        
+        alt Network Becomes Available
+            MOBILE->>API: POST /api/v1/facility-activities/{id}/auto-save
+            API->>WS: Save progress to server
+            WS->>DB: Store progress snapshot
+            DB-->>WS: Progress saved remotely
+            WS-->>API: Return save confirmation
+            API-->>MOBILE: Show "Progress backed up"
+            
+            MOBILE->>LOCAL_DB: Mark progress as synchronized
+            LOCAL_DB-->>MOBILE: Sync status updated
+        end
+    end
+    
+    FS->>MOBILE: Complete and submit report
+    MOBILE->>MOBILE: Validate form completion
+    
+    alt Form Validation Failed
+        MOBILE-->>FS: Show validation errors
+        FS->>MOBILE: Fix errors and retry
+        
+    else Form Valid
+        MOBILE->>LOCAL_DB: Store completed report with "PENDING_UPLOAD" status
+        LOCAL_DB-->>MOBILE: Report queued for upload
+        
+        alt Network Available
+            MOBILE->>MOBILE: Immediate upload attempt
+            MOBILE->>API: POST /api/v1/activity-reports (multipart)
+            
+            alt Upload Successful
+                API-->>MOBILE: Report uploaded successfully
+                MOBILE->>LOCAL_DB: Mark report as synchronized
+                MOBILE-->>FS: Show "Report submitted successfully"
+                
+            else Upload Failed
+                MOBILE->>LOCAL_DB: Keep report in pending queue
+                MOBILE-->>FS: Show "Report saved, will upload when online"
+            end
+            
+        else Network Unavailable
+            MOBILE-->>FS: Show "Report saved, will upload when online"
+        end
+    end
+    
+    Note over FS,CACHE: Background Sync Process
+    
+    MOBILE->>MOBILE: Start background sync service
+    Note over MOBILE: Runs every 5 minutes when online
+    
+    loop Background Sync Cycle
+        MOBILE->>MOBILE: Check network connectivity
+        
+        alt Network Available
+            MOBILE->>LOCAL_DB: Check for pending uploads
+            LOCAL_DB-->>MOBILE: Return pending items
+            
+            alt Has Pending Uploads
+                MOBILE->>MOBILE: Process uploads silently
+                
+                loop For each pending item
+                    MOBILE->>API: Upload pending data
+                    
+                    alt Upload Successful
+                        API-->>MOBILE: Success response
+                        MOBILE->>LOCAL_DB: Mark as synchronized
+                        MOBILE->>MOBILE: Show subtle success indicator
+                        
+                    else Upload Failed
+                        MOBILE->>LOCAL_DB: Increment retry count
+                        alt Max Retries Reached
+                            MOBILE->>MOBILE: Flag for manual attention
+                            MOBILE->>MOBILE: Show "Upload failed, manual sync needed"
+                        end
+                    end
+                end
+                
+            else No Pending Uploads
+                MOBILE->>API: Check for new assignments/updates
+                API->>SYNC: Quick sync check
+                SYNC->>DB: Check for updates since last sync
+                
+                alt Updates Available
+                    DB-->>SYNC: Return update summary
+                    SYNC-->>API: Return sync needed flag
+                    API-->>MOBILE: Show "Updates available"
+                    MOBILE->>MOBILE: Show sync notification to user
+                    
+                else No Updates
+                    SYNC-->>API: No updates
+                    API-->>MOBILE: No sync needed
+                end
+            end
+            
+        else Network Unavailable
+            Note over MOBILE: Continue offline, retry later
+        end
+        
+        MOBILE->>MOBILE: Wait 5 minutes for next cycle
+    end
+    
+    Note over FS,CACHE: Manual Full Sync
+    
+    FS->>MOBILE: Pull to refresh or click sync button
+    MOBILE-->>FS: Show "Syncing..."
+    
+    MOBILE->>API: POST /api/v1/mobile/sync/full
+    API->>SYNC: Full synchronization request
+    
+    SYNC->>WS: Get complete user context
+    WS->>DB: Query all user assignments and recent updates
+    DB-->>WS: Return comprehensive sync data
+    
+    SYNC->>FS_SVC: Get required form templates and assets
+    FS_SVC-->>SYNC: Return template versions
+    
+    SYNC-->>API: Return full sync package
+    API-->>MOBILE: Download complete sync data
+    
+    MOBILE->>LOCAL_DB: Begin full sync transaction
+    MOBILE->>LOCAL_DB: Clear outdated cached data
+    MOBILE->>LOCAL_DB: Update all facility assignments
+    MOBILE->>LOCAL_DB: Update form templates
+    MOBILE->>LOCAL_DB: Update user profile and permissions
+    LOCAL_DB-->>MOBILE: Full sync completed
+    
+    MOBILE->>LOCAL_DB: Commit sync transaction
+    MOBILE->>LOCAL_DB: Update last full sync timestamp
+    LOCAL_DB-->>MOBILE: Full sync finalized
+    
+    MOBILE-->>FS: Show "Sync completed"
+    
+    Note over FS,CACHE: Conflict Resolution
+    
+    alt Data Conflict Detected
+        MOBILE->>MOBILE: Detect server vs local data conflict
+        MOBILE-->>FS: Show "Data conflict detected"
+        
+        FS->>MOBILE: Choose resolution strategy
+        alt Keep Server Data
+            MOBILE->>LOCAL_DB: Replace local data with server data
+            LOCAL_DB-->>MOBILE: Local data updated
+            
+        else Keep Local Data
+            MOBILE->>API: Force upload local changes
+            API->>SYNC: Process conflict override
+            SYNC->>DB: Update server with local data (with conflict flag)
+            DB-->>SYNC: Conflict resolution recorded
+            SYNC-->>API: Conflict resolved
+            API-->>MOBILE: Local data preserved
+            
+        else Manual Merge
+            MOBILE-->>FS: Show merge interface
+            FS->>MOBILE: Manually resolve conflicts
+            MOBILE->>API: Upload merged data
+            API-->>MOBILE: Merged data saved
+        end
+    end
+    
+    Note over FS,CACHE: Sync completed with offline capability maintained 

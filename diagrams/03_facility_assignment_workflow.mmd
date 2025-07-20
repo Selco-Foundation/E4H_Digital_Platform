@@ -1,0 +1,210 @@
+sequenceDiagram
+    participant SPOC as Activity SPOC
+    participant UI as Web Interface
+    participant API as API Gateway
+    participant WS as Workflow Service
+    participant US as User Service
+    participant NS as Notification Service
+    participant AS as Audit Service
+    participant DB as Database
+    participant MOBILE as Mobile App
+    participant FS as Field Staff
+    
+    Note over SPOC,FS: Health Facility Assignment by Activity SPOC
+    
+    SPOC->>UI: Login and view assignment dashboard
+    UI->>API: GET /api/v1/activity-assignments?assigned-to-me=true&status=active
+    API->>WS: Fetch active assignments for SPOC
+    WS->>DB: Query assignments with facility counts
+    DB-->>WS: Return assignments with statistics
+    WS-->>API: Return assignment data
+    API-->>UI: Display assignment dashboard
+    UI-->>SPOC: Show assigned field plans and progress
+    
+    SPOC->>UI: Click on specific field plan assignment
+    UI->>API: GET /api/v1/field-plans/{id}/facilities?activity={activityId}&assigned-to-me=true
+    API->>WS: Get facilities for activity assignment
+    WS->>DB: Query facility activities for field plan and activity
+    DB-->>WS: Return facility list with assignment status
+    WS-->>API: Return facilities
+    API-->>UI: Display facility assignment interface
+    UI-->>SPOC: Show facilities with assignment status
+    
+    Note over SPOC,UI: SPOC sees unassigned facilities that need team assignment
+    
+    SPOC->>UI: Check team members availability
+    UI->>API: GET /api/v1/teams/my-team?activity={activityId}
+    API->>US: Get team members for activity
+    US->>DB: Query users in SPOC's team with required skills
+    DB-->>US: Return team member list
+    US-->>API: Return team data
+    API-->>UI: Display team members
+    UI-->>SPOC: Show available field staff
+    
+    alt No Team Members Available
+        SPOC->>UI: Click "Add Team Members"
+        UI->>API: GET /api/v1/users/search?role=FIELD_STAFF&organization={orgId}
+        API->>US: Search for field staff
+        US->>DB: Query available field staff
+        DB-->>US: Return potential team members
+        US-->>API: Return user list
+        API-->>UI: Display available staff
+        
+        SPOC->>UI: Select staff members to add to team
+        UI->>API: POST /api/v1/teams/add-members
+        API->>US: Add members to SPOC's team
+        US->>DB: Create team associations
+        DB-->>US: Team updated
+        
+        US->>NS: Send team invitation notifications
+        NS->>NS: Send emails to new team members
+        
+        US-->>API: Team members added
+        API-->>UI: Show success message
+        UI-->>SPOC: "Team members added successfully"
+    end
+    
+    SPOC->>UI: Assign facilities to field staff
+    Note over SPOC,UI: Can assign individual or bulk assign
+    
+    alt Individual Assignment
+        SPOC->>UI: Select facility and field staff member
+        UI->>API: POST /api/v1/facility-activities/{id}/assign-user
+        API->>WS: Assign facility to field staff
+        
+        WS->>DB: Check if facility can be assigned
+        alt Facility Already Assigned
+            DB-->>WS: Return assignment conflict
+            WS-->>API: Return error
+            API-->>UI: Show error message
+            UI-->>SPOC: "Facility already assigned to another user"
+        else Assignment Valid
+            WS->>DB: Update facility_activities record
+            WS->>DB: Set assigned_user and status
+            DB-->>WS: Assignment completed
+            
+            WS->>WS: Check activation conditions
+            Note over WS: Evaluate if facility should be activated
+            
+            alt Conditions Met for Activation
+                WS->>DB: Update status to ACTIVE
+                WS->>DB: Set activated_at timestamp
+                DB-->>WS: Status updated to ACTIVE
+                
+                WS->>NS: Send activation notification to field staff
+                NS->>MOBILE: Send push notification
+                MOBILE-->>FS: Show "New facility activated"
+                
+            else Conditions Not Met
+                Note over WS: Status remains SCHEDULED
+                WS->>NS: Send assignment notification (not activated yet)
+                NS->>MOBILE: Send assignment notification
+                MOBILE-->>FS: Show "Facility assigned, waiting for activation"
+            end
+            
+            WS-->>API: Assignment successful
+            API-->>UI: Return success response
+            UI-->>SPOC: Show assignment confirmation
+        end
+        
+    else Bulk Assignment via Excel
+        SPOC->>UI: Click "Bulk Assign Facilities"
+        UI->>API: GET /api/v1/facility-activities/assignment-template?field-plan={id}
+        API->>WS: Generate assignment template
+        WS->>DB: Get facilities and team members
+        DB-->>WS: Return data for template
+        WS->>FS: Generate Excel with dropdowns
+        FS-->>WS: Return template URL
+        WS-->>API: Return template download link
+        API-->>UI: Download template
+        UI-->>SPOC: Template downloaded
+        
+        SPOC->>SPOC: Fill assignment data in Excel
+        SPOC->>UI: Upload completed assignment file
+        
+        UI->>API: POST /api/v1/facility-activities/bulk-assign (multipart)
+        API->>WS: Process bulk assignment
+        WS->>FS: Validate uploaded file
+        
+        alt Invalid File Format
+            FS-->>WS: Return format error
+            WS-->>API: Return validation error
+            API-->>UI: Show error message
+            UI-->>SPOC: "Invalid file format"
+        else Valid File
+            FS->>FS: Parse assignment data
+            FS-->>WS: Return assignment list
+            
+            WS->>DB: Begin transaction
+            
+            loop For each facility assignment
+                WS->>DB: Validate assignment (no conflicts)
+                alt Assignment Conflict
+                    DB-->>WS: Return conflict error
+                    WS->>WS: Add to error list
+                else Valid Assignment
+                    WS->>DB: Update facility_activities record
+                    DB-->>WS: Assignment updated
+                    
+                    WS->>WS: Check activation conditions
+                    alt Conditions Met
+                        WS->>DB: Set status to ACTIVE
+                        WS->>DB: Set activated_at timestamp
+                        DB-->>WS: Status activated
+                    else Conditions Not Met
+                        Note over WS: Remains SCHEDULED
+                    end
+                end
+            end
+            
+            alt Assignment Errors Found
+                WS->>DB: Rollback transaction
+                WS->>FS: Generate error report
+                FS-->>WS: Return error report URL
+                WS-->>API: Return bulk assignment errors
+                API-->>UI: Show error summary with download link
+                UI-->>SPOC: "Some assignments failed, download error report"
+                
+            else All Assignments Successful
+                WS->>DB: Commit transaction
+                DB-->>WS: All assignments committed
+                
+                WS->>AS: Log bulk assignment audit
+                AS->>DB: Store audit record
+                DB-->>AS: Audit logged
+                
+                Note over WS,NS: Send notifications asynchronously
+                loop For each assigned field staff
+                    WS->>NS: Queue notification for field staff
+                    NS->>MOBILE: Send push notification
+                    MOBILE-->>FS: Show facility assignment notification
+                end
+                
+                WS-->>API: Bulk assignment successful
+                API-->>UI: Return success summary
+                UI-->>SPOC: Show "X facilities assigned successfully"
+            end
+        end
+    end
+    
+    Note over SPOC,FS: Field Staff receives notifications
+    
+    FS->>MOBILE: Open mobile app
+    MOBILE->>API: GET /api/v1/facility-activities?assigned-to-me=true&status=active
+    API->>WS: Get active facilities for field staff
+    WS->>DB: Query active facility assignments
+    DB-->>WS: Return active facilities
+    WS-->>API: Return facility list
+    API-->>MOBILE: Display assigned facilities
+    MOBILE-->>FS: Show active facilities ready for work
+    
+    SPOC->>UI: Monitor assignment progress
+    UI->>API: GET /api/v1/field-plans/{id}/progress?activity={activityId}
+    API->>WS: Get assignment and progress statistics
+    WS->>DB: Query facility assignment status counts
+    DB-->>WS: Return progress data
+    WS-->>API: Return progress statistics
+    API-->>UI: Display progress dashboard
+    UI-->>SPOC: Show assignment progress (Assigned: X, Active: Y, Completed: Z)
+    
+    Note over SPOC,FS: Facilities assigned and field staff can begin work 

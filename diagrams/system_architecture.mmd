@@ -1,0 +1,79 @@
+graph TB
+    subgraph "Frontend Layer"
+        WEB[Web Application<br/>React/TypeScript]
+        MOBILE[Mobile Application<br/>React Native]
+        ADMIN[Admin Console<br/>React]
+    end
+    
+    subgraph "API Gateway"
+        GATEWAY[Spring Cloud Gateway<br/>Load Balancer]
+    end
+    
+    subgraph "Microservices"
+        USER[User Management Service<br/>Authentication, RBAC]
+        PROJECT[Project Management Service<br/>Projects, Field Plans]
+        WORKFLOW[Workflow Service<br/>Activity Management]
+        NOTIFICATION[Notification Service<br/>Email, Push, SMS]
+        FILE[File Management Service<br/>Upload, Storage]
+        AUDIT[Audit Service<br/>Logging, Compliance]
+    end
+    
+    subgraph "Data Layer"
+        POSTGRES[(PostgreSQL<br/>Primary Database)]
+        REDIS[(Redis<br/>Cache & Sessions)]
+        KAFKA[Kafka<br/>Message Queue]
+        MINIO[(MinIO/S3<br/>File Storage)]
+        ELASTIC[(Elasticsearch<br/>Search & Analytics)]
+    end
+    
+    subgraph "External Systems"
+        MDMS[MDMS Service<br/>Master Data]
+        SMS_GATEWAY[SMS Gateway<br/>Notifications]
+        EMAIL_SERVICE[Email Service<br/>SMTP]
+    end
+    
+    WEB --> GATEWAY
+    MOBILE --> GATEWAY
+    ADMIN --> GATEWAY
+    
+    GATEWAY --> USER
+    GATEWAY --> PROJECT
+    GATEWAY --> WORKFLOW
+    GATEWAY --> NOTIFICATION
+    GATEWAY --> FILE
+    GATEWAY --> AUDIT
+    
+    USER --> POSTGRES
+    PROJECT --> POSTGRES
+    WORKFLOW --> POSTGRES
+    AUDIT --> POSTGRES
+    
+    USER --> REDIS
+    PROJECT --> REDIS
+    
+    WORKFLOW --> KAFKA
+    NOTIFICATION --> KAFKA
+    
+    FILE --> MINIO
+    
+    AUDIT --> ELASTIC
+    
+    PROJECT --> MDMS
+    NOTIFICATION --> SMS_GATEWAY
+    NOTIFICATION --> EMAIL_SERVICE
+    
+    style WEB fill:#e1f5fe
+    style MOBILE fill:#e1f5fe
+    style ADMIN fill:#e1f5fe
+    style GATEWAY fill:#f3e5f5
+    style USER fill:#e8f5e8
+    style PROJECT fill:#e8f5e8
+    style WORKFLOW fill:#e8f5e8
+    style NOTIFICATION fill:#e8f5e8
+    style FILE fill:#e8f5e8
+    style AUDIT fill:#e8f5e8
+    style POSTGRES fill:#fff3e0
+    style REDIS fill:#fff3e0
+    style KAFKA fill:#fff3e0
+    style MINIO fill:#fff3e0
+    style ELASTIC fill:#fff3e0 

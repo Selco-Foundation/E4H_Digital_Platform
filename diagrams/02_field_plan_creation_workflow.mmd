@@ -1,0 +1,200 @@
+sequenceDiagram
+    participant PM as Project Manager
+    participant UI as Web Interface
+    participant API as API Gateway
+    participant PS as Project Service
+    participant WS as Workflow Service
+    participant US as User Service
+    participant FS as File Service
+    participant NS as Notification Service
+    participant AS as Audit Service
+    participant DB as Database
+    participant QUEUE as Kafka Queue
+    
+    Note over PM,QUEUE: Field Plan Creation and Activity Assignment
+    
+    PM->>UI: Navigate to Create Field Plan
+    UI->>API: GET /api/v1/projects?assigned-to-me=true
+    API->>PS: Fetch projects for user
+    PS->>DB: Query projects where user is PM or assigned
+    DB-->>PS: Return project list
+    PS-->>API: Return projects
+    API-->>UI: Return project options
+    UI-->>PM: Display project selection dropdown
+    
+    PM->>UI: Select project and fill field plan details
+    Note over PM,UI: Project, Dates, Geography, Activities
+    
+    PM->>UI: Click "Generate Facility Template"
+    UI->>API: POST /api/v1/field-plans/facility-template
+    API->>PS: Generate facility template request
+    PS->>DB: Fetch project facilities by geography
+    DB-->>PS: Return filtered facilities
+    
+    PS->>FS: Generate Excel with pre-populated facilities
+    Note over PS,FS: All facilities pre-selected with Yes/No column
+    FS->>FS: Create Excel with validation dropdowns
+    FS-->>PS: Return template URL
+    PS-->>API: Return template download link
+    API-->>UI: Return template URL
+    UI-->>PM: Download facility template
+    
+    PM->>PM: Review and modify facility selections
+    PM->>UI: Upload modified facility list
+    
+    UI->>API: POST /api/v1/field-plans (with facility file)
+    API->>PS: Create field plan request
+    
+    PS->>FS: Process uploaded facility file
+    FS->>FS: Validate file format and structure
+    
+    alt Invalid File Format
+        FS-->>PS: Return format error
+        PS-->>API: Return validation error
+        API-->>UI: Show error message
+        UI-->>PM: Display "Invalid file format" error
+    else Valid File Format
+        FS->>FS: Parse facility selections
+        FS-->>PS: Return facility selection data
+        
+        PS->>DB: Begin transaction
+        PS->>DB: Create field plan record
+        DB-->>PS: Return field plan ID
+        
+        loop For each selected facility
+            PS->>DB: Create field_plan_facilities record
+            DB-->>PS: Confirm facility association
+        end
+        
+        PS->>DB: Commit transaction
+        DB-->>PS: Transaction committed
+        
+        PS-->>API: Field plan created successfully
+        API-->>UI: Return success response
+        UI-->>PM: Show "Field plan created, now assign activities"
+    end
+    
+    Note over PM,QUEUE: Activity Assignment Phase
+    
+    PM->>UI: Assign activities to Activity SPOCs
+    UI->>API: GET /api/v1/activities?active=true
+    API->>WS: Fetch available activities
+    WS->>DB: Query active activities
+    DB-->>WS: Return activity list with required roles
+    WS-->>API: Return activities
+    API-->>UI: Display activity assignment form
+    
+    loop For each selected activity
+        PM->>UI: Select activity and assign SPOCs
+        
+        PM->>UI: Search for Installation SPOC
+        UI->>API: GET /api/v1/users/search?role=INSTALLATION_SPOC
+        API->>US: Search users with role
+        US->>DB: Query users with specified role
+        DB-->>US: Return matching users
+        US-->>API: Return user list
+        API-->>UI: Display user dropdown
+        
+        PM->>UI: Select Installation SPOC
+        PM->>UI: Search for QC SPOC (Installation Reviewer)
+        UI->>API: GET /api/v1/users/search?role=QC_SPOC
+        API->>US: Search QC users
+        US->>DB: Query QC users
+        DB-->>US: Return QC users
+        US-->>API: Return QC user list
+        API-->>UI: Display QC user dropdown
+        
+        PM->>UI: Select QC SPOC and set dates
+        PM->>UI: Confirm activity assignment
+    end
+    
+    PM->>UI: Submit all activity assignments
+    UI->>API: POST /api/v1/field-plans/{id}/assign-activities
+    API->>WS: Process activity assignments
+    
+    WS->>DB: Begin transaction
+    
+    loop For each activity assignment
+        WS->>DB: Create activity_assignments record
+        DB-->>WS: Return assignment ID
+        
+        loop For each facility in field plan
+            WS->>DB: Create facility_activities record (SCHEDULED status)
+            DB-->>WS: Return facility activity ID
+            
+            WS->>WS: Evaluate activation conditions
+            Note over WS: Check if conditions are met for immediate activation
+            
+            alt Conditions Met
+                WS->>DB: Update status to ACTIVE
+                WS->>DB: Set activated_at timestamp
+                DB-->>WS: Status updated
+            else Conditions Not Met
+                Note over WS: Facility remains SCHEDULED
+            end
+        end
+    end
+    
+    WS->>DB: Commit transaction
+    DB-->>WS: All assignments created
+    
+    Note over WS,QUEUE: Send Notifications Asynchronously
+    
+    loop For each assigned SPOC
+        WS->>QUEUE: Publish assignment notification event
+        QUEUE-->>NS: Consume notification event
+        
+        NS->>US: Get SPOC user details
+        US->>DB: Query user info
+        DB-->>US: Return user details
+        US-->>NS: Return user data
+        
+        NS->>NS: Generate assignment email
+        NS->>NS: Send email notification
+        
+        NS->>DB: Create in-app notification
+        DB-->>NS: Notification stored
+        
+        NS->>UI: Send real-time notification (WebSocket)
+        Note over NS,UI: If SPOC is online, show immediate notification
+    end
+    
+    WS->>AS: Log activity assignments audit
+    AS->>DB: Store assignment audit trail
+    DB-->>AS: Audit logged
+    
+    WS-->>API: All assignments completed successfully
+    API-->>UI: Return success response
+    UI-->>PM: Show "Activities assigned successfully"
+    
+    UI->>UI: Display assignment summary
+    Note over UI: Show assigned SPOCs, facility counts, active vs scheduled
+    
+    Note over PM,QUEUE: Activity SPOCs receive notifications and can begin work
+    
+    participant SPOC as Activity SPOC
+    
+    SPOC->>UI: Login to system
+    UI->>API: POST /api/v1/auth/login
+    API->>AUTH: Authenticate user
+    AUTH-->>API: Return JWT token
+    API-->>UI: Authentication successful
+    
+    UI->>API: GET /api/v1/notifications?unread=true
+    API->>NS: Get unread notifications
+    NS->>DB: Query unread notifications for user
+    DB-->>NS: Return notifications
+    NS-->>API: Return notification list
+    API-->>UI: Display notifications
+    UI-->>SPOC: Show "New field plan assignment" notification
+    
+    SPOC->>UI: Click on assignment notification
+    UI->>API: GET /api/v1/activity-assignments?assigned-to-me=true
+    API->>WS: Get assignments for user
+    WS->>DB: Query assignments for SPOC
+    DB-->>WS: Return assignment details
+    WS-->>API: Return assignments with facility counts
+    API-->>UI: Display assignment dashboard
+    UI-->>SPOC: Show assigned field plans and facility counts
+    
+    Note over PM,SPOC: Field plan created and Activity SPOCs notified successfully 

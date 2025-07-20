@@ -1,0 +1,169 @@
+sequenceDiagram
+    participant PM as Project Manager
+    participant UI as Web Interface
+    participant API as API Gateway
+    participant AUTH as Auth Service
+    participant PS as Project Service
+    participant FS as File Service
+    participant VS as Validation Service
+    participant NS as Notification Service
+    participant AS as Audit Service
+    participant DB as Database
+    participant CACHE as Redis Cache
+    
+    Note over PM,CACHE: Project Creation Workflow
+    
+    PM->>UI: Navigate to Create Project
+    UI->>API: GET /api/v1/auth/me (verify session)
+    API->>AUTH: Validate JWT token
+    AUTH-->>API: Return user details
+    API-->>UI: Return authenticated user
+    UI-->>PM: Display create project form
+    
+    PM->>UI: Fill project metadata
+    Note over PM,UI: Name, Type, Dates, Geography
+    
+    PM->>UI: Click "Next" to upload facilities
+    UI->>VS: Validate project metadata
+    VS-->>UI: Return validation results
+    
+    alt Validation Failed
+        UI-->>PM: Show validation errors
+        PM->>UI: Correct errors and resubmit
+    end
+    
+    UI->>API: POST /api/v1/projects/validate (pre-validation)
+    API->>PS: Forward validation request
+    PS->>VS: Validate business rules
+    
+    alt Duplicate Project Name
+        VS->>DB: Check project name uniqueness
+        DB-->>VS: Return duplicate check
+        VS-->>PS: Return validation error
+        PS-->>API: Return error response
+        API-->>UI: Return validation error
+        UI-->>PM: Show "Project name exists" error
+    else Validation Success
+        VS-->>PS: Validation passed
+        PS-->>API: Pre-validation successful
+        API-->>UI: Show facility upload interface
+    end
+    
+    PM->>UI: Download facility template
+    UI->>API: GET /api/v1/projects/facility-template
+    API->>FS: Generate Excel template
+    FS->>DB: Fetch boundary data for dropdown
+    DB-->>FS: Return boundary hierarchy
+    FS-->>API: Return Excel template with dropdowns
+    API-->>UI: Download template file
+    UI-->>PM: Template downloaded
+    
+    PM->>PM: Fill facility data in Excel
+    PM->>UI: Upload completed facility file
+    
+    UI->>API: POST /api/v1/projects/facilities/upload (multipart)
+    API->>FS: Store uploaded file temporarily
+    FS-->>API: Return file reference
+    
+    API->>PS: Process facility upload
+    PS->>VS: Validate Excel format
+    
+    alt Invalid Excel Format
+        VS-->>PS: Format validation failed
+        PS-->>API: Return format error
+        API-->>UI: Show format error
+        UI-->>PM: "Invalid file format, use template"
+    else Valid Format
+        VS-->>PS: Format validation passed
+        PS->>PS: Process facilities asynchronously
+        PS-->>API: Return upload accepted
+        API-->>UI: Show "Processing..." message
+    end
+    
+    Note over PS,DB: Async Facility Processing
+    
+    loop For each facility row
+        PS->>VS: Validate facility data
+        VS->>DB: Validate boundary codes
+        DB-->>VS: Return boundary validation
+        VS->>VS: Validate contact info format
+        VS->>VS: Check required fields
+        
+        alt Validation Error
+            VS-->>PS: Add to error list
+        else Valid Facility
+            PS->>DB: Check for duplicates
+            DB-->>PS: Return duplicate check
+            alt No Duplicate
+                PS->>PS: Add to valid facilities list
+            else Duplicate Found
+                PS->>PS: Add to error list
+            end
+        end
+    end
+    
+    PS->>FS: Generate error report if errors exist
+    FS-->>PS: Return error report URL
+    
+    alt Validation Errors Found
+        PS->>NS: Send error notification
+        NS->>UI: Push notification (WebSocket)
+        UI-->>PM: Show "Upload failed, download error report"
+        PM->>UI: Download error report
+        UI->>API: GET /api/v1/files/{errorReportId}
+        API->>FS: Retrieve error report
+        FS-->>API: Return error report file
+        API-->>UI: Download error report
+        UI-->>PM: Error report downloaded
+        
+        PM->>PM: Fix errors in Excel
+        PM->>UI: Re-upload corrected file
+        Note over PM,UI: Process repeats until no errors
+        
+    else No Validation Errors
+        PS->>DB: Begin transaction
+        PS->>DB: Create project record
+        DB-->>PS: Return project ID
+        
+        loop For each valid facility
+            PS->>DB: Create health facility record
+            DB-->>PS: Return facility ID
+            PS->>DB: Link facility to project
+            DB-->>PS: Confirm association
+        end
+        
+        PS->>DB: Commit transaction
+        DB-->>PS: Transaction committed
+        
+        PS->>AS: Log project creation audit
+        AS->>DB: Store audit record
+        DB-->>AS: Audit logged
+        
+        PS->>CACHE: Cache project data
+        CACHE-->>PS: Data cached
+        
+        PS->>NS: Send success notification
+        NS->>UI: Push notification (WebSocket)
+        UI-->>PM: Show "Project created successfully"
+        
+        PS->>NS: Send email to stakeholders
+        NS->>NS: Queue email notification
+        
+        UI->>API: GET /api/v1/projects/{projectId}
+        API->>PS: Fetch created project
+        PS->>CACHE: Check cache first
+        
+        alt Cache Hit
+            CACHE-->>PS: Return cached project
+        else Cache Miss
+            PS->>DB: Query project details
+            DB-->>PS: Return project with facilities
+            PS->>CACHE: Update cache
+        end
+        
+        PS-->>API: Return project details
+        API-->>UI: Return project data
+        UI-->>PM: Display created project summary
+    end
+    
+    Note over PM,CACHE: Project successfully created with facilities 

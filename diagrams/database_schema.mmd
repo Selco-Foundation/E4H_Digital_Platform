@@ -1,0 +1,151 @@
+erDiagram
+    USERS {
+        UUID id PK
+        VARCHAR email UK
+        VARCHAR phone_number
+        VARCHAR full_name
+        VARCHAR password_hash
+        UUID organization_id FK
+        JSONB roles
+        ENUM status
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
+    }
+    
+    ORGANIZATIONS {
+        UUID id PK
+        VARCHAR name UK
+        VARCHAR code UK
+        ENUM type
+        JSONB contact_info
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
+    }
+    
+    PROJECTS {
+        UUID id PK
+        VARCHAR name UK
+        VARCHAR code UK
+        ENUM type
+        DATE start_date
+        DATE end_date
+        UUID state_id FK
+        UUID created_by FK
+        ENUM status
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
+    }
+    
+    FIELD_PLANS {
+        UUID id PK
+        VARCHAR name UK
+        UUID project_id FK
+        DATE start_date
+        DATE end_date
+        JSONB geography_scope
+        JSONB selected_activities
+        UUID created_by FK
+        ENUM status
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
+    }
+    
+    HEALTH_FACILITIES {
+        UUID id PK
+        VARCHAR name
+        VARCHAR hfr_id
+        VARCHAR nin_id
+        ENUM facility_type
+        UUID boundary_id FK
+        JSONB contact_info
+        GEOMETRY location
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
+    }
+    
+    ACTIVITIES {
+        UUID id PK
+        VARCHAR name UK
+        VARCHAR code UK
+        JSONB default_conditions
+        JSONB required_roles
+        INTEGER sequence_order
+        BOOLEAN is_active
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
+    }
+    
+    FACILITY_ACTIVITIES {
+        UUID id PK
+        UUID facility_id FK
+        UUID activity_id FK
+        UUID field_plan_id FK
+        ENUM status
+        JSONB conditions_met
+        UUID assigned_user FK
+        TIMESTAMP scheduled_at
+        TIMESTAMP activated_at
+        TIMESTAMP completed_at
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
+    }
+    
+    ACTIVITY_REPORTS {
+        UUID id PK
+        UUID facility_activity_id FK
+        UUID submitted_by FK
+        JSONB report_data
+        JSONB attachments
+        ENUM status
+        UUID reviewed_by FK
+        TIMESTAMP reviewed_at
+        TEXT review_comments
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
+    }
+    
+    ACTIVITY_ASSIGNMENTS {
+        UUID id PK
+        UUID field_plan_id FK
+        UUID activity_id FK
+        UUID assigned_to FK
+        UUID assigned_by FK
+        DATE start_date
+        DATE end_date
+        ENUM status
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
+    }
+    
+    BOUNDARIES {
+        UUID id PK
+        VARCHAR name
+        VARCHAR code UK
+        ENUM type
+        UUID parent_id FK
+        GEOMETRY geometry
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
+    }
+
+    USERS ||--o{ PROJECTS : creates
+    USERS ||--o{ FIELD_PLANS : creates
+    USERS ||--o{ ACTIVITY_ASSIGNMENTS : assigned_to
+    USERS ||--o{ FACILITY_ACTIVITIES : assigned_to
+    USERS ||--o{ ACTIVITY_REPORTS : submits
+    USERS }o--|| ORGANIZATIONS : belongs_to
+    
+    PROJECTS ||--o{ FIELD_PLANS : contains
+    
+    FIELD_PLANS ||--o{ ACTIVITY_ASSIGNMENTS : has
+    FIELD_PLANS ||--o{ FACILITY_ACTIVITIES : tracks
+    
+    HEALTH_FACILITIES ||--o{ FACILITY_ACTIVITIES : has
+    HEALTH_FACILITIES }o--|| BOUNDARIES : located_in
+    
+    ACTIVITIES ||--o{ ACTIVITY_ASSIGNMENTS : assigned
+    ACTIVITIES ||--o{ FACILITY_ACTIVITIES : performed
+    
+    FACILITY_ACTIVITIES ||--o{ ACTIVITY_REPORTS : generates
+    
+    BOUNDARIES ||--o{ BOUNDARIES : parent_of 

@@ -1,0 +1,237 @@
+sequenceDiagram
+    participant FS as Field Staff
+    participant MOBILE as Mobile App
+    participant API as API Gateway
+    participant WS as Workflow Service
+    participant FS_SVC as File Service
+    participant NS as Notification Service
+    participant DB as Database
+    participant UI as Web Interface
+    participant QC as QC SPOC
+    participant SPOC as Activity SPOC
+    participant AS as Audit Service
+    
+    Note over FS,AS: Activity Report Submission and Review Workflow
+    
+    FS->>MOBILE: Open assigned facility
+    MOBILE->>API: GET /api/v1/facility-activities/{id}?include=facility,activity
+    API->>WS: Get facility activity details
+    WS->>DB: Query facility activity with related data
+    DB-->>WS: Return facility activity details
+    WS-->>API: Return complete facility data
+    API-->>MOBILE: Display facility information
+    MOBILE-->>FS: Show facility details and activity form
+    
+    FS->>MOBILE: Start activity execution
+    MOBILE->>MOBILE: Load activity form template
+    Note over MOBILE: Form fields based on activity type (Installation, QC, etc.)
+    
+    FS->>FS: Perform field activity
+    Note over FS: Take photos, measurements, complete checklist
+    
+    loop Data Collection
+        FS->>MOBILE: Fill form fields
+        FS->>MOBILE: Capture photos/documents
+        MOBILE->>MOBILE: Store data locally (offline support)
+        
+        alt Internet Available
+            MOBILE->>API: POST /api/v1/facility-activities/{id}/auto-save
+            API->>WS: Auto-save progress
+            WS->>DB: Update progress status
+            DB-->>WS: Progress saved
+            WS-->>API: Return save confirmation
+            API-->>MOBILE: Show "Progress saved"
+        else Offline Mode
+            Note over MOBILE: Data stored locally for later sync
+        end
+    end
+    
+    FS->>MOBILE: Complete activity and submit report
+    MOBILE->>MOBILE: Validate form completion
+    
+    alt Form Validation Errors
+        MOBILE-->>FS: Show validation errors
+        FS->>MOBILE: Fix errors and resubmit
+    else Form Valid
+        MOBILE->>API: POST /api/v1/activity-reports (multipart with files)
+        API->>WS: Process report submission
+        
+        WS->>FS_SVC: Upload attached files (photos, documents)
+        FS_SVC->>FS_SVC: Validate file types and sizes
+        
+        alt File Validation Errors
+            FS_SVC-->>WS: Return file errors
+            WS-->>API: Return validation errors
+            API-->>MOBILE: Show file errors
+            MOBILE-->>FS: "Invalid file format or size"
+        else Files Valid
+            FS_SVC->>FS_SVC: Store files securely
+            FS_SVC-->>WS: Return file URLs
+            
+            WS->>DB: Begin transaction
+            WS->>DB: Create activity_reports record
+            DB-->>WS: Return report ID
+            
+            WS->>DB: Update facility_activities status to COMPLETED
+            WS->>DB: Set completed_at timestamp
+            DB-->>WS: Status updated
+            
+            WS->>DB: Commit transaction
+            DB-->>WS: Report submitted successfully
+            
+            WS->>AS: Log report submission audit
+            AS->>DB: Store audit record
+            DB-->>AS: Audit logged
+            
+            WS->>NS: Send review notification to QC SPOC
+            NS->>NS: Queue review notification
+            
+            WS-->>API: Report submitted successfully
+            API-->>MOBILE: Return success response
+            MOBILE-->>FS: Show "Report submitted for review"
+        end
+    end
+    
+    Note over FS,AS: Report Review Process Begins
+    
+    NS->>QC: Send email notification
+    NS->>UI: Send real-time notification (WebSocket)
+    Note over NS,UI: If QC SPOC is online
+    
+    QC->>UI: Login and check notifications
+    UI->>API: GET /api/v1/notifications?unread=true
+    API->>NS: Get unread notifications
+    NS->>DB: Query notifications for user
+    DB-->>NS: Return notifications
+    NS-->>API: Return notification list
+    API-->>UI: Display notifications
+    UI-->>QC: Show "New report for review" notifications
+    
+    QC->>UI: Click on review notification
+    UI->>API: GET /api/v1/activity-reports?status=PENDING_REVIEW&assigned-to-me=true
+    API->>WS: Get reports pending review
+    WS->>DB: Query reports assigned to QC SPOC
+    DB-->>WS: Return pending reports
+    WS-->>API: Return report list
+    API-->>UI: Display review queue
+    UI-->>QC: Show reports awaiting review
+    
+    QC->>UI: Click on specific report to review
+    UI->>API: GET /api/v1/activity-reports/{id}?include=facility,attachments
+    API->>WS: Get detailed report
+    WS->>DB: Query report with all related data
+    DB-->>WS: Return complete report
+    WS-->>API: Return report details
+    API-->>UI: Display report review interface
+    UI-->>QC: Show report details, photos, checklist
+    
+    QC->>QC: Review submitted data and attachments
+    Note over QC: Examine photos, verify data, check compliance
+    
+    alt QC Review Decision: Approve
+        QC->>UI: Click "Approve" report
+        UI->>API: PUT /api/v1/activity-reports/{id}/review
+        Note over API: Body: { "action": "APPROVE", "comments": "..." }
+        API->>WS: Process approval
+        
+        WS->>DB: Begin transaction
+        WS->>DB: Update report status to APPROVED
+        WS->>DB: Set reviewed_by and reviewed_at
+        WS->>DB: Store review comments
+        DB-->>WS: Review recorded
+        
+        WS->>DB: Update facility_activities status to APPROVED
+        DB-->>WS: Facility activity approved
+        
+        WS->>DB: Commit transaction
+        DB-->>WS: Approval processed
+        
+        WS->>AS: Log approval audit
+        AS->>DB: Store approval audit
+        DB-->>AS: Audit logged
+        
+        WS->>NS: Send approval notification to field staff and SPOC
+        NS->>MOBILE: Send push notification to field staff
+        MOBILE-->>FS: Show "Report approved"
+        NS->>UI: Send notification to Activity SPOC
+        UI-->>SPOC: Show "Report approved" (if online)
+        
+        WS-->>API: Approval processed successfully
+        API-->>UI: Return success response
+        UI-->>QC: Show "Report approved successfully"
+        
+    else QC Review Decision: Reject
+        QC->>UI: Click "Reject" and provide detailed comments
+        UI->>API: PUT /api/v1/activity-reports/{id}/review
+        Note over API: Body: { "action": "REJECT", "comments": "Detailed feedback..." }
+        API->>WS: Process rejection
+        
+        WS->>DB: Begin transaction
+        WS->>DB: Update report status to REJECTED
+        WS->>DB: Set reviewed_by, reviewed_at, and comments
+        DB-->>WS: Rejection recorded
+        
+        WS->>DB: Update facility_activities status to IN_PROGRESS
+        DB-->>WS: Facility activity reset for rework
+        
+        WS->>DB: Commit transaction
+        DB-->>WS: Rejection processed
+        
+        WS->>AS: Log rejection audit
+        AS->>DB: Store rejection audit
+        DB-->>AS: Audit logged
+        
+        WS->>NS: Send rejection notification with feedback
+        NS->>MOBILE: Send push notification with comments
+        MOBILE-->>FS: Show "Report rejected" with feedback
+        NS->>UI: Send notification to Activity SPOC
+        UI-->>SPOC: Show "Report rejected" notification
+        
+        WS-->>API: Rejection processed successfully
+        API-->>UI: Return success response
+        UI-->>QC: Show "Report rejected, feedback sent"
+        
+    else QC Review Decision: Flag for Field QC
+        QC->>UI: Click "Flag for Field QC"
+        UI->>API: PUT /api/v1/activity-reports/{id}/review
+        Note over API: Body: { "action": "FLAG_FOR_FIELD_QC", "comments": "Requires on-site verification" }
+        API->>WS: Process Field QC flag
+        
+        WS->>DB: Begin transaction
+        WS->>DB: Update report status to FLAGGED_FOR_FIELD_QC
+        WS->>DB: Set review details and comments
+        DB-->>WS: Flag recorded
+        
+        WS->>DB: Create new facility_activity for Field QC
+        Note over WS: Creates Field QC activity for the same facility
+        DB-->>WS: Field QC activity created
+        
+        WS->>DB: Commit transaction
+        DB-->>WS: Field QC flag processed
+        
+        WS->>AS: Log Field QC flag audit
+        AS->>DB: Store audit record
+        DB-->>AS: Audit logged
+        
+        WS->>NS: Send Field QC assignment notification
+        NS->>UI: Notify Field QC SPOC
+        NS->>MOBILE: Notify original field staff
+        MOBILE-->>FS: Show "Flagged for Field QC"
+        
+        WS-->>API: Field QC flag processed
+        API-->>UI: Return success response
+        UI-->>QC: Show "Flagged for Field QC successfully"
+    end
+    
+    Note over FS,SPOC: Activity SPOC monitors overall progress
+    
+    SPOC->>UI: Check activity progress dashboard
+    UI->>API: GET /api/v1/activity-assignments/{id}/progress
+    API->>WS: Get activity progress statistics
+    WS->>DB: Query report status counts
+    DB-->>WS: Return progress statistics
+    WS-->>API: Return progress data
+    API-->>UI: Display progress dashboard
+    UI-->>SPOC: Show progress (Submitted: X, Approved: Y, Rejected: Z, Field QC: W)
+    
+    Note over FS,AS: Report lifecycle complete with proper audit trail 
