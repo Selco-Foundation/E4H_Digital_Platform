@@ -4,7 +4,7 @@
 ### Version Control
 | Version | Author | Date | Changes |
 |---------|--------|------|---------|
-| 1.0 | Tech Lead | 2024-01-XX | Initial LLD based on PRD v1.2 |
+| 1.0 | Tech Lead | 2025-07-21 | Initial LLD based on PRD v1.2 |
 
 ---
 
