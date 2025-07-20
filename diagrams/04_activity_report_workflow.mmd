@@ -1,29 +1,43 @@
 sequenceDiagram
     participant FS as Field Staff
     participant MOBILE as Mobile App
-    participant API as API Gateway
-    participant WS as Workflow Service
-    participant FS_SVC as File Service
-    participant NS as Notification Service
-    participant DB as Database
-    participant UI as Web Interface
+    participant GW as E4H API Gateway (Existing)
+    participant AUTH as E4H Auth Service (Existing)
+    participant FPS as Field Planner Service (NEW)
+    participant AMS as Activity Management Service (NEW)
+    participant HFR as Health Facility Registry (Existing)
+    participant HRMS as eGov HRMS (Existing)
+    participant EGOV_FS as eGov Filestore (Existing)
+    participant WF as eGov Workflow v2 (Existing)
+    participant DB as E4H PostgreSQL (Shared)
+    participant UI as E4H Web UI (Extended)
     participant QC as QC SPOC
     participant SPOC as Activity SPOC
-    participant AS as Audit Service
     
-    Note over FS,AS: Activity Report Submission and Review Workflow
+    Note over FS,SPOC: E4H Integrated Activity Report Workflow
     
-    FS->>MOBILE: Open assigned facility
-    MOBILE->>API: GET /api/v1/facility-activities/{id}?include=facility,activity
-    API->>WS: Get facility activity details
-    WS->>DB: Query facility activity with related data
-    DB-->>WS: Return facility activity details
-    WS-->>API: Return complete facility data
-    API-->>MOBILE: Display facility information
+    FS->>MOBILE: Open assigned facility (authenticated)
+    MOBILE->>GW: GET /field-planner/v1/facility-activities/{id}
+    Note over MOBILE,GW: Mobile app uses E4H authentication
+    GW->>AUTH: Validate field staff JWT token
+    AUTH-->>GW: Field staff authenticated
+    
+    GW->>FPS: Get facility activity details
+    FPS->>DB: Query facility_activities table (new)
+    DB-->>FPS: Return facility activity record
+    
+    FPS->>HFR: GET /facility/v1/{facilityId}
+    Note over FPS,HFR: Get facility details from existing registry
+    HFR->>DB: Query existing facility table
+    DB-->>HFR: Facility details (name, location, type, etc.)
+    HFR-->>FPS: Facility information
+    
+    FPS-->>GW: Complete facility activity data
+    GW-->>MOBILE: Display facility information
     MOBILE-->>FS: Show facility details and activity form
     
     FS->>MOBILE: Start activity execution
-    MOBILE->>MOBILE: Load activity form template
+    MOBILE->>MOBILE: Load activity form template from app
     Note over MOBILE: Form fields based on activity type (Installation, QC, etc.)
     
     FS->>FS: Perform field activity
@@ -35,12 +49,12 @@ sequenceDiagram
         MOBILE->>MOBILE: Store data locally (offline support)
         
         alt Internet Available
-            MOBILE->>API: POST /api/v1/facility-activities/{id}/auto-save
-            API->>WS: Auto-save progress
-            WS->>DB: Update progress status
-            DB-->>WS: Progress saved
-            WS-->>API: Return save confirmation
-            API-->>MOBILE: Show "Progress saved"
+            MOBILE->>GW: POST /field-planner/v1/mobile/reports/{id}/progress
+            GW->>AMS: Auto-save progress
+            AMS->>DB: Update facility_activities progress
+            DB-->>AMS: Progress saved
+            AMS-->>GW: Return save confirmation
+            GW-->>MOBILE: Show "Progress saved"
         else Offline Mode
             Note over MOBILE: Data stored locally for later sync
         end
@@ -53,111 +67,130 @@ sequenceDiagram
         MOBILE-->>FS: Show validation errors
         FS->>MOBILE: Fix errors and resubmit
     else Form Valid
-        MOBILE->>API: POST /api/v1/activity-reports (multipart with files)
-        API->>WS: Process report submission
+        MOBILE->>GW: POST /field-planner/v1/mobile/reports/_upload (multipart)
+        GW->>AMS: Process report submission
         
-        WS->>FS_SVC: Upload attached files (photos, documents)
-        FS_SVC->>FS_SVC: Validate file types and sizes
+        AMS->>HRMS: GET /egov-hrms/employees/_search
+        Note over AMS,HRMS: Validate field staff employee ID
+        HRMS-->>AMS: Field staff validated
+        
+        AMS->>EGOV_FS: POST /filestore/v1/files (photos, documents)
+        EGOV_FS->>EGOV_FS: Validate file types and sizes using eGov rules
         
         alt File Validation Errors
-            FS_SVC-->>WS: Return file errors
-            WS-->>API: Return validation errors
-            API-->>MOBILE: Show file errors
+            EGOV_FS-->>AMS: Return file validation errors
+            AMS-->>GW: Return validation errors
+            GW-->>MOBILE: Show file errors
             MOBILE-->>FS: "Invalid file format or size"
         else Files Valid
-            FS_SVC->>FS_SVC: Store files securely
-            FS_SVC-->>WS: Return file URLs
+            EGOV_FS->>EGOV_FS: Store files in eGov Filestore
+            EGOV_FS-->>AMS: Return file UUIDs and URLs
             
-            WS->>DB: Begin transaction
-            WS->>DB: Create activity_reports record
-            DB-->>WS: Return report ID
+            AMS->>DB: Begin transaction
+            AMS->>DB: Create activity_reports record (new table)
+            DB-->>AMS: Return report UUID
             
-            WS->>DB: Update facility_activities status to COMPLETED
-            WS->>DB: Set completed_at timestamp
-            DB-->>WS: Status updated
+            AMS->>DB: Update facility_activities status to COMPLETED
+            AMS->>DB: Set completed_at timestamp
+            DB-->>AMS: Status updated
             
-            WS->>DB: Commit transaction
-            DB-->>WS: Report submitted successfully
+            AMS->>WF: POST /egov-wf-v2/process/_transition
+            Note over AMS,WF: Initiate report review workflow
+            WF->>DB: Create workflow instance
+            DB-->>WF: Workflow created
+            WF-->>AMS: Review workflow initiated
             
-            WS->>AS: Log report submission audit
-            AS->>DB: Store audit record
-            DB-->>AS: Audit logged
+            AMS->>DB: Commit transaction
+            DB-->>AMS: Report submitted successfully
             
-            WS->>NS: Send review notification to QC SPOC
-            NS->>NS: Queue review notification
+            Note over AMS: Send notification via Kafka event
+            AMS->>AMS: Publish ActivityReportEvent
             
-            WS-->>API: Report submitted successfully
-            API-->>MOBILE: Return success response
+            AMS-->>GW: Report submitted successfully
+            GW-->>MOBILE: Return success response
             MOBILE-->>FS: Show "Report submitted for review"
         end
     end
     
-    Note over FS,AS: Report Review Process Begins
+    Note over FS,SPOC: Report Review Process (E4H Integration)
     
-    NS->>QC: Send email notification
-    NS->>UI: Send real-time notification (WebSocket)
-    Note over NS,UI: If QC SPOC is online
+    Note over QC: QC SPOC receives notification via E4H notification system
     
-    QC->>UI: Login and check notifications
-    UI->>API: GET /api/v1/notifications?unread=true
-    API->>NS: Get unread notifications
-    NS->>DB: Query notifications for user
-    DB-->>NS: Return notifications
-    NS-->>API: Return notification list
-    API-->>UI: Display notifications
-    UI-->>QC: Show "New report for review" notifications
+    QC->>UI: Login to E4H Web UI
+    UI->>GW: GET /user/oauth/me
+    GW->>AUTH: Validate QC SPOC JWT token
+    AUTH-->>GW: QC SPOC authenticated with review permissions
+    GW-->>UI: Authenticated user with QC role
+    UI-->>QC: Show E4H dashboard
     
-    QC->>UI: Click on review notification
-    UI->>API: GET /api/v1/activity-reports?status=PENDING_REVIEW&assigned-to-me=true
-    API->>WS: Get reports pending review
-    WS->>DB: Query reports assigned to QC SPOC
-    DB-->>WS: Return pending reports
-    WS-->>API: Return report list
-    API-->>UI: Display review queue
+    QC->>UI: Navigate to report review queue
+    UI->>GW: GET /field-planner/v1/activity-reports/_search?status=SUBMITTED
+    GW->>AMS: Get reports pending review
+    AMS->>DB: Query activity_reports table for submitted reports
+    DB-->>AMS: Return pending reports
+    AMS-->>GW: Return report list with facility details
+    GW-->>UI: Display review queue
     UI-->>QC: Show reports awaiting review
     
     QC->>UI: Click on specific report to review
-    UI->>API: GET /api/v1/activity-reports/{id}?include=facility,attachments
-    API->>WS: Get detailed report
-    WS->>DB: Query report with all related data
-    DB-->>WS: Return complete report
-    WS-->>API: Return report details
-    API-->>UI: Display report review interface
-    UI-->>QC: Show report details, photos, checklist
+    UI->>GW: GET /field-planner/v1/activity-reports/{id}
+    GW->>AMS: Get detailed report
+    
+    AMS->>DB: Query activity_reports table (new)
+    DB-->>AMS: Return report data with attachments
+    
+    AMS->>HFR: GET /facility/v1/{facilityId}
+    Note over AMS,HFR: Get facility details from existing registry
+    HFR-->>AMS: Facility information
+    
+    AMS->>HRMS: GET /egov-hrms/employees/_search
+    Note over AMS,HRMS: Get field staff details who submitted report
+    HRMS-->>AMS: Field staff information
+    
+    AMS->>EGOV_FS: GET /filestore/v1/files/{fileIds}
+    Note over AMS,EGOV_FS: Get attachment URLs from eGov Filestore
+    EGOV_FS-->>AMS: File download URLs
+    
+    AMS-->>GW: Return complete report with all details
+    GW-->>UI: Display report review interface
+    UI-->>QC: Show report details, photos, checklist from integrated data
     
     QC->>QC: Review submitted data and attachments
     Note over QC: Examine photos, verify data, check compliance
     
     alt QC Review Decision: Approve
         QC->>UI: Click "Approve" report
-        UI->>API: PUT /api/v1/activity-reports/{id}/review
-        Note over API: Body: { "action": "APPROVE", "comments": "..." }
-        API->>WS: Process approval
+        UI->>GW: POST /field-planner/v1/activity-reports/{id}/approve
+        Note over GW: Body: { "action": "APPROVE", "comments": "..." }
+        GW->>AMS: Process approval
         
-        WS->>DB: Begin transaction
-        WS->>DB: Update report status to APPROVED
-        WS->>DB: Set reviewed_by and reviewed_at
-        WS->>DB: Store review comments
-        DB-->>WS: Review recorded
+        AMS->>HRMS: GET /egov-hrms/employees/_search
+        Note over AMS,HRMS: Validate QC SPOC has approval permissions
+        HRMS-->>AMS: QC SPOC validated
         
-        WS->>DB: Update facility_activities status to APPROVED
-        DB-->>WS: Facility activity approved
+        AMS->>DB: Begin transaction
+        AMS->>DB: Update activity_reports status to APPROVED (new table)
+        AMS->>DB: Set reviewed_by and reviewed_at
+        AMS->>DB: Store review comments
+        DB-->>AMS: Review recorded
         
-        WS->>DB: Commit transaction
-        DB-->>WS: Approval processed
+        AMS->>DB: Update facility_activities status to APPROVED (new table)
+        DB-->>AMS: Facility activity approved
         
-        WS->>AS: Log approval audit
-        AS->>DB: Store approval audit
-        DB-->>AS: Audit logged
+        AMS->>WF: POST /egov-wf-v2/process/_transition
+        Note over AMS,WF: Complete workflow with APPROVE action
+        WF->>DB: Update workflow status to APPROVED
+        DB-->>WF: Workflow completed
+        WF-->>AMS: Workflow state updated
         
-        WS->>NS: Send approval notification to field staff and SPOC
-        NS->>MOBILE: Send push notification to field staff
-        MOBILE-->>FS: Show "Report approved"
-        NS->>UI: Send notification to Activity SPOC
-        UI-->>SPOC: Show "Report approved" (if online)
+        AMS->>DB: Commit transaction
+        DB-->>AMS: Approval processed
         
-        WS-->>API: Approval processed successfully
-        API-->>UI: Return success response
+        Note over AMS: Publish Kafka event for notifications
+        AMS->>AMS: Publish ReportApprovedEvent
+        
+        AMS-->>GW: Approval processed successfully
+        GW-->>UI: Return success response
         UI-->>QC: Show "Report approved successfully"
         
     else QC Review Decision: Reject
@@ -223,15 +256,26 @@ sequenceDiagram
         UI-->>QC: Show "Flagged for Field QC successfully"
     end
     
-    Note over FS,SPOC: Activity SPOC monitors overall progress
+    Note over FS,SPOC: Activity SPOC monitors progress via E4H Dashboard
     
-    SPOC->>UI: Check activity progress dashboard
-    UI->>API: GET /api/v1/activity-assignments/{id}/progress
-    API->>WS: Get activity progress statistics
-    WS->>DB: Query report status counts
-    DB-->>WS: Return progress statistics
-    WS-->>API: Return progress data
-    API-->>UI: Display progress dashboard
+    SPOC->>UI: Login to E4H UI and check activity progress dashboard
+    UI->>GW: GET /field-planner/v1/activity-assignments/{id}/progress
+    GW->>AMS: Get activity progress statistics
+    
+    AMS->>DB: Query activity_reports status counts (new table)
+    DB-->>AMS: Return progress statistics
+    
+    AMS->>HFR: GET /facility/v1/_search
+    Note over AMS,HFR: Get facility context for progress reporting
+    HFR-->>AMS: Facility data for context
+    
+    AMS-->>GW: Return integrated progress data
+    GW-->>UI: Display E4H progress dashboard
     UI-->>SPOC: Show progress (Submitted: X, Approved: Y, Rejected: Z, Field QC: W)
     
-    Note over FS,AS: Report lifecycle complete with proper audit trail 
+    Note over FS,SPOC: E4H Integrated report lifecycle complete
+    Note over FS,SPOC: Uses existing E4H services with new Field Planner extensions
+    Note over FS,SPOC: All data stored in shared E4H PostgreSQL database
+    Note over FS,SPOC: Workflow managed via eGov Workflow v2 service
+    Note over FS,SPOC: Files stored in eGov Filestore service
+    Note over FS,SPOC: User management via eGov HRMS service 

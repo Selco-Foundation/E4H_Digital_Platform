@@ -6,8 +6,9 @@ echo
 echo "Converting system architecture diagram..."
 mmdc -i system_architecture.mmd -o system_architecture.png --width 2000 --height 1500
 
-echo "Converting database schema diagram..."
+echo "Converting database schema diagrams..."
 mmdc -i database_schema.mmd -o database_schema.png --width 2000 --height 1500
+mmdc -i database_schema_integrated.mmd -o database_schema_integrated.png --width 2500 --height 2000
 
 echo "Converting project creation workflow..."
 mmdc -i 01_project_creation_workflow.mmd -o project_creation_workflow.png --width 2500 --height 2000

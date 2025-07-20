@@ -2,15 +2,17 @@ sequenceDiagram
     participant FS as Field Staff
     participant MOBILE as Mobile App
     participant LOCAL_DB as Local Storage
-    participant API as API Gateway
-    participant SYNC as Sync Service
-    participant WS as Workflow Service
-    participant FS_SVC as File Service
-    participant NS as Notification Service
-    participant DB as Database
-    participant CACHE as Redis Cache
+    participant GW as E4H API Gateway (Existing)
+    participant AUTH as E4H Auth Service (Existing)
+    participant FPS as Field Planner Service (NEW)
+    participant MSS as Mobile Sync Service (NEW)
+    participant HFR as Health Facility Registry (Existing)
+    participant HRMS as eGov HRMS (Existing)
+    participant EGOV_FS as eGov Filestore (Existing)
+    participant DB as E4H PostgreSQL (Shared)
+    participant CACHE as Redis Cache (Shared)
     
-    Note over FS,CACHE: Mobile App Synchronization Workflow
+    Note over FS,CACHE: E4H Integrated Mobile App Synchronization
     
     FS->>MOBILE: Open mobile app
     MOBILE->>LOCAL_DB: Check last sync timestamp
@@ -19,30 +21,38 @@ sequenceDiagram
     MOBILE->>MOBILE: Check network connectivity
     
     alt Network Available
-        MOBILE->>API: POST /api/v1/auth/login
-        API-->>MOBILE: Return JWT token
-        MOBILE->>LOCAL_DB: Store authentication token
+        MOBILE->>GW: POST /user/oauth/authenticate (E4H auth)
+        GW->>AUTH: Validate field staff credentials
+        AUTH->>HRMS: GET /egov-hrms/employees/_search
+        Note over AUTH,HRMS: Validate employee exists and is field staff
+        HRMS-->>AUTH: Employee validated
+        AUTH-->>GW: Return E4H JWT token
+        GW-->>MOBILE: Return JWT token
+        MOBILE->>LOCAL_DB: Store E4H authentication token
         
-        MOBILE->>API: GET /api/v1/mobile/sync/facilities?since=2024-01-01T10:30:00Z
-        API->>SYNC: Process facility sync request
-        SYNC->>WS: Get facilities assigned to user since timestamp
+        MOBILE->>GW: GET /field-planner/v1/mobile/sync/facilities?since=2024-01-01T10:30:00Z
+        GW->>MSS: Process facility sync request (new service)
+        MSS->>FPS: Get facilities assigned to user since timestamp
         
-        WS->>DB: Query facility assignments and updates
-        Note over WS,DB: Query includes: new assignments, status changes, facility updates
-        DB-->>WS: Return facility changes
+        FPS->>DB: Query facility_activities table (new) for assignments
+        Note over FPS,DB: Query includes: new assignments, status changes
+        DB-->>FPS: Return activity assignments and status changes
         
-        WS->>CACHE: Check for cached facility data
+        FPS->>HFR: GET /facility/v1/_search (get facility details)
+        Note over FPS,HFR: Get facility master data from existing registry
+        HFR->>CACHE: Check cached facility data
         alt Cache Hit
-            CACHE-->>WS: Return cached data
+            CACHE-->>HFR: Return cached facility data
         else Cache Miss
-            WS->>DB: Fetch complete facility details
-            DB-->>WS: Return facility data
-            WS->>CACHE: Update cache
+            HFR->>DB: Query existing facility table
+            DB-->>HFR: Return facility details
+            HFR->>CACHE: Update cache
         end
+        HFR-->>FPS: Facility details with location, contact, etc.
         
-        WS-->>SYNC: Return facility sync data
-        SYNC-->>API: Return sync response
-        API-->>MOBILE: Download facility updates
+        FPS-->>MSS: Return integrated sync data
+        MSS-->>GW: Return sync response with facility + activity data
+        GW-->>MOBILE: Download facility updates
         
         MOBILE->>LOCAL_DB: Begin local transaction
         
@@ -81,21 +91,25 @@ sequenceDiagram
         loop For each pending report
             MOBILE->>MOBILE: Prepare upload data (report + attachments)
             
-            MOBILE->>API: POST /api/v1/activity-reports (multipart)
-            API->>WS: Process report submission
+            MOBILE->>GW: POST /field-planner/v1/mobile/reports/_upload (multipart)
+            GW->>MSS: Process report submission
             
-            WS->>FS_SVC: Process file uploads
-            FS_SVC->>FS_SVC: Validate and store files
-            FS_SVC-->>WS: Return file URLs
+            MSS->>HRMS: GET /egov-hrms/employees/_search
+            Note over MSS,HRMS: Validate field staff employee ID
+            HRMS-->>MSS: Field staff validated
             
-            WS->>DB: Begin transaction
-            WS->>DB: Create activity_reports record
-            WS->>DB: Update facility_activities status
-            DB-->>WS: Report saved
-            WS->>DB: Commit transaction
+            MSS->>EGOV_FS: POST /filestore/v1/files (process attachments)
+            EGOV_FS->>EGOV_FS: Validate and store files in eGov Filestore
+            EGOV_FS-->>MSS: Return file UUIDs and URLs
             
-            WS-->>API: Report uploaded successfully
-            API-->>MOBILE: Return success response
+            MSS->>DB: Begin transaction
+            MSS->>DB: Create activity_reports record (new table)
+            MSS->>DB: Update facility_activities status (new table)
+            DB-->>MSS: Report saved with proper E4H schema
+            MSS->>DB: Commit transaction
+            
+            MSS-->>GW: Report uploaded successfully
+            GW-->>MOBILE: Return success response
             
             MOBILE->>LOCAL_DB: Mark report as synchronized
             MOBILE->>LOCAL_DB: Delete local files (keep metadata)
@@ -106,12 +120,12 @@ sequenceDiagram
         LOCAL_DB-->>MOBILE: Return auto-saved progress
         
         loop For each progress update
-            MOBILE->>API: POST /api/v1/facility-activities/{id}/progress
-            API->>WS: Update progress
-            WS->>DB: Store progress snapshot
-            DB-->>WS: Progress saved
-            WS-->>API: Progress updated
-            API-->>MOBILE: Progress synchronized
+            MOBILE->>GW: POST /field-planner/v1/mobile/reports/{id}/progress
+            GW->>MSS: Update progress
+            MSS->>DB: Store progress snapshot in facility_activities (new table)
+            DB-->>MSS: Progress saved in E4H database
+            MSS-->>GW: Progress updated
+            GW-->>MOBILE: Progress synchronized
             
             MOBILE->>LOCAL_DB: Mark progress as synchronized
             LOCAL_DB-->>MOBILE: Progress update cleared
@@ -141,12 +155,12 @@ sequenceDiagram
         LOCAL_DB-->>MOBILE: Progress saved
         
         alt Network Becomes Available
-            MOBILE->>API: POST /api/v1/facility-activities/{id}/auto-save
-            API->>WS: Save progress to server
-            WS->>DB: Store progress snapshot
-            DB-->>WS: Progress saved remotely
-            WS-->>API: Return save confirmation
-            API-->>MOBILE: Show "Progress backed up"
+            MOBILE->>GW: POST /field-planner/v1/mobile/reports/{id}/progress
+            GW->>MSS: Save progress to E4H server
+            MSS->>DB: Store progress snapshot in facility_activities (new)
+            DB-->>MSS: Progress saved remotely in E4H database
+            MSS-->>GW: Return save confirmation
+            GW-->>MOBILE: Show "Progress backed up"
             
             MOBILE->>LOCAL_DB: Mark progress as synchronized
             LOCAL_DB-->>MOBILE: Sync status updated
@@ -166,10 +180,10 @@ sequenceDiagram
         
         alt Network Available
             MOBILE->>MOBILE: Immediate upload attempt
-            MOBILE->>API: POST /api/v1/activity-reports (multipart)
+            MOBILE->>GW: POST /field-planner/v1/mobile/reports/_upload (multipart)
             
             alt Upload Successful
-                API-->>MOBILE: Report uploaded successfully
+                GW-->>MOBILE: Report uploaded successfully to E4H
                 MOBILE->>LOCAL_DB: Mark report as synchronized
                 MOBILE-->>FS: Show "Report submitted successfully"
                 
@@ -244,18 +258,22 @@ sequenceDiagram
     FS->>MOBILE: Pull to refresh or click sync button
     MOBILE-->>FS: Show "Syncing..."
     
-    MOBILE->>API: POST /api/v1/mobile/sync/full
-    API->>SYNC: Full synchronization request
+    MOBILE->>GW: POST /field-planner/v1/mobile/sync/full
+    GW->>MSS: Full synchronization request
     
-    SYNC->>WS: Get complete user context
-    WS->>DB: Query all user assignments and recent updates
-    DB-->>WS: Return comprehensive sync data
+    MSS->>FPS: Get complete user context from Field Planner
+    FPS->>DB: Query all user facility_activities and assignments (new tables)
+    DB-->>FPS: Return comprehensive Field Planner data
     
-    SYNC->>FS_SVC: Get required form templates and assets
-    FS_SVC-->>SYNC: Return template versions
+    FPS->>HFR: GET /facility/v1/_search (get all assigned facilities)
+    Note over FPS,HFR: Get facility master data from existing registry
+    HFR-->>FPS: Complete facility details
     
-    SYNC-->>API: Return full sync package
-    API-->>MOBILE: Download complete sync data
+    MSS->>EGOV_FS: GET /filestore/v1/files (get required templates)
+    EGOV_FS-->>MSS: Return template versions from eGov Filestore
+    
+    MSS-->>GW: Return full sync package
+    GW-->>MOBILE: Download complete sync data with E4H integration
     
     MOBILE->>LOCAL_DB: Begin full sync transaction
     MOBILE->>LOCAL_DB: Clear outdated cached data
@@ -282,19 +300,25 @@ sequenceDiagram
             LOCAL_DB-->>MOBILE: Local data updated
             
         else Keep Local Data
-            MOBILE->>API: Force upload local changes
-            API->>SYNC: Process conflict override
-            SYNC->>DB: Update server with local data (with conflict flag)
-            DB-->>SYNC: Conflict resolution recorded
-            SYNC-->>API: Conflict resolved
-            API-->>MOBILE: Local data preserved
+            MOBILE->>GW: Force upload local changes
+            GW->>MSS: Process conflict override
+            MSS->>DB: Update E4H database with local data (with conflict flag)
+            DB-->>MSS: Conflict resolution recorded in E4H schema
+            MSS-->>GW: Conflict resolved
+            GW-->>MOBILE: Local data preserved
             
         else Manual Merge
             MOBILE-->>FS: Show merge interface
             FS->>MOBILE: Manually resolve conflicts
-            MOBILE->>API: Upload merged data
-            API-->>MOBILE: Merged data saved
+            MOBILE->>GW: Upload merged data
+            GW-->>MOBILE: Merged data saved to E4H
         end
     end
     
-    Note over FS,CACHE: Sync completed with offline capability maintained 
+    Note over FS,CACHE: E4H Integrated Mobile Sync Complete
+    Note over FS,CACHE: Mobile app works with E4H authentication
+    Note over FS,CACHE: Data synchronized with existing Health Facility Registry
+    Note over FS,CACHE: Files stored in eGov Filestore service
+    Note over FS,CACHE: Field staff validated via eGov HRMS
+    Note over FS,CACHE: All data stored in shared E4H PostgreSQL database
+    Note over FS,CACHE: Offline capability maintained with E4H integration 

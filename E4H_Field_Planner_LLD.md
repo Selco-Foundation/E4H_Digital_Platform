@@ -26,455 +26,475 @@
 ## 1. System Overview
 
 ### 1.1 Purpose
-The Field Planner module enables Project Managers to create and manage field execution plans for DRE installation projects across multiple health facilities, with role-based access control and workflow management.
+The Field Planner module is a **service extension** that integrates with the existing E4H Digital Platform to enable Project Managers to create and manage field execution plans for DRE installation projects across multiple health facilities.
 
 ### 1.2 Key Features
-- Multi-tenant project and field plan management
-- Role-based access control (RBAC)
-- Workflow-driven activity execution
+- **Extends existing Project Service** for field plan management
+- **Integrates with Health Facility Registry** for facility operations
+- **Leverages eGov HRMS** for user and team management
+- **Uses eGov Workflow Service** for activity state management
+- **Integrates with MDMS** for master data consistency
 - Conditional health facility activation
 - Real-time progress tracking
 - Mobile app integration
-- Notification system
-- Audit trail
+- Comprehensive audit trail
 
-### 1.3 Technology Stack
-- **Backend**: Java 17, Spring Boot 3.x, Spring Security, Spring Data JPA
-- **Database**: PostgreSQL 15+
-- **Message Queue**: Apache Kafka
-- **Cache**: Redis
-- **Search**: Elasticsearch
-- **File Storage**: MinIO/S3
-- **API Gateway**: Spring Cloud Gateway
-- **Documentation**: OpenAPI 3.0
+### 1.3 Technology Stack (Aligned with E4H Platform)
+- **Backend**: Java 17, Spring Boot 3.x (consistent with existing services)
+- **Database**: PostgreSQL (extends existing E4H schemas)
+- **Message Queue**: Apache Kafka (uses existing topics + new Field Planner topics)
+- **Cache**: Redis (shared with platform)
+- **File Storage**: eGov Filestore Service
+- **Workflow**: eGov Workflow v2 Service
+- **MDMS**: eGov MDMS Service v2
+- **Authentication**: Existing E4H Auth Service
+- **API Gateway**: Existing E4H Gateway
 
 ---
 
 ## 2. Architecture Design
 
-### 2.1 High-Level Architecture
+### 2.1 E4H Platform Integration Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                        API Gateway                              │
+│                    E4H API Gateway (Existing)                   │
 ├─────────────────────────────────────────────────────────────────┤
-│  Load Balancer (NGINX/HAProxy)                                 │
-├─────────────────────────────────────────────────────────────────┤
-│                    Frontend Layer                               │
+│                    Frontend Layer (Existing)                    │
 │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐ │
-│  │  Web App        │  │  Mobile App     │  │  Admin Console  │ │
-│  │  (React/Vue)    │  │  (React Native) │  │  (React)        │ │
+│  │  E4H Web UI     │  │  Mobile App     │  │  Admin Console  │ │
+│  │  (Extended)     │  │  (New Module)   │  │  (Extended)     │ │
 │  └─────────────────┘  └─────────────────┘  └─────────────────┘ │
 ├─────────────────────────────────────────────────────────────────┤
-│                    Microservices Layer                          │
+│                    Existing E4H Services                        │
 │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐ │
-│  │  User Service   │  │  Project Service│  │  Workflow Svc   │ │
+│  │  eGov HRMS      │  │  Project Service│  │ eGov Workflow   │ │
+│  │  (User Mgmt)    │  │  (Extended)     │  │  v2 Service     │ │
 │  └─────────────────┘  └─────────────────┘  └─────────────────┘ │
 │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐ │
-│  │  Notification   │  │  File Service   │  │  Audit Service  │ │
-│  │  Service        │  │                 │  │                 │ │
+│  │ Health Facility │  │ eGov Filestore  │  │ eGov MDMS v2    │ │
+│  │   Registry      │  │   Service       │  │   Service       │ │
 │  └─────────────────┘  └─────────────────┘  └─────────────────┘ │
 ├─────────────────────────────────────────────────────────────────┤
-│                    Infrastructure Layer                         │
+│                    NEW: Field Planner Service                   │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐ │
+│  │  Field Plan     │  │  Activity       │  │  Mobile Sync    │ │
+│  │  Management     │  │  Management     │  │  Service        │ │
+│  └─────────────────┘  └─────────────────┘  └─────────────────┘ │
+├─────────────────────────────────────────────────────────────────┤
+│                    Shared Infrastructure                        │
 │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐ │
 │  │  PostgreSQL     │  │  Redis Cache    │  │  Kafka Queue    │ │
+│  │  (E4H Database) │  │  (Shared)       │  │  (Shared)       │ │
 │  └─────────────────┘  └─────────────────┘  └─────────────────┘ │
-│  ┌─────────────────┐  ┌─────────────────┐                      │
-│  │  Elasticsearch  │  │  MinIO/S3       │                      │
-│  └─────────────────┘  └─────────────────┘                      │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### 2.2 Microservices Architecture
+### 2.2 Service Integration Architecture
 
-#### 2.2.1 Core Services
+#### 2.2.1 Existing E4H Services (Extended)
 
-1. **User Management Service**
-   - User authentication and authorization
-   - Role and permission management
-   - Organization management
-   - Team management
+1. **eGov HRMS Service (Existing)**
+   - **Current**: Employee/user management, assignments, departments
+   - **Field Planner Extension**: Team management, field staff roles, activity-based assignments
 
-2. **Project Management Service**
-   - Project CRUD operations
-   - Field plan management
-   - Health facility management
-   - Activity management
+2. **Project Service (Existing)**
+   - **Current**: Basic project management with facility associations
+   - **Field Planner Extension**: Field plan management, activity scheduling, conditional activation
 
-3. **Workflow Service**
-   - Activity state management
-   - Conditional activation logic
-   - Approval workflows
-   - Status transitions
+3. **Health Facility Registry (Existing)**
+   - **Current**: Facility master data, location, ownership, categories
+   - **Field Planner Extension**: Activity status tracking, field execution metadata
 
-4. **Notification Service**
-   - Email notifications
-   - In-app notifications
-   - SMS notifications (future)
-   - Push notifications
+4. **eGov Workflow v2 (Existing)**
+   - **Current**: Generic workflow management, state transitions, approvals
+   - **Field Planner Extension**: Field activity workflows, conditional transitions, custom business rules
 
-5. **File Management Service**
-   - File upload/download
-   - Template management
-   - Document storage
-   - Image processing
+5. **eGov Filestore Service (Existing)**
+   - **Current**: Document upload/download, file management
+   - **Field Planner Extension**: Activity report attachments, Excel template generation
 
-6. **Audit Service**
-   - Activity logging
-   - Change tracking
-   - Compliance reporting
-   - Data retention
+6. **eGov MDMS v2 Service (Existing)**
+   - **Current**: Master data management for lookup values
+   - **Field Planner Extension**: Activity types, conditions, field roles, validation schemas
+
+#### 2.2.2 New Field Planner Services
+
+1. **Field Plan Management Service (NEW)**
+   - Field plan CRUD operations
+   - Facility selection and assignment
+   - Activity scheduling and assignment
+   - Progress tracking and reporting
+
+2. **Activity Management Service (NEW)**
+   - Activity state management and conditional activation
+   - Report submission and review workflows  
+   - Mobile sync and offline data management
+   - Team assignment and notification handling
+
+3. **Mobile Sync Service (NEW)**
+   - Mobile app synchronization
+   - Offline data management
+   - Conflict resolution
+   - Background sync processing
 
 ---
 
-## 3. Database Design
+## 3. Database Design (E4H Platform Integration)
 
-### 3.1 Entity Relationship Diagram
+### 3.1 Integration with Existing E4H Schemas
+
+The Field Planner module **extends existing E4H database schemas** rather than creating duplicate tables:
+
+#### 3.1.1 Existing Tables (Used As-Is)
+- **`facility`** - Health Facility Registry (facility master data)
+- **`facility_address`** - Facility location information
+- **`eg_hrms_employee`** - User/employee management
+- **`eg_hrms_assignment`** - Role and department assignments  
+- **`PROJECT_FACILITY`** - Project-facility associations (from existing Project service)
+- **Boundary tables** - Geographic hierarchy (from Boundary service)
+- **MDMS tables** - Master data (from MDMS service)
+- **Workflow tables** - State management (from eGov Workflow v2)
+
+#### 3.1.2 Field Planner Extensions
 
 ```mermaid
 erDiagram
-    USERS {
-        UUID id PK
-        VARCHAR email UK
-        VARCHAR phone_number
-        VARCHAR full_name
-        VARCHAR password_hash
-        UUID organization_id FK
-        JSONB roles
-        ENUM status
-        TIMESTAMP created_at
-        TIMESTAMP updated_at
-        TIMESTAMP last_login
+    %% Existing E4H Tables (Reference Only)
+    FACILITY {
+        VARCHAR id PK "Existing"
+        VARCHAR tenant_id "Existing"
+        VARCHAR facility_name "Existing"
+        VARCHAR facility_type "Existing"
+        VARCHAR facility_category "Existing"
+        VARCHAR wf_status "Existing"
+        JSONB additional_details "Extended for Field Activities"
     }
     
-    ORGANIZATIONS {
-        UUID id PK
-        VARCHAR name UK
-        VARCHAR code UK
-        ENUM type
-        JSONB contact_info
-        TIMESTAMP created_at
-        TIMESTAMP updated_at
+    EG_HRMS_EMPLOYEE {
+        VARCHAR uuid PK "Existing"
+        VARCHAR name "Existing"
+        VARCHAR phone "Existing"
+        VARCHAR tenantid "Existing"
+        VARCHAR employeestatus "Existing"
+        JSONB additional_details "Extended for Field Roles"
     }
     
-    PROJECTS {
-        UUID id PK
-        VARCHAR name UK
-        VARCHAR code UK
-        ENUM type
-        VARCHAR justification_code
-        DATE start_date
-        DATE end_date
-        UUID state_id FK
-        UUID created_by FK
-        ENUM status
-        JSONB metadata
-        TIMESTAMP created_at
-        TIMESTAMP updated_at
+    PROJECT_FACILITY {
+        VARCHAR id PK "Existing"
+        VARCHAR tenantId "Existing"
+        VARCHAR projectId "Existing"
+        VARCHAR facilityId "Existing"
     }
     
+    %% NEW Field Planner Tables
     FIELD_PLANS {
-        UUID id PK
+        VARCHAR id PK
+        VARCHAR tenant_id
         VARCHAR name UK
-        UUID project_id FK
+        VARCHAR project_id FK
         DATE start_date
         DATE end_date
         JSONB geography_scope
         JSONB selected_activities
-        UUID created_by FK
-        ENUM status
-        TIMESTAMP created_at
-        TIMESTAMP updated_at
-    }
-    
-    HEALTH_FACILITIES {
-        UUID id PK
-        VARCHAR name
-        VARCHAR hfr_id
-        VARCHAR nin_id
-        ENUM facility_type
-        UUID boundary_id FK
-        JSONB contact_info
-        GEOMETRY location
-        JSONB metadata
-        TIMESTAMP created_at
-        TIMESTAMP updated_at
-    }
-    
-    PROJECT_FACILITIES {
-        UUID id PK
-        UUID project_id FK
-        UUID facility_id FK
-        ENUM status
-        TIMESTAMP created_at
-        TIMESTAMP updated_at
+        VARCHAR created_by FK
+        VARCHAR status
+        BIGINT created_time
+        BIGINT last_modified_time
+        JSONB additional_details
     }
     
     FIELD_PLAN_FACILITIES {
-        UUID id PK
-        UUID field_plan_id FK
-        UUID facility_id FK
-        ENUM status
-        TIMESTAMP created_at
-        TIMESTAMP updated_at
+        VARCHAR id PK
+        VARCHAR tenant_id  
+        VARCHAR field_plan_id FK
+        VARCHAR facility_id FK
+        VARCHAR status
+        BIGINT created_time
+        BIGINT last_modified_time
+        JSONB additional_details
     }
     
     ACTIVITIES {
-        UUID id PK
+        VARCHAR id PK
+        VARCHAR tenant_id
         VARCHAR name UK
         VARCHAR code UK
         JSONB default_conditions
         JSONB required_roles
         INTEGER sequence_order
         BOOLEAN is_active
-        TIMESTAMP created_at
-        TIMESTAMP updated_at
+        BIGINT created_time
+        BIGINT last_modified_time
+        JSONB additional_details
     }
     
     ACTIVITY_ASSIGNMENTS {
-        UUID id PK
-        UUID field_plan_id FK
-        UUID activity_id FK
-        UUID assigned_to FK
-        UUID assigned_by FK
+        VARCHAR id PK
+        VARCHAR tenant_id
+        VARCHAR field_plan_id FK
+        VARCHAR activity_id FK
+        VARCHAR assigned_to FK
+        VARCHAR assigned_by FK
         DATE start_date
         DATE end_date
-        ENUM status
-        TIMESTAMP created_at
-        TIMESTAMP updated_at
+        VARCHAR status
+        BIGINT created_time
+        BIGINT last_modified_time
+        JSONB additional_details
     }
     
     FACILITY_ACTIVITIES {
-        UUID id PK
-        UUID facility_id FK
-        UUID activity_id FK
-        UUID field_plan_id FK
-        ENUM status
+        VARCHAR id PK
+        VARCHAR tenant_id
+        VARCHAR facility_id FK
+        VARCHAR activity_id FK
+        VARCHAR field_plan_id FK
+        VARCHAR status
         JSONB conditions_met
-        UUID assigned_user FK
-        TIMESTAMP scheduled_at
-        TIMESTAMP activated_at
-        TIMESTAMP completed_at
-        TIMESTAMP created_at
-        TIMESTAMP updated_at
+        VARCHAR assigned_user FK
+        BIGINT scheduled_at
+        BIGINT activated_at
+        BIGINT completed_at
+        BIGINT created_time
+        BIGINT last_modified_time
+        JSONB additional_details
     }
     
     ACTIVITY_REPORTS {
-        UUID id PK
-        UUID facility_activity_id FK
-        UUID submitted_by FK
+        VARCHAR id PK
+        VARCHAR tenant_id
+        VARCHAR facility_activity_id FK
+        VARCHAR submitted_by FK
         JSONB report_data
         JSONB attachments
-        ENUM status
-        UUID reviewed_by FK
-        TIMESTAMP reviewed_at
+        VARCHAR status
+        VARCHAR reviewed_by FK
+        BIGINT reviewed_at
         TEXT review_comments
-        TIMESTAMP created_at
-        TIMESTAMP updated_at
-    }
-    
-    BOUNDARIES {
-        UUID id PK
-        VARCHAR name
-        VARCHAR code UK
-        ENUM type
-        UUID parent_id FK
-        GEOMETRY geometry
-        JSONB metadata
-        TIMESTAMP created_at
-        TIMESTAMP updated_at
-    }
-    
-    NOTIFICATIONS {
-        UUID id PK
-        UUID user_id FK
-        ENUM type
-        VARCHAR subject
-        TEXT message
-        JSONB data
-        BOOLEAN is_read
-        TIMESTAMP sent_at
-        TIMESTAMP read_at
-        TIMESTAMP created_at
-    }
-    
-    AUDIT_LOGS {
-        UUID id PK
-        UUID user_id FK
-        VARCHAR entity_type
-        UUID entity_id
-        VARCHAR action
-        JSONB old_values
-        JSONB new_values
-        TIMESTAMP created_at
+        BIGINT created_time
+        BIGINT last_modified_time
+        JSONB additional_details
     }
 
-    USERS ||--o{ PROJECTS : creates
-    USERS ||--o{ FIELD_PLANS : creates
-    USERS ||--o{ ACTIVITY_ASSIGNMENTS : assigned
-    USERS ||--o{ FACILITY_ACTIVITIES : assigned
-    USERS ||--o{ ACTIVITY_REPORTS : submits
-    USERS ||--o{ NOTIFICATIONS : receives
-    USERS ||--o{ AUDIT_LOGS : performs
-    USERS }o--|| ORGANIZATIONS : belongs_to
+    %% Relationships with Existing Tables
+    FACILITY ||--o{ PROJECT_FACILITY : existing
+    FACILITY ||--o{ FIELD_PLAN_FACILITIES : references
+    FACILITY ||--o{ FACILITY_ACTIVITIES : references
     
-    PROJECTS ||--o{ FIELD_PLANS : contains
-    PROJECTS ||--o{ PROJECT_FACILITIES : includes
+    EG_HRMS_EMPLOYEE ||--o{ ACTIVITY_ASSIGNMENTS : assigned_to
+    EG_HRMS_EMPLOYEE ||--o{ FACILITY_ACTIVITIES : assigned_to
+    EG_HRMS_EMPLOYEE ||--o{ ACTIVITY_REPORTS : submits
     
+    PROJECT_FACILITY ||--o{ FIELD_PLANS : project_context
+    
+    %% New Relationships
     FIELD_PLANS ||--o{ FIELD_PLAN_FACILITIES : includes
-    FIELD_PLANS ||--o{ ACTIVITY_ASSIGNMENTS : has
+    FIELD_PLANS ||--o{ ACTIVITY_ASSIGNMENTS : contains
     FIELD_PLANS ||--o{ FACILITY_ACTIVITIES : tracks
-    
-    HEALTH_FACILITIES ||--o{ PROJECT_FACILITIES : included_in
-    HEALTH_FACILITIES ||--o{ FIELD_PLAN_FACILITIES : included_in
-    HEALTH_FACILITIES ||--o{ FACILITY_ACTIVITIES : has
-    HEALTH_FACILITIES }o--|| BOUNDARIES : located_in
     
     ACTIVITIES ||--o{ ACTIVITY_ASSIGNMENTS : assigned
     ACTIVITIES ||--o{ FACILITY_ACTIVITIES : performed
     
     FACILITY_ACTIVITIES ||--o{ ACTIVITY_REPORTS : generates
-    
-    BOUNDARIES ||--o{ BOUNDARIES : parent_of
 ```
 
-### 3.2 Key Tables Specifications
+### 3.2 New Field Planner Table Specifications
 
-#### 3.2.1 Users Table
+> **Note**: Field Planner uses existing E4H tables (`facility`, `eg_hrms_employee`, `PROJECT_FACILITY`) and only adds new tables specific to field planning functionality.
+
+#### 3.2.1 Field Plans Table (NEW)
 ```sql
-CREATE TABLE users (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    email VARCHAR(255) UNIQUE NOT NULL,
-    phone_number VARCHAR(20),
-    full_name VARCHAR(255) NOT NULL,
-    password_hash VARCHAR(255),
-    organization_id UUID REFERENCES organizations(id),
-    roles JSONB NOT NULL DEFAULT '[]',
-    status user_status DEFAULT 'PENDING_VERIFICATION',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    last_login TIMESTAMP,
-    
-    CONSTRAINT valid_email CHECK (email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'),
-    CONSTRAINT valid_phone CHECK (phone_number ~ '^\+?[1-9]\d{1,14}$')
-);
-
-CREATE TYPE user_status AS ENUM (
-    'PENDING_VERIFICATION',
-    'ACTIVE',
-    'INACTIVE',
-    'ARCHIVED'
-);
-```
-
-#### 3.2.2 Projects Table
-```sql
-CREATE TABLE projects (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name VARCHAR(255) UNIQUE NOT NULL,
-    code VARCHAR(50) UNIQUE NOT NULL,
-    type project_type NOT NULL,
-    justification_code VARCHAR(255),
-    start_date DATE NOT NULL,
-    end_date DATE NOT NULL,
-    state_id UUID REFERENCES boundaries(id),
-    created_by UUID REFERENCES users(id),
-    status project_status DEFAULT 'ACTIVE',
-    metadata JSONB DEFAULT '{}',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    
-    CONSTRAINT valid_date_range CHECK (start_date < end_date)
-);
-
-CREATE TYPE project_type AS ENUM (
-    'MEDTECH',
-    'ENERGY_FOR_HEALTH',
-    'LIVELIHOODS'
-);
-
-CREATE TYPE project_status AS ENUM (
-    'ACTIVE',
-    'COMPLETED',
-    'CANCELLED',
-    'ON_HOLD'
-);
-```
-
-#### 3.2.3 Field Plans Table
-```sql
+-- Extends project management with field planning capabilities
 CREATE TABLE field_plans (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name VARCHAR(255) UNIQUE NOT NULL,
-    project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
+    id VARCHAR PRIMARY KEY,
+    tenant_id VARCHAR NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    project_id VARCHAR NOT NULL, -- References existing project
     start_date DATE NOT NULL,
     end_date DATE NOT NULL,
-    geography_scope JSONB NOT NULL,
+    geography_scope JSONB NOT NULL, -- District/block selection
     selected_activities JSONB NOT NULL DEFAULT '[]',
-    created_by UUID REFERENCES users(id),
-    status field_plan_status DEFAULT 'ACTIVE',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_by VARCHAR NOT NULL, -- References eg_hrms_employee.uuid
+    status VARCHAR DEFAULT 'ACTIVE',
+    created_time BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    last_modified_time BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    additional_details JSONB DEFAULT '{}',
     
     CONSTRAINT valid_date_range CHECK (start_date < end_date)
 );
 
-CREATE TYPE field_plan_status AS ENUM (
-    'ACTIVE',
-    'COMPLETED',
-    'CANCELLED'
-);
+CREATE INDEX idx_field_plans_tenant ON field_plans(tenant_id);
+CREATE INDEX idx_field_plans_project ON field_plans(tenant_id, project_id);
+CREATE INDEX idx_field_plans_created_by ON field_plans(tenant_id, created_by);
 ```
 
-#### 3.2.4 Health Facilities Table
+#### 3.2.2 Field Plan Facilities Table (NEW)
 ```sql
-CREATE TABLE health_facilities (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+-- Links field plans to specific facilities from existing facility table
+CREATE TABLE field_plan_facilities (
+    id VARCHAR PRIMARY KEY,
+    tenant_id VARCHAR NOT NULL,
+    field_plan_id VARCHAR NOT NULL REFERENCES field_plans(id),
+    facility_id VARCHAR NOT NULL, -- References existing facility.id
+    status VARCHAR DEFAULT 'ACTIVE',
+    created_time BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    last_modified_time BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    additional_details JSONB DEFAULT '{}'
+);
+
+CREATE INDEX idx_field_plan_facilities_tenant ON field_plan_facilities(tenant_id);
+CREATE INDEX idx_field_plan_facilities_plan ON field_plan_facilities(tenant_id, field_plan_id);
+CREATE INDEX idx_field_plan_facilities_facility ON field_plan_facilities(tenant_id, facility_id);
+CREATE UNIQUE INDEX uniq_field_plan_facility ON field_plan_facilities(tenant_id, field_plan_id, facility_id);
+```
+
+#### 3.2.3 Activities Table (NEW)
+```sql
+-- Master data for field activities with configurable conditions
+CREATE TABLE activities (
+    id VARCHAR PRIMARY KEY,
+    tenant_id VARCHAR NOT NULL,
     name VARCHAR(255) NOT NULL,
-    hfr_id VARCHAR(100),
-    nin_id VARCHAR(100),
-    facility_type facility_type NOT NULL,
-    boundary_id UUID REFERENCES boundaries(id),
-    contact_info JSONB NOT NULL DEFAULT '{}',
-    location GEOMETRY(POINT, 4326),
-    metadata JSONB DEFAULT '{}',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    
-    CONSTRAINT at_least_one_id CHECK (hfr_id IS NOT NULL OR nin_id IS NOT NULL)
+    code VARCHAR(50) NOT NULL,
+    default_conditions JSONB NOT NULL DEFAULT '{}', -- Activation conditions
+    required_roles JSONB NOT NULL DEFAULT '[]', -- Required roles for activity
+    sequence_order INTEGER DEFAULT 0,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_time BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    last_modified_time BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    additional_details JSONB DEFAULT '{}'
 );
 
-CREATE TYPE facility_type AS ENUM (
-    'SC',
-    'PHC',
-    'CHC',
-    'HWC',
-    'DISTRICT_HOSPITAL',
-    'MEDICAL_COLLEGE'
-);
+CREATE INDEX idx_activities_tenant ON activities(tenant_id);
+CREATE INDEX idx_activities_code ON activities(tenant_id, code);
+CREATE UNIQUE INDEX uniq_activity_code ON activities(tenant_id, code);
 ```
 
-### 3.3 Indexes and Performance Optimization
-
+#### 3.2.4 Activity Assignments Table (NEW)
 ```sql
--- Performance indexes
-CREATE INDEX idx_users_email ON users(email);
-CREATE INDEX idx_users_organization ON users(organization_id);
-CREATE INDEX idx_projects_created_by ON projects(created_by);
-CREATE INDEX idx_projects_state ON projects(state_id);
-CREATE INDEX idx_field_plans_project ON field_plans(project_id);
-CREATE INDEX idx_health_facilities_boundary ON health_facilities(boundary_id);
-CREATE INDEX idx_facility_activities_status ON facility_activities(status);
-CREATE INDEX idx_activity_reports_status ON activity_reports(status);
-CREATE INDEX idx_notifications_user_unread ON notifications(user_id, is_read);
-CREATE INDEX idx_audit_logs_entity ON audit_logs(entity_type, entity_id);
+-- Assigns activities to SPOCs within field plans
+CREATE TABLE activity_assignments (
+    id VARCHAR PRIMARY KEY,
+    tenant_id VARCHAR NOT NULL,
+    field_plan_id VARCHAR NOT NULL REFERENCES field_plans(id),
+    activity_id VARCHAR NOT NULL REFERENCES activities(id),
+    assigned_to VARCHAR NOT NULL, -- References eg_hrms_employee.uuid
+    assigned_by VARCHAR NOT NULL, -- References eg_hrms_employee.uuid
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    status VARCHAR DEFAULT 'ACTIVE',
+    created_time BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    last_modified_time BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    additional_details JSONB DEFAULT '{}'
+);
 
--- Spatial index for location queries
-CREATE INDEX idx_health_facilities_location ON health_facilities USING GIST(location);
+CREATE INDEX idx_activity_assignments_tenant ON activity_assignments(tenant_id);
+CREATE INDEX idx_activity_assignments_plan ON activity_assignments(tenant_id, field_plan_id);
+CREATE INDEX idx_activity_assignments_assigned_to ON activity_assignments(tenant_id, assigned_to);
+```
 
--- Composite indexes for common queries
-CREATE INDEX idx_facility_activities_composite ON facility_activities(facility_id, activity_id, field_plan_id);
-CREATE INDEX idx_activity_assignments_composite ON activity_assignments(field_plan_id, activity_id, assigned_to);
+#### 3.2.5 Facility Activities Table (NEW)
+```sql
+-- Tracks facility-level activity execution with conditional activation
+CREATE TABLE facility_activities (
+    id VARCHAR PRIMARY KEY,
+    tenant_id VARCHAR NOT NULL,
+    facility_id VARCHAR NOT NULL, -- References existing facility.id
+    activity_id VARCHAR NOT NULL REFERENCES activities(id),
+    field_plan_id VARCHAR NOT NULL REFERENCES field_plans(id),
+    status VARCHAR DEFAULT 'SCHEDULED', -- SCHEDULED, ACTIVE, COMPLETED, CANCELLED
+    conditions_met JSONB DEFAULT '{}', -- Tracks which conditions are satisfied
+    assigned_user VARCHAR, -- References eg_hrms_employee.uuid
+    scheduled_at BIGINT,
+    activated_at BIGINT,
+    completed_at BIGINT,
+    created_time BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    last_modified_time BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    additional_details JSONB DEFAULT '{}'
+);
+
+CREATE INDEX idx_facility_activities_tenant ON facility_activities(tenant_id);
+CREATE INDEX idx_facility_activities_facility ON facility_activities(tenant_id, facility_id);
+CREATE INDEX idx_facility_activities_status ON facility_activities(tenant_id, status);
+CREATE INDEX idx_facility_activities_assigned ON facility_activities(tenant_id, assigned_user);
+CREATE INDEX idx_facility_activities_composite ON facility_activities(tenant_id, facility_id, activity_id, field_plan_id);
+```
+
+### 3.3 Integration with Existing E4H Services
+
+#### 3.3.1 Service Dependencies
+```yaml
+# Field Planner service dependencies
+dependencies:
+  - health-facility-registry  # For facility data
+  - egov-hrms                # For user/employee management  
+  - project-service          # For project context
+  - egov-workflow-v2         # For activity workflows
+  - egov-mdms-service-v2     # For master data validation
+  - egov-filestore           # For file operations
+  - boundary-service         # For geographic data
+```
+
+#### 3.3.2 Database Migration Strategy
+```sql
+-- Migration approach: Only create Field Planner specific tables
+-- Existing tables: facility, eg_hrms_employee, PROJECT_FACILITY remain unchanged
+
+-- Step 1: Create Field Planner tables in sequence
+-- Already covered in 3.2.1 through 3.2.5
+
+-- Step 2: Add activity_reports table for report management
+CREATE TABLE activity_reports (
+    id VARCHAR PRIMARY KEY,
+    tenant_id VARCHAR NOT NULL,
+    facility_activity_id VARCHAR NOT NULL REFERENCES facility_activities(id),
+    submitted_by VARCHAR NOT NULL, -- References eg_hrms_employee.uuid
+    report_data JSONB NOT NULL DEFAULT '{}',
+    attachments JSONB DEFAULT '[]', -- filestore references
+    status VARCHAR DEFAULT 'SUBMITTED', -- SUBMITTED, APPROVED, REJECTED, FLAGGED_FOR_FIELD_QC
+    reviewed_by VARCHAR, -- References eg_hrms_employee.uuid
+    reviewed_at BIGINT,
+    review_comments TEXT,
+    created_time BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    last_modified_time BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
+    additional_details JSONB DEFAULT '{}'
+);
+
+-- Step 3: Create indexes for performance optimization
+CREATE INDEX idx_activity_reports_tenant ON activity_reports(tenant_id);
+CREATE INDEX idx_activity_reports_facility_activity ON activity_reports(tenant_id, facility_activity_id);
+CREATE INDEX idx_activity_reports_status ON activity_reports(tenant_id, status);
+CREATE INDEX idx_activity_reports_submitted_by ON activity_reports(tenant_id, submitted_by);
+CREATE INDEX idx_activity_reports_reviewed_by ON activity_reports(tenant_id, reviewed_by);
+```
+
+#### 3.3.3 Data Consistency Patterns
+```java
+// Example: Ensuring data consistency with existing services
+@Component
+public class FacilityDataConsistencyService {
+    
+    @Autowired
+    private FacilityServiceClient facilityServiceClient;
+    
+    @Autowired
+    private HRMSServiceClient hrmsServiceClient;
+    
+    public void validateFacilityAssignment(String tenantId, String facilityId, String employeeId) {
+        // Validate facility exists in Health Facility Registry
+        FacilityResponse facility = facilityServiceClient.getFacility(tenantId, facilityId);
+        if (facility == null || !facility.getIsActive()) {
+            throw new ValidationException("Invalid or inactive facility: " + facilityId);
+        }
+        
+        // Validate employee exists in eGov HRMS
+        EmployeeResponse employee = hrmsServiceClient.getEmployee(tenantId, employeeId);
+        if (employee == null || !employee.getActive()) {
+            throw new ValidationException("Invalid or inactive employee: " + employeeId);
+        }
+    }
+}
 ```
 
 ---
@@ -492,45 +512,76 @@ CREATE INDEX idx_activity_assignments_composite ON activity_assignments(field_pl
 
 ### 4.2 Core API Endpoints
 
-#### 4.2.1 Authentication & Authorization
+#### 4.2.1 Integration with Existing E4H APIs
 
 ```yaml
-# Authentication endpoints
-POST /api/v1/auth/login
-POST /api/v1/auth/logout
-POST /api/v1/auth/refresh
-POST /api/v1/auth/forgot-password
-POST /api/v1/auth/reset-password
-GET  /api/v1/auth/verify-email/{token}
+# EXISTING APIs (used by Field Planner)
+# eGov HRMS Service
+GET    /egov-hrms/employees/_search          # Get employees/users
+POST   /egov-hrms/employees/_create          # Create field staff
+POST   /egov-hrms/employees/_update          # Update employee details
+
+# Health Facility Registry  
+GET    /facility/v1/_search                  # Search facilities
+GET    /facility/v1/{id}                     # Get facility details
+POST   /facility/v1/_create                  # Create facilities (admin)
+
+# Project Service (Extended)
+GET    /project/v1/_search                   # Get existing projects  
+POST   /project/v1/_create                   # Create projects (existing)
+GET    /project/PROJECT_FACILITY/_search     # Get project-facility links
+
+# eGov Filestore
+POST   /filestore/v1/files                   # Upload files/templates
+GET    /filestore/v1/files/{id}              # Download files
+
+# eGov MDMS Service  
+POST   /egov-mdms-service/v1/_search         # Get master data
 ```
 
-#### 4.2.2 User Management
+#### 4.2.2 NEW Field Planner APIs
 
 ```yaml
-# User management endpoints
-GET    /api/v1/users
-POST   /api/v1/users
-GET    /api/v1/users/{id}
-PUT    /api/v1/users/{id}
-DELETE /api/v1/users/{id}
-POST   /api/v1/users/bulk-create
-GET    /api/v1/users/search
-PUT    /api/v1/users/{id}/roles
+# Field Plan Management
+GET    /field-planner/v1/field-plans/_search
+POST   /field-planner/v1/field-plans/_create  
+GET    /field-planner/v1/field-plans/{id}
+PUT    /field-planner/v1/field-plans/_update
+POST   /field-planner/v1/field-plans/{id}/facilities/_assign
+GET    /field-planner/v1/field-plans/{id}/facilities/template
+POST   /field-planner/v1/field-plans/{id}/facilities/upload
+
+# Activity Management  
+GET    /field-planner/v1/activities/_search
+POST   /field-planner/v1/activities/_create
+POST   /field-planner/v1/activity-assignments/_create
+GET    /field-planner/v1/activity-assignments/_search  
+PUT    /field-planner/v1/activity-assignments/_update
+
+# Facility Activities
+GET    /field-planner/v1/facility-activities/_search
+PUT    /field-planner/v1/facility-activities/_update
+POST   /field-planner/v1/facility-activities/{id}/assign-user
+GET    /field-planner/v1/facility-activities/{id}/activation-check
+
+# Activity Reports
+POST   /field-planner/v1/activity-reports/_create
+GET    /field-planner/v1/activity-reports/_search
+PUT    /field-planner/v1/activity-reports/{id}/review
+POST   /field-planner/v1/activity-reports/{id}/approve
+POST   /field-planner/v1/activity-reports/{id}/reject
+POST   /field-planner/v1/activity-reports/{id}/flag-for-qc
 ```
 
-#### 4.2.3 Project Management
+#### 4.2.3 Mobile Sync APIs
 
 ```yaml
-# Project endpoints
-GET    /api/v1/projects
-POST   /api/v1/projects
-GET    /api/v1/projects/{id}
-PUT    /api/v1/projects/{id}
-DELETE /api/v1/projects/{id}
-POST   /api/v1/projects/{id}/facilities
-PUT    /api/v1/projects/{id}/facilities
-GET    /api/v1/projects/{id}/facilities/template
-POST   /api/v1/projects/{id}/facilities/upload
+# Mobile Application Endpoints
+POST   /field-planner/v1/mobile/sync/facilities        # Download facility updates
+POST   /field-planner/v1/mobile/sync/activities        # Download activity assignments  
+POST   /field-planner/v1/mobile/sync/full              # Full synchronization
+POST   /field-planner/v1/mobile/reports/_upload        # Upload activity reports
+POST   /field-planner/v1/mobile/reports/{id}/progress  # Auto-save progress
 ```
 
 #### 4.2.4 Field Plan Management
@@ -618,126 +669,196 @@ PUT    /api/v1/activity-reports/{id}/review
 
 ### 5.1 Backend Components
 
-#### 5.1.1 User Management Service
+#### 5.1.1 Field Planner Service Integration
 
 ```java
 @Service
 @Transactional
-public class UserService {
+public class FieldPlannerService {
     
     @Autowired
-    private UserRepository userRepository;
+    private FieldPlanRepository fieldPlanRepository;
     
     @Autowired
-    private PasswordEncoder passwordEncoder;
+    private HRMSServiceClient hrmsServiceClient;
     
     @Autowired
-    private NotificationService notificationService;
-    
-    public UserDTO createUser(CreateUserRequest request) {
-        // Validate input
-        validateUserRequest(request);
-        
-        // Check for duplicates
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new UserAlreadyExistsException("User with email already exists");
-        }
-        
-        // Create user entity
-        User user = new User();
-        user.setEmail(request.getEmail());
-        user.setFullName(request.getFullName());
-        user.setPhoneNumber(request.getPhoneNumber());
-        user.setOrganizationId(request.getOrganizationId());
-        user.setRoles(request.getRoles());
-        user.setStatus(UserStatus.PENDING_VERIFICATION);
-        
-        // Hash password if provided
-        if (request.getPassword() != null) {
-            user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
-        }
-        
-        // Save user
-        User savedUser = userRepository.save(user);
-        
-        // Send verification email
-        notificationService.sendVerificationEmail(savedUser);
-        
-        return UserMapper.toDTO(savedUser);
-    }
-    
-    // Additional methods...
-}
-```
-
-#### 5.1.2 Project Management Service
-
-```java
-@Service
-@Transactional
-public class ProjectService {
+    private FacilityServiceClient facilityServiceClient;
     
     @Autowired
-    private ProjectRepository projectRepository;
-    
-    @Autowired
-    private HealthFacilityService facilityService;
-    
-    @Autowired
-    private FileService fileService;
+    private ProjectServiceClient projectServiceClient;
     
     @Autowired
     private AuditService auditService;
     
-    public ProjectDTO createProject(CreateProjectRequest request) {
-        // Validate project data
-        validateProjectRequest(request);
-        
-        // Generate unique project code
-        String projectCode = generateProjectCode(request);
-        
-        // Create project entity
-        Project project = new Project();
-        project.setName(request.getName());
-        project.setCode(projectCode);
-        project.setType(request.getType());
-        project.setJustificationCode(request.getJustificationCode());
-        project.setStartDate(request.getStartDate());
-        project.setEndDate(request.getEndDate());
-        project.setStateId(request.getStateId());
-        project.setCreatedBy(SecurityUtils.getCurrentUserId());
-        project.setStatus(ProjectStatus.ACTIVE);
-        
-        // Save project
-        Project savedProject = projectRepository.save(project);
-        
-        // Log audit event
-        auditService.logProjectCreation(savedProject);
-        
-        return ProjectMapper.toDTO(savedProject);
-    }
-    
-    public void addFacilitiesToProject(UUID projectId, List<HealthFacilityDTO> facilities) {
-        Project project = getProjectById(projectId);
-        
-        // Validate facilities
-        List<HealthFacility> validatedFacilities = facilityService.validateFacilities(facilities);
-        
-        // Add facilities to project
-        for (HealthFacility facility : validatedFacilities) {
-            ProjectFacility projectFacility = new ProjectFacility();
-            projectFacility.setProjectId(projectId);
-            projectFacility.setFacilityId(facility.getId());
-            projectFacility.setStatus(ProjectFacilityStatus.ACTIVE);
-            
-            projectFacilityRepository.save(projectFacility);
+    public FieldPlanDTO createFieldPlan(CreateFieldPlanRequest request) {
+        // Validate project exists
+        ProjectResponse project = projectServiceClient.getProject(request.getTenantId(), request.getProjectId());
+        if (project == null) {
+            throw new EntityNotFoundException("Project not found: " + request.getProjectId());
         }
         
-        // Log audit event
-        auditService.logFacilitiesAdded(projectId, validatedFacilities);
+        // Validate user exists in HRMS
+        EmployeeResponse creator = hrmsServiceClient.getEmployee(request.getTenantId(), request.getCreatedBy());
+        if (creator == null || !creator.getActive()) {
+            throw new ValidationException("Invalid creator employee: " + request.getCreatedBy());
+        }
+        
+        // Create field plan entity (follows E4H conventions)
+        FieldPlan fieldPlan = new FieldPlan();
+        fieldPlan.setId(idGenService.generateId());
+        fieldPlan.setTenantId(request.getTenantId());
+        fieldPlan.setName(request.getName());
+        fieldPlan.setProjectId(request.getProjectId());
+        fieldPlan.setStartDate(request.getStartDate());
+        fieldPlan.setEndDate(request.getEndDate());
+        fieldPlan.setGeographyScope(request.getGeographyScope());
+        fieldPlan.setSelectedActivities(request.getSelectedActivities());
+        fieldPlan.setCreatedBy(request.getCreatedBy());
+        fieldPlan.setStatus("ACTIVE");
+        fieldPlan.setCreatedTime(System.currentTimeMillis());
+        fieldPlan.setLastModifiedTime(System.currentTimeMillis());
+        
+        // Save field plan
+        FieldPlan savedFieldPlan = fieldPlanRepository.save(fieldPlan);
+        
+        // Log audit event using existing audit framework
+        auditService.logFieldPlanCreation(savedFieldPlan);
+        
+        return FieldPlanMapper.toDTO(savedFieldPlan);
     }
     
-    // Additional methods...
+    public void assignFacilitiesToFieldPlan(String tenantId, String fieldPlanId, 
+                                           List<String> facilityIds) {
+        // Validate facilities exist in Health Facility Registry
+        List<FacilityResponse> facilities = facilityServiceClient.getFacilities(tenantId, facilityIds);
+        
+        for (String facilityId : facilityIds) {
+            // Verify facility exists and is active
+            FacilityResponse facility = facilities.stream()
+                .filter(f -> f.getFacilityId().equals(facilityId))
+                .findFirst()
+                .orElseThrow(() -> new EntityNotFoundException("Facility not found: " + facilityId));
+            
+            if (!facility.getIsActive()) {
+                throw new ValidationException("Facility is not active: " + facilityId);
+            }
+            
+            // Create field plan facility association
+            FieldPlanFacility fpFacility = new FieldPlanFacility();
+            fpFacility.setId(idGenService.generateId());
+            fpFacility.setTenantId(tenantId);
+            fpFacility.setFieldPlanId(fieldPlanId);
+            fpFacility.setFacilityId(facilityId);
+            fpFacility.setStatus("ACTIVE");
+            fpFacility.setCreatedTime(System.currentTimeMillis());
+            
+            fieldPlanFacilityRepository.save(fpFacility);
+        }
+        
+        auditService.logFacilityAssignments(tenantId, fieldPlanId, facilityIds);
+    }
+}
+```
+
+#### 5.1.2 Activity Management Service (NEW)
+
+```java
+@Service
+@Transactional
+public class ActivityManagementService {
+    
+    @Autowired
+    private FacilityActivityRepository facilityActivityRepository;
+    
+    @Autowired
+    private ActivityReportRepository activityReportRepository;
+    
+    @Autowired
+    private HRMSServiceClient hrmsServiceClient;
+    
+    @Autowired
+    private WorkflowServiceClient workflowServiceClient;
+    
+    @Autowired
+    private ConditionEvaluator conditionEvaluator;
+    
+    @Autowired
+    private NotificationProducer notificationProducer;
+    
+    public void assignUserToFacilityActivity(String tenantId, String facilityActivityId, String userId) {
+        // Validate user exists in HRMS
+        EmployeeResponse employee = hrmsServiceClient.getEmployee(tenantId, userId);
+        if (employee == null || !employee.getActive()) {
+            throw new ValidationException("Invalid or inactive employee: " + userId);
+        }
+        
+        // Get facility activity
+        FacilityActivity facilityActivity = facilityActivityRepository.findByIdAndTenantId(facilityActivityId, tenantId)
+            .orElseThrow(() -> new EntityNotFoundException("Facility activity not found"));
+        
+        // Assign user
+        facilityActivity.setAssignedUser(userId);
+        facilityActivity.setLastModifiedTime(System.currentTimeMillis());
+        
+        // Check if conditions are met for activation
+        if (conditionEvaluator.evaluateActivationConditions(facilityActivity)) {
+            facilityActivity.setStatus("ACTIVE");
+            facilityActivity.setActivatedAt(System.currentTimeMillis());
+            
+            // Send activation notification via Kafka
+            FacilityActivityEvent event = new FacilityActivityEvent();
+            event.setTenantId(tenantId);
+            event.setFacilityActivityId(facilityActivityId);
+            event.setUserId(userId);
+            event.setEventType("FACILITY_ACTIVATED");
+            
+            notificationProducer.sendFacilityActivationEvent(event);
+        }
+        
+        facilityActivityRepository.save(facilityActivity);
+    }
+    
+    public void processActivityReport(String tenantId, CreateActivityReportRequest request) {
+        // Validate facility activity exists
+        FacilityActivity facilityActivity = facilityActivityRepository
+            .findByIdAndTenantId(request.getFacilityActivityId(), tenantId)
+            .orElseThrow(() -> new EntityNotFoundException("Facility activity not found"));
+        
+        // Validate reporter exists in HRMS
+        EmployeeResponse reporter = hrmsServiceClient.getEmployee(tenantId, request.getSubmittedBy());
+        if (reporter == null) {
+            throw new ValidationException("Invalid reporter employee");
+        }
+        
+        // Create activity report
+        ActivityReport report = new ActivityReport();
+        report.setId(idGenService.generateId());
+        report.setTenantId(tenantId);
+        report.setFacilityActivityId(request.getFacilityActivityId());
+        report.setSubmittedBy(request.getSubmittedBy());
+        report.setReportData(request.getReportData());
+        report.setAttachments(request.getAttachments());
+        report.setStatus("SUBMITTED");
+        report.setCreatedTime(System.currentTimeMillis());
+        
+        ActivityReport savedReport = activityReportRepository.save(report);
+        
+        // Update facility activity status
+        facilityActivity.setStatus("COMPLETED");
+        facilityActivity.setCompletedAt(System.currentTimeMillis());
+        facilityActivityRepository.save(facilityActivity);
+        
+        // Send report submission notification
+        ActivityReportEvent reportEvent = new ActivityReportEvent();
+        reportEvent.setTenantId(tenantId);
+        reportEvent.setReportId(savedReport.getId());
+        reportEvent.setEventType("REPORT_SUBMITTED");
+        
+        notificationProducer.sendReportSubmissionEvent(reportEvent);
+    }
+    
+    // Additional methods for review, approval, etc.
 }
 ```
 
@@ -1062,49 +1183,168 @@ public class ValidationService {
 
 ## 7. Integration Points
 
-### 7.1 Mobile App Integration
+### 7.1 E4H Platform Service Integration
 
-#### 7.1.1 Sync Strategy
+#### 7.1.1 Service Client Configuration
+
+```java
+// Integration with existing E4H services
+@Configuration
+public class E4HServiceClientConfig {
+    
+    @Bean
+    @LoadBalanced
+    public RestTemplate restTemplate() {
+        return new RestTemplate();
+    }
+    
+    @Bean
+    public HRMSServiceClient hrmsServiceClient(@Value("${egov.hrms.base-url}") String baseUrl) {
+        return new HRMSServiceClient(restTemplate(), baseUrl);
+    }
+    
+    @Bean
+    public FacilityServiceClient facilityServiceClient(@Value("${facility.service.base-url}") String baseUrl) {
+        return new FacilityServiceClient(restTemplate(), baseUrl);
+    }
+    
+    @Bean
+    public ProjectServiceClient projectServiceClient(@Value("${project.service.base-url}") String baseUrl) {
+        return new ProjectServiceClient(restTemplate(), baseUrl);
+    }
+    
+    @Bean
+    public WorkflowServiceClient workflowServiceClient(@Value("${egov.workflow.base-url}") String baseUrl) {
+        return new WorkflowServiceClient(restTemplate(), baseUrl);
+    }
+}
+
+@Component
+public class HRMSServiceClient {
+    
+    private final RestTemplate restTemplate;
+    private final String baseUrl;
+    
+    public HRMSServiceClient(RestTemplate restTemplate, String baseUrl) {
+        this.restTemplate = restTemplate;
+        this.baseUrl = baseUrl;
+    }
+    
+    public EmployeeResponse getEmployee(String tenantId, String employeeId) {
+        String url = baseUrl + "/egov-hrms/employees/_search";
+        
+        EmployeeSearchRequest searchRequest = new EmployeeSearchRequest();
+        searchRequest.setTenantId(tenantId);
+        searchRequest.setUuids(Arrays.asList(employeeId));
+        
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        HttpEntity<EmployeeSearchRequest> entity = new HttpEntity<>(searchRequest, headers);
+        
+        try {
+            EmployeeSearchResponse response = restTemplate.postForObject(url, entity, EmployeeSearchResponse.class);
+            if (response != null && response.getEmployees() != null && !response.getEmployees().isEmpty()) {
+                return response.getEmployees().get(0);
+            }
+        } catch (Exception e) {
+            log.error("Error fetching employee from HRMS: {}", e.getMessage());
+        }
+        
+        return null;
+    }
+    
+    public List<EmployeeResponse> searchEmployees(String tenantId, EmployeeSearchCriteria criteria) {
+        String url = baseUrl + "/egov-hrms/employees/_search";
+        
+        EmployeeSearchRequest searchRequest = new EmployeeSearchRequest();
+        searchRequest.setTenantId(tenantId);
+        searchRequest.setDepartment(criteria.getDepartment());
+        searchRequest.setDesignation(criteria.getDesignation());
+        searchRequest.setActive(true);
+        
+        HttpEntity<EmployeeSearchRequest> entity = new HttpEntity<>(searchRequest);
+        
+        try {
+            EmployeeSearchResponse response = restTemplate.postForObject(url, entity, EmployeeSearchResponse.class);
+            if (response != null && response.getEmployees() != null) {
+                return response.getEmployees();
+            }
+        } catch (Exception e) {
+            log.error("Error searching employees from HRMS: {}", e.getMessage());
+        }
+        
+        return Collections.emptyList();
+    }
+}
+```
+
+#### 7.1.2 Mobile App Integration with Existing Infrastructure
 
 ```java
 @RestController
-@RequestMapping("/api/v1/mobile/sync")
+@RequestMapping("/field-planner/v1/mobile/sync")
 public class MobileSyncController {
+    
+    @Autowired
+    private FacilityServiceClient facilityServiceClient;
+    
+    @Autowired
+    private HRMSServiceClient hrmsServiceClient;
+    
+    @Autowired
+    private FacilityActivityService facilityActivityService;
     
     @PostMapping("/facilities")
     public ResponseEntity<SyncResponse> syncFacilities(
             @RequestBody SyncRequest request,
-            @RequestHeader("User-Agent") String userAgent) {
+            @RequestHeader("X-Tenant-Id") String tenantId) {
         
-        UUID userId = SecurityUtils.getCurrentUserId();
+        String userId = SecurityUtils.getCurrentUserId();
         
-        // Get assigned facilities for the user
+        // Validate user exists in HRMS
+        EmployeeResponse employee = hrmsServiceClient.getEmployee(tenantId, userId);
+        if (employee == null) {
+            throw new UnauthorizedException("Invalid employee");
+        }
+        
+        // Get assigned facility activities from Field Planner
         List<FacilityActivity> assignedActivities = 
-            facilityActivityService.getAssignedActivities(userId);
+            facilityActivityService.getAssignedActivitiesSince(tenantId, userId, request.getLastSyncTime());
         
-        // Get facilities modified since last sync
-        List<HealthFacility> modifiedFacilities = 
-            facilityService.getModifiedSince(request.getLastSyncTime());
+        // Get facility details from Health Facility Registry
+        List<String> facilityIds = assignedActivities.stream()
+            .map(FacilityActivity::getFacilityId)
+            .distinct()
+            .collect(Collectors.toList());
+            
+        List<FacilityResponse> facilities = facilityServiceClient.getFacilities(tenantId, facilityIds);
         
-        // Prepare sync response
+        // Prepare sync response with integrated data
         SyncResponse response = new SyncResponse();
-        response.setFacilities(modifiedFacilities);
-        response.setActivities(assignedActivities);
-        response.setServerTime(Instant.now());
+        response.setFacilities(facilities);
+        response.setFacilityActivities(assignedActivities);
+        response.setServerTime(System.currentTimeMillis());
         
         return ResponseEntity.ok(response);
     }
     
     @PostMapping("/reports")
-    public ResponseEntity<Void> uploadReports(@RequestBody List<ActivityReportDTO> reports) {
-        UUID userId = SecurityUtils.getCurrentUserId();
+    public ResponseEntity<Void> uploadReports(
+            @RequestBody List<ActivityReportDTO> reports,
+            @RequestHeader("X-Tenant-Id") String tenantId) {
+            
+        String userId = SecurityUtils.getCurrentUserId();
         
         for (ActivityReportDTO report : reports) {
-            // Validate report
-            validateActivityReport(report);
+            // Process each report through Activity Management Service
+            CreateActivityReportRequest reportRequest = new CreateActivityReportRequest();
+            reportRequest.setTenantId(tenantId);
+            reportRequest.setFacilityActivityId(report.getFacilityActivityId());
+            reportRequest.setSubmittedBy(userId);
+            reportRequest.setReportData(report.getReportData());
+            reportRequest.setAttachments(report.getAttachments());
             
-            // Process report
-            activityReportService.processReport(report, userId);
+            activityManagementService.processActivityReport(tenantId, reportRequest);
         }
         
         return ResponseEntity.ok().build();
@@ -1714,4 +1954,21 @@ This Low-Level Design document provides a comprehensive technical blueprint for 
 - **Maintainability**: Clean code structure, proper error handling, and extensive testing
 - **Flexibility**: Configurable workflows and role-based access control
 
-The implementation should follow agile development practices with continuous integration and deployment pipelines to ensure quality and reliability. 
+The implementation should follow agile development practices with continuous integration and deployment pipelines to ensure quality and reliability.
+
+---
+
+## REVISION NOTES
+
+**This LLD has been corrected to properly integrate with the existing E4H Digital Platform infrastructure:**
+
+### ✅ **Key Integration Changes Made:**
+1. **Database Design**: Removed duplicate tables (users, projects, facilities) and integrated with existing E4H schemas (`facility`, `eg_hrms_employee`, `PROJECT_FACILITY`)
+2. **Service Architecture**: Field Planner now extends existing services rather than creating standalone systems
+3. **API Integration**: Uses existing E4H service endpoints and follows platform conventions
+4. **Data Consistency**: Validates against existing Health Facility Registry and eGov HRMS
+5. **Technology Alignment**: Follows E4H patterns (VARCHAR IDs, BIGINT timestamps, tenant_id fields)
+6. **Service Dependencies**: Properly integrates with health-facility-registry, egov-hrms, project-service, egov-workflow-v2, egov-filestore, egov-mdms-service-v2
+
+### 🎯 **Result:** 
+Field Planner is now designed as a **service extension module** that enhances the existing E4H platform rather than a standalone system, ensuring consistency, reducing duplication, and leveraging the robust infrastructure already built. 

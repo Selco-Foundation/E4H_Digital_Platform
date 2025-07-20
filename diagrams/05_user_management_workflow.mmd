@@ -1,105 +1,116 @@
 sequenceDiagram
     participant PM as Project Manager/SPOC
-    participant UI as Web Interface
-    participant API as API Gateway
-    participant US as User Service
-    participant NS as Notification Service
-    participant AUTH as Auth Service
-    participant AS as Audit Service
-    participant DB as Database
-    participant EMAIL as Email Service
+    participant UI as E4H Web UI (Extended)
+    participant GW as E4H API Gateway (Existing)
+    participant AUTH as E4H Auth Service (Existing)
+    participant HRMS as eGov HRMS (Existing)
+    participant AMS as Activity Management Service (NEW)
+    participant FPS as Field Planner Service (NEW)
+    participant EGOV_FS as eGov Filestore (Existing)
+    participant DB as E4H PostgreSQL (Shared)
+    participant QUEUE as Kafka Queue (Shared)
     participant NEW_USER as New User
     
-    Note over PM,NEW_USER: User Creation and Team Management Workflow
+    Note over PM,NEW_USER: E4H Integrated User Management via eGov HRMS
     
-    PM->>UI: Navigate to Team Management
-    UI->>API: GET /api/v1/users/my-team
-    API->>US: Get team members for user
-    US->>DB: Query team associations
-    DB-->>US: Return team member list
-    US-->>API: Return team data
-    API-->>UI: Display team dashboard
+    PM->>UI: Navigate to Team Management (E4H UI)
+    UI->>GW: GET /user/oauth/me
+    GW->>AUTH: Validate PM/SPOC JWT token
+    AUTH->>HRMS: GET /egov-hrms/employees/_search
+    Note over AUTH,HRMS: Validate PM has team management permissions
+    HRMS-->>AUTH: PM validated with team management role
+    AUTH-->>GW: User authenticated
+    GW-->>UI: User authenticated
+    
+    UI->>GW: GET /egov-hrms/employees/_search?supervisorId={pmId}
+    GW->>HRMS: Get team members for PM/SPOC (existing service)
+    HRMS->>DB: Query eg_hrms_employee and eg_hrms_assignment tables
+    DB-->>HRMS: Return team member list with assignments
+    HRMS-->>GW: Return team data
+    GW-->>UI: Display team dashboard
     UI-->>PM: Show current team members and roles
     
     PM->>UI: Click "Add Team Member"
-    UI->>API: GET /api/v1/organizations
-    API->>US: Get available organizations
-    US->>DB: Query organizations user can access
-    DB-->>US: Return organization list
-    US-->>API: Return organizations
-    API-->>UI: Display organization options
-    UI-->>PM: Show organization selection
+    Note over PM,UI: Redirects to eGov HRMS employee management
+    Note over UI: Field Planner integrates with existing E4H user management
+    Note over UI: Uses eGov HRMS for all employee operations
     
-    alt Single User Creation
-        PM->>UI: Fill user creation form
-        Note over PM,UI: Email, Name, Phone, Organization, Roles
+    alt Single Employee Creation (via eGov HRMS)
+        PM->>UI: Fill employee creation form
+        Note over PM,UI: Name, Phone, Employee Type, Department, Designation
         
-        PM->>UI: Submit user creation form
-        UI->>API: POST /api/v1/users
-        API->>US: Create new user
+        PM->>UI: Submit employee creation form
+        UI->>GW: POST /egov-hrms/employees/_create
+        GW->>HRMS: Create new employee (existing service)
         
-        US->>DB: Check if email already exists
-        alt Email Already Exists
-            DB-->>US: Return duplicate error
-            US-->>API: Return validation error
-            API-->>UI: Show error message
-            UI-->>PM: "User with this email already exists"
-        else Email Available
-            US->>DB: Begin transaction
-            US->>DB: Create user record
-            DB-->>US: Return user ID
+        HRMS->>DB: Check if employee already exists (eg_hrms_employee table)
+        alt Employee Already Exists
+            DB-->>HRMS: Return duplicate error
+            HRMS-->>GW: Return validation error
+            GW-->>UI: Show error message
+            UI-->>PM: "Employee with this phone/code already exists"
+        else Employee Details Valid
+            HRMS->>DB: Begin transaction
+            HRMS->>DB: Create eg_hrms_employee record
+            DB-->>HRMS: Return employee UUID
             
-            US->>AUTH: Generate email verification token
-            AUTH-->>US: Return verification token
+            HRMS->>DB: Create eg_hrms_assignment record
+            Note over HRMS,DB: Link employee to PM as supervisor
+            DB-->>HRMS: Assignment created
             
-            US->>DB: Store verification token
-            DB-->>US: Token stored
+            HRMS->>DB: Commit transaction
+            DB-->>HRMS: Employee created successfully
             
-            US->>DB: Create team association
-            DB-->>US: Team association created
+            Note over HRMS: E4H audit patterns handle employee creation logging
             
-            US->>DB: Commit transaction
-            DB-->>US: User created successfully
+            Note over HRMS: E4H notification system handles onboarding
+            HRMS->>QUEUE: Publish EmployeeCreatedEvent
             
-            US->>AS: Log user creation audit
-            AS->>DB: Store audit record
-            DB-->>AS: Audit logged
-            
-            US->>NS: Send verification email
-            NS->>EMAIL: Queue verification email
-            EMAIL->>NEW_USER: Send verification email
-            
-            US-->>API: User created successfully
-            API-->>UI: Return success response
-            UI-->>PM: Show "User created, verification email sent"
+            HRMS-->>GW: Employee created successfully
+            GW-->>UI: Return success response
+            UI-->>PM: Show "Employee created and assigned to your team"
         end
         
-    else Bulk User Creation via Excel
-        PM->>UI: Click "Bulk Create Users"
-        UI->>API: GET /api/v1/users/bulk-template
-        API->>US: Generate bulk creation template
-        US-->>API: Return Excel template
-        API-->>UI: Download template
+    else Bulk Employee Creation via Excel (E4H Integration)
+        PM->>UI: Click "Bulk Create Employees"
+        UI->>GW: GET /field-planner/v1/employees/bulk-template
+        GW->>AMS: Generate bulk creation template (Field Planner service)
+        AMS->>EGOV_FS: POST /filestore/v1/files (generate template)
+        EGOV_FS-->>AMS: Return Excel template UUID and URL
+        AMS-->>GW: Return template download link
+        GW-->>UI: Download template from eGov Filestore
         UI-->>PM: Template downloaded
         
-        PM->>PM: Fill user data in Excel template
-        PM->>UI: Upload completed user file
+        PM->>PM: Fill employee data in Excel template
+        PM->>UI: Upload completed employee file
         
-        UI->>API: POST /api/v1/users/bulk-create (multipart)
-        API->>US: Process bulk user creation
-        US->>US: Validate Excel format
+        UI->>GW: POST /field-planner/v1/employees/bulk-create (multipart)
+        GW->>AMS: Process bulk employee creation (new service)
+        AMS->>EGOV_FS: POST /filestore/v1/files (validate uploaded file)
+        EGOV_FS->>EGOV_FS: Validate Excel format
         
         alt Invalid Excel Format
-            US-->>API: Return format error
-            API-->>UI: Show format error
+            EGOV_FS-->>AMS: Return format error
+            AMS-->>GW: Return format error
+            GW-->>UI: Show format error
             UI-->>PM: "Invalid file format, use template"
         else Valid Format
-            US->>US: Parse user data
+            EGOV_FS->>EGOV_FS: Parse employee data
+            EGOV_FS-->>AMS: Return employee list
             
-            loop For each user row
-                US->>DB: Validate user data
-                US->>US: Check email uniqueness
-                US->>US: Validate phone number format
+            AMS->>HRMS: POST /egov-hrms/employees/_create (bulk)
+            Note over AMS,HRMS: Use existing eGov HRMS bulk creation capability
+            HRMS->>DB: Process employee creation in bulk
+            
+            loop For each employee
+                HRMS->>DB: Validate employee data (eg_hrms_employee table)
+                HRMS->>HRMS: Check employee uniqueness
+                HRMS->>HRMS: Validate phone number format
+                
+                Note over HRMS: eGov HRMS handles all employee validations
+                Note over HRMS: Creates eg_hrms_employee and eg_hrms_assignment records
+                Note over HRMS: Publishes EmployeeCreatedEvent via Kafka
+                Note over HRMS: E4H audit patterns handle bulk creation logging
                 US->>US: Validate role assignments
                 
                 alt Validation Error
@@ -285,12 +296,19 @@ sequenceDiagram
     end
     
     PM->>UI: View team activity and statistics
-    UI->>API: GET /api/v1/teams/my-team/statistics
-    API->>US: Get team performance data
-    US->>DB: Query team activity statistics
-    DB-->>US: Return team statistics
-    US-->>API: Return statistics
-    API-->>UI: Display team dashboard
+    UI->>GW: GET /field-planner/v1/teams/statistics?supervisorId={pmId}
+    GW->>AMS: Get team performance data (new service)
+    AMS->>HRMS: GET /egov-hrms/employees/_search (get team activity data)
+    HRMS->>DB: Query eg_hrms_employee and eg_hrms_assignment for statistics
+    DB-->>HRMS: Return team statistics
+    HRMS-->>AMS: Return team data
+    AMS-->>GW: Return statistics
+    GW-->>UI: Display team dashboard
     UI-->>PM: Show team performance metrics
     
-    Note over PM,NEW_USER: Team management completed with full audit trail 
+    Note over PM,NEW_USER: E4H Platform User Management Integration Complete
+    Note over PM,NEW_USER: Field Planner uses eGov HRMS for ALL employee management
+    Note over PM,NEW_USER: No duplicate user tables - leverages existing E4H infrastructure  
+    Note over PM,NEW_USER: Employee creation, assignment, and team management via eGov HRMS
+    Note over PM,NEW_USER: E4H audit patterns and notification system handle all events
+    Note over PM,NEW_USER: Consistent with E4H platform conventions and security 

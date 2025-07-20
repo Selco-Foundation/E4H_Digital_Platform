@@ -5,8 +5,9 @@ echo.
 echo Converting system architecture diagram...
 mmdc -i system_architecture.mmd -o system_architecture.png --width 2000 --height 1500
 
-echo Converting database schema diagram...
+echo Converting database schema diagrams...
 mmdc -i database_schema.mmd -o database_schema.png --width 2000 --height 1500
+mmdc -i database_schema_integrated.mmd -o database_schema_integrated.png --width 2500 --height 2000
 
 echo Converting project creation workflow...
 mmdc -i 01_project_creation_workflow.mmd -o project_creation_workflow.png --width 2500 --height 2000
@@ -37,13 +38,14 @@ echo All diagrams converted successfully!
 echo Files created:
 echo - system_architecture.png
 echo - database_schema.png
-echo - project_creation_workflow.png
-echo - field_plan_creation_workflow.png
-echo - facility_assignment_workflow.png
-echo - activity_report_workflow.png
-echo - user_management_workflow.png
+echo - database_schema_integrated.png (NEW - E4H Platform Integration)
+echo - project_creation_workflow.png (UPDATED - E4H Integration)
+echo - field_plan_creation_workflow.png (UPDATED - E4H Integration)
+echo - facility_assignment_workflow.png (UPDATED - E4H Integration)
+echo - activity_report_workflow.png (UPDATED - E4H Integration)
+echo - user_management_workflow.png (UPDATED - E4H Integration)
 echo - conditional_activation_workflow.png
-echo - mobile_sync_workflow.png
+echo - mobile_sync_workflow.png (UPDATED - E4H Integration)
 echo - legacy_field_plan_workflow.png
 echo.
 pause 
