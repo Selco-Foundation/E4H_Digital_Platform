@@ -18,19 +18,26 @@ final _privateConstructorUsedError = UnsupportedError(
 mixin _$CacheAssetEvent {
   String get projectId => throw _privateConstructorUsedError;
   String get userType => throw _privateConstructorUsedError;
+  ProjectWorkflow get project => throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(String projectId, String userType) start,
+    required TResult Function(
+            String projectId, String userType, ProjectWorkflow project)
+        start,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(String projectId, String userType)? start,
+    TResult? Function(
+            String projectId, String userType, ProjectWorkflow project)?
+        start,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(String projectId, String userType)? start,
+    TResult Function(
+            String projectId, String userType, ProjectWorkflow project)?
+        start,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -62,7 +69,9 @@ abstract class $CacheAssetEventCopyWith<$Res> {
           CacheAssetEvent value, $Res Function(CacheAssetEvent) then) =
       _$CacheAssetEventCopyWithImpl<$Res, CacheAssetEvent>;
   @useResult
-  $Res call({String projectId, String userType});
+  $Res call({String projectId, String userType, ProjectWorkflow project});
+
+  $ProjectWorkflowCopyWith<$Res> get project;
 }
 
 /// @nodoc
@@ -80,6 +89,7 @@ class _$CacheAssetEventCopyWithImpl<$Res, $Val extends CacheAssetEvent>
   $Res call({
     Object? projectId = null,
     Object? userType = null,
+    Object? project = null,
   }) {
     return _then(_value.copyWith(
       projectId: null == projectId
@@ -90,7 +100,19 @@ class _$CacheAssetEventCopyWithImpl<$Res, $Val extends CacheAssetEvent>
           ? _value.userType
           : userType // ignore: cast_nullable_to_non_nullable
               as String,
+      project: null == project
+          ? _value.project
+          : project // ignore: cast_nullable_to_non_nullable
+              as ProjectWorkflow,
     ) as $Val);
+  }
+
+  @override
+  @pragma('vm:prefer-inline')
+  $ProjectWorkflowCopyWith<$Res> get project {
+    return $ProjectWorkflowCopyWith<$Res>(_value.project, (value) {
+      return _then(_value.copyWith(project: value) as $Val);
+    });
   }
 }
 
@@ -102,7 +124,10 @@ abstract class _$$StartSyncImplCopyWith<$Res>
       __$$StartSyncImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({String projectId, String userType});
+  $Res call({String projectId, String userType, ProjectWorkflow project});
+
+  @override
+  $ProjectWorkflowCopyWith<$Res> get project;
 }
 
 /// @nodoc
@@ -118,6 +143,7 @@ class __$$StartSyncImplCopyWithImpl<$Res>
   $Res call({
     Object? projectId = null,
     Object? userType = null,
+    Object? project = null,
   }) {
     return _then(_$StartSyncImpl(
       null == projectId
@@ -128,6 +154,10 @@ class __$$StartSyncImplCopyWithImpl<$Res>
           ? _value.userType
           : userType // ignore: cast_nullable_to_non_nullable
               as String,
+      null == project
+          ? _value.project
+          : project // ignore: cast_nullable_to_non_nullable
+              as ProjectWorkflow,
     ));
   }
 }
@@ -135,16 +165,18 @@ class __$$StartSyncImplCopyWithImpl<$Res>
 /// @nodoc
 
 class _$StartSyncImpl implements _StartSync {
-  const _$StartSyncImpl(this.projectId, this.userType);
+  const _$StartSyncImpl(this.projectId, this.userType, this.project);
 
   @override
   final String projectId;
   @override
   final String userType;
+  @override
+  final ProjectWorkflow project;
 
   @override
   String toString() {
-    return 'CacheAssetEvent.start(projectId: $projectId, userType: $userType)';
+    return 'CacheAssetEvent.start(projectId: $projectId, userType: $userType, project: $project)';
   }
 
   @override
@@ -155,11 +187,12 @@ class _$StartSyncImpl implements _StartSync {
             (identical(other.projectId, projectId) ||
                 other.projectId == projectId) &&
             (identical(other.userType, userType) ||
-                other.userType == userType));
+                other.userType == userType) &&
+            (identical(other.project, project) || other.project == project));
   }
 
   @override
-  int get hashCode => Object.hash(runtimeType, projectId, userType);
+  int get hashCode => Object.hash(runtimeType, projectId, userType, project);
 
   @JsonKey(ignore: true)
   @override
@@ -170,27 +203,33 @@ class _$StartSyncImpl implements _StartSync {
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(String projectId, String userType) start,
+    required TResult Function(
+            String projectId, String userType, ProjectWorkflow project)
+        start,
   }) {
-    return start(projectId, userType);
+    return start(projectId, userType, project);
   }
 
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(String projectId, String userType)? start,
+    TResult? Function(
+            String projectId, String userType, ProjectWorkflow project)?
+        start,
   }) {
-    return start?.call(projectId, userType);
+    return start?.call(projectId, userType, project);
   }
 
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(String projectId, String userType)? start,
+    TResult Function(
+            String projectId, String userType, ProjectWorkflow project)?
+        start,
     required TResult orElse(),
   }) {
     if (start != null) {
-      return start(projectId, userType);
+      return start(projectId, userType, project);
     }
     return orElse();
   }
@@ -225,13 +264,15 @@ class _$StartSyncImpl implements _StartSync {
 }
 
 abstract class _StartSync implements CacheAssetEvent {
-  const factory _StartSync(final String projectId, final String userType) =
-      _$StartSyncImpl;
+  const factory _StartSync(final String projectId, final String userType,
+      final ProjectWorkflow project) = _$StartSyncImpl;
 
   @override
   String get projectId;
   @override
   String get userType;
+  @override
+  ProjectWorkflow get project;
   @override
   @JsonKey(ignore: true)
   _$$StartSyncImplCopyWith<_$StartSyncImpl> get copyWith =>
