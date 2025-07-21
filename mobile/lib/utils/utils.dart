@@ -43,10 +43,10 @@ class IdGen {
 
 Future<String> copyFileToLocalDir(File sourceFile) async {
   try {
-    final status = await Permission.storage.status;
-    if (!status.isGranted) {
-      await Permission.storage.request();
-    }
+    // final status = await Permission.storage.status;
+    // if (!status.isGranted) {
+    //   await Permission.storage.request();
+    // }
     final appDocDir = await getApplicationDocumentsDirectory();
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     final fileName = '${timestamp}_${sourceFile.uri.pathSegments.last}';
@@ -197,23 +197,23 @@ Future<void> ensureCameraPermissions({required BuildContext context}) async {
     }
   }
   // STORAGE / MEDIA_IMAGES
-  if (await Permission.storage.isDenied ||
-      (await Permission.storage.isPermanentlyDenied)) {
-    final status = await Permission.storage.request();
-    if (!status.isGranted) {
-      context.showSnackBar(
-          // const SnackBar(content: Text('Storage permission denied')),
-          );
-      throw Exception('Storage permission denied');
-    }
-  }
+  // if (await Permission.storage.isDenied ||
+  //     (await Permission.storage.isPermanentlyDenied)) {
+  //   final status = await Permission.storage.request();
+  //   if (!status.isGranted) {
+  //     context.showSnackBar(
+  //       const SnackBar(content: Text('Storage permission denied')),
+  //     );
+  //     throw Exception('Storage permission denied');
+  //   }
+  // }
   // On Android 13+, READ_MEDIA_IMAGES is separate:
   if (await Permission.photos.isDenied) {
     final status = await Permission.photos.request();
     if (!status.isGranted) {
       context.showSnackBar(
-          // const SnackBar(content: Text('Photos permission denied')),
-          );
+        const SnackBar(content: Text('Photos permission denied')),
+      );
       throw Exception('Photos permission denied');
     }
   }
