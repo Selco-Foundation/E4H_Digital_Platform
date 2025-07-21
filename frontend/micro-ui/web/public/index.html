@@ -4,7 +4,9 @@
     <!-- Google tag (gtag.js) -->
     <script
       async
-      src="https://www.googletagmanager.com/gtag/js?id=G-03J6S1C3S9"
+      crossorigin="anonymous"
+      integrity="sha384-zUGMRGx4xjTlKXb6KXyCWAJ24YMpT/W338g81of42Mpd77Z/vmdAbWwMt6T7r2hf%"
+      src="https://www.googletagmanager.com/gtag/js?id=<%= htmlWebpackPlugin.options.ga_id %>"
     ></script>
     <script>
       window.dataLayer = window.dataLayer || []
@@ -12,7 +14,9 @@
         dataLayer.push(arguments)
       }
       gtag("js", new Date())
-      gtag("config", "G-03J6S1C3S9")
+      gtag("config", "<%= htmlWebpackPlugin.options.ga_id %>", {
+        anonymize_ip: true,
+      })
     </script>
     <meta charset="utf-8" />
     <link
