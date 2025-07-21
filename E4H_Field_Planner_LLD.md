@@ -25,6 +25,10 @@
 
 ## 1. System Overview
 
+> **📋 Architectural Decision Note**: This LLD proposes Field Plans and Activities as separate services rather than extending the existing Project service. For detailed justification of this architectural decision, see:
+> - **[`docs/architectural-justification-field-plans.md`]** - Comprehensive technical analysis
+> - **[`docs/field-planner-vs-project-service-comparison.md`]** - Quick comparison table
+
 ### 1.1 Purpose
 The Field Planner module is a **service extension** that integrates with the existing E4H Digital Platform to enable Project Managers to create and manage field execution plans for DRE installation projects across multiple health facilities.
 
@@ -141,6 +145,8 @@ The Field Planner module is a **service extension** that integrates with the exi
 ---
 
 ## 3. Database Design (E4H Platform Integration)
+
+> **🏗️ Database Architecture Decision**: Field Plans and Activities require new tables because they have fundamentally different data models, access patterns, and scalability requirements than the existing Project service. See architectural justification documents for detailed analysis.
 
 ### 3.1 Integration with Existing E4H Schemas
 
