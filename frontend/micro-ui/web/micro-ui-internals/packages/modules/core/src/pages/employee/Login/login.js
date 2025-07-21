@@ -107,7 +107,7 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
 
   useEffect(() => {
 
-    if (sortedCities.length > 0) {
+    if (cities && cities.length > 0) {
       const queryParams = new URLSearchParams(window.location.search);
 
       const username = queryParams.get("username");
@@ -115,7 +115,7 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
       const tenantId = queryParams.get("tenantid");
 
       if (username && password && tenantId) {
-        const city = sortedCities.find((city) => city.code === tenantId);
+        const city = cities.find((city) => city.code === tenantId);
 
         if (city) {
           onLogin({
@@ -130,7 +130,7 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
       }
     }
 
-  }, [sortedCities]);
+  }, [cities]);
 
   const closeToast = () => {
     setShowToast(null);
