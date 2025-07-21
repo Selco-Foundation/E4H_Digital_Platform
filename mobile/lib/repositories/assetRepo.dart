@@ -15,6 +15,7 @@ import '../data/nosql/cache_unsubmitted_project.dart';
 import '../data/remote_client.dart';
 import '../model/asset/asset.dart';
 import '../model/entities/project_facility.dart';
+import '../model/project_workflow/project_workflow.dart';
 import '../model/transaction/transaction.dart';
 import '../repositories/project_facility_repo.dart';
 import '../utils/envConfig.dart';
@@ -474,7 +475,8 @@ class AssetRepository {
   }
 
   Future<void> syncRemoteToLocal(
-      {required String projectId,
+      {required ProjectWorkflow project,
+      required String projectId,
       required String userType,
       required Isar isar}) async {
     try {
@@ -666,24 +668,27 @@ class AssetRepository {
             await isar.cacheMediaUploads.delete(m.id);
           }
           print("oldMedia $oldMedia");
-          for (var asset in list) {
-            for (var doc in asset.documents ?? []) {
-              if (doc.documentType != 'ASSET' && doc.documentType != 'PHOTO') {
-                //todo CHANGE TO 'ASSET'
-                await isar.cacheMediaUploads.put(
-                  CacheMediaUpload(
-                    projectId: projectId,
-                    assetType: type,
-                    itemNumber: '',
-                    itemType: doc.documentType ?? '',
-                    filePath: doc.fileStore ?? '',
-                    latitude: doc.geoLocation?.latitude?.toString() ?? '',
-                    longitude: doc.geoLocation?.longitude?.toString() ?? '',
-                  ),
-                );
-              }
+          //for (var asset in list) {
+          //  for (var doc in asset.documents ?? []) {
+          for (var doc in project.workflow?.documents ?? []) {
+            if (doc.documentType != 'ASSET' &&
+                doc.documentType != 'PHOTO' &&
+                doc.documentType != 'INSTALLATION_REPORT') {
+              //todo CHANGE TO 'ASSET'
+              await isar.cacheMediaUploads.put(
+                CacheMediaUpload(
+                  projectId: projectId,
+                  assetType: type,
+                  itemNumber: '',
+                  itemType: doc.documentType ?? '',
+                  filePath: doc.fileStore ?? '',
+                  latitude: doc.geoLocation?.latitude?.toString() ?? '',
+                  longitude: doc.geoLocation?.longitude?.toString() ?? '',
+                ),
+              );
             }
           }
+          // }
         }
       });
     } on DioError catch (e) {

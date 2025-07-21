@@ -106,9 +106,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
   @override
   void initState() {
     super.initState();
-    ensureCameraPermissions(context: context)
-        .then((ok) {})
-        .catchError((e) => {});
+    _cameraPermissions();
     final locBloc = context.read<LocationBloc>();
     locBloc.add(const LocationEvent.requestPermission());
     locBloc.add(const LocationEvent.requestService());
@@ -170,6 +168,15 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
             return assetType;
           },
         );
+  }
+
+  Future<void> _cameraPermissions() async {
+    try {
+      await ensureCameraPermissions(context: context);
+    } catch (e) {
+      debugPrint('Permissions failed: $e');
+      // optionally show a Snackbar, etc.
+    }
   }
 
   @override
@@ -490,8 +497,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
               Expanded(
                 flex: 6,
                 child: GestureDetector(
-                  onTap: () async {
-                    await ensureCameraPermissions(context: context);
+                  onTap: () {
                     setState(() => _scanningIndex = index);
                     context
                         .read<DigitScannerBloc>()
@@ -526,7 +532,6 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                   label: 'Scan',
                   type: DigitButtonType.secondary,
                   onPressed: () {
-                    // await ensureCameraPermissions(context: context);
                     setState(() => _scanningIndex = index);
                     context
                         .read<DigitScannerBloc>()
@@ -573,7 +578,6 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                     initialImages: file != null ? [file] : [],
                     onImagesSelected: (List<File> imageFile) async {
                       if (imageFile.isEmpty) return;
-                      // await ensureCameraPermissions(context: context);
                       final ok = await _ensureLocationLoaded();
                       if (!ok) {
                         context.showSnackBar(
