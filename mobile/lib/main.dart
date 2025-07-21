@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:digit_scanner/blocs/app_localization.dart'
     as scanner_localization;
 import 'package:digit_ui_components/digit_components.dart';
@@ -147,9 +145,6 @@ class _MainAppState extends State<MainApp> {
                             AppSharedPreferences().getSelectedLocale ??
                                 firstLanguage;
 
-                        print("selectedLocale ${selectedLocale!} ");
-                        print("languages ${jsonEncode(languages!)} ");
-
                         return MaterialApp.router(
                           scaffoldMessengerKey: scaffoldMessengerKey,
                           theme: DigitTheme.instance.mobileTheme,
@@ -173,20 +168,11 @@ class _MainAppState extends State<MainApp> {
                             GlobalWidgetsLocalizations.delegate,
                             GlobalCupertinoLocalizations.delegate,
                             GlobalMaterialLocalizations.delegate,
-                            // scanner_localization.ScannerLocalization
-                            //     .getDelegate(
-                            //   AppLocalizations.getDelegate(
-                            //       appConfig.appConfig!, widget.isar),
-                            // ),
                             scanner_localization.ScannerLocalization
                                 .getDelegate(
                                     getLocalizationString(
                                         widget.isar, selectedLocale),
                                     languages!)
-                            // scanner_localization.ScannerLocalization.getDelegate(
-                            //     LocalizationRepository()
-                            //         .getLocalizationsList({}) as Future,
-                            //     [Language(label: 'English', value: 'en_IN')])
                           ],
                           // Set the locale for the app
                           locale: languages != null

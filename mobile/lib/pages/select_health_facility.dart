@@ -204,8 +204,8 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
               onPress: () => _handleProjectTap(project),
               title: project.project.name ?? '—',
               dateAssigned: project.project.startDateTime ?? DateTime.now(),
-              status: truncateText(project.status ?? '—', maxLength: 18),
-              solutionDocPath: project.project.projectNumber,
+              status: project.status ?? '—',
+              solutionDocPath: project.project.projectNumber ?? '',
             ),
             const SizedBox(height: spacer5),
           ],
@@ -323,65 +323,77 @@ class InstallationReportCard extends StatelessWidget {
             const DigitDivider(dividerType: DividerType.small),
             Row(
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: spacer4),
-                    Text(
-                      'Status',
-                      style: textTheme.headingS
-                          .copyWith(color: theme.colorTheme.text.primary),
-                    ),
-                    const SizedBox(height: spacer4),
-                    Text(
-                      'Date Assigned',
-                      style: textTheme.headingS
-                          .copyWith(color: theme.colorTheme.text.primary),
-                    ),
-                    const SizedBox(height: spacer4),
-                    Text(
-                      'Solution Doc',
-                      style: textTheme.headingS
-                          .copyWith(color: theme.colorTheme.text.primary),
-                    )
-                  ],
+                Expanded(
+                  flex: 2,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: spacer4),
+                      Text(
+                        'Status',
+                        style: textTheme.headingS
+                            .copyWith(color: theme.colorTheme.text.primary),
+                      ),
+                      const SizedBox(height: spacer4),
+                      Text(
+                        'Date Assigned',
+                        style: textTheme.headingS
+                            .copyWith(color: theme.colorTheme.text.primary),
+                      ),
+                      const SizedBox(height: spacer4),
+                      Text(
+                        'Solution Doc',
+                        style: textTheme.headingS
+                            .copyWith(color: theme.colorTheme.text.primary),
+                      )
+                    ],
+                  ),
                 ),
                 const SizedBox(width: spacer12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: spacer4),
-                    Text(
-                      '$status',
-                      style: textTheme.bodyL.copyWith(
-                        color: theme.colorTheme.text.primary,
-                      ),
-                    ),
-                    const SizedBox(height: spacer4),
-                    Text(
-                      formattedDate,
-                      style: textTheme.bodyL.copyWith(
-                        color: theme.colorTheme.text.primary,
-                      ),
-                    ),
-                    const SizedBox(height: spacer4),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.picture_as_pdf,
-                          color: theme.colorTheme.primary.primary1,
+                Expanded(
+                  flex: 3,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: spacer4),
+                      Text(
+                        '$status',
+                        style: textTheme.bodyL.copyWith(
+                          color: theme.colorTheme.text.primary,
                         ),
-                        const SizedBox(width: spacer1),
-                        Text(
-                          '$solutionDocPath',
-                          style: textTheme.bodyL.copyWith(
-                            color: theme.colorTheme.text.disabled,
-                            fontSize: spacer3,
+                        softWrap: true,
+                        overflow: TextOverflow.visible,
+                      ),
+                      const SizedBox(height: spacer4),
+                      Text(
+                        formattedDate,
+                        style: textTheme.bodyL.copyWith(
+                          color: theme.colorTheme.text.primary,
+                        ),
+                      ),
+                      const SizedBox(height: spacer4),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.picture_as_pdf,
+                            color: theme.colorTheme.primary.primary1,
                           ),
-                        ),
-                      ],
-                    )
-                  ],
+                          const SizedBox(width: spacer1),
+                          Expanded(
+                            child: Text(
+                              '$solutionDocPath',
+                              style: textTheme.bodyL.copyWith(
+                                color: theme.colorTheme.text.disabled,
+                                fontSize: spacer3,
+                              ),
+                              softWrap: true,
+                              overflow: TextOverflow.visible,
+                            ),
+                          ),
+                        ],
+                      )
+                    ],
+                  ),
                 ),
               ],
             ),

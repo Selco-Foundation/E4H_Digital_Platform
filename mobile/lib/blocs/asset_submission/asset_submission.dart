@@ -4,11 +4,11 @@ import 'dart:io';
 import 'package:bloc/bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:isar/isar.dart';
+import 'package:selco/data/nosql/cache_media_upload.dart';
 
 import '../../data/nosql/cache_add_new_asset.dart';
 import '../../data/nosql/cache_asset_detail.dart';
 import '../../data/nosql/cache_completion_report.dart';
-import '../../data/nosql/cache_media_upload.dart';
 import '../../data/nosql/cache_specification.dart';
 import '../../data/nosql/cache_sync_record.dart';
 import '../../data/nosql/cache_unsubmitted_project.dart';
@@ -44,7 +44,7 @@ class AssetSubmissionBloc
         projectId: event.projectId,
         userType: event.userType,
         emit: emit,
-        deleteDraftAfter: false,
+        fromDraft: false,
       );
 
   Future<void> upsertSyncRecord(String userType) async {
@@ -101,7 +101,7 @@ class AssetSubmissionBloc
         projectId: draft.project.id,
         userType: event.userType,
         emit: emit,
-        deleteDraftAfter: true,
+        fromDraft: true,
       );
 
       if (!success) return;
@@ -120,7 +120,7 @@ class AssetSubmissionBloc
     required String projectId,
     required String userType,
     required Emitter<AssetSubmissionState> emit,
-    required bool deleteDraftAfter,
+    required bool fromDraft,
   }) async {
     emit(const AssetSubmissionState.loading());
     try {
@@ -190,41 +190,41 @@ class AssetSubmissionBloc
             }
           }
 
-          final mediaEntries = await _isar.cacheMediaUploads
-              .where()
-              .projectIdEqualTo(projectId)
-              .filter()
-              .assetTypeEqualTo(type)
-              .findAll();
-
-          print("[$type] found ${mediaEntries.length} cached media uploads");
-          for (var m in mediaEntries) {
-            print(
-                "    media id=${m.id} filePath='${m.filePath}' itemType='${m.itemType}'");
-          }
-
-          for (final m in mediaEntries) {
-            if (m.filePath.isEmpty) continue;
-            final mediaFile = File(m.filePath);
-            if (!await mediaFile.exists()) continue;
-            final mediaId = await repo.uploadFile(mediaFile);
-
-            documents.add(Document(
-              // id: 'DOCUMENT-0199',
-              documentType: m.itemType,
-              fileStore: mediaId,
-              documentUid:
-                  "DOC-${m.itemType}-${m.id}-${m.itemNumber}-${m.assetType}-${DateTime.now().toUtc().toIso8601String()}",
-              additionalDetails: null,
-              geoLocation: GeoLocation(
-                latitude: m.latitude,
-                longitude: m.longitude,
-                //additionalDetails: null,
-              ),
-            ));
-          }
-
-          print("documents $documents");
+          // final mediaEntries = await _isar.cacheMediaUploads
+          //     .where()
+          //     .projectIdEqualTo(projectId)
+          //     .filter()
+          //     .assetTypeEqualTo(type)
+          //     .findAll();
+          //
+          // print("[$type] found ${mediaEntries.length} cached media uploads");
+          // for (var m in mediaEntries) {
+          //   print(
+          //       "    media id=${m.id} filePath='${m.filePath}' itemType='${m.itemType}'");
+          // }
+          //
+          // for (final m in mediaEntries) {
+          //   if (m.filePath.isEmpty) continue;
+          //   final mediaFile = File(m.filePath);
+          //   if (!await mediaFile.exists()) continue;
+          //   final mediaId = await repo.uploadFile(mediaFile);
+          //
+          //   documents.add(Document(
+          //     // id: 'DOCUMENT-0199',
+          //     documentType: m.itemType,
+          //     fileStore: mediaId,
+          //     documentUid:
+          //         "DOC-${m.itemType}-${m.id}-${m.itemNumber}-${m.assetType}-${DateTime.now().toUtc().toIso8601String()}",
+          //     additionalDetails: null,
+          //     geoLocation: GeoLocation(
+          //       latitude: m.latitude,
+          //       longitude: m.longitude,
+          //       //additionalDetails: null,
+          //     ),
+          //   ));
+          // }
+          //
+          // print("documents $documents");
 
           final now = DateTime.now().toUtc();
           final startIso = now.toIso8601String();
@@ -265,17 +265,27 @@ class AssetSubmissionBloc
                 type == 'inverter' ? double.parse(saved.itemNumber) : null,
             inverterCapacityUnit: type == 'inverter' ? 'kVA' : null,
             currentUnit: type == 'inverter' ? '1' : null,
+
+            // capacityUnit: saved.capacityUnit,
+            // panelCapacity: saved.panelCapacity != null
+            //     ? double.parse(saved.panelCapacity!)
+            //     : null,
+            // batteryCapacity: saved.batteryCapacity != null
+            //     ? double.parse(saved.batteryCapacity!)
+            //     : null,
+            // batteryVoltage: saved.batteryVoltage != null
+            //     ? double.parse(saved.batteryVoltage!)
+            //     : null,
+            // batteryType: saved.batteryType,
+            // voltageUnit: saved.voltageUnit,
+            // inverterCapacity: saved.inverterCapacity != null
+            //     ? double.parse(saved.inverterCapacity!)
+            //     : null,
+            // inverterCapacityUnit: saved.inverterCapacityUnit,
+            // currentUnit: saved.currentUnit,
           );
 
           print("assetDetails $assetDetails");
-
-          // String myId = type == "inverter"
-          //     ? 'ASSET-0212'
-          //     : type == 'battery'
-          //         ? 'ASSET-0213'
-          //         : type == 'panel'
-          //             ? 'ASSET-0214'
-          //             : '';
 
           // 2) Build the Asset itself
           final assetModel = Asset(
@@ -301,60 +311,83 @@ class AssetSubmissionBloc
             documents: documents,
           );
           print("assetModel $assetModel");
-          // await repo.createOrUpdateAsset(asset: assetModel, isar: _isar);
+          await repo.createOrUpdateAsset(asset: assetModel, isar: _isar);
         }
       }
 
       final remoteRepo = ProjectRemoteRepository();
-      final completionDocuments = <Document>[];
+      final workflowDocuments = <Document>[];
+
+      for (final type in types) {
+        final mediaEntries = await _isar.cacheMediaUploads
+            .where()
+            .projectIdEqualTo(projectId)
+            .filter()
+            .assetTypeEqualTo(type)
+            .findAll();
+
+        print("[$type] found ${mediaEntries.length} cached media uploads");
+        for (var m in mediaEntries) {
+          print(
+              "    media id=${m.id} filePath='${m.filePath}' itemType='${m.itemType}'");
+        }
+
+        for (final m in mediaEntries) {
+          if (m.filePath.isEmpty) continue;
+          final mediaFile = File(m.filePath);
+          if (!await mediaFile.exists()) continue;
+          final mediaId = await repo.uploadFile(mediaFile);
+
+          workflowDocuments.add(Document(
+            // id: 'DOCUMENT-0199',
+            documentType: m.itemType,
+            fileStore: mediaId,
+            documentUid:
+                "DOC-${m.itemType}-${m.id}-${m.itemNumber}-${m.assetType}-${DateTime.now().toUtc().toIso8601String()}",
+            additionalDetails: null,
+            geoLocation: GeoLocation(
+              latitude: m.latitude,
+              longitude: m.longitude,
+              //additionalDetails: null,
+            ),
+          ));
+        }
+
+        print("documents $workflowDocuments");
+      }
+
       final completionReport = await _isar.cacheCompletionReports
           .where()
           .projectIdEqualTo(projectId)
           .findFirst();
       print("completionReport $completionReport");
-      //print("completionReport ${completionReport!.filePath}");
-      if (completionReport != null) {
-        if (completionReport.filePath.isNotEmpty) {
-          final completionFile = await getCachedFile(
-              completionReport.filePath); // File(completionReport.filePath);
-          if (await completionFile != null) {
-            final photoId = await repo.uploadFile(completionFile!);
-            completionDocuments.add(Document(
-              // id: 'DOCUMENT-0199',
-              documentType: "INSTALLATION_REPORT",
-              fileStore: photoId,
-              documentUid: "INSTALLATION-REPORT-${photoId}",
-              // additionalDetails: null,
-              geoLocation: GeoLocation(
-                latitude: completionReport.latitude,
-                longitude: completionReport.longitude,
-                //additionalDetails: null,
-              ),
-            ));
-            print("completionReport $completionReport");
-          }
+      if (completionReport != null && completionReport.filePath.isNotEmpty) {
+        final completionFile = await getCachedFile(completionReport.filePath);
+        if (await completionFile != null) {
+          final photoId = await repo.uploadFile(completionFile!);
+          workflowDocuments.add(Document(
+            documentType: "INSTALLATION_REPORT",
+            fileStore: photoId,
+            documentUid: "INSTALLATION-REPORT-$photoId",
+            geoLocation: GeoLocation(
+              latitude: completionReport.latitude,
+              longitude: completionReport.longitude,
+            ),
+          ));
         }
-        await remoteRepo.updateProjectWorkflow(
-          projectId: projectId,
-          action: userType == USER_TYPES.FIELD_STAFF.name
-              ? WORKFLOW_ACTIONS.SUBMIT_REPORT_A.name
-              : WORKFLOW_ACTIONS.SUBMIT_REPORT_B.name,
-          documents: completionDocuments,
-        );
-      } else {
-        await remoteRepo.updateProjectWorkflow(
-          projectId: projectId,
-          action: userType == USER_TYPES.FIELD_STAFF.name
-              ? WORKFLOW_ACTIONS.SUBMIT_REPORT_A.name
-              : WORKFLOW_ACTIONS.SUBMIT_REPORT_B.name,
-        );
       }
 
-      if (deleteDraftAfter) {
-        await _draftRepo.delete(projectId, userType);
-      }
+      await remoteRepo.updateProjectWorkflow(
+        projectId: projectId,
+        action: userType == USER_TYPES.FIELD_STAFF.name
+            ? WORKFLOW_ACTIONS.SUBMIT_REPORT_A.name
+            : WORKFLOW_ACTIONS.SUBMIT_REPORT_B.name,
+        documents: workflowDocuments,
+      );
 
-      if (!deleteDraftAfter) emit(const AssetSubmissionState.success());
+      await _draftRepo.delete(projectId, userType);
+
+      if (!fromDraft) emit(const AssetSubmissionState.success());
       return true;
     } catch (e) {
       emit(AssetSubmissionState.failure(e.toString()));

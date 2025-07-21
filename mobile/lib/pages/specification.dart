@@ -122,13 +122,9 @@ class _SpecificationPageState extends State<SpecificationPage> {
 
             return Scaffold(
                 body: ScrollableContent(
-                    header: BackNavigationHelpHeaderWidget(
+                    header: const BackNavigationHelpHeaderWidget(
                       showBackNavigation: true,
                       showHelp: false,
-                      defaultPopRoute: false,
-                      handleback: () {
-                        context.router.popAndPush(const SelectAssetTypeRoute());
-                      },
                     ),
                     enableFixedDigitButton: true,
                     backgroundColor: theme.colorTheme.generic.background,

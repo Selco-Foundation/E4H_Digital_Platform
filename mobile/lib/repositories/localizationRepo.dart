@@ -12,7 +12,7 @@ class LocalizationRepository {
   Future<LocalizationModel> getLocalizationsList(
       Map<String, String> queryParameters) async {
     if (envConfig.variables.envType == EnvType.dev) {
-      return _loadLocalLocalization();
+      // return _loadLocalLocalization();
     }
 
     try {

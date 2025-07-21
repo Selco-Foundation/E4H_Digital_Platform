@@ -200,13 +200,9 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
             body: ScrollableContent(
               enableFixedDigitButton: true,
               backgroundColor: theme.colorTheme.generic.background,
-              header: BackNavigationHelpHeaderWidget(
+              header: const BackNavigationHelpHeaderWidget(
                 showBackNavigation: true,
                 showHelp: false,
-                defaultPopRoute: false,
-                handleback: () {
-                  context.router.popAndPush(const AddNewAssetRoute());
-                },
               ),
               footer: FooterButton(
                 isDisabled: isDisabled,
@@ -288,6 +284,12 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
                         ),
                         const SizedBox(height: spacer2),
                         FileUploadWidget(
+                          allowedExtensions: const [
+                            "jpg",
+                            'jpeg',
+                            'JPG',
+                            'JPEG'
+                          ],
                           key: ValueKey('images-$_imageKeyCounter'),
                           label: 'Upload Images',
                           allowMultiples: true,
@@ -325,7 +327,7 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
                         ),
                         const SizedBox(height: spacer2),
                         FileUploadWidget(
-                          key: ValueKey('images-$_videoKeyCounter'),
+                          key: ValueKey('videos-$_videoKeyCounter'),
                           label: 'Upload Videos',
                           allowMultiples: true,
                           showPreview: false,

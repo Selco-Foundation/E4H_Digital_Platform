@@ -27,50 +27,100 @@ const CacheAddNewAssetSchema = CollectionSchema(
       name: r'assetType',
       type: IsarType.string,
     ),
-    r'createdAt': PropertySchema(
+    r'batteryCapacity': PropertySchema(
       id: 2,
+      name: r'batteryCapacity',
+      type: IsarType.string,
+    ),
+    r'batteryType': PropertySchema(
+      id: 3,
+      name: r'batteryType',
+      type: IsarType.string,
+    ),
+    r'batteryVoltage': PropertySchema(
+      id: 4,
+      name: r'batteryVoltage',
+      type: IsarType.string,
+    ),
+    r'capacity': PropertySchema(
+      id: 5,
+      name: r'capacity',
+      type: IsarType.string,
+    ),
+    r'capacityUnit': PropertySchema(
+      id: 6,
+      name: r'capacityUnit',
+      type: IsarType.string,
+    ),
+    r'createdAt': PropertySchema(
+      id: 7,
       name: r'createdAt',
       type: IsarType.dateTime,
     ),
+    r'currentUnit': PropertySchema(
+      id: 8,
+      name: r'currentUnit',
+      type: IsarType.string,
+    ),
     r'documentType': PropertySchema(
-      id: 3,
+      id: 9,
       name: r'documentType',
       type: IsarType.string,
     ),
+    r'inverterCapacity': PropertySchema(
+      id: 10,
+      name: r'inverterCapacity',
+      type: IsarType.string,
+    ),
+    r'inverterCapacityUnit': PropertySchema(
+      id: 11,
+      name: r'inverterCapacityUnit',
+      type: IsarType.string,
+    ),
     r'itemNumber': PropertySchema(
-      id: 4,
+      id: 12,
       name: r'itemNumber',
       type: IsarType.string,
     ),
     r'latitude': PropertySchema(
-      id: 5,
+      id: 13,
       name: r'latitude',
       type: IsarType.string,
     ),
     r'longitude': PropertySchema(
-      id: 6,
+      id: 14,
       name: r'longitude',
       type: IsarType.string,
     ),
+    r'panelCapacity': PropertySchema(
+      id: 15,
+      name: r'panelCapacity',
+      type: IsarType.string,
+    ),
     r'photoPath': PropertySchema(
-      id: 7,
+      id: 16,
       name: r'photoPath',
       type: IsarType.string,
     ),
     r'projectId': PropertySchema(
-      id: 8,
+      id: 17,
       name: r'projectId',
       type: IsarType.string,
     ),
     r'serialNumber': PropertySchema(
-      id: 9,
+      id: 18,
       name: r'serialNumber',
       type: IsarType.string,
     ),
     r'updatedAt': PropertySchema(
-      id: 10,
+      id: 19,
       name: r'updatedAt',
       type: IsarType.dateTime,
+    ),
+    r'voltageUnit': PropertySchema(
+      id: 20,
+      name: r'voltageUnit',
+      type: IsarType.string,
     )
   },
   estimateSize: _cacheAddNewAssetEstimateSize,
@@ -128,7 +178,50 @@ int _cacheAddNewAssetEstimateSize(
   }
   bytesCount += 3 + object.assetType.length * 3;
   {
+    final value = object.batteryCapacity;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  {
+    final value = object.batteryType;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  {
+    final value = object.batteryVoltage;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  bytesCount += 3 + object.capacity.length * 3;
+  {
+    final value = object.capacityUnit;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  {
+    final value = object.currentUnit;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  {
     final value = object.documentType;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  {
+    final value = object.inverterCapacity;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  {
+    final value = object.inverterCapacityUnit;
     if (value != null) {
       bytesCount += 3 + value.length * 3;
     }
@@ -136,9 +229,21 @@ int _cacheAddNewAssetEstimateSize(
   bytesCount += 3 + object.itemNumber.length * 3;
   bytesCount += 3 + object.latitude.length * 3;
   bytesCount += 3 + object.longitude.length * 3;
+  {
+    final value = object.panelCapacity;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
   bytesCount += 3 + object.photoPath.length * 3;
   bytesCount += 3 + object.projectId.length * 3;
   bytesCount += 3 + object.serialNumber.length * 3;
+  {
+    final value = object.voltageUnit;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
   return bytesCount;
 }
 
@@ -150,15 +255,25 @@ void _cacheAddNewAssetSerialize(
 ) {
   writer.writeString(offsets[0], object.assetId);
   writer.writeString(offsets[1], object.assetType);
-  writer.writeDateTime(offsets[2], object.createdAt);
-  writer.writeString(offsets[3], object.documentType);
-  writer.writeString(offsets[4], object.itemNumber);
-  writer.writeString(offsets[5], object.latitude);
-  writer.writeString(offsets[6], object.longitude);
-  writer.writeString(offsets[7], object.photoPath);
-  writer.writeString(offsets[8], object.projectId);
-  writer.writeString(offsets[9], object.serialNumber);
-  writer.writeDateTime(offsets[10], object.updatedAt);
+  writer.writeString(offsets[2], object.batteryCapacity);
+  writer.writeString(offsets[3], object.batteryType);
+  writer.writeString(offsets[4], object.batteryVoltage);
+  writer.writeString(offsets[5], object.capacity);
+  writer.writeString(offsets[6], object.capacityUnit);
+  writer.writeDateTime(offsets[7], object.createdAt);
+  writer.writeString(offsets[8], object.currentUnit);
+  writer.writeString(offsets[9], object.documentType);
+  writer.writeString(offsets[10], object.inverterCapacity);
+  writer.writeString(offsets[11], object.inverterCapacityUnit);
+  writer.writeString(offsets[12], object.itemNumber);
+  writer.writeString(offsets[13], object.latitude);
+  writer.writeString(offsets[14], object.longitude);
+  writer.writeString(offsets[15], object.panelCapacity);
+  writer.writeString(offsets[16], object.photoPath);
+  writer.writeString(offsets[17], object.projectId);
+  writer.writeString(offsets[18], object.serialNumber);
+  writer.writeDateTime(offsets[19], object.updatedAt);
+  writer.writeString(offsets[20], object.voltageUnit);
 }
 
 CacheAddNewAsset _cacheAddNewAssetDeserialize(
@@ -170,17 +285,27 @@ CacheAddNewAsset _cacheAddNewAssetDeserialize(
   final object = CacheAddNewAsset(
     assetId: reader.readStringOrNull(offsets[0]),
     assetType: reader.readString(offsets[1]),
-    documentType: reader.readStringOrNull(offsets[3]),
-    itemNumber: reader.readString(offsets[4]),
-    latitude: reader.readString(offsets[5]),
-    longitude: reader.readString(offsets[6]),
-    photoPath: reader.readString(offsets[7]),
-    projectId: reader.readString(offsets[8]),
-    serialNumber: reader.readString(offsets[9]),
+    batteryCapacity: reader.readStringOrNull(offsets[2]),
+    batteryType: reader.readStringOrNull(offsets[3]),
+    batteryVoltage: reader.readStringOrNull(offsets[4]),
+    capacity: reader.readStringOrNull(offsets[5]) ?? '1',
+    capacityUnit: reader.readStringOrNull(offsets[6]),
+    currentUnit: reader.readStringOrNull(offsets[8]),
+    documentType: reader.readStringOrNull(offsets[9]),
+    inverterCapacity: reader.readStringOrNull(offsets[10]),
+    inverterCapacityUnit: reader.readStringOrNull(offsets[11]),
+    itemNumber: reader.readString(offsets[12]),
+    latitude: reader.readString(offsets[13]),
+    longitude: reader.readString(offsets[14]),
+    panelCapacity: reader.readStringOrNull(offsets[15]),
+    photoPath: reader.readString(offsets[16]),
+    projectId: reader.readString(offsets[17]),
+    serialNumber: reader.readString(offsets[18]),
+    voltageUnit: reader.readStringOrNull(offsets[20]),
   );
-  object.createdAt = reader.readDateTime(offsets[2]);
+  object.createdAt = reader.readDateTime(offsets[7]);
   object.id = id;
-  object.updatedAt = reader.readDateTimeOrNull(offsets[10]);
+  object.updatedAt = reader.readDateTimeOrNull(offsets[19]);
   return object;
 }
 
@@ -196,23 +321,43 @@ P _cacheAddNewAssetDeserializeProp<P>(
     case 1:
       return (reader.readString(offset)) as P;
     case 2:
-      return (reader.readDateTime(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 3:
       return (reader.readStringOrNull(offset)) as P;
     case 4:
-      return (reader.readString(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 5:
-      return (reader.readString(offset)) as P;
+      return (reader.readStringOrNull(offset) ?? '1') as P;
     case 6:
-      return (reader.readString(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 7:
-      return (reader.readString(offset)) as P;
+      return (reader.readDateTime(offset)) as P;
     case 8:
-      return (reader.readString(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 9:
-      return (reader.readString(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 10:
+      return (reader.readStringOrNull(offset)) as P;
+    case 11:
+      return (reader.readStringOrNull(offset)) as P;
+    case 12:
+      return (reader.readString(offset)) as P;
+    case 13:
+      return (reader.readString(offset)) as P;
+    case 14:
+      return (reader.readString(offset)) as P;
+    case 15:
+      return (reader.readStringOrNull(offset)) as P;
+    case 16:
+      return (reader.readString(offset)) as P;
+    case 17:
+      return (reader.readString(offset)) as P;
+    case 18:
+      return (reader.readString(offset)) as P;
+    case 19:
       return (reader.readDateTimeOrNull(offset)) as P;
+    case 20:
+      return (reader.readStringOrNull(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
   }
@@ -693,6 +838,758 @@ extension CacheAddNewAssetQueryFilter
   }
 
   QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      batteryCapacityIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'batteryCapacity',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      batteryCapacityIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'batteryCapacity',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      batteryCapacityEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'batteryCapacity',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      batteryCapacityGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'batteryCapacity',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      batteryCapacityLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'batteryCapacity',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      batteryCapacityBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'batteryCapacity',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      batteryCapacityStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'batteryCapacity',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      batteryCapacityEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'batteryCapacity',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      batteryCapacityContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'batteryCapacity',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      batteryCapacityMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'batteryCapacity',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      batteryCapacityIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'batteryCapacity',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      batteryCapacityIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'batteryCapacity',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      batteryTypeIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'batteryType',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      batteryTypeIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'batteryType',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      batteryTypeEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'batteryType',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      batteryTypeGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'batteryType',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      batteryTypeLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'batteryType',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      batteryTypeBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'batteryType',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      batteryTypeStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'batteryType',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      batteryTypeEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'batteryType',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      batteryTypeContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'batteryType',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      batteryTypeMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'batteryType',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      batteryTypeIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'batteryType',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      batteryTypeIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'batteryType',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      batteryVoltageIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'batteryVoltage',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      batteryVoltageIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'batteryVoltage',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      batteryVoltageEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'batteryVoltage',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      batteryVoltageGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'batteryVoltage',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      batteryVoltageLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'batteryVoltage',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      batteryVoltageBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'batteryVoltage',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      batteryVoltageStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'batteryVoltage',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      batteryVoltageEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'batteryVoltage',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      batteryVoltageContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'batteryVoltage',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      batteryVoltageMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'batteryVoltage',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      batteryVoltageIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'batteryVoltage',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      batteryVoltageIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'batteryVoltage',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      capacityEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'capacity',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      capacityGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'capacity',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      capacityLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'capacity',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      capacityBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'capacity',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      capacityStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'capacity',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      capacityEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'capacity',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      capacityContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'capacity',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      capacityMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'capacity',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      capacityIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'capacity',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      capacityIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'capacity',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      capacityUnitIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'capacityUnit',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      capacityUnitIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'capacityUnit',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      capacityUnitEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'capacityUnit',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      capacityUnitGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'capacityUnit',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      capacityUnitLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'capacityUnit',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      capacityUnitBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'capacityUnit',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      capacityUnitStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'capacityUnit',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      capacityUnitEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'capacityUnit',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      capacityUnitContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'capacityUnit',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      capacityUnitMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'capacityUnit',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      capacityUnitIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'capacityUnit',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      capacityUnitIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'capacityUnit',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
       createdAtEqualTo(DateTime value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
@@ -744,6 +1641,160 @@ extension CacheAddNewAssetQueryFilter
         includeLower: includeLower,
         upper: upper,
         includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      currentUnitIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'currentUnit',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      currentUnitIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'currentUnit',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      currentUnitEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'currentUnit',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      currentUnitGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'currentUnit',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      currentUnitLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'currentUnit',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      currentUnitBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'currentUnit',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      currentUnitStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'currentUnit',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      currentUnitEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'currentUnit',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      currentUnitContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'currentUnit',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      currentUnitMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'currentUnit',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      currentUnitIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'currentUnit',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      currentUnitIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'currentUnit',
+        value: '',
       ));
     });
   }
@@ -954,6 +2005,314 @@ extension CacheAddNewAssetQueryFilter
         includeLower: includeLower,
         upper: upper,
         includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      inverterCapacityIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'inverterCapacity',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      inverterCapacityIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'inverterCapacity',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      inverterCapacityEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'inverterCapacity',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      inverterCapacityGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'inverterCapacity',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      inverterCapacityLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'inverterCapacity',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      inverterCapacityBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'inverterCapacity',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      inverterCapacityStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'inverterCapacity',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      inverterCapacityEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'inverterCapacity',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      inverterCapacityContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'inverterCapacity',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      inverterCapacityMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'inverterCapacity',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      inverterCapacityIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'inverterCapacity',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      inverterCapacityIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'inverterCapacity',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      inverterCapacityUnitIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'inverterCapacityUnit',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      inverterCapacityUnitIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'inverterCapacityUnit',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      inverterCapacityUnitEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'inverterCapacityUnit',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      inverterCapacityUnitGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'inverterCapacityUnit',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      inverterCapacityUnitLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'inverterCapacityUnit',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      inverterCapacityUnitBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'inverterCapacityUnit',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      inverterCapacityUnitStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'inverterCapacityUnit',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      inverterCapacityUnitEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'inverterCapacityUnit',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      inverterCapacityUnitContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'inverterCapacityUnit',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      inverterCapacityUnitMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'inverterCapacityUnit',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      inverterCapacityUnitIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'inverterCapacityUnit',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      inverterCapacityUnitIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'inverterCapacityUnit',
+        value: '',
       ));
     });
   }
@@ -1361,6 +2720,160 @@ extension CacheAddNewAssetQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.greaterThan(
         property: r'longitude',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      panelCapacityIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'panelCapacity',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      panelCapacityIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'panelCapacity',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      panelCapacityEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'panelCapacity',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      panelCapacityGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'panelCapacity',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      panelCapacityLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'panelCapacity',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      panelCapacityBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'panelCapacity',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      panelCapacityStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'panelCapacity',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      panelCapacityEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'panelCapacity',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      panelCapacityContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'panelCapacity',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      panelCapacityMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'panelCapacity',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      panelCapacityIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'panelCapacity',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      panelCapacityIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'panelCapacity',
         value: '',
       ));
     });
@@ -1847,6 +3360,160 @@ extension CacheAddNewAssetQueryFilter
       ));
     });
   }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      voltageUnitIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'voltageUnit',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      voltageUnitIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'voltageUnit',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      voltageUnitEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'voltageUnit',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      voltageUnitGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'voltageUnit',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      voltageUnitLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'voltageUnit',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      voltageUnitBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'voltageUnit',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      voltageUnitStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'voltageUnit',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      voltageUnitEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'voltageUnit',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      voltageUnitContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'voltageUnit',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      voltageUnitMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'voltageUnit',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      voltageUnitIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'voltageUnit',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      voltageUnitIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'voltageUnit',
+        value: '',
+      ));
+    });
+  }
 }
 
 extension CacheAddNewAssetQueryObject
@@ -1886,6 +3553,76 @@ extension CacheAddNewAssetQuerySortBy
   }
 
   QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
+      sortByBatteryCapacity() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'batteryCapacity', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
+      sortByBatteryCapacityDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'batteryCapacity', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
+      sortByBatteryType() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'batteryType', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
+      sortByBatteryTypeDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'batteryType', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
+      sortByBatteryVoltage() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'batteryVoltage', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
+      sortByBatteryVoltageDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'batteryVoltage', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
+      sortByCapacity() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'capacity', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
+      sortByCapacityDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'capacity', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
+      sortByCapacityUnit() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'capacityUnit', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
+      sortByCapacityUnitDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'capacityUnit', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
       sortByCreatedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'createdAt', Sort.asc);
@@ -1900,6 +3637,20 @@ extension CacheAddNewAssetQuerySortBy
   }
 
   QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
+      sortByCurrentUnit() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'currentUnit', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
+      sortByCurrentUnitDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'currentUnit', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
       sortByDocumentType() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'documentType', Sort.asc);
@@ -1910,6 +3661,34 @@ extension CacheAddNewAssetQuerySortBy
       sortByDocumentTypeDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'documentType', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
+      sortByInverterCapacity() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'inverterCapacity', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
+      sortByInverterCapacityDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'inverterCapacity', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
+      sortByInverterCapacityUnit() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'inverterCapacityUnit', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
+      sortByInverterCapacityUnitDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'inverterCapacityUnit', Sort.desc);
     });
   }
 
@@ -1952,6 +3731,20 @@ extension CacheAddNewAssetQuerySortBy
       sortByLongitudeDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'longitude', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
+      sortByPanelCapacity() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'panelCapacity', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
+      sortByPanelCapacityDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'panelCapacity', Sort.desc);
     });
   }
 
@@ -2010,6 +3803,20 @@ extension CacheAddNewAssetQuerySortBy
       return query.addSortBy(r'updatedAt', Sort.desc);
     });
   }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
+      sortByVoltageUnit() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'voltageUnit', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
+      sortByVoltageUnitDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'voltageUnit', Sort.desc);
+    });
+  }
 }
 
 extension CacheAddNewAssetQuerySortThenBy
@@ -2043,6 +3850,76 @@ extension CacheAddNewAssetQuerySortThenBy
   }
 
   QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
+      thenByBatteryCapacity() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'batteryCapacity', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
+      thenByBatteryCapacityDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'batteryCapacity', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
+      thenByBatteryType() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'batteryType', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
+      thenByBatteryTypeDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'batteryType', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
+      thenByBatteryVoltage() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'batteryVoltage', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
+      thenByBatteryVoltageDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'batteryVoltage', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
+      thenByCapacity() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'capacity', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
+      thenByCapacityDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'capacity', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
+      thenByCapacityUnit() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'capacityUnit', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
+      thenByCapacityUnitDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'capacityUnit', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
       thenByCreatedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'createdAt', Sort.asc);
@@ -2053,6 +3930,20 @@ extension CacheAddNewAssetQuerySortThenBy
       thenByCreatedAtDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'createdAt', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
+      thenByCurrentUnit() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'currentUnit', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
+      thenByCurrentUnitDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'currentUnit', Sort.desc);
     });
   }
 
@@ -2080,6 +3971,34 @@ extension CacheAddNewAssetQuerySortThenBy
       thenByIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'id', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
+      thenByInverterCapacity() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'inverterCapacity', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
+      thenByInverterCapacityDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'inverterCapacity', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
+      thenByInverterCapacityUnit() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'inverterCapacityUnit', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
+      thenByInverterCapacityUnitDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'inverterCapacityUnit', Sort.desc);
     });
   }
 
@@ -2122,6 +4041,20 @@ extension CacheAddNewAssetQuerySortThenBy
       thenByLongitudeDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'longitude', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
+      thenByPanelCapacity() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'panelCapacity', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
+      thenByPanelCapacityDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'panelCapacity', Sort.desc);
     });
   }
 
@@ -2180,6 +4113,20 @@ extension CacheAddNewAssetQuerySortThenBy
       return query.addSortBy(r'updatedAt', Sort.desc);
     });
   }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
+      thenByVoltageUnit() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'voltageUnit', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
+      thenByVoltageUnitDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'voltageUnit', Sort.desc);
+    });
+  }
 }
 
 extension CacheAddNewAssetQueryWhereDistinct
@@ -2199,6 +4146,43 @@ extension CacheAddNewAssetQueryWhereDistinct
   }
 
   QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QDistinct>
+      distinctByBatteryCapacity({bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'batteryCapacity',
+          caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QDistinct>
+      distinctByBatteryType({bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'batteryType', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QDistinct>
+      distinctByBatteryVoltage({bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'batteryVoltage',
+          caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QDistinct>
+      distinctByCapacity({bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'capacity', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QDistinct>
+      distinctByCapacityUnit({bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'capacityUnit', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QDistinct>
       distinctByCreatedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'createdAt');
@@ -2206,9 +4190,32 @@ extension CacheAddNewAssetQueryWhereDistinct
   }
 
   QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QDistinct>
+      distinctByCurrentUnit({bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'currentUnit', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QDistinct>
       distinctByDocumentType({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'documentType', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QDistinct>
+      distinctByInverterCapacity({bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'inverterCapacity',
+          caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QDistinct>
+      distinctByInverterCapacityUnit({bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'inverterCapacityUnit',
+          caseSensitive: caseSensitive);
     });
   }
 
@@ -2230,6 +4237,14 @@ extension CacheAddNewAssetQueryWhereDistinct
       distinctByLongitude({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'longitude', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QDistinct>
+      distinctByPanelCapacity({bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'panelCapacity',
+          caseSensitive: caseSensitive);
     });
   }
 
@@ -2260,6 +4275,13 @@ extension CacheAddNewAssetQueryWhereDistinct
       return query.addDistinctBy(r'updatedAt');
     });
   }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QDistinct>
+      distinctByVoltageUnit({bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'voltageUnit', caseSensitive: caseSensitive);
+    });
+  }
 }
 
 extension CacheAddNewAssetQueryProperty
@@ -2282,6 +4304,40 @@ extension CacheAddNewAssetQueryProperty
     });
   }
 
+  QueryBuilder<CacheAddNewAsset, String?, QQueryOperations>
+      batteryCapacityProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'batteryCapacity');
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, String?, QQueryOperations>
+      batteryTypeProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'batteryType');
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, String?, QQueryOperations>
+      batteryVoltageProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'batteryVoltage');
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, String, QQueryOperations> capacityProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'capacity');
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, String?, QQueryOperations>
+      capacityUnitProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'capacityUnit');
+    });
+  }
+
   QueryBuilder<CacheAddNewAsset, DateTime, QQueryOperations>
       createdAtProperty() {
     return QueryBuilder.apply(this, (query) {
@@ -2290,9 +4346,30 @@ extension CacheAddNewAssetQueryProperty
   }
 
   QueryBuilder<CacheAddNewAsset, String?, QQueryOperations>
+      currentUnitProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'currentUnit');
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, String?, QQueryOperations>
       documentTypeProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'documentType');
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, String?, QQueryOperations>
+      inverterCapacityProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'inverterCapacity');
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, String?, QQueryOperations>
+      inverterCapacityUnitProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'inverterCapacityUnit');
     });
   }
 
@@ -2312,6 +4389,13 @@ extension CacheAddNewAssetQueryProperty
   QueryBuilder<CacheAddNewAsset, String, QQueryOperations> longitudeProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'longitude');
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, String?, QQueryOperations>
+      panelCapacityProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'panelCapacity');
     });
   }
 
@@ -2338,6 +4422,13 @@ extension CacheAddNewAssetQueryProperty
       updatedAtProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'updatedAt');
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, String?, QQueryOperations>
+      voltageUnitProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'voltageUnit');
     });
   }
 }
