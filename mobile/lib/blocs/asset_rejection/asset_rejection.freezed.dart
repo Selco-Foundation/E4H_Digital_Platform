@@ -17,26 +17,22 @@ final _privateConstructorUsedError = UnsupportedError(
 /// @nodoc
 mixin _$RejectionEvent {
   String get projectId => throw _privateConstructorUsedError;
-  String? get action => throw _privateConstructorUsedError;
   List<Transaction> get transactions => throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(
-            String projectId, String? action, List<Transaction> transactions)
+    required TResult Function(String projectId, List<Transaction> transactions)
         submitRejection,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(
-            String projectId, String? action, List<Transaction> transactions)?
+    TResult? Function(String projectId, List<Transaction> transactions)?
         submitRejection,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(
-            String projectId, String? action, List<Transaction> transactions)?
+    TResult Function(String projectId, List<Transaction> transactions)?
         submitRejection,
     required TResult orElse(),
   }) =>
@@ -69,7 +65,7 @@ abstract class $RejectionEventCopyWith<$Res> {
           RejectionEvent value, $Res Function(RejectionEvent) then) =
       _$RejectionEventCopyWithImpl<$Res, RejectionEvent>;
   @useResult
-  $Res call({String projectId, String? action, List<Transaction> transactions});
+  $Res call({String projectId, List<Transaction> transactions});
 }
 
 /// @nodoc
@@ -86,7 +82,6 @@ class _$RejectionEventCopyWithImpl<$Res, $Val extends RejectionEvent>
   @override
   $Res call({
     Object? projectId = null,
-    Object? action = freezed,
     Object? transactions = null,
   }) {
     return _then(_value.copyWith(
@@ -94,10 +89,6 @@ class _$RejectionEventCopyWithImpl<$Res, $Val extends RejectionEvent>
           ? _value.projectId
           : projectId // ignore: cast_nullable_to_non_nullable
               as String,
-      action: freezed == action
-          ? _value.action
-          : action // ignore: cast_nullable_to_non_nullable
-              as String?,
       transactions: null == transactions
           ? _value.transactions
           : transactions // ignore: cast_nullable_to_non_nullable
@@ -114,7 +105,7 @@ abstract class _$$SubmitRejectionImplCopyWith<$Res>
       __$$SubmitRejectionImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({String projectId, String? action, List<Transaction> transactions});
+  $Res call({String projectId, List<Transaction> transactions});
 }
 
 /// @nodoc
@@ -129,7 +120,6 @@ class __$$SubmitRejectionImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? projectId = null,
-    Object? action = freezed,
     Object? transactions = null,
   }) {
     return _then(_$SubmitRejectionImpl(
@@ -137,10 +127,6 @@ class __$$SubmitRejectionImplCopyWithImpl<$Res>
           ? _value.projectId
           : projectId // ignore: cast_nullable_to_non_nullable
               as String,
-      action: freezed == action
-          ? _value.action
-          : action // ignore: cast_nullable_to_non_nullable
-              as String?,
       transactions: null == transactions
           ? _value._transactions
           : transactions // ignore: cast_nullable_to_non_nullable
@@ -153,15 +139,11 @@ class __$$SubmitRejectionImplCopyWithImpl<$Res>
 
 class _$SubmitRejectionImpl implements _SubmitRejection {
   const _$SubmitRejectionImpl(
-      {required this.projectId,
-      this.action,
-      required final List<Transaction> transactions})
+      {required this.projectId, required final List<Transaction> transactions})
       : _transactions = transactions;
 
   @override
   final String projectId;
-  @override
-  final String? action;
   final List<Transaction> _transactions;
   @override
   List<Transaction> get transactions {
@@ -172,7 +154,7 @@ class _$SubmitRejectionImpl implements _SubmitRejection {
 
   @override
   String toString() {
-    return 'RejectionEvent.submitRejection(projectId: $projectId, action: $action, transactions: $transactions)';
+    return 'RejectionEvent.submitRejection(projectId: $projectId, transactions: $transactions)';
   }
 
   @override
@@ -182,13 +164,12 @@ class _$SubmitRejectionImpl implements _SubmitRejection {
             other is _$SubmitRejectionImpl &&
             (identical(other.projectId, projectId) ||
                 other.projectId == projectId) &&
-            (identical(other.action, action) || other.action == action) &&
             const DeepCollectionEquality()
                 .equals(other._transactions, _transactions));
   }
 
   @override
-  int get hashCode => Object.hash(runtimeType, projectId, action,
+  int get hashCode => Object.hash(runtimeType, projectId,
       const DeepCollectionEquality().hash(_transactions));
 
   @JsonKey(ignore: true)
@@ -201,33 +182,30 @@ class _$SubmitRejectionImpl implements _SubmitRejection {
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(
-            String projectId, String? action, List<Transaction> transactions)
+    required TResult Function(String projectId, List<Transaction> transactions)
         submitRejection,
   }) {
-    return submitRejection(projectId, action, transactions);
+    return submitRejection(projectId, transactions);
   }
 
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(
-            String projectId, String? action, List<Transaction> transactions)?
+    TResult? Function(String projectId, List<Transaction> transactions)?
         submitRejection,
   }) {
-    return submitRejection?.call(projectId, action, transactions);
+    return submitRejection?.call(projectId, transactions);
   }
 
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(
-            String projectId, String? action, List<Transaction> transactions)?
+    TResult Function(String projectId, List<Transaction> transactions)?
         submitRejection,
     required TResult orElse(),
   }) {
     if (submitRejection != null) {
-      return submitRejection(projectId, action, transactions);
+      return submitRejection(projectId, transactions);
     }
     return orElse();
   }
@@ -264,13 +242,10 @@ class _$SubmitRejectionImpl implements _SubmitRejection {
 abstract class _SubmitRejection implements RejectionEvent {
   const factory _SubmitRejection(
       {required final String projectId,
-      final String? action,
       required final List<Transaction> transactions}) = _$SubmitRejectionImpl;
 
   @override
   String get projectId;
-  @override
-  String? get action;
   @override
   List<Transaction> get transactions;
   @override

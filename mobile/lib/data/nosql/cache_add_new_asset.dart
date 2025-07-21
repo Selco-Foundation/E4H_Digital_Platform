@@ -21,19 +21,16 @@ class CacheAddNewAsset {
   late String latitude;
   late String longitude;
 
-  // late String capacityUnit;
-  // // inverter
-  // late String? outputPhase;
-  // late String? chargeControllerCurrent;
-  // late String? chargeControllerVoltage;
-  // late String? currentUnit;
-  //
-  // // battery
-  // late String? batteryVoltage;
-  // late String? voltageUnit;
-  // late String? batteryType;
-  //
-  // // panel
+  late String capacity; // e.g. "10"
+  late String? capacityUnit; // e.g. "kVA"
+  late String? panelCapacity;
+  late String? batteryCapacity;
+  late String? batteryVoltage;
+  late String? batteryType;
+  late String? voltageUnit;
+  late String? inverterCapacity;
+  late String? inverterCapacityUnit;
+  late String? currentUnit;
 
   DateTime createdAt = DateTime.now();
   DateTime? updatedAt;
@@ -48,5 +45,15 @@ class CacheAddNewAsset {
     required this.photoPath,
     required this.latitude,
     required this.longitude,
+    this.capacity = '1',
+    this.capacityUnit,
+    this.panelCapacity,
+    this.batteryCapacity,
+    this.batteryVoltage,
+    this.batteryType,
+    this.voltageUnit,
+    this.inverterCapacity,
+    this.inverterCapacityUnit,
+    this.currentUnit,
   });
 }
