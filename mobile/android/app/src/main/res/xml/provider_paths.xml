@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Allows FileProvider to serve files from your app's cache dir -->
+    <cache-path name="camera_cache" path="."/>
+    <!-- If you ever use externalCacheDir -->
+    <external-cache-path name="external_camera_cache" path="."/>
+</paths>

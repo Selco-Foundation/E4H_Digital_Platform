@@ -304,12 +304,14 @@ class _InboxPageState extends State<InboxPage> {
                           context.router.push(const InboxAssetSummaryRoute());
                         },
                         title: project.project.name ?? '---',
-                        dateAssigned: DateTime(2024, 1, 25),
+                        dateAssigned:
+                            project.project.startDateTime ?? DateTime.now(),
                         status: project.status ?? '---'),
                     rejected: () => InboxReportRejectedCard(
                       title: project.project.name ?? '---',
                       status: project.status ?? '---',
-                      dateAssigned: DateTime(2024, 1, 25),
+                      dateAssigned:
+                          project.project.startDateTime ?? DateTime.now(),
                       onPress: () {
                         print(project.project.id);
                         context.read<SelectedProjectBloc>().add(
@@ -327,7 +329,8 @@ class _InboxPageState extends State<InboxPage> {
                           context.router.push(const InboxAssetSummaryRoute());
                         },
                         title: project.project.name ?? '---',
-                        dateAssigned: DateTime(2024, 1, 25),
+                        dateAssigned:
+                            project.project.startDateTime ?? DateTime.now(),
                         status: project.status ?? '---'),
                   );
                 },

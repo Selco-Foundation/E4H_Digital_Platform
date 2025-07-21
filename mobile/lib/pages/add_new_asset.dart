@@ -43,6 +43,15 @@ import '../widgets/header/back_navigation_help_header.dart';
 class AssetModel {
   String serialNumber;
   String capacity;
+  String? capacityUnit;
+  String? panelCapacity;
+  String? batteryCapacity;
+  String? batteryVoltage;
+  String? batteryType;
+  String? voltageUnit;
+  String? inverterCapacity;
+  String? inverterCapacityUnit;
+  String? currentUnit;
   String unit;
   String? photoPath;
   String? latitude;
@@ -50,6 +59,15 @@ class AssetModel {
   AssetModel({
     required this.serialNumber,
     this.capacity = '1',
+    this.capacityUnit,
+    this.panelCapacity,
+    this.batteryVoltage,
+    this.batteryType,
+    this.batteryCapacity,
+    this.voltageUnit,
+    this.inverterCapacity,
+    this.inverterCapacityUnit,
+    this.currentUnit,
     this.unit = 'KvA',
     this.photoPath,
     this.longitude,
@@ -88,6 +106,9 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
   @override
   void initState() {
     super.initState();
+    ensureCameraPermissions(context: context)
+        .then((ok) {})
+        .catchError((e) => {});
     final locBloc = context.read<LocationBloc>();
     locBloc.add(const LocationEvent.requestPermission());
     locBloc.add(const LocationEvent.requestService());
@@ -255,6 +276,15 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                       latitude: entry.latitude,
                       longitude: entry.longitude,
                       photoPath: entry.photoPath,
+                      capacityUnit: entry.capacityUnit ?? assetCapacityUom,
+                      panelCapacity: entry.panelCapacity,
+                      batteryCapacity: entry.batteryCapacity,
+                      batteryVoltage: entry.batteryVoltage,
+                      batteryType: entry.batteryType,
+                      voltageUnit: entry.voltageUnit,
+                      inverterCapacity: entry.inverterCapacity,
+                      inverterCapacityUnit: entry.inverterCapacityUnit,
+                      currentUnit: entry.currentUnit,
                     ));
                   }
                 });
@@ -296,13 +326,9 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
 
               return Scaffold(
                 body: ScrollableContent(
-                  header: BackNavigationHelpHeaderWidget(
+                  header: const BackNavigationHelpHeaderWidget(
                     showBackNavigation: true,
                     showHelp: false,
-                    defaultPopRoute: false,
-                    handleback: () {
-                      context.router.popAndPush(const AssetTypeDetailRoute());
-                    },
                   ),
                   enableFixedDigitButton: true,
                   backgroundColor: theme.colorTheme.generic.background,
@@ -312,7 +338,6 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                     isDisabled: isDisabled,
                     onPress: () async {
                       if (isDisabled) return;
-
                       context.read<CacheAddNewAssetBloc>().add(
                           CacheAddNewAssetEvent.deleteAll(
                               _currentProjectId!, currentAssetType));
@@ -337,6 +362,15 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                           photoPath: asset.photoPath!,
                           longitude: asset.longitude!,
                           latitude: asset.latitude!,
+                          capacityUnit: asset.capacityUnit ?? assetCapacityUom,
+                          panelCapacity: asset.panelCapacity,
+                          batteryCapacity: asset.batteryCapacity,
+                          batteryVoltage: asset.batteryVoltage,
+                          batteryType: asset.batteryType,
+                          voltageUnit: asset.voltageUnit,
+                          inverterCapacity: asset.inverterCapacity,
+                          inverterCapacityUnit: asset.inverterCapacityUnit,
+                          currentUnit: asset.currentUnit,
                         );
                         context
                             .read<CacheAddNewAssetBloc>()
@@ -371,10 +405,14 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                           ),
                           const SizedBox(height: spacer4),
                           assetTypeState.maybeWhen(
-                              battery: () => _batteryCapacity(
-                                  theme, textTheme, currentAssetType.titleCase),
+                              battery: () => _batteryCapacity(theme, textTheme,
+                                  _assets.first, currentAssetType.titleCase),
                               panel: () => _panelCapacity(
-                                  theme, textTheme, currentAssetType.titleCase),
+                                    theme,
+                                    textTheme,
+                                    _assets.first,
+                                    currentAssetType.titleCase,
+                                  ),
                               orElse: () => const SizedBox()),
                           ..._assets.asMap().entries.map((e) {
                             return Padding(
@@ -450,9 +488,10 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
           child: Row(
             children: [
               Expanded(
-                flex: 5,
+                flex: 6,
                 child: GestureDetector(
-                  onTap: () {
+                  onTap: () async {
+                    await ensureCameraPermissions(context: context);
                     setState(() => _scanningIndex = index);
                     context
                         .read<DigitScannerBloc>()
@@ -480,13 +519,14 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                   ),
                 ),
               ),
-              const SizedBox(width: spacer4),
+              const SizedBox(width: spacer2),
               Expanded(
-                flex: 2,
+                flex: 3,
                 child: DigitButton(
                   label: 'Scan',
                   type: DigitButtonType.secondary,
                   onPressed: () {
+                    // await ensureCameraPermissions(context: context);
                     setState(() => _scanningIndex = index);
                     context
                         .read<DigitScannerBloc>()
@@ -533,6 +573,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                     initialImages: file != null ? [file] : [],
                     onImagesSelected: (List<File> imageFile) async {
                       if (imageFile.isEmpty) return;
+                      // await ensureCameraPermissions(context: context);
                       final ok = await _ensureLocationLoaded();
                       if (!ok) {
                         context.showSnackBar(
@@ -570,9 +611,14 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                     items: assetCapacity
                         .map((type) => DropdownItem(name: type, code: type))
                         .toList(),
+                    selectedOption: DropdownItem(
+                      name: asset.capacity ?? '',
+                      code: asset.capacity ?? '',
+                    ),
                     onSelect: (DropdownItem selected) {
                       setState(() {
                         asset.capacity = selected.code;
+                        asset.inverterCapacity = selected.code;
                       });
                     },
                   ),
@@ -599,8 +645,8 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
     );
   }
 
-  Widget _batteryCapacity(
-          ThemeData theme, DigitTextTheme textTheme, String heading) =>
+  Widget _batteryCapacity(ThemeData theme, DigitTextTheme textTheme,
+          AssetModel asset, String heading) =>
       Column(
         children: [
           DigitCard(
@@ -614,10 +660,16 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                 label: '$heading Type',
                 capitalizedFirstLetter: false,
                 child: DigitDropdown(
-                  items: typesField
-                      .map((type) => DropdownItem(name: type, code: type))
-                      .toList(),
-                ),
+                    items: typesField
+                        .map((type) => DropdownItem(name: type, code: type))
+                        .toList(),
+                    selectedOption: DropdownItem(
+                      name: asset.batteryType ?? '',
+                      code: asset.batteryType ?? '',
+                    ),
+                    onSelect: (DropdownItem sel) {
+                      setState(() => asset.batteryType = sel.code);
+                    }),
               ),
               Row(
                 children: [
@@ -627,10 +679,17 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                       label: 'Voltage',
                       capitalizedFirstLetter: false,
                       child: DigitDropdown(
-                        items: assetCapacity
-                            .map((type) => DropdownItem(name: type, code: type))
-                            .toList(),
-                      ),
+                          items: assetCapacity
+                              .map((type) =>
+                                  DropdownItem(name: type, code: type))
+                              .toList(),
+                          selectedOption: DropdownItem(
+                            name: asset.batteryVoltage ?? '',
+                            code: asset.batteryVoltage ?? '',
+                          ),
+                          onSelect: (DropdownItem sel) {
+                            setState(() => asset.batteryVoltage = sel.code);
+                          }),
                     ),
                   ),
                   const SizedBox(width: spacer6),
@@ -651,18 +710,24 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
               ),
               Row(
                 children: [
-                  const Expanded(
+                  Expanded(
                     flex: 3,
                     child: LabeledField(
                       label: 'Current',
                       capitalizedFirstLetter: false,
                       child: DigitDropdown(
-                        items: [
-                          DropdownItem(name: '12', code: '12'),
-                          DropdownItem(name: '12.8', code: '12.8'),
-                          DropdownItem(name: '24', code: '24'),
-                        ],
-                      ),
+                          items: const [
+                            DropdownItem(name: '12', code: '12'),
+                            DropdownItem(name: '12.8', code: '12.8'),
+                            DropdownItem(name: '24', code: '24'),
+                          ],
+                          selectedOption: DropdownItem(
+                            name: asset.batteryCapacity ?? '',
+                            code: asset.batteryCapacity ?? '',
+                          ),
+                          onSelect: (DropdownItem sel) {
+                            setState(() => asset.batteryCapacity = sel.code);
+                          }),
                     ),
                   ),
                   const SizedBox(width: spacer6),
@@ -687,8 +752,8 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
         ],
       );
 
-  Widget _panelCapacity(
-          ThemeData theme, DigitTextTheme textTheme, String heading) =>
+  Widget _panelCapacity(ThemeData theme, DigitTextTheme textTheme,
+          AssetModel asset, String heading) =>
       Column(
         children: [
           DigitCard(
@@ -706,10 +771,17 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                       label: 'Voltage',
                       capitalizedFirstLetter: false,
                       child: DigitDropdown(
-                        items: assetCapacity
-                            .map((type) => DropdownItem(name: type, code: type))
-                            .toList(),
-                      ),
+                          items: assetCapacity
+                              .map((type) =>
+                                  DropdownItem(name: type, code: type))
+                              .toList(),
+                          selectedOption: DropdownItem(
+                            name: asset.panelCapacity ?? '',
+                            code: asset.panelCapacity ?? '',
+                          ),
+                          onSelect: (DropdownItem sel) {
+                            setState(() => asset.panelCapacity = sel.code);
+                          }),
                     ),
                   ),
                   const SizedBox(width: spacer6),

@@ -96,8 +96,9 @@ class _SelectAssetTypePageState extends State<SelectAssetTypePage> {
             header: BackNavigationHelpHeaderWidget(
               showBackNavigation: true,
               showHelp: false,
+              defaultPopRoute: false,
               handleback: () {
-                context.router.replace(const AssetCountRoute());
+                context.router.popAndPush(const AssetCountRoute());
               },
             ),
             footer: FooterButton(

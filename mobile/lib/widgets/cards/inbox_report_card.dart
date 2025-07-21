@@ -7,8 +7,6 @@ import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-import '../../utils/utils.dart';
-
 class InboxReportCard extends StatelessWidget {
   final String? title;
   final String? status;
@@ -42,40 +40,48 @@ class InboxReportCard extends StatelessWidget {
           const DigitDivider(dividerType: DividerType.small),
           Row(
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: spacer4),
-                  Text(
-                    'Status',
-                    style: textTheme.headingS
-                        .copyWith(color: theme.colorTheme.text.primary),
-                  ),
-                  const SizedBox(height: spacer4),
-                  Text(
-                    'Submission Date',
-                    style: textTheme.headingS
-                        .copyWith(color: theme.colorTheme.text.primary),
-                  )
-                ],
+              Expanded(
+                flex: 2,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: spacer4),
+                    Text(
+                      'Status',
+                      style: textTheme.headingS
+                          .copyWith(color: theme.colorTheme.text.primary),
+                    ),
+                    const SizedBox(height: spacer4),
+                    Text(
+                      'Submission Date',
+                      style: textTheme.headingS
+                          .copyWith(color: theme.colorTheme.text.primary),
+                    )
+                  ],
+                ),
               ),
               const SizedBox(width: spacer12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: spacer4),
-                  Text(
-                    truncateText('$status', maxLength: 16),
-                    style: textTheme.bodyL
-                        .copyWith(color: theme.colorTheme.text.primary),
-                  ),
-                  const SizedBox(height: spacer4),
-                  Text(
-                    formattedDate,
-                    style: textTheme.bodyL
-                        .copyWith(color: theme.colorTheme.text.primary),
-                  ),
-                ],
+              Expanded(
+                flex: 3,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: spacer4),
+                    Text(
+                      status ?? '',
+                      style: textTheme.bodyL
+                          .copyWith(color: theme.colorTheme.text.primary),
+                      softWrap: true,
+                      overflow: TextOverflow.visible,
+                    ),
+                    const SizedBox(height: spacer4),
+                    Text(
+                      formattedDate,
+                      style: textTheme.bodyL
+                          .copyWith(color: theme.colorTheme.text.primary),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),

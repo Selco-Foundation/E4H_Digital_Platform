@@ -114,8 +114,8 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
             );
           },
           success: () {
-            Navigator.of(context, rootNavigator: true).pop(); // Remove loader
-            Navigator.of(context).maybePop(); // Pop summary page
+            Navigator.of(context, rootNavigator: true).pop();
+            Navigator.of(context).maybePop();
           },
           failure: (message) {
             Navigator.of(context, rootNavigator: true).pop(); // Remove loader
@@ -503,11 +503,14 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
             ),
           ),
           Row(children: [
-            const KeyColumn(keys: ['Name', 'Status']),
-            ValueColumn(values: [
-              truncateText(projectName, maxLength: 18),
-              truncateText(status, maxLength: 18),
-            ]),
+            const Expanded(flex: 1, child: KeyColumn(keys: ['Name', 'Status'])),
+            Expanded(
+              flex: 1,
+              child: ValueColumn(values: [
+                truncateText(projectName, maxLength: 18),
+                status,
+              ]),
+            ),
           ]),
         ]),
         const SizedBox(height: spacer4),

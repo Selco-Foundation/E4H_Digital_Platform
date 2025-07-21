@@ -1,7 +1,6 @@
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:digit_ui_components/theme/theme.dart';
 import 'package:flutter/material.dart';
-import 'package:open_file/open_file.dart';
 import 'package:selco/utils/utils.dart';
 
 Widget pdfCard(
@@ -9,7 +8,7 @@ Widget pdfCard(
   final theme = Theme.of(context);
   final textTheme = theme.digitTextTheme(context);
   return GestureDetector(
-    onTap: () => OpenFile.open(filePath),
+    onTap: () => {}, // OpenFile.open(filePath),
     child: Container(
       decoration: BoxDecoration(
         color: theme.colorTheme.generic.background,
