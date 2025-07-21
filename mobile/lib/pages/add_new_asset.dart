@@ -176,6 +176,9 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
     } catch (e) {
       debugPrint('Permissions failed: $e');
       // optionally show a Snackbar, etc.
+      context.showSnackBar(
+        const SnackBar(content: Text('Storage permission denied')),
+      );
     }
   }
 
