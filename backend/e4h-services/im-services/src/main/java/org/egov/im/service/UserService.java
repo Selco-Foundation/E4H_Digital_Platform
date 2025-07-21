@@ -273,6 +273,7 @@ public class UserService {
             if ("COMPLAINANT".equalsIgnoreCase(roleCode) || "COMPLAINT_RESOLVER".equalsIgnoreCase(roleCode)) {
 
                 UserLoginReport userLoginReport = new UserLoginReport();
+                userLoginReport.setId(UUID.randomUUID().toString());
                 userLoginReport.setUserName(userInfo.getUserName());
                 userLoginReport.setUserRole(roleCode);
                 userLoginReport.setCurrentOwnerName(userInfo.getName());
@@ -338,14 +339,14 @@ public class UserService {
                                     }
                                     String district = (String) city.get("districtName");
 
-                                    userLoginReport.setBlock(block);
-                                    userLoginReport.setDistrict(district);
+                                    userLoginReport.setBlock(block != null ? block : "");
+                                    userLoginReport.setDistrict(district != null ? district : "");
                                 }
                                 String healthCenter = (String) tenant.get("name");
                                 String state = (String) tenant.get("address");
 
-                                userLoginReport.setHealthFacilityName(healthCenter);
-                                userLoginReport.setState(state);
+                                userLoginReport.setHealthFacilityName(healthCenter != null ? healthCenter : "");
+                                userLoginReport.setState(state != null ? state : "");
                                 break;
                             }
                         }
