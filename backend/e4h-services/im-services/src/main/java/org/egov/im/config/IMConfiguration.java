@@ -109,9 +109,6 @@ public class IMConfiguration {
 
     @Value("${im.kafka.update.topic}")
     private String updateTopic;
-
-    @Value("${im.kafka.save.report.topic}")
-    private String saveReportTopic;
     
     @Value("${im.kafka.create.topic.indexer}")
     private String createTopicIndexer;
@@ -121,9 +118,6 @@ public class IMConfiguration {
 
     @Value("${im.audit.kafka.create.topic.indexer}")
     private String auditCreateTopicIndexer;
-
-    @Value("${im.kafka.save.topic.indexer}")
-    private String saveTopicIndexer;
 
     @Value("${im.default.offset}")
     private Integer defaultOffset;
