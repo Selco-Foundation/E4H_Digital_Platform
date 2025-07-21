@@ -273,6 +273,7 @@ public class UserService {
             if ("COMPLAINANT".equalsIgnoreCase(roleCode) || "COMPLAINT_RESOLVER".equalsIgnoreCase(roleCode)) {
 
                 UserLoginReport userLoginReport = new UserLoginReport();
+                userLoginReport.setId(UUID.randomUUID().toString());
                 userLoginReport.setUserName(userInfo.getUserName());
                 userLoginReport.setUserRole(roleCode);
                 userLoginReport.setCurrentOwnerName(userInfo.getName());
@@ -319,39 +320,49 @@ public class UserService {
     }
 
     private void setBlockAndDistrictFromMdms(Object mdmsResult, String tenantId, UserLoginReport userLoginReport) {
-        if (mdmsResult instanceof Map) {
-            Map<String, Object> resultMap = (Map<String, Object>) mdmsResult;
-            Map<String, Object> mdmsRes = (Map<String, Object>) resultMap.get("MdmsRes");
-            if (mdmsRes != null) {
-                Map<String, Object> tenantMap = (Map<String, Object>) mdmsRes.get("tenant");
-                if (tenantMap != null) {
-                    List<Map<String, Object>> tenants = (List<Map<String, Object>>) tenantMap.get("tenants");
-                    if (tenants != null) {
-                        for (Map<String, Object> tenant : tenants) {
-                            String code = (String) tenant.get("code");
-                            if (tenantId.equals(code)) {
-                                Map<String, Object> city = (Map<String, Object>) tenant.get("city");
-                                if (city != null) {
-                                    String block = (String) city.get("blockCode");
-                                    if (block != null && block.contains(".")) {
-                                        block = block.substring(block.indexOf('.') + 1);
-                                    }
-                                    String district = (String) city.get("districtName");
+        if (!(mdmsResult instanceof Map)) {
+            return;
+        }
+        Map<String, Object> resultMap = (Map<String, Object>) mdmsResult;
+        Map<String, Object> mdmsRes = (Map<String, Object>) resultMap.get("MdmsRes");
+        if (mdmsRes == null) {
+            return;
+        }
+        Map<String, Object> tenantMap = (Map<String, Object>) mdmsRes.get("tenant");
+        if (tenantMap == null) {
+            return;
+        }
+        List<Map<String, Object>> tenants = (List<Map<String, Object>>) tenantMap.get("tenants");
+        if (tenants == null) {
+            return;
+        }
 
-                                    userLoginReport.setBlock(block);
-                                    userLoginReport.setDistrict(district);
-                                }
-                                String healthCenter = (String) tenant.get("name");
-                                String state = (String) tenant.get("address");
-
-                                userLoginReport.setHealthFacilityName(healthCenter);
-                                userLoginReport.setState(state);
-                                break;
-                            }
-                        }
-                    }
-                }
+        for (Map<String, Object> tenant : tenants) {
+            String code = (String) tenant.get("code");
+            if (!tenantId.equals(code)) {
+                continue;
             }
+
+            // City details
+            Map<String, Object> city = (Map<String, Object>) tenant.get("city");
+            String block = "";
+            String district = "";
+            if (city != null) {
+                block = (String) city.get("blockCode");
+                if (block != null && block.contains(".")) {
+                    block = block.substring(block.indexOf('.') + 1);
+                }
+                district = (String) city.get("districtName");
+            }
+            userLoginReport.setBlock(block != null ? block : "");
+            userLoginReport.setDistrict(district != null ? district : "");
+
+            // Health facility and state
+            String healthCenter = (String) tenant.get("name");
+            String state = (String) tenant.get("address");
+            userLoginReport.setHealthFacilityName(healthCenter != null ? healthCenter : "");
+            userLoginReport.setState(state != null ? state : "");
+            break; // Found the tenant, no need to continue
         }
     }
 }
