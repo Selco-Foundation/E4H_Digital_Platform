@@ -378,9 +378,9 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
           tenantId={complaintDetails?.incident?.tenantId || tenantId}
           requestSpecifcFileRemoval={uploadedFile?.[0]}
           getFormState={(e) => getData(e)}
-          allowedFileTypesRegex={selectedAction === "RESOLVE" ? /(docx|doc|pdf|xlsx)$/i : /(pdf|jpg|jpeg|png)$/i}
+          allowedFileTypesRegex={selectedAction === "RESOLVE" ? /(docx|doc|pdf|xlsx|jpeg|png)$/i : /(pdf|jpg|jpeg|png)$/i}
           allowedMaxSizeInMB={5}
-          acceptFiles={selectedAction === "RESOLVE" ? ".pdf, .xlsx, .docx, .doc" : ".pdf, .jpg, .jpeg, .png"}
+          acceptFiles={selectedAction === "RESOLVE" ? ".pdf, .xlsx, .docx, .doc, .jpeg, .png" : ".pdf, .jpg, .jpeg, .png"}
           ulb={complaintDetails?.incident?.tenantId || tenantId}
         />
         {selectedAction === "RESOLVE" ? (
