@@ -595,9 +595,7 @@ def create_incident_data_update_payload(search_response: dict, update_data: dict
     incident_wrapper = search_response.get("IncidentWrappers", [{}])[0]
     incident = incident_wrapper.get("incident", {})
     workflow = incident_wrapper.get("workflow", {})
-    lastmodifiedTime = int(time.time() * 1000)
-    incident["auditDetails"]["lastModifiedTime"] = lastmodifiedTime
-    filed_date = incident.get("fileddate")
+    filed_date = incident.get("filedDate")
 
     if pd.isna(filed_date) or int(filed_date) == 0:
         formatted_date = ""
@@ -614,10 +612,10 @@ def create_incident_data_update_payload(search_response: dict, update_data: dict
 
     details = {
         "CS_COMPLAINT_DETAILS_TICKET_NO": incident.get("incidentId"),
-        "CS_COMPLAINT_DETAILS_APPLICATION_STATUS": f"CS_COMMON_{incident.get('applicationStatus', 'PENDINGFORASSIGNMENT')}",
+        "CS_COMPLAINT_DETAILS_APPLICATION_STATUS": f"CS_COMMON_{incident.get('applicationStatus')}",
         "CS_ADDCOMPLAINT_TICKET_TYPE": f"SERVICEDEFS.{original_type.upper()}",
         "CS_ADDCOMPLAINT_TICKET_SUB_TYPE": f"SERVICEDEFS.{original_subtype.upper()}",
-        "CS_ADDCOMPLAINT_SYSTEM_FUNCTIONAL": incident.get("systemFunctional", "NON_FUNCTIONAL"),
+        "CS_ADDCOMPLAINT_SYSTEM_FUNCTIONAL": incident.get("systemFunctional"),
         "CS_ADDCOMPLAINT_DISTRICT": incident.get("district", ""),
         "CS_ADDCOMPLAINT_BLOCK": incident.get("block", ""),
         "CS_ADDCOMPLAINT_HEALTH_CARE_CENTRE": incident.get("tenantId", ""),
