@@ -14,6 +14,9 @@ import org.springframework.validation.annotation.Validated;
 @Builder
 public class UserLoginReport {
 
+    @JsonProperty("id")
+    private String id;
+
     @JsonProperty("userName")
     private String userName;
 
