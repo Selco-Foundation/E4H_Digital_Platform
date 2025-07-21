@@ -134,9 +134,15 @@ class _AssetCountPageState extends State<AssetCountPage> {
               showSuffixIcon: false,
               text: context.translate(i18.common.coreCommonNext),
               isDisabled: _disableFooter,
-              onPress: () {
+              onPress: () async {
                 if (!_disableFooter) {
-                  context.router.push(const SelectAssetTypeRoute());
+                  //context.router.push(const SelectAssetTypeRoute());
+                  await context.router
+                      .push(const SelectAssetTypeRoute())
+                      .then((_) {
+                    // this callback runs when SelectAssetTypeRoute is popped off
+                    _dispatchInitialLoad(_currentProjectId!);
+                  });
                 }
               },
             ),

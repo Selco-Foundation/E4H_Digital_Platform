@@ -76,7 +76,7 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
         _currentProjectId = project.project.id;
         context
             .read<CacheAssetBloc>()
-            .add(CacheAssetEvent.start(project.project.id, userType));
+            .add(CacheAssetEvent.start(project.project.id, userType, project));
         _loadInitialCompletion();
         context.read<OverallAssetSummaryBloc>().add(
               OverallAssetSummaryEvent.loadCounts(

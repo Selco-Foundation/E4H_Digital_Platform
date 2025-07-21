@@ -18,7 +18,7 @@ class AuthRepository {
     final formData = body.toJson();
 
     if (envConfig.variables.envType == EnvType.dev) {
-      return _loadLocalAuth();
+      // return _loadLocalAuth();
     }
 
     //make a custom Dio client which will not send the request with the interceptor

@@ -44,7 +44,7 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
       context.read<SelectedProjectBloc>().state.whenOrNull(selected: (proj) {
         context
             .read<CacheAssetBloc>()
-            .add(CacheAssetEvent.start(proj.project.id, userType));
+            .add(CacheAssetEvent.start(proj.project.id, userType, proj));
       });
     });
   }

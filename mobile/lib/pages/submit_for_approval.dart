@@ -13,6 +13,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:isar/isar.dart';
 import 'package:path/path.dart' show basename;
 import 'package:recase/recase.dart';
+import 'package:selco/model/project_workflow/project_workflow.dart';
 
 import '../blocs/asset_submission/asset_submission.dart';
 import '../blocs/asset_type/asset_type.dart';
@@ -40,6 +41,7 @@ class SubmitForApprovalPage extends StatefulWidget {
 class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
   late String userType = "";
   late String projectId = "";
+  late ProjectWorkflow project;
   String? filePath = "";
   double? _latitude;
   double? _longitude;
@@ -61,13 +63,15 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
         );
     // Kick off the cache sync
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      projectId = context
-          .read<SelectedProjectBloc>()
-          .state
-          .whenOrNull(selected: (wf) => wf.project.id)!;
+      final selState = context.read<SelectedProjectBloc>().state;
+      selState.whenOrNull(selected: (project) {
+        projectId = project.project.id;
+        project = project;
+      });
+
       context
           .read<CacheAssetBloc>()
-          .add(CacheAssetEvent.start(projectId, userType));
+          .add(CacheAssetEvent.start(projectId, userType, project));
 
       _loadInitialCompletion();
       // });
