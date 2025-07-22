@@ -143,10 +143,10 @@ public class InboxServiceV2 {
     }
 
     private ProcessInstance trimRolesFromProcessInstance(ProcessInstance processInstance) {
-        if(processInstance.getAssigner()!=null)
+        if(processInstance !=null && processInstance.getAssigner()!=null)
             processInstance.getAssigner().setRoles(new ArrayList<>());
 
-        if (processInstance.getAssignes() != null) {
+        if (processInstance !=null && processInstance.getAssignes() != null) {
             processInstance.getAssignes().stream()
                     .filter(Objects::nonNull)
                     .forEach(assignee -> assignee.setRoles(new ArrayList<>()));
