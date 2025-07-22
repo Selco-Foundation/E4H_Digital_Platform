@@ -2,7 +2,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:digit_scanner/blocs/scanner.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:selco/blocs/selected_project/selected_project.dart';
+import '../blocs/selected_project/selected_project.dart';
 
 import '../blocs/asset_type/asset_type.dart';
 import '../blocs/inbox_type/inbox_type.dart';

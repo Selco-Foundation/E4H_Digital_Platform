@@ -93,7 +93,7 @@ class _SelectAssetTypePageState extends State<SelectAssetTypePage> {
     // 6) build your cache & fire both blocs
     final newSpec = CacheSpecification(
       projectId: _currentProjectId!,
-      assetType: assetType,
+      assetType: selectedAssetType.toLowerCase(),
       system: systemCode,
       totalCapacity: parsedCapacity,
       totalCapacityUnit: rawCapacityUom,
@@ -216,6 +216,7 @@ class _SelectAssetTypePageState extends State<SelectAssetTypePage> {
                             ),
                             capitalizedFirstLetter: false,
                             child: DigitDropdown(
+                              sentenceCaseEnabled: false,
                               onSelect: (DropdownItem selected) {
                                 selectedAssetType = selected.code;
                                 context.read<AssetTypeBloc>().add(
