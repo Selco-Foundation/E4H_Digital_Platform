@@ -4,11 +4,11 @@ import 'dart:io';
 import 'package:bloc/bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:isar/isar.dart';
-import 'package:selco/data/nosql/cache_media_upload.dart';
 
 import '../../data/nosql/cache_add_new_asset.dart';
 import '../../data/nosql/cache_asset_detail.dart';
 import '../../data/nosql/cache_completion_report.dart';
+import '../../data/nosql/cache_media_upload.dart';
 import '../../data/nosql/cache_specification.dart';
 import '../../data/nosql/cache_sync_record.dart';
 import '../../data/nosql/cache_unsubmitted_project.dart';
@@ -190,42 +190,6 @@ class AssetSubmissionBloc
             }
           }
 
-          // final mediaEntries = await _isar.cacheMediaUploads
-          //     .where()
-          //     .projectIdEqualTo(projectId)
-          //     .filter()
-          //     .assetTypeEqualTo(type)
-          //     .findAll();
-          //
-          // print("[$type] found ${mediaEntries.length} cached media uploads");
-          // for (var m in mediaEntries) {
-          //   print(
-          //       "    media id=${m.id} filePath='${m.filePath}' itemType='${m.itemType}'");
-          // }
-          //
-          // for (final m in mediaEntries) {
-          //   if (m.filePath.isEmpty) continue;
-          //   final mediaFile = File(m.filePath);
-          //   if (!await mediaFile.exists()) continue;
-          //   final mediaId = await repo.uploadFile(mediaFile);
-          //
-          //   documents.add(Document(
-          //     // id: 'DOCUMENT-0199',
-          //     documentType: m.itemType,
-          //     fileStore: mediaId,
-          //     documentUid:
-          //         "DOC-${m.itemType}-${m.id}-${m.itemNumber}-${m.assetType}-${DateTime.now().toUtc().toIso8601String()}",
-          //     additionalDetails: null,
-          //     geoLocation: GeoLocation(
-          //       latitude: m.latitude,
-          //       longitude: m.longitude,
-          //       //additionalDetails: null,
-          //     ),
-          //   ));
-          // }
-          //
-          // print("documents $documents");
-
           final now = DateTime.now().toUtc();
           final startIso = now.toIso8601String();
           final years = userType == USER_TYPES.FIELD_STAFF.name
@@ -249,9 +213,6 @@ class AssetSubmissionBloc
             panelCapacity: type == 'panel'
                 ? 34.1
                 : null, // saved.itemNumber, // "panelCapacity": saved.itemNumber,
-
-            // totalCapacity: 67.2, //todo update values in mdms data to be removed
-            // totalCapacityUnit: "kWp", //todo update values in mdms data to be removed
 
             batteryVoltage: type == 'battery' ? 12 : null,
             batteryCapacity: type == 'battery'
@@ -339,16 +300,13 @@ class AssetSubmissionBloc
           final mediaId = await repo.uploadFile(mediaFile);
 
           workflowDocuments.add(Document(
-            // id: 'DOCUMENT-0199',
-            documentType: m.itemType,
+            documentType: "${m.assetType}-${m.itemType}",
             fileStore: mediaId,
             documentUid:
-                "DOC-${m.itemType}-${m.id}-${m.itemNumber}-${m.assetType}-${DateTime.now().toUtc().toIso8601String()}",
-            additionalDetails: null,
+                "DOC-${m.itemType}-${m.id}-${m.assetType}-${m.itemNumber}-${DateTime.now().toUtc().toIso8601String()}",
             geoLocation: GeoLocation(
               latitude: m.latitude,
               longitude: m.longitude,
-              //additionalDetails: null,
             ),
           ));
         }

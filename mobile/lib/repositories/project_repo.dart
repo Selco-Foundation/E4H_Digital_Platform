@@ -148,6 +148,9 @@ class ProjectRemoteRepository {
 
     try {
       final resp = await dio.post(url, data: body);
+      print("resp ${resp.statusCode}");
+      print("resp data ${resp.data}");
+      print("resp message ${resp.data}");
       if (resp.statusCode != 200 &&
           resp.statusCode != 201 &&
           resp.statusCode != 204) {
@@ -307,7 +310,7 @@ class UnsubmittedProjectRepository {
         .where()
         .projectIdEqualTo(projectId)
         .filter()
-        .userTypeEqualTo(userType)
+        .userTypeEqualTo(userType.toLowerCase())
         .findFirst();
     if (existing != null) return existing;
 
@@ -315,7 +318,7 @@ class UnsubmittedProjectRepository {
       projectId: projectId,
       status: wf.status ?? '',
       project: wf.project,
-      userType: userType,
+      userType: userType.toLowerCase(),
     );
     await _isar.writeTxn(() => col.put(entry));
     return entry;
@@ -328,7 +331,7 @@ class UnsubmittedProjectRepository {
           .where()
           .projectIdEqualTo(projectId)
           .filter()
-          .userTypeEqualTo(userType)
+          .userTypeEqualTo(userType.toLowerCase())
           .findAll();
       for (final e in toDelete) {
         await col.delete(e.id);

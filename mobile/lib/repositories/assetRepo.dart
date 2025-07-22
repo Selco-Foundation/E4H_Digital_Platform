@@ -643,6 +643,7 @@ class AssetRepository {
                 print("fileStore ${doc.fileStore}");
                 await isar.cacheAddNewAssets.put(
                   CacheAddNewAsset(
+                    assetId: asset.assetId,
                     projectId: projectId,
                     assetType: type,
                     itemNumber:
@@ -670,25 +671,33 @@ class AssetRepository {
           print("oldMedia $oldMedia");
           //for (var asset in list) {
           //  for (var doc in asset.documents ?? []) {
-          for (var doc in project.workflow?.documents ?? []) {
-            if (doc.documentType != 'ASSET' &&
-                doc.documentType != 'PHOTO' &&
-                doc.documentType != 'INSTALLATION_REPORT') {
-              //todo CHANGE TO 'ASSET'
-              await isar.cacheMediaUploads.put(
-                CacheMediaUpload(
-                  projectId: projectId,
-                  assetType: type,
-                  itemNumber: '',
-                  itemType: doc.documentType ?? '',
-                  filePath: doc.fileStore ?? '',
-                  latitude: doc.geoLocation?.latitude?.toString() ?? '',
-                  longitude: doc.geoLocation?.longitude?.toString() ?? '',
-                ),
-              );
-            }
-          }
+
           // }
+        }
+
+        for (var doc in project.workflow?.documents ?? []) {
+          if (doc.documentType != 'ASSET' &&
+              doc.documentType != 'PHOTO' &&
+              doc.documentType != 'INSTALLATION_REPORT') {
+            // we only want strings like "inverter-image", i.e. exactly two parts
+            final parts = doc.documentType?.split('-') ?? [];
+            if (parts.length != 2) continue;
+
+            final assetTypeFromDoc = parts[0];
+            final itemTypeFromDoc = parts[1];
+
+            await isar.cacheMediaUploads.put(
+              CacheMediaUpload(
+                projectId: projectId,
+                assetType: assetTypeFromDoc,
+                itemNumber: '',
+                itemType: itemTypeFromDoc ?? '',
+                filePath: doc.fileStore ?? '',
+                latitude: doc.geoLocation?.latitude?.toString() ?? '',
+                longitude: doc.geoLocation?.longitude?.toString() ?? '',
+              ),
+            );
+          }
         }
       });
     } on DioError catch (e) {
