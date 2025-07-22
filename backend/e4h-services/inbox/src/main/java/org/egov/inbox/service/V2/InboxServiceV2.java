@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.wnameless.json.flattener.JsonFlattener;
 import com.google.gson.Gson;
 import com.jayway.jsonpath.JsonPath;
+import com.jayway.jsonpath.PathNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 
 import org.egov.common.contract.request.Role;
@@ -239,7 +240,14 @@ public class InboxServiceV2 {
         String stateUuid =null;
         
         if(JsonPath.read(data,"$.currentProcessInstance")!=null)
-        	stateUuid= JsonPath.read(data, STATE_UUID_PATH);
+        {
+            try{
+                stateUuid= JsonPath.read(data, STATE_UUID_PATH);
+            }
+            catch (PathNotFoundException e) {
+                e.printStackTrace();
+            }
+        }
         if(stateUuid !=null) {
         if(stateUuidSlaMap.containsKey(stateUuid)){
             if (!ObjectUtils.isEmpty(auditDetails.get(LAST_MODIFIED_TIME_KEY))) {
