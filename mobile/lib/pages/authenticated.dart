@@ -7,6 +7,7 @@ import 'package:selco/blocs/selected_project/selected_project.dart';
 import '../blocs/asset_type/asset_type.dart';
 import '../blocs/inbox_type/inbox_type.dart';
 import '../blocs/report_type/report_type.dart';
+import '../blocs/specification/specification.dart';
 import '../blocs/userbloc.dart';
 import '../widgets/navigation/drawer.dart';
 import '../widgets/navigation/navbar.dart';
@@ -20,6 +21,7 @@ class AuthenticatedScreenWrapper extends StatelessWidget {
           providers: [
             BlocProvider(create: (context) => UserBloc()),
             BlocProvider(create: (context) => AssetTypeBloc()),
+            BlocProvider(create: (context) => SpecificationBloc()),
             BlocProvider(create: (context) => ReportTypeBloc()),
             BlocProvider(create: (context) => InboxTypeBloc()),
             BlocProvider(create: (context) => SelectedProjectBloc()),
