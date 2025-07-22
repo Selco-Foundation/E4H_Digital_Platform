@@ -62,6 +62,7 @@ jobs:
           build-args: |
             PUBLIC_PATH=/assam/
             WORK_DIR=frontend/micro-ui/
+            REACT_APP_GA_ID=G-ZDFDM34WK3
 
 #  Workflow_Trigger:
 #    if: startsWith(github.ref, 'refs/heads/develop')
