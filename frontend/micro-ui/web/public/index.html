@@ -1,6 +1,23 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
+    <!-- Google tag (gtag.js) -->
+    <script
+      async
+      crossorigin="anonymous"
+      integrity="sha384-zUGMRGx4xjTlKXb6KXyCWAJ24YMpT/W338g81of42Mpd77Z/vmdAbWwMt6T7r2hf%"
+      src="https://www.googletagmanager.com/gtag/js?id=<%= htmlWebpackPlugin.options.ga_id %>"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || []
+      function gtag() {
+        dataLayer.push(arguments)
+      }
+      gtag("js", new Date())
+      gtag("config", "<%= htmlWebpackPlugin.options.ga_id %>", {
+        anonymize_ip: true,
+      })
+    </script>
     <meta charset="utf-8" />
     <link
       rel="icon"
