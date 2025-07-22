@@ -31,8 +31,13 @@ class AuthTokenInterceptor extends Interceptor {
                 userInfo: accessInfo?.userRequest)
             .toJson(),
       };
-    }
 
+      final d = options.data;
+      print('RequestInfo: ${d is FormData ? d.fields.firstWhere(
+            (f) => f.key == 'RequestInfo',
+        orElse: () => const MapEntry('', ''),
+      ).value : (d is Map<String, dynamic> ? d['RequestInfo'] : null)}');
+    }
     return super.onRequest(options, handler);
   }
 }

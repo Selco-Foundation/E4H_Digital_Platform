@@ -36,18 +36,10 @@ class SelectAssetTypePage extends StatefulWidget {
 class _SelectAssetTypePageState extends State<SelectAssetTypePage> {
   String? _currentProjectId;
   String selectedAssetType = "";
-  String assetType = "";
-  bool isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    assetType = context.read<AssetTypeBloc>().state.when(
-          initial: () => '',
-          inverter: () => 'inverter',
-          battery: () => 'battery',
-          panel: () => 'panel',
-        );
     _currentProjectId = context
         .read<SelectedProjectBloc>()
         .state
@@ -55,8 +47,6 @@ class _SelectAssetTypePageState extends State<SelectAssetTypePage> {
   }
 
   void _saveCacheSpecification() {
-    setState(() => isLoading = true);
-
     final initState = context.read<AppInitialization>().state;
 
     // 1) pull out system list and mdms asset types
@@ -108,8 +98,6 @@ class _SelectAssetTypePageState extends State<SelectAssetTypePage> {
           totalCapacity: parsedCapacity,
           totalCapacityUom: rawCapacityUom,
         ));
-
-    setState(() => isLoading = false);
   }
 
   CacheAssetCount? currentCacheEntryFor(
@@ -127,13 +115,13 @@ class _SelectAssetTypePageState extends State<SelectAssetTypePage> {
   }
 
   void _handleNavigation(BuildContext context) {
+    _saveCacheSpecification();
     final isSupervisor = context.read<UserTypeBloc>().state.maybeWhen(
           supervisor: () => true,
           orElse: () => false,
         );
-    _saveCacheSpecification();
     CacheAssetCount? cacheEntry = currentCacheEntryFor(context,
-        projectId: _currentProjectId!, assetType: assetType);
+        projectId: _currentProjectId!, assetType: selectedAssetType);
     switch (cacheEntry?.progress) {
       case 3:
         context.router.push(const SpecificationRoute());
@@ -171,7 +159,7 @@ class _SelectAssetTypePageState extends State<SelectAssetTypePage> {
             footer: FooterButton(
               showSuffixIcon: false,
               text: i18.common.coreCommonNext,
-              isDisabled: state is AssetTypeInitial || isLoading,
+              isDisabled: state is AssetTypeInitial,
               onPress: () {
                 _handleNavigation(context);
               },
@@ -218,7 +206,7 @@ class _SelectAssetTypePageState extends State<SelectAssetTypePage> {
                             child: DigitDropdown(
                               sentenceCaseEnabled: false,
                               onSelect: (DropdownItem selected) {
-                                selectedAssetType = selected.code;
+                                selectedAssetType = selected.name;
                                 context.read<AssetTypeBloc>().add(
                                     AssetTypeEvent.typeSelected(selected.code));
                               },

@@ -251,7 +251,7 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
         builder: (ctx, setStatePopup) {
           return Popup(
             onCrossTap: () => Navigator.of(ctx).pop(),
-            title: "Send back",
+            title: "Rejection Reason",
             type: PopUpType.simple,
             actionAlignment: MainAxisAlignment.center,
             additionalWidgets: [
@@ -265,18 +265,18 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
                         LabeledField(
                           label: 'Reason',
                           child: DigitDropdown(
+                            sentenceCaseEnabled: false,
                             items: const [
                               DropdownItem(name: 'Option A', code: 'a'),
                               DropdownItem(name: 'Option B', code: 'b'),
                               DropdownItem(name: 'Option C', code: 'c'),
                             ],
                             onSelect: (sel) => setStatePopup(
-                              () => entry.selectedCode = sel.code,
+                              () => entry.selectedCode = sel.name,
                             ),
-                            selectedOption: entry.selectedCode == null
-                                ? null
-                                : DropdownItem(
-                                    name: '', code: entry.selectedCode!),
+                            selectedOption: DropdownItem(
+                                name: entry.selectedCode ?? '',
+                                code: entry.selectedCode ?? ''),
                           ),
                         ),
                         Positioned(
