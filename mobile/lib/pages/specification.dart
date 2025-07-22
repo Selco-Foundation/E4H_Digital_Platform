@@ -1,4 +1,3 @@
-import 'package:collection/collection.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:digit_ui_components/theme/spacers.dart';
 import 'package:digit_ui_components/widgets/atoms/digit_text_form_input.dart';
@@ -7,17 +6,12 @@ import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:digit_ui_components/widgets/scrollable_content.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:selco/blocs/specification/specification.dart';
 
-import '../blocs/app_init/app_init.dart';
 import '../blocs/asset_type/asset_type.dart';
 import '../blocs/cache_asset_count/cache_asset_count.dart';
-import '../blocs/cache_specification/cache_specification.dart';
 import '../blocs/selected_project/selected_project.dart';
 import '../data/nosql/cache_asset_count.dart';
-import '../data/nosql/cache_specification.dart';
-import '../model/asset_type/asset_type.dart';
-import '../model/mdms/mdms.dart';
-import '../model/system/system.dart';
 import '../router/app_router.dart';
 import '../utils/i18_key_constants.dart' as i18;
 import '../widgets/button/footer_button.dart';
@@ -33,8 +27,10 @@ class SpecificationPage extends StatefulWidget {
 }
 
 class _SpecificationPageState extends State<SpecificationPage> {
-  String? _currentProjectId;
   String assetType = "";
+  String systemName = "";
+  String totalCapacity = "";
+  String totalCapacityUom = "";
 
   @override
   void initState() {
@@ -45,9 +41,9 @@ class _SpecificationPageState extends State<SpecificationPage> {
           battery: () => 'battery',
           panel: () => 'panel',
         );
+
     final selState = context.read<SelectedProjectBloc>().state;
     selState.whenOrNull(selected: (project) {
-      _currentProjectId = project.project.id;
       _updateProgress(project.project.id, assetType);
     });
   }
@@ -76,49 +72,15 @@ class _SpecificationPageState extends State<SpecificationPage> {
           panel: () => 'Panel Specifications',
         );
 
-        return BlocBuilder<AppInitialization, InitState>(
-          builder: (initContext, initState) {
-            final List<Mdms<System>> systemList = initState.maybeWhen(
-                orElse: () => [],
-                initialized: (appConfig, assetCount, assetType, system,
-                        warranty, brand) =>
-                    system);
-
-            final List<Mdms<AssetType>> assetTypeList = initState.maybeWhen(
-              orElse: () => [],
-              initialized:
-                  (appConfig, assetCount, assetType, system, warranty, brand) =>
-                      assetType,
-            );
-
-            final systemCode = systemList.lastOrNull?.data.code;
-
-            // Find the asset type
-            final selectedAssetType = assetTypeList
-                .map((e) => e.data)
-                .firstWhereOrNull((asset) =>
-                    asset.code.toUpperCase() == assetType.toUpperCase());
-
-            // From that asset type, get the total_capacity form field
-            final totalCapacityField =
-                selectedAssetType?.formFields.firstWhereOrNull(
-              (field) =>
-                  field.key == "total_capacity" && field.system == systemCode,
-            );
-
-            // Get the total_capacity_uom form field
-            final totalCapacityUomField =
-                selectedAssetType?.formFields.firstWhereOrNull(
-              (field) =>
-                  field.key == "total_capacity_uom" &&
-                  field.system == systemCode,
-            );
-
-            // Use first option or fallback to empty string
-            final String totalCapacity =
-                totalCapacityField?.options?.firstOrNull ?? '';
-            final String totalCapacityUom =
-                totalCapacityUomField?.options?.firstOrNull ?? '';
+        return BlocBuilder<SpecificationBloc, SpecificationState>(
+          builder: (context, specState) {
+            specState.maybeWhen(
+                loaded: (system, capacity, capacityUom) {
+                  systemName = system;
+                  totalCapacity = capacity.toString();
+                  totalCapacityUom = capacityUom;
+                },
+                orElse: () {});
 
             return Scaffold(
                 body: ScrollableContent(
@@ -132,16 +94,6 @@ class _SpecificationPageState extends State<SpecificationPage> {
                       showSuffixIcon: false,
                       text: i18.common.coreCommonNext,
                       onPress: () {
-                        final newSpec = CacheSpecification(
-                          projectId: _currentProjectId!,
-                          assetType: assetType,
-                          system: systemList.last.data.code,
-                          totalCapacity: double.tryParse(totalCapacity) ?? 0.0,
-                          totalCapacityUnit: totalCapacityUom,
-                        );
-                        context
-                            .read<CacheSpecificationBloc>()
-                            .add(CacheSpecificationEvent.add(newSpec));
                         context.router.push(const AssetTypeDetailRoute());
                       },
                     ),
@@ -174,7 +126,7 @@ class _SpecificationPageState extends State<SpecificationPage> {
                               controller: TextEditingController(),
                               isDisabled: true,
                               readOnly: true,
-                              initialValue: systemList.last.data.name,
+                              initialValue: systemName,
                               keyboardType: TextInputType.none,
                             ),
                           ),

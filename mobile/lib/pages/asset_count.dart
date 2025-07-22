@@ -136,11 +136,10 @@ class _AssetCountPageState extends State<AssetCountPage> {
               isDisabled: _disableFooter,
               onPress: () async {
                 if (!_disableFooter) {
-                  //context.router.push(const SelectAssetTypeRoute());
                   await context.router
                       .push(const SelectAssetTypeRoute())
                       .then((_) {
-                    // this callback runs when SelectAssetTypeRoute is popped off
+                    // this callback runs when SelectAssetTypeRoute is popped off to refresh the page for the counts
                     _dispatchInitialLoad(_currentProjectId!);
                   });
                 }
