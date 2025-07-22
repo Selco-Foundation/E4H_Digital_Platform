@@ -615,6 +615,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                   label: 'Capacity',
                   capitalizedFirstLetter: false,
                   child: DigitDropdown(
+                    sentenceCaseEnabled: false,
                     items: assetCapacity
                         .map((type) => DropdownItem(name: type, code: type))
                         .toList(),
@@ -667,6 +668,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                 label: '$heading Type',
                 capitalizedFirstLetter: false,
                 child: DigitDropdown(
+                  sentenceCaseEnabled: false,
                     items: typesField
                         .map((type) => DropdownItem(name: type, code: type))
                         .toList(),
@@ -686,6 +688,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                       label: 'Voltage',
                       capitalizedFirstLetter: false,
                       child: DigitDropdown(
+                        sentenceCaseEnabled: false,
                           items: assetCapacity
                               .map((type) =>
                                   DropdownItem(name: type, code: type))
@@ -723,6 +726,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                       label: 'Current',
                       capitalizedFirstLetter: false,
                       child: DigitDropdown(
+                        sentenceCaseEnabled: false,
                           items: const [
                             DropdownItem(name: '12', code: '12'),
                             DropdownItem(name: '12.8', code: '12.8'),
@@ -778,6 +782,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                       label: 'Voltage',
                       capitalizedFirstLetter: false,
                       child: DigitDropdown(
+                        sentenceCaseEnabled: false,
                           items: assetCapacity
                               .map((type) =>
                                   DropdownItem(name: type, code: type))

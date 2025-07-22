@@ -147,9 +147,11 @@ class ProjectRemoteRepository {
     print("body ${jsonEncode(body)}");
 
     try {
-      final resp = await dio.post(url, data: body);
+      final resp = await dio.post(url,
+          data: body, options: Options(contentType: Headers.jsonContentType));
       print("resp ${resp.statusCode}");
       print("resp data ${resp.data}");
+      print("resp data ${resp.headers}");
       print("resp message ${resp.data}");
       if (resp.statusCode != 200 &&
           resp.statusCode != 201 &&
