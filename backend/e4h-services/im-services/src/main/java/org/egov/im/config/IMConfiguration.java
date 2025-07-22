@@ -116,6 +116,9 @@ public class IMConfiguration {
     @Value("${im.kafka.update.topic.indexer}")
     private String updateTopicIndexer;
 
+    @Value("${im.kafka.update.topic.indexer.no.audit}")
+    private String updateTopicNoAuditIndexer;
+
     @Value("${im.audit.kafka.create.topic.indexer}")
     private String auditCreateTopicIndexer;
 
