@@ -167,7 +167,7 @@ public class IMService {
                 .build();
         producer.push(tenantId,config.getUpdateTopic(),wrapper.getIncidentRequest());
         enrichmentService.enrichFieldsForIndexing(wrapper);
-        producer.push(tenantId,config.getUpdateTopicIndexer(),wrapper);
+        producer.push(tenantId,config.getUpdateMigrationTopicIndexer(),wrapper);
         return request;
     }
 
