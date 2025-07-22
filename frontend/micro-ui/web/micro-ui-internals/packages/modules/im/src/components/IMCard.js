@@ -42,8 +42,7 @@ const IMCard = () => {
   if (!Digit.Utils.pgrAccess()) {
     return null;
   }
-  
-  console.log("total", total)
+
   sessionStorage.setItem("inboxTotal", JSON.stringify(total?.totalCount));
   let tenantId = window.Digit.SessionStorage.get("Employee.tenantId");
   let newTenant = window.Digit.SessionStorage.get("Tenants")

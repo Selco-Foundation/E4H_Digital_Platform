@@ -97,6 +97,33 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
     setDisable(false);
   };
 
+  useEffect(() => {
+
+    if (cities && cities.length > 0) {
+      const queryParams = new URLSearchParams(window.location.search);
+
+      const username = queryParams.get("username");
+      const password = queryParams.get("passwd");
+      const tenantId = queryParams.get("tenantid");
+
+      if (username && password && tenantId) {
+        const city = cities.find((city) => city.code === tenantId);
+
+        if (city) {
+          onLogin({
+            username,
+            password,
+            city
+          })
+        } else {
+          setShowToast("CORE_COMMON_INVALID_LOGIN_CREDENTIALS");
+          setTimeout(closeToast, 5000);
+        }
+      }
+    }
+
+  }, [cities]);
+
   const closeToast = () => {
     setShowToast(null);
   };
