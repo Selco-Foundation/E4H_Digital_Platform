@@ -166,8 +166,6 @@ public class IMService {
                 .indexView(new IndexView())
                 .build();
         producer.push(tenantId,config.getUpdateTopic(),wrapper.getIncidentRequest());
-        enrichmentService.enrichFieldsForIndexing(wrapper);
-        producer.push(tenantId,config.getUpdateTopicNoAuditIndexer(),wrapper);
         return request;
     }
 
