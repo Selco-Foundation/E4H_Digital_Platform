@@ -116,10 +116,6 @@ public class IMConfiguration {
     @Value("${im.kafka.update.topic.indexer}")
     private String updateTopicIndexer;
 
-    @Value("${im.kafka.update.migration.topic.indexer}")
-    private String updateMigrationTopicIndexer;
-
-
     @Value("${im.audit.kafka.create.topic.indexer}")
     private String auditCreateTopicIndexer;
 

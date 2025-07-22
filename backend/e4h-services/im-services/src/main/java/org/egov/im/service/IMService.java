@@ -161,12 +161,14 @@ public class IMService {
 
     public IncidentRequest migrationUpdate(IncidentRequest request){
         String tenantId = request.getIncident().getTenantId();
+        Object mdmsData = mdmsUtils.mDMSCall(request);
         IncidentRequestWrapper wrapper = IncidentRequestWrapper.builder()
                 .incidentRequest(request)
                 .indexView(new IndexView())
                 .build();
         producer.push(tenantId,config.getUpdateTopic(),wrapper.getIncidentRequest());
         enrichmentService.enrichFieldsForIndexing(wrapper);
+        imUtils.updateBusinessService(wrapper,mdmsData);
         producer.push(tenantId,config.getUpdateTopicIndexer(),wrapper);
         return request;
     }
