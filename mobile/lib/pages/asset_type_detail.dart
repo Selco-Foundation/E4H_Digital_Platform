@@ -215,6 +215,7 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
                                       color: theme.colorTheme.text.primary),
                                   capitalizedFirstLetter: false,
                                   child: DigitDropdown(
+                                    sentenceCaseEnabled: false,
                                     selectedOption: DropdownItem(
                                       name: selectedWarranty ?? "",
                                       code: selectedWarranty ?? "",
@@ -239,6 +240,7 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
                                     color: theme.colorTheme.text.primary),
                                 capitalizedFirstLetter: false,
                                 child: DigitDropdown(
+                                  sentenceCaseEnabled: false,
                                   selectedOption: DropdownItem(
                                     name: selectedBrandCode ?? "",
                                     code: selectedBrandCode ?? "",

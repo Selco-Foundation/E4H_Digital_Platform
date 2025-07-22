@@ -177,6 +177,8 @@ class Scanner {
   String get unableToScan => 'UNABLE_TO_SCAN';
   String get scanValidResource => 'SCAN_VALID_RESOURCE';
   String get resourceAlreadyScanned => 'RESOURCE_ALREADY_SCANNED';
+  String get resourceAlreadyScanned2 => 'Resource_already_scanned';
+  String get resourcesAlreadyScanned => 'Resources_already_scanned';
   String get scannerLabel => 'SCANNER_LABEL';
   String get noOfResourceScanned => 'NO_OF_RESOURCE_SCANNED';
   String get resourcesScanned => 'RESOURCES_SCANNED';
