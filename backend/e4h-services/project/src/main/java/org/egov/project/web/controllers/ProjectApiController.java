@@ -30,6 +30,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import org.egov.project.repository.ProjectStaffRepository;
 
 
 @Controller
@@ -56,6 +57,9 @@ public class ProjectApiController {
     private final ProjectService projectService;
 
     private final ProjectWorkflowService projectWorkflowService;
+
+    @Autowired
+    private ProjectStaffRepository projectStaffRepository;
 
     @Autowired
     public ProjectApiController(ObjectMapper objectMapper, HttpServletRequest httpServletRequest,
@@ -489,8 +493,30 @@ public class ProjectApiController {
     ) throws Exception {
         List<String> workflowStatuses = projectSearchRequest.getWorkflowStatus();
 
+        // Get user info
+        var userInfo = projectSearchRequest.getRequestInfo().getUserInfo();
+        String userUuid = userInfo.getUuid();
+        boolean isProjectManager = false;
+        if (userInfo.getRoles() != null) {
+            isProjectManager = userInfo.getRoles().stream().anyMatch(role -> "PROJECT_MANAGER".equalsIgnoreCase(role.getCode()));
+        }
+
+        // if role is project manager we need to show all projects
         List<Project> projects = projectService.searchProject(projectSearchRequest, urlParams, workflowStatuses, sortCriteria);
-        Integer count = projectService.countAllProjects(projectSearchRequest, urlParams, workflowStatuses);
+
+        // Filter projects if not PROJECT_MANAGER
+        if (!isProjectManager) {
+            //fetch projects for which user is added as staff
+            List<String> allowedProjectIds = projectStaffRepository.findProjectIdsByUserId(userUuid);
+            projects = projects.stream().filter(p -> allowedProjectIds.contains(p.getId())).toList();
+        }
+
+        Integer count;
+        if(isProjectManager) {
+            count = projectService.countAllProjects(projectSearchRequest, urlParams, workflowStatuses);
+        } else {
+            count = projects.size();
+        }
 
         // Fetch all transactions by projectIds
         List<String> projectIds = projects.stream().map(Project::getId).toList();
