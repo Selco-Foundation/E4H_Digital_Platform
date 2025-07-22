@@ -1,5 +1,5 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:selco/model/workflow/workflow.dart';
+import '../../model/workflow/workflow.dart';
 
 import '../projects/project.dart';
 import '../transaction/transaction.dart';

@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:isar/isar.dart';
-import 'package:selco/model/project_workflow/project_workflow.dart';
+import '../../model/project_workflow/project_workflow.dart';
 
 import '../../data/nosql/cache_unsubmitted_project.dart';
 import '../../model/projects/project.dart';

@@ -1,5 +1,5 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:selco/model/document/document.dart';
+import '../../model/document/document.dart';
 
 part 'workflow.g.dart';
 

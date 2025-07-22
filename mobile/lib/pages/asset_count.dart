@@ -140,6 +140,7 @@ class _AssetCountPageState extends State<AssetCountPage> {
                       .push(const SelectAssetTypeRoute())
                       .then((_) {
                     // this callback runs when SelectAssetTypeRoute is popped off to refresh the page for the counts
+                    if (!mounted) return;
                     _dispatchInitialLoad(_currentProjectId!);
                   });
                 }

@@ -1,6 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:selco/model/project_workflow/project_workflow.dart';
+import '../../model/project_workflow/project_workflow.dart';
 
 part 'selected_project.freezed.dart';
 
