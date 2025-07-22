@@ -140,11 +140,11 @@ public class V1ApiController {
         return new ResponseEntity<Void>(HttpStatus.NOT_IMPLEMENTED);
     }
 
-    @RequestMapping(value = "/v1/asset/{assetID}/_update", method = RequestMethod.POST)
+    @RequestMapping(value = "/v1/asset/_update", method = RequestMethod.POST)
     public ResponseEntity<AssetCreateUpdateResponse> updateAsset(@Parameter(in = ParameterIn.DEFAULT, description = "Updated asset information", required = true, schema = @Schema())
         @Valid @RequestBody AssetCreateRequest body,
         @Parameter(in = ParameterIn.PATH, description = "Unique identifier of the asset", required = true, schema = @Schema())
-        @PathVariable("assetID") String assetID) {
+        @RequestParam("assetID") String assetID) {
         validator.validateAsset(assetID, body);
         Asset updatedAsset = assetService.updateAsset(assetID, body);
         AssetCreateUpdateResponse response = new AssetCreateUpdateResponse();
