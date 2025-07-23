@@ -277,9 +277,16 @@ public class UserService {
                 userLoginReport.setUserName(userInfo.getUserName());
                 userLoginReport.setUserRole(roleCode);
                 userLoginReport.setCurrentOwnerName(userInfo.getName());
-                userLoginReport.setLastLoginDateTime(java.time.LocalDateTime.now().toString());
+                userLoginReport.setLastLoginDateTime(String.valueOf(System.currentTimeMillis()));
 
                 if ("COMPLAINANT".equalsIgnoreCase(roleCode)) {
+                    // Check if user also has COMPLAINT_ASSESSOR role (CRM)
+                    boolean hasComplaintAssessorRole = userInfo.getRoles().stream()
+                            .anyMatch(role -> "COMPLAINT_ASSESSOR".equalsIgnoreCase(role.getCode()));
+
+                    if (hasComplaintAssessorRole) {
+                        return;
+                    }
                     String tenantId = userInfo.getTenantId();
                     String stateLevelTenantId = tenantId.split("\\.")[0];
 
