@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.wnameless.json.flattener.JsonFlattener;
 import com.google.gson.Gson;
 import com.jayway.jsonpath.JsonPath;
+import com.jayway.jsonpath.PathNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 
 import org.egov.common.contract.request.Role;
@@ -75,7 +76,7 @@ public class InboxServiceV2 {
         String tenantId = inboxRequest.getInbox().getTenantId();
         String moduleName = inboxRequest.getInbox().getProcessSearchCriteria().getModuleName();
         String userId = inboxRequest.getRequestInfo().getUserInfo().getUuid();
-        
+
         log.info("Building InboxResponse - tenantId: {}, module: {}, userId: {}", tenantId, moduleName, userId);
 
         // Validation
@@ -154,7 +155,7 @@ public class InboxServiceV2 {
 
     private void hashParamsWhereverRequiredBasedOnConfiguration(Map<String, Object> moduleSearchCriteria, InboxQueryConfiguration inboxQueryConfiguration) {
         log.trace("Method invoked: hashParamsWhereverRequiredBasedOnConfiguration");
-        
+
         inboxQueryConfiguration.getAllowedSearchCriteria().forEach(searchParam -> {
             if(!ObjectUtils.isEmpty(searchParam.getIsHashingRequired()) && searchParam.getIsHashingRequired()){
                 if(moduleSearchCriteria.containsKey(searchParam.getName())){
@@ -177,7 +178,7 @@ public class InboxServiceV2 {
         log.trace("Method invoked: getInboxResponseProject");
         String tenantId = inboxRequest.getInbox().getTenantId();
         String moduleName = inboxRequest.getInbox().getProcessSearchCriteria().getModuleName();
-        
+
         log.info("Starting project inbox search - tenantId: {}, module: {}", tenantId, moduleName);
 
         // Validation des critères
@@ -289,10 +290,10 @@ public class InboxServiceV2 {
 
     private ProcessInstance trimRolesFromProcessInstance(ProcessInstance processInstance) {
         log.trace("Method invoked: trimRolesFromProcessInstance");
-        if(processInstance.getAssigner()!=null)
+        if(processInstance !=null && processInstance.getAssigner()!=null)
             processInstance.getAssigner().setRoles(new ArrayList<>());
 
-        if (processInstance.getAssignes() != null) {
+        if (processInstance !=null && processInstance.getAssignes() != null) {
             processInstance.getAssignes().stream()
                     .filter(Objects::nonNull)
                     .forEach(assignee -> assignee.setRoles(new ArrayList<>()));
@@ -596,7 +597,7 @@ public class InboxServiceV2 {
 
         businessServices.forEach(businessService -> {
             businessServiceSlaMap.put(businessService.getBusinessService(), businessService.getBusinessServiceSla());
-            log.debug("BusinessService SLA mapped - businessService: {}, sla: {}", 
+            log.debug("BusinessService SLA mapped - businessService: {}, sla: {}",
                     businessService.getBusinessService(), businessService.getBusinessServiceSla());
 
             businessService.getStates().forEach(state -> {
@@ -606,7 +607,7 @@ public class InboxServiceV2 {
                 }
             });
         });
-        log.debug("SLA maps built - businessServices: {}, states: {}", 
+        log.debug("SLA maps built - businessServices: {}, states: {}",
                 businessServiceSlaMap.size(), stateUuidVsSlaMap.size());
 
         // Construire les inbox items

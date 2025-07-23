@@ -15,13 +15,13 @@ class WorkflowConfigTest {
     @Test
     void testInitialize() {
         WorkflowConfig workflowConfig = new WorkflowConfig("UTC", 1, 1, 3, "Save Transition Topic",
-                "Save Business Service Topic", "2020-03-01", "localhost", "https://config.us-east-2.amazonaws.com", "localhost",
+                "Save Business Service Topic", "Update ProcessInstance Topic", "2020-03-01", "localhost", "https://config.us-east-2.amazonaws.com", "localhost",
                 "https://config.us-east-2.amazonaws.com", true, "MD", 3);
         workflowConfig.initialize();
         assertTrue(workflowConfig.getAssignedOnly());
         assertEquals("https://config.us-east-2.amazonaws.com", workflowConfig.getUserSearchEndpoint());
         assertEquals("localhost", workflowConfig.getUserHost());
-        assertEquals("2020-03-01", workflowConfig.getUpdateBusinessServiceTopic());
+        assertEquals("Update ProcessInstance Topic", workflowConfig.getUpdateBusinessServiceTopic());
         assertEquals("UTC", workflowConfig.getTimeZone());
         assertEquals("MD", workflowConfig.getStateLevelTenantId());
         assertEquals("Save Transition Topic", workflowConfig.getSaveTransitionTopic());
@@ -39,13 +39,13 @@ class WorkflowConfigTest {
 
 
         WorkflowConfig workflowConfig = new WorkflowConfig("UTC", 1, 1, 3, "Save Transition Topic",
-                "Save Business Service Topic", "2020-03-01", "localhost", "https://config.us-east-2.amazonaws.com", "localhost",
+                "Save Business Service Topic", "Update ProcessInstance Topic", "2020-03-01", "localhost", "https://config.us-east-2.amazonaws.com", "localhost",
                 "https://config.us-east-2.amazonaws.com", true, "MD", 3);
         workflowConfig.initialize();
         assertTrue(workflowConfig.getAssignedOnly());
         assertEquals("https://config.us-east-2.amazonaws.com", workflowConfig.getUserSearchEndpoint());
         assertEquals("localhost", workflowConfig.getUserHost());
-        assertEquals("2020-03-01", workflowConfig.getUpdateBusinessServiceTopic());
+        assertEquals("Update ProcessInstance Topic", workflowConfig.getUpdateBusinessServiceTopic());
         assertEquals("UTC", workflowConfig.getTimeZone());
         assertEquals("MD", workflowConfig.getStateLevelTenantId());
         assertEquals("Save Transition Topic", workflowConfig.getSaveTransitionTopic());

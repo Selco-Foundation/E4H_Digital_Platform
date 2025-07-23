@@ -4,7 +4,9 @@ package org.egov.wf.repository;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.wf.repository.querybuilder.WorkflowQueryBuilder;
+import org.egov.wf.repository.rowmapper.BusinessServiceStateRowMapper;
 import org.egov.wf.repository.rowmapper.WorkflowRowMapper;
+import org.egov.wf.web.models.BusinessServiceStateMigration;
 import org.egov.wf.web.models.ProcessInstance;
 import org.egov.wf.web.models.ProcessInstanceSearchCriteria;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,12 +30,15 @@ public class WorKflowRepository {
 
     private WorkflowRowMapper rowMapper;
 
+    private BusinessServiceStateRowMapper businessServiceStateRowMapper;
+
 
     @Autowired
-    public WorKflowRepository(WorkflowQueryBuilder queryBuilder, JdbcTemplate jdbcTemplate, WorkflowRowMapper rowMapper) {
+    public WorKflowRepository(WorkflowQueryBuilder queryBuilder, JdbcTemplate jdbcTemplate, WorkflowRowMapper rowMapper, BusinessServiceStateRowMapper businessServiceStateRowMapper) {
         this.queryBuilder = queryBuilder;
         this.jdbcTemplate = jdbcTemplate;
         this.rowMapper = rowMapper;
+        this.businessServiceStateRowMapper = businessServiceStateRowMapper;
     }
 
 
@@ -62,6 +67,15 @@ public class WorKflowRepository {
         log.debug("Retrieved {} process instance(s) from database", result != null ? result.size() : 0);
         log.trace("Exiting getProcessInstances method");
         return result;
+    }
+
+    public List<BusinessServiceStateMigration> getBusinessServicesAndStates(){
+        List<Object> preparedStmtList = new ArrayList<>();
+
+        String query = queryBuilder.getBusinessServicesAndStates();
+        log.debug("query for status search: "+query+" params: "+preparedStmtList);
+
+        return jdbcTemplate.query(query, preparedStmtList.toArray(), businessServiceStateRowMapper);
     }
 
 
