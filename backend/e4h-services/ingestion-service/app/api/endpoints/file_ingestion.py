@@ -1072,7 +1072,7 @@ def write_and_return_excel(df, sheet_name):
              response_description='Returns processing results with status for each incident')
 async def update_incidents_from_excel(
         incidents_file: UploadFile = File(description="Excel file containing incidents to update"),
-        incidents_sheet_name: str = Form(default="Incidents",
+        incidents_sheet_name: str = Form(default="Incident",
                                          description="Name of the sheet containing incident data"),
         mapping_type_subtype_file: UploadFile = File(...),
         mapping_type_subtype_sheet_name: str = Form(default="Mapping Old_New_v1.0"),
@@ -1110,27 +1110,31 @@ async def update_incidents_from_excel(
 
 
             try:
-                search_response = incident_client.search_incident(
-                    incident_id=row['Incident ID'],
-                    tenant_id=row['Tenant ID']
-                )
-                # print(search_response)
-                # dt = datetime.strptime(row.get("Filed Date"), "%b %d, %Y @ %H:%M:%S.%f")
-                # print(f"Doc incidentID {row.get('Ticket No.')} IncidentType : {row['Incident Type']} IncidentSubType : {row['Incident Sub Type']}")
-                update_data = {}
-
-                incident_wrapper = search_response.get("IncidentWrappers", [{}])[0]
-                incident = incident_wrapper.get("incident", {})
-                original_type = incident.get('incidentType', '')
-                original_subtype = incident.get('incidentSubType', '')
-                key = f"{original_type.strip()}|{original_subtype.strip()}"
+                incidentType = row.get('Incident Type')
+                incidentSubType = row.get('Incident Sub Type')
+                key = f"{incidentType.strip()}|{incidentSubType.strip()}"
+                print(f"key : {key}")
                 mapped_pair = subtype_mapping.get(key)
                 if mapped_pair:
-                    update_payload = create_update_payload(search_response, update_data, subtype_mapping)
-                    # print(f"update_payload {update_payload}")
-                    update_response = incident_client.update_incident(update_payload)
+                    search_response = incident_client.search_incident(
+                        incident_id=row['Incident ID'],
+                        tenant_id=row['Tenant ID']
+                    )
+                    # print(search_response)
+                    update_data = {}
 
-                    process_update_response(update_response, df, index, update_data)
+                    # incident_wrapper = search_response.get("IncidentWrappers", [{}])[0]
+                    # incident = incident_wrapper.get("incident", {})
+                    # original_type = incident.get('incidentType', '')
+                    # original_subtype = incident.get('incidentSubType', '')
+                    key = f"{incidentType.strip()}|{incidentSubType.strip()}"
+                    mapped_pair = subtype_mapping.get(key)
+                    if mapped_pair:
+                        update_payload = create_update_payload(search_response, update_data, subtype_mapping, incidentType, incidentSubType)
+                        print(f"update_payload {update_payload}")
+                        update_response = incident_client.update_incident(update_payload)
+
+                        process_update_response(update_response, df, index, update_data)
 
             except Exception as e:
                 df.at[index, 'status'] = 'failed'
