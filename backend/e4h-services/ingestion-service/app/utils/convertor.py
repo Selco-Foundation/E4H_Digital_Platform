@@ -464,50 +464,75 @@ def get_incident_request_info():
         "authToken": "222d0cf6-07c2-4d90-8a71-0292c200ae74",
         "userInfo": {
             "id": 1863,
-            "uuid": "0d1d5451-60c1-43ac-85a0-930a0a0d3179",
             "userName": "8974350748",
+            "salutation": None,
             "name": "Tingpai S",
+            "gender": "MALE",
             "mobileNumber": "8974350748",
             "emailId": None,
+            "altContactNumber": None,
+            "pan": None,
+            "aadhaarNumber": None,
+            "permanentAddress": None,
+            "permanentCity": None,
+            "permanentPinCode": None,
+            "correspondenceAddress": None,
+            "correspondenceCity": None,
+            "correspondencePinCode": None,
+            "alternatemobilenumber": None,
+            "active": True,
             "locale": None,
             "type": "EMPLOYEE",
+            "accountLocked": False,
+            "accountLockedDate": 0,
+            "fatherOrHusbandName": "Mathihalli",
+            "relationship": "FATHER",
+            "signature": None,
+            "bloodGroup": None,
+            "photo": None,
+            "identificationMark": None,
+            "createdBy": 0,
+            "lastModifiedBy": 24226,
+            "tenantId": "nl",
             "roles": [
                 {
-                    "name": "Super User",
                     "code": "SUPERUSER",
+                    "name": "Super User",
                     "tenantId": "nl"
                 },
                 {
-                    "name": "Employee",
                     "code": "EMPLOYEE",
+                    "name": "Employee",
                     "tenantId": "nl"
                 },
                 {
-                    "name": "Complainant",
                     "code": "COMPLAINANT",
+                    "name": "Complainant",
                     "tenantId": "nl"
                 },
                 {
-                    "name": "Complaint Assessor",
-                    "code": "COMPLAINT_ASSESSOR",
-                    "tenantId": "nl"
-                },
-                {
-                    "name": "Complaint facilitator 2",
                     "code": "COMPLAINT_FACILITATOR_2",
+                    "name": "Complaint facilitator 2",
+                    "tenantId": "nl"
+                },
+                {
+                    "code": "COMPLAINT_ASSESSOR",
+                    "name": "Complaint Assessor",
                     "tenantId": "nl"
                 }
             ],
-            "active": True,
-            "tenantId": "nl",
-            "permanentCity": None
+            "uuid": "8acc5b7b-4dcb-497a-ad08-5eef4f53442c",
+            "createdDate": "17-04-2025 23:19:29",
+            "lastModifiedDate": "04-07-2025 01:30:31",
+            "dob": "1994-02-08",
+            "pwdExpiryDate": "16-07-2025 23:19:29"
         },
         "msgId": "1751897062350|en_IN",
         "plainAccessRequest": {}
     }
 
 
-def create_update_payload(search_response: dict, update_data: dict, subtype_mapping) -> dict:
+def create_update_payload(search_response: dict, update_data: dict) -> dict:
     incident_wrapper = search_response.get("IncidentWrappers", [{}])[0]
     incident = incident_wrapper.get("incident", {})
     workflow = incident_wrapper.get("workflow", {})
@@ -517,16 +542,13 @@ def create_update_payload(search_response: dict, update_data: dict, subtype_mapp
     original_type = incident.get('incidentType', '')
     original_subtype = incident.get('incidentSubType', '')
 
-    # Apply mapping if exists
-    mapped_pair = subtype_mapping.get((original_type, original_subtype))
-    if not mapped_pair:
-        mapped_pair = (original_type, original_subtype)
+
 
     details = {
         "CS_COMPLAINT_DETAILS_TICKET_NO": incident.get("incidentId"),
         "CS_COMPLAINT_DETAILS_APPLICATION_STATUS": f"CS_COMMON_{incident.get('applicationStatus', 'PENDINGFORASSIGNMENT')}",
-        "CS_ADDCOMPLAINT_TICKET_TYPE": f"SERVICEDEFS.{mapped_pair[0].upper()}",
-        "CS_ADDCOMPLAINT_TICKET_SUB_TYPE": f"SERVICEDEFS.{mapped_pair[1].upper()}",
+        "CS_ADDCOMPLAINT_TICKET_TYPE": f"SERVICEDEFS.{original_type.upper()}",
+        "CS_ADDCOMPLAINT_TICKET_SUB_TYPE": f"SERVICEDEFS.{original_subtype.upper()}",
         "CS_ADDCOMPLAINT_SYSTEM_FUNCTIONAL": incident.get("systemFunctional", "NON_FUNCTIONAL"),
         "CS_ADDCOMPLAINT_DISTRICT": incident.get("district", ""),
         "CS_ADDCOMPLAINT_BLOCK": incident.get("block", ""),
@@ -552,8 +574,8 @@ def create_update_payload(search_response: dict, update_data: dict, subtype_mapp
         "rejectReason": existing_reject_reasons
     }
 
-    incident["incidentType"] = mapped_pair[0]
-    incident["incidentSubType"] = mapped_pair[1]
+    incident["incidentType"] = original_type
+    incident["incidentSubType"] = original_subtype
 
     # Create workflow object
     workflow.update({
@@ -565,7 +587,7 @@ def create_update_payload(search_response: dict, update_data: dict, subtype_mapp
 
     audit = {
         "details": incident.get("auditDetails", {}),
-        "incidentType": mapped_pair[1]
+        "incidentType": original_subtype
     }
 
     return {
