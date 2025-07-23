@@ -106,7 +106,6 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
   @override
   void initState() {
     super.initState();
-    _cameraPermissions();
     final locBloc = context.read<LocationBloc>();
     locBloc.add(const LocationEvent.requestPermission());
     locBloc.add(const LocationEvent.requestService());
@@ -118,56 +117,59 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
         });
       }
     });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _cameraPermissions();
+      currentAssetType = context.read<AssetTypeBloc>().state.when(
+            initial: () => '',
+            inverter: () => 'inverter',
+            battery: () => 'battery',
+            panel: () => 'panel',
+          );
 
-    currentAssetType = context.read<AssetTypeBloc>().state.when(
-          initial: () => '',
-          inverter: () => 'inverter',
-          battery: () => 'battery',
-          panel: () => 'panel',
-        );
+      context.read<SelectedProjectBloc>().state.whenOrNull(selected: (proj) {
+        _currentProjectId = proj.project.id;
+        context
+            .read<CacheAssetCountBloc>()
+            .add(CacheAssetCountEvent.get(proj.project.id, currentAssetType));
+        context.read<CacheAddNewAssetBloc>().add(
+              CacheAddNewAssetEvent.get(proj.project.id, currentAssetType),
+            );
+      });
 
-    context.read<SelectedProjectBloc>().state.whenOrNull(selected: (proj) {
-      _currentProjectId = proj.project.id;
-      context
-          .read<CacheAssetCountBloc>()
-          .add(CacheAssetCountEvent.get(proj.project.id, currentAssetType));
-      context.read<CacheAddNewAssetBloc>().add(
-            CacheAddNewAssetEvent.get(proj.project.id, currentAssetType),
+      context.read<AppInitialization>().state.maybeWhen(
+            orElse: () => [],
+            initialized:
+                (appConfig, assetCount, assetType, system, warranty, brand) {
+              assetTypeList = assetType
+                  .map((at) => at.data)
+                  .where((at) =>
+                      at.code.toUpperCase() == currentAssetType.toUpperCase())
+                  .toList();
+
+              final systemCode = system.lastOrNull?.data.code;
+              selectedAssetType = assetTypeList.firstWhereOrNull((asset) =>
+                  asset.code.toUpperCase() == currentAssetType.toUpperCase());
+
+              final fields = selectedAssetType!.formFields;
+              final assetCapacityField = fields.firstWhereOrNull(
+                (field) =>
+                    field.key == "capacity" && field.system == systemCode,
+              );
+              final assetCapacityUomField = fields.firstWhereOrNull(
+                (field) =>
+                    field.key == "capacity_uom" && field.system == systemCode,
+              );
+              typesField = fields
+                      .firstWhereOrNull((field) => field.types != null)
+                      ?.types ??
+                  [];
+              assetCapacity = assetCapacityField!.options!;
+              assetCapacityUom =
+                  assetCapacityUomField!.options!.firstOrNull ?? '';
+              return assetType;
+            },
           );
     });
-
-    context.read<AppInitialization>().state.maybeWhen(
-          orElse: () => [],
-          initialized:
-              (appConfig, assetCount, assetType, system, warranty, brand) {
-            assetTypeList = assetType
-                .map((at) => at.data)
-                .where((at) =>
-                    at.code.toUpperCase() == currentAssetType.toUpperCase())
-                .toList();
-
-            final systemCode = system.lastOrNull?.data.code;
-            selectedAssetType = assetTypeList.firstWhereOrNull((asset) =>
-                asset.code.toUpperCase() == currentAssetType.toUpperCase());
-
-            final fields = selectedAssetType!.formFields;
-            final assetCapacityField = fields.firstWhereOrNull(
-              (field) => field.key == "capacity" && field.system == systemCode,
-            );
-            final assetCapacityUomField = fields.firstWhereOrNull(
-              (field) =>
-                  field.key == "capacity_uom" && field.system == systemCode,
-            );
-            typesField = fields
-                    .firstWhereOrNull((field) => field.types != null)
-                    ?.types ??
-                [];
-            assetCapacity = assetCapacityField!.options!;
-            assetCapacityUom =
-                assetCapacityUomField!.options!.firstOrNull ?? '';
-            return assetType;
-          },
-        );
   }
 
   Future<void> _cameraPermissions() async {
@@ -177,7 +179,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
       debugPrint('Permissions failed: $e');
       // optionally show a Snackbar, etc.
       context.showSnackBar(
-        const SnackBar(content: Text('Storage permission denied')),
+        const SnackBar(content: Text('Camera permission denied')),
       );
     }
   }
@@ -668,7 +670,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                 label: '$heading Type',
                 capitalizedFirstLetter: false,
                 child: DigitDropdown(
-                  sentenceCaseEnabled: false,
+                    sentenceCaseEnabled: false,
                     items: typesField
                         .map((type) => DropdownItem(name: type, code: type))
                         .toList(),
@@ -688,7 +690,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                       label: 'Voltage',
                       capitalizedFirstLetter: false,
                       child: DigitDropdown(
-                        sentenceCaseEnabled: false,
+                          sentenceCaseEnabled: false,
                           items: assetCapacity
                               .map((type) =>
                                   DropdownItem(name: type, code: type))
@@ -726,7 +728,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                       label: 'Current',
                       capitalizedFirstLetter: false,
                       child: DigitDropdown(
-                        sentenceCaseEnabled: false,
+                          sentenceCaseEnabled: false,
                           items: const [
                             DropdownItem(name: '12', code: '12'),
                             DropdownItem(name: '12.8', code: '12.8'),
@@ -782,7 +784,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                       label: 'Voltage',
                       capitalizedFirstLetter: false,
                       child: DigitDropdown(
-                        sentenceCaseEnabled: false,
+                          sentenceCaseEnabled: false,
                           items: assetCapacity
                               .map((type) =>
                                   DropdownItem(name: type, code: type))

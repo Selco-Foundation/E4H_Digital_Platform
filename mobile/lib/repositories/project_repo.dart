@@ -140,7 +140,9 @@ class ProjectRemoteRepository {
       'projectId': projectId,
       'workflow': {
         'action': action,
-        if (documents != null) ...{"documents": documents}
+        if (documents != null) ...{
+          'documents': documents.map((d) => d.toJson()).toList()
+        }
       }
     };
 
@@ -312,7 +314,7 @@ class UnsubmittedProjectRepository {
         .where()
         .projectIdEqualTo(projectId)
         .filter()
-        .userTypeEqualTo(userType.toLowerCase())
+        .userTypeEqualTo(userType)
         .findFirst();
     if (existing != null) return existing;
 
@@ -320,7 +322,7 @@ class UnsubmittedProjectRepository {
       projectId: projectId,
       status: wf.status ?? '',
       project: wf.project,
-      userType: userType.toLowerCase(),
+      userType: userType,
     );
     await _isar.writeTxn(() => col.put(entry));
     return entry;
@@ -333,7 +335,7 @@ class UnsubmittedProjectRepository {
           .where()
           .projectIdEqualTo(projectId)
           .filter()
-          .userTypeEqualTo(userType.toLowerCase())
+          .userTypeEqualTo(userType)
           .findAll();
       for (final e in toDelete) {
         await col.delete(e.id);
