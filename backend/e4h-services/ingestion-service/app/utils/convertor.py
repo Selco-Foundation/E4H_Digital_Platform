@@ -507,18 +507,18 @@ def get_incident_request_info():
     }
 
 
-def create_update_payload(search_response: dict, update_data: dict, subtype_mapping) -> dict:
+def create_update_payload(search_response: dict, update_data: dict, subtype_mapping, issueType, issueSubtype) -> dict:
     incident_wrapper = search_response.get("IncidentWrappers", [{}])[0]
     incident = incident_wrapper.get("incident", {})
     workflow = incident_wrapper.get("workflow", {})
 
     request_info = get_incident_request_info()
 
-    original_type = incident.get('incidentType', '')
-    original_subtype = incident.get('incidentSubType', '')
+    # original_type = incident.get('incidentType', '')
+    # original_subtype = incident.get('incidentSubType', '')
 
     # Apply mapping if exists
-    key = f"{original_type.strip()}|{original_subtype.strip()}"
+    key = f"{issueType.strip()}|{issueSubtype.strip()}"
     mapped_pair = subtype_mapping.get(key)
 
     print(f"Mapped pair {mapped_pair}")
@@ -526,7 +526,7 @@ def create_update_payload(search_response: dict, update_data: dict, subtype_mapp
     details = {
         "CS_COMPLAINT_DETAILS_TICKET_NO": incident.get("incidentId"),
         "CS_COMPLAINT_DETAILS_APPLICATION_STATUS": f"CS_COMMON_{incident.get('applicationStatus', 'PENDINGFORASSIGNMENT')}",
-        "CS_ADDCOMPLAINT_TICKET_TYPE": f"SERVICEDEFS.{original_type.upper()}",
+        "CS_ADDCOMPLAINT_TICKET_TYPE": f"SERVICEDEFS.{issueType.upper()}",
         "CS_ADDCOMPLAINT_TICKET_SUB_TYPE": f"SERVICEDEFS.{mapped_pair.upper()}",
         "CS_ADDCOMPLAINT_SYSTEM_FUNCTIONAL": incident.get("systemFunctional", "NON_FUNCTIONAL"),
         "CS_ADDCOMPLAINT_DISTRICT": incident.get("district", ""),
@@ -537,11 +537,12 @@ def create_update_payload(search_response: dict, update_data: dict, subtype_mapp
         "CS_COMPLAINT_FILED_DATE": incident.get("filedDate", "")
     }
 
+    incident["incidentType"] = issueType
     incident["incidentSubType"] = mapped_pair
 
     audit = {
         "details": incident.get("auditDetails", {}),
-        "incidentType": original_type
+        "incidentType": issueType
     }
 
     return {
