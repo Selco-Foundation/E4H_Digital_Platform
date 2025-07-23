@@ -10,6 +10,7 @@ import 'package:uuid/uuid.dart';
 import '../blocs/app_init/app_init.dart';
 import '../data/app_shared_preferences.dart';
 import '../repositories/app_init_Repo.dart';
+import '../repositories/assetRepo.dart';
 
 getSelectedLanguage(Initialized state, int index) {
   if (AppSharedPreferences().getSelectedLocale == null) {
@@ -54,6 +55,31 @@ Future<String> copyFileToLocalDir(File sourceFile) async {
   } on MissingPluginException catch (e) {
     debugPrint('Storage permission check failed: $e');
     return sourceFile.path;
+  }
+}
+
+/// Given either a local file‑system path or an http(s) URL, returns
+/// a [File] pointing at the data (downloaded to temporary dir if needed),
+/// or null if neither exists nor could be fetched.
+Future<File?> resolveFilePath(String path) async {
+  if (path.startsWith('http://') || path.startsWith('https://')) {
+    try {
+      final resp = await http.get(Uri.parse(path));
+      if (resp.statusCode != 200) return null;
+      final dir = await getTemporaryDirectory();
+      final filename = path.split('/').last;
+      final f = File('${dir.path}/$filename');
+      await f.writeAsBytes(resp.bodyBytes);
+      print("f $f");
+      return f;
+    } catch (_) {
+      print("null here");
+      return null;
+    }
+  } else {
+    final f = File(path);
+    print("f here $f");
+    return await f.exists() ? f : null;
   }
 }
 
@@ -181,6 +207,18 @@ Future<File?> getCachedFile(String idOrPath) async {
 
   // nothing found
   return null;
+}
+
+Future<String> getFilestoreUrl(String idOrPath) async {
+  String photoId = idOrPath;
+  if (!isValidUuid(photoId)) {
+    final file = await getCachedFile(idOrPath);
+    if (file != null) {
+      final repo = AssetRepository();
+      photoId = await repo.uploadFile(file);
+    }
+  }
+  return photoId;
 }
 
 String fileStoreFileUrl =

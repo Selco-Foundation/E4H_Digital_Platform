@@ -209,7 +209,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
     }
   }
 
-  Future<void> _requestPermissions2() async {
+  Future<void> _requestPermissions() async {
     // Request camera and location permissions together
     Map<Permission, PermissionStatus> statuses = await [
       Permission.camera,
@@ -237,7 +237,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
     locBloc.add(const LocationEvent.requestService());
   }
 
-  Future<void> _requestPermissions() async {
+  Future<void> _requestPermissions2() async {
     // Request camera and location permissions together
     Map<Permission, PermissionStatus> statuses = await [
       Permission.camera,
