@@ -115,61 +115,6 @@ class AssetRepository {
     }
   }
 
-  Future<void> createOrUpdateAsset2(
-      {required Map<String, dynamic> payload,
-      String? assetId,
-      required Isar isar}) async {
-    try {
-      final isCreate = (assetId != null && assetId.isNotEmpty) ? false : true;
-      print(jsonEncode(payload)); //todo to be removed
-      final url = isCreate ? "_create" : "$assetId/_update";
-      print("url $url");
-      final response =
-          await _dio.post("/asset-registry/v1/asset/$url", data: payload);
-      print("response ${response.data}");
-      print("response statusCode ${response.statusCode}");
-      print("response statusMessage ${response.statusMessage}");
-      if (response.statusCode != 200 && response.statusCode != 201) {
-        throw Exception(
-            "${isCreate ? 'Create' : 'Update'} Asset responded with status ${response.statusCode}");
-      } else {
-        // extract the payload of assetId and serialNumber, and save it
-        // ✅ Handle response data: could be "asset" or "Asset"
-        final responseData = response.data;
-        final assetData = responseData['asset'] ?? responseData['Asset'];
-
-        if (assetData == null) {
-          throw Exception("Asset data missing in response");
-        }
-
-        final serialNumber = assetData['serialNumber']?.toString();
-        final assetType = assetData['assetTypeID']?.toString();
-
-        if (serialNumber == null || assetType == null) {
-          throw Exception("Missing one of serialNumber or assetType");
-        }
-
-        // ✅ Update assetId in Isar this applies to create, but also done for update just incase Id cases
-        await isar.writeTxn(() async {
-          final existing = await isar.cacheAddNewAssets
-              .where()
-              .assetTypeEqualTo(assetType.toLowerCase())
-              .filter()
-              .serialNumberEqualTo(serialNumber)
-              .findFirst();
-
-          if (existing != null) {
-            existing.assetId = assetData['assetId'];
-            await isar.cacheAddNewAssets.put(existing);
-          }
-        });
-      }
-    } on DioError catch (e) {
-      print(e.message);
-      throw DioErrorParser.parse(e);
-    }
-  }
-
   /// Creates or updates an asset on the server, then writes back the returned
   /// assetId into Isar and returns the server's canonical Asset model.
   Future<Asset> createOrUpdateAsset({
