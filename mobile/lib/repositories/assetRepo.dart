@@ -127,28 +127,16 @@ class AssetRepository {
     final endpoint = isCreate ? '_create' : '_update?assetID=${asset.assetId}';
 
     // Build the nested payload
-    // final payload = {
-    //   'assetDetail': {
-    //     'Asset': asset.toJson(),
-    //   },
-    // };
-
     final payload = {
       'assetDetail': {
-        'Asset': {
-          ...asset.toJson(),
-          'documents': asset.documents != null
-              ? asset.documents?.map((d) => d.toJson()).toList()
-              : [],
-        },
+        'Asset': asset.toJson(),
       },
     };
 
     try {
       print('Request payload: ${jsonEncode(payload)}');
-      final response = await _dio.post('/asset-registry/v1/asset/$endpoint',
-          data: jsonEncode(payload),
-          options: Options(contentType: Headers.jsonContentType));
+      final response =
+          await _dio.post('/asset-registry/v1/asset/$endpoint', data: payload);
       print('Response status: ${response.statusCode}');
       print('Response body: ${response.data}');
 
