@@ -118,15 +118,15 @@ const combineResponses = (items, currentUserUuid, currentTenant, stateTenantId, 
       slaValue = "-";
     } else if (currentUserUuid === reporterUuid && currentTenant !== stateTenantId) {
       const totalSla = businessObject?.totalSlaRemaining;
-      slaValue = totalSla < 0 ? t("SLA_OVERDUE") : Math.ceil(totalSla / (8 * 60 * 60 * 1000));
+      slaValue = totalSla < 0 ? t("SLA_OVERDUE") : `${Math.ceil(totalSla / (8 * 60 * 60 * 1000))}`;
     } else if (assigneeUuid && currentUserUuid === assigneeUuid) {
       const sla = businessObject?.slaRemaining;
-      slaValue = Math.ceil(sla / (8 * 60 * 60 * 1000));
+      slaValue = `${Math.ceil(sla / (8 * 60 * 60 * 1000))}`;
     } else if (!assigneeUuid) {
       const requiredRole = roleStatusMapping[incident.applicationStatus];
       if (requiredRole && currentUserRoles.includes(requiredRole)) {
         const sla = businessObject?.slaRemaining;
-        slaValue = Math.ceil(sla / (8 * 60 * 60 * 1000));
+        slaValue = `${Math.ceil(sla / (8 * 60 * 60 * 1000))}`;
       }
     }
 
