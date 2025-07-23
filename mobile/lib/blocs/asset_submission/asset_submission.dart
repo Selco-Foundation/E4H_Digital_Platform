@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:bloc/bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
@@ -173,23 +172,21 @@ class AssetSubmissionBloc
         for (final saved in assets) {
           if (saved.photoPath.isNotEmpty) {
             print("photoId ${saved.photoPath}");
-            final file = File(saved.photoPath);
-            print("File does not exists? ${await file.exists()}");
-            if (await file.exists()) {
-              final photoId = await repo.uploadFile(file);
-              print("photoId $photoId");
-              documents.add(Document(
-                documentType: saved.documentType,
-                fileStore: photoId,
-                documentUid: "DOC-ASSET-${saved.serialNumber}",
-                additionalDetails: null,
-                geoLocation: GeoLocation(
-                  latitude: saved.latitude,
-                  longitude: saved.longitude,
-                  //additionalDetails: null,
-                ),
-              ));
-            }
+            // final file = File(saved.photoPath);
+            String photoId = await getFilestoreUrl(saved.photoPath);
+
+            print("photoId $photoId");
+            documents.add(Document(
+              documentType: saved.documentType,
+              fileStore: photoId,
+              documentUid: "DOC-ASSET-${saved.serialNumber}",
+              additionalDetails: null,
+              geoLocation: GeoLocation(
+                latitude: saved.latitude,
+                longitude: saved.longitude,
+                //additionalDetails: null,
+              ),
+            ));
           }
 
           final now = DateTime.now().toUtc();
@@ -297,10 +294,7 @@ class AssetSubmissionBloc
 
         for (final m in mediaEntries) {
           if (m.filePath.isEmpty) continue;
-          final mediaFile = File(m.filePath);
-          if (!await mediaFile.exists()) continue;
-          final mediaId = await repo.uploadFile(mediaFile);
-
+          String mediaId = await getFilestoreUrl(m.filePath);
           workflowDocuments.add(Document(
             documentType: "${m.assetType}-${m.itemType}",
             fileStore: mediaId,
@@ -312,7 +306,6 @@ class AssetSubmissionBloc
             ),
           ));
         }
-
         print("documents $workflowDocuments");
       }
 
