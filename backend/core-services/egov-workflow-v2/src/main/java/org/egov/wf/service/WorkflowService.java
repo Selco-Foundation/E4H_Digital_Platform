@@ -301,10 +301,16 @@ public class WorkflowService {
 
             BusinessServiceStateMigration oldIncident = bussinessServiceIncidentMap.get(processInstance.getState().getApplicationStatus());
             if(oldIncident==null)
-                return processInstances;
+                continue;
 
+            if(processInstance.getTenantId() == null || !processInstance.getTenantId().contains(".")) {
+                continue;
+            }
             String tenantId = processInstance.getTenantId().split("\\.")[0];
             BusinessServiceStateMigration newIncident = bussinessServiceStateMap.get(processInstance.getBusinessService()+"_"+tenantId+"_"+oldIncident.getApplicationStatus());
+            if(newIncident == null) {
+                continue;
+            }
             State state = State.builder().uuid(newIncident.getStateUuid()).sla(newIncident.getStateSla())
                     .build();
             processInstance.setState(state);
