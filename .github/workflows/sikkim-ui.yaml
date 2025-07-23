@@ -61,6 +61,7 @@ jobs:
           build-args: |
             PUBLIC_PATH=/sikkim/
             WORK_DIR=frontend/micro-ui/
+            GA_MEASUREMENT_ID=${{ vars.DEV_MEASUREMENT_ID }}
 
 #  Workflow_Trigger:
 #    if: startsWith(github.ref, 'refs/heads/develop')
