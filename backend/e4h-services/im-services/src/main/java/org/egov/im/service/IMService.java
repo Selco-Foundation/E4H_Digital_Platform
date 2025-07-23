@@ -159,6 +159,16 @@ public class IMService {
         return request;
     }
 
+    public IncidentRequest migrationUpdate(IncidentRequest request){
+        String tenantId = request.getIncident().getTenantId();
+        IncidentRequestWrapper wrapper = IncidentRequestWrapper.builder()
+                .incidentRequest(request)
+                .indexView(new IndexView())
+                .build();
+        producer.push(tenantId,config.getUpdateTopic(),wrapper.getIncidentRequest());
+        return request;
+    }
+
     /**
      * Returns the total number of comaplaints matching the given criteria
      * @param requestInfo The requestInfo of the search call
