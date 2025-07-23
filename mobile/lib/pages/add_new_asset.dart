@@ -22,6 +22,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:recase/recase.dart';
 
 import '../blocs/app_init/app_init.dart';
@@ -107,18 +108,19 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
   void initState() {
     super.initState();
     final locBloc = context.read<LocationBloc>();
-    locBloc.add(const LocationEvent.requestPermission());
-    locBloc.add(const LocationEvent.requestService());
-    _locSub = locBloc.stream.listen((locationState) {
-      if (locationState.latitude != null && locationState.longitude != null) {
-        setState(() {
-          _latitude = locationState.latitude;
-          _longitude = locationState.longitude;
-        });
-      }
-    });
+    // locBloc.add(const LocationEvent.requestPermission());
+    // locBloc.add(const LocationEvent.requestService());
+    // _locSub = locBloc.stream.listen((locationState) {
+    //   if (locationState.latitude != null && locationState.longitude != null) {
+    //     setState(() {
+    //       _latitude = locationState.latitude;
+    //       _longitude = locationState.longitude;
+    //     });
+    //   }
+    // });
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _cameraPermissions();
+      // _cameraPermissions();
+      _requestPermissions();
       currentAssetType = context.read<AssetTypeBloc>().state.when(
             initial: () => '',
             inverter: () => 'inverter',
@@ -170,18 +172,15 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
             },
           );
     });
-  }
 
-  Future<void> _cameraPermissions() async {
-    try {
-      await ensureCameraPermissions(context: context);
-    } catch (e) {
-      debugPrint('Permissions failed: $e');
-      // optionally show a Snackbar, etc.
-      context.showSnackBar(
-        const SnackBar(content: Text('Camera permission denied')),
-      );
-    }
+    _locSub = locBloc.stream.listen((locationState) {
+      if (locationState.latitude != null && locationState.longitude != null) {
+        setState(() {
+          _latitude = locationState.latitude;
+          _longitude = locationState.longitude;
+        });
+      }
+    });
   }
 
   @override
@@ -208,6 +207,34 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
     } catch (_) {
       return false;
     }
+  }
+
+  Future<void> _requestPermissions() async {
+    // Request camera and location permissions together
+    Map<Permission, PermissionStatus> statuses = await [
+      Permission.camera,
+      Permission.locationWhenInUse,
+    ].request();
+
+    if (statuses[Permission.camera] != PermissionStatus.granted) {
+      context.showSnackBar(
+        const SnackBar(
+            content: Text('Camera permission is required to scan QR codes')),
+      );
+    }
+
+    if (statuses[Permission.locationWhenInUse] != PermissionStatus.granted) {
+      context.showSnackBar(
+        const SnackBar(
+            content: Text('Location permission is required to geotag photos')),
+      );
+    }
+
+    // Request location service after permissions
+    final locBloc = context.read<LocationBloc>();
+    // locBloc.add(const LocationEvent.requestService());
+    locBloc.add(const LocationEvent.requestPermission());
+    locBloc.add(const LocationEvent.requestService());
   }
 
   void _addNewAsset(int maxAssets) {
