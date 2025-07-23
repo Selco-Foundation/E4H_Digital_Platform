@@ -5,8 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
-import 'package:permission_handler/permission_handler.dart';
-import 'package:selco/utils/extensions.dart';
 import 'package:uuid/uuid.dart';
 
 import '../blocs/app_init/app_init.dart';
@@ -187,55 +185,6 @@ Future<File?> getCachedFile(String idOrPath) async {
 
 String fileStoreFileUrl =
     "${envConfig.variables.baseUrl}filestore/v1/files/file?tenantId=${envConfig.variables.tenantId}&fileStoreId=";
-
-Future<void> ensureCameraPermissions({required BuildContext context}) async {
-  // CAMERA
-  if (!await Permission.camera.isGranted) {
-    final status = await Permission.camera.request();
-    if (!status.isGranted) {
-      throw Exception('Camera permission denied');
-    }
-  }
-  // STORAGE / MEDIA_IMAGES
-  // if (await Permission.storage.isDenied ||
-  //     (await Permission.storage.isPermanentlyDenied)) {
-  //   final status = await Permission.storage.request();
-  //   if (!status.isGranted) {
-  //     context.showSnackBar(
-  //       const SnackBar(content: Text('Storage permission denied')),
-  //     );
-  //     throw Exception('Storage permission denied');
-  //   }
-  // }
-  // On Android 13+, READ_MEDIA_IMAGES is separate:
-  if (await Permission.photos.isDenied) {
-    final status = await Permission.photos.request();
-    if (!status.isGranted) {
-      context.showSnackBar(
-        const SnackBar(content: Text('Photos permission denied')),
-      );
-      throw Exception('Photos permission denied');
-    }
-  }
-}
-
-Future<void> ensureCameraPermissions2({required BuildContext context}) async {
-  try {
-    final cameraStatus = await Permission.camera.status;
-    if (!cameraStatus.isGranted) {
-      final result = await Permission.camera.request();
-      if (!result.isGranted) {
-        context.showSnackBar(
-          const SnackBar(content: Text('Camera permission required')),
-        );
-        return;
-      }
-    }
-  } on MissingPluginException catch (e) {
-    print('Permission plugin not available: $e');
-    return;
-  }
-}
 
 class DioErrorParser {
   static Exception parse(DioError dioErr) {
