@@ -172,7 +172,9 @@ class AssetSubmissionBloc
         final documents = <Document>[];
         for (final saved in assets) {
           if (saved.photoPath.isNotEmpty) {
+            print("photoId ${saved.photoPath}");
             final file = File(saved.photoPath);
+            print("File does not exists? ${await file.exists()}");
             if (await file.exists()) {
               final photoId = await repo.uploadFile(file);
               print("photoId $photoId");
