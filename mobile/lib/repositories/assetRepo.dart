@@ -102,6 +102,7 @@ class AssetRepository {
       "module": "Incident",
     });
 
+    print("formdata $formData");
     try {
       final response = await _dio.post("/filestore/v1/files", data: formData);
       if (response.statusCode == 200 || response.statusCode == 201) {
@@ -126,16 +127,28 @@ class AssetRepository {
     final endpoint = isCreate ? '_create' : '_update?assetID=${asset.assetId}';
 
     // Build the nested payload
+    // final payload = {
+    //   'assetDetail': {
+    //     'Asset': asset.toJson(),
+    //   },
+    // };
+
     final payload = {
       'assetDetail': {
-        'Asset': asset.toJson(),
+        'Asset': {
+          ...asset.toJson(),
+          'documents': asset.documents != null
+              ? asset.documents?.map((d) => d.toJson()).toList()
+              : [],
+        },
       },
     };
 
     try {
       print('Request payload: ${jsonEncode(payload)}');
-      final response =
-          await _dio.post('/asset-registry/v1/asset/$endpoint', data: payload);
+      final response = await _dio.post('/asset-registry/v1/asset/$endpoint',
+          data: jsonEncode(payload),
+          options: Options(contentType: Headers.jsonContentType));
       print('Response status: ${response.statusCode}');
       print('Response body: ${response.data}');
 

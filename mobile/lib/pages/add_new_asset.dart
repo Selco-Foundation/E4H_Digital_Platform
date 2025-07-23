@@ -209,7 +209,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
     }
   }
 
-  Future<void> _requestPermissions() async {
+  Future<void> _requestPermissions2() async {
     // Request camera and location permissions together
     Map<Permission, PermissionStatus> statuses = await [
       Permission.camera,
@@ -221,6 +221,40 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
         const SnackBar(
             content: Text('Camera permission is required to scan QR codes')),
       );
+    }
+
+    if (statuses[Permission.locationWhenInUse] != PermissionStatus.granted) {
+      context.showSnackBar(
+        const SnackBar(
+            content: Text('Location permission is required to geotag photos')),
+      );
+    }
+
+    // Request location service after permissions
+    final locBloc = context.read<LocationBloc>();
+    // locBloc.add(const LocationEvent.requestService());
+    locBloc.add(const LocationEvent.requestPermission());
+    locBloc.add(const LocationEvent.requestService());
+  }
+
+  Future<void> _requestPermissions() async {
+    // Request camera and location permissions together
+    Map<Permission, PermissionStatus> statuses = await [
+      Permission.camera,
+      Permission.locationWhenInUse,
+      Permission.storage, // ← new
+    ].request();
+
+    if (statuses[Permission.camera] != PermissionStatus.granted) {
+      context.showSnackBar(
+        const SnackBar(
+            content: Text('Camera permission is required to scan QR codes')),
+      );
+    }
+
+    if (statuses[Permission.storage] != PermissionStatus.granted) {
+      context.showSnackBar(const SnackBar(
+          content: Text('Storage permission is required to save photos')));
     }
 
     if (statuses[Permission.locationWhenInUse] != PermissionStatus.granted) {
