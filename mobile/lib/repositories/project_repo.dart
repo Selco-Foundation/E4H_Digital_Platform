@@ -141,7 +141,7 @@ class ProjectRemoteRepository {
       'workflow': {
         'action': action,
         if (documents != null) ...{
-          'documents': documents.map((d) => d.toJson()).toList()
+          'documents': documents.map((d) => d.toJsonForWorkflow()).toList()
         }
       }
     };

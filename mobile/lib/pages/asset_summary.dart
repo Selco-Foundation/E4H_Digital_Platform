@@ -620,6 +620,7 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
 
 /// Renders either a network‐cached filestore image or a local file.
 Widget assetImageCard({required String filePath}) {
+  print("$fileStoreFileUrl$filePath");
   return isValidUuid(filePath)
       ? CachedImage("$fileStoreFileUrl$filePath", width: 100, height: 100)
       : Image.file(
