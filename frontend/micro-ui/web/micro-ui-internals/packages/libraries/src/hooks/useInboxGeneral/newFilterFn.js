@@ -10,7 +10,12 @@ export const filterFunctions = {
     const searchFilters = {};
     const workflowFilters = {};
 
-    const { applicationNumber, mobileNumber, limit, offset, sortBy, sortOrder, total, applicationStatus, services, incidentType, phcType, assignee, nearingSLA } = filtersArg || {};
+    const {
+      applicationNumber, mobileNumber, limit,
+      offset, sortBy, sortOrder, total,
+      applicationStatus, services, incidentType,
+      phcType, assignee, nearingSLA, district, block, isSystemFunctional
+    } = filtersArg || {};
 
     if (filtersArg?.IncidentWrappers) {
       searchFilters.applicationNumber = filtersArg?.incidentId;
@@ -33,6 +38,30 @@ export const filterFunctions = {
         convertIncidentType=incidentType.split(',')
       }
       searchFilters.incidentType=convertIncidentType;
+    }
+
+    if (district) {
+      let convertDistrict = [district];
+      if (district.includes(",")) {
+        convertDistrict = district.split(",");
+      }
+      searchFilters.district = convertDistrict;
+    }
+
+    if (block) {
+      let convertBlock = [block];
+      if (block.includes(",")) {
+        convertBlock = block.split(",");
+      }
+      searchFilters.block = convertBlock;
+    }
+
+    if (isSystemFunctional) {
+      let convertIsSystemFunctional = [isSystemFunctional];
+      if (isSystemFunctional.includes(",")) {
+        convertIsSystemFunctional = isSystemFunctional.split(",");
+      }
+      searchFilters.systemFunctional = convertIsSystemFunctional;
     }
 
     if(phcType){
