@@ -29,45 +29,7 @@ const Filter = (props) => {
   const state = Digit.ULBService.getStateId();
   const { data: mdmsData } = Digit.Hooks.pgr.useMDMS(state, "Incident", ["District", "Block", "SystemFunctionality"]);
   const { data: phcData } = Digit.Hooks.pgr.useMDMS(state, "tenant", ["tenants"]);
-  const isHcrUser = Digit.UserService.getUser()?.info.roles.every(role => (role.code === "EMPLOYEE" || role.code === "COMPLAINANT"));
-
-  useEffect(() => {
-    const fetchDistrictMenu = async () => {
-      const response = phcData?.Incident?.District;
-      if (response) {
-        const uniqueDistricts = {};
-        const districts = response.filter((def) => {
-          if (!uniqueDistricts[def.code]) {
-            uniqueDistricts[def.code] = true;
-            return true;
-          }
-          return false;
-        });
-        districts.sort((a, b) => a.name.localeCompare(b.name));
-        setDistrictMenu(
-          districts.map((def) => ({
-            code: def.code,
-            name: t(def.name),
-          }))
-        );
-      }
-    };
-    const fetchSystemFunctionalMenu = async () => {
-      const response = mdmsData?.Incident?.SystemFunctionality;
-      if (response) {
-        setSystemFunctionalityMenu(
-          response.filter(def => def.active)
-            .sort((a, b) => a.name.localeCompare(b.name))
-            .map((def) => ({
-              code: def.code,
-              name: t(def.name),
-            }))
-        );
-      }
-    }
-    fetchDistrictMenu();
-    fetchSystemFunctionalMenu();
-  }, [state, mdmsData, t]);
+  const isNonHcrUser = Digit.UserService.getUser()?.info.roles.some(role => (role.code !== "EMPLOYEE" && role.code !== "COMPLAINANT"));
 
 const isCodePresent = (array, codeToCheck) =>{
   return array.some(item => item.code === codeToCheck);
@@ -100,7 +62,53 @@ useEffect(() => setSelectedAssigned(isCodePresent(Digit.SessionStorage.get("User
       assignee: [{ code: "" }],
     }
   );
-  
+
+  useEffect(() => {
+    const fetchDistrictMenu = async () => {
+      const response = mdmsData?.Incident?.District;
+      if (response) {
+        const uniqueDistricts = {};
+        const newDistrictMenu = response
+          .filter((district) => {
+            if (!uniqueDistricts[district.code]) {
+              uniqueDistricts[district.code] = true;
+              return true;
+            }
+            return false;
+          })
+          .sort((a, b) => a.name.localeCompare(b.name))
+          .map((district) => ({
+            districtCode: district.code,
+            code: district.name,
+            name: t(district.name),
+          }));
+
+        setDistrictMenu(newDistrictMenu);
+        setBlockMenu([]);
+        setPhcMenu([]);
+        setPgrFilters({ ...pgrfilters, district: [], block: [], phcType: [] });
+      }
+    };
+
+    const fetchSystemFunctionalMenu = async () => {
+      const response = mdmsData?.Incident?.SystemFunctionality;
+      if (response) {
+        const newSystemFunctionalityMenu = response
+          .filter((systemFunctionality) => systemFunctionality.active)
+          .sort((a, b) => a.name.localeCompare(b.name))
+          .map((systemFunctionality) => ({
+            code: systemFunctionality.code,
+            name: t(systemFunctionality.name),
+          }));
+
+        setSystemFunctionalityMenu(newSystemFunctionalityMenu);
+        setPgrFilters({ ...pgrfilters, isSystemFunctional: [] });
+      }
+    }
+
+    fetchDistrictMenu();
+    fetchSystemFunctionalMenu();
+  }, [state, mdmsData, t]);
   
   const tenantId = Digit.ULBService.getCurrentTenantId();
   // let localities = Digit.Hooks.pgr.useLocalities({ city: tenantId });
@@ -229,12 +237,13 @@ useEffect(() => setSelectedAssigned(isCodePresent(Digit.SessionStorage.get("User
     if (previouslySelectedDistrict?.code !== selectedDistrict.code) {
 
       const newBlockMenu = mdmsData?.Incident?.Block
-        .filter((block) => block?.districtCode === selectedDistrict.code)
+        .filter((block) => block?.districtCode === selectedDistrict.districtCode)
+        .sort((a, b) => a.name.localeCompare(b.name))
         .map((block) => ({
-          code: block.code,
+          blockCode: block.code,
+          code: block.name,
           name: t(block.name),
-        }))
-        .sort((a, b) => a.name.localeCompare(b.name));
+        }));
 
       setBlockMenu(newBlockMenu);
       setPgrFilters({ ...pgrfilters, district: [selectedDistrict], block: [], phcType: [] });
@@ -248,13 +257,13 @@ useEffect(() => setSelectedAssigned(isCodePresent(Digit.SessionStorage.get("User
     if (previouslySelectedBlock?.code !== selectedBlock.code) {
 
       const newPhcMenu = phcData?.tenant?.tenants
-        .filter((centre) => centre?.city?.blockCode === selectedBlock.code)
+        .filter((centre) => centre?.city?.blockCode === selectedBlock.blockCode)
+        .sort((a, b) => a.name.localeCompare(b.name))
         .map((centre) => ({
           ...centre,
           name: t(centre?.name),
           centreType: t(centre?.centreType),
-        }))
-        .sort((a, b) => a.name.localeCompare(b.name));
+        }));
 
       setPhcMenu(newPhcMenu);
       setPgrFilters({ ...pgrfilters, block: [selectedBlock], phcType: [] });
@@ -342,7 +351,7 @@ useEffect(() => setSelectedAssigned(isCodePresent(Digit.SessionStorage.get("User
                 "incidentType"
               )}
             </div>
-            {!isHcrUser && (
+            {isNonHcrUser && (
               <div>
                 <div>
                   {

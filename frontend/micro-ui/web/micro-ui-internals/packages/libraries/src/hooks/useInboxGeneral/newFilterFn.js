@@ -41,15 +41,27 @@ export const filterFunctions = {
     }
 
     if (district) {
-      searchFilters.district = district;
+      let convertDistrict = [district];
+      if (district.includes(",")) {
+        convertDistrict = district.split(",");
+      }
+      searchFilters.district = convertDistrict;
     }
 
     if (block) {
-      searchFilters.block = block;
+      let convertBlock = [block];
+      if (block.includes(",")) {
+        convertBlock = block.split(",");
+      }
+      searchFilters.block = convertBlock;
     }
 
     if (isSystemFunctional) {
-      searchFilters.isSystemFunctional = isSystemFunctional;
+      let convertIsSystemFunctional = [isSystemFunctional];
+      if (isSystemFunctional.includes(",")) {
+        convertIsSystemFunctional = isSystemFunctional.split(",");
+      }
+      searchFilters.systemFunctional = convertIsSystemFunctional;
     }
 
     if(phcType){
