@@ -8,7 +8,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.egov.common.contract.models.AuditDetails;
 import org.egov.common.contract.request.RequestInfo;
-import org.egov.common.contract.workflow.ProcessInstance;
 import org.egov.common.models.core.ProjectSearchURLParams;
 import org.egov.common.models.core.SearchResponse;
 import org.egov.common.models.project.*;
