@@ -1,8 +1,8 @@
 {
-  "access_token": "58e1439c-a0d7-4019-9f12-7b6a55e72f64",
+  "access_token": "4f913fd8-9136-4ecc-bf16-cd0775e515a6",
   "token_type": "bearer",
-  "refresh_token": "cc7f7568-63cf-428c-b5df-f02c1d860da8",
-  "expires_in": 604799,
+  "refresh_token": "d5342ba6-e809-4176-82ea-a8a844abbb7c",
+  "expires_in": 552624,
   "scope": "read write",
   "ResponseInfo": {
     "api_id": "",
@@ -23,11 +23,6 @@
     "type": "EMPLOYEE",
     "roles": [
       {
-        "name": "Employee",
-        "code": "EMPLOYEE",
-        "tenantId": "in"
-      },
-      {
         "name": "Installation Report Part A editor",
         "code": "INSTALLATION_REPORT_PART_A_EDITOR",
         "tenantId": "in"
@@ -35,6 +30,11 @@
       {
         "name": "Installation Report Part B editor",
         "code": "INSTALLATION_REPORT_PART_B_EDITOR",
+        "tenantId": "in"
+      },
+      {
+        "name": "Employee",
+        "code": "EMPLOYEE",
         "tenantId": "in"
       }
     ],

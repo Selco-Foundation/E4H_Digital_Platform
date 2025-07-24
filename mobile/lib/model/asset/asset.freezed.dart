@@ -507,6 +507,7 @@ mixin _$Asset {
   String? get wfStatus => throw _privateConstructorUsedError;
   bool? get isActive => throw _privateConstructorUsedError;
   List<Document>? get documents => throw _privateConstructorUsedError;
+  AuditDetails? get auditDetails => throw _privateConstructorUsedError;
 
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
   @JsonKey(ignore: true)
@@ -536,9 +537,11 @@ abstract class $AssetCopyWith<$Res> {
       String? warrantyEndDate,
       @JsonKey(name: 'wfStatus', fromJson: _anyToString) String? wfStatus,
       bool? isActive,
-      List<Document>? documents});
+      List<Document>? documents,
+      AuditDetails? auditDetails});
 
   $AssetDetailsCopyWith<$Res>? get assetDetails;
+  $AuditDetailsCopyWith<$Res>? get auditDetails;
 }
 
 /// @nodoc
@@ -569,6 +572,7 @@ class _$AssetCopyWithImpl<$Res, $Val extends Asset>
     Object? wfStatus = freezed,
     Object? isActive = freezed,
     Object? documents = freezed,
+    Object? auditDetails = freezed,
   }) {
     return _then(_value.copyWith(
       assetId: freezed == assetId
@@ -631,6 +635,10 @@ class _$AssetCopyWithImpl<$Res, $Val extends Asset>
           ? _value.documents
           : documents // ignore: cast_nullable_to_non_nullable
               as List<Document>?,
+      auditDetails: freezed == auditDetails
+          ? _value.auditDetails
+          : auditDetails // ignore: cast_nullable_to_non_nullable
+              as AuditDetails?,
     ) as $Val);
   }
 
@@ -643,6 +651,18 @@ class _$AssetCopyWithImpl<$Res, $Val extends Asset>
 
     return $AssetDetailsCopyWith<$Res>(_value.assetDetails!, (value) {
       return _then(_value.copyWith(assetDetails: value) as $Val);
+    });
+  }
+
+  @override
+  @pragma('vm:prefer-inline')
+  $AuditDetailsCopyWith<$Res>? get auditDetails {
+    if (_value.auditDetails == null) {
+      return null;
+    }
+
+    return $AuditDetailsCopyWith<$Res>(_value.auditDetails!, (value) {
+      return _then(_value.copyWith(auditDetails: value) as $Val);
     });
   }
 }
@@ -672,10 +692,13 @@ abstract class _$$AssetImplCopyWith<$Res> implements $AssetCopyWith<$Res> {
       String? warrantyEndDate,
       @JsonKey(name: 'wfStatus', fromJson: _anyToString) String? wfStatus,
       bool? isActive,
-      List<Document>? documents});
+      List<Document>? documents,
+      AuditDetails? auditDetails});
 
   @override
   $AssetDetailsCopyWith<$Res>? get assetDetails;
+  @override
+  $AuditDetailsCopyWith<$Res>? get auditDetails;
 }
 
 /// @nodoc
@@ -704,6 +727,7 @@ class __$$AssetImplCopyWithImpl<$Res>
     Object? wfStatus = freezed,
     Object? isActive = freezed,
     Object? documents = freezed,
+    Object? auditDetails = freezed,
   }) {
     return _then(_$AssetImpl(
       assetId: freezed == assetId
@@ -766,6 +790,10 @@ class __$$AssetImplCopyWithImpl<$Res>
           ? _value._documents
           : documents // ignore: cast_nullable_to_non_nullable
               as List<Document>?,
+      auditDetails: freezed == auditDetails
+          ? _value.auditDetails
+          : auditDetails // ignore: cast_nullable_to_non_nullable
+              as AuditDetails?,
     ));
   }
 }
@@ -790,7 +818,8 @@ class _$AssetImpl implements _Asset {
       this.warrantyEndDate,
       @JsonKey(name: 'wfStatus', fromJson: _anyToString) this.wfStatus,
       this.isActive,
-      final List<Document>? documents})
+      final List<Document>? documents,
+      this.auditDetails})
       : _documents = documents;
 
   factory _$AssetImpl.fromJson(Map<String, dynamic> json) =>
@@ -846,8 +875,11 @@ class _$AssetImpl implements _Asset {
   }
 
   @override
+  final AuditDetails? auditDetails;
+
+  @override
   String toString() {
-    return 'Asset(assetId: $assetId, tenantId: $tenantId, facilityID: $facilityID, system: $system, serialNumber: $serialNumber, assetTypeID: $assetTypeID, assetDetails: $assetDetails, brandID: $brandID, modelNumber: $modelNumber, warrantyStartDate: $warrantyStartDate, warrantyDuration: $warrantyDuration, warrantyEndDate: $warrantyEndDate, wfStatus: $wfStatus, isActive: $isActive, documents: $documents)';
+    return 'Asset(assetId: $assetId, tenantId: $tenantId, facilityID: $facilityID, system: $system, serialNumber: $serialNumber, assetTypeID: $assetTypeID, assetDetails: $assetDetails, brandID: $brandID, modelNumber: $modelNumber, warrantyStartDate: $warrantyStartDate, warrantyDuration: $warrantyDuration, warrantyEndDate: $warrantyEndDate, wfStatus: $wfStatus, isActive: $isActive, documents: $documents, auditDetails: $auditDetails)';
   }
 
   @override
@@ -881,7 +913,9 @@ class _$AssetImpl implements _Asset {
             (identical(other.isActive, isActive) ||
                 other.isActive == isActive) &&
             const DeepCollectionEquality()
-                .equals(other._documents, _documents));
+                .equals(other._documents, _documents) &&
+            (identical(other.auditDetails, auditDetails) ||
+                other.auditDetails == auditDetails));
   }
 
   @JsonKey(ignore: true)
@@ -902,7 +936,8 @@ class _$AssetImpl implements _Asset {
       warrantyEndDate,
       wfStatus,
       isActive,
-      const DeepCollectionEquality().hash(_documents));
+      const DeepCollectionEquality().hash(_documents),
+      auditDetails);
 
   @JsonKey(ignore: true)
   @override
@@ -940,7 +975,8 @@ abstract class _Asset implements Asset {
       final String? warrantyEndDate,
       @JsonKey(name: 'wfStatus', fromJson: _anyToString) final String? wfStatus,
       final bool? isActive,
-      final List<Document>? documents}) = _$AssetImpl;
+      final List<Document>? documents,
+      final AuditDetails? auditDetails}) = _$AssetImpl;
 
   factory _Asset.fromJson(Map<String, dynamic> json) = _$AssetImpl.fromJson;
 
@@ -985,6 +1021,8 @@ abstract class _Asset implements Asset {
   bool? get isActive;
   @override
   List<Document>? get documents;
+  @override
+  AuditDetails? get auditDetails;
   @override
   @JsonKey(ignore: true)
   _$$AssetImplCopyWith<_$AssetImpl> get copyWith =>
