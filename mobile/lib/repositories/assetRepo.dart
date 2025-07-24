@@ -392,6 +392,8 @@ class AssetRepository {
           // }
         }
 
+        print("project.workflow ${project.workflow}");
+        print("Documents ${project.workflow?.documents}");
         for (var doc in project.workflow?.documents ?? []) {
           if (doc.documentType != 'ASSET' &&
               doc.documentType != 'PHOTO' &&

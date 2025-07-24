@@ -58,6 +58,9 @@ _$AssetImpl _$$AssetImplFromJson(Map<String, dynamic> json) => _$AssetImpl(
       documents: (json['documents'] as List<dynamic>?)
           ?.map((e) => Document.fromJson(e as Map<String, dynamic>))
           .toList(),
+      auditDetails: json['auditDetails'] == null
+          ? null
+          : AuditDetails.fromJson(json['auditDetails'] as Map<String, dynamic>),
     );
 
 Map<String, dynamic> _$$AssetImplToJson(_$AssetImpl instance) =>
@@ -77,4 +80,5 @@ Map<String, dynamic> _$$AssetImplToJson(_$AssetImpl instance) =>
       'wfStatus': instance.wfStatus,
       'isActive': instance.isActive,
       'documents': instance.documents,
+      'auditDetails': instance.auditDetails,
     };
