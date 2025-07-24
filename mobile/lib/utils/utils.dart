@@ -216,8 +216,10 @@ Future<String> getFilestoreUrl(String idOrPath) async {
     if (file != null) {
       final repo = AssetRepository();
       photoId = await repo.uploadFile(file);
+      print("photoId from api is $photoId");
     }
   }
+  print("photoId from return is $photoId");
   return photoId;
 }
 

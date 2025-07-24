@@ -43,35 +43,6 @@ class AssetRepository {
 
   final Dio _dio = DioClient().dio;
 
-  Future<String> uploadFile2(File file) async {
-    final fileName = file.path.split(Platform.pathSeparator).last;
-    final mimeType = _lookupMimeType(fileName);
-
-    final formData = FormData.fromMap({
-      "file": await MultipartFile.fromFile(
-        file.path,
-        filename: fileName,
-        contentType: MediaType.parse(mimeType),
-      ),
-      "tenantId": envConfig.variables.tenantId,
-      "module": "Incident", //todo confirm this is correct
-    });
-
-    try {
-      final response = await _dio.post("/filestore/v1/files", data: formData);
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final jsonMap = response.data as Map<String, dynamic>;
-        return FileStoreResponse.fromJson(jsonMap).fileStoreId;
-      } else {
-        throw Exception(
-            "Filestore responded with status ${response.statusCode}");
-      }
-    } on DioError catch (e) {
-      throw DioErrorParser.parse(e);
-    }
-  }
-
   Future<String> uploadFile(File file) async {
     String fileName = file.path.split(Platform.pathSeparator).last;
     String? mimeType = lookupMimeType(fileName);
@@ -103,6 +74,14 @@ class AssetRepository {
     });
 
     print("formdata $formData");
+    final tenantId = formData.fields
+        .firstWhere(
+          (field) => field.key == "tenantId",
+          orElse: () => const MapEntry("tenantId", "NOT_FOUND"),
+        )
+        .value;
+
+    print("tenantId: $tenantId");
     try {
       final response = await _dio.post("/filestore/v1/files", data: formData);
       if (response.statusCode == 200 || response.statusCode == 201) {
