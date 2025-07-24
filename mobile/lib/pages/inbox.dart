@@ -88,7 +88,8 @@ class _InboxPageState extends State<InboxPage> {
         } else if (tabIndex == 1) {
           workflowStatuses = [
             WORKFLOW_STATUS_FIELD_STAFF.APPROVED_BY_SUPERVISOR.name,
-            WORKFLOW_STATUS_FIELD_STAFF.APPROVED_BY_QC_SPOC.name
+            WORKFLOW_STATUS_FIELD_STAFF.APPROVED_BY_QC_SPOC.name,
+            WORKFLOW_STATUS_FIELD_SUPERVISOR.SUBMITTED_BY_SUPERVISOR.name,
           ];
         }
       },
