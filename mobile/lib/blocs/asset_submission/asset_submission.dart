@@ -173,8 +173,8 @@ class AssetSubmissionBloc
         final documents = <Document>[];
         for (final saved in assets) {
           if (saved.photoPath.isNotEmpty) {
-            print("photoId ${saved.photoPath}");
             String photoId = await getFilestoreUrl(saved.photoPath);
+            print("photoId $photoId");
             documents.add(Document(
               documentType: saved.documentType,
               fileStore: photoId,
@@ -302,11 +302,12 @@ class AssetSubmissionBloc
         for (final m in mediaEntries) {
           if (m.filePath.isEmpty) continue;
           String mediaId = await getFilestoreUrl(m.filePath);
+          print("mediaId $mediaId");
           workflowDocuments.add(Document(
             documentType: "${m.assetType}-${m.itemType}",
             fileStore: mediaId,
             documentUid:
-                "DOC-${m.itemType}-${m.id}-${m.assetType}-${m.itemNumber}-${DateTime.now().toUtc().toIso8601String()}",
+                "DOC-${m.assetType}-${m.itemType}-${DateTime.now().toUtc().millisecondsSinceEpoch}",
             geoLocation: GeoLocation(
               latitude: m.latitude,
               longitude: m.longitude,
@@ -323,6 +324,7 @@ class AssetSubmissionBloc
       print("completionReport $completionReport");
       if (completionReport != null && completionReport.filePath.isNotEmpty) {
         String photoId = await getFilestoreUrl(completionReport.filePath);
+        print("photoId $photoId");
         workflowDocuments.add(Document(
           documentType: "INSTALLATION_REPORT",
           fileStore: photoId,
@@ -333,6 +335,9 @@ class AssetSubmissionBloc
           ),
         ));
       }
+
+      print("documents $workflowDocuments");
+      print("documents ${workflowDocuments.toString()}");
 
       await remoteRepo.updateProjectWorkflow(
         projectId: projectId,

@@ -214,17 +214,14 @@ abstract class _GeoLocation implements GeoLocation {
       throw _privateConstructorUsedError;
 }
 
-Document _$DocumentFromJson(Map<String, dynamic> json) {
-  return _Document.fromJson(json);
-}
-
 /// @nodoc
 mixin _$Document {
   @JsonKey(name: 'id', fromJson: _anyToString)
   String? get id => throw _privateConstructorUsedError;
   @JsonKey(name: 'documentType', fromJson: _anyToString)
   String? get documentType => throw _privateConstructorUsedError;
-  @JsonKey(name: 'fileStore', fromJson: _anyToString)
+
+  /// We'll store fileStore from either `fileStore` or `fileStoreId`
   String? get fileStore => throw _privateConstructorUsedError;
   @JsonKey(name: 'documentUid', fromJson: _anyToString)
   String? get documentUid => throw _privateConstructorUsedError;
@@ -233,7 +230,6 @@ mixin _$Document {
   @JsonKey(name: 'geoLocation')
   GeoLocation? get geoLocation => throw _privateConstructorUsedError;
 
-  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
   @JsonKey(ignore: true)
   $DocumentCopyWith<Document> get copyWith =>
       throw _privateConstructorUsedError;
@@ -248,7 +244,7 @@ abstract class $DocumentCopyWith<$Res> {
       {@JsonKey(name: 'id', fromJson: _anyToString) String? id,
       @JsonKey(name: 'documentType', fromJson: _anyToString)
       String? documentType,
-      @JsonKey(name: 'fileStore', fromJson: _anyToString) String? fileStore,
+      String? fileStore,
       @JsonKey(name: 'documentUid', fromJson: _anyToString) String? documentUid,
       Map<String, dynamic>? additionalDetails,
       @JsonKey(name: 'geoLocation') GeoLocation? geoLocation});
@@ -329,7 +325,7 @@ abstract class _$$DocumentImplCopyWith<$Res>
       {@JsonKey(name: 'id', fromJson: _anyToString) String? id,
       @JsonKey(name: 'documentType', fromJson: _anyToString)
       String? documentType,
-      @JsonKey(name: 'fileStore', fromJson: _anyToString) String? fileStore,
+      String? fileStore,
       @JsonKey(name: 'documentUid', fromJson: _anyToString) String? documentUid,
       Map<String, dynamic>? additionalDetails,
       @JsonKey(name: 'geoLocation') GeoLocation? geoLocation});
@@ -386,19 +382,17 @@ class __$$DocumentImplCopyWithImpl<$Res>
 }
 
 /// @nodoc
-@JsonSerializable()
-class _$DocumentImpl implements _Document {
+
+class _$DocumentImpl extends _Document {
   const _$DocumentImpl(
       {@JsonKey(name: 'id', fromJson: _anyToString) this.id,
       @JsonKey(name: 'documentType', fromJson: _anyToString) this.documentType,
-      @JsonKey(name: 'fileStore', fromJson: _anyToString) this.fileStore,
+      this.fileStore,
       @JsonKey(name: 'documentUid', fromJson: _anyToString) this.documentUid,
       final Map<String, dynamic>? additionalDetails,
       @JsonKey(name: 'geoLocation') this.geoLocation})
-      : _additionalDetails = additionalDetails;
-
-  factory _$DocumentImpl.fromJson(Map<String, dynamic> json) =>
-      _$$DocumentImplFromJson(json);
+      : _additionalDetails = additionalDetails,
+        super._();
 
   @override
   @JsonKey(name: 'id', fromJson: _anyToString)
@@ -406,8 +400,9 @@ class _$DocumentImpl implements _Document {
   @override
   @JsonKey(name: 'documentType', fromJson: _anyToString)
   final String? documentType;
+
+  /// We'll store fileStore from either `fileStore` or `fileStoreId`
   @override
-  @JsonKey(name: 'fileStore', fromJson: _anyToString)
   final String? fileStore;
   @override
   @JsonKey(name: 'documentUid', fromJson: _anyToString)
@@ -450,7 +445,6 @@ class _$DocumentImpl implements _Document {
                 other.geoLocation == geoLocation));
   }
 
-  @JsonKey(ignore: true)
   @override
   int get hashCode => Object.hash(
       runtimeType,
@@ -466,30 +460,20 @@ class _$DocumentImpl implements _Document {
   @pragma('vm:prefer-inline')
   _$$DocumentImplCopyWith<_$DocumentImpl> get copyWith =>
       __$$DocumentImplCopyWithImpl<_$DocumentImpl>(this, _$identity);
-
-  @override
-  Map<String, dynamic> toJson() {
-    return _$$DocumentImplToJson(
-      this,
-    );
-  }
 }
 
-abstract class _Document implements Document {
+abstract class _Document extends Document {
   const factory _Document(
           {@JsonKey(name: 'id', fromJson: _anyToString) final String? id,
           @JsonKey(name: 'documentType', fromJson: _anyToString)
           final String? documentType,
-          @JsonKey(name: 'fileStore', fromJson: _anyToString)
           final String? fileStore,
           @JsonKey(name: 'documentUid', fromJson: _anyToString)
           final String? documentUid,
           final Map<String, dynamic>? additionalDetails,
           @JsonKey(name: 'geoLocation') final GeoLocation? geoLocation}) =
       _$DocumentImpl;
-
-  factory _Document.fromJson(Map<String, dynamic> json) =
-      _$DocumentImpl.fromJson;
+  const _Document._() : super._();
 
   @override
   @JsonKey(name: 'id', fromJson: _anyToString)
@@ -498,7 +482,8 @@ abstract class _Document implements Document {
   @JsonKey(name: 'documentType', fromJson: _anyToString)
   String? get documentType;
   @override
-  @JsonKey(name: 'fileStore', fromJson: _anyToString)
+
+  /// We'll store fileStore from either `fileStore` or `fileStoreId`
   String? get fileStore;
   @override
   @JsonKey(name: 'documentUid', fromJson: _anyToString)

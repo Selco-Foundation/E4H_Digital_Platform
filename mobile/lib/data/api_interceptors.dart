@@ -15,6 +15,8 @@ class AuthTokenInterceptor extends Interceptor {
     final authToken = await secureStore.getAccessToken();
     final ResponseModel? accessInfo = await secureStore.getAccessInfo();
 
+    print("options data ${options.data}");
+    print("options data 2 ${(options.data.toString())}");
     if (options.data is Map) {
       options.data = {
         ...options.data,
@@ -29,7 +31,6 @@ class AuthTokenInterceptor extends Interceptor {
                 userInfo: accessInfo?.userRequest)
             .toJson(),
       };
-
       final d = options.data;
       print('RequestInfo: ${d is FormData ? d.fields.firstWhere(
             (f) => f.key == 'RequestInfo',
