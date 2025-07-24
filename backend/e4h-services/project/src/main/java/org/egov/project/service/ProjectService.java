@@ -571,8 +571,10 @@ public class ProjectService {
             asset.setIsOperational(true);
 
             String assetUpdateEndpoint = projectConfiguration.getAssetHost() +
-                    projectConfiguration.getAssetUpdateUrl().replace("{assetID}", asset.getAssetId());
+                    projectConfiguration.getAssetUpdateUrl();
+
             StringBuilder assetUpdateUri = new StringBuilder(assetUpdateEndpoint);
+            assetUpdateUri.append("?assetID=").append(asset.getAssetId());
 
             AssetCreate assetCreate = AssetCreate.builder()
                     .asset(asset)
