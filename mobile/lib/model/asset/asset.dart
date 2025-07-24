@@ -1,5 +1,6 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
+import '../audit_details/audit_details.dart';
 import '../document/document.dart';
 
 part 'asset.freezed.dart';
@@ -63,6 +64,7 @@ class Asset with _$Asset {
     @JsonKey(name: 'wfStatus', fromJson: _anyToString) String? wfStatus,
     bool? isActive,
     List<Document>? documents,
+    AuditDetails? auditDetails,
   }) = _Asset;
 
   factory Asset.fromJson(Map<String, dynamic> json) => _$AssetFromJson(json);

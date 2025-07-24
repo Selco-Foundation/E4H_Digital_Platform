@@ -11,7 +11,9 @@ import '../../data/nosql/cache_media_upload.dart';
 import '../../data/nosql/cache_specification.dart';
 import '../../data/nosql/cache_sync_record.dart';
 import '../../data/nosql/cache_unsubmitted_project.dart';
+import '../../data/secure_storage/secureStore.dart';
 import '../../model/asset/asset.dart';
+import '../../model/audit_details/audit_details.dart';
 import '../../model/document/document.dart';
 import '../../model/entities/project_facility.dart';
 import '../../model/project_workflow/project_workflow.dart';
@@ -172,10 +174,7 @@ class AssetSubmissionBloc
         for (final saved in assets) {
           if (saved.photoPath.isNotEmpty) {
             print("photoId ${saved.photoPath}");
-            // final file = File(saved.photoPath);
             String photoId = await getFilestoreUrl(saved.photoPath);
-
-            print("photoId $photoId");
             documents.add(Document(
               documentType: saved.documentType,
               fileStore: photoId,
@@ -247,6 +246,9 @@ class AssetSubmissionBloc
 
           print("assetDetails $assetDetails");
 
+          final userId = await SecureStore().getSelectedIndividual();
+          final audit = AuditDetails(lastModifiedBy: userId, lastModified: now);
+
           // 2) Build the Asset itself
           final assetModel = Asset(
             assetId: saved.assetId,
@@ -269,11 +271,16 @@ class AssetSubmissionBloc
             wfStatus: "CREATED",
             isActive: true,
             documents: documents,
+            auditDetails: (saved.assetId?.isNotEmpty ?? false) ? audit : null,
           );
+          print(
+              "assetModel audit ${assetModel.auditDetails?.toJson() ?? '— none —'}");
           print("assetModel $assetModel");
           await repo.createOrUpdateAsset(asset: assetModel, isar: _isar);
         }
       }
+
+      print("about starting completion reports");
 
       final remoteRepo = ProjectRemoteRepository();
       final workflowDocuments = <Document>[];
@@ -289,7 +296,7 @@ class AssetSubmissionBloc
         print("[$type] found ${mediaEntries.length} cached media uploads");
         for (var m in mediaEntries) {
           print(
-              "    media id=${m.id} filePath='${m.filePath}' itemType='${m.itemType}'");
+              "    media id=${m.id} filePath='${m.filePath}' itemType='${m.itemType}' media id=${m.id} projectId='${m.projectId}'");
         }
 
         for (final m in mediaEntries) {
@@ -315,19 +322,16 @@ class AssetSubmissionBloc
           .findFirst();
       print("completionReport $completionReport");
       if (completionReport != null && completionReport.filePath.isNotEmpty) {
-        final completionFile = await getCachedFile(completionReport.filePath);
-        if (await completionFile != null) {
-          final photoId = await repo.uploadFile(completionFile!);
-          workflowDocuments.add(Document(
-            documentType: "INSTALLATION_REPORT",
-            fileStore: photoId,
-            documentUid: "INSTALLATION-REPORT-$photoId",
-            geoLocation: GeoLocation(
-              latitude: completionReport.latitude,
-              longitude: completionReport.longitude,
-            ),
-          ));
-        }
+        String photoId = await getFilestoreUrl(completionReport.filePath);
+        workflowDocuments.add(Document(
+          documentType: "INSTALLATION_REPORT",
+          fileStore: photoId,
+          documentUid: "INSTALLATION-REPORT-$photoId",
+          geoLocation: GeoLocation(
+            latitude: completionReport.latitude,
+            longitude: completionReport.longitude,
+          ),
+        ));
       }
 
       await remoteRepo.updateProjectWorkflow(

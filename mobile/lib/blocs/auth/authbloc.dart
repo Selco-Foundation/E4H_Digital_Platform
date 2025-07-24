@@ -80,7 +80,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       //         ),
       //         event.actionMap);
 
-      // secureStore.setSelectedIndividual(loggedInIndividual.first.id);
+      secureStore.setSelectedIndividual(_userRequest.userName);
     } catch (err) {
       String errorMessage = 'Unknown error occurred';
       if (err is DioException) {
