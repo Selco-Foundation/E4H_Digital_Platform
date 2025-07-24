@@ -20,7 +20,7 @@ from app.processor.factory.vendor_data_processor_factory import VendorDataProces
 from app.schemas.request_info import RequestInfo
 from app.producer.producer import Producer
 from app.utils.convertor import request_info_from_json, create_vendor_request, create_facility_payload, \
-    get_project_creation_payload, get_user_creation_payload, get_user_creation_payload_staff, get_user_creation_payload_supervisors, get_staff_creation_payload, create_project_payload, \
+    get_project_creation_payload, get_user_creation_payload_staff, get_user_creation_payload_supervisors, get_staff_creation_payload, create_project_payload, \
     get_installation_spoc_creation_payload, get_staff_search_payload
 from app.utils.facility_service_client import FacilityServiceClient
 from app.utils.mdms_client import MDMSClient
@@ -678,10 +678,10 @@ async def upload_facility_with_supervisors_workflow_state_excel_sheet(
                                     continue
                                 # update workflow state
                                 if df.at[index,'Role'] == 'Supervisor':
-                                    update_workflow_state_response = project_client.update_workflow(request_info, work_stream_project_id, 'ASSIGNED_TO_FIELD_SUPERVISOR')
+                                    update_workflow_state_response = project_client.update_workflow(request_info, work_stream_project_id, 'ASSIGN_FIELD_SUPERVISOR')
                                 else:
                                     update_workflow_state_response = project_client.update_workflow(request_info, work_stream_project_id,
-                                                                                                    'ASSIGNED_TO_FIELD_STAFF')
+                                                                                                    'ASSIGN_FIELD_STAFF')
                                 if update_workflow_state_response.status_code in [200, 201, 202]:
                                     df.at[index,'status'] = 'success'
                                     df.at[index, 'error'] = ''
