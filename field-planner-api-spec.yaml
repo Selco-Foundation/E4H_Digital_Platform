@@ -1,0 +1,2765 @@
+openapi: 3.0.3
+info:
+  title: E4H Field Planner API
+  description: |
+    API specification for the E4H Digital Platform Field Planner module.
+    
+    The Field Planner enables Project Managers to create and manage field plans for project execution,
+    assign activities to Activity SPOCs, manage health facility assignments, and coordinate field operations
+    through mobile applications.
+    
+    **Key Features:**
+    - Field Plan Creation and Management
+    - Activity Assignment and Coordination
+    - Health Facility Assignment
+    - Mobile App Synchronization
+    - Activity Report Management
+    - Conditional Facility Activation
+    - Integration with existing E4H platform services
+    
+    **Integration Points:**
+    - eGov HRMS for user management
+    - Health Facility Registry for facility data
+    - Project Service for project information
+    - eGov Workflow v2 for state management
+    - eGov Filestore for file operations
+    - eGov MDMS v2 for master data
+  version: 1.0.0
+  contact:
+    name: E4H Field Planner Team
+    email: support@e4h-platform.org
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://api.e4h-platform.org/field-planner/v1
+    description: Production server
+  - url: https://staging-api.e4h-platform.org/field-planner/v1
+    description: Staging server
+  - url: https://dev-api.e4h-platform.org/field-planner/v1
+    description: Development server
+
+security:
+  - BearerAuth: []
+
+paths:
+  # ========================
+  # FIELD PLAN MANAGEMENT
+  # ========================
+  
+  /field-plans/_create:
+    post:
+      tags:
+        - Field Plans
+      summary: Create a new field plan
+      description: Creates a new field plan within a project with specified activities and facilities
+      operationId: createFieldPlan
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateFieldPlanRequest'
+      responses:
+        '201':
+          description: Field plan created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FieldPlanResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /field-plans/_search:
+    post:
+      tags:
+        - Field Plans
+      summary: Search field plans
+      description: Search field plans with various filters and pagination
+      operationId: searchFieldPlans
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FieldPlanSearchRequest'
+      responses:
+        '200':
+          description: Field plans retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FieldPlanSearchResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /field-plans/{id}:
+    get:
+      tags:
+        - Field Plans
+      summary: Get field plan by ID
+      description: Retrieve a specific field plan by its ID
+      operationId: getFieldPlan
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Field plan ID
+        - name: tenantId
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Tenant ID
+      responses:
+        '200':
+          description: Field plan retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FieldPlanResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /field-plans/{id}/_update:
+    post:
+      tags:
+        - Field Plans
+      summary: Update field plan
+      description: Update an existing field plan (limited fields based on current status)
+      operationId: updateFieldPlan
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Field plan ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateFieldPlanRequest'
+      responses:
+        '200':
+          description: Field plan updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FieldPlanResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /field-plans/{id}/facilities/_assign:
+    post:
+      tags:
+        - Field Plans
+      summary: Assign facilities to field plan
+      description: Assign multiple health facilities to a field plan
+      operationId: assignFacilitiesToFieldPlan
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Field plan ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignFacilitiesRequest'
+      responses:
+        '200':
+          description: Facilities assigned successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FacilityAssignmentResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /field-plans/{id}/facilities/template:
+    get:
+      tags:
+        - Field Plans
+      summary: Download facility assignment template
+      description: Generate and download Excel template for bulk facility assignment
+      operationId: getFacilityTemplate
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Field plan ID
+        - name: tenantId
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Tenant ID
+        - name: templateType
+          in: query
+          schema:
+            type: string
+            enum: [FACILITY_SELECTION, FACILITY_ASSIGNMENT]
+            default: FACILITY_SELECTION
+          description: Type of template to generate
+        - name: format
+          in: query
+          schema:
+            type: string
+            enum: [xlsx, csv]
+            default: xlsx
+          description: Template format
+      responses:
+        '200':
+          description: Template generated successfully
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+            text/csv:
+              schema:
+                type: string
+                format: binary
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /field-plans/{id}/facilities/_bulk-assign:
+    post:
+      tags:
+        - Field Plans
+      summary: Bulk assign facilities via upload
+      description: Bulk assign facilities to field plan by uploading Excel file
+      operationId: bulkAssignFacilities
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Field plan ID
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Excel file with facility assignments
+                tenantId:
+                  type: string
+                  description: Tenant ID
+              required:
+                - file
+                - tenantId
+      responses:
+        '200':
+          description: Bulk assignment completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkAssignmentResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ========================
+  # ACTIVITY MANAGEMENT
+  # ========================
+
+  /activities/_search:
+    post:
+      tags:
+        - Activities
+      summary: Search activities
+      description: Search activities with filters and pagination
+      operationId: searchActivities
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActivitySearchRequest'
+      responses:
+        '200':
+          description: Activities retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivitySearchResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /activities/{id}/assign:
+    post:
+      tags:
+        - Activities
+      summary: Assign activity to SPOC
+      description: Assign an activity to an Activity SPOC
+      operationId: assignActivity
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Activity ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignActivityRequest'
+      responses:
+        '200':
+          description: Activity assigned successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivityAssignmentResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ========================
+  # FACILITY ACTIVITIES
+  # ========================
+
+  /facility-activities/_create:
+    post:
+      tags:
+        - Facility Activities
+      summary: Create facility activity
+      description: Create a new facility activity assignment
+      operationId: createFacilityActivity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateFacilityActivityRequest'
+      responses:
+        '201':
+          description: Facility activity created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FacilityActivityResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /facility-activities/_search:
+    post:
+      tags:
+        - Facility Activities
+      summary: Search facility activities
+      description: Search facility activities with various filters
+      operationId: searchFacilityActivities
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FacilityActivitySearchRequest'
+      responses:
+        '200':
+          description: Facility activities retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FacilityActivitySearchResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /facility-activities/{id}/assign-user:
+    post:
+      tags:
+        - Facility Activities
+      summary: Assign user to facility activity
+      description: Assign a field user to a specific facility activity
+      operationId: assignUserToFacilityActivity
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Facility activity ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignUserRequest'
+      responses:
+        '200':
+          description: User assigned successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserAssignmentResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /facility-activities/{id}/activation-check:
+    get:
+      tags:
+        - Facility Activities
+      summary: Check facility activity activation status
+      description: Check if a facility activity can be activated based on conditions
+      operationId: checkFacilityActivation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Facility activity ID
+        - name: tenantId
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Tenant ID
+      responses:
+        '200':
+          description: Activation status retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivationCheckResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /facility-activities/{id}/_activate:
+    post:
+      tags:
+        - Facility Activities
+      summary: Activate facility activity
+      description: Activate a facility activity if all conditions are met
+      operationId: activateFacilityActivity
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Facility activity ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActivateFacilityActivityRequest'
+      responses:
+        '200':
+          description: Facility activity activated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FacilityActivityResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ========================
+  # ACTIVITY REPORTS
+  # ========================
+
+  /activity-reports/_create:
+    post:
+      tags:
+        - Activity Reports
+      summary: Create activity report
+      description: Create a new activity report for a facility activity
+      operationId: createActivityReport
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateActivityReportRequest'
+      responses:
+        '201':
+          description: Activity report created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivityReportResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /activity-reports/_search:
+    post:
+      tags:
+        - Activity Reports
+      summary: Search activity reports
+      description: Search activity reports with various filters
+      operationId: searchActivityReports
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActivityReportSearchRequest'
+      responses:
+        '200':
+          description: Activity reports retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivityReportSearchResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /activity-reports/{id}/_update:
+    post:
+      tags:
+        - Activity Reports
+      summary: Update activity report
+      description: Update an existing activity report
+      operationId: updateActivityReport
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Activity report ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateActivityReportRequest'
+      responses:
+        '200':
+          description: Activity report updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivityReportResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /activity-reports/{id}/_submit:
+    post:
+      tags:
+        - Activity Reports
+      summary: Submit activity report for review
+      description: Submit an activity report for review by Activity SPOC
+      operationId: submitActivityReport
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Activity report ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitReportRequest'
+      responses:
+        '200':
+          description: Activity report submitted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivityReportResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /activity-reports/{id}/_review:
+    post:
+      tags:
+        - Activity Reports
+      summary: Review activity report
+      description: Review and approve/reject an activity report
+      operationId: reviewActivityReport
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Activity report ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewReportRequest'
+      responses:
+        '200':
+          description: Activity report reviewed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivityReportResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /activity-reports/_bulk-review:
+    post:
+      tags:
+        - Activity Reports
+      summary: Bulk review activity reports
+      description: Review multiple activity reports in bulk
+      operationId: bulkReviewReports
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkReviewRequest'
+      responses:
+        '200':
+          description: Bulk review completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkReviewResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ========================
+  # MOBILE SYNC ENDPOINTS
+  # ========================
+
+  /mobile/sync/user-data:
+    post:
+      tags:
+        - Mobile Sync
+      summary: Sync user data for mobile app
+      description: Get user-specific data for mobile app synchronization
+      operationId: syncUserData
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserSyncRequest'
+      responses:
+        '200':
+          description: User data synchronized successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserSyncResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /mobile/sync/facilities:
+    post:
+      tags:
+        - Mobile Sync
+      summary: Sync facility data for mobile app
+      description: Get facility assignments and details for mobile app
+      operationId: syncFacilities
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FacilitySyncRequest'
+      responses:
+        '200':
+          description: Facility data synchronized successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FacilitySyncResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /mobile/sync/upload:
+    post:
+      tags:
+        - Mobile Sync
+      summary: Upload mobile app data
+      description: Upload activity reports and media files from mobile app
+      operationId: uploadMobileData
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                data:
+                  type: string
+                  description: JSON data with activity reports
+                files:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                  description: Media files (images, videos, documents)
+                tenantId:
+                  type: string
+                  description: Tenant ID
+              required:
+                - data
+                - tenantId
+      responses:
+        '200':
+          description: Mobile data uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MobileUploadResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ========================
+  # TEAM MANAGEMENT
+  # ========================
+
+  /teams/_search:
+    post:
+      tags:
+        - Team Management
+      summary: Search team members
+      description: Search team members across projects and field plans
+      operationId: searchTeamMembers
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeamSearchRequest'
+      responses:
+        '200':
+          description: Team members retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamSearchResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /teams/assignments:
+    post:
+      tags:
+        - Team Management
+      summary: Get team assignments
+      description: Get team member assignments across field plans
+      operationId: getTeamAssignments
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeamAssignmentRequest'
+      responses:
+        '200':
+          description: Team assignments retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamAssignmentResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Forbidden:
+      description: Forbidden
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Conflict:
+      description: Conflict - resource already exists or invalid state
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  schemas:
+    # ========================
+    # COMMON SCHEMAS
+    # ========================
+    
+    RequestInfo:
+      type: object
+      properties:
+        apiId:
+          type: string
+          description: API identifier
+        ver:
+          type: string
+          description: API version
+        ts:
+          type: integer
+          format: int64
+          description: Request timestamp
+        action:
+          type: string
+          description: Action being performed
+        did:
+          type: string
+          description: Device ID
+        key:
+          type: string
+          description: API key
+        msgId:
+          type: string
+          description: Message ID
+        authToken:
+          type: string
+          description: Authentication token
+        userInfo:
+          $ref: '#/components/schemas/UserInfo'
+      required:
+        - apiId
+        - ver
+        - ts
+        - action
+
+    ResponseInfo:
+      type: object
+      properties:
+        apiId:
+          type: string
+          description: API identifier
+        ver:
+          type: string
+          description: API version
+        ts:
+          type: integer
+          format: int64
+          description: Response timestamp
+        resMsgId:
+          type: string
+          description: Response message ID
+        msgId:
+          type: string
+          description: Request message ID
+        status:
+          type: string
+          enum: [SUCCESSFUL, FAILED]
+          description: Response status
+        error:
+          $ref: '#/components/schemas/Error'
+      required:
+        - apiId
+        - ver
+        - ts
+        - status
+
+    UserInfo:
+      type: object
+      properties:
+        id:
+          type: string
+          description: User ID
+        userName:
+          type: string
+          description: Username
+        name:
+          type: string
+          description: Full name
+        type:
+          type: string
+          description: User type
+        mobileNumber:
+          type: string
+          description: Mobile number
+        emailId:
+          type: string
+          description: Email ID
+        roles:
+          type: array
+          items:
+            $ref: '#/components/schemas/Role'
+          description: User roles
+        tenantId:
+          type: string
+          description: Tenant ID
+
+    Role:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Role ID
+        name:
+          type: string
+          description: Role name
+        code:
+          type: string
+          description: Role code
+        tenantId:
+          type: string
+          description: Tenant ID
+
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+          description: Error code
+        message:
+          type: string
+          description: Error message
+        description:
+          type: string
+          description: Error description
+        params:
+          type: array
+          items:
+            type: object
+          description: Error parameters
+
+    ErrorResponse:
+      type: object
+      properties:
+        ResponseInfo:
+          $ref: '#/components/schemas/ResponseInfo'
+      required:
+        - ResponseInfo
+
+    Pagination:
+      type: object
+      properties:
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+          description: Number of records per page
+        offset:
+          type: integer
+          minimum: 0
+          default: 0
+          description: Number of records to skip
+        totalCount:
+          type: integer
+          description: Total number of records
+        sortBy:
+          type: string
+          description: Field to sort by
+        sortOrder:
+          type: string
+          enum: [ASC, DESC]
+          default: ASC
+          description: Sort order
+
+    AuditDetails:
+      type: object
+      properties:
+        createdBy:
+          type: string
+          description: Created by user ID
+        lastModifiedBy:
+          type: string
+          description: Last modified by user ID
+        createdTime:
+          type: integer
+          format: int64
+          description: Creation timestamp
+        lastModifiedTime:
+          type: integer
+          format: int64
+          description: Last modification timestamp
+      required:
+        - createdBy
+        - createdTime
+
+    # ========================
+    # FIELD PLAN SCHEMAS
+    # ========================
+
+    FieldPlan:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Field plan ID
+        tenantId:
+          type: string
+          description: Tenant ID
+        name:
+          type: string
+          description: Field plan name
+        projectId:
+          type: string
+          description: Associated project ID
+        startDate:
+          type: integer
+          format: int64
+          description: Field plan start date
+        endDate:
+          type: integer
+          format: int64
+          description: Field plan end date
+        status:
+          type: string
+          enum: [DRAFT, ACTIVE, PAUSED, COMPLETED, CANCELLED]
+          description: Field plan status
+        geographyScope:
+          type: object
+          description: Geographic scope definition
+          properties:
+            states:
+              type: array
+              items:
+                type: string
+            districts:
+              type: array
+              items:
+                type: string
+            blocks:
+              type: array
+              items:
+                type: string
+        selectedActivities:
+          type: array
+          items:
+            type: string
+          description: List of selected activity types
+        description:
+          type: string
+          description: Field plan description
+        additionalDetails:
+          type: object
+          description: Additional field plan details
+        auditDetails:
+          $ref: '#/components/schemas/AuditDetails'
+      required:
+        - id
+        - tenantId
+        - name
+        - projectId
+        - startDate
+        - endDate
+        - status
+        - selectedActivities
+
+    CreateFieldPlanRequest:
+      type: object
+      properties:
+        RequestInfo:
+          $ref: '#/components/schemas/RequestInfo'
+        FieldPlan:
+          type: object
+          properties:
+            tenantId:
+              type: string
+              description: Tenant ID
+            name:
+              type: string
+              description: Field plan name
+            projectId:
+              type: string
+              description: Associated project ID
+            startDate:
+              type: integer
+              format: int64
+              description: Field plan start date
+            endDate:
+              type: integer
+              format: int64
+              description: Field plan end date
+            geographyScope:
+              type: object
+              description: Geographic scope definition
+            selectedActivities:
+              type: array
+              items:
+                type: string
+              description: List of selected activity types
+            description:
+              type: string
+              description: Field plan description
+            additionalDetails:
+              type: object
+              description: Additional field plan details
+          required:
+            - tenantId
+            - name
+            - projectId
+            - startDate
+            - endDate
+            - selectedActivities
+      required:
+        - RequestInfo
+        - FieldPlan
+
+    UpdateFieldPlanRequest:
+      type: object
+      properties:
+        RequestInfo:
+          $ref: '#/components/schemas/RequestInfo'
+        FieldPlan:
+          type: object
+          properties:
+            id:
+              type: string
+              description: Field plan ID
+            tenantId:
+              type: string
+              description: Tenant ID
+            name:
+              type: string
+              description: Field plan name
+            endDate:
+              type: integer
+              format: int64
+              description: Field plan end date
+            status:
+              type: string
+              enum: [ACTIVE, PAUSED, COMPLETED, CANCELLED]
+              description: Field plan status
+            description:
+              type: string
+              description: Field plan description
+            additionalDetails:
+              type: object
+              description: Additional field plan details
+          required:
+            - id
+            - tenantId
+      required:
+        - RequestInfo
+        - FieldPlan
+
+    FieldPlanSearchRequest:
+      type: object
+      properties:
+        RequestInfo:
+          $ref: '#/components/schemas/RequestInfo'
+        FieldPlanSearchCriteria:
+          type: object
+          properties:
+            tenantId:
+              type: string
+              description: Tenant ID
+            ids:
+              type: array
+              items:
+                type: string
+              description: Field plan IDs
+            projectIds:
+              type: array
+              items:
+                type: string
+              description: Project IDs
+            status:
+              type: array
+              items:
+                type: string
+              description: Field plan statuses
+            createdBy:
+              type: string
+              description: Created by user ID
+            activityTypes:
+              type: array
+              items:
+                type: string
+              description: Activity types
+            fromDate:
+              type: integer
+              format: int64
+              description: Filter from date
+            toDate:
+              type: integer
+              format: int64
+              description: Filter to date
+          required:
+            - tenantId
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+      required:
+        - RequestInfo
+        - FieldPlanSearchCriteria
+
+    FieldPlanResponse:
+      type: object
+      properties:
+        ResponseInfo:
+          $ref: '#/components/schemas/ResponseInfo'
+        FieldPlan:
+          $ref: '#/components/schemas/FieldPlan'
+      required:
+        - ResponseInfo
+        - FieldPlan
+
+    FieldPlanSearchResponse:
+      type: object
+      properties:
+        ResponseInfo:
+          $ref: '#/components/schemas/ResponseInfo'
+        FieldPlans:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldPlan'
+        TotalCount:
+          type: integer
+          description: Total number of field plans
+      required:
+        - ResponseInfo
+        - FieldPlans
+
+    # ========================
+    # FACILITY ASSIGNMENT SCHEMAS
+    # ========================
+
+    AssignFacilitiesRequest:
+      type: object
+      properties:
+        RequestInfo:
+          $ref: '#/components/schemas/RequestInfo'
+        FacilityAssignments:
+          type: array
+          items:
+            type: object
+            properties:
+              facilityId:
+                type: string
+                description: Health facility ID
+              priority:
+                type: integer
+                minimum: 1
+                maximum: 3
+                description: Assignment priority (1=High, 2=Medium, 3=Low)
+              notes:
+                type: string
+                description: Assignment notes
+              additionalDetails:
+                type: object
+                description: Additional assignment details
+            required:
+              - facilityId
+              - priority
+        tenantId:
+          type: string
+          description: Tenant ID
+      required:
+        - RequestInfo
+        - FacilityAssignments
+        - tenantId
+
+    FacilityAssignmentResponse:
+      type: object
+      properties:
+        ResponseInfo:
+          $ref: '#/components/schemas/ResponseInfo'
+        AssignmentResults:
+          type: array
+          items:
+            type: object
+            properties:
+              facilityId:
+                type: string
+                description: Health facility ID
+              status:
+                type: string
+                enum: [SUCCESS, FAILED, SKIPPED]
+                description: Assignment status
+              message:
+                type: string
+                description: Status message
+              fieldPlanFacilityId:
+                type: string
+                description: Generated field plan facility ID
+        TotalAssigned:
+          type: integer
+          description: Total facilities assigned
+        TotalFailed:
+          type: integer
+          description: Total assignments failed
+      required:
+        - ResponseInfo
+        - AssignmentResults
+
+    BulkAssignmentResponse:
+      type: object
+      properties:
+        ResponseInfo:
+          $ref: '#/components/schemas/ResponseInfo'
+        ProcessingResults:
+          type: object
+          properties:
+            totalRecords:
+              type: integer
+              description: Total records processed
+            successfulAssignments:
+              type: integer
+              description: Successful assignments
+            failedAssignments:
+              type: integer
+              description: Failed assignments
+            validationErrors:
+              type: array
+              items:
+                type: object
+                properties:
+                  row:
+                    type: integer
+                    description: Row number
+                  facilityId:
+                    type: string
+                    description: Facility ID
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                    description: Validation error messages
+        DownloadUrl:
+          type: string
+          description: URL to download detailed results
+      required:
+        - ResponseInfo
+        - ProcessingResults
+
+    # ========================
+    # ACTIVITY SCHEMAS
+    # ========================
+
+    Activity:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Activity ID
+        tenantId:
+          type: string
+          description: Tenant ID
+        fieldPlanId:
+          type: string
+          description: Associated field plan ID
+        activityType:
+          type: string
+          enum: [ASSESSMENT, INSTALLATION, FIELD_QC, HANDOVER, MAINTENANCE]
+          description: Activity type
+        name:
+          type: string
+          description: Activity name
+        description:
+          type: string
+          description: Activity description
+        startDate:
+          type: integer
+          format: int64
+          description: Activity start date
+        endDate:
+          type: integer
+          format: int64
+          description: Activity end date
+        status:
+          type: string
+          enum: [PLANNED, ASSIGNED, ACTIVE, COMPLETED, CANCELLED]
+          description: Activity status
+        assignedSpocId:
+          type: string
+          description: Assigned SPOC user ID
+        reviewerId:
+          type: string
+          description: Assigned reviewer user ID
+        requiredRoles:
+          type: array
+          items:
+            type: string
+          description: Required roles for activity
+        conditions:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+                enum: [PREREQUISITE_ACTIVITY, BINARY_RECOMMENDATION, WORKFLOW_TRIGGER]
+                description: Condition type
+              description:
+                type: string
+                description: Condition description
+              parameters:
+                type: object
+                description: Condition parameters
+          description: Activation conditions
+        additionalDetails:
+          type: object
+          description: Additional activity details
+        auditDetails:
+          $ref: '#/components/schemas/AuditDetails'
+      required:
+        - id
+        - tenantId
+        - fieldPlanId
+        - activityType
+        - name
+        - startDate
+        - endDate
+        - status
+
+    ActivitySearchRequest:
+      type: object
+      properties:
+        RequestInfo:
+          $ref: '#/components/schemas/RequestInfo'
+        ActivitySearchCriteria:
+          type: object
+          properties:
+            tenantId:
+              type: string
+              description: Tenant ID
+            ids:
+              type: array
+              items:
+                type: string
+              description: Activity IDs
+            fieldPlanIds:
+              type: array
+              items:
+                type: string
+              description: Field plan IDs
+            activityTypes:
+              type: array
+              items:
+                type: string
+              description: Activity types
+            statuses:
+              type: array
+              items:
+                type: string
+              description: Activity statuses
+            assignedSpocId:
+              type: string
+              description: Assigned SPOC user ID
+          required:
+            - tenantId
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+      required:
+        - RequestInfo
+        - ActivitySearchCriteria
+
+    ActivitySearchResponse:
+      type: object
+      properties:
+        ResponseInfo:
+          $ref: '#/components/schemas/ResponseInfo'
+        Activities:
+          type: array
+          items:
+            $ref: '#/components/schemas/Activity'
+        TotalCount:
+          type: integer
+          description: Total number of activities
+      required:
+        - ResponseInfo
+        - Activities
+
+    AssignActivityRequest:
+      type: object
+      properties:
+        RequestInfo:
+          $ref: '#/components/schemas/RequestInfo'
+        ActivityAssignment:
+          type: object
+          properties:
+            tenantId:
+              type: string
+              description: Tenant ID
+            assignedSpocId:
+              type: string
+              description: SPOC user ID
+            reviewerId:
+              type: string
+              description: Reviewer user ID (optional)
+            assignmentNotes:
+              type: string
+              description: Assignment notes
+            dueDate:
+              type: integer
+              format: int64
+              description: Assignment due date
+          required:
+            - tenantId
+            - assignedSpocId
+      required:
+        - RequestInfo
+        - ActivityAssignment
+
+    ActivityAssignmentResponse:
+      type: object
+      properties:
+        ResponseInfo:
+          $ref: '#/components/schemas/ResponseInfo'
+        Activity:
+          $ref: '#/components/schemas/Activity'
+        NotificationStatus:
+          type: object
+          properties:
+            emailSent:
+              type: boolean
+              description: Email notification sent
+            smsSent:
+              type: boolean
+              description: SMS notification sent
+            inAppNotificationSent:
+              type: boolean
+              description: In-app notification sent
+      required:
+        - ResponseInfo
+        - Activity
+
+    # ========================
+    # FACILITY ACTIVITY SCHEMAS
+    # ========================
+
+    FacilityActivity:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Facility activity ID
+        tenantId:
+          type: string
+          description: Tenant ID
+        activityId:
+          type: string
+          description: Associated activity ID
+        facilityId:
+          type: string
+          description: Health facility ID
+        fieldPlanId:
+          type: string
+          description: Field plan ID
+        status:
+          type: string
+          enum: [SCHEDULED, ASSIGNED, ACTIVE, IN_PROGRESS, SUBMITTED, UNDER_REVIEW, APPROVED, REJECTED, COMPLETED]
+          description: Facility activity status
+        assignedUserId:
+          type: string
+          description: Assigned field user ID
+        assignedDate:
+          type: integer
+          format: int64
+          description: Assignment date
+        activationDate:
+          type: integer
+          format: int64
+          description: Activation date
+        targetCompletionDate:
+          type: integer
+          format: int64
+          description: Target completion date
+        actualCompletionDate:
+          type: integer
+          format: int64
+          description: Actual completion date
+        priority:
+          type: integer
+          minimum: 1
+          maximum: 3
+          description: Priority (1=High, 2=Medium, 3=Low)
+        activationConditions:
+          type: array
+          items:
+            type: object
+            properties:
+              conditionType:
+                type: string
+                description: Condition type
+              conditionDescription:
+                type: string
+                description: Condition description
+              isMet:
+                type: boolean
+                description: Whether condition is met
+              checkDate:
+                type: integer
+                format: int64
+                description: Last check date
+          description: Activation conditions
+        additionalDetails:
+          type: object
+          description: Additional details
+        auditDetails:
+          $ref: '#/components/schemas/AuditDetails'
+      required:
+        - id
+        - tenantId
+        - activityId
+        - facilityId
+        - fieldPlanId
+        - status
+
+    CreateFacilityActivityRequest:
+      type: object
+      properties:
+        RequestInfo:
+          $ref: '#/components/schemas/RequestInfo'
+        FacilityActivity:
+          type: object
+          properties:
+            tenantId:
+              type: string
+              description: Tenant ID
+            activityId:
+              type: string
+              description: Associated activity ID
+            facilityId:
+              type: string
+              description: Health facility ID
+            fieldPlanId:
+              type: string
+              description: Field plan ID
+            targetCompletionDate:
+              type: integer
+              format: int64
+              description: Target completion date
+            priority:
+              type: integer
+              minimum: 1
+              maximum: 3
+              default: 2
+              description: Priority
+            additionalDetails:
+              type: object
+              description: Additional details
+          required:
+            - tenantId
+            - activityId
+            - facilityId
+            - fieldPlanId
+      required:
+        - RequestInfo
+        - FacilityActivity
+
+    FacilityActivitySearchRequest:
+      type: object
+      properties:
+        RequestInfo:
+          $ref: '#/components/schemas/RequestInfo'
+        FacilityActivitySearchCriteria:
+          type: object
+          properties:
+            tenantId:
+              type: string
+              description: Tenant ID
+            ids:
+              type: array
+              items:
+                type: string
+              description: Facility activity IDs
+            activityIds:
+              type: array
+              items:
+                type: string
+              description: Activity IDs
+            facilityIds:
+              type: array
+              items:
+                type: string
+              description: Facility IDs
+            fieldPlanIds:
+              type: array
+              items:
+                type: string
+              description: Field plan IDs
+            statuses:
+              type: array
+              items:
+                type: string
+              description: Statuses
+            assignedUserId:
+              type: string
+              description: Assigned user ID
+            assignedToMe:
+              type: boolean
+              description: Filter for current user assignments
+          required:
+            - tenantId
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+      required:
+        - RequestInfo
+        - FacilityActivitySearchCriteria
+
+    FacilityActivitySearchResponse:
+      type: object
+      properties:
+        ResponseInfo:
+          $ref: '#/components/schemas/ResponseInfo'
+        FacilityActivities:
+          type: array
+          items:
+            $ref: '#/components/schemas/FacilityActivity'
+        TotalCount:
+          type: integer
+          description: Total number of facility activities
+      required:
+        - ResponseInfo
+        - FacilityActivities
+
+    FacilityActivityResponse:
+      type: object
+      properties:
+        ResponseInfo:
+          $ref: '#/components/schemas/ResponseInfo'
+        FacilityActivity:
+          $ref: '#/components/schemas/FacilityActivity'
+      required:
+        - ResponseInfo
+        - FacilityActivity
+
+    AssignUserRequest:
+      type: object
+      properties:
+        RequestInfo:
+          $ref: '#/components/schemas/RequestInfo'
+        UserAssignment:
+          type: object
+          properties:
+            tenantId:
+              type: string
+              description: Tenant ID
+            assignedUserId:
+              type: string
+              description: User ID to assign
+            assignmentNotes:
+              type: string
+              description: Assignment notes
+            targetCompletionDate:
+              type: integer
+              format: int64
+              description: Target completion date
+          required:
+            - tenantId
+            - assignedUserId
+      required:
+        - RequestInfo
+        - UserAssignment
+
+    UserAssignmentResponse:
+      type: object
+      properties:
+        ResponseInfo:
+          $ref: '#/components/schemas/ResponseInfo'
+        FacilityActivity:
+          $ref: '#/components/schemas/FacilityActivity'
+        NotificationStatus:
+          type: object
+          properties:
+            mobileNotificationSent:
+              type: boolean
+              description: Mobile notification sent
+            emailSent:
+              type: boolean
+              description: Email notification sent
+      required:
+        - ResponseInfo
+        - FacilityActivity
+
+    ActivationCheckResponse:
+      type: object
+      properties:
+        ResponseInfo:
+          $ref: '#/components/schemas/ResponseInfo'
+        ActivationStatus:
+          type: object
+          properties:
+            canActivate:
+              type: boolean
+              description: Whether facility activity can be activated
+            conditionResults:
+              type: array
+              items:
+                type: object
+                properties:
+                  conditionType:
+                    type: string
+                    description: Condition type
+                  conditionDescription:
+                    type: string
+                    description: Condition description
+                  isMet:
+                    type: boolean
+                    description: Whether condition is met
+                  details:
+                    type: string
+                    description: Additional details about condition
+              description: Individual condition results
+            nextSteps:
+              type: array
+              items:
+                type: string
+              description: Required next steps for activation
+            estimatedActivationDate:
+              type: integer
+              format: int64
+              description: Estimated activation date
+      required:
+        - ResponseInfo
+        - ActivationStatus
+
+    ActivateFacilityActivityRequest:
+      type: object
+      properties:
+        RequestInfo:
+          $ref: '#/components/schemas/RequestInfo'
+        ActivationRequest:
+          type: object
+          properties:
+            tenantId:
+              type: string
+              description: Tenant ID
+            activationNotes:
+              type: string
+              description: Activation notes
+            overrideConditions:
+              type: boolean
+              default: false
+              description: Override activation conditions (admin only)
+          required:
+            - tenantId
+      required:
+        - RequestInfo
+        - ActivationRequest
+
+    # ========================
+    # ACTIVITY REPORT SCHEMAS
+    # ========================
+
+    ActivityReport:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Activity report ID
+        tenantId:
+          type: string
+          description: Tenant ID
+        facilityActivityId:
+          type: string
+          description: Associated facility activity ID
+        reportType:
+          type: string
+          enum: [INSTALLATION, ASSESSMENT, FIELD_QC, HANDOVER, MAINTENANCE]
+          description: Report type
+        status:
+          type: string
+          enum: [DRAFT, SUBMITTED, UNDER_REVIEW, APPROVED, REJECTED, FLAGGED_FOR_QC]
+          description: Report status
+        submittedBy:
+          type: string
+          description: Submitted by user ID
+        submittedDate:
+          type: integer
+          format: int64
+          description: Submission date
+        reviewedBy:
+          type: string
+          description: Reviewed by user ID
+        reviewedDate:
+          type: integer
+          format: int64
+          description: Review date
+        reviewComments:
+          type: string
+          description: Review comments
+        reportData:
+          type: object
+          description: Report data (structured based on report type)
+        attachments:
+          type: array
+          items:
+            type: object
+            properties:
+              fileStoreId:
+                type: string
+                description: File store ID
+              fileName:
+                type: string
+                description: File name
+              fileType:
+                type: string
+                description: File type
+              fileSize:
+                type: integer
+                description: File size in bytes
+              uploadedBy:
+                type: string
+                description: Uploaded by user ID
+              uploadedDate:
+                type: integer
+                format: int64
+                description: Upload date
+          description: Report attachments
+        geoLocation:
+          type: object
+          properties:
+            latitude:
+              type: number
+              format: double
+              description: Latitude
+            longitude:
+              type: number
+              format: double
+              description: Longitude
+            accuracy:
+              type: number
+              format: double
+              description: GPS accuracy in meters
+          description: Geo-location data
+        additionalDetails:
+          type: object
+          description: Additional report details
+        auditDetails:
+          $ref: '#/components/schemas/AuditDetails'
+      required:
+        - id
+        - tenantId
+        - facilityActivityId
+        - reportType
+        - status
+
+    CreateActivityReportRequest:
+      type: object
+      properties:
+        RequestInfo:
+          $ref: '#/components/schemas/RequestInfo'
+        ActivityReport:
+          type: object
+          properties:
+            tenantId:
+              type: string
+              description: Tenant ID
+            facilityActivityId:
+              type: string
+              description: Associated facility activity ID
+            reportType:
+              type: string
+              enum: [INSTALLATION, ASSESSMENT, FIELD_QC, HANDOVER, MAINTENANCE]
+              description: Report type
+            reportData:
+              type: object
+              description: Report data
+            attachments:
+              type: array
+              items:
+                type: object
+                properties:
+                  fileStoreId:
+                    type: string
+                    description: File store ID
+                  fileName:
+                    type: string
+                    description: File name
+                  fileType:
+                    type: string
+                    description: File type
+              description: Report attachments
+            geoLocation:
+              type: object
+              properties:
+                latitude:
+                  type: number
+                  format: double
+                longitude:
+                  type: number
+                  format: double
+                accuracy:
+                  type: number
+                  format: double
+              description: Geo-location data
+            additionalDetails:
+              type: object
+              description: Additional details
+          required:
+            - tenantId
+            - facilityActivityId
+            - reportType
+            - reportData
+      required:
+        - RequestInfo
+        - ActivityReport
+
+    UpdateActivityReportRequest:
+      type: object
+      properties:
+        RequestInfo:
+          $ref: '#/components/schemas/RequestInfo'
+        ActivityReport:
+          type: object
+          properties:
+            id:
+              type: string
+              description: Activity report ID
+            tenantId:
+              type: string
+              description: Tenant ID
+            reportData:
+              type: object
+              description: Updated report data
+            attachments:
+              type: array
+              items:
+                type: object
+                properties:
+                  fileStoreId:
+                    type: string
+                  fileName:
+                    type: string
+                  fileType:
+                    type: string
+              description: Updated attachments
+            additionalDetails:
+              type: object
+              description: Additional details
+          required:
+            - id
+            - tenantId
+      required:
+        - RequestInfo
+        - ActivityReport
+
+    ActivityReportSearchRequest:
+      type: object
+      properties:
+        RequestInfo:
+          $ref: '#/components/schemas/RequestInfo'
+        ActivityReportSearchCriteria:
+          type: object
+          properties:
+            tenantId:
+              type: string
+              description: Tenant ID
+            ids:
+              type: array
+              items:
+                type: string
+              description: Activity report IDs
+            facilityActivityIds:
+              type: array
+              items:
+                type: string
+              description: Facility activity IDs
+            reportTypes:
+              type: array
+              items:
+                type: string
+              description: Report types
+            statuses:
+              type: array
+              items:
+                type: string
+              description: Report statuses
+            submittedBy:
+              type: string
+              description: Submitted by user ID
+            reviewedBy:
+              type: string
+              description: Reviewed by user ID
+            fromDate:
+              type: integer
+              format: int64
+              description: Filter from date
+            toDate:
+              type: integer
+              format: int64
+              description: Filter to date
+            assignedToMe:
+              type: boolean
+              description: Filter for reports assigned to current user
+          required:
+            - tenantId
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+      required:
+        - RequestInfo
+        - ActivityReportSearchCriteria
+
+    ActivityReportSearchResponse:
+      type: object
+      properties:
+        ResponseInfo:
+          $ref: '#/components/schemas/ResponseInfo'
+        ActivityReports:
+          type: array
+          items:
+            $ref: '#/components/schemas/ActivityReport'
+        TotalCount:
+          type: integer
+          description: Total number of activity reports
+      required:
+        - ResponseInfo
+        - ActivityReports
+
+    ActivityReportResponse:
+      type: object
+      properties:
+        ResponseInfo:
+          $ref: '#/components/schemas/ResponseInfo'
+        ActivityReport:
+          $ref: '#/components/schemas/ActivityReport'
+      required:
+        - ResponseInfo
+        - ActivityReport
+
+    SubmitReportRequest:
+      type: object
+      properties:
+        RequestInfo:
+          $ref: '#/components/schemas/RequestInfo'
+        SubmissionRequest:
+          type: object
+          properties:
+            tenantId:
+              type: string
+              description: Tenant ID
+            submissionNotes:
+              type: string
+              description: Submission notes
+            finalCheck:
+              type: boolean
+              default: true
+              description: Final check confirmation
+          required:
+            - tenantId
+      required:
+        - RequestInfo
+        - SubmissionRequest
+
+    ReviewReportRequest:
+      type: object
+      properties:
+        RequestInfo:
+          $ref: '#/components/schemas/RequestInfo'
+        ReviewRequest:
+          type: object
+          properties:
+            tenantId:
+              type: string
+              description: Tenant ID
+            action:
+              type: string
+              enum: [APPROVE, REJECT, FLAG_FOR_QC]
+              description: Review action
+            reviewComments:
+              type: string
+              description: Review comments
+            additionalDetails:
+              type: object
+              description: Additional review details
+          required:
+            - tenantId
+            - action
+      required:
+        - RequestInfo
+        - ReviewRequest
+
+    BulkReviewRequest:
+      type: object
+      properties:
+        RequestInfo:
+          $ref: '#/components/schemas/RequestInfo'
+        BulkReviewRequest:
+          type: object
+          properties:
+            tenantId:
+              type: string
+              description: Tenant ID
+            reportIds:
+              type: array
+              items:
+                type: string
+              description: Activity report IDs to review
+            action:
+              type: string
+              enum: [APPROVE, REJECT, FLAG_FOR_QC]
+              description: Bulk review action
+            reviewComments:
+              type: string
+              description: Common review comments
+          required:
+            - tenantId
+            - reportIds
+            - action
+      required:
+        - RequestInfo
+        - BulkReviewRequest
+
+    BulkReviewResponse:
+      type: object
+      properties:
+        ResponseInfo:
+          $ref: '#/components/schemas/ResponseInfo'
+        BulkReviewResults:
+          type: array
+          items:
+            type: object
+            properties:
+              reportId:
+                type: string
+                description: Activity report ID
+              status:
+                type: string
+                enum: [SUCCESS, FAILED, SKIPPED]
+                description: Review status
+              message:
+                type: string
+                description: Status message
+              updatedStatus:
+                type: string
+                description: Updated report status
+        TotalProcessed:
+          type: integer
+          description: Total reports processed
+        TotalSuccessful:
+          type: integer
+          description: Total successful reviews
+        TotalFailed:
+          type: integer
+          description: Total failed reviews
+      required:
+        - ResponseInfo
+        - BulkReviewResults
+
+    # ========================
+    # MOBILE SYNC SCHEMAS
+    # ========================
+
+    UserSyncRequest:
+      type: object
+      properties:
+        RequestInfo:
+          $ref: '#/components/schemas/RequestInfo'
+        SyncRequest:
+          type: object
+          properties:
+            tenantId:
+              type: string
+              description: Tenant ID
+            userId:
+              type: string
+              description: User ID
+            lastSyncTime:
+              type: integer
+              format: int64
+              description: Last sync timestamp
+            deviceInfo:
+              type: object
+              properties:
+                deviceId:
+                  type: string
+                  description: Device ID
+                platform:
+                  type: string
+                  enum: [ANDROID, IOS]
+                  description: Device platform
+                appVersion:
+                  type: string
+                  description: App version
+              description: Device information
+          required:
+            - tenantId
+            - userId
+      required:
+        - RequestInfo
+        - SyncRequest
+
+    UserSyncResponse:
+      type: object
+      properties:
+        ResponseInfo:
+          $ref: '#/components/schemas/ResponseInfo'
+        SyncData:
+          type: object
+          properties:
+            userProfile:
+              type: object
+              description: User profile data
+            assignments:
+              type: array
+              items:
+                $ref: '#/components/schemas/FacilityActivity'
+              description: User facility assignments
+            masterData:
+              type: object
+              description: Master data for offline use
+            notifications:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  title:
+                    type: string
+                  message:
+                    type: string
+                  type:
+                    type: string
+                  timestamp:
+                    type: integer
+                    format: int64
+              description: User notifications
+            syncTimestamp:
+              type: integer
+              format: int64
+              description: Current sync timestamp
+      required:
+        - ResponseInfo
+        - SyncData
+
+    FacilitySyncRequest:
+      type: object
+      properties:
+        RequestInfo:
+          $ref: '#/components/schemas/RequestInfo'
+        FacilitySyncRequest:
+          type: object
+          properties:
+            tenantId:
+              type: string
+              description: Tenant ID
+            userId:
+              type: string
+              description: User ID
+            facilityIds:
+              type: array
+              items:
+                type: string
+              description: Specific facility IDs to sync (optional)
+            lastSyncTime:
+              type: integer
+              format: int64
+              description: Last sync timestamp
+          required:
+            - tenantId
+            - userId
+      required:
+        - RequestInfo
+        - FacilitySyncRequest
+
+    FacilitySyncResponse:
+      type: object
+      properties:
+        ResponseInfo:
+          $ref: '#/components/schemas/ResponseInfo'
+        FacilityData:
+          type: object
+          properties:
+            facilities:
+              type: array
+              items:
+                type: object
+                description: Health facility details
+              description: Assigned facilities
+            activities:
+              type: array
+              items:
+                $ref: '#/components/schemas/FacilityActivity'
+              description: Facility activities
+            forms:
+              type: object
+              description: Activity-specific forms and templates
+            syncTimestamp:
+              type: integer
+              format: int64
+              description: Current sync timestamp
+      required:
+        - ResponseInfo
+        - FacilityData
+
+    MobileUploadResponse:
+      type: object
+      properties:
+        ResponseInfo:
+          $ref: '#/components/schemas/ResponseInfo'
+        UploadResults:
+          type: object
+          properties:
+            totalReports:
+              type: integer
+              description: Total reports uploaded
+            successfulUploads:
+              type: integer
+              description: Successful uploads
+            failedUploads:
+              type: integer
+              description: Failed uploads
+            fileUploadResults:
+              type: array
+              items:
+                type: object
+                properties:
+                  fileName:
+                    type: string
+                  status:
+                    type: string
+                    enum: [SUCCESS, FAILED]
+                  fileStoreId:
+                    type: string
+                  message:
+                    type: string
+              description: File upload results
+            reportUploadResults:
+              type: array
+              items:
+                type: object
+                properties:
+                  reportId:
+                    type: string
+                  status:
+                    type: string
+                    enum: [SUCCESS, FAILED]
+                  message:
+                    type: string
+              description: Report upload results
+      required:
+        - ResponseInfo
+        - UploadResults
+
+    # ========================
+    # TEAM MANAGEMENT SCHEMAS
+    # ========================
+
+    TeamSearchRequest:
+      type: object
+      properties:
+        RequestInfo:
+          $ref: '#/components/schemas/RequestInfo'
+        TeamSearchCriteria:
+          type: object
+          properties:
+            tenantId:
+              type: string
+              description: Tenant ID
+            projectIds:
+              type: array
+              items:
+                type: string
+              description: Project IDs
+            fieldPlanIds:
+              type: array
+              items:
+                type: string
+              description: Field plan IDs
+            roles:
+              type: array
+              items:
+                type: string
+              description: User roles
+            searchText:
+              type: string
+              description: Search text (name, email, mobile)
+            organizationId:
+              type: string
+              description: Organization ID
+            isActive:
+              type: boolean
+              description: Filter active users
+          required:
+            - tenantId
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+      required:
+        - RequestInfo
+        - TeamSearchCriteria
+
+    TeamSearchResponse:
+      type: object
+      properties:
+        ResponseInfo:
+          $ref: '#/components/schemas/ResponseInfo'
+        TeamMembers:
+          type: array
+          items:
+            type: object
+            properties:
+              userId:
+                type: string
+                description: User ID
+              name:
+                type: string
+                description: Full name
+              emailId:
+                type: string
+                description: Email ID
+              mobileNumber:
+                type: string
+                description: Mobile number
+              roles:
+                type: array
+                items:
+                  type: string
+                description: User roles
+              organizationName:
+                type: string
+                description: Organization name
+              isActive:
+                type: boolean
+                description: User active status
+              assignments:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    fieldPlanId:
+                      type: string
+                    fieldPlanName:
+                      type: string
+                    role:
+                      type: string
+                    assignmentDate:
+                      type: integer
+                      format: int64
+                description: Current assignments
+        TotalCount:
+          type: integer
+          description: Total team members count
+      required:
+        - ResponseInfo
+        - TeamMembers
+
+    TeamAssignmentRequest:
+      type: object
+      properties:
+        RequestInfo:
+          $ref: '#/components/schemas/RequestInfo'
+        AssignmentCriteria:
+          type: object
+          properties:
+            tenantId:
+              type: string
+              description: Tenant ID
+            userId:
+              type: string
+              description: User ID (optional - for specific user)
+            projectIds:
+              type: array
+              items:
+                type: string
+              description: Project IDs
+            fieldPlanIds:
+              type: array
+              items:
+                type: string
+              description: Field plan IDs
+            includeCompleted:
+              type: boolean
+              default: false
+              description: Include completed assignments
+          required:
+            - tenantId
+      required:
+        - RequestInfo
+        - AssignmentCriteria
+
+    TeamAssignmentResponse:
+      type: object
+      properties:
+        ResponseInfo:
+          $ref: '#/components/schemas/ResponseInfo'
+        Assignments:
+          type: array
+          items:
+            type: object
+            properties:
+              userId:
+                type: string
+                description: User ID
+              userName:
+                type: string
+                description: User name
+              fieldPlanId:
+                type: string
+                description: Field plan ID
+              fieldPlanName:
+                type: string
+                description: Field plan name
+              projectId:
+                type: string
+                description: Project ID
+              projectName:
+                type: string
+                description: Project name
+              role:
+                type: string
+                description: Assignment role
+              assignmentDate:
+                type: integer
+                format: int64
+                description: Assignment date
+              status:
+                type: string
+                enum: [ACTIVE, COMPLETED, CANCELLED]
+                description: Assignment status
+              facilityCount:
+                type: integer
+                description: Number of assigned facilities
+              completedActivities:
+                type: integer
+                description: Number of completed activities
+              totalActivities:
+                type: integer
+                description: Total number of activities
+        AssignmentSummary:
+          type: object
+          properties:
+            totalAssignments:
+              type: integer
+              description: Total assignments
+            activeAssignments:
+              type: integer
+              description: Active assignments
+            completedAssignments:
+              type: integer
+              description: Completed assignments
+      required:
+        - ResponseInfo
+        - Assignments
+
+tags:
+  - name: Field Plans
+    description: Field plan creation and management operations
+  - name: Activities
+    description: Activity management and assignment operations
+  - name: Facility Activities
+    description: Facility-specific activity management
+  - name: Activity Reports
+    description: Activity report creation, submission, and review
+  - name: Mobile Sync
+    description: Mobile application synchronization endpoints
+  - name: Team Management
+    description: Team member search and assignment tracking 
