@@ -13,7 +13,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:isar/isar.dart';
 import 'package:path/path.dart' show basename;
 import 'package:recase/recase.dart';
-import 'package:selco/model/project_workflow/project_workflow.dart';
 
 import '../blocs/asset_submission/asset_submission.dart';
 import '../blocs/asset_type/asset_type.dart';
@@ -24,6 +23,7 @@ import '../blocs/selected_project/selected_project.dart';
 import '../blocs/user_type/user_type.dart';
 import '../data/nosql/cache_completion_report.dart';
 import '../model/comment/comment.dart';
+import '../model/project_workflow/project_workflow.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
 import '../utils/utils.dart';
@@ -64,9 +64,9 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
     // Kick off the cache sync
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final selState = context.read<SelectedProjectBloc>().state;
-      selState.whenOrNull(selected: (project) {
-        projectId = project.project.id;
-        project = project;
+      selState.whenOrNull(selected: (selProject) {
+        projectId = selProject.project.id;
+        project = selProject;
       });
 
       context
@@ -252,10 +252,13 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                   isDisabled: !allChecked || submitting,
                   text: submitting ? "loading" : "Re-Submit for Approval",
                   onPress: () {
+                    print("allChecked $allChecked");
+                    print("submitting $submitting");
+                    print("submitting ${!allChecked || submitting}");
                     if (!allChecked || submitting) return;
                     if (userType == USER_TYPES.SUPERVISOR.name &&
-                        _initialCompletion.isNotEmpty) {
-                      final file = _initialCompletion.first;
+                        filePath!.isNotEmpty) {
+                      // final file = _initialCompletion.first;
                       context.read<CacheCompletionReportBloc>().add(
                             CacheCompletionReportEvent.addOrUpdate(
                               CacheCompletionReport(
