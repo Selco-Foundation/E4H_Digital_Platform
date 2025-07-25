@@ -42,7 +42,7 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
 
   const logos = window?.globalConfigs?.getConfig("LOGO_LIST") || [];
 
-  useEffect(() => {
+  useEffect( async() => {
     if (!user) {
       return;
     }
@@ -53,6 +53,13 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
     setEmployeeDetail(user?.info, user?.access_token);
     let redirectPath = `/${window.contextPath}/employee`;
 
+    try {
+      await Digit.UserService.userLoginReport({
+        User: user.info
+      });
+    } catch (err) {
+      console.error("Login report failed", err);
+    }
 
     const fromParam = new URLSearchParams(location.search).get('from');
 
@@ -89,6 +96,7 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
     try {
       const { UserRequest: info, ...tokens } = await Digit.UserService.authenticate(requestData);
       Digit.SessionStorage.set("Employee.tenantId", info?.tenantId);
+
       setUser({ info, ...tokens });
     } catch (err) {
       setShowToast(err?.response?.data?.error_description || "Invalid login credentials!");

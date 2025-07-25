@@ -142,4 +142,13 @@ export const UserService = {
       data: data.pageSize ? { tenantId, ...data } : { tenantId, ...data, pageSize: "100" },
     });
   },
+  userLoginReport: async (authResponse) => {
+    return ServiceRequest({
+      serviceName: "userLoginReport",
+      url: Urls.UserLoginReport,
+      method: "POST",
+      auth: true,
+      data: authResponse,
+    });
+  },
 };
