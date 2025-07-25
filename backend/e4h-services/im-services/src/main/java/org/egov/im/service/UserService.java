@@ -277,7 +277,7 @@ public class UserService {
                 userLoginReport.setUserName(userInfo.getUserName());
                 userLoginReport.setUserRole(roleCode);
                 userLoginReport.setCurrentOwnerName(userInfo.getName());
-                userLoginReport.setLastLoginDateTime(System.currentTimeMillis());
+                userLoginReport.setLastLoginDateTime(String.valueOf(System.currentTimeMillis()));
 
                 if ("COMPLAINANT".equalsIgnoreCase(roleCode)) {
                     // Check if user also has COMPLAINT_ASSESSOR role (CRM)
