@@ -108,6 +108,7 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
             showDialog(
               context: context,
               barrierDismissible: false,
+              useRootNavigator: true,
               builder: (_) => const Center(
                 child: CircularProgressIndicator(),
               ),
@@ -354,7 +355,7 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
                           type: DigitButtonType.primary,
                           size: DigitButtonSize.large,
                           mainAxisSize: MainAxisSize.min,
-                          onPressed: () {
+                          onPressed: () async {
                             final selected = selectedProject;
                             if (selected == null) return;
 
