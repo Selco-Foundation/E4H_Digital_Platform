@@ -108,6 +108,7 @@ class InboxReportRejectedCard extends StatelessWidget {
                 size: DigitButtonSize.large),
             const SizedBox(height: spacer4),
             DigitButton(
+                isDisabled: true,
                 mainAxisSize: MainAxisSize.max,
                 label: 'Re-Submit for Approval',
                 onPressed: onPress,

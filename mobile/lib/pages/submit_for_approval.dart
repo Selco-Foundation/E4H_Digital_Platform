@@ -243,40 +243,72 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
             showBackNavigation: true,
             showHelp: false,
           ),
-          footer: BlocBuilder<AssetSubmissionBloc, AssetSubmissionState>(
-            builder: (context, submissionState) {
-              final submitting = submissionState.maybeWhen(
-                  loading: () => true, orElse: () => false);
-              return FooterButton(
-                  showSuffixIcon: false,
-                  isDisabled: !allChecked || submitting,
-                  text: submitting ? "loading" : "Re-Submit for Approval",
-                  onPress: () {
-                    print("allChecked $allChecked");
-                    print("submitting $submitting");
-                    print("submitting ${!allChecked || submitting}");
-                    if (!allChecked || submitting) return;
-                    if (userType == USER_TYPES.SUPERVISOR.name &&
-                        filePath!.isNotEmpty) {
-                      // final file = _initialCompletion.first;
-                      context.read<CacheCompletionReportBloc>().add(
-                            CacheCompletionReportEvent.addOrUpdate(
-                              CacheCompletionReport(
-                                projectId: projectId,
-                                filePath: filePath!,
-                                latitude: _latitude.toString(),
-                                longitude: _longitude.toString(),
-                              ),
-                            ),
-                          );
-                      // 2) submit everything
-                      context.read<AssetSubmissionBloc>().add(
-                            AssetSubmissionEvent.submitAll(
-                                projectId: projectId, userType: userType),
-                          );
-                    }
-                    // context.router.replace(const SubmittedSaveSuccessRoute());
-                  });
+          footer: BlocBuilder<SelectedProjectBloc, SelectedProjectState>(
+            builder: (context, selProjectState) {
+              return BlocBuilder<AssetSubmissionBloc, AssetSubmissionState>(
+                builder: (context, submissionState) {
+                  final submitting = submissionState.maybeWhen(
+                      loading: () => true, orElse: () => false);
+
+                  final selProject =
+                      selProjectState.whenOrNull(selected: (wf) => wf);
+                  if (selProject == null) {
+                    return const SizedBox.shrink();
+                  }
+
+                  print("selProject.status ${selProject.status}");
+
+                  final isRejectedByQc = selProject.status ==
+                      WORKFLOW_STATUS_FIELD_STAFF.REJECTED_BY_QC_SPOC.name;
+                  // final isRejectedBySupervisor = selProject.status ==
+                  //     WORKFLOW_STATUS_FIELD_STAFF
+                  //         .REJECTED_BY_FIELD_SUPERVISOR.name;
+                  // bool isSupervisor = userType == USER_TYPES.SUPERVISOR.name;
+                  bool isFieldStaff = userType == USER_TYPES.FIELD_STAFF.name;
+
+                  if (isFieldStaff && isRejectedByQc) {
+                    return const SizedBox.shrink();
+                  }
+
+                  bool disableWithoutSupervisorReport =
+                      userType == USER_TYPES.SUPERVISOR.name &&
+                          filePath!.isEmpty;
+
+                  return FooterButton(
+                      showSuffixIcon: false,
+                      isDisabled: !allChecked ||
+                          submitting ||
+                          disableWithoutSupervisorReport,
+                      text: submitting ? "loading" : "Re-Submit for Approval",
+                      onPress: () {
+                        print("allChecked $allChecked");
+                        print("submitting $submitting");
+                        print("submitting ${!allChecked || submitting}");
+                        if (!allChecked || submitting) return;
+                        // final file = _initialCompletion.first;
+                        if (userType == USER_TYPES.SUPERVISOR.name &&
+                            filePath!.isNotEmpty) {
+                          context.read<CacheCompletionReportBloc>().add(
+                                CacheCompletionReportEvent.addOrUpdate(
+                                  CacheCompletionReport(
+                                    projectId: projectId,
+                                    filePath: filePath!,
+                                    latitude: _latitude.toString(),
+                                    longitude: _longitude.toString(),
+                                  ),
+                                ),
+                              );
+                        }
+                        // 2) submit everything
+                        context.read<AssetSubmissionBloc>().add(
+                              AssetSubmissionEvent.submitAll(
+                                  projectId: projectId, userType: userType),
+                            );
+                        // }
+                        // context.router.replace(const SubmittedSaveSuccessRoute());
+                      });
+                },
+              );
             },
           ),
           children: [

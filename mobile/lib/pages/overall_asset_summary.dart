@@ -161,7 +161,7 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
 
     final files = <PlatformFile>[];
     for (final doc in docs) {
-      if (doc.fileStore != null) {
+      if (doc.documentType == 'INSTALLATION_REPORT' && doc.fileStore != null) {
         final f = await getCachedFile(doc.fileStore!);
         if (f != null) {
           final p = await copyFileToLocalDir(f);
