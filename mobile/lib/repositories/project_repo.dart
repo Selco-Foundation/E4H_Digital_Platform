@@ -201,17 +201,20 @@ class ProjectRepository {
       required List<String> workflowStatuses,
       sortDirection = 'ASC'}) async {
     try {
+      print("workflowStatuses $workflowStatuses");
       final remoteList = await _remote.searchByWorkflow(
         body: body,
         workflowStatuses: workflowStatuses,
         sortDirection: sortDirection,
       );
+      print("remoteList ${jsonEncode(remoteList)}");
       if (remoteList.isNotEmpty) {
         await _replaceCache(workflowStatuses, remoteList);
         return remoteList;
       }
-    } catch (_) {
+    } catch (e) {
       // on any error, fall back to cache
+      print("error in fetching remote project ${e.toString()}");
     }
     return readCache(workflowStatuses);
   }
@@ -226,8 +229,11 @@ class ProjectRepository {
     await _isar.writeTxn(() async {
       // DELETE step
       for (final status in statuses) {
+        print("statuses $statuses status $status");
         final toDelete = await col.where().statusEqualTo(status).findAll();
         for (final entry in toDelete) {
+          print("entry $entry");
+          print("entry status ${entry.status}");
           await col.delete(entry.id);
         }
       }
