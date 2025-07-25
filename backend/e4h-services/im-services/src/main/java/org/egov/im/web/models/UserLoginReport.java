@@ -27,7 +27,7 @@ public class UserLoginReport {
     private String currentOwnerName;
 
     @JsonProperty("lastLoginDateTime")
-    private String lastLoginDateTime;
+    private Long lastLoginDateTime;
 
     @JsonProperty("healthFacilityName")
     private String healthFacilityName;
