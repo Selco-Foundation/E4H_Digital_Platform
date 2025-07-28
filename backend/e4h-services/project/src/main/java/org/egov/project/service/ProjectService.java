@@ -139,7 +139,7 @@ public class ProjectService {
 
     public List<Project> searchProject(ProjectSearchRequest projectSearchRequest, @Valid ProjectSearchURLParams urlParams, List<String> workflowStatuses, @Valid ProjectSortCriteria sortCriteria) throws Exception {
         projectValidator.validateSearchV2ProjectRequest(projectSearchRequest, urlParams, sortCriteria);
-        List<Project> projects = projectRepository.getProjects(projectSearchRequest.getProject(), urlParams, workflowStatuses, sortCriteria);
+        List<Project> projects = projectRepository.getProjects(projectSearchRequest, urlParams, workflowStatuses, sortCriteria);
         projects = getCountFacilitiesProject(projects, projectSearchRequest.getRequestInfo());
         return projects;
     }
@@ -390,7 +390,7 @@ public class ProjectService {
     public Integer countAllProjects(ProjectSearchRequest request,
                                     ProjectSearchURLParams urlParams,
                                     List<String> workflowStatuses) {
-        return projectRepository.getProjectCount(request.getProject(), urlParams, workflowStatuses);
+        return projectRepository.getProjectCount(request, urlParams, workflowStatuses);
     }
 
     public ProjectStatusWrapper updateProjectWorkflow(ProjectWorkflowRequest request) throws Exception {

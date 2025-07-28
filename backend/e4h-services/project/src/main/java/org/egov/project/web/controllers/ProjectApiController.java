@@ -492,30 +492,9 @@ public class ProjectApiController {
     ) throws Exception {
         List<String> workflowStatuses = projectSearchRequest.getWorkflowStatus();
 
-        // Get user info
-        var userInfo = projectSearchRequest.getRequestInfo().getUserInfo();
-        String userUuid = userInfo.getUuid();
-        boolean isProjectManager = false;
-        if (userInfo.getRoles() != null) {
-            isProjectManager = userInfo.getRoles().stream().anyMatch(role -> "PROJECT_MANAGER".equalsIgnoreCase(role.getCode()));
-        }
-
         // if role is project manager we need to show all projects
         List<Project> projects = projectService.searchProject(projectSearchRequest, urlParams, workflowStatuses, sortCriteria);
-
-        // Filter projects if not PROJECT_MANAGER
-        if (!isProjectManager) {
-            //fetch projects for which user is added as staff
-            List<String> allowedProjectIds = projectStaffRepository.findProjectIdsByUserId(userUuid);
-            projects = projects.stream().filter(p -> allowedProjectIds.contains(p.getId())).toList();
-        }
-
-        Integer count;
-        if(isProjectManager) {
-            count = projectService.countAllProjects(projectSearchRequest, urlParams, workflowStatuses);
-        } else {
-            count = projects.size();
-        }
+        Integer count = projectService.countAllProjects(projectSearchRequest, urlParams, workflowStatuses);
 
         // Fetch all transactions by projectIds
         List<String> projectIds = projects.stream().map(Project::getId).toList();

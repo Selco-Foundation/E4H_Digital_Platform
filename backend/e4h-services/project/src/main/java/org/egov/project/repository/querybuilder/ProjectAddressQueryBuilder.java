@@ -8,6 +8,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.egov.common.models.core.ProjectSearchURLParams;
 import org.egov.common.models.project.Project;
 import org.egov.common.models.project.ProjectSearch;
+import org.egov.common.models.project.ProjectSearchRequest;
 import org.egov.project.config.ProjectConfiguration;
 import org.egov.project.web.models.ProjectSearchCriteria;
 import org.egov.project.web.models.ProjectSortCriteria;
@@ -206,13 +207,13 @@ public class ProjectAddressQueryBuilder {
     /**
      * Constructs the SQL query string for searching projects based on the given parameters.
      *
-     * @param projectSearch    The search criteria provided in the request body.
+     * @param projectSearchRequest    The search criteria provided in the request body.
      * @param urlParams        The search criteria provided as URL parameters.
      * @param preparedStmtList The list to which prepared statement parameters will be added.
      * @param isCountQuery     Boolean flag indicating if the query is for counting records.
      * @return The constructed SQL query string.
      */
-    public String getProjectSearchQuery(@NotNull @Valid ProjectSearch projectSearch,
+    public String getProjectSearchQuery(@NotNull @Valid ProjectSearchRequest projectSearchRequest,
                                         ProjectSearchURLParams urlParams,
                                         List<Object> preparedStmtList,
                                         Boolean isCountQuery,
@@ -222,11 +223,20 @@ public class ProjectAddressQueryBuilder {
         String query = isCountQuery ? PROJECTS_COUNT_QUERY : FETCH_PROJECT_ADDRESS_QUERY;
         StringBuilder queryBuilder = new StringBuilder(query);
 
+        // Get user info
+        var userInfo = projectSearchRequest.getRequestInfo().getUserInfo();
+        String userUuid = userInfo.getUuid();
+        boolean isProjectManager = false;
+        if (userInfo.getRoles() != null) {
+            isProjectManager = userInfo.getRoles().stream().anyMatch(role -> "PROJECT_MANAGER".equalsIgnoreCase(role.getCode()));
+        }
+
+        ProjectSearch projectSearch = projectSearchRequest.getProject();
         // Check if tenant ID is provided in URL parameters
         addClause(urlParams.getTenantId(), preparedStmtList, queryBuilder);
 
         // Check if project IDs are provided
-        addClauseOnProjects(projectSearch, preparedStmtList, queryBuilder);
+        addClauseOnProjects(projectSearch, preparedStmtList, queryBuilder, userUuid, isProjectManager);
 
         // Check if boundary code is provided
         if (projectSearch.getBoundaryCode() != null && StringUtils.isNotBlank(projectSearch.getBoundaryCode())) {
@@ -308,11 +318,30 @@ public class ProjectAddressQueryBuilder {
         return addPaginationWrapper(queryBuilder.toString(), preparedStmtList, urlParams.getLimit(), urlParams.getOffset());
     }
 
-    private void addClauseOnProjects(ProjectSearch projectSearch, List<Object> preparedStmtList, StringBuilder queryBuilder) {
-        if (!CollectionUtils.isEmpty(projectSearch.getId())) {
+    private void addClauseOnProjects(ProjectSearch projectSearch, List<Object> preparedStmtList,
+                                     StringBuilder queryBuilder, String userUuid, boolean isProjectManager) {
+        // 🧠 Restrict non-PROJECT_MANAGER to only their own staff projects
+        if (!isProjectManager) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
-            queryBuilder.append(" prj.id IN (").append(createQuery(projectSearch.getId())).append(")");
-            addToPreparedStatement(preparedStmtList, projectSearch.getId());
+            queryBuilder.append(" prj.id IN (SELECT ps.projectid FROM project_staff ps WHERE ps.staffid = ?) ");
+            preparedStmtList.add(userUuid);
+
+            // Further restrict to project IDs if given
+            if (!CollectionUtils.isEmpty(projectSearch.getId())) {
+                queryBuilder.append(" AND ps.projectid IN (")
+                        .append(createQuery(projectSearch.getId()))
+                        .append(") ");
+                addToPreparedStatement(preparedStmtList, projectSearch.getId());
+            }
+        } else {
+            // PROJECT_MANAGER: no staff-based restriction
+            if (!CollectionUtils.isEmpty(projectSearch.getId())) {
+                addClauseIfRequired(preparedStmtList, queryBuilder);
+                queryBuilder.append(" prj.id IN (")
+                        .append(createQuery(projectSearch.getId()))
+                        .append(")");
+                addToPreparedStatement(preparedStmtList, projectSearch.getId());
+            }
         }
 
         // Check if reference ID is provided
@@ -431,15 +460,15 @@ public class ProjectAddressQueryBuilder {
     }
 
     /* Returns query to get total projects count based on project search params */
-    public String getSearchCountQueryString(ProjectSearch projectSearch,
+    public String getSearchCountQueryString(ProjectSearchRequest projectSearchRequest,
                                             ProjectSearchURLParams urlParams,
                                             List<Object> preparedStatement,
                                             List<String> workflowStatuses) {
-        return getProjectSearchQuery(projectSearch, urlParams, preparedStatement, Boolean.TRUE, workflowStatuses);
+        return getProjectSearchQuery(projectSearchRequest, urlParams, preparedStatement, Boolean.TRUE, workflowStatuses);
     }
 
-    public String getProjectSearchAndSortQuery(ProjectSearch projectSearch, ProjectSearchURLParams urlParams, List<Object> preparedStmtList, Boolean isCountQuery, List<String> workflowStatuses, ProjectSortCriteria sortParam) {
-        String query = getProjectSearchQuery(projectSearch, urlParams, preparedStmtList, isCountQuery, workflowStatuses);
+    public String getProjectSearchAndSortQuery(ProjectSearchRequest projectSearchRequest, ProjectSearchURLParams urlParams, List<Object> preparedStmtList, Boolean isCountQuery, List<String> workflowStatuses, ProjectSortCriteria sortParam) {
+        String query = getProjectSearchQuery(projectSearchRequest, urlParams, preparedStmtList, isCountQuery, workflowStatuses);
         // Adding sort criteria
         String sortField = null;
         if (sortParam != null && sortParam.getSortBy() != null) {
