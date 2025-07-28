@@ -492,7 +492,6 @@ public class ProjectApiController {
     ) throws Exception {
         List<String> workflowStatuses = projectSearchRequest.getWorkflowStatus();
 
-        // if role is project manager we need to show all projects
         List<Project> projects = projectService.searchProject(projectSearchRequest, urlParams, workflowStatuses, sortCriteria);
         Integer count = projectService.countAllProjects(projectSearchRequest, urlParams, workflowStatuses);
 
