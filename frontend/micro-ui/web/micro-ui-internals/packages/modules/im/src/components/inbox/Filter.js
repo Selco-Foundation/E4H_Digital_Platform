@@ -64,7 +64,7 @@ useEffect(() => setSelectedAssigned(isCodePresent(Digit.SessionStorage.get("User
   );
 
   useEffect(() => {
-    const fetchDistrictMenu = async () => {
+    const refactorDistrictMenu = () => {
       const response = mdmsData?.Incident?.District;
       if (response) {
         const uniqueDistricts = {};
@@ -86,11 +86,10 @@ useEffect(() => setSelectedAssigned(isCodePresent(Digit.SessionStorage.get("User
         setDistrictMenu(newDistrictMenu);
         setBlockMenu([]);
         setPhcMenu([]);
-        setPgrFilters({ ...pgrfilters, district: [], block: [], phcType: [] });
       }
     };
 
-    const fetchSystemFunctionalMenu = async () => {
+    const refactorSystemFunctionalMenu = () => {
       const response = mdmsData?.Incident?.SystemFunctionality;
       if (response) {
         const newSystemFunctionalityMenu = response
@@ -102,12 +101,12 @@ useEffect(() => setSelectedAssigned(isCodePresent(Digit.SessionStorage.get("User
           }));
 
         setSystemFunctionalityMenu(newSystemFunctionalityMenu);
-        setPgrFilters({ ...pgrfilters, isSystemFunctional: [] });
       }
     }
 
-    fetchDistrictMenu();
-    fetchSystemFunctionalMenu();
+    refactorDistrictMenu();
+    refactorSystemFunctionalMenu();
+    setPgrFilters(prev => ({ ...prev, district: [], block: [], phcType: [], isSystemFunctional: [] }));
   }, [state, mdmsData, t]);
   
   const tenantId = Digit.ULBService.getCurrentTenantId();
