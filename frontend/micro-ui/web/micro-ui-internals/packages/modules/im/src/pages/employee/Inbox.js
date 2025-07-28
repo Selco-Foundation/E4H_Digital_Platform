@@ -4,7 +4,7 @@ import { Loader, Header } from "@selco/digit-ui-react-components";
 
 import DesktopInbox from "../../components/DesktopInbox";
 import MobileInbox from "../../components/MobileInbox";
-import { Link } from "react-router-dom";
+import { Link, useHistory, useLocation } from "react-router-dom";
 
 const Inbox = () => {
   const { t } = useTranslation();
@@ -19,9 +19,16 @@ const Inbox = () => {
   const isCodePresent = (array, codeToCheck) =>{
     return array.some(item => item.code === codeToCheck);
   }
-  const [searchParams, setSearchParams] = useState({ filters: { wfFilters: { assignee: [{ code: isCodePresent(userRoles, "COMPLAINT_RESOLVER") ? uuid :"" }] } }, search: "", sort: {} });
- 
+  const history = useHistory();
+  const location = useLocation();
+  const queryParams = new URLSearchParams(window.location.search);
+  const [searchParams, setSearchParams] = useState(
+    JSON.parse(queryParams.get("filter")) || { filters: { wfFilters: { assignee: [{ code: isCodePresent(userRoles, "COMPLAINT_RESOLVER") ? uuid :"" }] } }, search: "", sort: {} }
+  );
+
   useEffect(() => {
+    history.replace({pathname: location.pathname, search: `filter=${JSON.stringify(searchParams)}`});
+
     (async () => {
       const userRoles = Digit.SessionStorage.get("User")?.info?.roles || [];
       const applicationStatus = searchParams?.filters?.pgrfilters?.applicationStatus?.map(e => e.code).join(",")

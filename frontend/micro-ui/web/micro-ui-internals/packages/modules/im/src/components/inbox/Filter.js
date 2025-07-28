@@ -12,7 +12,6 @@ const Filter = (props) => {
   const stateTenantId = Digit.ULBService.getStateId();
   const { searchParams } = props;
   const { t } = useTranslation();
-  const isAssignedToMe = searchParams?.filters?.wfFilters?.assignee && searchParams?.filters?.wfFilters?.assignee[0]?.code ? true : false;
   const [districtMenu, setDistrictMenu] = useState([]);
   const [blockMenu, setBlockMenu] = useState([]);
   const [phcMenu, setPhcMenu] = useState([]);
@@ -25,6 +24,8 @@ const Filter = (props) => {
     ],
     [t]
   );
+  const loggedInUser = Digit.UserService.getUser();
+  const isAssignedToMe = searchParams?.filters?.wfFilters?.assignee?.[0]?.code === loggedInUser?.info?.uuid;
 
   const state = Digit.ULBService.getStateId();
   const { data: mdmsData } = Digit.Hooks.pgr.useMDMS(state, "Incident", ["District", "Block", "SystemFunctionality"]);
@@ -35,8 +36,9 @@ const isCodePresent = (array, codeToCheck) =>{
   return array.some(item => item.code === codeToCheck);
 }
 
-const [selectAssigned, setSelectedAssigned] = useState(isCodePresent(Digit.SessionStorage.get("User")?.info?.roles, "COMPLAINT_RESOLVER") ? assignedToOptions[0] : assignedToOptions[1]);
-useEffect(() => setSelectedAssigned(isCodePresent(Digit.SessionStorage.get("User")?.info?.roles, "COMPLAINT_RESOLVER") ? assignedToOptions[0] : assignedToOptions[1]), [t]);
+  const [selectAssigned, setSelectedAssigned] = useState(
+    (isAssignedToMe || isCodePresent(loggedInUser?.info?.roles, "COMPLAINT_RESOLVER")) ? assignedToOptions[0] : assignedToOptions[1]
+  );
 
   const [selectedComplaintType, setSelectedComplaintType] = useState(null);
   const [selectedHealthCare, setSelectedHealthCare] = useState(null);
@@ -51,16 +53,12 @@ useEffect(() => setSelectedAssigned(isCodePresent(Digit.SessionStorage.get("User
       applicationStatus: [],
     }
   );
-  let healthcareTenant = Digit.SessionStorage.get("Tenants").filter(item => item.code !== stateTenantId)
 
   const [wfFilters, setWfFilters] = useState(
-    isCodePresent(Digit.SessionStorage.get("User")?.info?.roles, "COMPLAINT_RESOLVER") ? searchParams?.filters?.wfFilters:searchParams?.filters?.wfFilters?.["assignee"]?.[{"code":""}] || isCodePresent(Digit.SessionStorage.get("User")?.info?.roles, "COMPLAINT_RESOLVER") ? {
-      assignee: [{ code: uuid }],
-    }
-    :
-    {
-      assignee: [{ code: "" }],
-    }
+    searchParams?.filters?.wfFilters ||
+    (isCodePresent(loggedInUser?.info?.roles, "COMPLAINT_RESOLVER") ?
+      { assignee: [{ code: uuid }] } :
+      { assignee: [{ code: "" }] })
   );
 
   useEffect(() => {
@@ -80,6 +78,7 @@ useEffect(() => setSelectedAssigned(isCodePresent(Digit.SessionStorage.get("User
           .map((district) => ({
             districtCode: district.code,
             code: district.name,
+            nonLocalizedName: district.name,
             name: t(district.name),
           }));
 
@@ -97,6 +96,7 @@ useEffect(() => setSelectedAssigned(isCodePresent(Digit.SessionStorage.get("User
           .sort((a, b) => a.name.localeCompare(b.name))
           .map((systemFunctionality) => ({
             code: systemFunctionality.code,
+            nonLocalizedName: systemFunctionality.name,
             name: t(systemFunctionality.name),
           }));
 
@@ -106,8 +106,65 @@ useEffect(() => setSelectedAssigned(isCodePresent(Digit.SessionStorage.get("User
 
     refactorDistrictMenu();
     refactorSystemFunctionalMenu();
-    setPgrFilters(prev => ({ ...prev, district: [], block: [], phcType: [], isSystemFunctional: [] }));
   }, [state, mdmsData, t]);
+
+  useEffect(() => {
+
+    const newIncidentType = pgrfilters.incidentType.map((type) => ({
+      ...type,
+      name: t(`SERVICEDEFS.${type.code === "" ? "OTHER" : type.code.toUpperCase()}`),
+    }));
+    const newPhcType = pgrfilters.phcType.map((type) => ({ ...type, name: t(type.nonLocalizedName) }));
+    const newDistrict = pgrfilters.district.map((district) => ({ ...district, name: t(district.nonLocalizedName) }));
+    const newBlock = pgrfilters.block.map((block) => ({ ...block, name: t(block.nonLocalizedName) }));
+    const newIsSystemFunctional = pgrfilters.isSystemFunctional.map((systemFunctionality) => ({
+      ...systemFunctionality,
+      name: t(systemFunctionality.nonLocalizedName)
+    }));
+
+    setSelectedAssigned((isAssignedToMe || isCodePresent(loggedInUser?.info?.roles, "COMPLAINT_RESOLVER")) ? assignedToOptions[0] : assignedToOptions[1])
+    setPgrFilters({
+      ...pgrfilters,
+      incidentType: newIncidentType,
+      district: newDistrict,
+      block: newBlock,
+      phcType: newPhcType,
+      isSystemFunctional: newIsSystemFunctional,
+    });
+  }, [t]);
+
+  useEffect(() => {
+    const selectedDistrict = pgrfilters.district?.[0];
+    if (selectedDistrict) {
+      const newBlockMenu = mdmsData?.Incident?.Block
+        .filter((block) => block?.districtCode === selectedDistrict.districtCode)
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map((block) => ({
+          blockCode: block.code,
+          code: block.name,
+          nonLocalizedName: block.name,
+          name: t(block.name),
+        }));
+
+      setBlockMenu(newBlockMenu);
+    }
+
+    const selectedBlock = pgrfilters.block?.[0];
+    if (selectedBlock) {
+      const newPhcMenu = phcData?.tenant?.tenants
+        .filter((centre) => centre?.city?.blockCode === selectedBlock.blockCode)
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map((centre) => ({
+          ...centre,
+          nonLocalizedName: centre?.name,
+          name: t(centre?.name),
+          centreType: t(centre?.centreType),
+        }));
+
+      setPhcMenu(newPhcMenu);
+    }
+
+  }, [pgrfilters, mdmsData, phcData, t]);
   
   const tenantId = Digit.ULBService.getCurrentTenantId();
   // let localities = Digit.Hooks.pgr.useLocalities({ city: tenantId });
@@ -117,8 +174,8 @@ useEffect(() => setSelectedAssigned(isCodePresent(Digit.SessionStorage.get("User
   const menu = Digit.Hooks.pgr.useComplaintTypes({ stateCode: tenantId })
   let sortedMenu=[];
   if(menu!==null){
-    let othersItem = menu.find(item => item.name==="Other");
-    let remainingOptions = menu.filter(item => item.name!=="Other");
+    let othersItem = menu.find(item => item.key==="");
+    let remainingOptions = menu.filter(item => item.key!=="");
     remainingOptions.sort((a, b) => a.name.localeCompare(b.name));
     if (othersItem) {
       remainingOptions.push(othersItem);
@@ -234,40 +291,16 @@ useEffect(() => setSelectedAssigned(isCodePresent(Digit.SessionStorage.get("User
     const previouslySelectedDistrict = pgrfilters.district[0];
 
     if (previouslySelectedDistrict?.code !== selectedDistrict.code) {
-
-      const newBlockMenu = mdmsData?.Incident?.Block
-        .filter((block) => block?.districtCode === selectedDistrict.districtCode)
-        .sort((a, b) => a.name.localeCompare(b.name))
-        .map((block) => ({
-          blockCode: block.code,
-          code: block.name,
-          name: t(block.name),
-        }));
-
-      setBlockMenu(newBlockMenu);
       setPgrFilters({ ...pgrfilters, district: [selectedDistrict], block: [], phcType: [] });
     }
-
   };
 
   const handleBlockChange = (selectedBlock) => {
     const previouslySelectedBlock = pgrfilters.block[0];
 
     if (previouslySelectedBlock?.code !== selectedBlock.code) {
-
-      const newPhcMenu = phcData?.tenant?.tenants
-        .filter((centre) => centre?.city?.blockCode === selectedBlock.blockCode)
-        .sort((a, b) => a.name.localeCompare(b.name))
-        .map((centre) => ({
-          ...centre,
-          name: t(centre?.name),
-          centreType: t(centre?.centreType),
-        }));
-
-      setPhcMenu(newPhcMenu);
       setPgrFilters({ ...pgrfilters, block: [selectedBlock], phcType: [] });
     }
-
   };
 
   const handleSystemFunctionalityChange = (selectedSystemFunctionality) => {
