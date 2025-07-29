@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import static org.egov.project.util.ProjectConstants.DOT;
+import static org.egov.project.util.ProjectConstants.PROJECT_MANAGER;
 
 @Component
 @Slf4j
@@ -228,7 +229,11 @@ public class ProjectAddressQueryBuilder {
         String userUuid = userInfo.getUuid();
         boolean isProjectManager = false;
         if (userInfo.getRoles() != null) {
-            isProjectManager = userInfo.getRoles().stream().anyMatch(role -> "PROJECT_MANAGER".equalsIgnoreCase(role.getCode()));
+            isProjectManager = userInfo.getRoles().stream().anyMatch(role -> PROJECT_MANAGER.equalsIgnoreCase(role.getCode()));
+        }
+
+        if (!isProjectManager) {
+            queryBuilder.append("JOIN project_staff ps ON ps.projectid = prj.id ");
         }
 
         ProjectSearch projectSearch = projectSearchRequest.getProject();
@@ -320,28 +325,10 @@ public class ProjectAddressQueryBuilder {
 
     private void addClauseOnProjects(ProjectSearch projectSearch, List<Object> preparedStmtList,
                                      StringBuilder queryBuilder, String userUuid, boolean isProjectManager) {
-        // 🧠 Restrict non-PROJECT_MANAGER to only their own staff projects
-        if (!isProjectManager) {
+        if (!CollectionUtils.isEmpty(projectSearch.getId())) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
-            queryBuilder.append(" prj.id IN (SELECT ps.projectid FROM project_staff ps WHERE ps.staffid = ?) ");
-            preparedStmtList.add(userUuid);
-
-            // Further restrict to project IDs if given
-            if (!CollectionUtils.isEmpty(projectSearch.getId())) {
-                queryBuilder.append(" AND ps.projectid IN (")
-                        .append(createQuery(projectSearch.getId()))
-                        .append(") ");
-                addToPreparedStatement(preparedStmtList, projectSearch.getId());
-            }
-        } else {
-            // PROJECT_MANAGER: no staff-based restriction
-            if (!CollectionUtils.isEmpty(projectSearch.getId())) {
-                addClauseIfRequired(preparedStmtList, queryBuilder);
-                queryBuilder.append(" prj.id IN (")
-                        .append(createQuery(projectSearch.getId()))
-                        .append(")");
-                addToPreparedStatement(preparedStmtList, projectSearch.getId());
-            }
+            queryBuilder.append(" prj.id IN (").append(createQuery(projectSearch.getId())).append(")");
+            addToPreparedStatement(preparedStmtList, projectSearch.getId());
         }
 
         // Check if reference ID is provided
@@ -363,6 +350,13 @@ public class ProjectAddressQueryBuilder {
             addClauseIfRequired(preparedStmtList, queryBuilder);
             queryBuilder.append(" prj.projectType=? ");
             preparedStmtList.add(projectSearch.getProjectTypeId());
+        }
+
+        // Check if not project manager role
+        if (!isProjectManager && StringUtils.isNotBlank(userUuid)) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            queryBuilder.append(" ps.staffid = ? ");
+            preparedStmtList.add(userUuid);
         }
     }
 
