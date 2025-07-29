@@ -13,8 +13,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 
-import static org.egov.wf.util.WorkflowConstants.JSONPATH_AUTOESCALTION;
-import static org.egov.wf.util.WorkflowConstants.JSONPATH_TEANANTIDS;
+import static org.egov.wf.util.WorkflowConstants.*;
 
 @Component
 public class EscalationUtil {
@@ -159,7 +158,7 @@ public class EscalationUtil {
      */
     public List<String> getTenantIds(Object mdmsData){
 
-        List<String> tenantIds = JsonPath.read(mdmsData, JSONPATH_TEANANTIDS);
+        List<String> tenantIds = JsonPath.read(mdmsData, JSONPATH_TEANANTIDSV2);
         return tenantIds;
 
     }

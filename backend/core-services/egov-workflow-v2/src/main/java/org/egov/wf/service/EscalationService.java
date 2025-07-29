@@ -59,8 +59,9 @@ public class EscalationService {
     public void escalateApplications(RequestInfo requestInfo, String businessService){
 
         Object mdmsData = mdmsService.mDMSCall(requestInfo);
+        Object mdmsDataTenant = mdmsService.mDMSCallTenant(requestInfo);
         List<Escalation> escalations = escalationUtil.getEscalationsFromConfig(businessService, mdmsData);
-        List<String> tenantIds = escalationUtil.getTenantIds(mdmsData);
+        List<String> tenantIds = escalationUtil.getTenantIds(mdmsDataTenant);
 
         for(Escalation escalation : escalations){
 
@@ -79,8 +80,6 @@ public class EscalationService {
     private void processEscalation(RequestInfo requestInfo, Escalation escalation, List<String> tenantIds){
 
         for(String tenantId: tenantIds){
-
-
             String stateUUID = escalationUtil.getStatusUUID(escalation.getStatus(), tenantId, escalation.getBusinessService());
 
             EscalationSearchCriteria criteria = EscalationSearchCriteria.builder().tenantId(tenantId)

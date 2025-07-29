@@ -76,6 +76,15 @@ public class MDMSService {
         return result;
     }
 
+    public Object mDMSCallTenant(RequestInfo requestInfo) {
+        String tenantId = (requestInfo != null && requestInfo.getUserInfo() != null)
+                ? requestInfo.getUserInfo().getTenantId()
+                : workflowConfig.getStateLevelTenantId();
+        org.egov.wf.web.models.MdmsCriteriaReq mdmsCriteriaReq = getMDMSRequestTenants(requestInfo, tenantId);
+        Object result = serviceRequestRepository.fetchResult(getMdmsSearchUrlTenant(), mdmsCriteriaReq);
+        return result;
+    }
+
     /**
      * Calls MDMS service to fetch master data
      * @return
@@ -95,15 +104,26 @@ public class MDMSService {
      */
     private MdmsCriteriaReq getMDMSRequest(RequestInfo requestInfo, String tenantId){
         ModuleDetail escalationDetail = getAutoEscalationConfig();
-        ModuleDetail tenantDetail = getTenants();
-
-        List<ModuleDetail> moduleDetails = new LinkedList<>(Arrays.asList(escalationDetail,tenantDetail));
+        List<ModuleDetail> moduleDetails = new LinkedList<>(Arrays.asList(escalationDetail));
 
         MdmsCriteria mdmsCriteria = MdmsCriteria.builder().moduleDetails(moduleDetails)
                 .tenantId(tenantId)
                 .build();
 
         MdmsCriteriaReq mdmsCriteriaReq = MdmsCriteriaReq.builder().mdmsCriteria(mdmsCriteria)
+                .requestInfo(requestInfo).build();
+        return mdmsCriteriaReq;
+    }
+
+    private org.egov.wf.web.models.MdmsCriteriaReq getMDMSRequestTenants(RequestInfo requestInfo, String tenantId){
+        String schemaCode = MDMS_MODULE_TENANT+"."+MDMS_TENANTS;
+        org.egov.wf.web.models.MdmsCriteria mdmsCriteria = org.egov.wf.web.models.MdmsCriteria.builder()
+                .tenantId(tenantId)
+                .schemaCode(schemaCode)
+                .limit(5000)
+                .build();
+
+        org.egov.wf.web.models.MdmsCriteriaReq mdmsCriteriaReq = org.egov.wf.web.models.MdmsCriteriaReq.builder().mdmsCriteria(mdmsCriteria)
                 .requestInfo(requestInfo).build();
         return mdmsCriteriaReq;
     }
@@ -162,26 +182,6 @@ public class MDMSService {
         return wfModuleDtls;
     }
 
-    /**
-     * Creates MDMS ModuleDetail object for tenants
-     * @return ModuleDetail for tenants
-     */
-    private ModuleDetail getTenants() {
-
-        // master details for WF module
-        List<MasterDetail> masterDetails = new ArrayList<>();
-
-        masterDetails.add(MasterDetail.builder().name(MDMS_TENANTS).build());
-
-        ModuleDetail wfModuleDtls = ModuleDetail.builder().masterDetails(masterDetails)
-                .moduleName(MDMS_MODULE_TENANT).build();
-
-        return wfModuleDtls;
-    }
-
-
-
-
 
     /**
      * Returns the url for mdms search endpoint
@@ -189,6 +189,10 @@ public class MDMSService {
      */
     public StringBuilder getMdmsSearchUrl() {
         return new StringBuilder().append(config.getMdmsHost()).append(config.getMdmsEndPoint());
+    }
+
+    public StringBuilder getMdmsSearchUrlTenant() {
+        return new StringBuilder().append(config.getMdmsHost()).append(config.getMdmsEndPointv2());
     }
     
     public Integer fetchSlotPercentageForNearingSla(RequestInfo requestInfo) {

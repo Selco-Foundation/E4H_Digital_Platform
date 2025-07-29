@@ -70,6 +70,9 @@ public class WorkflowConfig {
     @Value("${egov.mdms.search.endpoint}")
     private String mdmsEndPoint;
 
+    @Value("${egov.mdms.searchv2.endpoint}")
+    private String mdmsEndPointv2;
+
 
     //User
     @Value("${egov.user.host}")

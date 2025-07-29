@@ -24,6 +24,8 @@ public class WorkflowConstants {
 
     public static final String JSONPATH_TEANANTIDS = "$.MdmsRes.tenant.tenants.*.code";
 
+    public static final String JSONPATH_TEANANTIDSV2 = "$.mdms.*.data.code";
+
     public static final String MDMS_MODULE_TENANT= "tenant";
     
     public static final String MDMS_WF_SLA_CONFIG = "wfSlaConfig";
