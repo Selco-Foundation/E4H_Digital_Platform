@@ -608,11 +608,22 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                                   ),
                                                 ],
                                               )
-                                            : pdfCard(
-                                                context: context,
-                                                filePath:
-                                                    filePath ?? 'No report yet',
-                                                fileSize: _displaySize(),
+                                            : GestureDetector(
+                                                onTap: () {
+                                                  print("filePath $filePath");
+                                                  if (filePath != null &&
+                                                      filePath!.isNotEmpty) {
+                                                    context.router.push(
+                                                        PdfViewerRoute(
+                                                            path: filePath!));
+                                                  }
+                                                },
+                                                child: pdfCard(
+                                                  context: context,
+                                                  filePath: filePath ??
+                                                      'No report yet',
+                                                  fileSize: _displaySize(),
+                                                ),
                                               ),
                                       ],
                                     ))

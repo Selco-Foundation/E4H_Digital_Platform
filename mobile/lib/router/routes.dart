@@ -23,4 +23,7 @@ class Routes {
   static const submittedSaveSuccess = 'submitted-save-success';
   static const draft = 'draft';
   static const barcode = 'DigitScannerRoute';
+  static const imageViewer = 'image-viewer?path';
+  static const videoViewer = 'video-viewer?path';
+  static const pdfViewer = 'pdf-viewer?path';
 }
