@@ -96,6 +96,20 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
     });
   }
 
+  void _openImage(String path) {
+    // Navigator.of(context).push(MaterialPageRoute(
+    //   builder: (_) => ImageViewerPage(path: path),
+    // ));
+    context.router.push(ImageViewerRoute(path: path));
+  }
+
+  void _openVideo(String path) {
+    // Navigator.of(context).push(MaterialPageRoute(
+    //   builder: (_) => VideoPlayerPage(path: path),
+    // ));
+    context.router.push(VideoPlayerRoute(path: path));
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -465,9 +479,12 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
                       ),
                     ),
                     if (asset.photoPath.isNotEmpty)
-                      Padding(
-                          padding: const EdgeInsets.only(bottom: spacer3),
-                          child: assetImageCard(filePath: asset.photoPath))
+                      GestureDetector(
+                        onTap: () => _openImage(asset.photoPath),
+                        child: Padding(
+                            padding: const EdgeInsets.only(bottom: spacer3),
+                            child: assetImageCard(filePath: asset.photoPath)),
+                      )
                   ],
                 ),
               ],
@@ -480,16 +497,21 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
     // Media thumbnails
     final imageWidgets = summary.mediaEntries
         .where((m) => m.itemType == 'image')
-        .map((m) => Padding(
-              padding: const EdgeInsets.symmetric(horizontal: spacer1),
-              child: assetImageCard(filePath: m.filePath),
+        .map((m) => GestureDetector(
+              onTap: () => _openImage(m.filePath),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: spacer1),
+                child: assetImageCard(filePath: m.filePath),
+              ),
             ))
         .toList();
 
     final videoWidgets = summary.mediaEntries
         .where((m) => m.itemType == 'video')
         .map(
-          (m) => videoCard(context: context, filePath: m.itemNumber),
+          (m) => GestureDetector(
+              onTap: () => _openVideo(m.filePath),
+              child: videoCard(context: context, filePath: m.itemNumber)),
         )
         .toList();
 

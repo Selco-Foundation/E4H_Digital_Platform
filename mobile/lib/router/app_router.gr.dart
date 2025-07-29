@@ -81,6 +81,16 @@ abstract class _$AppRouter extends RootStackRouter {
         child: const HomePage(),
       );
     },
+    ImageViewerRoute.name: (routeData) {
+      final args = routeData.argsAs<ImageViewerRouteArgs>();
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: ImageViewerPage(
+          path: args.path,
+          key: args.key,
+        ),
+      );
+    },
     InboxAssetSummaryRoute.name: (routeData) {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
@@ -115,6 +125,18 @@ abstract class _$AppRouter extends RootStackRouter {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
         child: const OverallAssetSummaryPage(),
+      );
+    },
+    PdfViewerRoute.name: (routeData) {
+      final pathParams = routeData.inheritedPathParams;
+      final args = routeData.argsAs<PdfViewerRouteArgs>(
+          orElse: () => PdfViewerRouteArgs(path: pathParams.getString('path')));
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: PdfViewerPage(
+          path: args.path,
+          key: args.key,
+        ),
       );
     },
     SelectAssetTypeRoute.name: (routeData) {
@@ -157,6 +179,16 @@ abstract class _$AppRouter extends RootStackRouter {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
         child: const UnauthenticatedScreenWrapper(),
+      );
+    },
+    VideoPlayerRoute.name: (routeData) {
+      final args = routeData.argsAs<VideoPlayerRouteArgs>();
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: VideoPlayerPage(
+          path: args.path,
+          key: args.key,
+        ),
       );
     },
     WelcomeRoute.name: (routeData) {
@@ -323,6 +355,44 @@ class HomeRoute extends PageRouteInfo<void> {
 }
 
 /// generated route for
+/// [ImageViewerPage]
+class ImageViewerRoute extends PageRouteInfo<ImageViewerRouteArgs> {
+  ImageViewerRoute({
+    required String path,
+    Key? key,
+    List<PageRouteInfo>? children,
+  }) : super(
+          ImageViewerRoute.name,
+          args: ImageViewerRouteArgs(
+            path: path,
+            key: key,
+          ),
+          initialChildren: children,
+        );
+
+  static const String name = 'ImageViewerRoute';
+
+  static const PageInfo<ImageViewerRouteArgs> page =
+      PageInfo<ImageViewerRouteArgs>(name);
+}
+
+class ImageViewerRouteArgs {
+  const ImageViewerRouteArgs({
+    required this.path,
+    this.key,
+  });
+
+  final String path;
+
+  final Key? key;
+
+  @override
+  String toString() {
+    return 'ImageViewerRouteArgs{path: $path, key: $key}';
+  }
+}
+
+/// generated route for
 /// [InboxAssetSummaryPage]
 class InboxAssetSummaryRoute extends PageRouteInfo<void> {
   const InboxAssetSummaryRoute({List<PageRouteInfo>? children})
@@ -404,6 +474,45 @@ class OverallAssetSummaryRoute extends PageRouteInfo<void> {
   static const String name = 'OverallAssetSummaryRoute';
 
   static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [PdfViewerPage]
+class PdfViewerRoute extends PageRouteInfo<PdfViewerRouteArgs> {
+  PdfViewerRoute({
+    required String path,
+    Key? key,
+    List<PageRouteInfo>? children,
+  }) : super(
+          PdfViewerRoute.name,
+          args: PdfViewerRouteArgs(
+            path: path,
+            key: key,
+          ),
+          rawPathParams: {'path': path},
+          initialChildren: children,
+        );
+
+  static const String name = 'PdfViewerRoute';
+
+  static const PageInfo<PdfViewerRouteArgs> page =
+      PageInfo<PdfViewerRouteArgs>(name);
+}
+
+class PdfViewerRouteArgs {
+  const PdfViewerRouteArgs({
+    required this.path,
+    this.key,
+  });
+
+  final String path;
+
+  final Key? key;
+
+  @override
+  String toString() {
+    return 'PdfViewerRouteArgs{path: $path, key: $key}';
+  }
 }
 
 /// generated route for
@@ -502,6 +611,44 @@ class UnauthenticatedRouteWrapper extends PageRouteInfo<void> {
   static const String name = 'UnauthenticatedRouteWrapper';
 
   static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [VideoPlayerPage]
+class VideoPlayerRoute extends PageRouteInfo<VideoPlayerRouteArgs> {
+  VideoPlayerRoute({
+    required String path,
+    Key? key,
+    List<PageRouteInfo>? children,
+  }) : super(
+          VideoPlayerRoute.name,
+          args: VideoPlayerRouteArgs(
+            path: path,
+            key: key,
+          ),
+          initialChildren: children,
+        );
+
+  static const String name = 'VideoPlayerRoute';
+
+  static const PageInfo<VideoPlayerRouteArgs> page =
+      PageInfo<VideoPlayerRouteArgs>(name);
+}
+
+class VideoPlayerRouteArgs {
+  const VideoPlayerRouteArgs({
+    required this.path,
+    this.key,
+  });
+
+  final String path;
+
+  final Key? key;
+
+  @override
+  String toString() {
+    return 'VideoPlayerRouteArgs{path: $path, key: $key}';
+  }
 }
 
 /// generated route for
