@@ -104,9 +104,7 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
   }
 
   void _openVideo(String path) {
-    // Navigator.of(context).push(MaterialPageRoute(
-    //   builder: (_) => VideoPlayerPage(path: path),
-    // ));
+
     context.router.push(VideoPlayerRoute(path: path));
   }
 
