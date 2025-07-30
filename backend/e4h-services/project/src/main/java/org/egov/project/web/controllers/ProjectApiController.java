@@ -29,6 +29,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import org.egov.project.repository.ProjectStaffRepository;
 
 
 @Controller
@@ -55,6 +56,9 @@ public class ProjectApiController {
     private final ProjectService projectService;
 
     private final ProjectWorkflowService projectWorkflowService;
+
+    @Autowired
+    private ProjectStaffRepository projectStaffRepository;
 
     @Autowired
     public ProjectApiController(ObjectMapper objectMapper, HttpServletRequest httpServletRequest,
