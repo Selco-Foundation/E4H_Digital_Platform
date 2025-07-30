@@ -3,6 +3,7 @@ from typing import Optional, List
 import psycopg2
 
 import pandas as pd
+from PIL import ImageDraw, Image, ImageFont
 from fastapi import APIRouter, Form, HTTPException, Depends
 from fastapi.responses import FileResponse
 from openpyxl.utils import get_column_letter
@@ -288,7 +289,7 @@ async def get_facility_QR_for_autologin(
         mdms_content = mdms_client.get_tenant_mapping(request_info_obj, ["as", "gj", "ml", "mn", "mz", "nl", "or", "pg", "sk"])
 
 
-        base_url = "https://saura-emitra-dryrun.selcofoundation.org"
+        base_url = "https://saura-emitra-uat.selcofoundation.org"
         password = "Health@2026"
 
         temp_dir = tempfile.mkdtemp()
@@ -327,11 +328,35 @@ async def get_facility_QR_for_autologin(
 
             login_url = f"{base_url}/{url_state_name}/employee/user/login?tenantid={tenant_id}&username={username}&passwd={password}"
 
-            # Generate QR
-            img = qrcode.make(login_url)
+            qr = qrcode.make(login_url).convert("RGB")
+
+            # Create a new image (taller) to hold QR and text
+            width, height = qr.size
+            font_size = 30
+            padding = 10
+
+            try:
+                font = ImageFont.truetype("DejaVuSans-Bold.ttf", font_size)
+            except:
+                font = ImageFont.load_default()
+
+            # Create a new image with extra space for text
+            new_height = height + font_size + 2 * padding
+            combined = Image.new("RGB", (width, new_height), "white")
+            combined.paste(qr, (0, 0))
+
+            # Draw the facility name
+            draw = ImageDraw.Draw(combined)
+            text = facility_name
+            bbox = draw.textbbox((0, 0), text, font=font)
+            text_width = bbox[2] - bbox[0]
+            text_position = ((width - text_width) // 2, height + padding)
+            draw.text(text_position, text, font=font, fill="black")
+
+            # Save the combined image
             qr_filename = f"{username}.png"
             img_path = os.path.join(qr_folder, qr_filename)
-            img.save(img_path)
+            combined.save(img_path)
 
         # Create ZIP
         zip_path = os.path.join(tempfile.gettempdir(), "facility_qr_codes.zip")
