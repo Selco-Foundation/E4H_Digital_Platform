@@ -25,7 +25,7 @@ const Filter = (props) => {
     [t]
   );
   const loggedInUser = Digit.UserService.getUser();
-  const isAssignedToMe = searchParams?.filters?.wfFilters?.assignee?.[0]?.code === loggedInUser?.info?.uuid;
+  const isAssignedToMe = searchParams?.filters?.wfFilters?.assignee?.[0]?.code === uuid;
 
   const state = Digit.ULBService.getStateId();
   const { data: mdmsData } = Digit.Hooks.pgr.useMDMS(state, "Incident", ["District", "Block", "SystemFunctionality"]);
@@ -110,27 +110,24 @@ const isCodePresent = (array, codeToCheck) =>{
 
   useEffect(() => {
 
-    const newIncidentType = pgrfilters.incidentType.map((type) => ({
-      ...type,
-      name: t(`SERVICEDEFS.${type.code === "" ? "OTHER" : type.code.toUpperCase()}`),
-    }));
-    const newPhcType = pgrfilters.phcType.map((type) => ({ ...type, name: t(type.nonLocalizedName) }));
-    const newDistrict = pgrfilters.district.map((district) => ({ ...district, name: t(district.nonLocalizedName) }));
-    const newBlock = pgrfilters.block.map((block) => ({ ...block, name: t(block.nonLocalizedName) }));
-    const newIsSystemFunctional = pgrfilters.isSystemFunctional.map((systemFunctionality) => ({
-      ...systemFunctionality,
-      name: t(systemFunctionality.nonLocalizedName)
-    }));
+    setSelectedAssigned(
+      (isAssignedToMe || isCodePresent(loggedInUser?.info?.roles, "COMPLAINT_RESOLVER")) ? assignedToOptions[0] : assignedToOptions[1]
+    )
 
-    setSelectedAssigned((isAssignedToMe || isCodePresent(loggedInUser?.info?.roles, "COMPLAINT_RESOLVER")) ? assignedToOptions[0] : assignedToOptions[1])
-    setPgrFilters({
-      ...pgrfilters,
-      incidentType: newIncidentType,
-      district: newDistrict,
-      block: newBlock,
-      phcType: newPhcType,
-      isSystemFunctional: newIsSystemFunctional,
-    });
+    setPgrFilters((prevFilters) => ({
+      ...prevFilters,
+      incidentType: prevFilters.incidentType.map((type) => ({
+        ...type,
+        name: t(`SERVICEDEFS.${type.code === "" ? "OTHER" : type.code.toUpperCase()}`),
+      })),
+      district: prevFilters.district.map((district) => ({ ...district, name: t(district.nonLocalizedName) })),
+      block: prevFilters.block.map((block) => ({ ...block, name: t(block.nonLocalizedName) })),
+      phcType: prevFilters.phcType.map((type) => ({ ...type, name: t(type.nonLocalizedName) })),
+      isSystemFunctional: prevFilters.isSystemFunctional.map((systemFunctionality) => ({
+        ...systemFunctionality,
+        name: t(systemFunctionality.nonLocalizedName)
+      })),
+    }));
   }, [t]);
 
   useEffect(() => {

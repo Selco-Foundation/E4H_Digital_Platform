@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Loader, Header } from "@selco/digit-ui-react-components";
 
@@ -11,8 +11,6 @@ const Inbox = () => {
   let tenantId = Digit.ULBService.getCurrentTenantId();
   const stateTenantId = Digit.ULBService.getStateId();
   const { uuid } = Digit.UserService.getUser().info;
-  const [pageOffset, setPageOffset] = useState(0);
-  const [pageSize, setPageSize] = useState(10);
   const [totalRecords, setTotalRecords] = useState(0);
   const userRoles = Digit.SessionStorage.get("User")?.info?.roles || [];
   const {nearingSLA} = Digit.Hooks.useQueryParams();
@@ -22,12 +20,25 @@ const Inbox = () => {
   const history = useHistory();
   const location = useLocation();
   const queryParams = new URLSearchParams(window.location.search);
-  const [searchParams, setSearchParams] = useState(
-    JSON.parse(queryParams.get("filter")) || { filters: { wfFilters: { assignee: [{ code: isCodePresent(userRoles, "COMPLAINT_RESOLVER") ? uuid :"" }] } }, search: "", sort: {} }
-  );
+  const [searchParams, setSearchParams] = useState((() => {
+    try {
+      const filterParam = queryParams.get("filter");
+      return filterParam ? JSON.parse(filterParam) : null;
+    } catch (error) {
+      console.error("Failed to parse filter parameter:", error);
+      return null;
+    }
+  }) || { filters: { wfFilters: { assignee: [{ code: isCodePresent(userRoles, "COMPLAINT_RESOLVER") ? uuid :"" }] } }, search: "", sort: {} });
+  const [pageOffset, setPageOffset] = useState(parseInt(queryParams.get("pageOffset")) || 0);
+  const [pageSize, setPageSize] = useState(parseInt(queryParams.get("pageSize")) || 10);
+  const prevSearchParamsRef = useRef(JSON.stringify(searchParams));
+  const prevPageSizeRef = useRef(pageSize);
 
   useEffect(() => {
-    history.replace({pathname: location.pathname, search: `filter=${JSON.stringify(searchParams)}`});
+    history.replace({
+      pathname: location.pathname,
+      search: `filter=${JSON.stringify(searchParams)}&pageSize=${pageSize}&pageOffset=${pageOffset}`
+    });
 
     (async () => {
       const userRoles = Digit.SessionStorage.get("User")?.info?.roles || [];
@@ -49,17 +60,25 @@ const Inbox = () => {
       //   setTotalRecords(response.count);
       // }
     })();
-  }, [searchParams]);
+  }, [searchParams, pageSize, pageOffset]);
+
   useEffect(() => {
-    setPageOffset(0);
-  }, [searchParams]);
+    const prevSearchParams = prevSearchParamsRef.current;
+    const currentSearchParams = JSON.stringify(searchParams);
+
+    if (prevSearchParams !== currentSearchParams || prevPageSizeRef.current !== pageSize) {
+      setPageOffset(0);
+      prevSearchParamsRef.current = currentSearchParams;
+      prevPageSizeRef.current = pageSize;
+    }
+  }, [searchParams, pageSize]);
 
   const fetchNextPage = () => {
-    setPageOffset((prevState) => prevState + 10);
+    setPageOffset((prevState) => prevState + pageSize);
   };
 
   const fetchPrevPage = () => {
-    setPageOffset((prevState) => prevState - 10);
+    setPageOffset((prevState) => prevState - pageSize);
   };
 
   const handlePageSizeChange = (e) => {
