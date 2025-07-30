@@ -5,8 +5,11 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.egov.common.contract.models.AuditDetails;
+import org.egov.common.contract.models.Document;
 import org.springframework.validation.annotation.Validated;
 
+import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import java.util.Date;
 import java.util.List;
@@ -71,6 +74,13 @@ public class Asset {
 
     @JsonProperty("isOperational")
     private Boolean isOperational = null;
+
+    @JsonProperty("documents")
+    private List<Document> documents = null;
+
+    @JsonProperty("auditDetails")
+    @Valid
+    private AuditDetails auditDetails = null;
 
     @JsonProperty("additionalDetails")
     private Map<String, Object> additionalDetails = null;

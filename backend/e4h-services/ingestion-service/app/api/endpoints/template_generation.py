@@ -1,7 +1,6 @@
-import os
-import tempfile
 from datetime import datetime
-from typing import Optional, List, Dict, Any
+from typing import Optional, List
+import psycopg2
 
 import pandas as pd
 from fastapi import APIRouter, Form, HTTPException, Depends
@@ -18,6 +17,7 @@ from app.utils.facility_service_client import FacilityServiceClient
 from app.utils.file_utils import create_temp_file, cleanup_temp_file
 from app.utils.mdms_client import MDMSClient
 from app.utils.project_service_client import ProjectServiceClient
+import os, tempfile, zipfile, qrcode, shutil
 
 router = APIRouter()
 logger = AppLogger().get_logger()
@@ -28,6 +28,13 @@ load_dotenv()
 mdms_url = os.getenv("MDMS_URL")
 project_service_url = os.getenv("PROJECT_SERVICE_URL")
 facility_service_url = os.getenv("FACILITY_SERVICE_URL")
+DB_CONFIG = {
+    "host": os.getenv("DB_HOST"),
+    "port": int(os.getenv("DB_PORT", 5432)),
+    "database": os.getenv("DB_NAME"),
+    "user": os.getenv("DB_USER"),
+    "password": os.getenv("DB_PASSWORD")
+}
 
 @router.get('/facilityIngestion',
             summary='Generate facility ingestion template Excel file with schema and boundary codes',
@@ -265,3 +272,81 @@ async def get_facility_selection_template(
         filename=output_filename,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
+
+@router.post('/facilityQRGeneration', summary='Generate QR for facility',
+             response_description="Returns zip with QR codes")
+async def get_facility_QR_for_autologin(
+        request_info: str = Form(default="")
+):
+    request_info_obj = request_info_from_json(request_info)
+
+    try:
+        mdms_client = MDMSClient(mdms_url=mdms_url)
+        mdms_content = mdms_client.get_tenant_mapping(request_info_obj, ["as", "gj", "ml", "mn", "mz", "nl", "or", "pg", "sk"])
+
+
+        base_url = "https://saura-emitra-dryrun.selcofoundation.org"
+        password = "Health@2026"
+
+        temp_dir = tempfile.mkdtemp()
+
+        for tenant_id, health_facility_data in mdms_content.items():
+
+            state = health_facility_data.get("address")
+            district = health_facility_data.get("city", {}).get("districtName")
+            block = health_facility_data.get("city", {}).get("blockCode")
+            facility_name = health_facility_data.get("name")
+
+            if not all([state, district, block, facility_name]):
+                print(f"Skipping tenant {tenant_id}: Missing state/district/block/facility_name.")
+                continue
+
+            qr_folder = os.path.join(temp_dir, state, district, block, facility_name)
+            os.makedirs(qr_folder, exist_ok=True)
+
+            conn = psycopg2.connect(**DB_CONFIG)
+            with conn.cursor() as cursor:
+                sql = "SELECT code FROM eg_hrms_employee WHERE tenantid = %s"
+                cursor.execute(sql, (health_facility_data["code"],))
+                rows = cursor.fetchall()
+
+            if not rows:
+                print(f"Skipping tenant {tenant_id} ({facility_name}): No HRMS employee code found for tenantid {health_facility_data['code']}")
+                continue
+
+            username = rows[0][0]
+
+
+            if state=='Karnataka':
+                url_state_name = 'digit-ui'
+            else:
+                url_state_name = state.lower()
+
+            login_url = f"{base_url}/{url_state_name}/employee/user/login?tenantid={tenant_id}&username={username}&passwd={password}"
+
+            # Generate QR
+            img = qrcode.make(login_url)
+            qr_filename = f"{username}.png"
+            img_path = os.path.join(qr_folder, qr_filename)
+            img.save(img_path)
+
+        # Create ZIP
+        zip_path = os.path.join(tempfile.gettempdir(), "facility_qr_codes.zip")
+        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
+            for root, _, files in os.walk(temp_dir):
+                for file in files:
+                    abs_file = os.path.join(root, file)
+                    rel_path = os.path.relpath(abs_file, temp_dir)
+                    zipf.write(abs_file, arcname=rel_path)
+
+        shutil.rmtree(temp_dir)
+
+        return FileResponse(
+            path=zip_path,
+            filename="facility_qr_codes.zip",
+            media_type="application/zip"
+        )
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+

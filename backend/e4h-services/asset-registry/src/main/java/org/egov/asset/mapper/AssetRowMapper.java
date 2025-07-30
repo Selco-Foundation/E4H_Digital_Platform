@@ -31,6 +31,7 @@ public class AssetRowMapper {
         asset.setWarrantyEndDate(new Date(rs.getLong("warranty_end_date")));
         asset.setWfStatus(rs.getString("wf_status"));
         asset.setIsActive(rs.getBoolean("is_active"));
+        asset.setIsOperational(rs.getBoolean("is_operational"));
 
         AuditDetails details = new AuditDetails();
         details.setCreatedBy(rs.getString("created_by"));

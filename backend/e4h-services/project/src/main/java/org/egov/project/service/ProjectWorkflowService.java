@@ -1,14 +1,14 @@
 package org.egov.project.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.egov.common.contract.models.Document;
 import org.egov.common.contract.models.RequestInfoWrapper;
 import org.egov.common.contract.request.RequestInfo;
-import org.egov.common.contract.workflow.ProcessInstance;
-import org.egov.common.contract.workflow.ProcessInstanceRequest;
-import org.egov.common.contract.workflow.ProcessInstanceResponse;
 import org.egov.common.models.project.Project;
 import org.egov.project.config.ProjectConfiguration;
+import org.egov.project.web.models.Document;
+import org.egov.project.web.models.ProcessInstance;
+import org.egov.project.web.models.ProcessInstanceRequest;
+import org.egov.project.web.models.ProcessInstanceResponse;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
@@ -58,10 +58,10 @@ public class ProjectWorkflowService {
     }
 
 
-     public ProcessInstance getProcessInstanceById( String processInstanceId, String tenantId, RequestInfo requestInfo) {
+     public ProcessInstance getProcessInstanceById( String businessId, String tenantId, RequestInfo requestInfo) {
         String url = config.getWfHost() + config.getWfSearchPath()
             + "?tenantId=" + tenantId
-            + "&ids=" + processInstanceId;
+            + "&businessIds=" + businessId;
 
         // Wrap RequestInfo in RequestInfoWrapper
         RequestInfoWrapper requestInfoWrapper = new RequestInfoWrapper();

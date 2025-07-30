@@ -10,7 +10,6 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import org.egov.common.contract.response.ResponseInfo;
-import org.egov.common.contract.workflow.ProcessInstance;
 import org.egov.common.models.core.ProjectSearchURLParams;
 import org.egov.common.models.core.SearchResponse;
 import org.egov.common.models.core.URLParams;
@@ -522,20 +521,11 @@ public class ProjectApiController {
                 txn.setComments(commentsByTxnId.getOrDefault(txn.getTransactionId(), Collections.emptyList()));
             }
 
-            ProcessInstance processInstance = null;
-            if (!txns.isEmpty()) {
-                Transaction latestTxn = txns.stream()
-                    .max(Comparator.comparing(t -> t.getAuditDetails().getLastModifiedTime()))
-                    .orElse(null);
-                if (latestTxn != null && latestTxn.getProcessInstanceId() != null) {
-                    processInstance = projectWorkflowService.getProcessInstanceById(
-                        latestTxn.getProcessInstanceId(),
-                        project.getTenantId(),
-                        projectSearchRequest.getRequestInfo()
-                    );
-                }
-            }
-
+            ProcessInstance processInstance = projectWorkflowService.getProcessInstanceById(
+                    project.getId(),
+                    project.getTenantId(),
+                    projectSearchRequest.getRequestInfo()
+            );
             ProjectStatusWrapper wrapper = ProjectStatusWrapper.builder()
                 .project(project)
                 .status(status)

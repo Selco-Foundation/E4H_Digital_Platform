@@ -12,8 +12,8 @@ const useInboxData = (searchParams) => {
 
   const appFilters = {
     ...commonFilters,
-    ...searchParams?.filters?.pgrQuery,
     ...searchParams?.search,
+    ...searchParams?.filters?.pgrQuery,
     limit,
     offset,
     nearingSLA,
@@ -106,6 +106,10 @@ const combineResponses = (items, currentUserUuid, currentTenant, stateTenantId, 
 
   const currentUserRoles = currentUser?.roles?.map((r) => r.code) || [];
 
+  const getRemainingSlaHours = (sla) => {
+    return Math.ceil(sla / (8 * 60 * 60 * 1000));
+  }
+
   return items.map(({ businessObject, ProcessInstance }) => {
     const incident = businessObject?.incident || {};
     const reporterUuid = incident?.reporter?.uuid;
@@ -117,16 +121,16 @@ const combineResponses = (items, currentUserUuid, currentTenant, stateTenantId, 
     if (closedStates.includes(incident.applicationStatus)) {
       slaValue = "-";
     } else if (currentUserUuid === reporterUuid && currentTenant !== stateTenantId) {
-      const totalSla = businessObject?.totalSlaRemaining;
-      slaValue = totalSla < 0 ? t("SLA_OVERDUE") : Math.ceil(totalSla / (8 * 60 * 60 * 1000));
+      const sla = getRemainingSlaHours(businessObject?.totalSlaRemaining);
+      slaValue = sla < 0 ? t("SLA_OVERDUE") : `${sla}`;
     } else if (assigneeUuid && currentUserUuid === assigneeUuid) {
-      const sla = businessObject?.slaRemaining;
-      slaValue = Math.ceil(sla / (8 * 60 * 60 * 1000));
+      const sla = getRemainingSlaHours(businessObject?.slaRemaining);
+      slaValue = sla < 0 ? t("SLA_OVERDUE") : `${sla}`;
     } else if (!assigneeUuid) {
       const requiredRole = roleStatusMapping[incident.applicationStatus];
       if (requiredRole && currentUserRoles.includes(requiredRole)) {
-        const sla = businessObject?.slaRemaining;
-        slaValue = Math.ceil(sla / (8 * 60 * 60 * 1000));
+        const sla = getRemainingSlaHours(businessObject?.slaRemaining);
+        slaValue = sla < 0 ? t("SLA_OVERDUE") : `${sla}`;
       }
     }
 
