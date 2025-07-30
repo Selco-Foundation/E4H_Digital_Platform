@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, Fragment } from "react";
-import { useParams } from "react-router-dom";
+import { useHistory, useParams } from "react-router-dom";
 import {
   BreakLine,
   Card,
@@ -403,6 +403,7 @@ export const ComplaintDetails = (props) => {
   const iPadMinWidth = 768;
   const isMobile = window.Digit.Utils.browser.isMobile();
   const location = useLocation();
+  const history = useHistory();
   const [isIpadView, setIsIpadView] = React.useState(window.innerWidth <= iPadMaxWidth && window.innerWidth >= iPadMinWidth);
   const onResize = () => {
     if (window.innerWidth <= iPadMaxWidth && window.innerWidth >= iPadMinWidth) {
@@ -814,10 +815,17 @@ export const ComplaintDetails = (props) => {
       </>
     );
   };
+  const handleBack = () => {
+    if (window.history.length > 1) {
+      history.goBack();
+    } else {
+      history.push(`/${window.contextPath}/employee/im/inbox`)
+    }
+  };
   return (
     <React.Fragment>
-      <div style={{ color: "#9e1b32", marginBottom: "10px", textAlign: "right", marginRight: "15px" }}>
-        <Link to={`/${window.contextPath}/employee/im/inbox`}>{t("CS_COMMON_BACK")}</Link>
+      <div style={{ color: "#9e1b32", marginBottom: "10px", display:"flex", justifyContent: "end", marginRight: "15px" }}>
+        <div onClick={handleBack} style={{ width: "fit-content", cursor: "pointer" }}>{t("CS_COMMON_BACK")}</div>
       </div>
       <Card>
         <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>

@@ -6,7 +6,7 @@ export const isCodePresent = (array, codeToCheck) => {
   return array.some((item) => item.code === codeToCheck);
 };
 const SearchComplaint = ({ onSearch, type, onClose, searchParams }) => {
-  const [complaintNo, setComplaintNo] = useState(searchParams?.search?.serviceRequestId || "");
+  const [complaintNo, setComplaintNo] = useState(searchParams?.search?.applicationNumber || "");
   const stateTenantId = Digit.ULBService.getStateId();
   let healthcareTenant = Digit.SessionStorage.get("Tenants").filter((item) => item.code !== stateTenantId);
   const [phcType, setPhcType] = useState();
