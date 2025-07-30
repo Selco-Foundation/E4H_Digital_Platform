@@ -182,26 +182,6 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
                   // elapsed
                   Text(_format(_latestValue), style: theme.textTheme.bodyLarge),
                   const Spacer(),
-                  // Expanded(
-                  //   child: Slider(
-                  //     min: 0,
-                  //     max: _controller.value.duration.inMilliseconds.toDouble(),
-                  //     value: _latestValue.inMilliseconds
-                  //         .clamp(0, _controller.value.duration.inMilliseconds)
-                  //         .toDouble(),
-                  //     onChangeStart: (_) => setState(() => _isSeeking = true),
-                  //     onChanged: (value) {
-                  //       setState(() {
-                  //         _latestValue = Duration(milliseconds: value.toInt());
-                  //       });
-                  //     },
-                  //     onChangeEnd: (value) {
-                  //       _controller
-                  //           .seekTo(Duration(milliseconds: value.toInt()));
-                  //       setState(() => _isSeeking = false);
-                  //     },
-                  //   ),
-                  // ),
                   // total
                   Text(_format(_controller.value.duration),
                       style: theme.textTheme.bodyLarge),
