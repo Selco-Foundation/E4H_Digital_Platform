@@ -12,7 +12,10 @@ const Filter = (props) => {
   const stateTenantId = Digit.ULBService.getStateId();
   const { searchParams } = props;
   const { t } = useTranslation();
-  const isAssignedToMe = searchParams?.filters?.wfFilters?.assignee && searchParams?.filters?.wfFilters?.assignee[0]?.code ? true : false;
+  const [districtMenu, setDistrictMenu] = useState([]);
+  const [blockMenu, setBlockMenu] = useState([]);
+  const [phcMenu, setPhcMenu] = useState([]);
+  const [systemFunctionalityMenu, setSystemFunctionalityMenu] = useState([]);
 
   const assignedToOptions = useMemo(
     () => [
@@ -21,13 +24,21 @@ const Filter = (props) => {
     ],
     [t]
   );
+  const loggedInUser = Digit.UserService.getUser();
+  const isAssignedToMe = searchParams?.filters?.wfFilters?.assignee?.[0]?.code === uuid;
+
+  const state = Digit.ULBService.getStateId();
+  const { data: mdmsData } = Digit.Hooks.pgr.useMDMS(state, "Incident", ["District", "Block", "SystemFunctionality"]);
+  const { data: phcData } = Digit.Hooks.pgr.useMDMS(state, "tenant", ["tenants"]);
+  const isNonHcrUser = Digit.UserService.getUser()?.info.roles.some(role => (role.code !== "EMPLOYEE" && role.code !== "COMPLAINANT"));
 
 const isCodePresent = (array, codeToCheck) =>{
   return array.some(item => item.code === codeToCheck);
 }
-console.log("vvvvv",isCodePresent(Digit.SessionStorage.get("User")?.info?.roles, "COMPLAINT_RESOLVER"))
-const [selectAssigned, setSelectedAssigned] = useState(isCodePresent(Digit.SessionStorage.get("User")?.info?.roles, "COMPLAINT_RESOLVER") ? assignedToOptions[0] : assignedToOptions[1]);
-useEffect(() => setSelectedAssigned(isCodePresent(Digit.SessionStorage.get("User")?.info?.roles, "COMPLAINT_RESOLVER") ? assignedToOptions[0] : assignedToOptions[1]), [t]);
+
+  const [selectAssigned, setSelectedAssigned] = useState(
+    (isAssignedToMe || isCodePresent(loggedInUser?.info?.roles, "COMPLAINT_RESOLVER")) ? assignedToOptions[0] : assignedToOptions[1]
+  );
 
   const [selectedComplaintType, setSelectedComplaintType] = useState(null);
   const [selectedHealthCare, setSelectedHealthCare] = useState(null);
@@ -36,21 +47,121 @@ useEffect(() => setSelectedAssigned(isCodePresent(Digit.SessionStorage.get("User
     searchParams?.filters?.pgrfilters || {
       incidentType: [],
       phcType: [],
+      district: [],
+      block: [],
+      isSystemFunctional: [],
       applicationStatus: [],
     }
   );
-  let healthcareTenant = Digit.SessionStorage.get("Tenants").filter(item => item.code !== stateTenantId)
 
   const [wfFilters, setWfFilters] = useState(
-    isCodePresent(Digit.SessionStorage.get("User")?.info?.roles, "COMPLAINT_RESOLVER") ? searchParams?.filters?.wfFilters:searchParams?.filters?.wfFilters?.["assignee"]?.[{"code":""}] || isCodePresent(Digit.SessionStorage.get("User")?.info?.roles, "COMPLAINT_RESOLVER") ? {
-      assignee: [{ code: uuid }],
-    }
-    :
-    {
-      assignee: [{ code: "" }],
-    }
+    searchParams?.filters?.wfFilters ||
+    (isCodePresent(loggedInUser?.info?.roles, "COMPLAINT_RESOLVER") ?
+      { assignee: [{ code: uuid }] } :
+      { assignee: [{ code: "" }] })
   );
-  
+
+  useEffect(() => {
+    const refactorDistrictMenu = () => {
+      const response = mdmsData?.Incident?.District;
+      if (response) {
+        const uniqueDistricts = {};
+        const newDistrictMenu = response
+          .filter((district) => {
+            if (!uniqueDistricts[district.code]) {
+              uniqueDistricts[district.code] = true;
+              return true;
+            }
+            return false;
+          })
+          .sort((a, b) => a.name.localeCompare(b.name))
+          .map((district) => ({
+            districtCode: district.code,
+            code: district.name,
+            nonLocalizedName: district.name,
+            name: t(district.name),
+          }));
+
+        setDistrictMenu(newDistrictMenu);
+        setBlockMenu([]);
+        setPhcMenu([]);
+      }
+    };
+
+    const refactorSystemFunctionalMenu = () => {
+      const response = mdmsData?.Incident?.SystemFunctionality;
+      if (response) {
+        const newSystemFunctionalityMenu = response
+          .filter((systemFunctionality) => systemFunctionality.active)
+          .sort((a, b) => a.name.localeCompare(b.name))
+          .map((systemFunctionality) => ({
+            code: systemFunctionality.code,
+            nonLocalizedName: systemFunctionality.name,
+            name: t(systemFunctionality.name),
+          }));
+
+        setSystemFunctionalityMenu(newSystemFunctionalityMenu);
+      }
+    }
+
+    refactorDistrictMenu();
+    refactorSystemFunctionalMenu();
+  }, [state, mdmsData, t]);
+
+  useEffect(() => {
+
+    setSelectedAssigned(
+      (isAssignedToMe || isCodePresent(loggedInUser?.info?.roles, "COMPLAINT_RESOLVER")) ? assignedToOptions[0] : assignedToOptions[1]
+    )
+
+    setPgrFilters((prevFilters) => ({
+      ...prevFilters,
+      incidentType: prevFilters.incidentType.map((type) => ({
+        ...type,
+        name: t(`SERVICEDEFS.${type.code === "" ? "OTHER" : type.code.toUpperCase()}`),
+      })),
+      district: prevFilters.district.map((district) => ({ ...district, name: t(district.nonLocalizedName) })),
+      block: prevFilters.block.map((block) => ({ ...block, name: t(block.nonLocalizedName) })),
+      phcType: prevFilters.phcType.map((type) => ({ ...type, name: t(type.nonLocalizedName) })),
+      isSystemFunctional: prevFilters.isSystemFunctional.map((systemFunctionality) => ({
+        ...systemFunctionality,
+        name: t(systemFunctionality.nonLocalizedName)
+      })),
+    }));
+  }, [t]);
+
+  useEffect(() => {
+    const selectedDistrict = pgrfilters.district?.[0];
+    if (selectedDistrict) {
+      const newBlockMenu = mdmsData?.Incident?.Block
+        .filter((block) => block?.districtCode === selectedDistrict.districtCode)
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map((block) => ({
+          blockCode: block.code,
+          code: block.name,
+          nonLocalizedName: block.name,
+          name: t(block.name),
+        }));
+
+      setBlockMenu(newBlockMenu);
+    }
+
+    const selectedBlock = pgrfilters.block?.[0];
+    if (selectedBlock) {
+      const newPhcMenu = phcData?.tenant?.tenants
+        .filter((centre) => centre?.city?.blockCode === selectedBlock.blockCode)
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map((centre) => ({
+          ...centre,
+          nonLocalizedName: centre?.name,
+          name: t(centre?.name),
+          centreType: t(centre?.centreType),
+        }));
+
+      setPhcMenu(newPhcMenu);
+    }
+
+  }, [pgrfilters, mdmsData, phcData, t]);
   
   const tenantId = Digit.ULBService.getCurrentTenantId();
   // let localities = Digit.Hooks.pgr.useLocalities({ city: tenantId });
@@ -60,33 +171,14 @@ useEffect(() => setSelectedAssigned(isCodePresent(Digit.SessionStorage.get("User
   const menu = Digit.Hooks.pgr.useComplaintTypes({ stateCode: tenantId })
   let sortedMenu=[];
   if(menu!==null){
-    let othersItem = menu.find(item => item.name==="Other");
-    let remainingOptions = menu.filter(item => item.name!=="Other");
+    let othersItem = menu.find(item => item.key==="");
+    let remainingOptions = menu.filter(item => item.key!=="");
     remainingOptions.sort((a, b) => a.name.localeCompare(b.name));
     if (othersItem) {
       remainingOptions.push(othersItem);
     }
     sortedMenu = remainingOptions
   }
-  
-  const state = Digit.ULBService.getStateId();
-//   const { isMdmsLoading, data: mdmsData } = Digit.Hooks.pgr.useMDMS(state, "Incident", ["District","Block"]);
-// const {  data: phcMenu  } = Digit.Hooks.pgr.useMDMS(state, "tenant", ["tenants"]);
-const convertedData = Digit.SessionStorage.get("IM_TENANTS").map(item => ({
-  name: item.label,
-  code: item.value
-}));
-const healthcareMenu=Digit.SessionStorage.get("Employee.tenantId") !== stateTenantId ? Digit.SessionStorage.get("Tenants") : Digit.SessionStorage.get("Employee.tenantId") == stateTenantId ? isCodePresent(Digit.SessionStorage.get("User")?.info?.roles, "COMPLAINT_RESOLVER")?  healthcareTenant: Digit.SessionStorage.get("IM_TENANTS").filter((item) => item.code !==stateTenantId): Digit.SessionStorage.get("IM_TENANTS").filter((item) => item.code !==stateTenantId)
-const translatedPhcMenu=healthcareMenu.map(item=>({
-  ...item,
-  code: t(item?.code),
-  name:t(item?.name),
-  centreType:t(item?.centreType)
-}))
-let sortedHealthCaremenu=[];
-if(translatedPhcMenu.length>0){
-  sortedHealthCaremenu=translatedPhcMenu.sort((a, b) => a.name.localeCompare(b.name));
-}
 
   const onRadioChange = (value) => {
     setSelectedAssigned(value);
@@ -169,7 +261,17 @@ if(translatedPhcMenu.length>0){
     let afterRemove = pgrfilters[key].filter((value, i) => {
       return i !== index;
     });
-    setPgrFilters({ ...pgrfilters, [key]: afterRemove });
+
+    if (key === "district") {
+      setBlockMenu([]);
+      setPhcMenu([]);
+      setPgrFilters({ ...pgrfilters, district: [], block: [], phcType: [] });
+    } else if (key === "block") {
+      setPhcMenu([]);
+      setPgrFilters({ ...pgrfilters, block: [], phcType: [] });
+    } else {
+      setPgrFilters({ ...pgrfilters, [key]: afterRemove });
+    }
   };
   const handleAssignmentChange = (e, type) => {
     if (e.target.checked) {
@@ -182,9 +284,38 @@ if(translatedPhcMenu.length>0){
     }
   };
 
+  const handleDistrictChange = (selectedDistrict) => {
+    const previouslySelectedDistrict = pgrfilters.district[0];
+
+    if (previouslySelectedDistrict?.code !== selectedDistrict.code) {
+      setPgrFilters({ ...pgrfilters, district: [selectedDistrict], block: [], phcType: [] });
+    }
+  };
+
+  const handleBlockChange = (selectedBlock) => {
+    const previouslySelectedBlock = pgrfilters.block[0];
+
+    if (previouslySelectedBlock?.code !== selectedBlock.code) {
+      setPgrFilters({ ...pgrfilters, block: [selectedBlock], phcType: [] });
+    }
+  };
+
+  const handleSystemFunctionalityChange = (selectedSystemFunctionality) => {
+    setPgrFilters({...pgrfilters, isSystemFunctional: [selectedSystemFunctionality]});
+  }
+
   function clearAll() {
-    let pgrReset = { incidentType: [], phcType: [], applicationStatus: [] };
+    let pgrReset = {
+      incidentType: [],
+      phcType: [],
+      district: [],
+      block: [],
+      isSystemFunctional: [],
+      applicationStatus: []
+    };
     let wfRest = { assigned: [{ code: [] }] };
+    setBlockMenu([]);
+    setPhcMenu([]);
     setPgrFilters(pgrReset);
     setWfFilters(wfRest);
     pgrQuery = {};
@@ -242,14 +373,69 @@ if(translatedPhcMenu.length>0){
               {GetSelectOptions(
                 t("CS_COMPLAINT_DETAILS_TICKET_TYPE"),
                 sortedMenu,
-                selectedComplaintType,
+                null,
                 complaintType,
                 "name",
                 onRemove,
                 "incidentType"
               )}
             </div>
-            <div>{GetSelectOptions(t("CS_HEALTH_CARE"), sortedHealthCaremenu, selectedHealthCare, onSelectHealthCare, "name", onRemove, "phcType")}</div>
+            {isNonHcrUser && (
+              <div>
+                <div>
+                  {
+                    GetSelectOptions(
+                      t("CS_DISTRICT"),
+                      districtMenu,
+                      null,
+                      handleDistrictChange,
+                      "name",
+                      onRemove,
+                      "district"
+                    )
+                  }
+                </div>
+                <div>
+                  {
+                    GetSelectOptions(
+                      t("CS_BLOCK"),
+                      blockMenu,
+                      null,
+                      handleBlockChange,
+                      "name",
+                      onRemove,
+                      "block"
+                    )
+                  }
+                </div>
+                <div>
+                  {
+                    GetSelectOptions(
+                      t("CS_HEALTH_CARE"),
+                      phcMenu,
+                      null,
+                      onSelectHealthCare,
+                      "name",
+                      onRemove,
+                      "phcType"
+                    )
+                  }
+                </div>
+              </div>
+            )}
+            <div>
+              {
+                GetSelectOptions(
+                  t("CS_SYSTEM_FUNCTIONAL"),
+                  systemFunctionalityMenu,
+                  null,
+                  handleSystemFunctionalityChange,
+                  "name",
+                  onRemove,
+                  "isSystemFunctional"
+                )
+              }
+            </div>
             {<Status complaints={props.complaints} onAssignmentChange={handleAssignmentChange} pgrfilters={pgrfilters} />}
           </div>
         </div>

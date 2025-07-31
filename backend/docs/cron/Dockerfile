@@ -5,4 +5,6 @@ COPY cronJobAPIConfig.py .
 
 RUN pip install -r requirements.txt
 
+ENTRYPOINT ["python", "cronJobAPIConfig.py"]
+
 
