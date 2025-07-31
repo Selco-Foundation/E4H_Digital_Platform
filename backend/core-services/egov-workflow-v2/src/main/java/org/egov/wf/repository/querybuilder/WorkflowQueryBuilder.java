@@ -71,6 +71,17 @@ public class WorkflowQueryBuilder {
 
     private static final String FINAL_ESCALATED_QUERY ="SELECT businessid from ( {RANKED_QUERY} ) final WHERE outer_rank = 2 ";
 
+    private static final String SQL_QUERY_MIGRATION_BUSINESS_SERVICE =
+            "SELECT bs.businessservice as businessservice, bs.business as module_name, bs.tenantid as tenantid, " +
+                    "bs.uuid as businessservice_uuid, bs.businessservicesla as businessservicesla, " +
+                    "st.uuid as state_uuid, st.state as state, st.tenantid as state_tenantid, " +
+                    "st.applicationstatus as applicationstatus, st.sla as sla " +
+                    "FROM eg_wf_businessService_v2 bs " +
+                    "INNER JOIN eg_wf_state_v2 st ON st.businessServiceId = bs.uuid " +
+                    "WHERE businessservice IN ('Incident_Low','Incident_Medium','Incident_High','Incident') " +
+                    "ORDER BY state_tenantid";
+
+
     private String getProcessInstanceSearchQueryWithoutPagination(ProcessInstanceSearchCriteria criteria, List<Object> preparedStmtList){
 
 
@@ -253,6 +264,13 @@ public class WorkflowQueryBuilder {
         addToPreparedStatement(preparedStmtList, ids);
 
         builder.append(" ORDER BY wf_lastModifiedTime DESC ");
+
+        return builder.toString();
+    }
+
+    public String getBusinessServicesAndStates(){
+
+        StringBuilder builder = new StringBuilder(SQL_QUERY_MIGRATION_BUSINESS_SERVICE);
 
         return builder.toString();
     }

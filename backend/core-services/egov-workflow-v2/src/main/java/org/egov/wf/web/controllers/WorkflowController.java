@@ -121,4 +121,13 @@ public class WorkflowController {
         return new ResponseEntity<>(count,HttpStatus.OK);
     }
 
+    @RequestMapping(value="/migration/_update", method = RequestMethod.POST)
+    public ResponseEntity<ProcessInstanceResponse> processInstanceUpdate(@Valid @RequestBody ProcessInstanceRequest processInstanceRequest) {
+        List<ProcessInstance> processInstances =  workflowService.proceedUpdateProcessInstance(processInstanceRequest.getRequestInfo(), processInstanceRequest.getProcessInstances());
+        ProcessInstanceResponse response = ProcessInstanceResponse.builder().processInstances(processInstances)
+                .responseInfo(responseInfoFactory.createResponseInfoFromRequestInfo(processInstanceRequest.getRequestInfo(), true))
+                .build();
+        return new ResponseEntity<>(response,HttpStatus.OK);
+    }
+
 }
