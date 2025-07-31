@@ -21,6 +21,7 @@ import org.egov.common.contract.request.RequestInfo;
 import org.egov.common.contract.request.User;
 import org.egov.tracer.model.CustomException;
 import org.egov.wf.config.WorkflowConfig;
+import org.egov.wf.producer.Producer;
 import org.egov.wf.repository.BusinessServiceRepository;
 import org.egov.wf.repository.WorKflowRepository;
 import org.egov.wf.util.WorkflowUtil;
@@ -72,6 +73,9 @@ class WorkflowServiceTest {
 
     @MockBean
     private WorkflowValidator workflowValidator;
+
+    @MockBean
+    private Producer producer;
 
 
     @Test

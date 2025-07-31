@@ -92,6 +92,15 @@ public class RequestsApiController{
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
+    @RequestMapping(value="/request/migration/_update", method = RequestMethod.POST)
+    public ResponseEntity<IncidentResponse> requestsUpdatePostMigration(@Valid @RequestBody IncidentRequest request) throws IOException {
+        IncidentRequest enrichedReq = imService.migrationUpdate(request);
+        IncidentWrapper incidentWrapper = IncidentWrapper.builder().incident(enrichedReq.getIncident()).workflow(enrichedReq.getWorkflow()).build();
+        ResponseInfo responseInfo = responseInfoFactory.createResponseInfoFromRequestInfo(request.getRequestInfo(), true);
+        IncidentResponse response = IncidentResponse.builder().responseInfo(responseInfo).IncidentWrappers(Collections.singletonList(incidentWrapper)).build();
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
     @RequestMapping(value="/request/_count", method = RequestMethod.POST)
     public ResponseEntity<CountResponse> requestsCountPost(@Valid @RequestBody RequestInfoWrapper requestInfoWrapper,
                                                            @Valid @ModelAttribute RequestSearchCriteria criteria) {
