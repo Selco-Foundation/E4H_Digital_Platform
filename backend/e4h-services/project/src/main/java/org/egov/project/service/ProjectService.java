@@ -97,7 +97,7 @@ public class ProjectService {
         projectEnrichment.enrichProjectOnCreate(projectRequest, parentProjects);
         log.info("Enriched with Project Number, Ids and AuditDetails");
         producer.push(projectConfiguration.getSaveProjectTopic(), projectRequest);
-        producer.push(projectConfiguration.getSaveProjectIndexTopic(), projectRequest);
+        producer.push(projectConfiguration.getSaveProjectTopicIndexer(), projectRequest);
         log.info("Pushed to kafka");
         return projectRequest;
     }
