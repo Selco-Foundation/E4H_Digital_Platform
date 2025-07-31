@@ -2,31 +2,11 @@
   "display_override": [
     "window-controls-overlay"
   ],
-  "protocol_handlers": [
-    {
-      "protocol": "mailto",
-      "url": "/newEmail?to=%s"
-    }
-  ],
-  "shortcuts": [
-    {
-      "name": "Start Live Session",
-      "short_name": "Start Live",
-      "description": "Jump direction into starting or joining a live session",
-      "url": "/?startLive",
-      "icons": [
-        {
-          "src": "https://pwabuilder.com/assets/icons/icon_192.png",
-          "sizes": "192x192"
-        }
-      ]
-    }
-  ],
   "name": "Saura-eMitra",
   "short_name": "eMitra",
   "start_url": "/digit-ui/",
   "display": "standalone",
-  "description": "A description for your application",
+  "description": "Saura-eMitra digital platform for citizen services and government operations, running in https mode.",
   "lang": "en",
   "dir": "auto",
   "theme_color": "#000000",

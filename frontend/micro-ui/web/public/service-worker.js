@@ -7,13 +7,7 @@ const urlsToCache = [
   '/',
   '/index.html',
   '/manifest.json',
-  'micro-ui/web/public/manifest-icon-512.maskable.png',
-  'micro-ui/web/public/Screenshot-Saura-eMitra-Home.png',
-  '/Screenshot-Saura-eMitra-Home.png',
-  '/manifest-icon-512.maskable.png',
-  'micro-ui/web/public/manifest-icon-192.maskable.png',
-  'manifest-icon-192.maskable.png',
-
+  '/Screenshot-Saura-eMitra-Home.png'
 ];
 
 // Install event: cache files
@@ -21,6 +15,10 @@ self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => cache.addAll(urlsToCache))
+      .catch(error => {
+        console.error('Failed to cache resources during install:', error);
+        throw error;
+     })
   );
 });
 
