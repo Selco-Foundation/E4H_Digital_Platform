@@ -8,7 +8,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.egov.common.contract.models.AuditDetails;
 import org.egov.common.contract.request.RequestInfo;
-import org.egov.common.contract.workflow.ProcessInstance;
 import org.egov.common.models.core.ProjectSearchURLParams;
 import org.egov.common.models.core.SearchResponse;
 import org.egov.common.models.project.*;
@@ -140,7 +139,7 @@ public class ProjectService {
 
     public List<Project> searchProject(ProjectSearchRequest projectSearchRequest, @Valid ProjectSearchURLParams urlParams, List<String> workflowStatuses, @Valid ProjectSortCriteria sortCriteria) throws Exception {
         projectValidator.validateSearchV2ProjectRequest(projectSearchRequest, urlParams, sortCriteria);
-        List<Project> projects = projectRepository.getProjects(projectSearchRequest.getProject(), urlParams, workflowStatuses, sortCriteria);
+        List<Project> projects = projectRepository.getProjects(projectSearchRequest, urlParams, workflowStatuses, sortCriteria);
         projects = getCountFacilitiesProject(projects, projectSearchRequest.getRequestInfo());
         return projects;
     }
@@ -391,7 +390,7 @@ public class ProjectService {
     public Integer countAllProjects(ProjectSearchRequest request,
                                     ProjectSearchURLParams urlParams,
                                     List<String> workflowStatuses) {
-        return projectRepository.getProjectCount(request.getProject(), urlParams, workflowStatuses);
+        return projectRepository.getProjectCount(request, urlParams, workflowStatuses);
     }
 
     public ProjectStatusWrapper updateProjectWorkflow(ProjectWorkflowRequest request) throws Exception {
@@ -572,8 +571,10 @@ public class ProjectService {
             asset.setIsOperational(true);
 
             String assetUpdateEndpoint = projectConfiguration.getAssetHost() +
-                    projectConfiguration.getAssetUpdateUrl().replace("{assetID}", asset.getAssetId());
+                    projectConfiguration.getAssetUpdateUrl();
+
             StringBuilder assetUpdateUri = new StringBuilder(assetUpdateEndpoint);
+            assetUpdateUri.append("?assetID=").append(asset.getAssetId());
 
             AssetCreate assetCreate = AssetCreate.builder()
                     .asset(asset)

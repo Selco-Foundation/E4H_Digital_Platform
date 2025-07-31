@@ -12,8 +12,8 @@ const useInboxData = (searchParams) => {
 
   const appFilters = {
     ...commonFilters,
-    ...searchParams?.filters?.pgrQuery,
     ...searchParams?.search,
+    ...searchParams?.filters?.pgrQuery,
     limit,
     offset,
     nearingSLA,

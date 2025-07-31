@@ -106,12 +106,12 @@ public class ProjectRepository extends GenericRepository<Project> {
         return buildProjectSearchResult(projects, targets, documents, ancestors, descendants);
     }
 
-    public List<Project> getProjects(@NotNull @Valid ProjectSearch projectSearch,
+    public List<Project> getProjects(@NotNull @Valid ProjectSearchRequest projectSearchRequest,
                                      @Valid ProjectSearchURLParams urlParams,
                                      List<String> workflowStatuses,
                                      @Valid ProjectSortCriteria sortCriteria) {
         //Fetch Projects based on search criteria with sort criteria
-        List<Project> projects =  getProjectsBasedOnV2SearchCriteria(projectSearch, urlParams, workflowStatuses, sortCriteria);
+        List<Project> projects =  getProjectsBasedOnV2SearchCriteria(projectSearchRequest, urlParams, workflowStatuses, sortCriteria);
 
         Set<String> projectIds = projects.stream().map(Project::getId).collect(Collectors.toSet());
 
@@ -148,13 +148,13 @@ public class ProjectRepository extends GenericRepository<Project> {
         return buildProjectSearchResult(projects, targets, documents, ancestors, descendants);
     }
 
-    private List<Project> getProjectsBasedOnV2SearchCriteria(@NotNull @Valid ProjectSearch projectSearch,
+    private List<Project> getProjectsBasedOnV2SearchCriteria(@NotNull @Valid ProjectSearchRequest projectSearchRequest,
                                                              ProjectSearchURLParams urlParams,
                                                              List<String> workflowStatuses,
                                                              ProjectSortCriteria sortCriteria
     ) {
         List<Object> preparedStmtList = new ArrayList<>();
-        String query = queryBuilder.getProjectSearchAndSortQuery(projectSearch, urlParams, preparedStmtList, Boolean.FALSE, workflowStatuses, sortCriteria);
+        String query = queryBuilder.getProjectSearchAndSortQuery(projectSearchRequest, urlParams, preparedStmtList, Boolean.FALSE, workflowStatuses, sortCriteria);
         List<Project> projects = jdbcTemplate.query(query, addressRowMapper, preparedStmtList.toArray());
 
         log.info("Fetched project list based on given search criteria");
@@ -383,11 +383,11 @@ public class ProjectRepository extends GenericRepository<Project> {
      *
      * @return
      */
-    public Integer getProjectCount(ProjectSearch projectSearch,
+    public Integer getProjectCount(ProjectSearchRequest projectSearchRequest,
                                    ProjectSearchURLParams urlParams,
                                    List<String> workflowStatuses) {
         List<Object> preparedStatement = new ArrayList<>();
-        String query = queryBuilder.getSearchCountQueryString(projectSearch, urlParams, preparedStatement, workflowStatuses);
+        String query = queryBuilder.getSearchCountQueryString(projectSearchRequest, urlParams, preparedStatement, workflowStatuses);
 
         if (query == null) return 0;
 

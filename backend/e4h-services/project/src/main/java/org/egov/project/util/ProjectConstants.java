@@ -22,6 +22,7 @@ public class ProjectConstants {
     public static final String TASK_NOT_ALLOWED_RESOURCE_CANNOT_EMPTY_ERROR_MESSAGE = "Task not allowed as resources can not be empty when ";
     public static final String NUMBER_OF_SESSIONS = "numberOfSessions";
     public static final String OR = " OR ";
+    public static final String PROJECT_MANAGER = "PROJECT_MANAGER";
 
 
 }
