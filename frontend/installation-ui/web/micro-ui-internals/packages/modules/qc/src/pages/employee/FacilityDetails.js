@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
-import Summary from "./component/Summary";
-import QCActions from "./component/QCActions";
-import AuditTrial from "./component/AuditTrial";
+import Summary from "../../components/FacilityDetails/Summary";
+import QCActions from "../../components/FacilityDetails/QCActions";
+import AuditTrial from "../../components/FacilityDetails/AuditTrial";
 import { useDispatch, useSelector } from "react-redux";
-import { QCService } from "../Service/QCService";
-import { clearRejectionReasons } from "../../../redux/actions";
+import { QCService } from "./Service/QCService";
+import { clearRejectionReasons } from "../../redux/actions";
 
 const FacilityDetails = ({t}) => {
 

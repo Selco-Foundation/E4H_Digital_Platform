@@ -1,6 +1,6 @@
 import React from 'react';
 import { useSelector } from "react-redux";
-import { QCService } from "../../Service/QCService";
+import { QCService } from "../../pages/employee/Service/QCService";
 
 const QCActions = () => {
 

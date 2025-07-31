@@ -1,11 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
 import { CheckBox, Table } from "@egovernments/digit-ui-react-components";
-import Filter from "./component/Filter";
-import InfoCard from "./component/InfoCard";
+import Filter from "../../components/FacilityTable/Filter";
+import InfoCard from "../../components/FacilityTable/InfoCard";
 import { Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { setSelectedFacility } from "../../../redux/actions";
-import { QCService } from "../Service/QCService";
+import { setSelectedFacility } from "../../redux/actions";
+import { QCService } from "./Service/QCService";
 
 const FacilityTable = ({ t, getCellProps, onNextPage, onPrevPage, currentPage, totalRecords, pageSizeLimit, onPageSizeChange }) => {
 

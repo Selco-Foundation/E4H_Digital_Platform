@@ -4,7 +4,7 @@ import RejectionReasonModal from "./RejectionReasonModal";
 import SystemParameterReport from "./SystemParameterReport";
 import SingleRejectionReasonModal from "./SingleRejectionReasonModal";
 import { useDispatch, useSelector } from "react-redux";
-import { setRejectionReasons } from "../../../../redux/actions";
+import { setRejectionReasons } from "../../redux/actions";
 
 const Summary = ({ sectionName, count, specifications, details, items, images, videos, pdf, isReport }) => {
 

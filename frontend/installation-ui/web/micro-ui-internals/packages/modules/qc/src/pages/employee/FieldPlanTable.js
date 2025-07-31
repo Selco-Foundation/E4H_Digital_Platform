@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { Table } from "@egovernments/digit-ui-react-components";
-import SearchCentre from "./component/search";
-import { QCService } from "../Service/QCService";
-import { setSelectedFieldPlan } from "../../../redux/actions";
+import SearchCentre from "../../components/FieldPlanTable/Search";
+import { QCService } from "./Service/QCService";
+import { setSelectedFieldPlan } from "../../redux/actions";
 import { Link, useRouteMatch } from "react-router-dom";
 import { useDispatch } from "react-redux";
 
