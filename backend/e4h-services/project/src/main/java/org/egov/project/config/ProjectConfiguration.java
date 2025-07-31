@@ -140,7 +140,7 @@ public class ProjectConfiguration {
     private String saveProjectTopic;
 
     @Value("${project.management.system.kafka.create.topic.indexer}")
-    private String saveProjectIndexTopic;
+    private String saveProjectTopicIndexer;
 
     @Value("${project.management.system.kafka.update.topic}")
     private String updateProjectTopic;
