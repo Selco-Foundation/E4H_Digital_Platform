@@ -1,6 +1,9 @@
+import logging
 from typing import Any, Dict, Optional
 
 import requests
+
+logger = logging.getLogger(__name__)
 
 
 class FacilityServiceClient:
@@ -16,16 +19,16 @@ class FacilityServiceClient:
             return response
 
         except requests.exceptions.HTTPError as http_err:
-            print(f"HTTP error occurred: {http_err}")
+            logger.error(f"HTTP error occurred: {http_err}")
             raise http_err
         except requests.exceptions.ConnectionError as conn_err:
-            print(f"Connection error occurred: {conn_err}")
+            logger.error(f"Connection error occurred: {conn_err}")
             raise conn_err
         except requests.exceptions.Timeout as timeout_err:
-            print(f"Timeout error occurred: {timeout_err}")
+            logger.error(f"Timeout error occurred: {timeout_err}")
             raise timeout_err
         except requests.exceptions.RequestException as req_err:
-            print(f"An error occurred: {req_err}")
+            logger.error(f"An error occurred: {req_err}")
             raise req_err
 
     def search_facility(
@@ -71,15 +74,14 @@ class FacilityServiceClient:
             return {"totalCount": total_count, "facilities": all_facilities}
 
         except requests.exceptions.HTTPError as http_err:
-            print(f"HTTP error occurred: {http_err}")
+            logger.error(f"HTTP error occurred: {http_err}")
             raise http_err
         except requests.exceptions.ConnectionError as conn_err:
-            print(f"Connection error occurred: {conn_err}")
+            logger.error(f"Connection error occurred: {conn_err}")
             raise conn_err
         except requests.exceptions.Timeout as timeout_err:
-            print(f"Timeout error occurred: {timeout_err}")
+            logger.error(f"Timeout error occurred: {timeout_err}")
             raise timeout_err
         except requests.exceptions.RequestException as req_err:
-            print(f"An error occurred: {req_err}")
+            logger.error(f"An error occurred: {req_err}")
             raise req_err
-
