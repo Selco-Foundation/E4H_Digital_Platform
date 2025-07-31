@@ -139,6 +139,9 @@ public class ProjectConfiguration {
     @Value("${project.management.system.kafka.create.topic}")
     private String saveProjectTopic;
 
+    @Value("${project.management.system.kafka.create.topic.indexer}")
+    private String saveProjectIndexTopic;
+
     @Value("${project.management.system.kafka.update.topic}")
     private String updateProjectTopic;
 
