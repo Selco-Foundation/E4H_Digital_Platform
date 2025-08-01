@@ -3,8 +3,8 @@ import Summary from "../../components/FacilityDetails/Summary";
 import QCActions from "../../components/FacilityDetails/QCActions";
 import AuditTrial from "../../components/FacilityDetails/AuditTrial";
 import { useDispatch, useSelector } from "react-redux";
-import { QCService } from "./Service/QCService";
 import { clearRejectionReasons } from "../../redux/actions";
+import { Loader } from "@egovernments/digit-ui-react-components";
 
 const FacilityDetails = ({t}) => {
 
@@ -17,112 +17,12 @@ const FacilityDetails = ({t}) => {
     size: "3.5 MB"
   });
 
-  const getAssetName = (assetTypeID) => {
-    switch(assetTypeID) {
-      case "PANEL":
-        return "Panel";
-      case "BATTERY":
-        return "Battery";
-      case "INVERTER":
-        return "Inverter";
+  const { isLoading, data } = Digit.Hooks.qc.useFacilityDetails(selectedFacility?.facilityId);
+  useEffect(() => {
+    if (data) {
+      setData(data);
     }
-  }
-
-  const getAssetCapacity = (assetTypeID, assetDetails) => {
-    switch(assetTypeID) {
-      case "PANEL":
-        return assetDetails?.panelCapacity + " " + assetDetails?.capacityUnit;
-      case "BATTERY":
-        return assetDetails?.batteryCapacity + " " + assetDetails?.capacityUnit;
-      case "INVERTER":
-        return assetDetails?.inverterCapacity + " " + assetDetails?.capacityUnit;
-    }
-  }
-
-  const fetchFileStoreDocuments = async (documents) => {
-    const fetchedDocuments = [];
-    for (const document of documents) {
-      if (document?.documentType?.toUpperCase() === "ASSET") {
-        await QCService.fetchImageFromFileStore(document?.fileStore)
-          .then((response) => {
-            fetchedDocuments.push(Digit.Utils.getFileUrl(response[document?.fileStore]))
-          })
-      }
-    }
-
-    return fetchedDocuments;
-  }
-
-  const formatData = async (data) => {
-    const dataMap = new Map();
-
-    for (const row of data) {
-      const assetType = row?.assetTypeID;
-
-      if (dataMap.has(assetType)) {
-        dataMap.set(assetType, {
-          ...dataMap.get(assetType),
-          count: dataMap.get(assetType).count + 1,
-          details: {
-            ...dataMap.get(assetType).details,
-            count: dataMap.get(assetType).details.count + 1
-          },
-          items: [
-            ...dataMap.get(assetType).items,
-            {
-              assetId: row?.assetId,
-              serialNumber: row?.serialNumber,
-              capacity: getAssetCapacity(assetType, row?.assetDetails),
-              documents: await fetchFileStoreDocuments(row?.documents)
-            }
-          ]
-        })
-      } else {
-        dataMap.set(assetType, {
-          assetName: getAssetName(assetType),
-          count: 1,
-          specifications: {
-            system: row?.system,
-            capacity: getAssetCapacity(assetType, row?.assetDetails)
-          },
-          details: {
-            count: 1,
-            warrantyStartDate: new Date(row?.warrantyStartDate).toLocaleDateString("en-IN", {
-              day: "2-digit",
-              month: "2-digit",
-              year: "numeric",
-            }),
-            warrantyDuration: row?.warrantyDuration + " Years",
-            brand: row?.brandID,
-            modelNumber: row?.modelNumber
-          },
-          items: [
-            {
-              assetId: row?.assetId,
-              serialNumber: row?.serialNumber,
-              capacity: getAssetCapacity(assetType, row?.assetDetails),
-              documents: await fetchFileStoreDocuments(row?.documents)
-            }
-          ]
-        })
-      }
-    }
-
-    return dataMap.values().toArray();
-  }
-
-  useEffect(async () => {
-    await QCService.fetchAssets(selectedFacility?.facilityId)
-      .then(async (response) => {
-        await formatData(response)
-          .then((data) => {
-            setData(data);
-          })
-      })
-      .catch((error) => {
-        console.error("Error fetching assets", error);
-      })
-  }, []);
+  }, [data]);
 
   useEffect(() => {
     return () => {
@@ -165,6 +65,10 @@ const FacilityDetails = ({t}) => {
       date: "25/04/25",
     },
   ];
+
+  if (isLoading) {
+    return <Loader />;
+  }
 
   return (
     <div style={{marginTop: "20px"}}>

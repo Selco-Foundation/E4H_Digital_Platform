@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { Table } from "@egovernments/digit-ui-react-components";
+import { Loader, Table } from "@egovernments/digit-ui-react-components";
 import SearchCentre from "../../components/FieldPlanTable/Search";
-import { QCService } from "./Service/QCService";
 import { setSelectedFieldPlan } from "../../redux/actions";
 import { Link, useRouteMatch } from "react-router-dom";
 import { useDispatch } from "react-redux";
@@ -18,6 +17,7 @@ const FieldPlanTable = ({ t, getCellProps, onNextPage, onPrevPage, currentPage, 
       projectTypeId: "FieldPlan"
     }
   });
+  const { isLoading, data} = Digit.Hooks.qc.useFieldPlan(queryFilter);
 
   const submitFunc = () => {
     setFilteredData(fetchedData.filter((row) => row.code.includes(centreNameToSearch)));
@@ -28,19 +28,11 @@ const FieldPlanTable = ({ t, getCellProps, onNextPage, onPrevPage, currentPage, 
     setFilteredData(fetchedData);
   };
 
-  useEffect(async () => {
-    await QCService.fetchProjects(queryFilter)
-      .then((response) => {
-        setData(response?.Project);
-      })
-      .catch((error) => {
-        console.error("Error fetching field plans", error);
-      })
-  }, []);
-
   useEffect(() => {
-    setFilteredData(fetchedData);
-  }, [fetchedData]);
+    if (data) {
+      setData(data.Project);
+    }
+  }, [isLoading]);
 
   const GetCell = (value) => <span className="cell-text">{value}</span>;
 
@@ -123,6 +115,10 @@ const FieldPlanTable = ({ t, getCellProps, onNextPage, onPrevPage, currentPage, 
       transactions: row?.transactions
     };
   })
+
+  if (isLoading) {
+    return <Loader />;
+  }
 
   return (
     <div style={{marginTop: "20px"}}>

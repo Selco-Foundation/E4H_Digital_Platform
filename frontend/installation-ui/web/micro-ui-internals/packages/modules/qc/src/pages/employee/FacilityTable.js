@@ -1,11 +1,10 @@
 import React, { useEffect, useRef, useState } from "react";
-import { CheckBox, Table } from "@egovernments/digit-ui-react-components";
+import {CheckBox, Loader, Table} from "@egovernments/digit-ui-react-components";
 import Filter from "../../components/FacilityTable/Filter";
 import InfoCard from "../../components/FacilityTable/InfoCard";
 import { Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { setSelectedFacility } from "../../redux/actions";
-import { QCService } from "./Service/QCService";
 
 const FacilityTable = ({ t, getCellProps, onNextPage, onPrevPage, currentPage, totalRecords, pageSizeLimit, onPageSizeChange }) => {
 
@@ -28,81 +27,28 @@ const FacilityTable = ({ t, getCellProps, onNextPage, onPrevPage, currentPage, t
       parent: selectedFieldPlan.id,
     }
   });
-  const [facilityQueryFilter, setFacilityQueryFilter] = useState({
-    ProjectFacility: {
-      projectId: []
-    }
-  })
-  const projectMap = useRef(new Map());
 
-  useEffect(async () => {
-    await QCService.fetchProjects(projectQueryFilter)
-    .then((response) => {
+  const { isLoading, data } = Digit.Hooks.qc.useFacility(projectQueryFilter);
+  useEffect(() => {
+    if (data) {
+      const refactoredDataCopy = data.map((row) => ({
+        ...row,
+        projectName: selectedFieldPlan?.name,
+        status: t(row?.status) || "-",
+      }));
 
-      setData(response?.Project);
-      setFacilityQueryFilter({
-        ProjectFacility: {
-          projectId: response?.Project?.map((row) => row.project.id)
+      setFilteredData(refactoredDataCopy);
+      setRefactoredData(refactoredDataCopy);
+      const newSideCheck = {};
+      refactoredDataCopy.forEach((row) => {
+        if (row?.status === t("SUBMITTED_BY_SUPERVISOR")) {
+          newSideCheck[`${row?.id}`] = false;
         }
       })
-
-      projectMap.current = new Map();
-      response?.Project?.forEach((row) => {
-        projectMap.current.set(row.project.id, row);
-      })
-    })
-    .catch((error) => {
-      console.error("Error fetching facilities", error);
-    })
-
-  }, [projectQueryFilter]);
-
-  useEffect(async () => {
-
-    if (facilityQueryFilter.ProjectFacility.projectId.length > 0) {
-      await QCService.fetchFacilities(facilityQueryFilter)
-        .then((response) => {
-
-          response?.ProjectFacilities?.forEach((row) => {
-            projectMap.current.set(
-              row.projectId,
-              {...projectMap.current.get(row.projectId), facility: row}
-            );
-          })
-
-          const refactoredDataCopy = Array.from(projectMap.current.values()).map((row, index) => {
-            return {
-              id: index+1,
-              facilityId: row?.facility?.facilityId,
-              facilityName: row?.project?.name || row?.facility?.facilityId,
-              facilityProjectId: row?.facility?.id,
-              projectName: selectedFieldPlan?.name,
-              projectId:row?.project?.id,
-              parentId:row?.project?.parent,
-              block: row?.project?.address?.boundary || "-",
-              district: row?.project?.address?.city || "-",
-              assigned: row?.workflow?.assignes || "-",
-              status: t(row?.status) || "-",
-            }
-          });
-
-          setFilteredData(refactoredDataCopy);
-          setRefactoredData(refactoredDataCopy);
-          const newSideCheck = {};
-          refactoredDataCopy.forEach((row) => {
-            if (row?.status === t("SUBMITTED_BY_SUPERVISOR")) {
-              newSideCheck[`${row?.id}`] = false;
-            }
-          })
-          setSideCheck(newSideCheck);
-
-        })
-        .catch((error) => {
-          console.error("Error fetching facilities", error);
-        })
+      setSideCheck(newSideCheck);
+      setMainCheck(false);
     }
-
-  }, [facilityQueryFilter]);
+  }, [isLoading])
 
   const onFilterApply = () => {
     const filterDistricts = filters.district !== null ? refactoredData.filter((row) => row?.district === filters.district) : refactoredData;
@@ -227,6 +173,10 @@ const FacilityTable = ({ t, getCellProps, onNextPage, onPrevPage, currentPage, t
   const installationsWithCount = installationStatuses.map((status) => {
     return { name: status, count: refactoredData.filter((opt) => opt.status === status).length };
   });
+
+  if (isLoading) {
+    return <Loader />;
+  }
 
   return (
     <div style={{marginTop: "20px"}}>

@@ -1,5 +1,4 @@
-import { Request } from "@egovernments/digit-ui-libraries";
-import Axios from "axios";
+import { Request } from "../atoms/Utils/Request";
 
 export const QCService = {
 

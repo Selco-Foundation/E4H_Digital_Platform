@@ -90,6 +90,9 @@ import useGetHowItWorksJSON from "./useHowItWorksJSON";
 import { usePrivacyContext } from "./usePrivacyContext";
 import useStaticData from "./useStaticData";
 import { useTenantManagementSearch } from "./useTenantManagementSearch";
+import useFacility from "./qc/useFacility";
+import useFieldPlan from "./qc/useFieldPlan";
+import useFacilityDetails from "./qc/useFacilityDetails";
 
 
 
@@ -157,6 +160,12 @@ const survey = {
   useSurveyInbox,
 };
 
+const qc = {
+  useFacility,
+  useFieldPlan,
+  useFacilityDetails
+}
+
 const Hooks = {
   useSessionStorage,
   useQueryParams,
@@ -190,7 +199,7 @@ const Hooks = {
   useAccessControl,
   usePrivacyContext,
   pgr,
- 
+  qc,
   dss,
   
   hrms,

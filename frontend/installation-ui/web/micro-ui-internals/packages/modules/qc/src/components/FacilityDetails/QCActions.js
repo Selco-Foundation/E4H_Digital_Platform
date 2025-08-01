@@ -1,6 +1,5 @@
 import React from 'react';
 import { useSelector } from "react-redux";
-import { QCService } from "../../pages/employee/Service/QCService";
 
 const QCActions = () => {
 
@@ -8,7 +7,7 @@ const QCActions = () => {
   const selectedFacility = useSelector((state) => state.qc.common.selectedFacility)
 
   const handleApprove = async () => {
-    await QCService.updateProjectWorkflow(
+    await Digit.QCService.updateProjectWorkflow(
       selectedFacility?.projectId, "APPROVE",
       [], "Approved by QC"
     )
@@ -38,7 +37,7 @@ const QCActions = () => {
       })
     })
 
-    await QCService.updateProjectWorkflow(
+    await Digit.QCService.updateProjectWorkflow(
       selectedFacility?.projectId, "REJECT_AND_ASSIGN_FOR_FIELD_QC",
       comments, "Rejected by QC"
     )
