@@ -4,11 +4,10 @@ on:
     branches:
       - develop
       - staging
-      - DevOps-Workbench
     tags:
       - 'v*'
-#    paths:
-#      - 'frontend/micro-ui/web/workbench/**'
+    paths:
+      - 'frontend/micro-ui/web/workbench/**'
   workflow_dispatch:
 
 permissions:
