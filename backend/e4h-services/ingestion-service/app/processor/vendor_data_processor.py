@@ -66,7 +66,6 @@ class VendorDataProcessor:
                 country_boundary_code=str(row.get('Country Boundary Code', '')).strip() if not pd.isna(
                     row.get('Country Boundary Code', None)) else None,
                 vendor_name=str(row.get('Vendor Name (Mandatory)', '')).strip(),
-                vendor_code=str(row.get('Vendor Code (Mandatory)', '')).strip(),
                 vendor_type=str(row.get('Vendor Type (Mandatory)', '')).strip(),
                 vendor_subtype=str(row.get('Vendor Subtype', '')).strip() if not pd.isna(
                     row.get('Vendor Subtype', None)) else None,

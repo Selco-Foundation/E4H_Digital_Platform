@@ -158,7 +158,7 @@ def create_vendor_request(request_info: RequestInfo, vendor: Vendor):
         "organisations": [{
             "tenantId": "in",
             "name": vendor.vendor_name,
-            "code": vendor.vendor_code,
+            "code": None,
             "orgAddress": [
                 {
                     "tenantId": "in",
