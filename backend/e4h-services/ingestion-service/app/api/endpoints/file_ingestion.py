@@ -100,17 +100,15 @@ async def upload_vendors_excel_sheet(
         if org_service_url and vendors:
             org_client = OrganizationServiceClient(org_service_url)
 
-            for vendor in vendors:
+            for index, vendor in enumerate(vendors):
                 vendor_payload = create_vendor_request(request_info, vendor)
 
                 try:
                     org_data = org_client.create_vendor(vendor_payload)
-                    if org_data and org_data.get("Organisations"):
-                        match_mask = (vendor_df["Vendor Code (Mandatory)"] == vendor.vendor_code)
-                        if match_mask.any():
-                            vendor_df.loc[match_mask, "status"] = "success"
-                            vendor_df.loc[match_mask, "error"] = None
-                            vendor_df.loc[match_mask, "vendor_id"] = org_data["Organisations"][0].get("id")
+                    if org_data and org_data.get("organisations"):
+                        vendor_df.at[index, "status"] = "success"
+                        vendor_df.at[index, "error"] = None
+                        vendor_df.at[index, "vendor_id"] = org_data["organisations"][0].get("id")
                     else:
                         logger.warning(f"Failed to create vendor: {vendor.vendor_name}")
                 except Exception as e:
