@@ -63,7 +63,7 @@ jobs:
             WORK_DIR=frontend/micro-ui/
 
   Workflow_Trigger:
-#    if: startsWith(github.ref, 'refs/heads/develop')
+    if: startsWith(github.ref, 'refs/heads/develop')
     runs-on: ubuntu-latest
     needs: Docker_Image_Build
     steps:
