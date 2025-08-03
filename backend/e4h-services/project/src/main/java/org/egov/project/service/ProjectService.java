@@ -141,7 +141,9 @@ public class ProjectService {
     public List<Project> searchProject(ProjectSearchRequest projectSearchRequest, @Valid ProjectSearchURLParams urlParams, List<String> workflowStatuses, @Valid ProjectSortCriteria sortCriteria) throws Exception {
         projectValidator.validateSearchV2ProjectRequest(projectSearchRequest, urlParams, sortCriteria);
         List<Project> projects = projectRepository.getProjects(projectSearchRequest, urlParams, workflowStatuses, sortCriteria);
-        projects = getCountFacilitiesProject(projects, projectSearchRequest.getRequestInfo());
+        if(projectSearchRequest.getProject() !=null && projectSearchRequest.getProject().getProjectTypeId() !=null
+                && projectSearchRequest.getProject().getProjectTypeId().equals("FieldPlan"))
+            projects = getCountProjectTypeFacilities(projects, projectSearchRequest, urlParams, workflowStatuses, sortCriteria);
         return projects;
     }
 
@@ -159,6 +161,21 @@ public class ProjectService {
                     null,
                     false);
             Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(project.getAdditionalDetails(), "countFacilities", searchResponse.getTotalCount()+"");
+            project.setAdditionalDetails(enrichedAdditionalDetails);
+        }
+
+        return listProjects;
+    }
+
+    public List<Project> getCountProjectTypeFacilities(List<Project> listProjects, ProjectSearchRequest projectSearchRequest, @Valid ProjectSearchURLParams urlParams, List<String> workflowStatuses, @Valid ProjectSortCriteria sortCriteria) throws Exception {
+        for (Project project : listProjects) {
+            projectSearchRequest.getProject().setProjectTypeId("Facility");
+            projectSearchRequest.getProject().setParent(project.getId());
+            Integer count = countAllProjects(projectSearchRequest, urlParams, workflowStatuses);
+            Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(project.getAdditionalDetails(), "countProjectFacilities", count+"");
+            project.setAdditionalDetails(enrichedAdditionalDetails);
+            List<ProjectStatusAgregation> statusAgregations = getStatusProjectsAgregation(project.getId());
+            enrichedAdditionalDetails = mergeListIntoAdditionalDetails(project.getAdditionalDetails(), "statusAgregation", statusAgregations+"");
             project.setAdditionalDetails(enrichedAdditionalDetails);
         }
 
@@ -394,6 +411,10 @@ public class ProjectService {
         return projectRepository.getProjectCount(request, urlParams, workflowStatuses);
     }
 
+    public List<ProjectStatusAgregation> getStatusProjectsAgregation(String parentId) {
+        return projectRepository.getStatusProjectsAgregation(parentId);
+    }
+
     public ProjectStatusWrapper updateProjectWorkflow(ProjectWorkflowRequest request) throws Exception {
         // 1. Fetch the existing project
         ProjectSearch searchCriteria = ProjectSearch.builder()
@@ -597,6 +618,18 @@ public class ProjectService {
             ((ObjectNode) additionalDetails).put(key, value);
             return additionalDetails;
         } else if (additionalDetails instanceof Map) {
+            ((Map<String, Object>) additionalDetails).put(key, value);
+            return additionalDetails;
+        } else {
+            // default to HashMap if null or unknown type
+            Map<String, Object> map = new HashMap<>();
+            map.put(key, value);
+            return map;
+        }
+    }
+
+    private Object mergeListIntoAdditionalDetails(Object additionalDetails, String key, Object value) {
+        if (additionalDetails instanceof Map) {
             ((Map<String, Object>) additionalDetails).put(key, value);
             return additionalDetails;
         } else {
