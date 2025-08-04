@@ -76,7 +76,7 @@ jobs:
           cache-from: type=gha   # Stores cache in GitHub Actions .
           cache-to: type=gha,mode=max  # max- stores all the layers including the intermediate layers in multi-stage
           build-args: |
-            JAR_FILE=backend/core-services/boundary-service/target/*.jar
+            JAR_FILE=backend/core-services/egov-filestore/target/*.jar
 
       - name: Build and Push Docker image for egov-filestore-Db
         run: |
