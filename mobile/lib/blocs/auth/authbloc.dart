@@ -96,13 +96,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     }
   }
 
-  FutureOr<void> _onLogout(_AuthLogoutEvent event, Emitter<AuthState> emit) {
-    //when we logout, we need the access token to be deleted and invalidated. All the AccessInfo stored locally is now redundant. Delete it.
-    final secureStore = SecureStore();
-    secureStore.deleteAccessToken();
-    secureStore.deleteAccessInfo();
-    secureStore.deleteSelectedIndividual();
-
+  FutureOr<void> _onLogout(
+      _AuthLogoutEvent event, Emitter<AuthState> emit) async {
+    await authRepository.logout();
     emit(const AuthState.unauthenticated());
   }
 
