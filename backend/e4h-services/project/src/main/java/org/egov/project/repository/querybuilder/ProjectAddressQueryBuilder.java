@@ -355,8 +355,8 @@ public class ProjectAddressQueryBuilder {
         // Check if project name is provided
         if (StringUtils.isNotBlank(projectSearch.getName())) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
-            queryBuilder.append(" prj.name LIKE ? ");
-            preparedStmtList.add('%' + projectSearch.getName() + '%');
+            queryBuilder.append(" LOWER(prj.name) LIKE ? ");
+            preparedStmtList.add("%" + projectSearch.getName().toLowerCase() + "%");
         }
 
         // Check if project type ID is provided
