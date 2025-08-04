@@ -7,7 +7,8 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.*;
 
-public class V1_4__Process_each_incident extends BaseJavaMigration {
+-public class V1_4__Process_each_incident extends BaseJavaMigration {
++public class V20250731113420_Delete_Close_Process_Instance extends BaseJavaMigration {
 
     @Override
     public void migrate(Context context) throws Exception {
