@@ -5,11 +5,9 @@ import { setSelectedFieldPlan } from "../../redux/actions";
 import { Link, useRouteMatch } from "react-router-dom";
 import { useDispatch } from "react-redux";
 
-const FieldPlanTable = ({ t, getCellProps, onNextPage, onPrevPage, currentPage, totalRecords, pageSizeLimit, onPageSizeChange }) => {
+const FieldPlanTable = ({ t, getCellProps }) => {
 
-  const [centreNameToSearch, setCentreNameToSearch] = useState("");
   const [fetchedData, setData] = useState([]);
-  const [filteredData, setFilteredData] = useState([]);
   const dispatch = useDispatch();
   const { path } = useRouteMatch();
   const [queryFilter, setQueryFilter] = useState({
@@ -17,22 +15,46 @@ const FieldPlanTable = ({ t, getCellProps, onNextPage, onPrevPage, currentPage, 
       projectTypeId: "FieldPlan"
     }
   });
-  const { isLoading, data} = Digit.Hooks.qc.useFieldPlan(queryFilter);
+  const [pageSize, setPageSize] = useState(10);
+  const [pageOffset, setPageOffset] = useState(0);
 
-  const submitFunc = () => {
-    setFilteredData(fetchedData.filter((row) => row.code.includes(centreNameToSearch)));
-  };
+  const { isLoading, data } = Digit.Hooks.qc.useFieldPlan(queryFilter, pageSize, pageOffset);
 
-  const clearFunc = () => {
-    setCentreNameToSearch("");
-    setFilteredData(fetchedData);
-  };
+  const onSearch = (textToSearch) => {
+    setQueryFilter({
+      Project : {
+        projectTypeId: "FieldPlan",
+        name: textToSearch
+      }
+    });
+  }
+
+  const onClear = () => {
+    setQueryFilter({
+      Project : {
+        projectTypeId: "FieldPlan"
+      }
+    });
+  }
 
   useEffect(() => {
     if (data) {
-      setData(data.Project);
+      setData(data.fieldPlans);
     }
-  }, [isLoading]);
+  }, [data]);
+
+  const onPageSizeChange = (e) => {
+    setPageSize(parseInt(e.target.value));
+    setPageOffset(0);
+  }
+
+  const onNextPage = () => {
+    setPageOffset(pageOffset + pageSize);
+  }
+
+  const onPrevPage = () => {
+    setPageOffset(pageOffset - pageSize);
+  }
 
   const GetCell = (value) => <span className="cell-text">{value}</span>;
 
@@ -94,28 +116,6 @@ const FieldPlanTable = ({ t, getCellProps, onNextPage, onPrevPage, currentPage, 
     },
   ];
 
-  const formatDate = (timestamp) => {
-    const date = new Date(timestamp);
-    const month = String(date.getMonth() + 1).padStart(2, "0"); // months are 0-based
-    const day = String(date.getDate()).padStart(2, "0");
-    const year = date.getFullYear();
-    return `${month}/${day}/${year}`;
-  };
-
-  const refactoredData = fetchedData?.map((row) => {
-    return {
-      id: row?.project?.id,
-      name: row?.project?.name || row?.project?.projectNumber,
-      projectType: row?.project?.projectType,
-      facilitiesCount: row?.project?.additionalDetails?.countFacilities,
-      startDate: formatDate(row?.project?.startDate),
-      endDate: formatDate(row?.project?.endDate),
-      completionRate: 30,
-      status: row?.status,
-      transactions: row?.transactions
-    };
-  })
-
   if (isLoading) {
     return <Loader />;
   }
@@ -125,18 +125,18 @@ const FieldPlanTable = ({ t, getCellProps, onNextPage, onPrevPage, currentPage, 
       <div style={{fontSize: "24px", fontWeight: "bold", marginBottom: "20px", color: "#004d66"}}>
         Inbox
       </div>
-      <SearchCentre centreName={centreNameToSearch} setCentreName={setCentreNameToSearch} onSubmit={submitFunc} onClear={clearFunc} />
+      <SearchCentre queryFilter={queryFilter} onSearch={onSearch} onClear={onClear} />
       <Table
         t={t}
-        data={refactoredData}
+        data={fetchedData}
         columns={columnsList}
         getCellProps={getCellProps}
         onNextPage={onNextPage}
         onPrevPage={onPrevPage}
-        currentPage={currentPage}
-        totalRecords={totalRecords}
+        currentPage={Math.floor(pageOffset / pageSize)}
+        totalRecords={data.totalCount}
         onPageSizeChange={onPageSizeChange}
-        pageSizeLimit={pageSizeLimit}
+        pageSizeLimit={pageSize}
       />
     </div>
   );

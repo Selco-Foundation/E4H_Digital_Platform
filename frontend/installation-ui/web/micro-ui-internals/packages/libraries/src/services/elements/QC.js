@@ -2,12 +2,12 @@ import { Request } from "../atoms/Utils/Request";
 
 export const QCService = {
 
-  fetchProjects : async (queryFilter) => {
+  fetchProjects : async (queryFilter, limit, offset) => {
     const endpoint = "/project/v2/_search";
     const params = {
       tenantId : "in",
-      offset : 0,
-      limit : 100,
+      offset,
+      limit,
       includeAncestors : false,
       includeDescendants : false
     }

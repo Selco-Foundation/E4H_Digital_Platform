@@ -1,9 +1,19 @@
-import React from "react";
+import React, { useState } from "react";
 import { TextInput, Label, SubmitBar } from "@egovernments/digit-ui-react-components";
 import { useTranslation } from "react-i18next";
 
-const SearchCentre = ({ centreName, setCentreName, onSubmit, onClear }) => {
+const SearchCentre = ({ queryFilter, onSearch, onClear }) => {
   const { t } = useTranslation();
+  const [textToSearch, setTextToSearch] = useState(queryFilter.Project.name);
+
+  const handleSearch = () => {
+    onSearch(textToSearch)
+  }
+
+  const handleClear = () => {
+    setTextToSearch("");
+    onClear();
+  }
 
   return (
     <React.Fragment>
@@ -14,28 +24,27 @@ const SearchCentre = ({ centreName, setCentreName, onSubmit, onClear }) => {
               <Label>Search Field Plan Code</Label>
               <TextInput
                 name="serviceRequestId"
-                value={centreName}
+                value={textToSearch}
                 onChange={(e) => {
-                  setCentreName(e.target.value);
+                  setTextToSearch(e.target.value);
                 }}
                 style={{ width: "300px" }}
               ></TextInput>
             </span>
             <div style={{ display: "flex", gap: "30px" }}>
               <span
-                onClick={onClear}
+                onClick={handleClear}
                 className="clear-search"
                 style={{ color: "#7a2829", marginLeft: "15px", marginTop: "10px" }}
               >
                 Clear Search
               </span>
-              <SubmitBar onSubmit={onSubmit} style={{ marginLeft: "10px" }} label={"Search"} />
+              <SubmitBar onSubmit={handleSearch} style={{ marginLeft: "10px" }} label={"Search"} />
             </div>
           </div>
         </div>
       </div>
     </React.Fragment>
-    // </form>
   );
 };
 

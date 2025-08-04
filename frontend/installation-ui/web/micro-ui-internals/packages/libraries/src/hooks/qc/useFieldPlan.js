@@ -1,23 +1,86 @@
 import { useQuery, useQueryClient } from "react-query";
+import { useEffect, useState } from "react";
 
-const useFieldPlan = (queryFilter) => {
+const formatDate = (timestamp) => {
+  const date = new Date(timestamp);
+  const month = String(date.getMonth() + 1).padStart(2, "0"); // months are 0-based
+  const day = String(date.getDate()).padStart(2, "0");
+  const year = date.getFullYear();
+  return `${month}/${day}/${year}`;
+};
 
-  const { Project } = queryFilter;
-  const filter = {};
+const formatProjectFacilityInfo = (projectFacilityInfo) => {
+  const formattedProjectFacilityInfo = {};
+  formattedProjectFacilityInfo.totalProjectFacilities = projectFacilityInfo?.countProjectFacilities;
 
-  if (Project) {
-    filter.Project = Project;
-  }
+  projectFacilityInfo?.statusAgregation?.forEach((row) => {
+    formattedProjectFacilityInfo[row?.status] = row?.occurrences;
+  })
+
+  return formattedProjectFacilityInfo;
+}
+
+const formatFieldPlans = (projects) => {
+
+  return projects?.map((row) => {
+
+    const projectFacilityInfo = formatProjectFacilityInfo(row?.project?.additionalDetails);
+    const completionRate = Math.ceil(projectFacilityInfo["APPROVED_BY_QC_SPOC"]/projectFacilityInfo.totalProjectFacilities * 100) || 0;
+
+    return {
+      id: row?.project?.id,
+      name: row?.project?.name || row?.project?.projectNumber,
+      projectType: "Installation",
+      facilitiesCount: projectFacilityInfo.totalProjectFacilities,
+      startDate: formatDate(row?.project?.startDate),
+      endDate: formatDate(row?.project?.endDate),
+      completionRate: completionRate,
+      status: row?.status,
+      transactions: row?.transactions
+    };
+  })
+}
+
+const useFieldPlan = (queryFilter, pageSize, pageOffset) => {
+
+  const { projectTypeId, name } = queryFilter?.Project;
+  const filter = {
+    Project: {}
+  };
+
+  if (projectTypeId)
+    filter.Project.projectTypeId = projectTypeId;
+
+  if (name)
+    filter.Project.name = name;
+
+  const limit = pageSize || 10;
+  const offset = pageOffset || 0;
 
   const queryClient = useQueryClient();
   const { isLoading, isError, error, data } = useQuery(
-    ["fieldPlan", filter],
-    () => Digit.QCService.fetchProjects(filter)
+    ['fieldPlan', filter, limit, offset],
+    () => Digit.QCService.fetchProjects(filter, limit, offset)
   );
 
+  const [formattedData, setFormattedData] = useState({
+    fieldPlans: [],
+    totalCount: 0
+  });
+
+  useEffect(() => {
+    if (data) {
+      setFormattedData({
+        fieldPlans: formatFieldPlans(data?.Project),
+        totalCount: data?.totalCount
+      });
+    }
+  }, [data]);
+
   return {
-    isLoading, isError, error, data,
-    revalidate: () => queryClient.invalidateQueries(["fieldPlan", filter])
+    isLoading, isError, error,
+    data : formattedData,
+    revalidate: () => queryClient.invalidateQueries(['fieldPlan', filter, limit, offset])
   };
 }
 
