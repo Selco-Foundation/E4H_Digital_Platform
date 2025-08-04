@@ -7,6 +7,7 @@ import 'package:selco/model/request/requestInfo.dart';
 import 'package:selco/model/response/otp_response.dart';
 
 import '../data/remote_client.dart';
+import '../data/secure_storage/secureStore.dart';
 import '../model/login/loginModel.dart';
 import '../model/response/responsemodel.dart';
 import '../model/role_actions/role_actions_model.dart';
@@ -43,6 +44,43 @@ class AuthRepository {
     } catch (err) {
       rethrow;
     }
+  }
+
+  Future<void> logout() async {
+    //when we logout, we need the access token to be deleted and invalidated. All the AccessInfo stored locally is now redundant. Delete it.
+    final secureStore = SecureStore();
+    secureStore.deleteAccessToken();
+    secureStore.deleteAccessInfo();
+    secureStore.deleteSelectedIndividual();
+  }
+
+  Future<String> refreshToken() async {
+    final secureStore = SecureStore();
+    final ResponseModel? accessInfo = await secureStore.getAccessInfo();
+
+    print("refreshing token accessInfo ${accessInfo}");
+    if (accessInfo!.refresh_token == null) {
+      throw Exception("No refresh token stored");
+    }
+
+    final dio = Dio()..options.baseUrl = envConfig.variables.baseUrl;
+    final form = {
+      'grant_type': 'refresh_token',
+      'refresh_token': accessInfo.refresh_token,
+    };
+    final headers = {
+      "content-type": "application/x-www-form-urlencoded",
+      "authorization": "Basic ZWdvdi11c2VyLWNsaWVudDo=",
+    };
+
+    final resp = await dio.post('user/oauth/token',
+        data: form, options: Options(headers: headers));
+    final body = ResponseModel.fromJson(resp.data);
+
+    await secureStore.setAccessToken(body.access_token);
+    await secureStore.setAccessInfo(body);
+
+    return body.access_token;
   }
 
   Future<SendOtpResponse> sendOtp(Map<String, dynamic> body) async {
