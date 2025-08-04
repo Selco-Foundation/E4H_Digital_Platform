@@ -169,13 +169,31 @@ public class ProjectService {
 
     public List<Project> getCountProjectTypeFacilities(List<Project> listProjects, ProjectSearchRequest projectSearchRequest, @Valid ProjectSearchURLParams urlParams, List<String> workflowStatuses, @Valid ProjectSortCriteria sortCriteria) throws Exception {
         for (Project project : listProjects) {
-            projectSearchRequest.getProject().setProjectTypeId("Facility");
-            projectSearchRequest.getProject().setParent(project.getId());
-            Integer count = countAllProjects(projectSearchRequest, urlParams, workflowStatuses);
-            Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(project.getAdditionalDetails(), "countProjectFacilities", count+"");
+            ProjectSearch copyProject = ProjectSearch.builder()
+                    .startDate(projectSearchRequest.getProject().getStartDate())
+                    .endDate(projectSearchRequest.getProject().getEndDate())
+                    .isTaskEnabled(projectSearchRequest.getProject().getIsTaskEnabled())
+                    .parent(projectSearchRequest.getProject().getParent())
+                    .projectTypeId(projectSearchRequest.getProject().getProjectTypeId())
+                    .subProjectTypeId(projectSearchRequest.getProject().getSubProjectTypeId())
+                    .department(projectSearchRequest.getProject().getDepartment())
+                    .referenceId(projectSearchRequest.getProject().getReferenceId())
+                    .boundaryCode(projectSearchRequest.getProject().getBoundaryCode())
+                    .includeAncestors(projectSearchRequest.getProject().getIncludeAncestors())
+                    .includeDescendants(projectSearchRequest.getProject().getIncludeDescendants())
+                    .createdFrom(projectSearchRequest.getProject().getCreatedFrom())
+                    .createdTo(projectSearchRequest.getProject().getCreatedTo())
+                    .name(projectSearchRequest.getProject().getName())
+                    .build();
+
+            ProjectSearchRequest projectSearchRequest1 = ProjectSearchRequest.builder().project(copyProject).requestInfo(projectSearchRequest.getRequestInfo()).build();
+            projectSearchRequest1.getProject().setProjectTypeId("Facility");
+            projectSearchRequest1.getProject().setParent(project.getId());
+            Integer count = countAllProjects(projectSearchRequest1, urlParams, workflowStatuses);
+            Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(project.getAdditionalDetails(), "countProjectFacilities", count);
             project.setAdditionalDetails(enrichedAdditionalDetails);
             List<ProjectStatusAgregation> statusAgregations = getStatusProjectsAgregation(project.getId());
-            enrichedAdditionalDetails = mergeListIntoAdditionalDetails(project.getAdditionalDetails(), "statusAgregation", statusAgregations+"");
+            enrichedAdditionalDetails = mergeListIntoAdditionalDetails(project.getAdditionalDetails(), "statusAgregation", statusAgregations);
             project.setAdditionalDetails(enrichedAdditionalDetails);
         }
 
@@ -613,9 +631,9 @@ public class ProjectService {
         }
     }
 
-    private Object mergeIntoAdditionalDetails(Object additionalDetails, String key, String value) {
+    private Object mergeIntoAdditionalDetails(Object additionalDetails, String key, Object value) {
         if (additionalDetails instanceof ObjectNode) {
-            ((ObjectNode) additionalDetails).put(key, value);
+            ((ObjectNode) additionalDetails).put(key, value+"");
             return additionalDetails;
         } else if (additionalDetails instanceof Map) {
             ((Map<String, Object>) additionalDetails).put(key, value);
