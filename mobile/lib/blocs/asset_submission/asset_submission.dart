@@ -141,6 +141,7 @@ class AssetSubmissionBloc
             .filter()
             .assetTypeEqualTo(type)
             .findAll();
+
         if (assets.isEmpty) {
           emit(AssetSubmissionState.failure(
               "No cached assets found for type $type."));

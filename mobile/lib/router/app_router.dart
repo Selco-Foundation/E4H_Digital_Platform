@@ -7,7 +7,6 @@ import '../pages/asset_summary.dart';
 import '../pages/asset_type_detail.dart';
 import '../pages/authenticated.dart';
 import '../pages/data_save_success.dart';
-import '../pages/download_status.dart';
 import '../pages/draft.dart';
 import '../pages/enter_otp.dart';
 import '../pages/forgot_password.dart';
@@ -26,6 +25,7 @@ import '../pages/setup_new_password.dart';
 import '../pages/specification.dart';
 import '../pages/submit_for_approval.dart';
 import '../pages/submitted_save_success.dart';
+import '../pages/sync_loading.dart';
 import '../pages/unauthenticated.dart';
 import '../pages/video_player.dart';
 import '../pages/welcome.dart';
@@ -81,8 +81,7 @@ class AppRouter extends _$AppRouter {
           AutoRoute(
               page: OverallAssetSummaryRoute.page,
               path: Routes.overallAssetSummary),
-          AutoRoute(
-              page: DownloadStatusRoute.page, path: Routes.downloadStatus),
+          AutoRoute(page: SyncLoadingRoute.page, path: Routes.syncLoading),
           AutoRoute(page: InboxRoute.page, path: Routes.inbox),
           AutoRoute(
               page: InboxAssetSummaryRoute.page,

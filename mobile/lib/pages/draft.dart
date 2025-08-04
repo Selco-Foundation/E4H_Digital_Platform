@@ -14,6 +14,7 @@ import '../utils/utils.dart';
 import '../widgets/button/footer_button.dart';
 import '../widgets/cards/inbox_report_card.dart';
 import '../widgets/header/back_navigation_help_header.dart';
+import 'sync_loading.dart';
 
 @RoutePage()
 class DraftPage extends StatefulWidget {
@@ -25,6 +26,7 @@ class DraftPage extends StatefulWidget {
 
 class _DraftPageState extends State<DraftPage> {
   late String userType = "";
+  Route? _syncRoute;
 
   @override
   void initState() {
@@ -41,8 +43,6 @@ class _DraftPageState extends State<DraftPage> {
                     ? WORKFLOW_STATUS_FIELD_STAFF.SUBMITTED_BY_FIELD_STAFF.name
                     : WORKFLOW_STATUS_FIELD_SUPERVISOR
                         .SUBMITTED_BY_SUPERVISOR.name
-                // WORKFLOW_STATUS_FIELD_SUPERVISOR
-                //     .ASSIGNED_TO_FIELD_SUPERVISOR.name
               ],
               userType,
             ),
@@ -50,7 +50,34 @@ class _DraftPageState extends State<DraftPage> {
     });
   }
 
-  void _showSyncDialog(BuildContext context) {
+  void _showSyncDialog(BuildContext context, {String? error}) {
+    final theme = Theme.of(context);
+    final textTheme = theme.digitTextTheme(context);
+
+    showCustomPopup(
+      context: context,
+      builder: (ctx) => Popup(
+        type: PopUpType.alert,
+        onCrossTap: () => Navigator.of(ctx).pop(),
+        onOutsideTap: () => Navigator.of(ctx).pop(),
+        title: "Sync Failed",
+        actionAlignment: MainAxisAlignment.center,
+        actions: [],
+        additionalWidgets: [
+          Text(
+            error ?? "Something went wrong.",
+            textAlign: TextAlign.center,
+            style: textTheme.bodyL.copyWith(
+              color: theme.colorTheme.text.primary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSyncDialogs(BuildContext context) {
     final theme = Theme.of(context);
     final textTheme = theme.digitTextTheme(context);
 
@@ -137,100 +164,146 @@ class _DraftPageState extends State<DraftPage> {
     );
   }
 
+  void _handleAssetSubmissionState(
+      BuildContext context, AssetSubmissionState state) {
+    state.whenOrNull(
+      progress: (completed, total) {
+        if (_syncRoute == null) {
+          _syncRoute = MaterialPageRoute(
+            fullscreenDialog: true,
+            builder: (_) => SyncLoadingPage(completed: completed, total: total),
+          );
+          Navigator.of(context).push(_syncRoute!);
+        }
+      },
+      failure: (errorMessage) {
+        if (_syncRoute != null) {
+          Navigator.of(context).pop(); // close SyncLoadingPage
+          _syncRoute = null;
+        }
+        _showSyncDialog(context, error: errorMessage);
+      },
+      success: () {
+        if (_syncRoute != null) {
+          Navigator.of(context).pop(); // close SyncLoadingPage
+          _syncRoute = null;
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('All drafts successfully synced!')),
+        );
+        context.read<ProjectBloc>().add(
+              ProjectEvent.loadUnSubmitted(
+                [
+                  userType == USER_TYPES.FIELD_STAFF.name
+                      ? WORKFLOW_STATUS_FIELD_STAFF
+                          .SUBMITTED_BY_FIELD_STAFF.name
+                      : WORKFLOW_STATUS_FIELD_SUPERVISOR
+                          .SUBMITTED_BY_SUPERVISOR.name,
+                ],
+                userType,
+              ),
+            );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final textTheme = theme.digitTextTheme(context);
 
-    return Scaffold(
-      body: ScrollableContent(
-        enableFixedDigitButton: true,
-        backgroundColor: theme.colorTheme.generic.background,
-        header: const BackNavigationHelpHeaderWidget(
-          showBackNavigation: true,
-          showHelp: false,
-        ),
-        footer: FooterButton(
-          showSuffixIcon: false,
-          text: 'Sync',
-          onPress: () {
-            _showSyncDialog(context);
-            context.read<AssetSubmissionBloc>().add(
-                  AssetSubmissionEvent.submitAllDrafts(userType: userType),
-                );
-          },
-        ),
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(
-              vertical: spacer4,
-              horizontal: spacer4,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Submitted Reports',
-                  style: textTheme.headingXl.copyWith(
-                    color: theme.colorTheme.primary.primary2,
-                  ),
-                ),
-                const SizedBox(height: spacer4),
-                BlocBuilder<ProjectBloc, ProjectState>(
-                  builder: (context, state) {
-                    return state.maybeWhen(
-                      unSubmittedLoaded: (drafts) {
-                        if (drafts.isEmpty) {
-                          return Center(
-                            child: Text(
-                              'No unsynced reports found.',
-                              style: textTheme.bodyL.copyWith(
-                                color: theme.colorTheme.text.primary,
-                              ),
-                            ),
-                          );
-                        }
-                        return Column(
-                          children: drafts.map((project) {
-                            return Column(
-                              children: [
-                                InboxReportCard(
-                                  onPress: () {
-                                    context.read<SelectedProjectBloc>().add(
-                                        SelectedProjectEvent.select(project));
-                                    context.router
-                                        .push(const OverallAssetSummaryRoute());
-                                  },
-                                  title: project.project.name ?? "",
-                                  dateAssigned: project.project.startDateTime ??
-                                      DateTime.now(),
-                                  status: project.status ?? '---',
-                                ),
-                                const SizedBox(height: spacer6),
-                              ],
-                            );
-                          }).toList(),
-                        );
-                      },
-                      initial: () => const Center(
-                        child: Padding(
-                          padding: EdgeInsets.only(top: spacer4),
-                          child: CircularProgressIndicator(),
-                        ),
-                      ),
-                      orElse: () => const Center(
-                        child: Padding(
-                          padding: EdgeInsets.only(top: spacer4),
-                          child: CircularProgressIndicator(),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
+    return BlocListener<AssetSubmissionBloc, AssetSubmissionState>(
+      listener: _handleAssetSubmissionState,
+      child: Scaffold(
+        body: ScrollableContent(
+          enableFixedDigitButton: true,
+          backgroundColor: theme.colorTheme.generic.background,
+          header: const BackNavigationHelpHeaderWidget(
+            showBackNavigation: true,
+            showHelp: false,
           ),
-        ],
+          footer: FooterButton(
+            showSuffixIcon: false,
+            text: 'Sync',
+            onPress: () {
+              context.read<AssetSubmissionBloc>().add(
+                    AssetSubmissionEvent.submitAllDrafts(userType: userType),
+                  );
+            },
+          ),
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                vertical: spacer4,
+                horizontal: spacer4,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Submitted Reports',
+                    style: textTheme.headingXl.copyWith(
+                      color: theme.colorTheme.primary.primary2,
+                    ),
+                  ),
+                  const SizedBox(height: spacer4),
+                  BlocBuilder<ProjectBloc, ProjectState>(
+                    builder: (context, state) {
+                      return state.maybeWhen(
+                        unSubmittedLoaded: (drafts) {
+                          if (drafts.isEmpty) {
+                            return Center(
+                              child: Text(
+                                'No unsynced reports found.',
+                                style: textTheme.bodyL.copyWith(
+                                  color: theme.colorTheme.text.primary,
+                                ),
+                              ),
+                            );
+                          }
+                          return Column(
+                            children: drafts.map((project) {
+                              return Column(
+                                children: [
+                                  InboxReportCard(
+                                    onPress: () {
+                                      context.read<SelectedProjectBloc>().add(
+                                          SelectedProjectEvent.select(project));
+                                      context.router.push(
+                                          const OverallAssetSummaryRoute());
+                                    },
+                                    title: project.project.name ?? "",
+                                    dateAssigned:
+                                        project.project.startDateTime ??
+                                            DateTime.now(),
+                                    status: project.status ?? '---',
+                                  ),
+                                  const SizedBox(height: spacer6),
+                                ],
+                              );
+                            }).toList(),
+                          );
+                        },
+                        initial: () => const Center(
+                          child: Padding(
+                            padding: EdgeInsets.only(top: spacer4),
+                            child: CircularProgressIndicator(),
+                          ),
+                        ),
+                        orElse: () => const Center(
+                          child: Padding(
+                            padding: EdgeInsets.only(top: spacer4),
+                            child: CircularProgressIndicator(),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
