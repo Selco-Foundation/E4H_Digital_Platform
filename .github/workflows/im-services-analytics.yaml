@@ -64,7 +64,7 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Build Jar file
-        run: mvn -B -f backend/core-services/im-services-analytics/pom.xml package
+        run: mvn -B -f backend/e4h-services/im-services-analytics/pom.xml package
 
       - name: Build and push
         uses: docker/build-push-action@v6
@@ -76,7 +76,7 @@ jobs:
           cache-from: type=gha   # Stores cache in GitHub Actions .
           cache-to: type=gha,mode=max  # max- stores all the layers including the intermediate layers in multi-stage
           build-args: |
-            JAR_FILE=backend/core-services/im-services-analytics/target/*.jar
+            JAR_FILE=backend/e4h-services/im-services-analytics/target/*.jar
 
   Workflow_Trigger:
     if: startsWith(github.ref, 'refs/heads/develop')

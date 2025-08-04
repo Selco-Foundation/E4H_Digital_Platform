@@ -63,7 +63,7 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Build Jar file
-        run: mvn -B -f backend/core-services/project/pom.xml package
+        run: mvn -B -f backend/e4h-services/project/pom.xml package
 
       - name: Build and push
         uses: docker/build-push-action@v6
@@ -75,7 +75,7 @@ jobs:
           cache-from: type=gha   # Stores cache in GitHub Actions .
           cache-to: type=gha,mode=max  # max- stores all the layers including the intermediate layers in multi-stage
           build-args: |
-            JAR_FILE=backend/core-services/project/target/*.jar
+            JAR_FILE=backend/e4h-services/project/target/*.jar
 
       - name: Build and Push Docker image for Project-Service-DB
         run: |
