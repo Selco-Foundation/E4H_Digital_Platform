@@ -51,12 +51,6 @@ abstract class _$AppRouter extends RootStackRouter {
         child: const DataSaveSuccessPage(),
       );
     },
-    DownloadStatusRoute.name: (routeData) {
-      return AutoRoutePage<dynamic>(
-        routeData: routeData,
-        child: const DownloadStatusPage(),
-      );
-    },
     DraftRoute.name: (routeData) {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
@@ -175,6 +169,17 @@ abstract class _$AppRouter extends RootStackRouter {
         child: const SubmittedSaveSuccessPage(),
       );
     },
+    SyncLoadingRoute.name: (routeData) {
+      final args = routeData.argsAs<SyncLoadingRouteArgs>();
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: SyncLoadingPage(
+          key: args.key,
+          completed: args.completed,
+          total: args.total,
+        ),
+      );
+    },
     UnauthenticatedRouteWrapper.name: (routeData) {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
@@ -280,20 +285,6 @@ class DataSaveSuccessRoute extends PageRouteInfo<void> {
         );
 
   static const String name = 'DataSaveSuccessRoute';
-
-  static const PageInfo<void> page = PageInfo<void>(name);
-}
-
-/// generated route for
-/// [DownloadStatusPage]
-class DownloadStatusRoute extends PageRouteInfo<void> {
-  const DownloadStatusRoute({List<PageRouteInfo>? children})
-      : super(
-          DownloadStatusRoute.name,
-          initialChildren: children,
-        );
-
-  static const String name = 'DownloadStatusRoute';
 
   static const PageInfo<void> page = PageInfo<void>(name);
 }
@@ -597,6 +588,49 @@ class SubmittedSaveSuccessRoute extends PageRouteInfo<void> {
   static const String name = 'SubmittedSaveSuccessRoute';
 
   static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [SyncLoadingPage]
+class SyncLoadingRoute extends PageRouteInfo<SyncLoadingRouteArgs> {
+  SyncLoadingRoute({
+    Key? key,
+    required int completed,
+    required int total,
+    List<PageRouteInfo>? children,
+  }) : super(
+          SyncLoadingRoute.name,
+          args: SyncLoadingRouteArgs(
+            key: key,
+            completed: completed,
+            total: total,
+          ),
+          initialChildren: children,
+        );
+
+  static const String name = 'SyncLoadingRoute';
+
+  static const PageInfo<SyncLoadingRouteArgs> page =
+      PageInfo<SyncLoadingRouteArgs>(name);
+}
+
+class SyncLoadingRouteArgs {
+  const SyncLoadingRouteArgs({
+    this.key,
+    required this.completed,
+    required this.total,
+  });
+
+  final Key? key;
+
+  final int completed;
+
+  final int total;
+
+  @override
+  String toString() {
+    return 'SyncLoadingRouteArgs{key: $key, completed: $completed, total: $total}';
+  }
 }
 
 /// generated route for

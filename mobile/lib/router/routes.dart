@@ -16,7 +16,7 @@ class Routes {
   static const assetSummary = 'asset-summary';
   static const dataSaveSuccess = 'data-save-success';
   static const overallAssetSummary = 'overall-asset-summary';
-  static const downloadStatus = 'download-status';
+  static const syncLoading = 'sync-loading';
   static const inbox = 'inbox';
   static const inboxAssetSummary = 'inbox-asset-summary';
   static const submitForApproval = 'submit-for-approval';
