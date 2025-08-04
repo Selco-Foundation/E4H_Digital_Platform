@@ -28,6 +28,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
+import java.util.Collections;
 import java.util.stream.Collectors;
 
 
@@ -565,5 +566,31 @@ public class ProjectApiController {
                 .responseInfo(responseInfo)
                 .project(List.of(updatedProject))
                 .build());
+    }
+
+    @PostMapping("/v1/project/bulk/workflow/update")
+    public ResponseEntity<BulkProjectUpdateResponse> updateBulkProjectWorkflow(
+            @Valid @RequestBody ProjectBulkApproveRequest projectBulkApproveRequest) throws Exception {
+
+        Map<String, Object> result = projectService.updateBulkProjectWorkflow(projectBulkApproveRequest);
+        List<String> failedProjectIDs = (List<String>) result.get("failedProjectIDs");
+        int totalProjects = (int) result.get("totalProjects");
+
+        ResponseInfo responseInfo = ResponseInfoFactory.createResponseInfo(projectBulkApproveRequest.getRequestInfo(), true);
+
+        BulkProjectUpdateResponse response = BulkProjectUpdateResponse.builder()
+                .responseInfo(responseInfo)
+                .failedProjectIDs(failedProjectIDs)
+                .build();
+        if (failedProjectIDs.isEmpty()) {
+            // All succeeded - return 200 with empty list
+            return ResponseEntity.status(HttpStatus.OK).body(response);
+        } else if (failedProjectIDs.size() == totalProjects) {
+            // All failed - return 400 with no list (empty list)
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+        } else {
+            // Partial success/fail - return 207 with list of failed IDs
+            return ResponseEntity.status(HttpStatus.MULTI_STATUS).body(response);
+        }
     }
 }

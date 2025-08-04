@@ -1,6 +1,7 @@
 package org.egov.project.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.validation.Valid;
@@ -30,7 +31,11 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
+import java.sql.Array;
 import java.util.*;
+import java.util.stream.Collectors;
+
+import static org.egov.project.util.ProjectConstants.SUBMITTED_BY_SUPERVISOR;
 
 @Service
 @Slf4j
@@ -629,7 +634,7 @@ public class ProjectService {
                 "FROM project_transaction WHERE project_id = ANY(?)";
 
         return jdbcTemplate.query(sql, ps -> {
-            java.sql.Array sqlArray = ps.getConnection().createArrayOf("text", projectIds.toArray(new String[0]));
+            Array sqlArray = ps.getConnection().createArrayOf("text", projectIds.toArray(new String[0]));
             ps.setArray(1, sqlArray);
         }, (rs, rowNum) -> {
             Transaction transaction = new Transaction();
@@ -668,4 +673,87 @@ public class ProjectService {
             return comment;
         });
     }
+
+    public Map<String, Object> updateBulkProjectWorkflow(ProjectBulkApproveRequest projectBulkApproveRequest) throws Exception {
+
+        List<String> projectIds = new ArrayList<>();
+        int totalProjects = 0;
+        int finalProjects = 0;
+        
+        if (projectBulkApproveRequest.getIsAllSelected()) {
+            // Case 1: Search all projects using filters
+            ExtendedProjectSearchRequest projectSearchRequest = new ExtendedProjectSearchRequest();
+
+            if( projectBulkApproveRequest.getFilters() != null ) {
+                projectSearchRequest.setRequestInfo(projectBulkApproveRequest.getRequestInfo());
+                projectSearchRequest.setProject(projectBulkApproveRequest.getFilters().getProjectSearch());
+                projectSearchRequest.setWorkflowStatus(projectBulkApproveRequest.getFilters().getStatus());
+            }
+
+            ProjectSearchURLParams urlParams = ProjectSearchURLParams.builder()
+                    .includeDescendants(false)
+                    .includeAncestors(false)
+                    .tenantId("in")
+                    .limit(1000)
+                    .offset(0)
+                    .build();
+
+            List<String> workflowStatuses = projectSearchRequest.getWorkflowStatus();
+
+            List<Project> allProjects = searchProject(projectSearchRequest, urlParams, workflowStatuses, null);
+            totalProjects = countAllProjects(projectSearchRequest, urlParams, workflowStatuses);
+
+            // only those projects whose status is SUBMITTED_BY_SUPERVISOR
+            List<Project> projects = allProjects.stream()
+                    .filter(p -> {
+                        Object additionalDetails = p.getAdditionalDetails();
+                        if (!(additionalDetails instanceof ObjectNode detailsNode)) return false;
+
+                        JsonNode statusNode = detailsNode.get("status");
+
+                        return statusNode != null && SUBMITTED_BY_SUPERVISOR.equals(statusNode.asText());
+                    })
+                    .toList();
+
+            finalProjects = projects.size();
+            projectIds = projects.stream().map(Project::getId).collect(Collectors.toList());
+        } else {
+            // Case 2: Use provided project IDs
+            if (projectBulkApproveRequest.getProjectIDs() != null && !projectBulkApproveRequest.getProjectIDs().isEmpty()) {
+                projectIds = projectBulkApproveRequest.getProjectIDs();
+                totalProjects = projectIds.size();
+            } else {
+                throw new CustomException("INVALID_REQUEST", "Project IDs are required when isAllSelected is false");
+            }
+        }
+
+        // Update workflow for all project IDs
+        log.info("Starting bulk workflow update for {} projects", projectIds.size());
+        List<String> failedProjectIDs = new ArrayList<>();
+        for (String projectId : projectIds) {
+            try {
+                ProjectWorkflowRequest workflowRequest = ProjectWorkflowRequest.builder()
+                        .requestInfo(projectBulkApproveRequest.getRequestInfo())
+                        .projectId(projectId)
+                        .workflow(projectBulkApproveRequest.getWorkflow())
+                        .build();
+
+                ProjectStatusWrapper updatedProject = updateProjectWorkflow(workflowRequest);
+                log.info("Successfully updated workflow for project: {}", projectId);
+            } catch (Exception e) {
+                log.error("Failed to update workflow for project {}: {}", projectId, e.getMessage());
+                failedProjectIDs.add(projectId);
+            }
+        }
+        
+        Map<String, Object> result = new HashMap<>();
+        result.put("failedProjectIDs", failedProjectIDs);
+        if(projectBulkApproveRequest.getIsAllSelected() && finalProjects > 0) {
+            result.put("totalProjects", finalProjects);
+        } else {
+            result.put("totalProjects", totalProjects);
+        }
+        return result;
+    }
+
 }
