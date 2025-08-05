@@ -20,7 +20,6 @@ public class V20250731113430_update_workflow extends BaseJavaMigration {
 
     private static final String HOST_URL = System.getenv("EGOV_WORKFLOW_V2_PORT");
     private static final String BASE_URL =  HOST_URL + "/egov-workflow-v2/egov-wf";
-    private static final String AUTH_TOKEN = "f93e2db5-b153-49d3-b653-014c5368791e";
 
     private static final List<String> TENANT_IDS = Arrays.asList("pg", "gj", "or","sk", "nl", "as", "mz", "mn", "ml", "mh");
     private static final List<String> BUSINESS_SERVICES = Arrays.asList("Incident_High", "Incident_Low", "Incident_Medium");
@@ -140,7 +139,7 @@ public class V20250731113430_update_workflow extends BaseJavaMigration {
         requestInfo.put("requesterId", "");
         requestInfo.put("ts", System.currentTimeMillis());
         requestInfo.put("ver", ".01");
-        requestInfo.put("authToken", AUTH_TOKEN);
+        requestInfo.put("authToken", "f93e2db5-b153-49d3-b653-014c5368791e");
 
         ObjectNode userInfo = mapper.createObjectNode();
         userInfo.put("uuid", "c2b18504-c5d5-4edc-b6eb-a3a913c17add");
