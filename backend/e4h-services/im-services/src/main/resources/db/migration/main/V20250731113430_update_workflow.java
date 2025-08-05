@@ -18,7 +18,8 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 
 public class V20250731113430_update_workflow extends BaseJavaMigration {
 
-    private static final String BASE_URL = "http://egov-workflow-v2.core-dev:8080/egov-workflow-v2/egov-wf";
+    private static final String HOST_URL = System.getenv("EGOV_WORKFLOW_V2_PORT");
+    private static final String BASE_URL =  HOST_URL + "/egov-workflow-v2/egov-wf";
     private static final String AUTH_TOKEN = "f93e2db5-b153-49d3-b653-014c5368791e";
 
     private static final List<String> TENANT_IDS = Arrays.asList("pg", "gj", "or","sk", "nl", "as", "mz", "mn", "ml", "mh");
