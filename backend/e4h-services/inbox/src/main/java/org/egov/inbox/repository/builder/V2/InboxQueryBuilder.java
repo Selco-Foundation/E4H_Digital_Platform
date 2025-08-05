@@ -121,6 +121,54 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
 
     }
 
+    public Map<String, Object> getESQueryProject(InboxRequest inboxRequest, Boolean isPaginationRequired) {
+
+        InboxQueryConfiguration configuration = mdmsUtil.getConfigFromMDMS(
+                inboxRequest.getInbox().getTenantId(),
+                inboxRequest.getInbox().getProcessSearchCriteria().getModuleName());
+
+        Map<String, Object> params = inboxRequest.getInbox().getModuleSearchCriteria();
+        Map<String, Object> baseEsQuery = getBaseESQueryBody(inboxRequest, isPaginationRequired);
+
+        if (isPaginationRequired) {
+            // Adds sort clause to the inbox ES query only in case pagination is present, else not
+            String sortClauseFieldPath = configuration.getSortParam().getPath();
+            SortParam.Order sortOrder = inboxRequest.getInbox().getModuleSearchCriteria().containsKey(SORT_ORDER_CONSTANT)
+                    ? SortParam.Order.valueOf((String) inboxRequest.getInbox().getModuleSearchCriteria().get(SORT_ORDER_CONSTANT))
+                    : configuration.getSortParam().getOrder();
+            addSortClauseToBaseQuery(baseEsQuery, sortClauseFieldPath, sortOrder);
+
+            // Adds source filter only when requesting for inbox items.
+            List<String> sourceFilterPathList = configuration.getSourceFilterPathList();
+            addSourceFilterToBaseQuery(baseEsQuery, sourceFilterPathList);
+        }
+
+        Map<String, Object> innerBoolClause =
+                (HashMap<String, Object>) ((HashMap<String, Object>) baseEsQuery.get(QUERY_KEY)).get(BOOL_KEY);
+        List<Object> mustClauseList = (ArrayList<Object>) innerBoolClause.get(MUST_KEY);
+
+        Map<String, String> nameToPathMap = new HashMap<>();
+        Map<String, SearchParam.Operator> nameToOperator = new HashMap<>();
+
+        configuration.getAllowedSearchCriteria().forEach(searchParam -> {
+            nameToPathMap.put(searchParam.getName(), searchParam.getPath());
+            nameToOperator.put(searchParam.getName(), searchParam.getOperator());
+        });
+
+//        if (inboxRequest.getInbox().getProcessSearchCriteria().getTenantId().split("\\.").length == 1
+//                && !inboxRequest.getInbox().getModuleSearchCriteria().get("tenantId").toString().contains(",")) {
+//            nameToOperator.put("tenantId", SearchParam.Operator.WILDCARD);
+//
+//        }
+        addModuleSearchCriteriaToBaseQuery(params, nameToPathMap, nameToOperator, mustClauseList);
+        addProcessSearchCriteriaToBaseQuery(inboxRequest.getInbox().getProcessSearchCriteria(), nameToPathMap, nameToOperator, mustClauseList);
+
+        innerBoolClause.put(MUST_KEY, mustClauseList);
+
+        return baseEsQuery;
+
+    }
+
     public Map<String, Object> getESQueryForSimpleSearch(SearchRequest searchRequest, Boolean isPaginationRequired) {
 
         InboxQueryConfiguration configuration = mdmsUtil.getConfigFromMDMS(

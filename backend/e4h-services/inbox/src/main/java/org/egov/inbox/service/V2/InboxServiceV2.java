@@ -15,9 +15,7 @@ import org.egov.inbox.repository.builder.V2.InboxQueryBuilder;
 import org.egov.inbox.service.V2.validator.ValidatorDefaultImplementation;
 import org.egov.inbox.service.WorkflowService;
 import org.egov.inbox.util.MDMSUtil;
-import org.egov.inbox.web.model.Inbox;
-import org.egov.inbox.web.model.InboxRequest;
-import org.egov.inbox.web.model.InboxResponse;
+import org.egov.inbox.web.model.*;
 import org.egov.inbox.web.model.V2.*;
 import org.egov.inbox.web.model.workflow.BusinessService;
 import org.egov.inbox.web.model.workflow.ProcessInstance;
@@ -124,6 +122,19 @@ public class InboxServiceV2 {
         });
     }
 
+    public ProjectResponse getInboxResponseProject(InboxRequest inboxRequest) {
+        validator.validateSearchCriteria(inboxRequest);
+
+        InboxQueryConfiguration inboxQueryConfiguration = mdmsUtil.getConfigFromMDMS(
+                inboxRequest.getInbox().getTenantId(),
+                inboxRequest.getInbox().getProcessSearchCriteria().getModuleName());
+        hashParamsWhereverRequiredBasedOnConfiguration(inboxRequest.getInbox().getModuleSearchCriteria(),
+                inboxQueryConfiguration);
+        List<Project> items = getProjectInboxItems(inboxRequest, inboxQueryConfiguration.getIndex());
+
+        return ProjectResponse.builder().items(items).totalCount(items.size()).build();
+    }
+
     private void enrichProcessInstanceInInboxItems(List<Inbox> items) {
         /*
           As part of the new inbox, having currentProcessInstance as part of the index is mandated. This has been
@@ -173,6 +184,29 @@ public class InboxServiceV2 {
         Object result = serviceRequestRepository.fetchESResult(uri, finalQueryBody);
 
         List<Inbox> inboxItemsList = parseInboxItemsFromSearchResponse(result, businessServices);
+        log.info(result.toString());
+        return inboxItemsList;
+    }
+
+    private List<Project> getProjectInboxItems(InboxRequest inboxRequest, String indexName){
+        List<BusinessService> businessServices = workflowService.getBusinessServices(inboxRequest);
+//        enrichActionableStatusesFromRole(inboxRequest, businessServices);
+//        if(CollectionUtils.isEmpty(inboxRequest.getInbox().getProcessSearchCriteria().getStatus())){
+//            return new ArrayList<>();
+//        }
+        Map<String, Object> finalQueryBody = queryBuilder.getESQueryProject(inboxRequest, Boolean.TRUE);
+        try {
+            String q = mapper.writeValueAsString(finalQueryBody);
+            log.info("Query: {}", q);
+        }
+        catch (Exception e){
+            e.printStackTrace();
+        }
+        StringBuilder uri = getURI(indexName, SEARCH_PATH);
+        //Object result = serviceRequestRepository.fetchESResult(uri, finalQueryBody);
+        Object result = serviceRequestRepository.fetchESResult(uri, finalQueryBody);
+
+        List<Project> inboxItemsList = parseprojectItemsFromSearchResponse(result, businessServices);
         log.info(result.toString());
         return inboxItemsList;
     }
@@ -330,6 +364,24 @@ public class InboxServiceV2 {
             inbox.getBusinessObject().put(SLA_REMAINING, dataBusinessObject.get(SLA_REMAINING));
             inbox.getBusinessObject().put(STATE_SLA,dataBusinessObject.get(STATE_SLA));
             inbox.getBusinessObject().put(TOTAL_SLA_REMAINING,dataBusinessObject.get(TOTAL_SLA_REMAINING));
+            inboxItemList.add(inbox);
+        });
+        return inboxItemList;
+    }
+
+    private List<Project> parseprojectItemsFromSearchResponse(Object result, List<BusinessService> businessServices) {
+        Map<String, Object> hits = (Map<String, Object>)((Map<String, Object>) result).get(HITS);
+        List<Map<String, Object>> nestedHits = (List<Map<String, Object>>) hits.get(HITS);
+        if(CollectionUtils.isEmpty(nestedHits)){
+            return new ArrayList<>();
+        }
+
+        List<Project> inboxItemList = new ArrayList<>();
+        nestedHits.forEach(hit ->{
+            Project inbox = new Project();
+            Map<String, Object> businessObject = (Map<String, Object>) hit.get(SOURCE_KEY);
+            Map<String, Object> dataBusinessObject = (Map<String, Object>) businessObject.get(DATA_KEY);
+            inbox.setProject(dataBusinessObject);
             inboxItemList.add(inbox);
         });
         return inboxItemList;

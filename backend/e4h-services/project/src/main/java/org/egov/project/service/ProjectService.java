@@ -280,6 +280,7 @@ public class ProjectService {
          */
         projectEnrichment.enrichProjectOnUpdate(request, project, projectFromDB);
         producer.push(projectConfiguration.getUpdateProjectTopic(), request);
+        producer.push(projectConfiguration.getUpdateProjectTopicIndexer(), request);
     }
 
     private void handleUpdateProjectDates(ProjectRequest request, Project project, Project projectFromDB) {
