@@ -2,7 +2,7 @@ const path = require("path")
 const HtmlWebpackPlugin = require("html-webpack-plugin")
 const { CleanWebpackPlugin } = require("clean-webpack-plugin")
 // const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
-
+const webpack = require("webpack")
 module.exports = {
   // mode: 'development',
   entry: "./src/index.js",
@@ -52,6 +52,10 @@ module.exports = {
       inject: true,
       template: "public/index.html",
       ga_id: process.env.REACT_APP_GA_ID || "",
+      publicUrl: process.env.PUBLIC_PATH || "/digit-ui/"
+    }),
+    new webpack.DefinePlugin({
+      "process.env.PUBLIC_PATH": JSON.stringify(process.env.PUBLIC_PATH || "/digit-ui/"),
     }),
   ],
 }

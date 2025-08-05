@@ -75,7 +75,8 @@ const ChangeCity = (prop) => {
     }));
     Digit.SessionStorage.set("Tenants",convertedData)
     setSelectCityData(filteredArray);
-  }, [dropDownData, tenantsData, t]);
+    setDropDownData(selectedCities?.[0]);
+  }, [tenantsData, t]);
 
   // if (isDropdown) {
   return (
@@ -83,11 +84,18 @@ const ChangeCity = (prop) => {
       <Dropdown
         option={sortSelectCityData}
         optionCardStyles={{ display: "unset" }}
-        selected={sortSelectCityData.find((cityValue) => cityValue.value === dropDownData?.value)}
+        selected={dropDownData}
         optionKey={"label"}
         select={handleChangeCity}
-        freeze={true}
-        customSelector={<label className="cp">{prop?.t(`TENANT_TENANTS_${stringReplaceAll(Digit.SessionStorage.get("Employee.tenantId"), ".", "_")?.toUpperCase()}`)}</label>}
+        selectStyle={{
+          border: "none",
+          ...(prop?.mobileView ? {display: "flex", flexDirection: "column"} : {})
+        }}
+        selectClassName={"cp flex-right column-gap-5"}
+        textStyle={{
+          textAlign: prop?.mobileView ? "center" : "end",
+          outline: "none"
+        }}
       />
     </div>
   );

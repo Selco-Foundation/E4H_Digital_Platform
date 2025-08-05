@@ -101,8 +101,15 @@ const EditForm = ({ tenantId, data }) => {
     }),
   };
 
-  const checkMailNameNum = (formData) => {
+    const checkMailName = (formData) => {
+    const name = formData?.SelectEmployeeName?.employeeName || '';
+    const email = formData?.SelectEmployeeEmailId?.emailId || '';
+    const validEmail = email.length == 0 ? true : email.match(Digit.Utils.getPattern('Email'));
+    const validName = name.match(Digit.Utils.getPattern('HRMS_Name'));
+    return validEmail && validName;
+  }
 
+    const checkMailNameNum = (formData) => {
     const email = formData?.SelectEmployeeEmailId?.emailId || '';
     const name = formData?.SelectEmployeeName?.employeeName || '';
     const address = formData?.SelectEmployeeCorrespondenceAddress?.correspondenceAddress || '';
@@ -143,15 +150,11 @@ const EditForm = ({ tenantId, data }) => {
       }
     }
     if (
-      formData?.SelectDateofEmployment?.dateOfAppointment &&
-      formData?.SelectEmployeeCorrespondenceAddress?.correspondenceAddress &&
       formData?.SelectEmployeeGender?.gender.code &&
       formData?.SelectEmployeeName?.employeeName &&
       formData?.SelectEmployeePhoneNumber?.mobileNumber &&
-      checkfield &&
-      setassigncheck &&
       phonecheck &&
-      checkMailNameNum(formData)
+      checkMailName(formData)
     ) {
       setSubmitValve(true);
     } else {
@@ -160,38 +163,11 @@ const EditForm = ({ tenantId, data }) => {
   };
 
   const onSubmit = (input) => {
-    if (input.Jurisdictions.filter(juris => juris.tenantId == tenantId && juris.isActive !== false).length == 0) {
-      setShowToast({ key: true, label: "ERR_BASE_TENANT_MANDATORY" });
-      return;
-    }
-    if (!Object.values(input.Jurisdictions.reduce((acc, sum) => {
-      if (sum && sum?.tenantId) {
-        acc[sum.tenantId] = acc[sum.tenantId] ? acc[sum.tenantId] + 1 : 1;
-      }
-      return acc;
-    }, {})).every(s => s == 1)) {
-      setShowToast({ key: true, label: "ERR_INVALID_JURISDICTION" });
-      return;
-    }
-    let roles = input?.Jurisdictions?.map((ele) => {
-      return ele.roles?.map((item) => {
-        item["tenantId"] = ele.boundary;
-        return item;
-      });
-    });
     let requestdata = Object.assign({}, data);
-    roles = [].concat.apply([], roles);
-    requestdata.assignments = input?.Assignments;
-    requestdata.dateOfAppointment = Date.parse(input?.SelectDateofEmployment?.dateOfAppointment);
-    requestdata.code = input?.SelectEmployeeId?.code ? input?.SelectEmployeeId?.code : undefined;
-    requestdata.jurisdictions = input?.Jurisdictions;
     requestdata.user.emailId = input?.SelectEmployeeEmailId?.emailId ? input?.SelectEmployeeEmailId?.emailId : undefined;
     requestdata.user.gender = input?.SelectEmployeeGender?.gender.code;
-    requestdata.user.dob = Date.parse(input?.SelectDateofBirthEmployment?.dob);
     requestdata.user.mobileNumber = input?.SelectEmployeePhoneNumber?.mobileNumber;
     requestdata["user"]["name"] = input?.SelectEmployeeName?.employeeName;
-    requestdata.user.correspondenceAddress = input?.SelectEmployeeCorrespondenceAddress?.correspondenceAddress;
-    requestdata.user.roles = roles.filter(role=>role&&role.name);
     let Employees = [requestdata];
 
     /* use customiseUpdateFormData hook to make some chnages to the Employee object */
