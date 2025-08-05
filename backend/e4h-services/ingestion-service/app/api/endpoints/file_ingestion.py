@@ -435,6 +435,12 @@ async def upload_facility_with_staff_excel_sheet(
                                     df.at[index, 'error'] = f"User Creation Error: {user_creation_response.status_code} - {user.get('Errors', [{}])[0].get('message', 'Unknown error')}"
                                     continue
                             
+                            # Validate user_uuid before staff creation
+                            if not user_uuid:
+                                df.at[index, 'status'] = 'failed'
+                                df.at[index, 'error'] = "User UUID is required for staff creation but was not obtained"
+                                continue
+                            
                             # Create staff
                             staff_creation_payload = get_staff_creation_payload(request_info, user_uuid, facility["Project"][0]["id"])
                             staff_creation_response = project_client.create_project_staff(staff_creation_payload)
@@ -713,7 +719,9 @@ async def upload_facility_with_supervisors_workflow_state_excel_sheet(
                         user_type = "supervisor"  # default
                         if 'Role' in df.columns:
                             role_value = df.at[index, 'Role']
-                            if role_value and str(role_value).strip().lower() != 'supervisor':
+                            if role_value and str(role_value).strip().lower() == 'supervisor':
+                                user_type = "supervisor"
+                            else:
                                 user_type = "staff"
                         
                         # Create search payload based on user type
@@ -740,7 +748,6 @@ async def upload_facility_with_supervisors_workflow_state_excel_sheet(
                             else:
                                 # Use existing user
                                 user_uuid = existing_user.get("uuid")
-                                df.at[index, 'status'] = 'success'
                         else:
                             # Create new user based on role type
                             if user_type == "supervisor":
@@ -752,26 +759,29 @@ async def upload_facility_with_supervisors_workflow_state_excel_sheet(
                             user = json.loads(user_creation_response.text)
                             if user_creation_response.status_code in [200, 201, 202]:
                                 user_uuid = user["Employees"][0]["uuid"]
-                                df.at[index, 'status'] = 'success'
                             else:
                                 df.at[index, 'status'] = 'failed'
                                 df.at[index, 'error'] = f"User Creation Error: {user_creation_response.status_code} - {user.get('Errors', [{}])[0].get('message', 'Unknown error')}"
                                 continue
                         
+                        # Validate user_uuid before staff creation
+                        if not user_uuid:
+                            df.at[index, 'status'] = 'failed'
+                            df.at[index, 'error'] = "User UUID is required for staff creation but was not obtained"
+                            continue
+                        
                         # Create staff
                         staff_creation_payload = get_staff_creation_payload(request_info, user_uuid, project_id)
                         staff_creation_response = project_client.create_project_staff(staff_creation_payload)
                         if staff_creation_response.status_code in [200, 201, 202]:
-                            df.at[index,'status'] = 'success'
-                            df.at[index, 'error'] = ''
-
                             # Validate Role column exists
                             if 'Role' not in df.columns:
                                 df.at[index, 'status'] = 'failed'
                                 df.at[index, 'error'] = "Role column is required for workflow state updates"
                                 continue
                             # update workflow state
-                            if df.at[index,'Role'] == 'Supervisor':
+                            role_value = df.at[index,'Role']
+                            if role_value and str(role_value).strip().lower() == 'supervisor':
                                 update_workflow_state_response = project_client.update_workflow(request_info, work_stream_project_id, 'ASSIGN_FIELD_SUPERVISOR')
                             else:
                                 update_workflow_state_response = project_client.update_workflow(request_info, work_stream_project_id,
