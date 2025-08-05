@@ -19,8 +19,7 @@ class SyncLoadingPage extends StatelessWidget {
     final theme = Theme.of(context);
     final textTheme = theme.digitTextTheme(context);
     final percent = ((completed / total) * 100).clamp(0, 100).toInt();
-    final progress = //(completed / total)
-        (0.45).clamp(0.0, 1.0);
+    final progress = (completed / total).clamp(0.0, 1.0);
     final isSuccessful = percent >= 98;
 
     return Scaffold(
