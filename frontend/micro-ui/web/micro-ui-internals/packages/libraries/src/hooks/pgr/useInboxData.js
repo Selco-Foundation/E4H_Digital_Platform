@@ -137,7 +137,7 @@ const combineResponses = (items, currentUserUuid, currentTenant, stateTenantId, 
       phcType: incident.phcType,
       status: incident.applicationStatus,
       taskOwner: assignee?.name || "-",
-      sla: slaValue,
+      sla: `${slaValue}`,
       tenantId: incident.tenantId,
     };
   });
