@@ -4,8 +4,6 @@ on:
     branches:
       - develop
       - staging
-    tags:
-      - 'v*'
     paths:
       - 'frontend/micro-ui/**'
   workflow_dispatch:
@@ -16,7 +14,7 @@ permissions:
 
 jobs:
   Docker_Image_Build:
-    if: (github.event_name == 'push' && (startsWith(github.ref, 'refs/heads/develop') || startsWith(github.ref, 'refs/heads/staging') || startsWith(github.ref, 'refs/tags/v'))) || github.event_name == 'workflow_dispatch'
+    if: (github.event_name == 'push' && (startsWith(github.ref, 'refs/heads/develop') || startsWith(github.ref, 'refs/heads/staging'))) || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository

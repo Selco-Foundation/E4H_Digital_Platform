@@ -4,7 +4,7 @@
   ],
   "name": "Saura-eMitra",
   "short_name": "eMitra",
-  "start_url": "/digit-ui/",
+  "start_url": ".",
   "display": "standalone",
   "description": "Saura-eMitra digital platform for citizen services and government operations, running in https mode.",
   "lang": "en",
