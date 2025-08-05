@@ -4,8 +4,6 @@ on:
     branches:
       - develop
       - staging
-    tags:
-      - 'v*'
     paths:
       - 'frontend/micro-ui/**'
   workflow_dispatch:
@@ -15,19 +13,22 @@ permissions:
   contents: read
 
 jobs:
-  docker_image-build:
-    if: (github.event_name == 'push' && (startsWith(github.ref, 'refs/heads/develop') || startsWith(github.ref, 'refs/heads/staging') || startsWith(github.ref, 'refs/tags/v'))) || github.event_name == 'workflow_dispatch'
+  Docker_Image_Build:
+    if: (github.event_name == 'push' && (startsWith(github.ref, 'refs/heads/develop') || startsWith(github.ref, 'refs/heads/staging'))) || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Setup Docker
-        uses: docker/setup-buildx-action@v2
+      - name: Setup Docker Buildx  # Buildx is docker CLI plugin which uses BuildKit capabilities
+        uses: docker/setup-buildx-action@v3   # Buildkit is the underling engine that handles the actual building of docker images.
 
       # Login to Docker Container Registry
-      - name: Login to Docker Container Registry
-        run: docker login -u selcohub -p ${{ secrets.DOCKER_PASSWORD }}
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
       - name: Set Version from Tag or Branch
         id: set_version
         run: |
@@ -46,16 +47,23 @@ jobs:
           commit_hash=$(git log -1 --pretty=format:%H -- frontend/micro-ui)
           echo "commit_hash=$commit_hash" >> $GITHUB_ENV
 
-      - name: Build and Push Docker image for Sikkim-ui
-        run: |
-          docker build --build-arg PUBLIC_PATH="/sikkim/"  -t selcohub/sikkim-ui:${{ env.VERSION }}-${{ env.commit_hash }} -f  web/docker/testfile/Dockerfile .
-          docker push selcohub/sikkim-ui:${{ env.VERSION }}-${{ env.commit_hash }}
-        working-directory: frontend/micro-ui
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: frontend/micro-ui/web/docker/testfile/Dockerfile
+          push: true
+          tags: selcohub/sikkim-ui:${{ env.VERSION }}-${{ env.commit_hash }}
+          cache-from: type=gha   # Stores cache in GitHub Actions .
+          cache-to: type=gha,mode=max  # max- stores all the layers including the intermediate layers in multi-stage
+          build-args: |
+            PUBLIC_PATH=/sikkim/
+            WORK_DIR=frontend/micro-ui/
 
 #  Workflow_Trigger:
 #    if: startsWith(github.ref, 'refs/heads/develop')
 #    runs-on: ubuntu-latest
-#    needs: docker_image-build
+#    needs: Docker_Image_Build
 #    steps:
 #      - name: Trigger Deployment Pipeline
 #        run: |
