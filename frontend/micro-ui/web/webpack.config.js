@@ -1,8 +1,8 @@
-const path = require("path");
-const HtmlWebpackPlugin = require("html-webpack-plugin");
-const { CleanWebpackPlugin } = require("clean-webpack-plugin");
+const path = require("path")
+const HtmlWebpackPlugin = require("html-webpack-plugin")
+const { CleanWebpackPlugin } = require("clean-webpack-plugin")
 // const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
-
+const webpack = require("webpack")
 module.exports = {
   // mode: 'development',
   entry: "./src/index.js",
@@ -16,25 +16,23 @@ module.exports = {
           loader: "babel-loader",
           options: {
             presets: ["@babel/preset-env", "@babel/preset-react"],
-            plugins: [
-              "@babel/plugin-proposal-optional-chaining"
-            ]
-          }
-        }
+            plugins: ["@babel/plugin-proposal-optional-chaining"],
+          },
+        },
       },
       {
         test: /\.css$/i,
-        use: ["style-loader", "css-loader"]
-      }
-    ]
+        use: ["style-loader", "css-loader"],
+      },
+    ],
   },
   resolve: {
-    extensions: [".js", ".jsx"] // Allow importing JS & JSX without specifying extension
+    extensions: [".js", ".jsx"], // Allow importing JS & JSX without specifying extension
   },
   output: {
     filename: "[name]-[contenthash].bundle.js",
     path: path.resolve(__dirname, "build"),
-    publicPath: process.env.PUBLIC_PATH || "/digit-ui/"
+    publicPath: process.env.PUBLIC_PATH || "/digit-ui/",
   },
   optimization: {
     splitChunks: {
@@ -44,12 +42,20 @@ module.exports = {
       enforceSizeThreshold: 50000,
       minChunks: 1,
       maxAsyncRequests: 30,
-      maxInitialRequests: 30
-    }
+      maxInitialRequests: 30,
+    },
   },
   plugins: [
     new CleanWebpackPlugin(),
     // new BundleAnalyzerPlugin(),
-    new HtmlWebpackPlugin({ inject: true, template: "public/index.html" }),
+    new HtmlWebpackPlugin({
+      inject: true,
+      template: "public/index.html",
+      ga_id: process.env.REACT_APP_GA_ID || "",
+      publicUrl: process.env.PUBLIC_PATH || "/digit-ui/"
+    }),
+    new webpack.DefinePlugin({
+      "process.env.PUBLIC_PATH": JSON.stringify(process.env.PUBLIC_PATH || "/digit-ui/"),
+    }),
   ],
-};
+}
