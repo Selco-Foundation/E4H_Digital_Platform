@@ -21,6 +21,8 @@ const GetParamFromUrl = (key, fallback, search) => {
 
 const getPattern = (type) => {
   switch (type) {
+    case "HRMS_Name":
+      return /^[a-zA-Z0-9][a-zA-Z0-9_ ]*[a-zA-Z0-9]$/i;
     case "Name":
       return /^[^{0-9}^\$\"<>?\\\\~!@#$%^()+={}\[\]*,/_:;“”‘’]{1,50}$/i;
     case "SearchOwnerName":
