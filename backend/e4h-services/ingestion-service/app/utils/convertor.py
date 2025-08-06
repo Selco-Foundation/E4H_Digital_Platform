@@ -202,7 +202,10 @@ def get_project_creation_payload(request_info: RequestInfo, project_name: str, p
             "parent": parent_id,
             "startDate": start_date,
             "endDate": end_date,
-            "projectSubType": subType
+            "projectSubType": subType,
+            "department": "",
+            "description" :"",
+            "referenceID" : "1"
         }],
         "isCascadingProjectDateUpdate": False,
         "apiOperation": "CREATE"
