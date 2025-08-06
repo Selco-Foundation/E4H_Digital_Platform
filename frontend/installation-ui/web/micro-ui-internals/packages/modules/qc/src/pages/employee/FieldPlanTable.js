@@ -69,17 +69,40 @@ const FieldPlanTable = ({ t, getCellProps }) => {
     );
   };
 
+  const GetPendingApprovalCount = (projectFacilityInfo) => {
+    const value = projectFacilityInfo["SUBMITTED_BY_SUPERVISOR"];
+    if (value) {
+      return (
+        <div
+          style={{
+            minWidth: "30px",
+            width: "fit-content",
+            height: "20px",
+            padding: "0 5px",
+            background: "red",
+            borderRadius: "10px",
+            color: "white",
+            textAlign: "center"
+          }}
+        >
+          <div>{value}</div>
+        </div>
+      )
+    }
+  }
+
   const columnsList = [
     {
       Header: "Field Plan Code",
       Cell: ({ row }) => {
         return (
-          <div>
+          <div style={{display: "flex", alignItems: "center", gap: "10px"}}>
             <span className="link" onClick={() => dispatch(setSelectedFieldPlan(row.original))}>
               <Link to={`${path}/${encodeURIComponent(row.original["name"])}/facilities`} style={{ color: "#C84C0E" }}>
                 {row.original["name"]}
               </Link>
             </span>
+            {GetPendingApprovalCount(row.original["projectFacilityInfo"])}
           </div>
         );
       },

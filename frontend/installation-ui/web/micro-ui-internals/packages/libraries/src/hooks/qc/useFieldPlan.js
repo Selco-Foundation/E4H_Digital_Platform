@@ -31,12 +31,13 @@ const formatFieldPlans = (projects) => {
       id: row?.project?.id,
       name: row?.project?.name || row?.project?.projectNumber,
       projectType: "Installation",
-      facilitiesCount: projectFacilityInfo.totalProjectFacilities,
+      facilitiesCount: projectFacilityInfo?.totalProjectFacilities,
       startDate: formatDate(row?.project?.startDate),
       endDate: formatDate(row?.project?.endDate),
       completionRate: completionRate,
       status: row?.status,
-      transactions: row?.transactions
+      transactions: row?.transactions,
+      projectFacilityInfo
     };
   })
 }
