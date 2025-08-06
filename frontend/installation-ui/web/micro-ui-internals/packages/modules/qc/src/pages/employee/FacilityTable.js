@@ -5,21 +5,20 @@ import InfoCard from "../../components/FacilityTable/InfoCard";
 import { Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { setSelectedFacility } from "../../redux/actions";
+import SearchCentre from "../../components/FacilityTable/Search";
 
-const FacilityTable = ({ t, getCellProps, onNextPage, onPrevPage, currentPage, totalRecords, pageSizeLimit, onPageSizeChange }) => {
+const FacilityTable = ({ t, getCellProps }) => {
 
   const [mainCheck, setMainCheck] = useState(false);
   const dispatch = useDispatch();
   const selectedFieldPlan = useSelector((state) => state.qc.common.selectedFieldPlan);
   const [filters, setFilters] = useState({
-    district: null,
-    block: null,
-    status: [],
+    district: [],
+    block: [],
+    status: []
   });
   const [selectedFacilities, setSelectedFacilities] = useState([]);
   const [fetchedData, setData] = useState([]);
-  const [refactoredData, setRefactoredData] = useState([]);
-  const [filteredData, setFilteredData] = useState([]);
   const [sideCheck, setSideCheck] = useState({});
   const [projectQueryFilter, setProjectQueryFilter] = useState({
     Project : {
@@ -27,18 +26,20 @@ const FacilityTable = ({ t, getCellProps, onNextPage, onPrevPage, currentPage, t
       parent: selectedFieldPlan.id,
     }
   });
+  const [pageSize, setPageSize] = useState(10);
+  const [pageOffset, setPageOffset] = useState(0);
 
-  const { isLoading, data } = Digit.Hooks.qc.useFacility(projectQueryFilter);
+  const { isLoading, data } = Digit.Hooks.qc.useFacility(projectQueryFilter, pageSize, pageOffset);
+
   useEffect(() => {
     if (data) {
-      const refactoredDataCopy = data.map((row) => ({
+      const refactoredDataCopy = data?.facilities.map((row) => ({
         ...row,
         projectName: selectedFieldPlan?.name,
         status: t(row?.status) || "-",
       }));
 
-      setFilteredData(refactoredDataCopy);
-      setRefactoredData(refactoredDataCopy);
+      setData(refactoredDataCopy);
       const newSideCheck = {};
       refactoredDataCopy.forEach((row) => {
         if (row?.status === t("SUBMITTED_BY_SUPERVISOR")) {
@@ -48,23 +49,40 @@ const FacilityTable = ({ t, getCellProps, onNextPage, onPrevPage, currentPage, t
       setSideCheck(newSideCheck);
       setMainCheck(false);
     }
-  }, [isLoading])
+  }, [data])
+
+  const onPageSizeChange = (e) => {
+    setPageSize(parseInt(e.target.value));
+    setPageOffset(0);
+  }
+
+  const onNextPage = () => {
+    setPageOffset(pageOffset + pageSize);
+  }
+
+  const onPrevPage = () => {
+    setPageOffset(pageOffset - pageSize);
+  }
 
   const onFilterApply = () => {
-    const filterDistricts = filters.district !== null ? refactoredData.filter((row) => row?.district === filters.district) : refactoredData;
-    const filterBlock = filters.block !== null ? filterDistricts.filter((row) => row?.block === filters.block) : filterDistricts;
-    const filterStatus = filters.status.length !== 0 ? filterBlock.filter((row) => filters.status.includes(row?.status)) : filterBlock;
-    setFilteredData(filterStatus);
+    console.debug("onFilterApply", filters);
   };
 
-  const cleanFilters = () => {
+  const clearFilters = () => {
     setFilters({
-      district: null,
-      block: null,
+      district: [],
+      block: [],
       status: [],
     });
-    setFilteredData(refactoredData);
   };
+
+  const onSearch = (textToSearch) => {
+    console.debug("onSearch", textToSearch);
+  }
+
+  const onSearchClear = () => {
+    console.debug("onSearchClear");
+  }
 
   const GetCell = (value) => <span className="cell-text">{value}</span>;
 
@@ -78,7 +96,7 @@ const FacilityTable = ({ t, getCellProps, onNextPage, onPrevPage, currentPage, t
     setSideCheck(newSideCheck);
     if(!prevMainCheck) {
       setSelectedFacilities(
-        refactoredData
+        fetchedData
           .filter((row) => row?.status === t("SUBMITTED_BY_SUPERVISOR"))
           .map((row) => row.id)
       );
@@ -168,11 +186,48 @@ const FacilityTable = ({ t, getCellProps, onNextPage, onPrevPage, currentPage, t
     },
   ];
 
-  const installationStatuses = ["Pending Installation", "Approved", "Rejected", "Pending Approval", "Scheduled"];
+  const getStatusCount = (status) => {
+    return selectedFieldPlan?.projectFacilityInfo?.[status] || 0;
+  }
 
-  const installationsWithCount = installationStatuses.map((status) => {
-    return { name: status, count: refactoredData.filter((opt) => opt.status === status).length };
-  });
+  //todo: fetch all possible statuses from backend??
+  const statusesWithCount = [
+    {
+      name: t("CS_UNASSIGNED"),
+      code: "UNASSIGNED",
+      count: getStatusCount("UNASSIGNED")
+    },
+    {
+      name: t("CS_PENDING_INSTALLATION"),
+      code: "PENDING_INSTALLATION",
+      count: getStatusCount("ASSIGNED_TO_SUPERVISOR") + getStatusCount("ASSIGNED_TO_FIELD_STAFF")
+    },
+    {
+      name: t("CS_SUBMITTED_BY_FIELD_STAFF"),
+      code: "SUBMITTED_BY_FIELD_STAFF",
+      count: getStatusCount("SUBMITTED_BY_FIELD_STAFF")
+    },
+    {
+      name: t("CS_REJECTED_BY_SUPERVISOR"),
+      code: "REJECTED_BY_SUPERVISOR",
+      count: getStatusCount("REJECTED_BY_SUPERVISOR")
+    },
+    {
+      name: t("CS_SUBMITTED_BY_SUPERVISOR"),
+      code: "SUBMITTED_BY_SUPERVISOR",
+      count: getStatusCount("SUBMITTED_BY_SUPERVISOR")
+    },
+    {
+      name: t("CS_APPROVED_BY_QC_SPOC"),
+      code: "APPROVED_BY_QC_SPOC",
+      count: getStatusCount("APPROVED_BY_QC_SPOC")
+    },
+    {
+      name: t("CS_REJECTED_BY_QC_SPOC"),
+      code: "REJECTED_BY_QC_SPOC",
+      count: getStatusCount("REJECTED_BY_QC_SPOC")
+    }
+  ];
 
   if (isLoading) {
     return <Loader />;
@@ -183,88 +238,43 @@ const FacilityTable = ({ t, getCellProps, onNextPage, onPrevPage, currentPage, t
       <div style={{fontSize: "24px", fontWeight: "bold", marginBottom: "20px", color: "#004d66"}}>
         Installation | {selectedFieldPlan?.name}
       </div>
-      <InfoCard />
+      <InfoCard selectedFieldPlan={selectedFieldPlan} />
       <div style={{ width: "100%", display: "flex", gap: "15px" }}>
         <div style={{ width: "15%" }}>
           <Filter
-            data={refactoredData}
+            filter={projectQueryFilter}
             type="desktop"
-            installationsWithCount={installationsWithCount}
+            statusesWithCount={statusesWithCount}
             onFilter={onFilterApply}
-            onFilterClear={cleanFilters}
-            filter={filters}
+            onFilterClear={clearFilters}
             setFilter={setFilters}
           />
         </div>
         <div style={{ width: "83%", backgroundColor: "white" }}>
           <div style={{ padding: "20px" }}>
-            <div style={{ fontSize: "20px", fontWeight: "bold", marginBottom: "20px" }}>
+            <div style={{ fontSize: "20px", fontWeight: "bold", marginBottom: "40px" }}>
               Reports
             </div>
-            <div style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: "10px",
-              width: "90%",
-              marginLeft: "auto",
-              marginRight: "auto",
-              height: "20px",
-            }}>
-              { selectedFacilities.length > 0 ? (
-                <div style={{ fontSize: "16px", fontWeight: "bold", color: "#004d66" }}>
-                  {selectedFacilities.length} Health Facilities Selected
-                </div>
-              ) : (
-                <input
-                  type="text"
-                  placeholder="Search Health Facilities"
-                  style={{
-                    padding: "8px",
-                    width: "250px",
-                    border: "1px solid #ccc",
-                    borderRadius: "4px",
-                  }}
-                />
-              ) }
-              <div style={{ display: "flex", gap: "10px" }}>
-                { selectedFacilities.length > 0 && (
-                  <button style={{
-                    border: "1px solid #d35400",
-                    backgroundColor: "#d35400",
-                    padding: "6px 12px",
-                    cursor: "pointer",
-                    color: "white",
-                    fontWeight: "bold"
-                  }}>
-                    Approve
-                  </button>
-                )}
-                <button style={{
-                  backgroundColor: "white",
-                  border: "1px solid #d35400",
-                  color: "#d35400",
-                  padding: "6px 12px",
-                  cursor: "pointer",
-                  fontWeight: "bold"
-                }}>
-                  Download
-                </button>
-              </div>
-            </div>
+            <SearchCentre
+              mainCheckBox={mainCheck}
+              selectedFacilities={selectedFacilities}
+              filter={projectQueryFilter}
+              onSearch={onSearch}
+              onClear={onSearchClear}
+            />
           </div>
           <div style={{ width: "90%", marginLeft: "auto", marginRight: "auto", overflowX: "auto" }}>
             <Table
               t={t}
-              data={filteredData}
+              data={fetchedData}
               columns={columns}
               getCellProps={getCellProps}
               onNextPage={onNextPage}
               onPrevPage={onPrevPage}
-              currentPage={currentPage}
-              totalRecords={totalRecords}
+              currentPage={Math.floor(pageOffset / pageSize)}
+              totalRecords={data?.totalCount}
               onPageSizeChange={onPageSizeChange}
-              pageSizeLimit={pageSizeLimit}
+              pageSizeLimit={pageSize}
             />
           </div>
         </div>

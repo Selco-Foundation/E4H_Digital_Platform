@@ -4,20 +4,143 @@ import { ApplyFilterBar, CloseSvg } from "@egovernments/digit-ui-react-component
 import { useTranslation } from "react-i18next";
 // import Status from "./Status";
 
-const Filter = (props) => {
-  const { data, onFilter, onFilterClear, filter, setFilter } = props;
+const Filter = ({ onFilterApply, filter, statusesWithCount }) => {
 
-  const districts = data.map((row) => row.district);
+  const { t } = useTranslation();
+  const [districtMenu, setDistrictMenu] = useState([]);
+  const [blockMenu, setBlockMenu] = useState([]);
+  const [currentFilter, setCurrentFilter] = useState({ district: [], block: [], status: [] });
 
-  let uniqueDistrictsOptions = [...new Set(districts)].map((district) => {
-    return { name: district };
-  });
+  const districts = [
+    { name: "Greenfield", code: "D001" },
+    { name: "Riverdale", code: "D002" },
+    { name: "Hilltown", code: "D003" },
+    { name: "Lakeside", code: "D004" },
+    { name: "Sunset Valley", code: "D005" },
+  ];
 
-  const blocks = data.map((row) => row.block);
+  const blocks = [
+    // Greenfield (D001)
+    { name: "Central Block", code: "B001", districtCode: "D001" },
+    { name: "North Block", code: "B002", districtCode: "D001" },
+    { name: "East Block", code: "B003", districtCode: "D001" },
 
-  let uniqueBlocksOptions = [...new Set(blocks)].map((block) => {
-    return { name: block };
-  });
+    // Riverdale (D002)
+    { name: "West Block", code: "B004", districtCode: "D002" },
+    { name: "South Block", code: "B005", districtCode: "D002" },
+    { name: "Riverbank Block", code: "B006", districtCode: "D002" },
+
+    // Hilltown (D003)
+    { name: "Hilltop Block", code: "B007", districtCode: "D003" },
+    { name: "Valley Block", code: "B008", districtCode: "D003" },
+    { name: "Pinewood Block", code: "B009", districtCode: "D003" },
+
+    // Lakeside (D004)
+    { name: "Lakeshore Block", code: "B010", districtCode: "D004" },
+    { name: "Harbor Block", code: "B011", districtCode: "D004" },
+    { name: "Island Block", code: "B012", districtCode: "D004" },
+
+    // Sunset Valley (D005)
+    { name: "Sunrise Block", code: "B013", districtCode: "D005" },
+    { name: "Golden Block", code: "B014", districtCode: "D005" },
+    { name: "Twilight Block", code: "B015", districtCode: "D005" },
+  ];
+
+  useEffect(() => {
+    setDistrictMenu(districts);
+  }, []);
+
+  const handleDistrictChange = (value) => {
+    if (currentFilter.district.every(district => district.code !== value.code)) {
+
+      const newSelectedDistricts = [...currentFilter.district, value];
+      setCurrentFilter({
+        ...currentFilter,
+        district: newSelectedDistricts
+      });
+
+      const selectedDistrictCodes = newSelectedDistricts.map(district => district.code);
+      const newBlockMenu = blocks.filter(block => selectedDistrictCodes.includes(block.districtCode));
+      setBlockMenu(newBlockMenu);
+    }
+  }
+
+  const handleBlockChange = (selectedBlock) => {
+    if (currentFilter.block.every(block => block.code !== selectedBlock.code)) {
+      setCurrentFilter({
+        ...currentFilter,
+        block: [...currentFilter.block, selectedBlock]
+      });
+    }
+  };
+
+  const onRemove = (index, key) => {
+    let afterRemove = currentFilter[key].filter((value, i) => i !== index);
+
+    if (key === "district") {
+      const newSelectedDistrictCodes = afterRemove.map(district => district.code);
+      const newBlockMenu = blocks.filter(block => newSelectedDistrictCodes.includes(block.districtCode));
+      const newSelectedBlocks = currentFilter.block.filter(block => newSelectedDistrictCodes.includes(block.districtCode));
+
+      setBlockMenu(newBlockMenu);
+      setCurrentFilter({
+        ...currentFilter,
+        block: newSelectedBlocks,
+        district: afterRemove
+      });
+
+    } else {
+      setCurrentFilter({ ...currentFilter, [key]: afterRemove });
+    }
+  };
+
+  const GetSelectOptions = (label, options, selected = null, select, optionKey, onRemove, key) => {
+    selected = selected || { [optionKey]: "", code: "" };
+
+    return (
+      <div>
+        <div className="filter-label">{label}</div>
+        {<Dropdown option={options} selected={selected} select={(value) => select(value, key)} optionKey={optionKey} />}
+
+        <div className="tag-container">
+          {currentFilter[key].length > 0 &&
+            currentFilter[key].map((value, index) => {
+              return <RemoveableTag key={index} text={`${value[optionKey]} ...`} onClick={() => onRemove(index, key)} />;
+            })}
+        </div>
+      </div>
+    );
+  };
+
+  const handleStatusChange = (option, checked) => {
+    const statusesChanged = option.code === "PENDING_INSTALLATION" ? ["ASSIGNED_TO_SUPERVISOR", "ASSIGNED_TO_FIELD_STAFF"] : [option.name];
+    if (checked) {
+      setCurrentFilter({
+        ...currentFilter,
+        status: [...currentFilter.status, ...statusesChanged]
+      });
+    } else {
+      setCurrentFilter({
+        ...currentFilter,
+        status: currentFilter.status.filter(status => !statusesChanged.includes(status))
+      });
+    }
+  }
+
+  const handleFilterApply = () => {
+    console.debug("handleFilterApply", currentFilter);
+    // onFilterApply(currentFilter);
+  }
+
+  const onClearAll = () => {
+    setCurrentFilter({
+      district: [],
+      block: [],
+      status: [],
+    });
+    setDistrictMenu(districts);
+    setBlockMenu([]);
+  }
 
   return (
     <React.Fragment>
@@ -41,56 +164,54 @@ const Filter = (props) => {
               <FilterIcon />
               Filter
             </div>
-            <div style={{ marginBottom: "35px" }}>
-              <div className="filter-label" style={{ marginBottom: "10px" }}>
-                District
-              </div>
-              <Dropdown
-                option={uniqueDistrictsOptions}
-                selected={filter.district === null ? { name: "District" } : { name: filter.district }}
-                select={(value) => {
-                  setFilter({
-                    district: value.name,
-                    block: filter.block,
-                    status: filter.status,
-                  });
-                }}
-                optionKey={"name"}
-              />
+            <div>
+              {
+                GetSelectOptions(
+                  t("CS_DISTRICT"),
+                  districtMenu,
+                  null,
+                  handleDistrictChange,
+                  "name",
+                  onRemove,
+                  "district"
+                )
+              }
             </div>
-            <div style={{ marginBottom: "65px" }}>
-              <div className="filter-label" style={{ marginBottom: "10px" }}>
-                Block
-              </div>
-              <Dropdown
-                option={uniqueBlocksOptions}
-                selected={filter.block === null ? { name: "Block" } : { name: filter.block }}
-                select={(value) => {
-                  setFilter({
-                    district: filter.district,
-                    block: value.name,
-                    status: filter.status,
-                  });
-                }}
-                optionKey={"name"}
-              />
+            <div>
+              {
+                GetSelectOptions(
+                  t("CS_BLOCK"),
+                  blockMenu,
+                  null,
+                  handleBlockChange,
+                  "name",
+                  onRemove,
+                  "block"
+                )
+              }
             </div>
-            {props.installationsWithCount.map((option, index) => {
+            <div
+              style={{
+                fontFamily: "Roboto",
+                fontWeight: 700,
+                fontSize: "18px",
+                lineHeight: "114%",
+                letterSpacing: "0px",
+                color: "#0B0C0C",
+                alignItems: "center",
+                marginBottom: "30px",
+              }}
+            >
+              Status
+            </div>
+            {statusesWithCount?.map((option, index) => {
               return (
                 <div style={{ marginTop: "-35px" }}>
                   <CheckBox
                     key={index}
-                    onChange={(e) => {
-                      setFilter({
-                        district: filter.district,
-                        block: filter.block,
-                        status: filter.status.includes(e.target.value)
-                          ? filter.status.filter((status) => status !== e.target.value)
-                          : [...filter.status, e.target.value],
-                      });
-                    }}
+                    onChange={(e) => {handleStatusChange(option, e.target.checked)}}
                     defaultValue={false}
-                    label={`${option.name}`}
+                    label={`${option.name}${ option.count > 0 ? ` (${option.count})` : ""}`}
                   />
                 </div>
               );
@@ -107,7 +228,7 @@ const Filter = (props) => {
                   color: "#C84C0E",
                   cursor: "pointer",
                 }}
-                onClick={onFilterClear}
+                onClick={onClearAll}
               >
                 Clear
               </div>
@@ -136,7 +257,7 @@ const Filter = (props) => {
                   textTransform: "capitalize",
                   boxShadow: "0px -2px 0px 0px #0B0C0C inset",
                 }}
-                onClick={onFilter}
+                onClick={handleFilterApply}
               >
                 Apply
               </div>

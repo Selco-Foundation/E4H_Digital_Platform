@@ -49,6 +49,22 @@ export const QCService = {
     });
   },
 
+  fetchInboxData: async (queryFilter) => {
+    const endpoint = "/inbox/v2/project/_search";
+    const headers = {
+      "Content-Type" : "application/json"
+    }
+
+    return await Request({
+      url : endpoint,
+      data : queryFilter,
+      method : "POST",
+      userService : true,
+      auth : true,
+      headers : headers,
+    });
+  },
+
   fetchAssets : async (facilityID) => {
     const endpoint = "/asset-registry/v1/asset/_search";
     const queryObj = {
