@@ -21,7 +21,7 @@ from app.schemas.request_info import RequestInfo
 from app.producer.producer import Producer
 from app.utils.convertor import request_info_from_json, create_vendor_request, create_facility_payload, \
     get_project_creation_payload, get_user_creation_payload_staff, get_user_creation_payload_supervisors, get_staff_creation_payload, create_project_payload, \
-    get_installation_spoc_creation_payload, get_staff_search_payload
+    get_installation_spoc_creation_payload, get_staff_search_payload, check_role_mismatch_for_user_type
 from app.utils.facility_service_client import FacilityServiceClient
 from app.utils.mdms_client import MDMSClient
 from app.utils.organization_service_client import OrganizationServiceClient
@@ -401,24 +401,55 @@ async def upload_facility_with_staff_excel_sheet(
                         facility = json.loads(facility_creation_response.text)
                         if facility_creation_response.status_code in [200, 201, 202]:
                             df.at[index, 'status'] = 'success'
-                            # Create User
-                            user_creation_payload = get_user_creation_payload_staff(request_info, row)
-                            user_creation_response = hrms_client.create_user(user_creation_payload)
-                            user = json.loads(user_creation_response.text)
-                            if user_creation_response.status_code in [200, 201, 202]:
-                                df.at[index, 'status'] = 'success'
-                                # Create staff
-                                staff_creation_payload = get_staff_creation_payload(request_info, user["Employees"][0]["uuid"], facility["Project"][0]["id"])
-                                staff_creation_response = project_client.create_project_staff(staff_creation_payload)
-                                if staff_creation_response.status_code in [200, 201, 202]:
-                                    df.at[index,'status'] = 'success'
-                                    df.at[index, 'error'] = ''
+                            # Check if user already exists and validate roles
+                            user_search_payload = get_user_creation_payload_staff(request_info, row)
+                            existing_user_response = hrms_client.search_user(user_search_payload)
+                            existing_user = None
+                            if existing_user_response.status_code == 200:
+                                response_data = existing_user_response.json()
+                                employees = response_data.get("Employees", [])
+                                if employees:
+                                    existing_user = employees[0]
+                            
+                            if existing_user:
+                                # Check for role mismatch
+                                role_check = check_role_mismatch_for_user_type(existing_user, "staff")
+                                if role_check["has_mismatch"]:
+                                    df.at[index, 'status'] = 'error'
+                                    df.at[index, 'error'] = f"Role mismatch detected: {role_check['mismatch_details']}. Current roles: {', '.join(role_check['current_roles'])}. Expected roles: {', '.join(role_check['expected_roles'])}"
+                                    continue
+                                else:
+                                    # Use existing user
+                                    user_uuid = existing_user.get("uuid")
+                                    df.at[index, 'status'] = 'success'
+                            else:
+                                # Create new user
+                                user_creation_payload = get_user_creation_payload_staff(request_info, row)
+                                user_creation_response = hrms_client.create_user(user_creation_payload)
+                                user = json.loads(user_creation_response.text)
+                                if user_creation_response.status_code in [200, 201, 202]:
+                                    user_uuid = user["Employees"][0]["uuid"]
+                                    df.at[index, 'status'] = 'success'
                                 else:
                                     df.at[index, 'status'] = 'failed'
-                                    df.at[index, 'error'] = f"Staff Creation Error: {staff_creation_response.status_code} - {staff_creation_response.text}"
+                                    df.at[index, 'error'] = f"User Creation Error: {user_creation_response.status_code} - {user.get('Errors', [{}])[0].get('message', 'Unknown error')}"
+                                    continue
+                            
+                            # Validate user_uuid before staff creation
+                            if not user_uuid:
+                                df.at[index, 'status'] = 'failed'
+                                df.at[index, 'error'] = "User UUID is required for staff creation but was not obtained"
+                                continue
+                            
+                            # Create staff
+                            staff_creation_payload = get_staff_creation_payload(request_info, user_uuid, facility["Project"][0]["id"])
+                            staff_creation_response = project_client.create_project_staff(staff_creation_payload)
+                            if staff_creation_response.status_code in [200, 201, 202]:
+                                df.at[index,'status'] = 'success'
+                                df.at[index, 'error'] = ''
                             else:
                                 df.at[index, 'status'] = 'failed'
-                                df.at[index, 'error'] = f"User Creation Error: {user_creation_response.status_code} - {user.get('Errors', [{}])[0].get('message', 'Unknown error')}"
+                                df.at[index, 'error'] = f"Staff Creation Error: {staff_creation_response.status_code} - {staff_creation_response.text}"
                         else:
                             df.at[index, 'status'] = 'failed'
                             df.at[index, 'error'] = f"Facility Creation Error: {facility_creation_response.status_code} - {facility_creation_response.text}"
@@ -532,24 +563,49 @@ async def upload_facility_with_supervisors_excel_sheet(
                             project_id = facility["Project"][0]["id"]
                         else:
                             project_id = facility["projectId"]
-                        # Create User
-                        user_creation_payload = get_user_creation_payload_supervisors(request_info, row)
-                        user_creation_response = hrms_client.create_user(user_creation_payload)
-                        user = json.loads(user_creation_response.text)
-                        if user_creation_response.status_code in [200, 201, 202]:
-                            df.at[index, 'status'] = 'success'
-                            # Create staff
-                            staff_creation_payload = get_staff_creation_payload(request_info, user["Employees"][0]["uuid"], project_id)
-                            staff_creation_response = project_client.create_project_staff(staff_creation_payload)
-                            if staff_creation_response.status_code in [200, 201, 202]:
-                                df.at[index,'status'] = 'success'
-                                df.at[index, 'error'] = ''
+                        # Check if user already exists and validate roles
+                        user_search_payload = get_user_creation_payload_supervisors(request_info, row)
+                        existing_user_response = hrms_client.search_user(user_search_payload)
+                        existing_user = None
+                        if existing_user_response.status_code == 200:
+                            response_data = existing_user_response.json()
+                            employees = response_data.get("Employees", [])
+                            if employees:
+                                existing_user = employees[0]
+                        
+                        if existing_user:
+                            # Check for role mismatch
+                            role_check = check_role_mismatch_for_user_type(existing_user, "supervisor")
+                            if role_check["has_mismatch"]:
+                                df.at[index, 'status'] = 'error'
+                                df.at[index, 'error'] = f"Role mismatch detected: {role_check['mismatch_details']}. Current roles: {', '.join(role_check['current_roles'])}. Expected roles: {', '.join(role_check['expected_roles'])}"
+                                continue
+                            else:
+                                # Use existing user
+                                user_uuid = existing_user.get("uuid")
+                                df.at[index, 'status'] = 'success'
+                        else:
+                            # Create new user
+                            user_creation_payload = get_user_creation_payload_supervisors(request_info, row)
+                            user_creation_response = hrms_client.create_user(user_creation_payload)
+                            user = json.loads(user_creation_response.text)
+                            if user_creation_response.status_code in [200, 201, 202]:
+                                user_uuid = user["Employees"][0]["uuid"]
+                                df.at[index, 'status'] = 'success'
                             else:
                                 df.at[index, 'status'] = 'failed'
-                                df.at[index, 'error'] = f"Staff Creation Error: {staff_creation_response.status_code} - {staff_creation_response.text}"
+                                df.at[index, 'error'] = f"User Creation Error: {user_creation_response.status_code} - {user.get('Errors', [{}])[0].get('message', 'Unknown error')}"
+                                continue
+                        
+                        # Create staff
+                        staff_creation_payload = get_staff_creation_payload(request_info, user_uuid, project_id)
+                        staff_creation_response = project_client.create_project_staff(staff_creation_payload)
+                        if staff_creation_response.status_code in [200, 201, 202]:
+                            df.at[index,'status'] = 'success'
+                            df.at[index, 'error'] = ''
                         else:
                             df.at[index, 'status'] = 'failed'
-                            df.at[index, 'error'] = f"User Creation Error: {user_creation_response.status_code} - {user.get('Errors', [{}])[0].get('message', 'Unknown error')}"
+                            df.at[index, 'error'] = f"Staff Creation Error: {staff_creation_response.status_code} - {staff_creation_response.text}"
                     except Exception as e:
                         df.at[index, 'status'] = 'failed'
                         df.at[index, 'error'] = f"Processing Error: {str(e)}"
@@ -658,43 +714,88 @@ async def upload_facility_with_supervisors_workflow_state_excel_sheet(
                             project_id = facility["Project"][0]["id"]
                         else:
                             project_id = facility["projectId"]
-                        # Create User
-                        user_creation_payload = get_user_creation_payload_supervisors(request_info, row)
-                        user_creation_response = hrms_client.create_user(user_creation_payload)
-                        user = json.loads(user_creation_response.text)
-                        if user_creation_response.status_code in [200, 201, 202]:
-                            df.at[index, 'status'] = 'success'
-                            # Create staff
-                            staff_creation_payload = get_staff_creation_payload(request_info, user["Employees"][0]["uuid"], project_id)
-                            staff_creation_response = project_client.create_project_staff(staff_creation_payload)
-                            if staff_creation_response.status_code in [200, 201, 202]:
-                                df.at[index,'status'] = 'success'
-                                df.at[index, 'error'] = ''
-
-                                # Validate Role column exists
-                                if 'Role' not in df.columns:
-                                    df.at[index, 'status'] = 'failed'
-                                    df.at[index, 'error'] = "Role column is required for workflow state updates"
-                                    continue
-                                # update workflow state
-                                if df.at[index,'Role'] == 'Supervisor':
-                                    update_workflow_state_response = project_client.update_workflow(request_info, work_stream_project_id, 'ASSIGN_FIELD_SUPERVISOR')
-                                else:
-                                    update_workflow_state_response = project_client.update_workflow(request_info, work_stream_project_id,
-                                                                                                    'ASSIGN_FIELD_STAFF')
-                                if update_workflow_state_response.status_code in [200, 201, 202]:
-                                    df.at[index,'status'] = 'success'
-                                    df.at[index, 'error'] = ''
-                                else:
-                                    df.at[index, 'status'] = 'failed'
-                                    df.at[
-                                        index, 'error'] = f"Update Workflow state Error: {update_workflow_state_response.status_code} - {update_workflow_state_response.text}"
+                        # Check if user already exists and validate roles
+                        # Determine user type based on Role column
+                        user_type = "supervisor"  # default
+                        if 'Role' in df.columns:
+                            role_value = df.at[index, 'Role']
+                            if role_value and str(role_value).strip().lower() == 'supervisor':
+                                user_type = "supervisor"
+                            else:
+                                user_type = "staff"
+                        
+                        # Create search payload based on user type
+                        if user_type == "supervisor":
+                            user_search_payload = get_user_creation_payload_supervisors(request_info, row)
+                        else:
+                            user_search_payload = get_user_creation_payload_staff(request_info, row)
+                        
+                        existing_user_response = hrms_client.search_user(user_search_payload)
+                        existing_user = None
+                        if existing_user_response.status_code == 200:
+                            response_data = existing_user_response.json()
+                            employees = response_data.get("Employees", [])
+                            if employees:
+                                existing_user = employees[0]
+                        
+                        if existing_user:
+                            # Check for role mismatch
+                            role_check = check_role_mismatch_for_user_type(existing_user, user_type)
+                            if role_check["has_mismatch"]:
+                                df.at[index, 'status'] = 'error'
+                                df.at[index, 'error'] = f"Role mismatch detected: {role_check['mismatch_details']}. Current roles: {', '.join(role_check['current_roles'])}. Expected roles: {', '.join(role_check['expected_roles'])}"
+                                continue
+                            else:
+                                # Use existing user
+                                user_uuid = existing_user.get("uuid")
+                        else:
+                            # Create new user based on role type
+                            if user_type == "supervisor":
+                                user_creation_payload = get_user_creation_payload_supervisors(request_info, row)
+                            else:
+                                user_creation_payload = get_user_creation_payload_staff(request_info, row)
+                            
+                            user_creation_response = hrms_client.create_user(user_creation_payload)
+                            user = json.loads(user_creation_response.text)
+                            if user_creation_response.status_code in [200, 201, 202]:
+                                user_uuid = user["Employees"][0]["uuid"]
                             else:
                                 df.at[index, 'status'] = 'failed'
-                                df.at[index, 'error'] = f"Staff Creation Error: {staff_creation_response.status_code} - {staff_creation_response.text}"
+                                df.at[index, 'error'] = f"User Creation Error: {user_creation_response.status_code} - {user.get('Errors', [{}])[0].get('message', 'Unknown error')}"
+                                continue
+                        
+                        # Validate user_uuid before staff creation
+                        if not user_uuid:
+                            df.at[index, 'status'] = 'failed'
+                            df.at[index, 'error'] = "User UUID is required for staff creation but was not obtained"
+                            continue
+                        
+                        # Create staff
+                        staff_creation_payload = get_staff_creation_payload(request_info, user_uuid, project_id)
+                        staff_creation_response = project_client.create_project_staff(staff_creation_payload)
+                        if staff_creation_response.status_code in [200, 201, 202]:
+                            # Validate Role column exists
+                            if 'Role' not in df.columns:
+                                df.at[index, 'status'] = 'failed'
+                                df.at[index, 'error'] = "Role column is required for workflow state updates"
+                                continue
+                            # update workflow state
+                            role_value = df.at[index,'Role']
+                            if role_value and str(role_value).strip().lower() == 'supervisor':
+                                update_workflow_state_response = project_client.update_workflow(request_info, work_stream_project_id, 'ASSIGN_FIELD_SUPERVISOR')
+                            else:
+                                update_workflow_state_response = project_client.update_workflow(request_info, work_stream_project_id,
+                                                                                                'ASSIGN_FIELD_STAFF')
+                            if update_workflow_state_response.status_code in [200, 201, 202]:
+                                df.at[index,'status'] = 'success'
+                                df.at[index, 'error'] = ''
+                            else:
+                                df.at[index, 'status'] = 'failed'
+                                df.at[
+                                    index, 'error'] = f"Update Workflow state Error: {update_workflow_state_response.status_code} - {update_workflow_state_response.text}"
                         else:
                             df.at[index, 'status'] = 'failed'
-                            df.at[index, 'error'] = f"User Creation Error: {user_creation_response.status_code} - {user.get('Errors', [{}])[0].get('message', 'Unknown error')}"
+                            df.at[index, 'error'] = f"Staff Creation Error: {staff_creation_response.status_code} - {staff_creation_response.text}"
                     except Exception as e:
                         df.at[index, 'status'] = 'failed'
                         df.at[index, 'error'] = f"Processing Error: {str(e)}"
