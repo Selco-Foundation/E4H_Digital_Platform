@@ -15,9 +15,6 @@ import java.util.List;
 @Builder
 public class ProjectBulkFilter {
 
-    @JsonProperty("boundaryCode")
-    private List<String> boundaryCode;
-
     @JsonProperty("status")
     private List<String> status;
 
