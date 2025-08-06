@@ -297,11 +297,11 @@ async def upload_facilities_with_workstream(
                                                                                    project_id_with_type_field_plan)
             work_stream_creation_payload = get_project_creation_payload(
                 request_info,
-                project['name'] + "_work_stream",
+                project["project"]['name'] + "_work_stream",
                 "Work Stream",
                 project_id_with_type_field_plan,
-                project["startDate"],
-                project["endDate"],
+                project["project"]["startDate"],
+                project["project"]["endDate"],
                 "Installation"
             )
             work_stream_creation_response = json.loads(project_client.create_project(work_stream_creation_payload).text)
