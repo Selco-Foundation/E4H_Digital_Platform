@@ -14,6 +14,7 @@ import org.egov.inbox.repository.ServiceRequestRepository;
 import org.egov.inbox.repository.builder.V2.InboxQueryBuilder;
 import org.egov.inbox.service.V2.validator.ValidatorDefaultImplementation;
 import org.egov.inbox.service.WorkflowService;
+import org.egov.inbox.util.BoundaryUtil;
 import org.egov.inbox.util.MDMSUtil;
 import org.egov.inbox.web.model.*;
 import org.egov.inbox.web.model.V2.*;
@@ -52,6 +53,9 @@ public class InboxServiceV2 {
 
     @Autowired
     private MDMSUtil mdmsUtil;
+
+    @Autowired
+    private BoundaryUtil boundaryUtil;
 
     @Autowired
     private ObjectMapper mapper;
@@ -131,8 +135,38 @@ public class InboxServiceV2 {
         hashParamsWhereverRequiredBasedOnConfiguration(inboxRequest.getInbox().getModuleSearchCriteria(),
                 inboxQueryConfiguration);
         List<Project> items = getProjectInboxItems(inboxRequest, inboxQueryConfiguration.getIndex());
-
+        Map<String, Boundary> listBlock = boundaryUtil.getBoundaryByCode();
+        for (Project item:items) {
+            Object additionalDetails = item.getProject().get("additionalDetails");
+            Object boundaryCodeObject = item.getProject().get("address");
+            Address address = mapper.convertValue(boundaryCodeObject, Address.class);
+            if(address !=null){
+                String boundaryCode = address.getBoundary();
+                if(boundaryCode !=null){
+                    Boundary boundary = listBlock.get(boundaryCode);
+                    if(boundary !=null){
+                        Object enrichedAdditionalDetails = mergeListIntoAdditionalDetails(additionalDetails, "state", boundary.getState());
+                        item.getProject().put("additionalDetails", enrichedAdditionalDetails);
+                        additionalDetails = item.getProject().get("additionalDetails");
+                        enrichedAdditionalDetails = mergeListIntoAdditionalDetails(additionalDetails, "district", boundary.getDistrict());
+                        item.getProject().put("additionalDetails", enrichedAdditionalDetails);
+                    }
+                }
+            }
+        }
         return ProjectResponse.builder().items(items).totalCount(items.size()).build();
+    }
+
+    private Object mergeListIntoAdditionalDetails(Object additionalDetails, String key, Object value) {
+        if (additionalDetails instanceof Map) {
+            ((Map<String, Object>) additionalDetails).put(key, value);
+            return additionalDetails;
+        } else {
+            // default to HashMap if null or unknown type
+            Map<String, Object> map = new HashMap<>();
+            map.put(key, value);
+            return map;
+        }
     }
 
     private void enrichProcessInstanceInInboxItems(List<Inbox> items) {
@@ -189,11 +223,6 @@ public class InboxServiceV2 {
     }
 
     private List<Project> getProjectInboxItems(InboxRequest inboxRequest, String indexName){
-        List<BusinessService> businessServices = workflowService.getBusinessServices(inboxRequest);
-//        enrichActionableStatusesFromRole(inboxRequest, businessServices);
-//        if(CollectionUtils.isEmpty(inboxRequest.getInbox().getProcessSearchCriteria().getStatus())){
-//            return new ArrayList<>();
-//        }
         Map<String, Object> finalQueryBody = queryBuilder.getESQueryProject(inboxRequest, Boolean.TRUE);
         try {
             String q = mapper.writeValueAsString(finalQueryBody);
@@ -206,7 +235,7 @@ public class InboxServiceV2 {
         //Object result = serviceRequestRepository.fetchESResult(uri, finalQueryBody);
         Object result = serviceRequestRepository.fetchESResult(uri, finalQueryBody);
 
-        List<Project> inboxItemsList = parseprojectItemsFromSearchResponse(result, businessServices);
+        List<Project> inboxItemsList = parseprojectItemsFromSearchResponse(result);
         log.info(result.toString());
         return inboxItemsList;
     }
@@ -369,7 +398,7 @@ public class InboxServiceV2 {
         return inboxItemList;
     }
 
-    private List<Project> parseprojectItemsFromSearchResponse(Object result, List<BusinessService> businessServices) {
+    private List<Project> parseprojectItemsFromSearchResponse(Object result) {
         Map<String, Object> hits = (Map<String, Object>)((Map<String, Object>) result).get(HITS);
         List<Map<String, Object>> nestedHits = (List<Map<String, Object>>) hits.get(HITS);
         if(CollectionUtils.isEmpty(nestedHits)){
