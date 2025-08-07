@@ -135,6 +135,7 @@ public class InboxServiceV2 {
         hashParamsWhereverRequiredBasedOnConfiguration(inboxRequest.getInbox().getModuleSearchCriteria(),
                 inboxQueryConfiguration);
         List<Project> items = getProjectInboxItems(inboxRequest, inboxQueryConfiguration.getIndex());
+        Integer totalCount = getTotalProjectCount(inboxRequest, inboxQueryConfiguration.getIndex());
         Map<String, Boundary> listBlock = boundaryUtil.getBoundaryByCode();
         for (Project item:items) {
             Object additionalDetails = item.getProject().get("additionalDetails");
@@ -154,7 +155,7 @@ public class InboxServiceV2 {
                 }
             }
         }
-        return ProjectResponse.builder().items(items).totalCount(items.size()).build();
+        return ProjectResponse.builder().items(items).totalCount(totalCount).build();
     }
 
     private Object mergeListIntoAdditionalDetails(Object additionalDetails, String key, Object value) {
@@ -268,6 +269,25 @@ public class InboxServiceV2 {
     public Integer getTotalApplicationCount(InboxRequest inboxRequest, String indexName){
 
         Map<String, Object> finalQueryBody = queryBuilder.getESQuery(inboxRequest, Boolean.FALSE, Boolean.FALSE);
+        try {
+            log.info(mapper.writeValueAsString(finalQueryBody));
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+        StringBuilder uri = getURI(indexName, COUNT_PATH);
+        Map<String, Object> response = (Map<String, Object>) serviceRequestRepository.fetchESResult(uri, finalQueryBody);
+        Integer totalCount = 0;
+        if(response.containsKey(COUNT_CONSTANT)){
+            totalCount = (Integer) response.get(COUNT_CONSTANT);
+        }else{
+            throw new CustomException("INBOX_COUNT_ERR", "Error occurred while executing ES count query");
+        }
+        return totalCount;
+    }
+
+    public Integer getTotalProjectCount(InboxRequest inboxRequest, String indexName){
+
+        Map<String, Object> finalQueryBody = queryBuilder.getESQueryProject(inboxRequest, Boolean.FALSE);
         try {
             log.info(mapper.writeValueAsString(finalQueryBody));
         } catch (JsonProcessingException e) {
