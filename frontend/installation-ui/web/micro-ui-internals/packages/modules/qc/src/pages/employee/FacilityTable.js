@@ -5,7 +5,7 @@ import InfoCard from "../../components/FacilityTable/InfoCard";
 import { Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { setSelectedFacility } from "../../redux/actions";
-import SearchCentre from "../../components/FacilityTable/Search";
+import SearchActionCentre from "../../components/FacilityTable/SearchAction";
 
 const FacilityTable = ({ t, getCellProps }) => {
 
@@ -21,10 +21,20 @@ const FacilityTable = ({ t, getCellProps }) => {
   const [fetchedData, setData] = useState([]);
   const [sideCheck, setSideCheck] = useState({});
   const [projectQueryFilter, setProjectQueryFilter] = useState({
-    Project : {
+    project : {
       projectTypeId: "Facility",
       parent: selectedFieldPlan.id,
-    }
+    },
+    facilityFilter: {
+      district: [],
+      block: [],
+      status: []
+    },
+    facilitySearch: {
+      name: ""
+    },
+    facilityFilterQuery: {},
+    facilitySearchQuery: {},
   });
   const [pageSize, setPageSize] = useState(10);
   const [pageOffset, setPageOffset] = useState(0);
@@ -64,25 +74,12 @@ const FacilityTable = ({ t, getCellProps }) => {
     setPageOffset(pageOffset - pageSize);
   }
 
-  const onFilterApply = () => {
-    console.debug("onFilterApply", filters);
-  };
-
-  const clearFilters = () => {
-    setFilters({
-      district: [],
-      block: [],
-      status: [],
+  const handleFilterChange = (filters) => {
+    setProjectQueryFilter({
+      ...projectQueryFilter,
+      ...filters,
     });
   };
-
-  const onSearch = (textToSearch) => {
-    console.debug("onSearch", textToSearch);
-  }
-
-  const onSearchClear = () => {
-    console.debug("onSearchClear");
-  }
 
   const GetCell = (value) => <span className="cell-text">{value}</span>;
 
@@ -193,9 +190,9 @@ const FacilityTable = ({ t, getCellProps }) => {
   //todo: fetch all possible statuses from backend??
   const statusesWithCount = [
     {
-      name: t("CS_UNASSIGNED"),
-      code: "UNASSIGNED",
-      count: getStatusCount("UNASSIGNED")
+      name: t("CS_SCHEDULED"),
+      code: "SCHEDULED",
+      count: getStatusCount("SCHEDULED")
     },
     {
       name: t("CS_PENDING_INSTALLATION"),
@@ -229,8 +226,33 @@ const FacilityTable = ({ t, getCellProps }) => {
     }
   ];
 
-  if (isLoading) {
-    return <Loader />;
+  const renderFacilities = () => {
+    if (isLoading) {
+      return <Loader />;
+    }
+
+    if (fetchedData.length === 0) {
+      return (
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%" }}>
+          <div style={{ fontSize: "20px", fontWeight: "bold" }}>No records found</div>
+        </div>
+      );
+    }
+
+    return (
+      <Table
+        t={t}
+        data={fetchedData}
+        columns={columns}
+        getCellProps={getCellProps}
+        onNextPage={onNextPage}
+        onPrevPage={onPrevPage}
+        currentPage={Math.floor(pageOffset / pageSize)}
+        totalRecords={data?.totalCount}
+        onPageSizeChange={onPageSizeChange}
+        pageSizeLimit={pageSize}
+      />
+    );
   }
 
   return (
@@ -242,12 +264,11 @@ const FacilityTable = ({ t, getCellProps }) => {
       <div style={{ width: "100%", display: "flex", gap: "15px" }}>
         <div style={{ width: "15%" }}>
           <Filter
-            filter={projectQueryFilter}
+            t={t}
             type="desktop"
+            projectQueryFilter={projectQueryFilter}
+            onFilterChange={handleFilterChange}
             statusesWithCount={statusesWithCount}
-            onFilter={onFilterApply}
-            onFilterClear={clearFilters}
-            setFilter={setFilters}
           />
         </div>
         <div style={{ width: "83%", backgroundColor: "white" }}>
@@ -255,27 +276,16 @@ const FacilityTable = ({ t, getCellProps }) => {
             <div style={{ fontSize: "20px", fontWeight: "bold", marginBottom: "40px" }}>
               Reports
             </div>
-            <SearchCentre
+            <SearchActionCentre
+              t={t}
               mainCheckBox={mainCheck}
               selectedFacilities={selectedFacilities}
-              filter={projectQueryFilter}
-              onSearch={onSearch}
-              onClear={onSearchClear}
+              projectQueryFilter={projectQueryFilter}
+              onSearch={handleFilterChange}
             />
           </div>
           <div style={{ width: "90%", marginLeft: "auto", marginRight: "auto", overflowX: "auto" }}>
-            <Table
-              t={t}
-              data={fetchedData}
-              columns={columns}
-              getCellProps={getCellProps}
-              onNextPage={onNextPage}
-              onPrevPage={onPrevPage}
-              currentPage={Math.floor(pageOffset / pageSize)}
-              totalRecords={data?.totalCount}
-              onPageSizeChange={onPageSizeChange}
-              pageSizeLimit={pageSize}
-            />
+            {renderFacilities()}
           </div>
         </div>
       </div>

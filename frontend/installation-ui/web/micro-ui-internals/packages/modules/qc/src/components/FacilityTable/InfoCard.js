@@ -56,7 +56,7 @@ const InfoCard = ({ selectedFieldPlan }) => {
         <div style={{ width: "45%" }}>
           <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: "10px" }}>
             <div>
-              {PropertyCard("No. of Health Facilities Unassigned", getStatusCount("UNASSIGNED"))}
+              {PropertyCard("No. of Health Facilities Unassigned", getStatusCount("SCHEDULED"))}
             </div>
             <div>
               {

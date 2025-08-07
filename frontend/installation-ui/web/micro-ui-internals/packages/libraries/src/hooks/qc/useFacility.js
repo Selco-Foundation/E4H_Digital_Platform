@@ -54,8 +54,9 @@ const fetchInboxData = async (filter, limit, offset) => {
         tenantId: "in"
       },
       moduleSearchCriteria: {
-        projectType: [filter.Project.projectTypeId],
-        parent:[filter.Project.parent],
+        projectType: [filter.project.projectTypeId],
+        parent:[filter.project.parent],
+        ...filter.moduleSearchCriteria,
         sortOrder: "DESC"
       },
       limit: limit,
@@ -69,6 +70,8 @@ const fetchInboxData = async (filter, limit, offset) => {
     facilities: projectsResponse?.items?.map((row) => {
       const facility = row.project.facility?.[0] || {};
       const address = row.project.address || {};
+      const additionalDetails = row.project.additionalDetails || {};
+      const assigneeDetails = row.project.assignedTo || {};
 
       return {
         id: row.project.id,
@@ -77,8 +80,8 @@ const fetchInboxData = async (filter, limit, offset) => {
         status: row.project.status,
         projectId: row.project.id,
         block: address.boundary || "-",
-        district: address.city || "-",
-        assigned: "-",
+        district: additionalDetails.district || "-",
+        assigned: assigneeDetails.name || "-",
       }
     }),
     totalCount: projectsResponse?.totalCount || 0,
@@ -87,11 +90,25 @@ const fetchInboxData = async (filter, limit, offset) => {
 
 const useFacility = (projectQueryFilter, pageSize, pageOffset) => {
 
-  const { Project } = projectQueryFilter;
-  const filter = {};
+  const { project, facilityFilterQuery, facilitySearchQuery } = projectQueryFilter;
+  const filter = {
+    moduleSearchCriteria: {}
+  };
 
-  if (Project) {
-    filter.Project = Project;
+  if (project) {
+    filter.project = project;
+  }
+
+  if (facilityFilterQuery?.boundary) {
+    filter.moduleSearchCriteria.boundary = facilityFilterQuery.boundary;
+  }
+
+  if (facilityFilterQuery?.status) {
+    filter.moduleSearchCriteria.status = facilityFilterQuery.status;
+  }
+
+  if (facilitySearchQuery?.name) {
+    filter.moduleSearchCriteria.name = facilitySearchQuery.name;
   }
 
   const limit = pageSize || 10;

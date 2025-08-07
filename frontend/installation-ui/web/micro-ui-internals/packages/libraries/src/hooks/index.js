@@ -93,6 +93,7 @@ import { useTenantManagementSearch } from "./useTenantManagementSearch";
 import useFacility from "./qc/useFacility";
 import useFieldPlan from "./qc/useFieldPlan";
 import useFacilityDetails from "./qc/useFacilityDetails";
+import useBoundary from "./qc/useBoundary";
 
 
 
@@ -163,7 +164,8 @@ const survey = {
 const qc = {
   useFacility,
   useFieldPlan,
-  useFacilityDetails
+  useFacilityDetails,
+  useBoundary
 }
 
 const Hooks = {

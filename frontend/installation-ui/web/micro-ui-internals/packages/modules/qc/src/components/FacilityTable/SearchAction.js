@@ -1,18 +1,27 @@
 import React, { useState } from "react";
-import { TextInput, Label, SubmitBar } from "@egovernments/digit-ui-react-components";
+import { TextInput, Label, SubmitBar, LinkLabel } from "@egovernments/digit-ui-react-components";
 import { useTranslation } from "react-i18next";
 
-const SearchCentre = ({ filter, mainCheckBox, selectedFacilities, onSearch, onClear }) => {
-  const { t } = useTranslation();
-  const [textToSearch, setTextToSearch] = useState("");
+const SearchActionCentre = ({ t, projectQueryFilter, mainCheckBox, selectedFacilities, onSearch }) => {
+  const [textToSearch, setTextToSearch] = useState(projectQueryFilter.facilitySearch.name || "");
 
-  const handleSearch = () => {
-    onSearch(textToSearch)
+  const handleSearch = (name) => {
+    const facilitySearchQuery = {};
+    if (name) {
+      facilitySearchQuery.name = [name];
+    }
+
+    onSearch({
+      facilitySearch: {
+        name,
+      },
+      facilitySearchQuery
+    })
   }
 
   const handleClear = () => {
     setTextToSearch("");
-    onClear();
+    handleSearch("");
   }
 
   return (
@@ -29,7 +38,7 @@ const SearchCentre = ({ filter, mainCheckBox, selectedFacilities, onSearch, onCl
           height: "20px",
         }}
       >
-        { (mainCheckBox || selectedFacilities?.length > 0) ? (
+        {mainCheckBox || selectedFacilities?.length > 0 ? (
           <div style={{ fontSize: "16px", fontWeight: "bold", color: "#004d66" }}>
             {mainCheckBox ? "All" : selectedFacilities.length} Health Facilities Selected
           </div>
@@ -38,7 +47,7 @@ const SearchCentre = ({ filter, mainCheckBox, selectedFacilities, onSearch, onCl
             style={{
               display: "flex",
               alignItems: "center",
-              gap: "10px"
+              gap: "10px",
             }}
           >
             <TextInput
@@ -50,17 +59,32 @@ const SearchCentre = ({ filter, mainCheckBox, selectedFacilities, onSearch, onCl
               }}
               style={{ marginTop: "auto", marginBottom: "auto" }}
             ></TextInput>
-            <SubmitBar onSubmit={handleSearch} label={"Search"} />
+            <SubmitBar
+              onSubmit={() => {
+                handleSearch(textToSearch);
+              }}
+              label={"Search"}
+            />
+            <LinkLabel
+              style={{
+                fontSize: "18px",
+                marginTop: "auto",
+                marginBottom: "auto"
+              }}
+              onClick={handleClear}
+            >
+              Clear
+            </LinkLabel>
           </div>
-        ) }
+        )}
         <div
           style={{
             display: "flex",
             gap: "10px",
-            alignItems: "center"
+            alignItems: "center",
           }}
         >
-          { (mainCheckBox || selectedFacilities.length > 0) && (
+          {(mainCheckBox || selectedFacilities.length > 0) && (
             <button
               style={{
                 border: "1px solid #d35400",
@@ -69,7 +93,7 @@ const SearchCentre = ({ filter, mainCheckBox, selectedFacilities, onSearch, onCl
                 cursor: "pointer",
                 color: "white",
                 fontWeight: "bold",
-                fontSize: "16px"
+                fontSize: "16px",
               }}
             >
               Approve
@@ -83,7 +107,7 @@ const SearchCentre = ({ filter, mainCheckBox, selectedFacilities, onSearch, onCl
               padding: "8px 12px",
               cursor: "pointer",
               fontWeight: "bold",
-              fontSize: "16px"
+              fontSize: "16px",
             }}
           >
             Download
@@ -94,4 +118,4 @@ const SearchCentre = ({ filter, mainCheckBox, selectedFacilities, onSearch, onCl
   );
 };
 
-export default SearchCentre;
+export default SearchActionCentre;

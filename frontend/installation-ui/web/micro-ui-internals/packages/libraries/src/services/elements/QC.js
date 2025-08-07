@@ -131,6 +131,30 @@ export const QCService = {
       auth : true,
       headers : headers,
     });
+  },
+
+  fetchBoundaryRelations : async (codes, boundaryType) => {
+    const endpoint = "/boundary-service/boundary-relationships/_search";
+    const params = {
+      tenantId : "in",
+      includeChildren : true,
+      includeParents : false,
+      hierarchyType: "SELCO",
+      boundaryType,
+      codes
+    }
+    const headers = {
+      "Content-Type" : "application/json"
+    }
+
+    return await Request({
+      url : endpoint,
+      userService : true,
+      method : "POST",
+      auth : true,
+      params : params,
+      headers : headers,
+    });
   }
 
 }
