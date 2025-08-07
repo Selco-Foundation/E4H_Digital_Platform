@@ -27,7 +27,7 @@ const InfoCard = ({ selectedFieldPlan }) => {
   };
 
   const getStatusCount = (status) => {
-    return projectFacilityInfo[status] || 0;
+    return projectFacilityInfo?.[status] || 0;
   }
 
   return (

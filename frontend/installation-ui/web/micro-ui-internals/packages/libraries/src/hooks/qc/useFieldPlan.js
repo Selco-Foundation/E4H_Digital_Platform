@@ -42,9 +42,18 @@ const formatFieldPlans = (projects) => {
   })
 }
 
+const fetchFieldPlans = async (filter, limit, offset) => {
+  const fieldPlansResponse = await Digit.QCService.fetchProjects(filter, limit, offset);
+
+  return {
+    fieldPlans: formatFieldPlans(fieldPlansResponse?.Project),
+    totalCount: fieldPlansResponse?.totalCount
+  }
+}
+
 const useFieldPlan = (queryFilter, pageSize, pageOffset) => {
 
-  const { projectTypeId, name } = queryFilter?.Project;
+  const { projectTypeId, name, id } = queryFilter?.Project;
   const filter = {
     Project: {}
   };
@@ -55,32 +64,20 @@ const useFieldPlan = (queryFilter, pageSize, pageOffset) => {
   if (name)
     filter.Project.name = name;
 
+  if (id && id.length > 0)
+    filter.Project.id = id;
+
   const limit = pageSize || 10;
   const offset = pageOffset || 0;
 
   const queryClient = useQueryClient();
   const { isLoading, isError, error, data } = useQuery(
     ['fieldPlan', filter, limit, offset],
-    () => Digit.QCService.fetchProjects(filter, limit, offset)
+    () => fetchFieldPlans(filter, limit, offset)
   );
 
-  const [formattedData, setFormattedData] = useState({
-    fieldPlans: [],
-    totalCount: 0
-  });
-
-  useEffect(() => {
-    if (data) {
-      setFormattedData({
-        fieldPlans: formatFieldPlans(data?.Project),
-        totalCount: data?.totalCount
-      });
-    }
-  }, [data]);
-
   return {
-    isLoading, isError, error,
-    data : formattedData,
+    isLoading, isError, error, data ,
     revalidate: () => queryClient.invalidateQueries(['fieldPlan', filter, limit, offset])
   };
 }

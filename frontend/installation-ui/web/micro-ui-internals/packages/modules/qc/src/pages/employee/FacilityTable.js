@@ -3,15 +3,15 @@ import {CheckBox, Loader, Table} from "@egovernments/digit-ui-react-components";
 import Filter from "../../components/FacilityTable/Filter";
 import InfoCard from "../../components/FacilityTable/InfoCard";
 import { Link } from "react-router-dom";
-import { useDispatch, useSelector } from "react-redux";
-import { setSelectedFacility } from "../../redux/actions";
+import { useDispatch } from "react-redux";
+import { setSelectedFacility, setSelectedFieldPlan } from "../../redux/actions";
 import SearchActionCentre from "../../components/FacilityTable/SearchAction";
 
 const FacilityTable = ({ t, getCellProps }) => {
 
   const [mainCheck, setMainCheck] = useState(false);
   const dispatch = useDispatch();
-  const selectedFieldPlan = useSelector((state) => state.qc.common.selectedFieldPlan);
+  const [fieldPlan, setFieldPlan] = useState({});
   const [filters, setFilters] = useState({
     district: [],
     block: [],
@@ -20,10 +20,13 @@ const FacilityTable = ({ t, getCellProps }) => {
   const [selectedFacilities, setSelectedFacilities] = useState([]);
   const [fetchedData, setData] = useState([]);
   const [sideCheck, setSideCheck] = useState({});
+  const url = window.location.href;
+  const fieldPlanId = url.split("field-plan/")[1].split("/")[0];
+
   const [projectQueryFilter, setProjectQueryFilter] = useState({
     project : {
       projectTypeId: "Facility",
-      parent: selectedFieldPlan.id,
+      parent: fieldPlanId,
     },
     facilityFilter: {
       district: [],
@@ -39,13 +42,19 @@ const FacilityTable = ({ t, getCellProps }) => {
   const [pageSize, setPageSize] = useState(10);
   const [pageOffset, setPageOffset] = useState(0);
 
-  const { isLoading, data } = Digit.Hooks.qc.useFacility(projectQueryFilter, pageSize, pageOffset);
+  const { data: fieldPlanData } = Digit.Hooks.qc.useFieldPlan({
+    Project : {
+      projectTypeId: "FieldPlan",
+      id: [fieldPlanId]
+    }
+  });
+  const { isLoading, data: facilityData } = Digit.Hooks.qc.useFacility(projectQueryFilter, pageSize, pageOffset);
 
   useEffect(() => {
-    if (data) {
-      const refactoredDataCopy = data?.facilities.map((row) => ({
+    if (facilityData) {
+      const refactoredDataCopy = facilityData?.facilities.map((row) => ({
         ...row,
-        projectName: selectedFieldPlan?.name,
+        projectName: fieldPlan?.name,
         status: t(row?.status) || "-",
       }));
 
@@ -59,7 +68,14 @@ const FacilityTable = ({ t, getCellProps }) => {
       setSideCheck(newSideCheck);
       setMainCheck(false);
     }
-  }, [data])
+  }, [facilityData, fieldPlan])
+
+  useEffect(() => {
+    if (fieldPlanData) {
+      setFieldPlan(fieldPlanData.fieldPlans[0]);
+      dispatch(setSelectedFieldPlan(fieldPlanData.fieldPlans[0]));
+    }
+  }, [fieldPlanData])
 
   const onPageSizeChange = (e) => {
     setPageSize(parseInt(e.target.value));
@@ -147,7 +163,7 @@ const FacilityTable = ({ t, getCellProps }) => {
           <div>
             <span className="link" onClick={() => dispatch(setSelectedFacility(row.original))}>
               <Link
-                to={`/${window.contextPath}/employee/qc/field-plan/${encodeURIComponent(row.original["projectName"])}/facilities/${encodeURIComponent(row.original["facilityName"])}`}
+                to={`/${window.contextPath}/employee/qc/field-plan/${fieldPlanId}/facilities/${row.original["id"]}--${encodeURIComponent(row.original["facilityId"])}`}
                 style={{ color: "#C84C0E" }}
               >
                 {row.original["facilityName"]}
@@ -160,19 +176,19 @@ const FacilityTable = ({ t, getCellProps }) => {
     {
       Header: "Block",
       Cell: ({ row }) => {
-        return GetCell(`${row.original["block"].toUpperCase()}`);
+        return GetCell(`${row.original["block"]}`);
       },
     },
     {
       Header: "District",
       Cell: ({ row }) => {
-        return GetCell(`${row.original["district"].toUpperCase()}`);
+        return GetCell(`${row.original["district"]}`);
       },
     },
     {
       Header: "Assigned To",
       Cell: ({ row }) => {
-        return GetCell(`${row.original["assigned"].toUpperCase()}`);
+        return GetCell(`${row.original["assigned"]}`);
       },
     },
     {
@@ -184,7 +200,7 @@ const FacilityTable = ({ t, getCellProps }) => {
   ];
 
   const getStatusCount = (status) => {
-    return selectedFieldPlan?.projectFacilityInfo?.[status] || 0;
+    return fieldPlan?.projectFacilityInfo?.[status] || 0;
   }
 
   //todo: fetch all possible statuses from backend??
@@ -248,7 +264,7 @@ const FacilityTable = ({ t, getCellProps }) => {
         onNextPage={onNextPage}
         onPrevPage={onPrevPage}
         currentPage={Math.floor(pageOffset / pageSize)}
-        totalRecords={data?.totalCount}
+        totalRecords={facilityData?.totalCount}
         onPageSizeChange={onPageSizeChange}
         pageSizeLimit={pageSize}
       />
@@ -258,9 +274,9 @@ const FacilityTable = ({ t, getCellProps }) => {
   return (
     <div style={{marginTop: "20px"}}>
       <div style={{fontSize: "24px", fontWeight: "bold", marginBottom: "20px", color: "#004d66"}}>
-        Installation | {selectedFieldPlan?.name}
+        Installation | {fieldPlan?.name}
       </div>
-      <InfoCard selectedFieldPlan={selectedFieldPlan} />
+      <InfoCard selectedFieldPlan={fieldPlan} />
       <div style={{ width: "100%", display: "flex", gap: "15px" }}>
         <div style={{ width: "15%" }}>
           <Filter

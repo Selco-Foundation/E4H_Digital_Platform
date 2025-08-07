@@ -2,15 +2,6 @@ import { combineReducers } from "redux";
 import { commonReducer } from "./commonreducer";
 import { rejectionReasonsReducer } from "./rejectionreasonsreducer";
 
-const loadInitialState = () => {
-  try {
-    const persisted = sessionStorage.getItem("qcStore");
-    return persisted ? JSON.parse(persisted) : {};
-  } catch {
-    return {};
-  }
-};
-
 const loadInitialRejectionReasonsState = () => {
   try {
     const persisted = sessionStorage.getItem("rejectionReasons");
@@ -22,7 +13,7 @@ const loadInitialRejectionReasonsState = () => {
 
 const getRootReducer = () =>
   combineReducers({
-    common: commonReducer(loadInitialState()),
+    common: commonReducer({}),
     rejectionReasons: rejectionReasonsReducer(loadInitialRejectionReasonsState()),
   });
 

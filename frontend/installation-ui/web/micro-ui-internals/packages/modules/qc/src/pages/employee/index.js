@@ -27,12 +27,12 @@ const QCApp = () => {
     },
     facility: {
       content: navigator.selectedFieldPlan?.name,
-      path: match.url + `/field-plan/${encodeURIComponent(navigator.selectedFieldPlan?.name)}/facilities`,
+      path: match.url + `/field-plan/${navigator.selectedFieldPlan?.id}/facilities`,
       show: true,
     },
     facilityDetails: {
       content: navigator.selectedFacility?.facilityName,
-      path: match.url + `/field-plan/${encodeURIComponent(navigator.selectedFieldPlan?.name)}/facilities/${encodeURIComponent(navigator.selectedFacility?.facilityName)}`,
+      path: match.url + `/field-plan/${navigator.selectedFieldPlan?.id}/facilities/${navigator.selectedFacility?.id}--${encodeURIComponent(navigator.selectedFacility?.facilityId)}`,
       show: true,
     },
   };

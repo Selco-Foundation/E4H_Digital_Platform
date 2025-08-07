@@ -98,7 +98,7 @@ const FieldPlanTable = ({ t, getCellProps }) => {
         return (
           <div style={{display: "flex", alignItems: "center", gap: "10px"}}>
             <span className="link" onClick={() => dispatch(setSelectedFieldPlan(row.original))}>
-              <Link to={`${path}/${encodeURIComponent(row.original["name"])}/facilities`} style={{ color: "#C84C0E" }}>
+              <Link to={`${path}/${row.original["id"]}/facilities`} style={{ color: "#C84C0E" }}>
                 {row.original["name"]}
               </Link>
             </span>

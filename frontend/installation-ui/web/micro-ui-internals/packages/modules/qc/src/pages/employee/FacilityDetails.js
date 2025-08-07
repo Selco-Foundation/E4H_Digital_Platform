@@ -3,7 +3,7 @@ import Summary from "../../components/FacilityDetails/Summary";
 import QCActions from "../../components/FacilityDetails/QCActions";
 import AuditTrial from "../../components/FacilityDetails/AuditTrial";
 import { useDispatch, useSelector } from "react-redux";
-import { clearRejectionReasons } from "../../redux/actions";
+import { clearRejectionReasons, setSelectedFacility, setSelectedFieldPlan } from "../../redux/actions";
 import { Loader } from "@egovernments/digit-ui-react-components";
 
 const FacilityDetails = ({t}) => {
@@ -11,18 +11,47 @@ const FacilityDetails = ({t}) => {
   const selectedFacility = useSelector((state) => state.qc.common.selectedFacility);
   const [fetchedData, setData] = useState([]);
   const dispatch = useDispatch();
+  const url = window.location.href;
+  const fieldPlanId = url.split("field-plan/")[1].split("/")[0];
+  const facilityIdentifier = url.split("facilities/")[1].split("/")[0].split("?")[0];
+  const facilityProjectId = facilityIdentifier.split("--")[0];
+  const facilityId = decodeURIComponent(facilityIdentifier.split("--")[1]);
 
   const [pdfFile, setPdfFile] = useState({
     name: "Alkod.pdf",
     size: "3.5 MB"
   });
 
-  const { isLoading, data } = Digit.Hooks.qc.useFacilityDetails(selectedFacility?.facilityId);
-  useEffect(() => {
-    if (data) {
-      setData(data);
+  const { data: fieldPlanData } = Digit.Hooks.qc.useFieldPlan({
+    Project : {
+      projectTypeId: "FieldPlan",
+      id: [fieldPlanId]
     }
-  }, [data]);
+  });
+  const { data: facilityData } = Digit.Hooks.qc.useFacility({
+    project : {
+      id: [facilityProjectId],
+    }
+  })
+  const { isLoading, data: assetData } = Digit.Hooks.qc.useFacilityDetails(facilityId);
+
+  useEffect(() => {
+    if (assetData) {
+      setData(assetData);
+    }
+  }, [assetData]);
+
+  useEffect(() => {
+    if (fieldPlanData) {
+      dispatch(setSelectedFieldPlan(fieldPlanData.fieldPlans[0]));
+    }
+  }, [fieldPlanData])
+
+  useEffect(() => {
+    if (facilityData) {
+      dispatch(setSelectedFacility(facilityData.facilities[0]));
+    }
+  }, [facilityData]);
 
   useEffect(() => {
     return () => {

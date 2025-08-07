@@ -54,8 +54,7 @@ const fetchInboxData = async (filter, limit, offset) => {
         tenantId: "in"
       },
       moduleSearchCriteria: {
-        projectType: [filter.project.projectTypeId],
-        parent:[filter.project.parent],
+        ...filter.project,
         ...filter.moduleSearchCriteria,
         sortOrder: "DESC"
       },
@@ -92,11 +91,20 @@ const useFacility = (projectQueryFilter, pageSize, pageOffset) => {
 
   const { project, facilityFilterQuery, facilitySearchQuery } = projectQueryFilter;
   const filter = {
+    project: {},
     moduleSearchCriteria: {}
   };
 
-  if (project) {
-    filter.project = project;
+  if (project?.projectTypeId) {
+    filter.project.projectType = [project.projectTypeId];
+  }
+
+  if (project?.parent) {
+    filter.project.parent = [project.parent];
+  }
+
+  if (project?.id && project.id.length > 0) {
+    filter.project.id = project.id;
   }
 
   if (facilityFilterQuery?.boundary) {

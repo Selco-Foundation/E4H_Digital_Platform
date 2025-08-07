@@ -19,7 +19,6 @@ const QCModule = ({ stateCode, userType, tenants }) => {
   const qcStore = useSelector((state) => state.qc);
 
   useEffect(() => {
-    sessionStorage.setItem("qcStore", JSON.stringify(qcStore?.common));
     sessionStorage.setItem("rejectionReasons", JSON.stringify(qcStore?.rejectionReasons));
   }, [qcStore]);
 
