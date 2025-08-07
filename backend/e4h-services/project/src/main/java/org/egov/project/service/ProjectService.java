@@ -682,20 +682,14 @@ public class ProjectService {
         
         if (projectBulkApproveRequest.getIsAllSelected()) {
             // Case 1: Search all projects using filters
-            ExtendedProjectSearchRequest projectSearchRequest = new ExtendedProjectSearchRequest();
-
-            if( projectBulkApproveRequest.getFilters() != null ) {
-                projectSearchRequest.setRequestInfo(projectBulkApproveRequest.getRequestInfo());
-                projectSearchRequest.setProject(projectBulkApproveRequest.getFilters().getProjectSearch());
-                projectSearchRequest.setWorkflowStatus(projectBulkApproveRequest.getFilters().getStatus());
-            }
+            ExtendedProjectSearchRequest projectSearchRequest = getProjectSearchRequest(projectBulkApproveRequest);
 
             ProjectSearchURLParams urlParams = ProjectSearchURLParams.builder()
                     .includeDescendants(false)
                     .includeAncestors(false)
-                    .tenantId("in")
-                    .limit(1000)
-                    .offset(0)
+                    .tenantId(projectBulkApproveRequest.getRequestInfo().getUserInfo().getTenantId())
+                    .limit(projectConfiguration.getMaxLimit()) 
+                    .offset(projectConfiguration.getDefaultOffset())
                     .build();
 
             List<String> workflowStatuses = projectSearchRequest.getWorkflowStatus();
@@ -704,16 +698,7 @@ public class ProjectService {
             totalProjects = countAllProjects(projectSearchRequest, urlParams, workflowStatuses);
 
             // only those projects whose status is SUBMITTED_BY_SUPERVISOR
-            List<Project> projects = allProjects.stream()
-                    .filter(p -> {
-                        Object additionalDetails = p.getAdditionalDetails();
-                        if (!(additionalDetails instanceof ObjectNode detailsNode)) return false;
-
-                        JsonNode statusNode = detailsNode.get("status");
-
-                        return statusNode != null && SUBMITTED_BY_SUPERVISOR.equals(statusNode.asText());
-                    })
-                    .toList();
+            List<Project> projects = allProjects.stream().filter(this::hasSubmittedBySupervisorStatus).toList();
 
             finalProjects = projects.size();
             projectIds = projects.stream().map(Project::getId).collect(Collectors.toList());
@@ -725,6 +710,13 @@ public class ProjectService {
             } else {
                 throw new CustomException("INVALID_REQUEST", "Project IDs are required when isAllSelected is false");
             }
+        }
+        Map<String, Object> result = new HashMap<>();
+        // Validate that we have projects to process
+        if (projectIds.isEmpty()) {
+            result.put("failedProjectIDs", new ArrayList<>());
+            result.put("totalProjects", 0);
+            return result;
         }
 
         // Update workflow for all project IDs
@@ -746,7 +738,6 @@ public class ProjectService {
             }
         }
         
-        Map<String, Object> result = new HashMap<>();
         result.put("failedProjectIDs", failedProjectIDs);
         if(projectBulkApproveRequest.getIsAllSelected() && finalProjects > 0) {
             result.put("totalProjects", finalProjects);
@@ -754,6 +745,27 @@ public class ProjectService {
             result.put("totalProjects", totalProjects);
         }
         return result;
+    }
+
+    private static ExtendedProjectSearchRequest getProjectSearchRequest(ProjectBulkApproveRequest projectBulkApproveRequest) {
+        ExtendedProjectSearchRequest projectSearchRequest = new ExtendedProjectSearchRequest();
+
+        if( projectBulkApproveRequest.getFilters() != null ) {
+            projectSearchRequest.setRequestInfo(projectBulkApproveRequest.getRequestInfo());
+            projectSearchRequest.setProject(projectBulkApproveRequest.getFilters().getProjectSearch());
+            projectSearchRequest.setWorkflowStatus(projectBulkApproveRequest.getFilters().getStatus());
+        }  else {
+            throw new CustomException("INVALID_REQUEST", "Filters are required when isAllSelected is true");
+        }
+        return projectSearchRequest;
+    }
+
+    private boolean hasSubmittedBySupervisorStatus(Project project) {
+        Object additionalDetails = project.getAdditionalDetails();
+        if (!(additionalDetails instanceof ObjectNode detailsNode)) return false;
+
+        JsonNode statusNode = detailsNode.get("status");
+        return statusNode != null && SUBMITTED_BY_SUPERVISOR.equals(statusNode.asText());
     }
 
 }

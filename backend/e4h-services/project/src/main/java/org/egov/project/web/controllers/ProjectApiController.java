@@ -570,11 +570,13 @@ public class ProjectApiController {
 
     @PostMapping("/v1/project/bulk/workflow/update")
     public ResponseEntity<BulkProjectUpdateResponse> updateBulkProjectWorkflow(
+            @ApiParam(value = "Bulk project workflow update request", required = true)
             @Valid @RequestBody ProjectBulkApproveRequest projectBulkApproveRequest) throws Exception {
 
         Map<String, Object> result = projectService.updateBulkProjectWorkflow(projectBulkApproveRequest);
-        List<String> failedProjectIDs = (List<String>) result.get("failedProjectIDs");
-        int totalProjects = (int) result.get("totalProjects");
+        List<String> failedProjectIDs = result.get("failedProjectIDs") instanceof List<?> list ?
+                    list.stream().map(String::valueOf).collect(Collectors.toList()) : Collections.emptyList();
+        int totalProjects = result.get("totalProjects") instanceof Integer count ? count : 0;
 
         ResponseInfo responseInfo = ResponseInfoFactory.createResponseInfo(projectBulkApproveRequest.getRequestInfo(), true);
 
@@ -583,13 +585,13 @@ public class ProjectApiController {
                 .failedProjectIDs(failedProjectIDs)
                 .build();
         if (failedProjectIDs.isEmpty()) {
-            // All succeeded - return 200 with empty list
+            // All succeeded
             return ResponseEntity.status(HttpStatus.OK).body(response);
         } else if (failedProjectIDs.size() == totalProjects) {
-            // All failed - return 400 with no list (empty list)
+            // All failed
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
         } else {
-            // Partial success/fail - return 207 with list of failed IDs
+            // Partial success/fail
             return ResponseEntity.status(HttpStatus.MULTI_STATUS).body(response);
         }
     }
