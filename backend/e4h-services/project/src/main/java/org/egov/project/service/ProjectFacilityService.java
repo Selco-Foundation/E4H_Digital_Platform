@@ -130,7 +130,8 @@ public class ProjectFacilityService {
                 Facility facility = getFacilityById(request);
                 Object enrichedAdditionalDetails = mergeListIntoAdditionalDetails(existingProject.getAdditionalDetails(), "facility", facility);
                 existingProject.setAdditionalDetails(enrichedAdditionalDetails);
-                producer.push(projectConfiguration.getUpdateProjectTopicIndexer(), List.of(existingProject));
+                ProjectRequest projectRequest = ProjectRequest.builder().requestInfo(request.getRequestInfo()).projects(List.of(existingProject)).build();
+                producer.push(projectConfiguration.getUpdateProjectTopicIndexer(), projectRequest);
                 log.info("successfully created project facility");
             }
         } catch (Exception exception) {
