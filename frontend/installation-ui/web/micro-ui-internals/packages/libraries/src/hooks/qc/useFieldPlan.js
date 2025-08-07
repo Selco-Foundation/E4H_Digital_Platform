@@ -58,14 +58,17 @@ const useFieldPlan = (queryFilter, pageSize, pageOffset) => {
     Project: {}
   };
 
-  if (projectTypeId)
+  if (projectTypeId) {
     filter.Project.projectTypeId = projectTypeId;
+  }
 
-  if (name)
+  if (name) {
     filter.Project.name = name;
+  }
 
-  if (id && id.length > 0)
+  if (id && id.length > 0) {
     filter.Project.id = id;
+  }
 
   const limit = pageSize || 10;
   const offset = pageOffset || 0;

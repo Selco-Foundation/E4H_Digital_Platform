@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Loader, Table } from "@egovernments/digit-ui-react-components";
 import SearchCentre from "../../components/FieldPlanTable/Search";
 import { setSelectedFieldPlan } from "../../redux/actions";
-import { Link, useRouteMatch } from "react-router-dom";
+import { Link, useHistory, useLocation, useRouteMatch } from "react-router-dom";
 import { useDispatch } from "react-redux";
 
 const FieldPlanTable = ({ t, getCellProps }) => {
@@ -10,15 +10,47 @@ const FieldPlanTable = ({ t, getCellProps }) => {
   const [fetchedData, setData] = useState([]);
   const dispatch = useDispatch();
   const { path } = useRouteMatch();
-  const [queryFilter, setQueryFilter] = useState({
+  const history = useHistory();
+  const location = useLocation();
+  const queryParams = new URLSearchParams(window.location.search);
+  const [queryFilter, setQueryFilter] = useState((() => {
+    try {
+      const filterParam = queryParams.get("filter");
+      return filterParam ? JSON.parse(filterParam) : null;
+    } catch (error) {
+      console.error("Failed to parse filter parameter:", error);
+      return null;
+    }
+  })() || {
     Project : {
-      projectTypeId: "FieldPlan"
+      projectTypeId: "FieldPlan",
+      name: ""
     }
   });
-  const [pageSize, setPageSize] = useState(10);
-  const [pageOffset, setPageOffset] = useState(0);
+  const prevSearchParamsRef = useRef(JSON.stringify(queryFilter));
+  const [pageSize, setPageSize] = useState(parseInt(queryParams.get("pageSize")) || 10);
+  const [pageOffset, setPageOffset] = useState(parseInt(queryParams.get("pageOffset")) || 0);
+  const prevPageSizeRef = useRef(pageSize);
 
   const { isLoading, data } = Digit.Hooks.qc.useFieldPlan(queryFilter, pageSize, pageOffset);
+
+  useEffect(() => {
+    history.replace({
+      pathname: location.pathname,
+      search: `filter=${JSON.stringify(queryFilter)}&pageSize=${pageSize}&pageOffset=${pageOffset}`
+    });
+  }, [queryFilter, pageSize, pageOffset])
+
+  useEffect(() => {
+    const prevSearchParams = prevSearchParamsRef.current;
+    const currentSearchParams = JSON.stringify(queryFilter);
+
+    if (prevSearchParams !== currentSearchParams || prevPageSizeRef.current !== pageSize) {
+      setPageOffset(0);
+      prevSearchParamsRef.current = currentSearchParams;
+      prevPageSizeRef.current = pageSize;
+    }
+  }, [queryFilter, pageSize]);
 
   const onSearch = (textToSearch) => {
     setQueryFilter({

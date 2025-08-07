@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 
 const SearchCentre = ({ queryFilter, onSearch, onClear }) => {
   const { t } = useTranslation();
-  const [textToSearch, setTextToSearch] = useState(queryFilter.Project.name);
+  const [textToSearch, setTextToSearch] = useState(queryFilter.Project.name || "");
 
   const handleSearch = () => {
     onSearch(textToSearch)
