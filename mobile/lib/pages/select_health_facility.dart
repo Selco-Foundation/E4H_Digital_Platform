@@ -202,6 +202,7 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
           for (final project in projects) ...[
             InstallationReportCard(
               onPress: () => _handleProjectTap(project),
+              projectId: project.project.id,
               title: project.project.name ?? '—',
               dateAssigned: project.project.startDateTime ?? DateTime.now(),
               status: project.status ?? '—',
@@ -287,6 +288,7 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
 }
 
 class InstallationReportCard extends StatelessWidget {
+  final String? projectId;
   final String? title;
   final String? status;
   final DateTime dateAssigned;
@@ -295,6 +297,7 @@ class InstallationReportCard extends StatelessWidget {
 
   const InstallationReportCard({
     super.key,
+    this.projectId,
     this.title,
     this.status,
     required this.dateAssigned,
@@ -307,6 +310,8 @@ class InstallationReportCard extends StatelessWidget {
     final theme = Theme.of(context);
     final textTheme = theme.digitTextTheme(context);
     String formattedDate = DateFormat('dd/MM/yy').format(dateAssigned);
+
+    final fraction = calculateProjectProgressFraction(context, projectId!);
 
     return DigitCard(
       children: [
@@ -409,13 +414,13 @@ class InstallationReportCard extends StatelessWidget {
                       valueColor: AlwaysStoppedAnimation<Color>(
                         theme.colorTheme.alert.success,
                       ),
-                      value: 0.4,
+                      value: fraction,
                       minHeight: spacer3,
                     ),
                   ),
                   const SizedBox(width: spacer3),
                   Text(
-                    '40%',
+                    '${(fraction * 100).round()}%',
                     style: textTheme.bodyS.copyWith(
                       color: theme.colorTheme.text.secondary,
                     ),
