@@ -15,7 +15,7 @@ import org.springframework.util.StringUtils;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static org.egov.im.util.IMConstants.USERTYPE_CITIZEN;
+import static org.egov.im.util.IMConstants.*;
 
 @org.springframework.stereotype.Service
 public class EnrichmentService {
@@ -158,8 +158,8 @@ public class EnrichmentService {
         }
 
         // Fetch HCR and Vendor details
-        Map<String, String> hcrDetails = notificationService.getHRMSEmployeeForIndexing(incidentRequest, null, "COMPLAINANT");
-        Map<String, String> vendorDetails = notificationService.getHRMSEmployeeForIndexing(incidentRequest, null, "COMPLAINT_RESOLVER");
+        Map<String, String> hcrDetails = notificationService.getHRMSEmployeeForIndexing(incidentRequest, null, ROLE_COMPLAINANT);
+        Map<String, String> vendorDetails = notificationService.getHRMSEmployeeForIndexing(incidentRequest, null, ROLE_COMPLAINT_RESOLVER);
 
         // Get details of the user who last modified (last action)
         String lastActionTakenByUser = wrapper.getIncidentRequest().getRequestInfo().getUserInfo().getName();
