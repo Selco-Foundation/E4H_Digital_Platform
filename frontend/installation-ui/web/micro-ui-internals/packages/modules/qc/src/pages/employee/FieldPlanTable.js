@@ -139,16 +139,20 @@ const FieldPlanTable = ({ t, getCellProps }) => {
     },
   ];
 
-  if (isLoading) {
-    return <Loader />;
-  }
+  const renderFieldPlans = () => {
+    if (isLoading) {
+      return <Loader />;
+    }
 
-  return (
-    <div style={{marginTop: "20px"}}>
-      <div style={{fontSize: "24px", fontWeight: "bold", marginBottom: "20px", color: "#004d66"}}>
-        Inbox
-      </div>
-      <SearchCentre queryFilter={queryFilter} onSearch={onSearch} onClear={onClear} />
+    if (fetchedData.length === 0) {
+      return (
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%" }}>
+          <div style={{ fontSize: "20px", fontWeight: "bold" }}>No records found</div>
+        </div>
+      );
+    }
+
+    return (
       <Table
         t={t}
         data={fetchedData}
@@ -161,6 +165,16 @@ const FieldPlanTable = ({ t, getCellProps }) => {
         onPageSizeChange={onPageSizeChange}
         pageSizeLimit={pageSize}
       />
+    )
+  }
+
+  return (
+    <div style={{marginTop: "20px"}}>
+      <div style={{fontSize: "24px", fontWeight: "bold", marginBottom: "20px", color: "#004d66"}}>
+        Inbox
+      </div>
+      <SearchCentre queryFilter={queryFilter} onSearch={onSearch} onClear={onClear} />
+      {renderFieldPlans()}
     </div>
   );
 };
