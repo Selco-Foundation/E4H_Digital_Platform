@@ -282,6 +282,7 @@ public class UserService {
                 UserLoginReport userLoginReport = new UserLoginReport();
                 userLoginReport.setId(UUID.randomUUID().toString());
                 userLoginReport.setUserName(userInfo.getUserName());
+                userLoginReport.setCurrentOwnerName(userInfo.getName());
                 // Set the first matching allowed role as userRole
                 String allowedRole = userInfo.getRoles().stream()
                     .map(role -> role.getCode())
