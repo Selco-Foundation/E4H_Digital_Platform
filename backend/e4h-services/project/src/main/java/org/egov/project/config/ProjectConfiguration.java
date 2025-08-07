@@ -263,4 +263,10 @@ public class ProjectConfiguration {
 
     @Value("${egov.asset.update.url}")
     private String assetUpdateUrl;
+
+    @Value("${egov.hrms.host}")
+    private String hrmsHost;
+
+    @Value("${egov.hrms.search.url}")
+    private String hrmsSearchUrl;
 }

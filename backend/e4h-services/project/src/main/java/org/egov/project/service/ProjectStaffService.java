@@ -1,14 +1,13 @@
 package org.egov.project.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.egov.common.ds.Tuple;
 import org.egov.common.models.ErrorDetails;
+import org.egov.common.models.core.ProjectSearchURLParams;
 import org.egov.common.models.core.SearchResponse;
-import org.egov.common.models.project.ProjectStaff;
-import org.egov.common.models.project.ProjectStaffBulkRequest;
-import org.egov.common.models.project.ProjectStaffRequest;
-import org.egov.common.models.project.ProjectStaffSearchRequest;
+import org.egov.common.models.project.*;
 import org.egov.common.producer.Producer;
 import org.egov.common.service.IdGenService;
 import org.egov.common.service.UserService;
@@ -18,8 +17,10 @@ import org.egov.project.config.ProjectConfiguration;
 import org.egov.project.repository.ProjectStaffRepository;
 import org.egov.project.service.enrichment.ProjectStaffEnrichmentService;
 import org.egov.project.validator.staff.*;
+import org.egov.project.web.models.*;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
@@ -48,7 +49,14 @@ public class ProjectStaffService {
 
     private final List<Validator<ProjectStaffBulkRequest, ProjectStaff>> validators;
 
+    private final ServiceRequestRepository serviceRequestRepository;
+
     private final Producer producer;
+
+    private final ProjectService projectService;
+
+    @Qualifier("objectMapper")
+    private final ObjectMapper mapper;
 
     private final Predicate<Validator<ProjectStaffBulkRequest, ProjectStaff>> isApplicableForCreate = validator ->
             validator.getClass().equals(PsUserIdValidator.class)
@@ -77,12 +85,15 @@ public class ProjectStaffService {
             UserService userService,
             ProjectConfiguration projectConfiguration,
             ProjectStaffEnrichmentService enrichmentService,
-            Producer producer, List<Validator<ProjectStaffBulkRequest, ProjectStaff>> validators) {
+            Producer producer, List<Validator<ProjectStaffBulkRequest, ProjectStaff>> validators, ServiceRequestRepository serviceRequestRepository, @Qualifier("objectMapper") ObjectMapper mapper) {
         this.projectStaffRepository = projectStaffRepository;
         this.projectConfiguration = projectConfiguration;
         this.enrichmentService = enrichmentService;
         this.validators = validators;
         this.producer = producer;
+        this.serviceRequestRepository = serviceRequestRepository;
+        this.mapper = mapper;
+        this.projectService = projectService;
     }
 
     public ProjectStaff create(ProjectStaffRequest request) {
@@ -110,6 +121,12 @@ public class ProjectStaffService {
                 producer.push(projectConfiguration.getProjectStaffAttendanceTopic(), new ProjectStaffBulkRequest(request.getRequestInfo(), validEntities));
                 // Pushing the data as list for persister consumer
                 projectStaffRepository.save(validEntities, projectConfiguration.getCreateProjectStaffTopic());
+                Project existingProject = searchProject(request);
+                Employee employee = getUserById(request);
+                Object enrichedAdditionalDetails = mergeListIntoAdditionalDetails(existingProject.getAdditionalDetails(), "assignedTo", employee);
+                existingProject.setAdditionalDetails(enrichedAdditionalDetails);
+                ProjectRequest projectRequest = ProjectRequest.builder().requestInfo(request.getRequestInfo()).projects(List.of(existingProject)).build();
+                producer.push(projectConfiguration.getUpdateProjectTopicIndexer(), projectRequest);
                 log.info("successfully created project staff");
             }
         } catch (Exception exception) {
@@ -225,6 +242,61 @@ public class ProjectStaffService {
         log.info("searching project staff using criteria");
         return projectStaffRepository.findWithCount(projectStaffSearchRequest.getProjectStaff(),
                 limit, offset, tenantId, lastChangedSince, includeDeleted);
+    }
+
+    public Employee getUserById(ProjectStaffBulkRequest request) {
+        String userId = request.getProjectStaff().get(0).getUserId();
+
+        String url = projectConfiguration.getHrmsHost() + projectConfiguration.getHrmsSearchUrl()+ "?tenantId=in&uuids="+userId;
+        Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), request);
+
+        EmployeeResponse employeeResponse = mapper.convertValue(response, EmployeeResponse.class);
+        return employeeResponse.getEmployees().get(0);
+    }
+
+    private Object mergeListIntoAdditionalDetails(Object additionalDetails, String key, Object value) {
+        if (additionalDetails instanceof Map) {
+            ((Map<String, Object>) additionalDetails).put(key, value);
+            return additionalDetails;
+        } else {
+            // default to HashMap if null or unknown type
+            Map<String, Object> map = new HashMap<>();
+            map.put(key, value);
+            return map;
+        }
+    }
+
+    public Project searchProject(ProjectStaffBulkRequest request) throws Exception {
+        String projectId = request.getProjectStaff().get(0).getProjectId();
+        ProjectSearch searchCriteria = ProjectSearch.builder()
+                .id(List.of(projectId))
+                .build();
+
+        ProjectSearchRequest searchRequest = ProjectSearchRequest.builder()
+                .project(searchCriteria)
+                .requestInfo(request.getRequestInfo())
+                .build();
+
+
+        ProjectSearchURLParams urlParams = ProjectSearchURLParams.builder()
+                .limit(1)
+                .offset(0)
+                .tenantId("in")
+                .includeAncestors(false)
+                .includeDescendants(false)
+                .build();
+        List<String> workflowStatuses = null;
+        ProjectSortCriteria sortCriteria = null;
+
+        List<Project> projects = projectService.searchProject(searchRequest, urlParams, workflowStatuses, sortCriteria);
+
+        if (projects == null || projects.isEmpty()) {
+            throw new CustomException("PROJECT_NOT_FOUND", "Project not found with ID: " + projectId);
+        }
+
+        Project existingProject = projects.get(0);
+
+        return existingProject;
     }
 
 }
