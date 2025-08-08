@@ -1,22 +1,45 @@
-FROM python:3.12-slim
+# ===== Build stage =====
+FROM python:3.12-slim AS builder
 
 WORKDIR /app
 
 ARG WORK_DIR
 
-RUN pip install uv
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq-dev \
+    build-essential \
+ && rm -rf /var/lib/apt/lists/*
 
+# Install uv
+RUN pip install --no-cache-dir uv
 
+# Copy dependency files first for layer caching
 COPY ${WORK_DIR}/pyproject.toml ./
 COPY ${WORK_DIR}/uv.lock ./
 
-RUN apt-get update && apt-get install -y \
-    libpq-dev \
-    python3-dev \
-    build-essential && uv sync
+# Install only prod dependencies
+RUN uv sync --frozen --no-dev
 
-COPY ${WORK_DIR}/app ./
+# Copy application code
+COPY ${WORK_DIR}/app ./app
 COPY ${WORK_DIR}/.env ./
+
+# ===== Runtime stage =====
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Install only runtime deps
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
+ && rm -rf /var/lib/apt/lists/*  #only for postgres connection
+
+# Install uv (needed for CMD)
+RUN pip install --no-cache-dir uv
+
+# Copy everything from build stage
+COPY --from=builder /app /app
 
 EXPOSE 8080
 
