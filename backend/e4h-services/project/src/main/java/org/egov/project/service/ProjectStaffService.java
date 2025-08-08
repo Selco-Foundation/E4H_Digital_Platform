@@ -125,6 +125,11 @@ public class ProjectStaffService {
                 Employee employee = getUserById(request);
                 Object enrichedAdditionalDetails = mergeListIntoAdditionalDetails(existingProject.getAdditionalDetails(), "assignedTo", employee);
                 existingProject.setAdditionalDetails(enrichedAdditionalDetails);
+                enrichedAdditionalDetails = mergeListIntoAdditionalDetails(existingProject.getAdditionalDetails(), "facility", null);
+                existingProject.setAdditionalDetails(enrichedAdditionalDetails);
+                enrichedAdditionalDetails = mergeListIntoAdditionalDetails(existingProject.getAdditionalDetails(), "status", null);
+                existingProject.setAdditionalDetails(enrichedAdditionalDetails);
+
                 ProjectRequest projectRequest = ProjectRequest.builder().requestInfo(request.getRequestInfo()).projects(List.of(existingProject)).build();
                 producer.push(projectConfiguration.getUpdateProjectTopicIndexer(), projectRequest);
                 log.info("successfully created project staff");
