@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import {CheckBox, Loader, Table} from "@egovernments/digit-ui-react-components";
 import Filter from "../../components/FacilityTable/Filter";
 import InfoCard from "../../components/FacilityTable/InfoCard";
-import { Link } from "react-router-dom";
+import { Link, useHistory, useLocation } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { setSelectedFacility, setSelectedFieldPlan } from "../../redux/actions";
 import SearchActionCentre from "../../components/FacilityTable/SearchAction";
@@ -12,18 +12,24 @@ const FacilityTable = ({ t, getCellProps }) => {
   const [mainCheck, setMainCheck] = useState(false);
   const dispatch = useDispatch();
   const [fieldPlan, setFieldPlan] = useState({});
-  const [filters, setFilters] = useState({
-    district: [],
-    block: [],
-    status: []
-  });
   const [selectedFacilities, setSelectedFacilities] = useState([]);
   const [fetchedData, setData] = useState([]);
   const [sideCheck, setSideCheck] = useState({});
+  const history = useHistory();
+  const location = useLocation();
   const url = window.location.href;
   const fieldPlanId = url.split("field-plan/")[1].split("/")[0];
+  const queryParams = new URLSearchParams(window.location.search);
 
-  const [projectQueryFilter, setProjectQueryFilter] = useState({
+  const [projectQueryFilter, setProjectQueryFilter] = useState((() => {
+    try {
+      const filterParam = queryParams.get("filter");
+      return filterParam ? JSON.parse(filterParam) : null;
+    } catch (error) {
+      console.error("Failed to parse filter parameter:", error);
+      return null;
+    }
+  })() || {
     project : {
       projectTypeId: "Facility",
       parent: fieldPlanId,
@@ -39,8 +45,11 @@ const FacilityTable = ({ t, getCellProps }) => {
     facilityFilterQuery: {},
     facilitySearchQuery: {},
   });
-  const [pageSize, setPageSize] = useState(10);
-  const [pageOffset, setPageOffset] = useState(0);
+  const prevSearchParamsRef = useRef(JSON.stringify(projectQueryFilter));
+
+  const [pageSize, setPageSize] = useState(queryParams.get("pageSize") || 10);
+  const [pageOffset, setPageOffset] = useState(queryParams.get("pageOffset") || 0);
+  const prevPageSizeRef = useRef(pageSize);
 
   const { data: fieldPlanData } = Digit.Hooks.qc.useFieldPlan({
     Project : {
@@ -49,6 +58,24 @@ const FacilityTable = ({ t, getCellProps }) => {
     }
   });
   const { isLoading, data: facilityData } = Digit.Hooks.qc.useFacility(projectQueryFilter, pageSize, pageOffset);
+
+  useEffect(() => {
+    history.replace({
+      pathname: location.pathname,
+      search: `filter=${JSON.stringify(projectQueryFilter)}&pageSize=${pageSize}&pageOffset=${pageOffset}`
+    });
+  }, [projectQueryFilter, pageSize, pageOffset])
+
+  useEffect(() => {
+    const prevSearchParams = prevSearchParamsRef.current;
+    const currentSearchParams = JSON.stringify(projectQueryFilter);
+
+    if (prevSearchParams !== currentSearchParams || prevPageSizeRef.current !== pageSize) {
+      setPageOffset(0);
+      prevSearchParamsRef.current = currentSearchParams;
+      prevPageSizeRef.current = pageSize;
+    }
+  }, [projectQueryFilter, pageSize]);
 
   useEffect(() => {
     if (facilityData) {
@@ -194,7 +221,7 @@ const FacilityTable = ({ t, getCellProps }) => {
     {
       Header: "Status",
       Cell: ({ row }) => {
-        return GetCell(`${row.original["status"]}`);
+        return GetCell(row.original["status"] !== "-" ? t(`CS_${row.original["status"]}`) : "-");
       },
     },
   ];
@@ -213,7 +240,7 @@ const FacilityTable = ({ t, getCellProps }) => {
     {
       name: t("CS_PENDING_INSTALLATION"),
       code: "PENDING_INSTALLATION",
-      count: getStatusCount("ASSIGNED_TO_SUPERVISOR") + getStatusCount("ASSIGNED_TO_FIELD_STAFF")
+      count: getStatusCount("ASSIGNED_TO_FIELD_SUPERVISOR") + getStatusCount("ASSIGNED_TO_FIELD_STAFF")
     },
     {
       name: t("CS_SUBMITTED_BY_FIELD_STAFF"),
@@ -221,9 +248,9 @@ const FacilityTable = ({ t, getCellProps }) => {
       count: getStatusCount("SUBMITTED_BY_FIELD_STAFF")
     },
     {
-      name: t("CS_REJECTED_BY_SUPERVISOR"),
-      code: "REJECTED_BY_SUPERVISOR",
-      count: getStatusCount("REJECTED_BY_SUPERVISOR")
+      name: t("CS_REJECTED_BY_FIELD_SUPERVISOR"),
+      code: "REJECTED_BY_FIELD_SUPERVISOR",
+      count: getStatusCount("REJECTED_BY_FIELD_SUPERVISOR")
     },
     {
       name: t("CS_SUBMITTED_BY_SUPERVISOR"),
@@ -282,6 +309,7 @@ const FacilityTable = ({ t, getCellProps }) => {
           <Filter
             t={t}
             type="desktop"
+            fieldPlan={fieldPlan}
             projectQueryFilter={projectQueryFilter}
             onFilterChange={handleFilterChange}
             statusesWithCount={statusesWithCount}

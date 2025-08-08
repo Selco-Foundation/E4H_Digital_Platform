@@ -80,7 +80,7 @@ const fetchInboxData = async (filter, limit, offset) => {
         projectId: row.project.id,
         block: address.boundary || "-",
         district: additionalDetails.district || "-",
-        assigned: assigneeDetails.name || "-",
+        assigned: assigneeDetails.name || assigneeDetails.user?.name || "-",
       }
     }),
     totalCount: projectsResponse?.totalCount || 0,

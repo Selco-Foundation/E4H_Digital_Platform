@@ -37,6 +37,7 @@ const formatFieldPlans = (projects) => {
       completionRate: completionRate,
       status: row?.status,
       transactions: row?.transactions,
+      address: row?.project?.address,
       projectFacilityInfo
     };
   })

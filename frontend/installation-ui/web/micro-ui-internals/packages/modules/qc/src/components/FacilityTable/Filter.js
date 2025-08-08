@@ -7,7 +7,7 @@ import {
   Loader, LinkLabel
 } from "@egovernments/digit-ui-react-components";
 
-const Filter = ({ t, onFilterChange, projectQueryFilter, statusesWithCount }) => {
+const Filter = ({ t, fieldPlan, onFilterChange, projectQueryFilter, statusesWithCount }) => {
 
   const [districtMenu, setDistrictMenu] = useState([]);
   const [blocksList, setBlocksList] = useState([]);
@@ -18,7 +18,9 @@ const Filter = ({ t, onFilterChange, projectQueryFilter, statusesWithCount }) =>
     status: []
   });
 
-  const { isLoading, data } = Digit.Hooks.qc.useBoundary("India_Telangana", "State");
+  const { isLoading, data } = Digit.Hooks.qc.useBoundary(
+    fieldPlan?.address?.boundary || "India_Telangana", "State"
+  );
 
   useEffect(() => {
     if (data) {
@@ -51,6 +53,12 @@ const Filter = ({ t, onFilterChange, projectQueryFilter, statusesWithCount }) =>
       facilityFilterQuery
     });
   }, [currentFilter, blocksList]);
+
+  useEffect(() => {
+    const selectedDistrictCodes = currentFilter.district.map(district => district.code);
+    const newBlockMenu = blocksList.filter(block => selectedDistrictCodes.includes(block.districtCode));
+    setBlockMenu(newBlockMenu);
+  }, [currentFilter, blocksList])
 
   const handleDistrictChange = (value) => {
     if (currentFilter.district.every(district => district.code !== value.code)) {
@@ -119,7 +127,7 @@ const Filter = ({ t, onFilterChange, projectQueryFilter, statusesWithCount }) =>
   };
 
   const handleStatusChange = (option, checked) => {
-    const statusesChanged = option.code === "PENDING_INSTALLATION" ? ["ASSIGNED_TO_SUPERVISOR", "ASSIGNED_TO_FIELD_STAFF"] : [option.code];
+    const statusesChanged = option.code === "PENDING_INSTALLATION" ? ["ASSIGNED_TO_FIELD_SUPERVISOR", "ASSIGNED_TO_FIELD_STAFF"] : [option.code];
     if (checked) {
       setCurrentFilter({
         ...currentFilter,
@@ -144,7 +152,7 @@ const Filter = ({ t, onFilterChange, projectQueryFilter, statusesWithCount }) =>
 
   const checkStatusFilterPresence = (status) => {
     if (status === "PENDING_INSTALLATION") {
-      return currentFilter.status.includes("ASSIGNED_TO_SUPERVISOR") || currentFilter.status.includes("ASSIGNED_TO_FIELD_STAFF");
+      return currentFilter.status.includes("ASSIGNED_TO_FIELD_SUPERVISOR") || currentFilter.status.includes("ASSIGNED_TO_FIELD_STAFF");
     }
     return currentFilter.status.includes(status);
   }
