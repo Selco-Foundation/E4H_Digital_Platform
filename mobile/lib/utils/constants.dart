@@ -44,7 +44,7 @@ class Constants {
       return await Isar.open(
         [
           LocalizationWrapperSchema,
-          CacheProjectAssetSchema,
+          CacheProjectAssetSchema, // todo to be removed, no longer used, as there's now cache for project per assets
           CacheAssetCountSchema,
           CacheSpecificationSchema,
           CacheAssetDetailSchema,
