@@ -2,6 +2,9 @@ package org.egov.inbox.repository.builder.V2;
 
 import java.util.*;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.egov.inbox.util.ErrorConstants;
 import org.egov.inbox.util.MDMSUtil;
 import org.egov.inbox.web.model.InboxRequest;
@@ -507,7 +510,18 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
                     innerWildcardClause.put(addDataPathToSearchParamKey(key, nameToPathMap), item + ".*");
                 }
                 else{
-                    innerWildcardClause.put(addDataPathToSearchParamKey(key, nameToPathMap),  "*" + item + "*");
+                    try {
+                        ObjectNode root = objectMapper.createObjectNode();
+                        root.put("value", "*" + item + "*");
+                        root.put("case_insensitive", true);
+
+                        String json = objectMapper.writeValueAsString(root);
+                        JsonNode node = objectMapper.readTree(json);
+                        innerWildcardClause.put(addDataPathToSearchParamKey(key, nameToPathMap),  node);
+//                      innerWildcardClause.put(addDataPathToSearchParamKey(key, nameToPathMap),  "*" + item + "*");
+                    } catch (JsonProcessingException e) {
+                        throw new RuntimeException(e);
+                    }
                 }
                 wildcardClauses.add(wildcardClause);
             }
