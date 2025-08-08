@@ -250,7 +250,6 @@ class ProjectRepository {
   Future<List<ProjectWorkflow>> readCache(
     List<String> statuses,
   ) async {
-    print("reading from cache");
     final col = _isar.cacheProjectWorkflows;
     final List<CacheProjectWorkflow> all = [];
     for (final status in statuses) {
@@ -260,17 +259,6 @@ class ProjectRepository {
     return all
         .map((c) => ProjectWorkflow(project: c.project, status: c.status))
         .toList();
-  }
-
-  Future<void> deleteProjectFromCache(String projectId) async {
-    final col = _isar.cacheProjectWorkflows;
-    // await _isar.writeTxn(() async {
-    //   final toDelete =
-    //      await col.where().projectIdEqualTo(projectId).filter().findAll();
-    //   for (final e in toDelete) {
-    //     await col.delete(e.id);
-    //   }
-    // });
   }
 }
 

@@ -9,9 +9,6 @@ part 'cache_project_workflow.g.dart';
 class CacheProjectWorkflow {
   Id id = Isar.autoIncrement;
 
-  // @Index()
-  // late String projectId;
-
   @Index()
   late String status;
 
@@ -22,7 +19,6 @@ class CacheProjectWorkflow {
   DateTime? updatedAt;
 
   CacheProjectWorkflow({
-//    required this.projectId,
     required this.status,
     required this.project,
   });
