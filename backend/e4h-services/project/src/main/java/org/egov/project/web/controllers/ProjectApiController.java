@@ -576,6 +576,8 @@ public class ProjectApiController {
         Map<String, Object> result = projectService.updateBulkProjectWorkflow(projectBulkApproveRequest);
         List<String> failedProjectIDs = result.get("failedProjectIDs") instanceof List<?> list ?
                     list.stream().map(String::valueOf).collect(Collectors.toList()) : Collections.emptyList();
+        List<String> succeededProjectIDs = result.get("succeededProjectIDs") instanceof List<?> list ?
+                    list.stream().map(String::valueOf).collect(Collectors.toList()) : Collections.emptyList();
         int totalProjects = result.get("totalProjects") instanceof Integer count ? count : 0;
 
         ResponseInfo responseInfo = ResponseInfoFactory.createResponseInfo(projectBulkApproveRequest.getRequestInfo(), true);
@@ -583,6 +585,7 @@ public class ProjectApiController {
         BulkProjectUpdateResponse response = BulkProjectUpdateResponse.builder()
                 .responseInfo(responseInfo)
                 .failedProjectIDs(failedProjectIDs)
+                .succeededProjectIDs(succeededProjectIDs)
                 .build();
         if (failedProjectIDs.isEmpty()) {
             // All succeeded

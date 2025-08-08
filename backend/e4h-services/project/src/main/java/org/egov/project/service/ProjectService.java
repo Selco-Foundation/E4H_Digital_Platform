@@ -715,6 +715,7 @@ public class ProjectService {
         // Validate that we have projects to process
         if (projectIds.isEmpty()) {
             result.put("failedProjectIDs", new ArrayList<>());
+            result.put("succeededProjectIDs", new ArrayList<>());
             result.put("totalProjects", 0);
             return result;
         }
@@ -722,6 +723,7 @@ public class ProjectService {
         // Update workflow for all project IDs
         log.info("Starting bulk workflow update for {} projects", projectIds.size());
         List<String> failedProjectIDs = new ArrayList<>();
+        List<String> succeededProjectIDs = new ArrayList<>();
         for (String projectId : projectIds) {
             try {
                 ProjectWorkflowRequest workflowRequest = ProjectWorkflowRequest.builder()
@@ -732,6 +734,7 @@ public class ProjectService {
 
                 ProjectStatusWrapper updatedProject = updateProjectWorkflow(workflowRequest);
                 log.info("Successfully updated workflow for project: {}", projectId);
+                succeededProjectIDs.add(projectId);
             } catch (Exception e) {
                 log.error("Failed to update workflow for project {}: {}", projectId, e.getMessage());
                 failedProjectIDs.add(projectId);
@@ -739,6 +742,7 @@ public class ProjectService {
         }
         
         result.put("failedProjectIDs", failedProjectIDs);
+        result.put("succeededProjectIDs", succeededProjectIDs);
         if(projectBulkApproveRequest.getIsAllSelected() && finalProjects > 0) {
             result.put("totalProjects", finalProjects);
         } else {

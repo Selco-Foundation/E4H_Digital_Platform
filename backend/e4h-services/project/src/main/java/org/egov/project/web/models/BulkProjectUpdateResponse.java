@@ -20,4 +20,7 @@ public class BulkProjectUpdateResponse {
 
     @JsonProperty("failedProjectIDs")
     private List<String> failedProjectIDs;
+
+    @JsonProperty("succeededProjectIDs")
+    private List<String> succeededProjectIDs;
 }
