@@ -38,7 +38,7 @@ jobs:
 
       - name: Git commit_hash for service
         run: |
-          commit_hash=$(git log -1 --pretty=format:%H -- backend/e4h-services/asset-registry)
+          commit_hash=$(git log -1 --pretty=format:%H -- backend/e4h-services/ingestion-service)
           echo "commit_hash=$commit_hash" >> $GITHUB_ENV
 
       # Login to Docker Container Registry

@@ -23,7 +23,6 @@ RUN uv sync --frozen --no-dev
 
 # Copy application code
 COPY ${WORK_DIR}/app ./app
-COPY ${WORK_DIR}/.env ./
 
 # ===== Runtime stage =====
 FROM python:3.12-slim
