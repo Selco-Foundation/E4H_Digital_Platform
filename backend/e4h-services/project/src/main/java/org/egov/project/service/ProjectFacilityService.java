@@ -292,7 +292,7 @@ public class ProjectFacilityService {
 
     private Object mergeListIntoAdditionalDetails(Object additionalDetails, String key, Object value) {
         if (additionalDetails instanceof ObjectNode) {
-            ((ObjectNode) additionalDetails).put(key, value+"");
+            ((ObjectNode) additionalDetails).put(key, mapper.valueToTree(value));
             return additionalDetails;
         } else if (additionalDetails instanceof Map) {
             ((Map<String, Object>) additionalDetails).put(key, value);

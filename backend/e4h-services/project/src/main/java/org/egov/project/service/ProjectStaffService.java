@@ -1,5 +1,6 @@
 package org.egov.project.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.extern.slf4j.Slf4j;
@@ -124,7 +125,7 @@ public class ProjectStaffService {
                 projectStaffRepository.save(validEntities, projectConfiguration.getCreateProjectStaffTopic());
                 Project existingProject = searchProject(request);
                 Employee employee = getUserById(request);
-                Object enrichedAdditionalDetails = mergeListIntoAdditionalDetails(existingProject.getAdditionalDetails(), "assignedTo", employee);
+                Object enrichedAdditionalDetails = mergeListIntoAdditionalDetails(existingProject.getAdditionalDetails(), "assignedTo", employee.getUser());
                 existingProject.setAdditionalDetails(enrichedAdditionalDetails);
                 ProjectRequest projectRequest = ProjectRequest.builder().requestInfo(request.getRequestInfo()).projects(List.of(existingProject)).build();
                 producer.push(projectConfiguration.getUpdateProjectTopic(), projectRequest);
@@ -258,7 +259,7 @@ public class ProjectStaffService {
 
     private Object mergeListIntoAdditionalDetails(Object additionalDetails, String key, Object value) {
         if (additionalDetails instanceof ObjectNode) {
-            ((ObjectNode) additionalDetails).put(key, value+"");
+            ((ObjectNode) additionalDetails).put(key, mapper.valueToTree(value));
             return additionalDetails;
         } else if (additionalDetails instanceof Map) {
             ((Map<String, Object>) additionalDetails).put(key, value);
