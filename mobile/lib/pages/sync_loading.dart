@@ -43,7 +43,7 @@ class SyncLoadingPage extends StatelessWidget {
                 ),
                 SizedBox(height: context.height * 0.03),
                 Text(
-                  isSuccessful ? "Download Successful!" : "Downloading data",
+                  isSuccessful ? "Syncing Successful!" : "Syncing data",
                   style: textTheme.headingS.copyWith(
                       color: isSuccessful
                           ? const Light().alertSuccess
@@ -64,7 +64,7 @@ class SyncLoadingPage extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      isSuccessful ? "Completed" : "Download in progress...",
+                      isSuccessful ? "Completed" : "Syncing in progress...",
                       style: textTheme.bodyS
                           .copyWith(color: const Light().textDisabled),
                     ),
