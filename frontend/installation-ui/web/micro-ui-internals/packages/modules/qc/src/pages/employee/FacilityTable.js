@@ -203,13 +203,13 @@ const FacilityTable = ({ t, getCellProps }) => {
     {
       Header: "Block",
       Cell: ({ row }) => {
-        return GetCell(`${row.original["block"]}`);
+        return GetCell(row.original["block"] !== "-" ? t(`BLOCK_${row.original["block"].toUpperCase()}`) : "-");
       },
     },
     {
       Header: "District",
       Cell: ({ row }) => {
-        return GetCell(`${row.original["district"]}`);
+        return GetCell(row.original["district"] !== "-" ? t(`DISTRICT_${row.original["district"].toUpperCase()}`) : "-");
       },
     },
     {

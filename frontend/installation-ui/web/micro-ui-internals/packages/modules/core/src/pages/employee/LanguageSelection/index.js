@@ -54,14 +54,14 @@ const LanguageSelection = () => {
       <Card className={"bannerCard removeBottomMargin languageSelection"}>
         <div className="bannerHeader">
           <img
-            className="bannerLogo"
+            // className="bannerLogo"
             src={"https://selco-assets.s3.ap-south-1.amazonaws.com/TwoClr_horizontal_4X.png"}
             alt="Selco Foundation"
             style={{ width: "100px" }}
           />
           {/*<ImageComponent className="bannerLogo" src={stateInfo?.logoUrl} alt="Digit Banner Image" />*/}
 
-          <p>{t(`TENANT_TENANTS_${stateInfo?.code?.toUpperCase()}`)}</p>
+          {/*<p>{t(`TENANT_TENANTS_${stateInfo?.code?.toUpperCase()}`)}</p>*/}
         </div>
         <div className="language-selector" style={{ justifyContent: "space-around", marginBottom: "24px", padding: "0 5%" }}>
           {defaultLanguages.map((language, index) => (

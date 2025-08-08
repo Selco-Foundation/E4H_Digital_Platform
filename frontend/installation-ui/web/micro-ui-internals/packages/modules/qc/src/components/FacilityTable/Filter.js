@@ -24,8 +24,8 @@ const Filter = ({ t, fieldPlan, onFilterChange, projectQueryFilter, statusesWith
 
   useEffect(() => {
     if (data) {
-      setDistrictMenu(data.districts?.map(district => ({...district, name: t(district.code)})));
-      setBlocksList(data.blocks?.map(block => ({...block, name: t(block.code)})));
+      setDistrictMenu(data.districts?.map(district => ({...district, name: t(`DISTRICT_${district.code.toUpperCase()}`)})));
+      setBlocksList(data.blocks?.map(block => ({...block, name: t(`BLOCK_${block.code.toUpperCase()}`)})));
     }
   }, [data, t]);
 
@@ -114,7 +114,7 @@ const Filter = ({ t, fieldPlan, onFilterChange, projectQueryFilter, statusesWith
     return (
       <div>
         <div className="filter-label">{label}</div>
-        {<Dropdown option={options} selected={selected} select={(value) => select(value, key)} optionKey={optionKey} />}
+        {<Dropdown t={t} option={options} selected={selected} select={(value) => select(value, key)} optionKey={optionKey} />}
 
         <div className="tag-container">
           {currentFilter[key].length > 0 &&
