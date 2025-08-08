@@ -10,7 +10,10 @@ RUN pip install uv
 COPY ${WORK_DIR}/pyproject.toml ./
 COPY ${WORK_DIR}/uv.lock ./
 
-RUN uv sync
+RUN apt-get update && apt-get install -y \
+    libpq-dev \
+    python3-dev \
+    build-essential && uv sync
 
 COPY ${WORK_DIR}/app ./
 COPY ${WORK_DIR}/.env ./
