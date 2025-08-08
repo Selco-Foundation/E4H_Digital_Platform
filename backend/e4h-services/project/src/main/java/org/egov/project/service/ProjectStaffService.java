@@ -129,7 +129,7 @@ public class ProjectStaffService {
                 existingProject.setAdditionalDetails(enrichedAdditionalDetails);
                 ProjectRequest projectRequest = ProjectRequest.builder().requestInfo(request.getRequestInfo()).projects(List.of(existingProject)).build();
                 producer.push(projectConfiguration.getUpdateProjectTopic(), projectRequest);
-                producer.push(projectConfiguration.getUpdateProjectTopicIndexerAssignTo(), projectRequest);
+                producer.push(projectConfiguration.getUpdateProjectTopicIndexer(), projectRequest);
                 log.info("successfully created project staff");
             }
         } catch (Exception exception) {

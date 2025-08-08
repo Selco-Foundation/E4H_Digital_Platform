@@ -133,7 +133,7 @@ public class ProjectFacilityService {
                 existingProject.setAdditionalDetails(enrichedAdditionalDetails);
                 ProjectRequest projectRequest = ProjectRequest.builder().requestInfo(request.getRequestInfo()).projects(List.of(existingProject)).build();
                 producer.push(projectConfiguration.getUpdateProjectTopic(), projectRequest);
-                producer.push(projectConfiguration.getUpdateProjectTopicIndexerFacility(), projectRequest);
+                producer.push(projectConfiguration.getUpdateProjectTopicIndexer(), projectRequest);
                 log.info("successfully created project facility");
             }
         } catch (Exception exception) {
