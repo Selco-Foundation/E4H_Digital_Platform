@@ -1,0 +1,1 @@
+ALTER TABLE public.eg_wf_processinstance_v2 ADD COLUMN isactive boolean DEFAULT true;
