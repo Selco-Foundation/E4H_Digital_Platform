@@ -44,9 +44,8 @@ public class Organisation {
     private String name = null;
 
     @JsonProperty("code")
-    @NotNull
     @Size(min = 2, max = 128)
-    private String code = null;
+    private String code = null;//idgen formatted code from start of the org creation request
 
     @JsonProperty("applicationNumber")
     private String applicationNumber = null;//idgen formatted number from start of the org creation request

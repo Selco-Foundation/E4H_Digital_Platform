@@ -158,7 +158,7 @@ def create_vendor_request(request_info: RequestInfo, vendor: Vendor):
         "organisations": [{
             "tenantId": "in",
             "name": vendor.vendor_name,
-            "code": vendor.vendor_code,
+            "code": None,
             "orgAddress": [
                 {
                     "tenantId": "in",
@@ -202,7 +202,10 @@ def get_project_creation_payload(request_info: RequestInfo, project_name: str, p
             "parent": parent_id,
             "startDate": start_date,
             "endDate": end_date,
-            "projectSubType": subType
+            "projectSubType": subType,
+            "department": "",
+            "description" :"",
+            "referenceID" : "1"
         }],
         "isCascadingProjectDateUpdate": False,
         "apiOperation": "CREATE"
@@ -224,7 +227,7 @@ def get_installation_spoc_creation_payload(request_info: RequestInfo, name:str, 
                     "mobileNumber": mobile_number,
                     "emailId": email,
                     "roles": [
-                        {"code": "PROJECT_MANAGER", "name": "Project manager"},
+                        {"code": "INSTALLATION_REPORT_VIEWER", "name": "Installation report viewer"},
                         {"code": "HRMS_ADMIN", "name": "Hrms admin"}
                     ],
                     "tenantId": "in",
@@ -234,12 +237,12 @@ def get_installation_spoc_creation_payload(request_info: RequestInfo, name:str, 
                     {
                         "hierarchy": "ADMIN",
                         "roles": [
-                            {"value": "PROJECT_MANAGER", "label": "Project manager"},
+                            {"code": "INSTALLATION_REPORT_VIEWER", "name": "Installation report viewer"},
                             {"value": "HRMS_ADMIN", "label": "Hrms admin"}
                         ],
                         "boundaryType": "City",
                         "boundary": "in",
-                        "furnishedRolesList": "PROJECT_MANAGER, HRMS_ADMIN",
+                        "furnishedRolesList": "INSTALLATION_REPORT_VIEWER, HRMS_ADMIN",
                         "tenantId": "in",
                     }
                 ],
