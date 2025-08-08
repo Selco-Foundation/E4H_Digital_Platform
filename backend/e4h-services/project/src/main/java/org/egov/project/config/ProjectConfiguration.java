@@ -151,8 +151,14 @@ public class ProjectConfiguration {
     @Value("${project.management.system.kafka.update.topic}")
     private String updateProjectTopic;
 
-    @Value("${project.management.system.kafka.update.topic.indexer}")
-    private String updateProjectTopicIndexer;
+    @Value("${project.management.system.kafka.update.topic.indexer.facility}")
+    private String updateProjectTopicIndexerFacility;
+
+    @Value("${project.management.system.kafka.update.topic.indexer.assignTo}")
+    private String updateProjectTopicIndexerAssignTo;
+
+    @Value("${project.management.system.kafka.update.topic.indexer.status}")
+    private String updateProjectTopicIndexerStatus;
 
     @Value("${egov.idgen.project.number.name}")
     private String idgenProjectNumberName;

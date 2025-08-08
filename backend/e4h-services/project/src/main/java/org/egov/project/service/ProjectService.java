@@ -280,21 +280,7 @@ public class ProjectService {
          */
         projectEnrichment.enrichProjectOnUpdate(request, project, projectFromDB);
         producer.push(projectConfiguration.getUpdateProjectTopic(), request);
-        Project projectBis = request.getProjects().get(0);
-        Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(
-                projectBis.getAdditionalDetails(),
-                "facility",
-                null
-        );
-        projectBis.setAdditionalDetails(enrichedAdditionalDetails);
-        enrichedAdditionalDetails = mergeIntoAdditionalDetails(
-                projectBis.getAdditionalDetails(),
-                "assignedTo",
-                null
-        );
-        projectBis.setAdditionalDetails(enrichedAdditionalDetails);
-        request.setProjects(List.of(projectBis));
-        producer.push(projectConfiguration.getUpdateProjectTopicIndexer(), request);
+        producer.push(projectConfiguration.getUpdateProjectTopicIndexerStatus(), request);
     }
 
     private void handleUpdateProjectDates(ProjectRequest request, Project project, Project projectFromDB) {
