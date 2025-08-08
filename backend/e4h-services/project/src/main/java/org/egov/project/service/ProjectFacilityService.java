@@ -1,6 +1,7 @@
 package org.egov.project.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.egov.common.contract.request.RequestInfo;
@@ -131,6 +132,7 @@ public class ProjectFacilityService {
                 Object enrichedAdditionalDetails = mergeListIntoAdditionalDetails(existingProject.getAdditionalDetails(), "facility", facility);
                 existingProject.setAdditionalDetails(enrichedAdditionalDetails);
                 ProjectRequest projectRequest = ProjectRequest.builder().requestInfo(request.getRequestInfo()).projects(List.of(existingProject)).build();
+                producer.push(projectConfiguration.getUpdateProjectTopic(), projectRequest);
                 producer.push(projectConfiguration.getUpdateProjectTopicIndexerFacility(), projectRequest);
                 log.info("successfully created project facility");
             }
@@ -289,7 +291,10 @@ public class ProjectFacilityService {
     }
 
     private Object mergeListIntoAdditionalDetails(Object additionalDetails, String key, Object value) {
-        if (additionalDetails instanceof Map) {
+        if (additionalDetails instanceof ObjectNode) {
+            ((ObjectNode) additionalDetails).put(key, value+"");
+            return additionalDetails;
+        } else if (additionalDetails instanceof Map) {
             ((Map<String, Object>) additionalDetails).put(key, value);
             return additionalDetails;
         } else {

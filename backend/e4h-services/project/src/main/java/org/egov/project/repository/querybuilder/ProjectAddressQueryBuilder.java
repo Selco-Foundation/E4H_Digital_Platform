@@ -241,7 +241,7 @@ public class ProjectAddressQueryBuilder {
         // Get user info
         var userInfo = projectSearchRequest.getRequestInfo().getUserInfo();
         String userUuid = userInfo.getUuid();
-        boolean isProjectManager = false;
+        boolean isProjectManager = true;
         if (userInfo.getRoles() != null) {
             isProjectManager = userInfo.getRoles().stream().anyMatch(role -> PROJECT_MANAGER.equalsIgnoreCase(role.getCode()));
         }
