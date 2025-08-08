@@ -7,7 +7,7 @@ import {
   Loader, LinkLabel
 } from "@egovernments/digit-ui-react-components";
 
-const Filter = ({ t, fieldPlan, onFilterChange, projectQueryFilter, statusesWithCount }) => {
+const Filter = ({ t, fieldPlan, onFilterChange, projectQueryFilter, statusesList }) => {
 
   const [districtMenu, setDistrictMenu] = useState([]);
   const [blocksList, setBlocksList] = useState([]);
@@ -226,14 +226,14 @@ const Filter = ({ t, fieldPlan, onFilterChange, projectQueryFilter, statusesWith
           >
             Status
           </div>
-          {statusesWithCount?.map((option, index) => {
+          {statusesList?.map((option, index) => {
             return (
               <div style={{ marginTop: "-30px" }}>
                 <CheckBox
                   key={index}
                   onChange={(e) => {handleStatusChange(option, e.target.checked)}}
                   checked={checkStatusFilterPresence(option.code)}
-                  label={`${option.name}${ option.count > 0 ? ` (${option.count})` : ""}`}
+                  label={option.name}
                 />
               </div>
             );

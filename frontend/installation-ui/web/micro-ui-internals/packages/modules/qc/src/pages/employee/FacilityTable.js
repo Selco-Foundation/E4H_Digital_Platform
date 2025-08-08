@@ -226,46 +226,35 @@ const FacilityTable = ({ t, getCellProps }) => {
     },
   ];
 
-  const getStatusCount = (status) => {
-    return fieldPlan?.projectFacilityInfo?.[status] || 0;
-  }
-
   //todo: fetch all possible statuses from backend??
-  const statusesWithCount = [
+  const statusesList = [
     {
       name: t("CS_SCHEDULED"),
-      code: "SCHEDULED",
-      count: getStatusCount("SCHEDULED")
+      code: "SCHEDULED"
     },
     {
       name: t("CS_PENDING_INSTALLATION"),
-      code: "PENDING_INSTALLATION",
-      count: getStatusCount("ASSIGNED_TO_FIELD_SUPERVISOR") + getStatusCount("ASSIGNED_TO_FIELD_STAFF")
+      code: "PENDING_INSTALLATION"
     },
     {
       name: t("CS_SUBMITTED_BY_FIELD_STAFF"),
-      code: "SUBMITTED_BY_FIELD_STAFF",
-      count: getStatusCount("SUBMITTED_BY_FIELD_STAFF")
+      code: "SUBMITTED_BY_FIELD_STAFF"
     },
     {
       name: t("CS_REJECTED_BY_FIELD_SUPERVISOR"),
-      code: "REJECTED_BY_FIELD_SUPERVISOR",
-      count: getStatusCount("REJECTED_BY_FIELD_SUPERVISOR")
+      code: "REJECTED_BY_FIELD_SUPERVISOR"
     },
     {
       name: t("CS_SUBMITTED_BY_SUPERVISOR"),
-      code: "SUBMITTED_BY_SUPERVISOR",
-      count: getStatusCount("SUBMITTED_BY_SUPERVISOR")
+      code: "SUBMITTED_BY_SUPERVISOR"
     },
     {
       name: t("CS_APPROVED_BY_QC_SPOC"),
-      code: "APPROVED_BY_QC_SPOC",
-      count: getStatusCount("APPROVED_BY_QC_SPOC")
+      code: "APPROVED_BY_QC_SPOC"
     },
     {
       name: t("CS_REJECTED_BY_QC_SPOC"),
-      code: "REJECTED_BY_QC_SPOC",
-      count: getStatusCount("REJECTED_BY_QC_SPOC")
+      code: "REJECTED_BY_QC_SPOC"
     }
   ];
 
@@ -312,7 +301,7 @@ const FacilityTable = ({ t, getCellProps }) => {
             fieldPlan={fieldPlan}
             projectQueryFilter={projectQueryFilter}
             onFilterChange={handleFilterChange}
-            statusesWithCount={statusesWithCount}
+            statusesList={statusesList}
           />
         </div>
         <div style={{ width: "83%", backgroundColor: "white" }}>
