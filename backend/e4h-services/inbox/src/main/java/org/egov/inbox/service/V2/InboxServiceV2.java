@@ -259,6 +259,7 @@ public class InboxServiceV2 {
             if (!ObjectUtils.isEmpty(auditDetails.get(CREATED_TIME_KEY))) {
                 Long createdTime = ((Number) auditDetails.get(CREATED_TIME_KEY)).longValue();
                 String businessService = JsonPath.read(data, BUSINESS_SERVICE_PATH);
+                businessService = businessService.equals("Incident") ? "Incident_Medium" : businessService;
                 Long businessServiceSLA = businessServiceSlaMap.get(businessService);
 
                 return Long.valueOf(Math.round((businessServiceSLA - (currentDate - createdTime)) / ((double) (24 * 60 * 60 * 1000))));
