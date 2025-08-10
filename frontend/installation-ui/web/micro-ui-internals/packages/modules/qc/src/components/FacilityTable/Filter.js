@@ -161,7 +161,7 @@ const Filter = ({ t, fieldPlan, onFilterChange, projectQueryFilter, statusesList
     <React.Fragment>
       <div className="filter">
         <div className="filter-card" style={{ padding: "10px" }}>
-          <div className="filter-header" style={{ display: "flex", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
             <div
               style={{
                 fontFamily: "Roboto",

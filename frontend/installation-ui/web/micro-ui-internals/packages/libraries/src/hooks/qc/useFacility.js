@@ -56,7 +56,7 @@ const fetchInboxData = async (filter, limit, offset) => {
       moduleSearchCriteria: {
         ...filter.project,
         ...filter.moduleSearchCriteria,
-        sortOrder: "DESC"
+        sortOrder: "ASC"
       },
       limit: limit,
       offset: offset,
@@ -67,7 +67,7 @@ const fetchInboxData = async (filter, limit, offset) => {
 
   return {
     facilities: projectsResponse?.items?.map((row) => {
-      const facility = row.project.facility?.[0] || {};
+      const facility = row.project.facility || {};
       const address = row.project.address || {};
       const additionalDetails = row.project.additionalDetails || {};
       const assigneeDetails = row.project.assignedTo || {};
@@ -75,12 +75,12 @@ const fetchInboxData = async (filter, limit, offset) => {
       return {
         id: row.project.id,
         facilityName: facility.name || row.project.name,
-        facilityId: facility.id,
+        facilityId: facility.facility_id,
         status: row.project.status,
         projectId: row.project.id,
         block: address.boundary || "-",
         district: additionalDetails.district || "-",
-        assigned: assigneeDetails.name || assigneeDetails.user?.name || "-",
+        assigned: assigneeDetails.name || "-",
       }
     }),
     totalCount: projectsResponse?.totalCount || 0,

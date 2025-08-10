@@ -9,7 +9,7 @@ const InfoCard = ({ selectedFieldPlan }) => {
       <div style={{ fontFamily: "Roboto", width: "100%", fontWeight: 700, fontSize: "20px", lineHeight: "100%", letterSpacing: "0px", color: "#0B0C0C" }}>
         {infoName}
       </div>
-      <div style={{ fontFamily: "Roboto", width: "200px", fontWeight: 400, fontSize: "20px", lineHeight: "137%", letterSpacing: "0px", color: "#0B0C0C" }}>
+      <div style={{ fontFamily: "Roboto", width: "250px", fontWeight: 400, fontSize: "20px", lineHeight: "137%", letterSpacing: "0px", color: "#0B0C0C" }}>
         {infoValue}
       </div>
     </div>
@@ -17,7 +17,7 @@ const InfoCard = ({ selectedFieldPlan }) => {
 
   const GetProgress = (value) => {
     return (
-      <div style={{ display: "flex", gap: `${value > 99 ? "10px" : "20px"}` }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
         <div style={{ width: "100px", height: "20px", background: "#E0E0E0", borderRadius: "5px" }}>
           <div style={{ position: "absolute", height: "20px", width: `${value}px`, background: "#00703C", borderRadius: "5px" }}></div>
         </div>
@@ -43,7 +43,7 @@ const InfoCard = ({ selectedFieldPlan }) => {
           justifyContent: "space-between",
         }}
       >
-        <div style={{ width: "45%" }}>
+        <div style={{ width: "30%" }}>
           <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: "10px" }}>
             <div>
               {PropertyCard("Start Date", startDate)}
@@ -53,7 +53,7 @@ const InfoCard = ({ selectedFieldPlan }) => {
             </div>
           </div>
         </div>
-        <div style={{ width: "45%" }}>
+        <div style={{ width: "30%" }}>
           <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: "10px" }}>
             <div>
               {PropertyCard("No. of Health Facilities Unassigned", getStatusCount("SCHEDULED"))}
@@ -66,13 +66,13 @@ const InfoCard = ({ selectedFieldPlan }) => {
                 )
               }
             </div>
-            <div style={{ width: "100%", display: "flex", justifyContent: "space-between" }}>
-              <div style={{ fontFamily: "Roboto", fontWeight: 700, fontSize: "20px", lineHeight: "100%", letterSpacing: "0px", color: "#0B0C0C" }}>
-                Completion Rate
-              </div>
-              <div>
-                {GetProgress(completionRate)}
-              </div>
+            <div>
+              {
+                PropertyCard(
+                  "Completion Rate",
+                  GetProgress(completionRate)
+                )
+              }
             </div>
           </div>
         </div>
