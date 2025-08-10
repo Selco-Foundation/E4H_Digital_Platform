@@ -1,13 +1,18 @@
 import React, { useState } from "react";
 import { CheckBox, Table } from "@egovernments/digit-ui-react-components";
 import Filter from "./component/Filter";
-import SearchCentre from "../installation-centers/component/search";
 import InfoCard from "./component/InfoCard";
-const InstallationTable = ({ t, getCellProps, onNextPage, onPrevPage, currentPage, totalRecords, pageSizeLimit, onPageSizeChange }) => {
+import { Link } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import { setSelectedFacility } from "../../../redux/actions";
+
+const FacilityTable = ({ t, getCellProps, onNextPage, onPrevPage, currentPage, totalRecords, pageSizeLimit, onPageSizeChange }) => {
   const data = [
     {
       id: 1,
       facility: "Alkod",
+      projectId : "PROJ/2025/000023",
+      facilityId : "123455",
       block: "Allepy",
       district: "Alkrias",
       assigned: "",
@@ -16,6 +21,8 @@ const InstallationTable = ({ t, getCellProps, onNextPage, onPrevPage, currentPag
     {
       id: 2,
       facility: "Alkod",
+      projectId : "PROJ/2025/000023",
+      facilityId : "123456",
       block: "Allepy",
       district: "Alkrias",
       assigned: "",
@@ -24,6 +31,8 @@ const InstallationTable = ({ t, getCellProps, onNextPage, onPrevPage, currentPag
     {
       id: 3,
       facility: "Chorias",
+      projectId : "PROJ/2025/000023",
+      facilityId : "123457",
       block: "Konark",
       district: "Raigarh",
       assigned: "Sufi",
@@ -32,14 +41,18 @@ const InstallationTable = ({ t, getCellProps, onNextPage, onPrevPage, currentPag
     {
       id: 4,
       facility: "Chorias",
+      projectId : "PROJ/2025/000023",
+      facilityId : "123458",
       block: "Konark",
       district: "Raigarh",
       assigned: "Sufi",
       status: "Pending Approval",
     },
     {
-      id: 4,
+      id: 5,
       facility: "Chorias",
+      projectId : "PROJ/2025/000023",
+      facilityId : "123459",
       block: "Konark",
       district: "Raigarh",
       assigned: "Sufi",
@@ -47,6 +60,8 @@ const InstallationTable = ({ t, getCellProps, onNextPage, onPrevPage, currentPag
     },
   ];
   const [mainCheck, setMainCheck] = useState(false);
+  const dispatch = useDispatch();
+  const selectedFieldPlan = useSelector((state) => state.qc.reports.selectedFieldPlan);
   const [sideCheck, setSideCheck] = useState(
     data
       .filter((row) => row.status.toUpperCase() !== "APPROVED" && row.status.toUpperCase() !== "SCHEDULED")
@@ -125,7 +140,18 @@ const InstallationTable = ({ t, getCellProps, onNextPage, onPrevPage, currentPag
     {
       Header: "Health Facility",
       Cell: ({ row }) => {
-        return GetCell(`${row.original["facility"].toUpperCase()}`);
+        return (
+          <div>
+            <span className="link" onClick={() => dispatch(setSelectedFacility(row.original["facilityId"]))}>
+              <Link
+                to={`/${window.contextPath}/employee/qc/field-plan/${encodeURIComponent(row.original["projectId"])}/facilities/${encodeURIComponent(row.original["facilityId"])}`}
+                style={{ color: "#C84C0E" }}
+              >
+                {row.original["facility"]}
+              </Link>
+            </span>
+          </div>
+        );
       },
     },
     {
@@ -160,7 +186,10 @@ const InstallationTable = ({ t, getCellProps, onNextPage, onPrevPage, currentPag
     return { name: status, count: data.filter((opt) => opt.status === status).length };
   });
   return (
-    <div style={{ marginTop: "85px", width: "95%", marginLeft: "60px" }}>
+    <div style={{marginTop: "20px"}}>
+      <div style={{fontSize: "24px", fontWeight: "bold", marginBottom: "20px", color: "#004d66"}}>
+        Installation | {selectedFieldPlan}
+      </div>
       <InfoCard />
       <div style={{ width: "100%", display: "flex", gap: "15px" }}>
         <div style={{ width: "15%" }}>
@@ -192,4 +221,4 @@ const InstallationTable = ({ t, getCellProps, onNextPage, onPrevPage, currentPag
     </div>
   );
 };
-export default InstallationTable;
+export default FacilityTable;

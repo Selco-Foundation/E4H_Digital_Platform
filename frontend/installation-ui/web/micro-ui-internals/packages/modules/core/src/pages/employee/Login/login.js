@@ -5,6 +5,7 @@ import { useHistory } from "react-router-dom";
 import Background from "../../../components/Background";
 import Header from "../../../components/Header";
 import ImageComponent from "../../../components/ImageComponent";
+import {ULBService} from "@egovernments/digit-ui-libraries";
 
 /* set employee details to enable backward compatiable */
 const setEmployeeDetail = (userObject, token) => {
@@ -30,9 +31,7 @@ const Login = ({ config: propsConfig, t, isDisabled, loginOTPBased }) => {
   const [user, setUser] = useState(null);
   const [showToast, setShowToast] = useState(null);
   const [disable, setDisable] = useState(false);
-
   const history = useHistory();
-  // const getUserType = () => "EMPLOYEE" || Digit.UserService.getType();
 
   useEffect(() => {
     if (!user) {
@@ -63,10 +62,6 @@ const Login = ({ config: propsConfig, t, isDisabled, loginOTPBased }) => {
   }, [user]);
 
   const onLogin = async (data) => {
-    // if (!data.city) {
-    //   alert("Please Select City!");
-    //   return;
-    // }
     if(data?.username){
       data.username=data.username.trim();
     }
@@ -77,10 +72,10 @@ const Login = ({ config: propsConfig, t, isDisabled, loginOTPBased }) => {
 
     const requestData = {
       ...data,
-      ...defaultValues,
       userType: "EMPLOYEE",
     };
-    requestData.tenantId = requestData?.city?.code || Digit.ULBService.getStateId();
+
+    requestData.tenantId = "in";
     delete requestData.city;
     try {
       const { UserRequest: info, ...tokens } = await Digit.UserService.authenticate(requestData);
@@ -97,49 +92,6 @@ const Login = ({ config: propsConfig, t, isDisabled, loginOTPBased }) => {
     setDisable(false);
   };
 
-  const reqCreate = {
-    url: `/user-otp/v1/_send`,
-    params: { tenantId: Digit.ULBService.getStateId() },
-    body: {},
-    config: {
-      enable: false,
-    },
-  };
-  const mutation = Digit.Hooks.useCustomAPIMutationHook(reqCreate);
-
-  const onOtpLogin = async (data) => {
-    const inputEmail = data.email;
-    await mutation.mutate(
-      {
-        body: {
-          otp: {
-            userName: data.email,
-            type: "login",
-            tenantId: Digit.ULBService.getStateId(),
-            userType: "EMPLOYEE",
-          },
-        },
-        config: {
-          enable: true,
-        },
-      },
-      {
-        onError: (error, variables) => {
-          setShowToast(
-            error?.response?.data?.Errors?.[0].code ? `SANDBOX_RESEND_OTP${error?.response?.data?.Errors?.[0]?.code}` : `SANDBOX_RESEND_OTP_ERROR`
-          );
-          setTimeout(closeToast, 5000);
-        },
-        onSuccess: async (data) => {
-          history.push({
-            pathname: `/${window?.contextPath}/employee/user/login/otp`,
-            state: { email: inputEmail, tenant: Digit.ULBService.getStateId() },
-          });
-        },
-      }
-    );
-  };
-
   const closeToast = () => {
     setShowToast(null);
   };
@@ -147,21 +99,38 @@ const Login = ({ config: propsConfig, t, isDisabled, loginOTPBased }) => {
   const onForgotPassword = () => {
     history.push(`/${window?.contextPath}/employee/user/forgot-password`);
   };
-  const defaultTenant = Digit.ULBService.getStateId();
-  const defaultValue = {
-    code: defaultTenant,
-    name: Digit.Utils.locale.getTransformedLocale(`TENANT_TENANTS_${defaultTenant}`),
-  };
 
-  const config = [{ body: propsConfig?.inputs }];
+  const config = [{
+    body: [
+      {
+        label: "CORE_LOGIN_USERNAME",
+        type: "text",
+        key: "username",
+        isMandatory: true,
+        populators: {
+          name: "username",
+          validation: {
+            required: true
+          },
+          error: "ERR_USERNAME_REQUIRED"
+        }
+      },
+      {
+        label: "CORE_LOGIN_PASSWORD",
+        type: "password",
+        key: "password",
+        isMandatory: true,
+        populators: {
+          name: "password",
+          validation: {
+            required: true
+          },
+          error: "ERR_PASSWORD_REQUIRED"
+        }
+      }
+    ]
+  }];
 
-  const { mode } = Digit.Hooks.useQueryParams();
-  if (
-    mode === "admin" && config?.[0]?.body?.[2]?.disable == false && config?.[0]?.body?.[2]?.populators?.defaultValue == undefined ) {
-    config[0].body[2].disable = true;
-    config[0].body[2].isMandatory = false;
-    config[0].body[2].populators.defaultValue = defaultValue;
-  }
   const defaultValues = Object.fromEntries(
     config[0].body
       .filter(field => field?.populators?.defaultValue && field?.populators?.name)
@@ -185,7 +154,7 @@ const Login = ({ config: propsConfig, t, isDisabled, loginOTPBased }) => {
         <BackLink onClick={() => window.history.back()} />
       </div>
       <FormComposerV2
-        onSubmit={loginOTPBased ? onOtpLogin : onLogin}
+        onSubmit={onLogin}
         isDisabled={isDisabled || disable}
         noBoxShadow
         inline

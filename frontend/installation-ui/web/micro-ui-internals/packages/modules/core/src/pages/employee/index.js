@@ -8,16 +8,10 @@ import ChangePassword from "./ChangePassword";
 import ForgotPassword from "./ForgotPassword";
 import LanguageSelection from "./LanguageSelection";
 import EmployeeLogin from "./Login";
-import SignUp from "./SignUp";
 import Otp from "./Otp";
-import ViewUrl from "./ViewUrl";
 import UserProfile from "../citizen/Home/UserProfile";
 import ErrorComponent from "../../components/ErrorComponent";
 import ImageComponent from "../../components/ImageComponent";
-import HomePage from "./Home";
-import ComplaintTable from "./installation-centers";
-import { Link } from "react-router-dom";
-import InstallationTable from "./installation";
 
 const EmployeeApp = ({
   stateInfo,
@@ -42,76 +36,13 @@ const EmployeeApp = ({
   const { path } = useRouteMatch();
   const location = useLocation();
   const showLanguageChange = location?.pathname?.includes("language-selection");
-  // const isUserProfile = userScreensExempted.some((url) => location?.pathname?.includes(url));
+  const userScreensExempted = ["user/profile", "user/error"];
+  const isUserProfile = userScreensExempted.some((url) => location?.pathname?.includes(url));
+  const bgImageUrl = window?.globalConfigs?.getConfig("BG_IMAGE");
+
   useEffect(() => {
     Digit.UserService.setType("employee");
   }, []);
-
-  const GetCell = (value) => <span className="cell-text">{value}</span>;
-
-  const GetProgress = (value) => {
-    return (
-      <div style={{ display: "flex", gap: `${value > 99 ? "10px" : "20px"}` }}>
-        <div>{value}%</div>
-        <div style={{ width: "100px", height: "20px", background: "#E0E0E0", borderRadius: "5px" }}>
-          <div style={{ position: "absolute", height: "20px", width: `${value}px`, background: "#00703C", borderRadius: "5px" }}></div>
-        </div>
-      </div>
-    );
-  };
-
-  const columns = [
-    {
-      Header: "Field Plan Code",
-      Cell: ({ row }) => {
-        return (
-          <div>
-            <span className="link">
-              <Link to={`/${window.contextPath}/employee/user/centres/${row.original["code"]}`} style={{ color: "#C84C0E" }}>
-                {row.original["code"]}
-              </Link>
-            </span>
-          </div>
-        );
-      },
-    },
-    {
-      Header: "Activity Type",
-      Cell: ({ row }) => {
-        return GetCell(`${row.original["type"].toUpperCase()}`);
-      },
-    },
-    {
-      Header: "Health Facilities",
-      Cell: ({ row }) => {
-        return GetCell(`${row.original["facilities"].toUpperCase()}`);
-      },
-    },
-    {
-      Header: "Start Date",
-      Cell: ({ row }) => {
-        return GetCell(`${row.original["start"].toUpperCase()}`);
-      },
-    },
-    {
-      Header: "End Date",
-      Cell: ({ row }) => {
-        return GetCell(`${row.original["end"].toUpperCase()}`);
-      },
-    },
-    {
-      Header: "Completion Rate",
-      Cell: ({ row }) => {
-        return GetProgress(`${row.original["completion"]}`);
-      },
-    },
-  ];
-
-  const data = [
-    { code: "MH-QC_HO-2024-200centres", type: "Installation", facilities: "200", start: "08/05/2025", end: "08/10/2025", completion: 40 },
-    { code: "MH-QC_HO-2024-201centres", type: "Installation", facilities: "100", start: "08/03/2025", end: "22/05/2025", completion: 20 },
-    { code: "MH-QC_HO-2024-202centres", type: "Installation", facilities: "400", start: "01/05/2024", end: "01/03/2025", completion: 100 },
-  ];
 
   const additionalComponent = initData?.modules?.filter((i) => i?.additionalComponent)?.map((i) => i?.additionalComponent);
 
@@ -119,21 +50,33 @@ const EmployeeApp = ({
     <div className="employee">
       <Switch>
         <Route path={`${path}/user`}>
-          {/* {isUserProfile && ( */}
-          <TopBarSideBar
-            t={t}
-            stateInfo={stateInfo}
-            userDetails={userDetails}
-            CITIZEN={CITIZEN}
-            cityDetails={cityDetails}
-            mobileView={mobileView}
-            handleUserDropdownSelection={handleUserDropdownSelection}
-            logoUrl={logoUrl}
-            logoUrlWhite={logoUrlWhite}
-            showSidebar={true}
-            showLanguageChange={!showLanguageChange}
-          />
-          <div className={"grounded-container"} style={{ padding: 0, paddingTop: "0", marginLeft: mobileView ? "0" : "0" }}>
+          {isUserProfile && (
+            <TopBarSideBar
+              t={t}
+              stateInfo={stateInfo}
+              userDetails={userDetails}
+              CITIZEN={CITIZEN}
+              cityDetails={cityDetails}
+              mobileView={mobileView}
+              handleUserDropdownSelection={handleUserDropdownSelection}
+              logoUrl={logoUrl}
+              logoUrlWhite={logoUrlWhite}
+              showSidebar={true}
+              showLanguageChange={!showLanguageChange}
+            />
+          )}
+          <div
+              className={isUserProfile ? "grounded-container" : "loginContainer"}
+              style={{
+                '--bg-image-url': `url(${bgImageUrl})`,
+                ...(isUserProfile
+                        ? !window.Digit.Utils.browser.isMobile()
+                            ? { backgroundColor: "#225670", marginLeft: "40px", paddingTop: "100px" }
+                            : { backgroundColor: "#225670", paddingTop: "100px" }
+                        : { backgroundColor: "#225670" }
+                )
+              }}
+          >
             <Switch>
               <Route exact path={`${path}/user/login`}>
                 <EmployeeLogin stateCode={stateCode} />
@@ -147,40 +90,9 @@ const EmployeeApp = ({
               <Route path={`${path}/user/change-password`}>
                 <ChangePassword />
               </Route>
-              <Route path={`${path}/user/home`}>
-                <HomePage stateCode={stateCode} userType={"employee"} cityDetails={cityDetails} />
+              <Route path={`${path}/user/profile`}>
+                <UserProfile stateCode={stateCode} userType={"employee"} cityDetails={cityDetails} />
               </Route>
-              <Route path={`${path}/user/table`}>
-                <ComplaintTable
-                  t={t}
-                  columns={columns}
-                  data={data}
-                  getCellProps={(cellInfo) => {
-                    return {
-                      style: {
-                        maxWidth: "100%",
-                        padding: "17.24px 18px",
-                        fontSize: "15px",
-                      },
-                    };
-                  }}
-                />
-              </Route>
-              <Route path={`${path}/user/centres/:id*`}>
-                <InstallationTable
-                  t={t}
-                  getCellProps={(cellInfo) => {
-                    return {
-                      style: {
-                        maxWidth: "100%",
-                        padding: "17.24px 18px",
-                        fontSize: "15px",
-                      },
-                    };
-                  }}
-                />
-              </Route>
-
               <Route path={`${path}/user/error`}>
                 <ErrorComponent
                   initData={initData}
@@ -199,7 +111,7 @@ const EmployeeApp = ({
           </div>
         </Route>
         <Route>
-          {/* {!noTopBar && ( */}
+           {!noTopBar && (
           <TopBarSideBar
             t={t}
             stateInfo={stateInfo}
@@ -212,7 +124,7 @@ const EmployeeApp = ({
             logoUrlWhite={logoUrlWhite}
             modules={modules}
           />
-          {/* )} */}
+           )}
           <div className={!noTopBar ? `main ${DSO ? "m-auto" : ""} digit-home-main` : ""}>
             <div className="employee-app-wrapper digit-home-app-wrapper">
               <ErrorBoundary initData={initData}>

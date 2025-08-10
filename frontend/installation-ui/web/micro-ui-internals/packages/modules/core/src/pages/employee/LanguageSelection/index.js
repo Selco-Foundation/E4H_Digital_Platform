@@ -13,6 +13,8 @@ const LanguageSelection = () => {
   const { t } = useTranslation();
   const history = useHistory();
   const { languages, stateInfo } = storeData || {};
+  const fromParam = new URLSearchParams(location.search).get('from');
+
   let defaultLanguages = languages;
   if (!defaultLanguages || defaultLanguages?.length == 0) {
     defaultLanguages = [defaultLanguage];
@@ -24,16 +26,40 @@ const LanguageSelection = () => {
     Digit.LocalizationService.changeLanguage(language.value, stateInfo.code);
   };
 
+  const loginURL = `/${window.contextPath}/employee/user/login`
+
+  const getNavigationConfig = (from) => ({
+    pathname: loginURL,
+    search: from ? `?from=${encodeURIComponent(from)}` : "",
+  });
+
   const handleSubmit = (event) => {
-    history.push(`/${window?.contextPath}/employee/user/login`);
+    history.push(getNavigationConfig(fromParam));
   };
 
   if (isLoading) return <Loader />;
   return (
     <Background>
+      <style>
+        {`
+        @media screen and (max-width: 768px) {
+            .banner .bannerCard,
+            .loginFormStyleEmployee .employeeCard {
+                min-width: 300px !important;
+                margin: 10px !important;
+            }
+        }
+        `}
+      </style>
       <Card className={"bannerCard removeBottomMargin languageSelection"}>
         <div className="bannerHeader">
-          <ImageComponent className="bannerLogo" src={stateInfo?.logoUrl} alt="Digit Banner Image" />
+          <img
+            className="bannerLogo"
+            src={"https://selco-assets.s3.ap-south-1.amazonaws.com/TwoClr_horizontal_4X.png"}
+            alt="Selco Foundation"
+            style={{ width: "100px" }}
+          />
+          {/*<ImageComponent className="bannerLogo" src={stateInfo?.logoUrl} alt="Digit Banner Image" />*/}
 
           <p>{t(`TENANT_TENANTS_${stateInfo?.code?.toUpperCase()}`)}</p>
         </div>

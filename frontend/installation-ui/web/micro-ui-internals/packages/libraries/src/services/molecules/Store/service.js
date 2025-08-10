@@ -25,8 +25,8 @@ const addLogo = (id, url, fallbackUrl = "") => {
     document.body.appendChild(containerDiv);
   }
   const img = document.createElement("img");
-  img.src = getImgUrl(url, fallbackUrl);
-  img.id = `logo-${id}`;
+  img.src = "";
+  img.id = `logo-id`;
   containerDiv.appendChild(img);
 };
 
@@ -159,21 +159,14 @@ export const StoreService = {
 
     ApiCacheService.saveSetting(MdmsRes["DIGIT-UI"]?.ApiCachingSettings);
 
-    const moduleTenants = initData.modules
-      .map((module) => module.tenants)
-      .flat()
-      .reduce((unique, ele) => (unique.find((item) => item.code === ele.code) ? unique : [...unique, ele]), []);
-      if (Digit.Utils.getMultiRootTenant()) {
-        initData.tenants = MdmsRes?.tenant?.cities.map((tenant) => ({
-            i18nKey: `TENANT_TENANTS_${tenant.code.replace(".", "_").toUpperCase()}`,
-            ...tenant,
-        }));
-      } else {
-        initData.tenants = MdmsRes?.tenant?.tenants.map((tenant) => ({
-            i18nKey: `TENANT_TENANTS_${tenant.code.replace(".", "_").toUpperCase()}`,
-            ...tenant,
-        }));
-    }
+    // const moduleTenants = initData.modules
+    //   .map((module) => module.tenants)
+    //   .flat()
+    //   .reduce((unique, ele) => (unique.find((item) => item.code === ele.code) ? unique : [...unique, ele]), []);
+
+    initData.tenants = MdmsRes?.tenant?.tenants
+      .map((tenant) => ({ i18nKey: `TENANT_TENANTS_${tenant.code.replace(".", "_").toUpperCase()}`, ...tenant }));
+
     // .filter((item) => !!moduleTenants.find((mt) => mt.code === item.code))
     // .map((tenant) => ({ i18nKey: `TENANT_TENANTS_${tenant.code.replace(".", "_").toUpperCase()}`, ...tenant }));
 

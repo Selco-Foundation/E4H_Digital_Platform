@@ -27,7 +27,7 @@ const SearchCentre = ({ centreName, setCentreName, onSubmit, onClear }) => {
               <span
                 onClick={onClear}
                 className="clear-search"
-                style={{ color: "#7a2829", marginLeft: "15px", marginTop: "10px", marginLeft: "50px" }}
+                style={{ color: "#7a2829", marginLeft: "15px", marginTop: "10px" }}
               >
                 Clear Search
               </span>
