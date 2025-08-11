@@ -62,9 +62,9 @@ This document provides a comprehensive overview of all use cases, workflows, API
 #### **APIs Used:**
 - `GET /project/v1/_search` (Project Service)
 - `GET /egov-mdms-service/v1/_search` (MDMS)
-- `GET /v1/field-planner/field-plans/facilities/template`
-- `POST /v1/field-planner/v1/field-plans/facilities/upload`
-- `POST /v1/field-planner/v1/field-plans/_create`
+- `GET /field-planner/field-plans/facilities/v1/template`
+- `POST field-planner/v1/field-plans/facilities/v1/upload`
+- `POST field-planner/v1/field-plans/v1/_create`
 
 #### **Configuration:**
 ```json
