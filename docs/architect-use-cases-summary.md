@@ -239,7 +239,7 @@ This document provides a comprehensive overview of all use cases, workflows, API
 
 ### 5.1 Master Data Configuration (MDMS)
 
-#### **Activity Types Configuration**
+#### **Activity Types Configuration** (Seperate masters for backend and forntend)
 ```json
 {
   "moduleName": "field-planner",
@@ -249,15 +249,15 @@ This document provides a comprehensive overview of all use cases, workflows, API
       "code": "INSTALLATION",
       "name": "Installation",
       "requiredRoles": ["INSTALLATION_SPOC", "INSTALLATION_REVIEWER"],
-      "workflowCode": "field-plan-installation",
-      "slaHours": 72
+      "busniessServiceName": "field-plan-installation",
+      
     },
     {
       "code": "FIELD_QC",
       "name": "Field Quality Check",
       "requiredRoles": ["FIELD_QC_SPOC", "FIELD_QC_REVIEWER"],
-      "workflowCode": "field-plan-qc",
-      "slaHours": 24
+      "busniessServiceName": "field-plan-qc",
+      
     }
   ]
 }
@@ -304,7 +304,7 @@ This document provides a comprehensive overview of all use cases, workflows, API
 #### **Field Plan Workflow**
 ```json
 {
-  "moduleName": "field-planner",
+  "moduleName": "field-planner", (referenced from access control)
   "masterName": "workflow-definitions",
   "data": {
     "field-plan-workflow": {
