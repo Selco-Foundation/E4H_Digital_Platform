@@ -1,6 +1,13 @@
 # Changelog
 All notable changes to this module will be documented in this file.
 
+## 1.1.9 - 2025-08-11
+- User login report
+- Hot Fix on prod
+- Legacy ticket ingestion
+- Add totalSLA logic
+- Rollback consumer for auto escalation
+
 ## 1.1.8 - 2023-08-10
 
 - Central Instance Library Integration

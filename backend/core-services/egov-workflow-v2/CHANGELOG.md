@@ -3,6 +3,9 @@
 # Changelog
 All notable changes to this module will be documented in this file.
 
+## 1.2.3 - 2025-08-11
+- Modified workflow transition method
+
 ## 1.2.2 - 2023-02-06
 
 - Transition from 1.2.2-beta version to 1.2.2 version
