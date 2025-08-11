@@ -93,7 +93,7 @@ const getDetailsRow = ({ id, incident, complaintType }) => ({
   CS_ADDCOMPLAINT_SYSTEM_FUNCTIONAL: incident.systemFunctional != null ? incident.systemFunctional : "",
   CS_ADDCOMPLAINT_DISTRICT: `${incident.district}`,
   CS_ADDCOMPLAINT_BLOCK: `${incident?.block}`,
-  CS_ADDCOMPLAINT_HEALTH_CARE_CENTRE: `TENANT_TENANTS_${incident?.phcType?.replace(".", "_").toUpperCase()}`,
+  CS_ADDCOMPLAINT_HEALTH_CARE_CENTRE: `TENANT_TENANTS_${incident?.tenantId?.replace(".", "_").toUpperCase()}`,
   CS_COMPLAINT_COMMENTS: incident?.comments,
   CS_ADDCOMPLAINT_HEALTH_CARE_SUB_TYPE: `${getHealthCareCentreType(incident?.phcSubType)}`,
   CS_COMPLAINT_FILED_DATE: incident.filedDate ? Digit.DateUtils.ConvertEpochToDate(incident.filedDate) : Digit.DateUtils.ConvertEpochToDate(incident.auditDetails.createdTime),
@@ -137,12 +137,12 @@ const fetchComplaintDetails = async (tenantIdNew, id) => {
 
     // Updated to fetch ALL verification documents, not just PHOTO
     const documentsToFetch = workflow.verificationDocuments || [];
-    
+
     const ids = documentsToFetch.map((doc) => doc.fileStoreId || doc.id);
-    
+
     const state = Digit.ULBService.getStateId();
     const thumbnails = ids.length > 0 ? await getThumbnails(ids, incident.tenantId, documentsToFetch) : null;
-    
+
     const details = transformDetails({ id, incident, workflow, thumbnails, complaintType });
     return details;
   } else {

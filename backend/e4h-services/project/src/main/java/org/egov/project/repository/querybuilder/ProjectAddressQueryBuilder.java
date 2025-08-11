@@ -8,15 +8,20 @@ import org.apache.commons.lang3.StringUtils;
 import org.egov.common.models.core.ProjectSearchURLParams;
 import org.egov.common.models.project.Project;
 import org.egov.common.models.project.ProjectSearch;
+import org.egov.common.models.project.ProjectSearchRequest;
 import org.egov.project.config.ProjectConfiguration;
 import org.egov.project.web.models.ProjectSearchCriteria;
+import org.egov.project.web.models.ProjectSortCriteria;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static org.egov.project.util.ProjectConstants.DOT;
+import static org.egov.project.util.ProjectConstants.PROJECT_MANAGER;
 
 @Component
 @Slf4j
@@ -203,22 +208,40 @@ public class ProjectAddressQueryBuilder {
     /**
      * Constructs the SQL query string for searching projects based on the given parameters.
      *
-     * @param projectSearch    The search criteria provided in the request body.
+     * @param projectSearchRequest    The search criteria provided in the request body.
      * @param urlParams        The search criteria provided as URL parameters.
      * @param preparedStmtList The list to which prepared statement parameters will be added.
      * @param isCountQuery     Boolean flag indicating if the query is for counting records.
      * @return The constructed SQL query string.
      */
-    public String getProjectSearchQuery(@NotNull @Valid ProjectSearch projectSearch, ProjectSearchURLParams urlParams, List<Object> preparedStmtList, Boolean isCountQuery) {
+    public String getProjectSearchQuery(@NotNull @Valid ProjectSearchRequest projectSearchRequest,
+                                        ProjectSearchURLParams urlParams,
+                                        List<Object> preparedStmtList,
+                                        Boolean isCountQuery,
+                                        List<String> workflowStatuses)
+    {
         // Use a ternary operator to select between PROJECTS_COUNT_QUERY and FETCH_PROJECT_ADDRESS_QUERY based on isCountQuery flag.
         String query = isCountQuery ? PROJECTS_COUNT_QUERY : FETCH_PROJECT_ADDRESS_QUERY;
         StringBuilder queryBuilder = new StringBuilder(query);
 
+        // Get user info
+        var userInfo = projectSearchRequest.getRequestInfo().getUserInfo();
+        String userUuid = userInfo.getUuid();
+        boolean isProjectManager = false;
+        if (userInfo.getRoles() != null) {
+            isProjectManager = userInfo.getRoles().stream().anyMatch(role -> PROJECT_MANAGER.equalsIgnoreCase(role.getCode()));
+        }
+
+        if (!isProjectManager) {
+            queryBuilder.append("JOIN project_staff ps ON ps.projectid = prj.id ");
+        }
+
+        ProjectSearch projectSearch = projectSearchRequest.getProject();
         // Check if tenant ID is provided in URL parameters
         addClause(urlParams.getTenantId(), preparedStmtList, queryBuilder);
 
         // Check if project IDs are provided
-        addClauseOnProjects(projectSearch, preparedStmtList, queryBuilder);
+        addClauseOnProjects(projectSearch, preparedStmtList, queryBuilder, userUuid, isProjectManager);
 
         // Check if boundary code is provided
         if (projectSearch.getBoundaryCode() != null && StringUtils.isNotBlank(projectSearch.getBoundaryCode())) {
@@ -255,6 +278,13 @@ public class ProjectAddressQueryBuilder {
             preparedStmtList.add(urlParams.getLastChangedSince());
         }
 
+        // Check if parent is provided
+        if (StringUtils.isNotBlank(projectSearch.getParent())) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            queryBuilder.append(" prj.parent =? ");
+            preparedStmtList.add(projectSearch.getParent());
+        }
+
         // Check if createdFrom date is provided
         if (urlParams.getCreatedFrom() != null && urlParams.getCreatedFrom() != 0) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
@@ -272,6 +302,15 @@ public class ProjectAddressQueryBuilder {
         // Add clause if includeDeleted is true in request parameter
         addIsDeletedCondition(preparedStmtList, queryBuilder, urlParams.getIncludeDeleted());
 
+        // Check if workflowStatuses filter is provided
+        if (workflowStatuses != null && !workflowStatuses.isEmpty()) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            queryBuilder.append(" prj.status IN (");
+            String placeholders = workflowStatuses.stream().map(ws -> "?").collect(Collectors.joining(", "));
+            queryBuilder.append(placeholders).append(") ");
+            preparedStmtList.addAll(workflowStatuses);
+        }
+
         // Close the query with a closing bracket
         queryBuilder.append(" )");
 
@@ -284,7 +323,8 @@ public class ProjectAddressQueryBuilder {
         return addPaginationWrapper(queryBuilder.toString(), preparedStmtList, urlParams.getLimit(), urlParams.getOffset());
     }
 
-    private void addClauseOnProjects(ProjectSearch projectSearch, List<Object> preparedStmtList, StringBuilder queryBuilder) {
+    private void addClauseOnProjects(ProjectSearch projectSearch, List<Object> preparedStmtList,
+                                     StringBuilder queryBuilder, String userUuid, boolean isProjectManager) {
         if (!CollectionUtils.isEmpty(projectSearch.getId())) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
             queryBuilder.append(" prj.id IN (").append(createQuery(projectSearch.getId())).append(")");
@@ -310,6 +350,13 @@ public class ProjectAddressQueryBuilder {
             addClauseIfRequired(preparedStmtList, queryBuilder);
             queryBuilder.append(" prj.projectType=? ");
             preparedStmtList.add(projectSearch.getProjectTypeId());
+        }
+
+        // Check if not project manager role
+        if (!isProjectManager && StringUtils.isNotBlank(userUuid)) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            queryBuilder.append(" ps.staffid = ? ");
+            preparedStmtList.add(userUuid);
         }
     }
 
@@ -407,7 +454,33 @@ public class ProjectAddressQueryBuilder {
     }
 
     /* Returns query to get total projects count based on project search params */
-    public String getSearchCountQueryString(ProjectSearch projectSearch, ProjectSearchURLParams urlParams, List<Object> preparedStatement) {
-        return getProjectSearchQuery(projectSearch, urlParams, preparedStatement, Boolean.TRUE);
+    public String getSearchCountQueryString(ProjectSearchRequest projectSearchRequest,
+                                            ProjectSearchURLParams urlParams,
+                                            List<Object> preparedStatement,
+                                            List<String> workflowStatuses) {
+        return getProjectSearchQuery(projectSearchRequest, urlParams, preparedStatement, Boolean.TRUE, workflowStatuses);
+    }
+
+    public String getProjectSearchAndSortQuery(ProjectSearchRequest projectSearchRequest, ProjectSearchURLParams urlParams, List<Object> preparedStmtList, Boolean isCountQuery, List<String> workflowStatuses, ProjectSortCriteria sortParam) {
+        String query = getProjectSearchQuery(projectSearchRequest, urlParams, preparedStmtList, isCountQuery, workflowStatuses);
+        // Adding sort criteria
+        String sortField = null;
+        if (sortParam != null && sortParam.getSortBy() != null) {
+            String userSortField = sortParam.getSortBy();
+            sortField = userSortField.startsWith("project_") ? userSortField : "project_" + userSortField;
+        }
+        // Determine sort order (default DESC if invalid or null)
+        ProjectSortCriteria.SortDirection sortDirection = (sortParam != null && sortParam.getSortDirection() != null)
+                ? sortParam.getSortDirection()
+                : ProjectSortCriteria.SortDirection.DESC;
+        // Default sorting field
+        String defaultSortField = "project_lastModifiedTime";
+        String defaultSortOrder = ProjectSortCriteria.SortDirection.DESC.name();
+        if (sortField != null) {
+            query += " ORDER BY " + sortField + " " + sortDirection;
+        } else {
+            query += " ORDER BY " + defaultSortField + " " + defaultSortOrder;
+        }
+        return query;
     }
 }

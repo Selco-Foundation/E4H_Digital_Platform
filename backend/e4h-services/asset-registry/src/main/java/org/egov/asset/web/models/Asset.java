@@ -2,7 +2,6 @@ package org.egov.asset.web.models;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import digit.models.coremodels.AuditDetails;
-import digit.models.coremodels.Document;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -49,7 +48,6 @@ public class Asset {
     private String serialNumber = null;
 
     @JsonProperty("modelNumber")
-    @NotNull
     private String modelNumber = null;
 
     @JsonProperty("brandID")
@@ -60,15 +58,12 @@ public class Asset {
     private Map<String, Object> assetDetails = null;
 
     @JsonProperty("warrantyStartDate")
-    @NotNull
     private Date warrantyStartDate = null;
 
     @JsonProperty("warrantyDuration")
-    @NotNull
     private Integer warrantyDuration = null;
 
     @JsonProperty("warrantyEndDate")
-    @NotNull
     private Date warrantyEndDate = null;
 
     @JsonProperty("wfStatus")
@@ -76,6 +71,9 @@ public class Asset {
 
     @JsonProperty("isActive")
     private Boolean isActive = null;
+
+    @JsonProperty("isOperational")
+    private Boolean isOperational = null;
 
     @JsonProperty("documents")
     private List<Document> documents = null;

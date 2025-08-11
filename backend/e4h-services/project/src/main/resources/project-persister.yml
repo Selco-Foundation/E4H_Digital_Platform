@@ -182,7 +182,7 @@ serviceMaps:
     - version: 1.0
       name: Projects
       description: Persists project details in project table
-      fromTopic: save-project-health
+      fromTopic: save-project
       isTransaction: true
       isAuditEnabled: true
       module: PROJECT
@@ -337,7 +337,7 @@ serviceMaps:
     - version: 1.0
       name: Projects
       description: Updates project details in project table
-      fromTopic: update-project-health
+      fromTopic: update-project
       isTransaction: true
       isAuditEnabled: true
       module: PROJECT
@@ -347,7 +347,7 @@ serviceMaps:
       transactionCodeJsonPath: $.id
       auditAttributeBasePath: $.*
       queryMaps:
-        - query: UPDATE project SET name = ?, projectType = ?, projectTypeId = ?, projectSubType = ?, department = ?, description = ?, referenceId = ?, startDate = ?, endDate = ?, isTaskEnabled = ?, natureOfWork = ?, additionalDetails = ?, isDeleted = ?, rowVersion = ?, lastModifiedBy = ?, lastModifiedTime = ? WHERE id = ?;
+        - query: UPDATE project SET name = ?, projectType = ?, projectTypeId = ?, projectSubType = ?, department = ?, description = ?, referenceId = ?, startDate = ?, endDate = ?, isTaskEnabled = ?, natureOfWork = ?, status = ?, additionalDetails = ?, isDeleted = ?, rowVersion = ?, lastModifiedBy = ?, lastModifiedTime = ? WHERE id = ?;
           basePath: $.Projects.*
           jsonMaps:
 
@@ -372,7 +372,7 @@ serviceMaps:
             - jsonPath: $.Projects.*.isTaskEnabled
 
             - jsonPath: $.Projects.*.natureOfWork
-
+            - jsonPath: $.Projects.*.additionalDetails.status
             - jsonPath: $.Projects.*.additionalDetails
               type: JSON
               dbType: JSONB
@@ -709,7 +709,7 @@ serviceMaps:
     - version: 1.0
       name: Projects
       description: Persists project in project table
-      fromTopic: save-project
+      fromTopic: save-project-health
       isTransaction: true
       isAuditEnabled: true
       module: PROJECT
@@ -769,3 +769,50 @@ serviceMaps:
             - jsonPath: $.Projects.*.auditDetails.createdTime
 
             - jsonPath: $.Projects.*.auditDetails.lastModifiedTime
+
+    - version: 1.0
+      description: Persists project transactions
+      fromTopic: project-transaction-create
+      isTransaction: true
+      module: PROJECT
+      objecIdJsonPath: $.transactions.*.transactionId
+      auditAttributeBasePath: $.transactions.*.auditDetails
+      queryMaps:
+        - query: >
+            INSERT INTO project_transaction (
+              id, project_id, process_instance_id,
+              created_by, last_modified_by, created_time, last_modified_time
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+          basePath: $.transactions.*
+          jsonMaps:
+            - jsonPath: $.transactions.*.transactionId
+            - jsonPath: $.transactions.*.projectId
+            - jsonPath: $.transactions.*.processInstanceId
+            - jsonPath: $.transactions.*.auditDetails.createdBy
+            - jsonPath: $.transactions.*.auditDetails.lastModifiedBy
+            - jsonPath: $.transactions.*.auditDetails.createdTime
+            - jsonPath: $.transactions.*.auditDetails.lastModifiedTime
+
+    - version: 1.0
+      description: Persists project comments
+      fromTopic: project-comment-create
+      isTransaction: true
+      module: PROJECT
+      objecIdJsonPath: $.comments.*.commentId
+      auditAttributeBasePath: $.comments.*.auditDetails
+      queryMaps:
+        - query: >
+            INSERT INTO project_transaction_comment (
+              id, transaction_id, comment_message, asset_type,
+              created_by, last_modified_by, created_time, last_modified_time
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          basePath: $.comments.*
+          jsonMaps:
+            - jsonPath: $.comments.*.commentId
+            - jsonPath: $.comments.*.transactionId
+            - jsonPath: $.comments.*.commentMessage
+            - jsonPath: $.comments.*.assetType
+            - jsonPath: $.comments.*.auditDetails.createdBy
+            - jsonPath: $.comments.*.auditDetails.lastModifiedBy
+            - jsonPath: $.comments.*.auditDetails.createdTime
+            - jsonPath: $.comments.*.auditDetails.lastModifiedTime

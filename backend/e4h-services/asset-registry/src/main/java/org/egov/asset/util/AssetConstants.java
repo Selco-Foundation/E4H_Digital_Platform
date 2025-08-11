@@ -18,7 +18,7 @@ public class AssetConstants {
     public static final String WARRANTY_DURATION = "WarrantyDurationSchema";
 
     public static final String SYSTEM_DC = "DC";
-    public static final String SYSTEM_AC_OFF_GRID = "AC Off Grid";
+    public static final String SYSTEM_AC_OFF_GRID = "AC_OFF_GRID";
     public static final Set<Double> VALID_DC_BATTERY_CAPACITIES = new HashSet<>(
             Arrays.asList(125.0, 150.0, 180.0, 200.0, 220.0));
     public static final Set<Double> VALID_DC_BATTERY_VOLTAGES = new HashSet<>(

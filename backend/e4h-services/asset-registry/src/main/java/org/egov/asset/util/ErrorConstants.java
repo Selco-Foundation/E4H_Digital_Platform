@@ -21,6 +21,9 @@ public class ErrorConstants {
     public static final String KAFKA_PUSH_ERROR_CODE = "ERR_KAFKA_PUSH";
     public static final String KAFKA_PUSH_ERROR_MSG = "Failed to push asset creation event";
 
+    public static final String UPDATE_ASSET_ERROR_CODE = "UPDATE_ASSET";
+    public static final String UPDATE_ASSET_ERROR_MSG = "Failed to update asset";
+
     public static final String ASSET_BRAND_MDMS_DATA_CODE = "ERR_ASSET_BRAND_MDMS_DATA";
     public static final String ASSET_BRAND_MDMS_DATA_MSG = "Mdms data for brand does not exist or invalid in asset-registry module";
 
@@ -159,4 +162,9 @@ public class ErrorConstants {
     public static final String ASSET_PANEL_CAPACITY_UNIT_REQUIRED_CODE = "ERR_PANEL_CAPACITY_UNIT_REQUIRED";
     public static final String ASSET_PANEL_CAPACITY_UNIT_REQUIRED_MSG = "Capacity Unit is required";
 
+    public static final String ASSET_ID_MISMATCH_CODE = "ERR_ASSET_ID_MISMATCH";
+    public static final String ASSET_ID_MISMATCH_MSG = "Provided assetId does not match the asset's ID";
+
+    public static final String ASSET_NOT_FOUND_CODE = "ERR_ASSET_NOT_FOUND";
+    public static final String ASSET_NOT_FOUND_MSG = "Provided asset does not exist or invalid";
 }

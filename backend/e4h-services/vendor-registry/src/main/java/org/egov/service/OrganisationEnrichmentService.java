@@ -51,6 +51,9 @@ public class OrganisationEnrichmentService {
         List<String> orgApplicationNumbers = idgenUtil.getIdList(requestInfo, tenantId, config.getOrgApplicationNumberName()
                 , config.getOrgApplicationNumberFormat(), organisationList.size());
 
+        //idgen to get the list of organisation codes
+        List<String> orgCodes = idgenUtil.getIdList(requestInfo, tenantId, config.getOrgCodeName(), config.getOrgCodeFormat(), organisationList.size());
+
         //idgen to get the list of function application Numbers
         long idgenFuncApplicationNumberCount = organisationList.stream().mapToInt(org -> {
             if (!CollectionUtils.isEmpty(org.getFunctions())) {
@@ -64,9 +67,11 @@ public class OrganisationEnrichmentService {
 
         int orgAppNumIdFormatIndex = 0;
         int funcAppNumIdFormatIndex = 0;
+        int orgCodeIdFormatIndex = 0;
         for (Organisation organisation : organisationList) {
             organisation.setId(UUID.randomUUID().toString());
             organisation.setApplicationNumber(orgApplicationNumbers.get(orgAppNumIdFormatIndex));
+            organisation.setCode(orgCodes.get(orgCodeIdFormatIndex));
             if (organisation.getIsActive() == null) {
                 organisation.setIsActive(Boolean.TRUE);
             }
@@ -104,6 +109,7 @@ public class OrganisationEnrichmentService {
             enrichJurisdiction(jurisdictionList);
 
             orgAppNumIdFormatIndex++;
+            orgCodeIdFormatIndex++;
         }
 
 

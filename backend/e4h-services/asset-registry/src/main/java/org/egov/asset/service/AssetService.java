@@ -1,7 +1,7 @@
 package org.egov.asset.service;
 
 import digit.models.coremodels.AuditDetails;
-import digit.models.coremodels.Document;
+//import digit.models.coremodels.Document;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.asset.mapper.AssetRowMapper;
 import org.egov.asset.mapper.DocumentRowMapper;
@@ -12,6 +12,7 @@ import org.egov.asset.util.ResponseInfoFactory;
 import org.egov.asset.web.models.Asset;
 import org.egov.asset.web.models.AssetCreateRequest;
 import org.egov.asset.web.models.AssetCreateResponse;
+import org.egov.asset.web.models.Document;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -160,4 +161,27 @@ public class AssetService {
         });
     }
 
+    public Asset updateAsset(String assetId, AssetCreateRequest request) {
+        if (request == null || request.getAssetDetail() == null || request.getAssetDetail().getAsset() == null) {
+            throw new CustomException("INVALID_REQUEST", "Asset request cannot be null");
+        }
+        Asset updated = request.getAssetDetail().getAsset();
+        if (!assetId.equals(updated.getAssetId())) {
+            throw new CustomException("ASSET_ID_MISMATCH", "Provided assetId does not match the asset's ID");
+        }
+
+        // Check whether asset exists in the database
+        List<Asset> existingAssets = searchAssets(Asset.builder().assetId(updated.getAssetId()).tenantId(updated.getTenantId()).build(), 10, 0);
+        if (existingAssets == null || existingAssets.isEmpty()) {
+            throw new CustomException("ASSET_NOT_FOUND", "Asset with ID " + assetId + " does not exist");
+        }
+
+        // Update audit details
+        if (updated.getAuditDetails() != null) {
+            updated.getAuditDetails().setLastModifiedBy(request.getRequestInfo().getUserInfo().getUserName());
+            updated.getAuditDetails().setLastModifiedTime(System.currentTimeMillis());
+        }
+        assetRepository.pushUpdateAsset(updated);
+        return updated;
+    }
 }
