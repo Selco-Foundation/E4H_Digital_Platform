@@ -62,9 +62,9 @@ This document provides a comprehensive overview of all use cases, workflows, API
 #### **APIs Used:**
 - `GET /project/v1/_search` (Project Service)
 - `GET /egov-mdms-service/v1/_search` (MDMS)
-- `GET /field-planner/v1/field-plans/facilities/template`
-- `POST /field-planner/v1/field-plans/facilities/upload`
-- `POST /field-planner/v1/field-plans/_create`
+- `GET /v1/field-planner/field-plans/facilities/template`
+- `POST /v1/field-planner/v1/field-plans/facilities/upload`
+- `POST /v1/field-planner/v1/field-plans/_create`
 
 #### **Configuration:**
 ```json
@@ -80,14 +80,14 @@ This document provides a comprehensive overview of all use cases, workflows, API
 ### 3.2 UC-02: Assign Activities to SPOCs
 
 #### **Workflow Steps:**
-1. **SPOC Search** → Search HRMS for eligible SPOCs
+1. **SPOC Search** → Search VENDOR REGISTRY for eligible SPOCs
 2. **Role Validation** → Validate SPOC roles and permissions
 3. **Assignment Creation** → Create activity assignments
 4. **Notification** → Send assignment notifications
 
 #### **APIs Used:**
-- `GET /egov-hrms/employees/_search` (HRMS)
-- `POST /field-planner/v1/field-plans/{id}/activities/_assign`
+- `GET /organization/employees/v1/_search` (VENDOR SEARCH mapped to project manager across multiple vendor orgs and one for vendor employee using params with org info)
+- `POST /v1/field-planner/field-plans/{id}/activities/_assign`
 
 #### **Configuration:**
 ```json
