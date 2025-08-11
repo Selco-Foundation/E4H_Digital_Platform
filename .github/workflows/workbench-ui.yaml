@@ -58,7 +58,7 @@ jobs:
           cache-from: type=gha   # Stores cache in GitHub Actions .
           cache-to: type=gha,mode=max  # max- stores all the layers including the intermediate layers in multi-stage
           build-args: |
-            WORK_DIR=frontend/micro-ui/
+            WORK_DIR=frontend/micro-ui/web/workbench/
 
   Workflow_Trigger:
     if: startsWith(github.ref, 'refs/heads/develop')
