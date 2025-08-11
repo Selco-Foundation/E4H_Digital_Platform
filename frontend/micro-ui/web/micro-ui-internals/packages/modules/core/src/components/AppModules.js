@@ -28,8 +28,8 @@ export const AppModules = ({ stateCode, userType, modules, appTenants }) => {
         <Module stateCode={stateCode} moduleCode={code} userType={userType} tenants={getTenants(tenants, appTenants)} />
       </Route>
     ) :   <Route key={index} path={`${path}/${code.toLowerCase()}`}>
-      <Redirect to={{ pathname: `/${window.contextPath}/employee/user/error?type=notfound`, state: { from: location.pathname + location.search } }} />
-    </Route>;
+    <Redirect to={{ pathname: `/${window.contextPath}/employee/user/error?type=notfound`, state: { from: location.pathname + location.search } }} />
+  </Route>;
   });
 
   return (
