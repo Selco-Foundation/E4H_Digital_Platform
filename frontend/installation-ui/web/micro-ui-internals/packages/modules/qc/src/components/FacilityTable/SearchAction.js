@@ -43,39 +43,44 @@ const SearchActionCentre = ({ t, projectQueryFilter, mainCheckBox, selectedFacil
             {mainCheckBox ? "All" : selectedFacilities.length} Health Facilities Selected
           </div>
         ) : (
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "10px",
-            }}
-          >
-            <TextInput
-              name="serviceRequestId"
-              value={textToSearch}
-              placeholder="Search Health Facilities"
-              onChange={(e) => {
-                setTextToSearch(e.target.value);
-              }}
-              style={{ marginTop: "auto", marginBottom: "auto" }}
-            ></TextInput>
-            <SubmitBar
-              onSubmit={() => {
-                handleSearch(textToSearch);
-              }}
-              label={"Search"}
-            />
-            <LinkLabel
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            handleSearch(textToSearch);
+          }}>
+            <div
               style={{
-                fontSize: "18px",
-                marginTop: "auto",
-                marginBottom: "auto"
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
               }}
-              onClick={handleClear}
             >
-              Clear
-            </LinkLabel>
-          </div>
+              <TextInput
+                name="serviceRequestId"
+                value={textToSearch}
+                placeholder="Search Health Facilities"
+                onChange={(e) => {
+                  setTextToSearch(e.target.value);
+                }}
+                style={{ marginTop: "auto", marginBottom: "auto" }}
+              ></TextInput>
+              <SubmitBar
+                onSubmit={() => {
+                  handleSearch(textToSearch);
+                }}
+                label={"Search"}
+              />
+              <LinkLabel
+                style={{
+                  fontSize: "18px",
+                  marginTop: "auto",
+                  marginBottom: "auto"
+                }}
+                onClick={handleClear}
+              >
+                Clear
+              </LinkLabel>
+            </div>
+          </form>
         )}
         <div
           style={{

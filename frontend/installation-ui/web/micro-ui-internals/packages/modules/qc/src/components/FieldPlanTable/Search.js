@@ -18,7 +18,10 @@ const SearchCentre = ({ queryFilter, onSearch, onClear }) => {
   return (
     <React.Fragment>
       <div style={{ width: "100%", background: "white", height: "fit-content", marginBottom: "15px", padding: "10px" }}>
-        <div>
+        <form onSubmit={(e) => {
+          e.preventDefault();
+          handleSearch();
+        }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <span>
               <Label>Search Field Plan Code</Label>
@@ -42,7 +45,7 @@ const SearchCentre = ({ queryFilter, onSearch, onClear }) => {
               <SubmitBar onSubmit={handleSearch} style={{ marginLeft: "10px" }} label={"Search"} />
             </div>
           </div>
-        </div>
+        </form>
       </div>
     </React.Fragment>
   );
