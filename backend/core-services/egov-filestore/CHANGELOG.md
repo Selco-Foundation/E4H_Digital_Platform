@@ -1,7 +1,7 @@
 # Changelog
 All notable changes to this module will be documented in this file.
 
-## 2.9.1 - 2025-08-11
+## 2.10.0 - 2025-08-11
 - Filestore HLS re-implementation
 - Add video supported format
 - Patch for filestore HLS directory, filestore and s3 path
