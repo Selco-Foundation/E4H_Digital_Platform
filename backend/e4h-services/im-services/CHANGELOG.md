@@ -1,7 +1,7 @@
 # Changelog
 All notable changes to this module will be documented in this file.
 
-## 1.2.8 - 2025-08-11
+## 1.2.0 - 2025-08-11
 - User login report
 - Hot Fix on prod
 - Legacy ticket ingestion
