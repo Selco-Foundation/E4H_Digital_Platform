@@ -519,6 +519,148 @@ def get_mdms_code_by_name(schema_list: List[Dict[str, Any]], field_name: str, va
 
     raise ValueError(f"Field name '{field_name}' not found in MDMS schema.")
 
+
+def get_incident_request_info():
+    return {
+        "apiId": "Rainmaker",
+        "authToken": "222d0cf6-07c2-4d90-8a71-0292c200ae74",
+        "userInfo": {
+            "id": 1863,
+            "userName": "8974350748",
+            "salutation": None,
+            "name": "Tingpai S",
+            "gender": "MALE",
+            "mobileNumber": "8974350748",
+            "emailId": None,
+            "altContactNumber": None,
+            "pan": None,
+            "aadhaarNumber": None,
+            "permanentAddress": None,
+            "permanentCity": None,
+            "permanentPinCode": None,
+            "correspondenceAddress": None,
+            "correspondenceCity": None,
+            "correspondencePinCode": None,
+            "alternatemobilenumber": None,
+            "active": True,
+            "locale": None,
+            "type": "EMPLOYEE",
+            "accountLocked": False,
+            "accountLockedDate": 0,
+            "fatherOrHusbandName": "Mathihalli",
+            "relationship": "FATHER",
+            "signature": None,
+            "bloodGroup": None,
+            "photo": None,
+            "identificationMark": None,
+            "createdBy": 0,
+            "lastModifiedBy": 24226,
+            "tenantId": "nl",
+            "roles": [
+                {
+                    "code": "SUPERUSER",
+                    "name": "Super User",
+                    "tenantId": "nl"
+                },
+                {
+                    "code": "EMPLOYEE",
+                    "name": "Employee",
+                    "tenantId": "nl"
+                },
+                {
+                    "code": "COMPLAINANT",
+                    "name": "Complainant",
+                    "tenantId": "nl"
+                },
+                {
+                    "code": "COMPLAINT_FACILITATOR_2",
+                    "name": "Complaint facilitator 2",
+                    "tenantId": "nl"
+                },
+                {
+                    "code": "COMPLAINT_ASSESSOR",
+                    "name": "Complaint Assessor",
+                    "tenantId": "nl"
+                }
+            ],
+            "uuid": "8acc5b7b-4dcb-497a-ad08-5eef4f53442c",
+            "createdDate": "17-04-2025 23:19:29",
+            "lastModifiedDate": "04-07-2025 01:30:31",
+            "dob": "1994-02-08",
+            "pwdExpiryDate": "16-07-2025 23:19:29"
+        },
+        "msgId": "1751897062350|en_IN",
+        "plainAccessRequest": {}
+    }
+
+
+def create_update_payload(search_response: dict, update_data: dict) -> dict:
+    incident_wrapper = search_response.get("IncidentWrappers", [{}])[0]
+    incident = incident_wrapper.get("incident", {})
+    workflow = incident_wrapper.get("workflow", {})
+
+    request_info = get_incident_request_info()
+
+    original_type = incident.get('incidentType', '')
+    original_subtype = incident.get('incidentSubType', '')
+
+
+
+    details = {
+        "CS_COMPLAINT_DETAILS_TICKET_NO": incident.get("incidentId"),
+        "CS_COMPLAINT_DETAILS_APPLICATION_STATUS": f"CS_COMMON_{incident.get('applicationStatus', 'PENDINGFORASSIGNMENT')}",
+        "CS_ADDCOMPLAINT_TICKET_TYPE": f"SERVICEDEFS.{original_type.upper()}",
+        "CS_ADDCOMPLAINT_TICKET_SUB_TYPE": f"SERVICEDEFS.{original_subtype.upper()}",
+        "CS_ADDCOMPLAINT_SYSTEM_FUNCTIONAL": incident.get("systemFunctional", "NON_FUNCTIONAL"),
+        "CS_ADDCOMPLAINT_DISTRICT": incident.get("district", ""),
+        "CS_ADDCOMPLAINT_BLOCK": incident.get("block", ""),
+        "CS_ADDCOMPLAINT_HEALTH_CARE_CENTRE": incident.get("tenantId", ""),
+        "CS_COMPLAINT_COMMENTS": incident.get("comments", ""),
+        "CS_ADDCOMPLAINT_HEALTH_CARE_SUB_TYPE": incident.get("phcSubType", ""),
+        "CS_COMPLAINT_FILED_DATE": update_data.get("filed_date", "")
+    }
+
+    additional_detail = incident.get("additionalDetail", {})
+    existing_reject_reasons = additional_detail.get("rejectReason", [])
+
+    new_reason = update_data.get("reject_reason", "Duplication")
+
+    if isinstance(existing_reject_reasons, list):
+        if new_reason not in existing_reject_reasons:
+            existing_reject_reasons.append(new_reason)
+    else:
+        existing_reject_reasons = [new_reason]
+
+    incident["additionalDetail"] = {
+        **additional_detail,
+        "rejectReason": existing_reject_reasons
+    }
+
+    incident["incidentType"] = original_type
+    incident["incidentSubType"] = original_subtype
+
+    # Create workflow object
+    workflow.update({
+        "action": update_data.get("action", "REJECT"),
+        "comments": update_data.get("comments", ""),
+        "rejectReason": update_data.get("reject_reason", "Duplication"),
+        "assignee": [request_info["userInfo"]["uuid"]]
+    })
+
+    audit = {
+        "details": incident.get("auditDetails", {}),
+        "incidentType": original_subtype
+    }
+
+    return {
+        "details": details,
+        "workflow": workflow,
+        "incident": incident,
+        "audit": audit,
+        "RequestInfo": request_info
+
+    }
+
 def get_expected_roles_for_staff() -> List[str]:
     return ["INSTALLATION_REPORT_PART_A_EDITOR", "EMPLOYEE"]
 
@@ -537,38 +679,38 @@ def check_role_mismatch_for_user_type(existing_user: Dict[str, Any], user_type: 
             "expected_roles": [],
             "mismatch_details": f"Unknown user type: {user_type}"
         }
-    
+
     # Extract current roles from user data
     current_roles = []
     user_data = existing_user.get("user", {})
     roles = user_data.get("roles", [])
-    
+
     for role in roles:
         role_code = role.get("code", "")
         if role_code:
             current_roles.append(role_code)
-    
+
     # Check for mismatches
     missing_roles = []
     unexpected_roles = []
-    
+
     for expected_role in expected_roles:
         if expected_role not in current_roles:
             missing_roles.append(expected_role)
-    
+
     for current_role in current_roles:
         if current_role not in expected_roles:
             unexpected_roles.append(current_role)
-    
+
     has_mismatch = bool(missing_roles or unexpected_roles)
-    
+
     mismatch_details = ""
     if has_mismatch:
         if missing_roles:
             mismatch_details += f"Missing roles: {', '.join(missing_roles)}. "
         if unexpected_roles:
             mismatch_details += f"Unexpected roles: {', '.join(unexpected_roles)}."
-    
+
     return {
         "has_mismatch": has_mismatch,
         "current_roles": current_roles,
