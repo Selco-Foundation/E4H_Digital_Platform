@@ -58,7 +58,7 @@ jobs:
           cache-from: type=gha   # Stores cache in GitHub Actions .
           cache-to: type=gha,mode=max  # max- stores all the layers including the intermediate layers in multi-stage
           build-args: |
-            WORK_DIR=frontend/micro-ui/web/workbench/
+            WORK_DIR=frontend/micro-ui/
 
   Workflow_Trigger:
     if: startsWith(github.ref, 'refs/heads/develop')
@@ -71,4 +71,4 @@ jobs:
           -H "Accept: application/vnd.github.v3+json" \
           -H "Authorization: token ${{ secrets.GHUB_TOKEN }}" \
           https://api.github.com/repos/Selco-Foundation/DIGIT-DevOps/actions/workflows/Dev.yaml/dispatches \
-          -d '{"ref":"Selco-Dev-Workflow"}'
+          -d '{"ref":"Selco-Dev"}'
