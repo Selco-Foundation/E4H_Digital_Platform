@@ -87,15 +87,6 @@ const ChangeCity = (prop) => {
         selected={dropDownData}
         optionKey={"label"}
         select={handleChangeCity}
-        selectStyle={{
-          border: "none",
-          ...(prop?.mobileView ? {display: "flex", flexDirection: "column"} : {})
-        }}
-        selectClassName={"cp flex-right column-gap-5"}
-        textStyle={{
-          textAlign: prop?.mobileView ? "center" : "end",
-          outline: "none"
-        }}
       />
     </div>
   );
