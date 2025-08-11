@@ -62,8 +62,8 @@ This document provides a comprehensive overview of all use cases, workflows, API
 #### **APIs Used:**
 - `GET /project/v1/_search` (Project Service)
 - `GET /egov-mdms-service/v1/_search` (MDMS)
-- `GET /field-planner/field-plans/facilities/v1/template`
-- `POST field-planner/v1/field-plans/facilities/v1/upload`
+- `GET /field-planner/field-plans/facilities/v1/_template`
+- `POST field-planner/v1/field-plans/facilities/v1/_upload`
 - `POST field-planner/v1/field-plans/v1/_create`
 
 #### **Configuration:**
@@ -136,7 +136,7 @@ This document provides a comprehensive overview of all use cases, workflows, API
 4. **Submission** → Submit for review workflow
 
 #### **APIs Used:**
-- `POST /field-planner/v1/mobile/sync/assignments/_bulk`
+- `POST /field-planner/activitiy-reports/sync/v1/_bulk`
 - `POST /field-planner/v1/activity-reports/_create`
 - `POST /field-planner/v1/activity-reports/_workflow`
 
@@ -162,8 +162,8 @@ This document provides a comprehensive overview of all use cases, workflows, API
 4. **Workflow Update** → Update workflow status
 
 #### **APIs Used:**
-- `POST /field-planner/v1/activity-reports/_search`
-- `POST /field-planner/v1/activity-reports/_workflow`
+- `POST /field-planner/activity-reports/v1/_search`
+- `POST /field-planner/v1/activity-reports/v1/_workflow`
 
 #### **Configuration:**
 ```json
