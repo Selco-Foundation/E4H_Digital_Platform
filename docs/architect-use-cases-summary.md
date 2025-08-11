@@ -277,7 +277,7 @@ This document provides a comprehensive overview of all use cases, workflows, API
 }
 ```
 
-#### **Role Configuration**
+#### **Role Configuration** (we are gonna edit the existing roles in mdmd)
 ```json
 {
   "moduleName": "field-planner",
@@ -301,7 +301,7 @@ This document provides a comprehensive overview of all use cases, workflows, API
 
 ### 5.2 Workflow Configuration
 
-#### **Field Plan Workflow**
+#### **Field Plan Workflow** (Use exsiting digit workflow template for definitions)
 ```json
 {
   "moduleName": "field-planner", (referenced from access control)
@@ -322,7 +322,8 @@ This document provides a comprehensive overview of all use cases, workflows, API
 }
 ```
 
-#### **Activity Report Workflow**
+#### **Field Plan Workflow** (Use exsiting digit workflow template for definitions)
+
 ```json
 {
   "moduleName": "field-planner",
