@@ -1,7 +1,7 @@
 # E4H Field Planner - Use Cases, Workflows, APIs & Configurations
 ## Architect Summary Document
 
-### Version: 1.0 | Date: 2025-01-21
+
 
 ---
 
