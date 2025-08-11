@@ -3,6 +3,7 @@ const getFileTypeFromFileStoreURL = (filestoreURL) => {
     if (filestoreURL?.master?.includes(".m3u8")) return "hls";
   }
   if (filestoreURL.includes(".doc")) return "doc";
+  if (filestoreURL.includes(".xls")) return "excel";
   if (filestoreURL.includes(".pdf")) return "pdf";
   if (filestoreURL.includes(".jpg") || filestoreURL.includes(".jpeg") || filestoreURL.includes(".png") || filestoreURL.includes(".webp"))
     return "image";
