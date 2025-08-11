@@ -87,7 +87,7 @@ This document provides a comprehensive overview of all use cases, workflows, API
 
 #### **APIs Used:**
 - `GET /organization/employees/v1/_search` (VENDOR SEARCH mapped to project manager across multiple vendor orgs and one for vendor employee using params with org info)
-- `POST /v1/field-planner/field-plans/{id}/activities/_assign`
+- `POST /v1/field-planner/field-plans/activities/_assign`
 
 #### **Configuration:**
 ```json
