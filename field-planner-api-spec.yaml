@@ -266,11 +266,118 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
+  /v1/field-plans/facilities/_template:
+    get:
+      tags:
+        - Field Plans
+      summary: Download facility selection template
+      description: |
+        Download an Excel template pre-populated with project facilities for selection (Yes/No) as part of field plan creation.
+        Filters like districts and activities can be applied to narrow the facility list.
+      operationId: downloadFacilityTemplate
+      parameters:
+        - name: projectId
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+          description: Project ID for which facilities are listed
+        - name: districtCodes
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+              minLength: 1
+              maxLength: 64
+          style: form
+          explode: true
+          description: Optional district codes to filter facilities
+        - name: activityTypes
+          in: query
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+              enum: [INSTALLATION, FIELD_QC, HANDOVER, ASSESSMENT]
+          style: form
+          explode: true
+          description: Optional activity types to include in template context
+      responses:
+        '200':
+          description: Template generated successfully
+          headers:
+            Content-Disposition:
+              schema:
+                type: string
+              description: Suggested filename for download
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /v1/field-plans/facilities/_upload:
+    post:
+      tags:
+        - Field Plans
+      summary: Upload facility selection sheet
+      description: |
+        Upload the completed facility selection Excel to set facilities Yes/No for inclusion in a field plan.
+        Returns a row-wise summary with errors, if any.
+      operationId: uploadFacilitySelection
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                RequestInfo:
+                  $ref: '#/components/schemas/RequestInfo'
+                projectId:
+                  type: string
+                  minLength: 1
+                  maxLength: 64
+                file:
+                  type: string
+                  format: binary
+                  description: Excel file as per downloaded template
+              required:
+                - RequestInfo
+                - projectId
+                - file
+      responses:
+        '200':
+          description: Upload processed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FacilityUploadResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '413':
+          description: Payload too large
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
   # ========================
   # ACTIVITY MANAGEMENT
   # ========================
   
-  /v1/field-plans/{fieldPlanId}/activities/_assign:
+  /v1/field-plans/activities/_assign:
     post:
       tags:
         - Activities
@@ -290,7 +397,7 @@ paths:
       operationId: assignActivitiesToSPOC
       parameters:
         - name: fieldPlanId
-          in: path
+          in: query
           required: true
           schema:
             type: string
@@ -321,7 +428,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
-  /v1/field-plans/{fieldPlanId}/facility-activities/_assign:
+  /v1/field-plans/facility-activities/_assign:
     post:
       tags:
         - Activities
@@ -341,7 +448,7 @@ paths:
       operationId: assignFacilitiesToStaff
       parameters:
         - name: fieldPlanId
-          in: path
+          in: query
           required: true
           schema:
             type: string
@@ -372,7 +479,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
-  /v1/field-plans/{fieldPlanId}/facility-activities/_search:
+  /v1/field-plans/facility-activities/_search:
     post:
       tags:
         - Activities
@@ -391,13 +498,13 @@ paths:
       operationId: searchFacilityActivities
       parameters:
         - name: fieldPlanId
-          in: path
-          required: true
+          in: query
+          required: false
           schema:
             type: string
             minLength: 1
             maxLength: 64
-          description: Field plan ID
+          description: Optional field plan ID filter
       requestBody:
         required: true
         content:
@@ -420,7 +527,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
-  /v1/field-plans/{fieldPlanId}/facility-activities/_update:
+  /v1/field-plans/facility-activities/_update:
     post:
       tags:
         - Activities
@@ -440,7 +547,7 @@ paths:
       operationId: updateFacilityActivities
       parameters:
         - name: fieldPlanId
-          in: path
+          in: query
           required: true
           schema:
             type: string
@@ -1105,6 +1212,57 @@ components:
         - code
         - message
 
+    FacilityUploadResponse:
+      type: object
+      description: Response for facility selection upload
+      properties:
+        ResponseInfo:
+          $ref: '#/components/schemas/ResponseInfo'
+        Summary:
+          type: object
+          properties:
+            totalRows:
+              type: integer
+              minimum: 0
+            successCount:
+              type: integer
+              minimum: 0
+            errorCount:
+              type: integer
+              minimum: 0
+          required:
+            - totalRows
+            - successCount
+            - errorCount
+        RowResults:
+          type: array
+          description: Row-wise processing results
+          items:
+            type: object
+            properties:
+              rowNumber:
+                type: integer
+                minimum: 1
+              facilityId:
+                type: string
+                maxLength: 64
+              selected:
+                type: boolean
+                description: Whether facility marked Yes for inclusion
+              status:
+                type: string
+                enum: [successful, failed]
+              errors:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Error'
+        InvalidFile:
+          type: boolean
+          description: True if file format/template is invalid
+      required:
+        - ResponseInfo
+        - Summary
+
     # ========================
     # FIELD PLAN SCHEMAS
     # ========================
@@ -1141,6 +1299,102 @@ components:
           description: Array of field plans to update
       required:
         - RequestInfo
+        - FieldPlans
+
+    FieldPlanSearchRequest:
+      type: object
+      description: Request to search field plans
+      properties:
+        RequestInfo:
+          $ref: '#/components/schemas/RequestInfo'
+        SearchCriteria:
+          $ref: '#/components/schemas/FieldPlanSearchCriteria'
+        Pagination:
+          $ref: '#/components/schemas/Pagination'
+      required:
+        - RequestInfo
+        - SearchCriteria
+
+    FieldPlanSearchCriteria:
+      type: object
+      description: Criteria for field plan search
+      properties:
+        tenantId:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: Tenant ID
+        ids:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 64
+          description: Field plan IDs
+        projectIds:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 64
+          description: Project IDs
+        statuses:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 64
+          description: Statuses (MDMS codes)
+        createdBy:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: Created by user ID
+        fromDate:
+          type: integer
+          format: int64
+          description: Filter from date
+        toDate:
+          type: integer
+          format: int64
+          description: Filter to date
+        assignedToMe:
+          type: boolean
+          description: Filter for field plans assigned to current user
+      required:
+        - tenantId
+
+    FieldPlansResponse:
+      type: object
+      description: Response for field plans operations
+      properties:
+        ResponseInfo:
+          $ref: '#/components/schemas/ResponseInfo'
+        FieldPlans:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldPlan'
+          description: Array of field plans
+      required:
+        - ResponseInfo
+        - FieldPlans
+
+    FieldPlanSearchResponse:
+      type: object
+      description: Response for field plan search
+      properties:
+        ResponseInfo:
+          $ref: '#/components/schemas/ResponseInfo'
+        FieldPlans:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldPlan'
+          description: Array of field plans
+        TotalCount:
+          type: integer
+          description: Total number of field plans
+      required:
+        - ResponseInfo
         - FieldPlans
 
     FieldPlanWorkflowRequest:
@@ -1387,6 +1641,70 @@ components:
         - ResponseInfo
         - FacilityAssignments
 
+    FacilityAssignmentRequest:
+      type: object
+      description: Request to assign facilities to field plans
+      properties:
+        RequestInfo:
+          $ref: '#/components/schemas/RequestInfo'
+        Assignments:
+          type: array
+          minItems: 1
+          maxItems: 500
+          description: Array of facility to field plan assignments
+          items:
+            type: object
+            properties:
+              fieldPlanId:
+                type: string
+                minLength: 1
+                maxLength: 64
+              facilityId:
+                type: string
+                minLength: 1
+                maxLength: 64
+              activityTypes:
+                type: array
+                minItems: 1
+                items:
+                  type: string
+                  enum: [INSTALLATION, FIELD_QC, HANDOVER, ASSESSMENT]
+                description: Activities to schedule for this facility
+            required:
+              - fieldPlanId
+              - facilityId
+              - activityTypes
+      required:
+        - RequestInfo
+        - Assignments
+
+    FacilityAssignmentResponse:
+      type: object
+      description: Response for facility to field plan assignments
+      properties:
+        ResponseInfo:
+          $ref: '#/components/schemas/ResponseInfo'
+        Results:
+          type: array
+          items:
+            type: object
+            properties:
+              fieldPlanId:
+                type: string
+                maxLength: 64
+              facilityId:
+                type: string
+                maxLength: 64
+              status:
+                type: string
+                enum: [successful, failed]
+              error:
+                $ref: '#/components/schemas/Error'
+          description: Per-assignment result
+      required:
+        - ResponseInfo
+        - Results
+
     FacilityAssignmentResult:
       type: object
       description: Individual facility assignment result
@@ -1412,6 +1730,117 @@ components:
         error:
           $ref: '#/components/schemas/Error'
           description: Error details if failed
+
+    FacilityActivitySearchRequest:
+      type: object
+      description: Request to search facility activities
+      properties:
+        RequestInfo:
+          $ref: '#/components/schemas/RequestInfo'
+        FacilityActivitySearchCriteria:
+          type: object
+          properties:
+            tenantId:
+              type: string
+              minLength: 1
+              maxLength: 64
+              description: Tenant ID
+            ids:
+              type: array
+              items:
+                type: string
+                minLength: 1
+                maxLength: 64
+              description: Facility activity IDs
+            facilityIds:
+              type: array
+              items:
+                type: string
+                minLength: 1
+                maxLength: 64
+              description: Facility IDs
+            activityIds:
+              type: array
+              items:
+                type: string
+                minLength: 1
+                maxLength: 64
+              description: Activity IDs (master data)
+            statuses:
+              type: array
+              items:
+                type: string
+                minLength: 1
+                maxLength: 64
+              description: Statuses (master data codes)
+            assignedUserId:
+              type: string
+              minLength: 1
+              maxLength: 64
+              description: Assigned user ID
+            isActive:
+              type: boolean
+              description: Filter by activation status
+            assignedToMe:
+              type: boolean
+              description: Filter for current user assignments
+          required:
+            - tenantId
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+      required:
+        - RequestInfo
+        - FacilityActivitySearchCriteria
+
+    FacilityActivitySearchResponse:
+      type: object
+      description: Response for facility activities search
+      properties:
+        ResponseInfo:
+          $ref: '#/components/schemas/ResponseInfo'
+        FacilityActivities:
+          type: array
+          items:
+            $ref: '#/components/schemas/FacilityActivity'
+          description: Array of facility activities
+        TotalCount:
+          type: integer
+          description: Total number of facility activities
+      required:
+        - ResponseInfo
+        - FacilityActivities
+
+    FacilityActivityUpdateRequest:
+      type: object
+      description: Request to update facility activities
+      properties:
+        RequestInfo:
+          $ref: '#/components/schemas/RequestInfo'
+        FacilityActivities:
+          type: array
+          items:
+            $ref: '#/components/schemas/FacilityActivity'
+          minItems: 1
+          maxItems: 100
+          description: Array of facility activities to update
+      required:
+        - RequestInfo
+        - FacilityActivities
+
+    FacilityActivityUpdateResponse:
+      type: object
+      description: Response for facility activity updates
+      properties:
+        ResponseInfo:
+          $ref: '#/components/schemas/ResponseInfo'
+        FacilityActivities:
+          type: array
+          items:
+            $ref: '#/components/schemas/FacilityActivity'
+          description: Array of updated facility activities
+      required:
+        - ResponseInfo
+        - FacilityActivities
 
     # ========================
     # ACTIVITY REPORT SCHEMAS
@@ -1451,6 +1880,117 @@ components:
         - RequestInfo
         - ActivityReports
 
+    ActivityReportSearchRequest:
+      type: object
+      description: Request to search activity reports
+      properties:
+        RequestInfo:
+          $ref: '#/components/schemas/RequestInfo'
+        ActivityReportSearchCriteria:
+          type: object
+          properties:
+            tenantId:
+              type: string
+              minLength: 1
+              maxLength: 64
+              description: Tenant ID
+            ids:
+              type: array
+              items:
+                type: string
+                minLength: 1
+                maxLength: 64
+              description: Activity report IDs
+            facilityActivityIds:
+              type: array
+              items:
+                type: string
+                minLength: 1
+                maxLength: 64
+              description: Facility activity IDs
+            facilityIds:
+              type: array
+              items:
+                type: string
+                minLength: 1
+                maxLength: 64
+              description: Health facility IDs
+            reportTypeCodes:
+              type: array
+              items:
+                type: string
+                minLength: 1
+                maxLength: 64
+              description: Report types (master data codes)
+            statusCodes:
+              type: array
+              items:
+                type: string
+                minLength: 1
+                maxLength: 64
+              description: Report statuses (master data codes)
+            submittedBy:
+              type: string
+              minLength: 1
+              maxLength: 64
+              description: Submitted by user ID
+            reviewedBy:
+              type: string
+              minLength: 1
+              maxLength: 64
+              description: Reviewed by user ID
+            fromDate:
+              type: integer
+              format: int64
+              description: Filter from date
+            toDate:
+              type: integer
+              format: int64
+              description: Filter to date
+            assignedToMe:
+              type: boolean
+              description: Filter for reports assigned to current user
+          required:
+            - tenantId
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+      required:
+        - RequestInfo
+        - ActivityReportSearchCriteria
+
+    ActivityReportsResponse:
+      type: object
+      description: Response for activity reports operations
+      properties:
+        ResponseInfo:
+          $ref: '#/components/schemas/ResponseInfo'
+        ActivityReports:
+          type: array
+          items:
+            $ref: '#/components/schemas/ActivityReport'
+          description: Array of activity reports
+      required:
+        - ResponseInfo
+        - ActivityReports
+
+    ActivityReportSearchResponse:
+      type: object
+      description: Response for activity report search
+      properties:
+        ResponseInfo:
+          $ref: '#/components/schemas/ResponseInfo'
+        ActivityReports:
+          type: array
+          items:
+            $ref: '#/components/schemas/ActivityReport'
+          description: Array of activity reports
+        TotalCount:
+          type: integer
+          description: Total number of activity reports
+      required:
+        - ResponseInfo
+        - ActivityReports
+
     ActivityReportWorkflowRequest:
       type: object
       description: Request for activity report workflow transitions
@@ -1460,7 +2000,7 @@ components:
         WorkflowRequests:
           type: array
           items:
-            $ref: '#/components/schemas/ActivityReportWorkflowRequest'
+            $ref: '#/components/schemas/WorkflowRequest'
           minItems: 1
           maxItems: 50
           description: Array of workflow requests
@@ -1719,70 +2259,6 @@ components:
         - ResponseInfo
         - TeamAssignments
 
-    TeamAssignment:
-      type: object
-      description: Team assignment information
-      properties:
-        userId:
-          type: string
-          minLength: 1
-          maxLength: 64
-          description: User ID
-        userName:
-          type: string
-          minLength: 1
-          maxLength: 64
-          description: Username
-        name:
-          type: string
-          minLength: 1
-          maxLength: 128
-          description: Full name
-        roleCode:
-          type: string
-          minLength: 1
-          maxLength: 64
-          description: Role code
-        roleName:
-          type: string
-          minLength: 1
-          maxLength: 128
-          description: Role name
-        supervisorId:
-          type: string
-          maxLength: 64
-          description: Supervisor ID
-        supervisorName:
-          type: string
-          maxLength: 128
-          description: Supervisor name
-        organizationId:
-          type: string
-          minLength: 1
-          maxLength: 64
-          description: Organization ID
-        organizationName:
-          type: string
-          minLength: 1
-          maxLength: 128
-          description: Organization name
-        fieldPlanId:
-          type: string
-          maxLength: 64
-          description: Associated field plan ID
-        activityType:
-          type: string
-          enum: [INSTALLATION, FIELD_QC, HANDOVER, ASSESSMENT]
-          description: Associated activity type
-      required:
-        - userId
-        - userName
-        - name
-        - roleCode
-        - roleName
-        - organizationId
-        - organizationName
-
     # ========================
     # COMMON ENTITY SCHEMAS
     # ========================
@@ -1843,137 +2319,6 @@ components:
         - endDate
         - activities
         - tenantId
-
-    ActivityReport:
-      type: object
-      description: Activity report entity
-      properties:
-        id:
-          type: string
-          maxLength: 64
-          description: Report ID (auto-generated)
-        facilityActivityId:
-          type: string
-          minLength: 1
-          maxLength: 64
-          description: Associated facility activity ID
-        facilityId:
-          type: string
-          minLength: 1
-          maxLength: 64
-          description: Health facility ID
-        activityType:
-          type: string
-          enum: [INSTALLATION, FIELD_QC, HANDOVER, ASSESSMENT]
-          description: Activity type (MDMS code)
-        status:
-          type: string
-          enum: [DRAFT, SUBMITTED, APPROVED, REJECTED, FLAGGED_FOR_QC]
-          description: Report status (MDMS code)
-        reportData:
-          type: object
-          additionalProperties: true
-          description: Activity-specific report data
-        attachments:
-          type: array
-          items:
-            $ref: '#/components/schemas/Attachment'
-          description: Report attachments
-        comments:
-          type: string
-          maxLength: 1000
-          description: Report comments
-        tenantId:
-          type: string
-          minLength: 1
-          maxLength: 64
-          description: Tenant ID
-        auditDetails:
-          $ref: '#/components/schemas/AuditDetails'
-      required:
-        - facilityActivityId
-        - facilityId
-        - activityType
-        - status
-        - tenantId
-
-    Attachment:
-      type: object
-      description: File attachment information
-      properties:
-        id:
-          type: string
-          maxLength: 64
-          description: Attachment ID
-        fileName:
-          type: string
-          minLength: 1
-          maxLength: 256
-          description: Original file name
-        fileStoreId:
-          type: string
-          minLength: 1
-          maxLength: 64
-          description: File store ID
-        documentType:
-          type: string
-          enum: [INSTALLATION_REPORT, QC_CHECKLIST, PHOTO_EVIDENCE, HANDOVER_CERTIFICATE]
-          description: Document type (MDMS code)
-        fileSize:
-          type: integer
-          minimum: 0
-          description: File size in bytes
-        mimeType:
-          type: string
-          minLength: 1
-          maxLength: 128
-          description: MIME type
-        uploadedBy:
-          type: string
-          minLength: 1
-          maxLength: 64
-          description: User who uploaded the file
-        uploadedAt:
-          type: integer
-          format: int64
-          description: Upload timestamp
-      required:
-        - fileName
-        - fileStoreId
-        - documentType
-        - fileSize
-        - mimeType
-        - uploadedBy
-        - uploadedAt
-
-    Pagination:
-      type: object
-      description: Pagination information
-      properties:
-        offset:
-          type: integer
-          minimum: 0
-          description: Current offset
-        limit:
-          type: integer
-          minimum: 1
-          description: Page size
-        totalCount:
-          type: integer
-          minimum: 0
-          description: Total number of records
-        hasNext:
-          type: boolean
-          description: Whether more records are available
-      required:
-        - offset
-        - limit
-        - totalCount
-        - hasNext
-
-    # ========================
-    # FACILITY ACTIVITY MAPPING SCHEMAS
-    # ========================
 
     FacilityActivity:
       type: object
@@ -2067,155 +2412,6 @@ components:
         - activityId
         - status
 
-    FacilityActivitySearchRequest:
-      type: object
-      description: Request to search facility activities
-      properties:
-        RequestInfo:
-          $ref: '#/components/schemas/RequestInfo'
-        FacilityActivitySearchCriteria:
-          type: object
-          properties:
-            tenantId:
-              type: string
-              minLength: 1
-              maxLength: 64
-              description: Tenant ID
-            ids:
-              type: array
-              items:
-                type: string
-                minLength: 1
-                maxLength: 64
-              description: Facility activity IDs
-            facilityIds:
-              type: array
-              items:
-                type: string
-                minLength: 1
-                maxLength: 64
-              description: Facility IDs
-            activityIds:
-              type: array
-              items:
-                type: string
-                minLength: 1
-                maxLength: 64
-              description: Activity IDs (master data)
-            statuses:
-              type: array
-              items:
-                type: string
-                minLength: 1
-                maxLength: 64
-              description: Statuses (master data codes)
-            assignedUserId:
-              type: string
-              minLength: 1
-              maxLength: 64
-              description: Assigned user ID
-            isActive:
-              type: boolean
-              description: Filter by activation status
-            assignedToMe:
-              type: boolean
-              description: Filter for current user assignments
-          required:
-            - tenantId
-        pagination:
-          $ref: '#/components/schemas/Pagination'
-      required:
-        - RequestInfo
-        - FacilityActivitySearchCriteria
-
-    FacilityActivitiesResponse:
-      type: object
-      description: Response for facility activities search
-      properties:
-        ResponseInfo:
-          $ref: '#/components/schemas/ResponseInfo'
-        FacilityActivities:
-          type: array
-          items:
-            $ref: '#/components/schemas/FacilityActivity'
-          description: Array of facility activities
-      required:
-        - ResponseInfo
-        - FacilityActivities
-
-    FacilityActivitySearchResponse:
-      type: object
-      description: Response for facility activities search
-      properties:
-        ResponseInfo:
-          $ref: '#/components/schemas/ResponseInfo'
-        FacilityActivities:
-          type: array
-          items:
-            $ref: '#/components/schemas/FacilityActivity'
-          description: Array of facility activities
-        TotalCount:
-          type: integer
-          description: Total number of facility activities
-      required:
-        - ResponseInfo
-        - FacilityActivities
-
-    ActivationCheckResponse:
-      type: object
-      description: Response for activation check
-      properties:
-        ResponseInfo:
-          $ref: '#/components/schemas/ResponseInfo'
-        ActivationStatus:
-          type: object
-          properties:
-            facilityActivityId:
-              type: string
-              description: Facility activity ID
-            canActivate:
-              type: boolean
-              description: Whether facility activity can be activated
-            conditionResults:
-              type: array
-              items:
-                type: object
-                properties:
-                  conditionType:
-                    type: string
-                    description: Condition type (master data code)
-                  conditionDescription:
-                    type: string
-                    description: Condition description
-                  isMet:
-                    type: boolean
-                    description: Whether condition is met
-                  details:
-                    type: string
-                    maxLength: 512
-                    description: Additional details about condition
-              minItems: 0
-              description: Individual condition results
-            nextSteps:
-              type: array
-              items:
-                type: string
-                minLength: 1
-                maxLength: 256
-              minItems: 0
-              description: Required next steps for activation
-            estimatedActivationDate:
-              type: integer
-              format: int64
-              description: Estimated activation date
-      required:
-        - ResponseInfo
-        - ActivationStatus
-
-    # ========================
-    # ACTIVITY REPORT SCHEMAS
-    # ========================
-
     ActivityReport:
       type: object
       description: Activity report entity
@@ -2268,153 +2464,6 @@ components:
         - activityType
         - status
         - tenantId
-
-    ActivityReportSearchRequest:
-      type: object
-      description: Request to search activity reports
-      properties:
-        RequestInfo:
-          $ref: '#/components/schemas/RequestInfo'
-        ActivityReportSearchCriteria:
-          type: object
-          properties:
-            tenantId:
-              type: string
-              minLength: 1
-              maxLength: 64
-              description: Tenant ID
-            ids:
-              type: array
-              items:
-                type: string
-                minLength: 1
-                maxLength: 64
-              description: Activity report IDs
-            facilityActivityIds:
-              type: array
-              items:
-                type: string
-                minLength: 1
-                maxLength: 64
-              description: Facility activity IDs
-            facilityIds:
-              type: array
-              items:
-                type: string
-                minLength: 1
-                maxLength: 64
-              description: Health facility IDs
-            reportTypeCodes:
-              type: array
-              items:
-                type: string
-                minLength: 1
-                maxLength: 64
-              description: Report types (master data codes)
-            statusCodes:
-              type: array
-              items:
-                type: string
-                minLength: 1
-                maxLength: 64
-              description: Report statuses (master data codes)
-            submittedBy:
-              type: string
-              minLength: 1
-              maxLength: 64
-              description: Submitted by user ID
-            reviewedBy:
-              type: string
-              minLength: 1
-              maxLength: 64
-              description: Reviewed by user ID
-            fromDate:
-              type: integer
-              format: int64
-              description: Filter from date
-            toDate:
-              type: integer
-              format: int64
-              description: Filter to date
-            assignedToMe:
-              type: boolean
-              description: Filter for reports assigned to current user
-          required:
-            - tenantId
-        pagination:
-          $ref: '#/components/schemas/Pagination'
-      required:
-        - RequestInfo
-        - ActivityReportSearchCriteria
-
-    ActivityReportsResponse:
-      type: object
-      description: Response for activity reports search
-      properties:
-        ResponseInfo:
-          $ref: '#/components/schemas/ResponseInfo'
-        ActivityReports:
-          type: array
-          items:
-            $ref: '#/components/schemas/ActivityReport'
-          description: Array of activity reports
-      required:
-        - ResponseInfo
-        - ActivityReports
-
-    ActivityReportSearchResponse:
-      type: object
-      description: Response for activity reports search
-      properties:
-        ResponseInfo:
-          $ref: '#/components/schemas/ResponseInfo'
-        ActivityReports:
-          type: array
-          items:
-            $ref: '#/components/schemas/ActivityReport'
-          description: Array of activity reports
-        TotalCount:
-          type: integer
-          description: Total number of activity reports
-      required:
-        - ResponseInfo
-        - ActivityReports
-
-    ActivityReportWorkflowRequest:
-      type: object
-      description: Request for activity report workflow transitions
-      properties:
-        RequestInfo:
-          $ref: '#/components/schemas/RequestInfo'
-        WorkflowRequests:
-          type: array
-          items:
-            $ref: '#/components/schemas/ActivityReportWorkflowRequest'
-          minItems: 1
-          maxItems: 50
-          description: Array of workflow requests
-      required:
-        - RequestInfo
-        - WorkflowRequests
-
-    ActivityReportWorkflowResponse:
-      type: object
-      description: Response for activity report workflow transitions
-      properties:
-        ResponseInfo:
-          $ref: '#/components/schemas/ResponseInfo'
-        WorkflowResponses:
-          type: array
-          items:
-            $ref: '#/components/schemas/WorkflowResponse'
-          description: Array of workflow responses
-      required:
-        - ResponseInfo
-        - WorkflowResponses
-
-    # ========================
-    # TEAM MANAGEMENT SCHEMAS
-    # ========================
 
     TeamAssignment:
       type: object
@@ -2479,241 +2528,6 @@ components:
         - roleName
         - organizationId
         - organizationName
-
-    TeamSearchCriteria:
-      type: object
-      description: Criteria for team assignment search
-      properties:
-        userId:
-          type: string
-          maxLength: 64
-          description: User ID to search for
-        supervisorId:
-          type: string
-          maxLength: 64
-          description: Supervisor ID to search for
-        organizationId:
-          type: string
-          maxLength: 64
-          description: Organization ID
-        roleCode:
-          type: string
-          maxLength: 64
-          description: Role code to filter by
-        fieldPlanId:
-          type: string
-          maxLength: 64
-          description: Field plan ID to filter by
-        activityType:
-          type: string
-          enum: [INSTALLATION, FIELD_QC, HANDOVER, ASSESSMENT]
-          description: Activity type to filter by
-        offset:
-          type: integer
-          minimum: 0
-          default: 0
-          description: Pagination offset
-        limit:
-          type: integer
-          minimum: 1
-          maximum: 100
-          default: 20
-          description: Pagination limit
-
-    TeamAssignmentSearchResponse:
-      type: object
-      description: Response for team assignment search
-      properties:
-        ResponseInfo:
-          $ref: '#/components/schemas/ResponseInfo'
-        TeamAssignments:
-          type: array
-          items:
-            $ref: '#/components/schemas/TeamAssignment'
-          description: Array of team assignments
-        Pagination:
-          $ref: '#/components/schemas/Pagination'
-      required:
-        - ResponseInfo
-        - TeamAssignments
-
-    TeamAssignment:
-      type: object
-      description: Team assignment information
-      properties:
-        userId:
-          type: string
-          minLength: 1
-          maxLength: 64
-          description: User ID
-        userName:
-          type: string
-          minLength: 1
-          maxLength: 64
-          description: Username
-        name:
-          type: string
-          minLength: 1
-          maxLength: 128
-          description: Full name
-        roleCode:
-          type: string
-          minLength: 1
-          maxLength: 64
-          description: Role code
-        roleName:
-          type: string
-          minLength: 1
-          maxLength: 128
-          description: Role name
-        supervisorId:
-          type: string
-          maxLength: 64
-          description: Supervisor ID
-        supervisorName:
-          type: string
-          maxLength: 128
-          description: Supervisor name
-        organizationId:
-          type: string
-          minLength: 1
-          maxLength: 64
-          description: Organization ID
-        organizationName:
-          type: string
-          minLength: 1
-          maxLength: 128
-          description: Organization name
-        fieldPlanId:
-          type: string
-          maxLength: 64
-          description: Associated field plan ID
-        activityType:
-          type: string
-          enum: [INSTALLATION, FIELD_QC, HANDOVER, ASSESSMENT]
-          description: Associated activity type
-      required:
-        - userId
-        - userName
-        - name
-        - roleCode
-        - roleName
-        - organizationId
-        - organizationName
-
-    # ========================
-    # COMMON ENTITY SCHEMAS
-    # ========================
-
-    FieldPlan:
-      type: object
-      description: Field plan entity
-      properties:
-        id:
-          type: string
-          maxLength: 64
-          description: Field plan ID (auto-generated)
-        name:
-          type: string
-          minLength: 1
-          maxLength: 128
-          description: Field plan name
-        projectId:
-          type: string
-          minLength: 1
-          maxLength: 64
-          description: Associated project ID
-        startDate:
-          type: integer
-          format: int64
-          description: Field plan start date
-        endDate:
-          type: integer
-          format: int64
-          description: Field plan end date
-        status:
-          type: string
-          enum: [DRAFT, ACTIVE, COMPLETED, CANCELLED]
-          description: Field plan status (MDMS code)
-        activities:
-          type: array
-          items:
-            type: string
-            enum: [INSTALLATION, FIELD_QC, HANDOVER, ASSESSMENT]
-          minItems: 1
-          description: Planned activities (MDMS codes)
-        facilities:
-          type: array
-          items:
-            type: string
-          description: Associated facility IDs
-        tenantId:
-          type: string
-          minLength: 1
-          maxLength: 64
-          description: Tenant ID
-        auditDetails:
-          $ref: '#/components/schemas/AuditDetails'
-      required:
-        - name
-        - projectId
-        - startDate
-        - endDate
-        - activities
-        - tenantId
-
-    ActivityReport:
-      type: object
-      description: Activity report entity
-      properties:
-        id:
-          type: string
-          maxLength: 64
-          description: Report ID (auto-generated)
-        facilityActivityId:
-          type: string
-          minLength: 1
-          maxLength: 64
-          description: Associated facility activity ID
-        facilityId:
-          type: string
-          minLength: 1
-          maxLength: 64
-          description: Health facility ID
-        activityType:
-          type: string
-          enum: [INSTALLATION, FIELD_QC, HANDOVER, ASSESSMENT]
-          description: Activity type (MDMS code)
-        status:
-          type: string
-          enum: [DRAFT, SUBMITTED, APPROVED, REJECTED, FLAGGED_FOR_QC]
-          description: Report status (MDMS code)
-        reportData:
-          type: object
-          additionalProperties: true
-          description: Activity-specific report data
-        attachments:
-          type: array
-          items:
-            $ref: '#/components/schemas/Attachment'
-          description: Report attachments
-        comments:
-          type: string
-          maxLength: 1000
-          description: Report comments
-        tenantId:
-          type: string
-          minLength: 1
-          maxLength: 64
-          description: Tenant ID
-        auditDetails:
-          $ref: '#/components/schemas/AuditDetails'
-      required:
-        - facilityActivityId
-        - facilityId
-        - activityType
-        - status
-        - tenantId
 
     Attachment:
       type: object
@@ -2792,13 +2606,11 @@ components:
 tags:
   - name: Field Plans
     description: Bulk field plan creation and management operations
-  - name: Field Plan Activities
+  - name: Activities
     description: Activity assignment within field plan context
-  - name: Facility Activities
-    description: Facility-activity mapping and management within field plans
   - name: Activity Reports
     description: Activity report creation, submission, and workflow management
   - name: Mobile Sync
     description: Mobile application data synchronization (leveraging platform APIs)
   - name: Team Management
-    description: Team assignment tracking across field plans (leveraging HRMS) 
+    description: Team assignment tracking across field plans (leveraging HRMS)
