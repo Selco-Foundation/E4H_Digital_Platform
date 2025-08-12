@@ -173,12 +173,12 @@ public class ProjectService {
 
             if (searchResponse != null && searchResponse.getResponse() != null && !searchResponse.getResponse().isEmpty()) {
                 ProjectFacility projectFacility = searchResponse.getResponse().get(0);
-                Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(project.getAdditionalDetails(), "FacilityId", projectFacility.getFacilityId());
+                Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(project.getAdditionalDetails(), "facilityId", projectFacility.getFacilityId());
                 project.setAdditionalDetails(enrichedAdditionalDetails);
-                ProjectFacilityBulkRequest projectFacilityBulkRequest = ProjectFacilityBulkRequest.builder().projectFacilities(Collections.singletonList(projectFacility)).requestInfo(requestInfo).build();
-                Facility facility = projectFacilityService.getFacilityById(projectFacilityBulkRequest);
-                enrichedAdditionalDetails = mergeIntoAdditionalDetails(project.getAdditionalDetails(), "Facility", facility);
-                project.setAdditionalDetails(enrichedAdditionalDetails);
+//                ProjectFacilityBulkRequest projectFacilityBulkRequest = ProjectFacilityBulkRequest.builder().projectFacilities(Collections.singletonList(projectFacility)).requestInfo(requestInfo).build();
+//                Facility facility = projectFacilityService.getFacilityById(projectFacilityBulkRequest);
+//                enrichedAdditionalDetails = mergeIntoAdditionalDetails(project.getAdditionalDetails(), "Facility", facility);
+//                project.setAdditionalDetails(enrichedAdditionalDetails);
             }
         }
 
