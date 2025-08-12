@@ -32,6 +32,9 @@ import org.springframework.stereotype.Service;
 
 import java.util.*;
 
+import static org.egov.project.util.ProjectConstants.PROJECT_TYPE_FACILITY;
+import static org.egov.project.util.ProjectConstants.PROJECT_TYPE_FIELDPLAN;
+
 @Service
 @Slf4j
 public class ProjectService {
@@ -141,13 +144,20 @@ public class ProjectService {
     public List<Project> searchProject(ProjectSearchRequest projectSearchRequest, @Valid ProjectSearchURLParams urlParams, List<String> workflowStatuses, @Valid ProjectSortCriteria sortCriteria) throws Exception {
         projectValidator.validateSearchV2ProjectRequest(projectSearchRequest, urlParams, sortCriteria);
         List<Project> projects = projectRepository.getProjects(projectSearchRequest, urlParams, workflowStatuses, sortCriteria);
+        // Get count of project type = Facility for each project type FieldPlan
         if(projectSearchRequest.getProject() !=null && projectSearchRequest.getProject().getProjectTypeId() !=null
-                && projectSearchRequest.getProject().getProjectTypeId().equals("FieldPlan"))
+                && projectSearchRequest.getProject().getProjectTypeId().equals(PROJECT_TYPE_FIELDPLAN))
             projects = getCountProjectTypeFacilities(projects, projectSearchRequest, urlParams, workflowStatuses, sortCriteria);
+
+        // Get facility of project type = Facility for each project type Facility
+        if(projectSearchRequest.getProject() !=null && projectSearchRequest.getProject().getProjectTypeId() !=null
+                && projectSearchRequest.getProject().getProjectTypeId().equals(PROJECT_TYPE_FACILITY))
+            getFacilityProject(projects, projectSearchRequest.getRequestInfo());
+
         return projects;
     }
 
-    public List<Project> getCountFacilitiesProject(List<Project> listProjects, RequestInfo requestInfo) throws Exception {
+    public List<Project> getFacilityProject(List<Project> listProjects, RequestInfo requestInfo) throws Exception {
         for (Project project : listProjects) {
             List<String> listProjectId = new ArrayList<>();
             listProjectId.add(project.getId());
@@ -160,8 +170,16 @@ public class ProjectService {
                     project.getTenantId(),
                     null,
                     false);
-            Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(project.getAdditionalDetails(), "countFacilities", searchResponse.getTotalCount()+"");
-            project.setAdditionalDetails(enrichedAdditionalDetails);
+
+            if (searchResponse != null && searchResponse.getResponse() != null && !searchResponse.getResponse().isEmpty()) {
+                ProjectFacility projectFacility = searchResponse.getResponse().get(0);
+                Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(project.getAdditionalDetails(), "FacilityId", projectFacility.getFacilityId());
+                project.setAdditionalDetails(enrichedAdditionalDetails);
+                ProjectFacilityBulkRequest projectFacilityBulkRequest = ProjectFacilityBulkRequest.builder().projectFacilities(Collections.singletonList(projectFacility)).requestInfo(requestInfo).build();
+                Facility facility = projectFacilityService.getFacilityById(projectFacilityBulkRequest);
+                enrichedAdditionalDetails = mergeIntoAdditionalDetails(project.getAdditionalDetails(), "Facility", facility);
+                project.setAdditionalDetails(enrichedAdditionalDetails);
+            }
         }
 
         return listProjects;

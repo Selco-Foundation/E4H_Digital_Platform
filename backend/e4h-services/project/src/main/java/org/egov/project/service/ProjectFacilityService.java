@@ -287,7 +287,10 @@ public class ProjectFacilityService {
         Object response = repository.fetchResult(new StringBuilder(url));
 
         FacilitySearchResponse facilityList = mapper.convertValue(response, FacilitySearchResponse.class);
-        return facilityList.getFacilities().get(0);
+        if(facilityList != null && facilityList.getFacilities() !=null && facilityList.getFacilities().size() > 0){
+            return facilityList.getFacilities().get(0);
+        }
+        return null;
     }
 
     private Object mergeListIntoAdditionalDetails(Object additionalDetails, String key, Object value) {
