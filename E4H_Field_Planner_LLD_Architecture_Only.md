@@ -91,15 +91,17 @@ POST /field-planner/v1/field-plans/_create
 POST /field-planner/v1/field-plans/_update  
 POST /field-planner/v1/field-plans/_search
 POST /field-planner/v1/field-plans/_workflow
+GET  /field-planner/v1/field-plans/facilities/_template
+POST /field-planner/v1/field-plans/facilities/_upload
 POST /field-planner/v1/field-plans/facilities/_assign
 ```
 
 **Activity Management:**
 ```yaml
-POST /field-planner/v1/field-plans/{fieldPlanId}/activities/_assign
-POST /field-planner/v1/field-plans/{fieldPlanId}/facility-activities/_assign
-POST /field-planner/v1/field-plans/{fieldPlanId}/facility-activities/_search
-POST /field-planner/v1/field-plans/{fieldPlanId}/facility-activities/_update
+POST /field-planner/v1/field-plans/activities/_assign?fieldPlanId={fieldPlanId}
+POST /field-planner/v1/field-plans/facility-activities/_assign?fieldPlanId={fieldPlanId}
+POST /field-planner/v1/field-plans/facility-activities/_search?fieldPlanId={fieldPlanId}
+POST /field-planner/v1/field-plans/facility-activities/_update?fieldPlanId={fieldPlanId}
 ```
 
 **Activity Reports:**
@@ -595,7 +597,7 @@ Response:
 | Question | Answer | Reference |
 |----------|--------|-----------|
 | How many new services? | **1 NEW SERVICE** (Field Planner) | Section 2.1.1 |
-| User management approach? | **User Registry** (NOT HRMS) | Section 2.1.2 |
+| User management approach? | **Vendor/Organisation Registry + User Registry** (NOT HRMS) | Section 2.1.2 |
 | Vendor Registry changes? | **Enhanced** with employee mapping | Section 2.2.2 |
 | Mobile sync gap analysis? | **5 Bulk APIs** required | Section 2.3 |
 | Roles & API mapping? | **8 Roles** with complete matrix | Section 2.4 |
@@ -797,7 +799,7 @@ ACTIVITY_REPORTS (new)
 #### 4.1.2 Integration Points
 - **Project Integration**: Field plans reference existing project IDs
 - **Facility Integration**: Direct references to existing facility registry
-- **User Integration**: All user references point to HRMS employee IDs
+- **User Integration**: All user references point to Vendor Registry employee IDs
 - **Workflow Integration**: Activity reports integrate with eGov Workflow v2
 
 ### 4.2 Schema Design Principles
@@ -1182,7 +1184,7 @@ ACTIVITY_REPORTS (new)
 #### 5.1.3 Context-Based URLs
 **Rationale:** Maintain proper scoping and boundaries
 - Activity assignments: `/field-plans/{fieldPlanId}/activities/{activityId}/_assign`
-- Facility activities: `/field-plans/{fieldPlanId}/facility-activities/_assign`
+- Facility activities: `/field-plans/facility-activities/_assign?fieldPlanId={fieldPlanId}`
 - Clear hierarchical relationships in URL structure
 
 ### 5.2 API Versioning Strategy
@@ -1213,15 +1215,15 @@ POST /field-planner/v1/field-plans/facilities/_assign
 ```
 POST /field-planner/v1/field-plans/{fieldPlanId}/activities/{activityId}/_assign
 POST /field-planner/v1/field-plans/{fieldPlanId}/activities/_search
-POST /field-planner/v1/field-plans/{fieldPlanId}/facility-activities/_assign
+POST /field-planner/v1/field-plans/facility-activities/_assign?fieldPlanId={fieldPlanId}
 POST /field-planner/v1/field-plans/{fieldPlanId}/facility-activities/_update
 ```
 
 #### 5.3.3 Mobile Synchronization
 ```
-POST /field-planner/v1/mobile/sync/assignments
-POST /field-planner/v1/mobile/reports/_upload
-POST /field-planner/v1/mobile/sync/masterdata
+POST /field-planner/v1/mobile/sync/assignments/_bulk
+POST /field-planner/v1/mobile/reports/_bulk_upload
+POST /field-planner/v1/mobile/masterdata/_sync
 ```
 
 ### 5.4 Request/Response Patterns
@@ -1309,10 +1311,10 @@ POST /field-planner/v1/mobile/sync/masterdata
 
 | API Endpoint | Method | ADMIN | PROJECT_MANAGER | INSTALLATION_SPOC | FIELD_QC_SPOC | HANDOVER_SPOC | INSTALLATION_REVIEWER | FIELD_QC_REVIEWER | FIELD_STAFF |
 |--------------|--------|-------|-----------------|-------------------|---------------|---------------|----------------------|-------------------|-------------|
-| `/field-planner/v1/field-plans/{id}/activities/_assign` | POST | ✅ | ✅ | ✅* | ✅* | ✅* | ❌ | ❌ | ❌ |
-| `/field-planner/v1/field-plans/{id}/facility-activities/_assign` | POST | ✅ | ✅ | ✅* | ✅* | ✅* | ❌ | ❌ | ❌ |
-| `/field-planner/v1/field-plans/{id}/facility-activities/_search` | POST | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `/field-planner/v1/field-plans/{id}/facility-activities/_update` | POST | ✅ | ✅ | ✅* | ✅* | ✅* | ❌ | ❌ | ❌ |
+| `/field-planner/v1/field-plans/activities/_assign?fieldPlanId={fieldPlanId}` | POST | ✅ | ✅ | ✅* | ✅* | ✅* | ❌ | ❌ | ❌ |
+| `/field-planner/v1/field-plans/facility-activities/_assign?fieldPlanId={fieldPlanId}` | POST | ✅ | ✅ | ✅* | ✅* | ✅* | ❌ | ❌ | ❌ |
+| `/field-planner/v1/field-plans/facility-activities/_search?fieldPlanId={fieldPlanId}` | POST | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `/field-planner/v1/field-plans/facility-activities/_update?fieldPlanId={fieldPlanId}` | POST | ✅ | ✅ | ✅* | ✅* | ✅* | ❌ | ❌ | ❌ |
 
 #### 6.2.3 Activity Report APIs
 
@@ -1925,7 +1927,7 @@ The document is now architecture-focused without implementation code, providing 
 | Question | Answer | Section | Ready for Discussion |
 |----------|--------|---------|---------------------|
 | **How many new services?** | **1 NEW SERVICE** (Field Planner) | 2.1.1 | ✅ |
-| **User management approach?** | **User Registry** (NOT HRMS) | 2.1.2 | ✅ |
+| **User management approach?** | **Vendor/Organisation Registry + User Registry** (NOT HRMS) | 2.1.2 | ✅ |
 | **Vendor Registry changes?** | **Enhanced** with employee mapping | 2.2.2 | ✅ |
 | **Mobile sync gap analysis?** | **5 Bulk APIs** required | 2.3 | ✅ |
 | **Roles & API mapping?** | **8 Roles** with complete matrix | 2.4 & 6.2 | ✅ |

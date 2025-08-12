@@ -18,7 +18,7 @@ info:
     - Integration with existing E4H platform services
     
     **Integration Points:**
-    - eGov HRMS for user management
+    - Vendor Registry for SPOC and field staff sourcing
     - Health Facility Registry for facility data
     - Project Service for project information
     - eGov Workflow v2 for state management
@@ -889,16 +889,16 @@ paths:
       summary: Search team assignments
       description: |
         Search team assignments and organizational structure.
-        Integrates with eGov HRMS for user management.
+        Integrates with Vendor Registry for user sourcing and validation.
         
         **Access Control:**
         - All roles can search team assignments
         - Results filtered based on user role and scope
         
         **Integration:**
-        - Uses eGov HRMS supervisor-employee relationships
+        - Uses Vendor Registry relationships (vendor org → employees)
         - No custom team creation within Field Planner
-        - Leverages existing organizational hierarchy
+        - Leverages existing organizational hierarchies per vendor
       operationId: searchTeamAssignments
       requestBody:
         required: true
@@ -2613,4 +2613,4 @@ tags:
   - name: Mobile Sync
     description: Mobile application data synchronization (leveraging platform APIs)
   - name: Team Management
-    description: Team assignment tracking across field plans (leveraging HRMS)
+    description: Team assignment tracking across field plans (leveraging Vendor Registry)
