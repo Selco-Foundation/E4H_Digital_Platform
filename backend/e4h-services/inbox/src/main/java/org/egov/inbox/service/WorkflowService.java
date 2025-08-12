@@ -1,13 +1,6 @@
 package org.egov.inbox.service;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import org.egov.common.contract.request.RequestInfo;
@@ -188,7 +181,7 @@ public class WorkflowService {
 	public List<BusinessService> getBusinessServices(InboxRequest request) {
 		String tenantId = request.getInbox().getTenantId();
 		RequestInfo requestInfo = request.getRequestInfo() ;
-		List<String> businessServicesCodes = request.getInbox().getProcessSearchCriteria().getBusinessService();
+		List<String> businessServicesCodes = Arrays.asList("Incident_Low", "Incident_High", "Incident_Medium");
 		String businessServiceList = String.join(",",businessServicesCodes);
 		StringBuilder url = getSearchURLWithParams(tenantId, businessServiceList);
 		RequestInfoWrapper requestInfoWrapper = RequestInfoWrapper.builder().requestInfo(requestInfo).build();

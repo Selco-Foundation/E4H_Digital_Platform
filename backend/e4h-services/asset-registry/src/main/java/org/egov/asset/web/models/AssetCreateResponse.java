@@ -29,7 +29,6 @@ public class AssetCreateResponse {
 
     @JsonProperty("asset")
     @NotNull
-
     @Valid
     private Asset asset = null;
 

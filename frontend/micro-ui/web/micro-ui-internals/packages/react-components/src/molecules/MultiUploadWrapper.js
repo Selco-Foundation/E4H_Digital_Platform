@@ -245,11 +245,11 @@ const MultiUploadWrapper = ({
 
       // Generate specific error messages
       if (videoUploadFailed && otherUploadFailed) {
-        errorMessages.push({ valid: false, name: "", error: t("BOTH_VIDEO_AND_IMAGE_UPLOAD_FAILED") });
+        errorMessages.push({ valid: false, name: "", error: t("MULTIPLE_FILES_UPLOAD_FAILED") });
       } else if (videoUploadFailed) {
         errorMessages.push({ valid: false, name: "", error: t("VIDEO_UPLOAD_FAILED") });
       } else if (otherUploadFailed) {
-        errorMessages.push({ valid: false, name: "", error: t("IMAGE_UPLOAD_FAILED") });
+        errorMessages.push({ valid: false, name: "", error: t("FILE_UPLOAD_FAILED") });
       }
 
       // Set errors if any failed uploads exist
@@ -279,7 +279,9 @@ const MultiUploadWrapper = ({
   }, [isUploading]);
 
   useEffect(() => {
-    requestSpecifcFileRemoval ? dispatch({ type: TARGET_FILE_REMOVAL, payload: requestSpecifcFileRemoval }) : null;
+    if (requestSpecifcFileRemoval) {
+      dispatch({ type: TARGET_FILE_REMOVAL, payload: requestSpecifcFileRemoval })
+    }
   }, [requestSpecifcFileRemoval]);
 
   return (

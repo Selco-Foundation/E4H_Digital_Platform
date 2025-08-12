@@ -2,6 +2,7 @@ package org.selco.e4h.service;
 
 import com.jayway.jsonpath.JsonPath;
 import lombok.extern.slf4j.Slf4j;
+import org.egov.tracer.model.ServiceCallException;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -14,6 +15,8 @@ import org.springframework.web.client.*;
 import static org.selco.e4h.config.ServiceConstants.*;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -88,7 +91,7 @@ public class UpdateService {
 				.toString();
 	}
 
-	private HttpHeaders buildHeaders() {
+	public HttpHeaders buildHeaders() {
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.APPLICATION_JSON);
 		headers.add("Authorization", indexerUtils.getESEncodedCredentials());
@@ -130,4 +133,61 @@ public class UpdateService {
 			}
 		}
 	}
+
+	public void updateSlaFields(String incidentId, long slaRemaining, long totalSlaRemaining, long stateSla, String businessService, long totalSla) {
+		Map<String, Object> dataMap = new HashMap<>();
+		dataMap.put("slaRemaining", slaRemaining);
+		dataMap.put("totalSlaRemaining", totalSlaRemaining);
+		dataMap.put("stateSla", stateSla);
+		dataMap.put("definedTotalSla", totalSla);
+
+		if (businessService != null) {
+			Map<String, Object> currentProcessInstance = new HashMap<>();
+			currentProcessInstance.put("businessService", businessService);
+			dataMap.put("currentProcessInstance", currentProcessInstance);
+		}
+
+		Map<String, Object> doc = new HashMap<>();
+		doc.put("Data", dataMap);
+
+		Map<String, Object> updateBody = new HashMap<>();
+		updateBody.put("doc", doc);
+
+
+		String url = config.getEsHostUrl() + "/computed-sla-im-services/_update/" + incidentId;
+		HttpEntity<Map<String, Object>> entity = new HttpEntity<>(updateBody, buildHeaders());
+
+		try {
+			restTemplate.postForEntity(url, entity, String.class);
+			log.info("Updated SLA{} for ticket {}", businessService != null ? " + businessService" : "", incidentId);
+		} catch (Exception e) {
+			log.error("Failed to update SLA fields for ticket {}: {}", incidentId, e.getMessage(), e);
+		}
+	}
+
+	public void upsertTransformedTicket(String documentId, Map<String, Object> dataMap) {
+		if (documentId == null || documentId.isEmpty()) {
+			log.warn("Document ID is missing for upsert.");
+			return;
+		}
+
+		try {
+			Map<String, Object> finalPayload = new HashMap<>();
+			finalPayload.put("Data", dataMap);
+
+			String indexUrl = config.getEsHostUrl() + "/computed-sla-im-services/_doc/" + documentId;
+			HttpEntity<Map<String, Object>> entity = new HttpEntity<>(finalPayload, buildHeaders());
+
+			restTemplate.put(indexUrl, entity);
+			log.info("Upserted transformed ticket for document ID: {}", documentId);
+
+		} catch (HttpClientErrorException | HttpServerErrorException e) {
+			log.error("HTTP error during upsert of transformed ticket {}: {}", documentId, e.getMessage());
+		} catch (ResourceAccessException e) {
+			log.error("Elasticsearch is unreachable while upserting ticket {}: {}", documentId, e.getMessage());
+		} catch (Exception e) {
+			log.error("Unexpected error during upsert of transformed ticket {}: {}", documentId, e.getMessage(), e);
+		}
+	}
+
 }

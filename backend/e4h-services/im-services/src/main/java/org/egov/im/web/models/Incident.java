@@ -104,4 +104,18 @@ public class Incident   {
         @JsonProperty("auditDetails")
         private AuditDetails auditDetails = null;
 
+        @SafeHtml
+        @JsonProperty("systemFunctional")
+        private String systemFunctional = null;
+
+        @JsonProperty("filedDate")
+        private Long filedDate = null;
+
+        @SafeHtml
+        @JsonProperty("legacyId")
+        private String legacyId = null;
+
+        @SafeHtml
+        @JsonProperty("migrationId")
+        private String migrationId = null;
 }

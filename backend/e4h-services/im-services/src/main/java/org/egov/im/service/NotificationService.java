@@ -2,6 +2,7 @@ package org.egov.im.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jayway.jsonpath.JsonPath;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.common.contract.request.Role;
@@ -453,7 +454,7 @@ public class NotificationService {
                     System.currentTimeMillis(),
                     request.getIncident().getIncidentId(),
                     request.getWorkflow().getSendBackReason().getReason()
-            );
+                    );
             if (messageForEmployee == null) {
                 log.info("No message Found For Employee On Topic : " + topic);
                 return null;
@@ -478,8 +479,7 @@ public class NotificationService {
                 return null;
             }
 
-            ProcessInstance processInstance =
-                    getEmployeeName(incidentWrapper.getIncident().getTenantId(), incidentWrapper.getIncident().getIncidentId(), request.getRequestInfo(), IM_WF_RESOLVE);
+            ProcessInstance processInstance = getEmployeeName(incidentWrapper.getIncident().getTenantId(), incidentWrapper.getIncident().getIncidentId(), request.getRequestInfo(), IM_WF_RESOLVE);
 
 //            if(defaultMessage.contains("{status}"))
 //                defaultMessage = defaultMessage.replace("{status}", localisedStatus);
@@ -582,14 +582,24 @@ public class NotificationService {
             messageForCitizen = messageForCitizen.replace("{incidentId}", incidentWrapper.getIncident().getIncidentId());
             messageForCitizen = messageForCitizen.replace("{date}", date.format(formatter));
             messageForCitizen = messageForCitizen.replace("{download_link}", config.getMobileDownloadLink());
+            if (messageForCitizen.contains("{url}")) {
+                String url = notificationUtil.getUrlByTenantId(localizationMessage);
+                messageForCitizen = messageForCitizen.replace("{url}",url );
+            }
         }
 
         if (messageForEmployee != null) {
             messageForEmployee = messageForEmployee.replace("{ticket_type}", incidentWrapper.getIncident().getIncidentType());
             messageForEmployee = messageForEmployee.replace("{incidentId}", incidentWrapper.getIncident().getIncidentId());
             messageForEmployee = messageForEmployee.replace("{date}", date.format(formatter));
-            messageForEmployee = messageForEmployee.replace("{dropDownValue}", request.getWorkflow().getSendBackReason().getReason());
+            if(request.getWorkflow() != null && request.getWorkflow().getSendBackReason() != null) {
+                messageForEmployee = messageForEmployee.replace("{dropDownValue}", request.getWorkflow().getSendBackReason().getReason());
+            }
             messageForEmployee = messageForEmployee.replace("{download_link}", config.getMobileDownloadLink());
+            if (messageForEmployee.contains("{url}")) {
+                String url = notificationUtil.getUrlByTenantId(localizationMessage);
+                messageForEmployee = messageForEmployee.replace("{url}",url );
+            }
         }
 
 
@@ -598,6 +608,10 @@ public class NotificationService {
             messageForCRM = messageForCRM.replace("{incidentId}", incidentWrapper.getIncident().getIncidentId());
             messageForCRM = messageForCRM.replace("{date}", date.format(formatter));
             messageForCRM = messageForCRM.replace("{download_link}", config.getMobileDownloadLink());
+            if (messageForCRM.contains("{url}")) {
+                String url = notificationUtil.getUrlByTenantId(localizationMessage);
+                messageForCRM = messageForCRM.replace("{url}",url );
+            }
         }
         if (messageForCitizen != null)
             message.put(CITIZEN, Arrays.asList(new String[]{messageForCitizen}));
@@ -747,10 +761,14 @@ public class NotificationService {
         List<String> employeeUUID = null;
 
         StringBuilder url = null;
+        String tenantId = request.getIncident().getTenantId();
+        if ("COMPLAINT_FACILITATOR_1".equals(role) && tenantId != null && tenantId.contains(".")) {
+            tenantId = tenantId.split("\\.")[0];
+        }
         if (request.getWorkflow().getAssignes() != null)
-            url = hrmsUtils.getHRMSURI(request.getWorkflow().getAssignes(), request.getIncident().getTenantId(), role);
+            url = hrmsUtils.getHRMSURI(request.getWorkflow().getAssignes(), tenantId, role);
         else
-            url = hrmsUtils.getHRMSURI(null, request.getIncident().getTenantId(), role);
+            url = hrmsUtils.getHRMSURI(null, tenantId, role);
         RequestInfoWrapper requestInfoWrapper = RequestInfoWrapper.builder().requestInfo(request.getRequestInfo()).build();
         Object response = serviceRequestRepository.fetchResult(url, requestInfoWrapper);
 
@@ -797,6 +815,33 @@ public class NotificationService {
 
         return reassigneeDetails;
     }
+
+    public Map<String, String> getHRMSEmployeeForIndexing(IncidentRequest request, List<String> uuids, String role) {
+        Map<String, String> employeeDetails = new HashMap<>();
+
+        String tenantId = request.getIncident().getTenantId();
+
+        StringBuilder url = hrmsUtils.getHRMSURI(uuids, tenantId, role);
+        RequestInfoWrapper requestInfoWrapper = RequestInfoWrapper.builder()
+                .requestInfo(request.getRequestInfo())
+                .build();
+
+        Object response = serviceRequestRepository.fetchResult(url, requestInfoWrapper);
+
+        List<String> employeeName = JsonPath.read(response, HRMS_EMP_NAME_JSONPATH);
+        List<String> employeeUserName = JsonPath.read(response, HRMS_EMP_USERNAME_JSONPATH);
+
+        if (employeeName != null && !employeeName.isEmpty()) {
+            employeeDetails.put("employeeName", employeeName.get(0));
+        }
+
+        if (employeeUserName != null && !employeeUserName.isEmpty()) {
+            employeeDetails.put("employeeUserName", employeeUserName.get(0));
+        }
+
+        return employeeDetails;
+    }
+
 
     private List<SMSRequest> enrichSmsRequest(String mobileNumber, String finalMessage) {
         List<SMSRequest> smsRequest = new ArrayList<>();

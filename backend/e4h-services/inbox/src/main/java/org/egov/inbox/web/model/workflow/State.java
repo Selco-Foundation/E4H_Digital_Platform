@@ -51,6 +51,9 @@ public class State   {
         @JsonProperty("sla")
         private Long sla;
 
+        @JsonProperty("totalSlaRemaining")
+        private Long totalSlaRemaining;
+
         @Size(max=256)
         @JsonProperty("state")
         private String state;

@@ -49,20 +49,22 @@ const DetailsCard = ({
           return (
             <Link
               key={itemIndex}
-              to={
-                window.location.href.includes("im/inbox")
-                  ? `/${window.contextPath}/employee/im/complaint/details/` + incidentId + "/" + object["TenantID"]
-                  : isTwoDynamicPrefix
-                  ? `${linkPrefix}${
-                      typeof serviceRequestIdKey === "function"
-                        ? serviceRequestIdKey(object)
-                        : `${getRedirectionLink(object["Application Type"] === "BPA_STAKEHOLDER_REGISTRATION" ? "BPAREG" : "BPA")}/${
-                            object[object["Application Type"] === "BPA_STAKEHOLDER_REGISTRATION" ? "applicationNo" : "Application Number"]
-                          }`
-                    }`
-                  : `${linkPrefix}${typeof serviceRequestIdKey === "function" ? serviceRequestIdKey(object) : object[serviceRequestIdKey]}`
-              }
-              style={{ textDecoration: "none !important", color: "black" }}
+              to={window.location.href.includes("im/inbox") ? `/${window.contextPath}/employee/im/complaint/details/` + incidentId + "/" + object["TenantID"]
+                : isTwoDynamicPrefix
+                  ?
+                  `${linkPrefix}${typeof serviceRequestIdKey === "function"
+                    ?
+                    serviceRequestIdKey(object)
+                    :
+                    `${getRedirectionLink(object["Application Type"] === "BPA_STAKEHOLDER_REGISTRATION" ? "BPAREG" : "BPA")}/${object[object["Application Type"] === "BPA_STAKEHOLDER_REGISTRATION" ? "applicationNo" : "Application Number"]}`}`
+                  :
+                  `${linkPrefix}${typeof serviceRequestIdKey === "function"
+                    ?
+                    serviceRequestIdKey(object)
+                      :
+                    object[serviceRequestIdKey]}`
+                }
+                style={{textDecoration:"none !important", color:"black"}}
             >
               <div className="details-container">
                 {Object.keys(object).map((name, index) => {

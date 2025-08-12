@@ -24,9 +24,12 @@ public class StorageValidator {
 
 	public void validate(List<MultipartFile> files) {
 		log.info("validating {} files", files.size());
-		if(files.size() > fileStoreConfig.getVideoListSize()) {
+		// Use configuration for maximum file count
+		int maxFiles = fileStoreConfig.getMaxFileListSize() != null ? 
+						fileStoreConfig.getMaxFileListSize() : 7;
+		if(files.size() > maxFiles) {
 			throw new CustomException("EG_FILE_LIST_EXCEEDED",
-					String.format("Cannot upload more than %d files", fileStoreConfig.getVideoListSize()));
+					String.format("Cannot upload more than %d files", maxFiles));
 		}
 		files.forEach(file -> {
 			String extension =
@@ -34,11 +37,16 @@ public class StorageValidator {
 									.getOriginalFilename())).toLowerCase();
 
 			validateFileExtension(extension);
-            try {
-                validateVideoContentType(file.getInputStream(), extension);
-            } catch (IOException e) {
-                throw new CustomException("Error validating", e.getMessage());
-            }
+			
+			// Only validate video content type for video files
+			if (isVideoFile(extension)) {
+				try {
+					validateVideoContentType(file.getInputStream(), extension);
+				} catch (IOException e) {
+					throw new CustomException("Error validating", e.getMessage());
+				}
+			}
+			
             validateInputContentType(file, extension);
 		});
 	}
@@ -75,6 +83,11 @@ public class StorageValidator {
 		if (!fileStoreConfig.getAllowedFormatsMap().get(extension).contains(contentType)) {
 			throw new CustomException("EG_FILESTORE_INVALID_INPUT", "Invalid Content Type");
 		}
+	}
+	
+	private boolean isVideoFile(String extension) {
+		return extension.equals("mp4") || extension.equals("avi") || 
+			   extension.equals("mov") || extension.equals("wmv");
 	}
 
 //	private void validateVideoSize(MultipartFile file) {

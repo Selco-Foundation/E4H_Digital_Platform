@@ -21,6 +21,7 @@ import io.minio.PutObjectArgs;
 import io.minio.errors.*;
 import org.apache.commons.io.FilenameUtils;
 import org.egov.filestore.config.FileStoreConfig;
+import org.egov.filestore.config.Properties;
 import org.egov.filestore.domain.model.FileLocation;
 import org.egov.filestore.persistence.entity.Artifact;
 import org.egov.filestore.repository.CloudFilesManager;
@@ -55,6 +56,9 @@ public class MinioRepository implements CloudFilesManager {
 	@Autowired
 	private FileStoreConfig fileStoreConfig;
 
+	@Autowired
+	private Properties properties;
+
 	@Override
 	public void saveFiles(List<org.egov.filestore.domain.model.Artifact> artifacts) {
 
@@ -76,6 +80,10 @@ public class MinioRepository implements CloudFilesManager {
 	}
 
 	private void push(MultipartFile multipartFile, String fileNameWithPath) {
+		pushWithRetry(multipartFile, fileNameWithPath, properties.getVideoUploadRetry());
+	}
+
+	private void pushWithRetry(MultipartFile multipartFile, String fileNameWithPath, int retriesLeft) {
 		try (InputStream is = multipartFile.getInputStream()) {
 			long fileSize = multipartFile.getSize(); // Use the size directly from MultipartFile
 
@@ -92,35 +100,61 @@ public class MinioRepository implements CloudFilesManager {
 
 			log.debug("Upload successful for file: {}", fileNameWithPath);
 
+		} catch (IOException e) {
+			if (retriesLeft > 0) {
+				log.warn("IOException occurred during file upload. Retries left: {}. Retrying...", retriesLeft, e);
+				try {
+					Thread.sleep(properties.getMinioRetryDelayMs()); // Configurable delay between retries
+				} catch (InterruptedException ie) {
+					Thread.currentThread().interrupt();
+					throw new CustomException("INTERRUPTED", "Thread interrupted during retry delay: " + ie.getMessage());
+				}
+				pushWithRetry(multipartFile, fileNameWithPath, retriesLeft - 1);
+			} else {
+				log.error("Max retries reached for file: {}. IOException occurred while reading or uploading file", fileNameWithPath, e);
+				throw new CustomException("IOEXCEPTION", "IOException after retries: " + e.getMessage());
+			}
 		} catch (MinioException | InvalidKeyException | IllegalArgumentException | NoSuchAlgorithmException e) {
 			log.error("Error occurred while uploading file: {}", fileNameWithPath, e);
 			throw new CustomException(ERROR_IN_CONFIGURATION, e.getMessage());
-		} catch (IOException e) {
-			log.error("IOException occurred while reading or uploading file: {}", fileNameWithPath, e);
-			throw new CustomException("IOEXCEPTION", e.getMessage());
 		}
 	}
 
 	private void push(InputStream is, long contentLength, String contentType, String fileNameWithPath) {
-		try {
-			/*PutObjectOptions putObjectOptions = new PutObjectOptions(contentLength, PutObjectOptions.MAX_PART_SIZE);
-			putObjectOptions.setContentType(contentType);
-			minioClient.putObject(minioConfig.getBucketName(), fileNameWithPath, is, putObjectOptions);*/
+		pushWithRetry(is, contentLength, contentType, fileNameWithPath, properties.getVideoUploadRetry());
+	}
 
+	private void pushWithRetry(InputStream is, long contentLength, String contentType, String fileNameWithPath, int retriesLeft) {
+		try {
 			long fileSize = is.available();
 			PutObjectArgs.Builder putObjectArgsBuilder = PutObjectArgs.builder()
 					.bucket(minioConfig.getBucketName())
 					.object(fileNameWithPath)
 					.stream(is, fileSize, -1) // Set part size to -1 for auto detection
 					.contentType(contentType); // Change this as per your file's content type
+			
+			log.info("Uploading stream file: {} to MinIO bucket: {}", fileNameWithPath, minioConfig.getBucketName());
 			minioClient.putObject(putObjectArgsBuilder.build());
+			log.debug("Stream upload successful for file: {}", fileNameWithPath);
 
-		} catch (MinioException | InvalidKeyException | IllegalArgumentException | NoSuchAlgorithmException
-				| IOException e) {
-			log.error("Error occurred: " + e);
-			throw new RuntimeException(ERROR_IN_CONFIGURATION);
+		} catch (IOException e) {
+			if (retriesLeft > 0) {
+				log.warn("IOException occurred during stream upload. Retries left: {}. Retrying...", retriesLeft, e);
+				try {
+					Thread.sleep(properties.getMinioRetryDelayMs()); // Configurable delay between retries
+				} catch (InterruptedException ie) {
+					Thread.currentThread().interrupt();
+					throw new CustomException("INTERRUPTED", "Thread interrupted during retry delay: " + ie.getMessage());
+				}
+				pushWithRetry(is, contentLength, contentType, fileNameWithPath, retriesLeft - 1);
+			} else {
+				log.error("Max retries reached for stream file: {}. IOException occurred", fileNameWithPath, e);
+				throw new CustomException("IOEXCEPTION", "IOException after retries: " + e.getMessage());
+			}
+		} catch (MinioException | InvalidKeyException | IllegalArgumentException | NoSuchAlgorithmException e) {
+			log.error("Error occurred while uploading stream file: {}", fileNameWithPath, e);
+			throw new CustomException(ERROR_IN_CONFIGURATION, e.getMessage());
 		}
-
 	}
 
 	private void pushThumbnailImages(org.egov.filestore.domain.model.Artifact artifact) {
@@ -186,7 +220,7 @@ public class MinioRepository implements CloudFilesManager {
 		return url.toString();
 	}
 	
-	private String getSignedUrl(String fileName) {
+	public String getSignedUrl(String fileName) {
 
 		String signedUrl = null;
 		try {

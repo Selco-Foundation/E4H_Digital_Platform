@@ -8,8 +8,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.filestore.domain.model.FileInfo;
 import org.egov.filestore.domain.model.FileLocation;
@@ -24,6 +22,9 @@ import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -34,23 +35,22 @@ public class ArtifactRepository {
     private final CloudFileManagerV2 cloudFileManagerV2;
     private final MinioConfig minioConfig;
 
-
     @Value("${isAzureStorageEnabled}")
     private Boolean isAzureStorageEnabled;
 
     @Value("${source.azure.blob}")
     private String azureBlobSource;
 
-
     public List<String> save(List<org.egov.filestore.domain.model.Artifact> artifacts, RequestInfo requestInfo) {
         cloudFilesManager.saveFiles(artifacts);
         List<Artifact> artifactEntities = new ArrayList<>();
         artifacts.forEach(artifact -> artifactEntities.add(mapToEntity(artifact, requestInfo)));
+        if (artifactEntities.isEmpty())
+            return List.of();
         return fileStoreJpaRepository.saveAll(artifactEntities).stream()
                 .map(Artifact::getFileStoreId)
                 .toList();
     }
-
 
     public List<String> saveHLS(
             List<org.egov.filestore.domain.model.Artifact> artifacts, RequestInfo requestInfo) {
@@ -59,12 +59,14 @@ public class ArtifactRepository {
         artifacts.forEach(artifact -> {
             if (artifact.isInsertable() && artifact.getFileLocation().getFileStoreId() != null) {
                 artifact = artifact.withFileLocation(artifact.getFileLocation()
-                        .withFileName(String.format("%s/%s", minioConfig.getBucketName(), artifact.getFileLocation().getFileName())));
+                        .withFileName(String.format("%s/%s", minioConfig.getBucketName(),
+                                artifact.getFileLocation().getFileName())));
                 artifactEntities.add(mapToEntity(artifact, requestInfo));
             }
         });
 
-        if(artifactEntities.isEmpty()) return List.of();
+        if (artifactEntities.isEmpty())
+            return List.of();
 
         return fileStoreJpaRepository.saveAll(artifactEntities).stream()
                 .map(Artifact::getFileStoreId)
@@ -84,14 +86,13 @@ public class ArtifactRepository {
                 .fileName(fileLocation.getFileName()).contentType(artifact.getMultipartFile().getContentType())
                 .module(fileLocation.getModule()).tag(fileLocation.getTag()).tenantId(fileLocation.getTenantId())
                 .fileSource(fileLocation.getFileSource())
-                //.createdBy(requestInfo.getUserInfo().getUuid())
-                //.lastModifiedBy(requestInfo.getUserInfo().getUuid())
-                //.createdTime(System.currentTimeMillis())
-                //.lastModifiedTime(System.currentTimeMillis())
+                // .createdBy(requestInfo.getUserInfo().getUuid())
+                // .lastModifiedBy(requestInfo.getUserInfo().getUuid())
+                // .createdTime(System.currentTimeMillis())
+                // .lastModifiedTime(System.currentTimeMillis())
                 .build();
         if (isAzureStorageEnabled)
             entityArtifact.setFileSource(azureBlobSource);
-
 
         return entityArtifact;
     }
@@ -118,7 +119,9 @@ public class ArtifactRepository {
      * @param fileStoreId
      * @param tenantId
      * @return
-     * @throws IOException This api needs to be enhanced to pick right object .All repositories should implement cloudmanager and it should provide
+     * @throws IOException This api needs to be enhanced to pick right object .All
+     *                     repositories should implement cloudmanager and it should
+     *                     provide
      *                     simple get api too
      */
     public Resource find(String fileStoreId, String tenantId) throws IOException {
@@ -160,7 +163,6 @@ public class ArtifactRepository {
         return fileStoreJpaRepository.findByTenantIdAndFileStoreIdList(tenantId, fileStoreIds);
     }
 
-
     public Resource findByPath(FileLocation fileLocation) {
         MinioRepository repo = (MinioRepository) cloudFilesManager;
         org.springframework.core.io.Resource resource = repo.read(fileLocation);
@@ -177,12 +179,23 @@ public class ArtifactRepository {
                                 fileLocation.getFileName(),
                                 res,
                                 fileLocation.getTenantId(),
-                                String.format("%d bytes", fileSize)
-                        );
+                                String.format("%d bytes", fileSize));
                     } catch (IOException e) {
                         throw new CustomException("Error fetching file from bucket", e.getMessage());
                     }
                 })
                 .orElse(null);
+    }
+
+    public String findS3SignedUrl(String fileStoreId, String tenantId) throws IOException {
+        Artifact artifact = fileStoreJpaRepository.findByFileStoreIdAndTenantId(fileStoreId, tenantId);
+        if (artifact == null)
+            throw new CustomException("NOT_FOUND", "Invalid filestoreid or tenantid");
+
+        MinioRepository repo = (MinioRepository) cloudFilesManager;
+        String fileLocation = artifact.getFileLocation().getFileName();
+        String fileName = fileLocation.substring(fileLocation.indexOf('/') + 1, fileLocation.length());
+        String signedUrl = repo.getSignedUrl(fileName);
+        return signedUrl;
     }
 }

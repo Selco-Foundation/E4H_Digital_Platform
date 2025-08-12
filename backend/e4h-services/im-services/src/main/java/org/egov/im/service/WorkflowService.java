@@ -1,17 +1,25 @@
 package org.egov.im.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.jayway.jsonpath.JsonPath;
+import lombok.Getter;
 import org.apache.commons.lang3.StringUtils;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.common.contract.request.User;
 import org.egov.im.config.IMConfiguration;
 import org.egov.im.repository.ServiceRequestRepository;
+import org.egov.im.util.BusinessHoursUtil;
+import org.egov.im.util.MDMSUtils;
 import org.egov.im.web.models.*;
 import org.egov.im.web.models.workflow.*;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.CollectionUtils;
 
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -27,16 +35,29 @@ public class WorkflowService {
     private ObjectMapper mapper;
 
     private NotificationService notificationService;
+    private MDMSUtils mdmsUtils;
 
+    private SLAService slaService;
+
+    private static final Map<Priority, String> PRIORITY_BUSINESS_SERVICE_MAP = Map.of(
+            Priority.HIGH, IM_BUSINESSSERVICE_HIGH,
+            Priority.MEDIUM, IM_BUSINESSSERVICE_MEDIUM,
+            Priority.LOW, IM_BUSINESSSERVICE_LOW
+    );
+
+    @Getter
+    private List<State> states;
 
     @Autowired
     public WorkflowService(IMConfiguration imConfiguration,
                            ServiceRequestRepository repository,
-                           ObjectMapper mapper, NotificationService notificationService) {
+                           ObjectMapper mapper, NotificationService notificationService, MDMSUtils mdmsUtils, SLAService slaService) {
         this.imConfiguration = imConfiguration;
         this.repository = repository;
         this.mapper = mapper;
         this.notificationService = notificationService;
+        this.mdmsUtils = mdmsUtils;
+        this.slaService = slaService;
     }
 
     /*
@@ -44,9 +65,10 @@ public class WorkflowService {
      * Should return the applicable BusinessService for the given request
      *
      * */
-    public BusinessService getBusinessService(IncidentRequest incidentRequest) {
+    public BusinessService getBusinessService(IncidentRequest incidentRequest, Priority priority) {
         String tenantId = incidentRequest.getIncident().getTenantId();
-        StringBuilder url = getSearchURLWithParams(tenantId, IM_BUSINESSSERVICE);
+        String businessService = PRIORITY_BUSINESS_SERVICE_MAP.getOrDefault(priority, IM_BUSINESSSERVICE);
+        StringBuilder url = getSearchURLWithParams(tenantId, businessService);
         RequestInfoWrapper requestInfoWrapper
                 = RequestInfoWrapper.builder().requestInfo(incidentRequest.getRequestInfo()).build();
         Object result = repository.fetchResult(url, requestInfoWrapper);
@@ -69,13 +91,59 @@ public class WorkflowService {
      * return the updated status of the application
      *
      * */
-    public ProcessInstance updateWorkflowStatus(IncidentRequest incidentRequest) {
-        ProcessInstance processInstance = getProcessInstanceForIM(incidentRequest);
+    public ProcessInstance updateWorkflowStatus(IncidentRequestWrapper wrapper, Object mdmsData) {
+        IncidentRequest incidentRequest = wrapper.getIncidentRequest();
+        Priority priority = slaService.getPriorityFromMDMS(incidentRequest, mdmsData);
+        ProcessInstance processInstance = getProcessInstanceForIM(incidentRequest, priority);
         ProcessInstanceRequest workflowRequest = new ProcessInstanceRequest(incidentRequest.getRequestInfo(), Collections.singletonList(processInstance));
         ProcessInstance updatedProcessInstance = callWorkFlow(workflowRequest);
         incidentRequest.getIncident().setApplicationStatus(updatedProcessInstance.getState().getApplicationStatus());
+        enrichTotalSla(wrapper, updatedProcessInstance);
         return updatedProcessInstance;
     }
+
+    private void enrichTotalSla(IncidentRequestWrapper wrapper, ProcessInstance processInstance) {
+        IncidentRequest request = wrapper.getIncidentRequest();
+        Long createdTime = request.getIncident().getAuditDetails().getCreatedTime();
+        String applicationStatus = request.getIncident().getApplicationStatus();
+        ZonedDateTime created = ZonedDateTime.ofInstant(Instant.ofEpochMilli(createdTime), ZoneId.of("Asia/Kolkata"));
+        ZonedDateTime now = ZonedDateTime.now(ZoneId.of("Asia/Kolkata"));
+
+        // Step 1: Fetch MDMS BusinessHours data
+        Object mdmsData = mdmsUtils.fetchMDMSData(
+                request.getRequestInfo(),
+                request.getIncident().getTenantId(),
+                "common-masters",
+                List.of("BusinessHours"),
+                null
+        );
+
+        // Step 2: Parse BusinessHours config
+        List<Map<String, Object>> businessHourList;
+        try {
+            businessHourList = JsonPath.read(
+                    mdmsData,
+                    "$.MdmsRes['common-masters'].BusinessHours[0].BusinessHours"
+            );
+        } catch (Exception e) {
+            throw new CustomException("MDMS_PARSE_ERROR", "Unable to parse BusinessHours from MDMS");
+        }
+
+        if (businessHourList == null || businessHourList.isEmpty()) {
+            throw new CustomException("MDMS_MISSING", "BusinessHours config missing from MDMS");
+        }
+
+        // Step 3: Use BusinessHoursUtil
+        BusinessHoursUtil util = new BusinessHoursUtil(businessHourList);
+        long businessHoursElapsed = util.calculateBusinessDuration(created, now);
+
+        long definedTotalSla = slaService.computeTotalSla(applicationStatus, this.getStates());
+        long totalSlaRemaining = definedTotalSla - businessHoursElapsed;
+
+        wrapper.getIndexView().setDefinedTotalSla(definedTotalSla);
+        processInstance.getState().setTotalSlaRemaining(totalSlaRemaining);
+    }
+
     /**
      * Creates url for search based on given tenantId and businessservices
      *
@@ -160,23 +228,24 @@ public class WorkflowService {
      *
      * @param request
      */
-    private ProcessInstance getProcessInstanceForIM(IncidentRequest request) {
+    private ProcessInstance getProcessInstanceForIM(IncidentRequest request, Priority priority) {
 
         Incident incident = request.getIncident();
         Workflow workflow = request.getWorkflow();
-        if (request.getWorkflow().getAction().equalsIgnoreCase("RESOLVE")
-                || request.getWorkflow().getAction().equalsIgnoreCase("REJECT")) {
-            workflow.setAssignes(null);
-            Map<String, String> reassigneeDetails = notificationService.getHRMSEmployee(request, "COMPLAINANT");
-            List<String> assignee = Arrays.asList(reassigneeDetails.get("employeeUUID"));
-            workflow.setAssignes(assignee);
+        String action = request.getWorkflow().getAction();
+        if (action.equalsIgnoreCase("RESOLVE") || action.equalsIgnoreCase("REJECT")) {
+            reassignWorkflow(workflow, request, "COMPLAINANT");
+        } else if (action.equalsIgnoreCase("OUT_OF_WARRANTY")) {
+            reassignWorkflow(workflow, request, "COMPLAINT_FACILITATOR_1");
         }
         ProcessInstance processInstance = new ProcessInstance();
         processInstance.setBusinessId(incident.getIncidentId());
         processInstance.setAction(request.getWorkflow().getAction());
         processInstance.setModuleName(IM_MODULENAME);
         processInstance.setTenantId(incident.getTenantId());
-        processInstance.setBusinessService(getBusinessService(request).getBusinessService());
+        BusinessService businessService = getBusinessService(request, priority);
+        this.states = businessService.getStates();
+        processInstance.setBusinessService(businessService.getBusinessService());
         processInstance.setDocuments(request.getWorkflow().getVerificationDocuments());
         processInstance.setComment(workflow.getComments());
 
@@ -197,6 +266,13 @@ public class WorkflowService {
         }
 
         return processInstance;
+    }
+
+    private void reassignWorkflow(Workflow workflow, IncidentRequest request, String role) {
+        workflow.setAssignes(null);
+        Map<String, String> reassigneeDetails = notificationService.getHRMSEmployee(request, role);
+        List<String> assignee = Arrays.asList(reassigneeDetails.get("employeeUUID"));
+        workflow.setAssignes(assignee);
     }
 
     /**
@@ -242,7 +318,6 @@ public class WorkflowService {
         response = mapper.convertValue(optional, ProcessInstanceResponse.class);
         return response.getProcessInstances().get(0);
     }
-
 
     public StringBuilder getprocessInstanceSearchURL(String tenantId, String IncidentId) {
 

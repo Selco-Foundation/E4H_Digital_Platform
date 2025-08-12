@@ -1,0 +1,180 @@
+erDiagram
+    %% EXISTING E4H PLATFORM TABLES (Used by Field Planner)
+    FACILITY {
+        VARCHAR id PK "EXISTING - Health Facility Registry"
+        VARCHAR tenant_id "Multi-tenant support"
+        VARCHAR facility_name "Facility name"
+        VARCHAR facility_type "PHC, CHC, SC, etc"
+        VARCHAR facility_category "HEALTH category"
+        VARCHAR facility_ownership "Government, Private, PPP"
+        VARCHAR facility_region "RURAL, URBAN"
+        VARCHAR wf_status "Workflow status"
+        BOOLEAN is_active "Active status"
+        JSONB additional_details "Extended for field activities"
+        BIGINT created_at
+        BIGINT updated_at
+    }
+    
+    FACILITY_ADDRESS {
+        VARCHAR id PK "EXISTING - Address data"
+        VARCHAR tenant_id
+        VARCHAR doorNo
+        DOUBLE latitude
+        DOUBLE longitude
+        VARCHAR addressLine1
+        VARCHAR addressLine2
+        VARCHAR city
+        VARCHAR pincode
+    }
+    
+    EG_HRMS_EMPLOYEE {
+        VARCHAR uuid PK "EXISTING - eGov HRMS"
+        VARCHAR name "Employee name"
+        VARCHAR phone "Contact number"
+        VARCHAR tenantid "Tenant ID"
+        VARCHAR employeestatus "Active, Inactive"
+        VARCHAR employeetype "Field staff, SPOC, etc"
+        BOOLEAN active "Active flag"
+        BIGINT createddate
+        BIGINT lastModifiedDate
+    }
+    
+    EG_HRMS_ASSIGNMENT {
+        VARCHAR uuid PK "EXISTING - Role assignments"
+        VARCHAR employeeid FK
+        VARCHAR department "Department"
+        VARCHAR designation "Role designation"
+        BIGINT fromdate
+        BIGINT todate
+        VARCHAR tenantid
+    }
+    
+    PROJECT_FACILITY {
+        VARCHAR id PK "EXISTING - Project Service"
+        VARCHAR tenantId
+        VARCHAR projectId "Project reference"
+        VARCHAR facilityId FK
+        JSONB additionalDetails
+        BIGINT createdTime
+        BIGINT lastModifiedTime
+    }
+    
+    %% NEW FIELD PLANNER TABLES (Extensions to E4H Platform)
+    FIELD_PLANS {
+        VARCHAR id PK "NEW - Field planning"
+        VARCHAR tenant_id
+        VARCHAR name UK
+        VARCHAR project_id "References existing project"
+        DATE start_date
+        DATE end_date
+        JSONB geography_scope
+        JSONB selected_activities
+        VARCHAR created_by FK "References eg_hrms_employee.uuid"
+        VARCHAR status "ACTIVE, COMPLETED, CANCELLED"
+        BIGINT created_time
+        BIGINT last_modified_time
+        JSONB additional_details
+    }
+    
+    FIELD_PLAN_FACILITIES {
+        VARCHAR id PK "NEW - Plan-facility association"
+        VARCHAR tenant_id  
+        VARCHAR field_plan_id FK
+        VARCHAR facility_id FK "References facility.id"
+        VARCHAR status
+        BIGINT created_time
+        BIGINT last_modified_time
+        JSONB additional_details
+    }
+    
+    ACTIVITIES {
+        VARCHAR id PK "NEW - Activity master data"
+        VARCHAR tenant_id
+        VARCHAR name UK "Installation, Field QC, Handover"
+        VARCHAR code UK
+        JSONB default_conditions "Activation conditions"
+        JSONB required_roles "SPOC roles needed"
+        INTEGER sequence_order
+        BOOLEAN is_active
+        BIGINT created_time
+        BIGINT last_modified_time
+        JSONB additional_details
+    }
+    
+    ACTIVITY_ASSIGNMENTS {
+        VARCHAR id PK "NEW - SPOC assignments"
+        VARCHAR tenant_id
+        VARCHAR field_plan_id FK
+        VARCHAR activity_id FK
+        VARCHAR assigned_to FK "References eg_hrms_employee.uuid"
+        VARCHAR assigned_by FK "References eg_hrms_employee.uuid"
+        DATE start_date
+        DATE end_date
+        VARCHAR status
+        BIGINT created_time
+        BIGINT last_modified_time
+        JSONB additional_details
+    }
+    
+    FACILITY_ACTIVITIES {
+        VARCHAR id PK "NEW - Facility-activity tracking"
+        VARCHAR tenant_id
+        VARCHAR facility_id FK "References facility.id"
+        VARCHAR activity_id FK
+        VARCHAR field_plan_id FK
+        VARCHAR status "SCHEDULED, ACTIVE, COMPLETED"
+        JSONB conditions_met "Condition evaluation results"
+        VARCHAR assigned_user FK "References eg_hrms_employee.uuid"
+        BIGINT scheduled_at
+        BIGINT activated_at
+        BIGINT completed_at
+        BIGINT created_time
+        BIGINT last_modified_time
+        JSONB additional_details
+    }
+    
+    ACTIVITY_REPORTS {
+        VARCHAR id PK "NEW - Field reports"
+        VARCHAR tenant_id
+        VARCHAR facility_activity_id FK
+        VARCHAR submitted_by FK "References eg_hrms_employee.uuid"
+        JSONB report_data "Form data and responses"
+        JSONB attachments "Filestore references"
+        VARCHAR status "SUBMITTED, APPROVED, REJECTED"
+        VARCHAR reviewed_by FK "References eg_hrms_employee.uuid"
+        BIGINT reviewed_at
+        TEXT review_comments
+        BIGINT created_time
+        BIGINT last_modified_time
+        JSONB additional_details
+    }
+
+    %% RELATIONSHIPS - Existing E4H Platform
+    FACILITY ||--o{ FACILITY_ADDRESS : has_address
+    FACILITY ||--o{ PROJECT_FACILITY : included_in_projects
+    
+    EG_HRMS_EMPLOYEE ||--o{ EG_HRMS_ASSIGNMENT : has_assignments
+    
+    %% RELATIONSHIPS - Field Planner Extensions
+    %% Links to existing E4H entities
+    FACILITY ||--o{ FIELD_PLAN_FACILITIES : selected_for_plans
+    FACILITY ||--o{ FACILITY_ACTIVITIES : has_activities
+    
+    EG_HRMS_EMPLOYEE ||--o{ FIELD_PLANS : creates
+    EG_HRMS_EMPLOYEE ||--o{ ACTIVITY_ASSIGNMENTS : assigned_as_spoc
+    EG_HRMS_EMPLOYEE ||--o{ ACTIVITY_ASSIGNMENTS : assigned_by
+    EG_HRMS_EMPLOYEE ||--o{ FACILITY_ACTIVITIES : assigned_to_execute
+    EG_HRMS_EMPLOYEE ||--o{ ACTIVITY_REPORTS : submits
+    EG_HRMS_EMPLOYEE ||--o{ ACTIVITY_REPORTS : reviews
+    
+    PROJECT_FACILITY ||--o{ FIELD_PLANS : enables_planning
+    
+    %% New Field Planner relationships
+    FIELD_PLANS ||--o{ FIELD_PLAN_FACILITIES : includes
+    FIELD_PLANS ||--o{ ACTIVITY_ASSIGNMENTS : contains
+    FIELD_PLANS ||--o{ FACILITY_ACTIVITIES : tracks
+    
+    ACTIVITIES ||--o{ ACTIVITY_ASSIGNMENTS : assigned
+    ACTIVITIES ||--o{ FACILITY_ACTIVITIES : performed
+    
+    FACILITY_ACTIVITIES ||--o{ ACTIVITY_REPORTS : generates 
