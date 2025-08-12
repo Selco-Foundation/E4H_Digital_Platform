@@ -140,24 +140,16 @@ public class V1ApiController {
         return new ResponseEntity<Void>(HttpStatus.NOT_IMPLEMENTED);
     }
 
-    @RequestMapping(value = "/v1/asset/{assetID}/_update", method = RequestMethod.POST)
-    public ResponseEntity<AssetCreateUpdateResponse> updateAsset(@Parameter(in = ParameterIn.DEFAULT, description = "Updated asset information", required = true, schema = @Schema()) @Valid @RequestBody AssetCreateRequest body, @Parameter(in = ParameterIn.PATH, description = "Unique identifier of the asset", required = true, schema = @Schema()) @PathVariable("assetID") String assetID) {
-        // TODO: Implement the actual asset update logic
-        String accept = request.getHeader("Accept");
-        if (accept != null && accept.contains("application/json")) {
-            try {
-                // Create a proper response object
-                AssetCreateUpdateResponse response = new AssetCreateUpdateResponse();
-                // Set appropriate fields in the response
-                return new ResponseEntity<AssetCreateUpdateResponse>(response, HttpStatus.NOT_IMPLEMENTED);
-            } catch (Exception e) {
-                // Log the error
-                // log.error("Error updating asset", e);
-                return new ResponseEntity<AssetCreateUpdateResponse>(HttpStatus.INTERNAL_SERVER_ERROR);
-            }
-        }
-
-        return new ResponseEntity<AssetCreateUpdateResponse>(HttpStatus.NOT_IMPLEMENTED);
+    @RequestMapping(value = "/v1/asset/_update", method = RequestMethod.POST)
+    public ResponseEntity<AssetCreateUpdateResponse> updateAsset(@Parameter(in = ParameterIn.DEFAULT, description = "Updated asset information", required = true, schema = @Schema())
+        @Valid @RequestBody AssetCreateRequest body,
+        @Parameter(in = ParameterIn.QUERY, description = "Unique identifier of the asset", required = true, schema = @Schema())
+        @RequestParam("assetID") String assetID) {
+        validator.validateAsset(assetID, body);
+        Asset updatedAsset = assetService.updateAsset(assetID, body);
+        AssetCreateUpdateResponse response = new AssetCreateUpdateResponse();
+        response.setAsset(updatedAsset);
+        return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
     @RequestMapping(value = "/v1/asset/amc/_update", method = RequestMethod.POST)

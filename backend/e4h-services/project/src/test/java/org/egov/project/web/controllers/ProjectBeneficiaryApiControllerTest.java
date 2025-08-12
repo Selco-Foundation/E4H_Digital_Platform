@@ -67,6 +67,9 @@ public class ProjectBeneficiaryApiControllerTest {
     @MockBean
     private ProjectService projectService;
 
+    @MockBean
+    private ProjectWorkflowService projectWorkflowService;
+
     @Test
     @DisplayName("should create project beneficiary and return with 202 accepted")
     void shouldCreateProjectBeneficiaryAndReturnWith202Accepted() throws Exception {

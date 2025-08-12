@@ -92,6 +92,12 @@ public class Configuration {
     @Value("${egov.idgen.function.application.number.format}")
     private String functionApplicationNumberFormat;
 
+    @Value("${egov.idegn.organisation.code.name}")
+    private String orgCodeName;
+
+    @Value("${egov.idegn.organisation.code.format}")
+    private String orgCodeFormat;
+
     // Workflow Config
     @Value("${egov.workflow.host}")
     private String wfHost;

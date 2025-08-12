@@ -151,7 +151,7 @@ public class ProjectAddressRowMapper implements ResultSetExtractor<List<Project>
         return project;
     }
 
-    private JsonNode getAdditionalDetail(String columnName, ResultSet rs) throws SQLException {
+    private JsonNode getAdditionalDetail(String columnName, ResultSet rs)    throws SQLException {
         JsonNode additionalDetails = null;
         try {
             PGobject obj = (PGobject) rs.getObject(columnName);

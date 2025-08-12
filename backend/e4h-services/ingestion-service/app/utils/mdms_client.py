@@ -4,7 +4,6 @@ import requests
 
 from app.schemas.request_info import RequestInfo
 from app.schemas.vendor_ingestion_shema_response import IngestionSchemaResponse
-from app.utils.convertor import convert_json_to_object
 
 class MDMSClient:
     def __init__(self, mdms_url: str):
@@ -79,3 +78,33 @@ class MDMSClient:
             result.append(column_info)
 
         return result
+
+    def get_tenant_mapping(self, request_info: RequestInfo, tenant_ids: List[str]) -> Dict:
+        all_tenant_data = {}
+
+        for tenant_id in tenant_ids:
+            search_url = f"{self.mdms_url}/egov-mdms-service/v1/_search"
+            search_payload = {
+                "RequestInfo": request_info.model_dump(by_alias=True, exclude_none=True),
+                "MdmsCriteria": {
+                    "tenantId": tenant_id,
+                    "moduleDetails": [
+                        {
+                            "moduleName": "tenant",
+                            "masterDetails": [
+                                {
+                                    "name": "tenants"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            }
+            response = requests.post(search_url, json=search_payload)
+            if response.status_code in [200, 201, 202]:
+                data = response.json()
+                tenants = data.get("MdmsRes", {}).get("tenant", {}).get("tenants", [])
+                all_tenant_data.update(
+                    {t["code"]: t for t in tenants if t.get("code") and t["code"] not in all_tenant_data})
+
+        return all_tenant_data

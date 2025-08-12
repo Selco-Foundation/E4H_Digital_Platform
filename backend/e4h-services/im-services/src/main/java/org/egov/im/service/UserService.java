@@ -26,7 +26,8 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import static org.egov.im.util.IMConstants.USERTYPE_EMPLOYEE;
+
+import static org.egov.im.util.IMConstants.*;
 
 @org.springframework.stereotype.Service
 @Slf4j
@@ -259,7 +260,14 @@ public class UserService {
     }
 
 
-
+    /**
+     * Handles the login reporting for a user.
+     * Only processes users with COMPLAINANT or COMPLAINT_RESOLVER roles.
+     * For COMPLAINANT, enriches the report with location details from MDMS.
+     * Skips users who also have the COMPLAINT_ASSESSOR role.
+     *
+     * @param userRequest The user request containing user info and request details.
+     */
     public void loginReport(UserRequest userRequest) {
         try {
             User userInfo = userRequest.getUser();
@@ -267,23 +275,26 @@ public class UserService {
                 log.info("No roles found for user");
                 return;
             }
-            String roleCode = userInfo.getRoles().get(0).getCode();
+            boolean hasAllowedRole = userInfo.getRoles().stream()
+                .anyMatch(role -> ROLE_COMPLAINANT.equalsIgnoreCase(role.getCode()) || ROLE_COMPLAINT_RESOLVER.equalsIgnoreCase(role.getCode()));
 
-            // Only proceed for COMPLAINANT or COMPLAINT RESOLVER
-            if ("COMPLAINANT".equalsIgnoreCase(roleCode) || "COMPLAINT_RESOLVER".equalsIgnoreCase(roleCode)) {
-
+            if (hasAllowedRole) {
                 UserLoginReport userLoginReport = new UserLoginReport();
                 userLoginReport.setId(UUID.randomUUID().toString());
                 userLoginReport.setUserName(userInfo.getUserName());
-                userLoginReport.setUserRole(roleCode);
                 userLoginReport.setCurrentOwnerName(userInfo.getName());
+                // Set the first matching allowed role as userRole
+                String allowedRole = userInfo.getRoles().stream()
+                    .map(role -> role.getCode())
+                    .filter(code -> ROLE_COMPLAINANT.equalsIgnoreCase(code) || ROLE_COMPLAINT_RESOLVER.equalsIgnoreCase(code))
+                    .findFirst().orElse("");
+                userLoginReport.setUserRole(allowedRole);
                 userLoginReport.setLastLoginDateTime(String.valueOf(System.currentTimeMillis()));
 
-                if ("COMPLAINANT".equalsIgnoreCase(roleCode)) {
+                if (ROLE_COMPLAINANT.equalsIgnoreCase(allowedRole)) {
                     // Check if user also has COMPLAINT_ASSESSOR role (CRM)
                     boolean hasComplaintAssessorRole = userInfo.getRoles().stream()
-                            .anyMatch(role -> "COMPLAINT_ASSESSOR".equalsIgnoreCase(role.getCode()));
-
+                        .anyMatch(role -> ROLE_COMPLAINT_ASSESSOR.equalsIgnoreCase(role.getCode()));
                     if (hasComplaintAssessorRole) {
                         return;
                     }
@@ -328,48 +339,65 @@ public class UserService {
 
     private void setBlockAndDistrictFromMdms(Object mdmsResult, String tenantId, UserLoginReport userLoginReport) {
         if (!(mdmsResult instanceof Map)) {
+            log.error("mdmsResult is not a Map. Actual type: {}", mdmsResult != null ? mdmsResult.getClass().getName() : "null");
             return;
         }
-        Map<String, Object> resultMap = (Map<String, Object>) mdmsResult;
-        Map<String, Object> mdmsRes = (Map<String, Object>) resultMap.get("MdmsRes");
-        if (mdmsRes == null) {
+        Map<String, Object> resultMap;
+        try {
+            resultMap = (Map<String, Object>) mdmsResult;
+        } catch (ClassCastException e) {
+            log.error("Failed to cast mdmsResult to Map: {}", e.getMessage(), e);
             return;
         }
-        Map<String, Object> tenantMap = (Map<String, Object>) mdmsRes.get("tenant");
-        if (tenantMap == null) {
+        Object mdmsResObj = resultMap.get("MdmsRes");
+        if (!(mdmsResObj instanceof Map)) {
+            log.error("MdmsRes is not a Map. Actual type: {}", mdmsResObj != null ? mdmsResObj.getClass().getName() : "null");
             return;
         }
-        List<Map<String, Object>> tenants = (List<Map<String, Object>>) tenantMap.get("tenants");
-        if (tenants == null) {
+        Map<String, Object> mdmsRes = (Map<String, Object>) mdmsResObj;
+        Object tenantMapObj = mdmsRes.get("tenant");
+        if (!(tenantMapObj instanceof Map)) {
+            log.error("tenant is not a Map. Actual type: {}", tenantMapObj != null ? tenantMapObj.getClass().getName() : "null");
             return;
         }
-
+        Map<String, Object> tenantMap = (Map<String, Object>) tenantMapObj;
+        Object tenantsObj = tenantMap.get("tenants");
+        if (!(tenantsObj instanceof List)) {
+            log.error("tenants is not a List. Actual type: {}", tenantsObj != null ? tenantsObj.getClass().getName() : "null");
+            return;
+        }
+        List<Map<String, Object>> tenants;
+        try {
+            tenants = (List<Map<String, Object>>) tenantsObj;
+        } catch (ClassCastException e) {
+            log.error("Failed to cast tenants to List<Map<String, Object>>: {}", e.getMessage(), e);
+            return;
+        }
         for (Map<String, Object> tenant : tenants) {
             String code = (String) tenant.get("code");
             if (!tenantId.equals(code)) {
                 continue;
             }
-
-            // City details
-            Map<String, Object> city = (Map<String, Object>) tenant.get("city");
+            Object cityObj = tenant.get("city");
             String block = "";
             String district = "";
-            if (city != null) {
+            if (cityObj instanceof Map) {
+                Map<String, Object> city = (Map<String, Object>) cityObj;
                 block = (String) city.get("blockCode");
                 if (block != null && block.contains(".")) {
                     block = block.substring(block.indexOf('.') + 1);
                 }
                 district = (String) city.get("districtName");
+            } else if (cityObj != null) {
+                log.error("city is not a Map. Actual type: {}", cityObj.getClass().getName());
             }
-            userLoginReport.setBlock(block != null ? block : "");
-            userLoginReport.setDistrict(district != null ? district : "");
-
-            // Health facility and state
+            userLoginReport.setBlock(block == null ? "" : block);
+            userLoginReport.setDistrict(district == null ? "" : district);
             String healthCenter = (String) tenant.get("name");
             String state = (String) tenant.get("address");
-            userLoginReport.setHealthFacilityName(healthCenter != null ? healthCenter : "");
-            userLoginReport.setState(state != null ? state : "");
-            break; // Found the tenant, no need to continue
+            userLoginReport.setHealthFacilityName(healthCenter == null ? "" : healthCenter);
+            userLoginReport.setState(state == null ? "" : state);
+            break;
         }
     }
 }

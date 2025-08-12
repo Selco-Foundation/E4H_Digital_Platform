@@ -1,0 +1,2 @@
+ALTER TABLE asset_documents ADD COLUMN latitude DOUBLE PRECISION;
+ALTER TABLE asset_documents ADD COLUMN longitude DOUBLE PRECISION;
