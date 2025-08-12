@@ -25,7 +25,7 @@ const formatFieldPlans = (projects) => {
 
     const totalProjectFacilities = row?.project?.additionalDetails?.countProjectFacilities || 0;
     const projectFacilityInfo = formatProjectFacilityInfo(row?.project?.additionalDetails);
-    const completionRate = Math.ceil(projectFacilityInfo["APPROVED_BY_QC_SPOC"]/totalProjectFacilities * 100) || 0;
+    const completionRate = totalProjectFacilities !== 0 ? (Math.ceil(projectFacilityInfo["APPROVED_BY_QC_SPOC"]/totalProjectFacilities * 100) || 0) : 0;
 
     return {
       id: row?.project?.id,
