@@ -173,12 +173,12 @@ public class ProjectService {
 
             if (searchResponse != null && searchResponse.getResponse() != null && !searchResponse.getResponse().isEmpty()) {
                 ProjectFacility projectFacility = searchResponse.getResponse().get(0);
-                Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(project.getAdditionalDetails(), "facilityId", projectFacility.getFacilityId());
+                Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(project.getAdditionalDetails(), "systemCode", "AC_OFF_GRID");
                 project.setAdditionalDetails(enrichedAdditionalDetails);
-//                ProjectFacilityBulkRequest projectFacilityBulkRequest = ProjectFacilityBulkRequest.builder().projectFacilities(Collections.singletonList(projectFacility)).requestInfo(requestInfo).build();
-//                Facility facility = projectFacilityService.getFacilityById(projectFacilityBulkRequest);
-//                enrichedAdditionalDetails = mergeIntoAdditionalDetails(project.getAdditionalDetails(), "Facility", facility);
-//                project.setAdditionalDetails(enrichedAdditionalDetails);
+                ProjectFacilityBulkRequest projectFacilityBulkRequest = ProjectFacilityBulkRequest.builder().projectFacilities(Collections.singletonList(projectFacility)).requestInfo(requestInfo).build();
+                Facility facility = projectFacilityService.getFacilityById(projectFacilityBulkRequest);
+                enrichedAdditionalDetails = mergeIntoAdditionalDetails(project.getAdditionalDetails(), "Facility", facility);
+                project.setAdditionalDetails(enrichedAdditionalDetails);
             }
         }
 
@@ -640,7 +640,7 @@ public class ProjectService {
 
     private Object mergeIntoAdditionalDetails(Object additionalDetails, String key, Object value) {
         if (additionalDetails instanceof ObjectNode) {
-            ((ObjectNode) additionalDetails).put(key, value+"");
+            ((ObjectNode) additionalDetails).put(key, mapper.valueToTree(value));
             return additionalDetails;
         } else if (additionalDetails instanceof Map) {
             ((Map<String, Object>) additionalDetails).put(key, value);
