@@ -1,0 +1,932 @@
+openapi: 3.0.3
+info:
+  title: E4H Field Planner - Activities API
+  version: 1.0.0
+  description: |
+    Activities API for the E4H Field Planner. Activities can be at a field plan level or at a facility level. If a facilityID is present, it is a facility level activity. Each activity has a SPOC and many staff mapped to it. Each staff has a specific role code. Conforms to DIGIT API patterns:
+    - Bulk-friendly commands (`_create`, `_update`, `_search`, `_workflow`, `_assign-*`)
+    - Common contracts via DIGIT `RequestInfo`, `ResponseInfo`, `ErrorRes`, `Pagination`
+    - All resources are multi-tenant (`tenantId` required on writes and searches)
+
+paths:
+  /v1/activities/_create:
+    post:
+      tags: [Activities]
+      summary: Create activities (bulk)
+      description: |
+        Bulk-create activities. Each activity MUST include `tenantId`, `fieldplanId`, and `activityType`.
+        `facilityId` is optional; when present, the activity is facility-bound.
+      operationId: createActivities
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActivityCreateRequest'
+      responses:
+        '201':
+          description: Activities created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivitiesResponse'
+        '400':
+          description: Error response (DIGIT ErrorRes)
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  https://raw.githubusercontent.com/egovernments/DIGIT-Specs/master/Common%20Services/common-contract.yaml#/components/schemas/ErrorRes
+
+  /v1/activities/_update:
+    post:
+      tags: [Activities]
+      summary: Update activities (bulk)
+      description: |
+        Bulk-update activities. Each item MUST include its `id`. Partial updates are supported; unspecified fields remain unchanged.
+      operationId: updateActivities
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActivityUpdateRequest'
+      responses:
+        '200':
+          description: Activities updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivitiesResponse'
+        '400':
+          description: Error response (DIGIT ErrorRes)
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  https://raw.githubusercontent.com/egovernments/DIGIT-Specs/master/Common%20Services/common-contract.yaml#/components/schemas/ErrorRes
+
+  /v1/activities/_search:
+    post:
+      tags: [Activities]
+      summary: Search activities
+      description: |
+        Search activities by filters. Requires `tenantId` in the criteria.
+        Supports pagination via DIGIT `Pagination` contract.
+      operationId: searchActivities
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActivitySearchRequest'
+      responses:
+        '200':
+          description: Activities retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivitySearchResponse'
+        '400':
+          description: Error response (DIGIT ErrorRes)
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  https://raw.githubusercontent.com/egovernments/DIGIT-Specs/master/Common%20Services/common-contract.yaml#/components/schemas/ErrorRes
+
+  /v1/activities/_workflow:
+    post:
+      tags: [Activities]
+      summary: Activity workflow transitions (bulk)
+      description: |
+        Perform workflow state transitions for activities (e.g., SUBMIT, APPROVE, REJECT, ACTIVATE, COMPLETE, CANCELLED). This endpoint should integrate with the DIGIT workflow transition endpoint.
+      operationId: activityWorkflow
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActivityWorkflowRequest'
+      responses:
+        '200':
+          description: Workflow processed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivityWorkflowResponse'
+        '400':
+          description: Error response (DIGIT ErrorRes)
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  https://raw.githubusercontent.com/egovernments/DIGIT-Specs/master/Common%20Services/common-contract.yaml#/components/schemas/ErrorRes
+
+  /v1/activities/_assign-spoc:
+    post:
+      tags: [Activities]
+      summary: Assign or reassign Activity SPOC (bulk)
+      description: |
+        Assigns the SPOC for activities at the activity level. Each item targets one `activityId`.
+      operationId: assignSpocToActivities
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActivitySPOCAssignRequest'
+      responses:
+        '200':
+          description: SPOC assignments processed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivitySPOCAssignResponse'
+        '400':
+          description: Error response (DIGIT ErrorRes)
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  https://raw.githubusercontent.com/egovernments/DIGIT-Specs/master/Common%20Services/common-contract.yaml#/components/schemas/ErrorRes
+
+  /v1/activities/_assign-staff:
+    post:
+      tags: [Activities]
+      summary: Assign staff with roles to facility-bound activities (bulk)
+      description: |
+        Bulk-assign multiple staff (with roles) to one or more facility-bound activities.
+        If an activity has no `facilityId`, its assignment is rejected.
+        Use `replaceExisting=true` to replace all staff for the activity; otherwise the service merges.
+      operationId: assignStaffToActivities
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActivityStaffAssignmentRequest'
+      responses:
+        '200':
+          description: Staff assignments processed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivityStaffAssignmentResponse'
+        '400':
+          description: Error response (DIGIT ErrorRes)
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  https://raw.githubusercontent.com/egovernments/DIGIT-Specs/master/Common%20Services/common-contract.yaml#/components/schemas/ErrorRes
+# -----------------------
+  # Activity Reports (under /activities prefix)
+  # -----------------------
+  /v1/activities/reports/_create:
+    post:
+      tags: [Activity Reports]
+      summary: Create activity reports (bulk)
+      description: |
+        Bulk-create **ActivityReport** records against activities. Typically used by field staff or SPOCs.
+        If the target activity is facility-bound, include `facilityId` in the report for validation.
+      operationId: createActivityReports
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActivityReportCreateRequest'
+      responses:
+        '201':
+          description: Reports created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivityReportsResponse'
+        '400':
+          description: Error response (DIGIT ErrorRes)
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  https://raw.githubusercontent.com/egovernments/DIGIT-Specs/master/Common%20Services/common-contract.yaml#/components/schemas/ErrorRes
+
+  /v1/activities/reports/_update:
+    post:
+      tags: [Activity Reports]
+      summary: Update activity reports (bulk)
+      description: |
+        Bulk-update reports. Only reports in DRAFT/REJECTED are typically editable (service-level rule).
+      operationId: updateActivityReports
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActivityReportUpdateRequest'
+      responses:
+        '200':
+          description: Reports updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivityReportsResponse'
+        '400':
+          description: Error response (DIGIT ErrorRes)
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  https://raw.githubusercontent.com/egovernments/DIGIT-Specs/master/Common%20Services/common-contract.yaml#/components/schemas/ErrorRes
+
+  /v1/activities/reports/_search:
+    post:
+      tags: [Activity Reports]
+      summary: Search activity reports
+      description: |
+        Search reports with filters; requires `tenantId`. Supports pagination.
+      operationId: searchActivityReports
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActivityReportSearchRequest'
+      responses:
+        '200':
+          description: Reports retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivityReportSearchResponse'
+        default:
+          description: Error response (DIGIT ErrorRes)
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  https://raw.githubusercontent.com/egovernments/DIGIT-Specs/master/Common%20Services/common-contract.yaml#/components/schemas/ErrorRes
+
+components:
+  schemas:
+    # ----- External DIGIT common contracts -----
+    RequestInfo:
+      $ref: >-
+        https://raw.githubusercontent.com/egovernments/DIGIT-Specs/master/Common%20Services/common-contract.yaml#/components/schemas/RequestInfo
+    ResponseInfo:
+      $ref: >-
+        https://raw.githubusercontent.com/egovernments/DIGIT-Specs/master/Common%20Services/common-contract.yaml#/components/schemas/ResponseInfo
+    Pagination:
+      $ref: >-
+        https://raw.githubusercontent.com/egovernments/DIGIT-Specs/master/Common%20Services/common-contract.yaml#/components/schemas/Pagination
+    Error:
+      $ref: >-
+        https://raw.githubusercontent.com/egovernments/DIGIT-Specs/master/Common%20Services/common-contract.yaml#/components/schemas/Error
+    ErrorRes:
+      $ref: >-
+        https://raw.githubusercontent.com/egovernments/DIGIT-Specs/master/Common%20Services/common-contract.yaml#/components/schemas/ErrorRes
+
+    # ----- Base Entities (as provided) -----
+    Activity:
+      type: object
+      description: Entity describing the activity
+      properties:
+        id:
+          type: string
+          format: uuid
+          minLength: 36
+          maxLength: 36
+          readOnly: true
+          description: System-generated UUID
+        tenantId:
+          type: string
+          description: Tenant identifier
+        fieldplanId:
+          type: string
+          description: The field plan this activity belongs to
+        activityType:
+          type: string
+          description: Master data code for type of activity
+          example: INSTALLATION
+        parentActivityId:
+          type: string
+          format: uuid
+          minLength: 36
+          maxLength: 36
+          description: Optional parent activity ID for facility bound activities
+        activityDetails: #-- Specific to each activity type. Schema to be defined in MDMS
+          type: object
+          description: Each type of activity can have its own custom fields. These can be defined as JSON schema in MDMS v2. The payload of this field is to be validated against the MDMS schema.
+        plannedStartDate:
+          type: integer
+          format: int64
+          description: Epoch start time
+        plannedEndDate:
+          type: integer
+          format: int64
+          description: Epoch end time
+        startDate:
+          type: integer
+          format: int64
+          description: Epoch start time
+        endDate:
+          type: integer
+          format: int64
+          description: Epoch end time
+        spocEmployeeId:
+          type: string
+          description: Vendor employee ID or HRMS employee ID who is the SPOC for this activity
+        spocUserId:
+          type: string
+          description: User registry ID of the SPOC for this activity
+        facilityId:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: Health facility the activity is linked to, if any. Non-mandatory field
+        staff:
+          type: array
+          description: Staff assigned to this activity (facility-bound scenarios)
+          items:
+            $ref: '#/components/schemas/FacilityStaff'
+          minItems: 1
+        isActive:
+          type: boolean
+          default: true
+          description: Used for soft deletes
+        auditDetails:
+          $ref: >-
+            https://raw.githubusercontent.com/egovernments/DIGIT-Specs/master/Common%20Services/common-contract.yaml#/components/schemas/AuditDetails
+        additionalDetails:
+          type: object
+          additionalProperties: true
+          description: Additional details for the activity, e.g., custom fields
+      required:
+        - tenantId
+        - fieldplanId
+        - activityType
+
+    FacilityStaff:
+      type: object
+      description: Staff mapped to an activity (at facility level)
+      properties:
+        id:
+          type: string
+          format: uuid
+          minLength: 36
+          maxLength: 36
+          readOnly: true
+          description: System-generated UUID
+        activityId:
+          type: string
+          description: Activity identifier
+        roleCode:
+          type: string
+          description: Role code for the staff member in this activity (MDMS), e.g., INSTALLER, QC_INSPECTOR
+        staffEmployeeId:
+          type: string
+          description: Employee identifier from HRMS/vendor system
+        staffUserId:
+          type: string
+          description: User registry identifier
+        auditDetails:
+          $ref: >-
+            https://raw.githubusercontent.com/egovernments/DIGIT-Specs/master/Common%20Services/common-contract.yaml#/components/schemas/AuditDetails
+        isActive:
+          type: boolean
+          default: true
+          description: Field for soft delete of staff
+      required:
+        - roleCode
+
+    # ----- Commands & contracts -----
+    ActivityCreateRequest:
+      type: object
+      properties:
+        RequestInfo:
+          $ref: '#/components/schemas/RequestInfo'
+        Activities:
+          type: array
+          minItems: 1
+          maxItems: 200
+          items:
+            $ref: '#/components/schemas/Activity'
+      required:
+        - RequestInfo
+        - Activities
+    
+    ActivityUpdate:
+      type: object
+      properties: 
+        id:
+          type: string
+          format: uuid
+          minLength: 36
+          maxLength: 36
+          description: System-generated UUID of the activity to update
+        tenantId:
+          type: string
+          description: Tenant identifier
+        plannedStartDate:
+          type: integer
+          format: int64
+          description: Epoch start time (optional)
+        plannedEndDate:
+          type: integer
+          format: int64
+          description: Epoch end time (optional)
+        startDate:
+          type: integer
+          format: int64
+          description: Epoch start time (optional)
+        endDate:
+          type: integer
+          format: int64
+          description: Epoch end time (optional)
+        additionalDetails:
+          type: object
+          additionalProperties: true
+
+    ActivityUpdateRequest:
+      type: object
+      properties:
+        RequestInfo:
+          $ref: '#/components/schemas/RequestInfo'
+        Activities:
+          type: array
+          minItems: 1
+          maxItems: 200
+          items:
+            allOf:
+              - $ref: '#/components/schemas/ActivityUpdate'
+              - type: object
+                required: [id]
+      required:
+        - RequestInfo
+        - Activities
+
+    ActivitiesResponse:
+      type: object
+      properties:
+        ResponseInfo:
+          $ref: '#/components/schemas/ResponseInfo'
+        Activities:
+          type: array
+          items:
+            $ref: '#/components/schemas/Activity'
+      required:
+        - ResponseInfo
+        - Activities
+
+    ActivitySearchRequest:
+      type: object
+      properties:
+        RequestInfo:
+          $ref: '#/components/schemas/RequestInfo'
+        SearchCriteria:
+          $ref: '#/components/schemas/ActivitySearchCriteria'
+      required:
+        - RequestInfo
+        - SearchCriteria
+
+    ActivitySearchCriteria:
+      type: object
+      properties:
+        tenantId:
+          type: string
+          description: Tenant scope of the search
+        ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+        fieldplanIds:
+          type: array
+          items:
+            type: string
+        facilityIds:
+          type: array
+          items:
+            type: string
+        activityTypes:
+          type: array
+          items:
+            type: string
+        spocUserId:
+          type: string
+        fromPlannedStartDate:
+          type: integer
+          format: int64
+        toPlannedEndDate:
+          type: integer
+          format: int64
+        fromStartDate:
+          type: integer
+          format: int64
+        toEndDate:
+          type: integer
+          format: int64
+        offset:
+          type: integer
+          minimum: 0
+          default: 0
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      required:
+        - tenantId
+
+    ActivitySearchResponse:
+      type: object
+      properties:
+        ResponseInfo:
+          $ref: '#/components/schemas/ResponseInfo'
+        Activities:
+          type: array
+          items:
+            $ref: '#/components/schemas/Activity'
+        TotalCount:
+          type: integer
+          minimum: 0
+      required:
+        - ResponseInfo
+        - Activities
+
+    ActivityWorkflowRequest:
+      type: object
+      properties:
+        RequestInfo:
+          $ref: '#/components/schemas/RequestInfo'
+        WorkflowRequests:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/WorkflowRequest'
+      required:
+        - RequestInfo
+        - WorkflowRequests
+
+    WorkflowRequest:
+      type: object
+      properties:
+        businessObjectId:
+          type: string
+          description: Target activity ID
+        action:
+          type: string
+          description: Workflow action code to be retrieved from the business service definition
+          example: SUBMIT, APPROVE, REJECT, ACTIVATE, COMPLETE, CANCELLED
+        comment:
+          type: string
+          maxLength: 1000
+        assignee:
+          type: string
+          description: Optional user ID for the next state
+        filestoreId:
+          type: string
+          description: Any document attached to the workflow request
+          
+      required:
+        - businessObjectId
+        - action
+
+    ActivityWorkflowResponse:
+      type: object
+      properties:
+        ResponseInfo:
+          $ref: '#/components/schemas/ResponseInfo'
+        WorkflowResponses:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkflowResponse'
+      required:
+        - ResponseInfo
+        - WorkflowResponses
+
+    WorkflowResponse:
+      type: object
+      properties:
+        businessObjectId:
+          type: string
+          description: Target activity ID
+        status:
+          type: string
+          enum: [successful, failed]
+        currentState:
+          type: string
+          description: Resulting workflow state
+        error:
+          $ref: '#/components/schemas/Error'
+      required:
+        - businessObjectId
+        - status
+        - currentState
+
+    ActivitySPOCAssignRequest:
+      type: object
+      properties:
+        RequestInfo:
+          $ref: '#/components/schemas/RequestInfo'
+        Assignments:
+          $ref: '#/components/schemas/ActivitySPOCAssignment'
+      required:
+        - RequestInfo
+        - Assignments
+
+    ActivitySPOCAssignment:
+      type: object
+      properties:
+        activityId:
+          type: string
+        tenantId:
+          type: string
+        spocEmployeeId:
+          type: string
+          description: HRMS/vendor employee ID
+        spocUserId:
+          type: string
+          description: User registry ID
+      required:
+        - activityId
+        - tenantId
+
+    ActivitySPOCAssignResponse:
+      type: object
+      properties:
+        ResponseInfo:
+          $ref: '#/components/schemas/ResponseInfo'
+        Assignments:
+          $ref: '#/components/schemas/ActivitySPOCAssignment'
+      required:
+        - ResponseInfo
+        - Results
+
+    ActivityStaffAssignmentRequest:
+      type: object
+      description: Bulk assignment of staff (with roles) to facility-bound activities
+      properties:
+        RequestInfo:
+          $ref: '#/components/schemas/RequestInfo'
+        Assignments:
+          type: array
+          minItems: 1
+          maxItems: 200
+          items:
+            $ref: '#/components/schemas/ActivityStaffAssignmentItem'
+      required:
+        - RequestInfo
+        - Assignments
+
+    ActivityStaffAssignmentItem:
+      type: object
+      description: One activity with multiple staff to assign
+      properties:
+        activityId:
+          type: string
+        tenantId:
+          type: string
+        replaceExisting:
+          type: boolean
+          default: false
+          description: If true, replace all existing staff for the activity
+        staff:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/FacilityStaff'
+      required:
+        - activityId
+        - tenantId
+        - staff
+
+    ActivityStaffAssignmentResponse:
+      type: object
+      properties:
+        ResponseInfo:
+          $ref: '#/components/schemas/ResponseInfo'
+        Results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ActivityStaffAssignmentItem'
+      required:
+        - ResponseInfo
+        - Results
+
+  # ----- Activity Report Entities & Contracts -----
+    ActivityReport:
+      type: object
+      description: Report submitted against an activity (often facility-bound)
+      properties:
+        id:
+          type: string
+          format: uuid
+          minLength: 36
+          maxLength: 36
+          readOnly: true
+        tenantId:
+          type: string
+        activityId:
+          type: string
+          description: The activity this report belongs to
+        facilityId:
+          type: string
+          description: Facility, if the activity is facility-bound
+        reportType:
+          type: string
+          description: MDMS code for type of report (e.g., INSTALLATION_REPORT, QC_CHECKLIST)
+        reportData:
+          type: object
+          additionalProperties: true
+          description: Free-form, activity-specific report payload. This will be specific to each report type and should be defined as MDMS schema. Payload to be validated against that schema
+        documents:
+          type: array
+          items:
+            $ref: '#/components/schemas/Attachment'
+        submittedByUserId:
+          type: string
+          description: The User ID of the person submitting the report
+        submittedByEmployeeId:
+          type: string
+          description: The HRMS/vendor employee ID of the person submitting the report
+        auditDetails:
+          $ref: 'https://raw.githubusercontent.com/egovernments/DIGIT-Specs/master/Common%20Services/common-contract.yaml#/components/schemas/AuditDetails'
+      required:
+        - tenantId
+        - activityId
+        - status
+
+    Attachment:
+      type: object
+      description: File attachment info (Filestore-backed)
+      properties:
+        fileStoreId:
+          type: string
+          description: Filestore ID
+        documentType:
+          type: string
+          description: MDMS code for document type
+        fileName:
+          type: string
+        mimeType:
+          type: string
+        fileSize:
+          type: integer
+          format: int64
+        uploadedAt:
+          type: integer
+          format: int64
+        auditDetails:
+          $ref: 'https://raw.githubusercontent.com/egovernments/DIGIT-Specs/master/Common%20Services/common-contract.yaml#/components/schemas/AuditDetails'
+      required:
+        - fileStoreId
+        - documentType
+        - fileName
+        - mimeType
+        - fileSize
+        - uploadedAt
+
+    ActivityReportCreateRequest:
+      type: object
+      properties:
+        RequestInfo:
+          $ref: '#/components/schemas/RequestInfo'
+        ActivityReports:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/ActivityReport'
+      required:
+        - RequestInfo
+        - ActivityReports
+    
+    ActivityReportUpdateItem:
+      type: object
+      properties:
+        reportData:
+          type: object
+          additionalProperties: true
+          description: Free-form, activity-specific report payload. This will be specific to each report type and should be defined as MDMS schema. Payload to be validated against that schema
+        documents:
+          type: array
+          items:
+            $ref: '#/components/schemas/Attachment'
+      required:
+        - reportData
+    
+    ActivityReportUpdateRequest:
+      type: object
+      properties:
+        RequestInfo:
+          $ref: '#/components/schemas/RequestInfo'
+        ActivityUpdateItems:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/ActivityReportUpdateItem'
+      required:
+        - RequestInfo
+        - ActivityReports
+
+    ActivityReportsResponse:
+      type: object
+      properties:
+        ResponseInfo:
+          $ref: '#/components/schemas/ResponseInfo'
+        ActivityReports:
+          type: array
+          items:
+            $ref: '#/components/schemas/ActivityReport'
+      required:
+        - ResponseInfo
+        - ActivityReports
+
+    ActivityReportSearchRequest:
+      type: object
+      properties:
+        RequestInfo:
+          $ref: '#/components/schemas/RequestInfo'
+        SearchCriteria:
+          $ref: '#/components/schemas/ActivityReportSearchCriteria'
+      required:
+        - RequestInfo
+        - SearchCriteria
+
+    ActivityReportSearchCriteria:
+      type: object
+      properties:
+        tenantId:
+          type: string
+        ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+        activityIds:
+          type: array
+          items:
+            type: string
+        facilityIds:
+          type: array
+          items:
+            type: string
+        reportTypes:
+          type: array
+          items:
+            type: string
+        statuses:
+          type: array
+          items:
+            type: string
+        submittedByUserId:
+          type: string
+        fromDate:
+          type: integer
+          format: int64
+        toDate:
+          type: integer
+          format: int64
+        offset:
+          type: integer
+          minimum: 0
+          default: 0
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      required:
+        - tenantId
+
+    ActivityReportSearchResponse:
+      type: object
+      properties:
+        ResponseInfo:
+          $ref: '#/components/schemas/ResponseInfo'
+        ActivityReports:
+          type: array
+          items:
+            $ref: '#/components/schemas/ActivityReport'
+        TotalCount:
+          type: integer
+          minimum: 0
+      required:
+        - ResponseInfo
+        - ActivityReports
+
+ 
+
+tags:
+  - name: Activities
+    description: Manage activities, workflow, and assignments (SPOC and staff)
+  - name: Activity Reports
+    description: Submit and manage reports attached to activities
+    
+  - name: Activities
+    description: Manage activities, workflow, and assignments (SPOC and staff)
