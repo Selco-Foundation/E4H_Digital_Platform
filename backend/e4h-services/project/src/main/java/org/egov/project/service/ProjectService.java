@@ -175,10 +175,10 @@ public class ProjectService {
                 ProjectFacility projectFacility = searchResponse.getResponse().get(0);
                 Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(project.getAdditionalDetails(), "systemCode", "AC_OFF_GRID");
                 project.setAdditionalDetails(enrichedAdditionalDetails);
-                ProjectFacilityBulkRequest projectFacilityBulkRequest = ProjectFacilityBulkRequest.builder().projectFacilities(Collections.singletonList(projectFacility)).requestInfo(requestInfo).build();
-                Facility facility = projectFacilityService.getFacilityById(projectFacilityBulkRequest);
-                enrichedAdditionalDetails = mergeIntoAdditionalDetails(project.getAdditionalDetails(), "FacilityUI", facility);
-                project.setAdditionalDetails(enrichedAdditionalDetails);
+//                ProjectFacilityBulkRequest projectFacilityBulkRequest = ProjectFacilityBulkRequest.builder().projectFacilities(Collections.singletonList(projectFacility)).requestInfo(requestInfo).build();
+//                Facility facility = projectFacilityService.getFacilityById(projectFacilityBulkRequest);
+//                enrichedAdditionalDetails = mergeIntoAdditionalDetails(project.getAdditionalDetails(), "FacilityUI", facility);
+//                project.setAdditionalDetails(enrichedAdditionalDetails);
             }
         }
 
