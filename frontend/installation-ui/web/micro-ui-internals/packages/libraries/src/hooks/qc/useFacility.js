@@ -67,16 +67,16 @@ const fetchInboxData = async (filter, limit, offset) => {
 
   return {
     facilities: projectsResponse?.items?.map((row) => {
-      const facility = row.project.facility || {};
+      const facility = row.project.additionalDetails.facility || {};
       const address = row.project.address || {};
       const additionalDetails = row.project.additionalDetails || {};
-      const assigneeDetails = row.project.assignedTo || {};
+      const assigneeDetails = row.project.additionalDetails.assignedTo || {};
 
       return {
         id: row.project.id,
         facilityName: facility.name || row.project.name,
         facilityId: facility.facility_id,
-        status: row.project.status,
+        status: row.project.additionalDetails.status,
         projectId: row.project.id,
         block: address.boundary || "-",
         district: additionalDetails.district || "-",

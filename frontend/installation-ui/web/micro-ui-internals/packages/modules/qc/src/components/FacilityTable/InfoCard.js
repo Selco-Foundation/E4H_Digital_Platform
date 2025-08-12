@@ -62,7 +62,7 @@ const InfoCard = ({ selectedFieldPlan }) => {
               {
                 PropertyCard(
                   "Total Health Facilities Assigned",
-                  getStatusCount("ASSIGNED_TO_FIELD_STAFF") + getStatusCount("ASSIGNED_TO_SUPERVISOR")
+                  getStatusCount("ASSIGNED_TO_FIELD_STAFF") + getStatusCount("ASSIGNED_TO_FIELD_SUPERVISOR")
                 )
               }
             </div>
