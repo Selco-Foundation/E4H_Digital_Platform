@@ -52,6 +52,9 @@ public class BoundaryUtil {
         Object response = null;
         try {
             response = restTemplate.postForObject(uri.toString(), requestInfo, Map.class);
+            if (response == null) {
+              throw new CustomException("CONFIG_ERROR", "Boundary service returned null response");
+            }
             String jsonString = objectMapper.writeValueAsString(response);
             listBlock = extractBlockToDistrictMapping(jsonString);
         }catch(Exception e) {
@@ -63,6 +66,9 @@ public class BoundaryUtil {
 
     public static Map<String, Boundary> extractBlockToDistrictMapping(String json) throws IOException {
         Map<String, Boundary> blockToDistrictMap = new HashMap<>();
+        if (json == null || json.trim().isEmpty()) {
+            throw new IllegalArgumentException("JSON input cannot be null or empty");
+        }
         ObjectMapper objectMapper = new ObjectMapper();
         JsonNode root = objectMapper.readTree(json);
 
@@ -73,15 +79,21 @@ public class BoundaryUtil {
                 if (boundaryArray != null && boundaryArray.isArray()) {
                     for (JsonNode state : boundaryArray) {
                         JsonNode districts = state.get("children");
-                        String stateCode = state.get("code").asText();
+                        JsonNode stateCodeNode = state.get("code");
+                        if (stateCodeNode == null) continue;
+                        String stateCode = stateCodeNode.asText();
                         if (districts != null && districts.isArray()) {
                             for (JsonNode district : districts) {
-                                String districtCode = district.get("code").asText();
+                                JsonNode districtCodeNode = district.get("code");
+                                if (districtCodeNode == null) continue;
+                                String districtCode = districtCodeNode.asText();
                                 JsonNode blocks = district.get("children");
                                 if (blocks != null && blocks.isArray()) {
                                     for (JsonNode block : blocks) {
-                                        if ("Block".equals(block.get("boundaryType").asText())) {
-                                            String blockCode = block.get("code").asText();
+                                        JsonNode boundaryTypeNode = block.get("boundaryType");
+                                        JsonNode blockCodeNode = block.get("code");
+                                        if (boundaryTypeNode != null && blockCodeNode !=null && "Block".equals(boundaryTypeNode.asText())) {
+                                            String blockCode = blockCodeNode.asText();
                                             Boundary boundary = Boundary.builder().state(stateCode).district(districtCode).build();
                                             blockToDistrictMap.put(blockCode, boundary);
                                         }

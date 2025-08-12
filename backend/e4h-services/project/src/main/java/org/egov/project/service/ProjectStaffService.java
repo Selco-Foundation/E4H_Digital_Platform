@@ -254,6 +254,9 @@ public class ProjectStaffService {
         Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), request);
 
         EmployeeResponse employeeResponse = mapper.convertValue(response, EmployeeResponse.class);
+        if (employeeResponse == null || employeeResponse.getEmployees() == null || employeeResponse.getEmployees().isEmpty()) {
+            throw new CustomException("EMPLOYEE_NOT_FOUND", "Employee not found with ID: " + userId);
+        }
         return employeeResponse.getEmployees().get(0);
     }
 
@@ -287,7 +290,7 @@ public class ProjectStaffService {
         ProjectSearchURLParams urlParams = ProjectSearchURLParams.builder()
                 .limit(1)
                 .offset(0)
-                .tenantId("in")
+                .tenantId(request.getProjectStaff().get(0).getTenantId())
                 .includeAncestors(false)
                 .includeDescendants(false)
                 .build();

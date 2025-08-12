@@ -137,24 +137,29 @@ public class InboxServiceV2 {
         List<Project> items = getProjectInboxItems(inboxRequest, inboxQueryConfiguration.getIndex());
         Integer totalCount = getTotalProjectCount(inboxRequest, inboxQueryConfiguration.getIndex());
         Map<String, Boundary> listBlock = boundaryUtil.getBoundaryByCode();
-        for (Project item:items) {
-            Object additionalDetails = item.getProject().get("additionalDetails");
-            Object boundaryCodeObject = item.getProject().get("address");
-            Address address = mapper.convertValue(boundaryCodeObject, Address.class);
-            if(address !=null){
-                String boundaryCode = address.getBoundary();
-                if(boundaryCode !=null){
-                    Boundary boundary = listBlock.get(boundaryCode);
-                    if(boundary !=null){
-                        Object enrichedAdditionalDetails = mergeListIntoAdditionalDetails(additionalDetails, "state", boundary.getState());
-                        item.getProject().put("additionalDetails", enrichedAdditionalDetails);
-                        additionalDetails = item.getProject().get("additionalDetails");
-                        enrichedAdditionalDetails = mergeListIntoAdditionalDetails(additionalDetails, "district", boundary.getDistrict());
-                        item.getProject().put("additionalDetails", enrichedAdditionalDetails);
+        if(listBlock != null){
+            for (Project item:items) {
+                Object additionalDetails = item.getProject().get("additionalDetails");
+                Object boundaryCodeObject = item.getProject().get("address");
+                if(boundaryCodeObject !=null){
+                    Address address = mapper.convertValue(boundaryCodeObject, Address.class);
+                    if(address !=null){
+                        String boundaryCode = address.getBoundary();
+                        if(boundaryCode != null){
+                            Boundary boundary = listBlock.get(boundaryCode);
+                            if(boundary != null){
+                                Object enrichedAdditionalDetails = mergeListIntoAdditionalDetails(additionalDetails, "state", boundary.getState());
+                                item.getProject().put("additionalDetails", enrichedAdditionalDetails);
+                                additionalDetails = item.getProject().get("additionalDetails");
+                                enrichedAdditionalDetails = mergeListIntoAdditionalDetails(additionalDetails, "district", boundary.getDistrict());
+                                item.getProject().put("additionalDetails", enrichedAdditionalDetails);
+                            }
+                        }
                     }
                 }
             }
         }
+
         return ProjectResponse.builder().items(items).totalCount(totalCount).build();
     }
 
