@@ -294,7 +294,7 @@ const FacilityTable = ({ t, getCellProps }) => {
       <div style={{fontSize: "24px", fontWeight: "bold", marginBottom: "20px", color: "#004d66"}}>
         Installation | {fieldPlan?.name}
       </div>
-      <InfoCard selectedFieldPlan={fieldPlan} />
+      <InfoCard t={t} selectedFieldPlan={fieldPlan} />
       <div style={{ width: "100%", display: "flex", gap: "15px" }}>
         <div style={{ width: "15%" }}>
           <Filter
