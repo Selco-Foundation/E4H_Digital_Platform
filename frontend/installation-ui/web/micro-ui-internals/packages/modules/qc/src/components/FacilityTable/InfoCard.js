@@ -3,6 +3,7 @@ import React from "react";
 const InfoCard = ({ t, selectedFieldPlan }) => {
 
   const { startDate, endDate, completionRate, projectFacilityInfo } = selectedFieldPlan;
+  const isMobile = window.Digit.Utils.browser.isMobile();
 
   const PropertyCard = (infoName, infoValue) => (
     <div style={{ width: "100%", display: "flex", alignItems: "center" }}>
@@ -42,16 +43,19 @@ const InfoCard = ({ t, selectedFieldPlan }) => {
     <React.Fragment>
       <div
         style={{
-          width: "99%",
+          width: "100%",
           background: "white",
           height: "fit-content",
           marginBottom: "15px",
-          padding: "20px",
+          padding: isMobile ? "10px" : "20px",
           display: "flex",
+          flexDirection: isMobile ? "column" : "row",
+          gap: isMobile ? "10px" : "",
           justifyContent: "space-between",
+          minWidth: "fit-content"
         }}
       >
-        <div style={{ width: "30%" }}>
+        <div style={{ width: "30%", minWidth: "400px" }}>
           <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: "10px" }}>
             <div>
               {PropertyCard(t("CORE_COMMON_START_DATE"), startDate)}
@@ -61,7 +65,7 @@ const InfoCard = ({ t, selectedFieldPlan }) => {
             </div>
           </div>
         </div>
-        <div style={{ width: "30%" }}>
+        <div style={{ width: "30%", minWidth: "400px" }}>
           <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: "10px" }}>
             <div>
               {PropertyCard(t("FIELD_PLAN_NO_OF_FACILITIES_UNASSIGNED"), getStatusCount("SCHEDULED"))}

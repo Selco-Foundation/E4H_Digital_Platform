@@ -184,7 +184,7 @@ const FacilityTable = ({ t, getCellProps }) => {
       },
     },
     {
-      Header: "Health Facility",
+      Header: t("CS_HEALTH_FACILITY"),
       Cell: ({ row }) => {
         return (
           <div>
@@ -201,25 +201,25 @@ const FacilityTable = ({ t, getCellProps }) => {
       },
     },
     {
-      Header: "Block",
+      Header: t("CS_BLOCK"),
       Cell: ({ row }) => {
         return GetCell(row.original["block"] !== "-" ? t(`BLOCK_${row.original["block"].toUpperCase()}`) : "-");
       },
     },
     {
-      Header: "District",
+      Header: t("CS_DISTRICT"),
       Cell: ({ row }) => {
         return GetCell(row.original["district"] !== "-" ? t(`DISTRICT_${row.original["district"].toUpperCase()}`) : "-");
       },
     },
     {
-      Header: "Assigned To",
+      Header: t("CS_ASSIGNED_TO"),
       Cell: ({ row }) => {
         return GetCell(`${row.original["assigned"]}`);
       },
     },
     {
-      Header: "Status",
+      Header: t("CS_STATUS"),
       Cell: ({ row }) => {
         return GetCell(row.original["status"] !== "-" ? t(`CS_${row.original["status"]}`) : "-");
       },
@@ -274,18 +274,28 @@ const FacilityTable = ({ t, getCellProps }) => {
     }
 
     return (
-      <Table
-        t={t}
-        data={fetchedData}
-        columns={columns}
-        getCellProps={getCellProps}
-        onNextPage={onNextPage}
-        onPrevPage={onPrevPage}
-        currentPage={Math.floor(pageOffset / pageSize)}
-        totalRecords={facilityData?.totalCount}
-        onPageSizeChange={onPageSizeChange}
-        pageSizeLimit={pageSize}
-      />
+      <div style={{
+        backgroundColor: "white",
+        padding: "15px 0px 0px 0px",
+      }}>
+        <div style={{
+          margin: "0px 20px",
+          overflow: "auto",
+        }}>
+          <Table
+            t={t}
+            data={fetchedData}
+            columns={columns}
+            getCellProps={getCellProps}
+            onNextPage={onNextPage}
+            onPrevPage={onPrevPage}
+            currentPage={Math.floor(pageOffset / pageSize)}
+            totalRecords={facilityData?.totalCount}
+            onPageSizeChange={onPageSizeChange}
+            pageSizeLimit={pageSize}
+          />
+        </div>
+      </div>
     );
   }
 
@@ -296,7 +306,7 @@ const FacilityTable = ({ t, getCellProps }) => {
       </div>
       <InfoCard t={t} selectedFieldPlan={fieldPlan} />
       <div style={{ width: "100%", display: "flex", gap: "15px" }}>
-        <div style={{ width: "15%" }}>
+        <div style={{ width: "15%", minWidth: "fit-content" }}>
           <Filter
             t={t}
             type="desktop"
@@ -319,9 +329,7 @@ const FacilityTable = ({ t, getCellProps }) => {
               onSearch={handleFilterChange}
             />
           </div>
-          <div style={{ width: "90%", marginLeft: "auto", marginRight: "auto", overflowX: "auto" }}>
-            {renderFacilities()}
-          </div>
+          {renderFacilities()}
         </div>
       </div>
     </div>

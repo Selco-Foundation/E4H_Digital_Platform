@@ -92,11 +92,11 @@ const FieldPlanTable = ({ t, getCellProps }) => {
 
   const GetProgress = (value) => {
     return (
-      <div style={{ display: "flex", gap: `${value > 99 ? "10px" : "20px"}` }}>
-        <div>{value}%</div>
+      <div style={{ display: "flex", gap:"10px" }}>
         <div style={{ width: "100px", height: "20px", background: "#E0E0E0", borderRadius: "5px" }}>
-          <div style={{ position: "absolute", height: "20px", width: `${value}px`, background: "#00703C", borderRadius: "5px" }}></div>
+          <div style={{ height: "20px", width: `${value}px`, maxWidth: "100px", background: "#00703C", borderRadius: "5px" }}></div>
         </div>
+        <div>{value}%</div>
       </div>
     );
   };
@@ -125,7 +125,7 @@ const FieldPlanTable = ({ t, getCellProps }) => {
 
   const columnsList = [
     {
-      Header: "Field Plan Code",
+      Header: t("CS_FIELD_PLAN_CODE"),
       Cell: ({ row }) => {
         return (
           <div style={{display: "flex", alignItems: "center", gap: "10px"}}>
@@ -140,31 +140,31 @@ const FieldPlanTable = ({ t, getCellProps }) => {
       },
     },
     {
-      Header: "Activity Type",
+      Header: t("CS_ACTIVITY_TYPE"),
       Cell: ({ row }) => {
         return GetCell(`${row.original["projectType"]}`);
       },
     },
     {
-      Header: "Health Facilities",
+      Header: t("CS_HEALTH_FACILITIES"),
       Cell: ({ row }) => {
         return GetCell(`${row.original["facilitiesCount"]}`);
       },
     },
     {
-      Header: "Start Date",
+      Header: t("CS_START_DATE"),
       Cell: ({ row }) => {
         return GetCell(`${row.original["startDate"]}`);
       },
     },
     {
-      Header: "End Date",
+      Header: t("CS_END_DATE"),
       Cell: ({ row }) => {
         return GetCell(`${row.original["endDate"]}`);
       },
     },
     {
-      Header: "Completion Rate",
+      Header: t("CS_COMPLETION_RATE"),
       Cell: ({ row }) => {
         return GetProgress(`${row.original["completionRate"]}`);
       },
@@ -187,18 +187,28 @@ const FieldPlanTable = ({ t, getCellProps }) => {
     }
 
     return (
-      <Table
-        t={t}
-        data={fetchedData}
-        columns={columnsList}
-        getCellProps={getCellProps}
-        onNextPage={onNextPage}
-        onPrevPage={onPrevPage}
-        currentPage={Math.floor(pageOffset / pageSize)}
-        totalRecords={data.totalCount}
-        onPageSizeChange={onPageSizeChange}
-        pageSizeLimit={pageSize}
-      />
+      <div style={{
+        backgroundColor: "white",
+        padding: "15px 0px 0px 0px",
+      }}>
+        <div style={{
+          margin: "0px 20px",
+          overflow: "auto",
+        }}>
+          <Table
+            t={t}
+            data={fetchedData}
+            columns={columnsList}
+            getCellProps={getCellProps}
+            onNextPage={onNextPage}
+            onPrevPage={onPrevPage}
+            currentPage={Math.floor(pageOffset / pageSize)}
+            totalRecords={data.totalCount}
+            onPageSizeChange={onPageSizeChange}
+            pageSizeLimit={pageSize}
+          />
+        </div>
+      </div>
     )
   }
 
