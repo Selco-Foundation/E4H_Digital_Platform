@@ -20,7 +20,7 @@ const Filter = ({ t, fieldPlan, onFilterChange, projectQueryFilter, statusesList
   });
 
   const { isLoading, data } = Digit.Hooks.qc.useBoundary(
-    fieldPlan?.address?.boundary || "India_Telangana", "State"
+    fieldPlan?.address?.boundary, "State"
   );
 
   useEffect(() => {
