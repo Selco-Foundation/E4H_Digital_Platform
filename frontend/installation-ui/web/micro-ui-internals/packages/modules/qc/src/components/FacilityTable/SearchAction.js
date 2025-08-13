@@ -37,7 +37,6 @@ const SearchActionCentre = ({ t, projectQueryFilter, mainCheckBox, selectedFacil
         justifyContent: "center",
         alignItems: "center",
       }}
-      onClick={() => handleSearch(textToSearch)}
     >
       <SearchIcon />
     </button>
@@ -60,7 +59,7 @@ const SearchActionCentre = ({ t, projectQueryFilter, mainCheckBox, selectedFacil
       >
         {mainCheckBox || selectedFacilities?.length > 0 ? (
           <div style={{ fontSize: "16px", fontWeight: "bold", color: "#004d66" }}>
-            {mainCheckBox ? "All" : selectedFacilities.length} Health Facilities Selected
+            {mainCheckBox ? t("CORE_COMMON_ALL") : selectedFacilities.length} {t("QC_HEALTH_FACILITIES_SELECTED")}
           </div>
         ) : (
           <form
@@ -79,7 +78,7 @@ const SearchActionCentre = ({ t, projectQueryFilter, mainCheckBox, selectedFacil
               <TextInput
                 name="serviceRequestId"
                 value={textToSearch}
-                placeholder="Search Health Facilities"
+                placeholder={t("QC_SEARCH_HEALTH_FACILITIES")}
                 onChange={(e) => {
                   setTextToSearch(e.target.value);
                 }}
