@@ -94,22 +94,24 @@ POST /field-planner/v1/field-plans/_workflow
 GET  /field-planner/v1/field-plans/facilities/_template
 POST /field-planner/v1/field-plans/facilities/_upload
 POST /field-planner/v1/field-plans/facilities/_assign
+POST /field-planner/v1/field-plans/facilities/_unassign
 ```
 
-**Activity Management:**
+**Activities Service (separate microservice):**
 ```yaml
-POST /field-planner/v1/field-plans/activities/_assign?fieldPlanId={fieldPlanId}
-POST /field-planner/v1/field-plans/facility-activities/_assign?fieldPlanId={fieldPlanId}
-POST /field-planner/v1/field-plans/facility-activities/_search?fieldPlanId={fieldPlanId}
-POST /field-planner/v1/field-plans/facility-activities/_update?fieldPlanId={fieldPlanId}
+POST /field-planner/v1/activities/_create
+POST /field-planner/v1/activities/_update
+POST /field-planner/v1/activities/_search
+POST /field-planner/v1/activities/_workflow
+POST /field-planner/v1/activities/_assign-spoc
+POST /field-planner/v1/activities/_assign-staff
 ```
 
-**Activity Reports:**
+**Activity Reports (under Activities):**
 ```yaml
-POST /field-planner/v1/activity-reports/_create
-POST /field-planner/v1/activity-reports/_update
-POST /field-planner/v1/activity-reports/_search
-POST /field-planner/v1/activity-reports/_workflow
+POST /field-planner/v1/activities/reports/_create
+POST /field-planner/v1/activities/reports/_update
+POST /field-planner/v1/activities/reports/_search
 ```
 
 **Mobile Sync (Bulk APIs):**
@@ -784,16 +786,92 @@ Instead of creating standalone schemas, Field Planner extends existing E4H schem
 ### 4.1 Entity Relationship Overview
 
 #### 4.1.1 Core Entities and Relationships
-```
-PROJECT (existing) 
-    ↓ 1:N
-FIELD_PLANS (new)
-    ↓ 1:N  
-FIELD_PLAN_ACTIVITIES (new)
-    ↓ N:M
-FACILITY_ACTIVITIES (new) ← references → FACILITY (existing)
-    ↓ 1:N
-ACTIVITY_REPORTS (new)
+```mermaid
+erDiagram
+  PROJECT ||--o{ FIELD_PLANS : contains
+  FIELD_PLANS ||--o{ FIELD_PLAN_FACILITIES : maps
+  FIELD_PLANS ||--o{ ACTIVITIES : has
+  ACTIVITIES ||--o{ FACILITY_ACTIVITIES : binds
+  FACILITY ||--o{ FACILITY_ACTIVITIES : in
+  ACTIVITIES ||--o{ ACTIVITY_REPORTS : reports
+
+  PROJECT {
+    uuid id PK
+    text name
+    text tenantId
+  }
+  FIELD_PLANS {
+    uuid id PK
+    text name
+    text projectId FK
+    bigint startDate
+    bigint endDate
+    text status
+    text tenantId
+    jsonb auditDetails
+  }
+  FIELD_PLAN_FACILITIES {
+    uuid id PK
+    text fieldPlanId FK
+    text facilityId
+    text tenantId
+    jsonb auditDetails
+  }
+  ACTIVITIES {
+    uuid id PK
+    text fieldplanId FK
+    text activityType
+    text facilityId
+    text spocEmployeeId
+    text spocUserId
+    bigint plannedStartDate
+    bigint plannedEndDate
+    bigint startDate
+    bigint endDate
+    boolean isActive
+    text tenantId
+    jsonb activityDetails
+    jsonb auditDetails
+  }
+  FACILITY_ACTIVITIES {
+    uuid id PK
+    text activityId FK
+    text facilityId
+    text status
+    boolean isActive
+    bigint targetCompletionDate
+    bigint actualCompletionDate
+    text tenantId
+    jsonb activationConditions
+    jsonb auditDetails
+  }
+  ACTIVITY_REPORTS {
+    uuid id PK
+    text activityId FK
+    text facilityId
+    text reportType
+    text status
+    jsonb reportData
+    text submittedByUserId
+    text submittedByEmployeeId
+    text reviewedByUserId
+    text tenantId
+    jsonb auditDetails
+  }
+  ACTIVITY_REPORT_DOCUMENTS {
+    bigint id PK
+    uuid reportId FK
+    text fileStoreId
+    text documentType
+    text fileName
+    text mimeType
+    bigint fileSize
+    bigint uploadedAt
+    text createdBy
+    bigint createdTime
+    text lastModifiedBy
+    bigint lastModifiedTime
+  }
 ```
 
 #### 4.1.2 Integration Points

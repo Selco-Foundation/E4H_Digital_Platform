@@ -266,6 +266,78 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
+  /v1/field-plans/facilities/_unassign:
+    post:
+      tags:
+        - Field Plans
+      summary: Unmap facilities from a field plan (bulk)
+      description: |
+        Unassign one or more facilities previously mapped to a field plan.
+        Accepts mapping identifiers in the request to ensure precise unmapping when pagination or filters are used.
+      operationId: unassignFacilitiesFromFieldPlan
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                RequestInfo:
+                  $ref: '#/components/schemas/RequestInfo'
+                Unassignments:
+                  type: array
+                  minItems: 1
+                  maxItems: 500
+                  items:
+                    type: object
+                    properties:
+                      mappingId:
+                        type: string
+                        minLength: 1
+                        maxLength: 64
+                        description: Unique ID of fieldPlan-facility mapping
+                      fieldPlanId:
+                        type: string
+                        minLength: 1
+                        maxLength: 64
+                      facilityId:
+                        type: string
+                        minLength: 1
+                        maxLength: 64
+                    required: [mappingId]
+              required:
+                - RequestInfo
+                - Unassignments
+      responses:
+        '200':
+          description: Facilities unmapped successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ResponseInfo:
+                    $ref: '#/components/schemas/ResponseInfo'
+                  Results:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        mappingId:
+                          type: string
+                        status:
+                          type: string
+                          enum: [successful, failed]
+                        error:
+                          $ref: '#/components/schemas/Error'
+                required: [ResponseInfo]
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
   /v1/field-plans/facilities/_template:
     get:
       tags:
@@ -374,209 +446,259 @@ paths:
           $ref: '#/components/responses/InternalServerError'
 
   # ========================
-  # ACTIVITY MANAGEMENT
+  # ACTIVITIES SERVICE (per architect)
   # ========================
-  
-  /v1/field-plans/activities/_assign:
-    post:
-      tags:
-        - Activities
-      summary: Assign activities to SPOCs
-      description: |
-        Assign activities within a field plan to Activity SPOCs.
-        
-        **Access Control:**
-        - FIELD_PLANNER_ADMIN: Full access
-        - PROJECT_MANAGER: Can assign activities in their field plans
-        - Activity SPOCs: Can assign activities of their type
-        
-        **Business Rules:**
-        - SPOC must have appropriate role for activity type
-        - Cannot assign activities already assigned
-        - Assignment triggers notification to SPOC
-      operationId: assignActivitiesToSPOC
-      parameters:
-        - name: fieldPlanId
-          in: query
-          required: true
-          schema:
-            type: string
-            minLength: 1
-            maxLength: 64
-          description: Field plan ID
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ActivityAssignmentRequest'
-      responses:
-        '200':
-          description: Activities assigned successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ActivityAssignmentResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
 
-  /v1/field-plans/facility-activities/_assign:
+  /v1/activities/_create:
     post:
-      tags:
-        - Activities
-      summary: Assign facilities to field staff
+      tags: [Activities]
+      summary: Create activities (bulk)
       description: |
-        Assign specific health facilities to field staff for activity execution.
-        
-        **Access Control:**
-        - FIELD_PLANNER_ADMIN: Full access
-        - PROJECT_MANAGER: Can assign facilities in their field plans
-        - Activity SPOCs: Can assign facilities for their activities
-        
-        **Business Rules:**
-        - Facility must be scheduled for the activity
-        - Field staff must be available and qualified
-        - Assignment triggers mobile sync notification
-      operationId: assignFacilitiesToStaff
-      parameters:
-        - name: fieldPlanId
-          in: query
-          required: true
-          schema:
-            type: string
-            minLength: 1
-            maxLength: 64
-          description: Field plan ID
+        Bulk-create activities. Each activity MUST include `tenantId`, `fieldplanId`, and `activityType`.
+        `facilityId` is optional; when present, the activity is facility-bound.
+      operationId: createActivities
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/FacilityActivityAssignmentRequest'
+              $ref: '#/components/schemas/ActivityCreateRequest'
       responses:
-        '200':
-          description: Facilities assigned to staff successfully
+        '201':
+          description: Activities created successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/FacilityActivityAssignmentResponse'
+                $ref: '#/components/schemas/ActivitiesResponse'
         '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
+          description: Error response (DIGIT ErrorRes)
+          content:
+            application/json:
+              schema:
+                $ref: 'https://raw.githubusercontent.com/egovernments/DIGIT-Specs/master/Common%20Services/common-contract.yaml#/components/schemas/ErrorRes'
 
-  /v1/field-plans/facility-activities/_search:
+  /v1/activities/_update:
     post:
-      tags:
-        - Activities
-      summary: Search facility activities
+      tags: [Activities]
+      summary: Update activities (bulk)
       description: |
-        Search facility activities within a field plan with various filters.
-        
-        **Access Control:**
-        - All roles can search facility activities
-        - Results filtered based on user role and assignments
-        
-        **Filtering:**
-        - Activity SPOCs: See activities of their type
-        - Field Staff: See their assigned facilities
-        - Reviewers: See activities requiring their review
-      operationId: searchFacilityActivities
-      parameters:
-        - name: fieldPlanId
-          in: query
-          required: false
-          schema:
-            type: string
-            minLength: 1
-            maxLength: 64
-          description: Optional field plan ID filter
+        Bulk-update activities. Each item MUST include its `id`. Partial updates are supported; unspecified fields remain unchanged.
+      operationId: updateActivities
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/FacilityActivitySearchRequest'
+              $ref: '#/components/schemas/ActivityUpdateRequest'
       responses:
         '200':
-          description: Facility activities retrieved successfully
+          description: Activities updated successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/FacilityActivitySearchResponse'
+                $ref: '#/components/schemas/ActivitiesResponse'
         '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
+          description: Error response (DIGIT ErrorRes)
+          content:
+            application/json:
+              schema:
+                $ref: 'https://raw.githubusercontent.com/egovernments/DIGIT-Specs/master/Common%20Services/common-contract.yaml#/components/schemas/ErrorRes'
 
-  /v1/field-plans/facility-activities/_update:
+  /v1/activities/_search:
     post:
-      tags:
-        - Activities
-      summary: Update facility activities
+      tags: [Activities]
+      summary: Search activities
       description: |
-        Update facility activity assignments and status.
-        
-        **Access Control:**
-        - FIELD_PLANNER_ADMIN: Full access
-        - PROJECT_MANAGER: Can update activities in their field plans
-        - Activity SPOCs: Can update activities of their type
-        
-        **Business Rules:**
-        - Cannot update activities in progress or completed
-        - Status changes trigger workflow transitions
-        - Updates sync to mobile applications
-      operationId: updateFacilityActivities
-      parameters:
-        - name: fieldPlanId
-          in: query
-          required: true
-          schema:
-            type: string
-            minLength: 1
-            maxLength: 64
-          description: Field plan ID
+        Search activities by filters. Requires `tenantId` in the criteria.
+        Supports pagination via DIGIT `Pagination` contract.
+      operationId: searchActivities
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/FacilityActivityUpdateRequest'
+              $ref: '#/components/schemas/ActivitySearchRequest'
       responses:
         '200':
-          description: Facility activities updated successfully
+          description: Activities retrieved
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/FacilityActivityUpdateResponse'
+                $ref: '#/components/schemas/ActivitySearchResponse'
         '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
+          description: Error response (DIGIT ErrorRes)
+          content:
+            application/json:
+              schema:
+                $ref: 'https://raw.githubusercontent.com/egovernments/DIGIT-Specs/master/Common%20Services/common-contract.yaml#/components/schemas/ErrorRes'
+
+  /v1/activities/_workflow:
+    post:
+      tags: [Activities]
+      summary: Activity workflow transitions (bulk)
+      description: |
+        Perform workflow state transitions for activities (e.g., SUBMIT, APPROVE, REJECT, ACTIVATE, COMPLETE, CANCELLED). This endpoint integrates with the DIGIT workflow transition endpoint.
+      operationId: activityWorkflow
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActivityWorkflowRequest'
+      responses:
+        '200':
+          description: Workflow processed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivityWorkflowResponse'
+        '400':
+          description: Error response (DIGIT ErrorRes)
+          content:
+            application/json:
+              schema:
+                $ref: 'https://raw.githubusercontent.com/egovernments/DIGIT-Specs/master/Common%20Services/common-contract.yaml#/components/schemas/ErrorRes'
+
+  /v1/activities/_assign-spoc:
+    post:
+      tags: [Activities]
+      summary: Assign or reassign Activity SPOC (bulk)
+      description: |
+        Assigns the SPOC for activities at the activity level. Each item targets one `activityId`.
+      operationId: assignSpocToActivities
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActivitySPOCAssignRequest'
+      responses:
+        '200':
+          description: SPOC assignments processed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivitySPOCAssignResponse'
+        '400':
+          description: Error response (DIGIT ErrorRes)
+          content:
+            application/json:
+              schema:
+                $ref: 'https://raw.githubusercontent.com/egovernments/DIGIT-Specs/master/Common%20Services/common-contract.yaml#/components/schemas/ErrorRes'
+
+  /v1/activities/_assign-staff:
+    post:
+      tags: [Activities]
+      summary: Assign staff with roles to facility-bound activities (bulk)
+      description: |
+        Bulk-assign multiple staff (with roles) to one or more facility-bound activities.
+        If an activity has no `facilityId`, its assignment is rejected.
+        Use `replaceExisting=true` to replace all staff for the activity; otherwise the service merges.
+      operationId: assignStaffToActivities
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActivityStaffAssignmentRequest'
+      responses:
+        '200':
+          description: Staff assignments processed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivityStaffAssignmentResponse'
+        '400':
+          description: Error response (DIGIT ErrorRes)
+          content:
+            application/json:
+              schema:
+                $ref: 'https://raw.githubusercontent.com/egovernments/DIGIT-Specs/master/Common%20Services/common-contract.yaml#/components/schemas/ErrorRes'
+
+  # -----------------------
+  # Activity Reports (under /activities prefix)
+  # -----------------------
+  /v1/activities/reports/_create:
+    post:
+      tags: [Activity Reports]
+      summary: Create activity reports (bulk)
+      description: |
+        Bulk-create ActivityReport records against activities. Typically used by field staff or SPOCs.
+        If the target activity is facility-bound, include `facilityId` in the report for validation.
+      operationId: createActivityReportsV2
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActivityReportCreateRequest'
+      responses:
+        '201':
+          description: Reports created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivityReportsResponse'
+        '400':
+          description: Error response (DIGIT ErrorRes)
+          content:
+            application/json:
+              schema:
+                $ref: 'https://raw.githubusercontent.com/egovernments/DIGIT-Specs/master/Common%20Services/common-contract.yaml#/components/schemas/ErrorRes'
+
+  /v1/activities/reports/_update:
+    post:
+      tags: [Activity Reports]
+      summary: Update activity reports (bulk)
+      description: |
+        Bulk-update reports. Only reports in DRAFT/REJECTED are typically editable (service-level rule).
+      operationId: updateActivityReportsV2
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActivityReportUpdateRequest'
+      responses:
+        '200':
+          description: Reports updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivityReportsResponse'
+        '400':
+          description: Error response (DIGIT ErrorRes)
+          content:
+            application/json:
+              schema:
+                $ref: 'https://raw.githubusercontent.com/egovernments/DIGIT-Specs/master/Common%20Services/common-contract.yaml#/components/schemas/ErrorRes'
+
+  /v1/activities/reports/_search:
+    post:
+      tags: [Activity Reports]
+      summary: Search activity reports
+      description: |
+        Search reports with filters; requires `tenantId`. Supports pagination.
+      operationId: searchActivityReportsV2
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActivityReportSearchRequest'
+      responses:
+        '200':
+          description: Reports retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivityReportSearchResponse'
+        default:
+          description: Error response (DIGIT ErrorRes)
+          content:
+            application/json:
+              schema:
+                $ref: 'https://raw.githubusercontent.com/egovernments/DIGIT-Specs/master/Common%20Services/common-contract.yaml#/components/schemas/ErrorRes'
 
   # ========================
   # ACTIVITY REPORTS
@@ -698,49 +820,18 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
+  # Deprecated: workflow now tied to activity ID/state, not report ID
   /v1/activity-reports/_workflow:
     post:
       tags:
         - Activity Reports
-      summary: Activity report workflow transitions
+      summary: DEPRECATED - Use /v1/activities/_workflow
       description: |
-        Unified endpoint for all activity report workflow state transitions.
-        
-        **Actions:**
-        - SUBMIT: Submit report for review
-        - APPROVE: Approve report
-        - REJECT: Reject report with comments
-        - FLAG_FOR_QC: Flag report for quality control
-        - RESUBMIT: Re-submit rejected report
-        
-        **Access Control:**
-        - FIELD_PLANNER_ADMIN: All actions
-        - Reviewers: APPROVE, REJECT, FLAG_FOR_QC for their activity type
-        - FIELD_STAFF: SUBMIT, RESUBMIT for their reports
-      operationId: activityReportWorkflow
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ActivityReportWorkflowRequest'
+        Activity report workflow has moved to Activity workflow. Trigger state transitions via `/v1/activities/_workflow` using the target activityId.
+      operationId: activityReportWorkflowDeprecated
       responses:
-        '200':
-          description: Workflow transition successful
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ActivityReportWorkflowResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '409':
-          $ref: '#/components/responses/Conflict'
-        '500':
-          $ref: '#/components/responses/InternalServerError'
+        '410':
+          description: Gone - Use /v1/activities/_workflow
 
   # ========================
   # MOBILE SYNCHRONIZATION
@@ -770,7 +861,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/MobileSyncRequest'
+              allOf:
+                - $ref: '#/components/schemas/MobileSyncRequest'
+                - type: object
+                  properties:
+                    correlationId:
+                      type: string
+                      description: Client-supplied correlation ID for tracing
+                    clientReferenceId:
+                      type: string
+                      description: Client-side reference for idempotency
       responses:
         '200':
           description: Assignments synced successfully
@@ -812,6 +912,10 @@ paths:
               properties:
                 RequestInfo:
                   $ref: '#/components/schemas/RequestInfo'
+                correlationId:
+                  type: string
+                clientReferenceId:
+                  type: string
                 ActivityReports:
                   type: array
                   items:
@@ -2281,6 +2385,21 @@ components:
           minLength: 1
           maxLength: 64
           description: Associated project ID
+        activities:
+          type: array
+          description: Activities planned for this field plan (IDs and types)
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                minLength: 36
+                maxLength: 36
+              type:
+                type: string
+                description: Activity type code (MDMS)
+            required: [id, type]
         startDate:
           type: integer
           format: int64
@@ -2293,13 +2412,7 @@ components:
           type: string
           enum: [DRAFT, ACTIVE, COMPLETED, CANCELLED]
           description: Field plan status (MDMS code)
-        activities:
-          type: array
-          items:
-            type: string
-            enum: [INSTALLATION, FIELD_QC, HANDOVER, ASSESSMENT]
-          minItems: 1
-          description: Planned activities (MDMS codes)
+        
         facilities:
           type: array
           items:
@@ -2317,7 +2430,6 @@ components:
         - projectId
         - startDate
         - endDate
-        - activities
         - tenantId
 
     FacilityActivity:
@@ -2414,56 +2526,51 @@ components:
 
     ActivityReport:
       type: object
-      description: Activity report entity
+      description: Report submitted against an activity (often facility-bound)
       properties:
         id:
           type: string
-          maxLength: 64
-          description: Report ID (auto-generated)
-        facilityActivityId:
+          format: uuid
+          minLength: 36
+          maxLength: 36
+          readOnly: true
+        tenantId:
           type: string
-          minLength: 1
-          maxLength: 64
-          description: Associated facility activity ID
+        activityId:
+          type: string
+          description: The activity this report belongs to
         facilityId:
           type: string
-          minLength: 1
-          maxLength: 64
-          description: Health facility ID
-        activityType:
+          description: Facility, if the activity is facility-bound
+        reportType:
           type: string
-          enum: [INSTALLATION, FIELD_QC, HANDOVER, ASSESSMENT]
-          description: Activity type (MDMS code)
+          description: MDMS code for type of report (e.g., INSTALLATION_REPORT, QC_CHECKLIST)
         status:
           type: string
-          enum: [DRAFT, SUBMITTED, APPROVED, REJECTED, FLAGGED_FOR_QC]
-          description: Report status (MDMS code)
+          description: Report status (MDMS code), default DRAFT on create
         reportData:
           type: object
           additionalProperties: true
-          description: Activity-specific report data
-        attachments:
+          description: Free-form, activity-specific report payload. Validated against MDMS schema per reportType
+        documents:
           type: array
           items:
             $ref: '#/components/schemas/Attachment'
-          description: Report attachments
-        comments:
+        submittedByUserId:
           type: string
-          maxLength: 1000
-          description: Report comments
-        tenantId:
+          description: The User ID of the person submitting the report
+        submittedByEmployeeId:
           type: string
-          minLength: 1
-          maxLength: 64
-          description: Tenant ID
+          description: The vendor employee ID of the person submitting the report
+        reviewedByUserId:
+          type: string
+          description: Reviewer user ID if reviewed
         auditDetails:
           $ref: '#/components/schemas/AuditDetails'
       required:
-        - facilityActivityId
-        - facilityId
-        - activityType
-        - status
         - tenantId
+        - activityId
+        - status
 
     TeamAssignment:
       type: object
@@ -2607,9 +2714,9 @@ tags:
   - name: Field Plans
     description: Bulk field plan creation and management operations
   - name: Activities
-    description: Activity assignment within field plan context
+    description: Manage activities, workflow, and assignments (SPOC and staff)
   - name: Activity Reports
-    description: Activity report creation, submission, and workflow management
+    description: Submit and manage reports attached to activities
   - name: Mobile Sync
     description: Mobile application data synchronization (leveraging platform APIs)
   - name: Team Management
