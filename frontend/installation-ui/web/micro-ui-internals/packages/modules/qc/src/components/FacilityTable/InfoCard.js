@@ -1,8 +1,9 @@
 import React from "react";
 
-const InfoCard = ({ selectedFieldPlan }) => {
+const InfoCard = ({ t, selectedFieldPlan }) => {
 
   const { startDate, endDate, completionRate, projectFacilityInfo } = selectedFieldPlan;
+  const isMobile = window.Digit.Utils.browser.isMobile();
 
   const PropertyCard = (infoName, infoValue) => (
     <div style={{ width: "100%", display: "flex", alignItems: "center" }}>
@@ -15,61 +16,72 @@ const InfoCard = ({ selectedFieldPlan }) => {
     </div>
   )
 
-  const GetProgress = (value) => {
-    return (
-      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-        <div style={{ width: "100px", height: "20px", background: "#E0E0E0", borderRadius: "5px" }}>
-          <div style={{ position: "absolute", height: "20px", width: `${value}px`, background: "#00703C", borderRadius: "5px" }}></div>
-        </div>
-        <div>{value}%</div>
+  const GetProgress = (value) => (
+    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+      <div style={{ width: "100px", height: "20px", background: "#E0E0E0", borderRadius: "5px" }}>
+        <div style={{ position: "absolute", height: "20px", width: `${value}px`, background: "#00703C", borderRadius: "5px" }}></div>
       </div>
-    );
-  };
+      <div>{value}%</div>
+    </div>
+  );
 
   const getStatusCount = (status) => {
     return projectFacilityInfo?.[status] || 0;
+  }
+
+  const getAssignedCount = () => {
+    let assignedCount = 0;
+    for (const key in projectFacilityInfo) {
+      if (key !== "SCHEDULED")
+        assignedCount += projectFacilityInfo[key];
+    }
+
+    return assignedCount;
   }
 
   return (
     <React.Fragment>
       <div
         style={{
-          width: "99%",
+          width: "100%",
           background: "white",
           height: "fit-content",
           marginBottom: "15px",
-          padding: "20px",
+          padding: isMobile ? "10px" : "20px",
           display: "flex",
+          flexDirection: isMobile ? "column" : "row",
+          gap: isMobile ? "10px" : "",
           justifyContent: "space-between",
+          minWidth: "fit-content"
         }}
       >
-        <div style={{ width: "30%" }}>
+        <div style={{ width: "30%", minWidth: "400px" }}>
           <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: "10px" }}>
             <div>
-              {PropertyCard("Start Date", startDate)}
+              {PropertyCard(t("CORE_COMMON_START_DATE"), startDate)}
             </div>
             <div>
-              {PropertyCard("End Date", endDate)}
+              {PropertyCard(t("CORE_COMMON_COMPLETION_DATE"), endDate)}
             </div>
           </div>
         </div>
-        <div style={{ width: "30%" }}>
+        <div style={{ width: "30%", minWidth: "400px" }}>
           <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: "10px" }}>
             <div>
-              {PropertyCard("No. of Health Facilities Unassigned", getStatusCount("SCHEDULED"))}
+              {PropertyCard(t("FIELD_PLAN_NO_OF_FACILITIES_UNASSIGNED"), getStatusCount("SCHEDULED"))}
             </div>
             <div>
               {
                 PropertyCard(
-                  "Total Health Facilities Assigned",
-                  getStatusCount("ASSIGNED_TO_FIELD_STAFF") + getStatusCount("ASSIGNED_TO_FIELD_SUPERVISOR")
+                  t("FIELD_PLAN_NO_OF_FACILITIES_ASSIGNED"),
+                  getAssignedCount()
                 )
               }
             </div>
             <div>
               {
                 PropertyCard(
-                  "Completion Rate",
+                  t("FIELD_PLAN_COMPLETION_RATE"),
                   GetProgress(completionRate)
                 )
               }
