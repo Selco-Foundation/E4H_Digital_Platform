@@ -82,7 +82,7 @@ const FacilityTable = ({ t, getCellProps }) => {
       const refactoredDataCopy = facilityData?.facilities.map((row) => ({
         ...row,
         projectName: fieldPlan?.name,
-        status: t(row?.status) || "-",
+        status: row?.status || "-",
       }));
 
       setData(refactoredDataCopy);
