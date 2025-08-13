@@ -166,13 +166,13 @@ const FacilityTable = ({ t, getCellProps }) => {
     {
       id: "selection",
       Header: () => (
-        <div style={{ marginTop: "-1.2em" }}>
+        <div style={{ marginTop: "-1.2em", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <CheckBox checked={mainCheck} onChange={mainCheckboxChange} />
         </div>
       ),
       Cell: ({ row }) => {
         return row.original["status"] === t("SUBMITTED_BY_SUPERVISOR") ? (
-          <div style={{ marginTop: "-1.2em" }}>
+          <div style={{ marginTop: "-1.2em", marginBottom: "-0.8em", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <CheckBox
               checked={sideCheck[`${row.original["id"]}`]}
               onChange={() => sideCheckboxChange(`${row.original["id"]}`, row.original["id"])}
