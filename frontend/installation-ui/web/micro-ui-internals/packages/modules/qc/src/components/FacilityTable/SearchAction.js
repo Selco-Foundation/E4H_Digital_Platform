@@ -1,14 +1,11 @@
 import React, { useState } from "react";
 import {
   TextInput,
-  Label,
   SubmitBar,
   LinkLabel,
   TickMark,
-  Button,
-  DownloadIcon
+  DownloadIcon, SearchIconSvg, SearchIcon
 } from "@egovernments/digit-ui-react-components";
-import { useTranslation } from "react-i18next";
 
 const SearchActionCentre = ({ t, projectQueryFilter, mainCheckBox, selectedFacilities, onSearch }) => {
   const [textToSearch, setTextToSearch] = useState(projectQueryFilter.facilitySearch.name || "");
@@ -32,6 +29,20 @@ const SearchActionCentre = ({ t, projectQueryFilter, mainCheckBox, selectedFacil
     handleSearch("");
   }
 
+  const ClickableSearchIcon = () => (
+    <button
+      style={{
+        backgroundColor: "white",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+      }}
+      onClick={() => handleSearch(textToSearch)}
+    >
+      <SearchIcon />
+    </button>
+  )
+
   return (
     <React.Fragment>
       <div
@@ -52,10 +63,12 @@ const SearchActionCentre = ({ t, projectQueryFilter, mainCheckBox, selectedFacil
             {mainCheckBox ? "All" : selectedFacilities.length} Health Facilities Selected
           </div>
         ) : (
-          <form onSubmit={(e) => {
-            e.preventDefault();
-            handleSearch(textToSearch);
-          }}>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSearch(textToSearch);
+            }}
+          >
             <div
               style={{
                 display: "flex",
@@ -70,24 +83,27 @@ const SearchActionCentre = ({ t, projectQueryFilter, mainCheckBox, selectedFacil
                 onChange={(e) => {
                   setTextToSearch(e.target.value);
                 }}
-                style={{ marginTop: "auto", marginBottom: "auto" }}
-              ></TextInput>
-              <SubmitBar
-                onSubmit={() => {
-                  handleSearch(textToSearch);
+                className={"search-action"}
+                signature={true}
+                signatureImg={<ClickableSearchIcon />}
+                style={{
+                  marginTop: "auto",
+                  marginBottom: "auto",
+                  border: "none",
+                  width: "300px",
+                  height: "38px"
                 }}
-                label={t("CORE_COMMON_SEARCH")}
               />
               <LinkLabel
                 style={{
-                  fontSize: "16px",
+                  fontSize: "18px",
                   marginTop: "auto",
                   marginBottom: "auto",
                   minWidth: "fit-content",
                 }}
                 onClick={handleClear}
               >
-                {t("CORE_COMMON_CLEAR_SEARCH")}
+                {t("CORE_COMMON_CLEAR")}
               </LinkLabel>
             </div>
           </form>
@@ -113,11 +129,10 @@ const SearchActionCentre = ({ t, projectQueryFilter, mainCheckBox, selectedFacil
                 justifyContent: "center",
                 alignItems: "center",
                 gap: "10px",
+                height: "40px"
               }}
             >
-              <span>
-                {t("CORE_COMMON_APPROVE")}
-              </span>
+              <span>{t("CORE_COMMON_APPROVE")}</span>
               <div style={{ transform: "scale(1.4)" }}>
                 <TickMark />
               </div>
@@ -136,14 +151,13 @@ const SearchActionCentre = ({ t, projectQueryFilter, mainCheckBox, selectedFacil
               justifyContent: "center",
               alignItems: "center",
               gap: "5px",
+              height: "40px"
             }}
           >
-              <span>
-                {t("CORE_COMMON_DOWNLOAD")}
-              </span>
-              <div style={{ height: "14px", marginBottom: "auto", transform: "scale(0.7)"  }}>
-                <DownloadIcon fill={"#d35400"}/>
-              </div>
+            <span>{t("CORE_COMMON_DOWNLOAD")}</span>
+            <div style={{ height: "14px", marginBottom: "auto", transform: "scale(0.7)" }}>
+              <DownloadIcon fill={"#d35400"} />
+            </div>
           </button>
         </div>
       </div>
