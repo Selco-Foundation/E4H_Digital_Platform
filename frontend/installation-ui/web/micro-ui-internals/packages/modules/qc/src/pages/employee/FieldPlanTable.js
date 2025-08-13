@@ -178,7 +178,7 @@ const FieldPlanTable = ({ t, getCellProps }) => {
 
     if (fetchedData.length === 0) {
       return (
-        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%" }}>
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "300px", backgroundColor: "white" }}>
           <div style={{ fontSize: "20px", fontWeight: "bold" }}>
             {t("CS_NO_FIELD_PLANS_FOUND")}
           </div>
