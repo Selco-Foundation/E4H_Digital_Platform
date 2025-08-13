@@ -180,7 +180,8 @@ const Filter = ({ t, fieldPlan, onFilterChange, projectQueryFilter, statusesList
               <FilterIcon />
               {t("CORE_COMMON_FILTER")}
             </div>
-            <div
+            <button
+              type="button"
               style={{
                 cursor: "pointer",
                 border: "1px solid #C84C0E",
@@ -190,12 +191,13 @@ const Filter = ({ t, fieldPlan, onFilterChange, projectQueryFilter, statusesList
                 fontWeight: 500,
                 height: "2rem",
                 width: "2rem",
-                fontSize: "24px"
+                fontSize: "24px",
+                background: "transparent"
               }}
               onClick={onClearAll}
             >
               <RefreshButton fill={"#C84C0E"} />
-            </div>
+            </button>
           </div>
           <div>
             {
