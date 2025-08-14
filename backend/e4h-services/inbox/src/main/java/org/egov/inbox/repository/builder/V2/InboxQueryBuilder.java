@@ -158,11 +158,6 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
             nameToOperator.put(searchParam.getName(), searchParam.getOperator());
         });
 
-//        if (inboxRequest.getInbox().getProcessSearchCriteria().getTenantId().split("\\.").length == 1
-//                && !inboxRequest.getInbox().getModuleSearchCriteria().get("tenantId").toString().contains(",")) {
-//            nameToOperator.put("tenantId", SearchParam.Operator.WILDCARD);
-//
-//        }
         addModuleSearchCriteriaToBaseQuery(params, nameToPathMap, nameToOperator, mustClauseList);
         addProcessSearchCriteriaToBaseQuery(inboxRequest.getInbox().getProcessSearchCriteria(), nameToPathMap, nameToOperator, mustClauseList);
 
@@ -224,38 +219,6 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
     }
 
     private void addProcessSearchCriteriaToBaseQuery(ProcessInstanceSearchCriteria processSearchCriteria, Map<String, String> nameToPathMap, Map<String, SearchParam.Operator> nameToOperator, List<Object> mustClauseList) {
-//        if(!ObjectUtils.isEmpty(processSearchCriteria.getTenantId())){
-//            String key = "tenantId";
-//            Map<String, Object> mustClauseChild = null;
-//        	List<Map<String, Object>> mustClauseChilds = null;
-//
-//            Map<String, Object> params = new HashMap<>();
-//            params.put(key, processSearchCriteria.getTenantId());
-//            if(processSearchCriteria.getTenantId().split("\\.").length==1)
-//            {
-//
-//			mustClauseChilds = (List<Map<String, Object>>) prepareMustClauseWildCardChild(params, key,
-//					nameToPathMap, nameToOperator);
-//			 if(CollectionUtils.isEmpty(mustClauseChilds)){
-//	                log.info("Error occurred while preparing filter for must clause. Filter for key " + key + " will not be added.");
-//	            }else {
-//	                mustClauseList.add(mustClauseChilds);
-//	            }
-//            }
-//            
-//            else
-//            {
-//                mustClauseChild = (Map<String, Object>) prepareMustClauseChild(params, key, nameToPathMap, nameToOperator);
-//                if(CollectionUtils.isEmpty(mustClauseChild)){
-//	                log.info("Error occurred while preparing filter for must clause. Filter for key " + key + " will not be added.");
-//	            }else {
-//	                mustClauseList.add(mustClauseChild);
-//	            }
-//            }
-//
-//           
-//        }
-
         if (!ObjectUtils.isEmpty(processSearchCriteria.getStatus())) {
             String key = "status";
             Map<String, Object> mustClauseChild = null;
