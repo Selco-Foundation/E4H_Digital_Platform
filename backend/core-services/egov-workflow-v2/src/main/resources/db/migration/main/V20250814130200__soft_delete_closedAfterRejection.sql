@@ -1,0 +1,2 @@
+UPDATE  eg_wf_processinstance_v2 SET isActive = false WHERE action = 'CLOSE' and businessid in
+(select businessid from eg_wf_processinstance_v2 where action='REJECT' and isActive=true) and isActive=true;
