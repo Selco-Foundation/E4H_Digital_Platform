@@ -521,7 +521,7 @@ public class ProjectApiController {
                 txn.setComments(commentsByTxnId.getOrDefault(txn.getTransactionId(), Collections.emptyList()));
             }
 
-            ProcessInstance processInstance = projectWorkflowService.getProcessInstanceById(
+            List<ProcessInstance> processInstances = projectWorkflowService.getProcessInstanceById(
                     project.getId(),
                     project.getTenantId(),
                     projectSearchRequest.getRequestInfo()
@@ -530,7 +530,7 @@ public class ProjectApiController {
                 .project(project)
                 .status(status)
                 .transactions(txns)
-                .processInstance(processInstance)
+                .processInstances(processInstances)
                 .build();
             projectStatusWrappers.add(wrapper);
         }
