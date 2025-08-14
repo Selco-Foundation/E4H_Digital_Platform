@@ -11,7 +11,6 @@ const formatDate = (timestamp) => {
 
 const formatProjectFacilityInfo = (projectFacilityInfo) => {
   const formattedProjectFacilityInfo = {};
-  formattedProjectFacilityInfo.totalProjectFacilities = projectFacilityInfo?.countProjectFacilities;
 
   projectFacilityInfo?.statusAgregation?.forEach((row) => {
     formattedProjectFacilityInfo[row?.status] = row?.occurrences;
@@ -24,14 +23,15 @@ const formatFieldPlans = (projects) => {
 
   return projects?.map((row) => {
 
+    const totalProjectFacilities = row?.project?.additionalDetails?.countProjectFacilities || 0;
     const projectFacilityInfo = formatProjectFacilityInfo(row?.project?.additionalDetails);
-    const completionRate = Math.ceil(projectFacilityInfo["APPROVED_BY_QC_SPOC"]/projectFacilityInfo.totalProjectFacilities * 100) || 0;
+    const completionRate = totalProjectFacilities !== 0 ? (Math.ceil(projectFacilityInfo["APPROVED_BY_QC_SPOC"]/totalProjectFacilities * 100) || 0) : 0;
 
     return {
       id: row?.project?.id,
       name: row?.project?.name || row?.project?.projectNumber,
       projectType: "Installation",
-      facilitiesCount: projectFacilityInfo?.totalProjectFacilities,
+      facilitiesCount: totalProjectFacilities,
       startDate: formatDate(row?.project?.startDate),
       endDate: formatDate(row?.project?.endDate),
       completionRate: completionRate,
