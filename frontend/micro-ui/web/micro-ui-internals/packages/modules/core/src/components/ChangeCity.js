@@ -80,7 +80,7 @@ const ChangeCity = (prop) => {
 
   // if (isDropdown) {
   return (
-    <div style={prop?.mobileView ? {color: "#767676",width:"100%"} : {width:"300px"}}>
+    <div style={prop?.mobileView ? {color: "#767676", width:"95%", marginBottom: "1rem"} : {width:"300px"}}>
       <Dropdown
         option={sortSelectCityData}
         optionCardStyles={{ display: "unset" }}
