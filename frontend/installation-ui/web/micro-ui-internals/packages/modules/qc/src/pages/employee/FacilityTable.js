@@ -7,7 +7,7 @@ import { useDispatch } from "react-redux";
 import { setSelectedFacility, setSelectedFieldPlan } from "../../redux/actions";
 import SearchActionCentre from "../../components/FacilityTable/SearchAction";
 
-const FacilityTable = ({ t, getCellProps }) => {
+const FacilityTable = ({ t }) => {
 
   const [mainCheck, setMainCheck] = useState(false);
   const dispatch = useDispatch();
@@ -286,7 +286,15 @@ const FacilityTable = ({ t, getCellProps }) => {
             t={t}
             data={fetchedData}
             columns={columns}
-            getCellProps={getCellProps}
+            getCellProps={() => {
+              return {
+                style: {
+                  maxWidth: "100%",
+                  padding: "17.24px 18px",
+                  fontSize: "15px",
+                },
+              };
+            }}
             onNextPage={onNextPage}
             onPrevPage={onPrevPage}
             currentPage={Math.floor(pageOffset / pageSize)}

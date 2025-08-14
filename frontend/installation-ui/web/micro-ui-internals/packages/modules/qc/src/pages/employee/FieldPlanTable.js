@@ -5,7 +5,7 @@ import { setSelectedFieldPlan } from "../../redux/actions";
 import { Link, useHistory, useLocation, useRouteMatch } from "react-router-dom";
 import { useDispatch } from "react-redux";
 
-const FieldPlanTable = ({ t, getCellProps }) => {
+const FieldPlanTable = ({ t }) => {
 
   const [fetchedData, setData] = useState([]);
   const dispatch = useDispatch();
@@ -199,7 +199,15 @@ const FieldPlanTable = ({ t, getCellProps }) => {
             t={t}
             data={fetchedData}
             columns={columnsList}
-            getCellProps={getCellProps}
+            getCellProps={() => {
+              return {
+                style: {
+                  maxWidth: "100%",
+                  padding: "17.24px 18px",
+                  fontSize: "15px",
+                },
+              };
+            }}
             onNextPage={onNextPage}
             onPrevPage={onPrevPage}
             currentPage={Math.floor(pageOffset / pageSize)}
