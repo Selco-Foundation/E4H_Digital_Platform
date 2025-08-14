@@ -762,6 +762,108 @@ erDiagram
 - **User Integration**: All user references point to Vendor Registry employee IDs
 - **Workflow Integration**: Activity reports integrate with eGov Workflow v2
 
+#### 4.1.3 Field Planner Service ER Diagram (Service-owned tables only)
+
+```mermaid
+erDiagram
+  PROJECT ||--o{ FIELD_PLANS : contains
+  FIELD_PLANS ||--o{ FIELD_PLAN_FACILITIES : maps
+  FACILITY ||--o{ FIELD_PLAN_FACILITIES : in
+
+  FIELD_PLANS {
+    uuid id PK
+    text name
+    text projectId FK
+    bigint startDate
+    bigint endDate
+    text status
+    text tenantId
+    jsonb auditDetails
+  }
+  FIELD_PLAN_FACILITIES {
+    uuid id PK
+    text fieldPlanId FK
+    text facilityId
+    text tenantId
+    jsonb auditDetails
+  }
+```
+
+Notes:
+- Ownership: `FIELD_PLANS`, `FIELD_PLAN_FACILITIES` are owned by Field Planner service.
+- External references: `PROJECT` and `FACILITY` are external/platform tables; no cross-service joins at runtime (lookups via service clients only).
+
+#### 4.1.4 Activities Service ER Diagram (Service-owned tables only)
+
+```mermaid
+erDiagram
+  FIELD_PLANS ||--o{ ACTIVITIES : has
+  ACTIVITIES ||--o{ FACILITY_ACTIVITIES : binds
+  FACILITY ||--o{ FACILITY_ACTIVITIES : in
+  ACTIVITIES ||--o{ ACTIVITY_REPORTS : reports
+  ACTIVITY_REPORTS ||--o{ ACTIVITY_REPORT_DOCUMENTS : has
+
+  ACTIVITIES {
+    uuid id PK
+    text fieldplanId FK
+    text activityType
+    text facilityId
+    text spocEmployeeId
+    text spocUserId
+    bigint plannedStartDate
+    bigint plannedEndDate
+    bigint startDate
+    bigint endDate
+    boolean isActive
+    text tenantId
+    jsonb activityDetails
+    jsonb auditDetails
+  }
+  FACILITY_ACTIVITIES {
+    uuid id PK
+    text activityId FK
+    text facilityId
+    text status
+    boolean isActive
+    bigint targetCompletionDate
+    bigint actualCompletionDate
+    text tenantId
+    jsonb activationConditions
+    jsonb auditDetails
+  }
+  ACTIVITY_REPORTS {
+    uuid id PK
+    text activityId FK
+    text facilityId
+    text reportType
+    text status
+    jsonb reportData
+    text submittedByUserId
+    text submittedByEmployeeId
+    text reviewedByUserId
+    text tenantId
+    jsonb auditDetails
+  }
+  ACTIVITY_REPORT_DOCUMENTS {
+    bigint id PK
+    uuid reportId FK
+    text fileStoreId
+    text documentType
+    text fileName
+    text mimeType
+    bigint fileSize
+    bigint uploadedAt
+    text createdBy
+    bigint createdTime
+    text lastModifiedBy
+    bigint lastModifiedTime
+  }
+```
+
+Notes:
+- Ownership: `ACTIVITIES`, `FACILITY_ACTIVITIES`, `ACTIVITY_REPORTS`, `ACTIVITY_REPORT_DOCUMENTS` are owned by Activities service.
+- External references: `FIELD_PLANS` and `FACILITY` originate in other services; relationships are conceptual (FKs represented as IDs). No cross-service joins.
+
 ### 4.2 Schema Design Principles
 
 #### 4.2.1 Normalization Strategy
