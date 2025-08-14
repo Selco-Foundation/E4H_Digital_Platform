@@ -284,92 +284,13 @@ Response:
 
 #### 2.6.3 Complete Workflow JSON Configurations
 
-**Field Plan Workflow Configuration:**
-```json
-{
-  "tenantId": "pb",
-  "moduleName": "FIELD-PLANNER",
-  "workflowName": "FieldPlanWorkflow",
-  "businessService": "field-plan",
-  "business": "field-plan",
-  "businessServiceSla": 86400000,
-  "states": [
-    {
-      "sla": null,
-      "state": "DRAFT",
-      "applicationStatus": "DRAFT",
-      "docUploadRequired": false,
-      "isStartState": true,
-      "isTerminateState": false,
-      "isStateUpdatable": true,
-      "actions": [
-        {
-          "action": "SUBMIT",
-          "nextState": "ACTIVE",
-          "roles": ["PROJECT_MANAGER"],
-          "active": true
-        },
-        {
-          "action": "DELETE",
-          "nextState": "CANCELLED",
-          "roles": ["PROJECT_MANAGER"],
-          "active": true
-        }
-      ]
-    },
-    {
-      "sla": null,
-      "state": "ACTIVE",
-      "applicationStatus": "ACTIVE",
-      "docUploadRequired": false,
-      "isStartState": false,
-      "isTerminateState": false,
-      "isStateUpdatable": false,
-      "actions": [
-        {
-          "action": "COMPLETE",
-          "nextState": "COMPLETED",
-          "roles": ["PROJECT_MANAGER"],
-          "active": true
-        },
-        {
-          "action": "CANCEL",
-          "nextState": "CANCELLED",
-          "roles": ["PROJECT_MANAGER"],
-          "active": true
-        }
-      ]
-    },
-    {
-      "sla": null,
-      "state": "COMPLETED",
-      "applicationStatus": "COMPLETED",
-      "docUploadRequired": false,
-      "isStartState": false,
-      "isTerminateState": true,
-      "isStateUpdatable": false,
-      "actions": []
-    },
-    {
-      "sla": null,
-      "state": "CANCELLED",
-      "applicationStatus": "CANCELLED",
-      "docUploadRequired": false,
-      "isStartState": false,
-      "isTerminateState": true,
-      "isStateUpdatable": false,
-      "actions": []
-    }
-  ]
-}
-```
 
-**Activity Report Workflow Configuration:**
+**Facility Activity Workflow Configuration:**
 ```json
 {
   "tenantId": "pb",
   "moduleName": "FIELD-PLANNER",
-  "workflowName": "ActivityReportWorkflow",
+  "workflowName": "FacilityActivityWorkflow",
   "businessService": "activity-report",
   "business": "activity-report",
   "businessServiceSla": 172800000,
@@ -538,45 +459,6 @@ Response:
 }
 ```
 
-**Workflow SLA Configuration:**
-```json
-{
-  "tenantId": "pb",
-  "moduleName": "FIELD-PLANNER",
-  "configName": "WorkflowSLAs",
-  "slaConfig": {
-    "field-plan": {
-      "DRAFT": {
-        "slaHours": null,
-        "escalationRoles": [],
-        "reminderHours": [168]
-      },
-      "ACTIVE": {
-        "slaHours": null,
-        "escalationRoles": ["PROJECT_MANAGER"],
-        "reminderHours": [336, 168, 24]
-      }
-    },
-    "activity-report": {
-      "SUBMITTED": {
-        "slaHours": 24,
-        "escalationRoles": ["INSTALLATION_SPOC", "FIELD_QC_SPOC"],
-        "reminderHours": [12, 2]
-      },
-      "FLAGGED_FOR_QC": {
-        "slaHours": 72,
-        "escalationRoles": ["FIELD_QC_SPOC"],
-        "reminderHours": [48, 24, 4]
-      },
-      "REJECTED": {
-        "slaHours": 48,
-        "escalationRoles": ["FIELD_STAFF"],
-        "reminderHours": [24, 8]
-      }
-    }
-  }
-}
-```
 
 
 ---
