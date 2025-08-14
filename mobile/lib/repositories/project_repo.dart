@@ -62,8 +62,11 @@ class ProjectRemoteRepository {
       Response response;
       String searchPath = "project/v2/_search";
 
+      print("envConfig.variables.envType ${envConfig.variables.envType}");
+      print("EnvType.dev ${EnvType.dev}");
       if (envConfig.variables.envType == EnvType.dev) {
-        // return _loadLocalProjects();
+        print("EnvType.dev got here");
+        return _loadLocalProjects();
       }
 
       response = await dio.post(
@@ -179,6 +182,11 @@ class ProjectRemoteRepository {
 
       List<ProjectWorkflow> projectsList = [];
       for (final project in responseMap) {
+        //todo -------- print
+        final p = project['project'] as Map<String, dynamic>;
+        print('RAW additionalDetails: ${jsonEncode(p['additionalDetails'])}');
+        // todo-------end print
+
         projectsList.add(ProjectWorkflow.fromJson(project));
       }
 
@@ -207,6 +215,7 @@ class ProjectRepository {
         workflowStatuses: workflowStatuses,
         sortDirection: sortDirection,
       );
+
       if (remoteList != null) {
         await _replaceCache(workflowStatuses, remoteList);
         return remoteList;
@@ -241,6 +250,8 @@ class ProjectRepository {
         await col.put(CacheProjectWorkflow(
           status: wf.status ?? '',
           project: wf.project,
+          transactions: wf.transactions,
+          workflow: wf.workflow,
         ));
       }
     });
@@ -257,7 +268,12 @@ class ProjectRepository {
       all.addAll(matches);
     }
     return all
-        .map((c) => ProjectWorkflow(project: c.project, status: c.status))
+        .map((c) => ProjectWorkflow(
+              project: c.project,
+              status: c.status,
+              transactions: c.transactions,
+              workflow: c.workflow,
+            ))
         .toList();
   }
 }

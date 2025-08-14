@@ -180,7 +180,7 @@ class AssetSubmissionBloc
               documentType: saved.documentType,
               fileStore: photoId,
               documentUid: "DOC-ASSET-${saved.serialNumber}",
-              additionalDetails: null,
+              additionalDetailsJson: null,
               geoLocation: GeoLocation(
                 latitude: saved.latitude,
                 longitude: saved.longitude,
@@ -199,49 +199,59 @@ class AssetSubmissionBloc
               : now.add(Duration(days: 365 * years)).toIso8601String();
 
           // 1) Build AssetDetails with every field explicitly
+
+          print("projectId $projectId");
+          print("type $type");
+          print("spec ${spec.totalCapacity}");
+          print("spec ${spec.totalCapacityUnit}");
+          print("spec $spec");
+
+          print(
+              "ASSET_TYPES.INVERTER.name.toLowerCase() ${ASSET_TYPES.INVERTER.name.toLowerCase()}");
+          print("saved.capacityUnit ${saved.capacityUnit}");
+          if (type == ASSET_TYPES.BATTERY.name.toLowerCase()) {
+            print("saved.batteryCapacity! ${saved.batteryCapacity!}");
+            print("saved.batteryVoltage! ${saved.batteryVoltage!}");
+            print("saved.batteryType ${saved.batteryType}");
+          }
+          if (type == ASSET_TYPES.INVERTER.name.toLowerCase()) {
+            print("saved.inverterCapacity! ${saved.inverterCapacity!}");
+            print("saved.inverterCapacityUnit ${saved.inverterCapacityUnit}");
+          }
+
           final assetDetails = AssetDetails(
             totalCapacity: spec.totalCapacity,
             totalCapacityUnit: spec.totalCapacityUnit,
             totalCapacityUOM: spec.totalCapacityUnit,
-
-            capacityUnit: type == 'panel'
-                ? "Wp"
-                : type == 'battery'
-                    ? "Ah"
-                    : null, // from mdms
-            panelCapacity: type == 'panel'
-                ? 34.1
-                : null, // saved.itemNumber, // "panelCapacity": saved.itemNumber,
-
-            batteryVoltage: type == 'battery' ? 12 : null,
-            batteryCapacity: type == 'battery'
-                ? 125
-                : null, // double.parse(saved.itemNumber)
             voltageUnit:
                 (type == 'battery' || type == 'inverter') ? "Volts" : null,
-            batteryType: type == 'battery' ? "Lithium" : null,
 
-            inverterCapacity:
-                type == 'inverter' ? double.parse(saved.itemNumber) : null,
-            inverterCapacityUnit: type == 'inverter' ? 'kVA' : null,
-            currentUnit: type == 'inverter' ? '1' : null,
-
-            // capacityUnit: saved.capacityUnit,
-            // panelCapacity: saved.panelCapacity != null
-            //     ? double.parse(saved.panelCapacity!)
-            //     : null,
-            // batteryCapacity: saved.batteryCapacity != null
-            //     ? double.parse(saved.batteryCapacity!)
-            //     : null,
-            // batteryVoltage: saved.batteryVoltage != null
-            //     ? double.parse(saved.batteryVoltage!)
-            //     : null,
-            // batteryType: saved.batteryType,
+            currentUnit:
+                type == ASSET_TYPES.INVERTER.name.toLowerCase() ? '1' : null,
+            capacityUnit: (type == ASSET_TYPES.BATTERY.name.toLowerCase() ||
+                    type == ASSET_TYPES.PANEL.name.toLowerCase())
+                ? saved.capacityUnit
+                : null,
+            panelCapacity: type == ASSET_TYPES.PANEL.name.toLowerCase()
+                ? double.parse(saved.panelCapacity!)
+                : null,
+            batteryCapacity: type == ASSET_TYPES.BATTERY.name.toLowerCase()
+                ? double.parse(saved.batteryCapacity!)
+                : null,
+            batteryVoltage: type == ASSET_TYPES.BATTERY.name.toLowerCase()
+                ? double.parse(saved.batteryVoltage!)
+                : null,
+            batteryType: type == ASSET_TYPES.BATTERY.name.toLowerCase()
+                ? saved.batteryType
+                : null,
             // voltageUnit: saved.voltageUnit,
-            // inverterCapacity: saved.inverterCapacity != null
-            //     ? double.parse(saved.inverterCapacity!)
-            //     : null,
-            // inverterCapacityUnit: saved.inverterCapacityUnit,
+            inverterCapacity: type == ASSET_TYPES.INVERTER.name.toLowerCase()
+                ? double.parse(saved.inverterCapacity!)
+                : null,
+            inverterCapacityUnit:
+                type == ASSET_TYPES.INVERTER.name.toLowerCase()
+                    ? saved.inverterCapacityUnit
+                    : null,
             // currentUnit: saved.currentUnit,
           );
 
