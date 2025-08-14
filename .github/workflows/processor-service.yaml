@@ -71,7 +71,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: build/maven/Dockerfile
+          file: build/adhoc/Dockerfile
           push: true
           tags: selcohub/processor-services:${{ env.VERSION }}-${{ env.commit_hash }}
           cache-from: type=gha   # Stores cache in GitHub Actions .
