@@ -110,6 +110,22 @@
             "options": [
               "kVA"
             ]
+          },
+          {
+            "system":"AC_OFF_GRID",
+            "key":"voltage_uom",
+            "name":"voltage unit",
+            "options" : [
+              "Volts"
+            ]
+          },
+          {
+            "system":"AC_OFF_GRID",
+            "key":"current_uom",
+            "name":"current unit",
+            "options" : [
+              "A"
+            ]
           }
         ]
       },
@@ -173,6 +189,24 @@
             "system": "AC_OFF_GRID",
             "options": [
               "Ah"
+            ]
+          },
+          {
+            "system":"AC_OFF_GRID",
+            "key":"voltage",
+            "name":"voltage",
+            "options" :[
+              "12",
+              "12.8",
+              "24"
+            ]
+          },
+          {
+            "system":"AC_OFF_GRID",
+            "key":"voltage_uom",
+            "name":"voltage unit",
+            "options" : [
+              "Volts"
             ]
           },
           {

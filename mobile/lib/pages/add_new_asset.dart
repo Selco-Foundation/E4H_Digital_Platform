@@ -89,6 +89,8 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
   String currentAssetType = "";
   late List<String> assetCapacity = [];
   late String assetCapacityUom = "";
+  late List<String> voltages = [];
+  late String voltageUom = "";
   late List<AssetType> assetTypeList = [];
   late List<String> typesField = [];
   late AssetType? selectedAssetType;
@@ -108,18 +110,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
   void initState() {
     super.initState();
     final locBloc = context.read<LocationBloc>();
-    // locBloc.add(const LocationEvent.requestPermission());
-    // locBloc.add(const LocationEvent.requestService());
-    // _locSub = locBloc.stream.listen((locationState) {
-    //   if (locationState.latitude != null && locationState.longitude != null) {
-    //     setState(() {
-    //       _latitude = locationState.latitude;
-    //       _longitude = locationState.longitude;
-    //     });
-    //   }
-    // });
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // _cameraPermissions();
       _requestPermissions();
       currentAssetType = context.read<AssetTypeBloc>().state.when(
             initial: () => '',
@@ -157,10 +148,12 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                 (field) =>
                     field.key == "capacity" && field.system == systemCode,
               );
-              final assetCapacityUomField = fields.firstWhereOrNull(
-                (field) =>
-                    field.key == "capacity_uom" && field.system == systemCode,
-              );
+              final assetCapacityUomField = fields.firstWhereOrNull((field) =>
+                  field.key == "capacity_uom" && field.system == systemCode);
+              final voltageField = fields.firstWhereOrNull((field) =>
+                  field.key == "voltage" && field.system == systemCode);
+              final voltageUomField = fields.firstWhereOrNull((field) =>
+                  field.key == "voltage_uom" && field.system == systemCode);
               typesField = fields
                       .firstWhereOrNull((field) => field.types != null)
                       ?.types ??
@@ -168,6 +161,11 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
               assetCapacity = assetCapacityField!.options!;
               assetCapacityUom =
                   assetCapacityUomField!.options!.firstOrNull ?? '';
+              voltages = voltageField!.options!;
+              voltageUom = voltageUomField!.options!.firstOrNull ?? '';
+
+              print("voltageUom $voltageUom");
+
               return assetType;
             },
           );
@@ -232,41 +230,6 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
 
     // Request location service after permissions
     final locBloc = context.read<LocationBloc>();
-    // locBloc.add(const LocationEvent.requestService());
-    locBloc.add(const LocationEvent.requestPermission());
-    locBloc.add(const LocationEvent.requestService());
-  }
-
-  Future<void> _requestPermissions2() async {
-    // Request camera and location permissions together
-    Map<Permission, PermissionStatus> statuses = await [
-      Permission.camera,
-      Permission.locationWhenInUse,
-      Permission.storage, // ← new
-    ].request();
-
-    if (statuses[Permission.camera] != PermissionStatus.granted) {
-      context.showSnackBar(
-        const SnackBar(
-            content: Text('Camera permission is required to scan QR codes')),
-      );
-    }
-
-    if (statuses[Permission.storage] != PermissionStatus.granted) {
-      context.showSnackBar(const SnackBar(
-          content: Text('Storage permission is required to save photos')));
-    }
-
-    if (statuses[Permission.locationWhenInUse] != PermissionStatus.granted) {
-      context.showSnackBar(
-        const SnackBar(
-            content: Text('Location permission is required to geotag photos')),
-      );
-    }
-
-    // Request location service after permissions
-    final locBloc = context.read<LocationBloc>();
-    // locBloc.add(const LocationEvent.requestService());
     locBloc.add(const LocationEvent.requestPermission());
     locBloc.add(const LocationEvent.requestService());
   }
@@ -354,9 +317,10 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                       batteryCapacity: entry.batteryCapacity,
                       batteryVoltage: entry.batteryVoltage,
                       batteryType: entry.batteryType,
-                      voltageUnit: entry.voltageUnit,
+                      voltageUnit: entry.voltageUnit ?? voltageUom,
                       inverterCapacity: entry.inverterCapacity,
-                      inverterCapacityUnit: entry.inverterCapacityUnit,
+                      inverterCapacityUnit:
+                          entry.inverterCapacityUnit ?? assetCapacityUom,
                       currentUnit: entry.currentUnit,
                     ));
                   }
@@ -440,9 +404,10 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                           batteryCapacity: asset.batteryCapacity,
                           batteryVoltage: asset.batteryVoltage,
                           batteryType: asset.batteryType,
-                          voltageUnit: asset.voltageUnit,
+                          voltageUnit: asset.voltageUnit ?? voltageUom,
                           inverterCapacity: asset.inverterCapacity,
-                          inverterCapacityUnit: asset.inverterCapacityUnit,
+                          inverterCapacityUnit:
+                              asset.inverterCapacityUnit ?? assetCapacityUom,
                           currentUnit: asset.currentUnit,
                         );
                         context
@@ -751,18 +716,18 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                       label: 'Voltage',
                       capitalizedFirstLetter: false,
                       child: DigitDropdown(
-                          sentenceCaseEnabled: false,
-                          items: assetCapacity
-                              .map((type) =>
-                                  DropdownItem(name: type, code: type))
-                              .toList(),
-                          selectedOption: DropdownItem(
-                            name: asset.batteryVoltage ?? '',
-                            code: asset.batteryVoltage ?? '',
-                          ),
-                          onSelect: (DropdownItem sel) {
-                            setState(() => asset.batteryVoltage = sel.code);
-                          }),
+                        sentenceCaseEnabled: false,
+                        items: voltages
+                            .map((type) => DropdownItem(name: type, code: type))
+                            .toList(),
+                        selectedOption: DropdownItem(
+                          name: asset.batteryVoltage ?? '',
+                          code: asset.batteryVoltage ?? '',
+                        ),
+                        onSelect: (DropdownItem sel) {
+                          setState(() => asset.batteryVoltage = sel.code);
+                        },
+                      ),
                     ),
                   ),
                   const SizedBox(width: spacer6),
@@ -774,7 +739,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                       child: DigitTextFormInput(
                         controller: TextEditingController(),
                         isDisabled: true,
-                        initialValue: assetCapacityUom,
+                        initialValue: '$voltageUom',
                         keyboardType: TextInputType.text,
                       ),
                     ),
@@ -789,19 +754,18 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                       label: 'Current',
                       capitalizedFirstLetter: false,
                       child: DigitDropdown(
-                          sentenceCaseEnabled: false,
-                          items: const [
-                            DropdownItem(name: '12', code: '12'),
-                            DropdownItem(name: '12.8', code: '12.8'),
-                            DropdownItem(name: '24', code: '24'),
-                          ],
-                          selectedOption: DropdownItem(
-                            name: asset.batteryCapacity ?? '',
-                            code: asset.batteryCapacity ?? '',
-                          ),
-                          onSelect: (DropdownItem sel) {
-                            setState(() => asset.batteryCapacity = sel.code);
-                          }),
+                        sentenceCaseEnabled: false,
+                        items: assetCapacity
+                            .map((type) => DropdownItem(name: type, code: type))
+                            .toList(),
+                        selectedOption: DropdownItem(
+                          name: asset.batteryCapacity ?? '',
+                          code: asset.batteryCapacity ?? '',
+                        ),
+                        onSelect: (DropdownItem sel) {
+                          setState(() => asset.batteryCapacity = sel.code);
+                        },
+                      ),
                     ),
                   ),
                   const SizedBox(width: spacer6),
@@ -813,7 +777,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                       child: DigitTextFormInput(
                         controller: TextEditingController(),
                         isDisabled: true,
-                        initialValue: 'Amps',
+                        initialValue: assetCapacityUom,
                         keyboardType: TextInputType.text,
                       ),
                     ),

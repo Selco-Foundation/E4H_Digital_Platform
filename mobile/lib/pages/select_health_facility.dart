@@ -206,7 +206,9 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
               title: project.project.name ?? '—',
               dateAssigned: project.project.startDateTime ?? DateTime.now(),
               status: project.status ?? '—',
-              solutionDocPath: project.project.projectNumber ?? '',
+              solutionDocPath: project.project.additionalDetails?.facility
+                      ?.facilityDetails?.solar_solution_design_type ??
+                  'hhggggfff',
             ),
             const SizedBox(height: spacer5),
           ],

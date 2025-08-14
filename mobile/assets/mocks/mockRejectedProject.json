@@ -11,11 +11,11 @@
   "Project": [
     {
       "project": {
-        "id": "900339bd-432c-4b8e-beb7-c0b3f80e5688",
+        "id": "d019a1ab-b423-4314-af60-0d7a914c6565",
         "tenantId": "in",
-        "projectNumber": "PROJ/2025/0962",
-        "name": "Testing Rejection",
-        "projectType": "FieldPlan",
+        "projectNumber": "PROJ/2025/1352",
+        "name": "Jayashankar Bhupalapally PHC",
+        "projectType": "Facility",
         "projectSubType": "",
         "department": "",
         "description": "",
@@ -23,7 +23,7 @@
         "projectTypeId": null,
         "documents": null,
         "address": {
-          "id": "1e4d4186-a8ce-493b-823f-5f5a62bc9d00",
+          "id": "9de07f3d-877c-4623-8520-627d5ea96f8a",
           "tenantId": "in",
           "clientReferenceId": null,
           "doorNo": null,
@@ -42,195 +42,88 @@
           "boundary": "India_Telangana_Hyderabad_Gachibowli",
           "locality": null
         },
-        "startDate": 1915510400000,
+        "startDate": 1715510400000,
         "endDate": 1718192400000,
         "isTaskEnabled": false,
-        "parent": "f7ebee1e-726b-4225-ac5e-d0ab3b6eb0c7",
-        "projectHierarchy": "f7ebee1e-726b-4225-ac5e-d0ab3b6eb0c7.900339bd-432c-4b8e-beb7-c0b3f80e5688",
+        "parent": "0ef152c9-5b09-43df-b0c0-c482aa74c2e0",
+        "projectHierarchy": "0ef152c9-5b09-43df-b0c0-c482aa74c2e0.d019a1ab-b423-4314-af60-0d7a914c6565",
         "natureOfWork": null,
         "ancestors": null,
         "descendants": null,
         "targets": null,
         "additionalDetails": {
-          "status": "SUBMITTED_BY_SUPERVISOR",
-          "countFacilities": "1"
+          "status": "SCHEDULED",
+          "facility": {
+            "address": {
+              "city": "Hyderabad",
+              "type": null,
+              "block": null,
+              "state": null,
+              "detail": null,
+              "doorNo": null,
+              "street": null,
+              "pincode": "500001",
+              "district": null,
+              "landmark": "Near Water Tank",
+              "latitude": 17.385044,
+              "tenantId": "in",
+              "addressId": "03aba221-4acf-4fb1-817c-7c3257794200",
+              "longitude": 78.486671,
+              "addressLine1": "Main Road",
+              "addressLine2": "Colony Area",
+              "buildingName": null,
+              "localityCode": null,
+              "addressNumber": null,
+              "locationAccuracy": null
+            },
+            "isActive": true,
+            "wfStatus": "CREATED",
+            "tenant_id": "in",
+            "facility_id": "FAC/2025/0163",
+            "boundaryCode": "India_Telangana_Hyderabad_Kondapur",
+            "facility_name": "Jayashankar Bhupalapally PHC",
+            "facility_type": "PHC",
+            "facility_region": "RURAL",
+            "facility_details": {
+              "hfr_id": "HFR168",
+              "nin_id": null,
+              "pocName": "Dr Asha",
+              "pocContact": "9876543210",
+              "pocDesignation": null,
+              "solar_solution_design_type": "SC_NO_LR_FRIDGE_NO_CCP"
+            },
+            "facility_subtype": null,
+            "additionalDetails": null,
+            "facility_category": "HEALTH",
+            "facility_ownership": "GOVERNMENT"
+          },
+          "systemCode": "AC_OFF_GRID"
         },
         "isDeleted": false,
         "rowVersion": 0,
         "auditDetails": {
           "createdBy": "stribi",
-          "lastModifiedBy": "0d665a8d-03b1-4f45-b5bc-88237f7f6573",
-          "createdTime": 1752250799618,
-          "lastModifiedTime": 1752255153644
+          "lastModifiedBy": "72743f47-9f1a-47de-ac43-b12cde70afc1",
+          "createdTime": 1754922748837,
+          "lastModifiedTime": 1754931224083
         }
       },
-      "status": "SUBMITTED_BY_SUPERVISOR",
-      "transactions": [
-        {
-          "transactionId": "078ca43f-1559-4b9b-aa4a-226e16ca0f68",
-          "processInstanceId": "e6c47900-a7d6-4fcb-b88c-37f07ee578a7",
-          "comments": [
-            {
-              "commentId": "660b0ca8-78de-414b-baec-7e267a2073f0",
-              "commentMessage": "Initial remark by field staff",
-              "assetType": "Battery",
-              "transactionId": "078ca43f-1559-4b9b-aa4a-226e16ca0f68",
-              "auditDetails": {
-                "createdBy": "7d6d6816-b205-4e71-81ed-8da2c250edd9",
-                "lastModifiedBy": "7d6d6816-b205-4e71-81ed-8da2c250edd9",
-                "createdTime": 1752251012282,
-                "lastModifiedTime": 1752251012282
-              }
-            }
-          ],
-          "projectId": "900339bd-432c-4b8e-beb7-c0b3f80e5688",
-          "auditDetails": {
-            "createdBy": "7d6d6816-b205-4e71-81ed-8da2c250edd9",
-            "lastModifiedBy": "7d6d6816-b205-4e71-81ed-8da2c250edd9",
-            "createdTime": 1752251012282,
-            "lastModifiedTime": 1752251012282
-          }
-        },
-        {
-          "transactionId": "ae95642b-c462-4d3e-887b-ff9b7547f995",
-          "processInstanceId": "e8ed13e1-9924-4d85-bcf7-c7c426a65104",
-          "comments": [
-            {
-              "commentId": "14de2b7d-0f33-4701-949a-ca7ede5b4754",
-              "commentMessage": "Initial remark by field staff",
-              "assetType": "Inverter",
-              "transactionId": "ae95642b-c462-4d3e-887b-ff9b7547f995",
-              "auditDetails": {
-                "createdBy": "0d665a8d-03b1-4f45-b5bc-88237f7f6573",
-                "lastModifiedBy": "0d665a8d-03b1-4f45-b5bc-88237f7f6573",
-                "createdTime": 1752255153232,
-                "lastModifiedTime": 1752255153232
-              }
-            }
-          ],
-          "projectId": "900339bd-432c-4b8e-beb7-c0b3f80e5688",
-          "auditDetails": {
-            "createdBy": "0d665a8d-03b1-4f45-b5bc-88237f7f6573",
-            "lastModifiedBy": "0d665a8d-03b1-4f45-b5bc-88237f7f6573",
-            "createdTime": 1752255153231,
-            "lastModifiedTime": 1752255153231
-          }
-        },
-        {
-          "transactionId": "ae95642b-c462-4d3e-887b-ff9b7547f995",
-          "processInstanceId": "e8ed13e1-9924-4d85-bcf7-c7c426a65104",
-          "comments": [
-            {
-              "commentId": "14de2b7d-0f33-4701-949a-ca7ede5b4754",
-              "commentMessage": "Second remark by field staff",
-              "assetType": "Inverter",
-              "transactionId": "ae95642b-c462-4d3e-887b-ff9b7547f995",
-              "auditDetails": {
-                "createdBy": "0d665a8d-03b1-4f45-b5bc-88237f7f6573",
-                "lastModifiedBy": "0d665a8d-03b1-4f45-b5bc-88237f7f6573",
-                "createdTime": 1752255153232,
-                "lastModifiedTime": 1752255153232
-              }
-            }
-          ],
-          "projectId": "900339bd-432c-4b8e-beb7-c0b3f80e5688",
-          "auditDetails": {
-            "createdBy": "0d665a8d-03b1-4f45-b5bc-88237f7f6573",
-            "lastModifiedBy": "0d665a8d-03b1-4f45-b5bc-88237f7f6573",
-            "createdTime": 1752255153231,
-            "lastModifiedTime": 1752255153231
-          }
-        },
-        {
-          "transactionId": "ae95642b-c462-4d3e-887b-ff9b7547f995",
-          "processInstanceId": "e8ed13e1-9924-4d85-bcf7-c7c426a65104",
-          "comments": [
-            {
-              "commentId": "14de2b7d-0f33-4701-949a-ca7ede5b4754",
-              "commentMessage": "Third remark by field staff",
-              "assetType": "Inverter",
-              "transactionId": "ae95642b-c462-4d3e-887b-ff9b7547f995",
-              "auditDetails": {
-                "createdBy": "0d665a8d-03b1-4f45-b5bc-88237f7f6573",
-                "lastModifiedBy": "0d665a8d-03b1-4f45-b5bc-88237f7f6573",
-                "createdTime": 1752255153232,
-                "lastModifiedTime": 1752255153232
-              }
-            }
-          ],
-          "projectId": "900339bd-432c-4b8e-beb7-c0b3f80e5688",
-          "auditDetails": {
-            "createdBy": "0d665a8d-03b1-4f45-b5bc-88237f7f6573",
-            "lastModifiedBy": "0d665a8d-03b1-4f45-b5bc-88237f7f6573",
-            "createdTime": 1752255153231,
-            "lastModifiedTime": 1752255153231
-          }
-        },
-        {
-          "transactionId": "ae95642b-c462-4d3e-887b-ff9b7547f995",
-          "processInstanceId": "e8ed13e1-9924-4d85-bcf7-c7c426a65104",
-          "comments": [
-            {
-              "commentId": "14de2b7d-0f33-4701-949a-ca7ede5b4754",
-              "commentMessage": "Third remark by field staff",
-              "assetType": "Panel",
-              "transactionId": "ae95642b-c462-4d3e-887b-ff9b7547f995",
-              "auditDetails": {
-                "createdBy": "0d665a8d-03b1-4f45-b5bc-88237f7f6573",
-                "lastModifiedBy": "0d665a8d-03b1-4f45-b5bc-88237f7f6573",
-                "createdTime": 1752255153232,
-                "lastModifiedTime": 1752255153232
-              }
-            }
-          ],
-          "projectId": "900339bd-432c-4b8e-beb7-c0b3f80e5688",
-          "auditDetails": {
-            "createdBy": "0d665a8d-03b1-4f45-b5bc-88237f7f6573",
-            "lastModifiedBy": "0d665a8d-03b1-4f45-b5bc-88237f7f6573",
-            "createdTime": 1752255153231,
-            "lastModifiedTime": 1752255153231
-          }
-        },
-        {
-          "transactionId": "ae95642b-c462-4d3e-887b-ff9b7547f995",
-          "processInstanceId": "e8ed13e1-9924-4d85-bcf7-c7c426a65104",
-          "comments": [
-            {
-              "commentId": "14de2b7d-0f33-4701-949a-ca7ede5b4754",
-              "commentMessage": "Alright, feedback by electrician",
-              "assetType": "Electrician",
-              "transactionId": "ae95642b-c462-4d3e-887b-ff9b7547f995",
-              "auditDetails": {
-                "createdBy": "0d665a8d-03b1-4f45-b5bc-88237f7f6573",
-                "lastModifiedBy": "0d665a8d-03b1-4f45-b5bc-88237f7f6573",
-                "createdTime": 1752255153232,
-                "lastModifiedTime": 1752255153232
-              }
-            }
-          ],
-          "projectId": "900339bd-432c-4b8e-beb7-c0b3f80e5688",
-          "auditDetails": {
-            "createdBy": "0d665a8d-03b1-4f45-b5bc-88237f7f6573",
-            "lastModifiedBy": "0d665a8d-03b1-4f45-b5bc-88237f7f6573",
-            "createdTime": 1752255153231,
-            "lastModifiedTime": 1752255153231
-          }
-        }
-      ],
+      "status": "SCHEDULED",
+      "transactions": [],
       "workflow": {
-        "id": "e8ed13e1-9924-4d85-bcf7-c7c426a65104",
+        "id": "cb439dd8-186e-4f75-a691-3be946dc07e4",
         "tenantId": "in",
         "businessService": "FACILITY_INSTALLATION",
-        "businessId": "900339bd-432c-4b8e-beb7-c0b3f80e5688",
-        "action": "SUBMIT_REPORT_B",
+        "businessId": "d019a1ab-b423-4314-af60-0d7a914c6565",
+        "action": "SCHEDULED",
         "moduleName": "project-services",
         "state": {
           "auditDetails": null,
-          "uuid": "0e7ae12d-562a-47b1-95bb-b2d1ec16ceee",
+          "uuid": "d8996655-56e1-4740-9667-fa21e16d5bd8",
           "tenantId": "in",
           "businessServiceId": "75959acf-836c-4c7c-980e-ad14fc643a4d",
           "sla": null,
-          "state": "SUBMITTED_BY_SUPERVISOR",
+          "state": "SCHEDULED",
           "applicationStatus": null,
           "docUploadRequired": false,
           "isStartState": false,
@@ -239,39 +132,109 @@
           "actions": [
             {
               "auditDetails": null,
-              "uuid": "99f5259c-3e78-450a-8a05-979323f4e57b",
+              "uuid": "de48fa3c-80e1-41c9-b2fc-cc22ffbb7535",
               "tenantId": "in",
-              "currentState": "0e7ae12d-562a-47b1-95bb-b2d1ec16ceee",
-              "action": "REJECT_AND_ASSIGN_FOR_FIELD_QC",
-              "nextState": "bfb1c653-3109-4937-b7a5-5a349d306f53",
+              "currentState": "d8996655-56e1-4740-9667-fa21e16d5bd8",
+              "action": "ASSIGN_FIELD_STAFF",
+              "nextState": "4764a54b-59e9-422d-8dc7-6f6aabd37c62",
               "roles": [
-                "INSTALLATION_REPORT_APPROVER_QC_TEAM"
+                "INSTALLATION_REPORT_PART_A_EDITOR"
               ]
             },
             {
               "auditDetails": null,
-              "uuid": "902f9cac-b9e9-4914-8e5f-86ca077de0cd",
+              "uuid": "eda324b2-f573-4c57-a489-a6b0b9b870b9",
               "tenantId": "in",
-              "currentState": "0e7ae12d-562a-47b1-95bb-b2d1ec16ceee",
-              "action": "APPROVE",
-              "nextState": "e0f9b0d9-e784-487c-917c-b07429a69d2e",
+              "currentState": "d8996655-56e1-4740-9667-fa21e16d5bd8",
+              "action": "ASSIGN_FIELD_SUPERVISOR",
+              "nextState": "f55aebf7-8a46-49e1-ae48-d910addf4672",
               "roles": [
-                "INSTALLATION_REPORT_APPROVER_QC_TEAM"
+                "INSTALLATION_REPORT_PART_B_EDITOR"
               ]
             }
           ]
         },
         "comment": null,
-        "documents": [
+        "documents": null,
+        "assigner": {
+          "id": 178,
+          "userName": "dummy_manager",
+          "name": "dummy_manager",
+          "type": "EMPLOYEE",
+          "mobileNumber": "9911223345",
+          "emailId": null,
+          "roles": [
+            {
+              "id": null,
+              "name": "Installation Report Part A reviewer",
+              "code": "INSTALLATION_REPORT_PART_A_REVIEWER",
+              "tenantId": "in"
+            },
+            {
+              "id": null,
+              "name": "Installation Report Approver QC team",
+              "code": "INSTALLATION_REPORT_APPROVER_QC_TEAM",
+              "tenantId": "in"
+            },
+            {
+              "id": null,
+              "name": "Installation Report Part A editor",
+              "code": "INSTALLATION_REPORT_PART_A_EDITOR",
+              "tenantId": "in"
+            },
+            {
+              "id": null,
+              "name": "Installation Report Part B editor",
+              "code": "INSTALLATION_REPORT_PART_B_EDITOR",
+              "tenantId": "in"
+            },
+            {
+              "id": null,
+              "name": "Project manager",
+              "code": "PROJECT_MANAGER",
+              "tenantId": "in"
+            }
+          ],
+          "tenantId": "in",
+          "uuid": "72743f47-9f1a-47de-ac43-b12cde70afc1"
+        },
+        "assignes": null,
+        "nextActions": [
           {
-            "id": "89240a66-a868-4b66-ac15-f37dc78ac10d",
-            "documentType": "image",
-            "fileStore": "4d4a5ad7-7c9e-4953-b095-271c9c34ffe6",
-            "documentUid": "DOC-image-3-images (2).jpeg-battery-2025-06-28T13:37:20.010101Z",
-            "additionalDetails": null
+            "auditDetails": null,
+            "uuid": "de48fa3c-80e1-41c9-b2fc-cc22ffbb7535",
+            "tenantId": "in",
+            "currentState": "d8996655-56e1-4740-9667-fa21e16d5bd8",
+            "action": "ASSIGN_FIELD_STAFF",
+            "nextState": "4764a54b-59e9-422d-8dc7-6f6aabd37c62",
+            "roles": [
+              "INSTALLATION_REPORT_PART_A_EDITOR"
+            ]
+          },
+          {
+            "auditDetails": null,
+            "uuid": "eda324b2-f573-4c57-a489-a6b0b9b870b9",
+            "tenantId": "in",
+            "currentState": "d8996655-56e1-4740-9667-fa21e16d5bd8",
+            "action": "ASSIGN_FIELD_SUPERVISOR",
+            "nextState": "f55aebf7-8a46-49e1-ae48-d910addf4672",
+            "roles": [
+              "INSTALLATION_REPORT_PART_B_EDITOR"
+            ]
           }
         ],
-        "assignes": null
+        "stateSla": null,
+        "businesssServiceSla": 436191370,
+        "previousStatus": null,
+        "entity": null,
+        "auditDetails": {
+          "createdBy": "72743f47-9f1a-47de-ac43-b12cde70afc1",
+          "lastModifiedBy": "72743f47-9f1a-47de-ac43-b12cde70afc1",
+          "createdTime": 1754931224031,
+          "lastModifiedTime": 1754931224031
+        },
+        "rating": 0,
+        "escalated": false
       }
     },
     {
@@ -279,7 +242,7 @@
         "id": "b8a2db7b-faf7-4539-a574-32d97d780530",
         "tenantId": "in",
         "projectNumber": "PROJ/2025/0964",
-        "name": null,
+        "name": "Hyberderabad",
         "projectType": "Facility",
         "projectSubType": "",
         "department": "",

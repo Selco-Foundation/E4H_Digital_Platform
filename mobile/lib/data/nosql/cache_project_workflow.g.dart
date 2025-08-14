@@ -34,10 +34,22 @@ const CacheProjectWorkflowSchema = CollectionSchema(
       name: r'status',
       type: IsarType.string,
     ),
-    r'updatedAt': PropertySchema(
+    r'transactions': PropertySchema(
       id: 3,
+      name: r'transactions',
+      type: IsarType.objectList,
+      target: r'Transaction',
+    ),
+    r'updatedAt': PropertySchema(
+      id: 4,
       name: r'updatedAt',
       type: IsarType.dateTime,
+    ),
+    r'workflow': PropertySchema(
+      id: 5,
+      name: r'workflow',
+      type: IsarType.object,
+      target: r'Workflow',
     )
   },
   estimateSize: _cacheProjectWorkflowEstimateSize,
@@ -63,7 +75,16 @@ const CacheProjectWorkflowSchema = CollectionSchema(
   links: {},
   embeddedSchemas: {
     r'ProjectModel': ProjectModelSchema,
-    r'AddressModel': AddressModelSchema
+    r'AddressModel': AddressModelSchema,
+    r'AdditionalDetails': AdditionalDetailsSchema,
+    r'Facility': FacilitySchema,
+    r'FacilityAddress': FacilityAddressSchema,
+    r'FacilityDetails': FacilityDetailsSchema,
+    r'Workflow': WorkflowSchema,
+    r'Document': DocumentSchema,
+    r'GeoLocation': GeoLocationSchema,
+    r'Transaction': TransactionSchema,
+    r'Comment': CommentSchema
   },
   getId: _cacheProjectWorkflowGetId,
   getLinks: _cacheProjectWorkflowGetLinks,
@@ -81,6 +102,27 @@ int _cacheProjectWorkflowEstimateSize(
       ProjectModelSchema.estimateSize(
           object.project, allOffsets[ProjectModel]!, allOffsets);
   bytesCount += 3 + object.status.length * 3;
+  {
+    final list = object.transactions;
+    if (list != null) {
+      bytesCount += 3 + list.length * 3;
+      {
+        final offsets = allOffsets[Transaction]!;
+        for (var i = 0; i < list.length; i++) {
+          final value = list[i];
+          bytesCount +=
+              TransactionSchema.estimateSize(value, offsets, allOffsets);
+        }
+      }
+    }
+  }
+  {
+    final value = object.workflow;
+    if (value != null) {
+      bytesCount += 3 +
+          WorkflowSchema.estimateSize(value, allOffsets[Workflow]!, allOffsets);
+    }
+  }
   return bytesCount;
 }
 
@@ -98,7 +140,19 @@ void _cacheProjectWorkflowSerialize(
     object.project,
   );
   writer.writeString(offsets[2], object.status);
-  writer.writeDateTime(offsets[3], object.updatedAt);
+  writer.writeObjectList<Transaction>(
+    offsets[3],
+    allOffsets,
+    TransactionSchema.serialize,
+    object.transactions,
+  );
+  writer.writeDateTime(offsets[4], object.updatedAt);
+  writer.writeObject<Workflow>(
+    offsets[5],
+    allOffsets,
+    WorkflowSchema.serialize,
+    object.workflow,
+  );
 }
 
 CacheProjectWorkflow _cacheProjectWorkflowDeserialize(
@@ -115,10 +169,21 @@ CacheProjectWorkflow _cacheProjectWorkflowDeserialize(
         ) ??
         ProjectModel(),
     status: reader.readString(offsets[2]),
+    transactions: reader.readObjectList<Transaction>(
+      offsets[3],
+      TransactionSchema.deserialize,
+      allOffsets,
+      Transaction(),
+    ),
+    workflow: reader.readObjectOrNull<Workflow>(
+      offsets[5],
+      WorkflowSchema.deserialize,
+      allOffsets,
+    ),
   );
   object.createdAt = reader.readDateTime(offsets[0]);
   object.id = id;
-  object.updatedAt = reader.readDateTimeOrNull(offsets[3]);
+  object.updatedAt = reader.readDateTimeOrNull(offsets[4]);
   return object;
 }
 
@@ -141,7 +206,20 @@ P _cacheProjectWorkflowDeserializeProp<P>(
     case 2:
       return (reader.readString(offset)) as P;
     case 3:
+      return (reader.readObjectList<Transaction>(
+        offset,
+        TransactionSchema.deserialize,
+        allOffsets,
+        Transaction(),
+      )) as P;
+    case 4:
       return (reader.readDateTimeOrNull(offset)) as P;
+    case 5:
+      return (reader.readObjectOrNull<Workflow>(
+        offset,
+        WorkflowSchema.deserialize,
+        allOffsets,
+      )) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
   }
@@ -540,6 +618,113 @@ extension CacheProjectWorkflowQueryFilter on QueryBuilder<CacheProjectWorkflow,
   }
 
   QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
+      QAfterFilterCondition> transactionsIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'transactions',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
+      QAfterFilterCondition> transactionsIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'transactions',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
+      QAfterFilterCondition> transactionsLengthEqualTo(int length) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'transactions',
+        length,
+        true,
+        length,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
+      QAfterFilterCondition> transactionsIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'transactions',
+        0,
+        true,
+        0,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
+      QAfterFilterCondition> transactionsIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'transactions',
+        0,
+        false,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
+      QAfterFilterCondition> transactionsLengthLessThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'transactions',
+        0,
+        true,
+        length,
+        include,
+      );
+    });
+  }
+
+  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
+      QAfterFilterCondition> transactionsLengthGreaterThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'transactions',
+        length,
+        include,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
+      QAfterFilterCondition> transactionsLengthBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'transactions',
+        lower,
+        includeLower,
+        upper,
+        includeUpper,
+      );
+    });
+  }
+
+  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
       QAfterFilterCondition> updatedAtIsNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(const FilterCondition.isNull(
@@ -612,6 +797,24 @@ extension CacheProjectWorkflowQueryFilter on QueryBuilder<CacheProjectWorkflow,
       ));
     });
   }
+
+  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
+      QAfterFilterCondition> workflowIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'workflow',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
+      QAfterFilterCondition> workflowIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'workflow',
+      ));
+    });
+  }
 }
 
 extension CacheProjectWorkflowQueryObject on QueryBuilder<CacheProjectWorkflow,
@@ -620,6 +823,20 @@ extension CacheProjectWorkflowQueryObject on QueryBuilder<CacheProjectWorkflow,
       QAfterFilterCondition> project(FilterQuery<ProjectModel> q) {
     return QueryBuilder.apply(this, (query) {
       return query.object(q, r'project');
+    });
+  }
+
+  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
+      QAfterFilterCondition> transactionsElement(FilterQuery<Transaction> q) {
+    return QueryBuilder.apply(this, (query) {
+      return query.object(q, r'transactions');
+    });
+  }
+
+  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
+      QAfterFilterCondition> workflow(FilterQuery<Workflow> q) {
+    return QueryBuilder.apply(this, (query) {
+      return query.object(q, r'workflow');
     });
   }
 }
@@ -784,10 +1001,24 @@ extension CacheProjectWorkflowQueryProperty on QueryBuilder<
     });
   }
 
+  QueryBuilder<CacheProjectWorkflow, List<Transaction>?, QQueryOperations>
+      transactionsProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'transactions');
+    });
+  }
+
   QueryBuilder<CacheProjectWorkflow, DateTime?, QQueryOperations>
       updatedAtProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'updatedAt');
+    });
+  }
+
+  QueryBuilder<CacheProjectWorkflow, Workflow?, QQueryOperations>
+      workflowProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'workflow');
     });
   }
 }
