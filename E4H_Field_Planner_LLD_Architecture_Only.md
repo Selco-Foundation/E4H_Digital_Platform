@@ -65,10 +65,10 @@ The Field Planner module extends the existing E4H Digital Platform to enable Pro
 ### 2.1 Service Development Strategy - CONFIRMED
 
 #### 2.1.1 Number of Services
-**Your understanding is CORRECT:**
 
-**NEW SERVICES: 1 (ONE)**
+**NEW SERVICES: 2 (ONE)**
 - **Field Planner Service**: Core service for field plan management, activity assignments, and reporting
+- **Activity Service**: Core service for activities, workflow, and assignments (SPOC and staff)
 
 **MODIFIED SERVICES: 1 (ONE)**
 - **Vendor/Organisation Registry**: Enhanced with employee mapping and team management capabilities
@@ -742,7 +742,7 @@ E4H API Gateway (Existing)
 - Implements conditional activation based on configurable rules
 - Supports bulk assignment operations
 
-#### 3.2.3 Mobile Sync Service
+#### 3.2.3 Mobile Sync Service (We will come back later)
 **Responsibilities:**
 - Offline-first synchronization for mobile applications
 - Conflict resolution between mobile and server data
