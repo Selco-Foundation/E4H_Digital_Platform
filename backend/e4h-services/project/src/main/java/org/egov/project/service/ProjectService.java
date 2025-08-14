@@ -19,6 +19,7 @@ import org.egov.common.producer.Producer;
 import org.egov.project.config.ProjectConfiguration;
 import org.egov.project.repository.ProjectRepository;
 import org.egov.project.service.enrichment.ProjectEnrichment;
+import org.egov.project.util.BoundaryV2Util;
 import org.egov.project.util.ProjectServiceUtil;
 import org.egov.project.validator.project.ProjectValidator;
 import org.egov.project.web.models.*;
@@ -63,6 +64,9 @@ public class ProjectService {
     private final JdbcTemplate jdbcTemplate;
 
     private final ServiceRequestRepository serviceRequestRepository;
+
+    @Autowired
+    BoundaryV2Util boundaryV2Util;
 
     @Autowired
     public ProjectService(
@@ -158,6 +162,7 @@ public class ProjectService {
     }
 
     public List<Project> getFacilityProject(List<Project> listProjects, RequestInfo requestInfo) throws Exception {
+        Map<String, BoundaryV2> listBlock = boundaryV2Util.getBoundaryByCode();
         for (Project project : listProjects) {
             List<String> listProjectId = new ArrayList<>();
             listProjectId.add(project.getId());
@@ -175,6 +180,25 @@ public class ProjectService {
                 ProjectFacility projectFacility = searchResponse.getResponse().get(0);
                 Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(project.getAdditionalDetails(), "systemCode", "AC_OFF_GRID");
                 project.setAdditionalDetails(enrichedAdditionalDetails);
+            }
+
+            // Get district and state for project type facility
+            if(listBlock != null){
+                Object additionalDetails = project.getAdditionalDetails();
+                Address address = project.getAddress();
+                if(address !=null){
+                    String boundaryCode = address.getBoundary();
+                    if(boundaryCode != null){
+                        BoundaryV2 boundary = listBlock.get(boundaryCode);
+                        if(boundary != null){
+                            Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(additionalDetails, "state", boundary.getState());
+                            project.setAdditionalDetails(enrichedAdditionalDetails);
+                            additionalDetails = project.getAdditionalDetails();
+                            enrichedAdditionalDetails = mergeIntoAdditionalDetails(additionalDetails, "district", boundary.getDistrict());
+                            project.setAdditionalDetails(enrichedAdditionalDetails);
+                        }
+                    }
+                }
             }
         }
 
