@@ -13,7 +13,7 @@ This document provides a comprehensive overview of all use cases, workflows, API
 ### 1.2 Key Statistics
 - **15 Primary Use Cases** across 5 user roles
 - **8 Core Workflows** with state management
-- **12 Field Planner APIs** + 8 integration APIs
+- **Domain APIs across 2 microservices (Field Planner + Activities)** + 8 integration APIs
 - **6 Configuration Categories** (MDMS-driven)
 - **6 Integration Points** with existing E4H services
 
@@ -61,10 +61,10 @@ This document provides a comprehensive overview of all use cases, workflows, API
 
 #### **APIs Used:**
 - `GET /project/v1/_search` (Project Service)
-- `GET /egov-mdms-service/v1/_search` (MDMS)
-- `GET /field-planner/field-plans/facilities/v1/_template`
-- `POST field-planner/v1/field-plans/facilities/v1/_upload`
-- `POST field-planner/v1/field-plans/v1/_create`
+- `POST /egov-mdms-service/v2/_search` (MDMS)
+- `GET /field-planner/v1/field-plans/facilities/_template`
+- `POST /field-planner/v1/field-plans/facilities/_upload`
+- `POST /field-planner/v1/field-plans/_create`
 
 #### **Configuration:**
 ```json
@@ -86,8 +86,8 @@ This document provides a comprehensive overview of all use cases, workflows, API
 4. **Notification** → Send assignment notifications
 
 #### **APIs Used:**
-- `GET /organization/employees/v1/_search` (VENDOR SEARCH mapped to project manager across multiple vendor orgs and one for vendor employee using params with org info)
-- `POST /v1/field-planner/field-plans/activities/_assign`
+- `GET /organization/employees/v1/_search` (Vendor/Organisation Registry)
+- `POST /v1/activities/_assign-spoc` (Activities Service)
 
 #### **Configuration:**
 ```json
@@ -112,7 +112,7 @@ This document provides a comprehensive overview of all use cases, workflows, API
 #### **APIs Used:**
 - `GET /facility/v1/_search` (HFR)
 - `GET /egov-hrms/employees/_search` (HRMS)
-- `POST /field-planner/v1/field-plans/{id}/facility-activities/_assign`
+- `POST /v1/activities/_assign-staff` (Activities Service)
 
 #### **Configuration:**
 ```json
@@ -136,9 +136,9 @@ This document provides a comprehensive overview of all use cases, workflows, API
 4. **Submission** → Submit for review workflow
 
 #### **APIs Used:**
-- `POST /field-planner/activitiy-reports/sync/v1/_bulk`
-- `POST /field-planner/v1/activity-reports/_create`
-- `POST /field-planner/v1/activity-reports/_workflow`
+- `POST /field-planner/v1/mobile/sync/assignments/_bulk`
+- `POST /v1/activities/reports/_create`
+- `POST /v1/activities/reports/_update` (draft edits)
 
 #### **Configuration:**
 ```json
@@ -162,8 +162,8 @@ This document provides a comprehensive overview of all use cases, workflows, API
 4. **Workflow Update** → Update workflow status
 
 #### **APIs Used:**
-- `POST /field-planner/activity-reports/v1/_search`
-- `POST /field-planner/v1/activity-reports/v1/_workflow`
+- `POST /v1/activities/reports/_search`
+- `POST /v1/activities/_workflow`
 
 #### **Configuration:**
 ```json
@@ -182,34 +182,44 @@ This document provides a comprehensive overview of all use cases, workflows, API
 
 ## 4. API Usage by Use Case
 
-### 4.1 Field Planner Service APIs (12 APIs)
+### 4.1 Field Planner Service APIs
 
-#### **Field Plan Management (5 APIs)**
+#### **Field Plan Management**
 | API | Method | Use Cases | Purpose |
 |-----|--------|-----------|---------|
 | `/v1/field-plans/_create` | POST | UC-01 | Bulk field plan creation |
 | `/v1/field-plans/_update` | POST | UC-01, UC-06 | Field plan updates |
 | `/v1/field-plans/_search` | POST | UC-01, UC-02, UC-06 | Field plan search |
 | `/v1/field-plans/_workflow` | POST | UC-01, UC-06 | Workflow state transitions |
+| `/v1/field-plans/facilities/_template` | GET | UC-01 | Download facility template |
+| `/v1/field-plans/facilities/_upload` | POST | UC-01 | Upload facility selection |
 | `/v1/field-plans/facilities/_assign` | POST | UC-01 | Facility assignment |
+| `/v1/field-plans/facilities/_unassign` | POST | UC-01 | Facility unassignment |
 
-#### **Activity Management (4 APIs)**
+### 4.2 Activities Service APIs
+
+#### **Activities (core)**
 | API | Method | Use Cases | Purpose |
 |-----|--------|-----------|---------|
-| `/v1/field-plans/{id}/activities/_assign` | POST | UC-02 | Activity to SPOC assignment |
-| `/v1/field-plans/{id}/facility-activities/_assign` | POST | UC-03 | Facility to staff assignment |
-| `/v1/field-plans/{id}/facility-activities/_search` | POST | UC-03, UC-06 | Assignment search |
-| `/v1/field-plans/{id}/facility-activities/_update` | POST | UC-03 | Assignment updates |
+| `/v1/activities/_create` | POST | UC-01, UC-02 | Bulk activity creation |
+| `/v1/activities/_update` | POST | UC-01, UC-06 | Activity updates |
+| `/v1/activities/_search` | POST | UC-01, UC-02, UC-06 | Activity search |
+| `/v1/activities/_workflow` | POST | UC-04, UC-05, UC-06 | Workflow transitions |
 
-#### **Activity Reports (3 APIs)**
+#### **Assignments**
 | API | Method | Use Cases | Purpose |
 |-----|--------|-----------|---------|
-| `/v1/activity-reports/_create` | POST | UC-04 | Report creation |
-| `/v1/activity-reports/_update` | POST | UC-04 | Report updates |
-| `/v1/activity-reports/_search` | POST | UC-05, UC-06 | Report search |
-| `/v1/activity-reports/_workflow` | POST | UC-04, UC-05 | Report workflow |
+| `/v1/activities/_assign-spoc` | POST | UC-02 | Assign or reassign activity SPOC |
+| `/v1/activities/_assign-staff` | POST | UC-03 | Assign staff with roles to facility-bound activities |
 
-### 4.2 Integration APIs (8 APIs)
+#### **Activity Reports**
+| API | Method | Use Cases | Purpose |
+|-----|--------|-----------|---------|
+| `/v1/activities/reports/_create` | POST | UC-04 | Report creation |
+| `/v1/activities/reports/_update` | POST | UC-04 | Report updates (DRAFT/REJECTED) |
+| `/v1/activities/reports/_search` | POST | UC-05, UC-06 | Report search |
+
+### 4.3 Integration APIs (8 APIs)
 
 #### **HRMS Integration (2 APIs)**
 - `GET /egov-hrms/employees/_search` → User validation and team management
