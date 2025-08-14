@@ -221,4 +221,34 @@ public class ProjectConfiguration {
 
     @Value("${project.attendance.feature.enabled:true}")
     private Boolean isAttendanceFeatureEnabled;
+
+    @Value("${egov.workflow.host}")
+    private String wfHost;
+
+    @Value("${egov.workflow.transition.path}")
+    private String wfTransitionPath;
+
+    @Value("${egov.workflow.search.path}")
+    private String wfSearchPath;
+
+    @Value("${egov.workflow.module.name}")
+    private String moduleName;
+
+    @Value("${egov.workflow.business.service}")
+    private String businessService;
+
+    @Value("${project.management.transaction.kafka.create.topic}")
+    private String transactionPersistTopic;
+
+    @Value("${project.management.comment.kafka.create.topic}")
+    private String commentPersistTopic;
+
+    @Value("${egov.asset.host}")
+    private String assetHost;
+
+    @Value("${egov.asset.search.url}")
+    private String assetSearchUrl;
+
+    @Value("${egov.asset.update.url}")
+    private String assetUpdateUrl;
 }

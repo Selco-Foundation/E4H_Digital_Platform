@@ -2,6 +2,7 @@ package org.egov.project.web.controllers;
 
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.swagger.annotations.ApiParam;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -13,10 +14,12 @@ import org.egov.common.models.core.ProjectSearchURLParams;
 import org.egov.common.models.core.SearchResponse;
 import org.egov.common.models.core.URLParams;
 import org.egov.common.models.project.*;
+import org.egov.common.models.project.BeneficiarySearchRequest;
 import org.egov.common.producer.Producer;
 import org.egov.common.utils.ResponseInfoFactory;
 import org.egov.project.config.ProjectConfiguration;
 import org.egov.project.service.*;
+import org.egov.project.web.models.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -24,7 +27,8 @@ import org.springframework.stereotype.Controller;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 
 @Controller
@@ -50,6 +54,8 @@ public class ProjectApiController {
 
     private final ProjectService projectService;
 
+    private final ProjectWorkflowService projectWorkflowService;
+
     @Autowired
     public ProjectApiController(ObjectMapper objectMapper, HttpServletRequest httpServletRequest,
                                 ProjectStaffService projectStaffService,
@@ -57,7 +63,7 @@ public class ProjectApiController {
                                 ProjectBeneficiaryService projectBeneficiaryService,
                                 ProjectFacilityService projectFacilityService, Producer producer,
                                 ProjectConfiguration projectConfiguration,
-                                ProjectService projectService) {
+                                ProjectService projectService, ProjectWorkflowService projectWorkflowService) {
         this.objectMapper = objectMapper;
         this.httpServletRequest = httpServletRequest;
         this.projectStaffService = projectStaffService;
@@ -67,6 +73,7 @@ public class ProjectApiController {
         this.producer = producer;
         this.projectConfiguration = projectConfiguration;
         this.projectService = projectService;
+        this.projectWorkflowService = projectWorkflowService;
     }
 
     @RequestMapping(value = "/beneficiary/v1/bulk/_create", method = RequestMethod.POST)
@@ -472,20 +479,70 @@ public class ProjectApiController {
         return new ResponseEntity<ProjectResponse>(projectResponse, HttpStatus.OK);
     }
 
-    @RequestMapping(value = "/v2/_search", method = RequestMethod.POST)
-    public ResponseEntity<ProjectResponse> searchV2Project(
+    @PostMapping(value = "/v2/_search")
+    public ResponseEntity<ProjectStatusResponse> searchV2Project(
             @Valid @ModelAttribute ProjectSearchURLParams urlParams,
-            @ApiParam(value = "Details for the project.", required = true) @Valid @RequestBody ProjectSearchRequest projectSearchRequest
-    ) {
-        List<Project> projects = projectService.searchProject(projectSearchRequest, urlParams);
+            @ApiParam(value = "Details for the project.", required = true)
+            @Valid @RequestBody ExtendedProjectSearchRequest projectSearchRequest,
+            @Valid @ModelAttribute ProjectSortCriteria sortCriteria
+    ) throws Exception {
+        List<String> workflowStatuses = projectSearchRequest.getWorkflowStatus();
+
+        List<Project> projects = projectService.searchProject(projectSearchRequest, urlParams, workflowStatuses, sortCriteria);
+        Integer count = projectService.countAllProjects(projectSearchRequest, urlParams, workflowStatuses);
+
+        // Fetch all transactions by projectIds
+        List<String> projectIds = projects.stream().map(Project::getId).toList();
+        List<Transaction> allTransactions = projectService.getTransactionsForProject(projectIds);
+
+        // Fetch all comments by transactionIds
+        List<String> txnIds = allTransactions.stream().map(Transaction::getTransactionId).toList();
+        List<Comment> allComments = projectService.getCommentsForTransaction(txnIds);
+
+        // Group transactions by projectId
+        Map<String, List<Transaction>> txnsByProjectId = allTransactions.stream()
+                .collect(Collectors.groupingBy(Transaction::getProjectId));
+
+        // Group comments by transactionId
+        Map<String, List<Comment>> commentsByTxnId = allComments.stream()
+                .collect(Collectors.groupingBy(Comment::getTransactionId));
+
+        ObjectMapper mapper = new ObjectMapper();
+        List<ProjectStatusWrapper> projectStatusWrappers = new ArrayList<>();
+        for (Project project : projects) {
+            String status = null;
+            ObjectNode additionalDetails = mapper.convertValue(project.getAdditionalDetails(), ObjectNode.class);
+            if (additionalDetails != null && additionalDetails.has("status")) {
+                status = additionalDetails.get("status").asText();
+            }
+
+            List<Transaction> txns = txnsByProjectId.getOrDefault(project.getId(), Collections.emptyList());
+            for (Transaction txn : txns) {
+                txn.setComments(commentsByTxnId.getOrDefault(txn.getTransactionId(), Collections.emptyList()));
+            }
+
+            ProcessInstance processInstance = projectWorkflowService.getProcessInstanceById(
+                    project.getId(),
+                    project.getTenantId(),
+                    projectSearchRequest.getRequestInfo()
+            );
+            ProjectStatusWrapper wrapper = ProjectStatusWrapper.builder()
+                .project(project)
+                .status(status)
+                .transactions(txns)
+                .processInstance(processInstance)
+                .build();
+            projectStatusWrappers.add(wrapper);
+        }
+
         ResponseInfo responseInfo = ResponseInfoFactory.createResponseInfo(projectSearchRequest.getRequestInfo(), true);
-        Integer count = projectService.countAllProjects(projectSearchRequest, urlParams);
-        ProjectResponse projectResponse = ProjectResponse.builder()
+        ProjectStatusResponse projectResponse = ProjectStatusResponse.builder()
                 .responseInfo(responseInfo)
-                .project(projects)
+                .project(projectStatusWrappers)
                 .totalCount(count)
                 .build();
-        return new ResponseEntity<ProjectResponse>(projectResponse, HttpStatus.OK);
+
+        return ResponseEntity.ok(projectResponse);
     }
 
     @RequestMapping(value = "/v1/_update", method = RequestMethod.POST)
@@ -497,4 +554,16 @@ public class ProjectApiController {
         return new ResponseEntity<ProjectResponse>(projectResponse, HttpStatus.OK);
     }
 
+    @PostMapping("/v1/project/workflow/update")
+    public ResponseEntity<ProjectStatusResponse> updateProjectWorkflow(
+            @Valid @RequestBody ProjectWorkflowRequest request) throws Exception {
+
+        ProjectStatusWrapper updatedProject = projectService.updateProjectWorkflow(request);
+
+        ResponseInfo responseInfo = ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), true);
+        return ResponseEntity.ok(ProjectStatusResponse.builder()
+                .responseInfo(responseInfo)
+                .project(List.of(updatedProject))
+                .build());
+    }
 }

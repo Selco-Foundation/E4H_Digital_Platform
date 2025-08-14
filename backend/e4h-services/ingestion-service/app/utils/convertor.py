@@ -1,19 +1,18 @@
 import datetime
 import json
 import time
-from typing import Dict, Any, Optional, List
+from typing import Any, Dict, List, Optional
 
 import pandas as pd
 from pandas import Series
-from psycopg.types import none
 from pydantic import ValidationError
-from sqlalchemy import false, true
 
 from app.schemas.boundary import Boundary
 from app.schemas.request_info import RequestInfo
 from app.schemas.vendor import Vendor
-from app.schemas.vendor_ingestion_shema_response import IngestionSchemaResponse, MDMS, ResponseInfo, \
-    MDMSDataSource, MDMSColumn, MDMSData, MDMSAuditDetails
+from app.schemas.vendor_ingestion_shema_response import (
+    MDMS, IngestionSchemaResponse, MDMSAuditDetails, MDMSColumn, MDMSData,
+    MDMSDataSource, ResponseInfo)
 
 
 def request_info_from_json(request_info_str: str) -> RequestInfo:
@@ -159,7 +158,7 @@ def create_vendor_request(request_info: RequestInfo, vendor: Vendor):
         "organisations": [{
             "tenantId": "in",
             "name": vendor.vendor_name,
-            "code": vendor.vendor_code,
+            "code": None,
             "orgAddress": [
                 {
                     "tenantId": "in",
@@ -203,7 +202,10 @@ def get_project_creation_payload(request_info: RequestInfo, project_name: str, p
             "parent": parent_id,
             "startDate": start_date,
             "endDate": end_date,
-            "projectSubType": subType
+            "projectSubType": subType,
+            "department": "",
+            "description" :"",
+            "referenceID" : "1"
         }],
         "isCascadingProjectDateUpdate": False,
         "apiOperation": "CREATE"
@@ -225,7 +227,7 @@ def get_installation_spoc_creation_payload(request_info: RequestInfo, name:str, 
                     "mobileNumber": mobile_number,
                     "emailId": email,
                     "roles": [
-                        {"code": "PROJECT_MANAGER", "name": "Project manager"},
+                        {"code": "INSTALLATION_REPORT_VIEWER", "name": "Installation report viewer"},
                         {"code": "HRMS_ADMIN", "name": "Hrms admin"}
                     ],
                     "tenantId": "in",
@@ -235,12 +237,12 @@ def get_installation_spoc_creation_payload(request_info: RequestInfo, name:str, 
                     {
                         "hierarchy": "ADMIN",
                         "roles": [
-                            {"value": "PROJECT_MANAGER", "label": "Project manager"},
+                            {"code": "INSTALLATION_REPORT_VIEWER", "name": "Installation report viewer"},
                             {"value": "HRMS_ADMIN", "label": "Hrms admin"}
                         ],
                         "boundaryType": "City",
                         "boundary": "in",
-                        "furnishedRolesList": "PROJECT_MANAGER, HRMS_ADMIN",
+                        "furnishedRolesList": "INSTALLATION_REPORT_VIEWER, HRMS_ADMIN",
                         "tenantId": "in",
                     }
                 ],
@@ -260,7 +262,7 @@ def get_installation_spoc_creation_payload(request_info: RequestInfo, name:str, 
         ],
     }
 
-def get_user_creation_payload(request_info: RequestInfo, row: Series):
+def get_user_creation_payload_staff(request_info: RequestInfo, row: Series):
     current_date = datetime.datetime.now()
     current_timestamp = int(time.mktime(current_date.timetuple()) * 1000)
 
@@ -277,9 +279,8 @@ def get_user_creation_payload(request_info: RequestInfo, row: Series):
                     "mobileNumber": row.get("Phone Number", ""),
                     "emailId": row.get("Email Address", ""),
                     "roles": [
-                        {"code": "INSTALLATION_SUPERVISOR", "name": "Installation supervisor"},
-                        {"code": "INSTALLATION_REPORT_VIEWER", "name": "Installation report viewer"},
-                        {"code": "HRMS_ADMIN", "name": "Hrms admin"}
+                        {"code": "INSTALLATION_REPORT_PART_A_EDITOR", "name": "Installation Report Part A Editor"},
+                        {"code": "EMPLOYEE", "name": "employee"}
                     ],
                     "tenantId": "in",
                 },
@@ -288,13 +289,66 @@ def get_user_creation_payload(request_info: RequestInfo, row: Series):
                     {
                         "hierarchy": "ADMIN",
                         "roles": [
-                            {"value": "INSTALLATION_SUPERVISOR", "label": "Installation supervisor"},
-                            {"value": "INSTALLATION_REPORT_VIEWER", "label": "Installation report viewer"},
-                            {"value": "HRMS_ADMIN", "label": "Hrms admin"}
+                            {"code": "INSTALLATION_REPORT_PART_A_EDITOR", "name": "Installation Report Part A Editor"},
+                            {"code": "EMPLOYEE", "name": "employee"}
                         ],
                         "boundaryType": "City",
                         "boundary": "in",
-                        "furnishedRolesList": "INSTALLATION_SUPERVISOR, INSTALLATION_REPORT_VIEWER, HRMS_ADMIN",
+                        "furnishedRolesList": "INSTALLATION_REPORT_PART_A_EDITOR, EMPLOYEE",
+                        "tenantId": "in",
+                    }
+                ],
+                "assignments": [
+                    {
+                        "fromDate": current_timestamp,
+                        "toDate": "",
+                        "isCurrentAssignment": True,
+                        "department": "DEPT_1",
+                        "designation": "DESIG_01"
+                    }
+                ],
+                "serviceHistory": [],
+                "education": [],
+                "tests": [],
+            }
+        ],
+    }
+
+def get_user_creation_payload_supervisors(request_info: RequestInfo, row: Series):
+    current_date = datetime.datetime.now()
+    current_timestamp = int(time.mktime(current_date.timetuple()) * 1000)
+
+    return {
+        "RequestInfo": request_info.model_dump(by_alias=True, exclude_none=True),
+        "Employees": [
+            {
+                "tenantId": "in",
+                "employeeStatus": "EMPLOYED",
+                "dateOfAppointment": current_timestamp,
+                "employeeType": "PERMANENT",
+                "user": {
+                    "name": row.get("Name", ""),
+                    "mobileNumber": row.get("Phone Number", ""),
+                    "emailId": row.get("Email Address", ""),
+                    "roles": [
+                        {"code": "INSTALLATION_REPORT_PART_B_EDITOR", "name": "Installation Report Part B Editor"},
+                        {"code": "INSTALLATION_REPORT_PART_A_REVIEWER", "name": "Installation Report Part A Reviewer"},
+                        {"code": "EMPLOYEE", "name": "employee"}
+                    ],
+                    "tenantId": "in",
+                },
+                "code": row.get("Name", ""),
+                "jurisdictions": [
+                    {
+                        "hierarchy": "ADMIN",
+                        "roles": [
+                            {"code": "INSTALLATION_REPORT_PART_B_EDITOR", "name": "Installation Report Part B Editor"},
+                            {"code": "INSTALLATION_REPORT_PART_A_REVIEWER", "name": "Installation Report Part A Reviewer"},
+                            {"code": "EMPLOYEE", "name": "employee"}
+                        ],
+                        "boundaryType": "City",
+                        "boundary": "in",
+                        "furnishedRolesList": "INSTALLATION_REPORT_PART_B_EDITOR, INSTALLATION_REPORT_PART_A_REVIEWER, EMPLOYEE",
                         "tenantId": "in",
                     }
                 ],
@@ -330,6 +384,14 @@ def get_staff_creation_payload(request_info:RequestInfo, user_uuid:str, parent_i
             "channel": "MOBILE",
             "isDeleted": False,
             "tenantId": "in"
+        }
+    }
+
+def get_staff_search_payload(request_info:RequestInfo, user_uuid:str):
+    return {
+        "RequestInfo": request_info.model_dump(by_alias=True, exclude_none=True),
+        "ProjectStaff":{
+            "staffId": [user_uuid]
         }
     }
 
@@ -381,16 +443,16 @@ def create_facility_payload(request_info: RequestInfo, row: Series, facility_sch
 
 
 
-def convert_response_to_facility(response: Dict[str, Any]):
+def convert_response_to_facility(response: Dict[str, Any], role_type: str):
     return {
         "Country": "India",
         "State": response["address"]["state"],
         "District": response["address"]["district"],
         "Block": response["address"]["block"],
-        "Boundary Code (Mandatory)": response["facility_details"]["boundaryCode"],
+        "Boundary Code (Mandatory)": response["boundaryCode"],
         "Health Centre Name (Mandatory)": response["facility_name"],
         "Type of HC (Mandatory)": response["facility_type"],
-        "HFR ID": response["facility_details"]["hfrId"],
+        "HFR ID": response["facility_details"]["hfr_id"],
         "NIN ID": "",
         "Facility ID": response["facility_id"],
         "HC PoC Name (Mandatory)": response["facility_details"]["pocName"],
@@ -401,7 +463,7 @@ def convert_response_to_facility(response: Dict[str, Any]):
         "Address": (response["address"]["addressNumber"] or "") + " " + (response["address"]["addressLine1"] or "") + " " \
            + (response["address"]["addressLine2"] or "") + " " + (response["address"]["landmark"] or "") + " " \
            + (response["address"]["city"] or "") + " " + (response["address"]["pincode"] or ""),
-        "Role": "Supervisor",
+        "Role": role_type,
         "Name": "",
         "Gender": "",
         "Phone Number": "",
@@ -456,3 +518,202 @@ def get_mdms_code_by_name(schema_list: List[Dict[str, Any]], field_name: str, va
             raise ValueError(f"Invalid value '{value}' for field '{field_name}' in MDMS schema.")
 
     raise ValueError(f"Field name '{field_name}' not found in MDMS schema.")
+
+
+def get_incident_request_info():
+    return {
+        "apiId": "Rainmaker",
+        "authToken": "222d0cf6-07c2-4d90-8a71-0292c200ae74",
+        "userInfo": {
+            "id": 1863,
+            "userName": "8974350748",
+            "salutation": None,
+            "name": "Tingpai S",
+            "gender": "MALE",
+            "mobileNumber": "8974350748",
+            "emailId": None,
+            "altContactNumber": None,
+            "pan": None,
+            "aadhaarNumber": None,
+            "permanentAddress": None,
+            "permanentCity": None,
+            "permanentPinCode": None,
+            "correspondenceAddress": None,
+            "correspondenceCity": None,
+            "correspondencePinCode": None,
+            "alternatemobilenumber": None,
+            "active": True,
+            "locale": None,
+            "type": "EMPLOYEE",
+            "accountLocked": False,
+            "accountLockedDate": 0,
+            "fatherOrHusbandName": "Mathihalli",
+            "relationship": "FATHER",
+            "signature": None,
+            "bloodGroup": None,
+            "photo": None,
+            "identificationMark": None,
+            "createdBy": 0,
+            "lastModifiedBy": 24226,
+            "tenantId": "nl",
+            "roles": [
+                {
+                    "code": "SUPERUSER",
+                    "name": "Super User",
+                    "tenantId": "nl"
+                },
+                {
+                    "code": "EMPLOYEE",
+                    "name": "Employee",
+                    "tenantId": "nl"
+                },
+                {
+                    "code": "COMPLAINANT",
+                    "name": "Complainant",
+                    "tenantId": "nl"
+                },
+                {
+                    "code": "COMPLAINT_FACILITATOR_2",
+                    "name": "Complaint facilitator 2",
+                    "tenantId": "nl"
+                },
+                {
+                    "code": "COMPLAINT_ASSESSOR",
+                    "name": "Complaint Assessor",
+                    "tenantId": "nl"
+                }
+            ],
+            "uuid": "8acc5b7b-4dcb-497a-ad08-5eef4f53442c",
+            "createdDate": "17-04-2025 23:19:29",
+            "lastModifiedDate": "04-07-2025 01:30:31",
+            "dob": "1994-02-08",
+            "pwdExpiryDate": "16-07-2025 23:19:29"
+        },
+        "msgId": "1751897062350|en_IN",
+        "plainAccessRequest": {}
+    }
+
+
+def create_update_payload(search_response: dict, update_data: dict) -> dict:
+    incident_wrapper = search_response.get("IncidentWrappers", [{}])[0]
+    incident = incident_wrapper.get("incident", {})
+    workflow = incident_wrapper.get("workflow", {})
+
+    request_info = get_incident_request_info()
+
+    original_type = incident.get('incidentType', '')
+    original_subtype = incident.get('incidentSubType', '')
+
+
+
+    details = {
+        "CS_COMPLAINT_DETAILS_TICKET_NO": incident.get("incidentId"),
+        "CS_COMPLAINT_DETAILS_APPLICATION_STATUS": f"CS_COMMON_{incident.get('applicationStatus', 'PENDINGFORASSIGNMENT')}",
+        "CS_ADDCOMPLAINT_TICKET_TYPE": f"SERVICEDEFS.{original_type.upper()}",
+        "CS_ADDCOMPLAINT_TICKET_SUB_TYPE": f"SERVICEDEFS.{original_subtype.upper()}",
+        "CS_ADDCOMPLAINT_SYSTEM_FUNCTIONAL": incident.get("systemFunctional", "NON_FUNCTIONAL"),
+        "CS_ADDCOMPLAINT_DISTRICT": incident.get("district", ""),
+        "CS_ADDCOMPLAINT_BLOCK": incident.get("block", ""),
+        "CS_ADDCOMPLAINT_HEALTH_CARE_CENTRE": incident.get("tenantId", ""),
+        "CS_COMPLAINT_COMMENTS": incident.get("comments", ""),
+        "CS_ADDCOMPLAINT_HEALTH_CARE_SUB_TYPE": incident.get("phcSubType", ""),
+        "CS_COMPLAINT_FILED_DATE": update_data.get("filed_date", "")
+    }
+
+    additional_detail = incident.get("additionalDetail", {})
+    existing_reject_reasons = additional_detail.get("rejectReason", [])
+
+    new_reason = update_data.get("reject_reason", "Duplication")
+
+    if isinstance(existing_reject_reasons, list):
+        if new_reason not in existing_reject_reasons:
+            existing_reject_reasons.append(new_reason)
+    else:
+        existing_reject_reasons = [new_reason]
+
+    incident["additionalDetail"] = {
+        **additional_detail,
+        "rejectReason": existing_reject_reasons
+    }
+
+    incident["incidentType"] = original_type
+    incident["incidentSubType"] = original_subtype
+
+    # Create workflow object
+    workflow.update({
+        "action": update_data.get("action", "REJECT"),
+        "comments": update_data.get("comments", ""),
+        "rejectReason": update_data.get("reject_reason", "Duplication"),
+        "assignee": [request_info["userInfo"]["uuid"]]
+    })
+
+    audit = {
+        "details": incident.get("auditDetails", {}),
+        "incidentType": original_subtype
+    }
+
+    return {
+        "details": details,
+        "workflow": workflow,
+        "incident": incident,
+        "audit": audit,
+        "RequestInfo": request_info
+
+    }
+
+def get_expected_roles_for_staff() -> List[str]:
+    return ["INSTALLATION_REPORT_PART_A_EDITOR", "EMPLOYEE"]
+
+def get_expected_roles_for_supervisor() -> List[str]:
+    return ["INSTALLATION_REPORT_PART_B_EDITOR", "INSTALLATION_REPORT_PART_A_REVIEWER", "EMPLOYEE"]
+
+def check_role_mismatch_for_user_type(existing_user: Dict[str, Any], user_type: str) -> Dict[str, Any]:
+    if user_type.lower() == "staff" or user_type.lower() == "field_staff":
+        expected_roles = get_expected_roles_for_staff()
+    elif user_type.lower() == "supervisor" or user_type.lower() == "field_supervisor":
+        expected_roles = get_expected_roles_for_supervisor()
+    else:
+        return {
+            "has_mismatch": False,
+            "current_roles": [],
+            "expected_roles": [],
+            "mismatch_details": f"Unknown user type: {user_type}"
+        }
+
+    # Extract current roles from user data
+    current_roles = []
+    user_data = existing_user.get("user", {})
+    roles = user_data.get("roles", [])
+
+    for role in roles:
+        role_code = role.get("code", "")
+        if role_code:
+            current_roles.append(role_code)
+
+    # Check for mismatches
+    missing_roles = []
+    unexpected_roles = []
+
+    for expected_role in expected_roles:
+        if expected_role not in current_roles:
+            missing_roles.append(expected_role)
+
+    for current_role in current_roles:
+        if current_role not in expected_roles:
+            unexpected_roles.append(current_role)
+
+    has_mismatch = bool(missing_roles or unexpected_roles)
+
+    mismatch_details = ""
+    if has_mismatch:
+        if missing_roles:
+            mismatch_details += f"Missing roles: {', '.join(missing_roles)}. "
+        if unexpected_roles:
+            mismatch_details += f"Unexpected roles: {', '.join(unexpected_roles)}."
+
+    return {
+        "has_mismatch": has_mismatch,
+        "current_roles": current_roles,
+        "expected_roles": expected_roles,
+        "mismatch_details": mismatch_details.strip()
+    }

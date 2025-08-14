@@ -355,8 +355,8 @@ class WorkflowQueryBuilderTest {
         processInstanceSearchCriteria.setToDate(1L);
         ArrayList<Object> objectList = new ArrayList<>();
         assertEquals(
-                " select id from eg_wf_processinstance_v2 pi_outer WHERE  pi_outer.lastmodifiedTime = (SELECT"
-                        + " max(lastmodifiedTime) from eg_wf_processinstance_v2 as pi_inner where pi_inner.businessid ="
+                " select id from eg_wf_processinstance_v2 pi_outer WHERE pi_outer.isActive = true AND  pi_outer.lastmodifiedTime = (SELECT"
+                        + " max(lastmodifiedTime) from eg_wf_processinstance_v2 as pi_inner where pi_inner.isActive = true AND pi_inner.businessid ="
                         + " pi_outer.businessid and tenantid = ? )  AND pi_outer.tenantid=?  and id in (select processinstanceid"
                         + " from eg_wf_assignee_v2 asg_inner where asg_inner.assignee = ?) AND pi_outer.tenantid = ?  AND"
                         + " pi_outer.businessservice =?  AND pi_outer.modulename =?  ORDER BY pi_outer.lastModifiedTime DESC "
@@ -1424,7 +1424,7 @@ class WorkflowQueryBuilderTest {
                 + " as ac_action       FROM eg_wf_processinstance_v2 pi   LEFT OUTER JOIN        eg_wf_assignee_v2 asg"
                 + " ON asg.processinstanceid = pi.id  LEFT OUTER JOIN       eg_wf_document_v2 doc  ON doc.processinstanceid"
                 + " = pi.id  INNER JOIN        eg_wf_state_v2 st ON st.uuid = pi.status LEFT OUTER JOIN        eg_wf_action_v2"
-                + " ac ON ac.currentState = st.uuid AND ac.active=TRUE        WHERE  pi.id IN () ORDER BY wf_lastModifiedTime"
+                + " ac ON ac.currentState = st.uuid AND ac.active=TRUE        WHERE pi.isActive = true AND  pi.id IN () ORDER BY wf_lastModifiedTime"
                 + " DESC ", workflowQueryBuilder.getProcessInstanceSearchQueryById(ids, new ArrayList<>()));
     }
 
@@ -1455,7 +1455,7 @@ class WorkflowQueryBuilderTest {
                 + " as ac_action       FROM eg_wf_processinstance_v2 pi   LEFT OUTER JOIN        eg_wf_assignee_v2 asg"
                 + " ON asg.processinstanceid = pi.id  LEFT OUTER JOIN       eg_wf_document_v2 doc  ON doc.processinstanceid"
                 + " = pi.id  INNER JOIN        eg_wf_state_v2 st ON st.uuid = pi.status LEFT OUTER JOIN        eg_wf_action_v2"
-                + " ac ON ac.currentState = st.uuid AND ac.active=TRUE        WHERE  pi.id IN ( ?) ORDER BY wf_lastModifiedTime"
+                + " ac ON ac.currentState = st.uuid AND ac.active=TRUE        WHERE pi.isActive = true AND  pi.id IN ( ?) ORDER BY wf_lastModifiedTime"
                 + " DESC ", workflowQueryBuilder.getProcessInstanceSearchQueryById(stringList, objectList));
         assertEquals(1, objectList.size());
     }
@@ -1498,7 +1498,7 @@ class WorkflowQueryBuilderTest {
                 + " as ac_action       FROM eg_wf_processinstance_v2 pi   LEFT OUTER JOIN        eg_wf_assignee_v2 asg"
                 + " ON asg.processinstanceid = pi.id  LEFT OUTER JOIN       eg_wf_document_v2 doc  ON doc.processinstanceid"
                 + " = pi.id  INNER JOIN        eg_wf_state_v2 st ON st.uuid = pi.status LEFT OUTER JOIN        eg_wf_action_v2"
-                + " ac ON ac.currentState = st.uuid AND ac.active=TRUE        WHERE  pi.id IN ( ?, ?) ORDER BY"
+                + " ac ON ac.currentState = st.uuid AND ac.active=TRUE        WHERE pi.isActive = true AND  pi.id IN ( ?, ?) ORDER BY"
                 + " wf_lastModifiedTime DESC ", workflowQueryBuilder.getProcessInstanceSearchQueryById(stringList, objectList));
         assertEquals(2, objectList.size());
     }
@@ -1529,8 +1529,8 @@ class WorkflowQueryBuilderTest {
         processInstanceSearchCriteria.setToDate(1L);
         ArrayList<Object> objectList = new ArrayList<>();
         assertEquals(
-                " select count(DISTINCT id) from ( select id from eg_wf_processinstance_v2 pi_outer WHERE  pi_outer"
-                        + ".lastmodifiedTime = (SELECT max(lastmodifiedTime) from eg_wf_processinstance_v2 as pi_inner where"
+                " select count(DISTINCT id) from ( select id from eg_wf_processinstance_v2 pi_outer WHERE pi_outer.isActive = true AND  pi_outer"
+                        + ".lastmodifiedTime = (SELECT max(lastmodifiedTime) from eg_wf_processinstance_v2 as pi_inner where pi_inner.isActive = true AND"
                         + " pi_inner.businessid = pi_outer.businessid and tenantid = ? )  AND id in (select processinstanceid"
                         + " from eg_wf_assignee_v2 asg_inner where asg_inner.assignee = ?) AND pi_outer.tenantid = ?  AND"
                         + " pi_outer.businessservice =?  ORDER BY pi_outer.lastModifiedTime DESC ) as count",
@@ -1587,8 +1587,8 @@ class WorkflowQueryBuilderTest {
         processInstanceSearchCriteria.setToDate(1L);
         ArrayList<Object> objectList = new ArrayList<>();
         assertEquals(
-                " select count(DISTINCT id) from ( select id from eg_wf_processinstance_v2 pi_outer WHERE  pi_outer"
-                        + ".lastmodifiedTime = (SELECT max(lastmodifiedTime) from eg_wf_processinstance_v2 as pi_inner where"
+                " select count(DISTINCT id) from ( select id from eg_wf_processinstance_v2 pi_outer WHERE pi_outer.isActive = true AND  pi_outer"
+                        + ".lastmodifiedTime = (SELECT max(lastmodifiedTime) from eg_wf_processinstance_v2 as pi_inner where pi_inner.isActive = true AND"
                         + " pi_inner.businessid = pi_outer.businessid and tenantid = ? )  AND id in (select processinstanceid"
                         + " from eg_wf_assignee_v2 asg_inner where asg_inner.assignee = ?) AND pi_outer.tenantid = ?  AND"
                         + " pi_outer.businessservice =?  ORDER BY pi_outer.lastModifiedTime DESC ) as count",
@@ -1669,8 +1669,8 @@ class WorkflowQueryBuilderTest {
         processInstanceSearchCriteria.setToDate(1L);
         ArrayList<Object> objectList = new ArrayList<>();
         assertEquals(
-                " select count(DISTINCT id) from ( select id from eg_wf_processinstance_v2 pi_outer WHERE  pi_outer"
-                        + ".lastmodifiedTime = (SELECT max(lastmodifiedTime) from eg_wf_processinstance_v2 as pi_inner where"
+                " select count(DISTINCT id) from ( select id from eg_wf_processinstance_v2 pi_outer WHERE pi_outer.isActive = true AND  pi_outer"
+                        + ".lastmodifiedTime = (SELECT max(lastmodifiedTime) from eg_wf_processinstance_v2 as pi_inner where pi_inner.isActive = true AND"
                         + " pi_inner.businessid = pi_outer.businessid and tenantid = ? )  AND id in (select processinstanceid"
                         + " from eg_wf_assignee_v2 asg_inner where asg_inner.assignee = ?) AND pi_outer.tenantid = ?  ORDER BY"
                         + " pi_outer.lastModifiedTime DESC ) as count",
@@ -1751,8 +1751,8 @@ class WorkflowQueryBuilderTest {
         processInstanceSearchCriteria.setToDate(1L);
         ArrayList<Object> objectList = new ArrayList<>();
         assertEquals(
-                " select count(DISTINCT id) from ( select id from eg_wf_processinstance_v2 pi_outer WHERE  pi_outer"
-                        + ".lastmodifiedTime = (SELECT max(lastmodifiedTime) from eg_wf_processinstance_v2 as pi_inner where"
+                " select count(DISTINCT id) from ( select id from eg_wf_processinstance_v2 pi_outer WHERE pi_outer.isActive = true AND  pi_outer"
+                        + ".lastmodifiedTime = (SELECT max(lastmodifiedTime) from eg_wf_processinstance_v2 as pi_inner where pi_inner.isActive = true AND"
                         + " pi_inner.businessid = pi_outer.businessid and tenantid = ? )  AND id in (select processinstanceid"
                         + " from eg_wf_assignee_v2 asg_inner where asg_inner.assignee = ?) AND pi_outer.tenantid = ?  ORDER BY"
                         + " pi_outer.lastModifiedTime DESC ) as count",
@@ -1966,8 +1966,8 @@ class WorkflowQueryBuilderTest {
         processInstanceSearchCriteria.setToDate(1L);
         ArrayList<Object> objectList = new ArrayList<>();
         assertEquals(
-                " select id from eg_wf_processinstance_v2 pi_outer WHERE  pi_outer.lastmodifiedTime = (SELECT"
-                        + " max(lastmodifiedTime) from eg_wf_processinstance_v2 as pi_inner where pi_inner.businessid ="
+                " select id from eg_wf_processinstance_v2 pi_outer WHERE pi_outer.isActive = true AND  pi_outer.lastmodifiedTime = (SELECT"
+                        + " max(lastmodifiedTime) from eg_wf_processinstance_v2 as pi_inner where pi_inner.isActive = true AND pi_inner.businessid ="
                         + " pi_outer.businessid and tenantid = ? )  AND id in (select processinstanceid from eg_wf_assignee_v2"
                         + " asg_inner where asg_inner.assignee = ?) AND pi_outer.tenantid = ?  AND pi_outer.businessservice =? "
                         + " ORDER BY pi_outer.lastModifiedTime DESC  OFFSET ?  LIMIT ? ",
@@ -2005,8 +2005,8 @@ class WorkflowQueryBuilderTest {
         processInstanceSearchCriteria.setToDate(1L);
         ArrayList<Object> objectList = new ArrayList<>();
         assertEquals(
-                " select id from eg_wf_processinstance_v2 pi_outer WHERE  pi_outer.lastmodifiedTime = (SELECT"
-                        + " max(lastmodifiedTime) from eg_wf_processinstance_v2 as pi_inner where pi_inner.businessid ="
+                " select id from eg_wf_processinstance_v2 pi_outer WHERE pi_outer.isActive = true AND  pi_outer.lastmodifiedTime = (SELECT"
+                        + " max(lastmodifiedTime) from eg_wf_processinstance_v2 as pi_inner where pi_inner.isActive = true AND pi_inner.businessid ="
                         + " pi_outer.businessid and tenantid = ? )  AND id in (select processinstanceid from eg_wf_assignee_v2"
                         + " asg_inner where asg_inner.assignee = ?) AND pi_outer.tenantid = ?  AND pi_outer.businessservice =? "
                         + " ORDER BY pi_outer.lastModifiedTime DESC  OFFSET ?  LIMIT ? ",
@@ -2100,8 +2100,8 @@ class WorkflowQueryBuilderTest {
         processInstanceSearchCriteria.setToDate(1L);
         ArrayList<Object> objectList = new ArrayList<>();
         assertEquals(
-                " select id from eg_wf_processinstance_v2 pi_outer WHERE  pi_outer.lastmodifiedTime = (SELECT"
-                        + " max(lastmodifiedTime) from eg_wf_processinstance_v2 as pi_inner where pi_inner.businessid ="
+                " select id from eg_wf_processinstance_v2 pi_outer WHERE pi_outer.isActive = true AND  pi_outer.lastmodifiedTime = (SELECT"
+                        + " max(lastmodifiedTime) from eg_wf_processinstance_v2 as pi_inner where pi_inner.isActive = true AND pi_inner.businessid ="
                         + " pi_outer.businessid and tenantid = ? )  AND id in (select processinstanceid from eg_wf_assignee_v2"
                         + " asg_inner where asg_inner.assignee = ?) AND pi_outer.tenantid = ?  AND pi_outer.businessservice =? "
                         + " ORDER BY pi_outer.lastModifiedTime DESC  OFFSET ?  LIMIT ? ",
@@ -2191,8 +2191,8 @@ class WorkflowQueryBuilderTest {
         processInstanceSearchCriteria.setToDate(1L);
         ArrayList<Object> objectList = new ArrayList<>();
         assertEquals(
-                " select id from eg_wf_processinstance_v2 pi_outer WHERE  pi_outer.lastmodifiedTime = (SELECT"
-                        + " max(lastmodifiedTime) from eg_wf_processinstance_v2 as pi_inner where pi_inner.businessid ="
+                " select id from eg_wf_processinstance_v2 pi_outer WHERE pi_outer.isActive = true AND  pi_outer.lastmodifiedTime = (SELECT"
+                        + " max(lastmodifiedTime) from eg_wf_processinstance_v2 as pi_inner where pi_inner.isActive = true AND pi_inner.businessid ="
                         + " pi_outer.businessid and tenantid = ? )  AND id in (select processinstanceid from eg_wf_assignee_v2"
                         + " asg_inner where asg_inner.assignee = ?) AND pi_outer.tenantid = ?  AND pi_outer.businessservice =? "
                         + " ORDER BY pi_outer.lastModifiedTime DESC  OFFSET ?  LIMIT ? ",
@@ -2286,8 +2286,8 @@ class WorkflowQueryBuilderTest {
         processInstanceSearchCriteria.setToDate(1L);
         ArrayList<Object> objectList = new ArrayList<>();
         assertEquals(
-                " select id from eg_wf_processinstance_v2 pi_outer WHERE  pi_outer.lastmodifiedTime = (SELECT"
-                        + " max(lastmodifiedTime) from eg_wf_processinstance_v2 as pi_inner where pi_inner.businessid ="
+                " select id from eg_wf_processinstance_v2 pi_outer WHERE pi_outer.isActive = true AND  pi_outer.lastmodifiedTime = (SELECT"
+                        + " max(lastmodifiedTime) from eg_wf_processinstance_v2 as pi_inner where pi_inner.isActive = true AND pi_inner.businessid ="
                         + " pi_outer.businessid and tenantid = ? )  AND id in (select processinstanceid from eg_wf_assignee_v2"
                         + " asg_inner where asg_inner.assignee = ?) AND pi_outer.tenantid = ?  AND pi_outer.businessservice =? "
                         + " ORDER BY pi_outer.lastModifiedTime DESC  OFFSET ?  LIMIT ? ",
@@ -2378,8 +2378,8 @@ class WorkflowQueryBuilderTest {
         processInstanceSearchCriteria.setToDate(1L);
         ArrayList<Object> objectList = new ArrayList<>();
         assertEquals(
-                " select id from eg_wf_processinstance_v2 pi_outer WHERE  pi_outer.lastmodifiedTime = (SELECT"
-                        + " max(lastmodifiedTime) from eg_wf_processinstance_v2 as pi_inner where pi_inner.businessid ="
+                " select id from eg_wf_processinstance_v2 pi_outer WHERE pi_outer.isActive = true AND  pi_outer.lastmodifiedTime = (SELECT"
+                        + " max(lastmodifiedTime) from eg_wf_processinstance_v2 as pi_inner where pi_inner.isActive = true AND pi_inner.businessid ="
                         + " pi_outer.businessid and tenantid = ? )  AND id in (select processinstanceid from eg_wf_assignee_v2"
                         + " asg_inner where asg_inner.assignee = ?) AND pi_outer.tenantid = ?  AND pi_outer.businessservice =? "
                         + " ORDER BY pi_outer.lastModifiedTime DESC  OFFSET ?  LIMIT ? ",
@@ -2469,8 +2469,8 @@ class WorkflowQueryBuilderTest {
         processInstanceSearchCriteria.setToDate(1L);
         ArrayList<Object> objectList = new ArrayList<>();
         assertEquals(
-                " select id from eg_wf_processinstance_v2 pi_outer WHERE  pi_outer.lastmodifiedTime = (SELECT"
-                        + " max(lastmodifiedTime) from eg_wf_processinstance_v2 as pi_inner where pi_inner.businessid ="
+                " select id from eg_wf_processinstance_v2 pi_outer WHERE pi_outer.isActive = true AND  pi_outer.lastmodifiedTime = (SELECT"
+                        + " max(lastmodifiedTime) from eg_wf_processinstance_v2 as pi_inner where pi_inner.isActive = true AND pi_inner.businessid ="
                         + " pi_outer.businessid and tenantid = ? )  AND id in (select processinstanceid from eg_wf_assignee_v2"
                         + " asg_inner where asg_inner.assignee = ?) AND pi_outer.tenantid = ?  AND pi_outer.businessservice =? "
                         + " ORDER BY pi_outer.lastModifiedTime DESC  OFFSET ?  LIMIT ? ",
@@ -2560,8 +2560,8 @@ class WorkflowQueryBuilderTest {
         processInstanceSearchCriteria.setToDate(1L);
         ArrayList<Object> objectList = new ArrayList<>();
         assertEquals(
-                " select id from eg_wf_processinstance_v2 pi_outer WHERE  pi_outer.lastmodifiedTime = (SELECT"
-                        + " max(lastmodifiedTime) from eg_wf_processinstance_v2 as pi_inner where pi_inner.businessid ="
+                " select id from eg_wf_processinstance_v2 pi_outer WHERE pi_outer.isActive = true AND  pi_outer.lastmodifiedTime = (SELECT"
+                        + " max(lastmodifiedTime) from eg_wf_processinstance_v2 as pi_inner where pi_inner.isActive = true AND pi_inner.businessid ="
                         + " pi_outer.businessid and tenantid = ? )  AND id in (select processinstanceid from eg_wf_assignee_v2"
                         + " asg_inner where asg_inner.assignee = ?) AND pi_outer.tenantid = ?  ORDER BY pi_outer.lastModifiedTime"
                         + " DESC  OFFSET ?  LIMIT ? ",
@@ -2651,8 +2651,8 @@ class WorkflowQueryBuilderTest {
         processInstanceSearchCriteria.setToDate(1L);
         ArrayList<Object> objectList = new ArrayList<>();
         assertEquals(
-                " select id from eg_wf_processinstance_v2 pi_outer WHERE  pi_outer.lastmodifiedTime = (SELECT"
-                        + " max(lastmodifiedTime) from eg_wf_processinstance_v2 as pi_inner where pi_inner.businessid ="
+                " select id from eg_wf_processinstance_v2 pi_outer WHERE pi_outer.isActive = true AND  pi_outer.lastmodifiedTime = (SELECT"
+                        + " max(lastmodifiedTime) from eg_wf_processinstance_v2 as pi_inner where pi_inner.isActive = true AND pi_inner.businessid ="
                         + " pi_outer.businessid and tenantid = ? )  AND id in (select processinstanceid from eg_wf_assignee_v2"
                         + " asg_inner where asg_inner.assignee = ?) AND pi_outer.tenantid = ?  ORDER BY pi_outer.lastModifiedTime"
                         + " DESC  OFFSET ?  LIMIT ? ",
@@ -2742,8 +2742,8 @@ class WorkflowQueryBuilderTest {
         processInstanceSearchCriteria.setToDate(1L);
         ArrayList<Object> objectList = new ArrayList<>();
         assertEquals(
-                " select id from eg_wf_processinstance_v2 pi_outer WHERE  pi_outer.lastmodifiedTime = (SELECT"
-                        + " max(lastmodifiedTime) from eg_wf_processinstance_v2 as pi_inner where pi_inner.businessid ="
+                " select id from eg_wf_processinstance_v2 pi_outer WHERE pi_outer.isActive = true AND  pi_outer.lastmodifiedTime = (SELECT"
+                        + " max(lastmodifiedTime) from eg_wf_processinstance_v2 as pi_inner where pi_inner.isActive = true AND pi_inner.businessid ="
                         + " pi_outer.businessid and tenantid = ? )  AND id in (select processinstanceid from eg_wf_assignee_v2"
                         + " asg_inner where asg_inner.assignee = ?) AND pi_outer.tenantid = ?  AND pi_outer.businessservice =? "
                         + " ORDER BY pi_outer.lastModifiedTime DESC ",
@@ -2887,8 +2887,8 @@ class WorkflowQueryBuilderTest {
         processInstanceSearchCriteria.setToDate(1L);
         ArrayList<Object> objectList = new ArrayList<>();
         assertEquals(
-                " select id from eg_wf_processinstance_v2 pi_outer WHERE  pi_outer.lastmodifiedTime = (SELECT"
-                        + " max(lastmodifiedTime) from eg_wf_processinstance_v2 as pi_inner where pi_inner.businessid ="
+                " select id from eg_wf_processinstance_v2 pi_outer WHERE pi_outer.isActive = true AND  pi_outer.lastmodifiedTime = (SELECT"
+                        + " max(lastmodifiedTime) from eg_wf_processinstance_v2 as pi_inner where pi_inner.isActive = true AND pi_inner.businessid ="
                         + " pi_outer.businessid and tenantid = ? )  AND id in (select processinstanceid from eg_wf_assignee_v2"
                         + " asg_inner where asg_inner.assignee = ?) AND pi_outer.tenantid = ?  AND pi_outer.businessservice =? "
                         + " ORDER BY pi_outer.lastModifiedTime DESC  OFFSET ?  LIMIT ? ",
@@ -3035,8 +3035,8 @@ class WorkflowQueryBuilderTest {
         processInstanceSearchCriteria.setTenantSpecifiStatus(new ArrayList<>());
         processInstanceSearchCriteria.setToDate(1L);
         ArrayList<Object> objectList = new ArrayList<>();
-        assertEquals(" select id from eg_wf_processinstance_v2 pi_outer WHERE  pi_outer.lastmodifiedTime = (SELECT"
-                        + " max(lastmodifiedTime) from eg_wf_processinstance_v2 as pi_inner where pi_inner.businessid ="
+        assertEquals(" select id from eg_wf_processinstance_v2 pi_outer WHERE pi_outer.isActive = true AND  pi_outer.lastmodifiedTime = (SELECT"
+                        + " max(lastmodifiedTime) from eg_wf_processinstance_v2 as pi_inner where pi_inner.isActive = true AND pi_inner.businessid ="
                         + " pi_outer.businessid and tenantid = ? )  AND pi_outer.businessservice =?  ORDER BY pi_outer.lastModifiedTime"
                         + " DESC  OFFSET ?  LIMIT ? ",
                 workflowQueryBuilder.getInboxIdQuery(processInstanceSearchCriteria, objectList, true));
@@ -3098,9 +3098,9 @@ class WorkflowQueryBuilderTest {
         ArrayList<Object> objectList = new ArrayList<>();
         assertEquals("select  count(DISTINCT cq.id),cq.applicationStatus,cq.businessservice,cq.PI_STATUS as statusId from "
                         + " ( select ppi.id,ppi.businessservice,ppst.applicationstatus,ppi.status as PI_STATUS FROM eg_wf"
-                        + "_processinstance_v2 ppi  JOIN eg_wf_state_v2 ppst ON ( ppst.uuid =ppi.status ) WHERE ppi.id IN ( select"
-                        + " id from eg_wf_processinstance_v2 pi_outer WHERE  pi_outer.lastmodifiedTime = (SELECT max(lastmodifiedTime)"
-                        + " from eg_wf_processinstance_v2 as pi_inner where pi_inner.businessid = pi_outer.businessid and tenantid"
+                        + "_processinstance_v2 ppi  JOIN eg_wf_state_v2 ppst ON ( ppst.uuid =ppi.status ) WHERE ppi.isActive = true AND ppi.id IN ( select"
+                        + " id from eg_wf_processinstance_v2 pi_outer WHERE pi_outer.isActive = true AND  pi_outer.lastmodifiedTime = (SELECT max(lastmodifiedTime)"
+                        + " from eg_wf_processinstance_v2 as pi_inner where pi_inner.isActive = true AND pi_inner.businessid = pi_outer.businessid and tenantid"
                         + " = ? )  AND id in (select processinstanceid from eg_wf_assignee_v2 asg_inner where asg_inner.assignee"
                         + " = ?) AND pi_outer.tenantid = ?  AND pi_outer.businessservice =?  ORDER BY pi_outer.lastModifiedTime"
                         + " DESC ) ) cq GROUP BY cq.applicationStatus,cq.businessservice,cq.PI_STATUS",
@@ -3158,9 +3158,9 @@ class WorkflowQueryBuilderTest {
         ArrayList<Object> objectList = new ArrayList<>();
         assertEquals("select  count(DISTINCT cq.id),cq.applicationStatus,cq.businessservice,cq.PI_STATUS as statusId from "
                         + " ( select ppi.id,ppi.businessservice,ppst.applicationstatus,ppi.status as PI_STATUS FROM eg_wf"
-                        + "_processinstance_v2 ppi  JOIN eg_wf_state_v2 ppst ON ( ppst.uuid =ppi.status ) WHERE ppi.id IN ( select"
-                        + " id from eg_wf_processinstance_v2 pi_outer WHERE  pi_outer.lastmodifiedTime = (SELECT max(lastmodifiedTime)"
-                        + " from eg_wf_processinstance_v2 as pi_inner where pi_inner.businessid = pi_outer.businessid and tenantid"
+                        + "_processinstance_v2 ppi  JOIN eg_wf_state_v2 ppst ON ( ppst.uuid =ppi.status ) WHERE ppi.isActive = true AND ppi.id IN ( select"
+                        + " id from eg_wf_processinstance_v2 pi_outer WHERE pi_outer.isActive = true AND  pi_outer.lastmodifiedTime = (SELECT max(lastmodifiedTime)"
+                        + " from eg_wf_processinstance_v2 as pi_inner where pi_inner.isActive = true AND pi_inner.businessid = pi_outer.businessid and tenantid"
                         + " = ? )  AND id in (select processinstanceid from eg_wf_assignee_v2 asg_inner where asg_inner.assignee"
                         + " = ?) AND pi_outer.tenantid = ?  AND pi_outer.businessservice =?  ORDER BY pi_outer.lastModifiedTime"
                         + " DESC ) ) cq GROUP BY cq.applicationStatus,cq.businessservice,cq.PI_STATUS",
@@ -3242,9 +3242,9 @@ class WorkflowQueryBuilderTest {
         ArrayList<Object> objectList = new ArrayList<>();
         assertEquals("select  count(DISTINCT cq.id),cq.applicationStatus,cq.businessservice,cq.PI_STATUS as statusId from "
                         + " ( select ppi.id,ppi.businessservice,ppst.applicationstatus,ppi.status as PI_STATUS FROM eg_wf"
-                        + "_processinstance_v2 ppi  JOIN eg_wf_state_v2 ppst ON ( ppst.uuid =ppi.status ) WHERE ppi.id IN ( select"
-                        + " id from eg_wf_processinstance_v2 pi_outer WHERE  pi_outer.lastmodifiedTime = (SELECT max(lastmodifiedTime)"
-                        + " from eg_wf_processinstance_v2 as pi_inner where pi_inner.businessid = pi_outer.businessid and tenantid"
+                        + "_processinstance_v2 ppi  JOIN eg_wf_state_v2 ppst ON ( ppst.uuid =ppi.status ) WHERE ppi.isActive = true AND ppi.id IN ( select"
+                        + " id from eg_wf_processinstance_v2 pi_outer WHERE pi_outer.isActive = true AND  pi_outer.lastmodifiedTime = (SELECT max(lastmodifiedTime)"
+                        + " from eg_wf_processinstance_v2 as pi_inner where pi_inner.isActive = true AND pi_inner.businessid = pi_outer.businessid and tenantid"
                         + " = ? )  AND id in (select processinstanceid from eg_wf_assignee_v2 asg_inner where asg_inner.assignee"
                         + " = ?) AND pi_outer.tenantid = ?  ORDER BY pi_outer.lastModifiedTime DESC ) ) cq GROUP BY cq.applicationStatus"
                         + ",cq.businessservice,cq.PI_STATUS",
@@ -3326,9 +3326,9 @@ class WorkflowQueryBuilderTest {
         ArrayList<Object> objectList = new ArrayList<>();
         assertEquals("select  count(DISTINCT cq.id),cq.applicationStatus,cq.businessservice,cq.PI_STATUS as statusId from "
                         + " ( select ppi.id,ppi.businessservice,ppst.applicationstatus,ppi.status as PI_STATUS FROM eg_wf"
-                        + "_processinstance_v2 ppi  JOIN eg_wf_state_v2 ppst ON ( ppst.uuid =ppi.status ) WHERE ppi.id IN ( select"
-                        + " id from eg_wf_processinstance_v2 pi_outer WHERE  pi_outer.lastmodifiedTime = (SELECT max(lastmodifiedTime)"
-                        + " from eg_wf_processinstance_v2 as pi_inner where pi_inner.businessid = pi_outer.businessid and tenantid"
+                        + "_processinstance_v2 ppi  JOIN eg_wf_state_v2 ppst ON ( ppst.uuid =ppi.status ) WHERE ppi.isActive = true AND ppi.id IN ( select"
+                        + " id from eg_wf_processinstance_v2 pi_outer WHERE pi_outer.isActive = true AND  pi_outer.lastmodifiedTime = (SELECT max(lastmodifiedTime)"
+                        + " from eg_wf_processinstance_v2 as pi_inner where pi_inner.isActive = true AND pi_inner.businessid = pi_outer.businessid and tenantid"
                         + " = ? )  AND id in (select processinstanceid from eg_wf_assignee_v2 asg_inner where asg_inner.assignee"
                         + " = ?) AND pi_outer.tenantid = ?  ORDER BY pi_outer.lastModifiedTime DESC ) ) cq GROUP BY cq.applicationStatus"
                         + ",cq.businessservice,cq.PI_STATUS",
@@ -3507,8 +3507,8 @@ class WorkflowQueryBuilderTest {
         processInstanceSearchCriteria.setToDate(1L);
         ArrayList<Object> objectList = new ArrayList<>();
         assertEquals(
-                "select count(DISTINCT id) from ( select id from eg_wf_processinstance_v2 pi_outer WHERE  pi_outer"
-                        + ".lastmodifiedTime = (SELECT max(lastmodifiedTime) from eg_wf_processinstance_v2 as pi_inner where"
+                "select count(DISTINCT id) from ( select id from eg_wf_processinstance_v2 pi_outer WHERE pi_outer.isActive = true AND  pi_outer"
+                        + ".lastmodifiedTime = (SELECT max(lastmodifiedTime) from eg_wf_processinstance_v2 as pi_inner where pi_inner.isActive = true AND"
                         + " pi_inner.businessid = pi_outer.businessid and tenantid = ? )  AND id in (select processinstanceid"
                         + " from eg_wf_assignee_v2 asg_inner where asg_inner.assignee = ?) AND pi_outer.tenantid = ?  AND"
                         + " pi_outer.businessservice =?  ORDER BY pi_outer.lastModifiedTime DESC ) as count",
@@ -3643,9 +3643,9 @@ class WorkflowQueryBuilderTest {
         ArrayList<Object> objectList = new ArrayList<>();
         assertEquals("select  count(DISTINCT cq.id),cq.applicationStatus,cq.businessservice,cq.PI_STATUS as statusId from "
                         + " ( select ppi.id,ppi.businessservice,ppst.applicationstatus,ppi.status as PI_STATUS FROM eg_wf"
-                        + "_processinstance_v2 ppi  JOIN eg_wf_state_v2 ppst ON ( ppst.uuid =ppi.status ) WHERE ppi.id IN ( select"
-                        + " id from eg_wf_processinstance_v2 pi_outer WHERE  pi_outer.lastmodifiedTime = (SELECT max(lastmodifiedTime)"
-                        + " from eg_wf_processinstance_v2 as pi_inner where pi_inner.businessid = pi_outer.businessid and tenantid"
+                        + "_processinstance_v2 ppi  JOIN eg_wf_state_v2 ppst ON ( ppst.uuid =ppi.status ) WHERE ppi.isActive = true AND ppi.id IN ( select"
+                        + " id from eg_wf_processinstance_v2 pi_outer WHERE pi_outer.isActive = true AND  pi_outer.lastmodifiedTime = (SELECT max(lastmodifiedTime)"
+                        + " from eg_wf_processinstance_v2 as pi_inner where pi_inner.isActive = true AND pi_inner.businessid = pi_outer.businessid and tenantid"
                         + " = ? )  AND id in (select processinstanceid from eg_wf_assignee_v2 asg_inner where asg_inner.assignee"
                         + " = ?) AND pi_outer.tenantid = ?  AND pi_outer.businessservice =?  ORDER BY pi_outer.lastModifiedTime"
                         + " DESC ) ) cq GROUP BY cq.applicationStatus,cq.businessservice,cq.PI_STATUS",
@@ -3735,9 +3735,9 @@ class WorkflowQueryBuilderTest {
         ArrayList<Object> objectList = new ArrayList<>();
         assertEquals("select  count(DISTINCT cq.id),cq.applicationStatus,cq.businessservice,cq.PI_STATUS as statusId from "
                         + " ( select ppi.id,ppi.businessservice,ppst.applicationstatus,ppi.status as PI_STATUS FROM eg_wf"
-                        + "_processinstance_v2 ppi  JOIN eg_wf_state_v2 ppst ON ( ppst.uuid =ppi.status ) WHERE ppi.id IN ( select"
-                        + " id from eg_wf_processinstance_v2 pi_outer WHERE  pi_outer.lastmodifiedTime = (SELECT max(lastmodifiedTime)"
-                        + " from eg_wf_processinstance_v2 as pi_inner where pi_inner.businessid = pi_outer.businessid and tenantid"
+                        + "_processinstance_v2 ppi  JOIN eg_wf_state_v2 ppst ON ( ppst.uuid =ppi.status ) WHERE ppi.isActive = true AND ppi.id IN ( select"
+                        + " id from eg_wf_processinstance_v2 pi_outer WHERE pi_outer.isActive = true AND  pi_outer.lastmodifiedTime = (SELECT max(lastmodifiedTime)"
+                        + " from eg_wf_processinstance_v2 as pi_inner where pi_inner.isActive = true AND pi_inner.businessid = pi_outer.businessid and tenantid"
                         + " = ? )  AND id in (select processinstanceid from eg_wf_assignee_v2 asg_inner where asg_inner.assignee"
                         + " = ?) AND pi_outer.tenantid = ?  AND pi_outer.businessservice =?  ORDER BY pi_outer.lastModifiedTime"
                         + " DESC ) ) cq GROUP BY cq.applicationStatus,cq.businessservice,cq.PI_STATUS",
@@ -3830,9 +3830,9 @@ class WorkflowQueryBuilderTest {
         ArrayList<Object> objectList = new ArrayList<>();
         assertEquals("select  count(DISTINCT cq.id),cq.applicationStatus,cq.businessservice,cq.PI_STATUS as statusId from "
                         + " ( select ppi.id,ppi.businessservice,ppst.applicationstatus,ppi.status as PI_STATUS FROM eg_wf"
-                        + "_processinstance_v2 ppi  JOIN eg_wf_state_v2 ppst ON ( ppst.uuid =ppi.status ) WHERE ppi.id IN ( select"
-                        + " id from eg_wf_processinstance_v2 pi_outer WHERE  pi_outer.lastmodifiedTime = (SELECT max(lastmodifiedTime)"
-                        + " from eg_wf_processinstance_v2 as pi_inner where pi_inner.businessid = pi_outer.businessid and tenantid"
+                        + "_processinstance_v2 ppi  JOIN eg_wf_state_v2 ppst ON ( ppst.uuid =ppi.status ) WHERE ppi.isActive = true AND ppi.id IN ( select"
+                        + " id from eg_wf_processinstance_v2 pi_outer WHERE pi_outer.isActive = true AND  pi_outer.lastmodifiedTime = (SELECT max(lastmodifiedTime)"
+                        + " from eg_wf_processinstance_v2 as pi_inner where pi_inner.isActive = true AND pi_inner.businessid = pi_outer.businessid and tenantid"
                         + " = ? )  AND pi_outer.businessservice =?  ORDER BY pi_outer.lastModifiedTime DESC ) ) cq GROUP BY"
                         + " cq.applicationStatus,cq.businessservice,cq.PI_STATUS",
                 workflowQueryBuilder.getInboxCount(processInstanceSearchCriteria, objectList, true));
@@ -3877,8 +3877,8 @@ class WorkflowQueryBuilderTest {
         WorkflowQueryBuilder workflowQueryBuilder = new WorkflowQueryBuilder(workflowConfig);
 
         ArrayList<String> stringList = new ArrayList<>();
-        stringList.add(" select id from eg_wf_processinstance_v2 pi_outer WHERE  pi_outer.lastmodifiedTime = (SELECT"
-                + " max(lastmodifiedTime) from eg_wf_processinstance_v2 as pi_inner where pi_inner.businessid ="
+        stringList.add(" select id from eg_wf_processinstance_v2 pi_outer WHERE pi_outer.isActive = true AND  pi_outer.lastmodifiedTime = (SELECT"
+                + " max(lastmodifiedTime) from eg_wf_processinstance_v2 as pi_inner where pi_inner.isActive = true AND pi_inner.businessid ="
                 + " pi_outer.businessid and tenantid = ? ) ");
         ProcessInstanceSearchCriteria processInstanceSearchCriteria = mock(ProcessInstanceSearchCriteria.class);
         when(processInstanceSearchCriteria.getStatusesIrrespectiveOfTenant()).thenReturn(stringList);
@@ -3928,9 +3928,9 @@ class WorkflowQueryBuilderTest {
         ArrayList<Object> objectList = new ArrayList<>();
         assertEquals("select  count(DISTINCT cq.id),cq.applicationStatus,cq.businessservice,cq.PI_STATUS as statusId from "
                 + " ( select ppi.id,ppi.businessservice,ppst.applicationstatus,ppi.status as PI_STATUS FROM eg_wf"
-                + "_processinstance_v2 ppi  JOIN eg_wf_state_v2 ppst ON ( ppst.uuid =ppi.status ) WHERE ppi.id IN ( select"
-                + " id from eg_wf_processinstance_v2 pi_outer WHERE  pi_outer.lastmodifiedTime = (SELECT max(lastmodifiedTime)"
-                + " from eg_wf_processinstance_v2 as pi_inner where pi_inner.businessid = pi_outer.businessid and tenantid"
+                + "_processinstance_v2 ppi  JOIN eg_wf_state_v2 ppst ON ( ppst.uuid =ppi.status ) WHERE ppi.isActive = true AND ppi.id IN ( select"
+                + " id from eg_wf_processinstance_v2 pi_outer WHERE pi_outer.isActive = true AND  pi_outer.lastmodifiedTime = (SELECT max(lastmodifiedTime)"
+                + " from eg_wf_processinstance_v2 as pi_inner where pi_inner.isActive = true AND pi_inner.businessid = pi_outer.businessid and tenantid"
                 + " = ? )  AND ((id in (select processinstanceid from eg_wf_assignee_v2 asg_inner where asg_inner.assignee"
                 + " = ?) AND pi_outer.tenantid = ? )  OR pi_outer.status IN ( ?) ) AND pi_outer.businessservice =?  ORDER"
                 + " BY pi_outer.lastModifiedTime DESC ) ) cq GROUP BY cq.applicationStatus,cq.businessservice,cq.PI"
@@ -4024,9 +4024,9 @@ class WorkflowQueryBuilderTest {
         ArrayList<Object> objectList = new ArrayList<>();
         assertEquals("select  count(DISTINCT cq.id),cq.applicationStatus,cq.businessservice,cq.PI_STATUS as statusId from "
                         + " ( select ppi.id,ppi.businessservice,ppst.applicationstatus,ppi.status as PI_STATUS FROM eg_wf"
-                        + "_processinstance_v2 ppi  JOIN eg_wf_state_v2 ppst ON ( ppst.uuid =ppi.status ) WHERE ppi.id IN ( select"
-                        + " id from eg_wf_processinstance_v2 pi_outer WHERE  pi_outer.lastmodifiedTime = (SELECT max(lastmodifiedTime)"
-                        + " from eg_wf_processinstance_v2 as pi_inner where pi_inner.businessid = pi_outer.businessid and tenantid"
+                        + "_processinstance_v2 ppi  JOIN eg_wf_state_v2 ppst ON ( ppst.uuid =ppi.status ) WHERE ppi.isActive = true AND ppi.id IN ( select"
+                        + " id from eg_wf_processinstance_v2 pi_outer WHERE pi_outer.isActive = true AND  pi_outer.lastmodifiedTime = (SELECT max(lastmodifiedTime)"
+                        + " from eg_wf_processinstance_v2 as pi_inner where pi_inner.isActive = true AND pi_inner.businessid = pi_outer.businessid and tenantid"
                         + " = ? )  AND id in (select processinstanceid from eg_wf_assignee_v2 asg_inner where asg_inner.assignee"
                         + " = ?) AND pi_outer.tenantid = ?  AND pi_outer.businessservice =?  ORDER BY pi_outer.lastModifiedTime"
                         + " DESC ) ) cq GROUP BY cq.applicationStatus,cq.businessservice,cq.PI_STATUS",
@@ -4073,8 +4073,8 @@ class WorkflowQueryBuilderTest {
         WorkflowQueryBuilder workflowQueryBuilder = new WorkflowQueryBuilder(workflowConfig);
 
         ArrayList<String> stringList = new ArrayList<>();
-        stringList.add(" select id from eg_wf_processinstance_v2 pi_outer WHERE  pi_outer.lastmodifiedTime = (SELECT"
-                + " max(lastmodifiedTime) from eg_wf_processinstance_v2 as pi_inner where pi_inner.businessid ="
+        stringList.add(" select id from eg_wf_processinstance_v2 pi_outer WHERE pi_outer.isActive = true AND  pi_outer.lastmodifiedTime = (SELECT"
+                + " max(lastmodifiedTime) from eg_wf_processinstance_v2 as pi_inner where pi_inner.isActive = true AND pi_inner.businessid ="
                 + " pi_outer.businessid and tenantid = ? ) ");
         ProcessInstanceSearchCriteria processInstanceSearchCriteria = mock(ProcessInstanceSearchCriteria.class);
         when(processInstanceSearchCriteria.getStatusesIrrespectiveOfTenant()).thenReturn(new ArrayList<>());
@@ -4124,9 +4124,9 @@ class WorkflowQueryBuilderTest {
         ArrayList<Object> objectList = new ArrayList<>();
         assertEquals("select  count(DISTINCT cq.id),cq.applicationStatus,cq.businessservice,cq.PI_STATUS as statusId from "
                         + " ( select ppi.id,ppi.businessservice,ppst.applicationstatus,ppi.status as PI_STATUS FROM eg_wf"
-                        + "_processinstance_v2 ppi  JOIN eg_wf_state_v2 ppst ON ( ppst.uuid =ppi.status ) WHERE ppi.id IN ( select"
-                        + " id from eg_wf_processinstance_v2 pi_outer WHERE  pi_outer.lastmodifiedTime = (SELECT max(lastmodifiedTime)"
-                        + " from eg_wf_processinstance_v2 as pi_inner where pi_inner.businessid = pi_outer.businessid and tenantid"
+                        + "_processinstance_v2 ppi  JOIN eg_wf_state_v2 ppst ON ( ppst.uuid =ppi.status ) WHERE ppi.isActive = true AND ppi.id IN ( select"
+                        + " id from eg_wf_processinstance_v2 pi_outer WHERE pi_outer.isActive = true AND  pi_outer.lastmodifiedTime = (SELECT max(lastmodifiedTime)"
+                        + " from eg_wf_processinstance_v2 as pi_inner where pi_inner.isActive = true AND pi_inner.businessid = pi_outer.businessid and tenantid"
                         + " = ? )  AND ((id in (select processinstanceid from eg_wf_assignee_v2 asg_inner where asg_inner.assignee"
                         + " = ?) AND pi_outer.tenantid = ? )  OR (pi_outer.tenantid || ':' || pi_outer.status) IN ( ?) ) AND"
                         + " pi_outer.businessservice =?  ORDER BY pi_outer.lastModifiedTime DESC ) ) cq GROUP BY cq.applicationStatus"
@@ -4198,7 +4198,7 @@ class WorkflowQueryBuilderTest {
                         + " as ac_action       FROM eg_wf_processinstance_v2 pi   LEFT OUTER JOIN        eg_wf_assignee_v2 asg"
                         + " ON asg.processinstanceid = pi.id  LEFT OUTER JOIN       eg_wf_document_v2 doc  ON doc.processinstanceid"
                         + " = pi.id  INNER JOIN        eg_wf_state_v2 st ON st.uuid = pi.status LEFT OUTER JOIN        eg_wf_action_v2"
-                        + " ac ON ac.currentState = st.uuid AND ac.active=TRUE        WHERE  pi.tenantid=?  AND pi.businessservice"
+                        + " ac ON ac.currentState = st.uuid AND ac.active=TRUE        WHERE pi.isActive = true AND  pi.tenantid=?  AND pi.businessservice"
                         + " =?  AND asg.assignee=? ) as cq GROUP BY cq.applicationStatus,cq.businessservice,cq.PI_STATUS",
                 workflowQueryBuilder.getProcessInstanceCount(processInstanceSearchCriteria, objectList, true));
         assertEquals(3, objectList.size());
@@ -4266,7 +4266,7 @@ class WorkflowQueryBuilderTest {
                         + " as ac_action       FROM eg_wf_processinstance_v2 pi   LEFT OUTER JOIN        eg_wf_assignee_v2 asg"
                         + " ON asg.processinstanceid = pi.id  LEFT OUTER JOIN       eg_wf_document_v2 doc  ON doc.processinstanceid"
                         + " = pi.id  INNER JOIN        eg_wf_state_v2 st ON st.uuid = pi.status LEFT OUTER JOIN        eg_wf_action_v2"
-                        + " ac ON ac.currentState = st.uuid AND ac.active=TRUE        WHERE  pi.tenantid=?  AND pi.businessservice"
+                        + " ac ON ac.currentState = st.uuid AND ac.active=TRUE        WHERE pi.isActive = true AND  pi.tenantid=?  AND pi.businessservice"
                         + " =?  AND asg.assignee=? ) as cq GROUP BY cq.applicationStatus,cq.businessservice,cq.PI_STATUS",
                 workflowQueryBuilder.getProcessInstanceCount(processInstanceSearchCriteria, objectList, true));
         verify(processInstanceSearchCriteria, atLeast(1)).getHistory();
@@ -4359,8 +4359,8 @@ class WorkflowQueryBuilderTest {
                         + " as ac_action       FROM eg_wf_processinstance_v2 pi   LEFT OUTER JOIN        eg_wf_assignee_v2 asg"
                         + " ON asg.processinstanceid = pi.id  LEFT OUTER JOIN       eg_wf_document_v2 doc  ON doc.processinstanceid"
                         + " = pi.id  INNER JOIN        eg_wf_state_v2 st ON st.uuid = pi.status LEFT OUTER JOIN        eg_wf_action_v2"
-                        + " ac ON ac.currentState = st.uuid AND ac.active=TRUE        WHERE  pi.lastmodifiedTime  IN  (SELECT"
-                        + " max(lastmodifiedTime) from eg_wf_processinstance_v2 GROUP BY businessid)  AND pi.tenantid=?  AND"
+                        + " ac ON ac.currentState = st.uuid AND ac.active=TRUE        WHERE pi.isActive = true AND  pi.lastmodifiedTime  IN  (SELECT"
+                        + " max(lastmodifiedTime) from eg_wf_processinstance_v2 WHERE isActive = true GROUP BY businessid)  AND pi.tenantid=?  AND"
                         + " pi.businessservice =?  AND asg.assignee=? ) as cq GROUP BY cq.applicationStatus,cq.businessservice"
                         + ",cq.PI_STATUS",
                 workflowQueryBuilder.getProcessInstanceCount(processInstanceSearchCriteria, objectList, true));
@@ -4455,7 +4455,7 @@ class WorkflowQueryBuilderTest {
                         + " as ac_action       FROM eg_wf_processinstance_v2 pi   LEFT OUTER JOIN        eg_wf_assignee_v2 asg"
                         + " ON asg.processinstanceid = pi.id  LEFT OUTER JOIN       eg_wf_document_v2 doc  ON doc.processinstanceid"
                         + " = pi.id  INNER JOIN        eg_wf_state_v2 st ON st.uuid = pi.status LEFT OUTER JOIN        eg_wf_action_v2"
-                        + " ac ON ac.currentState = st.uuid AND ac.active=TRUE        WHERE  pi.tenantid=?  AND pi.businessservice"
+                        + " ac ON ac.currentState = st.uuid AND ac.active=TRUE        WHERE pi.isActive = true AND  pi.tenantid=?  AND pi.businessservice"
                         + " =? ) as cq GROUP BY cq.applicationStatus,cq.businessservice,cq.PI_STATUS",
                 workflowQueryBuilder.getProcessInstanceCount(processInstanceSearchCriteria, objectList, true));
         verify(processInstanceSearchCriteria, atLeast(1)).getHistory();
@@ -4549,7 +4549,7 @@ class WorkflowQueryBuilderTest {
                         + " as ac_action       FROM eg_wf_processinstance_v2 pi   LEFT OUTER JOIN        eg_wf_assignee_v2 asg"
                         + " ON asg.processinstanceid = pi.id  LEFT OUTER JOIN       eg_wf_document_v2 doc  ON doc.processinstanceid"
                         + " = pi.id  INNER JOIN        eg_wf_state_v2 st ON st.uuid = pi.status LEFT OUTER JOIN        eg_wf_action_v2"
-                        + " ac ON ac.currentState = st.uuid AND ac.active=TRUE        WHERE  pi.tenantid=?  AND asg.assignee=? )"
+                        + " ac ON ac.currentState = st.uuid AND ac.active=TRUE        WHERE pi.isActive = true AND  pi.tenantid=?  AND asg.assignee=? )"
                         + " as cq GROUP BY cq.applicationStatus,cq.businessservice,cq.PI_STATUS",
                 workflowQueryBuilder.getProcessInstanceCount(processInstanceSearchCriteria, objectList, true));
         verify(processInstanceSearchCriteria, atLeast(1)).getHistory();
@@ -4656,7 +4656,7 @@ class WorkflowQueryBuilderTest {
                         + " as ac_action       FROM eg_wf_processinstance_v2 pi   LEFT OUTER JOIN        eg_wf_assignee_v2 asg"
                         + " ON asg.processinstanceid = pi.id  LEFT OUTER JOIN       eg_wf_document_v2 doc  ON doc.processinstanceid"
                         + " = pi.id  INNER JOIN        eg_wf_state_v2 st ON st.uuid = pi.status LEFT OUTER JOIN        eg_wf_action_v2"
-                        + " ac ON ac.currentState = st.uuid AND ac.active=TRUE        WHERE  pi.tenantid=?  and pi.businessId IN"
+                        + " ac ON ac.currentState = st.uuid AND ac.active=TRUE        WHERE pi.isActive = true AND  pi.tenantid=?  and pi.businessId IN"
                         + " ( ?) AND pi.businessservice =?  AND asg.assignee=? ) as cq GROUP BY cq.applicationStatus,cq.businessservice"
                         + ",cq.PI_STATUS",
                 workflowQueryBuilder.getProcessInstanceCount(processInstanceSearchCriteria, objectList, true));
@@ -4764,7 +4764,7 @@ class WorkflowQueryBuilderTest {
                         + " as ac_action       FROM eg_wf_processinstance_v2 pi   LEFT OUTER JOIN        eg_wf_assignee_v2 asg"
                         + " ON asg.processinstanceid = pi.id  LEFT OUTER JOIN       eg_wf_document_v2 doc  ON doc.processinstanceid"
                         + " = pi.id  INNER JOIN        eg_wf_state_v2 st ON st.uuid = pi.status LEFT OUTER JOIN        eg_wf_action_v2"
-                        + " ac ON ac.currentState = st.uuid AND ac.active=TRUE        WHERE  pi.tenantid=? and pi.id IN ( ?) AND"
+                        + " ac ON ac.currentState = st.uuid AND ac.active=TRUE        WHERE pi.isActive = true AND  pi.tenantid=? and pi.id IN ( ?) AND"
                         + " pi.businessservice =?  AND asg.assignee=? ) as cq GROUP BY cq.applicationStatus,cq.businessservice"
                         + ",cq.PI_STATUS",
                 workflowQueryBuilder.getProcessInstanceCount(processInstanceSearchCriteria, objectList, true));
@@ -4872,7 +4872,7 @@ class WorkflowQueryBuilderTest {
                         + " as ac_action       FROM eg_wf_processinstance_v2 pi   LEFT OUTER JOIN        eg_wf_assignee_v2 asg"
                         + " ON asg.processinstanceid = pi.id  LEFT OUTER JOIN       eg_wf_document_v2 doc  ON doc.processinstanceid"
                         + " = pi.id  INNER JOIN        eg_wf_state_v2 st ON st.uuid = pi.status LEFT OUTER JOIN        eg_wf_action_v2"
-                        + " ac ON ac.currentState = st.uuid AND ac.active=TRUE        WHERE  pi.tenantid=?  AND pi.businessservice"
+                        + " ac ON ac.currentState = st.uuid AND ac.active=TRUE        WHERE pi.isActive = true AND  pi.tenantid=?  AND pi.businessservice"
                         + " =?  and pi.status  IN ( ?) AND asg.assignee=? ) as cq GROUP BY cq.applicationStatus,cq.businessservice"
                         + ",cq.PI_STATUS",
                 workflowQueryBuilder.getProcessInstanceCount(processInstanceSearchCriteria, objectList, true));
@@ -4979,7 +4979,7 @@ class WorkflowQueryBuilderTest {
                         + " as ac_action       FROM eg_wf_processinstance_v2 pi   LEFT OUTER JOIN        eg_wf_assignee_v2 asg"
                         + " ON asg.processinstanceid = pi.id  LEFT OUTER JOIN       eg_wf_document_v2 doc  ON doc.processinstanceid"
                         + " = pi.id  INNER JOIN        eg_wf_state_v2 st ON st.uuid = pi.status LEFT OUTER JOIN        eg_wf_action_v2"
-                        + " ac ON ac.currentState = st.uuid AND ac.active=TRUE        WHERE  pi.tenantid=?  AND pi.businessservice"
+                        + " ac ON ac.currentState = st.uuid AND ac.active=TRUE        WHERE pi.isActive = true AND  pi.tenantid=?  AND pi.businessservice"
                         + " =?  and CONCAT (pi.tenantid,':',pi.status)  IN ( ?) AND asg.assignee=? ) as cq GROUP BY cq.applicationStatus"
                         + ",cq.businessservice,cq.PI_STATUS",
                 workflowQueryBuilder.getProcessInstanceCount(processInstanceSearchCriteria, objectList, true));
@@ -5072,7 +5072,7 @@ class WorkflowQueryBuilderTest {
                         + " as ac_tenantId,ac.action as ac_action       FROM eg_wf_processinstance_v2 pi   LEFT OUTER JOIN     "
                         + "   eg_wf_assignee_v2 asg ON asg.processinstanceid = pi.id  LEFT OUTER JOIN       eg_wf_document_v2 doc"
                         + "  ON doc.processinstanceid = pi.id  INNER JOIN        eg_wf_state_v2 st ON st.uuid = pi.status LEFT"
-                        + " OUTER JOIN        eg_wf_action_v2 ac ON ac.currentState = st.uuid AND ac.active=TRUE        WHERE "
+                        + " OUTER JOIN        eg_wf_action_v2 ac ON ac.currentState = st.uuid AND ac.active=TRUE        WHERE pi.isActive = true AND "
                         + " pi.tenantid=?  AND pi.businessservice =?  AND asg.assignee=? ) as count",
                 workflowQueryBuilder.getProcessInstanceCount(processInstanceSearchCriteria, objectList, false));
         verify(processInstanceSearchCriteria, atLeast(1)).getHistory();
@@ -5190,7 +5190,7 @@ class WorkflowQueryBuilderTest {
                         + " as ac_action       FROM eg_wf_processinstance_v2 pi   LEFT OUTER JOIN        eg_wf_assignee_v2 asg"
                         + " ON asg.processinstanceid = pi.id  LEFT OUTER JOIN       eg_wf_document_v2 doc  ON doc.processinstanceid"
                         + " = pi.id  INNER JOIN        eg_wf_state_v2 st ON st.uuid = pi.status LEFT OUTER JOIN        eg_wf_action_v2"
-                        + " ac ON ac.currentState = st.uuid AND ac.active=TRUE        WHERE  pi.tenantid=?  and pi.businessId IN"
+                        + " ac ON ac.currentState = st.uuid AND ac.active=TRUE        WHERE pi.isActive = true AND  pi.tenantid=?  and pi.businessId IN"
                         + " ( ?, ?) AND pi.businessservice =?  AND asg.assignee=? ) as cq GROUP BY cq.applicationStatus,cq"
                         + ".businessservice,cq.PI_STATUS",
                 workflowQueryBuilder.getProcessInstanceCount(processInstanceSearchCriteria, objectList, true));
@@ -5249,7 +5249,7 @@ class WorkflowQueryBuilderTest {
         processInstanceSearchCriteria.setToDate(1L);
         ArrayList<Object> objectList = new ArrayList<>();
         assertEquals(
-                "SELECT DISTINCT businessid FROM eg_wf_processinstance_v2  WHERE  tenantid = ?  AND  createdby = ?  AND"
+                "SELECT DISTINCT businessid FROM eg_wf_processinstance_v2  WHERE isActive = true  AND  tenantid = ?  AND  createdby = ?  AND"
                         + "  businessservice = ? ",
                 workflowQueryBuilder.getInboxApplicationsBusinessIdsQuery(processInstanceSearchCriteria, objectList));
         assertEquals(3, objectList.size());
@@ -5302,7 +5302,7 @@ class WorkflowQueryBuilderTest {
         processInstanceSearchCriteria.setToDate(1L);
         ArrayList<Object> objectList = new ArrayList<>();
         assertEquals(
-                "SELECT DISTINCT businessid FROM eg_wf_processinstance_v2  WHERE  tenantid = ?  AND  createdby = ?  AND"
+                "SELECT DISTINCT businessid FROM eg_wf_processinstance_v2  WHERE isActive = true  AND  tenantid = ?  AND  createdby = ?  AND"
                         + "  businessservice = ? ",
                 workflowQueryBuilder.getInboxApplicationsBusinessIdsQuery(processInstanceSearchCriteria, objectList));
         verify(processInstanceSearchCriteria, atLeast(1)).getAssignee();
@@ -5389,9 +5389,9 @@ class WorkflowQueryBuilderTest {
                 "select count(DISTINCT businessid) from (SELECT businessid from ( SELECT wf.* , assg.assignee AS asg,"
                         + "  DENSE_RANK() OVER(PARTITION BY wf.businessid ORDER BY wf.createdtime DESC) outer_rank  FROM"
                         + " eg_wf_processinstance_v2 wf LEFT OUTER JOIN eg_wf_assignee_v2 assg ON wf.id = assg.processinstanceid"
-                        + " WHERE wf.businessid IN (select businessId from (  SELECT *,RANK () OVER (PARTITION BY businessId"
+                        + " WHERE wf.isActive = true AND wf.businessid IN (select businessId from (  SELECT *,RANK () OVER (PARTITION BY businessId"
                         + " ORDER BY createdtime  DESC) rank_number  FROM eg_wf_processinstance_v2  WHERE  tenantid = ?  AND "
-                        + " businessservice = ? ) wf  WHERE rank_number = 1 AND wf.escalated = true ) ) final WHERE outer_rank"
+                        + " businessservice = ? ) wf  WHERE rank_number = 1 AND wf.escalated = true AND wf.isActive = true ) ) final WHERE outer_rank"
                         + " = 2 ) as count",
                 workflowQueryBuilder.getEscalatedApplicationsCount(requestInfo, processInstanceSearchCriteria, objectList));
         assertEquals(2, objectList.size());
@@ -5458,9 +5458,9 @@ class WorkflowQueryBuilderTest {
                 "select count(DISTINCT businessid) from (SELECT businessid from ( SELECT wf.* , assg.assignee AS asg,"
                         + "  DENSE_RANK() OVER(PARTITION BY wf.businessid ORDER BY wf.createdtime DESC) outer_rank  FROM"
                         + " eg_wf_processinstance_v2 wf LEFT OUTER JOIN eg_wf_assignee_v2 assg ON wf.id = assg.processinstanceid"
-                        + " WHERE wf.businessid IN (select businessId from (  SELECT *,RANK () OVER (PARTITION BY businessId"
+                        + " WHERE wf.isActive = true AND wf.businessid IN (select businessId from (  SELECT *,RANK () OVER (PARTITION BY businessId"
                         + " ORDER BY createdtime  DESC) rank_number  FROM eg_wf_processinstance_v2  WHERE  tenantid = ?  AND "
-                        + " businessservice = ? ) wf  WHERE rank_number = 1 AND wf.escalated = true ) ) final WHERE outer_rank"
+                        + " businessservice = ? ) wf  WHERE rank_number = 1 AND wf.escalated = true AND wf.isActive = true ) ) final WHERE outer_rank"
                         + " = 2 ) as count",
                 workflowQueryBuilder.getEscalatedApplicationsCount(requestInfo, processInstanceSearchCriteria, objectList));
         verify(requestInfo).getUserInfo();
@@ -5504,9 +5504,9 @@ class WorkflowQueryBuilderTest {
         assertEquals("select count(DISTINCT businessid) from (SELECT businessid from ( SELECT wf.* , assg.assignee AS asg,"
                         + "  DENSE_RANK() OVER(PARTITION BY wf.businessid ORDER BY wf.createdtime DESC) outer_rank  FROM"
                         + " eg_wf_processinstance_v2 wf LEFT OUTER JOIN eg_wf_assignee_v2 assg ON wf.id = assg.processinstanceid"
-                        + " WHERE wf.businessid IN (select businessId from (  SELECT *,RANK () OVER (PARTITION BY businessId ORDER"
+                        + " WHERE wf.isActive = true AND wf.businessid IN (select businessId from (  SELECT *,RANK () OVER (PARTITION BY businessId ORDER"
                         + " BY createdtime  DESC) rank_number  FROM eg_wf_processinstance_v2  WHERE  tenantid = ?  AND  businessservice"
-                        + " = ? ) wf  WHERE rank_number = 1 AND wf.escalated = true ) ) final WHERE outer_rank = 2  AND asg = ?"
+                        + " = ? ) wf  WHERE rank_number = 1 AND wf.escalated = true AND wf.isActive = true ) ) final WHERE outer_rank = 2  AND asg = ?"
                         + " ) as count",
                 workflowQueryBuilder.getEscalatedApplicationsCount(requestInfo, processInstanceSearchCriteria, objectList));
         verify(requestInfo, atLeast(1)).getUserInfo();
@@ -5620,9 +5620,9 @@ class WorkflowQueryBuilderTest {
                 "select count(DISTINCT businessid) from (SELECT businessid from ( SELECT wf.* , assg.assignee AS asg,"
                         + "  DENSE_RANK() OVER(PARTITION BY wf.businessid ORDER BY wf.createdtime DESC) outer_rank  FROM"
                         + " eg_wf_processinstance_v2 wf LEFT OUTER JOIN eg_wf_assignee_v2 assg ON wf.id = assg.processinstanceid"
-                        + " WHERE wf.businessid IN (select businessId from (  SELECT *,RANK () OVER (PARTITION BY businessId ORDER"
+                        + " WHERE wf.isActive = true AND wf.businessid IN (select businessId from (  SELECT *,RANK () OVER (PARTITION BY businessId ORDER"
                         + " BY createdtime  DESC) rank_number  FROM eg_wf_processinstance_v2  WHERE  tenantid = ?  and businessId"
-                        + " IN (  ?) AND  businessservice = ? ) wf  WHERE rank_number = 1 AND wf.escalated = true ) ) final WHERE"
+                        + " IN (  ?) AND  businessservice = ? ) wf  WHERE rank_number = 1 AND wf.escalated = true AND wf.isActive = true ) ) final WHERE"
                         + " outer_rank = 2 ) as count",
                 workflowQueryBuilder.getEscalatedApplicationsCount(requestInfo, processInstanceSearchCriteria, objectList));
         verify(requestInfo).getUserInfo();
@@ -5710,9 +5710,9 @@ class WorkflowQueryBuilderTest {
                 "select count(DISTINCT businessid) from (SELECT businessid from ( SELECT wf.* , assg.assignee AS asg,"
                         + "  DENSE_RANK() OVER(PARTITION BY wf.businessid ORDER BY wf.createdtime DESC) outer_rank  FROM"
                         + " eg_wf_processinstance_v2 wf LEFT OUTER JOIN eg_wf_assignee_v2 assg ON wf.id = assg.processinstanceid"
-                        + " WHERE wf.businessid IN (select businessId from (  SELECT *,RANK () OVER (PARTITION BY businessId ORDER"
+                        + " WHERE wf.isActive = true AND wf.businessid IN (select businessId from (  SELECT *,RANK () OVER (PARTITION BY businessId ORDER"
                         + " BY createdtime  DESC) rank_number  FROM eg_wf_processinstance_v2  WHERE  tenantid = ?  and businessId"
-                        + " IN (  ?, ?) AND  businessservice = ? ) wf  WHERE rank_number = 1 AND wf.escalated = true ) ) final"
+                        + " IN (  ?, ?) AND  businessservice = ? ) wf  WHERE rank_number = 1 AND wf.escalated = true AND wf.isActive = true ) ) final"
                         + " WHERE outer_rank = 2 ) as count",
                 workflowQueryBuilder.getEscalatedApplicationsCount(requestInfo, processInstanceSearchCriteria, objectList));
         verify(requestInfo).getUserInfo();
@@ -5851,9 +5851,9 @@ class WorkflowQueryBuilderTest {
         assertEquals("select count(DISTINCT businessid) from (SELECT businessid from ( SELECT wf.* , assg.assignee AS asg,"
                         + "  DENSE_RANK() OVER(PARTITION BY wf.businessid ORDER BY wf.createdtime DESC) outer_rank  FROM"
                         + " eg_wf_processinstance_v2 wf LEFT OUTER JOIN eg_wf_assignee_v2 assg ON wf.id = assg.processinstanceid"
-                        + " WHERE wf.businessid IN (select businessId from (  SELECT *,RANK () OVER (PARTITION BY businessId ORDER"
+                        + " WHERE wf.isActive = true AND wf.businessid IN (select businessId from (  SELECT *,RANK () OVER (PARTITION BY businessId ORDER"
                         + " BY createdtime  DESC) rank_number  FROM eg_wf_processinstance_v2  WHERE  tenantid = ?  AND  businessservice"
-                        + " = ? ) wf  WHERE rank_number = 1 AND wf.escalated = true ) ) final WHERE outer_rank = 2  OFFSET ? "
+                        + " = ? ) wf  WHERE rank_number = 1 AND wf.escalated = true AND wf.isActive = true ) ) final WHERE outer_rank = 2  OFFSET ? "
                         + " LIMIT ? ) as count",
                 workflowQueryBuilder.getEscalatedApplicationsCount(requestInfo, processInstanceSearchCriteria, objectList));
         verify(requestInfo).getUserInfo();
@@ -5942,9 +5942,9 @@ class WorkflowQueryBuilderTest {
         assertEquals("select count(DISTINCT businessid) from (SELECT businessid from ( SELECT wf.* , assg.assignee AS asg,"
                         + "  DENSE_RANK() OVER(PARTITION BY wf.businessid ORDER BY wf.createdtime DESC) outer_rank  FROM"
                         + " eg_wf_processinstance_v2 wf LEFT OUTER JOIN eg_wf_assignee_v2 assg ON wf.id = assg.processinstanceid"
-                        + " WHERE wf.businessid IN (select businessId from (  SELECT *,RANK () OVER (PARTITION BY businessId ORDER"
+                        + " WHERE wf.isActive = true AND wf.businessid IN (select businessId from (  SELECT *,RANK () OVER (PARTITION BY businessId ORDER"
                         + " BY createdtime  DESC) rank_number  FROM eg_wf_processinstance_v2  WHERE  tenantid = ?  AND  businessservice"
-                        + " = ? ) wf  WHERE rank_number = 1 AND wf.escalated = true ) ) final WHERE outer_rank = 2  OFFSET ? "
+                        + " = ? ) wf  WHERE rank_number = 1 AND wf.escalated = true AND wf.isActive = true ) ) final WHERE outer_rank = 2  OFFSET ? "
                         + " LIMIT ? ) as count",
                 workflowQueryBuilder.getEscalatedApplicationsCount(requestInfo, processInstanceSearchCriteria, objectList));
         verify(requestInfo).getUserInfo();
@@ -6089,9 +6089,9 @@ class WorkflowQueryBuilderTest {
         assertEquals("select count(DISTINCT businessid) from (SELECT businessid from ( SELECT wf.* , assg.assignee AS asg,"
                         + "  DENSE_RANK() OVER(PARTITION BY wf.businessid ORDER BY wf.createdtime DESC) outer_rank  FROM"
                         + " eg_wf_processinstance_v2 wf LEFT OUTER JOIN eg_wf_assignee_v2 assg ON wf.id = assg.processinstanceid"
-                        + " WHERE wf.businessid IN (select businessId from (  SELECT *,RANK () OVER (PARTITION BY businessId ORDER"
+                        + " WHERE wf.isActive = true AND wf.businessid IN (select businessId from (  SELECT *,RANK () OVER (PARTITION BY businessId ORDER"
                         + " BY createdtime  DESC) rank_number  FROM eg_wf_processinstance_v2  WHERE  tenantid = ?  AND  businessservice"
-                        + " = ? ) wf  WHERE rank_number = 1 AND wf.escalated = true ) ) final WHERE outer_rank = 2  OFFSET ? "
+                        + " = ? ) wf  WHERE rank_number = 1 AND wf.escalated = true AND wf.isActive = true ) ) final WHERE outer_rank = 2  OFFSET ? "
                         + " LIMIT ? ) as count",
                 workflowQueryBuilder.getEscalatedApplicationsCount(requestInfo, processInstanceSearchCriteria, objectList));
         verify(requestInfo).getUserInfo();
@@ -6180,9 +6180,9 @@ class WorkflowQueryBuilderTest {
         assertEquals("select count(DISTINCT businessid) from (SELECT businessid from ( SELECT wf.* , assg.assignee AS asg,"
                         + "  DENSE_RANK() OVER(PARTITION BY wf.businessid ORDER BY wf.createdtime DESC) outer_rank  FROM"
                         + " eg_wf_processinstance_v2 wf LEFT OUTER JOIN eg_wf_assignee_v2 assg ON wf.id = assg.processinstanceid"
-                        + " WHERE wf.businessid IN (select businessId from (  SELECT *,RANK () OVER (PARTITION BY businessId ORDER"
+                        + " WHERE wf.isActive = true AND wf.businessid IN (select businessId from (  SELECT *,RANK () OVER (PARTITION BY businessId ORDER"
                         + " BY createdtime  DESC) rank_number  FROM eg_wf_processinstance_v2  WHERE  tenantid = ?  AND  businessservice"
-                        + " = ? ) wf  WHERE rank_number = 1 AND wf.escalated = true ) ) final WHERE outer_rank = 2  OFFSET ? "
+                        + " = ? ) wf  WHERE rank_number = 1 AND wf.escalated = true AND wf.isActive = true ) ) final WHERE outer_rank = 2  OFFSET ? "
                         + " LIMIT ? ) as count",
                 workflowQueryBuilder.getEscalatedApplicationsCount(requestInfo, processInstanceSearchCriteria, objectList));
         verify(requestInfo).getUserInfo();
@@ -6271,9 +6271,9 @@ class WorkflowQueryBuilderTest {
                 "select count(DISTINCT businessid) from (SELECT businessid from ( SELECT wf.* , assg.assignee AS asg,"
                         + "  DENSE_RANK() OVER(PARTITION BY wf.businessid ORDER BY wf.createdtime DESC) outer_rank  FROM"
                         + " eg_wf_processinstance_v2 wf LEFT OUTER JOIN eg_wf_assignee_v2 assg ON wf.id = assg.processinstanceid"
-                        + " WHERE wf.businessid IN (select businessId from (  SELECT *,RANK () OVER (PARTITION BY businessId"
+                        + " WHERE wf.isActive = true AND wf.businessid IN (select businessId from (  SELECT *,RANK () OVER (PARTITION BY businessId"
                         + " ORDER BY createdtime  DESC) rank_number  FROM eg_wf_processinstance_v2  WHERE  tenantid = ?  AND "
-                        + " businessservice = ? ) wf  WHERE rank_number = 1 AND wf.escalated = true ) ) final WHERE outer_rank"
+                        + " businessservice = ? ) wf  WHERE rank_number = 1 AND wf.escalated = true AND wf.isActive = true ) ) final WHERE outer_rank"
                         + " = 2 ) as count",
                 workflowQueryBuilder.getEscalatedApplicationsCount(requestInfo, processInstanceSearchCriteria, objectList));
         verify(requestInfo).getUserInfo();
@@ -6360,9 +6360,9 @@ class WorkflowQueryBuilderTest {
         assertEquals("select count(DISTINCT businessid) from (SELECT businessid from ( SELECT wf.* , assg.assignee AS asg,"
                         + "  DENSE_RANK() OVER(PARTITION BY wf.businessid ORDER BY wf.createdtime DESC) outer_rank  FROM"
                         + " eg_wf_processinstance_v2 wf LEFT OUTER JOIN eg_wf_assignee_v2 assg ON wf.id = assg.processinstanceid"
-                        + " WHERE wf.businessid IN (select businessId from (  SELECT *,RANK () OVER (PARTITION BY businessId ORDER"
+                        + " WHERE wf.isActive = true AND wf.businessid IN (select businessId from (  SELECT *,RANK () OVER (PARTITION BY businessId ORDER"
                         + " BY createdtime  DESC) rank_number  FROM eg_wf_processinstance_v2  WHERE  tenantid = ? ) wf  WHERE"
-                        + " rank_number = 1 AND wf.escalated = true ) ) final WHERE outer_rank = 2  OFFSET ?  LIMIT ? ) as" + " count",
+                        + " rank_number = 1 AND wf.escalated = true AND wf.isActive = true ) ) final WHERE outer_rank = 2  OFFSET ?  LIMIT ? ) as" + " count",
                 workflowQueryBuilder.getEscalatedApplicationsCount(requestInfo, processInstanceSearchCriteria, objectList));
         verify(requestInfo).getUserInfo();
         verify(processInstanceSearchCriteria, atLeast(1)).getIsEscalatedCount();
@@ -6451,9 +6451,9 @@ class WorkflowQueryBuilderTest {
                 "select count(DISTINCT businessid) from (SELECT businessid from ( SELECT wf.* , assg.assignee AS asg,"
                         + "  DENSE_RANK() OVER(PARTITION BY wf.businessid ORDER BY wf.createdtime DESC) outer_rank  FROM"
                         + " eg_wf_processinstance_v2 wf LEFT OUTER JOIN eg_wf_assignee_v2 assg ON wf.id = assg.processinstanceid"
-                        + " WHERE wf.businessid IN (select businessId from (  SELECT *,RANK () OVER (PARTITION BY businessId"
+                        + " WHERE wf.isActive = true AND wf.businessid IN (select businessId from (  SELECT *,RANK () OVER (PARTITION BY businessId"
                         + " ORDER BY createdtime  DESC) rank_number  FROM eg_wf_processinstance_v2  WHERE  businessservice = ?"
-                        + " ) wf  WHERE rank_number = 1 AND wf.escalated = true ) ) final WHERE outer_rank = 2  OFFSET ?  LIMIT"
+                        + " ) wf  WHERE rank_number = 1 AND wf.escalated = true AND wf.isActive = true ) ) final WHERE outer_rank = 2  OFFSET ?  LIMIT"
                         + " ? ) as count",
                 workflowQueryBuilder.getEscalatedApplicationsCount(requestInfo, processInstanceSearchCriteria, objectList));
         verify(requestInfo).getUserInfo();
@@ -6543,9 +6543,9 @@ class WorkflowQueryBuilderTest {
         assertEquals(
                 "SELECT businessid from ( SELECT wf.* , assg.assignee AS asg,  DENSE_RANK() OVER(PARTITION BY wf.businessid"
                         + " ORDER BY wf.createdtime DESC) outer_rank  FROM eg_wf_processinstance_v2 wf LEFT OUTER JOIN eg_wf_assignee_v2"
-                        + " assg ON wf.id = assg.processinstanceid WHERE wf.businessid IN (select businessId from (  SELECT *,RANK"
+                        + " assg ON wf.id = assg.processinstanceid WHERE wf.isActive = true AND wf.businessid IN (select businessId from (  SELECT *,RANK"
                         + " () OVER (PARTITION BY businessId ORDER BY createdtime  DESC) rank_number  FROM eg_wf_processinstance_v2"
-                        + "  WHERE  tenantid = ?  AND  businessservice = ? ) wf  WHERE rank_number = 1 AND wf.escalated = true )"
+                        + "  WHERE  tenantid = ?  AND  businessservice = ? ) wf  WHERE rank_number = 1 AND wf.escalated = true AND wf.isActive = true )"
                         + " ) final WHERE outer_rank = 2 ",
                 workflowQueryBuilder.getAutoEscalatedApplicationsFinalQuery(requestInfo, processInstanceSearchCriteria,
                         objectList));
@@ -6611,9 +6611,9 @@ class WorkflowQueryBuilderTest {
         assertEquals(
                 "SELECT businessid from ( SELECT wf.* , assg.assignee AS asg,  DENSE_RANK() OVER(PARTITION BY wf.businessid"
                         + " ORDER BY wf.createdtime DESC) outer_rank  FROM eg_wf_processinstance_v2 wf LEFT OUTER JOIN eg_wf_assignee_v2"
-                        + " assg ON wf.id = assg.processinstanceid WHERE wf.businessid IN (select businessId from (  SELECT *,RANK"
+                        + " assg ON wf.id = assg.processinstanceid WHERE wf.isActive = true AND wf.businessid IN (select businessId from (  SELECT *,RANK"
                         + " () OVER (PARTITION BY businessId ORDER BY createdtime  DESC) rank_number  FROM eg_wf_processinstance_v2"
-                        + "  WHERE  tenantid = ?  AND  businessservice = ? ) wf  WHERE rank_number = 1 AND wf.escalated = true )"
+                        + "  WHERE  tenantid = ?  AND  businessservice = ? ) wf  WHERE rank_number = 1 AND wf.escalated = true AND wf.isActive = true )"
                         + " ) final WHERE outer_rank = 2 ",
                 workflowQueryBuilder.getAutoEscalatedApplicationsFinalQuery(requestInfo, processInstanceSearchCriteria,
                         objectList));
@@ -6657,9 +6657,9 @@ class WorkflowQueryBuilderTest {
         assertEquals(
                 "SELECT businessid from ( SELECT wf.* , assg.assignee AS asg,  DENSE_RANK() OVER(PARTITION BY wf.businessid"
                         + " ORDER BY wf.createdtime DESC) outer_rank  FROM eg_wf_processinstance_v2 wf LEFT OUTER JOIN eg_wf_assignee_v2"
-                        + " assg ON wf.id = assg.processinstanceid WHERE wf.businessid IN (select businessId from (  SELECT *,RANK"
+                        + " assg ON wf.id = assg.processinstanceid WHERE wf.isActive = true AND wf.businessid IN (select businessId from (  SELECT *,RANK"
                         + " () OVER (PARTITION BY businessId ORDER BY createdtime  DESC) rank_number  FROM eg_wf_processinstance_v2"
-                        + "  WHERE  tenantid = ?  AND  businessservice = ? ) wf  WHERE rank_number = 1 AND wf.escalated = true )"
+                        + "  WHERE  tenantid = ?  AND  businessservice = ? ) wf  WHERE rank_number = 1 AND wf.escalated = true AND wf.isActive = true )"
                         + " ) final WHERE outer_rank = 2  AND asg = ? ",
                 workflowQueryBuilder.getAutoEscalatedApplicationsFinalQuery(requestInfo, processInstanceSearchCriteria,
                         objectList));
@@ -6773,10 +6773,10 @@ class WorkflowQueryBuilderTest {
         assertEquals(
                 "SELECT businessid from ( SELECT wf.* , assg.assignee AS asg,  DENSE_RANK() OVER(PARTITION BY wf.businessid"
                         + " ORDER BY wf.createdtime DESC) outer_rank  FROM eg_wf_processinstance_v2 wf LEFT OUTER JOIN eg_wf_assignee_v2"
-                        + " assg ON wf.id = assg.processinstanceid WHERE wf.businessid IN (select businessId from (  SELECT *,RANK"
+                        + " assg ON wf.id = assg.processinstanceid WHERE wf.isActive = true AND wf.businessid IN (select businessId from (  SELECT *,RANK"
                         + " () OVER (PARTITION BY businessId ORDER BY createdtime  DESC) rank_number  FROM eg_wf_processinstance_v2"
                         + "  WHERE  tenantid = ?  and businessId IN (  ?) AND  businessservice = ? ) wf  WHERE rank_number = 1"
-                        + " AND wf.escalated = true ) ) final WHERE outer_rank = 2 ",
+                        + " AND wf.escalated = true AND wf.isActive = true ) ) final WHERE outer_rank = 2 ",
                 workflowQueryBuilder.getAutoEscalatedApplicationsFinalQuery(requestInfo, processInstanceSearchCriteria,
                         objectList));
         verify(requestInfo).getUserInfo();
@@ -6863,10 +6863,10 @@ class WorkflowQueryBuilderTest {
         assertEquals(
                 "SELECT businessid from ( SELECT wf.* , assg.assignee AS asg,  DENSE_RANK() OVER(PARTITION BY wf.businessid"
                         + " ORDER BY wf.createdtime DESC) outer_rank  FROM eg_wf_processinstance_v2 wf LEFT OUTER JOIN eg_wf_assignee_v2"
-                        + " assg ON wf.id = assg.processinstanceid WHERE wf.businessid IN (select businessId from (  SELECT *,RANK"
+                        + " assg ON wf.id = assg.processinstanceid WHERE wf.isActive = true AND wf.businessid IN (select businessId from (  SELECT *,RANK"
                         + " () OVER (PARTITION BY businessId ORDER BY createdtime  DESC) rank_number  FROM eg_wf_processinstance_v2"
                         + "  WHERE  tenantid = ?  and businessId IN (  ?, ?) AND  businessservice = ? ) wf  WHERE rank_number ="
-                        + " 1 AND wf.escalated = true ) ) final WHERE outer_rank = 2 ",
+                        + " 1 AND wf.escalated = true AND wf.isActive = true ) ) final WHERE outer_rank = 2 ",
                 workflowQueryBuilder.getAutoEscalatedApplicationsFinalQuery(requestInfo, processInstanceSearchCriteria,
                         objectList));
         verify(requestInfo).getUserInfo();
@@ -7004,9 +7004,9 @@ class WorkflowQueryBuilderTest {
         assertEquals(
                 "SELECT businessid from ( SELECT wf.* , assg.assignee AS asg,  DENSE_RANK() OVER(PARTITION BY wf.businessid"
                         + " ORDER BY wf.createdtime DESC) outer_rank  FROM eg_wf_processinstance_v2 wf LEFT OUTER JOIN eg_wf_assignee_v2"
-                        + " assg ON wf.id = assg.processinstanceid WHERE wf.businessid IN (select businessId from (  SELECT *,RANK"
+                        + " assg ON wf.id = assg.processinstanceid WHERE wf.isActive = true AND wf.businessid IN (select businessId from (  SELECT *,RANK"
                         + " () OVER (PARTITION BY businessId ORDER BY createdtime  DESC) rank_number  FROM eg_wf_processinstance_v2"
-                        + "  WHERE  tenantid = ?  AND  businessservice = ? ) wf  WHERE rank_number = 1 AND wf.escalated = true )"
+                        + "  WHERE  tenantid = ?  AND  businessservice = ? ) wf  WHERE rank_number = 1 AND wf.escalated = true AND wf.isActive = true )"
                         + " ) final WHERE outer_rank = 2  OFFSET ?  LIMIT ? ",
                 workflowQueryBuilder.getAutoEscalatedApplicationsFinalQuery(requestInfo, processInstanceSearchCriteria,
                         objectList));
@@ -7096,9 +7096,9 @@ class WorkflowQueryBuilderTest {
         assertEquals(
                 "SELECT businessid from ( SELECT wf.* , assg.assignee AS asg,  DENSE_RANK() OVER(PARTITION BY wf.businessid"
                         + " ORDER BY wf.createdtime DESC) outer_rank  FROM eg_wf_processinstance_v2 wf LEFT OUTER JOIN eg_wf_assignee_v2"
-                        + " assg ON wf.id = assg.processinstanceid WHERE wf.businessid IN (select businessId from (  SELECT *,RANK"
+                        + " assg ON wf.id = assg.processinstanceid WHERE wf.isActive = true AND wf.businessid IN (select businessId from (  SELECT *,RANK"
                         + " () OVER (PARTITION BY businessId ORDER BY createdtime  DESC) rank_number  FROM eg_wf_processinstance_v2"
-                        + "  WHERE  tenantid = ?  AND  businessservice = ? ) wf  WHERE rank_number = 1 AND wf.escalated = true )"
+                        + "  WHERE  tenantid = ?  AND  businessservice = ? ) wf  WHERE rank_number = 1 AND wf.escalated = true AND wf.isActive = true )"
                         + " ) final WHERE outer_rank = 2  OFFSET ?  LIMIT ? ",
                 workflowQueryBuilder.getAutoEscalatedApplicationsFinalQuery(requestInfo, processInstanceSearchCriteria,
                         objectList));
@@ -7244,9 +7244,9 @@ class WorkflowQueryBuilderTest {
         assertEquals(
                 "SELECT businessid from ( SELECT wf.* , assg.assignee AS asg,  DENSE_RANK() OVER(PARTITION BY wf.businessid"
                         + " ORDER BY wf.createdtime DESC) outer_rank  FROM eg_wf_processinstance_v2 wf LEFT OUTER JOIN eg_wf_assignee_v2"
-                        + " assg ON wf.id = assg.processinstanceid WHERE wf.businessid IN (select businessId from (  SELECT *,RANK"
+                        + " assg ON wf.id = assg.processinstanceid WHERE wf.isActive = true AND wf.businessid IN (select businessId from (  SELECT *,RANK"
                         + " () OVER (PARTITION BY businessId ORDER BY createdtime  DESC) rank_number  FROM eg_wf_processinstance_v2"
-                        + "  WHERE  tenantid = ?  AND  businessservice = ? ) wf  WHERE rank_number = 1 AND wf.escalated = true )"
+                        + "  WHERE  tenantid = ?  AND  businessservice = ? ) wf  WHERE rank_number = 1 AND wf.escalated = true AND wf.isActive = true )"
                         + " ) final WHERE outer_rank = 2  OFFSET ?  LIMIT ? ",
                 workflowQueryBuilder.getAutoEscalatedApplicationsFinalQuery(requestInfo, processInstanceSearchCriteria,
                         objectList));
@@ -7336,9 +7336,9 @@ class WorkflowQueryBuilderTest {
         assertEquals(
                 "SELECT businessid from ( SELECT wf.* , assg.assignee AS asg,  DENSE_RANK() OVER(PARTITION BY wf.businessid"
                         + " ORDER BY wf.createdtime DESC) outer_rank  FROM eg_wf_processinstance_v2 wf LEFT OUTER JOIN eg_wf_assignee_v2"
-                        + " assg ON wf.id = assg.processinstanceid WHERE wf.businessid IN (select businessId from (  SELECT *,RANK"
+                        + " assg ON wf.id = assg.processinstanceid WHERE wf.isActive = true AND wf.businessid IN (select businessId from (  SELECT *,RANK"
                         + " () OVER (PARTITION BY businessId ORDER BY createdtime  DESC) rank_number  FROM eg_wf_processinstance_v2"
-                        + "  WHERE  tenantid = ?  AND  businessservice = ? ) wf  WHERE rank_number = 1 AND wf.escalated = true )"
+                        + "  WHERE  tenantid = ?  AND  businessservice = ? ) wf  WHERE rank_number = 1 AND wf.escalated = true AND wf.isActive = true )"
                         + " ) final WHERE outer_rank = 2  OFFSET ?  LIMIT ? ",
                 workflowQueryBuilder.getAutoEscalatedApplicationsFinalQuery(requestInfo, processInstanceSearchCriteria,
                         objectList));
@@ -7427,9 +7427,9 @@ class WorkflowQueryBuilderTest {
         assertEquals(
                 "SELECT businessid from ( SELECT wf.* , assg.assignee AS asg,  DENSE_RANK() OVER(PARTITION BY wf.businessid"
                         + " ORDER BY wf.createdtime DESC) outer_rank  FROM eg_wf_processinstance_v2 wf LEFT OUTER JOIN eg_wf_assignee_v2"
-                        + " assg ON wf.id = assg.processinstanceid WHERE wf.businessid IN (select businessId from (  SELECT *,RANK"
+                        + " assg ON wf.id = assg.processinstanceid WHERE wf.isActive = true AND wf.businessid IN (select businessId from (  SELECT *,RANK"
                         + " () OVER (PARTITION BY businessId ORDER BY createdtime  DESC) rank_number  FROM eg_wf_processinstance_v2"
-                        + "  WHERE  tenantid = ?  AND  businessservice = ? ) wf  WHERE rank_number = 1 AND wf.escalated = true )"
+                        + "  WHERE  tenantid = ?  AND  businessservice = ? ) wf  WHERE rank_number = 1 AND wf.escalated = true AND wf.isActive = true )"
                         + " ) final WHERE outer_rank = 2 ",
                 workflowQueryBuilder.getAutoEscalatedApplicationsFinalQuery(requestInfo, processInstanceSearchCriteria,
                         objectList));
@@ -7517,9 +7517,9 @@ class WorkflowQueryBuilderTest {
         assertEquals(
                 "SELECT businessid from ( SELECT wf.* , assg.assignee AS asg,  DENSE_RANK() OVER(PARTITION BY wf.businessid"
                         + " ORDER BY wf.createdtime DESC) outer_rank  FROM eg_wf_processinstance_v2 wf LEFT OUTER JOIN eg_wf_assignee_v2"
-                        + " assg ON wf.id = assg.processinstanceid WHERE wf.businessid IN (select businessId from (  SELECT *,RANK"
+                        + " assg ON wf.id = assg.processinstanceid WHERE wf.isActive = true AND wf.businessid IN (select businessId from (  SELECT *,RANK"
                         + " () OVER (PARTITION BY businessId ORDER BY createdtime  DESC) rank_number  FROM eg_wf_processinstance_v2"
-                        + "  WHERE  tenantid = ? ) wf  WHERE rank_number = 1 AND wf.escalated = true ) ) final WHERE outer_rank"
+                        + "  WHERE  tenantid = ? ) wf  WHERE rank_number = 1 AND wf.escalated = true AND wf.isActive = true ) ) final WHERE outer_rank"
                         + " = 2  OFFSET ?  LIMIT ? ",
                 workflowQueryBuilder.getAutoEscalatedApplicationsFinalQuery(requestInfo, processInstanceSearchCriteria,
                         objectList));
@@ -7609,9 +7609,9 @@ class WorkflowQueryBuilderTest {
         assertEquals(
                 "SELECT businessid from ( SELECT wf.* , assg.assignee AS asg,  DENSE_RANK() OVER(PARTITION BY wf.businessid"
                         + " ORDER BY wf.createdtime DESC) outer_rank  FROM eg_wf_processinstance_v2 wf LEFT OUTER JOIN eg_wf_assignee_v2"
-                        + " assg ON wf.id = assg.processinstanceid WHERE wf.businessid IN (select businessId from (  SELECT *,RANK"
+                        + " assg ON wf.id = assg.processinstanceid WHERE wf.isActive = true AND wf.businessid IN (select businessId from (  SELECT *,RANK"
                         + " () OVER (PARTITION BY businessId ORDER BY createdtime  DESC) rank_number  FROM eg_wf_processinstance_v2"
-                        + "  WHERE  businessservice = ? ) wf  WHERE rank_number = 1 AND wf.escalated = true ) ) final WHERE"
+                        + "  WHERE  businessservice = ? ) wf  WHERE rank_number = 1 AND wf.escalated = true AND wf.isActive = true ) ) final WHERE"
                         + " outer_rank = 2  OFFSET ?  LIMIT ? ",
                 workflowQueryBuilder.getAutoEscalatedApplicationsFinalQuery(requestInfo, processInstanceSearchCriteria,
                         objectList));
@@ -7672,9 +7672,9 @@ class WorkflowQueryBuilderTest {
         assertEquals(
                 "SELECT wf.* , assg.assignee AS asg,  DENSE_RANK() OVER(PARTITION BY wf.businessid ORDER BY wf.createdtime"
                         + " DESC) outer_rank  FROM eg_wf_processinstance_v2 wf LEFT OUTER JOIN eg_wf_assignee_v2 assg ON wf.id ="
-                        + " assg.processinstanceid WHERE wf.businessid IN (select businessId from (  SELECT *,RANK () OVER"
+                        + " assg.processinstanceid WHERE wf.isActive = true AND wf.businessid IN (select businessId from (  SELECT *,RANK () OVER"
                         + " (PARTITION BY businessId ORDER BY createdtime  DESC) rank_number  FROM eg_wf_processinstance_v2  WHERE"
-                        + "  tenantid = ?  AND  businessservice = ? ) wf  WHERE rank_number = 1 AND wf.escalated = true )",
+                        + "  tenantid = ?  AND  businessservice = ? ) wf  WHERE rank_number = 1 AND wf.escalated = true AND wf.isActive = true )",
                 workflowQueryBuilder.getAutoEscalatedApplicationsRankedQuery(processInstanceSearchCriteria, objectList));
         assertEquals(2, objectList.size());
     }
@@ -7728,9 +7728,9 @@ class WorkflowQueryBuilderTest {
         assertEquals(
                 "SELECT wf.* , assg.assignee AS asg,  DENSE_RANK() OVER(PARTITION BY wf.businessid ORDER BY wf.createdtime"
                         + " DESC) outer_rank  FROM eg_wf_processinstance_v2 wf LEFT OUTER JOIN eg_wf_assignee_v2 assg ON wf.id ="
-                        + " assg.processinstanceid WHERE wf.businessid IN (select businessId from (  SELECT *,RANK () OVER"
+                        + " assg.processinstanceid WHERE wf.isActive = true AND wf.businessid IN (select businessId from (  SELECT *,RANK () OVER"
                         + " (PARTITION BY businessId ORDER BY createdtime  DESC) rank_number  FROM eg_wf_processinstance_v2  WHERE"
-                        + "  tenantid = ?  AND  businessservice = ? ) wf  WHERE rank_number = 1 AND wf.escalated = true )",
+                        + "  tenantid = ?  AND  businessservice = ? ) wf  WHERE rank_number = 1 AND wf.escalated = true AND wf.isActive = true )",
                 workflowQueryBuilder.getAutoEscalatedApplicationsRankedQuery(processInstanceSearchCriteria, objectList));
         verify(processInstanceSearchCriteria, atLeast(1)).getBusinessService();
         verify(processInstanceSearchCriteria, atLeast(1)).getTenantId();
@@ -7810,10 +7810,10 @@ class WorkflowQueryBuilderTest {
         assertEquals(
                 "SELECT wf.* , assg.assignee AS asg,  DENSE_RANK() OVER(PARTITION BY wf.businessid ORDER BY wf.createdtime"
                         + " DESC) outer_rank  FROM eg_wf_processinstance_v2 wf LEFT OUTER JOIN eg_wf_assignee_v2 assg ON wf.id ="
-                        + " assg.processinstanceid WHERE wf.businessid IN (select businessId from (  SELECT *,RANK () OVER"
+                        + " assg.processinstanceid WHERE wf.isActive = true AND wf.businessid IN (select businessId from (  SELECT *,RANK () OVER"
                         + " (PARTITION BY businessId ORDER BY createdtime  DESC) rank_number  FROM eg_wf_processinstance_v2  WHERE"
                         + "  tenantid = ?  and businessId IN (  ?) AND  businessservice = ? ) wf  WHERE rank_number = 1 AND"
-                        + " wf.escalated = true )",
+                        + " wf.escalated = true AND wf.isActive = true )",
                 workflowQueryBuilder.getAutoEscalatedApplicationsRankedQuery(processInstanceSearchCriteria, objectList));
         verify(processInstanceSearchCriteria, atLeast(1)).getBusinessService();
         verify(processInstanceSearchCriteria, atLeast(1)).getTenantId();
@@ -7895,10 +7895,10 @@ class WorkflowQueryBuilderTest {
         assertEquals(
                 "SELECT wf.* , assg.assignee AS asg,  DENSE_RANK() OVER(PARTITION BY wf.businessid ORDER BY wf.createdtime"
                         + " DESC) outer_rank  FROM eg_wf_processinstance_v2 wf LEFT OUTER JOIN eg_wf_assignee_v2 assg ON wf.id ="
-                        + " assg.processinstanceid WHERE wf.businessid IN (select businessId from (  SELECT *,RANK () OVER"
+                        + " assg.processinstanceid WHERE wf.isActive = true AND wf.businessid IN (select businessId from (  SELECT *,RANK () OVER"
                         + " (PARTITION BY businessId ORDER BY createdtime  DESC) rank_number  FROM eg_wf_processinstance_v2  WHERE"
                         + "  tenantid = ?  and businessId IN (  ?, ?) AND  businessservice = ? ) wf  WHERE rank_number = 1 AND"
-                        + " wf.escalated = true )",
+                        + " wf.escalated = true AND wf.isActive = true )",
                 workflowQueryBuilder.getAutoEscalatedApplicationsRankedQuery(processInstanceSearchCriteria, objectList));
         verify(processInstanceSearchCriteria, atLeast(1)).getBusinessService();
         verify(processInstanceSearchCriteria, atLeast(1)).getTenantId();
@@ -7953,7 +7953,7 @@ class WorkflowQueryBuilderTest {
         assertEquals(
                 "select businessId from (  SELECT *,RANK () OVER (PARTITION BY businessId ORDER BY createdtime  DESC)"
                         + " rank_number  FROM eg_wf_processinstance_v2  WHERE  tenantid = ?  AND  businessservice = ? ) wf  WHERE"
-                        + " rank_number = 1 AND wf.escalated = true ",
+                        + " rank_number = 1 AND wf.escalated = true AND wf.isActive = true ",
                 workflowQueryBuilder.getAutoEscalatedApplicationsBusinessIdsQuery(processInstanceSearchCriteria, objectList));
         assertEquals(2, objectList.size());
     }
@@ -8007,7 +8007,7 @@ class WorkflowQueryBuilderTest {
         assertEquals(
                 "select businessId from (  SELECT *,RANK () OVER (PARTITION BY businessId ORDER BY createdtime  DESC)"
                         + " rank_number  FROM eg_wf_processinstance_v2  WHERE  tenantid = ?  AND  businessservice = ? ) wf  WHERE"
-                        + " rank_number = 1 AND wf.escalated = true ",
+                        + " rank_number = 1 AND wf.escalated = true AND wf.isActive = true ",
                 workflowQueryBuilder.getAutoEscalatedApplicationsBusinessIdsQuery(processInstanceSearchCriteria, objectList));
         verify(processInstanceSearchCriteria, atLeast(1)).getBusinessService();
         verify(processInstanceSearchCriteria, atLeast(1)).getTenantId();
@@ -8086,7 +8086,7 @@ class WorkflowQueryBuilderTest {
         assertEquals(
                 "select businessId from (  SELECT *,RANK () OVER (PARTITION BY businessId ORDER BY createdtime  DESC)"
                         + " rank_number  FROM eg_wf_processinstance_v2  WHERE  tenantid = ?  and businessId IN (  ?) AND "
-                        + " businessservice = ? ) wf  WHERE rank_number = 1 AND wf.escalated = true ",
+                        + " businessservice = ? ) wf  WHERE rank_number = 1 AND wf.escalated = true AND wf.isActive = true ",
                 workflowQueryBuilder.getAutoEscalatedApplicationsBusinessIdsQuery(processInstanceSearchCriteria, objectList));
         verify(processInstanceSearchCriteria, atLeast(1)).getBusinessService();
         verify(processInstanceSearchCriteria, atLeast(1)).getTenantId();
@@ -8170,7 +8170,7 @@ class WorkflowQueryBuilderTest {
         assertEquals(
                 "select businessId from (  SELECT *,RANK () OVER (PARTITION BY businessId ORDER BY createdtime  DESC)"
                         + " rank_number  FROM eg_wf_processinstance_v2  WHERE  tenantid = ?  and businessId IN (  ?, ?) AND "
-                        + " businessservice = ? ) wf  WHERE rank_number = 1 AND wf.escalated = true ",
+                        + " businessservice = ? ) wf  WHERE rank_number = 1 AND wf.escalated = true AND wf.isActive = true ",
                 workflowQueryBuilder.getAutoEscalatedApplicationsBusinessIdsQuery(processInstanceSearchCriteria, objectList));
         verify(processInstanceSearchCriteria, atLeast(1)).getBusinessService();
         verify(processInstanceSearchCriteria, atLeast(1)).getTenantId();

@@ -189,10 +189,6 @@ const UploadFile = (props) => {
   useEffect(() => handleChange(), [props.message]);
 
   const showHint = props?.showHint || false;
-  const styles = {
-    ...props?.textStyles,
-    color: "rgba(207,98,55,255)",
-  };
 
   return (
     <Fragment>
@@ -260,21 +256,28 @@ const UploadFile = (props) => {
               minHeight: "0px",
               height: "35px",
               backgroundColor: "transparent",
-              border: "2px solid rgba(207,98,55,255)",
-              color: "rgba(207,98,55,255)",
+              border: "2px solid rgb(134,42,42)",
+              color: "rgb(134,42,42)",
               boxShadow: "none",
               fontSize: "16px",
               fontWeight: 550,
               cursor: "pointer",
             }}
-            textStyles={styles}
             type={props.buttonType}
             onClick={() => {
               inputRef.current.click();
             }}
           >
-            <div style={{ display: "flex", width: "100%", height: "100%", justifyContent: "space-evenly", alignItems: "center" }}>
-              <UploadIconOrange styles={{ height: "25px", width: "25px", color: "rgba(207,98,55,255)" }} />
+            <div style={{
+              display: "flex",
+              width: "100%",
+              height: "100%",
+              justifyContent: "center",
+              alignItems: "center",
+              color: "#fff",
+              backgroundColor: "rgb(134,42,42)"
+            }}>
+              <UploadIconOrange styles={{ height: "20px", width: "20px", color: "#fff" }} />
               {t("CS_UPLOAD_BUTTON")}
             </div>
           </div>

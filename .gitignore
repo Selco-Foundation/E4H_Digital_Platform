@@ -28,3 +28,8 @@ replay_pid*
 .classpath
 .settings
 .project
+
+# Python
+
+.venv
+__pycache__

@@ -375,7 +375,7 @@ const HamburgerIcon = ({ className, styles, color = "#fdfdfd" }) => (
 );
 
 export const HomeIcon = ({ className, styles }) => (
-  <svg className={className} viewBox="0 0 24 24" style={{ ...styles }}>
+  <svg className={className} width="20" height="20" viewBox="0 0 20 20" style={{ ...styles }}>
     <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"></path>
   </svg>
 );
@@ -1093,25 +1093,25 @@ const UploadIcon = ({ styles, className, fill = "white", height = "64", width = 
   </svg>
 );
 
-const UploadIconOrange = ({ styles, className, fill = "rgba(207,98,55,255)", height = "64", width = "64" }) => (
+const UploadIconOrange = ({ styles, className, height = "64", width = "64" }) => (
   <svg
     style={{ ...styles }}
     className={className}
     width={width}
     height={height}
     viewBox="0 0 64 64"
-    fill="rgba(207,98,55,255)"
+    fill="#fff"
     xmlns="http://www.w3.org/2000/svg"
   >
     <g clip-path="url(#clip0_431_5084)">
       <path
         d="M24.0007 42.6667H40.0007V26.6667H50.6673L32.0007 8L13.334 26.6667H24.0007V42.6667ZM13.334 48H50.6673V53.3333H13.334V48Z"
-        fill="rgba(207,98,55,255)"
+        fill="#fff"
       />
     </g>
     <defs>
       <clipPath id="clip0_431_5084">
-        <rect width={width} height={height} fill={"rgba(207,98,55,255)"} />
+        <rect width={width} height={height} fill={"#fff"} />
       </clipPath>
     </defs>
   </svg>

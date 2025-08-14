@@ -11,6 +11,7 @@ cp workbench/App.js src
 cp workbench/package.json package.json 
 cp workbench/webpack.config.js webpack.config.js 
 cp workbench/inter-package.json $INTERNALS/package.json
+cp workbench/index.html public/index.html
 
 cp $INTERNALS/example/src/UICustomizations.js src/Customisations
 

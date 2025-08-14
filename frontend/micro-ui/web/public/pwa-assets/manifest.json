@@ -1,0 +1,37 @@
+{
+  "display_override": [
+    "window-controls-overlay"
+  ],
+  "name": "Saura-eMitra",
+  "short_name": "Saura-eMitra",
+  "start_url": ".",
+  "display": "standalone",
+  "description": "Saura-eMitra digital platform for citizen services and government operations, running in https mode.",
+  "lang": "en",
+  "dir": "auto",
+  "theme_color": "#000000",
+  "background_color": "#000000",
+  "orientation": "any",
+  "screenshots": [
+    {
+      "src": "Screenshot-Saura-eMitra-Home.png",
+      "sizes": "1895x856",
+      "type": "image/png",
+      "description": "A screenshot of the home page"
+    }
+  ],
+  "icons": [
+    {
+      "src": "Icon_black.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "monochrome"
+    },
+    {
+      "src": "Icon_twoclr-cropped.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

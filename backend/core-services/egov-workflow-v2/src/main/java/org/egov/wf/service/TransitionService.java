@@ -72,12 +72,15 @@ public class TransitionService {
 
 
             if(currentState==null){
-                    for(State state : businessService.getStates()){
-                        if(StringUtils.isEmpty(state.getState())){
-                            processStateAndAction.setCurrentState(state);
-                            break;
-                        }
+                for (State state : businessService.getStates()) {
+                    if(StringUtils.isEmpty(state.getState())) {
+                        processStateAndAction.setCurrentState(state);
+                        break;
                     }
+                }
+                if (processStateAndAction.getCurrentState() == null) {
+                    throw new CustomException("START_STATE_NOT_FOUND", "No start state found in business service config");
+                }
             }
             else processStateAndAction.setCurrentState(currentState);
 
@@ -160,18 +163,13 @@ public class TransitionService {
         String tenantId = processInstances.get(0).getTenantId();
         pInsSearchCriteria.setTenantId(tenantId);
         pInsSearchCriteria.setBusinessIds(Collections.singletonList(processInstances.get(0).getBusinessId()));
-
         List<ProcessInstance> fetchedProcessInstances = repository.getProcessInstances(pInsSearchCriteria);
         
         BusinessServiceSearchCriteria criteria = new BusinessServiceSearchCriteria();
         String businessService = processInstances.get(0).getBusinessService();
         if (fetchedProcessInstances.size()>0) {
-
-                    businessService = fetchedProcessInstances.get(0).getBusinessService();
-                    processInstances.get(0).setBusinessService(businessService);
-
-
-
+            businessService = fetchedProcessInstances.get(0).getBusinessService();
+            processInstances.get(0).setBusinessService(businessService);
         }
         criteria.setTenantId(tenantId);
         criteria.setBusinessServices(Collections.singletonList(businessService));
@@ -184,20 +182,4 @@ public class TransitionService {
                     businessService + " and tenantId: "+tenantId);
         return businessServices.get(0);
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 }

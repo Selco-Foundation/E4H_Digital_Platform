@@ -274,7 +274,7 @@ public class AssetValidator {
 
     private void validateWarranty(Asset asset, Map<String, String> errorMap, Object mdmsWarrantyDurationData) {
         if (mdmsWarrantyDurationData == null || !(mdmsWarrantyDurationData instanceof List) || ((List<?>) mdmsWarrantyDurationData).isEmpty()) {
-            errorMap.put(ErrorConstants.ASSET_WARRANTY_DURATION_MDMS_DATA_CODE, ErrorConstants.ASSET_WARRANTY_DURATION_MDMS_DATA_MSG);
+//            errorMap.put(ErrorConstants.ASSET_WARRANTY_DURATION_MDMS_DATA_CODE, ErrorConstants.ASSET_WARRANTY_DURATION_MDMS_DATA_MSG);
             return;
         }
 
@@ -362,5 +362,21 @@ public class AssetValidator {
             errorMap.put(ErrorConstants.ASSET_FACILITY_ID_VALIDATION_CODE, ErrorConstants.ASSET_FACILITY_ID_VALIDATION_MSG);
     }
 
-
+    public void validateAsset(String assetID, AssetCreateRequest body) {
+        Map<String, String> errorMap = new HashMap<>();
+        Asset asset = body.getAssetDetail().getAsset();
+        // Check if assetID matches the asset in the request
+        if (!assetID.equals(asset.getAssetId())) {
+            errorMap.put(ErrorConstants.ASSET_ID_MISMATCH_CODE, ErrorConstants.ASSET_ID_MISMATCH_MSG);
+        }
+        // Check if asset exists
+        List<Asset> existingAssets = assetService.searchAssets(
+            Asset.builder().assetId(assetID).tenantId(asset.getTenantId()).build(), 1, 0);
+        if (existingAssets == null || existingAssets.isEmpty()) {
+            errorMap.put(ErrorConstants.ASSET_NOT_FOUND_CODE, ErrorConstants.ASSET_NOT_FOUND_MSG);
+        }
+        if (!errorMap.isEmpty()) {
+            throw new CustomException(errorMap);
+        }
+    }
 }
