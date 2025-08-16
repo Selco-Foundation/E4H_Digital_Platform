@@ -58,7 +58,7 @@ public class ProjectWorkflowService {
     }
 
 
-     public List<ProcessInstance> getProcessInstanceById( String businessId, String tenantId, RequestInfo requestInfo) {
+     public ProcessInstance getProcessInstanceById( String businessId, String tenantId, RequestInfo requestInfo) {
         String url = config.getWfHost() + config.getWfSearchPath()
             + "?tenantId=" + tenantId
             + "&businessIds=" + businessId;
@@ -73,6 +73,6 @@ public class ProjectWorkflowService {
         ProcessInstanceResponse wfResponse = mapper.convertValue(response, ProcessInstanceResponse.class);
         return (wfResponse.getProcessInstances() == null || wfResponse.getProcessInstances().isEmpty())
             ? null
-            : wfResponse.getProcessInstances();
+            : wfResponse.getProcessInstances().get(0);
     }
 }
