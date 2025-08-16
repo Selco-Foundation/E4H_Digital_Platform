@@ -235,7 +235,7 @@ public class InboxServiceV2 {
             log.info("Query: {}", q);
         }
         catch (Exception e){
-            e.printStackTrace();
+            log.warn("Serialization error in debug logging", e);
         }
         StringBuilder uri = getURI(indexName, SEARCH_PATH);
         //Object result = serviceRequestRepository.fetchESResult(uri, finalQueryBody);
