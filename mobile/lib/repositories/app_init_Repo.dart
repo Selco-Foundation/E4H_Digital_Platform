@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
+import 'package:selco/model/solution_design_type/solution_design_type.dart';
 
 import '../data/remote_client.dart';
 import '../data/secure_storage/secureStore.dart';
@@ -311,6 +312,59 @@ class AppInitRepo {
           .toList();
 
       await storage.setBrand(result);
+      return result;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<List<Mdms<SolutionDesignType>>> searchSolutionDesign(
+      MdmsRequestModel mdmsRequestBody) async {
+    final body = mdmsRequestBody.toJson();
+
+    final SecureStore storage = SecureStore();
+
+    // try to fetch locally
+    String? localSolutionDesign = await storage.getBrand();
+    if (localSolutionDesign != null) {
+      final List<dynamic> decodedList =
+          json.decode(localSolutionDesign) as List<dynamic>;
+      return decodedList
+          .map((item) => Mdms<SolutionDesignType>.fromJson(
+                item as Map<String, dynamic>,
+                (json) =>
+                    SolutionDesignType.fromJson(json as Map<String, dynamic>),
+              ))
+          .toList();
+    }
+
+    if (envConfig.variables.envType == EnvType.dev) {
+      return _loadLocalMdms<SolutionDesignType>(
+        'assets/mocks/mockSolutionDesignType.json',
+        (json) => SolutionDesignType.fromJson(json),
+      );
+    }
+
+    final client = DioClient().dio;
+    final headers = <String, String>{
+      "Access-Control-Allow-Origin": "*",
+      "authorization": "Basic ZWdvdi11c2VyLWNsaWVudDo=",
+    };
+
+    try {
+      final response = await client.post("egov-mdms-service/v2/_search",
+          data: body, options: Options(headers: headers));
+
+      final List<dynamic> payloadList = response.data['mdms'] as List<dynamic>;
+      final List<Mdms<SolutionDesignType>> result = payloadList
+          .map((item) => Mdms<SolutionDesignType>.fromJson(
+                item as Map<String, dynamic>,
+                (json) =>
+                    SolutionDesignType.fromJson(json as Map<String, dynamic>),
+              ))
+          .toList();
+
+      await storage.setSolutionDesignType(result);
       return result;
     } catch (e) {
       rethrow;
