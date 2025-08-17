@@ -1,13 +1,14 @@
 import 'dart:convert';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import '../../model/asset_count/asset_count.dart';
-import '../../model/mdms/mdms.dart';
+import 'package:selco/model/solution_design_type/solution_design_type.dart';
 
 import '../../model/appconfig/mdmsResponse.dart';
+import '../../model/asset_count/asset_count.dart';
 import '../../model/asset_type/asset_type.dart';
 import '../../model/brand/brand.dart';
 import '../../model/localization/localizationModel.dart';
+import '../../model/mdms/mdms.dart';
 import '../../model/response/responsemodel.dart';
 import '../../model/role_actions/role_actions_model.dart';
 import '../../model/system/system.dart';
@@ -95,69 +96,17 @@ class SecureStore {
     return await storage.read(key: 'brand');
   }
 
-  // Future<void> addToDraftProjects(ProjectWorkflow project) async {
-  //   final jsonString = await storage.read(key: "draft_projects");
-  //   List<ProjectWorkflow> currentList = [];
-  //
-  //   if (jsonString != null && jsonString.isNotEmpty) {
-  //     try {
-  //       final List<dynamic> decoded = json.decode(jsonString);
-  //       currentList = decoded
-  //           .map((item) =>
-  //               ProjectWorkflow.fromJson(item as Map<String, dynamic>))
-  //           .toList();
-  //     } catch (_) {
-  //       currentList = [];
-  //     }
-  //   }
-  //
-  //   currentList.removeWhere((p) => p.project.id == project.project.id);
-  //   currentList.add(project);
-  //
-  //   await storage.write(
-  //     key: "draft_projects",
-  //     value: json.encode(currentList.map((p) => p.toJson()).toList()),
-  //   );
-  // }
-  //
-  // Future<List<ProjectWorkflow>> getDraftProjects() async {
-  //   final jsonString = await storage.read(key: "draft_projects");
-  //   if (jsonString == null || jsonString.isEmpty) return [];
-  //
-  //   try {
-  //     final List<dynamic> decoded = json.decode(jsonString);
-  //     return decoded
-  //         .map((item) => ProjectWorkflow.fromJson(item as Map<String, dynamic>))
-  //         .toList();
-  //   } catch (_) {
-  //     return [];
-  //   }
-  // }
-  //
-  // Future<void> deleteDraftProject(String projectId) async {
-  //   final jsonString = await storage.read(key: "draft_projects");
-  //   if (jsonString == null || jsonString.isEmpty) return;
-  //
-  //   try {
-  //     final List<dynamic> decoded = json.decode(jsonString);
-  //     final List<ProjectModel> currentList = decoded
-  //         .map((item) =>
-  //             ProjectModelMapper.fromMap(item as Map<String, dynamic>))
-  //         .toList();
-  //
-  //     currentList.removeWhere((p) => p.id == projectId);
-  //
-  //     if (currentList.isEmpty) {
-  //       await storage.write(key: "draft_projects", value: '');
-  //     } else {
-  //       final updatedList = currentList.map((p) => p.toMap()).toList();
-  //       await storage.write(
-  //           key: "draft_projects", value: json.encode(updatedList));
-  //     }
-  //   } catch (_) {
-  //     await storage.write(key: "draft_projects", value: '');
-  //   }
-  // }
+  //SolutionDesignType
+  Future setSolutionDesignType(List<Mdms<SolutionDesignType>> list) async {
+    final List<Map<String, dynamic>> jsonList = list
+        .map((mdms) => mdms.toJson((solutionDesign) => solutionDesign.toJson()))
+        .toList();
+    await storage.write(key: 'solutionDesign', value: json.encode(jsonList));
+  }
+
+  Future<String?> getSolutionDesignType() async {
+    return await storage.read(key: 'solutionDesign');
+  }
 
   //access token
   Future setAccessToken(String? accessToken) async {

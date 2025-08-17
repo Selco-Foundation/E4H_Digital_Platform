@@ -131,8 +131,8 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
 
       context.read<AppInitialization>().state.maybeWhen(
             orElse: () => [],
-            initialized:
-                (appConfig, assetCount, assetType, system, warranty, brand) {
+            initialized: (appConfig, assetCount, assetType, system, warranty,
+                brand, solutionDesign) {
               assetTypeList = assetType
                   .map((at) => at.data)
                   .where((at) =>
