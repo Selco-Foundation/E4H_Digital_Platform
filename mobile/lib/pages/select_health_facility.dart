@@ -1,3 +1,4 @@
+import 'package:collection/collection.dart';
 import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/models/RadioButtonModel.dart';
 import 'package:digit_ui_components/theme/TextTheme/digit_text_theme.dart';
@@ -10,12 +11,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
+import '../blocs/app_init/app_init.dart';
 import '../blocs/cache_project_asset/cache_project_asset.dart';
 import '../blocs/project/project.dart';
 import '../blocs/selected_project/selected_project.dart';
 import '../blocs/user_type/user_type.dart';
 import '../data/nosql/cache_project_asset.dart';
+import '../model/mdms/mdms.dart';
 import '../model/project_workflow/project_workflow.dart';
+import '../model/solution_design_type/solution_design_type.dart';
 import '../router/app_router.dart';
 import '../utils/utils.dart';
 import '../widgets/header/back_navigation_help_header.dart';
@@ -201,15 +205,14 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
         children: [
           for (final project in projects) ...[
             InstallationReportCard(
-              onPress: () => _handleProjectTap(project),
-              projectId: project.project.id,
-              title: project.project.name ?? '—',
-              dateAssigned: project.project.startDateTime ?? DateTime.now(),
-              status: project.status ?? '—',
-              solutionDocPath: project.project.additionalDetails?.facility
-                      ?.facilityDetails?.solar_solution_design_type ??
-                  'hhggggfff',
-            ),
+                onPress: () => _handleProjectTap(project),
+                projectId: project.project.id,
+                title: project.project.name ?? '—',
+                dateAssigned: project.project.startDateTime ?? DateTime.now(),
+                status: project.status ?? '—',
+                systemDesignCode: project.project.additionalDetails?.facility
+                        ?.facilityDetails?.solar_solution_design_type ??
+                    ''),
             const SizedBox(height: spacer5),
           ],
         ],
@@ -294,7 +297,7 @@ class InstallationReportCard extends StatelessWidget {
   final String? title;
   final String? status;
   final DateTime dateAssigned;
-  final String? solutionDocPath;
+  final String? systemDesignCode;
   final Function() onPress;
 
   const InstallationReportCard({
@@ -303,7 +306,7 @@ class InstallationReportCard extends StatelessWidget {
     this.title,
     this.status,
     required this.dateAssigned,
-    this.solutionDocPath,
+    this.systemDesignCode,
     required this.onPress,
   });
 
@@ -315,140 +318,170 @@ class InstallationReportCard extends StatelessWidget {
 
     final fraction = calculateProjectProgressFraction(context, projectId!);
 
-    return DigitCard(
-      children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return BlocBuilder<AppInitialization, InitState>(
+      builder: (context, initState) {
+        final List<Mdms<SolutionDesignType>> solutionDesignList =
+            initState.maybeWhen(
+                orElse: () => <Mdms<SolutionDesignType>>[],
+                initialized: (appConfig, assetCount, assetType, system,
+                        warranty, brand, solutionDesign) =>
+                    solutionDesign);
+
+        final code = systemDesignCode ?? '';
+
+        final matchedSystemDesign =
+            solutionDesignList.firstWhereOrNull((e) => e.data.code == code);
+
+        final solutionDocsUrl = matchedSystemDesign?.data.url ?? '';
+
+        print("solutionDocsUrl $projectId $solutionDocsUrl");
+
+        return DigitCard(
           children: [
-            Text(
-              "$title",
-              style: textTheme.headingL.copyWith(
-                color: theme.colorTheme.text.primary,
-              ),
-            ),
-            const SizedBox(height: spacer4),
-            const DigitDivider(dividerType: DividerType.small),
-            Row(
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  flex: 2,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: spacer4),
-                      Text(
-                        'Status',
-                        style: textTheme.headingS
-                            .copyWith(color: theme.colorTheme.text.primary),
-                      ),
-                      const SizedBox(height: spacer4),
-                      Text(
-                        'Date Assigned',
-                        style: textTheme.headingS
-                            .copyWith(color: theme.colorTheme.text.primary),
-                      ),
-                      const SizedBox(height: spacer4),
-                      Text(
-                        'Solution Doc',
-                        style: textTheme.headingS
-                            .copyWith(color: theme.colorTheme.text.primary),
-                      )
-                    ],
+                Text(
+                  "$title",
+                  style: textTheme.headingL.copyWith(
+                    color: theme.colorTheme.text.primary,
                   ),
                 ),
-                const SizedBox(width: spacer12),
-                Expanded(
-                  flex: 3,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: spacer4),
-                      Text(
-                        '$status',
-                        style: textTheme.bodyL.copyWith(
-                          color: theme.colorTheme.text.primary,
-                        ),
-                        softWrap: true,
-                        overflow: TextOverflow.visible,
-                      ),
-                      const SizedBox(height: spacer4),
-                      Text(
-                        formattedDate,
-                        style: textTheme.bodyL.copyWith(
-                          color: theme.colorTheme.text.primary,
-                        ),
-                      ),
-                      const SizedBox(height: spacer4),
-                      Row(
+                const SizedBox(height: spacer4),
+                const DigitDivider(dividerType: DividerType.small),
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 2,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(
-                            Icons.picture_as_pdf,
-                            color: theme.colorTheme.primary.primary1,
+                          const SizedBox(height: spacer4),
+                          Text(
+                            'Status',
+                            style: textTheme.headingS
+                                .copyWith(color: theme.colorTheme.text.primary),
                           ),
-                          const SizedBox(width: spacer1),
-                          Expanded(
-                            child: Text(
-                              '$solutionDocPath',
-                              style: textTheme.bodyL.copyWith(
-                                color: theme.colorTheme.text.disabled,
-                                fontSize: spacer3,
-                              ),
-                              softWrap: true,
-                              overflow: TextOverflow.visible,
+                          const SizedBox(height: spacer4),
+                          Text(
+                            'Date Assigned',
+                            style: textTheme.headingS
+                                .copyWith(color: theme.colorTheme.text.primary),
+                          ),
+                          const SizedBox(height: spacer4),
+                          Text(
+                            'Solution Doc',
+                            style: textTheme.headingS
+                                .copyWith(color: theme.colorTheme.text.primary),
+                          )
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: spacer12),
+                    Expanded(
+                      flex: 3,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: spacer4),
+                          Text(
+                            '$status',
+                            style: textTheme.bodyL.copyWith(
+                              color: theme.colorTheme.text.primary,
+                            ),
+                            softWrap: true,
+                            overflow: TextOverflow.visible,
+                          ),
+                          const SizedBox(height: spacer4),
+                          Text(
+                            formattedDate,
+                            style: textTheme.bodyL.copyWith(
+                              color: theme.colorTheme.text.primary,
                             ),
                           ),
+                          const SizedBox(height: spacer4),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.picture_as_pdf,
+                                color: theme.colorTheme.primary.primary1,
+                              ),
+                              const SizedBox(width: spacer1),
+                              Expanded(
+                                child: GestureDetector(
+                                  onTap: () {
+                                    if (solutionDocsUrl != null &&
+                                        solutionDocsUrl!.isNotEmpty) {
+                                      context.router.push(PdfViewerRoute(
+                                          path:
+                                              "$fileStoreFileUrl$solutionDocsUrl"));
+                                    }
+                                  },
+                                  child: Text(
+                                    "$solutionDocsUrl",
+                                    style: textTheme.bodyL.copyWith(
+                                      color: theme.colorTheme.text.disabled,
+                                      fontSize: spacer3,
+                                    ),
+                                    softWrap: true,
+                                    overflow: TextOverflow.visible,
+                                  ),
+                                ),
+                              )
+                            ],
+                          )
                         ],
+                      ),
+                    ),
+                  ],
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: spacer4),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        child: LinearProgressIndicator(
+                          borderRadius: BorderRadius.circular(spacer1),
+                          backgroundColor: theme.colorTheme.generic.background,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            theme.colorTheme.alert.success,
+                          ),
+                          value: fraction,
+                          minHeight: spacer3,
+                        ),
+                      ),
+                      const SizedBox(width: spacer3),
+                      Text(
+                        '${(fraction * 100).round()}%',
+                        style: textTheme.bodyS.copyWith(
+                          color: theme.colorTheme.text.secondary,
+                        ),
                       )
                     ],
                   ),
                 ),
+                DigitButton(
+                  mainAxisSize: MainAxisSize.max,
+                  label: 'Start Installation Report',
+                  onPressed: onPress,
+                  type: DigitButtonType.primary,
+                  size: DigitButtonSize.large,
+                ),
+                const SizedBox(height: spacer4),
+                DigitButton(
+                  mainAxisSize: MainAxisSize.max,
+                  label: 'Submit For Approval',
+                  onPressed: () {},
+                  isDisabled: true,
+                  type: DigitButtonType.secondary,
+                  size: DigitButtonSize.large,
+                ),
               ],
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: spacer4),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Expanded(
-                    child: LinearProgressIndicator(
-                      borderRadius: BorderRadius.circular(spacer1),
-                      backgroundColor: theme.colorTheme.generic.background,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        theme.colorTheme.alert.success,
-                      ),
-                      value: fraction,
-                      minHeight: spacer3,
-                    ),
-                  ),
-                  const SizedBox(width: spacer3),
-                  Text(
-                    '${(fraction * 100).round()}%',
-                    style: textTheme.bodyS.copyWith(
-                      color: theme.colorTheme.text.secondary,
-                    ),
-                  )
-                ],
-              ),
-            ),
-            DigitButton(
-              mainAxisSize: MainAxisSize.max,
-              label: 'Start Installation Report',
-              onPressed: onPress,
-              type: DigitButtonType.primary,
-              size: DigitButtonSize.large,
-            ),
-            const SizedBox(height: spacer4),
-            DigitButton(
-              mainAxisSize: MainAxisSize.max,
-              label: 'Submit For Approval',
-              onPressed: () {},
-              isDisabled: true,
-              type: DigitButtonType.secondary,
-              size: DigitButtonSize.large,
-            ),
+            )
           ],
-        )
-      ],
+        );
+      },
     );
   }
 }

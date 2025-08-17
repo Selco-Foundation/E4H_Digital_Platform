@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:selco/model/solution_design_type/solution_design_type.dart';
 
 import '../../model/appconfig/mdmsRequest.dart';
 import '../../model/appconfig/mdmsResponse.dart';
@@ -91,6 +92,15 @@ class AppInitialization extends Bloc<InitEvent, InitState> {
       )));
       final brandList = brand ?? [];
 
+      final solutionDesign =
+          await appInitRepo.searchSolutionDesign(MdmsRequestModel(
+              mdmsCriteria: MdmsCriteriaModel(
+        tenantId: envConfig.variables.tenantId,
+        schemaCode: "asset.SolutionDesignType",
+        moduleDetails: [],
+      )));
+      final solutionDesignList = solutionDesign ?? [];
+
       //go to the initialized state once configuration details are fetched
       emit(InitState.initialized(
         appConfig: appConfig,
@@ -99,6 +109,7 @@ class AppInitialization extends Bloc<InitEvent, InitState> {
         system: systemList,
         warranty: warrantyList,
         brand: brandList,
+        solutionDesign: solutionDesignList,
       ));
     } catch (err) {
       rethrow;
@@ -122,5 +133,6 @@ class InitState with _$InitState {
     required List<Mdms<System>> system,
     required List<Mdms<Warranty>> warranty,
     required List<Mdms<Brand>> brand,
+    required List<Mdms<SolutionDesignType>> solutionDesign,
   }) = Initialized;
 }

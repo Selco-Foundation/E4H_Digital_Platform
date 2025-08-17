@@ -86,15 +86,6 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
     });
   }
 
-  // void handleUpload(PlatformFile platformFile) async {
-  //   final file = File(platformFile.path!);
-  //   final copiedPath = await copyFileToLocalDir(file);
-  //   setState(() {
-  //     filePath = copiedPath;
-  //   });
-  //   debugPrint("filePath: $filePath");
-  // }
-
   @override
   void dispose() {
     _locSub?.cancel();
@@ -104,7 +95,6 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
   Future<bool> _ensureLocationLoaded(
       {Duration timeout = const Duration(seconds: 10)}) async {
     final locBloc = context.read<LocationBloc>();
-    // If already have coords, return immediately
     if (locBloc.state.latitude != null && locBloc.state.longitude != null) {
       return true;
     }
@@ -200,7 +190,6 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
     final theme = Theme.of(context);
     final textTheme = theme.digitTextTheme(context);
 
-    /// Returns a human‑readable size, or '—' if the file is missing.
     String _displaySize() {
       if (filePath == null || filePath!.isEmpty) return '0 KB';
       final f = File(filePath!);
@@ -211,7 +200,6 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
     return BlocBuilder<UserTypeBloc, UserTypeState>(
       builder: (context, userState) {
         return Scaffold(
-          // We want to listen for success/failure from AssetSubmissionBloc
           body: BlocBuilder<ReportTypeBloc, ReportTypeState>(
             builder: (context, reportState) {
               bool isNewReport = reportState.maybeWhen(

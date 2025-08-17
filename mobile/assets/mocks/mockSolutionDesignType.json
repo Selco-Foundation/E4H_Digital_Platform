@@ -1,0 +1,232 @@
+{
+  "ResponseInfo": {
+    "apiId": null,
+    "ver": null,
+    "ts": null,
+    "resMsgId": "uief87324",
+    "msgId": null,
+    "status": "successful"
+  },
+  "mdms": [
+    {
+      "id": "fcb06252-3fab-4415-8e12-a98f9818e5a1",
+      "tenantId": "in",
+      "schemaCode": "asset.SolutionDesignType",
+      "uniqueIdentifier": "SC_NO_LR_FRIDGE_NO_CCP",
+      "data": {
+        "active": true,
+        "code": "SC_NO_LR_FRIDGE_NO_CCP",
+        "name": "SC - without labour room + Refrigerator & without cold chain point",
+        "url": "d9d2a1ef-e917-4a31-8f6f-81055d689bef",
+        "system_code": "AC_OFF_GRID"
+      },
+      "isActive": true,
+      "auditDetails": {
+        "createdBy": "0ab7b240-5092-4759-83a6-75f396a35a9b",
+        "lastModifiedBy": "0ab7b240-5092-4759-83a6-75f396a35a9b",
+        "createdTime": 1746790085338,
+        "lastModifiedTime": 1746790085338
+      }
+    },
+    {
+      "id": "fcb06252-3fab-4415-8e12-a98f9818e5a2",
+      "tenantId": "in",
+      "schemaCode": "asset.SolutionDesignType",
+      "uniqueIdentifier": "SC_LR_FRIDGE_NO_CCP",
+      "data": {
+        "active": true,
+        "code": "SC_LR_FRIDGE_NO_CCP",
+        "name": "SC - with labour room + Refrigerator & without cold chain point",
+        "url": "d9d2a1ef-e917-4a31-8f6f-81055d689bef",
+        "system_code": "AC_OFF_GRID"
+      },
+      "isActive": true,
+      "auditDetails": {
+        "createdBy": "0ab7b240-5092-4759-83a6-75f396a35a9b",
+        "lastModifiedBy": "0ab7b240-5092-4759-83a6-75f396a35a9b",
+        "createdTime": 1746790085338,
+        "lastModifiedTime": 1746790085338
+      }
+    },
+    {
+      "id": "fcb06252-3fab-4415-8e12-a98f9818e5a3",
+      "tenantId": "in",
+      "schemaCode": "asset.SolutionDesignType",
+      "uniqueIdentifier": "SC_LR_WITH_CCP",
+      "data": {
+        "active": true,
+        "code": "SC_LR_WITH_CCP",
+        "name": "SC - with Labour room with cold chain point",
+        "url": "d9d2a1ef-e917-4a31-8f6f-81055d689bef",
+        "system_code": "AC_OFF_GRID"
+      },
+      "isActive": true,
+      "auditDetails": {
+        "createdBy": "0ab7b240-5092-4759-83a6-75f396a35a9b",
+        "lastModifiedBy": "0ab7b240-5092-4759-83a6-75f396a35a9b",
+        "createdTime": 1746790085338,
+        "lastModifiedTime": 1746790085338
+      }
+    },
+    {
+      "id": "fcb06252-3fab-4415-8e12-a98f9818e5a4",
+      "tenantId": "in",
+      "schemaCode": "asset.SolutionDesignType",
+      "uniqueIdentifier": "PHC_NO_DELIVERY_NO_CCP",
+      "data": {
+        "active": true,
+        "code": "PHC_NO_DELIVERY_NO_CCP",
+        "name": "PHC Without Delivery Without Cold Chain",
+        "url": "d9d2a1ef-e917-4a31-8f6f-81055d689bef",
+        "system_code": "AC_OFF_GRID"
+      },
+      "isActive": true,
+      "auditDetails": {
+        "createdBy": "0ab7b240-5092-4759-83a6-75f396a35a9b",
+        "lastModifiedBy": "0ab7b240-5092-4759-83a6-75f396a35a9b",
+        "createdTime": 1746790085338,
+        "lastModifiedTime": 1746790085338
+      }
+    },
+    {
+      "id": "fcb06252-3fab-4415-8e12-a98f9818e5a5",
+      "tenantId": "in",
+      "schemaCode": "asset.SolutionDesignType",
+      "uniqueIdentifier": "PHC_DELIVERY_NO_CCP",
+      "data": {
+        "active": true,
+        "code": "PHC_DELIVERY_NO_CCP",
+        "name": "PHC With Delivery Without Cold Chain",
+        "url": "d9d2a1ef-e917-4a31-8f6f-81055d689bef",
+        "system_code": "AC_OFF_GRID"
+      },
+      "isActive": true,
+      "auditDetails": {
+        "createdBy": "0ab7b240-5092-4759-83a6-75f396a35a9b",
+        "lastModifiedBy": "0ab7b240-5092-4759-83a6-75f396a35a9b",
+        "createdTime": 1746790085338,
+        "lastModifiedTime": 1746790085338
+      }
+    },
+    {
+      "id": "fcb06252-3fab-4415-8e12-a98f9818e5a6",
+      "tenantId": "in",
+      "schemaCode": "asset.SolutionDesignType",
+      "uniqueIdentifier": "PHC_NO_DELIVERY_WITH_CCP",
+      "data": {
+        "active": true,
+        "code": "PHC_NO_DELIVERY_WITH_CCP",
+        "name": "PHC Without Delivery With Cold Chain",
+        "url": "d9d2a1ef-e917-4a31-8f6f-81055d689bef",
+        "system_code": "AC_OFF_GRID"
+      },
+      "isActive": true,
+      "auditDetails": {
+        "createdBy": "0ab7b240-5092-4759-83a6-75f396a35a9b",
+        "lastModifiedBy": "0ab7b240-5092-4759-83a6-75f396a35a9b",
+        "createdTime": 1746790085338,
+        "lastModifiedTime": 1746790085338
+      }
+    },
+    {
+      "id": "fcb06252-3fab-4415-8e12-a98f9818e5a7",
+      "tenantId": "in",
+      "schemaCode": "asset.SolutionDesignType",
+      "uniqueIdentifier": "PHC_DELIVERY_WITH_CCP",
+      "data": {
+        "active": true,
+        "code": "PHC_DELIVERY_WITH_CCP",
+        "name": "PHC With Delivery With Cold Chain",
+        "url": "d9d2a1ef-e917-4a31-8f6f-81055d689bef",
+        "system_code": "AC_OFF_GRID"
+      },
+      "isActive": true,
+      "auditDetails": {
+        "createdBy": "0ab7b240-5092-4759-83a6-75f396a35a9b",
+        "lastModifiedBy": "0ab7b240-5092-4759-83a6-75f396a35a9b",
+        "createdTime": 1746790085338,
+        "lastModifiedTime": 1746790085338
+      }
+    },
+    {
+      "id": "fcb06252-3fab-4415-8e12-a98f9818e5a8",
+      "tenantId": "in",
+      "schemaCode": "asset.SolutionDesignType",
+      "uniqueIdentifier": "PHC_DELIVERY_CCP_DENTAL",
+      "data": {
+        "active": true,
+        "code": "PHC_DELIVERY_CCP_DENTAL",
+        "name": "PHC With Delivery With Cold Chain and Dental Unit",
+        "url": "d9d2a1ef-e917-4a31-8f6f-81055d689bef",
+        "system_code": "AC_OFF_GRID"
+      },
+      "isActive": true,
+      "auditDetails": {
+        "createdBy": "0ab7b240-5092-4759-83a6-75f396a35a9b",
+        "lastModifiedBy": "0ab7b240-5092-4759-83a6-75f396a35a9b",
+        "createdTime": 1746790085338,
+        "lastModifiedTime": 1746790085338
+      }
+    },
+    {
+      "id": "fcb06252-3fab-4415-8e12-a98f9818e5a9",
+      "tenantId": "in",
+      "schemaCode": "asset.SolutionDesignType",
+      "uniqueIdentifier": "PHC_LAB_CCP_OR_LR",
+      "data": {
+        "active": true,
+        "code": "PHC_LAB_CCP_OR_LR",
+        "name": "PHC with Lab + Cold Chain (or) Lab + Labour Room",
+        "url": "d9d2a1ef-e917-4a31-8f6f-81055d689bef",
+        "system_code": "AC_OFF_GRID"
+      },
+      "isActive": true,
+      "auditDetails": {
+        "createdBy": "0ab7b240-5092-4759-83a6-75f396a35a9b",
+        "lastModifiedBy": "0ab7b240-5092-4759-83a6-75f396a35a9b",
+        "createdTime": 1746790085338,
+        "lastModifiedTime": 1746790085338
+      }
+    },
+    {
+      "id": "fcb06252-3fab-4415-8e12-a98f9818e510",
+      "tenantId": "in",
+      "schemaCode": "asset.SolutionDesignType",
+      "uniqueIdentifier": "PHC_DELIVERY_CCP_HYBRID",
+      "data": {
+        "active": true,
+        "code": "PHC_DELIVERY_CCP_HYBRID",
+        "name": "PHC With Delivery With Cold Chain - Hybrid System",
+        "url": "d9d2a1ef-e917-4a31-8f6f-81055d689bef",
+        "system_code": "AC_OFF_GRID"
+      },
+      "isActive": true,
+      "auditDetails": {
+        "createdBy": "0ab7b240-5092-4759-83a6-75f396a35a9b",
+        "lastModifiedBy": "0ab7b240-5092-4759-83a6-75f396a35a9b",
+        "createdTime": 1746790085338,
+        "lastModifiedTime": 1746790085338
+      }
+    },
+    {
+      "id": "fcb06252-3fab-4415-8e12-a98f9818e511",
+      "tenantId": "in",
+      "schemaCode": "asset.SolutionDesignType",
+      "uniqueIdentifier": "SC_NO_LR_NO_CCP",
+      "data": {
+        "active": true,
+        "code": "SC_NO_LR_NO_CCP",
+        "name": "SC - without labour room & without cold chain point",
+        "url": "d9d2a1ef-e917-4a31-8f6f-81055d689bef",
+        "system_code": "AC_OFF_GRID"
+      },
+      "isActive": true,
+      "auditDetails": {
+        "createdBy": "0ab7b240-5092-4759-83a6-75f396a35a9b",
+        "lastModifiedBy": "0ab7b240-5092-4759-83a6-75f396a35a9b",
+        "createdTime": 1746790085338,
+        "lastModifiedTime": 1746790085338
+      }
+    }
+  ]
+}
