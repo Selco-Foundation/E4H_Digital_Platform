@@ -61,7 +61,8 @@ public class ProjectWorkflowService {
      public List<ProcessInstance> getProcessInstanceById( String businessId, String tenantId, RequestInfo requestInfo) {
         String url = config.getWfHost() + config.getWfSearchPath()
             + "?tenantId=" + tenantId
-            + "&businessIds=" + businessId;
+            + "&businessIds=" + businessId
+            + "&history=" + true;
 
         // Wrap RequestInfo in RequestInfoWrapper
         RequestInfoWrapper requestInfoWrapper = new RequestInfoWrapper();
