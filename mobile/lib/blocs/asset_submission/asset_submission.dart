@@ -223,8 +223,8 @@ class AssetSubmissionBloc
             totalCapacity: spec.totalCapacity,
             totalCapacityUnit: spec.totalCapacityUnit,
             totalCapacityUOM: spec.totalCapacityUnit,
-            voltageUnit:
-                (type == 'battery' || type == 'inverter') ? "Volts" : null,
+            // voltageUnit:
+            //     (type == 'battery' || type == 'inverter') ? "Volts" : null,
 
             currentUnit:
                 type == ASSET_TYPES.INVERTER.name.toLowerCase() ? '1' : null,
@@ -244,7 +244,10 @@ class AssetSubmissionBloc
             batteryType: type == ASSET_TYPES.BATTERY.name.toLowerCase()
                 ? saved.batteryType
                 : null,
-            // voltageUnit: saved.voltageUnit,
+            voltageUnit: (type == ASSET_TYPES.BATTERY.name.toLowerCase() ||
+                    type == ASSET_TYPES.INVERTER.name.toLowerCase())
+                ? saved.voltageUnit
+                : null,
             inverterCapacity: type == ASSET_TYPES.INVERTER.name.toLowerCase()
                 ? double.parse(saved.inverterCapacity!)
                 : null,

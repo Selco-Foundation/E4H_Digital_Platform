@@ -143,7 +143,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
               selectedAssetType = assetTypeList.firstWhereOrNull((asset) =>
                   asset.code.toUpperCase() == currentAssetType.toUpperCase());
 
-              final fields = selectedAssetType!.formFields;
+              final fields = selectedAssetType?.formFields ?? [];
               final assetCapacityField = fields.firstWhereOrNull(
                 (field) =>
                     field.key == "capacity" && field.system == systemCode,
@@ -158,11 +158,13 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                       .firstWhereOrNull((field) => field.types != null)
                       ?.types ??
                   [];
-              assetCapacity = assetCapacityField!.options!;
+              assetCapacity = assetCapacityField?.options ?? [];
               assetCapacityUom =
-                  assetCapacityUomField!.options!.firstOrNull ?? '';
-              voltages = voltageField!.options!;
-              voltageUom = voltageUomField!.options!.firstOrNull ?? '';
+                  assetCapacityUomField?.options?.firstOrNull ?? '';
+              voltages = voltageField != null && voltageField.options != null
+                  ? voltageField.options!
+                  : [];
+              voltageUom = voltageUomField?.options?.firstOrNull ?? '';
 
               print("voltageUom $voltageUom");
 
@@ -280,6 +282,24 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
     return null;
   }
 
+  bool _isAssetComplete(AssetModel a, String assetType) {
+    // must always have serial + photo
+    if (a.serialNumber.isEmpty || a.photoPath == null) return false;
+
+    switch (assetType.toLowerCase()) {
+      case 'battery':
+        return a.batteryType?.isNotEmpty == true &&
+            a.batteryVoltage?.isNotEmpty == true &&
+            a.batteryCapacity?.isNotEmpty == true;
+      case 'panel':
+        return a.panelCapacity?.isNotEmpty == true;
+      case 'inverter':
+        return a.inverterCapacity?.isNotEmpty == true;
+      default:
+        return true;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -358,8 +378,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
             ),
             builder: (ctx, maxAssets) {
               final isDisabled = _assets.length != maxAssets ||
-                  _assets.any(
-                      (a) => a.serialNumber.isEmpty || a.photoPath == null);
+                  _assets.any((a) => !_isAssetComplete(a, currentAssetType));
 
               return Scaffold(
                 body: ScrollableContent(
@@ -404,7 +423,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                           batteryCapacity: asset.batteryCapacity,
                           batteryVoltage: asset.batteryVoltage,
                           batteryType: asset.batteryType,
-                          voltageUnit: asset.voltageUnit ?? voltageUom,
+                          voltageUnit: voltageUom ?? asset.voltageUnit,
                           inverterCapacity: asset.inverterCapacity,
                           inverterCapacityUnit:
                               asset.inverterCapacityUnit ?? assetCapacityUom,
