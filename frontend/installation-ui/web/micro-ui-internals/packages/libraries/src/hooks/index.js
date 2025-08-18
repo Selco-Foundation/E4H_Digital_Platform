@@ -92,8 +92,9 @@ import useStaticData from "./useStaticData";
 import { useTenantManagementSearch } from "./useTenantManagementSearch";
 import useFacility from "./qc/useFacility";
 import useFieldPlan from "./qc/useFieldPlan";
-import useFacilityDetails from "./qc/useFacilityDetails";
+import useAsset from "./qc/useAsset";
 import useBoundary from "./qc/useBoundary";
+import useFacilityDetails from "./qc/useFacilityDetails";
 
 
 
@@ -164,6 +165,7 @@ const survey = {
 const qc = {
   useFacility,
   useFieldPlan,
+  useAsset,
   useFacilityDetails,
   useBoundary
 }

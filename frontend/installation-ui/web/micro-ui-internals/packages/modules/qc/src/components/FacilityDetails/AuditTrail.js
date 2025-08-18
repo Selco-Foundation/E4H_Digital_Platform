@@ -1,7 +1,7 @@
 import React from "react";
 import { CheckPoint, ConnectingCheckPoints } from "@egovernments/digit-ui-react-components";
 
-const AuditTrial = ({t, auditTrial}) => {
+const AuditTrail = ({t, auditTrail}) => {
   return (
     <div style={{
       marginTop: "15px",
@@ -18,18 +18,18 @@ const AuditTrial = ({t, auditTrial}) => {
       <h2 style={{ fontWeight: "bold", fontSize: "18px", marginBottom: 20 }}>Audit Trail</h2>
       <div style={{ display: "flex", flexDirection: "column", position: "relative" }}>
         <React.Fragment>
-          {auditTrial?.length === 1 ? (
-            <CheckPoint isCompleted={true} label={t("CS_COMMON_" + auditTrial[0]?.status.toUpperCase())} />
+          {auditTrail?.length === 1 ? (
+            <CheckPoint isCompleted={true} label={t("CS_" + auditTrail[0]?.status.toUpperCase())} />
           ) : (
             <ConnectingCheckPoints>
-              {auditTrial &&
-                auditTrial.map((checkpoint, index, arr) => {
+              {auditTrail &&
+                auditTrail.map((checkpoint, index, arr) => {
                   return (
                     <React.Fragment key={index}>
                       <CheckPoint
                         keyValue={index}
                         isCompleted={index === 0}
-                        label={t("CS_COMMON_" + checkpoint.status.toUpperCase())}
+                        label={t("CS_" + checkpoint.status.toUpperCase())}
                         customChild={getTimelineCaptions(checkpoint)}
                       />
                     </React.Fragment>
@@ -46,7 +46,6 @@ const AuditTrial = ({t, auditTrial}) => {
 const getTimelineCaptions = (checkpoint) => {
   return (
     <div style={{ marginTop: "12px", width: "800px" }}>
-      {/*<div style={{fontWeight: "bold", marginBottom: 4}}>{checkpoint.status}</div>*/}
       <div style={{fontSize: "14px", color: "#666"}}>{checkpoint.date}</div>
       {checkpoint.reasons && (
         <div style={{ marginTop: 12 }}>
@@ -73,4 +72,4 @@ const getTimelineCaptions = (checkpoint) => {
   )
 }
 
-export default AuditTrial;
+export default AuditTrail;

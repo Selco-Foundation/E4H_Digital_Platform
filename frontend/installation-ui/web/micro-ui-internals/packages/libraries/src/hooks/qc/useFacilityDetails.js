@@ -1,114 +1,76 @@
-import { useQuery, useQueryClient } from "react-query";
+import {useQuery, useQueryClient} from "react-query";
 
-const getAssetName = (assetTypeID) => {
-  switch(assetTypeID) {
-    case "PANEL":
-      return "Panel";
-    case "BATTERY":
-      return "Battery";
-    case "INVERTER":
-      return "Inverter";
+const generateAuditTrail = (workflow) => {
+  const auditTrail = [];
+
+  if (workflow) {
+    workflow.forEach((row) => {
+
+      const date = new Date(row.auditDetails?.lastModifiedTime);
+      const day = String(date.getDate()).padStart(2, "0");
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const year = date.getFullYear();
+
+      const formattedDate = `${day}/${month}/${year}`;
+
+      auditTrail.push({
+        status: row.state.state,
+        date: formattedDate
+      })
+    })
+  }
+
+  return auditTrail;
+}
+
+const fetchFacilityDetails = async (filter, limit, offset) => {
+
+  const projectsResponse = await Digit.QCService.fetchProjects(filter, limit, offset);
+  const projectData = projectsResponse?.Project?.[0];
+
+  const facility = projectData.project.additionalDetails.facility || {};
+  const address = projectData.project.address || {};
+  const additionalDetails = projectData.project.additionalDetails || {};
+  const assigneeDetails = projectData.project.additionalDetails.assignedTo || {};
+  const auditTrail = generateAuditTrail(projectData.workflow);
+
+  return {
+    facilityDetails: {
+      id: projectData.project.id,
+      facilityName: facility.facility_name || projectData.project.name,
+      facilityId: facility.facility_id,
+      facilityType: facility.facility_type,
+      status: projectData.project.additionalDetails.status,
+      projectId: projectData.project.id,
+      block: address.boundary,
+      district: additionalDetails.district,
+      assigned: assigneeDetails.name,
+    },
+    auditTrail,
   }
 }
 
-const getAssetCapacity = (assetTypeID, assetDetails) => {
-  switch(assetTypeID) {
-    case "PANEL":
-      return assetDetails?.panelCapacity + " " + assetDetails?.capacityUnit;
-    case "BATTERY":
-      return assetDetails?.batteryCapacity + " " + assetDetails?.capacityUnit;
-    case "INVERTER":
-      return assetDetails?.inverterCapacity + " " + assetDetails?.capacityUnit;
-  }
-}
+const useFacilityDetails = (facilityProjectId) => {
 
-const fetchFileStoreDocuments = async (documents) => {
-  const fetchedDocuments = [];
-  for (const document of documents) {
-    if (document?.documentType?.toUpperCase() === "ASSET") {
-      const fileStoreResponse = await Digit.QCService.fetchImageFromFileStore(document?.fileStore);
-      fetchedDocuments.push(Digit.Utils.getFileUrl(fileStoreResponse[document?.fileStore]))
+  const filter = {
+    Project: {
+      projectTypeId: "Facility",
+      id: [facilityProjectId],
     }
   }
 
-  return fetchedDocuments;
-}
+  const limit = 1;
+  const offset = 0;
 
-const formatData = async (data) => {
-  const dataMap = new Map();
-
-  for (const row of data) {
-    const assetType = row?.assetTypeID;
-
-    if (dataMap.has(assetType)) {
-      dataMap.set(assetType, {
-        ...dataMap.get(assetType),
-        count: dataMap.get(assetType).count + 1,
-        details: {
-          ...dataMap.get(assetType).details,
-          count: dataMap.get(assetType).details.count + 1
-        },
-        items: [
-          ...dataMap.get(assetType).items,
-          {
-            assetId: row?.assetId,
-            serialNumber: row?.serialNumber,
-            capacity: getAssetCapacity(assetType, row?.assetDetails),
-            documents: await fetchFileStoreDocuments(row?.documents)
-          }
-        ]
-      })
-    } else {
-      dataMap.set(assetType, {
-        assetName: getAssetName(assetType),
-        count: 1,
-        specifications: {
-          system: row?.system,
-          capacity: getAssetCapacity(assetType, row?.assetDetails)
-        },
-        details: {
-          count: 1,
-          warrantyStartDate: new Date(row?.warrantyStartDate).toLocaleDateString("en-IN", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-          }),
-          warrantyDuration: row?.warrantyDuration + " Years",
-          brand: row?.brandID,
-          modelNumber: row?.modelNumber
-        },
-        items: [
-          {
-            assetId: row?.assetId,
-            serialNumber: row?.serialNumber,
-            capacity: getAssetCapacity(assetType, row?.assetDetails),
-            documents: await fetchFileStoreDocuments(row?.documents)
-          }
-        ]
-      })
-    }
-  }
-
-  return dataMap.values().toArray();
-}
-
-const fetchFacilityDetails = async (facilityId) => {
-  const facilityDetailsResponse = await Digit.QCService.fetchAssets(facilityId);
-  return await formatData(facilityDetailsResponse);
-}
-
-const useFacilityDetails = (facilityId) => {
-
-  const facility = facilityId;
   const queryClient = useQueryClient();
   const { isLoading, isError, error, data } = useQuery(
-    ["facilityDetails", facility],
-    () => fetchFacilityDetails(facility)
-  );
+      ['facilityDetails', filter, limit, offset],
+      () => fetchFacilityDetails(filter, limit, offset)
+  )
 
   return {
     isLoading, isError, error, data,
-    revalidate: () => queryClient.invalidateQueries(["facilityDetails", facility])
+    revalidate: () => queryClient.invalidateQueries(['facilityDetails', filter, limit, offset])
   }
 }
 

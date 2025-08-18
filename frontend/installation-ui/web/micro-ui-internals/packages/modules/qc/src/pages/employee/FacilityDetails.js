@@ -1,14 +1,13 @@
 import React, { useEffect, useState } from "react";
 import Summary from "../../components/FacilityDetails/Summary";
 import QCActions from "../../components/FacilityDetails/QCActions";
-import AuditTrial from "../../components/FacilityDetails/AuditTrial";
-import { useDispatch, useSelector } from "react-redux";
+import AuditTrail from "../../components/FacilityDetails/AuditTrail";
+import { useDispatch } from "react-redux";
 import { clearRejectionReasons, setSelectedFacility, setSelectedFieldPlan } from "../../redux/actions";
 import { Loader } from "@egovernments/digit-ui-react-components";
 
 const FacilityDetails = ({t}) => {
 
-  const selectedFacility = useSelector((state) => state.qc.common.selectedFacility);
   const [fetchedData, setData] = useState([]);
   const dispatch = useDispatch();
   const url = window.location.href;
@@ -16,6 +15,8 @@ const FacilityDetails = ({t}) => {
   const facilityIdentifier = url.split("facilities/")[1].split("/")[0].split("?")[0];
   const facilityProjectId = facilityIdentifier.split("--")[0];
   const facilityId = decodeURIComponent(facilityIdentifier.split("--")[1]);
+  const [facilityDetails, setFacilityDetails] = useState({});
+  const [auditTrail, setAuditTrail] = useState([]);
 
   const [pdfFile, setPdfFile] = useState({
     name: "Alkod.pdf",
@@ -28,12 +29,8 @@ const FacilityDetails = ({t}) => {
       id: [fieldPlanId]
     }
   });
-  const { data: facilityData } = Digit.Hooks.qc.useFacility({
-    project : {
-      id: [facilityProjectId],
-    }
-  })
-  const { isLoading, data: assetData } = Digit.Hooks.qc.useFacilityDetails(facilityId);
+  const { data: facilityData } = Digit.Hooks.qc.useFacilityDetails(facilityProjectId);
+  const { isLoading, data: assetData } = Digit.Hooks.qc.useAsset(facilityId);
 
   useEffect(() => {
     if (assetData) {
@@ -45,11 +42,13 @@ const FacilityDetails = ({t}) => {
     if (fieldPlanData) {
       dispatch(setSelectedFieldPlan(fieldPlanData.fieldPlans[0]));
     }
-  }, [fieldPlanData])
+  }, [fieldPlanData]);
 
   useEffect(() => {
     if (facilityData) {
-      dispatch(setSelectedFacility(facilityData.facilities[0]));
+      setAuditTrail(facilityData.auditTrail);
+      setFacilityDetails(facilityData.facilityDetails);
+      dispatch(setSelectedFacility(facilityData.facilityDetails));
     }
   }, [facilityData]);
 
@@ -59,42 +58,6 @@ const FacilityDetails = ({t}) => {
     }
   }, []);
 
-  const hospitalDetails = {
-    ...selectedFacility,
-    healthFacilityType: "Loc 1"
-  }
-
-  const auditTrail = [
-    {
-      status: "Submitted",
-      date: "25/05/25",
-    },
-    {
-      status: "Rejected",
-      date: "05/05/25",
-      reasons: [
-        {
-          section: "Inverter",
-          reasons: [
-            { title: "Rejection Reason 1", details: "Additional Details" },
-            { title: "Rejection Reason 2", details: "Additional Details" },
-          ],
-        },
-        {
-          section: "Panel",
-          reasons: [
-            { title: "Rejection Reason 1", details: "Additional Details" },
-            { title: "Rejection Reason 2", details: "Additional Details" },
-          ],
-        },
-      ],
-    },
-    {
-      status: "Submitted",
-      date: "25/04/25",
-    },
-  ];
-
   if (isLoading) {
     return <Loader />;
   }
@@ -102,7 +65,7 @@ const FacilityDetails = ({t}) => {
   return (
     <div style={{marginTop: "20px"}}>
       <div style={{fontSize: "24px", fontWeight: "bold", marginBottom: "20px", color: "#004d66"}}>
-          {hospitalDetails.facility}
+          {facilityDetails.facilityName}
       </div>
       <div style={{
         marginTop: "15px",
@@ -115,23 +78,23 @@ const FacilityDetails = ({t}) => {
       }}>
         <div style={{display: "flex", alignItems: "center", marginTop: "15px"}}>
           <div style={{width: "30%"}}><strong>District</strong></div>
-          {hospitalDetails.district}
+          { facilityDetails.district ? t(`DISTRICT_${facilityDetails.district.toUpperCase()}`) : "-" }
         </div>
         <div style={{display: "flex", alignItems: "center", marginTop: "15px"}}>
           <div style={{width: "30%"}}><strong>Block</strong></div>
-          {hospitalDetails.block}
+          { facilityDetails.block ? t(`BLOCK_${facilityDetails.block.toUpperCase()}`) : "-" }
         </div>
         <div style={{display: "flex", alignItems: "center", marginTop: "15px"}}>
           <div style={{width: "30%"}}><strong>Health Facility Type</strong></div>
-          {hospitalDetails.healthFacilityType}
+          { facilityDetails.facilityType ? facilityDetails.facilityType : "-" }
         </div>
         <div style={{display: "flex", alignItems: "center", marginTop: "15px"}}>
           <div style={{width: "30%"}}><strong>Status</strong></div>
-          {hospitalDetails.status}
+          { facilityDetails.status ? t(`CS_${facilityDetails.status}`) : "-" }
         </div>
       </div>
 
-      {auditTrail && <AuditTrial t={t} auditTrial={auditTrail} />}
+      {auditTrail?.length > 0 && <AuditTrail t={t} auditTrail={auditTrail} />}
 
       {fetchedData && fetchedData.map((asset) => {
         return <Summary
@@ -145,7 +108,7 @@ const FacilityDetails = ({t}) => {
 
       {pdfFile && <Summary sectionName="InstallationCompletionReport" pdf={pdfFile} isReport={true} />}
 
-      {selectedFacility?.status && selectedFacility?.status.toUpperCase() === "SUBMITTED_BY_SUPERVISOR" && <QCActions />}
+      {facilityDetails?.status && facilityDetails?.status.toUpperCase() === "SUBMITTED_BY_SUPERVISOR" && <QCActions />}
 
     </div>
   );
