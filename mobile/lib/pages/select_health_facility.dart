@@ -12,6 +12,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
 import '../blocs/app_init/app_init.dart';
+import '../blocs/cache_asset_count/cache_asset_count.dart';
 import '../blocs/cache_project_asset/cache_project_asset.dart';
 import '../blocs/project/project.dart';
 import '../blocs/selected_project/selected_project.dart';
@@ -37,6 +38,9 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
   String? _sortDirection;
   String _searchQuery = '';
 
+  /// Local accumulator: projectId -> (assetType -> bestProgress)
+  final Map<String, Map<String, int>> _progress = {};
+
   @override
   void initState() {
     super.initState();
@@ -55,7 +59,6 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
       ),
     ];
 
-    // Choose search vs sort vs basic fetch && Dispatch fetch + loading state
     if (_searchQuery.isNotEmpty) {
       context.read<ProjectBloc>().add(
             ProjectEvent.fetchProjectsBySearch(
@@ -88,50 +91,117 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
     context.router.push(const AssetCountRoute());
   }
 
+  /// Compute fraction from the local `_progress` accumulator
+  double _fractionForProject(String projectId) {
+    final isSupervisor = context.read<UserTypeBloc>().state.maybeWhen(
+          supervisor: () => true,
+          orElse: () => false,
+        );
+    final maxStepsPerType = isSupervisor ? 6.0 : 5.0;
+
+    const types = ['inverter', 'battery', 'panel'];
+    final map = _progress[projectId] ?? const {};
+
+    double sum = 0.0;
+    for (final t in types) {
+      final steps = (map[t] ?? 0).clamp(0, maxStepsPerType.toInt()).toDouble();
+      sum += steps / maxStepsPerType;
+    }
+    return (sum / types.length).clamp(0.0, 1.0);
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final textTheme = theme.digitTextTheme(context);
 
     return Scaffold(
-      body: ScrollableContent(
-        backgroundColor: theme.colorTheme.generic.background,
-        children: [
-          const BackNavigationHelpHeaderWidget(
-            showBackNavigation: true,
-            showHelp: false,
-          ),
-          Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: spacer4, vertical: spacer2),
-                child: _buildSearchAndSortControls(textTheme, theme),
-              ),
-              const SizedBox(height: spacer2),
-              BlocBuilder<ProjectBloc, ProjectState>(
-                builder: (context, state) {
-                  return state.maybeWhen(
-                    initial: () => _loadingIndicator(),
-                    loading: () => _loadingIndicator(),
-                    fetched: (projectList) {
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildProjectList(projectList),
-                        ],
-                      );
-                    },
-                    searchLoading: () => _loadingIndicator(),
-                    searchResults: (searchList) =>
-                        _buildProjectList(searchList),
-                    orElse: () => const SizedBox.shrink(),
-                  );
-                },
-              ),
-            ],
-          ),
-        ],
+      body: BlocListener<CacheAssetCountBloc, CacheAssetCountState>(
+        listener: (context, st) {
+          st.maybeWhen(
+            loaded: (list) {
+              bool changed = false;
+              for (final e in list) {
+                final pid = e.projectId;
+                final type = (e.assetType ?? '').toLowerCase().trim();
+                final p = (e.progress ?? 0);
+                if (pid.isEmpty || type.isEmpty) continue;
+
+                final byType = _progress.putIfAbsent(pid, () => {});
+                final prev = byType[type] ?? 0;
+                if (p > prev) {
+                  byType[type] = p; // keep best we’ve seen
+                  changed = true;
+                }
+              }
+              if (changed) setState(() {});
+            },
+            orElse: () {},
+          );
+        },
+        child: ScrollableContent(
+          backgroundColor: theme.colorTheme.generic.background,
+          children: [
+            const BackNavigationHelpHeaderWidget(
+              showBackNavigation: true,
+              showHelp: false,
+            ),
+            Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: spacer4, vertical: spacer2),
+                  child: _buildSearchAndSortControls(textTheme, theme),
+                ),
+                const SizedBox(height: spacer2),
+                BlocBuilder<ProjectBloc, ProjectState>(
+                  builder: (context, state) {
+                    return state.maybeWhen(
+                      initial: () => _loadingIndicator(),
+                      loading: () => _loadingIndicator(),
+                      fetched: (projectList) {
+                        // Prefetch counts for each project & type
+                        for (final p in projectList) {
+                          for (final t in const [
+                            'inverter',
+                            'battery',
+                            'panel'
+                          ]) {
+                            context
+                                .read<CacheAssetCountBloc>()
+                                .add(CacheAssetCountEvent.get(p.project.id, t));
+                          }
+                        }
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildProjectList(projectList),
+                          ],
+                        );
+                      },
+                      searchLoading: () => _loadingIndicator(),
+                      searchResults: (searchList) {
+                        for (final p in searchList) {
+                          for (final t in const [
+                            'inverter',
+                            'battery',
+                            'panel'
+                          ]) {
+                            context
+                                .read<CacheAssetCountBloc>()
+                                .add(CacheAssetCountEvent.get(p.project.id, t));
+                          }
+                        }
+                        return _buildProjectList(searchList);
+                      },
+                      orElse: () => const SizedBox.shrink(),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -205,14 +275,17 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
         children: [
           for (final project in projects) ...[
             InstallationReportCard(
-                onPress: () => _handleProjectTap(project),
-                projectId: project.project.id,
-                title: project.project.name ?? '—',
-                dateAssigned: project.project.startDateTime ?? DateTime.now(),
-                status: project.status ?? '—',
-                systemDesignCode: project.project.additionalDetails?.facility
-                        ?.facilityDetails?.solar_solution_design_type ??
-                    ''),
+              onPress: () => _handleProjectTap(project),
+              projectId: project.project.id,
+              title: project.project.name ?? '—',
+              dateAssigned: project.project.startDateTime ?? DateTime.now(),
+              status: project.status ?? '—',
+              systemDesignCode: project.project.additionalDetails?.facility
+                      ?.facilityDetails?.solar_solution_design_type ??
+                  '',
+              fraction:
+                  _fractionForProject(project.project.id), // <<< progress here
+            ),
             const SizedBox(height: spacer5),
           ],
         ],
@@ -300,6 +373,9 @@ class InstallationReportCard extends StatelessWidget {
   final String? systemDesignCode;
   final Function() onPress;
 
+  /// Injected progress fraction (0.0 → 1.0)
+  final double fraction;
+
   const InstallationReportCard({
     super.key,
     this.projectId,
@@ -308,6 +384,7 @@ class InstallationReportCard extends StatelessWidget {
     required this.dateAssigned,
     this.systemDesignCode,
     required this.onPress,
+    required this.fraction,
   });
 
   @override
@@ -315,8 +392,6 @@ class InstallationReportCard extends StatelessWidget {
     final theme = Theme.of(context);
     final textTheme = theme.digitTextTheme(context);
     String formattedDate = DateFormat('dd/MM/yy').format(dateAssigned);
-
-    final fraction = calculateProjectProgressFraction(context, projectId!);
 
     return BlocBuilder<AppInitialization, InitState>(
       builder: (context, initState) {
@@ -333,8 +408,6 @@ class InstallationReportCard extends StatelessWidget {
             solutionDesignList.firstWhereOrNull((e) => e.data.code == code);
 
         final solutionDocsUrl = matchedSystemDesign?.data.url ?? '';
-
-        print("solutionDocsUrl $projectId $solutionDocsUrl");
 
         return DigitCard(
           children: [
@@ -410,15 +483,14 @@ class InstallationReportCard extends StatelessWidget {
                               Expanded(
                                 child: GestureDetector(
                                   onTap: () {
-                                    if (solutionDocsUrl != null &&
-                                        solutionDocsUrl!.isNotEmpty) {
+                                    if (solutionDocsUrl.isNotEmpty) {
                                       context.router.push(PdfViewerRoute(
                                           path:
                                               "$fileStoreFileUrl$solutionDocsUrl"));
                                     }
                                   },
                                   child: Text(
-                                    "$solutionDocsUrl",
+                                    solutionDocsUrl,
                                     style: textTheme.bodyL.copyWith(
                                       color: theme.colorTheme.text.disabled,
                                       fontSize: spacer3,

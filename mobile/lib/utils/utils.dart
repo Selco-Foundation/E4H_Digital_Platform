@@ -235,7 +235,7 @@ String fileStoreFileUrl =
 ///
 /// Each type has up to N steps (6 for supervisors, 5 for field staff).
 /// We treat each type equally (so each completes 1/3 of the total).
-double calculateProjectProgressFraction(
+double calculateProjectProgressFraction2(
   BuildContext context,
   String projectId,
 ) {
@@ -259,7 +259,7 @@ double calculateProjectProgressFraction(
 
   for (var type in types) {
     final entry = entries.firstWhere(
-      (e) => e.projectId == projectId && e.assetType == type,
+      (e) => e.projectId == projectId && e.assetType.toLowerCase() == type,
       orElse: () => CacheAssetCount(
         projectId: projectId,
         assetType: type,
@@ -268,20 +268,15 @@ double calculateProjectProgressFraction(
     );
     // Clamp and convert
     final stepsDone =
-        entry.progress?.clamp(0, maxStepsPerType.toInt()).toDouble();
-    sumFractions += (stepsDone! / maxStepsPerType);
+        (entry.progress ?? 0).clamp(0, maxStepsPerType.toInt()).toDouble();
+    sumFractions += (stepsDone / maxStepsPerType);
+
+    print(
+        'Type $type -> entry.progress=${entry.progress}, assetType=${entry.assetType}');
   }
 
   // 4) Average across the three types
   return (sumFractions / types.length).clamp(0.0, 1.0);
-}
-
-/// If you prefer a 0→100 integer percent:
-int calculateProjectProgressPercent(
-  BuildContext context,
-  String projectId,
-) {
-  return (calculateProjectProgressFraction(context, projectId) * 100).round();
 }
 
 class DioErrorParser {
