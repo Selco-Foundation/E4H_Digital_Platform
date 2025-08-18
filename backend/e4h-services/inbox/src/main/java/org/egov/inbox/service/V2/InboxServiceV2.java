@@ -69,42 +69,79 @@ public class InboxServiceV2 {
      * @param inboxRequest
      * @return
      */
+
     public InboxResponse getInboxResponse(InboxRequest inboxRequest) {
+        log.info("➡️ Start building InboxResponse | tenantId='{}' | module='{}' | user='{}'",
+                inboxRequest.getInbox().getTenantId(),
+                inboxRequest.getInbox().getProcessSearchCriteria().getModuleName(),
+                inboxRequest.getRequestInfo().getUserInfo().getUuid());
+
+        // Validation
         validator.validateSearchCriteria(inboxRequest);
+        log.debug("✅ Search criteria validated");
 
+        // Vérification des rôles
         List<Role> roles = inboxRequest.getRequestInfo().getUserInfo().getRoles();
-        List<String> tenantIds = roles.stream().filter(role -> role.getCode().equals("COMPLAINT_RESOLVER"))
-                .map(role -> role.getTenantId()).collect(Collectors.toList());
+        List<String> tenantIds = roles.stream()
+                .filter(role -> role.getCode().equals("COMPLAINT_RESOLVER"))
+                .map(Role::getTenantId)
+                .collect(Collectors.toList());
         boolean isVendor = !tenantIds.isEmpty();
+        log.debug("👤 User roles found: {} | isVendor={}", roles, isVendor);
 
+        // Gestion du tenantId pour les vendors
         Object tenantIdFromRequest = inboxRequest.getInbox().getModuleSearchCriteria().get("tenantId");
-
         if (isVendor && tenantIdFromRequest instanceof String) {
-            Set<String> tenantsFromRequest = new HashSet<>(
-                Arrays.asList(((String) tenantIdFromRequest).split("\\.")));
-
+            Set<String> tenantsFromRequest = new HashSet<>(Arrays.asList(((String) tenantIdFromRequest).split("\\.")));
             if (tenantsFromRequest.size() == 1) {
                 inboxRequest.getInbox().getModuleSearchCriteria().put("tenantId", tenantIds);
+                log.debug("🔄 Overridden tenantId from request with vendor tenantIds={}", tenantIds);
             }
-        
         }
 
+        // Récupération de la configuration
         InboxQueryConfiguration inboxQueryConfiguration = mdmsUtil.getConfigFromMDMS(
                 inboxRequest.getInbox().getTenantId(),
                 inboxRequest.getInbox().getProcessSearchCriteria().getModuleName());
-        hashParamsWhereverRequiredBasedOnConfiguration(inboxRequest.getInbox().getModuleSearchCriteria(),
-                inboxQueryConfiguration);
+        log.debug("⚙️ Loaded InboxQueryConfiguration: {}", inboxQueryConfiguration);
+
+        // Hash params si nécessaire
+        hashParamsWhereverRequiredBasedOnConfiguration(
+                inboxRequest.getInbox().getModuleSearchCriteria(), inboxQueryConfiguration);
+        log.debug("🔐 Applied hashing to sensitive params if required");
+
+        // Récupération des items
         List<Inbox> items = getInboxItems(inboxRequest, inboxQueryConfiguration.getIndex());
+        log.info("📥 Retrieved inbox items: count={}", items.size());
+
+        // Enrichissement des items
         enrichProcessInstanceInInboxItems(items);
+        log.debug("✨ Enriched inbox items with process instance details");
 
+        // Compteurs
         Integer totalCount = getTotalApplicationCount(inboxRequest, inboxQueryConfiguration.getIndex());
-        List<HashMap<String, Object>> statusCountMap = getStatusCountMap(inboxRequest,
-                inboxQueryConfiguration.getIndex());
-        Integer nearingSlaCount = getApplicationsNearingSlaCount(inboxRequest, inboxQueryConfiguration.getIndex());
+        log.info("📊 Total applications count={}", totalCount);
 
-        return InboxResponse.builder().items(items).totalCount(totalCount)
-                .statusMap(statusCountMap).nearingSlaCount(nearingSlaCount).build();
+        List<HashMap<String, Object>> statusCountMap =
+                getStatusCountMap(inboxRequest, inboxQueryConfiguration.getIndex());
+        log.debug("📌 Status count map={}", statusCountMap);
+
+        Integer nearingSlaCount = getApplicationsNearingSlaCount(inboxRequest, inboxQueryConfiguration.getIndex());
+        log.info("⏳ Applications nearing SLA={}", nearingSlaCount);
+
+        InboxResponse response = InboxResponse.builder()
+                .items(items)
+                .totalCount(totalCount)
+                .statusMap(statusCountMap)
+                .nearingSlaCount(nearingSlaCount)
+                .build();
+
+        log.info("✅ Successfully built InboxResponse | items={} | totalCount={} | nearingSLA={}",
+                response.getItems().size(), response.getTotalCount(), response.getNearingSlaCount());
+
+        return response;
     }
+
 
     private void hashParamsWhereverRequiredBasedOnConfiguration(Map<String, Object> moduleSearchCriteria, InboxQueryConfiguration inboxQueryConfiguration) {
 
@@ -127,40 +164,77 @@ public class InboxServiceV2 {
     }
 
     public ProjectResponse getInboxResponseProject(InboxRequest inboxRequest) {
-        validator.validateSearchCriteria(inboxRequest);
+        log.info("➡️ Starting project inbox search for tenantId={} and module={}",
+                inboxRequest.getInbox().getTenantId(),
+                inboxRequest.getInbox().getProcessSearchCriteria().getModuleName());
 
+        // Validation des critères
+        validator.validateSearchCriteria(inboxRequest);
+        log.debug("✅ Validation passed for inboxRequest: {}", inboxRequest);
+
+        // Récupération configuration depuis MDMS
         InboxQueryConfiguration inboxQueryConfiguration = mdmsUtil.getConfigFromMDMS(
                 inboxRequest.getInbox().getTenantId(),
                 inboxRequest.getInbox().getProcessSearchCriteria().getModuleName());
+        log.debug("📄 Loaded inboxQueryConfiguration: {}", inboxQueryConfiguration);
+
+        // Hashing si besoin
         hashParamsWhereverRequiredBasedOnConfiguration(inboxRequest.getInbox().getModuleSearchCriteria(),
                 inboxQueryConfiguration);
+
+        // Récupération des projets
         List<Project> items = getProjectInboxItems(inboxRequest, inboxQueryConfiguration.getIndex());
         Integer totalCount = getTotalProjectCount(inboxRequest, inboxQueryConfiguration.getIndex());
+        log.info("📊 Retrieved {} project(s), totalCount={}", items.size(), totalCount);
+
+        // Récupération des boundaries
         Map<String, Boundary> listBlock = boundaryUtil.getBoundaryByCode();
-        if(listBlock != null){
-            for (Project item:items) {
+        if (listBlock != null) {
+            log.debug("🌍 Loaded {} boundaries for enrichment", listBlock.size());
+
+            for (Project item : items) {
                 Object additionalDetails = item.getProject().get("additionalDetails");
                 Object boundaryCodeObject = item.getProject().get("address");
-                if(boundaryCodeObject !=null){
+
+                if (boundaryCodeObject != null) {
                     Address address = mapper.convertValue(boundaryCodeObject, Address.class);
-                    if(address !=null){
+
+                    if (address != null) {
                         String boundaryCode = address.getBoundary();
-                        if(boundaryCode != null){
+                        log.trace("🔎 Processing projectId={} with boundaryCode={}",
+                                item.getProject().get("id"), boundaryCode);
+
+                        if (boundaryCode != null) {
                             Boundary boundary = listBlock.get(boundaryCode);
-                            if(boundary != null){
-                                Object enrichedAdditionalDetails = mergeListIntoAdditionalDetails(additionalDetails, "state", boundary.getState());
+
+                            if (boundary != null) {
+                                log.debug("✨ Enriching projectId={} with state={} and district={}",
+                                        item.getProject().get("id"), boundary.getState(), boundary.getDistrict());
+
+                                Object enrichedAdditionalDetails =
+                                        mergeListIntoAdditionalDetails(additionalDetails, "state", boundary.getState());
                                 item.getProject().put("additionalDetails", enrichedAdditionalDetails);
+
                                 additionalDetails = item.getProject().get("additionalDetails");
-                                enrichedAdditionalDetails = mergeListIntoAdditionalDetails(additionalDetails, "district", boundary.getDistrict());
+                                enrichedAdditionalDetails =
+                                        mergeListIntoAdditionalDetails(additionalDetails, "district", boundary.getDistrict());
                                 item.getProject().put("additionalDetails", enrichedAdditionalDetails);
+                            } else {
+                                log.warn("⚠️ No boundary found for code={} in projectId={}", boundaryCode, item.getProject().get("id"));
                             }
                         }
                     }
                 }
             }
+        } else {
+            log.warn("⚠️ No boundaries returned by boundaryUtil.getBoundaryByCode()");
         }
 
-        return ProjectResponse.builder().items(items).totalCount(totalCount).build();
+        ProjectResponse response = ProjectResponse.builder().items(items).totalCount(totalCount).build();
+        log.info("✅ Completed project inbox search. Returning {} items (totalCount={})",
+                response.getItems().size(), response.getTotalCount());
+
+        return response;
     }
 
     private Object mergeListIntoAdditionalDetails(Object additionalDetails, String key, Object value) {
@@ -205,46 +279,68 @@ public class InboxServiceV2 {
         return processInstance;
     }
 
-    private List<Inbox> getInboxItems(InboxRequest inboxRequest, String indexName){
+    private List<Inbox> getInboxItems(InboxRequest inboxRequest, String indexName) {
+        log.info("➡️ Fetching Inbox items for index={}", indexName);
+
         List<BusinessService> businessServices = workflowService.getBusinessServices(inboxRequest);
-//        enrichActionableStatusesFromRole(inboxRequest, businessServices);
-//        if(CollectionUtils.isEmpty(inboxRequest.getInbox().getProcessSearchCriteria().getStatus())){
-//            return new ArrayList<>();
-//        }
+        log.debug("🔧 Retrieved {} business services", businessServices.size());
+
         Map<String, Object> finalQueryBody = queryBuilder.getESQuery(inboxRequest, Boolean.TRUE, Boolean.TRUE);
+
         try {
-            String q = mapper.writeValueAsString(finalQueryBody);
-            log.info("Query: {}", q);
+            if (log.isDebugEnabled()) {
+                String q = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(finalQueryBody);
+                log.debug("📑 ES Query for Inbox:\n{}", q);
+            }
+        } catch (Exception e) {
+            log.warn("⚠️ Failed to serialize ES query for Inbox", e);
         }
-        catch (Exception e){
-            e.printStackTrace();
-        }
+
         StringBuilder uri = getURI(indexName, SEARCH_PATH);
-        //Object result = serviceRequestRepository.fetchESResult(uri, finalQueryBody);
+        log.info("🌐 Calling ES at URI={} for Inbox", uri);
+
         Object result = serviceRequestRepository.fetchESResult(uri, finalQueryBody);
+
+        if (log.isDebugEnabled()) {
+            log.debug("📥 Raw ES result for Inbox: {}", result);
+        }
 
         List<Inbox> inboxItemsList = parseInboxItemsFromSearchResponse(result, businessServices);
-        log.info(result.toString());
+        log.info("✅ Parsed {} Inbox items from ES response", inboxItemsList.size());
+
         return inboxItemsList;
     }
 
-    private List<Project> getProjectInboxItems(InboxRequest inboxRequest, String indexName){
+
+    private List<Project> getProjectInboxItems(InboxRequest inboxRequest, String indexName) {
+        log.info("➡️ Fetching Project Inbox items for index={}", indexName);
+
         Map<String, Object> finalQueryBody = queryBuilder.getESQueryProject(inboxRequest, Boolean.TRUE);
+
         try {
-            String q = mapper.writeValueAsString(finalQueryBody);
-            log.info("Query: {}", q);
+            if (log.isDebugEnabled()) {
+                String q = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(finalQueryBody);
+                log.debug("📑 ES Query for Project Inbox:\n{}", q);
+            }
+        } catch (Exception e) {
+            log.warn("⚠️ Failed to serialize ES query for Project Inbox", e);
         }
-        catch (Exception e){
-            log.warn("Serialization error in debug logging", e);
-        }
+
         StringBuilder uri = getURI(indexName, SEARCH_PATH);
-        //Object result = serviceRequestRepository.fetchESResult(uri, finalQueryBody);
+        log.info("🌐 Calling ES at URI={} for Project Inbox", uri);
+
         Object result = serviceRequestRepository.fetchESResult(uri, finalQueryBody);
 
-        List<Project> inboxItemsList = parseprojectItemsFromSearchResponse(result);
-        log.info(result.toString());
+        if (log.isDebugEnabled()) {
+            log.debug("📥 Raw ES result for Project Inbox: {}", result);
+        }
+
+        List<Project> inboxItemsList = parseProjectItemsFromSearchResponse(result);
+        log.info("✅ Parsed {} Project Inbox items from ES response", inboxItemsList.size());
+
         return inboxItemsList;
     }
+
 
     private void enrichActionableStatusesFromRole(InboxRequest inboxRequest, List<BusinessService> businessServices) {
         ProcessInstanceSearchCriteria processCriteria = inboxRequest.getInbox().getProcessSearchCriteria();
@@ -271,242 +367,331 @@ public class InboxServiceV2 {
         }
     }
 
-    public Integer getTotalApplicationCount(InboxRequest inboxRequest, String indexName){
+    public Integer getTotalApplicationCount(InboxRequest inboxRequest, String indexName) {
+        log.debug("➡️ Fetching total Application count for index: {}", indexName);
 
         Map<String, Object> finalQueryBody = queryBuilder.getESQuery(inboxRequest, Boolean.FALSE, Boolean.FALSE);
         try {
-            log.info(mapper.writeValueAsString(finalQueryBody));
+            log.debug("ES Query (Application Count): {}", mapper.writeValueAsString(finalQueryBody));
         } catch (JsonProcessingException e) {
+            log.error("❌ Failed to serialize Application count query", e);
             throw new RuntimeException(e);
         }
+
         StringBuilder uri = getURI(indexName, COUNT_PATH);
         Map<String, Object> response = (Map<String, Object>) serviceRequestRepository.fetchESResult(uri, finalQueryBody);
+        log.debug("ES Response (Application Count): {}", response);
+
         Integer totalCount = 0;
-        if(response.containsKey(COUNT_CONSTANT)){
+        if (response.containsKey(COUNT_CONSTANT)) {
             totalCount = (Integer) response.get(COUNT_CONSTANT);
-        }else{
+            log.info("✅ Total Application count = {}", totalCount);
+        } else {
+            log.error("❌ COUNT_CONSTANT not found in ES response for Applications");
             throw new CustomException("INBOX_COUNT_ERR", "Error occurred while executing ES count query");
         }
         return totalCount;
     }
 
-    public Integer getTotalProjectCount(InboxRequest inboxRequest, String indexName){
+    public Integer getTotalProjectCount(InboxRequest inboxRequest, String indexName) {
+        log.debug("➡️ Fetching total Project count for index: {}", indexName);
 
         Map<String, Object> finalQueryBody = queryBuilder.getESQueryProject(inboxRequest, Boolean.FALSE);
         try {
-            log.info(mapper.writeValueAsString(finalQueryBody));
+            log.debug("ES Query (Project Count): {}", mapper.writeValueAsString(finalQueryBody));
         } catch (JsonProcessingException e) {
+            log.error("❌ Failed to serialize Project count query", e);
             throw new RuntimeException(e);
         }
+
         StringBuilder uri = getURI(indexName, COUNT_PATH);
         Map<String, Object> response = (Map<String, Object>) serviceRequestRepository.fetchESResult(uri, finalQueryBody);
+        log.debug("ES Response (Project Count): {}", response);
+
         Integer totalCount = 0;
-        if(response.containsKey(COUNT_CONSTANT)){
+        if (response.containsKey(COUNT_CONSTANT)) {
             totalCount = (Integer) response.get(COUNT_CONSTANT);
-        }else{
+            log.info("✅ Total Project count = {}", totalCount);
+        } else {
+            log.error("❌ COUNT_CONSTANT not found in ES response for Projects");
             throw new CustomException("INBOX_COUNT_ERR", "Error occurred while executing ES count query");
         }
         return totalCount;
     }
 
-    public List<HashMap<String, Object>> getStatusCountMap(InboxRequest inboxRequest, String indexName){
+    public List<HashMap<String, Object>> getStatusCountMap(InboxRequest inboxRequest, String indexName) {
+        log.debug("➡️ Fetching Status Count Map for index: {}", indexName);
+
         Map<String, Object> finalQueryBody = queryBuilder.getStatusCountQuery(inboxRequest);
+        log.debug("ES Query (Status Count): {}", finalQueryBody);
+
         StringBuilder uri = getURI(indexName, SEARCH_PATH);
         Map<String, Object> response = (Map<String, Object>) serviceRequestRepository.fetchESResult(uri, finalQueryBody);
-        //Set<String> actionableStatuses = new HashSet<>(inboxRequest.getInbox().getProcessSearchCriteria().getStatus());
+        log.debug("ES Response (Status Count): {}", response);
+
         HashMap<String, Object> statusCountMap = parseStatusCountMapFromAggregationResponse(response);
         List<HashMap<String, Object>> transformedStatusMap = transformStatusMap(inboxRequest, statusCountMap);
+
+        if (transformedStatusMap != null) {
+            log.info("✅ Retrieved {} status count entries", transformedStatusMap.size());
+        } else {
+            log.warn("⚠️ Status count map was empty or null");
+        }
+
         return transformedStatusMap;
     }
 
     private Long getApplicationServiceSla(Map<String, Long> businessServiceSlaMap, Map<String, Long> stateUuidSlaMap, Object data) {
-
-        Long currentDate = System.currentTimeMillis(); //current time
+        Long currentDate = System.currentTimeMillis(); // current time
         Map<String, Object> auditDetails = (Map<String, Object>) ((Map<String, Object>) data).get(AUDIT_DETAILS_KEY);
-        
-        String stateUuid =null;
-        
-        if(JsonPath.read(data,"$.currentProcessInstance")!=null)
-        	stateUuid= JsonPath.read(data, STATE_UUID_PATH);
-        if(stateUuid !=null) {
-        if(stateUuidSlaMap.containsKey(stateUuid)){
-            if (!ObjectUtils.isEmpty(auditDetails.get(LAST_MODIFIED_TIME_KEY))) {
-                Long lastModifiedTime = ((Number) auditDetails.get(LAST_MODIFIED_TIME_KEY)).longValue();
 
-                return Long.valueOf(Math.round((stateUuidSlaMap.get(stateUuid) - (currentDate - lastModifiedTime)) / ((double) (24 * 60 * 60 * 1000))));
-            }
-        }else {
-            if (!ObjectUtils.isEmpty(auditDetails.get(CREATED_TIME_KEY))) {
-                Long createdTime = ((Number) auditDetails.get(CREATED_TIME_KEY)).longValue();
-                String businessService = JsonPath.read(data, BUSINESS_SERVICE_PATH);
-                Long businessServiceSLA = businessServiceSlaMap.get(businessService);
+        String stateUuid = null;
+        if (JsonPath.read(data, "$.currentProcessInstance") != null)
+            stateUuid = JsonPath.read(data, STATE_UUID_PATH);
 
-                return Long.valueOf(Math.round((businessServiceSLA - (currentDate - createdTime)) / ((double) (24 * 60 * 60 * 1000))));
+        if (stateUuid != null) {
+            if (stateUuidSlaMap.containsKey(stateUuid)) {
+                if (!ObjectUtils.isEmpty(auditDetails.get(LAST_MODIFIED_TIME_KEY))) {
+                    Long lastModifiedTime = ((Number) auditDetails.get(LAST_MODIFIED_TIME_KEY)).longValue();
+                    Long remaining = Math.round((stateUuidSlaMap.get(stateUuid) - (currentDate - lastModifiedTime)) / ((double) (24 * 60 * 60 * 1000)));
+                    log.debug("📌 Calculated SLA (by state) for stateUuid {} = {} days", stateUuid, remaining);
+                    return remaining;
+                }
+            } else {
+                if (!ObjectUtils.isEmpty(auditDetails.get(CREATED_TIME_KEY))) {
+                    Long createdTime = ((Number) auditDetails.get(CREATED_TIME_KEY)).longValue();
+                    String businessService = JsonPath.read(data, BUSINESS_SERVICE_PATH);
+                    Long businessServiceSLA = businessServiceSlaMap.get(businessService);
+                    Long remaining = Math.round((businessServiceSLA - (currentDate - createdTime)) / ((double) (24 * 60 * 60 * 1000)));
+                    log.debug("📌 Calculated SLA (by businessService) for {} = {} days", businessService, remaining);
+                    return remaining;
+                }
             }
-        }}
+        }
+        log.warn("⚠️ SLA could not be calculated for data: {}", data);
         return null;
     }
 
-    private List<HashMap<String,Object>> transformStatusMap(InboxRequest request,HashMap<String, Object> statusCountMap) {
-
-        if(CollectionUtils.isEmpty(statusCountMap))
+    private List<HashMap<String, Object>> transformStatusMap(InboxRequest request, HashMap<String, Object> statusCountMap) {
+        if (CollectionUtils.isEmpty(statusCountMap)) {
+            log.warn("⚠️ transformStatusMap received an empty/null statusCountMap");
             return null;
+        }
 
         List<BusinessService> businessServices = workflowService.getBusinessServices(request);
-
-        Map<String,String> statusIdToBusinessServiceMap = workflowService.getStatusIdToBusinessServiceMap(businessServices);
+        Map<String, String> statusIdToBusinessServiceMap = workflowService.getStatusIdToBusinessServiceMap(businessServices);
         Map<String, String> statusIdToApplicationStatusMap = workflowService.getApplicationStatusIdToStatusMap(businessServices);
 
-        List<HashMap<String,Object>> statusCountMapTransformed = new ArrayList<>();
+        List<HashMap<String, Object>> statusCountMapTransformed = new ArrayList<>();
 
-        for(Map.Entry<String, Object> entry : statusCountMap.entrySet()){
+        for (Map.Entry<String, Object> entry : statusCountMap.entrySet()) {
             String statusId = entry.getKey();
             Integer count = (Integer) entry.getValue();
+
             HashMap<String, Object> map = new HashMap<>();
             map.put(COUNT_CONSTANT, count);
-            map.put(APPLICATION_STATUS_KEY,statusIdToApplicationStatusMap.get(statusId));
-            map.put(BUSINESSSERVICE_KEY,statusIdToBusinessServiceMap.get(statusId));
+            map.put(APPLICATION_STATUS_KEY, statusIdToApplicationStatusMap.get(statusId));
+            map.put(BUSINESSSERVICE_KEY, statusIdToBusinessServiceMap.get(statusId));
             map.put(STATUSID_KEY, statusId);
+
             statusCountMapTransformed.add(map);
+
+            log.trace("🔹 Transformed status {} => {}", statusId, map);
         }
+
+        log.info("✅ Transformed {} status count entries", statusCountMapTransformed.size());
         return statusCountMapTransformed;
     }
 
     private HashMap<String, Object> parseStatusCountMapFromAggregationResponse(Map<String, Object> response) {
-        List<HashMap<String, Object>> statusCountResponse = new ArrayList<>();
-        if(!CollectionUtils.isEmpty((Map<String, Object>) response.get(AGGREGATIONS_KEY))){
-            List<Map<String, Object>> statusCountBuckets = JsonPath.read(response, STATUS_COUNT_AGGREGATIONS_BUCKETS_PATH);
-            HashMap<String, Object> statusCountMap = new HashMap<>();
-            statusCountBuckets.forEach(bucket -> {
-                //if(actionableStatuses.contains(bucket.get(KEY)))
-                    statusCountMap.put((String)bucket.get(KEY), bucket.get(DOC_COUNT_KEY));
-            });
-            statusCountResponse.add(statusCountMap);
-        }
-        if(CollectionUtils.isEmpty(statusCountResponse))
+        if (CollectionUtils.isEmpty((Map<String, Object>) response.get(AGGREGATIONS_KEY))) {
+            log.warn("⚠️ No aggregations found in ES response");
             return null;
+        }
 
-        return statusCountResponse.get(0);
+        List<Map<String, Object>> statusCountBuckets = JsonPath.read(response, STATUS_COUNT_AGGREGATIONS_BUCKETS_PATH);
+        HashMap<String, Object> statusCountMap = new HashMap<>();
+
+        statusCountBuckets.forEach(bucket -> {
+            statusCountMap.put((String) bucket.get(KEY), bucket.get(DOC_COUNT_KEY));
+        });
+
+        log.info("✅ Parsed {} buckets into statusCountMap", statusCountMap.size());
+        log.debug("📑 Status count map: {}", statusCountMap);
+
+        return statusCountMap;
     }
 
     private List<Inbox> parseInboxItemsFromSearchResponse(Object result, List<BusinessService> businessServices) {
-        Map<String, Object> hits = (Map<String, Object>)((Map<String, Object>) result).get(HITS);
+        log.info("➡️ Parsing inbox items from ES search response");
+
+        Map<String, Object> hits = (Map<String, Object>) ((Map<String, Object>) result).get(HITS);
         List<Map<String, Object>> nestedHits = (List<Map<String, Object>>) hits.get(HITS);
-        if(CollectionUtils.isEmpty(nestedHits)){
+
+        if (CollectionUtils.isEmpty(nestedHits)) {
+            log.warn("⚠️ No hits found in ES response");
             return new ArrayList<>();
         }
 
+        log.info("📥 Found {} hits in ES response", nestedHits.size());
+
+        // Préparer les maps SLA
         Map<String, Long> businessServiceSlaMap = new HashMap<>();
         Map<String, Long> stateUuidVsSlaMap = new HashMap<>();
 
         businessServices.forEach(businessService -> {
-            businessServiceSlaMap.put(businessService.getBusinessService(),businessService.getBusinessServiceSla());
+            businessServiceSlaMap.put(businessService.getBusinessService(), businessService.getBusinessServiceSla());
+            log.debug("🔧 BusinessService={} SLA={}", businessService.getBusinessService(), businessService.getBusinessServiceSla());
+
             businessService.getStates().forEach(state -> {
-                if(!ObjectUtils.isEmpty(state.getSla()))
+                if (!ObjectUtils.isEmpty(state.getSla())) {
                     stateUuidVsSlaMap.put(state.getUuid(), state.getSla());
+                    log.debug("   ↪ State={} SLA={}", state.getUuid(), state.getSla());
+                }
             });
         });
 
+        // Construire les inbox items
         List<Inbox> inboxItemList = new ArrayList<>();
-        nestedHits.forEach(hit ->{
+        nestedHits.forEach(hit -> {
             Inbox inbox = new Inbox();
             Map<String, Object> businessObject = (Map<String, Object>) hit.get(SOURCE_KEY);
             Map<String, Object> dataBusinessObject = (Map<String, Object>) businessObject.get(DATA_KEY);
+
             inbox.setBusinessObject(dataBusinessObject);
+
             Long serviceSla = getApplicationServiceSla(businessServiceSlaMap, stateUuidVsSlaMap, inbox.getBusinessObject());
             inbox.getBusinessObject().put(SERVICESLA_KEY, serviceSla);
             inbox.getBusinessObject().put(SLA_REMAINING, dataBusinessObject.get(SLA_REMAINING));
-            inbox.getBusinessObject().put(STATE_SLA,dataBusinessObject.get(STATE_SLA));
-            inbox.getBusinessObject().put(TOTAL_SLA_REMAINING,dataBusinessObject.get(TOTAL_SLA_REMAINING));
+            inbox.getBusinessObject().put(STATE_SLA, dataBusinessObject.get(STATE_SLA));
+            inbox.getBusinessObject().put(TOTAL_SLA_REMAINING, dataBusinessObject.get(TOTAL_SLA_REMAINING));
+
+            log.debug("📌 Parsed inbox item with serviceSla={} | stateSla={} | slaRemaining={}",
+                    serviceSla,
+                    dataBusinessObject.get(STATE_SLA),
+                    dataBusinessObject.get(SLA_REMAINING));
+
             inboxItemList.add(inbox);
         });
+
+        log.info("✅ Successfully parsed {} inbox items", inboxItemList.size());
+
         return inboxItemList;
     }
 
-    private List<Project> parseprojectItemsFromSearchResponse(Object result) {
-        Map<String, Object> hits = (Map<String, Object>)((Map<String, Object>) result).get(HITS);
+    @SuppressWarnings("unchecked")
+    private List<Project> parseProjectItemsFromSearchResponse(Object result) {
+        log.debug("➡️ Parsing Project items from ES response...");
+
+        Map<String, Object> hits = (Map<String, Object>) ((Map<String, Object>) result).get(HITS);
         List<Map<String, Object>> nestedHits = (List<Map<String, Object>>) hits.get(HITS);
-        if(CollectionUtils.isEmpty(nestedHits)){
+
+        if (CollectionUtils.isEmpty(nestedHits)) {
+            log.info("📭 No Project items found in ES response");
             return new ArrayList<>();
         }
 
+        log.debug("📑 Found {} raw Project hits in ES response", nestedHits.size());
+
         List<Project> inboxItemList = new ArrayList<>();
-        nestedHits.forEach(hit ->{
-            Project inbox = new Project();
+        nestedHits.forEach(hit -> {
+            Project project = new Project();
             Map<String, Object> businessObject = (Map<String, Object>) hit.get(SOURCE_KEY);
             Map<String, Object> dataBusinessObject = (Map<String, Object>) businessObject.get(DATA_KEY);
-            inbox.setProject(dataBusinessObject);
-            inboxItemList.add(inbox);
+
+            project.setProject(dataBusinessObject);
+            inboxItemList.add(project);
+
+            if (log.isTraceEnabled()) {
+                log.trace("📝 Parsed Project: {}", dataBusinessObject);
+            }
         });
+
+        log.info("✅ Parsed {} Project items successfully", inboxItemList.size());
         return inboxItemList;
     }
 
+
     public Integer getApplicationsNearingSlaCount(InboxRequest inboxRequest, String indexName) {
+        log.info("➡️ Calculating applications nearing SLA for index={}", indexName);
+
         List<BusinessService> businessServicesObjs = workflowService.getBusinessServices(inboxRequest);
         Map<String, Long> businessServiceSlaMap = new HashMap<>();
         Map<String, HashSet<String>> businessServiceVsStateUuids = new HashMap<>();
+
         businessServicesObjs.forEach(businessService -> {
             List<String> listOfUuids = new ArrayList<>();
             businessService.getStates().forEach(state -> {
                 listOfUuids.add(state.getUuid());
             });
             businessServiceVsStateUuids.put(businessService.getBusinessService(), new HashSet<>(listOfUuids));
-            businessServiceSlaMap.put(businessService.getBusinessService(),businessService.getBusinessServiceSla());
+            businessServiceSlaMap.put(businessService.getBusinessService(), businessService.getBusinessServiceSla());
+
+            log.debug("🔧 BusinessService={} SLA={} | states={}",
+                    businessService.getBusinessService(),
+                    businessService.getBusinessServiceSla(),
+                    listOfUuids.size());
         });
 
         List<String> uuidsInSearchCriteria = inboxRequest.getInbox().getProcessSearchCriteria().getStatus();
-
         Map<String, List<String>> businessServiceVsUuidsBasedOnSearchCriteria = new HashMap<>();
 
-        // If status uuids are being passed in process search criteria, segregating them based on their business service
-        if(!CollectionUtils.isEmpty(uuidsInSearchCriteria)) {
+        if (!CollectionUtils.isEmpty(uuidsInSearchCriteria)) {
+            log.info("📌 Using status filter with {} UUID(s)", uuidsInSearchCriteria.size());
             uuidsInSearchCriteria.forEach(uuid -> {
                 businessServiceVsStateUuids.keySet().forEach(businessService -> {
                     HashSet<String> setOfUuids = businessServiceVsStateUuids.get(businessService);
                     if (setOfUuids.contains(uuid)) {
-                        if (businessServiceVsUuidsBasedOnSearchCriteria.containsKey(businessService)) {
-                            businessServiceVsUuidsBasedOnSearchCriteria.get(businessService).add(uuid);
-                        } else {
-                            businessServiceVsUuidsBasedOnSearchCriteria.put(businessService, new ArrayList<>(Collections.singletonList(uuid)));
-                        }
+                        businessServiceVsUuidsBasedOnSearchCriteria
+                                .computeIfAbsent(businessService, k -> new ArrayList<>())
+                                .add(uuid);
                     }
                 });
-
             });
-        }else{
-        	log.info("Fetching Nearing SLA Count");
-            businessServiceVsStateUuids.keySet().forEach(businessService -> {
-                HashSet<String> setOfUuids = businessServiceVsStateUuids.get(businessService);
+        } else {
+            log.info("📌 No status filter provided → using all states for each BusinessService");
+            businessServiceVsStateUuids.forEach((businessService, setOfUuids) -> {
                 businessServiceVsUuidsBasedOnSearchCriteria.put(businessService, new ArrayList<>(setOfUuids));
             });
         }
 
-
-
         List<String> businessServices = new ArrayList<>(businessServiceVsUuidsBasedOnSearchCriteria.keySet());
         Integer totalCount = 0;
-        // Fetch slot percentage only once here !!!!!!!!!!
 
         for (String businessService : businessServices) {
             Long businessServiceSla = businessServiceSlaMap.get(businessService);
-            //inboxRequest.getInbox().getProcessSearchCriteria().setStatus(businessServiceVsUuidsBasedOnSearchCriteria.get(businessService));
             Map<String, Object> finalQueryBody = queryBuilder.getNearingSlaCountQuery(inboxRequest, businessServiceSla, businessService);
             StringBuilder uri = getURI(indexName, COUNT_PATH);
+
+            if (log.isDebugEnabled()) {
+                try {
+                    log.debug("🔍 ES Query for service={} SLA={}:\n{}",
+                            businessService,
+                            businessServiceSla,
+                            new ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(finalQueryBody));
+                } catch (Exception e) {
+                    log.warn("⚠️ Failed to pretty print ES query for service={}", businessService, e);
+                }
+            }
 
             @SuppressWarnings("unchecked")
             Map<String, Object> response = (Map<String, Object>) serviceRequestRepository.fetchESResult(uri, finalQueryBody);
 
-            // extract the top‐level "count" key
             if (!response.containsKey("count")) {
+                log.error("❌ ES response missing 'count' key for service={} response={}", businessService, response);
                 throw new CustomException("INBOX_COUNT_ERR", "Error occurred while executing ES count query");
             }
+
             Integer cnt = (Integer) response.get("count");
+            log.info("📊 ES count for service={} → {}", businessService, cnt);
+
             totalCount += cnt;
         }
 
+        log.info("✅ Total nearing SLA applications = {}", totalCount);
         return totalCount;
-
     }
+
 
 
     private StringBuilder getURI(String indexName, String endpoint){
