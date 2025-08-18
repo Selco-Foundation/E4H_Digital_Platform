@@ -60,6 +60,7 @@ const formatData = async (data) => {
       })
     } else {
       dataMap.set(assetType, {
+        assetType,
         assetName: getAssetName(assetType),
         count: 1,
         specifications: {

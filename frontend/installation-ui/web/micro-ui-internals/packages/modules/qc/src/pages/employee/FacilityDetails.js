@@ -8,7 +8,7 @@ import { Loader } from "@egovernments/digit-ui-react-components";
 
 const FacilityDetails = ({t}) => {
 
-  const [fetchedData, setData] = useState([]);
+  const [assets, setAssets] = useState([]);
   const dispatch = useDispatch();
   const url = window.location.href;
   const fieldPlanId = url.split("field-plan/")[1].split("/")[0];
@@ -17,6 +17,7 @@ const FacilityDetails = ({t}) => {
   const facilityId = decodeURIComponent(facilityIdentifier.split("--")[1]);
   const [facilityDetails, setFacilityDetails] = useState({});
   const [auditTrail, setAuditTrail] = useState([]);
+  const [aggregatedAssets, setAggregatedAssets] = useState({});
 
   const [pdfFile, setPdfFile] = useState({
     name: "Alkod.pdf",
@@ -29,12 +30,12 @@ const FacilityDetails = ({t}) => {
       id: [fieldPlanId]
     }
   });
-  const { data: facilityData } = Digit.Hooks.qc.useFacilityDetails(facilityProjectId);
+  const { isLoading: facilityDataLoading ,data: facilityData } = Digit.Hooks.qc.useFacilityDetails(facilityProjectId);
   const { isLoading, data: assetData } = Digit.Hooks.qc.useAsset(facilityId);
 
   useEffect(() => {
     if (assetData) {
-      setData(assetData);
+      setAssets(assetData);
     }
   }, [assetData]);
 
@@ -48,6 +49,7 @@ const FacilityDetails = ({t}) => {
     if (facilityData) {
       setAuditTrail(facilityData.auditTrail);
       setFacilityDetails(facilityData.facilityDetails);
+      setAggregatedAssets(facilityData.assetAggregation);
       dispatch(setSelectedFacility(facilityData.facilityDetails));
     }
   }, [facilityData]);
@@ -58,7 +60,7 @@ const FacilityDetails = ({t}) => {
     }
   }, []);
 
-  if (isLoading) {
+  if (isLoading || facilityDataLoading) {
     return <Loader />;
   }
 
@@ -96,17 +98,27 @@ const FacilityDetails = ({t}) => {
 
       {auditTrail?.length > 0 && <AuditTrail t={t} auditTrail={auditTrail} />}
 
-      {fetchedData && fetchedData.map((asset) => {
+      {assets && assets.map((asset) => {
         return <Summary
           sectionName={asset?.assetName}
           count={asset?.count}
           specifications={asset?.specifications}
           details={asset?.details}
           items={asset?.items}
+          images={aggregatedAssets.images?.[asset.assetType]}
         />
       })}
 
-      {pdfFile && <Summary sectionName="InstallationCompletionReport" pdf={pdfFile} isReport={true} />}
+      {aggregatedAssets?.installationReport && (
+        <Summary
+          sectionName="InstallationCompletionReport"
+          report={{
+            ...aggregatedAssets?.installationReport,
+            name: facilityDetails.facilityName
+          }}
+          isReport={true}
+        />
+      )}
 
       {facilityDetails?.status && facilityDetails?.status.toUpperCase() === "SUBMITTED_BY_SUPERVISOR" && <QCActions />}
 

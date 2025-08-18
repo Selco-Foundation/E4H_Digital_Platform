@@ -6,7 +6,7 @@ import SingleRejectionReasonModal from "./SingleRejectionReasonModal";
 import { useDispatch, useSelector } from "react-redux";
 import { setRejectionReasons } from "../../redux/actions";
 
-const Summary = ({ sectionName, count, specifications, details, items, images, videos, pdf, isReport }) => {
+const Summary = ({ sectionName, count, specifications, details, items, images, videos, report, isReport }) => {
 
   const [expanded, setExpanded] = useState(false);
   const [showRejectionModal, setShowRejectionModal] = useState(false);
@@ -98,7 +98,7 @@ const Summary = ({ sectionName, count, specifications, details, items, images, v
 
       {expanded && (
         isReport ? (
-          pdf && <SystemParameterReport pdf={pdf} />
+          report && <SystemParameterReport file={report} />
         ) : (
           <div style={{ padding: "20px" }}>
             <Section title="Count">
@@ -161,13 +161,15 @@ const Summary = ({ sectionName, count, specifications, details, items, images, v
               </Section>
             ))}
 
-            {/*<Section title={`${sectionName} Images`}>*/}
-            {/*  <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>*/}
-            {/*    {images.map((img, idx) => (*/}
-            {/*      <img key={idx} src={img} alt={`image-${idx}`} style={{ width: "100px", height: "100px", objectFit: "cover" }} />*/}
-            {/*    ))}*/}
-            {/*  </div>*/}
-            {/*</Section>*/}
+            {images?.length > 0 && (
+              <Section title={`${sectionName} Images`}>
+                <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                  {images.map((img, idx) => (
+                    <img key={idx} src={img} alt={`image-${idx}`} style={{ width: "100px", height: "100px", objectFit: "cover" }} />
+                  ))}
+                </div>
+              </Section>
+            )}
 
             {/*<Section title={`${sectionName} Videos`}>*/}
             {/*  <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>*/}

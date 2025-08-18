@@ -1,4 +1,5 @@
 import { Request } from "../atoms/Utils/Request";
+import axios from "axios";
 
 export const QCService = {
 
@@ -103,6 +104,26 @@ export const QCService = {
       method : "GET",
       params : params,
     })
+  },
+
+  fetchDocumentSize : async (fileUrl) => {
+    const response = await axios.get(fileUrl);
+    const sizeInBytes = response.headers["content-length"];
+
+    if (!sizeInBytes) {
+      console.info("Content-Length not available");
+      return;
+    }
+
+    const size = Number(sizeInBytes);
+    const i = Math.floor(Math.log(size) / Math.log(1024));
+    const humanReadable =
+      (size / Math.pow(1024, i)).toFixed(2) * 1 +
+      " " +
+      ["B", "KB", "MB", "GB", "TB"][i];
+
+    console.info(`File size: ${humanReadable} (${size} bytes)`);
+    return humanReadable;
   },
 
   updateProjectWorkflow : async (projectId, action, comments, workflowComment) => {
