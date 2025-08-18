@@ -441,7 +441,24 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
                 return termClause;
             }
         } else if (operator.equals(SearchParam.Operator.LTE) || operator.equals(SearchParam.Operator.GTE)) {
-            return new HashMap<>();
+            Map<String, Object> rangeClause = new HashMap<>();
+            rangeClause.put("range", new HashMap<>());
+            Map<String, Object> innerRangeClause = (Map<String, Object>) rangeClause.get("range");
+            Map<String, Object> innerRangeClauseBis = new HashMap<>();
+            innerRangeClauseBis.put("lte", 0);
+            innerRangeClauseBis.put(operator.toString(), params.get(key));
+            innerRangeClause.put(addDataPathToSearchParamKey(key, nameToPathMap), innerRangeClauseBis);
+            return rangeClause;
+        } else if (operator.equals(SearchParam.Operator.MUST_NOT)){
+            Map<String, Object> boolClause = new HashMap<>();
+            boolClause.put("bool", new HashMap<>());
+            Map<String, Object> mustNotClause = (Map<String, Object>) boolClause.get("bool");
+            mustNotClause.put("must_not", new HashMap<>());
+            Map<String, Object> termClause = (Map<String, Object>) mustNotClause.get("must_not");
+            termClause.put("terms", new HashMap<>());
+            Map<String, Object> innerTermClause = (Map<String, Object>) termClause.get("terms");
+            innerTermClause.put(addDataPathToSearchParamKey(key, nameToPathMap), params.get(key));
+            return boolClause;
         } else if (operator.equals(SearchParam.Operator.SLA_COMPARE)) {
             return new HashMap<>();
         } else if (operator.equals(SearchParam.Operator.MULTI_MATCH)) {
