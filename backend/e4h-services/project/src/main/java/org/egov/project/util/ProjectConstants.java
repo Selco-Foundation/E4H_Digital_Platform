@@ -13,6 +13,10 @@ public class ProjectConstants {
     public static final String MASTER_NATUREOFWORK = "NatureOfWork";
     public static final String MASTER_ATTENDANCE_SESSION = "AttendanceSessions";
     public static final String CODE = "code";
+    public static final String PROJECT_TYPE_FIELDPLAN = "FieldPlan";
+    public static final String PROJECT_TYPE_FACILITY = "Facility";
+    public static final String HIERARCHY_TYPE = "SELCO";
+    public static final String TENANTID = "in";
     //General
     public static final String SEMICOLON = ":";
     public static final String DOT = ".";
