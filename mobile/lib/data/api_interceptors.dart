@@ -19,7 +19,7 @@ class AuthTokenInterceptor extends Interceptor {
     final secureStore = SecureStore();
     final authToken = await secureStore.getAccessToken();
     final ResponseModel? accessInfo = await secureStore.getAccessInfo();
-
+    print("options path ${options.path}");
     print("options data ${options.data}");
     print("options data 2 ${(options.data.toString())}");
     if (options.data is Map) {

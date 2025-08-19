@@ -16,7 +16,7 @@ class ProjectWorkflow with _$ProjectWorkflow {
     @ProjectModelConverter() required ProjectModel project,
     String? status,
     List<Transaction>? transactions,
-    Workflow? workflow,
+    @WorkflowFlexConverter() Workflow? workflow,
   }) = _ProjectWorkflow;
 
   factory ProjectWorkflow.fromJson(Map<String, dynamic> json) =>
@@ -155,4 +155,38 @@ class ProjectModelConverter
     ProjectModelMapper.ensureInitialized();
     return model.toMap();
   }
+}
+
+class WorkflowFlexConverter implements JsonConverter<Workflow?, Object?> {
+  const WorkflowFlexConverter();
+
+  @override
+  Workflow? fromJson(Object? json) {
+    if (json == null) return null;
+
+    print("json first");
+    // Case 1: {} (empty map) → treat as no workflow
+    if (json is Map) {
+      print("json is map");
+      if (json.isEmpty) return null;
+      return Workflow.fromJson(Map<String, dynamic>.from(json));
+    }
+
+    // Case 2: [ {…}, … ] → take the FIRST element
+    if (json is List && json.isNotEmpty) {
+      print("json is List && json.isNotEmpty");
+      final first = json.first;
+      if (first is Map<String, dynamic>) {
+        return Workflow.fromJson(first);
+      }
+      if (first is Map) {
+        return Workflow.fromJson(Map<String, dynamic>.from(first));
+      }
+    }
+
+    return null;
+  }
+
+  @override
+  Object? toJson(Workflow? value) => value?.toJson();
 }
