@@ -18,7 +18,10 @@ const SearchCentre = ({ queryFilter, onSearch, onClear }) => {
   return (
     <React.Fragment>
       <div style={{ width: "100%", background: "white", height: "fit-content", marginBottom: "15px", padding: "10px" }}>
-        <div>
+        <form onSubmit={(e) => {
+          e.preventDefault();
+          handleSearch();
+        }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <span>
               <Label>Search Field Plan Code</Label>
@@ -37,12 +40,12 @@ const SearchCentre = ({ queryFilter, onSearch, onClear }) => {
                 className="clear-search"
                 style={{ color: "#7a2829", marginLeft: "15px", marginTop: "10px" }}
               >
-                Clear Search
+                {t("CORE_COMMON_CLEAR_SEARCH")}
               </span>
-              <SubmitBar onSubmit={handleSearch} style={{ marginLeft: "10px" }} label={"Search"} />
+              <SubmitBar onSubmit={handleSearch} style={{ marginLeft: "10px" }} label={t("CORE_COMMON_SEARCH")} />
             </div>
           </div>
-        </div>
+        </form>
       </div>
     </React.Fragment>
   );

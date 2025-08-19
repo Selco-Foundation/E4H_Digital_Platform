@@ -48,6 +48,9 @@ public class ProjectAddressQueryBuilder {
             " result) result_offset " +
             "WHERE offset_ > ? AND offset_ <= ?";
 
+    private static final String STATUS_COUNT_QUERY = "SELECT status, COUNT(*) AS occurrences " +
+            "FROM project prj where prj.status is not null and prj.projecttype = 'Facility' ";
+
     private final ProjectConfiguration config;
 
     /* Add WHERE clause before first condition, ADD and for subsequent conditions. Do not add AND before any condition and after "(" */
@@ -205,6 +208,17 @@ public class ProjectAddressQueryBuilder {
         return addPaginationWrapper(queryBuilder.toString(), criteria.getPreparedStmtList(), criteria.getLimit(), criteria.getOffset());
     }
 
+    public String getStatusProjectOccurence(String parentProjectId, List<Object> preparedStmtList) {
+        StringBuilder queryBuilder = new StringBuilder(STATUS_COUNT_QUERY);
+        if (parentProjectId != null && !parentProjectId.isEmpty()) {
+            queryBuilder.append(" AND prj.parent =? ");
+            preparedStmtList.add(parentProjectId);
+        }
+        queryBuilder.append("GROUP BY status ORDER BY occurrences DESC;");
+
+        return queryBuilder.toString();
+    }
+
     /**
      * Constructs the SQL query string for searching projects based on the given parameters.
      *
@@ -341,8 +355,8 @@ public class ProjectAddressQueryBuilder {
         // Check if project name is provided
         if (StringUtils.isNotBlank(projectSearch.getName())) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
-            queryBuilder.append(" prj.name LIKE ? ");
-            preparedStmtList.add('%' + projectSearch.getName() + '%');
+            queryBuilder.append(" LOWER(prj.name) LIKE ? ");
+            preparedStmtList.add("%" + projectSearch.getName().toLowerCase() + "%");
         }
 
         // Check if project type ID is provided
@@ -476,6 +490,10 @@ public class ProjectAddressQueryBuilder {
         // Default sorting field
         String defaultSortField = "project_lastModifiedTime";
         String defaultSortOrder = ProjectSortCriteria.SortDirection.DESC.name();
+        if(projectSearchRequest.getProject() !=null && projectSearchRequest.getProject().getProjectTypeId() !=null
+                && projectSearchRequest.getProject().getProjectTypeId().equals("Facility"))
+            sortField = "project_name";
+
         if (sortField != null) {
             query += " ORDER BY " + sortField + " " + sortDirection;
         } else {

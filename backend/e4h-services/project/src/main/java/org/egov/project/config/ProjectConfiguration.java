@@ -35,6 +35,9 @@ public class ProjectConfiguration {
     @Value("${project.facility.kafka.create.topic}")
     private String createProjectFacilityTopic;
 
+    @Value("${project.facility.kafka.create.topic.indexer}")
+    private String updateProjectFacilityTopicIndexer;
+
     @Value("${project.facility.consumer.bulk.create.topic}")
     private String bulkCreateProjectFacilityTopic;
 
@@ -125,6 +128,9 @@ public class ProjectConfiguration {
     @Value("${egov.search.facility.url}")
     private String facilityServiceSearchUrl;
 
+    @Value("${egov.v2.search.facility.url}")
+    private String facilityServiceSearchUrlV2;
+
     @Value("${search.api.limit:100}")
     private String searchApiLimit;
 
@@ -139,8 +145,23 @@ public class ProjectConfiguration {
     @Value("${project.management.system.kafka.create.topic}")
     private String saveProjectTopic;
 
+    @Value("${project.management.system.kafka.create.topic.indexer}")
+    private String saveProjectTopicIndexer;
+
     @Value("${project.management.system.kafka.update.topic}")
     private String updateProjectTopic;
+
+    @Value("${project.management.system.kafka.update.topic.indexer.facility}")
+    private String updateProjectTopicIndexerFacility;
+
+    @Value("${project.management.system.kafka.update.topic.indexer.assignTo}")
+    private String updateProjectTopicIndexerAssignTo;
+
+    @Value("${project.management.system.kafka.update.topic.indexer.status}")
+    private String updateProjectTopicIndexerStatus;
+
+    @Value("${project.management.system.kafka.update.topic.indexer}")
+    private String updateProjectTopicIndexer;
 
     @Value("${egov.idgen.project.number.name}")
     private String idgenProjectNumberName;
@@ -251,4 +272,10 @@ public class ProjectConfiguration {
 
     @Value("${egov.asset.update.url}")
     private String assetUpdateUrl;
+
+    @Value("${egov.hrms.host}")
+    private String hrmsHost;
+
+    @Value("${egov.hrms.search.url}")
+    private String hrmsSearchUrl;
 }

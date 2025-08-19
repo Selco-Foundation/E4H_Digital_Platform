@@ -14,10 +14,9 @@ import org.egov.inbox.repository.ServiceRequestRepository;
 import org.egov.inbox.repository.builder.V2.InboxQueryBuilder;
 import org.egov.inbox.service.V2.validator.ValidatorDefaultImplementation;
 import org.egov.inbox.service.WorkflowService;
+import org.egov.inbox.util.BoundaryUtil;
 import org.egov.inbox.util.MDMSUtil;
-import org.egov.inbox.web.model.Inbox;
-import org.egov.inbox.web.model.InboxRequest;
-import org.egov.inbox.web.model.InboxResponse;
+import org.egov.inbox.web.model.*;
 import org.egov.inbox.web.model.V2.*;
 import org.egov.inbox.web.model.workflow.BusinessService;
 import org.egov.inbox.web.model.workflow.ProcessInstance;
@@ -54,6 +53,9 @@ public class InboxServiceV2 {
 
     @Autowired
     private MDMSUtil mdmsUtil;
+
+    @Autowired
+    private BoundaryUtil boundaryUtil;
 
     @Autowired
     private ObjectMapper mapper;
@@ -124,6 +126,55 @@ public class InboxServiceV2 {
         });
     }
 
+    public ProjectResponse getInboxResponseProject(InboxRequest inboxRequest) {
+        validator.validateSearchCriteria(inboxRequest);
+
+        InboxQueryConfiguration inboxQueryConfiguration = mdmsUtil.getConfigFromMDMS(
+                inboxRequest.getInbox().getTenantId(),
+                inboxRequest.getInbox().getProcessSearchCriteria().getModuleName());
+        hashParamsWhereverRequiredBasedOnConfiguration(inboxRequest.getInbox().getModuleSearchCriteria(),
+                inboxQueryConfiguration);
+        List<Project> items = getProjectInboxItems(inboxRequest, inboxQueryConfiguration.getIndex());
+        Integer totalCount = getTotalProjectCount(inboxRequest, inboxQueryConfiguration.getIndex());
+        Map<String, Boundary> listBlock = boundaryUtil.getBoundaryByCode();
+        if(listBlock != null){
+            for (Project item:items) {
+                Object additionalDetails = item.getProject().get("additionalDetails");
+                Object boundaryCodeObject = item.getProject().get("address");
+                if(boundaryCodeObject !=null){
+                    Address address = mapper.convertValue(boundaryCodeObject, Address.class);
+                    if(address !=null){
+                        String boundaryCode = address.getBoundary();
+                        if(boundaryCode != null){
+                            Boundary boundary = listBlock.get(boundaryCode);
+                            if(boundary != null){
+                                Object enrichedAdditionalDetails = mergeListIntoAdditionalDetails(additionalDetails, "state", boundary.getState());
+                                item.getProject().put("additionalDetails", enrichedAdditionalDetails);
+                                additionalDetails = item.getProject().get("additionalDetails");
+                                enrichedAdditionalDetails = mergeListIntoAdditionalDetails(additionalDetails, "district", boundary.getDistrict());
+                                item.getProject().put("additionalDetails", enrichedAdditionalDetails);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return ProjectResponse.builder().items(items).totalCount(totalCount).build();
+    }
+
+    private Object mergeListIntoAdditionalDetails(Object additionalDetails, String key, Object value) {
+        if (additionalDetails instanceof Map) {
+            ((Map<String, Object>) additionalDetails).put(key, value);
+            return additionalDetails;
+        } else {
+            // default to HashMap if null or unknown type
+            Map<String, Object> map = new HashMap<>();
+            map.put(key, value);
+            return map;
+        }
+    }
+
     private void enrichProcessInstanceInInboxItems(List<Inbox> items) {
         /*
           As part of the new inbox, having currentProcessInstance as part of the index is mandated. This has been
@@ -177,6 +228,24 @@ public class InboxServiceV2 {
         return inboxItemsList;
     }
 
+    private List<Project> getProjectInboxItems(InboxRequest inboxRequest, String indexName){
+        Map<String, Object> finalQueryBody = queryBuilder.getESQueryProject(inboxRequest, Boolean.TRUE);
+        try {
+            String q = mapper.writeValueAsString(finalQueryBody);
+            log.info("Query: {}", q);
+        }
+        catch (Exception e){
+            log.warn("Serialization error in debug logging", e);
+        }
+        StringBuilder uri = getURI(indexName, SEARCH_PATH);
+        //Object result = serviceRequestRepository.fetchESResult(uri, finalQueryBody);
+        Object result = serviceRequestRepository.fetchESResult(uri, finalQueryBody);
+
+        List<Project> inboxItemsList = parseprojectItemsFromSearchResponse(result);
+        log.info(result.toString());
+        return inboxItemsList;
+    }
+
     private void enrichActionableStatusesFromRole(InboxRequest inboxRequest, List<BusinessService> businessServices) {
         ProcessInstanceSearchCriteria processCriteria = inboxRequest.getInbox().getProcessSearchCriteria();
         String tenantId = inboxRequest.getInbox().getTenantId();
@@ -205,6 +274,25 @@ public class InboxServiceV2 {
     public Integer getTotalApplicationCount(InboxRequest inboxRequest, String indexName){
 
         Map<String, Object> finalQueryBody = queryBuilder.getESQuery(inboxRequest, Boolean.FALSE, Boolean.FALSE);
+        try {
+            log.info(mapper.writeValueAsString(finalQueryBody));
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+        StringBuilder uri = getURI(indexName, COUNT_PATH);
+        Map<String, Object> response = (Map<String, Object>) serviceRequestRepository.fetchESResult(uri, finalQueryBody);
+        Integer totalCount = 0;
+        if(response.containsKey(COUNT_CONSTANT)){
+            totalCount = (Integer) response.get(COUNT_CONSTANT);
+        }else{
+            throw new CustomException("INBOX_COUNT_ERR", "Error occurred while executing ES count query");
+        }
+        return totalCount;
+    }
+
+    public Integer getTotalProjectCount(InboxRequest inboxRequest, String indexName){
+
+        Map<String, Object> finalQueryBody = queryBuilder.getESQueryProject(inboxRequest, Boolean.FALSE);
         try {
             log.info(mapper.writeValueAsString(finalQueryBody));
         } catch (JsonProcessingException e) {
@@ -330,6 +418,24 @@ public class InboxServiceV2 {
             inbox.getBusinessObject().put(SLA_REMAINING, dataBusinessObject.get(SLA_REMAINING));
             inbox.getBusinessObject().put(STATE_SLA,dataBusinessObject.get(STATE_SLA));
             inbox.getBusinessObject().put(TOTAL_SLA_REMAINING,dataBusinessObject.get(TOTAL_SLA_REMAINING));
+            inboxItemList.add(inbox);
+        });
+        return inboxItemList;
+    }
+
+    private List<Project> parseprojectItemsFromSearchResponse(Object result) {
+        Map<String, Object> hits = (Map<String, Object>)((Map<String, Object>) result).get(HITS);
+        List<Map<String, Object>> nestedHits = (List<Map<String, Object>>) hits.get(HITS);
+        if(CollectionUtils.isEmpty(nestedHits)){
+            return new ArrayList<>();
+        }
+
+        List<Project> inboxItemList = new ArrayList<>();
+        nestedHits.forEach(hit ->{
+            Project inbox = new Project();
+            Map<String, Object> businessObject = (Map<String, Object>) hit.get(SOURCE_KEY);
+            Map<String, Object> dataBusinessObject = (Map<String, Object>) businessObject.get(DATA_KEY);
+            inbox.setProject(dataBusinessObject);
             inboxItemList.add(inbox);
         });
         return inboxItemList;
