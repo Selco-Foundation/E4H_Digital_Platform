@@ -154,6 +154,55 @@ export const QCService = {
     });
   },
 
+  bulkApproveProjects: async (filters, mainCheck, projectIds) => {
+    const endpoint = "/project/v1/project/bulk/workflow/update";
+
+    const queryObj = {
+      workflow: {
+        action: "APPROVE",
+        comments: "Approved by QC"
+      }
+    }
+
+    queryObj.isSelectedAll = mainCheck;
+
+    if (mainCheck) {
+      queryObj.isSelectedAll = true;
+
+      const filter = {
+        parent: filters.project.parent
+      }
+
+      if (filters.facilitySearch.name) {
+        filter.name = filters.facilitySearch.name;
+      }
+
+      if (filters.facilityFilterQuery.status?.length > 0) {
+        filter.status = filters.facilityFilterQuery.status?.join(",");
+      }
+
+      if (filters.facilityFilterQuery.boundary?.length > 0) {
+        filter.boundaryCode = filters.facilityFilterQuery.boundary?.join(",");
+      }
+
+      queryObj.filter = filter;
+
+    } else {
+      queryObj.projectIds = projectIds;
+    }
+
+    function fakeAsyncTask() {
+      return new Promise((resolve, reject) => {
+        setTimeout(() => {
+          resolve(queryObj);
+          // reject(new Error("Something went wrong"));
+        }, 5000);
+      });
+    }
+
+    return await fakeAsyncTask();
+  },
+
   fetchBoundaryRelations : async (codes, boundaryType) => {
     const endpoint = "/boundary-service/boundary-relationships/_search";
     const params = {

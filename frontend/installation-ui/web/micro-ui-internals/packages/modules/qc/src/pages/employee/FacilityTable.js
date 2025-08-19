@@ -14,12 +14,12 @@ const FacilityTable = ({ t }) => {
   const [fieldPlan, setFieldPlan] = useState({});
   const [selectedFacilities, setSelectedFacilities] = useState([]);
   const [fetchedData, setData] = useState([]);
-  const [sideCheck, setSideCheck] = useState({});
   const history = useHistory();
   const location = useLocation();
   const url = window.location.href;
   const fieldPlanId = url.split("field-plan/")[1].split("/")[0];
   const queryParams = new URLSearchParams(window.location.search);
+  const [updatingWorkflow, setUpdatingWorkflow] = useState(false);
 
   const [projectQueryFilter, setProjectQueryFilter] = useState((() => {
     try {
@@ -51,13 +51,24 @@ const FacilityTable = ({ t }) => {
   const [pageOffset, setPageOffset] = useState(queryParams.get("pageOffset") || 0);
   const prevPageSizeRef = useRef(pageSize);
 
-  const { data: fieldPlanData } = Digit.Hooks.qc.useFieldPlan({
+  const {
+    isLoading: fieldPlanDataLoading,
+    isFetching: fieldPlanDataFetching,
+    data: fieldPlanData,
+    revalidate: invalidateFieldPlanData,
+  } = Digit.Hooks.qc.useFieldPlan({
     Project : {
       projectTypeId: "FieldPlan",
       id: [fieldPlanId]
     }
   });
-  const { isLoading, data: facilityData } = Digit.Hooks.qc.useFacility(projectQueryFilter, pageSize, pageOffset);
+
+  const {
+    isLoading,
+    isFetching: facilityDataFetching,
+    data: facilityData,
+    revalidate: invalidateFacilityData,
+  } = Digit.Hooks.qc.useFacility(projectQueryFilter, pageSize, pageOffset);
 
   useEffect(() => {
     history.replace({
@@ -86,13 +97,7 @@ const FacilityTable = ({ t }) => {
       }));
 
       setData(refactoredDataCopy);
-      const newSideCheck = {};
-      refactoredDataCopy.forEach((row) => {
-        if (row?.status === t("SUBMITTED_BY_SUPERVISOR")) {
-          newSideCheck[`${row?.id}`] = false;
-        }
-      })
-      setSideCheck(newSideCheck);
+      setSelectedFacilities([]);
       setMainCheck(false);
     }
   }, [facilityData, fieldPlan])
@@ -129,11 +134,6 @@ const FacilityTable = ({ t }) => {
   const mainCheckboxChange = () => {
     const prevMainCheck = mainCheck;
     setMainCheck(!prevMainCheck);
-    const newSideCheck = sideCheck;
-    Object.keys(newSideCheck).forEach((side) => {
-      newSideCheck[`${side}`] = !prevMainCheck;
-    })
-    setSideCheck(newSideCheck);
     if(!prevMainCheck) {
       setSelectedFacilities(
         fetchedData
@@ -145,14 +145,7 @@ const FacilityTable = ({ t }) => {
     }
   };
 
-  const sideCheckboxChange = (sideCheckboxId, id) => {
-    const newSideCheck = sideCheck;
-    Object.keys(newSideCheck).forEach((side) => {
-      if(side === sideCheckboxId)
-        newSideCheck[`${side}`] = !newSideCheck[`${side}`];
-    })
-
-    setSideCheck(newSideCheck);
+  const sideCheckboxChange = (id) => {
     setMainCheck(false);
 
     if (selectedFacilities.some((facilityId) => facilityId === id)) {
@@ -161,6 +154,13 @@ const FacilityTable = ({ t }) => {
       setSelectedFacilities([...selectedFacilities, id]);
     }
   };
+
+  const revalidateData = () => {
+    setMainCheck(false);
+    setSelectedFacilities([]);
+    invalidateFieldPlanData();
+    invalidateFacilityData();
+  }
 
   const columns = [
     {
@@ -174,8 +174,8 @@ const FacilityTable = ({ t }) => {
         return row.original["status"] === t("SUBMITTED_BY_SUPERVISOR") ? (
           <div style={{ marginTop: "-1.2em", marginBottom: "-0.8em", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <CheckBox
-              checked={sideCheck[`${row.original["id"]}`]}
-              onChange={() => sideCheckboxChange(`${row.original["id"]}`, row.original["id"])}
+              checked={selectedFacilities.some((facilityId) => facilityId === row.original["id"])}
+              onChange={() => sideCheckboxChange(row.original["id"])}
             />
           </div>
         ) : (
@@ -249,6 +249,10 @@ const FacilityTable = ({ t }) => {
       code: "SUBMITTED_BY_SUPERVISOR"
     },
     {
+      name: t("CS_PENDING_APPROVAL_FLAGGED_FOR_QC"),
+      code: "PENDING_APPROVAL_FLAGGED_FOR_QC"
+    },
+    {
       name: t("CS_APPROVED_BY_QC_SPOC"),
       code: "APPROVED_BY_QC_SPOC"
     },
@@ -309,6 +313,25 @@ const FacilityTable = ({ t }) => {
 
   return (
     <div style={{marginTop: "20px"}}>
+      {(updatingWorkflow || (!fieldPlanDataLoading && fieldPlanDataFetching) || (!isLoading && facilityDataFetching)) && (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            height: "100%",
+            width: "100%",
+            zIndex: 5,
+            backgroundColor: "gray",
+            opacity: 0.5,
+            position: "fixed",
+            top: 0,
+            left: 0,
+          }}
+        >
+          <Loader />
+        </div>
+      )}
       <div style={{fontSize: "24px", fontWeight: "bold", marginBottom: "20px", color: "#004d66"}}>
         Installation | {fieldPlan?.name}
       </div>
@@ -335,6 +358,8 @@ const FacilityTable = ({ t }) => {
               selectedFacilities={selectedFacilities}
               projectQueryFilter={projectQueryFilter}
               onSearch={handleFilterChange}
+              revalidateData={revalidateData}
+              setUpdatingWorkflow={setUpdatingWorkflow}
             />
           </div>
           {renderFacilities()}

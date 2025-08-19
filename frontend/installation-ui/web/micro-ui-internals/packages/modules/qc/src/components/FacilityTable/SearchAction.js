@@ -6,8 +6,9 @@ import {
   TickMark,
   DownloadIcon, SearchIconSvg, SearchIcon
 } from "@egovernments/digit-ui-react-components";
+import { DoneAll } from "@egovernments/digit-ui-svg-components/src";
 
-const SearchActionCentre = ({ t, projectQueryFilter, mainCheckBox, selectedFacilities, onSearch }) => {
+const SearchActionCentre = ({ t, projectQueryFilter, mainCheckBox, selectedFacilities, onSearch, revalidateData, setUpdatingWorkflow }) => {
   const [textToSearch, setTextToSearch] = useState(projectQueryFilter.facilitySearch.name || "");
 
   const handleSearch = (name) => {
@@ -42,6 +43,24 @@ const SearchActionCentre = ({ t, projectQueryFilter, mainCheckBox, selectedFacil
     </button>
   )
 
+  const handleBulkApprove = async () => {
+    setUpdatingWorkflow(true);
+
+    try {
+      const response = await Digit.QCService.bulkApproveProjects(projectQueryFilter, mainCheckBox, selectedFacilities);
+
+      if (response) {
+        console.debug("Bulk Approve Response", response);
+        revalidateData();
+      }
+
+    } catch (err) {
+      console.error("Error bulk approving", err);
+    } finally {
+      setUpdatingWorkflow(false);
+    }
+  }
+
   return (
     <React.Fragment>
       <div
@@ -58,8 +77,11 @@ const SearchActionCentre = ({ t, projectQueryFilter, mainCheckBox, selectedFacil
         }}
       >
         {mainCheckBox || selectedFacilities?.length > 0 ? (
-          <div style={{ fontSize: "16px", fontWeight: "bold", color: "#004d66" }}>
-            {mainCheckBox ? t("CORE_COMMON_ALL") : selectedFacilities.length} {t("QC_HEALTH_FACILITIES_SELECTED")}
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <DoneAll />
+            <div style={{ fontSize: "16px", fontWeight: "bold", color: "#004d66" }}>
+              {mainCheckBox ? t("CORE_COMMON_ALL") : selectedFacilities.length} {t("QC_HEALTH_FACILITIES_SELECTED")}
+            </div>
           </div>
         ) : (
           <form
@@ -130,6 +152,7 @@ const SearchActionCentre = ({ t, projectQueryFilter, mainCheckBox, selectedFacil
                 gap: "10px",
                 height: "40px"
               }}
+              onClick={handleBulkApprove}
             >
               <span>{t("CORE_COMMON_APPROVE")}</span>
               <div style={{ transform: "scale(1.4)" }}>
