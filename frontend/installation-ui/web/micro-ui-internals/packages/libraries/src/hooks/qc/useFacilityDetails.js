@@ -1,24 +1,55 @@
 import {useQuery, useQueryClient} from "react-query";
 
-const generateAuditTrail = (workflow) => {
+const generateAuditTrail = (workflow, transactions) => {
   const auditTrail = [];
 
-  if (workflow) {
-    workflow.forEach((row) => {
+  const transactionsMap = new Map();
+  transactions?.forEach((row) => {
+    transactionsMap.set(row.processInstanceId, row);
+  })
 
-      const date = new Date(row.auditDetails?.lastModifiedTime);
-      const day = String(date.getDate()).padStart(2, "0");
-      const month = String(date.getMonth() + 1).padStart(2, "0");
-      const year = date.getFullYear();
+  workflow?.forEach((row) => {
 
-      const formattedDate = `${day}/${month}/${year}`;
+    const date = new Date(row.auditDetails?.lastModifiedTime);
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    const formattedDate = `${day}/${month}/${year}`;
 
-      auditTrail.push({
-        status: row.state.state,
-        date: formattedDate
+    const transaction = transactionsMap.get(row.id);
+    const comments = [];
+    if (row.action === "REJECT_AND_ASSIGN_FOR_FIELD_QC" && transaction) {
+      const assetTypeReasonsMap = new Map();
+      transaction.comments?.forEach(comment => {
+        const assetType = comment.assetType.toUpperCase();
+        let reason = comment.commentMessage;
+        try {
+          reason = JSON.parse(comment.commentMessage);
+        } catch (err) {
+          console.error("Error parsing comment:", err);
+        }
+
+        if (assetTypeReasonsMap.has(assetType)) {
+          assetTypeReasonsMap.set(assetType, [...assetTypeReasonsMap.get(assetType), reason]);
+        } else {
+          assetTypeReasonsMap.set(assetType, [reason]);
+        }
       })
+
+      assetTypeReasonsMap.forEach((value, key) => {
+        comments.push({
+          name: key,
+          reasons: value
+        });
+      })
+    }
+
+    auditTrail.push({
+      status: row.state.state,
+      date: formattedDate,
+      reasons: comments
     })
-  }
+  })
 
   return auditTrail;
 }
@@ -78,7 +109,7 @@ const fetchFacilityDetails = async (filter, limit, offset) => {
   const address = projectData.project.address || {};
   const additionalDetails = projectData.project.additionalDetails || {};
   const assigneeDetails = projectData.project.additionalDetails.assignedTo || {};
-  const auditTrail = generateAuditTrail(projectData.workflow);
+  const auditTrail = generateAuditTrail(projectData.workflow, projectData.transactions);
   const assetAggregation = await getAssetAggregation(projectData.workflow);
 
   return {

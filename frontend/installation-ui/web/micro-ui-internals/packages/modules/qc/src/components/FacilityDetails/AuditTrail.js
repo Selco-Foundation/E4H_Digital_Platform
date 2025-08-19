@@ -47,7 +47,7 @@ const getTimelineCaptions = (checkpoint) => {
   return (
     <div style={{ marginTop: "12px", width: "800px" }}>
       <div style={{fontSize: "14px", color: "#666"}}>{checkpoint.date}</div>
-      {checkpoint.reasons && (
+      {checkpoint.reasons?.length > 0 && (
         <div style={{ marginTop: 12 }}>
           {checkpoint.reasons.map((section, i) => (
             <div key={i} style={{
@@ -57,11 +57,11 @@ const getTimelineCaptions = (checkpoint) => {
               padding: 10,
               marginTop: 10
             }}>
-              <div style={{color: "#007acc", fontWeight: "bold", marginBottom: 6}}>{section.section}</div>
+              <div style={{color: "#007acc", fontWeight: "bold", marginBottom: 6}}>{section.name}</div>
               {section.reasons.map((r, j) => (
                 <div style={{display: "flex", justifyContent: "space-between", padding: "4px 0"}} key={j}>
-                  <div style={{fontWeight: "bold", width: "50%", marginRight: "10px"}}>{r.title}</div>
-                  <div style={{color: "#555", width: "50%"}}>{r.details}</div>
+                  <div style={{fontWeight: "bold", width: "50%", marginRight: "10px"}}>{r.reason}</div>
+                  <div style={{color: "#555", width: "50%"}}>{r.comment}</div>
                 </div>
               ))}
             </div>

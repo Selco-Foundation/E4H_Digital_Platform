@@ -23,17 +23,20 @@ const QCActions = () => {
     const rejectionReasonsToUpload = {};
     Object.keys(rejectionReasons).forEach(key => {
       if (rejectionReasons[key].length > 0) {
-        rejectionReasonsToUpload[key] = rejectionReasons[key];
+        rejectionReasonsToUpload[key] = rejectionReasons[key].map(reason => ({
+          reason: reason.reason,
+          comment: reason.comment,
+        }));
       }
     })
 
-    let comments = [];
+    const comments = [];
     Object.keys(rejectionReasonsToUpload).forEach(key => {
       rejectionReasonsToUpload[key].forEach(rejectionReason => {
-        comments = [...comments, {
-          commentMessage : rejectionReason.reason,
-          assetType : key,
-        }]
+        comments.push({
+          commentMessage : JSON.stringify(rejectionReason),
+          assetType : key.toUpperCase(),
+        });
       })
     })
 
@@ -63,7 +66,10 @@ const QCActions = () => {
       padding: '12px 50px',
       display: 'flex',
       justifyContent: 'flex-end',
-      zIndex: 1000,
+      backgroundColor: '#fff',
+      width: '100%',
+      boxShadow: "0px 0px 4px rgba(0, 0, 0, 0.25)",
+      zIndex: 1,
     }}>
       {showRejectActions ? (
         <div style={{display: 'flex', gap: '12px'}}>
