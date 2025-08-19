@@ -11,26 +11,22 @@ const Summary = ({ sectionName, count, specifications, details, items, images, v
   const [expanded, setExpanded] = useState(false);
   const [showRejectionModal, setShowRejectionModal] = useState(false);
   const rejectionReasons = useSelector((state) => state.qc.rejectionReasons);
-  const [rejectionData, setRejectionData] = useState(rejectionReasons?.[sectionName] || []);
   const [activeReasonId, setActiveReasonId] = useState(null);
   const dispatch = useDispatch();
   const selectedFacility = useSelector((state) => state.qc.common.selectedFacility);
+  const rejectionData = rejectionReasons?.[sectionName] || [];
 
   const handleSave = (data) => {
-    setRejectionData([...rejectionData, ...data?.filter((reason) => reason?.reason?.trim())]);
+    dispatch(setRejectionReasons(sectionName, [...rejectionData, ...data?.filter((reason) => reason?.reason?.trim())]));
   };
 
   const handleUpdate = (reason) => {
-    setRejectionData(rejectionData.map((r) => r.id === reason.id ? reason : r));
+    dispatch(setRejectionReasons(sectionName, rejectionData.map((r) => r.id === reason.id ? reason : r)));
   };
 
   const handleDelete = (reason) => {
-    setRejectionData(rejectionData.filter((r) => r.id !== reason.id));
+    dispatch(setRejectionReasons(sectionName, rejectionData.filter((r) => r.id !== reason.id)));
   };
-
-  useEffect(() => {
-    dispatch(setRejectionReasons(sectionName, rejectionData))
-  }, [rejectionData]);
 
   return (
     <div

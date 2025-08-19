@@ -18,19 +18,27 @@ const FacilityDetails = ({t}) => {
   const [facilityDetails, setFacilityDetails] = useState({});
   const [auditTrail, setAuditTrail] = useState([]);
   const [aggregatedAssets, setAggregatedAssets] = useState({});
+  const [updatingWorkflow, setUpdatingWorkflow] = useState(false);
 
-  const [pdfFile, setPdfFile] = useState({
-    name: "Alkod.pdf",
-    size: "3.5 MB"
-  });
-
-  const { data: fieldPlanData } = Digit.Hooks.qc.useFieldPlan({
+  const {
+    isLoading: fieldPlanDataLoading,
+    isFetching: fieldPlanDataFetching,
+    data: fieldPlanData,
+    revalidate: invalidateFieldPlan
+  } = Digit.Hooks.qc.useFieldPlan({
     Project : {
       projectTypeId: "FieldPlan",
       id: [fieldPlanId]
     }
   });
-  const { isLoading: facilityDataLoading ,data: facilityData } = Digit.Hooks.qc.useFacilityDetails(facilityProjectId);
+
+  const {
+    isLoading: facilityDataLoading,
+    isFetching: facilityDataFetching,
+    data: facilityData,
+    revalidate: invalidateFacilityDetails
+  } = Digit.Hooks.qc.useFacilityDetails(facilityProjectId);
+
   const { isLoading, data: assetData } = Digit.Hooks.qc.useAsset(facilityId);
 
   useEffect(() => {
@@ -60,12 +68,31 @@ const FacilityDetails = ({t}) => {
     }
   }, []);
 
-  if (isLoading || facilityDataLoading) {
+  if (isLoading || facilityDataLoading || fieldPlanDataLoading) {
     return <Loader />;
   }
 
   return (
     <div style={{marginTop: "20px"}}>
+      { (updatingWorkflow || fieldPlanDataFetching || facilityDataFetching) && (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            height: "100%",
+            width: "100%",
+            zIndex: 5,
+            backgroundColor: "gray",
+            opacity: 0.5,
+            position: "fixed",
+            top: 0,
+            left: 0,
+          }}
+        >
+          <Loader />
+        </div>
+      )}
       <div style={{fontSize: "24px", fontWeight: "bold", marginBottom: "20px", color: "#004d66"}}>
           {facilityDetails.facilityName}
       </div>
@@ -121,7 +148,13 @@ const FacilityDetails = ({t}) => {
         />
       )}
 
-      {facilityDetails?.status && facilityDetails?.status.toUpperCase() === "SUBMITTED_BY_SUPERVISOR" && <QCActions />}
+      {facilityDetails?.status && facilityDetails?.status.toUpperCase() === "SUBMITTED_BY_SUPERVISOR" && (
+        <QCActions
+          invalidateFieldPlan={invalidateFieldPlan}
+          invalidateFacilityDetails={invalidateFacilityDetails}
+          setUpdatingWorkflow={setUpdatingWorkflow}
+        />
+      )}
 
     </div>
   );

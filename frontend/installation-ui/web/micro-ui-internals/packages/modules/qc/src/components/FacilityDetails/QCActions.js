@@ -1,29 +1,40 @@
 import React from 'react';
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
+import { clearRejectionReasons } from "../../redux/actions";
 
-const QCActions = () => {
+const QCActions = ({ invalidateFieldPlan, invalidateFacilityDetails, setUpdatingWorkflow }) => {
 
+  const dispatch = useDispatch();
   const rejectionReasons = useSelector((state) => state.qc.rejectionReasons);
-  const selectedFacility = useSelector((state) => state.qc.common.selectedFacility)
+  const selectedFacility = useSelector((state) => state.qc.common.selectedFacility);
 
   const handleApprove = async () => {
-    await Digit.QCService.updateProjectWorkflow(
-      selectedFacility?.projectId, "APPROVE",
-      [], "Approved by QC"
-    )
-      .then(response => {
-        console.debug("Approved", response);
-      })
-      .catch(error => {
-        console.error("Error approving", error);
-      })
+    setUpdatingWorkflow(true);
+
+    try {
+      const response = await Digit.QCService.updateProjectWorkflow(
+        selectedFacility?.projectId, "APPROVE",
+        [], "Approved by Installation Reviewer"
+      );
+
+      if (response) {
+        invalidateFieldPlan();
+        invalidateFacilityDetails();
+        dispatch(clearRejectionReasons());
+      }
+
+    } catch (error) {
+      console.error("Error approving", error);
+    } finally {
+      setUpdatingWorkflow(false);
+    }
   }
 
-  const handleReject = async () => {
+  const formatRejectionReasons = (reasons) => {
     const rejectionReasonsToUpload = {};
-    Object.keys(rejectionReasons).forEach(key => {
-      if (rejectionReasons[key].length > 0) {
-        rejectionReasonsToUpload[key] = rejectionReasons[key].map(reason => ({
+    Object.keys(reasons).forEach(key => {
+      if (reasons[key].length > 0) {
+        rejectionReasonsToUpload[key] = reasons[key].map(reason => ({
           reason: reason.reason,
           comment: reason.comment,
         }));
@@ -40,20 +51,53 @@ const QCActions = () => {
       })
     })
 
-    await Digit.QCService.updateProjectWorkflow(
-      selectedFacility?.projectId, "REJECT_AND_ASSIGN_FOR_FIELD_QC",
-      comments, "Rejected by QC"
-    )
-      .then(response => {
-        console.debug("Rejecting", response);
-      })
-      .catch(error => {
-        console.error("Error rejecting", error);
-      })
+    return comments;
   }
 
-  const handleFlagForQC = () => {
-    console.log("Flagged for QC");
+  const handleReject = async () => {
+    setUpdatingWorkflow(true);
+    const comments = formatRejectionReasons(rejectionReasons);
+
+    try {
+      const response = await Digit.QCService.updateProjectWorkflow(
+        selectedFacility?.projectId, "REJECT_AND_ASSIGN_FOR_FIELD_QC",
+        comments, "Rejected by Installation Reviewer"
+      );
+
+      if (response) {
+        invalidateFieldPlan();
+        invalidateFacilityDetails();
+        dispatch(clearRejectionReasons());
+      }
+
+    } catch (error) {
+      console.error("Error rejecting", error);
+    } finally {
+      setUpdatingWorkflow(false);
+    }
+  }
+
+  const handleFlagForQC = async () => {
+    setUpdatingWorkflow(true);
+    const comments = formatRejectionReasons(rejectionReasons);
+
+    try {
+      const response = await Digit.QCService.updateProjectWorkflow(
+        selectedFacility?.projectId, "FLAG_FOR_QC",
+        comments, "Flagged for QC by Installation Reviewer"
+      );
+
+      if (response) {
+        invalidateFieldPlan();
+        invalidateFacilityDetails();
+        dispatch(clearRejectionReasons());
+      }
+
+    } catch (error) {
+      console.error("Error flagging for QC", error);
+    } finally {
+      setUpdatingWorkflow(false);
+    }
   }
 
   const showRejectActions = Object.values(rejectionReasons).some(reasons => reasons.length > 0);

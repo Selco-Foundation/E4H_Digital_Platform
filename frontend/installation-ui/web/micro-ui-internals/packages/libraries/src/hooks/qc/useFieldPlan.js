@@ -75,14 +75,14 @@ const useFieldPlan = (queryFilter, pageSize, pageOffset) => {
   const offset = pageOffset || 0;
 
   const queryClient = useQueryClient();
-  const { isLoading, isError, error, data } = useQuery(
+  const { isLoading, isFetching, isError, error, data } = useQuery(
     ['fieldPlan', filter, limit, offset],
     () => fetchFieldPlans(filter, limit, offset)
   );
 
   return {
-    isLoading, isError, error, data ,
-    revalidate: () => queryClient.invalidateQueries(['fieldPlan', filter, limit, offset])
+    isLoading, isFetching, isError, error, data ,
+    revalidate: () => queryClient.invalidateQueries(['fieldPlan'])
   };
 }
 

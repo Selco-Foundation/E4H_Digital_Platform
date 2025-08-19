@@ -18,7 +18,7 @@ const generateAuditTrail = (workflow, transactions) => {
 
     const transaction = transactionsMap.get(row.id);
     const comments = [];
-    if (row.action === "REJECT_AND_ASSIGN_FOR_FIELD_QC" && transaction) {
+    if (transaction) {
       const assetTypeReasonsMap = new Map();
       transaction.comments?.forEach(comment => {
         const assetType = comment.assetType.toUpperCase();
@@ -148,14 +148,14 @@ const useFacilityDetails = (facilityProjectId) => {
   const offset = 0;
 
   const queryClient = useQueryClient();
-  const { isLoading, isError, error, data } = useQuery(
+  const { isLoading, isFetching, isError, error, data } = useQuery(
       ['facilityDetails', filter, limit, offset],
       () => fetchFacilityDetails(filter, limit, offset)
   )
 
   return {
-    isLoading, isError, error, data,
-    revalidate: () => queryClient.invalidateQueries(['facilityDetails', filter, limit, offset])
+    isLoading, isFetching, isError, error, data,
+    revalidate: () => queryClient.invalidateQueries(['facilityDetails'])
   }
 }
 
