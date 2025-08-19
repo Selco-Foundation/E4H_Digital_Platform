@@ -7,6 +7,7 @@ import org.egov.inbox.service.V2.InboxServiceV2;
 import org.egov.inbox.util.ResponseInfoFactory;
 import org.egov.inbox.web.model.InboxRequest;
 import org.egov.inbox.web.model.InboxResponse;
+import org.egov.inbox.web.model.ProjectResponse;
 import org.egov.inbox.web.model.V2.SearchRequest;
 import org.egov.inbox.web.model.V2.SearchResponse;
 import org.egov.tracer.config.TracerConfiguration;
@@ -41,6 +42,12 @@ public class InboxV2Controller {
     public ResponseEntity<InboxResponse> searchNewInbox(@Valid @RequestBody  InboxRequest inboxRequest) {
         InboxResponse inboxResponse = inboxService.getInboxResponse(inboxRequest);
         return new ResponseEntity<>(inboxResponse, HttpStatus.OK);
+    }
+
+    @PostMapping(value = "/project/_search")
+    public ResponseEntity<ProjectResponse> searchNewInboxProject(@Valid @RequestBody  InboxRequest inboxRequest) {
+        ProjectResponse projectResponse = inboxService.getInboxResponseProject(inboxRequest);
+        return new ResponseEntity<>(projectResponse, HttpStatus.OK);
     }
 
 
