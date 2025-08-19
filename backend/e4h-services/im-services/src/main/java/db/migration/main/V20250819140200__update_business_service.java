@@ -50,7 +50,7 @@ public class V20250819140200__update_business_service extends BaseJavaMigration 
         break;
       }
     }
-
+    JsonNode response = null;
     if (!stateExists) {
       ObjectNode newState = mapper.createObjectNode();
       newState.put("sla", (String) null);
@@ -63,12 +63,17 @@ public class V20250819140200__update_business_service extends BaseJavaMigration 
       newState.set("actions", mapper.createArrayNode());
       states.add(newState);
 
-      updateBusinessService(bsObject);
+      response = updateBusinessService(bsObject);
       System.out.println("[INFO] Added CLOSEDAFTERREJECTION for " + serviceName + " in " + tenantId);
     }
 
     // Fetch updated service
-    bsObject = fetchBusinessService(tenantId, serviceName);
+    if(response != null){
+      bsObject = response;
+    }
+    else{
+      bsObject = fetchBusinessService(tenantId, serviceName);
+    }
     if (bsObject == null) return;
     states = (ArrayNode) bsObject.get("states");
 
@@ -122,13 +127,19 @@ public class V20250819140200__update_business_service extends BaseJavaMigration 
     return services.get(0);
   }
 
-  private void updateBusinessService(JsonNode bsObject) throws Exception {
+  private JsonNode updateBusinessService(JsonNode bsObject) throws Exception {
     String url = BASE_URL + "/businessservice/_update";
     ObjectNode payload = getRequestInfo();
     ArrayNode serviceArray = mapper.createArrayNode();
     serviceArray.add(bsObject);
     payload.set("BusinessServices", serviceArray);
-    post(url, payload);
+    JsonNode response = post(url, payload);
+    ArrayNode services = (ArrayNode) response.get("BusinessServices");
+    if (services == null || services.isEmpty()) {
+      System.err.println("[WARN] No BusinessService found for " + services + " updateBusinessService ");
+      return null;
+    }
+    return services.get(0);
   }
 
   private ObjectNode getRequestInfo() {
