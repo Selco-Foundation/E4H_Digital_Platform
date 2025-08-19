@@ -29,7 +29,9 @@
         android:label="E4H"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
-        android:enableOnBackInvokedCallback="true">
+        android:enableOnBackInvokedCallback="true"
+        android:allowBackup="false"
+        android:fullBackupContent="false">
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="YOUR_ANDROID_API_KEY"/>

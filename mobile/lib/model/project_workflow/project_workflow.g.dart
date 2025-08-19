@@ -15,9 +15,7 @@ _$ProjectWorkflowImpl _$$ProjectWorkflowImplFromJson(
       transactions: (json['transactions'] as List<dynamic>?)
           ?.map((e) => Transaction.fromJson(e as Map<String, dynamic>))
           .toList(),
-      workflow: json['workflow'] == null
-          ? null
-          : Workflow.fromJson(json['workflow'] as Map<String, dynamic>),
+      workflow: const WorkflowFlexConverter().fromJson(json['workflow']),
     );
 
 Map<String, dynamic> _$$ProjectWorkflowImplToJson(
@@ -26,5 +24,5 @@ Map<String, dynamic> _$$ProjectWorkflowImplToJson(
       'project': const ProjectModelConverter().toJson(instance.project),
       'status': instance.status,
       'transactions': instance.transactions,
-      'workflow': instance.workflow,
+      'workflow': const WorkflowFlexConverter().toJson(instance.workflow),
     };

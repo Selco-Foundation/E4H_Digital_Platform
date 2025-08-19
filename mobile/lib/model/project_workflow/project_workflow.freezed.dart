@@ -24,6 +24,7 @@ mixin _$ProjectWorkflow {
   ProjectModel get project => throw _privateConstructorUsedError;
   String? get status => throw _privateConstructorUsedError;
   List<Transaction>? get transactions => throw _privateConstructorUsedError;
+  @WorkflowFlexConverter()
   Workflow? get workflow => throw _privateConstructorUsedError;
 
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -42,7 +43,7 @@ abstract class $ProjectWorkflowCopyWith<$Res> {
       {@ProjectModelConverter() ProjectModel project,
       String? status,
       List<Transaction>? transactions,
-      Workflow? workflow});
+      @WorkflowFlexConverter() Workflow? workflow});
 }
 
 /// @nodoc
@@ -96,7 +97,7 @@ abstract class _$$ProjectWorkflowImplCopyWith<$Res>
       {@ProjectModelConverter() ProjectModel project,
       String? status,
       List<Transaction>? transactions,
-      Workflow? workflow});
+      @WorkflowFlexConverter() Workflow? workflow});
 }
 
 /// @nodoc
@@ -143,7 +144,7 @@ class _$ProjectWorkflowImpl implements _ProjectWorkflow {
       {@ProjectModelConverter() required this.project,
       this.status,
       final List<Transaction>? transactions,
-      this.workflow})
+      @WorkflowFlexConverter() this.workflow})
       : _transactions = transactions;
 
   factory _$ProjectWorkflowImpl.fromJson(Map<String, dynamic> json) =>
@@ -165,6 +166,7 @@ class _$ProjectWorkflowImpl implements _ProjectWorkflow {
   }
 
   @override
+  @WorkflowFlexConverter()
   final Workflow? workflow;
 
   @override
@@ -207,10 +209,11 @@ class _$ProjectWorkflowImpl implements _ProjectWorkflow {
 
 abstract class _ProjectWorkflow implements ProjectWorkflow {
   const factory _ProjectWorkflow(
-      {@ProjectModelConverter() required final ProjectModel project,
-      final String? status,
-      final List<Transaction>? transactions,
-      final Workflow? workflow}) = _$ProjectWorkflowImpl;
+          {@ProjectModelConverter() required final ProjectModel project,
+          final String? status,
+          final List<Transaction>? transactions,
+          @WorkflowFlexConverter() final Workflow? workflow}) =
+      _$ProjectWorkflowImpl;
 
   factory _ProjectWorkflow.fromJson(Map<String, dynamic> json) =
       _$ProjectWorkflowImpl.fromJson;
@@ -223,6 +226,7 @@ abstract class _ProjectWorkflow implements ProjectWorkflow {
   @override
   List<Transaction>? get transactions;
   @override
+  @WorkflowFlexConverter()
   Workflow? get workflow;
   @override
   @JsonKey(ignore: true)
