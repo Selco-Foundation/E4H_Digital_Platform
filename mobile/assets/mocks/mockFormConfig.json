@@ -1,0 +1,1289 @@
+{
+  "ResponseInfo": {
+    "apiId": null,
+    "ver": null,
+    "ts": null,
+    "resMsgId": "uief87324",
+    "msgId": null,
+    "status": "successful"
+  },
+  "mdms": [
+    {
+      "id": "42479a72-bd0b-4edb-bc86-6ddb91fe39c6",
+      "tenantId": "in",
+      "schemaCode": "SELCO.FormConfig",
+      "uniqueIdentifier": "AssetForm.SELCO",
+      "data": {
+        "name": "AssetForm",
+        "order": 1,
+        "pages": [
+          {
+            "page": "WeatherDetails",
+            "type": "object",
+            "label": "Please select the weather condition at the time of capturing the System Functional Parameters.",
+            "order": 1,
+            "properties": [
+              {
+                "type": "boolean",
+                "label": "Clear Sky",
+                "order": 1,
+                "value": "",
+                "format": "checkbox",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "fieldName": "clear_sky",
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "validations": [],
+                "errorMessage": "",
+                "isMultiSelect": false
+              },
+              {
+                "type": "boolean",
+                "label": "Partially Cloudy",
+                "order": 2,
+                "value": "",
+                "format": "checkbox",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "fieldName": "partial_cloud",
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "validations": [],
+                "errorMessage": "",
+                "isMultiSelect": false
+              },
+              {
+                "type": "boolean",
+                "label": "Overcast",
+                "order": 3,
+                "value": "",
+                "format": "checkbox",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "fieldName": "overcast",
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "validations": [],
+                "errorMessage": "",
+                "isMultiSelect": false
+              },
+              {
+                "type": "boolean",
+                "label": "Rain",
+                "order": 4,
+                "value": "",
+                "format": "checkbox",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "fieldName": "rain",
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "validations": [],
+                "errorMessage": "",
+                "isMultiSelect": false
+              }
+            ],
+            "actionLabel": "Next",
+            "description": "This input will be useful for evaluating if the assets are performing as expected."
+          },
+          {
+            "page": "ArrayJunctionBox",
+            "type": "object",
+            "label": "AJB Input Side -",
+            "order": 2,
+            "properties": [
+              {
+                "type": "boolean",
+                "label": "Grid Off + AJB MCB Off",
+                "order": 1,
+                "value": "",
+                "format": "checkbox",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "fieldName": "gridAjbMcbOffStatus",
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "validations": [],
+                "errorMessage": "",
+                "isMultiSelect": false
+              },
+              {
+                "type": "integer",
+                "label": "String Voltage (V DC)",
+                "order": 2,
+                "value": "",
+                "format": "text",
+                "hidden": false,
+                "tooltip": "String Voltage",
+                "helpText": "",
+                "suffixText": "V",
+                "infoText": "",
+                "readOnly": false,
+                "fieldName": "voltage1",
+                "deleteFlag": false,
+                "innerLabel": "Enter String Voltage (V DC)",
+                "systemDate": false,
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": ""
+                  },
+                  {
+                    "type": "min",
+                    "value": "0",
+                    "message": "Cannot be less than 0"
+                  }
+                ],
+                "errorMessage": "",
+                "isMultiSelect": false
+              },
+              {
+                "type": "boolean",
+                "label": "Grid Off + AJB MCB On",
+                "order": 3,
+                "value": "",
+                "format": "checkbox",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "fieldName": "gridAjbMcbOnStatus",
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "validations": [],
+                "errorMessage": "",
+                "isMultiSelect": false
+              },
+              {
+                "type": "integer",
+                "label": "String Voltage (V DC)",
+                "order": 4,
+                "value": "",
+                "format": "text",
+                "hidden": false,
+                "tooltip": "String Voltage",
+                "suffixText": "V",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "fieldName": "voltage2",
+                "deleteFlag": false,
+                "innerLabel": "Enter String Voltage (V DC)",
+                "systemDate": false,
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": ""
+                  },
+                  {
+                    "type": "min",
+                    "value": "0",
+                    "message": "Cannot be less than 0"
+                  }
+                ],
+                "errorMessage": "",
+                "isMultiSelect": false
+              },
+              {
+                "type": "integer",
+                "label": "String Current (A)",
+                "order": 5,
+                "value": "",
+                "format": "text",
+                "hidden": false,
+                "tooltip": "String Current",
+                "suffixText": "A",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "fieldName": "current",
+                "deleteFlag": false,
+                "innerLabel": "Enter String Current (A)",
+                "systemDate": false,
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": ""
+                  },
+                  {
+                    "type": "min",
+                    "value": "0",
+                    "message": "Cannot be less than 0"
+                  }
+                ],
+                "errorMessage": "",
+                "isMultiSelect": false
+              },
+              {
+                "type": "integer",
+                "label": "Fuse Rating (A)",
+                "order": 6,
+                "value": "",
+                "format": "text",
+                "hidden": false,
+                "tooltip": "Fuse Rating",
+                "helpText": "",
+                "suffixText": "A",
+                "infoText": "",
+                "readOnly": false,
+                "fieldName": "fuseRating",
+                "deleteFlag": false,
+                "innerLabel": "Enter Fuse Rating (A)",
+                "systemDate": false,
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": ""
+                  },
+                  {
+                    "type": "min",
+                    "value": "0",
+                    "message": "Cannot be less than 0"
+                  }
+                ],
+                "errorMessage": "",
+                "isMultiSelect": false
+              },
+              {
+                "type": "string",
+                "enums": [
+                  {
+                    "code": "ACTIVE",
+                    "name": "Active"
+                  },
+                  {
+                    "code": "INACTIVE",
+                    "name": "Inactive"
+                  }
+                ],
+                "label": "Surge Protection Status",
+                "order": 7,
+                "value": "",
+                "format": "dropdown",
+                "hidden": false,
+                "tooltip": "Select Surge Protection Status",
+                "helpText": "Select Surge Protection Status",
+                "infoText": "",
+                "readOnly": false,
+                "fieldName": "surgeProtectionStatus",
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": ""
+                  }
+                ],
+                "errorMessage": "",
+                "includeInForm": true,
+                "isMultiSelect": false,
+                "includeInSummary": false
+              },
+              {
+                "type": "string",
+                "enums": [
+                  {
+                    "code": "IP54",
+                    "name": "IP54"
+                  },
+                  {
+                    "code": "IP66",
+                    "name": "IP66"
+                  },
+                  {
+                    "code": "IP67",
+                    "name": "IP67"
+                  },
+                  {
+                    "code": "IP68",
+                    "name": "IP68"
+                  }
+                ],
+                "label": "Enclosure IP Rating",
+                "order": 8,
+                "value": "",
+                "format": "dropdown",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "Select Enclosure IP Rating",
+                "infoText": "",
+                "readOnly": false,
+                "fieldName": "ipRating",
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": ""
+                  }
+                ],
+                "errorMessage": "",
+                "includeInForm": true,
+                "isMultiSelect": false,
+                "includeInSummary": false
+              },
+              {
+                "type": "integer",
+                "label": "Operating Temperature (°C)",
+                "order": 9,
+                "value": "",
+                "suffixText": "°C",
+                "format": "text",
+                "hidden": false,
+                "tooltip": "Operating Temperature (°C)",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "fieldName": "operatingTemp",
+                "deleteFlag": false,
+                "innerLabel": "Enter Operating Temperature (°C)",
+                "systemDate": false,
+                "validations": [],
+                "errorMessage": "",
+                "isMultiSelect": false
+              }
+            ],
+            "actionLabel": "Next",
+            "description": "Please confirm the testing condition by selecting the checkbox and proceed with recording measured values"
+          },
+          {
+            "page": "BatteryBank",
+            "type": "object",
+            "label": "Battery Bank",
+            "order": 3,
+            "properties": [
+              {
+                "type": "boolean",
+                "label": "Grid Off + Load On",
+                "order": 1,
+                "value": "",
+                "format": "checkbox",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "fieldName": "gridOffLoadOnStatus",
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "validations": [],
+                "errorMessage": "",
+                "isMultiSelect": false
+              },
+              {
+                "type": "integer",
+                "label": "Battery Bank Voltage (V DC)",
+                "order": 2,
+                "value": "",
+                "suffixText": "V",
+                "format": "text",
+                "hidden": false,
+                "tooltip": "Bank Voltage",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "fieldName": "batteryBankVoltage",
+                "deleteFlag": false,
+                "innerLabel": "Enter Bank Voltage (V DC)",
+                "systemDate": false,
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": ""
+                  },
+                  {
+                    "type": "min",
+                    "value": "0",
+                    "message": "Cannot be less than 0"
+                  }
+                ],
+                "errorMessage": "",
+                "isMultiSelect": false
+              },
+              {
+                "type": "integer",
+                "label": "Battery Bank Current (A)",
+                "order": 3,
+                "value": "",
+                "format": "text",
+                "suffixText": "A",
+                "hidden": false,
+                "tooltip": "Bank Current",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "fieldName": "batteryBankCurrent",
+                "deleteFlag": false,
+                "innerLabel": "Enter Bank Voltage (V DC)",
+                "systemDate": false,
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": ""
+                  },
+                  {
+                    "type": "min",
+                    "value": "0",
+                    "message": "Cannot be less than 0"
+                  }
+                ],
+                "errorMessage": "",
+                "isMultiSelect": false
+              }
+            ],
+            "actionLabel": "Next",
+            "description": "Please confirm the testing condition by selecting the checkbox and proceed with recording measured values"
+          },
+          {
+            "page": "PowerConditioningUnit",
+            "type": "object",
+            "label": "PCU / Inverter",
+            "order": 4,
+            "properties": [
+              {
+                "type": "boolean",
+                "label": "Grid Off",
+                "order": 1,
+                "value": "",
+                "format": "checkbox",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "fieldName": "gridOffStatus",
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "validations": [],
+                "errorMessage": "",
+                "isMultiSelect": false
+              },
+              {
+                "type": "integer",
+                "label": "Load / Inverter Output Voltage",
+                "order": 2,
+                "value": "",
+                "format": "text",
+                "hidden": false,
+                "suffixText": "V",
+                "tooltip": "Enter Input DC Voltage (V DC)",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "fieldName": "inputVoltage",
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": ""
+                  },
+                  {
+                    "type": "min",
+                    "value": "0",
+                    "message": "Cannot be less than 0"
+                  }
+                ],
+                "errorMessage": "",
+                "isMultiSelect": false
+              },
+              {
+                "type": "integer",
+                "label": "Inverter Output Current at Full Load",
+                "order": 3,
+                "value": "",
+                "suffixText": "A",
+                "format": "text",
+                "hidden": false,
+                "tooltip": "Inverter Output Current at Full Load",
+                "helpText": "(All solar loads turned on continuously for 10 minutes)",
+                "infoText": "",
+                "readOnly": false,
+                "fieldName": "outputCurrent",
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": ""
+                  },
+                  {
+                    "type": "min",
+                    "value": "0",
+                    "message": "Cannot be less than 0"
+                  }
+                ],
+                "errorMessage": "",
+                "isMultiSelect": false
+              },
+              {
+                "type": "boolean",
+                "label": "Grid On",
+                "order": 4,
+                "value": "",
+                "format": "checkbox",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "fieldName": "gridOnStatus",
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "validations": [],
+                "errorMessage": "",
+                "isMultiSelect": false
+              },
+              {
+                "type": "integer",
+                "label": "Grid Input Voltage (Phase -Neutral)",
+                "order": 5,
+                "value": "",
+                "format": "text",
+                "suffixText": "V",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "fieldName": "gridInputVoltagePN",
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": ""
+                  },
+                  {
+                    "type": "min",
+                    "value": "0",
+                    "message": "Cannot be less than 0"
+                  }
+                ],
+                "errorMessage": "",
+                "isMultiSelect": false
+              },
+              {
+                "type": "integer",
+                "label": "Grid Input Voltage (Neutral-Earth)",
+                "order": 6,
+                "value": "",
+                "format": "text",
+                "suffixText": "V",
+                "hidden": false,
+                "tooltip": "Grid Input Voltage (Neutral-Earth)",
+                "helpText": "Enter Grid Input Voltage (Neutral-Earth) (V DC)",
+                "infoText": "",
+                "readOnly": false,
+                "fieldName": "gridInputVoltageNE",
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": ""
+                  },
+                  {
+                    "type": "min",
+                    "value": "0",
+                    "message": "Cannot be less than 0"
+                  }
+                ],
+                "errorMessage": "",
+                "isMultiSelect": false
+              }
+            ],
+            "actionLabel": "Next",
+            "description": "Please confirm the testing condition by selecting the checkbox and proceed with recording measured values"
+          },
+          {
+            "page": "PCUDisplaySteetings",
+            "type": "object",
+            "label": "PCU/Inverter Display & Settings",
+            "order": 5,
+            "properties": [
+              {
+                "type": "string",
+                "enums": [
+                  {
+                    "code": "Solar Priority",
+                    "name": "Solar Priority"
+                  },
+                  {
+                    "code": "Grid Priority",
+                    "name": "Grid Priority"
+                  }
+                ],
+                "label": "Inverter Priority Settings",
+                "order": 1,
+                "value": "",
+                "format": "radio",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "fieldName": "inverterPriority",
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "validations": [],
+                "errorMessage": "",
+                "isMultiSelect": false
+              },
+              {
+                "type": "string",
+                "enums": [
+                  {
+                    "code": "Inverter",
+                    "name": "Inverter"
+                  },
+                  {
+                    "code": "Grid",
+                    "name": "Grid"
+                  }
+                ],
+                "label": "The load is running on: ",
+                "order": 2,
+                "value": "",
+                "format": "radio",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "fieldName": "loadRunningOn",
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "validations": [],
+                "errorMessage": "",
+                "isMultiSelect": false
+              }
+            ],
+            "actionLabel": "Next",
+            "description": "For both Phase 1 and Phase 3 connectivity, please select the appropriate box."
+          },
+          {
+            "page": "SwitchOverSettings",
+            "type": "object",
+            "label": "Changeover Switch Settings",
+            "order": 6,
+            "properties": [
+              {
+                "type": "string",
+                "enums": [
+                  {
+                    "code": "Solar",
+                    "name": "Solar"
+                  },
+                  {
+                    "code": "Grid",
+                    "name": "Grid"
+                  }
+                ],
+                "label": "Changeover switch orientation is:",
+                "order": 1,
+                "value": "",
+                "format": "radio",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "fieldName": "switchOrientation",
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "validations": [],
+                "errorMessage": "",
+                "isMultiSelect": false
+              },
+              {
+                "type": "string",
+                "enums": [
+                  {
+                    "code": "Inverter",
+                    "name": "Inverter"
+                  },
+                  {
+                    "code": "Grid",
+                    "name": "Grid"
+                  }
+                ],
+                "label": "Is the changeover switch functional for both solar and grid ? ",
+                "order": 2,
+                "value": "",
+                "format": "radio",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "fieldName": "switchFunctional",
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "validations": [],
+                "errorMessage": "",
+                "isMultiSelect": false
+              }
+            ],
+            "actionLabel": "Next",
+            "description": ""
+          },
+          {
+            "page": "Sockets",
+            "type": "object",
+            "label": "Sockets",
+            "order": 7,
+            "properties": [
+              {
+                "type": "integer",
+                "label": "Voltage between Phase & Neutral",
+                "order": 1,
+                "value": "",
+                "format": "text",
+                "hidden": false,
+                "suffixText": "V",
+                "tooltip": "Voltage between Phase & Neutral",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "fieldName": "voltagePN",
+                "deleteFlag": false,
+                "innerLabel": "Enter String Voltage (V DC)",
+                "systemDate": false,
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": ""
+                  },
+                  {
+                    "type": "min",
+                    "value": "0",
+                    "message": "Cannot be less than 0"
+                  }
+                ],
+                "errorMessage": "",
+                "isMultiSelect": false
+              },
+              {
+                "type": "integer",
+                "label": "Voltage between Phase & Earth",
+                "order": 2,
+                "value": "",
+                "suffixText": "V",
+                "format": "text",
+                "hidden": false,
+                "tooltip": "Voltage between Phase & Earth",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "fieldName": "voltagePE",
+                "deleteFlag": false,
+                "innerLabel": "Enter String Voltage (V DC)",
+                "systemDate": false,
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": ""
+                  },
+                  {
+                    "type": "min",
+                    "value": "0",
+                    "message": "Cannot be less than 0"
+                  }
+                ],
+                "errorMessage": "",
+                "isMultiSelect": false
+              },
+              {
+                "type": "integer",
+                "label": "Voltage between Earth & Neutral",
+                "order": 3,
+                "value": "",
+                "suffixText": "V",
+                "format": "text",
+                "hidden": false,
+                "tooltip": "Voltage between Earth & Neutral",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "fieldName": "voltageEN",
+                "deleteFlag": false,
+                "innerLabel": "Enter String Voltage (V DC)",
+                "systemDate": false,
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": ""
+                  },
+                  {
+                    "type": "min",
+                    "value": "0",
+                    "message": "Cannot be less than 0"
+                  }
+                ],
+                "errorMessage": "",
+                "isMultiSelect": false
+              }
+            ],
+            "actionLabel": "Next",
+            "description": "Please provide the measurement at sockets for both 1-Phase and 3-Phase connectivity"
+          },
+          {
+            "page": "EPResistanceTests",
+            "type": "object",
+            "label": "Earth Pit Resistance Tests",
+            "order": 8,
+            "properties": [
+              {
+                "type": "integer",
+                "label": "AJB",
+                "order": 1,
+                "value": "",
+                "format": "text",
+                "hidden": false,
+                "tooltip": "AJB",
+                "helpText": "",
+                "infoText": "",
+                "suffixText": "Ω",
+                "readOnly": false,
+                "fieldName": "ajb",
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": ""
+                  },
+                  {
+                    "type": "min",
+                    "value": "0",
+                    "message": "Cannot be less than 0"
+                  }
+                ],
+                "errorMessage": "",
+                "isMultiSelect": false
+              },
+              {
+                "type": "integer",
+                "label": "GIPB",
+                "order": 2,
+                "value": "",
+                "format": "text",
+                "hidden": false,
+                "tooltip": "GIPB",
+                "helpText": "",
+                "infoText": "",
+                "suffixText": "Ω",
+                "readOnly": false,
+                "fieldName": "gipb",
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": ""
+                  },
+                  {
+                    "type": "min",
+                    "value": "0",
+                    "message": "Cannot be less than 0"
+                  }
+                ],
+                "errorMessage": "",
+                "isMultiSelect": false
+              },
+              {
+                "type": "integer",
+                "label": "PCU/Inverter",
+                "order": 3,
+                "value": "",
+                "format": "text",
+                "hidden": false,
+                "tooltip": "PCU/Inverter",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "fieldName": "pcuOrInverter",
+                "suffixText": "Ω",
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": ""
+                  },
+                  {
+                    "type": "min",
+                    "value": "0",
+                    "message": "Cannot be less than 0"
+                  }
+                ],
+                "errorMessage": "",
+                "isMultiSelect": false
+              },
+              {
+                "type": "integer",
+                "label": "Lightning Arrester - 1",
+                "order": 4,
+                "value": "",
+                "format": "text",
+                "hidden": false,
+                "tooltip": "Lightning Arrester - 1",
+                "helpText": "",
+                "infoText": "",
+                "suffixText": "Ω",
+                "readOnly": false,
+                "fieldName": "lightningArrester1",
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": ""
+                  },
+                  {
+                    "type": "min",
+                    "value": "0",
+                    "message": "Cannot be less than 0"
+                  }
+                ],
+                "errorMessage": "",
+                "isMultiSelect": false
+              },
+              {
+                "type": "integer",
+                "label": "Lightning Arrester - 2",
+                "order": 5,
+                "value": "",
+                "suffixText": "Ω",
+                "format": "text",
+                "hidden": false,
+                "tooltip": "Lightning Arrester - 2",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "fieldName": "lightningArrester2",
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": ""
+                  },
+                  {
+                    "type": "min",
+                    "value": "0",
+                    "message": "Cannot be less than 0"
+                  }
+                ],
+                "errorMessage": "",
+                "isMultiSelect": false
+              }
+            ],
+            "actionLabel": "Next",
+            "description": "Please measure and capture the following standalone, before connecting to system"
+          },
+          {
+            "page": "OrientationChecklist",
+            "type": "object",
+            "label": "Orientation Checklists",
+            "order": 9,
+            "properties": [
+              {
+                "type": "string",
+                "enums": [
+                  {
+                    "code": "YES",
+                    "name": "YES"
+                  },
+                  {
+                    "code": "NO",
+                    "name": "No"
+                  }
+                ],
+                "label": "Is the solar system basic operational orientation given to Health Center POC ?",
+                "order": 1,
+                "value": "",
+                "format": "radio",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "fieldName": "orientationQ1",
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "validations": [],
+                "errorMessage": "",
+                "isMultiSelect": false
+              },
+              {
+                "type": "string",
+                "label": "Remarks",
+                "order": 2,
+                "value": "",
+                "format": "text",
+                "hidden": false,
+                "tooltip": "Remarks",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "fieldName": "orientationQ1Remarks",
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": ""
+                  }
+                ],
+                "errorMessage": "",
+                "isMultiSelect": false
+              },
+              {
+                "type": "string",
+                "enums": [
+                  {
+                    "code": "YES",
+                    "name": "YES"
+                  },
+                  {
+                    "code": "NO",
+                    "name": "No"
+                  }
+                ],
+                "label": "Is the solar system basic routine maintenance orientation given to the health center POC?",
+                "order": 3,
+                "value": "",
+                "format": "radio",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "fieldName": "orientationQ2",
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "validations": [],
+                "errorMessage": "",
+                "isMultiSelect": false
+              },
+              {
+                "type": "string",
+                "label": "Remarks",
+                "order": 4,
+                "value": "",
+                "format": "text",
+                "hidden": false,
+                "tooltip": "Remarks",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "fieldName": "orientationQ2Remarks",
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": ""
+                  }
+                ],
+                "errorMessage": "",
+                "isMultiSelect": false
+              },
+              {
+                "type": "string",
+                "enums": [
+                  {
+                    "code": "YES",
+                    "name": "YES"
+                  },
+                  {
+                    "code": "NO",
+                    "name": "No"
+                  }
+                ],
+                "label": "Is the POC stickers pasted near the batteries?",
+                "order": 5,
+                "value": "",
+                "format": "radio",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "fieldName": "orientationQ3",
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "validations": [],
+                "errorMessage": "",
+                "isMultiSelect": false
+              },
+              {
+                "type": "string",
+                "label": "Remarks",
+                "order": 6,
+                "value": "",
+                "format": "text",
+                "hidden": false,
+                "tooltip": "Remarks",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "fieldName": "orientationQ3Remarks",
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": ""
+                  }
+                ],
+                "errorMessage": "",
+                "isMultiSelect": false
+              },
+              {
+                "type": "string",
+                "enums": [
+                  {
+                    "code": "YES",
+                    "name": "YES"
+                  },
+                  {
+                    "code": "NO",
+                    "name": "No"
+                  }
+                ],
+                "label": "Is the Do's and Don'ts poster with helpline number pasted near to the batteries?",
+                "order": 7,
+                "value": "",
+                "format": "radio",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "fieldName": "orientationQ4",
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "validations": [],
+                "errorMessage": "",
+                "isMultiSelect": false
+              },
+              {
+                "type": "string",
+                "label": "Remarks",
+                "order": 8,
+                "value": "",
+                "format": "text",
+                "hidden": false,
+                "tooltip": "Remarks",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "fieldName": "orientationQ4Remarks",
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": ""
+                  }
+                ],
+                "errorMessage": "",
+                "isMultiSelect": false
+              }
+            ],
+            "actionLabel": "Submit",
+            "description": ""
+          }
+        ],
+        "project": "SELCO",
+        "summary": false,
+        "version": 1,
+        "disabled": false,
+        "isSelected": true
+      },
+      "isActive": true,
+      "auditDetails": {
+        "createdBy": "f4e90853-80b7-47cc-91e7-f8cd5ec00e20",
+        "lastModifiedBy": "f4e90853-80b7-47cc-91e7-f8cd5ec00e20",
+        "createdTime": 1752136382740,
+        "lastModifiedTime": 1752136382740
+      }
+    }
+  ]
+}
