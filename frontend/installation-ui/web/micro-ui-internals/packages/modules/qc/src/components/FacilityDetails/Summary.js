@@ -171,26 +171,51 @@ const Summary = ({ sectionName, count, specifications, details, items, images, v
               </Section>
             )}
 
-            {/*<Section title={`${sectionName} Videos`}>*/}
-            {/*  <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>*/}
-            {/*    {videos.map((video, idx) => (*/}
-            {/*      <div*/}
-            {/*        key={idx}*/}
-            {/*        style={{ border: "1px solid #ccc", padding: "10px", display: "flex", alignItems: "center", gap: "10px", width: "300px" }}*/}
-            {/*      >*/}
-            {/*        <video width="50" height="50" controls>*/}
-            {/*          <source src={video.url} type="video/mp4" />*/}
-            {/*        </video>*/}
-            {/*        <div>*/}
-            {/*          <div>*/}
-            {/*            <strong>{video.name}</strong>*/}
-            {/*          </div>*/}
-            {/*          <div style={{ fontSize: "12px", color: "#666" }}>{video.size}</div>*/}
-            {/*        </div>*/}
-            {/*      </div>*/}
-            {/*    ))}*/}
-            {/*  </div>*/}
-            {/*</Section>*/}
+            {videos?.length > 0 && (
+              <Section title={`${sectionName} Videos`}>
+                <div
+                  style={{ display: "flex", flexDirection: "column", gap: "10px" }}
+                >
+                  {videos.map((video, idx) => (
+                    <div
+                      style={{
+                        minWidth: "fit-content",
+                        width: "20%",
+                        border: "1px solid #ccc",
+                        padding: "10px",
+                        borderRadius: "6px",
+                      }}
+                    >
+                      <a
+                        style={{ textDecoration: "none", color: "unset" }}
+                        target="_blank"
+                        href={video.fileUrl}
+                        download={`Video ${idx+1}.mp4`}
+                      >
+                        <div
+                          key={idx}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "10px",
+                          }}
+                        >
+                          <video width="50" height="50" controls={true}>
+                            <source src={video.fileUrl} type="video/mp4" />
+                          </video>
+                          <div>
+                            <div>
+                              <strong>{`Video ${idx+1}.mp4`}</strong>
+                            </div>
+                            <div style={{ fontSize: "12px", color: "#666" }}>{video.size}</div>
+                          </div>
+                        </div>
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              </Section>
+            )}
           </div>
         )
       )}

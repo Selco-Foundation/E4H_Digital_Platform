@@ -82,9 +82,15 @@ const getAssetAggregation = async (workflow) => {
             const assetType = documentType.split("-")[0].toUpperCase();
 
             if (assetAggregation.videos[assetType]) {
-              assetAggregation.videos[assetType].push(fileUrl);
+              assetAggregation.videos[assetType].push({
+                fileUrl,
+                size
+              });
             } else {
-              assetAggregation.videos[assetType] = [fileUrl];
+              assetAggregation.videos[assetType] = [{
+                fileUrl,
+                size
+              }];
             }
           } else if (documentType.toUpperCase() === "INSTALLATION_REPORT") {
             assetAggregation.installationReport = {

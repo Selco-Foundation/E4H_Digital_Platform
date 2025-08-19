@@ -106,6 +106,7 @@ const FacilityDetails = ({t}) => {
           details={asset?.details}
           items={asset?.items}
           images={aggregatedAssets.images?.[asset.assetType]}
+          videos={aggregatedAssets.videos?.[asset.assetType]}
         />
       })}
 
