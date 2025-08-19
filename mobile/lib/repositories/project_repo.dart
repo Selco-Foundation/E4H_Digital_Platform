@@ -19,39 +19,6 @@ class ProjectRemoteRepository {
 
   final dio = DioClient().dio;
 
-  // FutureOr<List<ProjectWorkflow>> search(ProjectSearchModel body) async {
-  //   try {
-  //     Response response;
-  //     String searchPath = "project/v2/_search";
-  //     // actionMap![DataModelType.project]![ApiOperation.search]!;
-  //
-  //     if (envConfig.variables.envType == EnvType.dev) {
-  //       return _loadLocalProjects();
-  //     }
-  //
-  //     response = await dio.post(searchPath, queryParameters: {
-  //       'tenantId': envConfig.variables.tenantId,
-  //       'limit': 100,
-  //       'offset': 0,
-  //       'includeDescendants': false,
-  //       'includeAncestors': false
-  //     }, data: {
-  //       'Project': body.toMap()
-  //     });
-  //
-  //     final responseMap = response.data['Project'];
-  //
-  //     List<ProjectWorkflow> projectsList = [];
-  //     for (final project in responseMap) {
-  //       projectsList.add(ProjectWorkflow.fromJson(project));
-  //     }
-  //
-  //     return projectsList;
-  //   } catch (err) {
-  //     rethrow;
-  //   }
-  // }
-
   FutureOr<List<ProjectWorkflow>> searchByWorkflow(
       {required ProjectSearchModel body,
       required List<String> workflowStatuses,
@@ -66,7 +33,7 @@ class ProjectRemoteRepository {
       print("EnvType.dev ${EnvType.dev}");
       if (envConfig.variables.envType == EnvType.dev) {
         print("EnvType.dev got here");
-        return _loadLocalProjects();
+        // return _loadLocalProjects();
       }
 
       response = await dio.post(
@@ -86,6 +53,7 @@ class ProjectRemoteRepository {
       );
 
       final responseMap = response.data['Project'];
+
       List<ProjectWorkflow> projectsList = [];
       for (final project in responseMap) {
         projectsList.add(ProjectWorkflow.fromJson(project));
@@ -154,10 +122,6 @@ class ProjectRemoteRepository {
     try {
       final resp = await dio.post(url,
           data: body, options: Options(contentType: Headers.jsonContentType));
-      print("resp ${resp.statusCode}");
-      print("resp data ${resp.data}");
-      print("resp data ${resp.headers}");
-      print("resp message ${resp.data}");
       if (resp.statusCode != 200 &&
           resp.statusCode != 201 &&
           resp.statusCode != 204) {
@@ -173,20 +137,13 @@ class ProjectRemoteRepository {
 
   Future<List<ProjectWorkflow>> _loadLocalProjects() async {
     try {
-      final jsonString =
-          // await rootBundle.loadString('assets/mocks/mockProjects.json');
-          await rootBundle.loadString(
-              'assets/mocks/mockRejectedProject.json'); // Testing rejected Facilities
+      final jsonString = await rootBundle.loadString(
+          'assets/mocks/mockRejectedProject.json'); // Testing rejected Facilities
       final jsonResponse = json.decode(jsonString);
       final responseMap = jsonResponse['Project'];
 
       List<ProjectWorkflow> projectsList = [];
       for (final project in responseMap) {
-        //todo -------- print
-        final p = project['project'] as Map<String, dynamic>;
-        print('RAW additionalDetails: ${jsonEncode(p['additionalDetails'])}');
-        // todo-------end print
-
         projectsList.add(ProjectWorkflow.fromJson(project));
       }
 
@@ -237,11 +194,8 @@ class ProjectRepository {
     await _isar.writeTxn(() async {
       // DELETE step
       for (final status in statuses) {
-        print("statuses $statuses status $status");
         final toDelete = await col.where().statusEqualTo(status).findAll();
         for (final entry in toDelete) {
-          print("entry $entry");
-          print("entry status ${entry.status}");
           await col.delete(entry.id);
         }
       }

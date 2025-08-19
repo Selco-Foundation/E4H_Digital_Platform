@@ -348,6 +348,19 @@ class AssetRepository {
                     photoPath: doc.fileStore ?? '',
                     latitude: doc.geoLocation?.latitude?.toString() ?? '',
                     longitude: doc.geoLocation?.longitude?.toString() ?? '',
+                    capacityUnit: asset.assetDetails?.capacityUnit ?? '',
+                    panelCapacity:
+                        asset.assetDetails?.panelCapacity?.toString() ?? '',
+                    batteryCapacity:
+                        asset.assetDetails?.batteryCapacity?.toString() ?? '',
+                    batteryVoltage:
+                        asset.assetDetails?.batteryVoltage?.toString() ?? '',
+                    batteryType: asset.assetDetails?.batteryType ?? '',
+                    voltageUnit: asset.assetDetails?.voltageUnit ?? '',
+                    inverterCapacity:
+                        asset.assetDetails?.inverterCapacity.toString() ?? '',
+                    inverterCapacityUnit:
+                        asset.assetDetails?.inverterCapacityUnit ?? '',
                   ),
                 );
               }

@@ -208,14 +208,14 @@ class AssetSubmissionBloc
 
           print(
               "ASSET_TYPES.INVERTER.name.toLowerCase() ${ASSET_TYPES.INVERTER.name.toLowerCase()}");
-          print("saved.capacityUnit ${saved.capacityUnit}");
+          print("capacityUnit ${saved.capacityUnit}");
           if (type == ASSET_TYPES.BATTERY.name.toLowerCase()) {
             print("saved.batteryCapacity! ${saved.batteryCapacity!}");
             print("saved.batteryVoltage! ${saved.batteryVoltage!}");
             print("saved.batteryType ${saved.batteryType}");
           }
           if (type == ASSET_TYPES.INVERTER.name.toLowerCase()) {
-            print("saved.inverterCapacity! ${saved.inverterCapacity!}");
+            print("saved.inverterCapacity! ${saved.inverterCapacity}");
             print("saved.inverterCapacityUnit ${saved.inverterCapacityUnit}");
           }
 

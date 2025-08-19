@@ -15,7 +15,12 @@ import '../../model/system/system.dart';
 import '../../model/warranty/warranty.dart';
 
 class SecureStore {
-  final storage = const FlutterSecureStorage();
+  final storage = const FlutterSecureStorage(
+    aOptions: const AndroidOptions(
+      encryptedSharedPreferences: true,
+      resetOnError: true,
+    ),
+  );
   SecureStore();
 
   Future setLocalizations(
