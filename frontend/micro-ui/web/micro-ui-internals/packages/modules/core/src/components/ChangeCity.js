@@ -80,22 +80,13 @@ const ChangeCity = (prop) => {
 
   // if (isDropdown) {
   return (
-    <div style={prop?.mobileView ? {color: "#767676",width:"100%"} : {width:"300px"}}>
+    <div style={prop?.mobileView ? {color: "#767676", width:"95%", marginBottom: "1rem"} : {width:"300px"}}>
       <Dropdown
         option={sortSelectCityData}
         optionCardStyles={{ display: "unset" }}
         selected={dropDownData}
         optionKey={"label"}
         select={handleChangeCity}
-        selectStyle={{
-          border: "none",
-          ...(prop?.mobileView ? {display: "flex", flexDirection: "column"} : {})
-        }}
-        selectClassName={"cp flex-right column-gap-5"}
-        textStyle={{
-          textAlign: prop?.mobileView ? "center" : "end",
-          outline: "none"
-        }}
       />
     </div>
   );
