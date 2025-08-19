@@ -8,6 +8,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.common.contract.request.User;
@@ -113,9 +115,11 @@ class StatusUpdateServiceTest {
         User assigner = new User();
         ArrayList<User> assignes = new ArrayList<>();
         ArrayList<Action> nextActions = new ArrayList<>();
+        Map<String, Object> additionalDetails = new HashMap<>();
+        additionalDetails.put("details", "AdditionalDetails");
         when(processStateAndAction.getProcessInstanceFromRequest()).thenReturn(
                 new ProcessInstance("42", "42", "Business Service", "42", "Action", "Module Name", state, "Comment", documents,
-                        assigner, assignes, nextActions, 1L, 1L, "Previous Status", "Entity", new AuditDetails(), 1, true));
+                        assigner, assignes, nextActions, 1L, 1L, "Previous Status", "Entity", new AuditDetails(), 1, true, additionalDetails));
         doNothing().when(processStateAndAction).setAction((Action) any());
         doNothing().when(processStateAndAction).setCurrentState((State) any());
         doNothing().when(processStateAndAction).setProcessInstanceFromDb((ProcessInstance) any());

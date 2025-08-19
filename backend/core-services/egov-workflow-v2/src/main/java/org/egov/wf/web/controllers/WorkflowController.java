@@ -2,18 +2,15 @@ package org.egov.wf.web.controllers;
 
 
 import java.util.List;
+import java.util.ArrayList;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 
 import org.egov.wf.service.WorkflowService;
+import org.egov.wf.service.PauseStateService;
 import org.egov.wf.util.ResponseInfoFactory;
-import org.egov.wf.web.models.ProcessInstance;
-import org.egov.wf.web.models.ProcessInstanceRequest;
-import org.egov.wf.web.models.ProcessInstanceResponse;
-import org.egov.wf.web.models.ProcessInstanceSearchCriteria;
-import org.egov.wf.web.models.RequestInfoWrapper;
-import org.egov.wf.web.models.StatusCountRequest;
+import org.egov.wf.web.models.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -24,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.egov.wf.service.ProjectService;
 
 
 @RestController
@@ -37,16 +35,22 @@ public class WorkflowController {
 
     private final WorkflowService workflowService;
 
+    private final PauseStateService pauseStateService;
+
     private final ResponseInfoFactory responseInfoFactory;
 
+    private final ProjectService projectService;
 
     @Autowired
     public WorkflowController(ObjectMapper objectMapper, HttpServletRequest request,
-                              WorkflowService workflowService, ResponseInfoFactory responseInfoFactory) {
+                              WorkflowService workflowService, PauseStateService pauseStateService, 
+                              ResponseInfoFactory responseInfoFactory, ProjectService projectService) {
         this.objectMapper = objectMapper;
         this.request = request;
         this.workflowService = workflowService;
+        this.pauseStateService = pauseStateService;
         this.responseInfoFactory = responseInfoFactory;
+        this.projectService = projectService;
     }
 
 
@@ -119,6 +123,32 @@ public class WorkflowController {
         criteria.setIsNearingSlaCount(Boolean.TRUE);
         Integer count = workflowService.count(requestInfoWrapper.getRequestInfo(),criteria);
         return new ResponseEntity<>(count,HttpStatus.OK);
+    }
+
+    /**
+     * Pause or unpause a workflow
+     * @param pauseStateRequest The request containing pause state information
+     * @return The updated pause state
+     */
+    @RequestMapping(value="/process/_pause", method = RequestMethod.POST)
+    public ResponseEntity<PauseStateResponse> pauseWorkflow(@Valid @RequestBody PauseStateRequest pauseStateRequest) {
+        List<PauseState> pauseStates = pauseStateService.saveOrUpdate(pauseStateRequest);
+
+        // Update project indexer with pause state for each pause state
+        for (PauseState pauseState : pauseStates) {
+            projectService.updateProjectIndexerWithPauseState(
+                pauseState.getBusinessId(),
+                pauseState.getBusinessService(),
+                pauseState.getIsPaused(),
+                pauseStateRequest.getRequestInfo()
+            );
+        }
+
+        PauseStateResponse response = PauseStateResponse.builder()
+                .pauseStates(pauseStates)
+                .responseInfo(responseInfoFactory.createResponseInfoFromRequestInfo(pauseStateRequest.getRequestInfo(), true))
+                .build();
+        return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
 }

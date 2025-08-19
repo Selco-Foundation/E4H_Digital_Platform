@@ -274,3 +274,27 @@ serviceMaps:
       - jsonPath: $.BusinessServices.*.states.*.actions.*.auditDetails.lastModifiedBy
 
       - jsonPath: $.BusinessServices.*.states.*.actions.*.auditDetails.lastModifiedTime
+
+  - version: 1.0
+    description: Persists pause state in the table (insert or update)
+    fromTopic: save-wf-pausestate
+    isTransaction: true
+    queryMaps:
+      - query: INSERT INTO eg_wf_pause_state (businessId, businessService, isPaused, comments, createdBy, lastModifiedBy, createdTime, lastModifiedTime) VALUES (?, ?, ?, ?::jsonb, ?, ?, ?, ?) ON CONFLICT (businessId, businessService) DO UPDATE SET isPaused = EXCLUDED.isPaused, comments = EXCLUDED.comments, lastModifiedBy = EXCLUDED.lastModifiedBy, lastModifiedTime = EXCLUDED.lastModifiedTime;
+        basePath: PauseStates.*
+        jsonMaps:
+          - jsonPath: $.PauseStates.*.businessId
+
+          - jsonPath: $.PauseStates.*.businessService
+
+          - jsonPath: $.PauseStates.*.isPaused
+
+          - jsonPath: $.PauseStates.*.comments
+
+          - jsonPath: $.PauseStates.*.auditDetails.createdBy
+
+          - jsonPath: $.PauseStates.*.auditDetails.lastModifiedBy
+
+          - jsonPath: $.PauseStates.*.auditDetails.createdTime
+
+          - jsonPath: $.PauseStates.*.auditDetails.lastModifiedTime

@@ -61,7 +61,18 @@ public class WorkflowConfig {
     @Value("${persister.update.businessservice.wf.topic}")
     private String updateBusinessServiceTopic;
 
+    @Value("${persister.save.pausestate.wf.topic}")
+    private String savePauseStateTopic;
 
+    // Project service configuration
+    @Value("${egov.project.host}")
+    private String projectHost;
+
+    @Value("${egov.project.search.endpoint}")
+    private String projectSearchEndpoint;
+
+    @Value("${egov.indexer.update.project.topic}")
+    private String updateProjectIndexerTopic;
 
     //MDMS
     @Value("${egov.mdms.host}")

@@ -2,6 +2,7 @@ package org.egov.wf.service;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.HashMap;
 
 import com.jayway.jsonpath.JsonPath;
 import lombok.extern.slf4j.Slf4j;
@@ -37,6 +38,7 @@ public class EnrichmentService {
     private UserService userService;
 
     private TransitionService transitionService;
+    private PauseStateService pauseStateService;
 
     @Autowired
     private RestTemplate restTemplate;
@@ -48,10 +50,11 @@ public class EnrichmentService {
     private String mdmsUrl;
 
     @Autowired
-    public EnrichmentService(WorkflowUtil util, UserService userService,TransitionService transitionService) {
+    public EnrichmentService(WorkflowUtil util, UserService userService,TransitionService transitionService, PauseStateService pauseStateService) {
         this.util = util;
         this.userService = userService;
         this.transitionService = transitionService;
+        this.pauseStateService = pauseStateService;
     }
 
 
@@ -349,6 +352,27 @@ public class EnrichmentService {
         });
     }
 
+    /**
+     * Enriches the additionalDetails field with pause state information for process instances
+     * @param processInstances List of process instances to enrich
+     */
+    public void enrichPauseStateForSearch(List<ProcessInstance> processInstances){
+        if(CollectionUtils.isEmpty(processInstances))
+            return;
+            
+        processInstances.forEach(processInstance -> {
+            // Initialize additionalDetails if null
+            if (processInstance.getAdditionalDetails() == null) {
+                processInstance.setAdditionalDetails(new HashMap<>());
+            }
+            
+            // Get pause state from database
+            boolean isPaused = pauseStateService.isPaused(processInstance.getBusinessId(), processInstance.getBusinessService());
+            
+            // Add isPaused to additionalDetails
+            processInstance.getAdditionalDetails().put("isPaused", isPaused);
+        });
+    }
 
     /**
      * Groups request by businessServices and creates a list of ProcessInstanceRequest one for each businessService

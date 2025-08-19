@@ -2,6 +2,7 @@ package org.egov.wf.web.models;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
@@ -108,6 +109,9 @@ public class ProcessInstance   {
 
         @JsonProperty("escalated")
         private Boolean escalated = false;
+
+        @JsonProperty("additionalDetails")
+        private Map<String, Object> additionalDetails = null;
 
 
         public ProcessInstance addDocumentsItem(Document documentsItem) {

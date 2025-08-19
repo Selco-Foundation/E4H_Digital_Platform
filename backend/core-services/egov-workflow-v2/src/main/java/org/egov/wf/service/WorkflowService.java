@@ -37,6 +37,7 @@ public class WorkflowService {
     private WorkflowUtil util;
 
     private BusinessServiceRepository businessServiceRepository;
+    private PauseStateService pauseStateService;
     
     @Autowired
     private MDMSService mdmsService;
@@ -49,7 +50,8 @@ public class WorkflowService {
     public WorkflowService(WorkflowConfig config, TransitionService transitionService,
                            EnrichmentService enrichmentService, WorkflowValidator workflowValidator,
                            StatusUpdateService statusUpdateService, WorKflowRepository workflowRepository,
-                           WorkflowUtil util,BusinessServiceRepository businessServiceRepository) {
+                           WorkflowUtil util,BusinessServiceRepository businessServiceRepository,
+                           PauseStateService pauseStateService) {
         this.config = config;
         this.transitionService = transitionService;
         this.enrichmentService = enrichmentService;
@@ -58,6 +60,7 @@ public class WorkflowService {
         this.workflowRepository = workflowRepository;
         this.util = util;
         this.businessServiceRepository = businessServiceRepository;
+        this.pauseStateService = pauseStateService;
     }
 
 
@@ -68,6 +71,14 @@ public class WorkflowService {
      */
     public List<ProcessInstance> transition(ProcessInstanceRequest request){
         RequestInfo requestInfo = request.getRequestInfo();
+
+        // Check if any workflow is paused
+        for (ProcessInstance processInstance : request.getProcessInstances()) {
+            if (pauseStateService.isPaused(processInstance.getBusinessId(), processInstance.getBusinessService())) {
+                throw new CustomException("EG_WF_PAUSED_ERR", "Workflow is paused for businessId: " + processInstance.getBusinessId() + 
+                    " and businessService: " + processInstance.getBusinessService() + ". No actions can be performed while workflow is paused.");
+            }
+        }
 
         List<ProcessStateAndAction> processStateAndActions = transitionService.getProcessStateAndActions(request.getProcessInstances(),true);
         enrichmentService.enrichProcessRequest(requestInfo,processStateAndActions);
@@ -95,6 +106,7 @@ public class WorkflowService {
         List<ProcessStateAndAction> processStateAndActions = enrichmentService.enrichNextActionForSearch(requestInfo,processInstances);
     //    workflowValidator.validateSearch(requestInfo,processStateAndActions);
         enrichmentService.enrichAndUpdateSlaForSearch(processInstances);
+        enrichmentService.enrichPauseStateForSearch(processInstances);
         return processInstances;
     }
 
