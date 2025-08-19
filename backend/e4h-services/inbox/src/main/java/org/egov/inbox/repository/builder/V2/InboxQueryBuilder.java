@@ -2,6 +2,9 @@ package org.egov.inbox.repository.builder.V2;
 
 import java.util.*;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.egov.inbox.util.ErrorConstants;
 import org.egov.inbox.util.MDMSUtil;
 import org.egov.inbox.web.model.InboxRequest;
@@ -121,6 +124,49 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
 
     }
 
+    public Map<String, Object> getESQueryProject(InboxRequest inboxRequest, Boolean isPaginationRequired) {
+
+        InboxQueryConfiguration configuration = mdmsUtil.getConfigFromMDMS(
+                inboxRequest.getInbox().getTenantId(),
+                inboxRequest.getInbox().getProcessSearchCriteria().getModuleName());
+
+        Map<String, Object> params = inboxRequest.getInbox().getModuleSearchCriteria();
+        Map<String, Object> baseEsQuery = getBaseESQueryBody(inboxRequest, isPaginationRequired);
+
+        if (isPaginationRequired) {
+            // Adds sort clause to the inbox ES query only in case pagination is present, else not
+            String sortClauseFieldPath = configuration.getSortParam().getPath();
+            SortParam.Order sortOrder = inboxRequest.getInbox().getModuleSearchCriteria().containsKey(SORT_ORDER_CONSTANT)
+                    ? SortParam.Order.valueOf((String) inboxRequest.getInbox().getModuleSearchCriteria().get(SORT_ORDER_CONSTANT))
+                    : configuration.getSortParam().getOrder();
+            addSortClauseToBaseQuery(baseEsQuery, sortClauseFieldPath, sortOrder);
+
+            // Adds source filter only when requesting for inbox items.
+            List<String> sourceFilterPathList = configuration.getSourceFilterPathList();
+            addSourceFilterToBaseQuery(baseEsQuery, sourceFilterPathList);
+        }
+
+        Map<String, Object> innerBoolClause =
+                (HashMap<String, Object>) ((HashMap<String, Object>) baseEsQuery.get(QUERY_KEY)).get(BOOL_KEY);
+        List<Object> mustClauseList = (ArrayList<Object>) innerBoolClause.get(MUST_KEY);
+
+        Map<String, String> nameToPathMap = new HashMap<>();
+        Map<String, SearchParam.Operator> nameToOperator = new HashMap<>();
+
+        configuration.getAllowedSearchCriteria().forEach(searchParam -> {
+            nameToPathMap.put(searchParam.getName(), searchParam.getPath());
+            nameToOperator.put(searchParam.getName(), searchParam.getOperator());
+        });
+
+        addModuleSearchCriteriaToBaseQuery(params, nameToPathMap, nameToOperator, mustClauseList);
+        addProcessSearchCriteriaToBaseQuery(inboxRequest.getInbox().getProcessSearchCriteria(), nameToPathMap, nameToOperator, mustClauseList);
+
+        innerBoolClause.put(MUST_KEY, mustClauseList);
+
+        return baseEsQuery;
+
+    }
+
     public Map<String, Object> getESQueryForSimpleSearch(SearchRequest searchRequest, Boolean isPaginationRequired) {
 
         InboxQueryConfiguration configuration = mdmsUtil.getConfigFromMDMS(
@@ -173,38 +219,6 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
     }
 
     private void addProcessSearchCriteriaToBaseQuery(ProcessInstanceSearchCriteria processSearchCriteria, Map<String, String> nameToPathMap, Map<String, SearchParam.Operator> nameToOperator, List<Object> mustClauseList) {
-//        if(!ObjectUtils.isEmpty(processSearchCriteria.getTenantId())){
-//            String key = "tenantId";
-//            Map<String, Object> mustClauseChild = null;
-//        	List<Map<String, Object>> mustClauseChilds = null;
-//
-//            Map<String, Object> params = new HashMap<>();
-//            params.put(key, processSearchCriteria.getTenantId());
-//            if(processSearchCriteria.getTenantId().split("\\.").length==1)
-//            {
-//
-//			mustClauseChilds = (List<Map<String, Object>>) prepareMustClauseWildCardChild(params, key,
-//					nameToPathMap, nameToOperator);
-//			 if(CollectionUtils.isEmpty(mustClauseChilds)){
-//	                log.info("Error occurred while preparing filter for must clause. Filter for key " + key + " will not be added.");
-//	            }else {
-//	                mustClauseList.add(mustClauseChilds);
-//	            }
-//            }
-//            
-//            else
-//            {
-//                mustClauseChild = (Map<String, Object>) prepareMustClauseChild(params, key, nameToPathMap, nameToOperator);
-//                if(CollectionUtils.isEmpty(mustClauseChild)){
-//	                log.info("Error occurred while preparing filter for must clause. Filter for key " + key + " will not be added.");
-//	            }else {
-//	                mustClauseList.add(mustClauseChild);
-//	            }
-//            }
-//
-//           
-//        }
-
         if (!ObjectUtils.isEmpty(processSearchCriteria.getStatus())) {
             String key = "status";
             Map<String, Object> mustClauseChild = null;
@@ -459,7 +473,18 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
                     innerWildcardClause.put(addDataPathToSearchParamKey(key, nameToPathMap), item + ".*");
                 }
                 else{
-                    innerWildcardClause.put(addDataPathToSearchParamKey(key, nameToPathMap),  "*" + item + "*");
+                    try {
+                        ObjectNode root = objectMapper.createObjectNode();
+                        root.put("value", "*" + item + "*");
+                        root.put("case_insensitive", true);
+
+                        String json = objectMapper.writeValueAsString(root);
+                        JsonNode node = objectMapper.readTree(json);
+                        innerWildcardClause.put(addDataPathToSearchParamKey(key, nameToPathMap),  node);
+//                      innerWildcardClause.put(addDataPathToSearchParamKey(key, nameToPathMap),  "*" + item + "*");
+                    } catch (JsonProcessingException e) {
+                        throw new RuntimeException(e);
+                    }
                 }
                 wildcardClauses.add(wildcardClause);
             }
