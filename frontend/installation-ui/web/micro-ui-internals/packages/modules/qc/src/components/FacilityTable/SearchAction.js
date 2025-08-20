@@ -1,16 +1,12 @@
 import React, { useState } from "react";
-import {
-  TextInput,
-  SubmitBar,
-  LinkLabel,
-  TickMark,
-  DownloadIcon, SearchIconSvg, SearchIcon
-} from "@egovernments/digit-ui-react-components";
+import { TextInput, SubmitBar, LinkLabel, TickMark, DownloadIcon, SearchIconSvg, SearchIcon, Toast } from "@egovernments/digit-ui-react-components";
 import { DoneAll } from "@egovernments/digit-ui-svg-components/src";
 import { QCService } from "../../services/QC";
 
 const SearchActionCentre = ({ t, projectQueryFilter, mainCheckBox, selectedFacilities, onSearch, revalidateData, setUpdatingWorkflow }) => {
+
   const [textToSearch, setTextToSearch] = useState(projectQueryFilter.facilitySearch.name || "");
+  const [toast, setToast] = useState(null);
 
   const handleSearch = (name) => {
     const facilitySearchQuery = {};
@@ -51,8 +47,29 @@ const SearchActionCentre = ({ t, projectQueryFilter, mainCheckBox, selectedFacil
       const response = await QCService.bulkApproveProjects(projectQueryFilter, mainCheckBox, selectedFacilities);
 
       if (response) {
-        console.debug("Bulk Approve Response", response);
         revalidateData();
+      }
+
+      switch (response?.status) {
+        case 200:
+          setToast({
+            key: "success",
+            message: t("QC_BULK_APPROVE_SUCCESS"),
+          });
+          break;
+        case 207:
+          setToast({
+            key: "warning",
+            message: t("QC_BULK_APPROVE_PARTIAL_SUCCESS"),
+            failedCount: response?.data?.failedProjectIDs?.length,
+          });
+          break;
+        default:
+          setToast({
+            key: "error",
+            message: t("QC_BULK_APPROVE_FAILED"),
+          })
+          break;
       }
 
     } catch (err) {
@@ -77,6 +94,16 @@ const SearchActionCentre = ({ t, projectQueryFilter, mainCheckBox, selectedFacil
           minWidth: "fit-content",
         }}
       >
+        {toast && (
+          <Toast
+            error={toast.key === "error"}
+            warning={toast.key === "warning"}
+            label={`${toast.message} ${toast.failedCount ? `(${toast.failedCount} ${t("QC_BULK_APPROVE_FAILED_COUNT")})` : ""}`}
+            onClose={() => setToast(null)}
+            style={{ maxWidth: "670px" }}
+            isDleteBtn={true}
+          />
+        )}
         {mainCheckBox || selectedFacilities?.length > 0 ? (
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
             <DoneAll />

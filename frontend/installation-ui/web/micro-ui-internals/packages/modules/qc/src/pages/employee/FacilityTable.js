@@ -70,6 +70,7 @@ const FacilityTable = ({ t }) => {
     isFetching: facilityDataFetching,
     data: facilityData,
     revalidate: revalidateFacilities,
+    revalidateFacilityDetails
   } = useFacility(projectQueryFilter, pageSize, pageOffset);
 
   useEffect(() => {
@@ -162,6 +163,7 @@ const FacilityTable = ({ t }) => {
     setSelectedFacilities([]);
     revalidateFieldPlans();
     revalidateFacilities();
+    revalidateFacilityDetails();
   }
 
   const columns = [

@@ -1,5 +1,6 @@
 import { Request } from "@egovernments/digit-ui-libraries";
 import axios from "axios";
+import { CustomRequest } from "../components/CustomRequest";
 
 export const QCService = {
 
@@ -164,43 +165,40 @@ export const QCService = {
       }
     }
 
-    queryObj.isSelectedAll = mainCheck;
+    queryObj.isAllSelected = mainCheck;
 
     if (mainCheck) {
-      queryObj.isSelectedAll = true;
-
-      const filter = {
-        parent: filters.project.parent
+      const currentFilters = {
+        projectSearch: {
+          parent: filters.project.parent
+        }
       }
 
       if (filters.facilitySearch.name) {
-        filter.name = filters.facilitySearch.name;
-      }
-
-      if (filters.facilityFilterQuery.status?.length > 0) {
-        filter.status = filters.facilityFilterQuery.status?.join(",");
+        currentFilters.projectSearch.name = filters.facilitySearch.name;
       }
 
       if (filters.facilityFilterQuery.boundary?.length > 0) {
-        filter.boundaryCode = filters.facilityFilterQuery.boundary?.join(",");
+        currentFilters.projectSearch.boundaryCode = filters.facilityFilterQuery.boundary?.join(",");
       }
 
-      queryObj.filter = filter;
+      if (filters.facilityFilterQuery.status?.length > 0) {
+        currentFilters.status = filters.facilityFilterQuery.status;
+      }
+
+      queryObj.filters = currentFilters;
 
     } else {
-      queryObj.projectIds = projectIds;
+      queryObj.projectIDs = projectIds;
     }
 
-    function fakeAsyncTask() {
-      return new Promise((resolve, reject) => {
-        setTimeout(() => {
-          resolve(queryObj);
-          // reject(new Error("Something went wrong"));
-        }, 5000);
-      });
-    }
-
-    return await fakeAsyncTask();
+    return CustomRequest({
+      url : endpoint,
+      data : queryObj,
+      method : "POST",
+      userService : true,
+      auth : true,
+    });
   },
 
   fetchBoundaryRelations : async (codes, boundaryType) => {

@@ -131,7 +131,8 @@ const useFacility = (projectQueryFilter, pageSize, pageOffset) => {
 
   return {
     isLoading, isFetching, isError, error, data,
-    revalidate: () => queryClient.invalidateQueries(["FACILITY"])
+    revalidate: () => queryClient.invalidateQueries(["FACILITY"]),
+    revalidateFacilityDetails: () => queryClient.invalidateQueries(["FACILITY_DETAILS"])
   }
 }
 
