@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "react-query";
-import { useEffect, useState } from "react";
+import { QCService } from "../services/QC";
 
 const formatDate = (timestamp) => {
   const date = new Date(timestamp);
@@ -44,7 +44,7 @@ const formatFieldPlans = (projects) => {
 }
 
 const fetchFieldPlans = async (filter, limit, offset) => {
-  const fieldPlansResponse = await Digit.QCService.fetchProjects(filter, limit, offset);
+  const fieldPlansResponse = await QCService.fetchProjects(filter, limit, offset);
 
   return {
     fieldPlans: formatFieldPlans(fieldPlansResponse?.Project),

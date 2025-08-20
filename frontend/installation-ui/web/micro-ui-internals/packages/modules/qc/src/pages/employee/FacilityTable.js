@@ -6,6 +6,8 @@ import { Link, useHistory, useLocation } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { setSelectedFacility, setSelectedFieldPlan } from "../../redux/actions";
 import SearchActionCentre from "../../components/FacilityTable/SearchAction";
+import useFieldPlan from "../../hooks/useFieldPlan";
+import useFacility from "../../hooks/useFacility";
 
 const FacilityTable = ({ t }) => {
 
@@ -56,7 +58,7 @@ const FacilityTable = ({ t }) => {
     isFetching: fieldPlanDataFetching,
     data: fieldPlanData,
     revalidate: revalidateFieldPlans,
-  } = Digit.Hooks.qc.useFieldPlan({
+  } = useFieldPlan({
     Project : {
       projectTypeId: "FieldPlan",
       id: [fieldPlanId]
@@ -68,7 +70,7 @@ const FacilityTable = ({ t }) => {
     isFetching: facilityDataFetching,
     data: facilityData,
     revalidate: revalidateFacilities,
-  } = Digit.Hooks.qc.useFacility(projectQueryFilter, pageSize, pageOffset);
+  } = useFacility(projectQueryFilter, pageSize, pageOffset);
 
   useEffect(() => {
     history.replace({

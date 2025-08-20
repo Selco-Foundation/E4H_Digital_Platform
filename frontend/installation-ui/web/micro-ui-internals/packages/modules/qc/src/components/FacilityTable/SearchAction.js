@@ -7,6 +7,7 @@ import {
   DownloadIcon, SearchIconSvg, SearchIcon
 } from "@egovernments/digit-ui-react-components";
 import { DoneAll } from "@egovernments/digit-ui-svg-components/src";
+import { QCService } from "../../services/QC";
 
 const SearchActionCentre = ({ t, projectQueryFilter, mainCheckBox, selectedFacilities, onSearch, revalidateData, setUpdatingWorkflow }) => {
   const [textToSearch, setTextToSearch] = useState(projectQueryFilter.facilitySearch.name || "");
@@ -47,7 +48,7 @@ const SearchActionCentre = ({ t, projectQueryFilter, mainCheckBox, selectedFacil
     setUpdatingWorkflow(true);
 
     try {
-      const response = await Digit.QCService.bulkApproveProjects(projectQueryFilter, mainCheckBox, selectedFacilities);
+      const response = await QCService.bulkApproveProjects(projectQueryFilter, mainCheckBox, selectedFacilities);
 
       if (response) {
         console.debug("Bulk Approve Response", response);

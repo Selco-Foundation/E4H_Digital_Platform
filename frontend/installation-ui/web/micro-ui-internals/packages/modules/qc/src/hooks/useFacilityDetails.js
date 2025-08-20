@@ -1,4 +1,5 @@
 import {useQuery, useQueryClient} from "react-query";
+import { QCService } from "../services/QC";
 
 const generateAuditTrail = (workflow, transactions) => {
   const auditTrail = [];
@@ -67,9 +68,9 @@ const getAssetAggregation = async (workflow) => {
       if (action === "SUBMIT_REPORT_A" || action === "SUBMIT_REPORT_B") {
         for (const document of row.documents) {
           const documentType = document.documentType;
-          const fileStoreResponse = await Digit.QCService.fetchImageFromFileStore(document.fileStoreId);
+          const fileStoreResponse = await QCService.fetchImageFromFileStore(document.fileStoreId);
           const fileUrl = Digit.Utils.getFileUrl(fileStoreResponse[document.fileStoreId]);
-          const size = await Digit.QCService.fetchDocumentSize(fileUrl);
+          const size = await QCService.fetchDocumentSize(fileUrl);
 
           if (documentType.toUpperCase().includes("IMAGE")) {
             const assetType = documentType.split("-")[0].toUpperCase();
@@ -108,7 +109,7 @@ const getAssetAggregation = async (workflow) => {
 
 const fetchFacilityDetails = async (filter, limit, offset) => {
 
-  const projectsResponse = await Digit.QCService.fetchProjects(filter, limit, offset);
+  const projectsResponse = await QCService.fetchProjects(filter, limit, offset);
   const projectData = projectsResponse?.Project?.[0];
 
   const facility = projectData.project.additionalDetails.facility || {};

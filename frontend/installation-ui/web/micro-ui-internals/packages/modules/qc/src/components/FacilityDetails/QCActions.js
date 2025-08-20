@@ -1,6 +1,7 @@
 import React from 'react';
 import { useDispatch, useSelector } from "react-redux";
 import { clearRejectionReasons } from "../../redux/actions";
+import { QCService } from "../../services/QC";
 
 const QCActions = ({ revalidateData, setUpdatingWorkflow }) => {
 
@@ -12,7 +13,7 @@ const QCActions = ({ revalidateData, setUpdatingWorkflow }) => {
     setUpdatingWorkflow(true);
 
     try {
-      const response = await Digit.QCService.updateProjectWorkflow(
+      const response = await QCService.updateProjectWorkflow(
         selectedFacility?.projectId, "APPROVE",
         [], "Approved by Installation Reviewer"
       );
@@ -58,7 +59,7 @@ const QCActions = ({ revalidateData, setUpdatingWorkflow }) => {
     const comments = formatRejectionReasons(rejectionReasons);
 
     try {
-      const response = await Digit.QCService.updateProjectWorkflow(
+      const response = await QCService.updateProjectWorkflow(
         selectedFacility?.projectId, "REJECT_AND_ASSIGN_FOR_FIELD_QC",
         comments, "Rejected by Installation Reviewer"
       );
@@ -80,7 +81,7 @@ const QCActions = ({ revalidateData, setUpdatingWorkflow }) => {
     const comments = formatRejectionReasons(rejectionReasons);
 
     try {
-      const response = await Digit.QCService.updateProjectWorkflow(
+      const response = await QCService.updateProjectWorkflow(
         selectedFacility?.projectId, "FLAG_FOR_QC",
         comments, "Flagged for QC by Installation Reviewer"
       );

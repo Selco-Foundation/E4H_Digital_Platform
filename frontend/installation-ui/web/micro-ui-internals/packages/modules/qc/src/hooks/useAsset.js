@@ -1,4 +1,5 @@
 import { useQuery, useQueryClient } from "react-query";
+import { QCService } from "../services/QC";
 
 const getAssetName = (assetTypeID) => {
   switch(assetTypeID) {
@@ -26,7 +27,7 @@ const fetchFileStoreDocuments = async (documents) => {
   const fetchedDocuments = [];
   for (const document of documents) {
     if (document?.documentType?.toUpperCase() === "ASSET") {
-      const fileStoreResponse = await Digit.QCService.fetchImageFromFileStore(document?.fileStore);
+      const fileStoreResponse = await QCService.fetchImageFromFileStore(document?.fileStore);
       fetchedDocuments.push(Digit.Utils.getFileUrl(fileStoreResponse[document?.fileStore]))
     }
   }
@@ -94,7 +95,7 @@ const formatData = async (data) => {
 }
 
 const fetchFacilityDetails = async (facilityId) => {
-  const facilityDetailsResponse = await Digit.QCService.fetchAssets(facilityId);
+  const facilityDetailsResponse = await QCService.fetchAssets(facilityId);
   return await formatData(facilityDetailsResponse);
 }
 

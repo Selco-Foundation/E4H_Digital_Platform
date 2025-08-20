@@ -5,6 +5,9 @@ import AuditTrail from "../../components/FacilityDetails/AuditTrail";
 import { useDispatch } from "react-redux";
 import { clearRejectionReasons, setSelectedFacility, setSelectedFieldPlan } from "../../redux/actions";
 import { Loader } from "@egovernments/digit-ui-react-components";
+import useFieldPlan from "../../hooks/useFieldPlan";
+import useFacilityDetails from "../../hooks/useFacilityDetails";
+import useAsset from "../../hooks/useAsset";
 
 const FacilityDetails = ({t}) => {
 
@@ -25,7 +28,7 @@ const FacilityDetails = ({t}) => {
     isFetching: fieldPlanDataFetching,
     data: fieldPlanData,
     revalidate: revalidateFieldPlans
-  } = Digit.Hooks.qc.useFieldPlan({
+  } = useFieldPlan({
     Project : {
       projectTypeId: "FieldPlan",
       id: [fieldPlanId]
@@ -38,9 +41,9 @@ const FacilityDetails = ({t}) => {
     data: facilityData,
     revalidate: revalidateFacilityDetails,
     revalidateFacilities
-  } = Digit.Hooks.qc.useFacilityDetails(facilityProjectId);
+  } = useFacilityDetails(facilityProjectId);
 
-  const { isLoading, data: assetData } = Digit.Hooks.qc.useAsset(facilityId);
+  const { isLoading, data: assetData } = useAsset(facilityId);
 
   useEffect(() => {
     if (assetData) {

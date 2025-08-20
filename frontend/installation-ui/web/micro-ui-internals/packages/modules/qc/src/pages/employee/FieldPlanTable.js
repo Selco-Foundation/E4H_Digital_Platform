@@ -4,6 +4,7 @@ import SearchCentre from "../../components/FieldPlanTable/Search";
 import { setSelectedFieldPlan } from "../../redux/actions";
 import { Link, useHistory, useLocation, useRouteMatch } from "react-router-dom";
 import { useDispatch } from "react-redux";
+import useFieldPlan from "../../hooks/useFieldPlan";
 
 const FieldPlanTable = ({ t }) => {
 
@@ -32,7 +33,7 @@ const FieldPlanTable = ({ t }) => {
   const [pageOffset, setPageOffset] = useState(parseInt(queryParams.get("pageOffset")) || 0);
   const prevPageSizeRef = useRef(pageSize);
 
-  const { isLoading, data } = Digit.Hooks.qc.useFieldPlan(queryFilter, pageSize, pageOffset);
+  const { isLoading, data } = useFieldPlan(queryFilter, pageSize, pageOffset);
 
   useEffect(() => {
     history.replace({
