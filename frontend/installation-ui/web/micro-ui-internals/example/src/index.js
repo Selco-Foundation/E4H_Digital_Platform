@@ -14,7 +14,7 @@ import { initOpenPaymentComponents } from "@egovernments/digit-ui-module-open-pa
 import { initSandboxComponents } from "@egovernments/digit-ui-module-sandbox";
 import { QCReducers, initQCComponents } from "@selco/digit-ui-module-qc";
 
-import "@egovernments/digit-ui-css/example/index.css";
+import "@selco/installation-ui-css/example/index.css";
 
 import { pgrCustomizations, overrideComponents } from "./pgr";
 import { UICustomizations } from "./UICustomizations";
