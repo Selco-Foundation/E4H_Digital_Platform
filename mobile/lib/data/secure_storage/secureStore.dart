@@ -113,6 +113,31 @@ class SecureStore {
     return await storage.read(key: 'solutionDesign');
   }
 
+  // ======= FORMS SCHEMAS (secure) =======
+
+  /// Save the ENTIRE forms schema map that `storeSchema` manages.
+  /// The structure mirrors your SharedPreferences approach:
+  /// {
+  ///   "AssetForm": {
+  ///     "data": <transformed schema map>,
+  ///     "currentVersion": 1,
+  ///     "previousVersion": 0
+  ///   },
+  ///   "AnotherForm": { ... }
+  /// }
+  Future<void> setFormSchemas(Map<String, dynamic> schemas) async {
+    await storage.write(
+      key: 'forms_schemas',
+      value: json.encode(schemas),
+    );
+  }
+
+  /// Read the entire forms schema map. Returns `null` if unset.
+  Future<String?> getFormSchemas() async {
+    final raw = await storage.read(key: 'forms_schemas');
+    print('FORM SCHEMA JSON: $raw');
+  }
+
   //access token
   Future setAccessToken(String? accessToken) async {
     await storage.write(key: 'accessToken', value: accessToken);
