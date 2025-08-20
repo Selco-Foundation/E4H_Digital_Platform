@@ -38,7 +38,6 @@ const moduleReducers = (initData) => ({
 });
 
 const initDigitUI = () => {
-  Digit.Utils.analytics.loadGA();
   window.Digit.ComponentRegistryService.setupRegistry({
     PaymentModule,
     ...paymentConfigs,
