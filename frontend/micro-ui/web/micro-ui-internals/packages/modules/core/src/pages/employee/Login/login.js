@@ -98,6 +98,29 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
       Digit.SessionStorage.set("Employee.tenantId", info?.tenantId);
 
       setUser({ info, ...tokens });
+
+      const rolesCsv = (info?.roles || []).map(r => r.code).join(",") || "unknown";
+      const stateId = Digit?.ULBService?.getStateId?.() || "unknown";
+      const district = info?.district || "unknown";
+      const block = info?.block || "unknown";
+      const facility = info?.facilityName || "unknown";
+      const isMobile = Digit?.Utils?.browser?.isMobile?.() ? "mobile" : "desktop";
+
+      if (typeof window.gtag === "function") {
+        window.gtag("event", "user_login", {
+          // required custom dimensions
+          user_role: rolesCsv,
+          geography_state: stateId,
+          geography_district: district,
+          geography_block: block,
+          facility_name: facility,
+          device_type: isMobile,
+          browser: navigator.userAgent,
+          os: navigator.platform || "unknown",
+          transport_type: "beacon",
+          debug_mode: true,
+        });
+      }
     } catch (err) {
       setShowToast(err?.response?.data?.error_description || "Invalid login credentials!");
       setTimeout(closeToast, 5000);

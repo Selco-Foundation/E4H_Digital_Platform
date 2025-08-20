@@ -125,6 +125,10 @@ export const CreateComplaint = ({ parentUrl }) => {
   }, [state, mdmsData, t]);
 
   useEffect(() => {
+    Digit.Utils.analytics.trackPageView("new_ticket_page", {
+      page_path: window.location?.pathname || "/new-ticket",
+      page_title: "New Ticket",
+    });
     let tenants = Digit.SessionStorage.get("Employee.tenantId");
     setSelectTenant(tenants);
     if (selectTenant !== stateTenantId) {
@@ -308,8 +312,8 @@ export const CreateComplaint = ({ parentUrl }) => {
     !submitted && !abc && onSubmit(data);
   };
   const onSubmit = async (data) => {
+    Digit.Utils.analytics.trackSubmitTicket({ page_name: "new_ticket_page" });
     if (!canSubmit) return;
-
     const formData = {
       ...data,
       complaintType,
@@ -622,6 +626,8 @@ export const CreateComplaint = ({ parentUrl }) => {
                 acceptFiles={".png, .jpg, .jpeg, image/*"}
                 multiple={true}
                 specificFileConstraint={specificFileConstraint[1]}
+                analyticsPage="new_ticket_page"
+                mediaIntent="image"
               />
               {/* <ImageUploadHandler tenantId={tenant} uploadedImages={uploadedImages} onPhotoChange={handleUpload} disabled={disbaled}/> */}
               <div style={{ marginTop: "10px", marginBottom: "20px", fontSize: "12px", color: "#b5b4b4" }}>{t("CS_MAXIMUM_IMAGES")}</div>
@@ -648,6 +654,8 @@ export const CreateComplaint = ({ parentUrl }) => {
                 acceptFiles={".mp4, .avi, .mov, .wmv, video/*"}
                 multiple={false}
                 specificFileConstraint={specificFileConstraint[0]}
+                analyticsPage="new_ticket_page"
+                mediaIntent="video"
               />
               {/* <ImageUploadHandler tenantId={tenant} uploadedImages={uploadedImages} onPhotoChange={handleUpload} disabled={disbaled}/> */}
               <div style={{ marginTop: "10px", fontSize: "12px", color: "#b5b4b4" }}>{t("CS_MAXIMUM_VIDEOS")}</div>

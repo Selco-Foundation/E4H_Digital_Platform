@@ -95,7 +95,6 @@ const getCitizenStyles = (value) => {
         height: "auto",
         lineHeight: "16px",
         overflow: "hidden",
-        // minHeight: "35px",
         maxHeight: "34px",
         maxWidth: "100%",
       },
@@ -140,6 +139,10 @@ const UploadFile = (props) => {
   const [prevSate, setprevSate] = useState(null);
   const user_type = Digit.SessionStorage.get("userType");
   let extraStyles = {};
+
+  const pageName = props.analyticsPage || "new_ticket_page";
+  const mediaIntent = props.mediaIntent;
+
   const handleChange = () => {
     if (inputRef.current.files[0]) {
       setHasFile(true);
@@ -265,7 +268,18 @@ const UploadFile = (props) => {
             }}
             type={props.buttonType}
             onClick={() => {
-              inputRef.current.click();
+              // NEW: track the visible upload button click
+              try {
+                const btn =
+                  mediaIntent === "video" ? "upload_video_click" : "upload_image_click";
+                Digit?.Utils?.analytics?.trackButtonClick(btn, {
+                  page_name: pageName,
+                });
+              } catch (e) {
+                console.warn("analytics: upload_*_click failed", e);
+              }
+
+              inputRef.current?.click();
             }}
           >
             <div style={{
@@ -288,11 +302,10 @@ const UploadFile = (props) => {
         {props?.uploadedFiles?.map((file, index) => {
           const fileDetailsData = file[1];
           const fileType = fileDetailsData.file.type;
-          console.log(fileType, "fileType", file);
           const blob = new Blob([file[1].file], { type: file.type });
           const fileSrc = URL.createObjectURL(blob);
           return (
-            <div className="tag-container" style={extraStyles ? extraStyles?.tagContainerStyles : null}>
+            <div key={index} className="tag-container" style={extraStyles ? extraStyles?.tagContainerStyles : null}>
               {fileType.substring(0, 5) === "image" ? (
                 <div style={{ width: "100px", display: "flex", flexDirection: "column", flexWrap: "wrap", marginTop: "10px" }}>
                   <img src={fileSrc} alt="thumbnail" style={{ width: "100px", height: "80px" }} />
@@ -301,6 +314,24 @@ const UploadFile = (props) => {
                       ? `${fileDetailsData.file.name.substring(0, 7)}...${fileDetailsData.file.name.substring(fileDetailsData.file.name.length - 7)}`
                       : fileDetailsData.file.name}
                   </div>
+                  {/* NEW: download link to track download_image */}
+                  <a
+                    href={fileSrc}
+                    download
+                    style={{ fontSize: 12, textAlign: "center", marginTop: 4, color: "#0065ff", textDecoration: "underline" }}
+                    onClick={() => {
+                      try {
+                        Digit?.Utils?.analytics?.trackMedia("download_image", {
+                          page_name: pageName,
+                          media_type: "image",
+                        });
+                      } catch (e) {
+                        console.warn("analytics: download_image failed", e);
+                      }
+                    }}
+                  >
+                    {t("CS_COMMON_DOWNLOAD")}
+                  </a>
                 </div>
               ) : fileType.substring(0, 5) === "video" ? (
                 <div style={{ width: "fit-content", display: "flex", flexDirection: "column", flexWrap: "wrap", marginTop: "10px" }}>
@@ -309,6 +340,16 @@ const UploadFile = (props) => {
                       ref={(el) => (fileDetailsData.videoRef = el)}
                       src={fileSrc}
                       style={{ height: "100%", width: "100%" }}
+                      // NEW: track stream_video when playback starts
+                      onPlay={() => {
+                        try {
+                          Digit?.Utils?.analytics?.trackMedia("stream_video", {
+                            page_name: pageName,
+                          });
+                        } catch (e) {
+                          console.warn("analytics: stream_video failed", e);
+                        }
+                      }}
                       onClick={() => {
                         if (fileDetailsData.videoRef.paused) {
                           fileDetailsData.videoRef.play();
@@ -346,11 +387,6 @@ const UploadFile = (props) => {
                       <PlayIcon color="white" />
                     </div>
                   </div>
-
-                  {/* <div
-                    style={{ zIndex: 9999, position: "relative", top: "45%", left: '45%' }}
-                  >
-                    <PlayIcon color={'white'} /></div> */}
                   <div style={{ color: "#8F8F8F", fontSize: "12px", textAlign: "center", width: "100%" }}>
                     {fileDetailsData.file.name.length > 20
                       ? `${fileDetailsData.file.name.substring(0, 10)}...${fileDetailsData.file.name.substring(
