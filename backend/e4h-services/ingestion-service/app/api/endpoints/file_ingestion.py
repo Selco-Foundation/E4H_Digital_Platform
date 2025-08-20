@@ -1442,3 +1442,105 @@ async def check_duplicate_tickets(
     finally:
         if input_temp_file and os.path.exists(input_temp_file.name):
             pass
+
+
+def get_request_info_to_send_back_workflow():
+    return {
+        "apiId": "project-api",
+        "ver": "1.0",
+        "ts": "",
+        "action": "update",
+        "did": "",
+        "key": "",
+        "msgId": "20240617",
+        "authToken": "f6a27ba4-bead-483d-b4d8-23d46c74d153",
+        "userInfo": {
+            "id": 178,
+            "uuid": "72743f47-9f1a-47de-ac43-b12cde70afc1",
+            "userName": "dummy_manager",
+            "name": "dummy_manager",
+            "mobileNumber": "9911223345",
+            "emailId": None,
+            "locale": None,
+            "type": "EMPLOYEE",
+            "roles": [
+                {"name": "Installation Report Part A editor", "code": "INSTALLATION_REPORT_PART_A_EDITOR",
+                 "tenantId": "in"},
+                {"name": "Installation Report Part B editor", "code": "INSTALLATION_REPORT_PART_B_EDITOR",
+                 "tenantId": "in"},
+                {"name": "Installation Report Part A reviewer", "code": "INSTALLATION_REPORT_PART_A_REVIEWER",
+                 "tenantId": "in"},
+                {"name": "Project manager", "code": "PROJECT_MANAGER", "tenantId": "in"},
+                {"name": "Installation Report Approver QC team", "code": "INSTALLATION_REPORT_APPROVER_QC_TEAM",
+                 "tenantId": "in"}
+            ],
+            "active": True,
+            "tenantId": "in",
+            "permanentCity": None
+        }
+    }
+
+@router.post("/flag_for_qc")
+async def flag_for_qc(
+        facility_file: UploadFile = File(...),
+        facility_sheet_name: str = Form(default="Facilities"),
+):
+    input_temp_file = None
+    try:
+        # Save uploaded file temporarily
+        input_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
+        content = await facility_file.read()
+        input_temp_file.write(content)
+        input_temp_file.close()
+        excel_path = input_temp_file.name
+
+        # Read Excel file
+        df = pd.read_excel(excel_path, sheet_name=facility_sheet_name)
+        df.columns = df.columns.str.strip()
+
+        # Add system columns for audit/error tracking
+        if 'status' not in df.columns:
+            df['status'] = ''
+        if 'error' not in df.columns:
+            df['error'] = ''
+        if 'auditTrail' not in df.columns:
+            df['auditTrail'] = ''
+
+
+        for idx, row in df.iterrows():
+            business_id = row.get("BusinessId")
+
+            # Prepare request body for workflow API
+            payload = {
+                "RequestInfo" : get_request_info_to_send_back_workflow(),
+                "projectId": business_id,
+                "workflow": {
+                    "action": "REMOVE_FLAG",
+                }
+            }
+
+            # Call workflow API
+            workflow_update = f"{project_service_url}/project/v1/project/workflow/update"
+            try:
+                resp = requests.post(workflow_update, json=payload, headers={"Content-Type": "application/json"})
+                if resp.status_code != 200:
+                    df.at[idx, "error"] = f"WF API failed: {resp.status_code} {resp.text}"
+                else:
+                    df.at[idx, "auditTrail"] = f"Sent back to pending approval"
+            except Exception as e:
+                df.at[idx, "error"] = f"WF API call error: {str(e)}"
+
+        df.to_excel(excel_path, index=False, sheet_name=facility_sheet_name)
+
+        return FileResponse(
+            path=excel_path,
+            filename=facility_file.filename,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error during facility status update: {str(e)}")
+
+    finally:
+        if input_temp_file and os.path.exists(input_temp_file.name):
+            pass
