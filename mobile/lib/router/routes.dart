@@ -26,4 +26,5 @@ class Routes {
   static const imageViewer = 'image-viewer?path';
   static const videoViewer = 'video-viewer?path';
   static const pdfViewer = 'pdf-viewer?path';
+  static const dynamicForm = 'forms/:pageName';
 }

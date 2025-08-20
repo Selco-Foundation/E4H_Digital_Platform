@@ -550,6 +550,27 @@ class _HomePageState extends State<HomePage> {
                         );
                       },
                     ),
+                    const SizedBox(height: spacer6),
+                    DigitButton(
+                      label: 'Show Dynamic Form',
+                      type: DigitButtonType.primary,
+                      onPressed: () {
+                        // context.router.push(
+                        //   DynamicFormsRoute(
+                        //     pageName: 'WeatherDetails',
+                        //     uniqueIdentifier: 'AssetForm.SELCO',
+                        //   ),
+                        // );
+
+                        context.router.push(
+                          DynamicFormsRoute(
+                              pageName: 'WeatherDetails',
+                              schemaName: 'AssetForm'),
+                        );
+                      },
+                      size: DigitButtonSize.large,
+                      mainAxisSize: MainAxisSize.max,
+                    )
                   ],
                 ),
               ),
