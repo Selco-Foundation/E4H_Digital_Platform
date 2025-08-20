@@ -6,10 +6,12 @@ import org.flywaydb.core.api.migration.Context;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.util.Scanner;
 import java.util.List;
 import java.util.Arrays;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -22,6 +24,10 @@ public class V20250819140200__update_business_service extends BaseJavaMigration 
 
   private static final String BASE_URL =  HOST_URL + "/egov-workflow-v2/egov-wf";
 
+  private static final String BUSINESS_SERVICES_LITERAL = "BusinessServices";
+
+  private static final Logger log = LoggerFactory.getLogger(V20250819140200__update_business_service.class);
+
   private static final List<String> TENANT_IDS = Arrays.asList("pg", "gj", "or","sk", "nl", "as", "mz", "mn", "ml", "mh");
   private static final List<String> BUSINESS_SERVICES = Arrays.asList("Incident_High", "Incident_Low", "Incident_Medium");
 
@@ -29,10 +35,19 @@ public class V20250819140200__update_business_service extends BaseJavaMigration 
 
   @Override
   public void migrate(Context context) throws Exception {
-    System.out.println("migrate called");
+
+    // Fail fast if the workflow host isn’t configured
+
+    if (HOST_URL == null || HOST_URL.isBlank()) {
+      throw new IllegalStateException("EGOV_WORKFLOW_HOST environment variable is not set");
+    }
     for (String tenantId : TENANT_IDS) {
       for (String service : BUSINESS_SERVICES) {
-        processBusinessService(tenantId, service);
+        try {
+          processBusinessService(tenantId, service);
+        } catch (Exception e) {
+          log.error("Migration failed for tenant '{}', service '{}': {}", tenantId, service, e.getMessage());
+          }
       }
     }
   }
@@ -41,86 +56,109 @@ public class V20250819140200__update_business_service extends BaseJavaMigration 
     JsonNode bsObject = fetchBusinessService(tenantId, serviceName);
     if (bsObject == null) return;
 
-    ArrayNode states = (ArrayNode) bsObject.get("states");
-    boolean stateExists = false;
-
-    for (JsonNode state : states) {
-      if ("CLOSEDAFTERREJECTION".equals(state.get("state").asText())) {
-        stateExists = true;
-        break;
-      }
-    }
-    JsonNode response = null;
-    if (!stateExists) {
-      ObjectNode newState = mapper.createObjectNode();
-      newState.put("sla", (String) null);
-      newState.put("state", "CLOSEDAFTERREJECTION");
-      newState.put("applicationStatus", "CLOSEDAFTERREJECTION");
-      newState.put("docUploadRequired", false);
-      newState.put("isStartState", false);
-      newState.put("isTerminateState", true);
-      newState.put("isStateUpdatable", false);
-      newState.set("actions", mapper.createArrayNode());
-      states.add(newState);
-
-      response = updateBusinessService(bsObject);
-      System.out.println("[INFO] Added CLOSEDAFTERREJECTION for " + serviceName + " in " + tenantId);
-    }
-
-    // Fetch updated service
-    if(response != null){
-      bsObject = response;
-    }
-    else{
-      bsObject = fetchBusinessService(tenantId, serviceName);
-    }
+    bsObject = ensureCloseAfterRejectionState(bsObject, tenantId, serviceName);
     if (bsObject == null) return;
-    states = (ArrayNode) bsObject.get("states");
 
-    String rejectionUuid = null;
-    for (JsonNode state : states) {
-      if ("CLOSEDAFTERREJECTION".equals(state.get("state").asText()) && state.has("uuid")) {
-        rejectionUuid = state.get("uuid").asText();
-        break;
-      }
-    }
+    String rejectionUuid = findRejectionUuid(bsObject, serviceName, tenantId);
+    if (rejectionUuid == null) return;
 
-    if (rejectionUuid == null) {
-      System.err.println("[ERROR] CLOSEDAFTERREJECTION UUID missing for " + serviceName + " (" + tenantId + ")");
-      return;
-    }
-
-    boolean modified = false;
-    for (JsonNode state : states) {
-      if ("REJECTED".equals(state.get("state").asText()) && state.has("actions")) {
-        ArrayNode actions = (ArrayNode) state.get("actions");
-        for (JsonNode action : actions) {
-          if ("CLOSE".equals(action.get("action").asText())) {
-            ((ObjectNode) action).put("nextState", rejectionUuid);
-            modified = true;
-            System.out.println("[INFO] Updated CLOSE action nextState for " + serviceName + " (" + tenantId + ")");
-          }
-        }
-      }
-    }
-
-    if (modified) {
+    if (updateCloseAction(bsObject, rejectionUuid, serviceName, tenantId)) {
       updateBusinessService(bsObject);
-      System.out.println("[SUCCESS] Final update done for " + serviceName + " in " + tenantId);
-    } else {
-      System.out.println("[WARN] No CLOSE action found in REJECTED for " + serviceName + " (" + tenantId + ")");
+      log.info("Final update done for {} in {}", serviceName, tenantId);
     }
   }
 
+  private JsonNode ensureCloseAfterRejectionState(JsonNode bsObject, String tenantId, String serviceName) throws Exception {
+    ArrayNode states = (ArrayNode) bsObject.get("states");
+    if (hasCloseAfterRejectionState(states)) return bsObject;
+
+    ObjectNode newState = createCloseAfterRejectionState();
+    states.add(newState);
+
+    JsonNode response = updateBusinessService(bsObject);
+    log.info("Added CLOSEDAFTERREJECTION for {} in {}", serviceName, tenantId);
+
+    return response != null ? response : fetchBusinessService(tenantId, serviceName);
+  }
+
+  private boolean hasCloseAfterRejectionState(ArrayNode states) {
+    for (JsonNode state : states) {
+      if ("CLOSEDAFTERREJECTION".equals(state.get("state").asText())) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private ObjectNode createCloseAfterRejectionState() {
+    ObjectNode newState = mapper.createObjectNode();
+    newState.put("sla", (String) null);
+    newState.put("state", "CLOSEDAFTERREJECTION");
+    newState.put("applicationStatus", "CLOSEDAFTERREJECTION");
+    newState.put("docUploadRequired", false);
+    newState.put("isStartState", false);
+    newState.put("isTerminateState", true);
+    newState.put("isStateUpdatable", false);
+    newState.set("actions", mapper.createArrayNode());
+    return newState;
+  }
+
+  private String findRejectionUuid(JsonNode bsObject, String serviceName, String tenantId) {
+    ArrayNode states = (ArrayNode) bsObject.get("states");
+    for (JsonNode state : states) {
+      if ("CLOSEDAFTERREJECTION".equals(state.get("state").asText()) && state.has("uuid")) {
+        return state.get("uuid").asText();
+      }
+    }
+    log.error("CLOSEDAFTERREJECTION UUID missing for {} ({})", serviceName, tenantId);
+    return null;
+  }
+
+  private boolean updateCloseAction(JsonNode bsObject, String rejectionUuid, String serviceName, String tenantId) {
+    ArrayNode states = (ArrayNode) bsObject.get("states");
+    boolean modified = false;
+
+    for (JsonNode state : states) {
+      if ("REJECTED".equals(state.get("state").asText())) {
+        modified |= updateCloseActionInState((ArrayNode) state.get("actions"), rejectionUuid, serviceName, tenantId);
+      }
+    }
+
+    if (!modified) {
+      log.warn("No CLOSE action found in REJECTED for {} ({})", serviceName, tenantId);
+    }
+    return modified;
+  }
+
+  private boolean updateCloseActionInState(ArrayNode actions, String rejectionUuid, String serviceName, String tenantId) {
+    boolean modified = false;
+    for (JsonNode action : actions) {
+      if ("CLOSE".equals(action.get("action").asText())) {
+        ((ObjectNode) action).put("nextState", rejectionUuid);
+        modified = true;
+        log.info("Updated CLOSE action nextState for {} ({})", serviceName, tenantId);
+      }
+    }
+    return modified;
+  }
+
   private JsonNode fetchBusinessService(String tenantId, String serviceName) throws Exception {
-    String url = BASE_URL + "/businessservice/_search?tenantId=" + tenantId + "&businessServices=" + serviceName;
+    String url = BASE_URL
+            + "/businessservice/_search?tenantId=" + URLEncoder.encode(tenantId, StandardCharsets.UTF_8)
+            + "&businessServices=" + URLEncoder.encode(serviceName, StandardCharsets.UTF_8);
     ObjectNode payload = getRequestInfo();
 
     JsonNode response = post(url, payload);
-    ArrayNode services = (ArrayNode) response.get("BusinessServices");
+
+    if (response == null || !response.has(BUSINESS_SERVICES_LITERAL)) {
+      log.warn("Search returned no BusinessServices node for {} in {}", serviceName, tenantId);
+      return null;
+    }
+
+    ArrayNode services = (ArrayNode) response.get(BUSINESS_SERVICES_LITERAL);
 
     if (services == null || services.isEmpty()) {
-      System.err.println("[WARN] No BusinessService found for " + serviceName + " in " + tenantId);
+      log.warn("No BusinessService found for {} in {}", serviceName, tenantId);
       return null;
     }
 
@@ -132,11 +170,15 @@ public class V20250819140200__update_business_service extends BaseJavaMigration 
     ObjectNode payload = getRequestInfo();
     ArrayNode serviceArray = mapper.createArrayNode();
     serviceArray.add(bsObject);
-    payload.set("BusinessServices", serviceArray);
+    payload.set(BUSINESS_SERVICES_LITERAL, serviceArray);
     JsonNode response = post(url, payload);
-    ArrayNode services = (ArrayNode) response.get("BusinessServices");
+    if (response == null || !response.has(BUSINESS_SERVICES_LITERAL)) {
+      log.warn(" updateBusinessService: response missing BusinessServices");
+      return null;
+    }
+    ArrayNode services = (ArrayNode) response.get(BUSINESS_SERVICES_LITERAL);
     if (services == null || services.isEmpty()) {
-      System.err.println("[WARN] No BusinessService found for " + services + " updateBusinessService ");
+      log.warn("No BusinessService found for {} in updateBusinessService", services);
       return null;
     }
     return services.get(0);
@@ -176,10 +218,12 @@ public class V20250819140200__update_business_service extends BaseJavaMigration 
   }
 
   private JsonNode post(String urlString, JsonNode jsonBody) throws Exception {
-    URL url = new URL(urlString);
-    HttpURLConnection con = (HttpURLConnection) url.openConnection();
+    HttpURLConnection con = (HttpURLConnection) new URL(urlString).openConnection();
     con.setRequestMethod("POST");
     con.setRequestProperty("Content-Type", "application/json");
+    con.setRequestProperty("Accept", "application/json");
+    con.setConnectTimeout(10_000);
+    con.setReadTimeout(30_000);
     con.setDoOutput(true);
 
     String json = mapper.writeValueAsString(jsonBody);
@@ -187,8 +231,19 @@ public class V20250819140200__update_business_service extends BaseJavaMigration 
       os.write(json.getBytes(StandardCharsets.UTF_8));
     }
 
-    Scanner scanner = new Scanner(con.getInputStream(), StandardCharsets.UTF_8);
-    String response = scanner.useDelimiter("\\A").next();
-    return mapper.readTree(response);
+    int status = con.getResponseCode();
+    java.io.InputStream stream = (status >= 200 && status < 300) ? con.getInputStream() : con.getErrorStream();
+    if (stream == null) {
+      throw new IllegalStateException("HTTP " + status + " with empty body for " + urlString);
+    }
+    try (java.util.Scanner scanner = new java.util.Scanner(stream, StandardCharsets.UTF_8)) {
+      String response = scanner.useDelimiter("\\A").hasNext() ? scanner.next() : "";
+      if (status < 200 || status >= 300) {
+        throw new IllegalStateException("HTTP " + status + " from " + urlString + ": " + response);
+      }
+      return mapper.readTree(response);
+      } finally {
+        con.disconnect();
+      }
   }
 }
