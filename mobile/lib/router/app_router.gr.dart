@@ -57,6 +57,21 @@ abstract class _$AppRouter extends RootStackRouter {
         child: const DraftPage(),
       );
     },
+    DynamicFormsRoute.name: (routeData) {
+      final pathParams = routeData.inheritedPathParams;
+      final args = routeData.argsAs<DynamicFormsRouteArgs>(
+          orElse: () => DynamicFormsRouteArgs(
+              pageName: pathParams.getString('pageName')));
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: DynamicFormsPage(
+          key: args.key,
+          pageName: args.pageName,
+          schemaName: args.schemaName,
+          uniqueIdentifier: args.uniqueIdentifier,
+        ),
+      );
+    },
     EnterOtpRoute.name: (routeData) {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
@@ -301,6 +316,55 @@ class DraftRoute extends PageRouteInfo<void> {
   static const String name = 'DraftRoute';
 
   static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [DynamicFormsPage]
+class DynamicFormsRoute extends PageRouteInfo<DynamicFormsRouteArgs> {
+  DynamicFormsRoute({
+    Key? key,
+    required String pageName,
+    String? schemaName,
+    String? uniqueIdentifier,
+    List<PageRouteInfo>? children,
+  }) : super(
+          DynamicFormsRoute.name,
+          args: DynamicFormsRouteArgs(
+            key: key,
+            pageName: pageName,
+            schemaName: schemaName,
+            uniqueIdentifier: uniqueIdentifier,
+          ),
+          rawPathParams: {'pageName': pageName},
+          initialChildren: children,
+        );
+
+  static const String name = 'DynamicFormsRoute';
+
+  static const PageInfo<DynamicFormsRouteArgs> page =
+      PageInfo<DynamicFormsRouteArgs>(name);
+}
+
+class DynamicFormsRouteArgs {
+  const DynamicFormsRouteArgs({
+    this.key,
+    required this.pageName,
+    this.schemaName,
+    this.uniqueIdentifier,
+  });
+
+  final Key? key;
+
+  final String pageName;
+
+  final String? schemaName;
+
+  final String? uniqueIdentifier;
+
+  @override
+  String toString() {
+    return 'DynamicFormsRouteArgs{key: $key, pageName: $pageName, schemaName: $schemaName, uniqueIdentifier: $uniqueIdentifier}';
+  }
 }
 
 /// generated route for

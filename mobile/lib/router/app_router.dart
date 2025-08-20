@@ -8,6 +8,7 @@ import '../pages/asset_type_detail.dart';
 import '../pages/authenticated.dart';
 import '../pages/data_save_success.dart';
 import '../pages/draft.dart';
+import '../pages/dynamic_form_page.dart';
 import '../pages/enter_otp.dart';
 import '../pages/forgot_password.dart';
 import '../pages/home.dart';
@@ -96,6 +97,7 @@ class AppRouter extends _$AppRouter {
           AutoRoute(page: ImageViewerRoute.page, path: Routes.imageViewer),
           AutoRoute(page: VideoPlayerRoute.page, path: Routes.videoViewer),
           AutoRoute(page: PdfViewerRoute.page, path: Routes.pdfViewer),
+          AutoRoute(page: DynamicFormsRoute.page, path: Routes.dynamicForm),
         ])
       ];
 }

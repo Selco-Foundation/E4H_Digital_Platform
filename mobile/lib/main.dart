@@ -7,6 +7,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:forms_engine/blocs/app_localization.dart' as forms_localization;
 import 'package:isar/isar.dart';
 import 'package:location/location.dart';
 
@@ -172,7 +173,13 @@ class _MainAppState extends State<MainApp> {
                                 .getDelegate(
                                     getLocalizationString(
                                         widget.isar, selectedLocale),
-                                    languages!)
+                                    languages!),
+                            // 🔴 REQUIRED for forms_engine / JsonForms
+                            forms_localization.FormLocalization.getDelegate(
+                              getLocalizationString(
+                                  widget.isar, selectedLocale),
+                              languages!, // the same languages list you already have
+                            ),
                           ],
                           // Set the locale for the app
                           locale: languages != null
