@@ -129,6 +129,7 @@ const QCCard = () => {
       <div
         style={{
           display: "flex",
+          marginLeft: "0px",
           flex: 1,
           flexDirection: windowWidth < 768 || userType === "citizen" ? "column" : "row",
           margin: userType === "citizen" ? "8px" : "0px",
@@ -142,9 +143,8 @@ const QCCard = () => {
         <section
           style={{
             position: "relative",
-            width: "40%",
+            width: "fit-content",
             maxWidth: "400px",
-            height: "200px",
             borderRadius: "4px",
             boxShadow: userType === "citizen" ? "" : "1px 1px 4px 0px rgba(0,0,0,0.2)",
             background: "white",

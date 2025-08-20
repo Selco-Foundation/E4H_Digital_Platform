@@ -4,8 +4,9 @@ import {
   RemoveableTag,
   FilterIcon,
   CheckBox,
-  Loader, LinkLabel
+  Loader
 } from "@egovernments/digit-ui-react-components";
+import RefreshButton from "../RefreshButton";
 
 const Filter = ({ t, fieldPlan, onFilterChange, projectQueryFilter, statusesList }) => {
 
@@ -19,7 +20,7 @@ const Filter = ({ t, fieldPlan, onFilterChange, projectQueryFilter, statusesList
   });
 
   const { isLoading, data } = Digit.Hooks.qc.useBoundary(
-    fieldPlan?.address?.boundary || "India_Telangana", "State"
+    fieldPlan?.address?.boundary, "State"
   );
 
   useEffect(() => {
@@ -159,15 +160,15 @@ const Filter = ({ t, fieldPlan, onFilterChange, projectQueryFilter, statusesList
 
   return (
     <React.Fragment>
-      <div className="filter">
-        <div className="filter-card" style={{ padding: "10px" }}>
+      <div className="filter" style={{ minWidth: "300px" }}>
+        <div className="filter-card" style={{ padding: "20px" }}>
           <div style={{ display: "flex", justifyContent: "space-between" }}>
             <div
               style={{
                 fontFamily: "Roboto",
                 fontWeight: 700,
                 fontSize: "24px",
-                lineHeight: "114%",
+                lineHeight: "2rem",
                 letterSpacing: "0px",
                 color: "#0B0C0C",
                 display: "flex",
@@ -177,14 +178,26 @@ const Filter = ({ t, fieldPlan, onFilterChange, projectQueryFilter, statusesList
               }}
             >
               <FilterIcon />
-              Filter
+              {t("CORE_COMMON_FILTER")}
             </div>
-            <LinkLabel
-              style={{ fontSize: "18px" }}
+            <button
+              type="button"
+              style={{
+                cursor: "pointer",
+                border: "1px solid #C84C0E",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontWeight: 500,
+                height: "2rem",
+                width: "2rem",
+                fontSize: "24px",
+                background: "transparent"
+              }}
               onClick={onClearAll}
             >
-              Clear
-            </LinkLabel>
+              <RefreshButton fill={"#C84C0E"} />
+            </button>
           </div>
           <div>
             {
@@ -224,7 +237,7 @@ const Filter = ({ t, fieldPlan, onFilterChange, projectQueryFilter, statusesList
               marginBottom: "30px",
             }}
           >
-            Status
+            {t("CORE_COMMON_STATUS")}
           </div>
           {statusesList?.map((option, index) => {
             return (
