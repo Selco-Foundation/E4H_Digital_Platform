@@ -1,3 +1,4 @@
+import 'dart:collection';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
@@ -225,6 +226,92 @@ Future<String> getFilestoreUrl(String idOrPath) async {
 
 String fileStoreFileUrl =
     "${envConfig.variables.baseUrl}filestore/v1/files/file?tenantId=${envConfig.variables.tenantId}&fileStoreId=";
+
+/// Turn one MDMS "FormConfig" document (the object that has `data`) into the
+/// JSON expected by forms_engine's SchemaObject.fromJson.
+Map<String, dynamic> transformSelcoFormMdmsDocToSchema(
+    Map<String, dynamic> mdmsDoc) {
+  final data = (mdmsDoc['data'] as Map?) ?? const <String, dynamic>{};
+
+  // Root
+  final name = (data['name'] ??
+          mdmsDoc['schemaCode'] ??
+          mdmsDoc['uniqueIdentifier'] ??
+          'Form')
+      .toString();
+  final version = (data['version'] ?? 1);
+  final order = data['order'] ?? 0;
+  final summary = data['summary'] ?? false;
+
+  // Pages: array -> linked map (preserve order)
+  final pagesArr = (data['pages'] as List?) ?? const <dynamic>[];
+  final pagesMap = LinkedHashMap<String, dynamic>();
+  for (final p in pagesArr) {
+    if (p is! Map) continue;
+    final page = Map<String, dynamic>.from(p as Map);
+    final pageKey =
+        (page['page'] ?? page['name'] ?? 'page_${pagesMap.length + 1}')
+            .toString();
+
+    // Properties: array -> linked map keyed by fieldName (fallback to generated)
+    final propsArr = (page['properties'] as List?) ?? const <dynamic>[];
+    final propsMap = LinkedHashMap<String, dynamic>();
+    for (var i = 0; i < propsArr.length; i++) {
+      final raw = propsArr[i];
+      if (raw is! Map) continue;
+      final prop = Map<String, dynamic>.from(raw as Map);
+      final key = (prop['fieldName'] ?? 'field_${i + 1}').toString();
+
+      // Keep everything, just ensure map shape (reactive_forms + engine read these)
+      propsMap[key] = {
+        // core
+        'type': prop['type'],
+        'label': prop['label'],
+        'order': prop['order'],
+        'value': prop['value'],
+        'format': prop['format'],
+        // flags
+        'hidden': prop['hidden'],
+        'readOnly': prop['readOnly'],
+        'deleteFlag': prop['deleteFlag'],
+        'isMultiSelect': prop['isMultiSelect'],
+        'includeInForm': prop['includeInForm'],
+        'includeInSummary': prop['includeInSummary'],
+        'systemDate': prop['systemDate'],
+        // texts
+        'tooltip': prop['tooltip'],
+        'helpText': prop['helpText'],
+        'infoText': prop['infoText'],
+        'innerLabel': prop['innerLabel'],
+        'suffixText': prop['suffixText'],
+        'errorMessage': prop['errorMessage'],
+        // enums/validations
+        'enums': prop['enums'],
+        'validations': prop['validations'],
+        // keep original fieldName too (optional)
+        'fieldName': key,
+      };
+    }
+
+    pagesMap[pageKey] = {
+      'page': pageKey,
+      'type': page['type'] ?? 'object',
+      'label': page['label'],
+      'order': page['order'],
+      'actionLabel': page['actionLabel'],
+      'description': page['description'],
+      'properties': propsMap, // <--- map now, not list
+    };
+  }
+
+  return {
+    'name': name,
+    'version': version,
+    'order': order,
+    'summary': summary,
+    'pages': pagesMap, // <--- map now, not list
+  };
+}
 
 class DioErrorParser {
   static Exception parse(DioError dioErr) {

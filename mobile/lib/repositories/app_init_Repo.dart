@@ -371,6 +371,73 @@ class AppInitRepo {
     }
   }
 
+  /// Load schema by its logical name, e.g. "AssetForm"
+  Future<Map<String, dynamic>?> loadByName(String name) async {
+    final SecureStore storage = SecureStore();
+    final raw = await storage.getFormSchemas();
+    if (raw == null) return null;
+
+    try {
+      final Map<String, dynamic> all = json.decode(raw);
+      final entry = all[name];
+      if (entry is Map && entry['data'] is Map) {
+        return Map<String, dynamic>.from(entry['data'] as Map);
+      }
+    } catch (e, st) {
+      print('FormsSchemaRepository.loadByName error: $e\n$st');
+    }
+    return null;
+  }
+
+  /// Load by uniqueIdentifier, e.g. "AssetForm.SELCO"
+  Future<Map<String, dynamic>?> loadByUniqueIdentifier(String uniqueId) async {
+    final SecureStore storage = SecureStore();
+    final raw = await storage.getFormSchemas();
+    if (raw == null) return null;
+
+    try {
+      final Map<String, dynamic> all = json.decode(raw);
+      for (final value in all.values) {
+        if (value is Map && value['data'] is Map) {
+          final data = Map<String, dynamic>.from(value['data'] as Map);
+          if (data['uniqueIdentifier']?.toString() == uniqueId) {
+            return data;
+          }
+        }
+      }
+    } catch (e, st) {
+      print('FormsSchemaRepository.loadByUniqueIdentifier error: $e\n$st');
+    }
+    return null;
+  }
+
+  /// Persist/merge a **single** transformed schema (output of your transformJson step)
+  /// under its `name`, keeping `previousVersion`.
+  Future<void> upsertTransformedSchema(Map<String, dynamic> transformed) async {
+    final name = transformed['name']?.toString();
+    final newVersion = transformed['version'];
+
+    if (name == null || name.isEmpty) return;
+
+    // Read existing
+    final SecureStore storage = SecureStore();
+    final raw = await storage.getFormSchemas();
+    final Map<String, dynamic> existing = raw == null
+        ? <String, dynamic>{}
+        : (json.decode(raw) as Map<String, dynamic>);
+
+    final existingEntry = existing[name] as Map<String, dynamic>?;
+
+    final updatedEntry = {
+      'data': transformed,
+      'currentVersion': newVersion,
+      'previousVersion': existingEntry?['currentVersion'],
+    };
+
+    existing[name] = updatedEntry;
+    await storage.setFormSchemas(existing);
+  }
+
   Future<MdmsResponseModel> _loadLocalAppConfig() async {
     try {
       final jsonString =
@@ -380,6 +447,99 @@ class AppInitRepo {
     } catch (e) {
       throw Exception('Failed to load mock app config: $e');
     }
+  }
+
+  Future<List<Map<String, dynamic>>> searchFormConfigsRaw2(
+      MdmsRequestModel mdmsRequestBody) async {
+    final SecureStore storage = SecureStore();
+
+    // -- Dev Mode: Load from mock JSON file --
+    if (envConfig.variables.envType == EnvType.dev) {
+      // Reusing your _loadLocalMdms helper to fetch raw docs list
+      return _loadLocalMdms<Map<String, dynamic>>(
+        'assets/mocks/mockFormConfig.json',
+        (json) => json, // Identity, since MDMS doc structure itself
+      ).then((list) {
+        // Assuming list is already MDMS document maps
+        return List<Map<String, dynamic>>.from(list);
+      });
+    }
+
+    // -- Prod Mode: call real API --
+    final body = mdmsRequestBody.toJson();
+    final client = DioClient().dio;
+
+    final headers = <String, String>{
+      "Access-Control-Allow-Origin": "*",
+      "authorization": "Basic ZWdvdi11c2VyLWNsaWVudDo=",
+    };
+
+    try {
+      final response = await client.post(
+        "egov-mdms-service/v2/_search",
+        data: body,
+        options: Options(headers: headers),
+      );
+
+      final raw = response.data['mdms'];
+      if (raw is! List) {
+        throw Exception('MDMS v2 response missing "mdms" array');
+      }
+      return raw.cast<Map<String, dynamic>>();
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> _loadLocalMdmsRaw(String filePath) async {
+    final jsonString = await rootBundle.loadString(filePath);
+    final decoded = json.decode(jsonString);
+
+    if (decoded is Map<String, dynamic>) {
+      final list = decoded['mdms'] ?? decoded['MdmsRes'];
+      if (list is List) {
+        return list
+            .cast<Map>()
+            .map((e) => Map<String, dynamic>.from(e as Map))
+            .toList();
+      }
+    }
+    throw Exception('No "mdms" (or MdmsRes) array found in $filePath');
+  }
+
+  /// Return the raw MDMS docs for FormConfig (each item is a Map with "data", etc.)
+  Future<List<Map<String, dynamic>>> searchFormConfigsRaw(
+      MdmsRequestModel mdmsRequestBody) async {
+    // Try secure store first if you want (optional). Skipped here on purpose.
+
+    if (envConfig.variables.envType == EnvType.dev) {
+      // <-- THIS is the fix: return *raw maps*, not Mdms<T>
+      print("It's getting here");
+      return _loadLocalMdmsRaw('assets/mocks/mockFormConfig.json');
+    }
+
+    // PROD call
+    final body = mdmsRequestBody.toJson();
+    final client = DioClient().dio;
+    final headers = <String, String>{
+      "Access-Control-Allow-Origin": "*",
+      "authorization": "Basic ZWdvdi11c2VyLWNsaWVudDo=",
+    };
+
+    final response = await client.post(
+      "egov-mdms-service/v2/_search",
+      data: body,
+      options: Options(headers: headers),
+    );
+
+    final raw = response.data['mdms'];
+    if (raw is! List) {
+      throw Exception('MDMS v2 response missing "mdms" array');
+    }
+    return raw
+        .cast<Map>()
+        .map((e) => Map<String, dynamic>.from(e as Map))
+        .toList();
   }
 
   Future<List<Mdms<T>>> _loadLocalMdms<T>(

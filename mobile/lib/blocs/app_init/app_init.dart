@@ -13,6 +13,7 @@ import '../../model/mdms/mdms.dart';
 import '../../model/system/system.dart';
 import '../../model/warranty/warranty.dart';
 import '../../repositories/app_init_Repo.dart';
+import '../../utils/utils.dart';
 
 part 'app_init.freezed.dart';
 
@@ -101,6 +102,38 @@ class AppInitialization extends Bloc<InitEvent, InitState> {
       )));
       final solutionDesignList = solutionDesign ?? [];
 
+      // -------------------- form
+
+      // ---- Fetch FormConfig docs (raw) ----
+      final formsDocs = await appInitRepo.searchFormConfigsRaw(
+        MdmsRequestModel(
+          mdmsCriteria: MdmsCriteriaModel(
+            tenantId: envConfig.variables.tenantId,
+            moduleDetails: [
+              MdmsModuleDetailsModel(
+                moduleName: 'SELCO',
+                masterDetails: [MdmsMasterDetailsModel('FormConfig')],
+              ),
+            ],
+          ),
+        ),
+      );
+
+      // ---- Transform & store each schema ----
+      for (final doc in formsDocs) {
+        final transformed = transformSelcoFormMdmsDocToSchema(doc);
+
+        // carry uniqueIdentifier if present
+        final uniqueId = doc['uniqueIdentifier']?.toString();
+        if (uniqueId != null && uniqueId.isNotEmpty) {
+          transformed['uniqueIdentifier'] = uniqueId;
+        }
+
+        await appInitRepo.upsertTransformedSchema(transformed);
+      }
+
+      // -------------------- form
+
       //go to the initialized state once configuration details are fetched
       emit(InitState.initialized(
         appConfig: appConfig,
@@ -114,6 +147,36 @@ class AppInitialization extends Bloc<InitEvent, InitState> {
     } catch (err) {
       rethrow;
     }
+  }
+
+  /// Old function used `transformJson`. You said you'll save RAW.
+  /// Keeping a helper here in case you want to call it elsewhere.
+  /// Pass the full MDMS document; this will extract and save doc['data'].
+  Future<void> storeSchema(dynamic mdmsDoc) async {
+    final appInitRepo = AppInitRepo();
+
+    if (mdmsDoc is! Map<String, dynamic>) return;
+
+    final data = (mdmsDoc['data'] is Map)
+        ? Map<String, dynamic>.from(mdmsDoc['data'] as Map)
+        : <String, dynamic>{};
+
+    if (data.isEmpty) return;
+
+    // carry uniqueIdentifier if present
+    final uniqueId = mdmsDoc['uniqueIdentifier']?.toString();
+    if (uniqueId != null && uniqueId.isNotEmpty) {
+      data['uniqueIdentifier'] = uniqueId;
+    }
+
+    // ensure name & version for upsert
+    data['name'] ??= (data['formName'] ??
+        mdmsDoc['schemaCode'] ??
+        uniqueId ??
+        'Form_${mdmsDoc['id'] ?? DateTime.now().millisecondsSinceEpoch}');
+    data['version'] ??= (data['version'] ?? 1);
+
+    await appInitRepo.upsertTransformedSchema(data);
   }
 }
 
