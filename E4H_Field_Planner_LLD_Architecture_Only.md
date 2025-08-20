@@ -14,17 +14,19 @@
 3. [System Overview](#system-overview)
 4. [Master Data Specifications](#master-data-specifications)
 5. [Workflow Configuration](#workflow-configuration)
-6. [Role-Based Access Control & API Mapping](#role-based-access-control--api-mapping)
-7. [API Specifications](#api-specifications)
-8. [Sequence Diagrams](#sequence-diagrams)
-9. [Database Schema Design](#database-schema-design)
-10. [Architecture Design](#architecture-design)
-11. [Security Architecture](#security-architecture)
-12. [Integration Strategy](#integration-strategy)
-13. [Performance & Scalability](#performance--scalability)
-14. [Error Handling Strategy](#error-handling-strategy)
-15. [Deployment Architecture](#deployment-architecture)
-16. [Implementation Roadmap](#implementation-roadmap)
+6. [Field Plan Status Updates via Event-Driven Architecture](#field-plan-status-updates-via-event-driven-architecture)
+7. [Kafka Topics & Event Management](#kafka-topics--event-management)
+8. [Role-Based Access Control & API Mapping](#role-based-access-control--api-mapping)
+9. [API Specifications](#api-specifications)
+10. [Sequence Diagrams](#sequence-diagrams)
+11. [Database Schema Design](#database-schema-design)
+12. [Architecture Design](#architecture-design)
+13. [Security Architecture](#security-architecture)
+14. [Integration Strategy](#integration-strategy)
+15. [Performance & Scalability](#performance--scalability)
+16. [Error Handling Strategy](#error-handling-strategy)
+17. [Deployment Architecture](#deployment-architecture)
+18. [Implementation Roadmap](#implementation-roadmap)
 
 ---
 
@@ -459,11 +461,524 @@ Response:
 }
 ```
 
-
+#### 2.6.4 Workflow Integration Points
+- **Field Plan Workflow**: Integrated with eGov Workflow v2 for state transitions
+- **Activity Report Workflow**: Multi-step approval process with QC flagging
+- **SLA Management**: Configurable SLAs with escalation and reminder notifications
+- **Role-Based Actions**: Workflow actions restricted by user roles and permissions
 
 ---
 
-## 3. LLD Requirements Status & Quick Links
+## 6. Field Plan Status Updates via Event-Driven Architecture
+
+### 6.1 Event-Driven Status Management Strategy
+
+#### 6.1.1 Field Plan Status Updates Without Workflow
+**Key Decision**: Field Planner service uses **event-driven architecture** for status updates instead of eGov Workflow v2, while Activities service maintains workflow-based state management.
+
+#### 6.1.2 Status Update Triggers
+Field Plan status updates are triggered by **Kafka events** from various E4H services:
+
+| Trigger Source | Event Type | Status Change | Business Logic |
+|----------------|------------|---------------|----------------|
+| **Facility Activities** | Activity Status Updates | DRAFT → ACTIVE | All activities assigned |
+| **Facility Activities** | Activity Completion | ACTIVE → COMPLETED | All activities completed |
+| **Project Service** | Project Status Changes | ACTIVE → CANCELLED | Project cancelled |
+| **Health Facility Registry** | Facility Status Updates | Status validation | Facility availability check |
+
+### 6.2 Kafka Event Listening Architecture
+
+#### 6.2.1 Event Consumer Configuration
+```yaml
+# Field Planner Service Kafka Configuration
+field-planner:
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: field-planner-status-updates
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+    topics:
+      facility-activities: egov-facility-activities-status
+      project-status: egov-project-status-updates
+      facility-registry: egov-health-facility-status
+```
+
+#### 6.2.2 Event Processing Service
+```java
+@Service
+public class FieldPlanStatusUpdateService {
+    
+    @KafkaListener(topics = "${field-planner.kafka.topics.facility-activities}")
+    public void handleFacilityActivityStatusUpdate(ActivityStatusEvent event) {
+        // Process activity status updates
+        updateFieldPlanStatusBasedOnActivities(event);
+    }
+    
+    @KafkaListener(topics = "${field-planner.kafka.topics.project-status}")
+    public void handleProjectStatusUpdate(ProjectStatusEvent event) {
+        // Process project status changes
+        updateFieldPlanStatusBasedOnProject(event);
+    }
+    
+    @KafkaListener(topics = "${field-planner.kafka.topics.facility-registry}")
+    public void handleFacilityStatusUpdate(FacilityStatusEvent event) {
+        // Process facility status changes
+        validateFieldPlanFacilities(event);
+    }
+}
+```
+
+### 6.3 Status Update Business Logic
+
+#### 6.3.1 Activity-Based Status Updates
+```java
+private void updateFieldPlanStatusBasedOnActivities(ActivityStatusEvent event) {
+    String fieldPlanId = event.getFieldPlanId();
+    FieldPlan fieldPlan = fieldPlanRepository.findById(fieldPlanId);
+    
+    // Check if all activities are assigned
+    if (fieldPlan.getStatus().equals("DRAFT")) {
+        boolean allActivitiesAssigned = checkAllActivitiesAssigned(fieldPlanId);
+        if (allActivitiesAssigned) {
+            fieldPlan.setStatus("ACTIVE");
+            fieldPlan.setActivatedDate(LocalDateTime.now());
+            fieldPlanRepository.save(fieldPlan);
+            
+            // Publish field plan activated event
+            publishFieldPlanStatusEvent(fieldPlan, "ACTIVATED");
+        }
+    }
+    
+    // Check if all activities are completed
+    if (fieldPlan.getStatus().equals("ACTIVE")) {
+        boolean allActivitiesCompleted = checkAllActivitiesCompleted(fieldPlanId);
+        if (allActivitiesCompleted) {
+            fieldPlan.setStatus("COMPLETED");
+            fieldPlan.setCompletedDate(LocalDateTime.now());
+            fieldPlanRepository.save(fieldPlan);
+            
+            // Publish field plan completed event
+            publishFieldPlanStatusEvent(fieldPlan, "COMPLETED");
+        }
+    }
+}
+```
+
+#### 6.3.2 Project-Based Status Updates
+```java
+private void updateFieldPlanStatusBasedOnProject(ProjectStatusEvent event) {
+    String projectId = event.getProjectId();
+    List<FieldPlan> fieldPlans = fieldPlanRepository.findByProjectId(projectId);
+    
+    for (FieldPlan fieldPlan : fieldPlans) {
+        if (event.getStatus().equals("CANCELLED") && 
+            fieldPlan.getStatus().equals("ACTIVE")) {
+            
+            fieldPlan.setStatus("CANCELLED");
+            fieldPlan.setCancelledDate(LocalDateTime.now());
+            fieldPlan.setCancellationReason("Project cancelled: " + event.getReason());
+            fieldPlanRepository.save(fieldPlan);
+            
+            // Publish field plan cancelled event
+            publishFieldPlanStatusEvent(fieldPlan, "CANCELLED");
+        }
+    }
+}
+```
+
+### 6.4 Status Update Validation Rules
+
+#### 6.4.1 Status Transition Validation
+```java
+private void validateStatusTransition(FieldPlan fieldPlan, String newStatus) {
+    String currentStatus = fieldPlan.getStatus();
+    
+    // Status transition rules
+    Map<String, List<String>> allowedTransitions = Map.of(
+        "DRAFT", List.of("ACTIVE", "CANCELLED"),
+        "ACTIVE", List.of("COMPLETED", "CANCELLED"),
+        "COMPLETED", List.of(), // Terminal state
+        "CANCELLED", List.of()  // Terminal state
+    );
+    
+    if (!allowedTransitions.get(currentStatus).contains(newStatus)) {
+        throw new InvalidStatusTransitionException(
+            "Invalid transition from " + currentStatus + " to " + newStatus);
+    }
+}
+```
+
+#### 6.4.2 Business Rule Validation
+```java
+private boolean checkAllActivitiesAssigned(String fieldPlanId) {
+    // Check if all facilities have activities assigned
+    List<FacilityActivity> facilityActivities = 
+        facilityActivityRepository.findByFieldPlanId(fieldPlanId);
+    
+    return facilityActivities.stream()
+        .allMatch(fa -> fa.getAssignedSpocId() != null && 
+                       fa.getAssignedStaffIds() != null && 
+                       !fa.getAssignedStaffIds().isEmpty());
+}
+
+private boolean checkAllActivitiesCompleted(String fieldPlanId) {
+    // Check if all activities are completed
+    List<ActivityReport> reports = 
+        activityReportRepository.findByFieldPlanId(fieldPlanId);
+    
+    List<FacilityActivity> facilityActivities = 
+        facilityActivityRepository.findByFieldPlanId(fieldPlanId);
+    
+    return facilityActivities.stream()
+        .allMatch(fa -> reports.stream()
+            .anyMatch(r -> r.getFacilityActivityId().equals(fa.getId()) && 
+                          r.getStatus().equals("APPROVED")));
+}
+```
+
+### 6.5 Event Publishing for Status Updates
+
+#### 6.5.1 Field Plan Status Event Publishing
+```java
+private void publishFieldPlanStatusEvent(FieldPlan fieldPlan, String eventType) {
+    FieldPlanStatusEvent event = FieldPlanStatusEvent.builder()
+        .fieldPlanId(fieldPlan.getId())
+        .projectId(fieldPlan.getProjectId())
+        .oldStatus(fieldPlan.getStatus())
+        .newStatus(eventType)
+        .timestamp(LocalDateTime.now())
+        .triggeredBy("SYSTEM")
+        .build();
+    
+    kafkaTemplate.send("egov-field-plan-status-updates", event);
+}
+```
+
+#### 6.5.2 Event Schema
+```json
+{
+  "fieldPlanId": "FP001",
+  "projectId": "PRJ001",
+  "oldStatus": "DRAFT",
+  "newStatus": "ACTIVE",
+  "timestamp": "2025-01-21T10:30:00Z",
+  "triggeredBy": "SYSTEM",
+  "metadata": {
+    "activitiesAssigned": 15,
+    "facilitiesMapped": 10,
+    "triggerEvent": "FACILITY_ACTIVITY_ASSIGNED"
+  }
+}
+```
+
+---
+
+## 7. Kafka Topics & Event Management
+
+### 7.1 Complete Kafka Topics Inventory
+
+#### 7.1.1 Field Planner Service Topics
+
+| Topic Name | Direction | Purpose | Event Schema | Consumer/Producer |
+|------------|-----------|---------|--------------|-------------------|
+| `egov-field-plan-status-updates` | **OUT** | Field plan status changes | FieldPlanStatusEvent | Producer |
+| `egov-field-plan-activity-assignments` | **OUT** | Activity assignment updates | ActivityAssignmentEvent | Producer |
+| `egov-field-plan-facility-mappings` | **OUT** | Facility mapping updates | FacilityMappingEvent | Producer |
+| `egov-field-plan-mobile-sync` | **OUT** | Mobile synchronization events | MobileSyncEvent | Producer |
+| `egov-facility-activities-status` | **IN** | Activity status updates | ActivityStatusEvent | Consumer |
+| `egov-project-status-updates` | **IN** | Project status changes | ProjectStatusEvent | Consumer |
+| `egov-health-facility-status` | **IN** | Facility status updates | FacilityStatusEvent | Consumer |
+| `egov-user-registry-updates` | **IN** | User/employee updates | UserRegistryEvent | Consumer |
+
+#### 7.1.2 Activities Service Topics
+
+| Topic Name | Direction | Purpose | Event Schema | Consumer/Producer |
+|------------|-----------|---------|--------------|-------------------|
+| `egov-activity-report-submissions` | **OUT** | Report submission events | ActivityReportEvent | Producer |
+| `egov-activity-workflow-transitions` | **OUT** | Workflow state changes | WorkflowTransitionEvent | Producer |
+| `egov-activity-approval-notifications` | **OUT** | Approval notifications | ApprovalNotificationEvent | Producer |
+| `egov-activity-escalation-events` | **OUT** | SLA escalation events | EscalationEvent | Producer |
+| `egov-field-plan-status-updates` | **IN** | Field plan status changes | FieldPlanStatusEvent | Consumer |
+| `egov-user-assignment-updates` | **IN** | User assignment changes | UserAssignmentEvent | Consumer |
+
+### 7.2 Event Schema Definitions
+
+#### 7.2.1 Field Plan Status Event
+```json
+{
+  "eventId": "evt_001",
+  "eventType": "FIELD_PLAN_STATUS_UPDATED",
+  "timestamp": "2025-01-21T10:30:00Z",
+  "tenantId": "pb",
+  "data": {
+    "fieldPlanId": "FP001",
+    "projectId": "PRJ001",
+    "oldStatus": "DRAFT",
+    "newStatus": "ACTIVE",
+    "triggeredBy": "SYSTEM",
+    "triggerEvent": "FACILITY_ACTIVITY_ASSIGNED",
+    "metadata": {
+      "activitiesAssigned": 15,
+      "facilitiesMapped": 10,
+      "completionPercentage": 0
+    }
+  }
+}
+```
+
+#### 7.2.2 Activity Status Event
+```json
+{
+  "eventId": "evt_002",
+  "eventType": "FACILITY_ACTIVITY_STATUS_UPDATED",
+  "timestamp": "2025-01-21T10:30:00Z",
+  "tenantId": "pb",
+  "data": {
+    "facilityActivityId": "FA001",
+    "fieldPlanId": "FP001",
+    "facilityId": "FAC001",
+    "activityType": "INSTALLATION",
+    "oldStatus": "ASSIGNED",
+    "newStatus": "IN_PROGRESS",
+    "assignedSpocId": "user123",
+    "assignedStaffIds": ["user456", "user789"],
+    "metadata": {
+      "startDate": "2025-01-21T09:00:00Z",
+      "estimatedCompletionDate": "2025-01-25T17:00:00Z"
+    }
+  }
+}
+```
+
+#### 7.2.3 Activity Report Event
+```json
+{
+  "eventId": "evt_003",
+  "eventType": "ACTIVITY_REPORT_SUBMITTED",
+  "timestamp": "2025-01-21T10:30:00Z",
+  "tenantId": "pb",
+  "data": {
+    "reportId": "AR001",
+    "facilityActivityId": "FA001",
+    "fieldPlanId": "FP001",
+    "activityType": "INSTALLATION",
+    "submittedBy": "user456",
+    "status": "SUBMITTED",
+    "workflowInstanceId": "wf_001",
+    "metadata": {
+      "completionDate": "2025-01-21T16:30:00Z",
+      "attachmentsCount": 3,
+      "qualityScore": 95
+    }
+  }
+}
+```
+
+### 7.3 Event Processing Configuration
+
+#### 7.3.1 Field Planner Service Event Configuration
+```yaml
+# Field Planner Service Kafka Configuration
+field-planner:
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: field-planner-consumers
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      max-poll-records: 500
+      session-timeout-ms: 30000
+      heartbeat-interval-ms: 10000
+    producer:
+      acks: all
+      retries: 3
+      batch-size: 16384
+      linger-ms: 5
+      buffer-memory: 33554432
+    topics:
+      # Input Topics (Consumers)
+      facility-activities: egov-facility-activities-status
+      project-status: egov-project-status-updates
+      facility-registry: egov-health-facility-status
+      user-registry: egov-user-registry-updates
+      
+      # Output Topics (Producers)
+      field-plan-status: egov-field-plan-status-updates
+      activity-assignments: egov-field-plan-activity-assignments
+      facility-mappings: egov-field-plan-facility-mappings
+      mobile-sync: egov-field-plan-mobile-sync
+```
+
+#### 7.3.2 Activities Service Event Configuration
+```yaml
+# Activities Service Kafka Configuration
+activities:
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: activities-consumers
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      max-poll-records: 500
+      session-timeout-ms: 30000
+      heartbeat-interval-ms: 10000
+    producer:
+      acks: all
+      retries: 3
+      batch-size: 16384
+      linger-ms: 5
+      buffer-memory: 33554432
+    topics:
+      # Input Topics (Consumers)
+      field-plan-status: egov-field-plan-status-updates
+      user-assignments: egov-user-assignment-updates
+      
+      # Output Topics (Producers)
+      activity-reports: egov-activity-report-submissions
+      workflow-transitions: egov-activity-workflow-transitions
+      approval-notifications: egov-activity-approval-notifications
+      escalation-events: egov-activity-escalation-events
+```
+
+### 7.4 Event Processing Patterns
+
+#### 7.4.1 Event Sourcing Pattern
+```java
+@Service
+public class FieldPlanEventSourcingService {
+    
+    @Autowired
+    private EventStore eventStore;
+    
+    public void processFieldPlanEvent(FieldPlanEvent event) {
+        // Store event in event store
+        eventStore.save(event);
+        
+        // Update read model
+        updateFieldPlanReadModel(event);
+        
+        // Publish to other services
+        publishToDownstreamServices(event);
+    }
+    
+    private void updateFieldPlanReadModel(FieldPlanEvent event) {
+        // Update field plan status based on event
+        FieldPlan fieldPlan = fieldPlanRepository.findById(event.getFieldPlanId());
+        fieldPlan.setStatus(event.getNewStatus());
+        fieldPlan.setLastModifiedTime(event.getTimestamp());
+        fieldPlanRepository.save(fieldPlan);
+    }
+}
+```
+
+#### 7.4.2 Saga Pattern for Distributed Transactions
+```java
+@Service
+public class FieldPlanSagaOrchestrator {
+    
+    public void handleFieldPlanActivation(FieldPlanActivationCommand command) {
+        // Start saga
+        String sagaId = UUID.randomUUID().toString();
+        
+        // Step 1: Validate field plan
+        validateFieldPlan(command.getFieldPlanId());
+        
+        // Step 2: Update field plan status
+        updateFieldPlanStatus(command.getFieldPlanId(), "ACTIVE");
+        
+        // Step 3: Notify activities service
+        notifyActivitiesService(command.getFieldPlanId(), "ACTIVATED");
+        
+        // Step 4: Send mobile sync event
+        sendMobileSyncEvent(command.getFieldPlanId());
+        
+        // Complete saga
+        completeSaga(sagaId);
+    }
+}
+```
+
+### 7.5 Event Monitoring & Observability
+
+#### 7.5.1 Event Metrics
+```yaml
+# Event Processing Metrics
+field-planner:
+  metrics:
+    events:
+      processed-total: "field_planner_events_processed_total"
+      processed-rate: "field_planner_events_processed_rate"
+      error-rate: "field_planner_events_error_rate"
+      processing-time: "field_planner_events_processing_time"
+    topics:
+      lag-monitoring: true
+      consumer-group-monitoring: true
+      partition-monitoring: true
+```
+
+#### 7.5.2 Event Dead Letter Queue
+```yaml
+# Dead Letter Queue Configuration
+field-planner:
+  kafka:
+    dead-letter-queue:
+      enabled: true
+      topic: egov-field-planner-dlq
+      max-retries: 3
+      retry-delay-ms: 5000
+      error-handlers:
+        - deserialization-error
+        - processing-error
+        - validation-error
+```
+
+### 7.6 Event Security & Compliance
+
+#### 7.6.1 Event Encryption
+```yaml
+# Event Security Configuration
+field-planner:
+  kafka:
+    security:
+      encryption:
+        enabled: true
+        algorithm: AES-256
+        key-source: vault
+      authentication:
+        enabled: true
+        mechanism: SASL_SSL
+        username: ${KAFKA_USERNAME}
+        password: ${KAFKA_PASSWORD}
+      authorization:
+        enabled: true
+        acl-pattern: "User:field-planner-*"
+```
+
+#### 7.6.2 Event Audit Trail
+```java
+@Component
+public class EventAuditService {
+    
+    public void auditEvent(Event event) {
+        EventAudit audit = EventAudit.builder()
+            .eventId(event.getEventId())
+            .eventType(event.getEventType())
+            .timestamp(event.getTimestamp())
+            .tenantId(event.getTenantId())
+            .sourceService("field-planner")
+            .targetTopic(event.getTopic())
+            .payloadHash(calculateHash(event.getData()))
+            .build();
+        
+        eventAuditRepository.save(audit);
+    }
+}
+```
+
+---
+
+## 8. Role-Based Access Control & API Mapping
 
 ### ✅ **All 6 Required Components Status:**
 
