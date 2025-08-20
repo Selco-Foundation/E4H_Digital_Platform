@@ -98,6 +98,8 @@ const MultiUploadWrapper = ({
   ulb,
   specificFileConstraint,
   multiple = true,
+  analyticsPage,
+  mediaIntent,
 }) => {
   const FILES_UPLOADED = "FILES_UPLOADED";
   const TARGET_FILE_REMOVAL = "TARGET_FILE_REMOVAL";

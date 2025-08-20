@@ -115,6 +115,10 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
 
   //   }, [file]);
   useEffect(() => {
+    Digit.Utils.analytics.trackPageView("ticket_details_page", {
+      page_path: window.location?.pathname || "/ticket-details",
+      page_title: "Ticket Details",
+    });
     if (selectedAction === "REJECT") {
       const uuid = JSON.parse(sessionStorage.getItem("Digit.User"))?.value?.info?.uuid;
       let name = JSON.parse(sessionStorage.getItem("Digit.User"))?.value?.info?.name;
@@ -382,6 +386,7 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
           allowedMaxSizeInMB={5}
           acceptFiles={selectedAction === "RESOLVE" ? ".pdf, .xlsx, .docx, .doc, .jpeg, .png" : ".pdf, .jpg, .jpeg, .png"}
           ulb={complaintDetails?.incident?.tenantId || tenantId}
+          analyticsPage="ticket_details_page"
         />
         {selectedAction === "RESOLVE" ? (
           <div style={{ marginTop: "6px", fontSize: "13px", color: "#36454F" }}>{t("RESOLVE_RESOLUTION_REPORT")}</div>

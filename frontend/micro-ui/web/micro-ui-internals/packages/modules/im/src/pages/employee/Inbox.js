@@ -35,6 +35,23 @@ const Inbox = () => {
   const prevPageSizeRef = useRef(pageSize);
 
   useEffect(() => {
+    const nearingSLA = queryParams.get("nearing");
+    try {
+      if (nearingSLA === "1") {
+        Digit.Utils.analytics?.trackPageView("nearing_sla_page", {
+          page_path: window.location?.pathname || "/inbox",
+          page_title: "Nearing SLA Page",
+        });
+      } else {
+        Digit.Utils.analytics?.trackPageView("inbox_page", {
+          page_path: window.location?.pathname || "/inbox",
+          page_title: "Inbox",
+        });
+      }
+    } catch (e) {
+      console.warn("analytics: page_view tracking failed", e);
+    }
+
     history.replace({
       pathname: location.pathname,
       search: `filter=${JSON.stringify(searchParams)}&pageSize=${pageSize}&pageOffset=${pageOffset}`
@@ -90,6 +107,10 @@ const Inbox = () => {
   };
 
   const onSearch = (params = "") => {
+    Digit.Utils.analytics.trackButtonClick("search_submit", {
+      page_name: "inbox",
+      search_query: params || "empty",
+    });
     setSearchParams({ ...searchParams, search: params });
   };
 

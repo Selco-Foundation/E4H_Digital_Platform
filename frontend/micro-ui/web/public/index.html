@@ -1,22 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <!-- Google tag (gtag.js) -->
-    <script
-      async
-      crossorigin="anonymous"
-      src="https://www.googletagmanager.com/gtag/js?id=<%= htmlWebpackPlugin.options.ga_id %>"
-    ></script>
-    <script>
-      window.dataLayer = window.dataLayer || []
-      function gtag() {
-        dataLayer.push(arguments)
-      }
-      gtag("js", new Date())
-      gtag("config", "<%= htmlWebpackPlugin.options.ga_id %>", {
-        anonymize_ip: true,
-      })
-    </script>
+      <!-- Google tag (gtagInfo.js) -->
+      <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZDFDM34WK4"></script>
+      <script>
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+
+          gtag('config', 'G-ZDFDM34WK4',{ anonymize_ip: true, debug_mode: true });
+      </script>
     <meta charset="utf-8" />
     <link
       rel="icon"
