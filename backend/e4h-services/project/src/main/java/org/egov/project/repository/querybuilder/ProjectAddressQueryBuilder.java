@@ -260,7 +260,11 @@ public class ProjectAddressQueryBuilder {
         // Check if boundary code is provided
         if (projectSearch.getBoundaryCode() != null && StringUtils.isNotBlank(projectSearch.getBoundaryCode())) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
-            List<String> boundaryCodes = Arrays.asList(projectSearch.getBoundaryCode().split(","));
+            List<String> boundaryCodes = Arrays.stream(projectSearch.getBoundaryCode().split(","))
+                    .map(String::trim)
+                    .filter(StringUtils::isNotBlank)
+                    .distinct()
+                    .collect(Collectors.toList());
             queryBuilder.append(" addr.boundary IN (").append(createQuery(boundaryCodes)).append(")");
             addToPreparedStatement(preparedStmtList, boundaryCodes);
         }
