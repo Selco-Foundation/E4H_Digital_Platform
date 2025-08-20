@@ -103,13 +103,13 @@ const useAsset = (facilityId) => {
   const facility = facilityId;
   const queryClient = useQueryClient();
   const { isLoading, isError, error, data } = useQuery(
-    ["facilityDetails", facility],
+    ["ASSET", facility],
     () => fetchFacilityDetails(facility)
   );
 
   return {
     isLoading, isError, error, data,
-    revalidate: () => queryClient.invalidateQueries(["facilityDetails", facility])
+    revalidate: () => queryClient.invalidateQueries(["ASSET"])
   }
 }
 

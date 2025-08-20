@@ -38,13 +38,13 @@ const useBoundary = (codes, boundaryType) => {
 
   const queryClient = useQueryClient();
   const { isLoading, isError, error, data } = useQuery(
-    ["boundary", codes, boundaryType],
+    ["BOUNDARY", codes, boundaryType],
     () => fetchBoundaries(codes, boundaryType)
   );
 
   return {
     isLoading, isError, error, data,
-    revalidate: () => queryClient.invalidateQueries(["boundary", codes, boundaryType])
+    revalidate: () => queryClient.invalidateQueries(["BOUNDARY"])
   }
 
 }

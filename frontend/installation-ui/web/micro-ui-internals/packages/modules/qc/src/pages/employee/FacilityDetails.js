@@ -24,7 +24,7 @@ const FacilityDetails = ({t}) => {
     isLoading: fieldPlanDataLoading,
     isFetching: fieldPlanDataFetching,
     data: fieldPlanData,
-    revalidate: invalidateFieldPlan
+    revalidate: revalidateFieldPlans
   } = Digit.Hooks.qc.useFieldPlan({
     Project : {
       projectTypeId: "FieldPlan",
@@ -36,7 +36,8 @@ const FacilityDetails = ({t}) => {
     isLoading: facilityDataLoading,
     isFetching: facilityDataFetching,
     data: facilityData,
-    revalidate: invalidateFacilityDetails
+    revalidate: revalidateFacilityDetails,
+    revalidateFacilities
   } = Digit.Hooks.qc.useFacilityDetails(facilityProjectId);
 
   const { isLoading, data: assetData } = Digit.Hooks.qc.useAsset(facilityId);
@@ -70,6 +71,12 @@ const FacilityDetails = ({t}) => {
 
   if (isLoading || facilityDataLoading || fieldPlanDataLoading) {
     return <Loader />;
+  }
+
+  const revalidateData = () => {
+    revalidateFieldPlans();
+    revalidateFacilities();
+    revalidateFacilityDetails();
   }
 
   return (
@@ -150,8 +157,7 @@ const FacilityDetails = ({t}) => {
 
       {facilityDetails?.status && facilityDetails?.status.toUpperCase() === "SUBMITTED_BY_SUPERVISOR" && (
         <QCActions
-          invalidateFieldPlan={invalidateFieldPlan}
-          invalidateFacilityDetails={invalidateFacilityDetails}
+          revalidateData={revalidateData}
           setUpdatingWorkflow={setUpdatingWorkflow}
         />
       )}

@@ -124,13 +124,13 @@ const useFacility = (projectQueryFilter, pageSize, pageOffset) => {
 
   const queryClient = useQueryClient();
   const { isLoading, isFetching, isError, error, data } = useQuery(
-    ["facility", filter, limit, offset],
+    ["FACILITY", filter, limit, offset],
     () => fetchInboxData(filter, limit, offset)
   );
 
   return {
     isLoading, isFetching, isError, error, data,
-    revalidate: () => queryClient.invalidateQueries(["facility"])
+    revalidate: () => queryClient.invalidateQueries(["FACILITY"])
   }
 }
 

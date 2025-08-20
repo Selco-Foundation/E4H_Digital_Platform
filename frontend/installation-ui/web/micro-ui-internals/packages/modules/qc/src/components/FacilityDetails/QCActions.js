@@ -2,7 +2,7 @@ import React from 'react';
 import { useDispatch, useSelector } from "react-redux";
 import { clearRejectionReasons } from "../../redux/actions";
 
-const QCActions = ({ invalidateFieldPlan, invalidateFacilityDetails, setUpdatingWorkflow }) => {
+const QCActions = ({ revalidateData, setUpdatingWorkflow }) => {
 
   const dispatch = useDispatch();
   const rejectionReasons = useSelector((state) => state.qc.rejectionReasons);
@@ -18,8 +18,7 @@ const QCActions = ({ invalidateFieldPlan, invalidateFacilityDetails, setUpdating
       );
 
       if (response) {
-        invalidateFieldPlan();
-        invalidateFacilityDetails();
+        revalidateData();
         dispatch(clearRejectionReasons());
       }
 
@@ -65,8 +64,7 @@ const QCActions = ({ invalidateFieldPlan, invalidateFacilityDetails, setUpdating
       );
 
       if (response) {
-        invalidateFieldPlan();
-        invalidateFacilityDetails();
+        revalidateData();
         dispatch(clearRejectionReasons());
       }
 
@@ -88,8 +86,7 @@ const QCActions = ({ invalidateFieldPlan, invalidateFacilityDetails, setUpdating
       );
 
       if (response) {
-        invalidateFieldPlan();
-        invalidateFacilityDetails();
+        revalidateData();
         dispatch(clearRejectionReasons());
       }
 

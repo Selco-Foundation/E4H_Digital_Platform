@@ -55,7 +55,7 @@ const FacilityTable = ({ t }) => {
     isLoading: fieldPlanDataLoading,
     isFetching: fieldPlanDataFetching,
     data: fieldPlanData,
-    revalidate: invalidateFieldPlanData,
+    revalidate: revalidateFieldPlans,
   } = Digit.Hooks.qc.useFieldPlan({
     Project : {
       projectTypeId: "FieldPlan",
@@ -67,7 +67,7 @@ const FacilityTable = ({ t }) => {
     isLoading,
     isFetching: facilityDataFetching,
     data: facilityData,
-    revalidate: invalidateFacilityData,
+    revalidate: revalidateFacilities,
   } = Digit.Hooks.qc.useFacility(projectQueryFilter, pageSize, pageOffset);
 
   useEffect(() => {
@@ -158,8 +158,8 @@ const FacilityTable = ({ t }) => {
   const revalidateData = () => {
     setMainCheck(false);
     setSelectedFacilities([]);
-    invalidateFieldPlanData();
-    invalidateFacilityData();
+    revalidateFieldPlans();
+    revalidateFacilities();
   }
 
   const columns = [

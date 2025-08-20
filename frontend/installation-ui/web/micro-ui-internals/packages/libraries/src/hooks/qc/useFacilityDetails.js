@@ -149,13 +149,14 @@ const useFacilityDetails = (facilityProjectId) => {
 
   const queryClient = useQueryClient();
   const { isLoading, isFetching, isError, error, data } = useQuery(
-      ['facilityDetails', filter, limit, offset],
+      ["FACILITY_DETAILS", filter, limit, offset],
       () => fetchFacilityDetails(filter, limit, offset)
   )
 
   return {
     isLoading, isFetching, isError, error, data,
-    revalidate: () => queryClient.invalidateQueries(['facilityDetails'])
+    revalidate: () => queryClient.invalidateQueries(["FACILITY_DETAILS"]),
+    revalidateFacilities: () => queryClient.invalidateQueries(["FACILITY"])
   }
 }
 
