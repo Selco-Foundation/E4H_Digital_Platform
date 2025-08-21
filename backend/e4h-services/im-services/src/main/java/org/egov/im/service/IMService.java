@@ -17,6 +17,8 @@ import org.springframework.util.CollectionUtils;
 
 import java.util.*;
 
+import lombok.extern.slf4j.Slf4j;
+@Slf4j
 @org.springframework.stereotype.Service
 public class IMService {
 
@@ -66,6 +68,7 @@ public class IMService {
      * @return
      */
     public IncidentRequest create(IncidentRequest request){
+        log.info("IMService::create for tenantId={} ",request.getIncident().getTenantId());
         String tenantId = request.getIncident().getTenantId();
         Object mdmsData = mdmsUtils.mDMSCall(request);
         validator.validateCreate(request, mdmsData);
@@ -94,6 +97,7 @@ public class IMService {
      * @return
      */
     public List<IncidentWrapper> search(RequestInfo requestInfo, RequestSearchCriteria criteria){
+        log.info("IMService::search with criteria={}", criteria);
         validator.validateSearch(requestInfo, criteria);
 
         enrichmentService.enrichSearchRequest(requestInfo, criteria);
@@ -114,6 +118,7 @@ public class IMService {
          //to add later
         //userService.enrichUsers(serviceWrappers);
         List<IncidentWrapper> enrichedServiceWrappers = workflowService.enrichWorkflow(requestInfo,incidentWrappers);
+        log.debug("Sorting {} incidents by createdTime desc", enrichedServiceWrappers.size());
         Map<Long, List<IncidentWrapper>> sortedWrappers = new TreeMap<>(Collections.reverseOrder());
         for(IncidentWrapper svc : enrichedServiceWrappers){
             if(sortedWrappers.containsKey(svc.getIncident().getAuditDetails().getCreatedTime())){
@@ -138,6 +143,9 @@ public class IMService {
      * @return
      */
     public IncidentRequest update(IncidentRequest request){
+        log.info("IMService::update for tenantId={} incidentId={} currentStatus={}",
+                request.getIncident().getTenantId(), request.getIncident().getIncidentId(),
+                request.getIncident().getApplicationStatus());
         String tenantId = request.getIncident().getTenantId();
         Object mdmsData = mdmsUtils.mDMSCall(request);
         validator.validateUpdate(request, mdmsData);
@@ -166,6 +174,7 @@ public class IMService {
      * @return
      */
     public Integer count(RequestInfo requestInfo, RequestSearchCriteria criteria){
+        log.info("IMService::count with criteria={}", criteria);
         criteria.setIsPlainSearch(false);
         Integer count = repository.getCount(criteria);
         return count;
@@ -173,6 +182,7 @@ public class IMService {
 
 
     public List<IncidentWrapper> plainSearch(RequestInfo requestInfo, RequestSearchCriteria criteria) {
+        log.info("IMService::plainSearch with criteria={}", criteria);
         validator.validatePlainSearch(criteria);
 
         criteria.setIsPlainSearch(true);
@@ -195,6 +205,7 @@ public class IMService {
         userService.enrichUsers(incidentWrappers);
         List<IncidentWrapper> enrichedServiceWrappers = workflowService.enrichWorkflow(requestInfo, incidentWrappers);
 
+        log.debug("Sorting {} incidents by createdTime desc", enrichedServiceWrappers.size());
         Map<Long, List<IncidentWrapper>> sortedWrappers = new TreeMap<>(Collections.reverseOrder());
         for(IncidentWrapper svc : enrichedServiceWrappers){
             if(sortedWrappers.containsKey(svc.getIncident().getAuditDetails().getCreatedTime())){

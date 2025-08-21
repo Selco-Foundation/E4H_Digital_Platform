@@ -22,6 +22,8 @@ import static org.egov.im.util.IMConstants.*;
 public class SLAService {
 
     public long computeTotalSla(String currentState, List<State> states) {
+        log.info("SLAService::computeTotalSla called | currentState={} statesCount={}",
+                currentState, (states != null ? states.size() : 0));
         Map<String, Long> stateToSlaMap = new HashMap<>();
         for (State state : states) {
             String key = state.getApplicationStatus();
@@ -33,16 +35,21 @@ public class SLAService {
         if (PENDINGFORASSIGNMENT.equals(currentState) || PENDINGATVENDOR.equals(currentState)) {
             totalSla += stateToSlaMap.getOrDefault(PENDINGFORASSIGNMENT, 0L);
             totalSla += stateToSlaMap.getOrDefault(PENDINGATVENDOR, 0L);
+            log.debug("Computed SLA for combined state={} totalSla={}", currentState, totalSla);
         } else if (currentState.startsWith(PENDING_ASSIGNMENT_PREFIX)) {
             String suffix = currentState.replace(PENDING_ASSIGNMENT_PREFIX, "");
             String resolutionState = PENDING_RESOLUTION_PREFIX + suffix;
             totalSla += stateToSlaMap.getOrDefault(currentState, 0L);
             totalSla += stateToSlaMap.getOrDefault(resolutionState, 0L);
+            log.debug("Computed SLA for assignment workflow | currentState={} resolutionState={} totalSla={}",
+                    currentState, resolutionState, totalSla);
         } else if (currentState.startsWith(PENDING_RESOLUTION_PREFIX)) {
             String suffix = currentState.replace(PENDING_RESOLUTION_PREFIX, "");
             String assignmentState = PENDING_ASSIGNMENT_PREFIX + suffix;
             totalSla += stateToSlaMap.getOrDefault(currentState, 0L);
             totalSla += stateToSlaMap.getOrDefault(assignmentState, 0L);
+            log.debug("Computed SLA for resolution workflow | currentState={} assignmentState={} totalSla={}",
+                    currentState, assignmentState, totalSla);
         }
         return totalSla;
     }
@@ -50,6 +57,7 @@ public class SLAService {
     public Priority getPriorityFromMDMS(IncidentRequest request, Object mdmsData) {
         String serviceCode = request.getIncident().getIncidentSubType();
         String assetType = request.getIncident().getIncidentType();
+        log.info("SLAService::getPriorityFromMDMS called | assetType={} serviceCode={}", assetType, serviceCode);
         String jsonPath = MDMS_SERVICEDEF_SEARCH.replace("{SERVICEDEF}", serviceCode);
         List<Object> res;
         try {
