@@ -15,20 +15,41 @@ import lombok.NoArgsConstructor;
 public class IncidentStatusAgregation {
 
     @JsonProperty("tenantId")
-    String tenantId;
+    private String tenantId;
 
     @JsonProperty("totalTickets")
-    int totalOccurences;
+    private int totalOccurences;
 
     @JsonProperty("openTickets")
-    int totalOpenOccurrences;
+    private int totalOpenOccurrences;
 
     @JsonProperty("closedTickets")
-    int totalCloseOccurrences;
+    private int totalCloseOccurrences;
 
     @JsonProperty("solarPanelStatus")
-    String systemFunctional;
+    private String systemFunctional;
 
     @JsonProperty("lastModifiedTime")
-    long lastModifiedTime;
+    private long lastModifiedTime;
+
+    @JsonProperty("block")
+    private String block;
+
+    @JsonProperty("code")
+    private String code;
+
+    @JsonProperty("district")
+    private String district;
+
+    @JsonProperty("isLive")
+    private boolean isLive;
+
+    @JsonProperty("name")
+    private String name;
+
+    @JsonProperty("phcType")
+    private String phcType;
+
+    @JsonProperty("type")
+    private String type;
 }

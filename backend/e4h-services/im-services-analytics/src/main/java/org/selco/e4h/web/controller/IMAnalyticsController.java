@@ -44,7 +44,8 @@ public class IMAnalyticsController {
         Map<String, Object> producerRecord = new HashMap<>();
         producerRecord.put("topic", "save-im-request");
         producerRecord.put("value", incidentRequest);
-        producerService.sendIncident("process-audit-records", producerRecord);
+        producerService.getTicket("sk.shyagyongrumtek");
+//        producerService.sendIncident("process-audit-records", producerRecord);
         return "User sent!";
     }
 

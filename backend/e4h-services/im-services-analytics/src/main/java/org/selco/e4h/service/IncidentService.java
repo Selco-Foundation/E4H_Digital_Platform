@@ -1,25 +1,24 @@
 package org.selco.e4h.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.validation.Valid;
-import org.egov.common.producer.Producer;
+import lombok.extern.slf4j.Slf4j;
 import org.selco.e4h.config.ConsumerConfiguration;
 import org.selco.e4h.kafka.consumer.KafkaProducerService;
 import org.selco.e4h.repository.IncidentRepository;
+import org.selco.e4h.util.ElasticSearchClient;
 import org.selco.e4h.web.models.IncidentRequest;
 import org.selco.e4h.web.models.IncidentStatusAgregation;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import static org.selco.e4h.config.ServiceConstants.FUNCTIONAL;
 import static org.selco.e4h.config.ServiceConstants.NON_FUNCTIONAL;
 
+@Slf4j
 @Service
 public class IncidentService {
 
@@ -29,12 +28,15 @@ public class IncidentService {
     private ConsumerConfiguration config;
 
     private final ObjectMapper objectMapper;
+    private final ElasticSearchClient esClient;
 
-    public IncidentService(IncidentRepository incidentRepository, ConsumerConfiguration config, @Qualifier("objectMapper") ObjectMapper objectMapper, KafkaProducerService producerService){
+    public IncidentService(IncidentRepository incidentRepository, ConsumerConfiguration config, @Qualifier("objectMapper") ObjectMapper objectMapper,
+                           KafkaProducerService producerService, ElasticSearchClient esClient){
         this.incidentRepository = incidentRepository;
         this.producerService = producerService;
         this.config = config;
         this.objectMapper = objectMapper;
+        this.esClient = esClient;
     }
     @KafkaListener(topics = "process-audit-records")
     public void getStatusIncidentsAgregation(Map<String, Object> producerRecord) {
@@ -42,8 +44,9 @@ public class IncidentService {
             Object value = producerRecord.get("value");
             IncidentRequest request = objectMapper.convertValue(value, IncidentRequest.class);
             if (request!=null && request.getIncident()!=null){
-                List<IncidentStatusAgregation> statusAgregations = incidentRepository.getStatusIncidentsAgregation(request.getIncident().getTenantId());
-                List<IncidentStatusAgregation> systemFunctional = incidentRepository.getStatusSystemFunctional(request.getIncident().getTenantId());
+                String tenantId = request.getIncident().getTenantId();
+                List<IncidentStatusAgregation> statusAgregations = incidentRepository.getStatusIncidentsAgregation(tenantId);
+                List<IncidentStatusAgregation> systemFunctional = incidentRepository.getStatusSystemFunctional(tenantId);
                 if(statusAgregations !=null && !statusAgregations.isEmpty()){
                     IncidentStatusAgregation incidentStatusAgregation = statusAgregations.get(0);
                     // true if at least one element is NON_FUNCTIONAL
@@ -52,6 +55,29 @@ public class IncidentService {
 
                     incidentStatusAgregation.setSystemFunctional(hasNonFunctional ? NON_FUNCTIONAL : FUNCTIONAL);
                     incidentStatusAgregation.setLastModifiedTime(System.currentTimeMillis());
+                    Map<String, Object> tickets = esClient.getTicketsByTenantId(0, 1000, tenantId);
+                    log.info("List tickets {}", tickets.size());
+                    if(tickets!=null){
+                        Map<String, Object> source = (Map<String, Object>)tickets.get("_source");
+                        Map<String, Object> data = (Map<String, Object>)source.get("Data");
+                        String block = (String)data.get("block");
+                        String code = (String)data.get("code");
+                        String district = (String)data.get("district");
+                        boolean isLive = (boolean)data.get("isLive");
+                        String name = (String)data.get("name");
+                        String phcType = (String)data.get("phcType");
+                        String type = (String)data.get("type");
+//                        String tenantIdES = (String)data.get("tenantId");
+
+                        incidentStatusAgregation.setBlock(block);
+                        incidentStatusAgregation.setCode(code);
+                        incidentStatusAgregation.setDistrict(district);
+                        incidentStatusAgregation.setLive(isLive);
+                        incidentStatusAgregation.setName(name);
+                        incidentStatusAgregation.setPhcType(phcType);
+                        incidentStatusAgregation.setType(type);
+                        incidentStatusAgregation.setTenantId(tenantId);
+                    }
                     producerService.sendIncident(config.getUpdateTopicIndexer(), incidentStatusAgregation);
                 }
             }
