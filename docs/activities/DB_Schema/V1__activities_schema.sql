@@ -55,6 +55,7 @@ CREATE TABLE IF NOT EXISTS facility_staff (
   staff_employee_id VARCHAR(64) NULL,
   staff_user_id VARCHAR(64) NULL,
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  additional_details JSONB NULL,
   -- DIGIT audit columns
   created_by VARCHAR(64) NOT NULL,
   created_time BIGINT NOT NULL,
@@ -88,6 +89,7 @@ CREATE TABLE IF NOT EXISTS activity_reports (
   submitted_by_user_id VARCHAR(64) NULL,
   submitted_by_employee_id VARCHAR(64) NULL,
   reviewed_by_user_id VARCHAR(64) NULL,
+  additional_details JSONB NULL,
   -- DIGIT audit columns
   created_by VARCHAR(64) NOT NULL,
   created_time BIGINT NOT NULL,
@@ -115,6 +117,7 @@ CREATE TABLE IF NOT EXISTS activity_report_documents (
   mime_type VARCHAR(128) NOT NULL,
   file_size BIGINT NOT NULL,
   uploaded_at BIGINT NOT NULL,
+  additional_details JSONB NULL,
   -- DIGIT audit columns
   created_by VARCHAR(64) NOT NULL,
   created_time BIGINT NOT NULL,
