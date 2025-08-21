@@ -499,9 +499,9 @@ field-planner:
       auto-offset-reset: earliest
       enable-auto-commit: false
     topics:
-      facility-activities: egov-facility-activities-status
-      project-status: egov-project-status-updates
-      facility-registry: egov-health-facility-status
+      facility-activities: egov-facility-activities-status -- We will be using existing topic
+      project-status: egov-project-status-updates -- We will be using existing topic
+      facility-registry: egov-health-facility-status -- We will be using existing topic
 ```
 
 #### 6.2.2 Event Processing Service
