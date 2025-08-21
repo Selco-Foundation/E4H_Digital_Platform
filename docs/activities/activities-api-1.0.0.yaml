@@ -397,6 +397,10 @@ components:
           type: boolean
           default: true
           description: Field for soft delete of staff
+        additionalDetails:
+          type: object
+          additionalProperties: true
+          description: Additional details for the activity, e.g., custom fields
       required:
         - roleCode
 
@@ -447,6 +451,9 @@ components:
         additionalDetails:
           type: object
           additionalProperties: true
+        activityDetails: #-- Specific to each activity type. Schema to be defined in MDMS
+          type: object
+          description: Each type of activity can have its own custom fields. These can be defined as JSON schema in MDMS v2. The payload of this field is to be validated against the MDMS schema.
 
     ActivityUpdateRequest:
       type: object
@@ -753,6 +760,10 @@ components:
         submittedByEmployeeId:
           type: string
           description: The HRMS/vendor employee ID of the person submitting the report
+        additionalDetails:
+          type: object
+          additionalProperties: true
+          description: Additional details for the activity report, e.g., custom fields
         auditDetails:
           $ref: 'https://raw.githubusercontent.com/egovernments/DIGIT-Specs/master/Common%20Services/common-contract.yaml#/components/schemas/AuditDetails'
       required:
@@ -780,6 +791,10 @@ components:
         uploadedAt:
           type: integer
           format: int64
+        additionalDetails:
+          type: object
+          additionalProperties: true
+          description: Additional details for the documents, e.g., custom fields
         auditDetails:
           $ref: 'https://raw.githubusercontent.com/egovernments/DIGIT-Specs/master/Common%20Services/common-contract.yaml#/components/schemas/AuditDetails'
       required:
@@ -920,13 +935,8 @@ components:
         - ResponseInfo
         - ActivityReports
 
- 
-
 tags:
   - name: Activities
     description: Manage activities, workflow, and assignments (SPOC and staff)
   - name: Activity Reports
     description: Submit and manage reports attached to activities
-    
-  - name: Activities
-    description: Manage activities, workflow, and assignments (SPOC and staff)
