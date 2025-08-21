@@ -17,15 +17,18 @@ public class IncidentStatusAgregation {
     @JsonProperty("tenantId")
     String tenantId;
 
-    @JsonProperty("totalOccurences")
+    @JsonProperty("totalTickets")
     int totalOccurences;
 
-    @JsonProperty("totalOpenOccurrences")
+    @JsonProperty("openTickets")
     int totalOpenOccurrences;
 
-    @JsonProperty("totalOpenOccurrences")
+    @JsonProperty("closedTickets")
     int totalCloseOccurrences;
 
-    @JsonProperty("systemFunctional")
+    @JsonProperty("solarPanelStatus")
     String systemFunctional;
+
+    @JsonProperty("lastModifiedTime")
+    long lastModifiedTime;
 }

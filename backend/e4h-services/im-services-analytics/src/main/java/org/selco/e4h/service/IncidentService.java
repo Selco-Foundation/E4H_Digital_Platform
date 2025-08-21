@@ -51,6 +51,7 @@ public class IncidentService {
                             .anyMatch(item -> NON_FUNCTIONAL.equals(item.getSystemFunctional()));
 
                     incidentStatusAgregation.setSystemFunctional(hasNonFunctional ? NON_FUNCTIONAL : FUNCTIONAL);
+                    incidentStatusAgregation.setLastModifiedTime(System.currentTimeMillis());
                     producerService.sendIncident(config.getUpdateTopicIndexer(), incidentStatusAgregation);
                 }
             }
