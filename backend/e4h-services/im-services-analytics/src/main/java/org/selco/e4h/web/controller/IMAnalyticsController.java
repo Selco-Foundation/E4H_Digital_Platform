@@ -39,13 +39,23 @@ public class IMAnalyticsController {
         }
     }
 
-    @PostMapping("/sendObject")
-    public String sendUser(@Valid @RequestBody IncidentRequest incidentRequest) {
+    @PostMapping("/fetchTicket")
+    public String getTicketByTenantId(@Valid @RequestBody IncidentRequest incidentRequest) {
         Map<String, Object> producerRecord = new HashMap<>();
         producerRecord.put("topic", "save-im-request");
         producerRecord.put("value", incidentRequest);
         producerService.getTicket("sk.shyagyongrumtek");
 //        producerService.sendIncident("process-audit-records", producerRecord);
+        return "User sent!";
+    }
+
+    @PostMapping("/sendObject")
+    public String sendDummyTopic(@Valid @RequestBody IncidentRequest incidentRequest) {
+        Map<String, Object> producerRecord = new HashMap<>();
+        producerRecord.put("topic", "save-im-request");
+        producerRecord.put("value", incidentRequest);
+//        producerService.getTicket("sk.shyagyongrumtek");
+        producerService.sendIncident("process-audit-records", producerRecord);
         return "User sent!";
     }
 
