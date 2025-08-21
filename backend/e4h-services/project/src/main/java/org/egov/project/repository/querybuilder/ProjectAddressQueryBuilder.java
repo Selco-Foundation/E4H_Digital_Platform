@@ -260,8 +260,13 @@ public class ProjectAddressQueryBuilder {
         // Check if boundary code is provided
         if (projectSearch.getBoundaryCode() != null && StringUtils.isNotBlank(projectSearch.getBoundaryCode())) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
-            queryBuilder.append(" addr.boundary=? ");
-            preparedStmtList.add(projectSearch.getBoundaryCode());
+            List<String> boundaryCodes = Arrays.stream(projectSearch.getBoundaryCode().split(","))
+                    .map(String::trim)
+                    .filter(StringUtils::isNotBlank)
+                    .distinct()
+                    .collect(Collectors.toList());
+            queryBuilder.append(" addr.boundary IN (").append(createQuery(boundaryCodes)).append(")");
+            addToPreparedStatement(preparedStmtList, boundaryCodes);
         }
 
         // Check if sub-project type ID is provided
