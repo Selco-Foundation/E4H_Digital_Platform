@@ -30,11 +30,9 @@ const fileValidationStatus = (file, regex, maxSize, t, specificFileConstraint) =
 const checkIfAllValidFiles = (files, otherFilesLength, videoFilesLength, regex, maxSize, t, maxFilesAllowed, state, specificFileConstraint) => {
   if (!files.length || !regex || !maxSize) return [{}, false];
 
-  // added another condition files.length > 0 , for when  user uploads files more than maxFilesAllowed in one go the
   const uploadedVideos = state.filter((f) => f[1].file.type.startsWith("video/")).length;
   const uploadedOthers = state.filter((f) => !f[1].file.type.startsWith("video/")).length;
 
-  // Validate count separately for videos & others
   const fileLimitErrors = [];
 
   if (otherFilesLength && maxFilesAllowed && uploadedOthers + otherFilesLength > maxFilesAllowed) {
@@ -56,12 +54,6 @@ const checkIfAllValidFiles = (files, otherFilesLength, videoFilesLength, regex, 
     return [fileLimitErrors, true];
   }
 
-  // Adding a check for fileSize > maxSize
-  // const maxSizeInBytes = maxSize * 1000000
-  // if(files?.some(file => file.size > maxSizeInBytes)){
-  //     return [[{ valid: false, name: "", error: t(`FILE_SIZE_EXCEEDED_5MB`) }], true]
-  // }
-
   const messages = [];
   let isInValidGroup = false;
   for (let file of files) {
@@ -75,36 +67,56 @@ const checkIfAllValidFiles = (files, otherFilesLength, videoFilesLength, regex, 
   return [messages, isInValidGroup];
 };
 
-// can use react hook form to set validations @neeraj-egov
+// ---- helper: send analytics safely (uses your utils if present, else gtag) ----
+const sendAnalytics = (eventName, params = {}) => {
+  try {
+    if (Digit?.Utils?.analytics?.trackMedia && eventName === "upload_media") {
+      Digit.Utils.analytics.trackMedia(eventName, params);
+      return;
+    }
+    if (Digit?.Utils?.analytics?.track) {
+      Digit.Utils.analytics.track(eventName, params);
+      return;
+    }
+    if (typeof window !== "undefined" && typeof window.gtag === "function") {
+      window.gtag("event", eventName, params);
+    }
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn("analytics send failed", e);
+  }
+};
+
+// can use react hook form to set validations
 const MultiUploadWrapper = ({
-  t,
-  module = "PGR",
-  tenantId = Digit.ULBService.getStateId(),
-  onUploadStatusChange,
-  getFormState,
-  requestSpecifcFileRemoval,
-  extraStyleName = "",
-  setuploadedstate = [],
-  showHintBelow,
-  hintText,
-  allowedFileTypesRegex = /(.*?)(jpg|jpeg|webp|aif|png|image|pdf|msword|xlsx|openxmlformats-officedocument)$/i,
-  allowedMaxSizeInMB = 10,
-  acceptFiles = "image/*, .jpg, .jpeg, .webp, .aif, .png, .image, .pdf, .msword, .openxmlformats-officedocument, .dxf",
-  maxFilesAllowed,
-  customClass = "",
-  customErrorMsg,
-  containerStyles,
-  disabled,
-  ulb,
-  specificFileConstraint,
-  multiple = true,
-  analyticsPage,
-  mediaIntent,
-}) => {
+                              t,
+                              module = "PGR",
+                              tenantId = Digit.ULBService.getStateId(),
+                              onUploadStatusChange,
+                              getFormState,
+                              requestSpecifcFileRemoval,
+                              extraStyleName = "",
+                              setuploadedstate = [],
+                              showHintBelow,
+                              hintText,
+                              allowedFileTypesRegex = /(.*?)(jpg|jpeg|webp|aif|png|image|pdf|msword|xlsx|openxmlformats-officedocument)$/i,
+                              allowedMaxSizeInMB = 10,
+                              acceptFiles = "image/*, .jpg, .jpeg, .webp, .aif, .png, .image, .pdf, .msword, .openxmlformats-officedocument, .dxf",
+                              maxFilesAllowed,
+                              customClass = "",
+                              customErrorMsg,
+                              containerStyles,
+                              disabled,
+                              ulb,
+                              specificFileConstraint,
+                              multiple = true,
+                              // NEW: page + intent come from parent (e.g., "new_ticket_page", "image"|"video")
+                              analyticsPage,
+                              mediaIntent,
+                            }) => {
   const FILES_UPLOADED = "FILES_UPLOADED";
   const TARGET_FILE_REMOVAL = "TARGET_FILE_REMOVAL";
   const [isUploading, setIsUploading] = useState(false);
-
   const [fileErrors, setFileErrors] = useState([]);
   const [enableButton, setEnableButton] = useState(true);
 
@@ -127,41 +139,37 @@ const MultiUploadWrapper = ({
   };
 
   const uploadReducer = (state, action) => {
-    console.log("statestate123", state);
     switch (action.type) {
       case FILES_UPLOADED:
         return uploadMultipleFiles(state, action.payload);
       case TARGET_FILE_REMOVAL:
         return removeFile(state, action.payload);
       default:
-        break;
+        return state;
     }
   };
 
   const [state, dispatch] = useReducer(uploadReducer, [...setuploadedstate]);
 
   const onUploadMultipleFiles = async (e) => {
-    console.log("onUploadMultipleFiles");
     e.preventDefault();
     setEnableButton(false);
     setFileErrors([]);
     const files = Array.from(e.target.files);
-
     if (!files.length) return;
 
-    // Separate files before uploading
+    // Separate by type
     const videoFiles = [];
     const otherFiles = [];
-    const fileIndexMap = {}; // Stores index mapping
+    const fileIndexMap = {};
 
     files.forEach((file, index) => {
       if (file.type.startsWith("video/")) {
         videoFiles.push(file);
-        fileIndexMap[file.name] = index;
       } else {
         otherFiles.push(file);
-        fileIndexMap[file.name] = index;
       }
+      fileIndexMap[file.name] = index;
     });
 
     const [validationMsg, error] = checkIfAllValidFiles(
@@ -184,31 +192,55 @@ const MultiUploadWrapper = ({
 
     setIsUploading(true);
     try {
-      let tenant = ulb || Digit.SessionStorage.get("Employee.tenantId");
-
+      const tenant = ulb || Digit.SessionStorage.get("Employee.tenantId");
       const uploadPromises = [];
 
+      // IMAGE/OTHER branch
       if (otherFiles.length > 0) {
         uploadPromises.push(
           Digit.UploadServices.MultipleFilesStorage(module, otherFiles, tenant)
-            .then((res) => ({
-              fileType: "other",
-              response: res,
-            }))
+            .then((res) => {
+              sendAnalytics("upload_media", {
+                page: analyticsPage || "unknown_page",
+                intent: mediaIntent || "image",
+                status: "success",
+                fileCount: otherFiles.length,
+              });
+              return { fileType: "other", response: res };
+            })
             .catch((err) => {
+              sendAnalytics("upload_media", {
+                page: analyticsPage || "unknown_page",
+                intent: mediaIntent || "image",
+                status: "error",
+                fileCount: otherFiles.length,
+              });
               throw { fileType: "other", error: err };
             })
         );
       }
 
+      // VIDEO branch
       if (videoFiles.length > 0) {
         uploadPromises.push(
           Digit.UploadServices.MultipleFilesStorage(module, videoFiles, tenant, true)
-            .then((res) => ({
-              fileType: "video",
-              response: res,
-            }))
+            .then((res) => {
+              sendAnalytics("upload_media", {
+                page: analyticsPage || "unknown_page",
+                intent: "video",
+                status: "success",
+                fileCount: videoFiles.length,
+              });
+              return { fileType: "video", response: res };
+            })
             .catch((err) => {
+              // GA: failed video upload
+              sendAnalytics("upload_media", {
+                page: analyticsPage || "unknown_page",
+                intent: "video",
+                status: "error",
+                fileCount: videoFiles.length,
+              });
               throw { fileType: "video", error: err };
             })
         );
@@ -216,7 +248,7 @@ const MultiUploadWrapper = ({
 
       const results = await Promise.allSettled(uploadPromises);
 
-      // Collect fileStore IDs and maintain order
+      // Collect fileStore IDs in the original order
       const fileStoreIds = new Array(files.length).fill(null);
 
       const errorMessages = [];
@@ -228,7 +260,7 @@ const MultiUploadWrapper = ({
           const { fileType, response } = result.value;
           const uploadedFiles = fileType === "other" ? otherFiles : videoFiles;
 
-          response?.data?.files.forEach((fileId, i) => {
+          response?.data?.files?.forEach((fileId, i) => {
             const fileName = uploadedFiles[i]?.name;
             if (fileName in fileIndexMap) {
               fileStoreIds[fileIndexMap[fileName]] = fileId;
@@ -236,16 +268,11 @@ const MultiUploadWrapper = ({
           });
         } else {
           console.error("File upload failed:", result.reason);
-
-          if (result?.reason?.fileType === "video") {
-            videoUploadFailed = true;
-          } else {
-            otherUploadFailed = true;
-          }
+          if (result?.reason?.fileType === "video") videoUploadFailed = true;
+          else otherUploadFailed = true;
         }
       });
 
-      // Generate specific error messages
       if (videoUploadFailed && otherUploadFailed) {
         errorMessages.push({ valid: false, name: "", error: t("MULTIPLE_FILES_UPLOAD_FAILED") });
       } else if (videoUploadFailed) {
@@ -254,12 +281,13 @@ const MultiUploadWrapper = ({
         errorMessages.push({ valid: false, name: "", error: t("FILE_UPLOAD_FAILED") });
       }
 
-      // Set errors if any failed uploads exist
       if (errorMessages.length > 0) {
         setFileErrors(errorMessages);
       }
+
       dispatch({ type: FILES_UPLOADED, payload: { files: e.target.files, fileStoreIds } });
     } catch (err) {
+      // eslint-disable-next-line no-console
       console.error("File upload error:", err);
     } finally {
       setIsUploading(false);
@@ -278,11 +306,11 @@ const MultiUploadWrapper = ({
 
   useEffect(() => {
     if (onUploadStatusChange) onUploadStatusChange(isUploading);
-  }, [isUploading]);
+  }, [isUploading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (requestSpecifcFileRemoval) {
-      dispatch({ type: TARGET_FILE_REMOVAL, payload: requestSpecifcFileRemoval })
+      dispatch({ type: "TARGET_FILE_REMOVAL", payload: requestSpecifcFileRemoval });
     }
   }, [requestSpecifcFileRemoval]);
 
@@ -293,7 +321,7 @@ const MultiUploadWrapper = ({
         onUpload={(e) => onUploadMultipleFiles(e)}
         removeTargetedFile={(fileDetailsData) => {
           setFileErrors([]);
-          dispatch({ type: TARGET_FILE_REMOVAL, payload: fileDetailsData });
+          dispatch({ type: "TARGET_FILE_REMOVAL", payload: fileDetailsData });
         }}
         uploadedFiles={state}
         multiple={multiple}
@@ -309,6 +337,8 @@ const MultiUploadWrapper = ({
         disabled={disabled}
         enableButton={enableButton}
         ulb={ulb}
+        analyticsPage={analyticsPage}
+        mediaIntent={mediaIntent}
       />
       <span style={{ display: "flex", flexDirection: "column" }}>
         {Object.entries(groupedErrors).map(([error, names]) => (
