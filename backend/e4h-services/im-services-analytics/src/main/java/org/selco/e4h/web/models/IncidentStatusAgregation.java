@@ -26,6 +26,6 @@ public class IncidentStatusAgregation {
     @JsonProperty("totalOpenOccurrences")
     int totalCloseOccurrences;
 
-    @JsonProperty("tenantId")
+    @JsonProperty("systemFunctional")
     String systemFunctional;
 }
