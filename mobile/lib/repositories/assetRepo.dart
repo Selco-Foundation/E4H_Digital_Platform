@@ -334,9 +334,6 @@ class AssetRepository {
             // find all PHOTO documents
             for (var doc in asset.documents ?? []) {
               if (doc.documentType == 'PHOTO' || doc.documentType == 'ASSET') {
-                //todo CHANGE TO 'ASSET'
-                print("document Type ${doc.documentType}");
-                print("fileStore ${doc.fileStore}");
                 await isar.cacheAddNewAssets.put(
                   CacheAddNewAsset(
                     assetId: asset.assetId,
@@ -377,11 +374,6 @@ class AssetRepository {
           for (var m in oldMedia) {
             await isar.cacheMediaUploads.delete(m.id);
           }
-          print("oldMedia $oldMedia");
-          //for (var asset in list) {
-          //  for (var doc in asset.documents ?? []) {
-
-          // }
         }
 
         print("project.workflow ${project.workflow}");
