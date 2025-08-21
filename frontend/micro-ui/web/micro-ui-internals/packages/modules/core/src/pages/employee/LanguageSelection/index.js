@@ -17,6 +17,13 @@ const LanguageSelection = () => {
   const logos = window?.globalConfigs?.getConfig("LOGO_LIST") || [];
 
   const handleChangeLanguage = (language) => {
+    sessionStorage.setItem("prelogin_language", language.value);
+    Digit.Utils.analytics?.trackButtonClick("language_change_before_login", {
+      page_path: window.location?.pathname || "/",
+      page_title: "Pre-Login Page",
+      selected_language: language.value,
+    });
+
     setselected(language.value);
     Digit.LocalizationService.changeLanguage(language.value, stateInfo.code);
   };

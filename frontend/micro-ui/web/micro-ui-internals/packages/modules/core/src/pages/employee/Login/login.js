@@ -6,9 +6,7 @@ import Background from "../../../components/Background";
 import Header from "../../../components/Header";
 import ForgotPassword from "../ForgotPasswordPopup/ForgotPassword";
 
-/* set employee details to enable backward compatiable */
 const setEmployeeDetail = (userObject, token) => {
-  //console.log("userObject1", userObject)
   let locale = JSON.parse(sessionStorage.getItem("Digit.locale"))?.value || "en_IN";
   localStorage.setItem("Employee.tenant-id", userObject?.tenantId);
   localStorage.setItem("tenant-id", userObject?.tenantId);
@@ -28,7 +26,6 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
     sortedCities = cities.sort((a, b) => a.i18nKey.localeCompare(b.i18nKey));
   }
   const { data: storeData, isLoading: isStoreLoading } = Digit.Hooks.useStore.getInitData();
-  // console.log("storeData", storeData)
   const { stateInfo } = storeData || {};
   const [user, setUser] = useState(null);
   const [showToast, setShowToast] = useState(null);
@@ -37,12 +34,30 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
 
   const history = useHistory();
   const location = useLocation();
-  // const getUserType = () => "EMPLOYEE" || Digit.UserService.getType();
   const isMobile = window.Digit.Utils.browser.isMobile();
-
   const logos = window?.globalConfigs?.getConfig("LOGO_LIST") || [];
 
-  useEffect( async() => {
+  const getSelectedLanguage = () => {
+    const fromPrelogin = sessionStorage.getItem("prelogin_language");
+    if (fromPrelogin) return fromPrelogin;
+    const digitLocale = JSON.parse(sessionStorage.getItem("Digit.locale"))?.value;
+    if (digitLocale) return digitLocale;
+    return navigator.language || "unknown";
+  };
+
+  useEffect(() => {
+    try {
+      Digit?.Utils?.analytics?.trackPageView?.("login_page", {
+        page_path: window.location?.pathname || "/employee/user/login",
+        page_title: "Login",
+        selected_language: getSelectedLanguage(),
+      });
+    } catch (e) {
+      console.warn("analytics: page_view login failed", e);
+    }
+  }, []);
+
+  useEffect(async () => {
     if (!user) {
       return;
     }
@@ -55,24 +70,20 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
 
     try {
       await Digit.UserService.userLoginReport({
-        User: user.info
+        User: user.info,
       });
     } catch (err) {
       console.error("Login report failed", err);
     }
 
-    const fromParam = new URLSearchParams(location.search).get('from');
-
-    /* logic to redirect back to same screen where we left off  */
+    const fromParam = new URLSearchParams(location.search).get("from");
     if (fromParam) {
       redirectPath = decodeURIComponent(fromParam) || `/${window.contextPath}/employee`;
     }
 
-    /*  RAIN-6489 Logic to navigate to National DSS home incase user has only one role [NATADMIN]*/
     if (user?.info?.roles && user?.info?.roles?.length > 0 && user?.info?.roles?.every((e) => e.code === "NATADMIN")) {
       redirectPath = `/${window.contextPath}/employee/dss/landing/NURT_DASHBOARD`;
     }
-    /*  RAIN-6489 Logic to navigate to National DSS home incase user has only one role [NATADMIN]*/
     if (user?.info?.roles && user?.info?.roles?.length > 0 && user?.info?.roles?.every((e) => e.code === "STADMIN")) {
       redirectPath = `/${window.contextPath}/employee/dss/landing/home`;
     }
@@ -96,31 +107,35 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
     try {
       const { UserRequest: info, ...tokens } = await Digit.UserService.authenticate(requestData);
       Digit.SessionStorage.set("Employee.tenantId", info?.tenantId);
-
       setUser({ info, ...tokens });
 
-      const rolesCsv = (info?.roles || []).map(r => r.code).join(",") || "unknown";
+      const rolesCsv = (info?.roles || []).map((r) => r.code).join(",") || "unknown";
       const stateId = Digit?.ULBService?.getStateId?.() || "unknown";
       const district = info?.district || "unknown";
       const block = info?.block || "unknown";
       const facility = info?.facilityName || "unknown";
-      const isMobile = Digit?.Utils?.browser?.isMobile?.() ? "mobile" : "desktop";
+      const deviceType = Digit?.Utils?.browser?.isMobile?.() ? "mobile" : "desktop";
+      const selectedLanguage = getSelectedLanguage();
 
       if (typeof window.gtag === "function") {
         window.gtag("event", "user_login", {
-          // required custom dimensions
           user_role: rolesCsv,
           geography_state: stateId,
           geography_district: district,
           geography_block: block,
           facility_name: facility,
-          device_type: isMobile,
+          device_type: deviceType,
           browser: navigator.userAgent,
           os: navigator.platform || "unknown",
+          selected_language: selectedLanguage,
           transport_type: "beacon",
           debug_mode: true,
         });
       }
+
+      try {
+        sessionStorage.removeItem("prelogin_language");
+      } catch {}
     } catch (err) {
       setShowToast(err?.response?.data?.error_description || "Invalid login credentials!");
       setTimeout(closeToast, 5000);
@@ -129,30 +144,26 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
   };
 
   useEffect(() => {
-
     if (cities && cities.length > 0) {
       const queryParams = new URLSearchParams(window.location.search);
-
       const username = queryParams.get("username");
       const password = queryParams.get("passwd");
       const tenantId = queryParams.get("tenantid");
 
       if (username && password && tenantId) {
         const city = cities.find((city) => city.code === tenantId);
-
         if (city) {
           onLogin({
             username,
             password,
-            city
-          })
+            city,
+          });
         } else {
           setShowToast("CORE_COMMON_INVALID_LOGIN_CREDENTIALS");
           setTimeout(closeToast, 5000);
         }
       }
     }
-
   }, [cities]);
 
   const closeToast = () => {
@@ -160,7 +171,7 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
   };
 
   const onForgotPassword = () => {
-    sessionStorage.getItem("User") && sessionStorage.removeItem("User")
+    sessionStorage.getItem("User") && sessionStorage.removeItem("User");
     history.push(`/${window.contextPath}/employee/user/forgot-password`);
   };
 
@@ -246,7 +257,6 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
           >
             {t("CORE_COMMON_FORGOT_PASSWORD")}
           </button>
-
           {popup && <ForgotPassword setPopup={setPopup} />}
         </div>
         <div style={{ display: "flex", justifyContent: "center", margin: "1rem auto" }}>
