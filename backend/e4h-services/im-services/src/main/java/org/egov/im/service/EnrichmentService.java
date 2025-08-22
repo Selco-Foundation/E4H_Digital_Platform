@@ -11,12 +11,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
 import static org.egov.im.util.IMConstants.USERTYPE_CITIZEN;
 
+@Slf4j
 @org.springframework.stereotype.Service
 public class EnrichmentService {
 
@@ -56,6 +58,7 @@ public class EnrichmentService {
      * @param serviceRequest The create request
      */
     public void enrichCreateRequest(IncidentRequest incidentRequest) {
+        log.info("EnrichmentService::Enriching create request");
 
         RequestInfo requestInfo = incidentRequest.getRequestInfo();
         Incident incident = incidentRequest.getIncident();
@@ -100,6 +103,7 @@ public class EnrichmentService {
      * @param serviceRequest The update request
      */
     public void enrichUpdateRequest(IncidentRequest incidentRequest) {
+        log.info("EnrichmentService::Enriching incident update request");
 
         RequestInfo requestInfo = incidentRequest.getRequestInfo();
         Incident incident = incidentRequest.getIncident();
@@ -119,6 +123,7 @@ public class EnrichmentService {
      * @param criteria
      */
     public void enrichSearchRequest(RequestInfo requestInfo, RequestSearchCriteria criteria) {
+        log.info("EnrichmentService::Enriching incident search request");
 
         if (criteria.isEmpty() && requestInfo.getUserInfo().getType().equalsIgnoreCase(USERTYPE_CITIZEN)) {
             String citizenMobileNumber = requestInfo.getUserInfo().getUserName();
@@ -145,6 +150,7 @@ public class EnrichmentService {
     }
 
     public void enrichFieldsForIndexing(IncidentRequestWrapper wrapper) {
+        log.info("EnrichmentService::Enriching incident fields for indexing");
         IncidentRequest incidentRequest = wrapper.getIncidentRequest();
 
         // Enrich localized fields first (will populate IndexView inside the wrapper)
@@ -230,6 +236,7 @@ public class EnrichmentService {
 
 
     public void enrichFieldsForAuditIndexing(IncidentRequestWrapper wrapper, String startingStatus) {
+        log.info("EnrichmentService::Enriching incident fields for audit indexing");
         // Ensure IndexView is initialized
         IndexView indexView = wrapper.getIndexView();
         if (indexView == null) {
