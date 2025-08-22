@@ -274,6 +274,7 @@ const Summary = ({ t, sectionName, section, count, specifications, details, item
                 </div>
                 {activeReasonId && activeReasonId === reason.id && (
                   <SingleRejectionReasonModal
+                    t={t}
                     onClose={() => setActiveReasonId(null)}
                     onUpdate={handleUpdate}
                     onDelete={handleDelete}
