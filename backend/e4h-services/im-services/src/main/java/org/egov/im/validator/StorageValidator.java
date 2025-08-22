@@ -52,6 +52,7 @@ public class StorageValidator {
 	}
 	
 	private void validateFileExtension(String extension) {
+        log.info("validating file extension {}", extension);
 		Map<String, List<String>> fileExtension = fileStoreConfig.getAllowedFormatsMap();
 		if(!fileExtension.containsKey(extension)) {
 			throw new CustomException("EG_FILESTORE_INVALID_INPUT",
@@ -61,6 +62,7 @@ public class StorageValidator {
 	}
 
 	private void validateVideoContentType(InputStream inputStream, String extension) {
+        log.info("validating video content type, extension {}", extension);
 		String detectedFormat;
 		Tika tika = new Tika();
 		try {
@@ -86,6 +88,7 @@ public class StorageValidator {
 	}
 	
 	private boolean isVideoFile(String extension) {
+        log.info("validating video file extension {}", extension);
 		return extension.equals("mp4") || extension.equals("avi") || 
 			   extension.equals("mov") || extension.equals("wmv");
 	}
