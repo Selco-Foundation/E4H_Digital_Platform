@@ -175,7 +175,7 @@ const FacilityTable = ({ t }) => {
         </div>
       ),
       Cell: ({ row }) => {
-        return row.original["status"] === t("SUBMITTED_BY_SUPERVISOR") ? (
+        return row.original["status"] === "SUBMITTED_BY_SUPERVISOR" ? (
           <div style={{ marginTop: "-1.2em", marginBottom: "-0.8em", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <CheckBox
               checked={selectedFacilities.some((facilityId) => facilityId === row.original["id"])}

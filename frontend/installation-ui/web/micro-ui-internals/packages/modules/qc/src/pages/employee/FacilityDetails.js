@@ -8,6 +8,7 @@ import { Loader } from "@egovernments/digit-ui-react-components";
 import useFieldPlan from "../../hooks/useFieldPlan";
 import useFacilityDetails from "../../hooks/useFacilityDetails";
 import useAsset from "../../hooks/useAsset";
+import InfoCard from "../../components/FacilityDetails/InfoCard";
 
 const FacilityDetails = ({t}) => {
 
@@ -106,32 +107,8 @@ const FacilityDetails = ({t}) => {
       <div style={{fontSize: "24px", fontWeight: "bold", marginBottom: "20px", color: "#004d66"}}>
           {facilityDetails.facilityName}
       </div>
-      <div style={{
-        marginTop: "15px",
-        width: "95%",
-        padding: "20px",
-        background: "white",
-        borderRadius: "4px",
-        boxShadow: "0px 0px 4px rgba(0, 0, 0, 0.25)",
-        border: "1px solid #eee",
-      }}>
-        <div style={{display: "flex", alignItems: "center", marginTop: "15px"}}>
-          <div style={{width: "30%"}}><strong>District</strong></div>
-          { facilityDetails.district ? t(`DISTRICT_${facilityDetails.district.toUpperCase()}`) : "-" }
-        </div>
-        <div style={{display: "flex", alignItems: "center", marginTop: "15px"}}>
-          <div style={{width: "30%"}}><strong>Block</strong></div>
-          { facilityDetails.block ? t(`BLOCK_${facilityDetails.block.toUpperCase()}`) : "-" }
-        </div>
-        <div style={{display: "flex", alignItems: "center", marginTop: "15px"}}>
-          <div style={{width: "30%"}}><strong>Health Facility Type</strong></div>
-          { facilityDetails.facilityType ? facilityDetails.facilityType : "-" }
-        </div>
-        <div style={{display: "flex", alignItems: "center", marginTop: "15px"}}>
-          <div style={{width: "30%"}}><strong>Status</strong></div>
-          { facilityDetails.status ? t(`CS_${facilityDetails.status}`) : "-" }
-        </div>
-      </div>
+
+      <InfoCard t={t} facilityDetails={facilityDetails} />
 
       {auditTrail?.length > 0 && <AuditTrail t={t} auditTrail={auditTrail} />}
 
