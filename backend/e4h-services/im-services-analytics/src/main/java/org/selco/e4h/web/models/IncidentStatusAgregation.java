@@ -43,6 +43,9 @@ public class IncidentStatusAgregation {
     @JsonProperty("code")
     private String code;
 
+    @JsonProperty("state")
+    private String state;
+
     @JsonProperty("district")
     private String district;
 
