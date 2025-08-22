@@ -1,14 +1,12 @@
 import React, { useState } from "react";
-import {
-  TextInput,
-  SubmitBar,
-  LinkLabel,
-  TickMark,
-  DownloadIcon, SearchIconSvg, SearchIcon
-} from "@egovernments/digit-ui-react-components";
+import { TextInput, SubmitBar, LinkLabel, TickMark, DownloadIcon, SearchIconSvg, SearchIcon, Toast } from "@egovernments/digit-ui-react-components";
+import { DoneAll } from "@egovernments/digit-ui-svg-components";
+import { QCService } from "../../services/QC";
 
-const SearchActionCentre = ({ t, projectQueryFilter, mainCheckBox, selectedFacilities, onSearch }) => {
+const SearchActionCentre = ({ t, projectQueryFilter, mainCheckBox, selectedFacilities, onSearch, revalidateData, setUpdatingWorkflow }) => {
+
   const [textToSearch, setTextToSearch] = useState(projectQueryFilter.facilitySearch.name || "");
+  const [toast, setToast] = useState(null);
 
   const handleSearch = (name) => {
     const facilitySearchQuery = {};
@@ -42,6 +40,45 @@ const SearchActionCentre = ({ t, projectQueryFilter, mainCheckBox, selectedFacil
     </button>
   )
 
+  const handleBulkApprove = async () => {
+    setUpdatingWorkflow(true);
+
+    try {
+      const response = await QCService.bulkApproveProjects(projectQueryFilter, mainCheckBox, selectedFacilities);
+
+      if (response) {
+        revalidateData();
+      }
+
+      switch (response?.status) {
+        case 200:
+          setToast({
+            key: "success",
+            message: t("QC_BULK_APPROVE_SUCCESS"),
+          });
+          break;
+        case 207:
+          setToast({
+            key: "warning",
+            message: t("QC_BULK_APPROVE_PARTIAL_SUCCESS"),
+            failedCount: response?.data?.failedProjectIDs?.length,
+          });
+          break;
+        default:
+          setToast({
+            key: "error",
+            message: t("QC_BULK_APPROVE_FAILED"),
+          })
+          break;
+      }
+
+    } catch (err) {
+      console.error("Error bulk approving", err);
+    } finally {
+      setUpdatingWorkflow(false);
+    }
+  }
+
   return (
     <React.Fragment>
       <div
@@ -57,9 +94,22 @@ const SearchActionCentre = ({ t, projectQueryFilter, mainCheckBox, selectedFacil
           minWidth: "fit-content",
         }}
       >
+        {toast && (
+          <Toast
+            error={toast.key === "error"}
+            warning={toast.key === "warning"}
+            label={`${toast.message} ${toast.failedCount ? `(${toast.failedCount} ${t("QC_BULK_APPROVE_FAILED_COUNT")})` : ""}`}
+            onClose={() => setToast(null)}
+            style={{ maxWidth: "670px" }}
+            isDleteBtn={true}
+          />
+        )}
         {mainCheckBox || selectedFacilities?.length > 0 ? (
-          <div style={{ fontSize: "16px", fontWeight: "bold", color: "#004d66" }}>
-            {mainCheckBox ? t("CORE_COMMON_ALL") : selectedFacilities.length} {t("QC_HEALTH_FACILITIES_SELECTED")}
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <DoneAll />
+            <div style={{ fontSize: "16px", fontWeight: "bold", color: "#004d66" }}>
+              {mainCheckBox ? t("CORE_COMMON_ALL") : selectedFacilities.length} {t("QC_HEALTH_FACILITIES_SELECTED")}
+            </div>
           </div>
         ) : (
           <form
@@ -130,6 +180,7 @@ const SearchActionCentre = ({ t, projectQueryFilter, mainCheckBox, selectedFacil
                 gap: "10px",
                 height: "40px"
               }}
+              onClick={handleBulkApprove}
             >
               <span>{t("CORE_COMMON_APPROVE")}</span>
               <div style={{ transform: "scale(1.4)" }}>

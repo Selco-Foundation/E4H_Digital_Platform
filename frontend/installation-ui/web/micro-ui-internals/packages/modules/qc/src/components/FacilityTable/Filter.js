@@ -7,6 +7,7 @@ import {
   Loader
 } from "@egovernments/digit-ui-react-components";
 import RefreshButton from "../RefreshButton";
+import useBoundary from "../../hooks/useBoundary";
 
 const Filter = ({ t, fieldPlan, onFilterChange, projectQueryFilter, statusesList }) => {
 
@@ -19,7 +20,7 @@ const Filter = ({ t, fieldPlan, onFilterChange, projectQueryFilter, statusesList
     status: []
   });
 
-  const { isLoading, data } = Digit.Hooks.qc.useBoundary(
+  const { isLoading, data } = useBoundary(
     fieldPlan?.address?.boundary, "State"
   );
 
