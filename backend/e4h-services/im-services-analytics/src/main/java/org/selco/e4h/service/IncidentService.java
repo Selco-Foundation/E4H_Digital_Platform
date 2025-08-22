@@ -43,7 +43,7 @@ public class IncidentService {
         log.info("Received topic from process-audit-records");
         if(producerRecord !=null && !producerRecord.isEmpty()){
             String topic = (String)producerRecord.get("topic");
-            if(topic !=null && !topic.isEmpty() && topic.trim().equals("save-im-request")){
+            if(topic !=null && !topic.isEmpty() && (topic.trim().equals("save-im-request") || topic.trim().equals("update-im-request"))){
                 log.info("Received topic from save-im-request");
                 Object value = producerRecord.get("value");
                 IncidentRequest request = objectMapper.convertValue(value, IncidentRequest.class);
