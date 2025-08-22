@@ -104,7 +104,6 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
   }
 
   void _openVideo(String path) {
-
     context.router.push(VideoPlayerRoute(path: path));
   }
 
@@ -234,10 +233,10 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
                     showSuffixIcon: false,
                     text: context.translate(i18.common.coreCommonNext),
                     onPress: () {
-                      final proj = selectedProject!;
-                      context.read<ProjectBloc>().add(
-                            ProjectEvent.addUnSubmitted(proj, userType),
-                          );
+                      // final proj = selectedProject!;
+                      // context.read<ProjectBloc>().add(
+                      //       ProjectEvent.addUnSubmitted(proj, userType),
+                      //     ); todo to be removed after testing since logic moved to overrall submit
                       context.router.push(const DataSaveSuccessRoute());
                     },
                   ),
