@@ -46,6 +46,7 @@ const SingleRejectionReasonModal = ({ t, name, onClose, onUpdate, onDelete, exis
               <button onClick={handleDeletion} style={styles.trashBtn}>🗑</button>
             </div>
             <Dropdown
+              t={t}
               option={reasonOptions}
               selected={reasonOptions?.find((opt) => opt.code === reason.reason)}
               optionKey={"label"}

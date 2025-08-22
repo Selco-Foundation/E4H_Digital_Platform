@@ -4,7 +4,7 @@ import { CheckPoint, ConnectingCheckPoints } from "@egovernments/digit-ui-react-
 const AuditTrail = ({t, auditTrail}) => {
 
 
-  const getTimelineCaptions = (t, checkpoint) => {
+  const getTimelineCaptions = (checkpoint) => {
     return (
       <div style={{ marginTop: "12px", width: "800px" }}>
         <div style={{fontSize: "14px", color: "#666"}}>{checkpoint.date}</div>
@@ -63,7 +63,7 @@ const AuditTrail = ({t, auditTrail}) => {
                         keyValue={index}
                         isCompleted={index === 0}
                         label={t("CS_" + checkpoint.status.toUpperCase())}
-                        customChild={getTimelineCaptions(t, checkpoint)}
+                        customChild={getTimelineCaptions(checkpoint)}
                       />
                     </React.Fragment>
                   );

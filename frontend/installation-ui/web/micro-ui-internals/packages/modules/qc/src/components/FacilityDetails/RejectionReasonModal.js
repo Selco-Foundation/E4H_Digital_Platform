@@ -50,6 +50,7 @@ const RejectionReasonModal = ({ t, onClose, onSave }) => {
               <strong>Reason {index + 1}</strong>
             </div>
             <Dropdown
+              t={t}
               option={reasonOptions}
               selected={reasonOptions?.find((opt) => opt.code === reason.reason)}
               optionKey={"label"}
@@ -90,7 +91,7 @@ const RejectionReasonModal = ({ t, onClose, onSave }) => {
               fontSize: "16px",
               fontWeight: "bold",
             }}>
-              Add Reason
+              {t("CS_ACTION_ADD_REASON")}
             </span>
           </div>
         </button>

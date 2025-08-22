@@ -17,7 +17,7 @@ const Summary = ({ t, sectionName, section, count, specifications, details, item
   const rejectionData = rejectionReasons?.[section] || [];
 
   const handleSave = (data) => {
-    dispatch(setRejectionReasons(section, [...rejectionData, ...data?.filter((reason) => reason?.reason?.trim())]));
+    dispatch(setRejectionReasons(section, [...rejectionData, ...data.filter((reason) => reason?.reason?.trim())]));
   };
 
   const handleUpdate = (reason) => {
@@ -47,7 +47,7 @@ const Summary = ({ t, sectionName, section, count, specifications, details, item
   const AssetImages = (images) => (
     <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
       {images.map((doc, idx) => (
-        <img src={doc} alt={`${sectionName}-${idx}`} style={{ width: "100px", marginTop: "8px" }} />
+        <img key={idx} src={doc} alt={`${sectionName}-${idx}`} style={{ width: "100px", marginTop: "8px" }} />
       ))}
     </div>
   )
@@ -279,7 +279,7 @@ const Summary = ({ t, sectionName, section, count, specifications, details, item
                     onUpdate={handleUpdate}
                     onDelete={handleDelete}
                     existingReason={reason}
-                    name={`Reason ${index + 1}`}
+                    name={`${t("QC_INSTALLATION_REJECTION_REASON")} ${index + 1}`}
                   />
                 )}
               </div>
