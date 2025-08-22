@@ -1,56 +1,101 @@
 import React from 'react';
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
+import { clearRejectionReasons } from "../../redux/actions";
+import { QCService } from "../../services/QC";
 
-const QCActions = () => {
+const QCActions = ({ revalidateData, setUpdatingWorkflow }) => {
 
+  const dispatch = useDispatch();
   const rejectionReasons = useSelector((state) => state.qc.rejectionReasons);
-  const selectedFacility = useSelector((state) => state.qc.common.selectedFacility)
+  const selectedFacility = useSelector((state) => state.qc.common.selectedFacility);
 
   const handleApprove = async () => {
-    await Digit.QCService.updateProjectWorkflow(
-      selectedFacility?.projectId, "APPROVE",
-      [], "Approved by QC"
-    )
-      .then(response => {
-        console.debug("Approved", response);
-      })
-      .catch(error => {
-        console.error("Error approving", error);
-      })
+    setUpdatingWorkflow(true);
+
+    try {
+      const response = await QCService.updateProjectWorkflow(
+        selectedFacility?.projectId, "APPROVE",
+        [], "Approved by Installation Reviewer"
+      );
+
+      if (response) {
+        revalidateData();
+        dispatch(clearRejectionReasons());
+      }
+
+    } catch (error) {
+      console.error("Error approving", error);
+    } finally {
+      setUpdatingWorkflow(false);
+    }
   }
 
-  const handleReject = async () => {
+  const formatRejectionReasons = (reasons) => {
     const rejectionReasonsToUpload = {};
-    Object.keys(rejectionReasons).forEach(key => {
-      if (rejectionReasons[key].length > 0) {
-        rejectionReasonsToUpload[key] = rejectionReasons[key];
+    Object.keys(reasons).forEach(key => {
+      if (reasons[key].length > 0) {
+        rejectionReasonsToUpload[key] = reasons[key].map(reason => ({
+          reason: reason.reason,
+          comment: reason.comment,
+        }));
       }
     })
 
-    let comments = [];
+    const comments = [];
     Object.keys(rejectionReasonsToUpload).forEach(key => {
       rejectionReasonsToUpload[key].forEach(rejectionReason => {
-        comments = [...comments, {
-          commentMessage : rejectionReason.reason,
-          assetType : key,
-        }]
+        comments.push({
+          commentMessage : JSON.stringify(rejectionReason),
+          assetType : key.toUpperCase(),
+        });
       })
     })
 
-    await Digit.QCService.updateProjectWorkflow(
-      selectedFacility?.projectId, "REJECT_AND_ASSIGN_FOR_FIELD_QC",
-      comments, "Rejected by QC"
-    )
-      .then(response => {
-        console.debug("Rejecting", response);
-      })
-      .catch(error => {
-        console.error("Error rejecting", error);
-      })
+    return comments;
   }
 
-  const handleFlagForQC = () => {
-    console.log("Flagged for QC");
+  const handleReject = async () => {
+    setUpdatingWorkflow(true);
+    const comments = formatRejectionReasons(rejectionReasons);
+
+    try {
+      const response = await QCService.updateProjectWorkflow(
+        selectedFacility?.projectId, "REJECT_AND_ASSIGN_FOR_FIELD_QC",
+        comments, "Rejected by Installation Reviewer"
+      );
+
+      if (response) {
+        revalidateData();
+        dispatch(clearRejectionReasons());
+      }
+
+    } catch (error) {
+      console.error("Error rejecting", error);
+    } finally {
+      setUpdatingWorkflow(false);
+    }
+  }
+
+  const handleFlagForQC = async () => {
+    setUpdatingWorkflow(true);
+    const comments = formatRejectionReasons(rejectionReasons);
+
+    try {
+      const response = await QCService.updateProjectWorkflow(
+        selectedFacility?.projectId, "FLAG_FOR_QC",
+        comments, "Flagged for QC by Installation Reviewer"
+      );
+
+      if (response) {
+        revalidateData();
+        dispatch(clearRejectionReasons());
+      }
+
+    } catch (error) {
+      console.error("Error flagging for QC", error);
+    } finally {
+      setUpdatingWorkflow(false);
+    }
   }
 
   const showRejectActions = Object.values(rejectionReasons).some(reasons => reasons.length > 0);
@@ -63,7 +108,10 @@ const QCActions = () => {
       padding: '12px 50px',
       display: 'flex',
       justifyContent: 'flex-end',
-      zIndex: 1000,
+      backgroundColor: '#fff',
+      width: '100%',
+      boxShadow: "0px 0px 4px rgba(0, 0, 0, 0.25)",
+      zIndex: 1,
     }}>
       {showRejectActions ? (
         <div style={{display: 'flex', gap: '12px'}}>

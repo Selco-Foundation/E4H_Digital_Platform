@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "react-query";
-import { useEffect, useState } from "react";
+import { QCService } from "../services/QC";
 
 const formatDate = (timestamp) => {
   const date = new Date(timestamp);
@@ -44,7 +44,7 @@ const formatFieldPlans = (projects) => {
 }
 
 const fetchFieldPlans = async (filter, limit, offset) => {
-  const fieldPlansResponse = await Digit.QCService.fetchProjects(filter, limit, offset);
+  const fieldPlansResponse = await QCService.fetchProjects(filter, limit, offset);
 
   return {
     fieldPlans: formatFieldPlans(fieldPlansResponse?.Project),
@@ -75,14 +75,14 @@ const useFieldPlan = (queryFilter, pageSize, pageOffset) => {
   const offset = pageOffset || 0;
 
   const queryClient = useQueryClient();
-  const { isLoading, isError, error, data } = useQuery(
-    ['fieldPlan', filter, limit, offset],
+  const { isLoading, isFetching, isError, error, data } = useQuery(
+    ["FIELD_PLAN", filter, limit, offset],
     () => fetchFieldPlans(filter, limit, offset)
   );
 
   return {
-    isLoading, isError, error, data ,
-    revalidate: () => queryClient.invalidateQueries(['fieldPlan', filter, limit, offset])
+    isLoading, isFetching, isError, error, data ,
+    revalidate: () => queryClient.invalidateQueries(["FIELD_PLAN"])
   };
 }
 
