@@ -83,8 +83,6 @@ const FacilityDetails = ({t}) => {
     revalidateFacilityDetails();
   }
 
-  console.debug("asset.assetType", assets);
-
   return (
     <div style={{marginTop: "20px"}}>
       { (updatingWorkflow || fieldPlanDataFetching || facilityDataFetching) && (
@@ -136,7 +134,7 @@ const FacilityDetails = ({t}) => {
           section="INSTALLATION_COMPLETION_REPORT"
           report={{
             ...aggregatedAssets?.installationReport,
-            name: facilityDetails.facilityName
+            name: `${facilityDetails.facilityName}.pdf`
           }}
           isReport={true}
         />
