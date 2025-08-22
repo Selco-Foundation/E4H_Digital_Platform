@@ -3,9 +3,9 @@ import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:isar/isar.dart';
-import '../../model/project_workflow/project_workflow.dart';
 
 import '../../data/nosql/cache_unsubmitted_project.dart';
+import '../../model/project_workflow/project_workflow.dart';
 import '../../model/projects/project.dart';
 import '../../repositories/app_init_Repo.dart';
 import '../../repositories/project_repo.dart';
@@ -59,7 +59,6 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
         workflowStatuses: event.workflowStatuses,
         body: searchBody,
       );
-      print(projectsList[0].project.name);
       emit(ProjectState.fetched(projectsList));
     } catch (_) {
       // on error, you may choose to emit an error or empty

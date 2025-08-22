@@ -160,11 +160,47 @@ class ProjectRepository {
 
   ProjectRepository(this._isar) : _remote = ProjectRemoteRepository();
 
+// Map statuses to user types we care about for exclusion
+  Set<String> _resolveUserTypes(List<String> statuses) {
+    final up = statuses.map((s) => s.toUpperCase()).toSet();
+    final types = <String>{};
+    if (up.contains('ASSIGNED_TO_FIELD_STAFF')) types.add('STAFF');
+    if (up.contains('ASSIGNED_TO_FIELD_SUPERVISOR')) types.add('SUPERVISOR');
+    return types;
+  }
+
+  // Load excluded IDs for this userTypes from cacheUnsubmittedProjects
+  Future<Set<String>> _excludedIdsFor(Set<String> userTypes) async {
+    if (userTypes.isEmpty) return <String>{};
+
+    final col = _isar.cacheUnsubmittedProjects;
+    final excluded = <String>{};
+
+    // If your collection is indexed for userId/userType, .where() + .filter() is fine.
+    // If your model field is named differently, adjust the equality checks below.
+    for (final t in userTypes) {
+      final matches = await col.where().filter().userTypeEqualTo(t).findAll();
+
+      excluded.addAll(matches.map((e) => e.projectId));
+    }
+    return excluded;
+  }
+
+  // Convenience to apply the exclusion set to any list
+  List<ProjectWorkflow> _applyExclusion(
+    List<ProjectWorkflow> list,
+    Set<String> excludedIds,
+  ) {
+    if (excludedIds.isEmpty) return list;
+    return list.where((wf) => !excludedIds.contains(wf.project.id)).toList();
+  }
+
   /// Remote-first fetch with cache fallback
   Future<List<ProjectWorkflow>> fetchByWorkflow(
       {required ProjectSearchModel body,
       required List<String> workflowStatuses,
       sortDirection = 'ASC'}) async {
+    final userTypes = _resolveUserTypes(workflowStatuses);
     try {
       print("workflowStatuses $workflowStatuses");
       final remoteList = await _remote.searchByWorkflow(
@@ -175,13 +211,18 @@ class ProjectRepository {
 
       if (remoteList != null) {
         await _replaceCache(workflowStatuses, remoteList);
-        return remoteList;
+        // Even if remote succeeds, exclude projects in cacheUnsubmittedProjects for this user + type(s)
+        final excludedIds = await _excludedIdsFor(userTypes);
+        final filteredRemoteList = _applyExclusion(remoteList, excludedIds);
+        return filteredRemoteList;
       }
     } catch (e) {
       // on any error, fall back to cache
       print("error in fetching remote project ${e.toString()}");
     }
-    return readCache(workflowStatuses);
+    final cachedList = await readCache(workflowStatuses);
+    final excludedIds = await _excludedIdsFor(userTypes);
+    return _applyExclusion(cachedList, excludedIds);
   }
 
   /// 1) Delete all cached entries matching any given status
