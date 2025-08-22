@@ -366,7 +366,14 @@ class AssetSubmissionBloc
       if (!fromDraft) emit(const AssetSubmissionState.success());
       return true;
     } catch (e) {
-      emit(AssetSubmissionState.failure(e.toString()));
+      String? errorMessage = "We are facing an issues please try again";
+      if (e.toString() == "Exception: No network connection") {
+        errorMessage = e.toString();
+      } else if (e.toString() == "Exception: No internet access") {
+        errorMessage =
+            "For some Reason you have bad internet connectivity, we have saved your data, please try to sync the data later";
+      }
+      emit(AssetSubmissionState.failure("$errorMessage"));
       return false;
     }
   }

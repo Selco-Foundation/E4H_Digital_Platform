@@ -138,8 +138,10 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
           ]
         : [
             WORKFLOW_STATUS_FIELD_STAFF.REJECTED_BY_FIELD_SUPERVISOR.name,
+            WORKFLOW_STATUS_FIELD_STAFF.REJECTED_BY_QC_SPOC.name,
             WORKFLOW_STATUS_FIELD_STAFF.APPROVED_BY_SUPERVISOR.name,
             WORKFLOW_STATUS_FIELD_STAFF.APPROVED_BY_QC_SPOC.name,
+            WORKFLOW_STATUS_FIELD_SUPERVISOR.SUBMITTED_BY_SUPERVISOR.name,
           ];
 
     final submittedStatuses = isSupervisor

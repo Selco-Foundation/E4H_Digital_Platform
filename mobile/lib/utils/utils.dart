@@ -3,16 +3,12 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 
 import '../blocs/app_init/app_init.dart';
-import '../blocs/cache_asset_count/cache_asset_count.dart';
-import '../blocs/user_type/user_type.dart';
 import '../data/app_shared_preferences.dart';
-import '../data/nosql/cache_asset_count.dart';
 import '../repositories/app_init_Repo.dart';
 import '../repositories/assetRepo.dart';
 
@@ -229,55 +225,6 @@ Future<String> getFilestoreUrl(String idOrPath) async {
 
 String fileStoreFileUrl =
     "${envConfig.variables.baseUrl}filestore/v1/files/file?tenantId=${envConfig.variables.tenantId}&fileStoreId=";
-
-/// Compute a 0.0→1.0 fraction of how far along [projectId] is
-/// across the three asset types: inverter, battery, panel.
-///
-/// Each type has up to N steps (6 for supervisors, 5 for field staff).
-/// We treat each type equally (so each completes 1/3 of the total).
-double calculateProjectProgressFraction2(
-  BuildContext context,
-  String projectId,
-) {
-  // 1) Determine max steps
-  final isSupervisor = context.read<UserTypeBloc>().state.maybeWhen(
-        supervisor: () => true,
-        orElse: () => false,
-      );
-  final maxStepsPerType = isSupervisor ? 6.0 : 5.0;
-
-  // 2) Grab all CacheAssetCount entries from the correct bloc
-  final cacheState = context.read<CacheAssetCountBloc>().state;
-  final entries = cacheState.maybeWhen(
-    loaded: (list) => list,
-    orElse: () => const <CacheAssetCount>[],
-  );
-
-  // 3) For each asset type, find its progress
-  const types = ['inverter', 'battery', 'panel'];
-  double sumFractions = 0.0;
-
-  for (var type in types) {
-    final entry = entries.firstWhere(
-      (e) => e.projectId == projectId && e.assetType.toLowerCase() == type,
-      orElse: () => CacheAssetCount(
-        projectId: projectId,
-        assetType: type,
-        progress: 0,
-      ),
-    );
-    // Clamp and convert
-    final stepsDone =
-        (entry.progress ?? 0).clamp(0, maxStepsPerType.toInt()).toDouble();
-    sumFractions += (stepsDone / maxStepsPerType);
-
-    print(
-        'Type $type -> entry.progress=${entry.progress}, assetType=${entry.assetType}');
-  }
-
-  // 4) Average across the three types
-  return (sumFractions / types.length).clamp(0.0, 1.0);
-}
 
 class DioErrorParser {
   static Exception parse(DioError dioErr) {

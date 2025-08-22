@@ -5,6 +5,7 @@ import '../model/request/requestInfo.dart';
 import '../model/response/responsemodel.dart';
 import '../repositories/authRepo.dart';
 import '../utils/constants.dart';
+import 'network_manager.dart';
 import 'remote_client.dart';
 import 'secure_storage/secureStore.dart';
 
@@ -16,6 +17,19 @@ class AuthTokenInterceptor extends Interceptor {
     RequestOptions options,
     RequestInterceptorHandler handler,
   ) async {
+    try {
+      await NetworkService().ensureOnlineOrThrow();
+    } on NetworkException catch (e) {
+      return handler.reject(
+        DioError(
+          requestOptions: options,
+          type: DioErrorType.unknown,
+          error: e,
+          message: e.message,
+        ),
+      );
+    }
+
     final secureStore = SecureStore();
     final authToken = await secureStore.getAccessToken();
     final ResponseModel? accessInfo = await secureStore.getAccessInfo();

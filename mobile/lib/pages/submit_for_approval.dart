@@ -256,14 +256,8 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                     return const SizedBox.shrink();
                   }
 
-                  print("selProject.status ${selProject.status}");
-
                   final isRejectedByQc = selProject.status ==
                       WORKFLOW_STATUS_FIELD_STAFF.REJECTED_BY_QC_SPOC.name;
-                  // final isRejectedBySupervisor = selProject.status ==
-                  //     WORKFLOW_STATUS_FIELD_STAFF
-                  //         .REJECTED_BY_FIELD_SUPERVISOR.name;
-                  // bool isSupervisor = userType == USER_TYPES.SUPERVISOR.name;
                   bool isFieldStaff = userType == USER_TYPES.FIELD_STAFF.name;
 
                   if (isFieldStaff && isRejectedByQc) {

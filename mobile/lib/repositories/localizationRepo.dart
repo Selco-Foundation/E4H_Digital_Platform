@@ -1,13 +1,13 @@
 import 'dart:convert';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
 
-import '../data/remote_client.dart';
 import '../model/localization/localizationModel.dart';
 import '../utils/envConfig.dart';
 
 class LocalizationRepository {
-  final client = DioClient().dio;
+  final authClient = Dio();
 
   Future<LocalizationModel> getLocalizationsList(
       Map<String, String> queryParameters) async {
@@ -15,11 +15,20 @@ class LocalizationRepository {
       // return _loadLocalLocalization();
     }
 
+    final body = {
+      "RequestInfo": {
+        "apiId": "Rainmaker",
+        "authToken": null,
+        "msgId": "1755851952491|en_IN",
+        "plainAccessRequest": {}
+      }
+    };
+
     try {
-      final response = await client.post(
+      final response = await authClient.post(
           '${envConfig.variables.baseUrl}localization/messages/v1/_search',
           queryParameters: queryParameters,
-          data: {});
+          data: jsonEncode(body));
 
       print("${response.data}");
 

@@ -231,6 +231,8 @@
 //   }
 // }
 
+import 'dart:async';
+
 import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:digit_ui_components/widgets/atoms/pop_up_card.dart';
@@ -262,6 +264,8 @@ class _HomePageState extends State<HomePage> {
   late String pendingRecords = "0";
   late String assignedFacility = "0";
   Route? _syncRoute;
+  StreamSubscription<CacheSyncRecordState>? _syncSub;
+  bool _popupShown = false;
 
   @override
   void initState() {
@@ -277,8 +281,40 @@ class _HomePageState extends State<HomePage> {
       context
           .read<CacheSyncRecordBloc>()
           .add(CacheSyncRecordEvent.fetch(_userType));
-      _showPopup(context);
+      //_showPopup(context);
+
+      // REMOVE this line:
+      // _showPopup(context);
+
+      // ADD this listener (one-shot)
+      _syncSub = context.read<CacheSyncRecordBloc>().stream.listen((state) {
+        if (_popupShown) return; // guard against repeats
+
+        state.maybeWhen(
+          loaded: (_, pending) {
+            if (pending != null && pending > 0) {
+              _popupShown = true;
+              _showPopup(context);
+            }
+          },
+          notFound: (val) {
+            // If your bloc uses notFound(0) when nothing to sync, do nothing.
+            // If val > 0 you can also choose to show the popup:
+            if (val != null && val > 0) {
+              _popupShown = true;
+              _showPopup(context);
+            }
+          },
+          orElse: () {},
+        );
+      });
     });
+  }
+
+  @override
+  void dispose() {
+    _syncSub?.cancel();
+    super.dispose();
   }
 
   void _showSyncDialog(BuildContext context, {String? error}) {

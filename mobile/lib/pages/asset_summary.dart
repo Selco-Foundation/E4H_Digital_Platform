@@ -528,7 +528,7 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
               flex: 1,
               child: ValueColumn(values: [
                 truncateText(projectName, maxLength: 18),
-                status,
+                context.translate(status),
               ]),
             ),
           ]),
