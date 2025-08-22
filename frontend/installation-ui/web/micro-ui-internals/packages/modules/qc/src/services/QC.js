@@ -1,4 +1,6 @@
-import { Request } from "../atoms/Utils/Request";
+import { Request } from "@egovernments/digit-ui-libraries";
+import axios from "axios";
+import { CustomRequest } from "../components/CustomRequest";
 
 export const QCService = {
 
@@ -105,6 +107,26 @@ export const QCService = {
     })
   },
 
+  fetchDocumentSize : async (fileUrl) => {
+    const response = await axios.get(fileUrl);
+    const sizeInBytes = response.headers["content-length"];
+
+    if (!sizeInBytes) {
+      console.info("Content-Length not available");
+      return;
+    }
+
+    const size = Number(sizeInBytes);
+    const i = Math.floor(Math.log(size) / Math.log(1024));
+    const humanReadable =
+      (size / Math.pow(1024, i)).toFixed(2) * 1 +
+      " " +
+      ["B", "KB", "MB", "GB", "TB"][i];
+
+    console.info(`File size: ${humanReadable} (${size} bytes)`);
+    return humanReadable;
+  },
+
   updateProjectWorkflow : async (projectId, action, comments, workflowComment) => {
     const endpoint = "/project/v1/project/workflow/update";
     const queryObj = {
@@ -130,6 +152,52 @@ export const QCService = {
       userService : true,
       auth : true,
       headers : headers,
+    });
+  },
+
+  bulkApproveProjects: async (filters, mainCheck, projectIds) => {
+    const endpoint = "/project/v1/project/bulk/workflow/update";
+
+    const queryObj = {
+      workflow: {
+        action: "APPROVE",
+        comments: "Approved by QC"
+      }
+    }
+
+    queryObj.isAllSelected = mainCheck;
+
+    if (mainCheck) {
+      const currentFilters = {
+        projectSearch: {
+          parent: filters.project.parent
+        }
+      }
+
+      if (filters.facilitySearch.name) {
+        currentFilters.projectSearch.name = filters.facilitySearch.name;
+      }
+
+      if (filters.facilityFilterQuery.boundary?.length > 0) {
+        currentFilters.projectSearch.boundaryCode = filters.facilityFilterQuery.boundary?.join(",");
+      }
+
+      if (filters.facilityFilterQuery.status?.length > 0) {
+        currentFilters.status = filters.facilityFilterQuery.status;
+      }
+
+      queryObj.filters = currentFilters;
+
+    } else {
+      queryObj.projectIDs = projectIds;
+    }
+
+    return CustomRequest({
+      url : endpoint,
+      data : queryObj,
+      method : "POST",
+      userService : true,
+      auth : true,
     });
   },
 
