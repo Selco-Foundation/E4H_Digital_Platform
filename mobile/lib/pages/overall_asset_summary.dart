@@ -221,7 +221,10 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                     },
                     failure: (error) {
                       context.showSnackBar(
-                        SnackBar(content: Text("Submission failed: ${error}")),
+                        SnackBar(
+                            content: Text("$error"
+                                // "For some Reason you have bad internet connectnity, we have saved your data, please try to sync the data later",
+                                )),
                       );
                     },
                     loading: () {

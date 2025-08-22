@@ -10,6 +10,7 @@ import 'package:digit_ui_components/widgets/molecules/show_pop_up.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+import 'package:selco/utils/extensions.dart';
 
 import '../blocs/app_init/app_init.dart';
 import '../blocs/cache_asset_count/cache_asset_count.dart';
@@ -458,7 +459,7 @@ class InstallationReportCard extends StatelessWidget {
                         children: [
                           const SizedBox(height: spacer4),
                           Text(
-                            '$status',
+                            context.translate('$status'),
                             style: textTheme.bodyL.copyWith(
                               color: theme.colorTheme.text.primary,
                             ),

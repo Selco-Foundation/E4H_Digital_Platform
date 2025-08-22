@@ -6,6 +6,7 @@ import 'package:digit_ui_components/widgets/atoms/digit_divider.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:selco/utils/extensions.dart';
 
 class InboxReportCard extends StatelessWidget {
   final String? title;
@@ -68,7 +69,7 @@ class InboxReportCard extends StatelessWidget {
                   children: [
                     const SizedBox(height: spacer4),
                     Text(
-                      status ?? '',
+                      context.translate(status ?? ''),
                       style: textTheme.bodyL
                           .copyWith(color: theme.colorTheme.text.primary),
                       softWrap: true,
