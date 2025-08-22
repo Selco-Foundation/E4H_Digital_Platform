@@ -479,6 +479,11 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
             log.debug("📌 Adding RANGE clause for key='{}' with operator='{}' and value={}", key, operator, params.get(key));
             Map<String, Object> rangeClause = new HashMap<>();
             rangeClause.put("range", new HashMap<>());
+//            Map<String, Object> innerRangeClause = (Map<String, Object>) rangeClause.get("range");
+//            Map<String, Object> innerRangeClauseBis = new HashMap<>();
+//            innerRangeClauseBis.put("lte", 0);
+//            innerRangeClauseBis.put(operator.toString(), params.get(key));
+//            innerRangeClause.put(addDataPathToSearchParamKey(key, nameToPathMap), innerRangeClauseBis);
             Map<String, Object> innerRangeClause = new HashMap<>();
             innerRangeClause.put(operator.toString(), params.get(key));
             ((Map<String, Object>) rangeClause.get("range")).put(addDataPathToSearchParamKey(key, nameToPathMap), innerRangeClause);
