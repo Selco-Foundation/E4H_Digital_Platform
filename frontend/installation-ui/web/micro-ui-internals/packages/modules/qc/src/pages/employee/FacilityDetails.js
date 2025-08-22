@@ -83,6 +83,8 @@ const FacilityDetails = ({t}) => {
     revalidateFacilityDetails();
   }
 
+  console.debug("asset.assetType", assets);
+
   return (
     <div style={{marginTop: "20px"}}>
       { (updatingWorkflow || fieldPlanDataFetching || facilityDataFetching) && (
@@ -114,7 +116,10 @@ const FacilityDetails = ({t}) => {
 
       {assets && assets.map((asset) => {
         return <Summary
+          t={t}
+          key={asset.assetType}
           sectionName={asset?.assetName}
+          section={asset.assetType}
           count={asset?.count}
           specifications={asset?.specifications}
           details={asset?.details}
@@ -126,7 +131,9 @@ const FacilityDetails = ({t}) => {
 
       {aggregatedAssets?.installationReport && (
         <Summary
+          t={t}
           sectionName="InstallationCompletionReport"
+          section="INSTALLATION_COMPLETION_REPORT"
           report={{
             ...aggregatedAssets?.installationReport,
             name: facilityDetails.facilityName
