@@ -227,7 +227,7 @@ const Summary = ({ t, sectionName, section, count, specifications, details, item
           </div>
         ))}
 
-      {showRejectionModal && <RejectionReasonModal onClose={() => setShowRejectionModal(false)} onSave={handleSave} />}
+      {showRejectionModal && <RejectionReasonModal t={t} onClose={() => setShowRejectionModal(false)} onSave={handleSave} />}
 
       {rejectionData.filter((reason) => reason.reason.trim()).length > 0 && (
         <div style={{ display: "flex", gap: "10px", alignItems: "center", paddingLeft: "20px", paddingRight: "20px" }}>
