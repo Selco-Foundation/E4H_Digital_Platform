@@ -1,4 +1,3 @@
-
 import { GA_MEASUREMENT_ID, DEBUG_MODE } from './config';
 
 const queue = [];
@@ -13,18 +12,21 @@ function flush() {
 
 export function loadGA() {
   if (typeof window === 'undefined') return;
-  if (window.gtag) { ready = true; return; }
+
+  if (typeof window.gtag === 'function') {
+    flush();
+    return;
+  }
 
   const s = document.createElement('script');
   s.async = true;
   s.src = `https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`;
   s.onload = () => {
-    window.dataLayer = window.dataLayer || [];
-    window.gtag = function(){ window.dataLayer.push(arguments); };
+
     window.gtag('js', new Date());
     window.gtag('config', GA_MEASUREMENT_ID, {
       anonymize_ip: true,
-      debug_mode: DEBUG_MODE
+      debug_mode: DEBUG_MODE,
     });
     flush();
     console.log('✅ GA loaded:', GA_MEASUREMENT_ID);

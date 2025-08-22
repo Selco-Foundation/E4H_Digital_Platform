@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Loader, Header } from "@selco/digit-ui-react-components";
 import DesktopInbox from "../../components/DesktopInbox";
@@ -12,7 +12,7 @@ const Inbox = () => {
   const { uuid } = Digit.UserService.getUser().info;
   const [totalRecords, setTotalRecords] = useState(0);
   const userRoles = Digit.SessionStorage.get("User")?.info?.roles || [];
-  const { nearingSLA } = Digit.Hooks.useQueryParams();
+  const { nearing } = Digit.Hooks.useQueryParams();
 
   const isCodePresent = (array, codeToCheck) => array.some((item) => item.code === codeToCheck);
 
@@ -43,19 +43,19 @@ const Inbox = () => {
   const prevSearchParamsRef = useRef(JSON.stringify(searchParams));
   const prevPageSizeRef = useRef(pageSize);
 
-  // ---- helper: send filter usage safely ----
-  const sendFilterEvent = (filterName, params = {}) => {
+  const sendFilterEvent = (filterType, filterValue = "all", extra = {}) => {
     try {
       if (Digit?.Utils?.analytics?.trackFilterUsage) {
-        Digit.Utils.analytics.trackFilterUsage(filterName, {
+        Digit.Utils.analytics.trackFilterUsage(filterType, filterValue, {
           page_name: "inbox",
-          ...params,
+          ...extra,
         });
       } else if (typeof window !== "undefined" && typeof window.gtag === "function") {
         window.gtag("event", "filter_usage", {
-          filter_name: filterName,
+          filter_type: filterType,
+          filter_value: filterValue,
           page_name: "inbox",
-          ...params,
+          ...extra,
         });
       }
     } catch (e) {
@@ -63,7 +63,7 @@ const Inbox = () => {
     }
   };
 
-  // ---- shared normalizers ----
+
   const toArray = (val) => {
     if (!val && val !== 0) return [];
     return Array.isArray(val) ? val : [val];
@@ -120,8 +120,6 @@ const Inbox = () => {
     const pf = filtersObj?.pgrfilters || {};
     const pq = filtersObj?.pgrQuery || {};
 
-    // Common aliases we’ve seen in different screens:
-    // phcType, healthCentre / healthCenter, centreCode, tenantId
     const map = {
       "pgrfilters.phcType": pf?.phcType,
       "pgrfilters.healthCentre": pf?.healthCentre || pf?.healthCenter,
@@ -138,10 +136,8 @@ const Inbox = () => {
       .filter(([, v]) => v != null && (Array.isArray(v) ? v.length > 0 : v !== ""))
       .map(([k]) => k);
 
-    // Prefer the “most specific” candidate if multiple present; else merge
     const candidates = Object.values(map).filter((v) => v != null && (Array.isArray(v) ? v.length > 0 : v !== ""));
 
-    // If you want “first present” behavior, use candidates[0]; to be safest, merge:
     const mergedValues = candidates.reduce((acc, v) => acc.concat(toArray(v)), []);
     const codes = normalizeCodes(mergedValues);
 
@@ -152,7 +148,6 @@ const Inbox = () => {
   };
 
   useEffect(() => {
-    const nearing = queryParams.get("nearing");
     try {
       if (nearing === "1") {
         Digit.Utils.analytics?.trackPageView("nearing_sla_page", {
@@ -214,40 +209,32 @@ const Inbox = () => {
       const old = searchParams?.filters || {};
       const next = nextFilters || {};
 
-      // 10) Status Filter
+
       const oldStatuses = (old?.pgrfilters?.applicationStatus || []).map((e) => e.code).join(",") || "";
       const newStatuses = (next?.pgrfilters?.applicationStatus || []).map((e) => e.code).join(",") || "";
       if (oldStatuses !== newStatuses) {
-        sendFilterEvent("status_filter", { value: newStatuses || "all" });
+        sendFilterEvent("status_filter", newStatuses || "all");
       }
 
-      // 11) Assigned to Me vs All Tickets toggle
+      // Assigned to Me vs All Tickets toggle
       const hadAssignee = (old?.wfFilters?.assignee || []).map((e) => e.code).filter(Boolean).length > 0;
       const hasAssignee = (next?.wfFilters?.assignee || []).map((e) => e.code).filter(Boolean).length > 0;
       if (hadAssignee !== hasAssignee) {
-        sendFilterEvent("assigned_toggle", { selection: hasAssignee ? "assigned_to_me" : "all_tickets" });
+        sendFilterEvent("assigned_toggle", hasAssignee ? "assigned_to_me" : "all_tickets");
       }
 
-      // 13) Issue Type Filter
-      const { codes: oldIssueCodes, presentKeys: oldIssueKeys } = getIssueInfoFromFilters(old);
-      const { codes: newIssueCodes, presentKeys: newIssueKeys } = getIssueInfoFromFilters(next);
-      console.log("[Inbox][IssueType] old codes:", oldIssueCodes, "old keys:", oldIssueKeys);
-      console.log("[Inbox][IssueType] new codes:", newIssueCodes, "new keys:", newIssueKeys);
+      // Issue Type Filter
+      const { codes: oldIssueCodes } = getIssueInfoFromFilters(old);
+      const { codes: newIssueCodes } = getIssueInfoFromFilters(next);
       if (JSON.stringify(oldIssueCodes) !== JSON.stringify(newIssueCodes)) {
-        sendFilterEvent("issue_type_filter", {
-          value: newIssueCodes.length ? newIssueCodes.join(",") : "all",
-        });
+        sendFilterEvent("issue_type_filter", newIssueCodes.length ? newIssueCodes.join(",") : "all");
       }
 
-      // 14) Health Care Centre Filter (robust)
-      const { codes: oldPhcCodes, presentKeys: oldPhcKeys } = getPhcInfoFromFilters(old);
-      const { codes: newPhcCodes, presentKeys: newPhcKeys } = getPhcInfoFromFilters(next);
-      console.log("[Inbox][PHC] old codes:", oldPhcCodes, "old keys:", oldPhcKeys);
-      console.log("[Inbox][PHC] new codes:", newPhcCodes, "new keys:", newPhcKeys);
+      // Health Care Centre Filter
+      const { codes: oldPhcCodes } = getPhcInfoFromFilters(old);
+      const { codes: newPhcCodes } = getPhcInfoFromFilters(next);
       if (JSON.stringify(oldPhcCodes) !== JSON.stringify(newPhcCodes)) {
-        sendFilterEvent("health_care_centre_filter", {
-          value: newPhcCodes.length ? newPhcCodes.join(",") : "all",
-        });
+        sendFilterEvent("health_care_centre_filter", newPhcCodes.length ? newPhcCodes.join(",") : "all");
       }
     } catch (e) {
       console.warn("analytics: filter diff failed", e);
@@ -268,19 +255,19 @@ const Inbox = () => {
   if (searchParams?.search?.phcType) {
     tenant = searchParams?.search?.phcType;
   }
-  let isMobile = Digit.Utils.browser.isMobile();
-  const allSearchParams = { ...searchParams, ...(nearingSLA === "1" && { nearingSLA: true }) };
-  let { data: complaints, isLoading } = isMobile
-    ? Digit.Hooks.pgr.useInboxData({ ...allSearchParams, offset: pageOffset, limit: pageSize })
-    : Digit.Hooks.pgr.useInboxData({ ...allSearchParams, offset: pageOffset, limit: pageSize });
+  const isMobile = Digit.Utils.browser.isMobile();
+  const allSearchParams = { ...searchParams, ...(nearing === "1" && { nearingSLA: true }) };
+
+  const inboxParams = { ...allSearchParams, offset: pageOffset, limit: pageSize };
+  const { data: complaints, isLoading } = Digit.Hooks.pgr.useInboxData(inboxParams);
 
   useEffect(() => {
-    if (complaints !== undefined && complaints.combinedRes?.length !== 0) {
+    if (complaints !== undefined && complaints?.combinedRes?.length !== 0) {
       setTotalRecords(complaints.total);
     }
   }, [totalRecords, complaints]);
 
-  if (complaints.length !== null) {
+  if (complaints) {
     if (isMobile) {
       return (
         <MobileInbox

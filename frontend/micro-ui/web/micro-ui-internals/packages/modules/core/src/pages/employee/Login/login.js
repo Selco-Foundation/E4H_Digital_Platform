@@ -40,9 +40,16 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
   const getSelectedLanguage = () => {
     const fromPrelogin = sessionStorage.getItem("prelogin_language");
     if (fromPrelogin) return fromPrelogin;
-    const digitLocale = JSON.parse(sessionStorage.getItem("Digit.locale"))?.value;
-    if (digitLocale) return digitLocale;
-    return navigator.language || "unknown";
+    const fromStore = window?.Digit?.StoreData?.getCurrentLanguage?.();
+    if (fromStore) return fromStore;
+
+    try {
+      const raw = sessionStorage.getItem("Digit.locale");
+      const parsed = raw ? JSON.parse(raw) : null;
+      if (parsed?.value) return parsed.value;
+    } catch {}
+
+    return navigator.language || "en_IN";
   };
 
   useEffect(() => {
@@ -57,39 +64,49 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
     }
   }, []);
 
-  useEffect(async () => {
-    if (!user) {
-      return;
-    }
-    Digit.SessionStorage.set("citizen.userRequestObject", user);
-    const filteredRoles = user?.info?.roles?.filter((role) => role.tenantId === Digit.SessionStorage.get("Employee.tenantId"));
-    if (user?.info?.roles?.length > 0) user.info.roles = filteredRoles;
-    Digit.UserService.setUser(user);
-    setEmployeeDetail(user?.info, user?.access_token);
-    let redirectPath = `/${window.contextPath}/employee`;
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
 
-    try {
-      await Digit.UserService.userLoginReport({
-        User: user.info,
-      });
-    } catch (err) {
-      console.error("Login report failed", err);
-    }
+    (async () => {
+      Digit.SessionStorage.set("citizen.userRequestObject", user);
 
-    const fromParam = new URLSearchParams(location.search).get("from");
-    if (fromParam) {
-      redirectPath = decodeURIComponent(fromParam) || `/${window.contextPath}/employee`;
-    }
+      const filteredRoles =
+        user?.info?.roles?.filter((role) => role.tenantId === Digit.SessionStorage.get("Employee.tenantId")) || [];
+      if (user?.info?.roles?.length > 0) user.info.roles = filteredRoles;
 
-    if (user?.info?.roles && user?.info?.roles?.length > 0 && user?.info?.roles?.every((e) => e.code === "NATADMIN")) {
-      redirectPath = `/${window.contextPath}/employee/dss/landing/NURT_DASHBOARD`;
-    }
-    if (user?.info?.roles && user?.info?.roles?.length > 0 && user?.info?.roles?.every((e) => e.code === "STADMIN")) {
-      redirectPath = `/${window.contextPath}/employee/dss/landing/home`;
-    }
+      Digit.UserService.setUser(user);
+      setEmployeeDetail(user?.info, user?.access_token);
 
-    history.replace(redirectPath);
-  }, [user]);
+      let redirectPath = `/${window.contextPath}/employee`;
+
+      try {
+        await Digit.UserService.userLoginReport({
+          User: user.info,
+        });
+      } catch (err) {
+        console.error("Login report failed", err);
+      }
+
+      const fromParam = new URLSearchParams(location.search).get("from");
+      if (fromParam) {
+        redirectPath = decodeURIComponent(fromParam) || `/${window.contextPath}/employee`;
+      }
+
+      if (user?.info?.roles && user?.info?.roles?.length > 0 && user?.info?.roles?.every((e) => e.code === "NATADMIN")) {
+        redirectPath = `/${window.contextPath}/employee/dss/landing/NURT_DASHBOARD`;
+      }
+      if (user?.info?.roles && user?.info?.roles?.length > 0 && user?.info?.roles?.every((e) => e.code === "STADMIN")) {
+        redirectPath = `/${window.contextPath}/employee/dss/landing/home`;
+      }
+
+      if (!cancelled) history.replace(redirectPath);
+    })().catch((e) => console.error("login effect failed", e));
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user, history, location.search]);
 
   const onLogin = async (data) => {
     if (!data.city) {
@@ -109,28 +126,33 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
       Digit.SessionStorage.set("Employee.tenantId", info?.tenantId);
       setUser({ info, ...tokens });
 
-      const rolesCsv = (info?.roles || []).map((r) => r.code).join(",") || "unknown";
-      const stateId = Digit?.ULBService?.getStateId?.() || "unknown";
-      const district = info?.district || "unknown";
-      const block = info?.block || "unknown";
-      const facility = info?.facilityName || "unknown";
-      const deviceType = Digit?.Utils?.browser?.isMobile?.() ? "mobile" : "desktop";
-      const selectedLanguage = getSelectedLanguage();
 
-      if (typeof window.gtag === "function") {
-        window.gtag("event", "user_login", {
-          user_role: rolesCsv,
-          geography_state: stateId,
-          geography_district: district,
-          geography_block: block,
-          facility_name: facility,
-          device_type: deviceType,
-          browser: navigator.userAgent,
-          os: navigator.platform || "unknown",
-          selected_language: selectedLanguage,
-          transport_type: "beacon",
-          debug_mode: true,
-        });
+      try {
+        const rolesCsv = (info?.roles || []).map((r) => r.code).join(",") || "unknown";
+        const stateId = Digit?.ULBService?.getStateId?.() || "unknown";
+        const district = info?.district || "unknown";
+        const block = info?.block || "unknown";
+        const facility = info?.facilityName || "unknown";
+        const deviceType = Digit?.Utils?.browser?.isMobile?.() ? "mobile" : "desktop";
+        const selectedLanguage = getSelectedLanguage();
+
+        if (typeof window.gtag === "function") {
+          window.gtag("event", "user_login", {
+            user_role: rolesCsv,
+            geography_state: stateId,
+            geography_district: district,
+            geography_block: block,
+            facility_name: facility,
+            device_type: deviceType,
+            browser: navigator.userAgentData?.brands?.[0]?.brand || "unknown",
+            os: navigator.userAgentData?.platform || navigator.platform || "unknown",
+            selected_language: selectedLanguage,
+            transport_type: "beacon",
+            ...(window.location.hostname === "localhost" ? { debug_mode: true } : {}),
+          });
+        }
+      } catch (e) {
+        console.warn("analytics: user_login failed", e);
       }
 
       try {
@@ -164,7 +186,7 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
         }
       }
     }
-  }, [cities]);
+  }, [cities]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const closeToast = () => {
     setShowToast(null);
