@@ -229,20 +229,41 @@ const Summary = ({ sectionName, count, specifications, details, items, images, v
         <div style={{display: "flex", gap: "10px", alignItems: "center", paddingLeft: "20px", paddingRight: "20px"}}>
           {rejectionData.filter((reason) => reason.reason.trim()).map((reason, index) => (
             <div key={reason.id}>
-              <div>
+              <div style={{ position: "relative", display: "inline-block" }}>
                 <button
                   style={{
                     border: "1px solid #d35400",
                     backgroundColor: "white",
                     color: "#d35400",
-                    padding: "6px 10px",
-                    borderRadius: "2px",
+                    padding: "10px 20px",
+                    borderRadius: "8px",
                     fontWeight: "bold",
                     cursor: "pointer",
                   }}
                   onClick={() => setActiveReasonId(reason.id)}
                 >
-                  Reason {index + 1}
+                  Rejection reason {index + 1}
+                </button>
+                <button
+                  type="button"
+                  style={{
+                    position: "absolute",
+                    top: "0",
+                    right: "0",
+                    fontSize: "16px",
+                    fontWeight: "bold",
+                    color: "white",
+                    backgroundColor: "#b71c1c",
+                    cursor: "pointer",
+                    height: "15px",
+                    width: "15px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center"
+                  }}
+                  onClick={() => handleDelete(reason)}
+                >
+                  ×
                 </button>
               </div>
               {activeReasonId && activeReasonId === reason.id && (
