@@ -150,25 +150,8 @@ const UploadFile = (props) => {
     } else setHasFile(false);
   };
 
-  // for common aligmnent issues added common styles
+  // for common alignment issues added common styles
   extraStyles = getCitizenStyles("OBPS");
-
-  // if (window.location.href.includes("/obps") || window.location.href.includes("/noc")) {
-  //   extraStyles = getCitizenStyles("OBPS");
-  // } else {
-  //   switch (props.extraStyleName) {
-  //     case "propertyCreate":
-  //       extraStyles = getCitizenStyles("propertyCreate");
-  //       break;
-  //     case "IP":
-  //       extraStyles = getCitizenStyles("IP");
-  //       break;
-  //     case "OBPS":
-  //       extraStyles = getCitizenStyles("OBPS");
-  //     default:
-  //       extraStyles = getCitizenStyles("");
-  //   }
-  // }
 
   const handleDelete = () => {
     inputRef.current.value = "";
@@ -188,10 +171,26 @@ const UploadFile = (props) => {
   }
 
   useEffect(() => handleEmpty(), [inputRef?.current?.files]);
-
   useEffect(() => handleChange(), [props.message]);
 
   const showHint = props?.showHint || false;
+
+  // Revoke any object URLs on unmount to avoid leaks
+  useEffect(() => {
+    return () => {
+      try {
+        (props?.uploadedFiles || []).forEach((file) => {
+          const fileDetailsData = file?.[1];
+          if (fileDetailsData?.objectUrl) {
+            URL.revokeObjectURL(fileDetailsData.objectUrl);
+            delete fileDetailsData.objectUrl;
+          }
+        });
+      } catch {}
+    };
+    // we only want this on unmount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <Fragment>
@@ -204,13 +203,13 @@ const UploadFile = (props) => {
           style={
             extraStyles?.uploadFile
               ? {
-                  ...extraStyles?.uploadFile,
-                  padding: "0.5rem",
-                  width: "85%",
-                  display: "flex",
-                  alignItems: "center",
-                  color: props?.uploadedFiles?.length === 0 ? "#D5D5D5" : "#000000",
-                }
+                ...extraStyles?.uploadFile,
+                padding: "0.5rem",
+                width: "85%",
+                display: "flex",
+                alignItems: "center",
+                color: props?.uploadedFiles?.length === 0 ? "#D5D5D5" : "#000000",
+              }
               : {}
           }
         >
@@ -222,13 +221,13 @@ const UploadFile = (props) => {
             style={{
               ...(extraStyles
                 ? {
-                    ...extraStyles?.inputStyles,
-                    ...props?.inputStyles,
-                    maxHeight: "56px !important",
-                    paddingLeft: "0px !important",
-                    paddingRight: "0px !important",
-                    display: "none",
-                  }
+                  ...extraStyles?.inputStyles,
+                  ...props?.inputStyles,
+                  maxHeight: "56px !important",
+                  paddingLeft: "0px !important",
+                  paddingRight: "0px !important",
+                  display: "none",
+                }
                 : { ...props?.inputStyles }),
               cursor: "pointer",
             }}
@@ -268,10 +267,11 @@ const UploadFile = (props) => {
             }}
             type={props.buttonType}
             onClick={() => {
-              // NEW: track the visible upload button click
+              if (!props?.enableButton) return; // guard: don't track/click when disabled
+
+              // track the visible upload button click
               try {
-                const btn =
-                  mediaIntent === "video" ? "upload_video_click" : "upload_image_click";
+                const btn = mediaIntent === "video" ? "upload_video_click" : "upload_image_click";
                 Digit?.Utils?.analytics?.trackButtonClick(btn, {
                   page_name: pageName,
                 });
@@ -282,15 +282,17 @@ const UploadFile = (props) => {
               inputRef.current?.click();
             }}
           >
-            <div style={{
-              display: "flex",
-              width: "100%",
-              height: "100%",
-              justifyContent: "center",
-              alignItems: "center",
-              color: "#fff",
-              backgroundColor: "rgb(134,42,42)"
-            }}>
+            <div
+              style={{
+                display: "flex",
+                width: "100%",
+                height: "100%",
+                justifyContent: "center",
+                alignItems: "center",
+                color: "#fff",
+                backgroundColor: "rgb(134,42,42)",
+              }}
+            >
               <UploadIconOrange styles={{ height: "20px", width: "20px", color: "#fff" }} />
               {t("CS_UPLOAD_BUTTON")}
             </div>
@@ -302,8 +304,15 @@ const UploadFile = (props) => {
         {props?.uploadedFiles?.map((file, index) => {
           const fileDetailsData = file[1];
           const fileType = fileDetailsData.file.type;
-          const blob = new Blob([file[1].file], { type: file.type });
-          const fileSrc = URL.createObjectURL(blob);
+
+          // Create (and memoize) an object URL for preview/download
+          if (!fileDetailsData.objectUrl && fileDetailsData.file) {
+            try {
+              fileDetailsData.objectUrl = URL.createObjectURL(fileDetailsData.file);
+            } catch {}
+          }
+          const fileSrc = fileDetailsData.objectUrl;
+
           return (
             <div key={index} className="tag-container" style={extraStyles ? extraStyles?.tagContainerStyles : null}>
               {fileType.substring(0, 5) === "image" ? (
@@ -311,10 +320,12 @@ const UploadFile = (props) => {
                   <img src={fileSrc} alt="thumbnail" style={{ width: "100px", height: "80px" }} />
                   <div style={{ color: "#8F8F8F", fontSize: "12px", textAlign: "center", width: "100%" }}>
                     {fileDetailsData.file.name.length > 12
-                      ? `${fileDetailsData.file.name.substring(0, 7)}...${fileDetailsData.file.name.substring(fileDetailsData.file.name.length - 7)}`
+                      ? `${fileDetailsData.file.name.substring(0, 7)}...${fileDetailsData.file.name.substring(
+                        fileDetailsData.file.name.length - 7
+                      )}`
                       : fileDetailsData.file.name}
                   </div>
-                  {/* NEW: download link to track download_image */}
+                  {/* download link to track download_image */}
                   <a
                     href={fileSrc}
                     download
@@ -340,7 +351,7 @@ const UploadFile = (props) => {
                       ref={(el) => (fileDetailsData.videoRef = el)}
                       src={fileSrc}
                       style={{ height: "100%", width: "100%" }}
-                      // NEW: track stream_video when playback starts
+                      // track stream_video when playback starts
                       onPlay={() => {
                         try {
                           Digit?.Utils?.analytics?.trackMedia("stream_video", {
@@ -390,12 +401,13 @@ const UploadFile = (props) => {
                   <div style={{ color: "#8F8F8F", fontSize: "12px", textAlign: "center", width: "100%" }}>
                     {fileDetailsData.file.name.length > 20
                       ? `${fileDetailsData.file.name.substring(0, 10)}...${fileDetailsData.file.name.substring(
-                          fileDetailsData.file.name.length - 10
-                        )}`
+                        fileDetailsData.file.name.length - 10
+                      )}`
                       : fileDetailsData.file.name}
                   </div>
                 </div>
               ) : null}
+
               {(fileType.substring(0, 5) === "image" || fileType.substring(0, 5) === "video") && (
                 <div
                   style={{
@@ -406,13 +418,36 @@ const UploadFile = (props) => {
                     cursor: "pointer",
                     height: "fit-content",
                   }}
-                  onClick={(e) => props?.removeTargetedFile(fileDetailsData, e)}
+                  onClick={(e) => {
+                    // revoke the object URL before removing
+                    try {
+                      if (fileDetailsData.objectUrl) {
+                        URL.revokeObjectURL(fileDetailsData.objectUrl);
+                        delete fileDetailsData.objectUrl;
+                      }
+                    } catch {}
+                    props?.removeTargetedFile(fileDetailsData, e);
+                  }}
                 >
                   <CloseSvg color="white" background="#135067" />
                 </div>
               )}
+
               {fileType.substring(0, 5) !== "image" && fileType.substring(0, 5) !== "video" && (
-                <RemoveableTag extraStyles={extraStyles} key={index} text={file[0]} onClick={(e) => props?.removeTargetedFile(fileDetailsData, e)} />
+                <RemoveableTag
+                  extraStyles={extraStyles}
+                  key={index}
+                  text={file[0]}
+                  onClick={(e) => {
+                    try {
+                      if (fileDetailsData.objectUrl) {
+                        URL.revokeObjectURL(fileDetailsData.objectUrl);
+                        delete fileDetailsData.objectUrl;
+                      }
+                    } catch {}
+                    props?.removeTargetedFile(fileDetailsData, e);
+                  }}
+                />
               )}
             </div>
           );
