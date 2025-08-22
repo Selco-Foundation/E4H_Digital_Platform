@@ -42,4 +42,7 @@ public class ConsumerConfiguration {
 
 	@Value("${egov.statelevel.tenantId}")
 	private String stateLevelTenantId;
+
+	@Value("${incident.kafka.update.topic.indexer}")
+	private String updateTopicIndexer;
 }
