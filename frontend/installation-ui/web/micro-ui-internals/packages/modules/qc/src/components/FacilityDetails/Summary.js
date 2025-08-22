@@ -174,6 +174,7 @@ const Summary = ({ sectionName, count, specifications, details, items, images, v
                 >
                   {videos.map((video, idx) => (
                     <div
+                      key={idx}
                       style={{
                         minWidth: "fit-content",
                         width: "20%",
@@ -185,6 +186,7 @@ const Summary = ({ sectionName, count, specifications, details, items, images, v
                       <a
                         style={{ textDecoration: "none", color: "unset" }}
                         target="_blank"
+                        rel="noopener noreferrer"
                         href={video.fileUrl}
                         download={`Video ${idx+1}.mp4`}
                       >

@@ -1,5 +1,5 @@
 import React from "react";
-import { PdfIcon } from "@egovernments/digit-ui-svg-components/src";
+import { PdfIcon } from "@egovernments/digit-ui-svg-components";
 
 const SystemParameterReport = ({ file }) => {
   return (
@@ -21,8 +21,9 @@ const SystemParameterReport = ({ file }) => {
           <a
             style={{ textDecoration: "none", color: "unset" }}
             target="_blank"
+            rel="noopener noreferrer"
             href={file.fileUrl}
-            download={"trial.jpeg"}
+            download={"installation-completion-report.pdf"}
           >
             <div style={{ display: "flex", alignItems: "center" }}>
               <PdfIcon style={{ marginRight: "12px" }} />

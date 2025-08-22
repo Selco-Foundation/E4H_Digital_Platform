@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { TextInput, SubmitBar, LinkLabel, TickMark, DownloadIcon, SearchIconSvg, SearchIcon, Toast } from "@egovernments/digit-ui-react-components";
-import { DoneAll } from "@egovernments/digit-ui-svg-components/src";
+import { DoneAll } from "@egovernments/digit-ui-svg-components";
 import { QCService } from "../../services/QC";
 
 const SearchActionCentre = ({ t, projectQueryFilter, mainCheckBox, selectedFacilities, onSearch, revalidateData, setUpdatingWorkflow }) => {
