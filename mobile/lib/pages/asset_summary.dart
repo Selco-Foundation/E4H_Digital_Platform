@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:collection/collection.dart';
 import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:digit_ui_components/widgets/atoms/input_wrapper.dart';
@@ -12,6 +13,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:recase/recase.dart';
 
+import '../blocs/app_init/app_init.dart';
 import '../blocs/asset_rejection/asset_rejection.dart';
 import '../blocs/asset_summary/asset_summary.dart';
 import '../blocs/asset_type/asset_type.dart';
@@ -21,8 +23,11 @@ import '../blocs/report_type/report_type.dart';
 import '../blocs/selected_project/selected_project.dart';
 import '../blocs/user_type/user_type.dart';
 import '../model/asset_summary/asset_summary.dart';
+import '../model/brand/brand.dart';
 import '../model/comment/comment.dart';
+import '../model/mdms/mdms.dart';
 import '../model/project_workflow/project_workflow.dart';
+import '../model/system/system.dart';
 import '../model/transaction/transaction.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
@@ -416,15 +421,44 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
   Widget _buildSummaryCards(AssetSummaryModel summary, String heading) {
     final textTheme = Theme.of(context).digitTextTheme(context);
 
+    final initState = context.read<AppInitialization>().state;
+
+// Systems & Brands as lists of Mdms<T>
+    final List<Mdms<System>> systemMdmsList = initState.maybeWhen(
+      initialized: (appConfig, assetCount, assetType, system, warranty, brand,
+              solutionDesign) =>
+          system,
+      orElse: () => <Mdms<System>>[],
+    );
+
+    final List<Mdms<Brand>> brandMdmsList = initState.maybeWhen(
+      initialized: (appConfig, assetCount, assetType, system, warranty, brand,
+              solutionDesign) =>
+          brand,
+      orElse: () => <Mdms<Brand>>[],
+    );
+
     // Facility details
     final countValue = summary.countEntry?.count.toString() ?? '—';
     final warrantyStart = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
     final warrantyDuration = summary.detailEntry?.warranty ?? '—';
-    final brand = summary.detailEntry?.brand ?? '—';
+    final brandCode = summary.detailEntry?.brand ?? '—';
     final model = summary.detailEntry?.model ?? '—';
-    final system = summary.specEntry?.system ?? '—';
+    final systemCode = summary.specEntry?.system ?? '—';
     final capacity = summary.specEntry?.totalCapacity.toString() ?? '—';
     final capacityUnit = summary.specEntry?.totalCapacityUnit ?? '-';
+
+    final brand = brandMdmsList
+            .map((m) => m.data)
+            .firstWhereOrNull((b) => b.code == (brandCode ?? ''))
+            ?.name ??
+        (brandCode ?? '—');
+
+    final system = systemMdmsList
+            .map((m) => m.data)
+            .firstWhereOrNull((s) => s.code == (systemCode ?? ''))
+            ?.name ??
+        (systemCode ?? '—');
 
     // Cards for each asset
     final assetCards = summary.addedAssets.asMap().entries.map((e) {
