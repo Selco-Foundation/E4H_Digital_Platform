@@ -43,7 +43,6 @@ const HlsPlayer = ({ src, originalSrc, fileStoreId, activeVideoRef }) => {
             const quality = qualityMatch ? qualityMatch[1] : "original";
 
             const modifiedUrl = `/filestore/v1/files/get-hls?tenantId=${tenantId}&fileStoreId=${fileStoreId}&filename=playlist.m3u8&quality=${quality}`;
-            // console.debug("Modified Manifest URL:", modifiedUrl);
             xhr.open("GET", modifiedUrl, true);
           } else if (url.endsWith(".ts")) {
             // Extract .ts filename
@@ -54,22 +53,34 @@ const HlsPlayer = ({ src, originalSrc, fileStoreId, activeVideoRef }) => {
             const requestedLevel = requestedLevelRef.current;
 
             // Find the highest level by height
-            const maxLevel = hls.levels.reduce((max, level) => (level.height > max.height ? level : max), { height: 0 });
-            const maxLevelIndex = hls.levels.findIndex(level => level.height === maxLevel.height);
+            const maxLevel = hls.levels.reduce(
+              (max, level) => (level.height > max.height ? level : max),
+              { height: 0 }
+            );
+            const maxLevelIndex = hls.levels.findIndex(
+              (level) => level.height === maxLevel.height
+            );
 
             if (requestedLevel === -1) {
               // Use the level HLS.js has adaptively selected
               const loadLevel = hls.loadLevel !== -1 ? hls.loadLevel : hls.currentLevel;
-              const autoLevel = loadLevel !== -1 && hls.levels[loadLevel] ? hls.levels[loadLevel] : hls.levels[0];
+              const autoLevel =
+                loadLevel !== -1 && hls.levels[loadLevel] ? hls.levels[loadLevel] : hls.levels[0];
 
               if (autoLevel) {
                 // If autoLevel is the highest, use 'original', else use its height
-                quality = (hls.levels.indexOf(autoLevel) === maxLevelIndex) ? "original" : `${autoLevel.height}p`;
+                quality =
+                  hls.levels.indexOf(autoLevel) === maxLevelIndex
+                    ? "original"
+                    : autoLevel.height + "p";
               }
             } else if (requestedLevel >= 0 && hls.levels[requestedLevel]) {
               // For manual quality selection, use the explicitly selected level
               // If this is the highest quality, use 'original', else use its height
-              quality = (requestedLevel === maxLevelIndex) ? "original" : `${hls.levels[requestedLevel].height}p`;
+              quality =
+                requestedLevel === maxLevelIndex
+                  ? "original"
+                  : hls.levels[requestedLevel].height + "p";
             }
 
             const modifiedTsUrl = `/filestore/v1/files/get-hls?tenantId=${tenantId}&fileStoreId=${fileStoreId}&filename=${tsFilename}&quality=${quality}`;
@@ -81,15 +92,8 @@ const HlsPlayer = ({ src, originalSrc, fileStoreId, activeVideoRef }) => {
       hls.loadSource(src);
       hls.attachMedia(video);
 
-      // Monitor fragment loading to ensure we're using the correct quality
-      hls.on(Hls.Events.FRAG_LOADING, (event, data) => {
-        // console.debug("Loading fragment for level:", data.frag.level, "Requested level:", requestedLevelRef.current);
-      });
-
-      // Update the UI when quality changes
       hls.on(Hls.Events.LEVEL_SWITCHED, (event, data) => {
         const currentLevel = data.level;
-        // console.debug("Level switched to:", currentLevel);
 
         if (requestedLevelRef.current === -1) {
           setSelectedBitrate("Auto");
@@ -117,18 +121,13 @@ const HlsPlayer = ({ src, originalSrc, fileStoreId, activeVideoRef }) => {
         setSelectedBitrate("Auto");
       });
 
-      // Monitor level loading to debug issues
-      // hls.on(Hls.Events.LEVEL_LOADING, (event, data) => {
-      //   console.debug("Loading level:", data.level);
-      // });
-
       setHlsInstance(hls);
     };
 
     setTimeout(attachHls, 500);
 
     return () => hlsInstance?.destroy();
-  }, [src, fileStoreId]);
+  }, [src, fileStoreId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleVideoPlay = () => {
     let videoElement = playerRef.current?.getInternalPlayer();
@@ -141,6 +140,34 @@ const HlsPlayer = ({ src, originalSrc, fileStoreId, activeVideoRef }) => {
       activeVideoRef.current.pause();
     }
     activeVideoRef.current = videoElement;
+
+    const p = playerRef.current;
+    let t = 0;
+    if (p && typeof p.getCurrentTime === "function") {
+      const ct = p.getCurrentTime();
+      t = ct ? ct : 0;
+    }
+    Digit.Utils.analytics?.trackButtonClick(t > 1 ? "video_resume" : "video_play", {
+      page_path: window.location && window.location.pathname ? window.location.pathname : "/",
+      page_title: typeof document !== "undefined" && document.title ? document.title : "Video",
+      video_src: src,
+      current_time: t,
+    });
+  };
+
+  const handleVideoPause = () => {
+    const p = playerRef.current;
+    let t = 0;
+    if (p && typeof p.getCurrentTime === "function") {
+      const ct = p.getCurrentTime();
+      t = ct ? ct : 0;
+    }
+    Digit.Utils.analytics?.trackButtonClick("video_pause", {
+      page_path: window.location && window.location.pathname ? window.location.pathname : "/",
+      page_title: typeof document !== "undefined" && document.title ? document.title : "Video",
+      video_src: src,
+      current_time: t,
+    });
   };
 
   const handleFullscreen = () => {
@@ -169,7 +196,6 @@ const HlsPlayer = ({ src, originalSrc, fileStoreId, activeVideoRef }) => {
       }
 
       setSelectedBitrate(option.resolution);
-      // console.debug("Quality changed to:", option.resolution, "Level ID:", option.id);
     }
   };
 
@@ -179,15 +205,15 @@ const HlsPlayer = ({ src, originalSrc, fileStoreId, activeVideoRef }) => {
         const video = containerRef.current?.querySelector("video");
         if (!video) return;
 
-        const handlePlay = () => setIsPlaying(true);
-        const handlePause = () => setIsPlaying(false);
+        const handlePlayEv = () => setIsPlaying(true);
+        const handlePauseEv = () => setIsPlaying(false);
 
-        video.addEventListener("play", handlePlay);
-        video.addEventListener("pause", handlePause);
+        video.addEventListener("play", handlePlayEv);
+        video.addEventListener("pause", handlePauseEv);
 
         return () => {
-          video.removeEventListener("play", handlePlay);
-          video.removeEventListener("pause", handlePause);
+          video.removeEventListener("play", handlePlayEv);
+          video.removeEventListener("pause", handlePauseEv);
         };
       }, 500);
     };
@@ -199,7 +225,18 @@ const HlsPlayer = ({ src, originalSrc, fileStoreId, activeVideoRef }) => {
     return (
       <div className="video-error-fallback">
         <p>This video is still being processed and will be available shortly.</p>
-        <p>In the meantime, you can <a style={{color:"revert", textDecoration:"revert"}} href={originalSrc} target="_blank" rel="noopener noreferrer">download the original file</a>.</p>
+        <p>
+          In the meantime, you can{" "}
+          <a
+            style={{ color: "revert", textDecoration: "revert" }}
+            href={originalSrc}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            download the original file
+          </a>
+          .
+        </p>
       </div>
     );
   }
@@ -220,6 +257,7 @@ const HlsPlayer = ({ src, originalSrc, fileStoreId, activeVideoRef }) => {
         onDuration={setDuration}
         onDisablePIP={() => setPip(false)}
         onPlay={handleVideoPlay}
+        onPause={handleVideoPause}
         onError={(_, e) => {
           console.debug(e);
           if (e.type === "networkError" && (e.details?.includes?.("LoadError") || e.details?.includes?.("LoadTimeOut"))) {
