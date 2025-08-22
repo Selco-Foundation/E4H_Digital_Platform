@@ -71,7 +71,8 @@ public class IncidentService {
                             String name = (String)data.get("name");
                             String phcType = (String)data.get("phcType");
                             String type = (String)data.get("type");
-//                        String tenantIdES = (String)data.get("tenantId");
+                            String tenantIdLocalized = (String)data.get("tenantId_localized");
+                            List<Double> geoPoint = (List<Double>) data.get("geo-point");
 
                             incidentStatusAgregation.setBlock(block);
                             incidentStatusAgregation.setCode(code);
@@ -81,6 +82,8 @@ public class IncidentService {
                             incidentStatusAgregation.setPhcType(phcType);
                             incidentStatusAgregation.setType(type);
                             incidentStatusAgregation.setTenantId(tenantId);
+                            incidentStatusAgregation.setTenantIdLocalized(tenantIdLocalized);
+                            incidentStatusAgregation.setGeoPoint(geoPoint);
 
                             log.info("Tickets sent to kafka {}", incidentStatusAgregation);
                             producerService.sendIncident(config.getUpdateTopicIndexer(), incidentStatusAgregation);

@@ -7,6 +7,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -52,4 +54,10 @@ public class IncidentStatusAgregation {
 
     @JsonProperty("type")
     private String type;
+
+    @JsonProperty("tenantIdLocalized")
+    private String tenantIdLocalized;
+
+    @JsonProperty("geoPoint")
+    private List<Double> geoPoint;
 }
