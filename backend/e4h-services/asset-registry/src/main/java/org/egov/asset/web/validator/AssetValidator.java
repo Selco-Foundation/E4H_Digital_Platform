@@ -38,19 +38,27 @@ public class AssetValidator {
     }
 
     public void validateCreateAsset(AssetCreateRequest request) {
+        log.info("AssetValidator::validateCreateAsset called | tenantId={} assetId={}",
+                request.getAssetDetail().getAsset().getTenantId(),
+                request.getAssetDetail().getAsset().getAssetId());
         Map<String, String> errorMap = new HashMap<>();
         validateExistingDuplicates(request.getAssetDetail().getAsset(), errorMap);
         if (!CollectionUtils.isEmpty(errorMap))
             throw new CustomException(errorMap);
         Map<String, Object> mdmsData = mdmsUtil.getMDMSData(request.getRequestInfo(), request.getAssetDetail().getAsset().getTenantId());
+        log.debug("Fetched MDMS data keys: {}", mdmsData.keySet());
         if (!CollectionUtils.isEmpty(mdmsData.keySet())) {
             validateMdmsData(request.getAssetDetail().getAsset(), errorMap, mdmsData);
         }
         if (!CollectionUtils.isEmpty(errorMap.keySet()))
             throw new CustomException(errorMap);
+
+        log.info("AssetValidator::validateCreateAsset completed successfully | assetId={}",
+                request.getAssetDetail().getAsset().getAssetId());
     }
 
     private void validateMdmsData(Asset asset, Map<String, String> errorMap, Map<String, Object> mdmsData) {
+        log.debug("Validating MDMS data for assetId={} assetType={}", asset.getAssetId(), asset.getAssetTypeID());
         validateAssetType(asset, errorMap, mdmsData.get(AssetConstants.ASSET_TYPE_CODE));
         validateBrandType(asset, errorMap, mdmsData.get(AssetConstants.BRAND_CODE));
         validateWarranty(asset, errorMap, mdmsData.get(AssetConstants.WARRANTY_DURATION));
@@ -60,6 +68,7 @@ public class AssetValidator {
     }
 
     private void validateAssetDetails(Asset asset, Map<String, String> errorMap) {
+        log.debug("Validating asset details for assetTypeID={}", asset.getAssetTypeID());
         if(asset.getAssetTypeID().equalsIgnoreCase("INVERTOR"))
             validateInverterDetails(AssetConverterUtil.convertMapToInverterDetails(asset.getAssetDetails()), asset.getSystem(), errorMap);
         else if(asset.getAssetTypeID().equalsIgnoreCase("BATTERY"))
@@ -69,6 +78,7 @@ public class AssetValidator {
     }
 
     public static void validateInverterDetails(InverterDetails inverterDetails, String systemType, Map<String, String> errorMaps) {
+        log.debug("Validating inverter details | systemType={} details={}", systemType, inverterDetails);
         if (inverterDetails == null) {
             errorMaps.put(ErrorConstants.ASSET_INVERTER_DETAILS_EMPTY_CODE, ErrorConstants.ASSET_INVERTER_DETAILS_EMPTY_MSG);
             return;
@@ -84,6 +94,7 @@ public class AssetValidator {
     }
 
     private static void validateDCSystem(InverterDetails inverterDetails, Map<String, String> errorMaps) {
+        log.debug("AssetValidator::ValidatingDCsystem");
         if (inverterDetails.getChargeControllerCurrent() == null) {
             errorMaps.put(ErrorConstants.ASSET_INVERTER_CHARGE_CONTROLLER_CURRENT_VALIDATION_CODE,
                     ErrorConstants.ASSET_INVERTER_CHARGE_CONTROLLER_CURRENT_VALIDATION_MSG);
@@ -111,6 +122,7 @@ public class AssetValidator {
     }
 
     private static void validateACOffGridSystem(InverterDetails inverterDetails, Map<String, String> errorMaps) {
+        log.debug("AssetValidator::ValidatingACOffGridsystem");
         if (inverterDetails.getInverterCapacity() == null) {
             errorMaps.put(ErrorConstants.ASSET_INVERTER_CAPACITY_REQUIRED_CODE,
                     ErrorConstants.ASSET_INVERTER_CAPACITY_REQUIRED_MSG);
@@ -144,6 +156,7 @@ public class AssetValidator {
     }
 
     public static void validateBatteryDetails(BatteryDetails batteryDetails, String systemType, Map<String, String> errorMap) {
+        log.info("AssetValidator::ValidatingBatteryDetails");
         if (batteryDetails == null) {
             errorMap.put(ErrorConstants.ASSET_BATTERY_DETAILS_NULL_CODE, ErrorConstants.ASSET_BATTERY_DETAILS_NULL_MSG);
             return;
@@ -161,6 +174,7 @@ public class AssetValidator {
     }
 
     private static void validateCommonBatteryDetails(BatteryDetails batteryDetails, Map<String, String> errorMap) {
+        log.info("AssetValidator::ValidatingCommonBatteryDetails");
         if (batteryDetails.getTotalCapacity() == null) {
             errorMap.put(ErrorConstants.ASSET_BATTERY_TOTAL_CAPACITY_REQUIRED_CODE,
                     ErrorConstants.ASSET_BATTERY_TOTAL_CAPACITY_REQUIRED_MSG);
@@ -192,6 +206,7 @@ public class AssetValidator {
 
     private static void validateDCSystemBattery(BatteryDetails batteryDetails, Map<String, String> errorMap) {
         // Validate Battery Voltage for DC system
+        log.info("AssetValidator::ValidatingDCSystemBattery");
         if (batteryDetails.getBatteryVoltage() == null) {
             errorMap.put(ErrorConstants.ASSET_BATTERY_VOLTAGE_REQUIRED_DC_CODE,
                     ErrorConstants.ASSET_BATTERY_VOLTAGE_REQUIRED_DC_MSG);
@@ -212,6 +227,7 @@ public class AssetValidator {
 
     private static void validateACOffGridSystemBattery(BatteryDetails batteryDetails, Map<String, String> errorMap) {
         // Validate Battery Voltage for AC Off Grid system
+        log.info("AssetValidator::ValidatingACOffGridSystemBattery");
         if (batteryDetails.getBatteryVoltage() == null) {
             errorMap.put(ErrorConstants.ASSET_BATTERY_VOLTAGE_REQUIRED_AC_CODE,
                     ErrorConstants.ASSET_BATTERY_VOLTAGE_REQUIRED_AC_MSG);
@@ -232,6 +248,7 @@ public class AssetValidator {
 
 
     public static void validatePanelDetails(PanelDetails panelDetails, String systemType, Map<String, String> errorMap) {
+        log.info("AssetValidator::ValidatingPanelDetails");
         if (panelDetails == null)
             errorMap.put(ErrorConstants.ASSET_PANEL_DETAILS_NULL_CODE, ErrorConstants.ASSET_PANEL_DETAILS_NULL_MSG);
 
@@ -254,6 +271,7 @@ public class AssetValidator {
     }
 
     private void validateSystem(Asset asset, Map<String, String> errorMap, Object mdmsSystemData) {
+        log.info("AssetValidator::ValidatingSystem");
         if (mdmsSystemData == null || !(mdmsSystemData instanceof List) || ((List<?>) mdmsSystemData).isEmpty()) {
             errorMap.put(ErrorConstants.ASSET_SYSTEM_MDMS_DATA_CODE, ErrorConstants.ASSET_SYSTEM_MDMS_DATA_MSG);
             return;
@@ -273,6 +291,7 @@ public class AssetValidator {
     }
 
     private void validateWarranty(Asset asset, Map<String, String> errorMap, Object mdmsWarrantyDurationData) {
+        log.info("AssetValidator::ValidatingWarranty");
         if (mdmsWarrantyDurationData == null || !(mdmsWarrantyDurationData instanceof List) || ((List<?>) mdmsWarrantyDurationData).isEmpty()) {
 //            errorMap.put(ErrorConstants.ASSET_WARRANTY_DURATION_MDMS_DATA_CODE, ErrorConstants.ASSET_WARRANTY_DURATION_MDMS_DATA_MSG);
             return;
@@ -300,6 +319,7 @@ public class AssetValidator {
     }
 
     private void validateBrandType(Asset assetRequest, Map<String, String> errorMap, Object mdmsBrandTypeData) {
+        log.info("AssetValidator::ValidatingBrandType");
         if (mdmsBrandTypeData == null || !(mdmsBrandTypeData instanceof List) || ((List<?>) mdmsBrandTypeData).isEmpty()) {
             errorMap.put(ErrorConstants.ASSET_BRAND_MDMS_DATA_CODE, ErrorConstants.ASSET_BRAND_MDMS_DATA_MSG);
             return;
@@ -328,6 +348,7 @@ public class AssetValidator {
     }
 
     private void validateAssetType(Asset assetRequest, Map<String, String> errorMap, Object mdmsAssetTypeData) {
+        log.info("AssetValidator::ValidatingAssetType");
         if (mdmsAssetTypeData == null || !(mdmsAssetTypeData instanceof List) || ((List<?>) mdmsAssetTypeData).isEmpty()) {
             errorMap.put(ErrorConstants.ASSET_TYPE_MDMS_DATA_CODE, ErrorConstants.ASSET_TYPE_MDMS_DATA_MSG);
             return;
@@ -351,18 +372,21 @@ public class AssetValidator {
     }
 
     private void validateExistingDuplicates(Asset asset, Map<String, String> errorMap) {
+        log.debug("Checking for duplicate asset | assetId={} tenantId={}", asset.getAssetId(), asset.getTenantId());
         List<Asset> assets = assetService.searchAssets(asset,1,0);
         if(!assets.isEmpty())
             errorMap.put(ErrorConstants.ASSET_DUPLICATE_VALIDATION_CODE, ErrorConstants.ASSET_DUPLICATE_VALIDATION_MSG);
     }
 
     private void validateFacilityId(Asset asset, Map<String,String> errorMap){
+        log.debug("Validating facility for assetId={} facilityId={}", asset.getAssetId(), asset.getFacilityID());
         List<Object> facilities = facilityUtil.searchFacility(asset.getTenantId(), asset.getFacilityID());
         if(facilities.isEmpty())
             errorMap.put(ErrorConstants.ASSET_FACILITY_ID_VALIDATION_CODE, ErrorConstants.ASSET_FACILITY_ID_VALIDATION_MSG);
     }
 
     public void validateAsset(String assetID, AssetCreateRequest body) {
+        log.info("AssetValidator::validateAsset called | pathAssetId={} requestAssetId={}", assetID, body.getAssetDetail().getAsset().getAssetId());
         Map<String, String> errorMap = new HashMap<>();
         Asset asset = body.getAssetDetail().getAsset();
         // Check if assetID matches the asset in the request
@@ -378,5 +402,6 @@ public class AssetValidator {
         if (!errorMap.isEmpty()) {
             throw new CustomException(errorMap);
         }
+        log.info("AssetValidator::validateAsset completed successfully | assetId={}", assetID);
     }
 }

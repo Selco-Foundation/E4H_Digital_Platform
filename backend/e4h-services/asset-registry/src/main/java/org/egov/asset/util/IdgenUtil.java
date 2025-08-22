@@ -5,6 +5,7 @@ import digit.models.coremodels.IdGenerationRequest;
 import digit.models.coremodels.IdGenerationResponse;
 import digit.models.coremodels.IdRequest;
 import digit.models.coremodels.IdResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.egov.asset.config.Configuration;
 import org.egov.asset.repository.ServiceRequestRepository;
 import org.egov.common.contract.request.RequestInfo;
@@ -21,6 +22,7 @@ import static org.egov.asset.config.ServiceConstants.IDGEN_ERROR;
 import static org.egov.asset.config.ServiceConstants.NO_IDS_FOUND_ERROR;
 
 @Component
+@Slf4j
 public class IdgenUtil {
 
     private final ObjectMapper mapper;
@@ -35,6 +37,7 @@ public class IdgenUtil {
     }
 
     public List<String> getIdList(RequestInfo requestInfo, String tenantId, String idName, String idformat, Integer count) {
+        log.info("IdgenUtil::getIdList called | tenantId={} idName={} idformat={} count={}", tenantId, idName, idformat, count);
         List<IdRequest> reqList = new ArrayList<>();
         for (int i = 0; i < count; i++) {
             reqList.add(IdRequest.builder().idName(idName).format(idformat).tenantId(tenantId).build());

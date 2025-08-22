@@ -1,5 +1,6 @@
 package org.egov.asset.util;
 
+import lombok.extern.slf4j.Slf4j;
 import org.egov.asset.web.models.BatteryDetails;
 import org.egov.asset.web.models.InverterDetails;
 import org.egov.asset.web.models.PanelDetails;
@@ -9,9 +10,11 @@ import java.math.BigDecimal;
 import java.util.Map;
 
 @Component
+@Slf4j
 public class AssetConverterUtil {
 
     public static InverterDetails convertMapToInverterDetails(Map<String, Object> map) {
+        log.debug("AssetConverterUtil::convertMapToInverterDetails called | keys={}", map != null ? map.keySet() : "null");
         if (map == null) {
             return null;
         }
@@ -32,11 +35,14 @@ public class AssetConverterUtil {
         inverterDetails.setChargeControllerCurrent(getDoubleValue(map.get("chargeControllerCurrent")));
         inverterDetails.setChargeControllerVoltage(getDoubleValue(map.get("chargeControllerVoltage")));
         inverterDetails.setTotalCapacity(getDoubleValue(map.get("totalCapacity")));
-
+        log.info("convertMapToInverterDetails | created InverterDetails with inverterCapacity={} capacityUOM={}",
+                inverterDetails.getInverterCapacity(), inverterDetails.getTotalCapacityUOM());
         return inverterDetails;
     }
 
     public static BatteryDetails convertMapToBatteryDetails(Map<String, Object> map) {
+        log.debug("AssetConverterUtil::convertMapToBatteryDetails called | keys={}",
+                map != null ? map.keySet() : "null");
         if (map == null) {
             return null;
         }
@@ -51,11 +57,14 @@ public class AssetConverterUtil {
         batteryDetails.setVoltageUnit((String) map.get("voltageUnit"));
         batteryDetails.setCapacityUnit((String) map.get("capacityUnit"));
         batteryDetails.setBatteryType((String) map.get("batteryType"));
-
+        log.info("convertMapToBatteryDetails | created BatteryDetails with totalCapacity={} capacityUnit={}",
+                batteryDetails.getTotalCapacity(), batteryDetails.getCapacityUnit());
         return batteryDetails;
     }
 
     public static PanelDetails convertMapToPanelDetails(Map<String, Object> map) {
+        log.debug("AssetConverterUtil::convertMapToPanelDetails called | keys={}",
+                map != null ? map.keySet() : "null");
         if (map == null) {
             return null;
         }
@@ -66,7 +75,8 @@ public class AssetConverterUtil {
 
         panelDetails.setTotalCapacityUnit((String) map.get("totalCapacityUnit"));
         panelDetails.setCapacityUnit((String) map.get("capacityUnit"));
-
+        log.info("convertMapToPanelDetails | created PanelDetails with totalCapacity={} panelCapacity={}",
+                panelDetails.getTotalCapacity(), panelDetails.getPanelCapacity());
         return panelDetails;
     }
 
