@@ -22,8 +22,7 @@ import static org.egov.im.util.IMConstants.*;
 public class SLAService {
 
     public long computeTotalSla(String currentState, List<State> states) {
-        log.info("SLAService::computeTotalSla called | currentState={} statesCount={}",
-                currentState, (states != null ? states.size() : 0));
+        log.info("SLAService::computeTotalSla called | currentState={}", currentState);
         Map<String, Long> stateToSlaMap = new HashMap<>();
         for (State state : states) {
             String key = state.getApplicationStatus();
