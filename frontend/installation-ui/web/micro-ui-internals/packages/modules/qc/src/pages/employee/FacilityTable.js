@@ -207,25 +207,25 @@ const FacilityTable = ({ t }) => {
     {
       Header: t("CS_BLOCK"),
       Cell: ({ row }) => {
-        return GetCell(row.original["block"] !== "-" ? t(`BLOCK_${row.original["block"].toUpperCase()}`) : "-");
+        return GetCell(row.original["block"] ? t(`BLOCK_${row.original["block"].toUpperCase()}`) : "-");
       },
     },
     {
       Header: t("CS_DISTRICT"),
       Cell: ({ row }) => {
-        return GetCell(row.original["district"] !== "-" ? t(`DISTRICT_${row.original["district"].toUpperCase()}`) : "-");
+        return GetCell(row.original["district"] ? t(`DISTRICT_${row.original["district"].toUpperCase()}`) : "-");
       },
     },
     {
       Header: t("CS_ASSIGNED_TO"),
       Cell: ({ row }) => {
-        return GetCell(`${row.original["assigned"]}`);
+        return GetCell(row.original["assigned"] ? `${row.original["assigned"]}` : "-");
       },
     },
     {
       Header: t("CS_STATUS"),
       Cell: ({ row }) => {
-        return GetCell(row.original["status"] !== "-" ? t(`CS_${row.original["status"]}`) : "-");
+        return GetCell(row.original["status"] ? t(`CS_${row.original["status"]}`) : "-");
       },
     },
   ];
