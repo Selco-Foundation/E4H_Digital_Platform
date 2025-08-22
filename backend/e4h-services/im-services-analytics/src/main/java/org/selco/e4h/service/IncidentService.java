@@ -66,6 +66,7 @@ public class IncidentService {
                             Map<String, Object> data = (Map<String, Object>)source.get("Data");
                             String block = (String)data.get("block");
                             String code = (String)data.get("code");
+                            String state = (String)data.get("state");
                             String district = (String)data.get("district");
                             boolean isLive = (boolean)data.get("isLive");
                             String name = (String)data.get("name");
@@ -84,6 +85,7 @@ public class IncidentService {
                             incidentStatusAgregation.setTenantId(tenantId);
                             incidentStatusAgregation.setTenantIdLocalized(tenantIdLocalized);
                             incidentStatusAgregation.setGeoPoint(geoPoint);
+                            incidentStatusAgregation.setState(state);
 
                             log.info("Tickets sent to kafka {}", incidentStatusAgregation);
                             producerService.sendIncident(config.getUpdateTopicIndexer(), incidentStatusAgregation);
