@@ -1,4 +1,5 @@
 import { useQuery, useQueryClient } from "react-query";
+import { QCService } from "../services/QC";
 
 const getAssetName = (assetTypeID) => {
   switch(assetTypeID) {
@@ -26,7 +27,7 @@ const fetchFileStoreDocuments = async (documents) => {
   const fetchedDocuments = [];
   for (const document of documents) {
     if (document?.documentType?.toUpperCase() === "ASSET") {
-      const fileStoreResponse = await Digit.QCService.fetchImageFromFileStore(document?.fileStore);
+      const fileStoreResponse = await QCService.fetchImageFromFileStore(document?.fileStore);
       fetchedDocuments.push(Digit.Utils.getFileUrl(fileStoreResponse[document?.fileStore]))
     }
   }
@@ -60,6 +61,7 @@ const formatData = async (data) => {
       })
     } else {
       dataMap.set(assetType, {
+        assetType,
         assetName: getAssetName(assetType),
         count: 1,
         specifications: {
@@ -93,23 +95,23 @@ const formatData = async (data) => {
 }
 
 const fetchFacilityDetails = async (facilityId) => {
-  const facilityDetailsResponse = await Digit.QCService.fetchAssets(facilityId);
+  const facilityDetailsResponse = await QCService.fetchAssets(facilityId);
   return await formatData(facilityDetailsResponse);
 }
 
-const useFacilityDetails = (facilityId) => {
+const useAsset = (facilityId) => {
 
   const facility = facilityId;
   const queryClient = useQueryClient();
   const { isLoading, isError, error, data } = useQuery(
-    ["facilityDetails", facility],
+    ["ASSET", facility],
     () => fetchFacilityDetails(facility)
   );
 
   return {
     isLoading, isError, error, data,
-    revalidate: () => queryClient.invalidateQueries(["facilityDetails", facility])
+    revalidate: () => queryClient.invalidateQueries(["ASSET"])
   }
 }
 
-export default useFacilityDetails;
+export default useAsset;
