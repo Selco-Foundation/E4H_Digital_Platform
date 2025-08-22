@@ -18,6 +18,7 @@ import '../blocs/asset_type/asset_type.dart';
 import '../blocs/cache_asset/cache_asset.dart';
 import '../blocs/cache_completion_report/cache_completion_report.dart';
 import '../blocs/overall_asset_summary/overall_asset_summary.dart';
+import '../blocs/project/project.dart';
 import '../blocs/report_type/report_type.dart';
 import '../blocs/selected_project/selected_project.dart';
 import '../blocs/user_type/user_type.dart';
@@ -304,13 +305,17 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                   progress: (_, __) => () {},
                                   orElse: () => () {
                                         if (isDisabled) return;
-
                                         // Pull in the current projectId
                                         final selState = context
                                             .read<SelectedProjectBloc>()
                                             .state;
                                         selState.whenOrNull(
                                             selected: (project) {
+                                          context.read<ProjectBloc>().add(
+                                                ProjectEvent.addUnSubmitted(
+                                                    project, userType),
+                                              );
+
                                           final summaryState = context
                                               .read<AssetSummaryBloc>()
                                               .state;
