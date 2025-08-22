@@ -1,10 +1,9 @@
 import React, { useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { Route, useRouteMatch } from "react-router-dom";
+import { Route, Switch, useRouteMatch } from "react-router-dom";
 import FieldPlanTable from "./FieldPlanTable";
 import FacilityTable from "./FacilityTable";
 import FacilityDetails from "./FacilityDetails";
-import { Employee } from "../../constants/Routes";
 import { BreadCrumb } from "@egovernments/digit-ui-react-components";
 import { useSelector } from "react-redux";
 
@@ -43,52 +42,20 @@ const QCApp = () => {
 
   return (
     <div className="ground-container">
-      <Route
-        path={match.url + Employee.FieldPlan}
-        component={() => <BreadCrumb crumbs={[breadcrumbConfig.home, breadcrumbConfig.inbox]} />}
-        exact={true}
-      />
-      <Route
-        path={match.url + Employee.Facility}
-        component={() => <BreadCrumb crumbs={[breadcrumbConfig.home, breadcrumbConfig.inbox, breadcrumbConfig.facility]} />}
-        exact={true}
-      />
-      <Route
-        path={match.url + Employee.FacilityDetails}
-        component={() => <BreadCrumb crumbs={[breadcrumbConfig.home, breadcrumbConfig.inbox, breadcrumbConfig.facility, breadcrumbConfig.facilityDetails]}></BreadCrumb>}
-        exact={true}
-      />
-      <Route path={`${path}/field-plan`} exact={true}>
-        <FieldPlanTable
-          t={t}
-          getCellProps={(cellInfo) => {
-            return {
-              style: {
-                maxWidth: "100%",
-                padding: "17.24px 18px",
-                fontSize: "15px",
-              },
-            };
-          }}
-        />
-      </Route>
-      <Route path={`${path}/field-plan/:planId/facilities`} exact={true}>
-        <FacilityTable
-          t={t}
-          getCellProps={(cellInfo) => {
-            return {
-              style: {
-                maxWidth: "100%",
-                padding: "17.24px 18px",
-                fontSize: "15px",
-              },
-            };
-          }}
-        />
-      </Route>
-      <Route path={`${path}/field-plan/:planId/facilities/:facilityId`} exact={true}>
-        <FacilityDetails t={t}/>
-      </Route>
+      <Switch>
+        <Route path={`${path}/field-plan`} exact={true}>
+          <BreadCrumb crumbs={[breadcrumbConfig.home, breadcrumbConfig.inbox]} />
+          <FieldPlanTable t={t} />
+        </Route>
+        <Route path={`${path}/field-plan/:planId/facilities`} exact={true}>
+          <BreadCrumb crumbs={[breadcrumbConfig.home, breadcrumbConfig.inbox, breadcrumbConfig.facility]} />
+          <FacilityTable t={t} />
+        </Route>
+        <Route path={`${path}/field-plan/:planId/facilities/:facilityId`} exact={true}>
+          <BreadCrumb crumbs={[breadcrumbConfig.home, breadcrumbConfig.inbox, breadcrumbConfig.facility, breadcrumbConfig.facilityDetails]} />
+          <FacilityDetails t={t}/>
+        </Route>
+      </Switch>
     </div>
   );
 };
