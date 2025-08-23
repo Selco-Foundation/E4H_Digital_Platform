@@ -552,7 +552,7 @@ class _HomePageState extends State<HomePage> {
                     ),
                     const SizedBox(height: spacer6),
                     DigitButton(
-                      label: 'Show Dynamic Form',
+                      label: 'BOM (Solar System)',
                       type: DigitButtonType.primary,
                       onPressed: () {
                         // context.router.push(
@@ -564,7 +564,7 @@ class _HomePageState extends State<HomePage> {
 
                         context.router.push(
                           DynamicFormsRoute(
-                              pageName: 'WeatherDetails',
+                              pageName: 'BOMSolarSystemForm',
                               schemaName: 'AssetForm'),
                         );
                       },

@@ -1,0 +1,255 @@
+{
+  "ResponseInfo": {
+    "apiId": null,
+    "ver": null,
+    "ts": null,
+    "resMsgId": "uief87324",
+    "msgId": null,
+    "status": "successful"
+  },
+  "mdms": [
+    {
+      "id": "42479a72-bd0b-4edb-bc86-6ddb91fe39c6",
+      "tenantId": "in",
+      "schemaCode": "SELCO.FormConfig",
+      "uniqueIdentifier": "AssetForm.SELCO",
+      "data": {
+        "name": "AssetForm",
+        "order": 1,
+        "summary": false,
+        "version": 1,
+        "disabled": false,
+        "isSelected": true,
+        "project": "SELCO",
+        "pages": [
+          {
+            "page": "BOMSolarSystemForm",
+            "type": "object",
+            "label": "BOM Solar System Form",
+            "order": 1,
+            "description": "",
+            "actionLabel": "Submit",
+            "properties": [
+              {
+                "type": "string",
+                "format": "dropdown",
+                "label": "Module Mounting structure (MMS) – Brand",
+                "order": 1,
+                "fieldName": "mms_brand",
+                "includeInForm": true,
+                "isMultiSelect": false,
+                "hidden": false,
+                "enums": [
+                  { "code": "ENPHASE_ENERGY", "name": "Enphase Energy" },
+                  { "code": "SOLAR_EDGE", "name": "SolarEdge" },
+                  { "code": "PYLON_TECH", "name": "Pylontech" },
+                  { "code": "SUNGROW", "name": "Sungrow" },
+                  { "code": "GROWATT", "name": "Growatt" }
+                ]
+              },
+              {
+                "type": "integer",
+                "format": "text",
+                "label": "Module Mounting structure (MMS) – Qty",
+                "order": 2,
+                "fieldName": "mms_qty",
+                "includeInForm": true,
+                "hidden": false,
+                "validations": [
+                  { "type": "min", "value": "0", "message": "Cannot be less than 0" }
+                ]
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "Module Mounting structure (MMS) – UOM",
+                "order": 3,
+                "fieldName": "mms_uom",
+                "includeInForm": true,
+                "hidden": false,
+                "readOnly": true,
+                "value": "Nos"
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "Module Mounting structure (MMS) – Capacity",
+                "order": 4,
+                "fieldName": "mms_capacity",
+                "includeInForm": true,
+                "hidden": false,
+                "readOnly": true,
+                "value": "NA"
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "Module Mounting structure (MMS) – Capacity UOM",
+                "order": 5,
+                "fieldName": "mms_capacity_uom",
+                "includeInForm": true,
+                "hidden": false,
+                "readOnly": true,
+                "value": "NA"
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "Module Mounting structure (MMS) – Description",
+                "order": 6,
+                "fieldName": "mms_description",
+                "includeInForm": true,
+                "hidden": false,
+                "value": "NA"
+              },
+              {
+                "type": "string",
+                "format": "dropdown",
+                "label": "Changeover switch / Bypass switch - 1 – Brand",
+                "order": 7,
+                "fieldName": "changeover1_brand",
+                "includeInForm": true,
+                "isMultiSelect": false,
+                "hidden": false,
+                "enums": [
+                  { "code": "ENPHASE_ENERGY", "name": "Enphase Energy" },
+                  { "code": "SOLAR_EDGE", "name": "SolarEdge" },
+                  { "code": "PYLON_TECH", "name": "Pylontech" },
+                  { "code": "SUNGROW", "name": "Sungrow" },
+                  { "code": "GROWATT", "name": "Growatt" }
+                ]
+              },
+              {
+                "type": "integer",
+                "format": "text",
+                "label": "Changeover switch / Bypass switch - 1 – Qty",
+                "order": 8,
+                "fieldName": "changeover1_qty",
+                "includeInForm": true,
+                "hidden": false,
+                "validations": [
+                  { "type": "min", "value": "0", "message": "Cannot be less than 0" }
+                ]
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "Changeover switch / Bypass switch - 1 – UOM",
+                "order": 9,
+                "fieldName": "changeover1_uom",
+                "includeInForm": true,
+                "hidden": false,
+                "readOnly": true,
+                "value": "Nos"
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "Changeover switch / Bypass switch - 1 – Capacity",
+                "order": 10,
+                "fieldName": "changeover1_capacity",
+                "includeInForm": true,
+                "hidden": false,
+                "value": ""
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "Changeover switch / Bypass switch - 1 – Capacity UOM",
+                "order": 11,
+                "fieldName": "changeover1_capacity_uom",
+                "includeInForm": true,
+                "hidden": false,
+                "readOnly": true,
+                "value": "A"
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "Changeover switch / Bypass switch - 1 – Description",
+                "order": 12,
+                "fieldName": "changeover1_description",
+                "includeInForm": true,
+                "hidden": false,
+                "value": "NA"
+              },
+              {
+                "type": "string",
+                "format": "dropdown",
+                "label": "Changeover switch / Bypass switch - 2 – Brand",
+                "order": 13,
+                "fieldName": "changeover2_brand",
+                "includeInForm": true,
+                "isMultiSelect": false,
+                "hidden": false,
+                "enums": [
+                  { "code": "ENPHASE_ENERGY", "name": "Enphase Energy" },
+                  { "code": "SOLAR_EDGE", "name": "SolarEdge" },
+                  { "code": "PYLON_TECH", "name": "Pylontech" },
+                  { "code": "SUNGROW", "name": "Sungrow" },
+                  { "code": "GROWATT", "name": "Growatt" }
+                ]
+              },
+              {
+                "type": "integer",
+                "format": "text",
+                "label": "Changeover switch / Bypass switch - 2 – Qty",
+                "order": 14,
+                "fieldName": "changeover2_qty",
+                "includeInForm": true,
+                "hidden": false,
+                "validations": [
+                  { "type": "min", "value": "0", "message": "Cannot be less than 0" }
+                ]
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "Changeover switch / Bypass switch - 2 – UOM",
+                "order": 15,
+                "fieldName": "changeover2_uom",
+                "includeInForm": true,
+                "hidden": false,
+                "readOnly": true,
+                "value": "Nos"
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "Changeover switch / Bypass switch - 2 – Capacity",
+                "order": 16,
+                "fieldName": "changeover2_capacity",
+                "includeInForm": true,
+                "hidden": false,
+                "value": ""
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "Changeover switch / Bypass switch - 2 – Capacity UOM",
+                "order": 17,
+                "fieldName": "changeover2_capacity_uom",
+                "includeInForm": true,
+                "hidden": false,
+                "readOnly": true,
+                "value": "A"
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "Changeover switch / Bypass switch - 2 – Description",
+                "order": 18,
+                "fieldName": "changeover2_description",
+                "includeInForm": true,
+                "hidden": false,
+                "value": "NA"
+              }
+
+            ]
+          }
+        ]
+      },
+      "isActive": true
+    }
+  ]
+}
