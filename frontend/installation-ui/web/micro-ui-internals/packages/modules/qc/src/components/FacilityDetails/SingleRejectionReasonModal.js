@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
+import { Dropdown, TextArea } from "@egovernments/digit-ui-react-components";
 
 const reasonOptions = [
-  "Serial Number Incorrect",
-  "Model Number Incorrect",
-  "Image Not Clear",
-  "Incorrect Brand"
+  { label: "Serial Number Incorrect", code: "Serial Number Incorrect" },
+  { label: "Model Number Incorrect", code: "Model Number Incorrect" },
+  { label: "Image Not Clear", code: "Image Not Clear" },
+  { label: "Incorrect Brand", code: "Incorrect Brand" }
 ];
 
-const SingleRejectionReasonModal = ({ name, onClose, onUpdate, onDelete, existingReason }) => {
+const SingleRejectionReasonModal = ({ t, name, onClose, onUpdate, onDelete, existingReason }) => {
 
   const [reason, setReason] = useState(existingReason);
 
@@ -29,7 +30,14 @@ const SingleRejectionReasonModal = ({ name, onClose, onUpdate, onDelete, existin
     <div style={styles.backdrop}>
       <div style={styles.modal}>
         <div style={styles.header}>
-          <h2 style={{ margin: 0 }}>Rejection Reason</h2>
+          <h2 style={{
+            margin: 0,
+            fontSize: "24px",
+            color: "#0B4B66",
+            fontWeight: "bold",
+          }}>
+            {t("QC_INSTALLATION_REJECTION_REASON")}
+          </h2>
           <button onClick={onClose} style={styles.closeBtn}>✕</button>
         </div>
           <div key={reason.id} style={styles.reasonBlock}>
@@ -37,21 +45,18 @@ const SingleRejectionReasonModal = ({ name, onClose, onUpdate, onDelete, existin
               <strong>{name}</strong>
               <button onClick={handleDeletion} style={styles.trashBtn}>🗑</button>
             </div>
-            <select
-              value={reason.reason}
-              onChange={(e) => updateReason(reason.id, 'reason', e.target.value)}
-              style={styles.select}
-            >
-              <option value="">Select a reason</option>
-              {reasonOptions.map((opt, i) => (
-                <option key={i} value={opt}>{opt}</option>
-              ))}
-            </select>
-            <textarea
-              placeholder="Additional details for selected reason..."
-              value={reason.comment}
+            <Dropdown
+              t={t}
+              option={reasonOptions}
+              selected={reasonOptions?.find((opt) => opt.code === reason.reason)}
+              optionKey={"label"}
+              select={(e) => updateReason(reason.id, 'reason', e.code)}
+            />
+            <TextArea
+              name={"comment"}
               onChange={(e) => updateReason(reason.id, 'comment', e.target.value)}
-              style={styles.textarea}
+              value={reason.comment}
+              placeholder={t("ES_ADDITIONAL_DETAILS_PLACEHOLDER")}
             />
           </div>
         <div style={styles.footer}>

@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
+import { AddIcon, Dropdown, TextArea, TextInput } from "@egovernments/digit-ui-react-components";
 
 const reasonOptions = [
-  "Serial Number Incorrect",
-  "Model Number Incorrect",
-  "Image Not Clear",
-  "Incorrect Brand"
+  { label: "Serial Number Incorrect", code: "Serial Number Incorrect" },
+  { label: "Model Number Incorrect", code: "Model Number Incorrect" },
+  { label: "Image Not Clear", code: "Image Not Clear" },
+  { label: "Incorrect Brand", code: "Incorrect Brand" }
 ];
 
-const RejectionReasonModal = ({ onClose, onSave }) => {
+const RejectionReasonModal = ({ t, onClose, onSave }) => {
 
   const [reasons, setReasons] = useState([{ id: Date.now(), reason: "", comment: "" }]);
 
@@ -32,7 +33,14 @@ const RejectionReasonModal = ({ onClose, onSave }) => {
     <div style={styles.backdrop}>
       <div style={styles.modal}>
         <div style={styles.header}>
-          <h2 style={{ margin: 0 }}>Add Rejection Reason</h2>
+          <h2 style={{
+            margin: 0,
+            fontSize: "24px",
+            color: "#0B4B66",
+            fontWeight: "bold",
+          }}>
+            {t("CS_ACTION_ADD_REJECTION_REASON")}
+          </h2>
           <button onClick={onClose} style={styles.closeBtn}>✕</button>
         </div>
 
@@ -40,28 +48,53 @@ const RejectionReasonModal = ({ onClose, onSave }) => {
           <div key={reason.id} style={styles.reasonBlock}>
             <div style={styles.reasonHeader}>
               <strong>Reason {index + 1}</strong>
-              <button onClick={() => deleteReason(reason.id)} style={styles.trashBtn}>🗑</button>
             </div>
-            <select
-              value={reason.reason}
-              onChange={(e) => updateReason(reason.id, 'reason', e.target.value)}
-              style={styles.select}
-            >
-              <option value="">Select a reason</option>
-              {reasonOptions.map((opt, i) => (
-                <option key={i} value={opt}>{opt}</option>
-              ))}
-            </select>
-            <textarea
-              placeholder="Additional details for selected reason..."
-              value={reason.comment}
+            <Dropdown
+              t={t}
+              option={reasonOptions}
+              selected={reasonOptions?.find((opt) => opt.code === reason.reason)}
+              optionKey={"label"}
+              select={(e) => updateReason(reason.id, 'reason', e.code)}
+            />
+            <TextArea
+              name={"comment"}
               onChange={(e) => updateReason(reason.id, 'comment', e.target.value)}
-              style={styles?.textarea}
+              value={reason.comment}
+              placeholder={t("ES_ADDITIONAL_DETAILS_PLACEHOLDER")}
             />
           </div>
         ))}
 
-        <button onClick={addReason} style={styles.addBtn}>➕ Add Reason</button>
+        <button
+          onClick={addReason}
+          style={styles.addBtn}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <span
+              style={{
+                width: "25px",
+                height: "25px",
+                borderRadius: "5px",
+                background: "#C1440E",
+                color: "white",
+                fontSize: "20px",
+                fontWeight: "bold",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              +
+            </span>
+            <span style={{
+              fontSize: "16px",
+              fontWeight: "bold",
+            }}>
+              {t("CS_ACTION_ADD_REASON")}
+            </span>
+          </div>
+        </button>
 
         <div style={styles.footer}>
           <button onClick={onClose} style={styles.cancelBtn}>Cancel</button>
@@ -105,8 +138,8 @@ const styles = {
   },
   addBtn: {
     display: 'flex', alignItems: 'center', justifyContent: 'center',
-    backgroundColor: '#C1440E', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: 4,
-    cursor: 'pointer', fontSize: 14, marginBottom: 12
+    backgroundColor: 'white', color: '#C1440E', border: 'none', padding: '8px 12px', borderRadius: 4,
+    cursor: 'pointer', fontSize: 14, marginBottom: 12, marginRight: "auto", marginLeft: "auto"
   },
   footer: {
     display: 'flex', justifyContent: 'space-between'

@@ -175,7 +175,7 @@ const FacilityTable = ({ t }) => {
         </div>
       ),
       Cell: ({ row }) => {
-        return row.original["status"] === t("SUBMITTED_BY_SUPERVISOR") ? (
+        return row.original["status"] === "SUBMITTED_BY_SUPERVISOR" ? (
           <div style={{ marginTop: "-1.2em", marginBottom: "-0.8em", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <CheckBox
               checked={selectedFacilities.some((facilityId) => facilityId === row.original["id"])}
@@ -207,25 +207,25 @@ const FacilityTable = ({ t }) => {
     {
       Header: t("CS_BLOCK"),
       Cell: ({ row }) => {
-        return GetCell(row.original["block"] !== "-" ? t(`BLOCK_${row.original["block"].toUpperCase()}`) : "-");
+        return GetCell(row.original["block"] ? t(`BLOCK_${row.original["block"].toUpperCase()}`) : "-");
       },
     },
     {
       Header: t("CS_DISTRICT"),
       Cell: ({ row }) => {
-        return GetCell(row.original["district"] !== "-" ? t(`DISTRICT_${row.original["district"].toUpperCase()}`) : "-");
+        return GetCell(row.original["district"] ? t(`DISTRICT_${row.original["district"].toUpperCase()}`) : "-");
       },
     },
     {
       Header: t("CS_ASSIGNED_TO"),
       Cell: ({ row }) => {
-        return GetCell(`${row.original["assigned"]}`);
+        return GetCell(row.original["assigned"] ? `${row.original["assigned"]}` : "-");
       },
     },
     {
       Header: t("CS_STATUS"),
       Cell: ({ row }) => {
-        return GetCell(row.original["status"] !== "-" ? t(`CS_${row.original["status"]}`) : "-");
+        return GetCell(row.original["status"] ? t(`CS_${row.original["status"]}`) : "-");
       },
     },
   ];
