@@ -14,4 +14,6 @@ public class ServiceConstants {
 	public static final String TENANT_PATH = "$.tenantId";
 	public static final String IS_ACTIVE_PATH = "$.isActive";
 	public static final String CREATED_DATE_PATH = "$.auditDetails.createdDate";
+	public static final String NON_FUNCTIONAL = "NON_FUNCTIONAL";
+	public static final String FUNCTIONAL = "FUNCTIONAL";
 }

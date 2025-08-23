@@ -24,6 +24,8 @@ public class LocalizationService {
     private final IMConfiguration config;
 
     public LocalizationResponse getLocalizationMessages(RequestInfo requestInfo, String stateTenant, String module, String locale, String codes) {
+        log.info("LocalizationService::getLocalizationMessages called | stateTenant={} module={} locale={} codes={}",
+                stateTenant, module, locale, codes);
         String baseUrl = config.getLocalizationHost() + config.getLocalizationContextPath() + config.getLocalizationSearchEndpoint();
 
         StringBuilder urlBuilder = new StringBuilder(baseUrl);
@@ -58,6 +60,9 @@ public class LocalizationService {
         String stateTenant = tenantId.split("\\.")[0];
         String locale = "en_IN";
 
+        log.info("LocalizationService::enrichLocalizedFieldsForIndexing | tenantId={} incidentId={} locale={}",
+                tenantId, incident.getIncidentId(), locale);
+
         String stateCode = "HEADER_TENANT_TENANTS_" + stateTenant.toUpperCase();
         String incidentTypeCode = "SERVICEDEFS." + incident.getIncidentType().toUpperCase();
         String incidentSubTypeCode = "SERVICEDEFS." + incident.getIncidentSubType().toUpperCase();
@@ -70,6 +75,9 @@ public class LocalizationService {
         String tenantCode = "TENANT_TENANTS_" + tenantId.replace(".", "_").toUpperCase();
         String imCodes = String.join(",", incidentTypeCode, incidentSubTypeCode, appStatusCode);
         String commonCodes = tenantCode;
+
+        log.debug("Localization codes prepared | stateCode={} incidentTypeCode={} incidentSubTypeCode={} appStatusCode={} tenantCode={}",
+                stateCode, incidentTypeCode, incidentSubTypeCode, appStatusCode, tenantCode);
 
         LocalizationResponse stateTenantResponse = getLocalizationMessages(requestInfo, stateTenant, "rainmaker-" + stateTenant, locale, stateCode);
         LocalizationResponse imResponse = getLocalizationMessages(requestInfo, stateTenant, "rainmaker-im", locale, imCodes);
@@ -107,6 +115,8 @@ public class LocalizationService {
                 .orElse("");
 
         String imCodes = String.join(",", startingStatusCode, endingStatusCode);
+        log.info("LocalizationService::enrichLocalizedApplicationStatuses | incidentId={} startingStatusCode={} endingStatusCode={}",
+                incident.getIncidentId(), startingStatusCode, endingStatusCode);
 
         LocalizationResponse imResponse = getLocalizationMessages(requestInfo, stateTenant, "rainmaker-im", locale, imCodes);
 

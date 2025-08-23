@@ -31,6 +31,7 @@ public class FacilityUtil {
     }
 
     public List<Object> searchFacility(String tenantId, String facilityId) {
+        log.info("FacilityUtil::searchFacility | tenantId={} facilityId={}", tenantId, facilityId);
         if (tenantId == null || tenantId.isEmpty()) {
             throw new CustomException(ErrorConstants.FACILITY_SEARCH_REQUIRED_PARAMS_CODE, ErrorConstants.FACILITY_SEARCH_REQUIRED_PARAMS_MSG);
         }
@@ -53,6 +54,7 @@ public class FacilityUtil {
 
 
     private String prepareFacilityRequest(String tenantId, String facilityId) {
+        log.info("FacilityUtil::prepareFacilityRequest | tenantId={} facilityId={}", tenantId, facilityId);
         String url = configuration.getFacilityHost() + configuration.getFacilitySearchPath();
         UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(url)
                 .queryParam("tenantId", tenantId);

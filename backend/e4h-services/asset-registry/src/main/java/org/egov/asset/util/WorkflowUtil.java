@@ -2,6 +2,7 @@ package org.egov.asset.util;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import digit.models.coremodels.*;
+import lombok.extern.slf4j.Slf4j;
 import org.egov.asset.config.Configuration;
 import org.egov.asset.repository.ServiceRequestRepository;
 import org.egov.asset.web.models.Workflow;
@@ -18,6 +19,7 @@ import java.util.stream.Collectors;
 import static org.egov.asset.config.ServiceConstants.*;
 
 @Service
+@Slf4j
 public class WorkflowUtil {
 
     @Autowired
@@ -40,6 +42,7 @@ public class WorkflowUtil {
      * @return
      */
     public BusinessService getBusinessService(RequestInfo requestInfo, String tenantId, String businessServiceCode) {
+        log.info("WorkflowUtil::getBusinessService called | tenantId={} businessServiceCode={}", tenantId, businessServiceCode);
         if (requestInfo == null || tenantId == null || businessServiceCode == null) {
             throw new CustomException("INVALID_INPUT", "RequestInfo, tenantId, and businessServiceCode cannot be null");
         }
@@ -48,6 +51,7 @@ public class WorkflowUtil {
         RequestInfoWrapper requestInfoWrapper = RequestInfoWrapper.builder().requestInfo(requestInfo).build();
         Object result;
         try {
+            log.debug("getBusinessService | fetching business service from WF service url={}", url);
             result = repository.fetchResult(url, requestInfoWrapper, String.class);
         } catch (Exception e) {
             throw new CustomException("WF_SERVICE_CALL_FAILED", "Failed to fetch business service: "+ e.getMessage());
@@ -56,6 +60,7 @@ public class WorkflowUtil {
         BusinessServiceResponse response = null;
         try {
             response = mapper.convertValue(result, BusinessServiceResponse.class);
+            log.debug("getBusinessService | response successfully parsed for businessServiceCode={}", businessServiceCode);
         } catch (IllegalArgumentException e) {
             throw new CustomException(PARSING_ERROR, FAILED_TO_PARSE_BUSINESS_SERVICE_SEARCH);
         } catch (Exception e) {
@@ -82,11 +87,14 @@ public class WorkflowUtil {
      */
     public String updateWorkflowStatus(RequestInfo requestInfo, String tenantId,
                                        String businessId, String businessServiceCode, Workflow workflow, String wfModuleName) {
+        log.info("WorkflowUtil::updateWorkflowStatus called | tenantId={} businessId={} action={} wfModuleName={}",
+                tenantId, businessId, workflow != null ? workflow.getAction() : "null", wfModuleName);
         ProcessInstance processInstance = getProcessInstanceForWorkflow(requestInfo, tenantId, businessId,
                 businessServiceCode, workflow, wfModuleName);
         ProcessInstanceRequest workflowRequest = new ProcessInstanceRequest(requestInfo, Collections.singletonList(processInstance));
         State state = callWorkFlow(workflowRequest);
 
+        log.info("updateWorkflowStatus | updated workflow status={} for businessId={}", state.getApplicationStatus(), businessId);
         return state.getApplicationStatus();
     }
 
@@ -98,6 +106,7 @@ public class WorkflowUtil {
      * @return
      */
     private StringBuilder getSearchURLWithParams(String tenantId, String businessService) {
+        log.debug("WorkflowUtil::getSearchURLWithParams | tenantId={} businessService={}", tenantId, businessService);
         StringBuilder url = new StringBuilder(configs.getWfHost());
         url.append(configs.getWfBusinessServiceSearchPath());
         url.append(TENANTID);
@@ -121,6 +130,8 @@ public class WorkflowUtil {
     private ProcessInstance getProcessInstanceForWorkflow(RequestInfo requestInfo, String tenantId,
                                                           String businessId, String businessServiceCode, Workflow workflow, String wfModuleName) {
 
+        log.debug("WorkflowUtil::getProcessInstanceForWorkflow | tenantId={} businessId={} action={}",
+                tenantId, businessId, workflow != null ? workflow.getAction() : "null");
         ProcessInstance processInstance = new ProcessInstance();
         processInstance.setBusinessId(businessId);
         processInstance.setAction(workflow.getAction());
@@ -148,8 +159,11 @@ public class WorkflowUtil {
             });
 
             processInstance.setAssignes(users);
+            log.debug("getProcessInstanceForWorkflow | assignees added count={}", users.size());
         }
 
+        log.info("getProcessInstanceForWorkflow | processInstance created for businessId={} action={}",
+                businessId, workflow.getAction());
         return processInstance;
     }
 
@@ -160,7 +174,7 @@ public class WorkflowUtil {
      * @return
      */
     public Map<String, Workflow> getWorkflow(List<ProcessInstance> processInstances) {
-
+        log.debug("WorkflowUtil::getWorkflow");
         Map<String, Workflow> businessIdToWorkflow = new HashMap<>();
 
         processInstances.forEach(processInstance -> {
@@ -176,10 +190,12 @@ public class WorkflowUtil {
                     .comments(processInstance.getComment())
                     .verificationDocuments(processInstance.getDocuments())
                     .build();
-
+            log.debug("getWorkflow | mapped businessId={} with action={} assigneesCount={}",
+                    processInstance.getBusinessId(), workflow.getAction(), userIds.size());
             businessIdToWorkflow.put(processInstance.getBusinessId(), workflow);
         });
 
+        log.info("getWorkflow | returning workflow map size={}", businessIdToWorkflow.size());
         return businessIdToWorkflow;
     }
 
@@ -194,6 +210,7 @@ public class WorkflowUtil {
         StringBuilder url = new StringBuilder(configs.getWfHost().concat(configs.getWfTransitionPath()));
         Object result;
         try {
+            log.debug("callWorkFlow | invoking WF transition API url={}", url);
             result = repository.fetchResult(url, workflowReq, String.class);
         } catch (Exception e) {
             throw new CustomException();
@@ -201,6 +218,7 @@ public class WorkflowUtil {
 
         try {
             response = mapper.convertValue(result, ProcessInstanceResponse.class);
+            log.debug("callWorkFlow | response parsed successfully");
         } catch (Exception e) {
             throw new CustomException();
         }

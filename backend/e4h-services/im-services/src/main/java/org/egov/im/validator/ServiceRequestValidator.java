@@ -1,6 +1,7 @@
 package org.egov.im.validator;
 
 import com.jayway.jsonpath.JsonPath;
+import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.im.config.IMConfiguration;
 import org.egov.im.repository.IMRepository;
@@ -17,6 +18,7 @@ import java.util.*;
 import static org.egov.im.util.IMConstants.*;
 
 @Component
+@Slf4j
 public class ServiceRequestValidator {
 
 
@@ -40,6 +42,7 @@ public class ServiceRequestValidator {
      * @param mdmsData The master data for im
      */
     public void validateCreate(IncidentRequest request, Object mdmsData){
+        log.info("serviceRequestValidator::Validating incident create request");
         Map<String,String> errorMap = new HashMap<>();
         validateUserData(request,errorMap);
         //validateSource(request.getService().getSource());
@@ -56,7 +59,7 @@ public class ServiceRequestValidator {
      * @param mdmsData The master data for im
      */
     public void validateUpdate(IncidentRequest request, Object mdmsData){
-
+        log.info("serviceRequestValidator::Validating incident update request");
         String id = request.getIncident().getId();
         String tenantId = request.getIncident().getTenantId();
         //validateSource(request.getService().getSource());
@@ -80,7 +83,7 @@ public class ServiceRequestValidator {
      * @param errorMap HashMap to capture any errors
      */
     private void validateUserData(IncidentRequest request,Map<String, String> errorMap){
-
+        log.info("serviceRequestValidator::Validating user data");
         RequestInfo requestInfo = request.getRequestInfo();
         String accountId = request.getIncident().getAccountId();
 
@@ -111,7 +114,7 @@ public class ServiceRequestValidator {
      * @param mdmsData The master data for im
      */
     private void validateMDMS(IncidentRequest request, Object mdmsData){
-
+        log.info("serviceRequestValidator::Validating mdms data");
         String serviceCode = request.getIncident().getIncidentSubType();
         String jsonPath = MDMS_SERVICEDEF_SEARCH.replace("{SERVICEDEF}",serviceCode);
 
@@ -179,7 +182,7 @@ public class ServiceRequestValidator {
      * @param request
      */
     private void validateReOpen(IncidentRequest request){
-
+        log.info("serviceRequestValidator::Validating incident reopen request");
         if(!request.getWorkflow().getAction().equalsIgnoreCase(IM_WF_REOPEN))
             return;
 
@@ -204,7 +207,7 @@ public class ServiceRequestValidator {
      * @param criteria
      */
     public void validateSearch(RequestInfo requestInfo, RequestSearchCriteria criteria){
-
+        log.info("serviceRequestValidator::Validating incident search criteria");
         /*
         * Checks if tenatId is provided with the search params
         * */
@@ -225,7 +228,7 @@ public class ServiceRequestValidator {
      * @param criteria
      */
     private void validateSearchParam(RequestInfo requestInfo, RequestSearchCriteria criteria){
-
+        log.info("serviceRequestValidator::Validating incident search param");
         if(requestInfo.getUserInfo().getType().equalsIgnoreCase("EMPLOYEE" ) && criteria.isEmpty())
             throw new CustomException("INVALID_SEARCH","Search without params is not allowed");
 
@@ -276,6 +279,7 @@ public class ServiceRequestValidator {
 
 
     public void validatePlainSearch(RequestSearchCriteria criteria) {
+        log.info("serviceRequestValidator::Validating incident plain search criteria");
         if(CollectionUtils.isEmpty(criteria.getTenantIds())){
             throw new CustomException("TENANT_ID_LIST_EMPTY", "Tenant ids not provided for searching.");
         }
