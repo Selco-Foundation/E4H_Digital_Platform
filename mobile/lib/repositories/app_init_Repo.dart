@@ -449,48 +449,6 @@ class AppInitRepo {
     }
   }
 
-  Future<List<Map<String, dynamic>>> searchFormConfigsRaw2(
-      MdmsRequestModel mdmsRequestBody) async {
-    final SecureStore storage = SecureStore();
-
-    // -- Dev Mode: Load from mock JSON file --
-    if (envConfig.variables.envType == EnvType.dev) {
-      // Reusing your _loadLocalMdms helper to fetch raw docs list
-      return _loadLocalMdms<Map<String, dynamic>>(
-        'assets/mocks/mockFormConfig.json',
-        (json) => json, // Identity, since MDMS doc structure itself
-      ).then((list) {
-        // Assuming list is already MDMS document maps
-        return List<Map<String, dynamic>>.from(list);
-      });
-    }
-
-    // -- Prod Mode: call real API --
-    final body = mdmsRequestBody.toJson();
-    final client = DioClient().dio;
-
-    final headers = <String, String>{
-      "Access-Control-Allow-Origin": "*",
-      "authorization": "Basic ZWdvdi11c2VyLWNsaWVudDo=",
-    };
-
-    try {
-      final response = await client.post(
-        "egov-mdms-service/v2/_search",
-        data: body,
-        options: Options(headers: headers),
-      );
-
-      final raw = response.data['mdms'];
-      if (raw is! List) {
-        throw Exception('MDMS v2 response missing "mdms" array');
-      }
-      return raw.cast<Map<String, dynamic>>();
-    } catch (e) {
-      rethrow;
-    }
-  }
-
   Future<List<Map<String, dynamic>>> _loadLocalMdmsRaw(String filePath) async {
     final jsonString = await rootBundle.loadString(filePath);
     final decoded = json.decode(jsonString);
@@ -515,7 +473,7 @@ class AppInitRepo {
     if (envConfig.variables.envType == EnvType.dev) {
       // <-- THIS is the fix: return *raw maps*, not Mdms<T>
       print("It's getting here");
-      return _loadLocalMdmsRaw('assets/mocks/mockFormConfig.json');
+      return _loadLocalMdmsRaw('assets/mocks/mockFormSolarConfig.json');
     }
 
     // PROD call
