@@ -1,5 +1,6 @@
 import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
+import 'package:digit_ui_components/widgets/atoms/digit_stepper.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -268,6 +269,22 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
                 ],
               ),
               children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: spacer4),
+                  child: SizedBox(
+                    height: spacer8,
+                    child: DigitStepper(
+                      activeIndex: pageIndex,
+                      stepperList: List.generate(
+                        schemaObject.pages.length,
+                        (_) => const StepperData(),
+                      ),
+                      stepperDirection: Axis.horizontal,
+                      inverted: true,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: spacer3),
                 DigitCard(
                   margin: const EdgeInsets.symmetric(horizontal: spacer2),
                   children: [

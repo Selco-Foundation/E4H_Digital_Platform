@@ -564,7 +564,7 @@ class _HomePageState extends State<HomePage> {
 
                         context.router.push(
                           DynamicFormsRoute(
-                              pageName: 'BOMSolarSystemForm',
+                              pageName: 'ModuleMountingstructure',
                               schemaName: 'AssetForm'),
                         );
                       },
