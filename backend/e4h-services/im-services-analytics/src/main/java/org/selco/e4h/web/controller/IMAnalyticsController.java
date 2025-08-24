@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.selco.e4h.kafka.consumer.KafkaProducerService;
+import org.selco.e4h.service.IncidentService;
 import org.selco.e4h.service.PrioritySLAService;
 import org.selco.e4h.web.models.IncidentRequest;
 import org.selco.e4h.web.models.SLARequest;
@@ -22,6 +23,7 @@ public class IMAnalyticsController {
 
     private final PrioritySLAService slaService;
     private final KafkaProducerService producerService;
+    private final IncidentService incidentService;
 
     @PostMapping("/computeSLA")
     public ResponseEntity<String> computeSLA(
@@ -39,14 +41,10 @@ public class IMAnalyticsController {
         }
     }
 
-    @PostMapping("/fetchTicket")
-    public String getTicketByTenantId(@Valid @RequestBody IncidentRequest incidentRequest) {
-        Map<String, Object> producerRecord = new HashMap<>();
-        producerRecord.put("topic", "save-im-request");
-        producerRecord.put("value", incidentRequest);
-        producerService.getTicket("sk.shyagyongrumtek");
-//        producerService.sendIncident("process-audit-records", producerRecord);
-        return "User sent!";
+    @GetMapping("/update_phc")
+    public String getTicketByTenantId() {
+        incidentService.scriptUpdatePHCAgregation();
+        return "Script started!";
     }
 
     @PostMapping("/sendObject")
