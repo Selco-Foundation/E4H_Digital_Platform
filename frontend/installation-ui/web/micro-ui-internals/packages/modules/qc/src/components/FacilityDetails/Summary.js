@@ -5,6 +5,7 @@ import SystemParameterReport from "./SystemParameterReport";
 import SingleRejectionReasonModal from "./SingleRejectionReasonModal";
 import { useDispatch, useSelector } from "react-redux";
 import { setRejectionReasons } from "../../redux/actions";
+import { ImageViewer } from "@egovernments/digit-ui-react-components";
 
 const Summary = ({ t, sectionName, section, count, specifications, details, items, images, videos, report, isReport }) => {
 
@@ -15,6 +16,7 @@ const Summary = ({ t, sectionName, section, count, specifications, details, item
   const dispatch = useDispatch();
   const selectedFacility = useSelector((state) => state.qc.common.selectedFacility);
   const rejectionData = rejectionReasons?.[section] || [];
+  const [imageToView, setImageToView] = useState(null);
 
   const handleSave = (data) => {
     dispatch(setRejectionReasons(section, [...rejectionData, ...data.filter((reason) => reason?.reason?.trim())]));
@@ -47,7 +49,9 @@ const Summary = ({ t, sectionName, section, count, specifications, details, item
   const AssetImages = (images) => (
     <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
       {images.map((doc, idx) => (
-        <img key={idx} src={doc} alt={`${sectionName}-${idx}`} style={{ width: "100px", marginTop: "8px" }} />
+        <div key={idx} style={{ cursor: "pointer" }} onClick={() => setImageToView(doc)}>
+          <img src={doc} alt={`${sectionName}-${idx}`} style={{ width: "100px", marginTop: "8px" }} />
+        </div>
       ))}
     </div>
   )
@@ -175,11 +179,15 @@ const Summary = ({ t, sectionName, section, count, specifications, details, item
               <Section title={t(`QC_INSTALLATION_${section}_IMAGES`)}>
                 <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
                   {images.map((img, idx) => (
-                    <img key={idx} src={img} alt={`image-${idx}`} style={{ width: "100px", height: "100px", objectFit: "cover" }} />
+                    <div key={idx} style={{ cursor: "pointer" }} onClick={() => setImageToView(img)}>
+                      <img src={img} alt={`image-${idx}`} style={{ width: "100px", height: "100px", objectFit: "cover" }} />
+                    </div>
                   ))}
                 </div>
               </Section>
             )}
+
+            {imageToView && <ImageViewer imageSrc={imageToView} onClose={() => setImageToView(null)} />}
 
             {videos?.length > 0 && (
               <Section title={t(`QC_INSTALLATION_${section}_VIDEOS`)}>
