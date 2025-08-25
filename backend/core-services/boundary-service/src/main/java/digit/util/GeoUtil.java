@@ -3,6 +3,7 @@ package digit.util;
 import digit.errors.ErrorCodes;
 import digit.web.models.PointGeometry;
 import digit.web.models.PolygonGeometry;
+import lombok.extern.slf4j.Slf4j;
 import org.egov.tracer.model.CustomException;
 
 import java.util.Collections;
@@ -10,21 +11,27 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+@Slf4j
 public class GeoUtil {
 
     private GeoUtil() {}
 
     public static void validatePointGeometry(PointGeometry pointGeometry) {
+        log.debug("Validating PointGeometry: {}", pointGeometry);
         validatePositions(Collections.singletonList(pointGeometry.getCoordinates()));
+        log.info("PointGeometry validation successful for coordinates: {}", pointGeometry.getCoordinates());
     }
 
     public static void validatePolygonGeometry(PolygonGeometry polygonGeometry) {
+        log.debug("Validating PolygonGeometry: {}", polygonGeometry);
         validateIfPolygonIsSimple(polygonGeometry.getCoordinates());
         validatePositions(polygonGeometry.getCoordinates().get(0));
         validateIfPolygonIsClosed(polygonGeometry.getCoordinates().get(0));
+        log.info("PolygonGeometry validation successful for coordinates: {}", polygonGeometry.getCoordinates());
     }
 
     private static void validateIfPolygonIsSimple(List<List<List<Double>>> coordinates) {
+        log.debug("Checking if polygon is simple. Total coordinate sets: {}", coordinates.size());
         if(coordinates.size() != 1) {
             throw new CustomException(ErrorCodes.INVALID_POLYGON_CODE,ErrorCodes.INVALID_POLYGON_MSG);
         }
@@ -35,14 +42,17 @@ public class GeoUtil {
     }
 
     private static void validatePositions(List<List<Double>> coordinatesList) {
+        log.debug("Validating positions. Total positions: {}", coordinatesList.size());
         coordinatesList.forEach(coordinate -> {
             if(coordinate.size() != 2) {
                 throw new CustomException(ErrorCodes.INVALID_POSITION_CODE, ErrorCodes.INVALID_POSITION_MSG);
             }
         });
+        log.debug("All positions are valid.");
     }
 
     private static void validateIfPolygonIsClosed(List<List<Double>> coordinatesList) {
+        log.debug("Checking if polygon is closed. Total coordinates: {}", coordinatesList.size());
         if(coordinatesList.size() >= 5) {
             List<Double> startCoordinate = coordinatesList.get(0);
             List<Double> endCoordinate = coordinatesList.get(coordinatesList.size() - 1);
