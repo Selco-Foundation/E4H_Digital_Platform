@@ -2,6 +2,7 @@ package digit.service.enrichment;
 
 import digit.util.HierarchyUtil;
 import digit.web.models.*;
+import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.common.utils.AuditDetailsEnrichmentUtil;
 import org.egov.common.utils.ResponseInfoUtil;
@@ -14,6 +15,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Component
+@Slf4j
 public class BoundaryRelationshipEnricher {
 
     private HierarchyUtil hierarchyUtil;
@@ -28,6 +30,7 @@ public class BoundaryRelationshipEnricher {
      * @param ancestralMaterializedPath
      */
     public void enrichBoundaryRelationshipCreateRequest(BoundaryRelationshipRequest body, String ancestralMaterializedPath) {
+        log.debug("BoundaryRelationshipEnricher::enrichBoundaryRelationshipCreateRequest : ancestralMaterializedPath : {}", ancestralMaterializedPath);
         // Enrich uuid
         UUIDEnrichmentUtil.enrichRandomUuid(body.getBoundaryRelationship(), "id");
 
@@ -46,6 +49,7 @@ public class BoundaryRelationshipEnricher {
      * @param ancestralMaterializedPath
      */
     private void enrichAncestralMaterializedPath(BoundaryRelation boundaryRelationship, String ancestralMaterializedPath) {
+        log.debug("BoundaryRelationshipEnricher::enrichAncestralMaterializedPath : boundaryRelationship : {}", boundaryRelationship);
         // Enrich ancestral materialized path if current node is non-parent node
         if(!ObjectUtils.isEmpty(boundaryRelationship.getParent())) {
             if(ObjectUtils.isEmpty(ancestralMaterializedPath)) {
