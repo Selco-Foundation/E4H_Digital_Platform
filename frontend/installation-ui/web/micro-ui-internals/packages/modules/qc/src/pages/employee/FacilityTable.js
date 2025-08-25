@@ -140,7 +140,7 @@ const FacilityTable = ({ t }) => {
     if(!prevMainCheck) {
       setSelectedFacilities(
         fetchedData
-          .filter((row) => row?.status === t("SUBMITTED_BY_SUPERVISOR"))
+          .filter((row) => row?.status === "SUBMITTED_BY_SUPERVISOR")
           .map((row) => row.id)
       );
     } else {
