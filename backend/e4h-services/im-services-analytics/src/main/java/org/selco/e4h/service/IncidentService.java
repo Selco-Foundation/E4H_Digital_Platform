@@ -105,7 +105,7 @@ public class IncidentService {
     public void scriptUpdatePHCAgregation() {
         log.info("Script function called");
         try{
-            List<Map<String, Object>> listPHCs = esClient.getAllPHC(0, 10);
+            List<Map<String, Object>> listPHCs = esClient.getAllPHC(0, 5100);
             log.info("List tickets size {}", listPHCs.size());
             if(listPHCs!=null && !listPHCs.isEmpty()){
                 for (Map<String, Object> phc : listPHCs){
