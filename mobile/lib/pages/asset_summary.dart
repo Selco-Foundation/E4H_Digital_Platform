@@ -376,26 +376,40 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
                             if (selected == null) return;
 
                             final reasons = _reasons
-                                .where((e) => e.selectedCode != null)
+                                .where((e) =>
+                                    (e.selectedCode?.isNotEmpty ?? false) ||
+                                    e.controller.text.trim().isNotEmpty)
                                 .map((e) => {
-                                      'reason': e.selectedCode!,
-                                      'details': e.controller.text,
+                                      'reason': (e.selectedCode ?? '').trim(),
+                                      'comment': e.controller.text.trim(),
                                     })
                                 .toList();
 
                             final transactions = [
                               Transaction(
                                 projectId: selected.project.id,
-                                comments: reasons
-                                    .map((e) => Comment(
-                                          commentMessage: e['details'],
-                                          assetType: assetType.titleCase,
-                                        ))
-                                    .toList(),
+                                comments: reasons.map((e) {
+                                  // Always produce JSON object, even if reason is empty.
+                                  final message = jsonEncode({
+                                    'reason': e['reason'],
+                                    'comment': e['comment'],
+                                  });
+
+                                  return Comment(
+                                    commentMessage: message,
+                                    assetType: assetType.titleCase,
+                                  );
+                                }).toList(),
                               )
                             ];
 
-                            print("transactions ${jsonEncode(transactions)}");
+                            print(
+                                "Submitting transactions: ${jsonEncode(transactions.map((t) => {
+                                      'projectId': t.projectId,
+                                      'comments': t.comments
+                                          ?.map((c) => c.toJson())
+                                          .toList(),
+                                    }).toList())}");
 
                             Navigator.of(ctx).pop();
                             context.read<RejectionBloc>().add(
