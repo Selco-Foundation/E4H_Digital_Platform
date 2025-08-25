@@ -26,7 +26,7 @@ public class KafkaProducerService {
     }
 
     public void getTicket(String tenantId){
-        Map<String, Object> tickets = esClient.getHFByTenantId(0, 1000, tenantId);
+        Map<String, Object> tickets = esClient.getHFByTenantId(tenantId);
         log.info("List tickets {}", tickets.size());
         if(tickets!=null){
             Map<String, Object> source = (Map<String, Object>)tickets.get("_source");
