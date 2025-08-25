@@ -316,7 +316,7 @@ const FacilityTable = ({ t }) => {
   }
 
   return (
-    <div style={{marginTop: "20px"}}>
+    <div style={{marginTop: "20px", padding: "0px 10px", overflow: "auto"}}>
       {(updatingWorkflow || (!fieldPlanDataLoading && fieldPlanDataFetching) || (!isLoading && facilityDataFetching)) && (
         <div
           style={{
@@ -341,7 +341,7 @@ const FacilityTable = ({ t }) => {
       </div>
       <InfoCard t={t} selectedFieldPlan={fieldPlan} />
       <div style={{ width: "100%", display: "flex", gap: "15px" }}>
-        <div style={{ width: "15%", minWidth: "fit-content" }}>
+        <div style={{ minWidth: "300px" }}>
           <Filter
             t={t}
             type="desktop"
@@ -351,7 +351,7 @@ const FacilityTable = ({ t }) => {
             statusesList={statusesList}
           />
         </div>
-        <div style={{ width: "83%", backgroundColor: "white" }}>
+        <div style={{ width: "83%", minWidth: "750px", backgroundColor: "white" }}>
           <div style={{ padding: "20px" }}>
             <div style={{ fontSize: "20px", fontWeight: "bold", marginBottom: "40px" }}>
               Reports
