@@ -66,4 +66,10 @@ public class IncidentStatusAgregation {
 
     @JsonProperty("geoPoint")
     private List<Double> geoPoint;
+
+    @JsonProperty("mappedVendorUserName")
+    private String mappedVendorUserName;
+
+    @JsonProperty("mappedVendorName")
+    private String mappedVendorName;
 }
