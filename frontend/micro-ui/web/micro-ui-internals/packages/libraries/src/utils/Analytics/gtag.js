@@ -1,59 +1,37 @@
-import { GA_MEASUREMENT_ID, DEBUG_MODE } from './config';
+import { GA_MEASUREMENT_ID, DEBUG_MODE } from "./config";
 
 const queue = [];
 let ready = false;
-let loading = false; // prevent duplicate, in-flight loads
 
 function flush() {
-  const g = window.gtag;
-  if (!g) return;
-  ready = true;
-  while (queue.length) g(...queue.shift());
+    if (typeof window.gtag !== "function") return;
+    ready = true;
+    while (queue.length) {
+      window.gtag(...queue.shift());
+    }
 }
 
-export function loadGA() {
-  if (typeof window === 'undefined') return;
-
-  if (typeof window.gtag === 'function') {
+function waitForGtag() {
+  if (typeof window.gtag === "function") {
     flush();
     return;
   }
-
-
-  if (loading) return;
-  loading = true;
-
-  const s = document.createElement('script');
-  s.async = true;
-  s.src = `https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`;
-  s.onload = () => {
-    try {
-      window.gtag('js', new Date());
-      window.gtag('config', GA_MEASUREMENT_ID, {
-        anonymize_ip: true,
-        debug_mode: DEBUG_MODE,
-        // If you manually track SPA route changes, consider:
-        // send_page_view: false,
-        // allow_ad_personalization_signals: false,
-        // transport_type: 'beacon',
-      });
+  const timer = window.setInterval(() => {
+    if (typeof window.gtag === "function") {
+      window.clearInterval(timer);
       flush();
-      if (DEBUG_MODE) console.log('✅ GA loaded:', GA_MEASUREMENT_ID);
-    } finally {
-      loading = false;
     }
-  };
-
-  s.onerror = (e) => {
-    loading = false;
-    console.error('[GA] Failed to load gtag.js', e);
-  };
-
-  document.head.appendChild(s);
+  }, 50);
 }
 
+waitForGtag();
+
 export function gtag(...args) {
-  if (ready && typeof window.gtag === 'function') {
+  if (DEBUG_MODE && args[0] === "event") {
+    const params = args[2] || {};
+    args[2] = { debug_mode: true, ...params };
+  }
+  if (ready && typeof window.gtag === "function") {
     window.gtag(...args);
   } else {
     queue.push(args);
