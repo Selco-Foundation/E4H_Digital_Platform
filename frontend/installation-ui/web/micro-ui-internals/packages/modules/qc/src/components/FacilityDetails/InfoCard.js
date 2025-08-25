@@ -7,7 +7,7 @@ const InfoCard = ({ t, facilityDetails }) => {
   const InfoCardItem = (infoName, infoValue) => (
     <div style={{display: "flex", alignItems: "center", marginTop: "15px"}}>
       <div style={{width: "30%"}}><strong>{infoName}</strong></div>
-      { infoValue }
+      <span>{infoValue}</span>
     </div>
   )
 
@@ -20,6 +20,7 @@ const InfoCard = ({ t, facilityDetails }) => {
       borderRadius: "4px",
       boxShadow: "0px 0px 4px rgba(0, 0, 0, 0.25)",
       border: "1px solid #eee",
+      minWidth: "900px"
     }}>
       {InfoCardItem(t("CS_DISTRICT"), facilityDetails.district ? t(`DISTRICT_${facilityDetails.district.toUpperCase()}`) : "-")}
       {InfoCardItem(t("CS_BLOCK"), facilityDetails.block ? t(`BLOCK_${facilityDetails.block.toUpperCase()}`) : "-")}

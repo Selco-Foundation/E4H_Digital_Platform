@@ -44,7 +44,7 @@ const AuditTrail = ({t, auditTrail}) => {
       border: "1px solid #eee",
       borderTop: "none",
       borderBottom: "none",
-      overflow: "hidden",
+      minWidth: "900px"
     }}>
       <h2 style={{ fontWeight: "bold", fontSize: "18px", marginBottom: 20 }}>
         {t("QC_INSTALLATION_AUDIT_TRAIL")}

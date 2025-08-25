@@ -68,8 +68,8 @@ const Summary = ({ t, sectionName, section, count, specifications, details, item
         border: "1px solid #eee",
         borderTop: "none",
         borderBottom: "none",
-        overflow: "hidden",
         transition: "all 0.3s ease-in-out",
+        minWidth: "900px"
       }}
     >
       <div
