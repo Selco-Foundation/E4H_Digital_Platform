@@ -40,7 +40,7 @@ const Summary = ({ t, sectionName, section, count, specifications, details, item
       }}>
         {title}
       </div>
-      <div>{value}</div>
+      <div>{value || t("CORE_COMMON_NOT_APPLICABLE")}</div>
     </div>
   )
 
@@ -150,9 +150,11 @@ const Summary = ({ t, sectionName, section, count, specifications, details, item
               {AssetInfoItem(t(`QC_INSTALLATION_ASSET_MODEL_NUMBER`), details.modelNumber)}
             </Section>
 
-            <Section title={t(`QC_INSTALLATION_CAPACITY`)}>
-              {AssetInfoItem(t(`QC_INSTALLATION_ASSET_VOLTAGE`), specifications.voltage)}
-            </Section>
+            {section === "BATTERY" && (
+              <Section title={t(`QC_INSTALLATION_CAPACITY`)}>
+                {AssetInfoItem(t(`QC_INSTALLATION_ASSET_VOLTAGE`), specifications.voltage)}
+              </Section>
+            )}
 
             {items?.map((item, index) => (
               <Section key={index} title={`${t(`QC_INSTALLATION_${section}`)} ${index + 1}`}>
