@@ -86,7 +86,14 @@ const UserProfile = ({ stateCode, userType, cityDetails }) => {
 
   useEffect(() => {
     setLoading(true);
-
+    try {
+      Digit.Utils.analytics?.trackPageView("profile_page", {
+        page_path: window.location?.pathname || "/profile",
+        page_title: "Profile"
+      });
+    } catch (e) {
+      console.warn("analytics: page_view profile failed", e);
+    }
     getUserInfo();
 
     setGender({
