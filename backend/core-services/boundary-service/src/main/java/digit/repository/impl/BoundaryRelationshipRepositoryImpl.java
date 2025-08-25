@@ -6,6 +6,7 @@ import digit.repository.BoundaryRelationshipRepository;
 import digit.repository.querybuilder.BoundaryRelationshipQueryBuilder;
 import digit.repository.rowmapper.BoundaryRelationshipRowMapper;
 import digit.web.models.*;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -14,6 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Repository
+@Slf4j
 public class BoundaryRelationshipRepositoryImpl implements BoundaryRelationshipRepository {
 
     private Producer producer;
@@ -42,11 +44,13 @@ public class BoundaryRelationshipRepositoryImpl implements BoundaryRelationshipR
      */
     @Override
     public void create(BoundaryRelationshipRequest boundaryRelationshipRequest) {
+        log.debug("Creating boundary relationship with request: {}", boundaryRelationshipRequest);
         // Transform boundary relationship request
         BoundaryRelationshipRequestDTO boundaryRelationshipRequestDTO = convertContractPOJOToDTO(boundaryRelationshipRequest);
 
         // Push to event bus for creating asynchronously
         producer.push(applicationProperties.getCreateBoundaryRelationshipTopic(), boundaryRelationshipRequestDTO);
+        log.info("Pushed boundary relationship create request to Kafka topic: {}", applicationProperties.getCreateBoundaryRelationshipTopic());
     }
 
     /**
@@ -56,8 +60,10 @@ public class BoundaryRelationshipRepositoryImpl implements BoundaryRelationshipR
      */
     @Override
     public void update(BoundaryRelationshipRequestDTO boundaryRelationshipRequestDTO) {
+        log.debug("Updating boundary relationship with DTO: {}", boundaryRelationshipRequestDTO);
         // Push to event bus for updating asynchronously
         producer.push(applicationProperties.getUpdateBoundaryRelationshipTopic(), boundaryRelationshipRequestDTO);
+        log.info("Pushed boundary relationship update request to Kafka topic: {}", applicationProperties.getUpdateBoundaryRelationshipTopic());
     }
 
     /**
@@ -69,11 +75,14 @@ public class BoundaryRelationshipRepositoryImpl implements BoundaryRelationshipR
      */
     @Override
     public List<BoundaryRelationshipDTO> search(BoundaryRelationshipSearchCriteria boundaryRelationshipSearchCriteria) {
+        log.debug("Searching boundary relationships with criteria: {}", boundaryRelationshipSearchCriteria);
         // Declare prepared statement list
         List<Object> preparedStmtList = new ArrayList<>();
 
         // Get query for searching boundary relationship
         String query = boundaryRelationshipQueryBuilder.getBoundaryRelationshipSearchQuery(boundaryRelationshipSearchCriteria, preparedStmtList);
+        log.debug("Generated search query: {}", query);
+        log.debug("Prepared statement values: {}", preparedStmtList);
 
         // Return search response based on provided search criteria
         return jdbcTemplate.query(query, preparedStmtList.toArray(), boundaryRelationshipRowMapper);
@@ -86,6 +95,7 @@ public class BoundaryRelationshipRepositoryImpl implements BoundaryRelationshipR
      */
     private BoundaryRelationshipRequestDTO convertContractPOJOToDTO(BoundaryRelationshipRequest contractBean) {
         // Declare boundary relationship request DTO
+        log.debug("Converting contract POJO to DTO for request: {}", contractBean);
         BoundaryRelationshipRequestDTO boundaryRelationshipRequestDTO = new BoundaryRelationshipRequestDTO();
 
         // Copy boundary relationship properties
@@ -99,6 +109,7 @@ public class BoundaryRelationshipRepositoryImpl implements BoundaryRelationshipR
         // Enrich boundary relationship DTO in request
         boundaryRelationshipRequestDTO.setBoundaryRelationshipDTO(boundaryRelationshipDTO);
 
+        log.debug("Converted DTO: {}", boundaryRelationshipRequestDTO);
         return boundaryRelationshipRequestDTO;
     }
 }

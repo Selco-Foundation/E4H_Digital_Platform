@@ -54,7 +54,9 @@ public class BoundaryRepositoryImpl implements BoundaryRepository {
      */
     @Override
     public void create(BoundaryRequest boundaryRequest) {
+        log.debug("Creating boundary");
         producer.push(applicationProperties.getCreateBoundaryTopic() , boundaryRequest);
+        log.info("Pushed boundary create request to Kafka topic: {}", applicationProperties.getCreateBoundaryTopic());
     }
 
     /**
@@ -64,12 +66,16 @@ public class BoundaryRepositoryImpl implements BoundaryRepository {
      */
     @Override
     public List<Boundary> search(BoundarySearchCriteria boundarySearchCriteria) {
+        log.debug("Searching boundaries with criteria: {}", boundarySearchCriteria);
 
         List<Object> preparedStmtList = new ArrayList<>();
 
         String query = boundaryEntityQueryBuilder.getBoundaryDataSearchQuery(boundarySearchCriteria , preparedStmtList);
+        log.debug("Generated boundary search query: {}", query);
+        log.debug("Prepared statement values: {}", preparedStmtList);
 
         List<Boundary> boundaryList = jdbcTemplate.query(query , preparedStmtList.toArray() , boundaryEntityRowMapper);
+        log.info("Search completed. Found {} boundary records.", boundaryList.size());
 
         return boundaryList;
     }
@@ -81,7 +87,9 @@ public class BoundaryRepositoryImpl implements BoundaryRepository {
      */
     @Override
     public void update(BoundaryRequest boundaryRequest) {
+        log.debug("Updating boundary with request: {}", boundaryRequest);
         producer.push(applicationProperties.getUpdateBoundaryTopic() , boundaryRequest);
+        log.info("Pushed boundary update request to Kafka topic: {}", applicationProperties.getUpdateBoundaryTopic());
     }
 
     /**
@@ -90,7 +98,7 @@ public class BoundaryRepositoryImpl implements BoundaryRepository {
      * @return
      */
     public Set<String> getCodeListByTenantId(String tenantId) {
-
+        log.debug("Fetching boundary codes for tenantId: {}", tenantId);
         // create a boundary search criteria object with the given tenantId
         BoundarySearchCriteria boundarySearchCriteria = new BoundarySearchCriteria();
         boundarySearchCriteria.setTenantId(tenantId);

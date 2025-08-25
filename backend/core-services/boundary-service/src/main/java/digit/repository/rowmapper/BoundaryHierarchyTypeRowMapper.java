@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import digit.web.models.BoundaryTypeHierarchy;
 import digit.web.models.BoundaryTypeHierarchyDefinition;
+import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.models.AuditDetails;
 import org.egov.tracer.model.CustomException;
 import org.postgresql.util.PGobject;
@@ -16,6 +17,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Component
+@Slf4j
 public class BoundaryHierarchyTypeRowMapper implements ResultSetExtractor<List<BoundaryTypeHierarchyDefinition>> {
 
     private ObjectMapper objectMapper;
@@ -26,6 +28,7 @@ public class BoundaryHierarchyTypeRowMapper implements ResultSetExtractor<List<B
 
     @Override
     public List<BoundaryTypeHierarchyDefinition> extractData(ResultSet resultSet) throws SQLException, DataAccessException {
+        log.info("Starting extraction of BoundaryTypeHierarchyDefinition entities from ResultSet...");
         List<BoundaryTypeHierarchyDefinition> boundaryTypeHierarchyDefinitionList = new ArrayList<>();
 
         while(resultSet.next()) {
@@ -47,12 +50,15 @@ public class BoundaryHierarchyTypeRowMapper implements ResultSetExtractor<List<B
                     .build();
 
             boundaryTypeHierarchyDefinitionList.add(boundaryTypeHierarchyDefinition);
+            log.trace("Mapped BoundaryHierarchyType: {}", boundaryTypeHierarchyDefinition.getHierarchyType());
         }
 
+        log.info("Completed extraction. Total BoundaryTypeHierarchyDefinition entities mapped: {}", boundaryTypeHierarchyDefinitionList.size());
         return boundaryTypeHierarchyDefinitionList;
     }
 
     private List<BoundaryTypeHierarchy> getBoundaryHierarchyList(String boundaryHierarchyJsonString) {
+        log.debug("Parsing boundaryHierarchy JSON: {}", boundaryHierarchyJsonString);
         List<BoundaryTypeHierarchy> boundaryHierarchyList;
 
         try {

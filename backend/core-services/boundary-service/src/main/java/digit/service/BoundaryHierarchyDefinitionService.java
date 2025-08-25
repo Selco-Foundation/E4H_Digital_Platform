@@ -5,6 +5,7 @@ import digit.service.enrichment.BoundaryHierarchyEnricher;
 import digit.service.validator.BoundaryHierarchyValidator;
 import digit.util.HierarchyUtil;
 import digit.web.models.*;
+import lombok.extern.slf4j.Slf4j;
 import org.egov.common.utils.ResponseInfoUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -14,6 +15,7 @@ import java.util.Collections;
 import java.util.List;
 
 @Service
+@Slf4j
 public class BoundaryHierarchyDefinitionService {
 
     private BoundaryHierarchyValidator boundaryHierarchyValidator;
@@ -39,16 +41,26 @@ public class BoundaryHierarchyDefinitionService {
      * @return
      */
     public BoundaryTypeHierarchyResponse createBoundaryHierarchyDefinition(BoundaryTypeHierarchyRequest body) {
+        log.info("Received request to create boundary hierarchy definition for tenantId: {}, hierarchyType: {}",
+                body.getBoundaryHierarchy().getTenantId(), body.getBoundaryHierarchy().getHierarchyType());
 
         // Validate boundary hierarchy
+        log.debug("Validating boundary hierarchy definition...");
         boundaryHierarchyValidator.validateBoundaryTypeHierarchy(body);
+        log.debug("Validation successful for boundary hierarchy definition.");
 
         // Enrich boundary hierarchy
+        log.debug("Enriching boundary hierarchy definition...");
         boundaryHierarchyEnricher.enrichBoundaryHierarchyDefinition(body);
+        log.debug("Enrichment completed successfully.");
 
         // Delegate request to boundary repository
+        log.debug("Persisting boundary hierarchy definition in repository...");
         boundaryHierarchyRepository.create(body);
+        log.info("Successfully created boundary hierarchy definition for tenantId: {}, hierarchyType: {}",
+                body.getBoundaryHierarchy().getTenantId(), body.getBoundaryHierarchy().getHierarchyType());
 
+        log.debug("Boundary hierarchy create response built successfully.");
         // Build response and return
         return BoundaryTypeHierarchyResponse.builder()
                 .boundaryHierarchy(Collections.singletonList(body.getBoundaryHierarchy()))
@@ -63,14 +75,24 @@ public class BoundaryHierarchyDefinitionService {
      */
     public BoundaryTypeHierarchyResponse searchBoundaryHierarchyDefinition(BoundaryTypeHierarchySearchRequest body) {
 
+        log.info("Received request to search boundary hierarchy definition for tenantId: {}, hierarchyType: {}",
+                body.getBoundaryTypeHierarchySearchCriteria().getTenantId(),
+                body.getBoundaryTypeHierarchySearchCriteria().getHierarchyType());
         // Search for boundary hierarchy depending on the provided search criteria
         List<BoundaryTypeHierarchyDefinition> boundaryTypeHierarchyDefinitionList = boundaryHierarchyRepository.search(body.getBoundaryTypeHierarchySearchCriteria());
 
+        log.debug("Search returned {} results for tenantId: {}, hierarchyType: {}",
+                CollectionUtils.isEmpty(boundaryTypeHierarchyDefinitionList) ? 0 : boundaryTypeHierarchyDefinitionList.size(),
+                body.getBoundaryTypeHierarchySearchCriteria().getTenantId(),
+                body.getBoundaryTypeHierarchySearchCriteria().getHierarchyType());
+
         Integer totalCount = hierarchyUtil.getBoundaryTypeHierarchyDefinitionCount(body.getBoundaryTypeHierarchySearchCriteria());
+        log.debug("Total count for search criteria: {}", totalCount);
 
         // Set boundary hierarchy definition as null if not found
         List<BoundaryTypeHierarchyDefinition> boundaryTypeHierarchyDefinition = CollectionUtils.isEmpty(boundaryTypeHierarchyDefinitionList) ? null : boundaryTypeHierarchyDefinitionList;
 
+        log.debug("Boundary hierarchy search response built successfully.");
         // Build response and return
         return BoundaryTypeHierarchyResponse.builder()
                 .boundaryHierarchy(boundaryTypeHierarchyDefinition)

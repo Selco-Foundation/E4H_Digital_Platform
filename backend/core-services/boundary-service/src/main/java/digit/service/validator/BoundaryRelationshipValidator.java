@@ -4,6 +4,7 @@ import digit.repository.BoundaryRelationshipRepository;
 import digit.repository.BoundaryRepository;
 import digit.util.HierarchyUtil;
 import digit.web.models.*;
+import lombok.extern.slf4j.Slf4j;
 import org.egov.tracer.model.CustomException;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
@@ -14,6 +15,7 @@ import java.util.List;
 import java.util.Objects;
 
 @Component
+@Slf4j
 public class BoundaryRelationshipValidator {
 
     private BoundaryRelationshipRepository boundaryRelationshipRepository;
@@ -35,6 +37,11 @@ public class BoundaryRelationshipValidator {
      * @return
      */
     public String validateBoundaryRelationshipCreateRequest(BoundaryRelationshipRequest body) {
+        log.info("Validating create request for BoundaryRelationship: tenantId={}, hierarchyType={}, code={}, boundaryType={}",
+                body.getBoundaryRelationship().getTenantId(),
+                body.getBoundaryRelationship().getHierarchyType(),
+                body.getBoundaryRelationship().getCode(),
+                body.getBoundaryRelationship().getBoundaryType());
         // Check if boundary entity exists
         validateIfBoundaryEntityExists(body);
 
@@ -46,6 +53,9 @@ public class BoundaryRelationshipValidator {
 
         // Check if the relationship being created has proper hierarchy
         validateRelationshipForProperHierarchy(body, parentAttributes.getSecond());
+        log.info("Create request validation successful for code={}, tenantId={}",
+                body.getBoundaryRelationship().getCode(),
+                body.getBoundaryRelationship().getTenantId());
 
         // Return ancestralMaterializedPath of parent
         return parentAttributes.getFirst();
@@ -56,13 +66,19 @@ public class BoundaryRelationshipValidator {
      * @param body
      */
     public BoundaryRelationshipRequestDTO validateBoundaryRelationshipUpdateRequest(BoundaryRelationshipRequest body) {
-
+        log.info("Validating update request for BoundaryRelationship: tenantId={}, hierarchyType={}, code={}",
+                body.getBoundaryRelationship().getTenantId(),
+                body.getBoundaryRelationship().getHierarchyType(),
+                body.getBoundaryRelationship().getCode());
         // Validate existence of boundary relationship being updated
         BoundaryRelationshipDTO boundaryRelationshipDTO = validateExistence(body);
 
         // Validate existence of parent and whether hierarchy is not disturbed
         validateParentAndHierarchy(boundaryRelationshipDTO, body.getBoundaryRelationship());
 
+        log.info("Update request validation successful for code={}, tenantId={}",
+                body.getBoundaryRelationship().getCode(),
+                body.getBoundaryRelationship().getTenantId());
         // Return response
         return BoundaryRelationshipRequestDTO.builder()
                 .boundaryRelationshipDTO(boundaryRelationshipDTO)
@@ -158,6 +174,8 @@ public class BoundaryRelationshipValidator {
             } else {
                 ancestralMaterializedPath = resultSet.get(0).getAncestralMaterializedPath();
                 boundaryType = resultSet.get(0).getBoundaryType();
+                log.debug("Parent attributes resolved: parentCode={}, materializedPath={}, boundaryType={}",
+                        body.getBoundaryRelationship().getParent(), ancestralMaterializedPath, boundaryType);
             }
         }
 
