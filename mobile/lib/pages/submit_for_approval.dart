@@ -185,7 +185,6 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
 
     final allChecked = rejection1 && rejection2 && rejection3;
 
-    print("userType $userType");
     return Scaffold(
       body: MultiBlocListener(
         listeners: [
@@ -279,7 +278,6 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                         print("submitting $submitting");
                         print("submitting ${!allChecked || submitting}");
                         if (!allChecked || submitting) return;
-                        // final file = _initialCompletion.first;
                         if (userType == USER_TYPES.SUPERVISOR.name &&
                             filePath!.isNotEmpty) {
                           context.read<CacheCompletionReportBloc>().add(
@@ -293,13 +291,10 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                                 ),
                               );
                         }
-                        // 2) submit everything
                         context.read<AssetSubmissionBloc>().add(
                               AssetSubmissionEvent.submitAll(
                                   projectId: projectId, userType: userType),
                             );
-                        // }
-                        // context.router.replace(const SubmittedSaveSuccessRoute());
                       });
                 },
               );
@@ -571,7 +566,7 @@ class RejectionReasonsList extends StatelessWidget {
                 ),
                 const SizedBox(height: spacer5),
                 for (var i = 0; i < filtered.length; i++) ...[
-                  _oneReason(context, filtered[i].commentMessage!, i + 1),
+                  _oneReason(context, filtered[i], i + 1),
                   if (i < filtered.length - 1) const SizedBox(height: spacer4),
                 ],
               ],
@@ -582,7 +577,7 @@ class RejectionReasonsList extends StatelessWidget {
     );
   }
 
-  Widget _oneReason(BuildContext context, String reason, int index) {
+  Widget _oneReason(BuildContext context, Comment comment, int index) {
     final theme = Theme.of(context);
     final labelStyle = theme
         .digitTextTheme(context)
@@ -592,6 +587,9 @@ class RejectionReasonsList extends StatelessWidget {
         .digitTextTheme(context)
         .label
         .copyWith(color: theme.colorTheme.text.primary);
+
+    final reason = comment.reason; // may be null
+    final details = comment.displayComment;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -605,11 +603,14 @@ class RejectionReasonsList extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.symmetric(
                 vertical: spacer1, horizontal: spacer3),
-            child: Text('Reason $index', style: labelStyle),
+            child: Text(
+              reason == null ? 'Reason $index' : '$reason',
+              style: labelStyle,
+            ),
           ),
         ),
         const SizedBox(height: spacer2),
-        Text(reason, style: valueStyle),
+        Text(details, style: valueStyle),
       ],
     );
   }
