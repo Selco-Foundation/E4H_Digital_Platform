@@ -1,5 +1,5 @@
 
-export { loadGA, gtag } from "./gtag";
+export { gtag } from "./gtag";
 export { baseParams } from "./baseParams";
 export { getSessionId, wasLoginEventSent, markLoginEventSent } from "./session";
 export { getUserRoleCsv, getGeography } from "./context";
