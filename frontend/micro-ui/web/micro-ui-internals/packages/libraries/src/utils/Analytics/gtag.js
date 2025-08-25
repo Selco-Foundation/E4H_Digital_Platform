@@ -58,11 +58,3 @@ export function gtag(...args) {
     queue.push(args);
   }
 }
-export function trackPageView(path) {
-  gtag("event", "page_view", {
-    page_path: path,
-  });
-}
-export function trackEvent(name, params = {}) {
-  gtag("event", name, params);
-}
