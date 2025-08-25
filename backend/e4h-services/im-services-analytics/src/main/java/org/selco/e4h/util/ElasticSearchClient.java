@@ -40,8 +40,8 @@ public class ElasticSearchClient {
         return fetchTickets(OLD_INDEX_NAME, from, size);
     }
 
-    public Map<String, Object> getHFByTenantId(int from, int size, String tenantId) {
-        return fetchTicketById(INDEX_NAME_PHC, from, size, tenantId);
+    public Map<String, Object> getHFByTenantId(String tenantId) {
+        return fetchTicketById(INDEX_NAME_PHC, tenantId);
     }
 
     public List<Map<String, Object>> getAllPHC(int from, int size) {
@@ -75,7 +75,7 @@ public class ElasticSearchClient {
         }
     }
 
-    private Map<String, Object> fetchTicketById(String indexName, int from, int size, String tenantId) {
+    private Map<String, Object> fetchTicketById(String indexName, String tenantId) {
         String uri = getBaseUrl() + "/" + indexName + "/" + DOC_PATH + "/" + tenantId;
 
         HttpEntity<String> entity = new HttpEntity<>(updateService.buildHeaders());

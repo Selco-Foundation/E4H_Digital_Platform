@@ -7,6 +7,7 @@ import org.selco.e4h.kafka.consumer.KafkaProducerService;
 import org.selco.e4h.service.IncidentService;
 import org.selco.e4h.service.PrioritySLAService;
 import org.selco.e4h.web.models.IncidentRequest;
+import org.selco.e4h.web.models.IncidentRequestWrapper;
 import org.selco.e4h.web.models.SLARequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -44,17 +45,23 @@ public class IMAnalyticsController {
     @GetMapping("/update_phc")
     public String getTicketByTenantId() {
         incidentService.scriptUpdatePHCAgregation();
-        return "Script started!";
+        return "Script done!";
     }
 
-    @PostMapping("/sendObject")
-    public String sendDummyTopic(@Valid @RequestBody IncidentRequest incidentRequest) {
-        Map<String, Object> producerRecord = new HashMap<>();
-        producerRecord.put("topic", "save-im-request");
-        producerRecord.put("value", incidentRequest);
-//        producerService.getTicket("sk.shyagyongrumtek");
-        producerService.sendIncident("process-audit-records", producerRecord);
-        return "User sent!";
-    }
+//    @PostMapping("/test_update_phc")
+//    public String sendDummyTopicIncident(@Valid @RequestBody IncidentRequest incidentRequest) {
+//        Map<String, Object> producerRecord = new HashMap<>();
+//        producerRecord.put("topic", "save-im-request");
+//        producerRecord.put("value", incidentRequest);
+////        producerService.getTicket("sk.shyagyongrumtek");
+//        producerService.sendIncident("process-audit-records", producerRecord);
+//        return "User sent!";
+//    }
+//
+//    @PostMapping("/test_update_vendor")
+//    public String sendDummyTopicVendorName(@Valid @RequestBody IncidentRequestWrapper wrapper) {
+//        producerService.sendIncident("update-im-request-indexer", wrapper);
+//        return "User sent!";
+//    }
 
 }
