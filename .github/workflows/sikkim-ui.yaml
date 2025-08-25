@@ -53,7 +53,7 @@ jobs:
         run: |
           if [[ "${GITHUB_REF}" == "refs/heads/develop" ]]; then
             echo "GA_MEASUREMENT_ID=${{ vars.DEV_MEASUREMENT_ID }}" >> $GITHUB_ENV
-          else [[ "${GITHUB_REF}" == "refs/heads/staging" ]]; then
+          elif [[ "${GITHUB_REF}" == "refs/heads/staging" ]]; then
             echo "GA_MEASUREMENT_ID=${{ vars.STAGING_MEASUREMENT_ID }}" >> $GITHUB_ENV
           fi
       
