@@ -1,61 +1,68 @@
-import { GA_MEASUREMENT_ID, DEBUG_MODE } from './config';
+import { GA_MEASUREMENT_ID, DEBUG_MODE } from "./config";
 
 const queue = [];
 let ready = false;
-let loading = false; // prevent duplicate, in-flight loads
 
 function flush() {
-  const g = window.gtag;
+  const g = typeof window !== "undefined" ? window.gtag : undefined;
   if (!g) return;
   ready = true;
-  while (queue.length) g(...queue.shift());
+
+  while (queue.length) {
+    const args = queue.shift();
+    g(...args);
+  }
 }
 
-export function loadGA() {
-  if (typeof window === 'undefined') return;
+function waitForGtag() {
+  if (typeof window === "undefined") return;
 
-  if (typeof window.gtag === 'function') {
+  if (typeof window.gtag === "function") {
     flush();
     return;
   }
 
-
-  if (loading) return;
-  loading = true;
-
-  const s = document.createElement('script');
-  s.async = true;
-  s.src = `https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`;
-  s.onload = () => {
-    try {
-      window.gtag('js', new Date());
-      window.gtag('config', GA_MEASUREMENT_ID, {
-        anonymize_ip: true,
-        debug_mode: DEBUG_MODE,
-        // If you manually track SPA route changes, consider:
-        // send_page_view: false,
-        // allow_ad_personalization_signals: false,
-        // transport_type: 'beacon',
-      });
+  const timer = window.setInterval(() => {
+    if (typeof window.gtag === "function") {
+      window.clearInterval(timer);
       flush();
-      if (DEBUG_MODE) console.log('✅ GA loaded:', GA_MEASUREMENT_ID);
-    } finally {
-      loading = false;
+    }
+  }, 50);
+
+  const onReady = () => {
+    if (typeof window.gtag === "function") {
+      flush();
+      document.removeEventListener("DOMContentLoaded", onReady);
+      window.clearInterval(timer);
     }
   };
 
-  s.onerror = (e) => {
-    loading = false;
-    console.error('[GA] Failed to load gtag.js', e);
-  };
-
-  document.head.appendChild(s);
+  if (document.readyState === "interactive" || document.readyState === "complete") {
+    onReady();
+  } else {
+    document.addEventListener("DOMContentLoaded", onReady);
+  }
 }
 
+waitForGtag();
+
 export function gtag(...args) {
-  if (ready && typeof window.gtag === 'function') {
+  // Add debug_mode automatically if enabled in config
+  if (DEBUG_MODE && args[0] === "event") {
+    const params = args[2] || {};
+    args[2] = { debug_mode: true, ...params };
+  }
+  if (ready && typeof window !== "undefined" && typeof window.gtag === "function") {
     window.gtag(...args);
   } else {
     queue.push(args);
   }
+}
+export function trackPageView(path) {
+  gtag("event", "page_view", {
+    page_path: path,
+  });
+}
+export function trackEvent(name, params = {}) {
+  gtag("event", name, params);
 }
