@@ -223,9 +223,6 @@ class AssetSubmissionBloc
             totalCapacity: spec.totalCapacity,
             totalCapacityUnit: spec.totalCapacityUnit,
             totalCapacityUOM: spec.totalCapacityUnit,
-            // voltageUnit:
-            //     (type == 'battery' || type == 'inverter') ? "Volts" : null,
-
             currentUnit:
                 type == ASSET_TYPES.INVERTER.name.toLowerCase() ? '1' : null,
             capacityUnit: (type == ASSET_TYPES.BATTERY.name.toLowerCase() ||
@@ -255,7 +252,6 @@ class AssetSubmissionBloc
                 type == ASSET_TYPES.INVERTER.name.toLowerCase()
                     ? saved.inverterCapacityUnit
                     : null,
-            // currentUnit: saved.currentUnit,
           );
 
           print("assetDetails $assetDetails");
