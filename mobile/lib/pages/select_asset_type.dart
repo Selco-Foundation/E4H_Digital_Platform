@@ -4,7 +4,6 @@ import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:selco/blocs/user_type/user_type.dart';
 
 import '../blocs/app_init/app_init.dart';
 import '../blocs/asset_type/asset_type.dart';
@@ -12,6 +11,7 @@ import '../blocs/cache_asset_count/cache_asset_count.dart';
 import '../blocs/cache_specification/cache_specification.dart';
 import '../blocs/selected_project/selected_project.dart';
 import '../blocs/specification/specification.dart';
+import '../blocs/user_type/user_type.dart';
 import '../data/nosql/cache_asset_count.dart';
 import '../data/nosql/cache_specification.dart';
 import '../model/asset_type/asset_type.dart';
@@ -109,7 +109,9 @@ class _SelectAssetTypePageState extends State<SelectAssetTypePage> {
     final state = context.read<CacheAssetCountBloc>().state;
     return state.maybeWhen(
       loaded: (entries) => entries.firstWhereOrNull(
-        (e) => e.projectId == projectId && e.assetType == assetType,
+        (e) =>
+            e.projectId == projectId &&
+            e.assetType.toLowerCase() == assetType.toLowerCase(),
       ),
       orElse: () => null,
     );
