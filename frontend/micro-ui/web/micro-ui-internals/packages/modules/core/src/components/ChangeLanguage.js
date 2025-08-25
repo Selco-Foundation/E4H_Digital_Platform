@@ -8,6 +8,15 @@ const ChangeLanguage = (prop) => {
   const selectedLanguage = Digit.StoreData.getCurrentLanguage();
   const [selected, setselected] = useState(selectedLanguage);
   const handleChangeLanguage = (language) => {
+    try {
+      Digit.Utils.analytics?.trackButtonClick("language_change_after_login", {
+        page_path: window.location?.pathname || "/employee",
+        page_title: "Post-Login Page",
+        selected_language: language.value,
+      });
+    } catch (e) {
+      console.warn("analytics: language change after login failed", e);
+    }
     setselected(language.value);
     Digit.LocalizationService.changeLanguage(language.value, stateInfo.code);
   };
