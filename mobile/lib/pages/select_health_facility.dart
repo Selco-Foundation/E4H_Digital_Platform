@@ -277,6 +277,7 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
           for (final project in projects) ...[
             InstallationReportCard(
               onPress: () => _handleProjectTap(project),
+              project: project,
               projectId: project.project.id,
               title: project.project.name ?? '—',
               dateAssigned: project.project.startDateTime ?? DateTime.now(),
@@ -367,6 +368,7 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
 }
 
 class InstallationReportCard extends StatelessWidget {
+  final ProjectWorkflow? project;
   final String? projectId;
   final String? title;
   final String? status;
@@ -379,6 +381,7 @@ class InstallationReportCard extends StatelessWidget {
 
   const InstallationReportCard({
     super.key,
+    this.project,
     this.projectId,
     this.title,
     this.status,
@@ -536,7 +539,9 @@ class InstallationReportCard extends StatelessWidget {
                 ),
                 DigitButton(
                   mainAxisSize: MainAxisSize.max,
-                  label: 'Start Installation Report',
+                  label: (fraction * 100).round() > 0
+                      ? 'Resume Installation Report'
+                      : 'Start Installation Report',
                   onPressed: onPress,
                   type: DigitButtonType.primary,
                   size: DigitButtonSize.large,
@@ -545,8 +550,13 @@ class InstallationReportCard extends StatelessWidget {
                 DigitButton(
                   mainAxisSize: MainAxisSize.max,
                   label: 'Submit For Approval',
-                  onPressed: () {},
-                  isDisabled: true,
+                  onPressed: () {
+                    context
+                        .read<SelectedProjectBloc>()
+                        .add(SelectedProjectEvent.select(project!));
+                    context.router.push(const OverallAssetSummaryRoute());
+                  },
+                  isDisabled: (fraction * 100).round() >= 98 ? false : true,
                   type: DigitButtonType.secondary,
                   size: DigitButtonSize.large,
                 ),
