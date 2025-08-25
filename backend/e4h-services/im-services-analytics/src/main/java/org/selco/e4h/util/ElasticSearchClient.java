@@ -28,7 +28,7 @@ public class ElasticSearchClient {
     private static final String INDEX_NAME = "computed-sla-im-services";
     private static final String OLD_INDEX_NAME = "im-services";
 
-    private static final String INDEX_NAME_AUDIT = "phc-master-list-new-2";
+    private static final String INDEX_NAME_PHC = "phc-master-list-new-2";
 
     private static final String DOC_PATH = "_doc";
 
@@ -40,8 +40,12 @@ public class ElasticSearchClient {
         return fetchTickets(OLD_INDEX_NAME, from, size);
     }
 
-    public Map<String, Object> getTicketsByTenantId(int from, int size, String tenantId) {
-        return fetchTicketById(INDEX_NAME_AUDIT, from, size, tenantId);
+    public Map<String, Object> getHFByTenantId(int from, int size, String tenantId) {
+        return fetchTicketById(INDEX_NAME_PHC, from, size, tenantId);
+    }
+
+    public List<Map<String, Object>> getAllPHC(int from, int size) {
+        return fetchAllPHCs(INDEX_NAME_PHC, from, size);
     }
 
     private List<Map<String, Object>> fetchTickets(String indexName, int from, int size) {
@@ -58,11 +62,22 @@ public class ElasticSearchClient {
         }
     }
 
+    private List<Map<String, Object>> fetchAllPHCs(String indexName, int from, int size) {
+        String uri = getBaseUrl() + "/" + indexName + "/" + SEARCH_PATH;
+        Map<String, Object> query = buildHFQuery(from, size);
+        HttpEntity<Object> entity = new HttpEntity<>(query, updateService.buildHeaders());
+        try {
+            Map<String, Object> response = restTemplate.postForObject(uri, entity, Map.class);
+            return parseESHits(response);
+        } catch (Exception e) {
+            log.error("Failed to fetch open tickets from index '{}'", indexName, e);
+            return Collections.emptyList();
+        }
+    }
+
     private Map<String, Object> fetchTicketById(String indexName, int from, int size, String tenantId) {
         String uri = getBaseUrl() + "/" + indexName + "/" + DOC_PATH + "/" + tenantId;
 
-
-        // HttpEntity sans body (GET n’a pas de payload)
         HttpEntity<String> entity = new HttpEntity<>(updateService.buildHeaders());
 
         try {
@@ -95,6 +110,18 @@ public class ElasticSearchClient {
         )));
 
         bool.put("must_not", mustNot);
+        query.put("query", Map.of("bool", bool));
+        query.put("_source", true);
+        query.put("from", from);
+        query.put("size", size);
+
+        return query;
+    }
+
+    private Map<String, Object> buildHFQuery(int from, int size) {
+        Map<String, Object> query = new HashMap<>();
+        Map<String, Object> bool = new HashMap<>();
+
         query.put("query", Map.of("bool", bool));
         query.put("_source", true);
         query.put("from", from);
