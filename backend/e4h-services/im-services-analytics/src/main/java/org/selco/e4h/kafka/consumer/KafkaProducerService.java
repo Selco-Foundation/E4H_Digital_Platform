@@ -25,8 +25,8 @@ public class KafkaProducerService {
         System.out.println("Sent incident: " + incident);
     }
 
-    public void getTicket(String boundaryCode){
-        Map<String, Object> tickets = esClient.getHFByBoundaryCode(boundaryCode);
+    public void getTicket(String tenantId){
+        Map<String, Object> tickets = esClient.getHFByTenantId(0, 1000, tenantId);
         log.info("List tickets {}", tickets.size());
         if(tickets!=null){
             Map<String, Object> source = (Map<String, Object>)tickets.get("_source");
@@ -38,8 +38,7 @@ public class KafkaProducerService {
             String name = (String)data.get("name");
             String phcType = (String)data.get("phcType");
             String type = (String)data.get("type");
-            String tenantId = (String)data.get("tenantId");
-            String existBoundaryCode = (String)data.get("boundaryCode");
+//            String tenantId = (String)data.get("tenantId");
 
             IncidentStatusAgregation incidentStatusAgregation = new IncidentStatusAgregation();
             incidentStatusAgregation.setBlock(block);
@@ -50,7 +49,6 @@ public class KafkaProducerService {
             incidentStatusAgregation.setPhcType(phcType);
             incidentStatusAgregation.setType(type);
             incidentStatusAgregation.setTenantId(tenantId);
-            incidentStatusAgregation.setBoundaryCode(existBoundaryCode);
         }
         log.info("List tickets {}", tickets.size());
     }
