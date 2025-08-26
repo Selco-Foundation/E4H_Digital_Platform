@@ -51,6 +51,22 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
 
     return navigator.language || "en_IN";
   };
+  const getBrowser = () => {
+    const ua = navigator.userAgent || "";
+    const isBrave = typeof navigator.brave !== "undefined" && typeof navigator.brave.isBrave === "function";
+
+    if (isBrave) return "Brave";
+    if (/EdgA?\/|EdgiOS\//.test(ua)) return "Edge";
+    if (/OPR\/|Opera/.test(ua)) return "Opera";
+    if (/YaBrowser\//.test(ua)) return "Yandex";
+    if (/Vivaldi\//.test(ua)) return "Vivaldi";
+    if (/SamsungBrowser\//.test(ua)) return "Samsung Internet";
+    if (/FxiOS\/|Firefox\//.test(ua)) return "Firefox";
+    if (/CriOS\//.test(ua)) return "Chrome";
+    if (/(Chrome|Chromium)\//.test(ua) && !/OPR\/|Edg\/|EdgA\/|EdgiOS\/|Vivaldi\/|YaBrowser\/|SamsungBrowser\//.test(ua)) return "Chrome";
+    if (/Safari\//.test(ua) && !/(Chrome|CriOS|Chromium|OPR|Edg|EdgA|EdgiOS|Vivaldi|YaBrowser|SamsungBrowser)\//.test(ua)) return "Safari";
+    return "Other";
+  };
 
   useEffect(() => {
     try {
@@ -132,7 +148,16 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
         const stateId = Digit?.ULBService?.getStateId?.() || "unknown";
         const district = info?.district || "unknown";
         const block = info?.block || "unknown";
-        const facility = info?.facilityName || "unknown";
+
+        const tenantIdForLabel = info?.tenantId || requestData.tenantId;
+        const facilityKey =
+          tenantIdForLabel ? `TENANT_TENANTS_${tenantIdForLabel.replace(".", "_").toUpperCase()}` : null;
+
+
+        const facilityFromUser = info?.facilityName?.trim?.();
+        const facilityTranslated = facilityKey ? t(facilityKey) : "";
+        const facility = facilityFromUser || facilityTranslated || "unknown";
+        Digit?.Utils?.analytics?.setFacilityName(facility);
         const deviceType = Digit?.Utils?.browser?.isMobile?.() ? "mobile" : "desktop";
         const selectedLanguage = getSelectedLanguage();
 
@@ -144,7 +169,7 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
             geography_block: block,
             facility_name: facility,
             device_type: deviceType,
-            browser: navigator.userAgentData?.brands?.[0]?.brand || "unknown",
+            browser: getBrowser(),
             os: navigator.userAgentData?.platform || navigator.platform || "unknown",
             selected_language: selectedLanguage,
             transport_type: "beacon",
