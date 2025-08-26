@@ -184,20 +184,20 @@ public class IncidentService {
                     List<IncidentStatusAgregation> systemFunctional = incidentRepository.getStatusSystemFunctional(tenantId);
                     if(statusAgregations !=null && !statusAgregations.isEmpty()){
                         IncidentStatusAgregation incidentStatusAgregationDB = statusAgregations.get(0);
-                        boolean hasNonFunctional = false;
-                        // true if at least one element is NON_FUNCTIONAL
-                        if (systemFunctional !=null && !systemFunctional.isEmpty()){
-                            hasNonFunctional = systemFunctional.stream()
-                                    .anyMatch(item -> NON_FUNCTIONAL.equals(item.getSystemFunctional()));
-                        }
-                        incidentStatusAgregation.setSystemFunctional(hasNonFunctional ? NON_FUNCTIONAL : FUNCTIONAL);
-
                         incidentStatusAgregation.setTotalOccurences(incidentStatusAgregationDB.getTotalOccurences());
                         incidentStatusAgregation.setTotalOpenOccurrences(incidentStatusAgregationDB.getTotalOpenOccurrences());
                         incidentStatusAgregation.setTotalCloseOccurrences(incidentStatusAgregationDB.getTotalCloseOccurrences());
-                        incidentStatusAgregation.setLastModifiedTime(System.currentTimeMillis());
 
                     }
+
+                    boolean hasNonFunctional = false;
+                    // true if at least one element is NON_FUNCTIONAL
+                    if (systemFunctional !=null){
+                        hasNonFunctional = systemFunctional.stream()
+                                .anyMatch(item -> NON_FUNCTIONAL.equals(item.getSystemFunctional()));
+                    }
+                    incidentStatusAgregation.setSystemFunctional(hasNonFunctional ? NON_FUNCTIONAL : FUNCTIONAL);
+                    incidentStatusAgregation.setLastModifiedTime(System.currentTimeMillis());
 
                     log.info("Tickets sent to kafka {}", incidentStatusAgregation);
                     producerService.sendIncident(config.getUpdateTopicIndexer(), incidentStatusAgregation);
