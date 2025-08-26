@@ -118,11 +118,12 @@ const Summary = ({ t, sectionName, section, count, specifications, details, item
               style={{
                 border: "1px solid #d35400",
                 backgroundColor: "white",
-                color: "#d35400",
+                color: "#C84C0E",
                 padding: "8px 14px",
                 borderRadius: "2px",
                 fontWeight: "bold",
                 cursor: "pointer",
+                fontSize: "18px",
               }}
               onClick={() => setShowRejectionModal(true)}
             >
