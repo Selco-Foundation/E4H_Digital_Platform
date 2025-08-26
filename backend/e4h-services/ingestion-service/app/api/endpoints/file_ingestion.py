@@ -1597,7 +1597,7 @@ async def update_incidents_data_from_excel(
 
                 update_data = {
                     "systemFunctional": (
-                        {"Yes": "FUNCTIONAL", "No": "NON_FUNCTIONAL"}.get(str(row.get("Is the solar system working?", "")).strip(), "")
+                        {"yes": "FUNCTIONAL", "no": "NON_FUNCTIONAL"}.get(str(row.get("Is the solar system working?", "")).strip().lower(), "")
                     )
                 }
 

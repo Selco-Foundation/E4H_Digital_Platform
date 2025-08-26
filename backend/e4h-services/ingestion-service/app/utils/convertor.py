@@ -654,7 +654,10 @@ def get_incident_data_update_request_info():
 
 
 def create_incident_data_update_payload(search_response: dict, update_data: dict) -> dict:
-    incident_wrapper = search_response.get("IncidentWrappers", [{}])[0]
+    wrappers = search_response.get("IncidentWrappers") or []
+    if not wrappers:
+        raise ValueError("Incident not found in search response (empty IncidentWrappers).")
+    incident_wrapper = wrappers[0]
     incident = incident_wrapper.get("incident", {})
     workflow = incident_wrapper.get("workflow", {})
     filed_date = incident.get("filedDate")
@@ -677,7 +680,7 @@ def create_incident_data_update_payload(search_response: dict, update_data: dict
         "CS_COMPLAINT_DETAILS_APPLICATION_STATUS": f"CS_COMMON_{incident.get('applicationStatus')}",
         "CS_ADDCOMPLAINT_TICKET_TYPE": f"SERVICEDEFS.{original_type.upper()}",
         "CS_ADDCOMPLAINT_TICKET_SUB_TYPE": f"SERVICEDEFS.{original_subtype.upper()}",
-        "CS_ADDCOMPLAINT_SYSTEM_FUNCTIONAL": incident.get("systemFunctional"),
+        "CS_ADDCOMPLAINT_SYSTEM_FUNCTIONAL": update_data.get("systemFunctional"),
         "CS_ADDCOMPLAINT_DISTRICT": incident.get("district", ""),
         "CS_ADDCOMPLAINT_BLOCK": incident.get("block", ""),
         "CS_ADDCOMPLAINT_HEALTH_CARE_CENTRE": incident.get("tenantId", ""),
