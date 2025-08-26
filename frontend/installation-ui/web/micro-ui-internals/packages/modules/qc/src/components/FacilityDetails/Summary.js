@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import Section from "./Section";
-import RejectionReasonModal from "./RejectionReasonModal";
+import AddRejectionReasonModal from "./AddRejectionReasonModal";
 import SystemParameterReport from "./SystemParameterReport";
-import SingleRejectionReasonModal from "./SingleRejectionReasonModal";
+import EditRejectionReasonModal from "./EditRejectionReasonModal";
 import { useDispatch, useSelector } from "react-redux";
 import { setRejectionReasons } from "../../redux/actions";
 import { ImageViewer } from "@egovernments/digit-ui-react-components";
@@ -68,8 +68,8 @@ const Summary = ({ t, sectionName, section, count, specifications, details, item
         border: "1px solid #eee",
         borderTop: "none",
         borderBottom: "none",
-        overflow: "hidden",
         transition: "all 0.3s ease-in-out",
+        minWidth: "900px"
       }}
     >
       <div
@@ -118,11 +118,12 @@ const Summary = ({ t, sectionName, section, count, specifications, details, item
               style={{
                 border: "1px solid #d35400",
                 backgroundColor: "white",
-                color: "#d35400",
+                color: "#C84C0E",
                 padding: "8px 14px",
                 borderRadius: "2px",
                 fontWeight: "bold",
                 cursor: "pointer",
+                fontSize: "18px",
               }}
               onClick={() => setShowRejectionModal(true)}
             >
@@ -237,7 +238,7 @@ const Summary = ({ t, sectionName, section, count, specifications, details, item
           </div>
         ))}
 
-      {showRejectionModal && <RejectionReasonModal t={t} onClose={() => setShowRejectionModal(false)} onSave={handleSave} />}
+      {showRejectionModal && <AddRejectionReasonModal t={t} onClose={() => setShowRejectionModal(false)} onSave={handleSave} />}
 
       {rejectionData.filter((reason) => reason.reason.trim()).length > 0 && (
         <div style={{ display: "flex", gap: "10px", alignItems: "center", paddingLeft: "20px", paddingRight: "20px" }}>
@@ -283,7 +284,7 @@ const Summary = ({ t, sectionName, section, count, specifications, details, item
                   </button>
                 </div>
                 {activeReasonId && activeReasonId === reason.id && (
-                  <SingleRejectionReasonModal
+                  <EditRejectionReasonModal
                     t={t}
                     onClose={() => setActiveReasonId(null)}
                     onUpdate={handleUpdate}

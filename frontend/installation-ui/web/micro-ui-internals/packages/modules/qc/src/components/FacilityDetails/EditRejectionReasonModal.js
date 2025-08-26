@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Dropdown, TextArea } from "@egovernments/digit-ui-react-components";
+import { Dropdown, DustbinIcon, TextArea } from "@egovernments/digit-ui-react-components";
+import CustomCloseSvg from "../CustomCloseSvg";
 
 const reasonOptions = [
   { label: "Serial Number Incorrect", code: "Serial Number Incorrect" },
@@ -8,7 +9,7 @@ const reasonOptions = [
   { label: "Incorrect Brand", code: "Incorrect Brand" }
 ];
 
-const SingleRejectionReasonModal = ({ t, name, onClose, onUpdate, onDelete, existingReason }) => {
+const EditRejectionReasonModal = ({ t, name, onClose, onUpdate, onDelete, existingReason }) => {
 
   const [reason, setReason] = useState(existingReason);
 
@@ -16,7 +17,7 @@ const SingleRejectionReasonModal = ({ t, name, onClose, onUpdate, onDelete, exis
     setReason({ ...reason, [key]: value });
   };
 
-  const handleDeletion = (id) => {
+  const handleDeletion = () => {
     onDelete(reason)
     onClose();
   };
@@ -36,14 +37,16 @@ const SingleRejectionReasonModal = ({ t, name, onClose, onUpdate, onDelete, exis
             color: "#0B4B66",
             fontWeight: "bold",
           }}>
-            {t("QC_INSTALLATION_REJECTION_REASON")}
+            {t("QC_INSTALLATION_EDIT_REJECTION_REASON")}
           </h2>
-          <button onClick={onClose} style={styles.closeBtn}>✕</button>
+          <CustomCloseSvg style={{ cursor: "pointer" }} onClick={onClose} />
         </div>
           <div key={reason.id} style={styles.reasonBlock}>
             <div style={styles.reasonHeader}>
               <strong>{name}</strong>
-              <button onClick={handleDeletion} style={styles.trashBtn}>🗑</button>
+              <button onClick={handleDeletion} style={styles.trashBtn}>
+                <DustbinIcon />
+              </button>
             </div>
             <Dropdown
               t={t}
@@ -60,8 +63,8 @@ const SingleRejectionReasonModal = ({ t, name, onClose, onUpdate, onDelete, exis
             />
           </div>
         <div style={styles.footer}>
-          <button onClick={onClose} style={styles.cancelBtn}>Cancel</button>
-          <button onClick={handleSave} style={styles.saveBtn}>Save</button>
+          <button onClick={onClose} style={styles.cancelBtn}>{t("CS_COMMON_CANCEL")}</button>
+          <button onClick={handleSave} style={styles.saveBtn}>{t("CS_COMMON_SAVE")}</button>
         </div>
       </div>
     </div>
@@ -72,20 +75,20 @@ const styles = {
   backdrop: {
     position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
     backgroundColor: 'rgba(0,0,0,0.4)', display: 'flex', justifyContent: 'center', alignItems: 'center',
-    zIndex: 1000
+    zIndex: 10000000
   },
   modal: {
     backgroundColor: '#fff', borderRadius: 4, width: 400, maxHeight: '90vh', overflowY: 'auto',
-    boxShadow: '0 4px 12px rgba(0,0,0,0.15)', padding: 16, position: 'relative'
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)', position: 'relative'
   },
   header: {
-    display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12
+    display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, margin: 16
   },
   closeBtn: {
     background: 'none', border: 'none', fontSize: 20, cursor: 'pointer'
   },
   reasonBlock: {
-    border: '1px solid #ccc', borderRadius: 4, padding: 12, marginBottom: 12
+    border: '1px solid #ccc', borderRadius: 4, padding: "12px 12px 0px 12px", marginBottom: 12, margin: 16
   },
   reasonHeader: {
     display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8
@@ -101,20 +104,21 @@ const styles = {
   },
   addBtn: {
     display: 'flex', alignItems: 'center', justifyContent: 'center',
-    backgroundColor: '#C1440E', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: 4,
-    cursor: 'pointer', fontSize: 14, marginBottom: 12
+    backgroundColor: 'white', color: '#C1440E', border: 'none', padding: '8px 12px', borderRadius: 4,
+    cursor: 'pointer', fontSize: 14, marginBottom: 12, marginRight: "auto", marginLeft: "auto"
   },
   footer: {
-    display: 'flex', justifyContent: 'space-between'
+    display: 'flex', justifyContent: 'space-between', width: "100%", padding: 16,
+    boxShadow: "0px 0px 4px #00000026"
   },
   cancelBtn: {
     backgroundColor: '#fff', color: '#C1440E', border: '2px solid #C1440E', padding: '8px 20px',
-    fontWeight: 'bold', borderRadius: 2, cursor: 'pointer'
+    fontWeight: 'bold', borderRadius: 2, cursor: 'pointer', width: "40%"
   },
   saveBtn: {
     backgroundColor: '#C1440E', color: '#fff', border: 'none', padding: '8px 20px',
-    fontWeight: 'bold', borderRadius: 2, cursor: 'pointer'
+    fontWeight: 'bold', borderRadius: 2, cursor: 'pointer', width: "40%"
   }
 };
 
-export default SingleRejectionReasonModal;
+export default EditRejectionReasonModal;
