@@ -20,12 +20,9 @@ from app.processor.factory.vendor_data_processor_factory import VendorDataProces
 from app.schemas.request_info import RequestInfo
 from app.producer.producer import Producer
 from app.utils.convertor import request_info_from_json, create_vendor_request, create_facility_payload, \
-    get_project_creation_payload, get_user_creation_payload_staff, get_user_creation_payload_supervisors, get_staff_creation_payload, create_project_payload, \
-    get_installation_spoc_creation_payload, get_staff_search_payload, check_role_mismatch_for_user_type
-    get_project_creation_payload, get_user_creation_payload_staff, get_user_creation_payload_supervisors, \
-    get_staff_creation_payload, create_project_payload, \
-    get_installation_spoc_creation_payload, get_staff_search_payload, get_incident_data_update_request_info, \
-    create_incident_data_update_payload
+    get_project_creation_payload, check_role_mismatch_for_user_type, get_user_creation_payload_staff, get_user_creation_payload_supervisors, \
+    get_staff_creation_payload, create_project_payload, get_installation_spoc_creation_payload, get_staff_search_payload, create_incident_data_update_payload, \
+    get_incident_data_update_request_info
 from app.utils.facility_service_client import FacilityServiceClient
 from app.utils.im_service_client import IMServiceClient
 from app.utils.mdms_client import MDMSClient
