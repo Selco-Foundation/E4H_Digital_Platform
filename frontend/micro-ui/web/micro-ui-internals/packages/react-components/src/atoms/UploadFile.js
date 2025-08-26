@@ -314,7 +314,8 @@ const UploadFile = (props) => {
           const fileSrc = fileDetailsData.objectUrl;
 
           return (
-            <div key={index} className="tag-container" style={extraStyles ? extraStyles?.tagContainerStyles : null}>
+            // <div key={index} className="tag-container" style={extraStyles ? extraStyles?.tagContainerStyles : null}>
+            <div className="tag-container" style={extraStyles ? extraStyles?.tagContainerStyles : null}>
               {fileType.substring(0, 5) === "image" ? (
                 <div style={{ width: "100px", display: "flex", flexDirection: "column", flexWrap: "wrap", marginTop: "10px" }}>
                   <img src={fileSrc} alt="thumbnail" style={{ width: "100px", height: "80px" }} />
@@ -325,24 +326,24 @@ const UploadFile = (props) => {
                       )}`
                       : fileDetailsData.file.name}
                   </div>
-                  {/* download link to track download_image */}
-                  <a
-                    href={fileSrc}
-                    download
-                    style={{ fontSize: 12, textAlign: "center", marginTop: 4, color: "#0065ff", textDecoration: "underline" }}
-                    onClick={() => {
-                      try {
-                        Digit?.Utils?.analytics?.trackMedia("download_image", {
-                          page_name: pageName,
-                          media_type: "image",
-                        });
-                      } catch (e) {
-                        console.warn("analytics: download_image failed", e);
-                      }
-                    }}
-                  >
-                    {t("CS_COMMON_DOWNLOAD")}
-                  </a>
+                  {/*/!* download link to track download_image *!/*/}
+                  {/*<a*/}
+                  {/*  href={fileSrc}*/}
+                  {/*  download*/}
+                  {/*  style={{ fontSize: 12, textAlign: "center", marginTop: 4, color: "#0065ff", textDecoration: "underline" }}*/}
+                  {/*  onClick={() => {*/}
+                  {/*    try {*/}
+                  {/*      Digit?.Utils?.analytics?.trackMedia("download_image", {*/}
+                  {/*        page_name: pageName,*/}
+                  {/*        media_type: "image",*/}
+                  {/*      });*/}
+                  {/*    } catch (e) {*/}
+                  {/*      console.warn("analytics: download_image failed", e);*/}
+                  {/*    }*/}
+                  {/*  }}*/}
+                  {/*>*/}
+                  {/*  {t("CS_COMMON_DOWNLOAD")}*/}
+                  {/*</a>*/}
                 </div>
               ) : fileType.substring(0, 5) === "video" ? (
                 <div style={{ width: "fit-content", display: "flex", flexDirection: "column", flexWrap: "wrap", marginTop: "10px" }}>
