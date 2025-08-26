@@ -115,10 +115,6 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
 
   //   }, [file]);
   useEffect(() => {
-    Digit.Utils.analytics.trackPageView("ticket_details_page", {
-      page_path: window.location?.pathname || "/ticket-details",
-      page_title: "Ticket Details",
-    });
     if (selectedAction === "REJECT") {
       const uuid = JSON.parse(sessionStorage.getItem("Digit.User"))?.value?.info?.uuid;
       let name = JSON.parse(sessionStorage.getItem("Digit.User"))?.value?.info?.name;
@@ -518,6 +514,14 @@ export const ComplaintDetails = (props) => {
       }
     }
   }, [workflowDetails]);
+
+  useEffect(() => {
+    Digit?.Utils?.analytics?.trackPageView("ticket_details_page", {
+      page_path: location?.pathname || "/ticket-details",
+      page_title: "Ticket Details",
+    });
+  }, [location?.pathname]);
+
   const [displayMenu, setDisplayMenu] = useState(false);
   const [popup, setPopup] = useState(false);
   const [selectedAction, setSelectedAction] = useState(null);
