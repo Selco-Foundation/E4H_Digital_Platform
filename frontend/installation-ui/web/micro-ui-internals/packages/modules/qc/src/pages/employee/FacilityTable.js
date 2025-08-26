@@ -336,7 +336,7 @@ const FacilityTable = ({ t }) => {
           <Loader />
         </div>
       )}
-      <div style={{fontSize: "24px", fontWeight: "bold", marginBottom: "20px", color: "#004d66"}}>
+      <div style={{fontSize: "40px", fontWeight: "bold", fontFamily: "Roboto Condensed", marginBottom: "20px", color: "#0B0C0C"}}>
         Installation | {fieldPlan?.name}
       </div>
       <InfoCard t={t} selectedFieldPlan={fieldPlan} />
