@@ -549,7 +549,7 @@ class RejectionReasonsList extends StatelessWidget {
         Container(
           width: double.infinity,
           decoration: BoxDecoration(
-            color: theme.colorTheme.generic.background,
+            color: theme.colorTheme.paper.secondary,
             border: Border.all(color: theme.colorTheme.generic.divider),
             borderRadius: BorderRadius.circular(spacer1),
           ),
@@ -561,7 +561,7 @@ class RejectionReasonsList extends StatelessWidget {
               children: [
                 Text(
                   'Rejection Reason(s)',
-                  style: textTheme.headingM
+                  style: textTheme.headingS
                       .copyWith(color: theme.colorTheme.text.primary),
                 ),
                 const SizedBox(height: spacer5),
@@ -598,7 +598,7 @@ class RejectionReasonsList extends StatelessWidget {
           decoration: BoxDecoration(
             border: Border.all(color: theme.colorTheme.primary.primary2),
             borderRadius: BorderRadius.circular(spacer2),
-            color: theme.colorTheme.generic.background,
+            color: theme.colorTheme.paper.primary,
           ),
           child: Padding(
             padding: const EdgeInsets.symmetric(
