@@ -84,7 +84,7 @@ const FacilityDetails = ({t}) => {
   }
 
   return (
-    <div style={{marginTop: "20px"}}>
+    <div style={{marginTop: "20px", padding: "0px 10px", overflow: "auto"}}>
       { (updatingWorkflow || fieldPlanDataFetching || facilityDataFetching) && (
         <div
           style={{
@@ -104,7 +104,7 @@ const FacilityDetails = ({t}) => {
           <Loader />
         </div>
       )}
-      <div style={{fontSize: "24px", fontWeight: "bold", marginBottom: "20px", color: "#004d66"}}>
+      <div style={{fontSize: "40px", fontWeight: "bold", fontFamily: "Roboto Condensed", marginBottom: "20px", color: "#0B0C0C"}}>
           {facilityDetails.facilityName}
       </div>
 
