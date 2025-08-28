@@ -1,17 +1,25 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from "react";
 import { Dropdown, DustbinIcon, TextArea } from "@egovernments/digit-ui-react-components";
 import CustomCloseSvg from "../CustomCloseSvg";
 
 const reasonOptions = [
-  { label: "Serial Number Incorrect", code: "Serial Number Incorrect" },
-  { label: "Model Number Incorrect", code: "Model Number Incorrect" },
   { label: "Image Not Clear", code: "Image Not Clear" },
-  { label: "Incorrect Brand", code: "Incorrect Brand" }
+  { label: "Incorrect Brand", code: "Incorrect Brand" },
+  { label: "Model Number Incorrect", code: "Model Number Incorrect" },
+  { label: "Serial Number Incorrect", code: "Serial Number Incorrect" }
 ];
 
-const EditRejectionReasonModal = ({ t, name, onClose, onUpdate, onDelete, existingReason }) => {
+const EditRejectionReasonModal = ({ t, name, onClose, onUpdate, onDelete, existingReason, rejectionReasons }) => {
 
+  const [reasonMenu, setReasonMenu] = useState(reasonOptions)
   const [reason, setReason] = useState(existingReason);
+
+  useEffect(() => {
+    const savedRejectionCodes = rejectionReasons.map(r => r.reason);
+    const newReasonMenu = reasonMenu.filter(option => (option.code === existingReason.reason || !savedRejectionCodes.includes(option.code)));
+    newReasonMenu.sort((a, b) => a.label.localeCompare(b.label));
+    setReasonMenu(newReasonMenu);
+  }, [rejectionReasons]);
 
   const updateReason = (id, key, value) => {
     setReason({ ...reason, [key]: value });
@@ -50,8 +58,8 @@ const EditRejectionReasonModal = ({ t, name, onClose, onUpdate, onDelete, existi
             </div>
             <Dropdown
               t={t}
-              option={reasonOptions}
-              selected={reasonOptions?.find((opt) => opt.code === reason.reason)}
+              option={reasonMenu}
+              selected={reasonMenu?.find((opt) => opt.code === reason.reason)}
               optionKey={"label"}
               select={(e) => updateReason(reason.id, 'reason', e.code)}
             />
