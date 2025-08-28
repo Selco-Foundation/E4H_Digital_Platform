@@ -51,23 +51,6 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
 
     return navigator.language || "en_IN";
   };
-  const getBrowser = () => {
-    const ua = navigator.userAgent || "";
-    const isBrave = typeof navigator.brave !== "undefined" && typeof navigator.brave.isBrave === "function";
-
-    if (isBrave) return "Brave";
-    if (/EdgA?\/|EdgiOS\//.test(ua)) return "Edge";
-    if (/OPR\/|Opera/.test(ua)) return "Opera";
-    if (/YaBrowser\//.test(ua)) return "Yandex";
-    if (/Vivaldi\//.test(ua)) return "Vivaldi";
-    if (/SamsungBrowser\//.test(ua)) return "Samsung Internet";
-    if (/FxiOS\/|Firefox\//.test(ua)) return "Firefox";
-    if (/CriOS\//.test(ua)) return "Chrome";
-    if (/(Chrome|Chromium)\//.test(ua) && !/OPR\/|Edg\/|EdgA\/|EdgiOS\/|Vivaldi\/|YaBrowser\/|SamsungBrowser\//.test(ua)) return "Chrome";
-    if (/Safari\//.test(ua) && !/(Chrome|CriOS|Chromium|OPR|Edg|EdgA|EdgiOS|Vivaldi|YaBrowser|SamsungBrowser)\//.test(ua)) return "Safari";
-    return "Other";
-  };
-
   useEffect(() => {
     try {
       Digit?.Utils?.analytics?.trackPageView?.("login_page", {
@@ -144,38 +127,14 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
 
 
       try {
-        const rolesCsv = (info?.roles || []).map((r) => r.code).join(",") || "unknown";
-        const stateId = Digit?.ULBService?.getStateId?.() || "unknown";
-        const district = info?.district || "unknown";
-        const block = info?.block || "unknown";
-
         const tenantIdForLabel = info?.tenantId || requestData.tenantId;
-        const facilityKey =
-          tenantIdForLabel ? `TENANT_TENANTS_${tenantIdForLabel.replace(".", "_").toUpperCase()}` : null;
-
-
+        const facilityKey = tenantIdForLabel ? `TENANT_TENANTS_${tenantIdForLabel.replace(".", "_").toUpperCase()}` : null;
         const facilityFromUser = info?.facilityName?.trim?.();
         const facilityTranslated = facilityKey ? t(facilityKey) : "";
         const facility = facilityFromUser || facilityTranslated || "unknown";
         Digit?.Utils?.analytics?.setFacilityName(facility);
-        const deviceType = Digit?.Utils?.browser?.isMobile?.() ? "mobile" : "desktop";
-        const selectedLanguage = getSelectedLanguage();
-
-        if (typeof window.gtag === "function") {
-          window.gtag("event", "user_login", {
-            user_role: rolesCsv,
-            geography_state: stateId,
-            geography_district: district,
-            geography_block: block,
-            facility_name: facility,
-            device_type: deviceType,
-            browser: getBrowser(),
-            os: navigator.userAgentData?.platform || navigator.platform || "unknown",
-            selected_language: selectedLanguage,
-            transport_type: "beacon",
-            ...(window.location.hostname === "localhost" ? { debug_mode: true } : {}),
-          });
-        }
+        const rolesCsv = (info?.roles || []).map(r => r.code).join(",") || "unknown";
+        Digit?.Utils?.analytics?.trackLogin(rolesCsv);
       } catch (e) {
         console.warn("analytics: user_login failed", e);
       }
