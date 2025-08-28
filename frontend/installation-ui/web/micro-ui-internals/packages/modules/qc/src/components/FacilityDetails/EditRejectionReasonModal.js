@@ -68,6 +68,7 @@ const EditRejectionReasonModal = ({ t, name, onClose, onUpdate, onDelete, existi
               onChange={(e) => updateReason(reason.id, 'comment', e.target.value)}
               value={reason.comment}
               placeholder={t("ES_ADDITIONAL_DETAILS_PLACEHOLDER")}
+              style={{ fontFamily: "Roboto" }}
             />
           </div>
         <div style={styles.footer}>
