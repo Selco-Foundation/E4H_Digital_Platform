@@ -2,6 +2,18 @@ let _ctx = {
   facility_name: "unknown",
 };
 
+const STATE_MAP = {
+  as: "Assam",
+  gj: "Gujarat",
+  mh: "Maharashtra",
+  ml: "Meghalaya",
+  mn: "Manipur",
+  mz: "Mizoram",
+  nl: "Nagaland",
+  or: "Odisha",
+  pg: "Karnataka",
+  sk: "Sikkim",
+};
 
 export function setFacilityName(name) {
   const val = (name && String(name).trim()) || "unknown";
@@ -12,10 +24,8 @@ export function setFacilityName(name) {
 }
 
 export function getFacilityName() {
-  // 1) in-memory
   if (_ctx.facility_name && _ctx.facility_name !== "unknown") return _ctx.facility_name;
 
-  // 2) sessionStorage
   try {
     const fromSS = sessionStorage.getItem("facility_name");
     if (fromSS) {
@@ -24,7 +34,6 @@ export function getFacilityName() {
     }
   } catch {}
 
-  // 3) current user object (as a last fallback)
   const info =
     window?.Digit?.SessionStorage?.get("User")?.info ||
     (JSON.parse(sessionStorage.getItem("Digit.User") || "null")?.value?.info) ||
@@ -57,7 +66,9 @@ export function getUserRoleCsv() {
 }
 
 export function getGeography() {
-  const state = window?.Digit?.ULBService?.getStateId?.() || "unknown";
+  let stateCode = window?.Digit?.ULBService?.getStateId?.() || "unknown";
+  stateCode = String(stateCode).split(".")[0].toLowerCase();
+  const state = STATE_MAP[stateCode] || stateCode || "unknown";
 
   const info =
     window?.Digit?.SessionStorage?.get("User")?.info ||
@@ -66,8 +77,6 @@ export function getGeography() {
 
   const district = info?.district || "unknown";
   const block = info?.block || "unknown";
-
-  // ✅ read from the shared store (with fallbacks)
   const facility_name = getFacilityName();
 
   return {
