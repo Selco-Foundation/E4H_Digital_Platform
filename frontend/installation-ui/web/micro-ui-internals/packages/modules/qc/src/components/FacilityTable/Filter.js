@@ -9,6 +9,7 @@ import {
 import RefreshButton from "../RefreshButton";
 import useBoundary from "../../hooks/useBoundary";
 import CustomCheckBox from "../Custom/CustomCheckBox";
+import CustomFilterIcon from "../Custom/CustomFilterIcon";
 
 const Filter = ({ t, fieldPlan, onFilterChange, projectQueryFilter, statusesList }) => {
 
@@ -179,7 +180,7 @@ const Filter = ({ t, fieldPlan, onFilterChange, projectQueryFilter, statusesList
                 marginBottom: "20px",
               }}
             >
-              <FilterIcon />
+              <CustomFilterIcon fill={"#0B4B66"} />
               {t("CORE_COMMON_FILTER")}
             </div>
             <button
