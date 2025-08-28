@@ -1590,8 +1590,8 @@ async def update_incidents_data_from_excel(
 
             try:
                 search_response = incident_client.search_incident(
-                    incident_id=row['Ticket No.'],
-                    tenant_id=row['Tenant ID'],
+                    incident_id=row['Ticket No.'].strip(),
+                    tenant_id=row['Tenant ID'].strip(),
                     request_info=incident_request_info
                 )
 
