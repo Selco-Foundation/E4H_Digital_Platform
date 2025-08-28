@@ -134,7 +134,7 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
         const facility = facilityFromUser || facilityTranslated || "unknown";
         Digit?.Utils?.analytics?.setFacilityName(facility);
         const rolesCsv = (info?.roles || []).map(r => r.code).join(",") || "unknown";
-        Digit?.Utils?.analytics?.trackLogin(rolesCsv);
+        Digit?.Utils?.analytics?.trackLogin(rolesCsv, getSelectedLanguage());
       } catch (e) {
         console.warn("analytics: user_login failed", e);
       }

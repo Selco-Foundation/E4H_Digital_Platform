@@ -3,9 +3,10 @@ import { gtag } from './gtag';
 import { baseParams } from './baseParams';
 import { EV } from './events';
 
-export function trackLogin(rolesCsv = "unknown") {
+export function trackLogin(rolesCsv = "unknown", selectedLanguage = "unknown") {
   gtag("event", EV.USER_LOGIN, baseParams({
-    user_role: rolesCsv
+    user_role: rolesCsv,
+    selected_language: selectedLanguage,
   }));
 }
 
