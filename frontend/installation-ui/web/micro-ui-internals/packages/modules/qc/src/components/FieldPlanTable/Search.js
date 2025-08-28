@@ -17,14 +17,19 @@ const SearchCentre = ({ queryFilter, onSearch, onClear }) => {
 
   return (
     <React.Fragment>
-      <div style={{ width: "100%", background: "white", height: "fit-content", marginBottom: "15px", padding: "10px" }}>
+      <div style={{ width: "100%", minWidth: "700px", background: "white", marginBottom: "15px", padding: "10px" }}>
         <form onSubmit={(e) => {
           e.preventDefault();
           handleSearch();
         }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "10px"
+          }}>
             <span>
-              <Label>Search Field Plan Code</Label>
+              <Label>{t("QC_ACTION_SEARCH_FIELD_PLAN")}</Label>
               <TextInput
                 name="serviceRequestId"
                 value={textToSearch}
@@ -34,7 +39,7 @@ const SearchCentre = ({ queryFilter, onSearch, onClear }) => {
                 style={{ width: "300px" }}
               ></TextInput>
             </span>
-            <div style={{ display: "flex", gap: "30px" }}>
+            <div style={{ display: "flex", gap: "30px", alignItems: "center" }}>
               <span
                 onClick={handleClear}
                 className="clear-search"
