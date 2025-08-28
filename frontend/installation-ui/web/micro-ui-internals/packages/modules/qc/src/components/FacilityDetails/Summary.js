@@ -144,7 +144,7 @@ const Summary = ({ t, sectionName, section, count, specifications, details, item
             </Section>
 
             <Section title={t(`QC_INSTALLATION_${section}_SPECIFICATIONS`)}>
-              {AssetInfoItem(t(`QC_INSTALLATION_ASSET_SYSTEM`), specifications.system)}
+              {AssetInfoItem(t(`QC_INSTALLATION_ASSET_SYSTEM`), t(`QC_INSTALLATION_SYSTEM_${specifications.system}`))}
               {AssetInfoItem(t(`QC_INSTALLATION_ASSET_CAPACITY`), specifications.capacity)}
             </Section>
 
@@ -152,7 +152,7 @@ const Summary = ({ t, sectionName, section, count, specifications, details, item
               {AssetInfoItem(t(`QC_INSTALLATION_ASSET_COUNT`), details.count)}
               {AssetInfoItem(t(`QC_INSTALLATION_ASSET_WARRANTY_START_DATE`), details.warrantyStartDate)}
               {AssetInfoItem(t(`QC_INSTALLATION_ASSET_WARRANTY_DURATION`), details.warrantyDuration)}
-              {AssetInfoItem(t(`QC_INSTALLATION_ASSET_BRAND`), details.brand)}
+              {AssetInfoItem(t(`QC_INSTALLATION_ASSET_BRAND`), t(`QC_INSTALLATION_BRAND_${details.brand}`))}
               {AssetInfoItem(t(`QC_INSTALLATION_ASSET_MODEL_NUMBER`), details.modelNumber)}
             </Section>
 
