@@ -1595,6 +1595,12 @@ async def update_incidents_data_from_excel(
                     request_info=incident_request_info
                 )
 
+                incident_wrappers = search_response.get("IncidentWrappers", [])
+                if not incident_wrappers:
+                    df.at[index, 'status'] = 'failed'
+                    df.at[index, 'error'] = f"No incident found for Ticket No. {row['Ticket No.']} and Tenant ID {row['Tenant ID']}"
+                    continue
+
                 update_data = {
                     "systemFunctional": (
                         {"yes": "FUNCTIONAL", "no": "NON_FUNCTIONAL"}.get(str(row.get("Is the solar system working?", "")).strip().lower(), "")
