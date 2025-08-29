@@ -37,6 +37,7 @@
     "devD:engagement": "cd packages/modules/engagement && yarn start",
     "dev:sandbox": "cd packages/modules/sandbox && yarn start",
     "dev:qc": "cd packages/modules/qc && yarn start",
+    "dev:pm": "cd packages/modules/pm && yarn start",
     "build": "run-p build:**",
     "build:libraries": "cd packages/libraries && yarn build",
     "build:components": "cd packages/react-components && yarn build",
@@ -51,6 +52,7 @@
     "build:openpayment": "cd packages/modules/open-payment && yarn build",
     "build:sandbox": "cd packages/modules/sandbox && yarn build",
     "build:qc": "cd packages/modules/qc && yarn build",
+    "build:pm": "cd packages/modules/pm && yarn build",
     "deploy:jenkins": "./scripts/jenkins.sh",
     "clean": "rm -rf node_modules"
   },

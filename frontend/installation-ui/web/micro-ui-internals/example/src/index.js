@@ -13,6 +13,7 @@ import { initPGRComponents } from "@egovernments/digit-ui-module-pgr";
 import { initOpenPaymentComponents } from "@egovernments/digit-ui-module-open-payment";
 import { initSandboxComponents } from "@egovernments/digit-ui-module-sandbox";
 import { QCReducers, initQCComponents } from "@selco/digit-ui-module-qc";
+import { PMReducers, initPMComponents } from "@selco/digit-ui-module-pm";
 
 import "@selco/installation-ui-css/example/index.css";
 
@@ -23,6 +24,7 @@ var Digit = window.Digit || {};
 
 const enabledModules = [
   "QC",
+  "PM",
   "DSS",
   "HRMS",
   "Workbench",
@@ -99,10 +101,12 @@ const initDigitUI = () => {
   initOpenPaymentComponents();
   initSandboxComponents();
   initQCComponents();
+  initPMComponents();
 
   const moduleReducers = (initData) => ({
     pgr: PGRReducers(initData),
     qc: QCReducers(initData),
+    pm: PMReducers(initData),
   });
 
   // const stateCode = window?.globalConfigs?.getConfig("STATE_LEVEL_TENANT_ID") || "pb";

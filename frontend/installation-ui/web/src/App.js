@@ -17,11 +17,13 @@ import { initUtilitiesComponents } from "@egovernments/digit-ui-module-utilities
 import { UICustomizations } from "./Customisations/UICustomizations";
 import { initWorkbenchComponents } from "@egovernments/digit-ui-module-workbench";
 import { QCReducers, initQCComponents } from "@selco/digit-ui-module-qc";
+import { PMReducers, initPMComponents } from "@selco/digit-ui-module-pm";
 
 window.contextPath = window?.globalConfigs?.getConfig("CONTEXT_PATH");
 
 const enabledModules = [
   "QC",
+  "PM",
   "DSS",
   "NDSS",
   "Utilities",
@@ -32,7 +34,7 @@ const enabledModules = [
 ];
 
 const moduleReducers = (initData) => ({
-  initData, pgr: PGRReducers(initData), qc: QCReducers(initData),
+  initData, pgr: PGRReducers(initData), qc: QCReducers(initData), pm: PMReducers(initData),
 });
 
 const initDigitUI = () => {
@@ -49,6 +51,7 @@ const initDigitUI = () => {
   initUtilitiesComponents();
   initWorkbenchComponents();
   initQCComponents();
+  initPMComponents();
 
   window.Digit.Customizations = {
     PGR: {},
