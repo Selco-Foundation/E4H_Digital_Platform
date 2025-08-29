@@ -6,28 +6,29 @@ import EditRejectionReasonModal from "./EditRejectionReasonModal";
 import { useDispatch, useSelector } from "react-redux";
 import { setRejectionReasons } from "../../redux/actions";
 import { ImageViewer } from "@egovernments/digit-ui-react-components";
+import CustomCloseSvg from "../CustomCloseSvg";
 
 const Summary = ({ t, sectionName, section, count, specifications, details, items, images, videos, report, isReport }) => {
 
   const [expanded, setExpanded] = useState(false);
   const [showRejectionModal, setShowRejectionModal] = useState(false);
-  const rejectionReasons = useSelector((state) => state.qc.rejectionReasons);
+  const rejectionData = useSelector((state) => state.qc.rejectionReasons);
   const [activeReasonId, setActiveReasonId] = useState(null);
   const dispatch = useDispatch();
   const selectedFacility = useSelector((state) => state.qc.common.selectedFacility);
-  const rejectionData = rejectionReasons?.[section] || [];
+  const rejectionReasons = rejectionData?.[section] || [];
   const [imageToView, setImageToView] = useState(null);
 
   const handleSave = (data) => {
-    dispatch(setRejectionReasons(section, [...rejectionData, ...data.filter((reason) => reason?.reason?.trim())]));
+    dispatch(setRejectionReasons(section, [...rejectionReasons, ...data.filter((reason) => reason?.reason?.trim())]));
   };
 
   const handleUpdate = (reason) => {
-    dispatch(setRejectionReasons(section, rejectionData.map((r) => r.id === reason.id ? reason : r)));
+    dispatch(setRejectionReasons(section, rejectionReasons.map((r) => r.id === reason.id ? reason : r)));
   };
 
   const handleDelete = (reason) => {
-    dispatch(setRejectionReasons(section, rejectionData.filter((r) => r.id !== reason.id)));
+    dispatch(setRejectionReasons(section, rejectionReasons.filter((r) => r.id !== reason.id)));
   };
 
   const AssetInfoItem = (title, value) => (
@@ -143,7 +144,7 @@ const Summary = ({ t, sectionName, section, count, specifications, details, item
             </Section>
 
             <Section title={t(`QC_INSTALLATION_${section}_SPECIFICATIONS`)}>
-              {AssetInfoItem(t(`QC_INSTALLATION_ASSET_SYSTEM`), specifications.system)}
+              {AssetInfoItem(t(`QC_INSTALLATION_ASSET_SYSTEM`), t(`QC_INSTALLATION_SYSTEM_${specifications.system}`))}
               {AssetInfoItem(t(`QC_INSTALLATION_ASSET_CAPACITY`), specifications.capacity)}
             </Section>
 
@@ -151,7 +152,7 @@ const Summary = ({ t, sectionName, section, count, specifications, details, item
               {AssetInfoItem(t(`QC_INSTALLATION_ASSET_COUNT`), details.count)}
               {AssetInfoItem(t(`QC_INSTALLATION_ASSET_WARRANTY_START_DATE`), details.warrantyStartDate)}
               {AssetInfoItem(t(`QC_INSTALLATION_ASSET_WARRANTY_DURATION`), details.warrantyDuration)}
-              {AssetInfoItem(t(`QC_INSTALLATION_ASSET_BRAND`), details.brand)}
+              {AssetInfoItem(t(`QC_INSTALLATION_ASSET_BRAND`), t(`QC_INSTALLATION_BRAND_${details.brand}`))}
               {AssetInfoItem(t(`QC_INSTALLATION_ASSET_MODEL_NUMBER`), details.modelNumber)}
             </Section>
 
@@ -238,11 +239,18 @@ const Summary = ({ t, sectionName, section, count, specifications, details, item
           </div>
         ))}
 
-      {showRejectionModal && <AddRejectionReasonModal t={t} onClose={() => setShowRejectionModal(false)} onSave={handleSave} />}
+      {showRejectionModal && (
+        <AddRejectionReasonModal
+          t={t}
+          onClose={() => setShowRejectionModal(false)}
+          onSave={handleSave}
+          rejectionReasons={rejectionReasons}
+        />
+      )}
 
-      {rejectionData.filter((reason) => reason.reason.trim()).length > 0 && (
+      {rejectionReasons.filter((reason) => reason.reason.trim()).length > 0 && (
         <div style={{ display: "flex", gap: "10px", alignItems: "center", paddingLeft: "20px", paddingRight: "20px" }}>
-          {rejectionData
+          {rejectionReasons
             .filter((reason) => reason.reason.trim())
             .map((reason, index) => (
               <div key={reason.id}>
@@ -259,29 +267,29 @@ const Summary = ({ t, sectionName, section, count, specifications, details, item
                     }}
                     onClick={() => setActiveReasonId(reason.id)}
                   >
-                    {`${t(`QC_INSTALLATION_REJECTION_REASON`)} ${index + 1}`}
+                    {reason.reason}
                   </button>
-                  <button
-                    type="button"
-                    style={{
-                      position: "absolute",
-                      top: "0",
-                      right: "0",
-                      fontSize: "16px",
-                      fontWeight: "bold",
-                      color: "white",
-                      backgroundColor: "#b71c1c",
-                      cursor: "pointer",
-                      height: "15px",
-                      width: "15px",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                    onClick={() => handleDelete(reason)}
-                  >
-                    ×
-                  </button>
+                    <button
+                      style={{
+                        cursor: "pointer",
+                        position: "absolute",
+                        top: "0",
+                        right: "0",
+                        height: "15px",
+                        width: "15px",
+                        color: "white",
+                        backgroundColor: "#b71c1c",
+                        display: "flex",
+                        alignItems: "center",
+                        padding: "0"
+                      }}
+                      onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(reason);
+                      }}
+                    >
+                      <CustomCloseSvg height={"15"} width={"15"} fill="#b71c1c" iconFill={"white"}/>
+                    </button>
                 </div>
                 {activeReasonId && activeReasonId === reason.id && (
                   <EditRejectionReasonModal
@@ -290,6 +298,7 @@ const Summary = ({ t, sectionName, section, count, specifications, details, item
                     onUpdate={handleUpdate}
                     onDelete={handleDelete}
                     existingReason={reason}
+                    rejectionReasons={rejectionReasons}
                     name={`${t("QC_INSTALLATION_REJECTION_REASON")} ${index + 1}`}
                   />
                 )}
