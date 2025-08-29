@@ -269,25 +269,27 @@ const Summary = ({ t, sectionName, section, count, specifications, details, item
                   >
                     {reason.reason}
                   </button>
-                  <CustomCloseSvg
-                    onClick={() => handleDelete(reason)}
-                    style={{
-                      cursor: "pointer",
-                      position: "absolute",
-                       top: "0",
-                       right: "0",
-                       fontSize: "16px",
-                       fontWeight: "bold",
-                       color: "white",
-                       backgroundColor: "#b71c1c",
-                       display: "flex",
-                       alignItems: "center",
-                    }}
-                    height={"15"}
-                    width={"15"}
-                    fill="#b71c1c"
-                    iconFill={"white"}
-                  />
+                    <button
+                      style={{
+                        cursor: "pointer",
+                        position: "absolute",
+                        top: "0",
+                        right: "0",
+                        height: "15px",
+                        width: "15px",
+                        color: "white",
+                        backgroundColor: "#b71c1c",
+                        display: "flex",
+                        alignItems: "center",
+                        padding: "0"
+                      }}
+                      onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(reason);
+                      }}
+                    >
+                      <CustomCloseSvg height={"15"} width={"15"} fill="#b71c1c" iconFill={"white"}/>
+                    </button>
                 </div>
                 {activeReasonId && activeReasonId === reason.id && (
                   <EditRejectionReasonModal
