@@ -12,6 +12,7 @@ import { UICustomizations } from "./Customisations/UICustomizations";
 import { initUtilitiesComponents } from "@egovernments/digit-ui-module-utilities";
 import { Loader } from "@egovernments/digit-ui-components";
 import { QCReducers, initQCComponents } from "@selco/digit-ui-module-qc";
+import { PMReducers, initPMComponents } from "@selco/digit-ui-module-pm";
 
 window.contextPath = window?.globalConfigs?.getConfig("CONTEXT_PATH");
 
@@ -24,6 +25,7 @@ const DigitUI = React.lazy(() =>
 
 const enabledModules = [
   "QC",
+  "PM",
   "Utilities",
 ];
 
@@ -32,7 +34,7 @@ initLibraries().then(() => {
 });
 
 const moduleReducers = (initData) => ({
-  initData, qc: QCReducers(initData),
+  initData, pgr: PGRReducers(initData), qc: QCReducers(initData), pm: PMReducers(initData),
 });
 
 const initDigitUI = () => {
@@ -44,6 +46,7 @@ const initDigitUI = () => {
 
   initUtilitiesComponents();
   initQCComponents();
+  initPMComponents();
 
 };
 
