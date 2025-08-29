@@ -1,11 +1,14 @@
 import datetime
 import json
 import time
-from typing import Any, Dict, List, Optional
+from typing import Dict, Any, Optional, List
+from datetime import datetime
 
 import pandas as pd
 from pandas import Series
+from psycopg.types import none
 from pydantic import ValidationError
+from sqlalchemy import false, true
 
 from app.schemas.boundary import Boundary
 from app.schemas.request_info import RequestInfo
@@ -537,41 +540,166 @@ def check_role_mismatch_for_user_type(existing_user: Dict[str, Any], user_type: 
             "expected_roles": [],
             "mismatch_details": f"Unknown user type: {user_type}"
         }
-    
+
     # Extract current roles from user data
     current_roles = []
     user_data = existing_user.get("user", {})
     roles = user_data.get("roles", [])
-    
+
     for role in roles:
         role_code = role.get("code", "")
         if role_code:
             current_roles.append(role_code)
-    
+
     # Check for mismatches
     missing_roles = []
     unexpected_roles = []
-    
+
     for expected_role in expected_roles:
         if expected_role not in current_roles:
             missing_roles.append(expected_role)
-    
+
     for current_role in current_roles:
         if current_role not in expected_roles:
             unexpected_roles.append(current_role)
-    
+
     has_mismatch = bool(missing_roles or unexpected_roles)
-    
+
     mismatch_details = ""
     if has_mismatch:
         if missing_roles:
             mismatch_details += f"Missing roles: {', '.join(missing_roles)}. "
         if unexpected_roles:
             mismatch_details += f"Unexpected roles: {', '.join(unexpected_roles)}."
-    
+
     return {
         "has_mismatch": has_mismatch,
         "current_roles": current_roles,
         "expected_roles": expected_roles,
         "mismatch_details": mismatch_details.strip()
+    }
+
+def get_incident_data_update_request_info():
+    return {
+        "apiId": "Rainmaker",
+        "authToken": "222d0cf6-07c2-4d90-8a71-0292c200ae74",
+        "userInfo": {
+             "id": 4294,
+            "userName": "7204449839",
+            "salutation": None,
+            "name": "Revathi J",
+            "gender": "MALE",
+            "mobileNumber": "7204449839",
+            "emailId": "",
+            "altContactNumber": None,
+            "pan": None,
+            "aadhaarNumber": None,
+            "permanentAddress": None,
+            "permanentCity": None,
+            "permanentPinCode": None,
+            "correspondenceAddress": None,
+            "correspondenceCity": None,
+            "correspondencePinCode": None,
+            "alternatemobilenumber": None,
+            "active": True,
+            "locale": "en_IN",
+            "type": "EMPLOYEE",
+            "accountLocked": False,
+            "accountLockedDate": 0,
+            "fatherOrHusbandName": None,
+            "relationship": None,
+            "signature": None,
+            "bloodGroup": None,
+            "photo": None,
+            "identificationMark": None,
+            "createdBy": 0,
+            "lastModifiedBy": 4294,
+            "tenantId": "pg",
+            "roles": [
+                {
+                    "code": "COMPLAINANT",
+                    "name": "Complainant",
+                    "tenantId": "pg"
+                },
+                {
+                    "code": "EMPLOYEE",
+                    "name": "Employee",
+                    "tenantId": "pg"
+                },
+                {
+                    "code": "COMPLAINT_ASSESSOR",
+                    "name": "Complaint Assessor",
+                    "tenantId": "pg"
+                },
+                {
+                    "code": "COMPLAINT_FACILITATOR_2",
+                    "name": "Complaint facilitator 2",
+                    "tenantId": "pg"
+                },
+                {
+                    "code": "SUPERUSER",
+                    "name": "Super User",
+                    "tenantId": "pg"
+                }
+            ],
+            "uuid": "1e18f9bc-9702-4326-b66f-3732092e25d9",
+            "createdDate": "07-07-2025 12:57:24",
+            "lastModifiedDate": "07-07-2025 16:44:01",
+            "dob": "1994-02-08",
+            "pwdExpiryDate": "05-10-2025 12:57:24"
+        },
+        "msgId": "1751897062350|en_IN",
+        "plainAccessRequest": {}
+    }
+
+
+def create_incident_data_update_payload(search_response: dict, update_data: dict) -> dict:
+    wrappers = search_response.get("IncidentWrappers") or []
+    if not wrappers:
+        raise ValueError("Incident not found in search response (empty IncidentWrappers).")
+    incident_wrapper = wrappers[0]
+    incident = incident_wrapper.get("incident", {})
+    workflow = incident_wrapper.get("workflow", {})
+    filed_date = incident.get("filedDate")
+
+    if pd.isna(filed_date) or int(filed_date) == 0:
+        formatted_date = ""
+    else :
+        dt = datetime.fromtimestamp(int(filed_date) / 1000)
+        formatted_date = dt.strftime("%d/%m/%Y")
+
+
+
+    request_info = get_incident_data_update_request_info()
+
+    original_type = incident.get('incidentType', '')
+    original_subtype = incident.get('incidentSubType', '')
+
+    details = {
+        "CS_COMPLAINT_DETAILS_TICKET_NO": incident.get("incidentId"),
+        "CS_COMPLAINT_DETAILS_APPLICATION_STATUS": f"CS_COMMON_{incident.get('applicationStatus')}",
+        "CS_ADDCOMPLAINT_TICKET_TYPE": f"SERVICEDEFS.{original_type.upper()}",
+        "CS_ADDCOMPLAINT_TICKET_SUB_TYPE": f"SERVICEDEFS.{original_subtype.upper()}",
+        "CS_ADDCOMPLAINT_SYSTEM_FUNCTIONAL": update_data.get("systemFunctional"),
+        "CS_ADDCOMPLAINT_DISTRICT": incident.get("district", ""),
+        "CS_ADDCOMPLAINT_BLOCK": incident.get("block", ""),
+        "CS_ADDCOMPLAINT_HEALTH_CARE_CENTRE": incident.get("tenantId", ""),
+        "CS_COMPLAINT_COMMENTS": incident.get("comments", ""),
+        "CS_ADDCOMPLAINT_HEALTH_CARE_SUB_TYPE": incident.get("phcSubType", ""),
+        "CS_COMPLAINT_FILED_DATE": formatted_date
+    }
+    systemFunctional = update_data.get("systemFunctional")
+    incident["systemFunctional"] = systemFunctional
+
+    audit = {
+        "details": incident.get("auditDetails", {}),
+        "incidentType": original_subtype
+    }
+
+    return {
+        "details": details,
+        "workflow": workflow,
+        "incident": incident,
+        "audit": audit,
+        "RequestInfo": request_info
     }
