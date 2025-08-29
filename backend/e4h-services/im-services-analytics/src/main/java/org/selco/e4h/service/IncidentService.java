@@ -179,6 +179,8 @@ public class IncidentService {
                     incidentStatusAgregation.setTenantIdLocalized(tenantIdLocalized);
                     incidentStatusAgregation.setGeoPoint(geoPoint);
                     incidentStatusAgregation.setState(state);
+                    incidentStatusAgregation.setMappedVendorName((String) data.get("mappedVendorName"));
+                    incidentStatusAgregation.setMappedVendorUserName((String) data.get("mappedVendorUserName"));
 
                     List<IncidentStatusAgregation> statusAgregations = incidentRepository.getStatusIncidentsAgregation(tenantId);
                     List<IncidentStatusAgregation> systemFunctional = incidentRepository.getStatusSystemFunctional(tenantId);
