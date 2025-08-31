@@ -123,6 +123,7 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
     try {
       const { UserRequest: info, ...tokens } = await Digit.UserService.authenticate(requestData);
       Digit.SessionStorage.set("Employee.tenantId", info?.tenantId);
+
       setUser({ info, ...tokens });
 
 
