@@ -11,4 +11,8 @@
   &:focus-within {
     border-color: #c84c0e;
   }
+
+  &:has(:hover) {
+    border-color: #c84c0e;
+  }
 }
