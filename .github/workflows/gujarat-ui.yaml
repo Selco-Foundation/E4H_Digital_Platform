@@ -56,6 +56,8 @@ jobs:
             echo "GA_MEASUREMENT_ID=${{ vars.DEV_MEASUREMENT_ID }}" >> $GITHUB_ENV
           elif [[ "${GITHUB_REF}" == "refs/heads/staging" ]]; then
             echo "GA_MEASUREMENT_ID=${{ vars.STAGING_MEASUREMENT_ID }}" >> $GITHUB_ENV
+          elif [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            echo "GA_MEASUREMENT_ID=${{ vars.PROD_MEASUREMENT_ID }}" >> $GITHUB_ENV
           fi
       
 

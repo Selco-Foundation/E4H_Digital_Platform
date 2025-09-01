@@ -1,5 +1,4 @@
 import { useQuery, useQueryClient } from "react-query";
-import { QCService } from "../services/QC";
 
 const getAssetName = (assetTypeID) => {
   switch(assetTypeID) {
@@ -19,18 +18,7 @@ const getAssetCapacity = (assetTypeID, assetDetails) => {
     case "BATTERY":
       return assetDetails?.batteryCapacity + " " + assetDetails?.capacityUnit;
     case "INVERTER":
-      return assetDetails?.inverterCapacity + " " + assetDetails?.invertorCapacityUnit;
-  }
-}
-
-const getAssetVoltage = (assetTypeID, assetDetails) => {
-  switch (assetTypeID) {
-    case "PANEL":
-      return "";
-    case "BATTERY":
-      return assetDetails?.batteryVoltage + " " + assetDetails?.voltageUnit;
-    case "INVERTER":
-      return "";
+      return assetDetails?.inverterCapacity + " " + assetDetails?.capacityUnit;
   }
 }
 
@@ -38,7 +26,7 @@ const fetchFileStoreDocuments = async (documents) => {
   const fetchedDocuments = [];
   for (const document of documents) {
     if (document?.documentType?.toUpperCase() === "ASSET") {
-      const fileStoreResponse = await QCService.fetchImageFromFileStore(document?.fileStore);
+      const fileStoreResponse = await Digit.QCService.fetchImageFromFileStore(document?.fileStore);
       fetchedDocuments.push(Digit.Utils.getFileUrl(fileStoreResponse[document?.fileStore]))
     }
   }
@@ -72,13 +60,11 @@ const formatData = async (data) => {
       })
     } else {
       dataMap.set(assetType, {
-        assetType,
         assetName: getAssetName(assetType),
         count: 1,
         specifications: {
           system: row?.system,
-          capacity: getAssetCapacity(assetType, row?.assetDetails),
-          voltage: getAssetVoltage(assetType, row?.assetDetails)
+          capacity: getAssetCapacity(assetType, row?.assetDetails)
         },
         details: {
           count: 1,
@@ -107,23 +93,23 @@ const formatData = async (data) => {
 }
 
 const fetchFacilityDetails = async (facilityId) => {
-  const facilityDetailsResponse = await QCService.fetchAssets(facilityId);
+  const facilityDetailsResponse = await Digit.QCService.fetchAssets(facilityId);
   return await formatData(facilityDetailsResponse);
 }
 
-const useAsset = (facilityId) => {
+const useFacilityDetails = (facilityId) => {
 
   const facility = facilityId;
   const queryClient = useQueryClient();
   const { isLoading, isError, error, data } = useQuery(
-    ["ASSET", facility],
+    ["facilityDetails", facility],
     () => fetchFacilityDetails(facility)
   );
 
   return {
     isLoading, isError, error, data,
-    revalidate: () => queryClient.invalidateQueries(["ASSET"])
+    revalidate: () => queryClient.invalidateQueries(["facilityDetails", facility])
   }
 }
 
-export default useAsset;
+export default useFacilityDetails;

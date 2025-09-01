@@ -8,6 +8,7 @@ import { setSelectedFacility, setSelectedFieldPlan } from "../../redux/actions";
 import SearchActionCentre from "../../components/FacilityTable/SearchAction";
 import useFieldPlan from "../../hooks/useFieldPlan";
 import useFacility from "../../hooks/useFacility";
+import CustomCheckBox from "../../components/Custom/CustomCheckBox";
 
 const FacilityTable = ({ t }) => {
 
@@ -140,7 +141,7 @@ const FacilityTable = ({ t }) => {
     if(!prevMainCheck) {
       setSelectedFacilities(
         fetchedData
-          .filter((row) => row?.status === t("SUBMITTED_BY_SUPERVISOR"))
+          .filter((row) => row?.status === "SUBMITTED_BY_SUPERVISOR")
           .map((row) => row.id)
       );
     } else {
@@ -170,16 +171,21 @@ const FacilityTable = ({ t }) => {
     {
       id: "selection",
       Header: () => (
-        <div style={{ marginTop: "-1.2em", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <CheckBox checked={mainCheck} onChange={mainCheckboxChange} />
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", top: 0 }}>
+          <CustomCheckBox
+            checked={mainCheck}
+            onChange={mainCheckboxChange}
+            styles={{ width: "24px", height: "24px" }}
+          />
         </div>
       ),
       Cell: ({ row }) => {
-        return row.original["status"] === t("SUBMITTED_BY_SUPERVISOR") ? (
-          <div style={{ marginTop: "-1.2em", marginBottom: "-0.8em", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <CheckBox
+        return row.original["status"] === "SUBMITTED_BY_SUPERVISOR" ? (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <CustomCheckBox
               checked={selectedFacilities.some((facilityId) => facilityId === row.original["id"])}
               onChange={() => sideCheckboxChange(row.original["id"])}
+              styles={{ width: "24px", height: "24px" }}
             />
           </div>
         ) : (
@@ -207,25 +213,25 @@ const FacilityTable = ({ t }) => {
     {
       Header: t("CS_BLOCK"),
       Cell: ({ row }) => {
-        return GetCell(row.original["block"] !== "-" ? t(`BLOCK_${row.original["block"].toUpperCase()}`) : "-");
+        return GetCell(row.original["block"] ? t(`BLOCK_${row.original["block"].toUpperCase()}`) : "-");
       },
     },
     {
       Header: t("CS_DISTRICT"),
       Cell: ({ row }) => {
-        return GetCell(row.original["district"] !== "-" ? t(`DISTRICT_${row.original["district"].toUpperCase()}`) : "-");
+        return GetCell(row.original["district"] ? t(`DISTRICT_${row.original["district"].toUpperCase()}`) : "-");
       },
     },
     {
       Header: t("CS_ASSIGNED_TO"),
       Cell: ({ row }) => {
-        return GetCell(`${row.original["assigned"]}`);
+        return GetCell(row.original["assigned"] ? `${row.original["assigned"]}` : "-");
       },
     },
     {
       Header: t("CS_STATUS"),
       Cell: ({ row }) => {
-        return GetCell(row.original["status"] !== "-" ? t(`CS_${row.original["status"]}`) : "-");
+        return GetCell(row.original["status"] ? t(`CS_${row.original["status"]}`) : "-");
       },
     },
   ];
@@ -316,7 +322,7 @@ const FacilityTable = ({ t }) => {
   }
 
   return (
-    <div style={{marginTop: "20px"}}>
+    <div style={{marginTop: "20px", padding: "0px 10px", overflow: "auto"}}>
       {(updatingWorkflow || (!fieldPlanDataLoading && fieldPlanDataFetching) || (!isLoading && facilityDataFetching)) && (
         <div
           style={{
@@ -336,12 +342,12 @@ const FacilityTable = ({ t }) => {
           <Loader />
         </div>
       )}
-      <div style={{fontSize: "24px", fontWeight: "bold", marginBottom: "20px", color: "#004d66"}}>
+      <div style={{fontSize: "40px", fontWeight: "bold", fontFamily: "Roboto Condensed", marginBottom: "20px", color: "#0B0C0C"}}>
         Installation | {fieldPlan?.name}
       </div>
       <InfoCard t={t} selectedFieldPlan={fieldPlan} />
       <div style={{ width: "100%", display: "flex", gap: "15px" }}>
-        <div style={{ width: "15%", minWidth: "fit-content" }}>
+        <div style={{ minWidth: "300px" }}>
           <Filter
             t={t}
             type="desktop"
@@ -351,7 +357,7 @@ const FacilityTable = ({ t }) => {
             statusesList={statusesList}
           />
         </div>
-        <div style={{ width: "83%", backgroundColor: "white" }}>
+        <div style={{ width: "83%", minWidth: "750px", backgroundColor: "white" }}>
           <div style={{ padding: "20px" }}>
             <div style={{ fontSize: "20px", fontWeight: "bold", marginBottom: "40px" }}>
               Reports
