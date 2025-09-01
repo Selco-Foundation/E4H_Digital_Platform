@@ -7,7 +7,6 @@ import CustomArrowRight from "./CustomArrowRight";
 const QCCard = () => {
   const history = useHistory();
   const { t } = useTranslation();
-  const windowWidth = window.innerWidth;
 
   const userType = "employee";
 
@@ -24,14 +23,15 @@ const QCCard = () => {
         boxShadow: userType === "citizen" ? "1px 1px 4px 0px rgba(0,0,0,0.2)" : "",
         background: userType === "citizen" ? "white" : "",
         borderRadius: userType === "citizen" ? "4px" : "",
-        maxWidth: "fit-content",
+        width: "350px",
+        maxWidth: "95%",
+        minHeight: "200px",
       }}
     >
       <section
         style={{
           position: "relative",
-          width: "95%",
-          maxWidth: "400px",
+          height: "100%",
           borderRadius: "4px",
           boxShadow: userType === "citizen" ? "" : "1px 1px 4px 0px rgba(0,0,0,0.2)",
           background: "white",
