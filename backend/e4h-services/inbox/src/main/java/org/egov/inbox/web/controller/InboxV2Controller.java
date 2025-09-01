@@ -7,6 +7,7 @@ import org.egov.inbox.service.V2.InboxServiceV2;
 import org.egov.inbox.util.ResponseInfoFactory;
 import org.egov.inbox.web.model.InboxRequest;
 import org.egov.inbox.web.model.InboxResponse;
+import org.egov.inbox.web.model.ProjectResponse;
 import org.egov.inbox.web.model.V2.SearchRequest;
 import org.egov.inbox.web.model.V2.SearchResponse;
 import org.egov.tracer.config.TracerConfiguration;
@@ -39,8 +40,35 @@ public class InboxV2Controller {
 
     @PostMapping(value = "/_search")
     public ResponseEntity<InboxResponse> searchNewInbox(@Valid @RequestBody  InboxRequest inboxRequest) {
-        InboxResponse inboxResponse = inboxService.getInboxResponse(inboxRequest);
-        return new ResponseEntity<>(inboxResponse, HttpStatus.OK);
+        log.info("Received request to search inbox with filters: {}", inboxRequest);
+        try {
+            InboxResponse inboxResponse = inboxService.getInboxResponse(inboxRequest);
+            log.info("Successfully fetched inbox results: {} items",
+                    inboxResponse != null && inboxResponse.getItems() != null
+                            ? inboxResponse.getItems().size() : 0);
+
+            return new ResponseEntity<>(inboxResponse, HttpStatus.OK);
+
+        } catch (Exception e) {
+            log.error("Error occurred while searching inbox with request: {}", inboxRequest, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @PostMapping(value = "/project/_search")
+    public ResponseEntity<ProjectResponse> searchNewInboxProject(@Valid @RequestBody  InboxRequest inboxRequest) {
+        log.info("Received request to search project inbox with filters: {}", inboxRequest);
+
+        try {
+            ProjectResponse projectResponse = inboxService.getInboxResponseProject(inboxRequest);
+            log.info("Successfully fetched project inbox results for request: {}", inboxRequest);
+
+            return new ResponseEntity<>(projectResponse, HttpStatus.OK);
+
+        } catch (Exception e) {
+            log.error("Error occurred while searching project inbox with request: {} {}", inboxRequest, e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 
 

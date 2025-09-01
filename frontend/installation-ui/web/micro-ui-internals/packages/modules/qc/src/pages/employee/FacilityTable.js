@@ -6,20 +6,23 @@ import { Link, useHistory, useLocation } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { setSelectedFacility, setSelectedFieldPlan } from "../../redux/actions";
 import SearchActionCentre from "../../components/FacilityTable/SearchAction";
+import useFieldPlan from "../../hooks/useFieldPlan";
+import useFacility from "../../hooks/useFacility";
+import CustomCheckBox from "../../components/Custom/CustomCheckBox";
 
-const FacilityTable = ({ t, getCellProps }) => {
+const FacilityTable = ({ t }) => {
 
   const [mainCheck, setMainCheck] = useState(false);
   const dispatch = useDispatch();
   const [fieldPlan, setFieldPlan] = useState({});
   const [selectedFacilities, setSelectedFacilities] = useState([]);
   const [fetchedData, setData] = useState([]);
-  const [sideCheck, setSideCheck] = useState({});
   const history = useHistory();
   const location = useLocation();
   const url = window.location.href;
   const fieldPlanId = url.split("field-plan/")[1].split("/")[0];
   const queryParams = new URLSearchParams(window.location.search);
+  const [updatingWorkflow, setUpdatingWorkflow] = useState(false);
 
   const [projectQueryFilter, setProjectQueryFilter] = useState((() => {
     try {
@@ -51,13 +54,25 @@ const FacilityTable = ({ t, getCellProps }) => {
   const [pageOffset, setPageOffset] = useState(queryParams.get("pageOffset") || 0);
   const prevPageSizeRef = useRef(pageSize);
 
-  const { data: fieldPlanData } = Digit.Hooks.qc.useFieldPlan({
+  const {
+    isLoading: fieldPlanDataLoading,
+    isFetching: fieldPlanDataFetching,
+    data: fieldPlanData,
+    revalidate: revalidateFieldPlans,
+  } = useFieldPlan({
     Project : {
       projectTypeId: "FieldPlan",
       id: [fieldPlanId]
     }
   });
-  const { isLoading, data: facilityData } = Digit.Hooks.qc.useFacility(projectQueryFilter, pageSize, pageOffset);
+
+  const {
+    isLoading,
+    isFetching: facilityDataFetching,
+    data: facilityData,
+    revalidate: revalidateFacilities,
+    revalidateFacilityDetails
+  } = useFacility(projectQueryFilter, pageSize, pageOffset);
 
   useEffect(() => {
     history.replace({
@@ -82,17 +97,11 @@ const FacilityTable = ({ t, getCellProps }) => {
       const refactoredDataCopy = facilityData?.facilities.map((row) => ({
         ...row,
         projectName: fieldPlan?.name,
-        status: t(row?.status) || "-",
+        status: row?.status || "-",
       }));
 
       setData(refactoredDataCopy);
-      const newSideCheck = {};
-      refactoredDataCopy.forEach((row) => {
-        if (row?.status === t("SUBMITTED_BY_SUPERVISOR")) {
-          newSideCheck[`${row?.id}`] = false;
-        }
-      })
-      setSideCheck(newSideCheck);
+      setSelectedFacilities([]);
       setMainCheck(false);
     }
   }, [facilityData, fieldPlan])
@@ -129,15 +138,10 @@ const FacilityTable = ({ t, getCellProps }) => {
   const mainCheckboxChange = () => {
     const prevMainCheck = mainCheck;
     setMainCheck(!prevMainCheck);
-    const newSideCheck = sideCheck;
-    Object.keys(newSideCheck).forEach((side) => {
-      newSideCheck[`${side}`] = !prevMainCheck;
-    })
-    setSideCheck(newSideCheck);
     if(!prevMainCheck) {
       setSelectedFacilities(
         fetchedData
-          .filter((row) => row?.status === t("SUBMITTED_BY_SUPERVISOR"))
+          .filter((row) => row?.status === "SUBMITTED_BY_SUPERVISOR")
           .map((row) => row.id)
       );
     } else {
@@ -145,14 +149,7 @@ const FacilityTable = ({ t, getCellProps }) => {
     }
   };
 
-  const sideCheckboxChange = (sideCheckboxId, id) => {
-    const newSideCheck = sideCheck;
-    Object.keys(newSideCheck).forEach((side) => {
-      if(side === sideCheckboxId)
-        newSideCheck[`${side}`] = !newSideCheck[`${side}`];
-    })
-
-    setSideCheck(newSideCheck);
+  const sideCheckboxChange = (id) => {
     setMainCheck(false);
 
     if (selectedFacilities.some((facilityId) => facilityId === id)) {
@@ -162,20 +159,33 @@ const FacilityTable = ({ t, getCellProps }) => {
     }
   };
 
+  const revalidateData = () => {
+    setMainCheck(false);
+    setSelectedFacilities([]);
+    revalidateFieldPlans();
+    revalidateFacilities();
+    revalidateFacilityDetails();
+  }
+
   const columns = [
     {
       id: "selection",
       Header: () => (
-        <div style={{ marginTop: "-1.2em" }}>
-          <CheckBox checked={mainCheck} onChange={mainCheckboxChange} />
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", top: 0 }}>
+          <CustomCheckBox
+            checked={mainCheck}
+            onChange={mainCheckboxChange}
+            styles={{ width: "24px", height: "24px" }}
+          />
         </div>
       ),
       Cell: ({ row }) => {
-        return row.original["status"] === t("SUBMITTED_BY_SUPERVISOR") ? (
-          <div style={{ marginTop: "-1.2em" }}>
-            <CheckBox
-              checked={sideCheck[`${row.original["id"]}`]}
-              onChange={() => sideCheckboxChange(`${row.original["id"]}`, row.original["id"])}
+        return row.original["status"] === "SUBMITTED_BY_SUPERVISOR" ? (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <CustomCheckBox
+              checked={selectedFacilities.some((facilityId) => facilityId === row.original["id"])}
+              onChange={() => sideCheckboxChange(row.original["id"])}
+              styles={{ width: "24px", height: "24px" }}
             />
           </div>
         ) : (
@@ -184,7 +194,7 @@ const FacilityTable = ({ t, getCellProps }) => {
       },
     },
     {
-      Header: "Health Facility",
+      Header: t("CS_HEALTH_FACILITY"),
       Cell: ({ row }) => {
         return (
           <div>
@@ -201,27 +211,27 @@ const FacilityTable = ({ t, getCellProps }) => {
       },
     },
     {
-      Header: "Block",
+      Header: t("CS_BLOCK"),
       Cell: ({ row }) => {
-        return GetCell(row.original["block"] !== "-" ? t(`BLOCK_${row.original["block"].toUpperCase()}`) : "-");
+        return GetCell(row.original["block"] ? t(`BLOCK_${row.original["block"].toUpperCase()}`) : "-");
       },
     },
     {
-      Header: "District",
+      Header: t("CS_DISTRICT"),
       Cell: ({ row }) => {
-        return GetCell(row.original["district"] !== "-" ? t(`DISTRICT_${row.original["district"].toUpperCase()}`) : "-");
+        return GetCell(row.original["district"] ? t(`DISTRICT_${row.original["district"].toUpperCase()}`) : "-");
       },
     },
     {
-      Header: "Assigned To",
+      Header: t("CS_ASSIGNED_TO"),
       Cell: ({ row }) => {
-        return GetCell(`${row.original["assigned"]}`);
+        return GetCell(row.original["assigned"] ? `${row.original["assigned"]}` : "-");
       },
     },
     {
-      Header: "Status",
+      Header: t("CS_STATUS"),
       Cell: ({ row }) => {
-        return GetCell(row.original["status"] !== "-" ? t(`CS_${row.original["status"]}`) : "-");
+        return GetCell(row.original["status"] ? t(`CS_${row.original["status"]}`) : "-");
       },
     },
   ];
@@ -249,6 +259,10 @@ const FacilityTable = ({ t, getCellProps }) => {
       code: "SUBMITTED_BY_SUPERVISOR"
     },
     {
+      name: t("CS_PENDING_APPROVAL_FLAGGED_FOR_QC"),
+      code: "PENDING_APPROVAL_FLAGGED_FOR_QC"
+    },
+    {
       name: t("CS_APPROVED_BY_QC_SPOC"),
       code: "APPROVED_BY_QC_SPOC"
     },
@@ -266,35 +280,74 @@ const FacilityTable = ({ t, getCellProps }) => {
     if (fetchedData.length === 0) {
       return (
         <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%" }}>
-          <div style={{ fontSize: "20px", fontWeight: "bold" }}>No records found</div>
+          <div style={{ fontSize: "20px", fontWeight: "bold" }}>
+            {t("CS_NO_FACILITIES_FOUND")}
+          </div>
         </div>
       );
     }
 
     return (
-      <Table
-        t={t}
-        data={fetchedData}
-        columns={columns}
-        getCellProps={getCellProps}
-        onNextPage={onNextPage}
-        onPrevPage={onPrevPage}
-        currentPage={Math.floor(pageOffset / pageSize)}
-        totalRecords={facilityData?.totalCount}
-        onPageSizeChange={onPageSizeChange}
-        pageSizeLimit={pageSize}
-      />
+      <div style={{
+        backgroundColor: "white",
+        padding: "15px 0px 0px 0px",
+      }}>
+        <div style={{
+          margin: "0px 20px",
+          overflow: "auto",
+        }}>
+          <Table
+            t={t}
+            data={fetchedData}
+            columns={columns}
+            getCellProps={() => {
+              return {
+                style: {
+                  maxWidth: "100%",
+                  padding: "17.24px 18px",
+                  fontSize: "15px",
+                },
+              };
+            }}
+            onNextPage={onNextPage}
+            onPrevPage={onPrevPage}
+            currentPage={Math.floor(pageOffset / pageSize)}
+            totalRecords={facilityData?.totalCount}
+            onPageSizeChange={onPageSizeChange}
+            pageSizeLimit={pageSize}
+          />
+        </div>
+      </div>
     );
   }
 
   return (
-    <div style={{marginTop: "20px"}}>
-      <div style={{fontSize: "24px", fontWeight: "bold", marginBottom: "20px", color: "#004d66"}}>
+    <div style={{marginTop: "20px", padding: "0px 10px", overflow: "auto"}}>
+      {(updatingWorkflow || (!fieldPlanDataLoading && fieldPlanDataFetching) || (!isLoading && facilityDataFetching)) && (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            height: "100%",
+            width: "100%",
+            zIndex: 5,
+            backgroundColor: "gray",
+            opacity: 0.5,
+            position: "fixed",
+            top: 0,
+            left: 0,
+          }}
+        >
+          <Loader />
+        </div>
+      )}
+      <div style={{fontSize: "40px", fontWeight: "bold", fontFamily: "Roboto Condensed", marginBottom: "20px", color: "#0B0C0C"}}>
         Installation | {fieldPlan?.name}
       </div>
-      <InfoCard selectedFieldPlan={fieldPlan} />
+      <InfoCard t={t} selectedFieldPlan={fieldPlan} />
       <div style={{ width: "100%", display: "flex", gap: "15px" }}>
-        <div style={{ width: "15%" }}>
+        <div style={{ minWidth: "300px" }}>
           <Filter
             t={t}
             type="desktop"
@@ -304,7 +357,7 @@ const FacilityTable = ({ t, getCellProps }) => {
             statusesList={statusesList}
           />
         </div>
-        <div style={{ width: "83%", backgroundColor: "white" }}>
+        <div style={{ width: "83%", minWidth: "750px", backgroundColor: "white" }}>
           <div style={{ padding: "20px" }}>
             <div style={{ fontSize: "20px", fontWeight: "bold", marginBottom: "40px" }}>
               Reports
@@ -315,11 +368,11 @@ const FacilityTable = ({ t, getCellProps }) => {
               selectedFacilities={selectedFacilities}
               projectQueryFilter={projectQueryFilter}
               onSearch={handleFilterChange}
+              revalidateData={revalidateData}
+              setUpdatingWorkflow={setUpdatingWorkflow}
             />
           </div>
-          <div style={{ width: "90%", marginLeft: "auto", marginRight: "auto", overflowX: "auto" }}>
-            {renderFacilities()}
-          </div>
+          {renderFacilities()}
         </div>
       </div>
     </div>

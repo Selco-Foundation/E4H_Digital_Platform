@@ -1,0 +1,18 @@
+.search-action {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  width: 100%;
+  border: 1px solid #505A5F;
+  border-radius: 4px;
+  padding: 0px 15px;
+  outline: none;
+
+  &:focus-within {
+    border-color: #c84c0e;
+  }
+
+  &:has(:hover) {
+    border-color: #c84c0e;
+  }
+}

@@ -31,6 +31,7 @@ jobs:
         with:
           username: ${{ vars.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
+
       - name: Set Version from Tag or Branch
         id: set_version
         run: |
@@ -44,10 +45,21 @@ jobs:
             VERSION="latest"  # Default version if not a tag or branch
           fi
           echo "VERSION=$VERSION" >> $GITHUB_ENV
+
       - name: Git commit_hash for service
         run: |
           commit_hash=$(git log -1 --pretty=format:%H -- frontend/micro-ui)
           echo "commit_hash=$commit_hash" >> $GITHUB_ENV
+
+      - name: Set GA Measurement ID
+        run: |
+          if [[ "${GITHUB_REF}" == "refs/heads/develop" ]]; then
+            echo "GA_MEASUREMENT_ID=${{ vars.DEV_MEASUREMENT_ID }}" >> $GITHUB_ENV
+          elif [[ "${GITHUB_REF}" == "refs/heads/staging" ]]; then
+            echo "GA_MEASUREMENT_ID=${{ vars.STAGING_MEASUREMENT_ID }}" >> $GITHUB_ENV
+          elif [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            echo "GA_MEASUREMENT_ID=${{ vars.PROD_MEASUREMENT_ID }}" >> $GITHUB_ENV
+          fi
 
         # Builds & Push Docker images using buildx cli plugin of docker buildx builder
       - name: Build and push
@@ -62,7 +74,7 @@ jobs:
           build-args: |
             PUBLIC_PATH=/assam/
             WORK_DIR=frontend/micro-ui/
-            GA_MEASUREMENT_ID=${{ vars.DEV_MEASUREMENT_ID }}
+            GA_MEASUREMENT_ID=${{ env.GA_MEASUREMENT_ID }}
 
 #  Workflow_Trigger:
 #    if: startsWith(github.ref, 'refs/heads/develop')

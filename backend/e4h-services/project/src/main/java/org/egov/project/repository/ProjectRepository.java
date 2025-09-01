@@ -12,12 +12,10 @@ import org.egov.common.producer.Producer;
 import org.egov.project.repository.querybuilder.DocumentQueryBuilder;
 import org.egov.project.repository.querybuilder.ProjectAddressQueryBuilder;
 import org.egov.project.repository.querybuilder.TargetQueryBuilder;
-import org.egov.project.repository.rowmapper.DocumentRowMapper;
-import org.egov.project.repository.rowmapper.ProjectAddressRowMapper;
-import org.egov.project.repository.rowmapper.ProjectRowMapper;
-import org.egov.project.repository.rowmapper.TargetRowMapper;
+import org.egov.project.repository.rowmapper.*;
 import org.egov.project.web.models.ProjectSearchCriteria;
 import org.egov.project.web.models.ProjectSortCriteria;
+import org.egov.project.web.models.ProjectStatusAgregation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -37,6 +35,8 @@ public class ProjectRepository extends GenericRepository<Project> {
     private final DocumentQueryBuilder documentQueryBuilder;
 
     private final ProjectAddressRowMapper addressRowMapper;
+
+    private final ProjectStatusRowMapper projectStatusRowMapper;
     private final TargetRowMapper targetRowMapper;
     private final DocumentRowMapper documentRowMapper;
 
@@ -50,7 +50,7 @@ public class ProjectRepository extends GenericRepository<Project> {
                              TargetQueryBuilder targetQueryBuilder,
                              DocumentQueryBuilder documentQueryBuilder,
                              ProjectAddressRowMapper addressRowMapper, TargetRowMapper targetRowMapper,
-                             DocumentRowMapper documentRowMapper, JdbcTemplate jdbcTemplate) {
+                             DocumentRowMapper documentRowMapper, JdbcTemplate jdbcTemplate, ProjectStatusRowMapper projectStatusRowMapper) {
         super(producer, namedParameterJdbcTemplate, redisTemplate, selectQueryBuilder,
                 projectRowMapper, Optional.of("project"));
         this.queryBuilder = queryBuilder;
@@ -60,6 +60,7 @@ public class ProjectRepository extends GenericRepository<Project> {
         this.targetRowMapper = targetRowMapper;
         this.documentRowMapper = documentRowMapper;
         this.jdbcTemplate = jdbcTemplate;
+        this.projectStatusRowMapper = projectStatusRowMapper;
     }
 
 
@@ -191,6 +192,14 @@ public class ProjectRepository extends GenericRepository<Project> {
         List<Project> projects = jdbcTemplate.query(query, addressRowMapper, preparedStmtList.toArray());
         log.info("Fetched project list based on given Project Ids");
         return projects;
+    }
+
+    public List<ProjectStatusAgregation> getStatusProjectsAgregation(String parentId) {
+        List<Object> preparedStmtList = new ArrayList<>();
+        String query = queryBuilder.getStatusProjectOccurence(parentId, preparedStmtList);
+        List<ProjectStatusAgregation> statusAgregations = jdbcTemplate.query(query, projectStatusRowMapper, preparedStmtList.toArray());
+        log.info("Fetched project status agregation list based on given Parent Ids");
+        return statusAgregations;
     }
 
     /* Fetch Project descendants based on Project ids */

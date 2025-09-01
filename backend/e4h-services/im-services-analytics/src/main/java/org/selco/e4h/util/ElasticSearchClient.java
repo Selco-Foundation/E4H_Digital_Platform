@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.selco.e4h.service.UpdateService;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpEntity;
+import org.springframework.http.*;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
@@ -24,9 +24,16 @@ public class ElasticSearchClient {
     @Value("${egov.indexer.es.port.no}")
     private int esPort;
 
+    @Value("${php.kafka.topic.indexer}")
+    private String phcIndex;
+
     private static final String SEARCH_PATH = "_search";
     private static final String INDEX_NAME = "computed-sla-im-services";
     private static final String OLD_INDEX_NAME = "im-services";
+
+    private static final String INDEX_NAME_PHC = "phc-master-list-new-2";
+
+    private static final String DOC_PATH = "_doc";
 
     public List<Map<String, Object>> fetchOpenTickets(int from, int size) {
         return fetchTickets(INDEX_NAME, from, size);
@@ -34,6 +41,14 @@ public class ElasticSearchClient {
 
     public List<Map<String, Object>> fetchOldOpenTicketsFromImServices(int from, int size) {
         return fetchTickets(OLD_INDEX_NAME, from, size);
+    }
+
+    public Map<String, Object> getHFByTenantId(String tenantId) {
+        return fetchTicketById(phcIndex, tenantId);
+    }
+
+    public List<Map<String, Object>> getAllPHC(int from, int size) {
+        return fetchAllPHCs(phcIndex, from, size);
     }
 
     private List<Map<String, Object>> fetchTickets(String indexName, int from, int size) {
@@ -50,6 +65,41 @@ public class ElasticSearchClient {
         }
     }
 
+    private List<Map<String, Object>> fetchAllPHCs(String indexName, int from, int size) {
+        String uri = getBaseUrl() + "/" + indexName + "/" + SEARCH_PATH;
+        Map<String, Object> query = buildHFQuery(from, size);
+        HttpEntity<Object> entity = new HttpEntity<>(query, updateService.buildHeaders());
+        try {
+            Map<String, Object> response = restTemplate.postForObject(uri, entity, Map.class);
+            return parseESHits(response);
+        } catch (Exception e) {
+            log.error("Failed to fetch open tickets from index '{}'", indexName, e);
+            return Collections.emptyList();
+        }
+    }
+
+    private Map<String, Object> fetchTicketById(String indexName, String tenantId) {
+        String uri = getBaseUrl() + "/" + indexName + "/" + DOC_PATH + "/" + tenantId;
+
+        HttpEntity<String> entity = new HttpEntity<>(updateService.buildHeaders());
+
+        try {
+            ResponseEntity<Map> response = restTemplate.exchange(
+                    uri,
+                    HttpMethod.GET,
+                    entity,
+                    Map.class
+            );
+
+            log.info("Fetched ticket audit for tenantId={} from index={}", tenantId, indexName);
+            return response.getBody() != null ? response.getBody() : Collections.emptyMap();
+
+        } catch (Exception e) {
+            log.error("Failed to fetch ticket audit from index '{}' with tenantId '{}'", indexName, tenantId, e);
+            return Collections.emptyMap();
+        }
+    }
+
     private Map<String, Object> buildOpenTicketQuery(int from, int size) {
         Map<String, Object> query = new HashMap<>();
         Map<String, Object> bool = new HashMap<>();
@@ -63,6 +113,18 @@ public class ElasticSearchClient {
         )));
 
         bool.put("must_not", mustNot);
+        query.put("query", Map.of("bool", bool));
+        query.put("_source", true);
+        query.put("from", from);
+        query.put("size", size);
+
+        return query;
+    }
+
+    private Map<String, Object> buildHFQuery(int from, int size) {
+        Map<String, Object> query = new HashMap<>();
+        Map<String, Object> bool = new HashMap<>();
+
         query.put("query", Map.of("bool", bool));
         query.put("_source", true);
         query.put("from", from);

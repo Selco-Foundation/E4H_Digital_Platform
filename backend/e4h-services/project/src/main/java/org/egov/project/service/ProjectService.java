@@ -1,6 +1,7 @@
 package org.egov.project.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.validation.Valid;
@@ -19,6 +20,7 @@ import org.egov.common.producer.Producer;
 import org.egov.project.config.ProjectConfiguration;
 import org.egov.project.repository.ProjectRepository;
 import org.egov.project.service.enrichment.ProjectEnrichment;
+import org.egov.project.util.BoundaryV2Util;
 import org.egov.project.util.ProjectServiceUtil;
 import org.egov.project.validator.project.ProjectValidator;
 import org.egov.project.web.models.*;
@@ -30,7 +32,14 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
+import java.sql.Array;
 import java.util.*;
+import java.util.stream.Collectors;
+
+import static org.egov.project.util.ProjectConstants.SUBMITTED_BY_SUPERVISOR;
+
+import static org.egov.project.util.ProjectConstants.PROJECT_TYPE_FACILITY;
+import static org.egov.project.util.ProjectConstants.PROJECT_TYPE_FIELDPLAN;
 
 @Service
 @Slf4j
@@ -60,6 +69,9 @@ public class ProjectService {
     private final JdbcTemplate jdbcTemplate;
 
     private final ServiceRequestRepository serviceRequestRepository;
+
+    @Autowired
+    BoundaryV2Util boundaryV2Util;
 
     @Autowired
     public ProjectService(
@@ -97,6 +109,7 @@ public class ProjectService {
         projectEnrichment.enrichProjectOnCreate(projectRequest, parentProjects);
         log.info("Enriched with Project Number, Ids and AuditDetails");
         producer.push(projectConfiguration.getSaveProjectTopic(), projectRequest);
+        producer.push(projectConfiguration.getSaveProjectTopicIndexer(), projectRequest);
         log.info("Pushed to kafka");
         return projectRequest;
     }
@@ -140,11 +153,21 @@ public class ProjectService {
     public List<Project> searchProject(ProjectSearchRequest projectSearchRequest, @Valid ProjectSearchURLParams urlParams, List<String> workflowStatuses, @Valid ProjectSortCriteria sortCriteria) throws Exception {
         projectValidator.validateSearchV2ProjectRequest(projectSearchRequest, urlParams, sortCriteria);
         List<Project> projects = projectRepository.getProjects(projectSearchRequest, urlParams, workflowStatuses, sortCriteria);
-        projects = getCountFacilitiesProject(projects, projectSearchRequest.getRequestInfo());
+        // Get count of project type = Facility for each project type FieldPlan
+        if(projectSearchRequest.getProject() !=null && projectSearchRequest.getProject().getProjectTypeId() !=null
+                && projectSearchRequest.getProject().getProjectTypeId().equals(PROJECT_TYPE_FIELDPLAN))
+            projects = getCountProjectTypeFacilities(projects, projectSearchRequest, urlParams, workflowStatuses, sortCriteria);
+
+        // Get facility of project type = Facility for each project type Facility
+        if(projectSearchRequest.getProject() !=null && projectSearchRequest.getProject().getProjectTypeId() !=null
+                && projectSearchRequest.getProject().getProjectTypeId().equals(PROJECT_TYPE_FACILITY))
+            getFacilityProject(projects, projectSearchRequest.getRequestInfo());
+
         return projects;
     }
 
-    public List<Project> getCountFacilitiesProject(List<Project> listProjects, RequestInfo requestInfo) throws Exception {
+    public List<Project> getFacilityProject(List<Project> listProjects, RequestInfo requestInfo) throws Exception {
+        Map<String, BoundaryV2> listBlock = boundaryV2Util.getBoundaryByCode();
         for (Project project : listProjects) {
             List<String> listProjectId = new ArrayList<>();
             listProjectId.add(project.getId());
@@ -157,7 +180,51 @@ public class ProjectService {
                     project.getTenantId(),
                     null,
                     false);
-            Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(project.getAdditionalDetails(), "countFacilities", searchResponse.getTotalCount()+"");
+
+            if (searchResponse != null && searchResponse.getResponse() != null && !searchResponse.getResponse().isEmpty()) {
+                ProjectFacility projectFacility = searchResponse.getResponse().get(0);
+                Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(project.getAdditionalDetails(), "systemCode", "AC_OFF_GRID");
+                project.setAdditionalDetails(enrichedAdditionalDetails);
+            }
+
+            // Get district and state for project type facility
+            if(listBlock != null){
+                Object additionalDetails = project.getAdditionalDetails();
+                Address address = project.getAddress();
+                if(address !=null){
+                    String boundaryCode = address.getBoundary();
+                    if(boundaryCode != null){
+                        BoundaryV2 boundary = listBlock.get(boundaryCode);
+                        if(boundary != null){
+                            Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(additionalDetails, "state", boundary.getState());
+                            project.setAdditionalDetails(enrichedAdditionalDetails);
+                            additionalDetails = project.getAdditionalDetails();
+                            enrichedAdditionalDetails = mergeIntoAdditionalDetails(additionalDetails, "district", boundary.getDistrict());
+                            project.setAdditionalDetails(enrichedAdditionalDetails);
+                        }
+                    }
+                }
+            }
+        }
+
+        return listProjects;
+    }
+
+    public List<Project> getCountProjectTypeFacilities(List<Project> listProjects, ProjectSearchRequest projectSearchRequest, @Valid ProjectSearchURLParams urlParams, List<String> workflowStatuses, @Valid ProjectSortCriteria sortCriteria) throws Exception {
+        for (Project project : listProjects) {
+            ProjectSearch copyProject = ProjectSearch.builder()
+                    .parent(projectSearchRequest.getProject().getParent())
+                    .projectTypeId("Facility")
+                    .build();
+
+            ProjectSearchRequest projectSearchRequest1 = ProjectSearchRequest.builder().project(copyProject).requestInfo(projectSearchRequest.getRequestInfo()).build();
+            projectSearchRequest1.getProject().setProjectTypeId("Facility");
+            projectSearchRequest1.getProject().setParent(project.getId());
+            Integer count = countAllProjects(projectSearchRequest1, urlParams, workflowStatuses);
+            Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(project.getAdditionalDetails(), "countProjectFacilities", count);
+            project.setAdditionalDetails(enrichedAdditionalDetails);
+            List<ProjectStatusAgregation> statusAgregations = getStatusProjectsAgregation(project.getId());
+            enrichedAdditionalDetails = mergeListIntoAdditionalDetails(project.getAdditionalDetails(), "statusAgregation", statusAgregations);
             project.setAdditionalDetails(enrichedAdditionalDetails);
         }
 
@@ -256,6 +323,7 @@ public class ProjectService {
          */
         projectEnrichment.enrichProjectOnUpdate(request, project, projectFromDB);
         producer.push(projectConfiguration.getUpdateProjectTopic(), request);
+        producer.push(projectConfiguration.getUpdateProjectTopicIndexer(), request);
     }
 
     private void handleUpdateProjectDates(ProjectRequest request, Project project, Project projectFromDB) {
@@ -391,6 +459,10 @@ public class ProjectService {
                                     ProjectSearchURLParams urlParams,
                                     List<String> workflowStatuses) {
         return projectRepository.getProjectCount(request, urlParams, workflowStatuses);
+    }
+
+    public List<ProjectStatusAgregation> getStatusProjectsAgregation(String parentId) {
+        return projectRepository.getStatusProjectsAgregation(parentId);
     }
 
     public ProjectStatusWrapper updateProjectWorkflow(ProjectWorkflowRequest request) throws Exception {
@@ -591,11 +663,23 @@ public class ProjectService {
         }
     }
 
-    private Object mergeIntoAdditionalDetails(Object additionalDetails, String key, String value) {
+    private Object mergeIntoAdditionalDetails(Object additionalDetails, String key, Object value) {
         if (additionalDetails instanceof ObjectNode) {
-            ((ObjectNode) additionalDetails).put(key, value);
+            ((ObjectNode) additionalDetails).put(key, mapper.valueToTree(value));
             return additionalDetails;
         } else if (additionalDetails instanceof Map) {
+            ((Map<String, Object>) additionalDetails).put(key, value);
+            return additionalDetails;
+        } else {
+            // default to HashMap if null or unknown type
+            Map<String, Object> map = new HashMap<>();
+            map.put(key, value);
+            return map;
+        }
+    }
+
+    private Object mergeListIntoAdditionalDetails(Object additionalDetails, String key, Object value) {
+        if (additionalDetails instanceof Map) {
             ((Map<String, Object>) additionalDetails).put(key, value);
             return additionalDetails;
         } else {
@@ -629,7 +713,7 @@ public class ProjectService {
                 "FROM project_transaction WHERE project_id = ANY(?)";
 
         return jdbcTemplate.query(sql, ps -> {
-            java.sql.Array sqlArray = ps.getConnection().createArrayOf("text", projectIds.toArray(new String[0]));
+            Array sqlArray = ps.getConnection().createArrayOf("text", projectIds.toArray(new String[0]));
             ps.setArray(1, sqlArray);
         }, (rs, rowNum) -> {
             Transaction transaction = new Transaction();
@@ -668,4 +752,103 @@ public class ProjectService {
             return comment;
         });
     }
+
+    public Map<String, Object> updateBulkProjectWorkflow(ProjectBulkApproveRequest projectBulkApproveRequest) throws Exception {
+
+        List<String> projectIds = new ArrayList<>();
+        int totalProjects = 0;
+        int finalProjects = 0;
+        
+        if (projectBulkApproveRequest.getIsAllSelected()) {
+            // Case 1: Search all projects using filters
+            ExtendedProjectSearchRequest projectSearchRequest = getProjectSearchRequest(projectBulkApproveRequest);
+
+            ProjectSearchURLParams urlParams = ProjectSearchURLParams.builder()
+                    .includeDescendants(false)
+                    .includeAncestors(false)
+                    .tenantId(projectBulkApproveRequest.getRequestInfo().getUserInfo().getTenantId())
+                    .limit(projectConfiguration.getMaxLimit()) 
+                    .offset(projectConfiguration.getDefaultOffset())
+                    .build();
+
+            List<String> workflowStatuses = projectSearchRequest.getWorkflowStatus();
+
+            List<Project> allProjects = searchProject(projectSearchRequest, urlParams, workflowStatuses, null);
+            totalProjects = countAllProjects(projectSearchRequest, urlParams, workflowStatuses);
+
+            // only those projects whose status is SUBMITTED_BY_SUPERVISOR
+            List<Project> projects = allProjects.stream().filter(this::hasSubmittedBySupervisorStatus).toList();
+
+            finalProjects = projects.size();
+            projectIds = projects.stream().map(Project::getId).collect(Collectors.toList());
+        } else {
+            // Case 2: Use provided project IDs
+            if (projectBulkApproveRequest.getProjectIDs() != null && !projectBulkApproveRequest.getProjectIDs().isEmpty()) {
+                projectIds = projectBulkApproveRequest.getProjectIDs();
+                totalProjects = projectIds.size();
+            } else {
+                throw new CustomException("INVALID_REQUEST", "Project IDs are required when isAllSelected is false");
+            }
+        }
+        Map<String, Object> result = new HashMap<>();
+        // Validate that we have projects to process
+        if (projectIds.isEmpty()) {
+            result.put("failedProjectIDs", new ArrayList<>());
+            result.put("succeededProjectIDs", new ArrayList<>());
+            result.put("totalProjects", 0);
+            return result;
+        }
+
+        // Update workflow for all project IDs
+        log.info("Starting bulk workflow update for {} projects", projectIds.size());
+        List<String> failedProjectIDs = new ArrayList<>();
+        List<String> succeededProjectIDs = new ArrayList<>();
+        for (String projectId : projectIds) {
+            try {
+                ProjectWorkflowRequest workflowRequest = ProjectWorkflowRequest.builder()
+                        .requestInfo(projectBulkApproveRequest.getRequestInfo())
+                        .projectId(projectId)
+                        .workflow(projectBulkApproveRequest.getWorkflow())
+                        .build();
+
+                ProjectStatusWrapper updatedProject = updateProjectWorkflow(workflowRequest);
+                log.info("Successfully updated workflow for project: {}", projectId);
+                succeededProjectIDs.add(projectId);
+            } catch (Exception e) {
+                log.error("Failed to update workflow for project {}: {}", projectId, e.getMessage());
+                failedProjectIDs.add(projectId);
+            }
+        }
+        
+        result.put("failedProjectIDs", failedProjectIDs);
+        result.put("succeededProjectIDs", succeededProjectIDs);
+        if(projectBulkApproveRequest.getIsAllSelected() && finalProjects > 0) {
+            result.put("totalProjects", finalProjects);
+        } else {
+            result.put("totalProjects", totalProjects);
+        }
+        return result;
+    }
+
+    private static ExtendedProjectSearchRequest getProjectSearchRequest(ProjectBulkApproveRequest projectBulkApproveRequest) {
+        ExtendedProjectSearchRequest projectSearchRequest = new ExtendedProjectSearchRequest();
+
+        if( projectBulkApproveRequest.getFilters() != null ) {
+            projectSearchRequest.setRequestInfo(projectBulkApproveRequest.getRequestInfo());
+            projectSearchRequest.setProject(projectBulkApproveRequest.getFilters().getProjectSearch());
+            projectSearchRequest.setWorkflowStatus(projectBulkApproveRequest.getFilters().getStatus());
+        }  else {
+            throw new CustomException("INVALID_REQUEST", "Filters are required when isAllSelected is true");
+        }
+        return projectSearchRequest;
+    }
+
+    private boolean hasSubmittedBySupervisorStatus(Project project) {
+        Object additionalDetails = project.getAdditionalDetails();
+        if (!(additionalDetails instanceof ObjectNode detailsNode)) return false;
+
+        JsonNode statusNode = detailsNode.get("status");
+        return statusNode != null && SUBMITTED_BY_SUPERVISOR.equals(statusNode.asText());
+    }
+
 }

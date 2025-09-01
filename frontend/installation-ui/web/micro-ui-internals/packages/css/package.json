@@ -1,14 +1,17 @@
 {
-  "name": "@egovernments/digit-ui-css",
-  "version": "1.8.26",
+  "name": "@selco/installation-ui-css",
+  "version": "1.0.1",
   "license": "MIT",
   "main": "dist/index.css",
-  "author": "Jagankumar <jagan.kumar@egov.org.in>",
+  "author": "Adithya Katuku",
   "engines": {
     "node": ">=14"
   },
   "cssConfig": {
     "prefix": ""
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "start": "gulp build",

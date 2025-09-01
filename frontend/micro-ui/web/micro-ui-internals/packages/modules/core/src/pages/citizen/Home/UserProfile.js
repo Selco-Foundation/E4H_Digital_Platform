@@ -68,7 +68,7 @@ const UserProfile = ({ stateCode, userType, cityDetails }) => {
   const [windowWidth, setWindowWidth] = React.useState(window.innerWidth);
   const [errors, setErrors] = React.useState({});
   const isMobile = window.Digit.Utils.browser.isMobile();
-
+  const analyticsOnceRef = React.useRef(false);
   const getUserInfo = async () => {
     const uuid = userInfo?.uuid;
     if (uuid) {
@@ -86,7 +86,6 @@ const UserProfile = ({ stateCode, userType, cityDetails }) => {
 
   useEffect(() => {
     setLoading(true);
-
     getUserInfo();
 
     setGender({
@@ -100,6 +99,20 @@ const UserProfile = ({ stateCode, userType, cityDetails }) => {
 
     setLoading(false);
   }, [userDetails !== null]);
+
+  React.useEffect(() => {
+    if (!analyticsOnceRef.current) {
+      try {
+        Digit?.Utils?.analytics?.trackPageView("profile_page", {
+          page_path: window.location?.pathname || "/profile",
+          page_title: "Profile",
+        });
+      } catch (e) {
+        console.warn("analytics: page_view profile failed", e);
+      }
+      analyticsOnceRef.current = true;
+    }
+  }, []);
 
   let validation = {};
   const editScreen = false; // To-do: Deubug and make me dynamic or remove if not needed

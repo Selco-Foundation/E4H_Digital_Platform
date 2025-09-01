@@ -49,6 +49,17 @@ jobs:
           commit_hash=$(git log -1 --pretty=format:%H -- frontend/micro-ui)
           echo "commit_hash=$commit_hash" >> $GITHUB_ENV
 
+      - name: Set GA Measurement ID
+        run: |
+          if [[ "${GITHUB_REF}" == "refs/heads/develop" ]]; then
+            echo "GA_MEASUREMENT_ID=${{ vars.DEV_MEASUREMENT_ID }}" >> $GITHUB_ENV
+          elif [[ "${GITHUB_REF}" == "refs/heads/staging" ]]; then
+            echo "GA_MEASUREMENT_ID=${{ vars.STAGING_MEASUREMENT_ID }}" >> $GITHUB_ENV
+          elif [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            echo "GA_MEASUREMENT_ID=${{ vars.PROD_MEASUREMENT_ID }}" >> $GITHUB_ENV
+          fi
+      
+
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
@@ -61,7 +72,7 @@ jobs:
           build-args: |
             PUBLIC_PATH=/sikkim/
             WORK_DIR=frontend/micro-ui/
-            GA_MEASUREMENT_ID=${{ vars.DEV_MEASUREMENT_ID }}
+            GA_MEASUREMENT_ID=${{ env.GA_MEASUREMENT_ID }}
 
 #  Workflow_Trigger:
 #    if: startsWith(github.ref, 'refs/heads/develop')

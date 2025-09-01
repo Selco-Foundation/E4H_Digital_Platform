@@ -1,14 +1,16 @@
 package org.egov.project.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.egov.common.contract.request.RequestInfo;
 import org.egov.common.ds.Tuple;
 import org.egov.common.models.ErrorDetails;
+import org.egov.common.models.core.ProjectSearchURLParams;
 import org.egov.common.models.core.SearchResponse;
-import org.egov.common.models.project.ProjectFacility;
-import org.egov.common.models.project.ProjectFacilityBulkRequest;
-import org.egov.common.models.project.ProjectFacilityRequest;
-import org.egov.common.models.project.ProjectFacilitySearchRequest;
+import org.egov.common.models.project.*;
+import org.egov.common.producer.Producer;
 import org.egov.common.service.IdGenService;
 import org.egov.common.service.UserService;
 import org.egov.common.utils.CommonUtils;
@@ -17,8 +19,11 @@ import org.egov.project.config.ProjectConfiguration;
 import org.egov.project.repository.ProjectFacilityRepository;
 import org.egov.project.service.enrichment.ProjectFacilityEnrichmentService;
 import org.egov.project.validator.facility.*;
+import org.egov.project.web.models.*;
+import org.egov.project.web.models.Document;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
@@ -40,6 +45,8 @@ public class ProjectFacilityService {
 
     private final ProjectFacilityRepository projectFacilityRepository;
 
+    private final Producer producer;
+
     private final ProjectService projectService;
 
     private final UserService userService;
@@ -49,6 +56,13 @@ public class ProjectFacilityService {
     private final ProjectFacilityEnrichmentService enrichmentService;
 
     private final List<Validator<ProjectFacilityBulkRequest, ProjectFacility>> validators;
+
+    private final ProjectConfiguration config;
+
+    private final ServiceRequestRepository repository;
+
+    @Qualifier("objectMapper")
+    private final ObjectMapper mapper;
 
     private final Predicate<Validator<ProjectFacilityBulkRequest, ProjectFacility>> isApplicableForCreate = validator ->
             validator.getClass().equals(PfFacilityIdValidator.class)
@@ -76,7 +90,8 @@ public class ProjectFacilityService {
             ProjectService projectService,
             UserService userService,
             ProjectConfiguration projectConfiguration,
-            ProjectFacilityEnrichmentService enrichmentService, List<Validator<ProjectFacilityBulkRequest, ProjectFacility>> validators) {
+            ProjectFacilityEnrichmentService enrichmentService, List<Validator<ProjectFacilityBulkRequest, ProjectFacility>> validators,
+            Producer producer, ProjectConfiguration config, ServiceRequestRepository repository, @Qualifier("objectMapper") ObjectMapper mapper) {
         this.idGenService = idGenService;
         this.projectFacilityRepository = projectFacilityRepository;
         this.projectService = projectService;
@@ -84,6 +99,10 @@ public class ProjectFacilityService {
         this.projectConfiguration = projectConfiguration;
         this.enrichmentService = enrichmentService;
         this.validators = validators;
+        this.producer = producer;
+        this.config = config;
+        this.repository = repository;
+        this.mapper = mapper;
     }
 
     public ProjectFacility create(ProjectFacilityRequest request) {
@@ -108,6 +127,13 @@ public class ProjectFacilityService {
                 log.info("processing {} valid entities", validEntities.size());
                 enrichmentService.create(validEntities, request);
                 projectFacilityRepository.save(validEntities, projectConfiguration.getCreateProjectFacilityTopic());
+                Project existingProject = searchProject(request);
+                Facility facility = getFacilityById(request);
+                Object enrichedAdditionalDetails = mergeListIntoAdditionalDetails(existingProject.getAdditionalDetails(), "facility", facility);
+                existingProject.setAdditionalDetails(enrichedAdditionalDetails);
+                ProjectRequest projectRequest = ProjectRequest.builder().requestInfo(request.getRequestInfo()).projects(List.of(existingProject)).build();
+                producer.push(projectConfiguration.getUpdateProjectTopic(), projectRequest);
+                producer.push(projectConfiguration.getUpdateProjectTopicIndexer(), projectRequest);
                 log.info("successfully created project facility");
             }
         } catch (Exception exception) {
@@ -219,5 +245,66 @@ public class ProjectFacilityService {
         log.info("searching project facility using criteria");
         return projectFacilityRepository.findWithCount(projectFacilitySearchRequest.getProjectFacility(),
                 limit, offset, tenantId, lastChangedSince, includeDeleted);
+    }
+
+    public Project searchProject(ProjectFacilityBulkRequest request) throws Exception {
+        String projectId = request.getProjectFacilities().get(0).getProjectId();
+        ProjectSearch searchCriteria = ProjectSearch.builder()
+                .id(List.of(projectId))
+                .build();
+
+        ProjectSearchRequest searchRequest = ProjectSearchRequest.builder()
+                .project(searchCriteria)
+                .requestInfo(request.getRequestInfo())
+                .build();
+
+
+        ProjectSearchURLParams urlParams = ProjectSearchURLParams.builder()
+                .limit(1)
+                .offset(0)
+                .tenantId("in")
+                .includeAncestors(false)
+                .includeDescendants(false)
+                .build();
+        List<String> workflowStatuses = null;
+        ProjectSortCriteria sortCriteria = null;
+
+        List<Project> projects = projectService.searchProject(searchRequest, urlParams, workflowStatuses, sortCriteria);
+
+        if (projects == null || projects.isEmpty()) {
+            throw new CustomException("PROJECT_NOT_FOUND", "Project not found with ID: " + projectId);
+        }
+
+        Project existingProject = projects.get(0);
+
+        return existingProject;
+    }
+
+    public Facility getFacilityById(ProjectFacilityBulkRequest request) {
+        String facilityId = request.getProjectFacilities().get(0).getFacilityId();
+
+        String url = config.getFacilityServiceHost() + config.getFacilityServiceSearchUrlV2()+ "?facilityId="+facilityId;
+        Object response = repository.fetchResult(new StringBuilder(url));
+
+        FacilitySearchResponse facilityList = mapper.convertValue(response, FacilitySearchResponse.class);
+        if(facilityList != null && facilityList.getFacilities() !=null && facilityList.getFacilities().size() > 0){
+            return facilityList.getFacilities().get(0);
+        }
+        return null;
+    }
+
+    private Object mergeListIntoAdditionalDetails(Object additionalDetails, String key, Object value) {
+        if (additionalDetails instanceof ObjectNode) {
+            ((ObjectNode) additionalDetails).put(key, mapper.valueToTree(value));
+            return additionalDetails;
+        } else if (additionalDetails instanceof Map) {
+            ((Map<String, Object>) additionalDetails).put(key, value);
+            return additionalDetails;
+        } else {
+            // default to HashMap if null or unknown type
+            Map<String, Object> map = new HashMap<>();
+            map.put(key, value);
+            return map;
+        }
     }
 }

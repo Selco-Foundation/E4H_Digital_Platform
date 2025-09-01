@@ -54,4 +54,20 @@ public class ServiceRequestRepository {
         }
     }
 
+    public Object fetchResult(StringBuilder uri) {
+        mapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
+        Object response = null;
+        try {
+            response = restTemplate.getForObject(uri.toString(), Map.class);
+        } catch (HttpClientErrorException e) {
+            log.error("External Service threw an Exception: ", e);
+            throw new ServiceCallException(e.getResponseBodyAsString());
+        } catch (Exception e) {
+            log.error("Error during service call: ", e);
+            throw new ServiceCallException();
+        }
+        return response;
+    }
+
+
 }
