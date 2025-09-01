@@ -69,6 +69,7 @@ abstract class _$AppRouter extends RootStackRouter {
           pageName: args.pageName,
           schemaName: args.schemaName,
           uniqueIdentifier: args.uniqueIdentifier,
+          projectId: args.projectId,
         ),
       );
     },
@@ -326,6 +327,7 @@ class DynamicFormsRoute extends PageRouteInfo<DynamicFormsRouteArgs> {
     required String pageName,
     String? schemaName,
     String? uniqueIdentifier,
+    String? projectId,
     List<PageRouteInfo>? children,
   }) : super(
           DynamicFormsRoute.name,
@@ -334,6 +336,7 @@ class DynamicFormsRoute extends PageRouteInfo<DynamicFormsRouteArgs> {
             pageName: pageName,
             schemaName: schemaName,
             uniqueIdentifier: uniqueIdentifier,
+            projectId: projectId,
           ),
           rawPathParams: {'pageName': pageName},
           initialChildren: children,
@@ -351,6 +354,7 @@ class DynamicFormsRouteArgs {
     required this.pageName,
     this.schemaName,
     this.uniqueIdentifier,
+    this.projectId,
   });
 
   final Key? key;
@@ -361,9 +365,11 @@ class DynamicFormsRouteArgs {
 
   final String? uniqueIdentifier;
 
+  final String? projectId;
+
   @override
   String toString() {
-    return 'DynamicFormsRouteArgs{key: $key, pageName: $pageName, schemaName: $schemaName, uniqueIdentifier: $uniqueIdentifier}';
+    return 'DynamicFormsRouteArgs{key: $key, pageName: $pageName, schemaName: $schemaName, uniqueIdentifier: $uniqueIdentifier, projectId: $projectId}';
   }
 }
 
