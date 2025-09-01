@@ -20,9 +20,11 @@ from app.processor.factory.vendor_data_processor_factory import VendorDataProces
 from app.schemas.request_info import RequestInfo
 from app.producer.producer import Producer
 from app.utils.convertor import request_info_from_json, create_vendor_request, create_facility_payload, \
-    get_project_creation_payload, get_user_creation_payload_staff, get_user_creation_payload_supervisors, get_staff_creation_payload, create_project_payload, \
-    get_installation_spoc_creation_payload, get_staff_search_payload, check_role_mismatch_for_user_type
+    get_project_creation_payload, check_role_mismatch_for_user_type, get_user_creation_payload_staff, get_user_creation_payload_supervisors, \
+    get_staff_creation_payload, create_project_payload, get_installation_spoc_creation_payload, get_staff_search_payload, create_incident_data_update_payload, \
+    get_incident_data_update_request_info
 from app.utils.facility_service_client import FacilityServiceClient
+from app.utils.im_service_client import IMServiceClient
 from app.utils.mdms_client import MDMSClient
 from app.utils.organization_service_client import OrganizationServiceClient
 from app.utils.project_service_client import ProjectServiceClient
@@ -408,7 +410,7 @@ async def upload_facility_with_staff_excel_sheet(
                                 employees = response_data.get("Employees", [])
                                 if employees:
                                     existing_user = employees[0]
-                            
+
                             if existing_user:
                                 # Check for role mismatch
                                 role_check = check_role_mismatch_for_user_type(existing_user, "staff")
@@ -432,13 +434,13 @@ async def upload_facility_with_staff_excel_sheet(
                                     df.at[index, 'status'] = 'failed'
                                     df.at[index, 'error'] = f"User Creation Error: {user_creation_response.status_code} - {user.get('Errors', [{}])[0].get('message', 'Unknown error')}"
                                     continue
-                            
+
                             # Validate user_uuid before staff creation
                             if not user_uuid:
                                 df.at[index, 'status'] = 'failed'
                                 df.at[index, 'error'] = "User UUID is required for staff creation but was not obtained"
                                 continue
-                            
+
                             # Create staff
                             staff_creation_payload = get_staff_creation_payload(request_info, user_uuid, facility["Project"][0]["id"])
                             staff_creation_response = project_client.create_project_staff(staff_creation_payload)
@@ -570,7 +572,7 @@ async def upload_facility_with_supervisors_excel_sheet(
                             employees = response_data.get("Employees", [])
                             if employees:
                                 existing_user = employees[0]
-                        
+
                         if existing_user:
                             # Check for role mismatch
                             role_check = check_role_mismatch_for_user_type(existing_user, "supervisor")
@@ -594,7 +596,7 @@ async def upload_facility_with_supervisors_excel_sheet(
                                 df.at[index, 'status'] = 'failed'
                                 df.at[index, 'error'] = f"User Creation Error: {user_creation_response.status_code} - {user.get('Errors', [{}])[0].get('message', 'Unknown error')}"
                                 continue
-                        
+
                         # Create staff
                         staff_creation_payload = get_staff_creation_payload(request_info, user_uuid, project_id)
                         staff_creation_response = project_client.create_project_staff(staff_creation_payload)
@@ -721,13 +723,13 @@ async def upload_facility_with_supervisors_workflow_state_excel_sheet(
                                 user_type = "supervisor"
                             else:
                                 user_type = "staff"
-                        
+
                         # Create search payload based on user type
                         if user_type == "supervisor":
                             user_search_payload = get_user_creation_payload_supervisors(request_info, row)
                         else:
                             user_search_payload = get_user_creation_payload_staff(request_info, row)
-                        
+
                         existing_user_response = hrms_client.search_user(user_search_payload)
                         existing_user = None
                         if existing_user_response.status_code == 200:
@@ -735,7 +737,7 @@ async def upload_facility_with_supervisors_workflow_state_excel_sheet(
                             employees = response_data.get("Employees", [])
                             if employees:
                                 existing_user = employees[0]
-                        
+
                         if existing_user:
                             # Check for role mismatch
                             role_check = check_role_mismatch_for_user_type(existing_user, user_type)
@@ -752,7 +754,7 @@ async def upload_facility_with_supervisors_workflow_state_excel_sheet(
                                 user_creation_payload = get_user_creation_payload_supervisors(request_info, row)
                             else:
                                 user_creation_payload = get_user_creation_payload_staff(request_info, row)
-                            
+
                             user_creation_response = hrms_client.create_user(user_creation_payload)
                             user = json.loads(user_creation_response.text)
                             if user_creation_response.status_code in [200, 201, 202]:
@@ -761,13 +763,13 @@ async def upload_facility_with_supervisors_workflow_state_excel_sheet(
                                 df.at[index, 'status'] = 'failed'
                                 df.at[index, 'error'] = f"User Creation Error: {user_creation_response.status_code} - {user.get('Errors', [{}])[0].get('message', 'Unknown error')}"
                                 continue
-                        
+
                         # Validate user_uuid before staff creation
                         if not user_uuid:
                             df.at[index, 'status'] = 'failed'
                             df.at[index, 'error'] = "User UUID is required for staff creation but was not obtained"
                             continue
-                        
+
                         # Create staff
                         staff_creation_payload = get_staff_creation_payload(request_info, user_uuid, project_id)
                         staff_creation_response = project_client.create_project_staff(staff_creation_payload)
@@ -1442,3 +1444,207 @@ async def check_duplicate_tickets(
     finally:
         if input_temp_file and os.path.exists(input_temp_file.name):
             pass
+
+
+def get_request_info_to_send_back_workflow():
+    return {
+        "apiId": "project-api",
+        "ver": "1.0",
+        "ts": "",
+        "action": "update",
+        "did": "",
+        "key": "",
+        "msgId": "20240617",
+        "authToken": "f6a27ba4-bead-483d-b4d8-23d46c74d153",
+        "userInfo": {
+            "id": 178,
+            "uuid": "72743f47-9f1a-47de-ac43-b12cde70afc1",
+            "userName": "dummy_manager",
+            "name": "dummy_manager",
+            "mobileNumber": "9911223345",
+            "emailId": None,
+            "locale": None,
+            "type": "EMPLOYEE",
+            "roles": [
+                {"name": "Installation Report Part A editor", "code": "INSTALLATION_REPORT_PART_A_EDITOR",
+                 "tenantId": "in"},
+                {"name": "Installation Report Part B editor", "code": "INSTALLATION_REPORT_PART_B_EDITOR",
+                 "tenantId": "in"},
+                {"name": "Installation Report Part A reviewer", "code": "INSTALLATION_REPORT_PART_A_REVIEWER",
+                 "tenantId": "in"},
+                {"name": "Project manager", "code": "PROJECT_MANAGER", "tenantId": "in"},
+                {"name": "Installation Report Approver QC team", "code": "INSTALLATION_REPORT_APPROVER_QC_TEAM",
+                 "tenantId": "in"}
+            ],
+            "active": True,
+            "tenantId": "in",
+            "permanentCity": None
+        }
+    }
+
+@router.post("/flag_for_qc")
+async def flag_for_qc(
+        facility_file: UploadFile = File(...),
+        facility_sheet_name: str = Form(default="Facilities"),
+):
+    input_temp_file = None
+    try:
+        # Save uploaded file temporarily
+        input_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
+        content = await facility_file.read()
+        input_temp_file.write(content)
+        input_temp_file.close()
+        excel_path = input_temp_file.name
+
+        # Read Excel file
+        df = pd.read_excel(excel_path, sheet_name=facility_sheet_name)
+        df.columns = df.columns.str.strip()
+
+        # Add system columns for audit/error tracking
+        if 'status' not in df.columns:
+            df['status'] = ''
+        if 'error' not in df.columns:
+            df['error'] = ''
+        if 'auditTrail' not in df.columns:
+            df['auditTrail'] = ''
+
+
+        for idx, row in df.iterrows():
+            business_id = row.get("BusinessId")
+
+            # Prepare request body for workflow API
+            payload = {
+                "RequestInfo" : get_request_info_to_send_back_workflow(),
+                "projectId": business_id,
+                "workflow": {
+                    "action": "REMOVE_FLAG",
+                }
+            }
+
+            # Call workflow API
+            workflow_update = f"{project_service_url}/project/v1/project/workflow/update"
+            try:
+                resp = requests.post(workflow_update, json=payload, headers={"Content-Type": "application/json"})
+                if resp.status_code != 200:
+                    df.at[idx, "error"] = f"WF API failed: {resp.status_code} {resp.text}"
+                else:
+                    df.at[idx, "auditTrail"] = f"Sent back to pending approval"
+            except Exception as e:
+                df.at[idx, "error"] = f"WF API call error: {str(e)}"
+
+        df.to_excel(excel_path, index=False, sheet_name=facility_sheet_name)
+
+        return FileResponse(
+            path=excel_path,
+            filename=facility_file.filename,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error during facility status update: {str(e)}")
+
+    finally:
+        if input_temp_file and os.path.exists(input_temp_file.name):
+            pass
+
+@router.post('/incidents/dataUpdate',
+             summary='Update incidents data from Excel file',
+             response_description='Returns result status for each incident')
+async def update_incidents_data_from_excel(
+        incidents_file: UploadFile = File(..., description="Excel file containing incidents to update data"),
+        incidents_sheet_name: str = Form(default="Incidents",
+                                         description="Name of the sheet containing incident data"),
+        request_info: str = Form(default="", description="Request info in JSON format")
+):
+    temp_file = None
+    request_info = request_info_from_json(request_info)
+    get_authorized_request_info(request_info)
+
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as temp_file:
+            content = await incidents_file.read()
+            temp_file.write(content)
+
+        df = pd.read_excel(temp_file.name, sheet_name=incidents_sheet_name)
+        df.columns = df.columns.str.strip()
+
+
+        for col in ['status', 'error']:
+            if col not in df.columns:
+                df[col] = ''
+
+        incident_client = IMServiceClient(im_services_url)
+
+        for index, row in df.iterrows():
+            if pd.isna(row.get('Ticket No.')):
+                df.at[index, 'status'] = 'skipped'
+                df.at[index, 'error'] = 'Missing ticket_no'
+                continue
+
+            if pd.isna(row.get('Tenant ID')):
+                df.at[index, 'status'] = 'skipped'
+                df.at[index, 'error'] = 'Missing Tenant ID'
+                continue
+
+            incident_request_info = get_incident_data_update_request_info()
+
+            try:
+                search_response = incident_client.search_incident(
+                    incident_id=row['Ticket No.'].strip(),
+                    tenant_id=row['Tenant ID'].strip(),
+                    request_info=incident_request_info
+                )
+
+                incident_wrappers = search_response.get("IncidentWrappers", [])
+                if not incident_wrappers:
+                    df.at[index, 'status'] = 'failed'
+                    df.at[index, 'error'] = f"No incident found for Ticket No. {row['Ticket No.']} and Tenant ID {row['Tenant ID']}"
+                    continue
+
+                update_data = {
+                    "systemFunctional": (
+                        {"yes": "FUNCTIONAL", "no": "NON_FUNCTIONAL"}.get(str(row.get("Is the solar system working?", "")).strip().lower(), "")
+                    )
+                }
+
+                update_payload = create_incident_data_update_payload(search_response, update_data)
+                update_response = incident_client.update_incident_data(update_payload)
+
+                process_update_incident_data_response(update_response, df, index)
+
+            except Exception as e:
+                df.at[index, 'status'] = 'failed'
+                df.at[index, 'error'] = str(e)
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_filename = f"incident_data_update_results_{timestamp}.xlsx"
+
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as output_temp_file:
+            df.to_excel(output_temp_file.name, sheet_name=incidents_sheet_name, index=False)
+
+        return FileResponse(
+            path=output_temp_file.name,
+            filename=output_filename,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to process incident updates: {str(e)}"
+        ) from e
+    finally:
+        if temp_file and os.path.exists(temp_file.name):
+            os.unlink(temp_file.name)
+
+def process_update_incident_data_response(response, df, idx):
+    try:
+        if 'Errors' in response and response['Errors']:
+            error_msg = response['Errors'][0].get('message', str(response['Errors'][0]))
+            df.at[idx, 'status'] = 'failed'
+            df.at[idx, 'error'] = error_msg
+        else:
+            df.at[idx, 'status'] = 'success'
+            df.at[idx, 'error'] = ''
+    except Exception as e:
+        df.at[idx, 'status'] = 'failed'
+        df.at[idx, 'error'] = str(e)

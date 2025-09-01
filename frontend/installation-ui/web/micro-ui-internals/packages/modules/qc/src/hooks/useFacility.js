@@ -1,8 +1,9 @@
 import { useQuery, useQueryClient } from "react-query";
+import { QCService } from "../services/QC";
 
 const fetchFacilityProjects = async (filter, limit, offSet) => {
   let facilityQueryFilter;
-  const projectsResponse = await Digit.QCService.fetchProjects(filter, limit, offSet);
+  const projectsResponse = await QCService.fetchProjects(filter, limit, offSet);
   const projectMap = new Map();
 
   facilityQueryFilter = {
@@ -15,7 +16,7 @@ const fetchFacilityProjects = async (filter, limit, offSet) => {
   })
 
   if (facilityQueryFilter.ProjectFacility.projectId.length > 0) {
-    const facilitiesResponse =  await Digit.QCService.fetchFacilities(facilityQueryFilter)
+    const facilitiesResponse =  await QCService.fetchFacilities(facilityQueryFilter)
     facilitiesResponse?.ProjectFacilities?.forEach((row) => {
        projectMap.set(
          row.projectId,
@@ -63,7 +64,7 @@ const fetchInboxData = async (filter, limit, offset) => {
     }
   }
 
-  const projectsResponse = await Digit.QCService.fetchInboxData(requestData);
+  const projectsResponse = await QCService.fetchInboxData(requestData);
 
   return {
     facilities: projectsResponse?.items?.map((row) => {
@@ -78,9 +79,9 @@ const fetchInboxData = async (filter, limit, offset) => {
         facilityId: facility.facility_id,
         status: row.project.additionalDetails.status,
         projectId: row.project.id,
-        block: address.boundary || "-",
-        district: additionalDetails.district || "-",
-        assigned: assigneeDetails.name || "-",
+        block: address.boundary,
+        district: additionalDetails.district,
+        assigned: assigneeDetails.name,
       }
     }),
     totalCount: projectsResponse?.totalCount || 0,
@@ -123,14 +124,15 @@ const useFacility = (projectQueryFilter, pageSize, pageOffset) => {
   const offset = pageOffset || 0;
 
   const queryClient = useQueryClient();
-  const { isLoading, isError, error, data } = useQuery(
-    ["facility", filter, limit, offset],
+  const { isLoading, isFetching, isError, error, data } = useQuery(
+    ["FACILITY", filter, limit, offset],
     () => fetchInboxData(filter, limit, offset)
   );
 
   return {
-    isLoading, isError, error, data,
-    revalidate: () => queryClient.invalidateQueries(["facility", filter, limit, offset])
+    isLoading, isFetching, isError, error, data,
+    revalidate: () => queryClient.invalidateQueries(["FACILITY"]),
+    revalidateFacilityDetails: () => queryClient.invalidateQueries(["FACILITY_DETAILS"])
   }
 }
 

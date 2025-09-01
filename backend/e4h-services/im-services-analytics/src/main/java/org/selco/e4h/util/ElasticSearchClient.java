@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.selco.e4h.service.UpdateService;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpEntity;
+import org.springframework.http.*;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
@@ -28,12 +28,20 @@ public class ElasticSearchClient {
     private static final String INDEX_NAME = "computed-sla-im-services";
     private static final String OLD_INDEX_NAME = "im-services";
 
+    private static final String INDEX_NAME_AUDIT = "phc-master-list-new-2";
+
+    private static final String DOC_PATH = "_doc";
+
     public List<Map<String, Object>> fetchOpenTickets(int from, int size) {
         return fetchTickets(INDEX_NAME, from, size);
     }
 
     public List<Map<String, Object>> fetchOldOpenTicketsFromImServices(int from, int size) {
         return fetchTickets(OLD_INDEX_NAME, from, size);
+    }
+
+    public Map<String, Object> getTicketsByTenantId(int from, int size, String tenantId) {
+        return fetchTicketById(INDEX_NAME_AUDIT, from, size, tenantId);
     }
 
     private List<Map<String, Object>> fetchTickets(String indexName, int from, int size) {
@@ -47,6 +55,30 @@ public class ElasticSearchClient {
         } catch (Exception e) {
             log.error("Failed to fetch open tickets from index '{}'", indexName, e);
             return Collections.emptyList();
+        }
+    }
+
+    private Map<String, Object> fetchTicketById(String indexName, int from, int size, String tenantId) {
+        String uri = getBaseUrl() + "/" + indexName + "/" + DOC_PATH + "/" + tenantId;
+
+
+        // HttpEntity sans body (GET n’a pas de payload)
+        HttpEntity<String> entity = new HttpEntity<>(updateService.buildHeaders());
+
+        try {
+            ResponseEntity<Map> response = restTemplate.exchange(
+                    uri,
+                    HttpMethod.GET,
+                    entity,
+                    Map.class
+            );
+
+            log.info("Fetched ticket audit for tenantId={} from index={}", tenantId, indexName);
+            return response.getBody() != null ? response.getBody() : Collections.emptyMap();
+
+        } catch (Exception e) {
+            log.error("Failed to fetch ticket audit from index '{}' with tenantId '{}'", indexName, tenantId, e);
+            return Collections.emptyMap();
         }
     }
 

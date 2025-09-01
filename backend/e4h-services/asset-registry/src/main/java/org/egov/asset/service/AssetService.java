@@ -44,6 +44,7 @@ public class AssetService {
     }
 
     public AssetCreateResponse createAsset(AssetCreateRequest request) {
+        log.info("AssetService::createAsset called for tenantId={}", request.getAssetDetail().getAsset().getTenantId());
         List<String> ids = idgenUtil.getIdList(request.getRequestInfo(), request.getAssetDetail().getAsset().getTenantId(),
                 "assetId", "ASSET-[SEQ_ASSET_ID]", 1);
         List<String> documentIds = idgenUtil.getIdList(request.getRequestInfo(), request.getAssetDetail().getAsset().getTenantId(),
@@ -53,6 +54,7 @@ public class AssetService {
         else
             throw new CustomException(ErrorConstants.ID_GEN_SERVICE_ERROR_CODE, ErrorConstants.ID_GEN_SERVICE_ERROR_MSG);
         if (request.getAssetDetail().getAsset().getAuditDetails() == null) {
+            log.debug("Setting audit details for assetId={}", request.getAssetDetail().getAsset().getAssetId());
             AuditDetails auditDetails = AuditDetails.builder()
                     .createdBy(request.getRequestInfo().getUserInfo().getUserName())
                     .createdTime(System.currentTimeMillis())
@@ -72,7 +74,10 @@ public class AssetService {
     }
 
     public List<Asset> fetchAssetsWithDocuments(Asset request, int limit, int offset) {
+        log.info("AssetService::fetchAssetsWithDocuments called | tenantId={} limit={} offset={}",
+                request.getTenantId(), limit, offset);
         List<Asset> assets = searchAssets(request, limit, offset);
+        log.debug("Found {} assets for tenantId={}", assets.size(), request.getTenantId());
 
         if (!assets.isEmpty()) {
             List<String> assetIds = assets.stream().map(Asset::getAssetId).collect(Collectors.toList());
@@ -81,6 +86,7 @@ public class AssetService {
             assets.forEach(asset -> {
                 List<Document> documents = documentsMap.getOrDefault(asset.getAssetId(), new ArrayList<>());
                 asset.setDocuments(documents);
+                log.debug("Enriched assetId={} with {} documents", asset.getAssetId(), documents.size());
             });
         }
 
@@ -88,6 +94,8 @@ public class AssetService {
     }
 
     public List<Asset> searchAssets(Asset asset, int limit, int offset) {
+        log.info("AssetService::searchAssets called | tenantId={} assetId={} limit={} offset={}",
+                asset.getTenantId(), asset.getAssetId(), limit, offset);
         StringBuilder query = new StringBuilder("SELECT * FROM asset WHERE 1=1");
         List<Object> params = new ArrayList<>();
 
@@ -130,10 +138,14 @@ public class AssetService {
         params.add(limit);
         params.add(offset);
 
+        log.debug("Executing asset search query={} with params={}", query, params);
+
         return jdbcTemplate.query(query.toString(), params.toArray(), assetRowMapper.rowMapper);
     }
 
     public Map<String, List<Document>> searchDocumentsByAssetIds(String tenantId, List<String> assetIds) {
+        log.info("AssetService::searchDocumentsByAssetIds called | tenantId={} assetIdsCount={}",
+                tenantId, assetIds == null ? 0 : assetIds.size());
         if (assetIds == null || assetIds.isEmpty()) {
             return new HashMap<>();
         }
@@ -150,6 +162,8 @@ public class AssetService {
         query.append(")");
         params.addAll(assetIds);
 
+        log.debug("Executing asset document search query={} with params={}", query, params);
+
         return jdbcTemplate.query(query.toString(), params.toArray(), (rs) -> {
             Map<String, List<Document>> documentsMap = new HashMap<>();
             while (rs.next()) {
@@ -162,6 +176,7 @@ public class AssetService {
     }
 
     public Asset updateAsset(String assetId, AssetCreateRequest request) {
+        log.info("AssetService::updateAsset called | assetId={}", assetId);
         if (request == null || request.getAssetDetail() == null || request.getAssetDetail().getAsset() == null) {
             throw new CustomException("INVALID_REQUEST", "Asset request cannot be null");
         }
@@ -180,6 +195,7 @@ public class AssetService {
         if (updated.getAuditDetails() != null) {
             updated.getAuditDetails().setLastModifiedBy(request.getRequestInfo().getUserInfo().getUserName());
             updated.getAuditDetails().setLastModifiedTime(System.currentTimeMillis());
+            log.debug("Updated audit details for assetId={}", updated.getAssetId());
         }
         assetRepository.pushUpdateAsset(updated);
         return updated;

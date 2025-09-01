@@ -7,6 +7,9 @@ import {
   Loader
 } from "@egovernments/digit-ui-react-components";
 import RefreshButton from "../RefreshButton";
+import useBoundary from "../../hooks/useBoundary";
+import CustomCheckBox from "../Custom/CustomCheckBox";
+import CustomFilterIcon from "../Custom/CustomFilterIcon";
 
 const Filter = ({ t, fieldPlan, onFilterChange, projectQueryFilter, statusesList }) => {
 
@@ -19,7 +22,7 @@ const Filter = ({ t, fieldPlan, onFilterChange, projectQueryFilter, statusesList
     status: []
   });
 
-  const { isLoading, data } = Digit.Hooks.qc.useBoundary(
+  const { isLoading, data } = useBoundary(
     fieldPlan?.address?.boundary, "State"
   );
 
@@ -160,7 +163,7 @@ const Filter = ({ t, fieldPlan, onFilterChange, projectQueryFilter, statusesList
 
   return (
     <React.Fragment>
-      <div className="filter" style={{ minWidth: "300px" }}>
+      <div className="filter" style={{ width: "100%" }}>
         <div className="filter-card" style={{ padding: "20px" }}>
           <div style={{ display: "flex", justifyContent: "space-between" }}>
             <div
@@ -177,7 +180,7 @@ const Filter = ({ t, fieldPlan, onFilterChange, projectQueryFilter, statusesList
                 marginBottom: "20px",
               }}
             >
-              <FilterIcon />
+              <CustomFilterIcon fill={"#0B4B66"} />
               {t("CORE_COMMON_FILTER")}
             </div>
             <button
@@ -241,8 +244,8 @@ const Filter = ({ t, fieldPlan, onFilterChange, projectQueryFilter, statusesList
           </div>
           {statusesList?.map((option, index) => {
             return (
-              <div style={{ marginTop: "-30px" }}>
-                <CheckBox
+              <div>
+                <CustomCheckBox
                   key={index}
                   onChange={(e) => {handleStatusChange(option, e.target.checked)}}
                   checked={checkStatusFilterPresence(option.code)}

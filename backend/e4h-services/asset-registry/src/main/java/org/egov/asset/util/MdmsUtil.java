@@ -35,6 +35,7 @@ public class MdmsUtil {
      * @return
      */
     public Map<String, Object> getMDMSData(RequestInfo requestInfo, String tenantId) {
+        log.info("MdmsUtil::getMDMSData called | tenantId={}", tenantId);
         MdmsResponse response = fetchMDMSData(requestInfo, tenantId);
         Map<String, Object> masterData = new HashMap<>();
         Map<String, List<String>> eachMasterMap = new HashMap<>();
@@ -63,6 +64,7 @@ public class MdmsUtil {
      * @return
      */
     public MdmsResponse fetchMDMSData(RequestInfo requestInfo, String tenantId) {
+        log.info("MdmsUtil::fetchMDMSData called | tenantId={}", tenantId);
         StringBuilder uri = new StringBuilder();
         MdmsCriteriaReq request = prepareMDMSRequest(uri, requestInfo, tenantId);
         MdmsResponse response = null;
@@ -84,6 +86,7 @@ public class MdmsUtil {
      * @return
      */
     public MdmsCriteriaReq prepareMDMSRequest(StringBuilder uri, RequestInfo requestInfo, String tenantId) {
+        log.info("MdmsUtil::prepareMDMSRequest called | tenantId={}", tenantId);
         Map<String, List<String>> mapOfModulesAndMasters = new HashMap<>();
         String[] assetMasters = {AssetConstants.ASSET_TYPE_CODE, AssetConstants.ASSET_COUNT_CODE, AssetConstants.BRAND_CODE,
                 AssetConstants.SYSTEM_CODE, AssetConstants.WARRANTY_DURATION};

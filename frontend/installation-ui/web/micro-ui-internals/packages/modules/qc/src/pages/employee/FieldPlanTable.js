@@ -4,8 +4,9 @@ import SearchCentre from "../../components/FieldPlanTable/Search";
 import { setSelectedFieldPlan } from "../../redux/actions";
 import { Link, useHistory, useLocation, useRouteMatch } from "react-router-dom";
 import { useDispatch } from "react-redux";
+import useFieldPlan from "../../hooks/useFieldPlan";
 
-const FieldPlanTable = ({ t, getCellProps }) => {
+const FieldPlanTable = ({ t }) => {
 
   const [fetchedData, setData] = useState([]);
   const dispatch = useDispatch();
@@ -32,7 +33,7 @@ const FieldPlanTable = ({ t, getCellProps }) => {
   const [pageOffset, setPageOffset] = useState(parseInt(queryParams.get("pageOffset")) || 0);
   const prevPageSizeRef = useRef(pageSize);
 
-  const { isLoading, data } = Digit.Hooks.qc.useFieldPlan(queryFilter, pageSize, pageOffset);
+  const { isLoading, data } = useFieldPlan(queryFilter, pageSize, pageOffset);
 
   useEffect(() => {
     history.replace({
@@ -178,7 +179,7 @@ const FieldPlanTable = ({ t, getCellProps }) => {
 
     if (fetchedData.length === 0) {
       return (
-        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "300px", backgroundColor: "white" }}>
+        <div style={{ display: "flex", minWidth: "700px", justifyContent: "center", alignItems: "center", height: "300px", backgroundColor: "white" }}>
           <div style={{ fontSize: "20px", fontWeight: "bold" }}>
             {t("CS_NO_FIELD_PLANS_FOUND")}
           </div>
@@ -190,6 +191,7 @@ const FieldPlanTable = ({ t, getCellProps }) => {
       <div style={{
         backgroundColor: "white",
         padding: "15px 0px 0px 0px",
+        minWidth: "700px",
       }}>
         <div style={{
           margin: "0px 20px",
@@ -199,7 +201,15 @@ const FieldPlanTable = ({ t, getCellProps }) => {
             t={t}
             data={fetchedData}
             columns={columnsList}
-            getCellProps={getCellProps}
+            getCellProps={() => {
+              return {
+                style: {
+                  maxWidth: "100%",
+                  padding: "17.24px 18px",
+                  fontSize: "15px",
+                },
+              };
+            }}
             onNextPage={onNextPage}
             onPrevPage={onPrevPage}
             currentPage={Math.floor(pageOffset / pageSize)}
@@ -213,8 +223,8 @@ const FieldPlanTable = ({ t, getCellProps }) => {
   }
 
   return (
-    <div style={{marginTop: "20px"}}>
-      <div style={{fontSize: "24px", fontWeight: "bold", marginBottom: "20px", color: "#004d66"}}>
+    <div style={{marginTop: "20px", padding: "0px 10px", overflow: "auto"}}>
+      <div style={{fontSize: "40px", fontWeight: "bold", fontFamily: "Roboto Condensed", marginBottom: "20px", color: "#0B0C0C"}}>
         Inbox
       </div>
       <SearchCentre queryFilter={queryFilter} onSearch={onSearch} onClear={onClear} />

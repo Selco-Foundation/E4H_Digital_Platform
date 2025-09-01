@@ -5,6 +5,7 @@ import digit.models.coremodels.UserDetailResponse;
 import digit.models.coremodels.user.Role;
 import digit.models.coremodels.user.User;
 import digit.models.coremodels.user.enums.UserType;
+import lombok.extern.slf4j.Slf4j;
 import org.egov.asset.config.Configuration;
 import org.egov.asset.repository.ServiceRequestRepository;
 import org.egov.tracer.model.CustomException;
@@ -21,6 +22,7 @@ import java.util.List;
 import static org.egov.asset.config.ServiceConstants.*;
 
 @Component
+@Slf4j
 public class UserUtil {
 
     private final ObjectMapper mapper;
@@ -46,6 +48,7 @@ public class UserUtil {
      */
 
     public UserDetailResponse userCall(Object userRequest, StringBuilder uri) {
+        log.info("UserUtil::userCall called | uri={}", uri.toString());
         String dobFormat = null;
         String uriString = uri.toString();
         if (uriString.contains(configs.getUserSearchEndpoint()) || uriString.contains(configs.getUserUpdateEndpoint()))
@@ -78,6 +81,7 @@ public class UserUtil {
      */
 
     public void parseResponse(LinkedHashMap responseMap, String dobFormat) {
+        log.info("UserUtil::parseResponse");
         if (responseMap == null) {
             return;
         }
@@ -105,6 +109,7 @@ public class UserUtil {
      * @return Long value of date
      */
     private Long dateTolong(String date, String format) {
+        log.info("UserUtil::dateTolong called | date={}", date);
         if (date == null || format == null) {
             throw new CustomException("INVALID_DATE_INPUT", "Date or format is null");
         }
@@ -150,6 +155,7 @@ public class UserUtil {
      * @return
      */
     private Role getCitizenRole(String tenantId) {
+        log.info("UserUtil::getCitizenRole called | tenantId={}", tenantId);
         Role role = Role.builder().build();
         role.setCode(CITIZEN_UPPER);
         role.setName(CITIZEN_LOWER);
@@ -158,6 +164,7 @@ public class UserUtil {
     }
 
     public String getStateLevelTenant(String tenantId) {
+        log.info("UserUtil::getStateLevelTenant called | tenantId={}", tenantId);
         if (tenantId == null || tenantId.isEmpty()) {
             throw new CustomException("INVALID_TENANT_ID", "TenantId cannot be null or empty");
         }

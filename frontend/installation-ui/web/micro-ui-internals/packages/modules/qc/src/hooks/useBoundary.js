@@ -1,8 +1,9 @@
 import { useQuery, useQueryClient } from "react-query";
+import { QCService } from "../services/QC";
 
 const fetchBoundaries = async (codes, boundaryType) => {
 
-  const boundaryResponse = await Digit.QCService.fetchBoundaryRelations(codes, boundaryType);
+  const boundaryResponse = await QCService.fetchBoundaryRelations(codes, boundaryType);
   const stateObject = boundaryResponse?.TenantBoundary?.[0]?.boundary?.[0];
 
   const state = [
@@ -38,13 +39,13 @@ const useBoundary = (codes, boundaryType) => {
 
   const queryClient = useQueryClient();
   const { isLoading, isError, error, data } = useQuery(
-    ["boundary", codes, boundaryType],
+    ["BOUNDARY", codes, boundaryType],
     () => fetchBoundaries(codes, boundaryType)
   );
 
   return {
     isLoading, isError, error, data,
-    revalidate: () => queryClient.invalidateQueries(["boundary", codes, boundaryType])
+    revalidate: () => queryClient.invalidateQueries(["BOUNDARY"])
   }
 
 }
