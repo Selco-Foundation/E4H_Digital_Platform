@@ -24,6 +24,9 @@ public class ElasticSearchClient {
     @Value("${egov.indexer.es.port.no}")
     private int esPort;
 
+    @Value("${php.kafka.topic.indexer}")
+    private String phcIndex;
+
     private static final String SEARCH_PATH = "_search";
     private static final String INDEX_NAME = "computed-sla-im-services";
     private static final String OLD_INDEX_NAME = "im-services";
@@ -41,11 +44,11 @@ public class ElasticSearchClient {
     }
 
     public Map<String, Object> getHFByTenantId(String tenantId) {
-        return fetchTicketById(INDEX_NAME_PHC, tenantId);
+        return fetchTicketById(phcIndex, tenantId);
     }
 
     public List<Map<String, Object>> getAllPHC(int from, int size) {
-        return fetchAllPHCs(INDEX_NAME_PHC, from, size);
+        return fetchAllPHCs(phcIndex, from, size);
     }
 
     private List<Map<String, Object>> fetchTickets(String indexName, int from, int size) {
