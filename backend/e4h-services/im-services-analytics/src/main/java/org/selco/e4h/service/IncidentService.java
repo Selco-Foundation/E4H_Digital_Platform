@@ -207,7 +207,7 @@ public class IncidentService {
             }
         }
         catch (Exception e){
-            e.printStackTrace();
+            log.error("Error while processing script update", e);
         }
     }
 }
