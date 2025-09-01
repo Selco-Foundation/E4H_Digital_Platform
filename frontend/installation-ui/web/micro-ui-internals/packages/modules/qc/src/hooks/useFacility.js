@@ -79,9 +79,9 @@ const fetchInboxData = async (filter, limit, offset) => {
         facilityId: facility.facility_id,
         status: row.project.additionalDetails.status,
         projectId: row.project.id,
-        block: address.boundary || "-",
-        district: additionalDetails.district || "-",
-        assigned: assigneeDetails.name || "-",
+        block: address.boundary,
+        district: additionalDetails.district,
+        assigned: assigneeDetails.name,
       }
     }),
     totalCount: projectsResponse?.totalCount || 0,

@@ -19,7 +19,18 @@ const getAssetCapacity = (assetTypeID, assetDetails) => {
     case "BATTERY":
       return assetDetails?.batteryCapacity + " " + assetDetails?.capacityUnit;
     case "INVERTER":
-      return assetDetails?.inverterCapacity + " " + assetDetails?.capacityUnit;
+      return assetDetails?.inverterCapacity + " " + assetDetails?.invertorCapacityUnit;
+  }
+}
+
+const getAssetVoltage = (assetTypeID, assetDetails) => {
+  switch (assetTypeID) {
+    case "PANEL":
+      return "";
+    case "BATTERY":
+      return assetDetails?.batteryVoltage + " " + assetDetails?.voltageUnit;
+    case "INVERTER":
+      return "";
   }
 }
 
@@ -66,7 +77,8 @@ const formatData = async (data) => {
         count: 1,
         specifications: {
           system: row?.system,
-          capacity: getAssetCapacity(assetType, row?.assetDetails)
+          capacity: getAssetCapacity(assetType, row?.assetDetails),
+          voltage: getAssetVoltage(assetType, row?.assetDetails)
         },
         details: {
           count: 1,

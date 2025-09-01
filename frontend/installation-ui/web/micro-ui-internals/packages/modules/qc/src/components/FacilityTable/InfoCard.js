@@ -19,7 +19,7 @@ const InfoCard = ({ t, selectedFieldPlan }) => {
   const GetProgress = (value) => (
     <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
       <div style={{ width: "100px", height: "20px", background: "#E0E0E0", borderRadius: "5px" }}>
-        <div style={{ position: "absolute", height: "20px", width: `${value}px`, background: "#00703C", borderRadius: "5px" }}></div>
+        <div style={{ height: "20px", width: `${value}px`, background: "#00703C", borderRadius: "5px" }}></div>
       </div>
       <div>{value}%</div>
     </div>
@@ -47,12 +47,10 @@ const InfoCard = ({ t, selectedFieldPlan }) => {
           background: "white",
           height: "fit-content",
           marginBottom: "15px",
-          padding: isMobile ? "10px" : "20px",
+          padding: "20px",
           display: "flex",
-          flexDirection: isMobile ? "column" : "row",
-          gap: isMobile ? "10px" : "",
           justifyContent: "space-between",
-          minWidth: "fit-content"
+          minWidth: "1065px"
         }}
       >
         <div style={{ width: "30%", minWidth: "400px" }}>
