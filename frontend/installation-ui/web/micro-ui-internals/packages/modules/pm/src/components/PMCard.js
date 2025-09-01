@@ -1,18 +1,21 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import { useHistory } from "react-router-dom";
-import CustomMenuIcon from "./Custom/CustomMenuIcon";
-import CustomArrowRight from "./Custom/CustomArrowRight";
+import { AdminPanelSettings } from "@egovernments/digit-ui-svg-components";
+import { AddExpense, ListAlt } from "@egovernments/digit-ui-svg-components";
 
 const PMCard = () => {
   const history = useHistory();
   const { t } = useTranslation();
-  const windowWidth = window.innerWidth;
 
   const userType = "employee";
 
-  const handleClick = () => {
-    console.log("clicked");
+  const handleCreateProjectRedirection = () => {
+    console.debug("clicked 1");
+  };
+
+  const handleViewProjectRedirection = () => {
+    console.debug("clicked 2");
   };
 
   return (
@@ -24,22 +27,33 @@ const PMCard = () => {
         boxShadow: userType === "citizen" ? "1px 1px 4px 0px rgba(0,0,0,0.2)" : "",
         background: userType === "citizen" ? "white" : "",
         borderRadius: userType === "citizen" ? "4px" : "",
-        maxWidth: "fit-content",
+        width: "350px",
+        maxWidth: "95%",
+        minHeight: "200px",
       }}
     >
       <section
         style={{
           position: "relative",
-          width: "95%",
-          maxWidth: "400px",
+          height: "100%",
           borderRadius: "4px",
           boxShadow: userType === "citizen" ? "" : "1px 1px 4px 0px rgba(0,0,0,0.2)",
           background: "white",
           padding: userType === "citizen" ? "8px" : "16px",
         }}
       >
-        <div style={{ marginBottom: "10px", padding: "8px", paddingLeft: 0, display: "flex", gap: "16px", alignItems: "center" }}>
-          <CustomMenuIcon color="#B91900" />
+        <div
+          style={{
+            marginBottom: "10px",
+            padding: "8px",
+            paddingLeft: 0,
+            display: "flex",
+            gap: "10px",
+            alignItems: "center",
+            borderBottom: "1px solid #D6D5D4",
+          }}
+        >
+          <AdminPanelSettings height={"28px"} width={"28px"} />
           <div
             style={{
               fontFamily: "Roboto",
@@ -51,44 +65,52 @@ const PMCard = () => {
               width: "70%",
             }}
           >
-            {t("CS_COMMON_INBOX")}
+            {t("CS_COMMON_PROJECTS")}
           </div>
         </div>
         <div
           style={{
-            marginBottom: "10px",
-            fontFamily: "Roboto",
-            fontWeight: 400,
-            fontSize: "16px",
-            lineHeight: "24px",
-            letterSpacing: "0px",
-            color: "#0B0C0C",
+            padding: "8px",
+            paddingLeft: 0,
           }}
         >
-          {t("CS_COMMON_HOME_INBOX_DESC")}
-        </div>
-        <div
-          style={{
-            width: 116,
-            height: 32,
-            display: "flex",
-            gap: "8px",
-            justifyContent: "center",
-            alignItems: "center",
-            paddingTop: "8px",
-            paddingRight: "20px",
-            paddingBottom: "8px",
-            paddingLeft: "20px",
-            background: "#C84C0E",
-            color: "white",
-            cursor: "pointer",
-          }}
-          onClick={handleClick}
-        >
-          <span>
-            {t("CORE_COMMON_VIEW")}
-          </span>
-          <CustomArrowRight color={"white"} height={"14px"} width={"14px"} />
+          <div
+            style={{
+              display: "flex",
+              gap: "8px",
+              alignItems: "center",
+              color: "#C84C0E",
+              cursor: "pointer",
+              marginBottom: "8px",
+              fontSize: "16px",
+              fontWeight: "bold",
+              fontFamily: "Roboto",
+            }}
+            onClick={handleCreateProjectRedirection}
+          >
+            <AddExpense />
+            <span>
+              {t("QC_ACTION_CREATE_PROJECT")}
+            </span>
+          </div>
+          <div
+            style={{
+              display: "flex",
+              gap: "8px",
+              alignItems: "center",
+              color: "#C84C0E",
+              cursor: "pointer",
+              fontSize: "16px",
+              fontWeight: "bold",
+              fontFamily: "Roboto",
+            }}
+            onClick={handleViewProjectRedirection}
+          >
+            <ListAlt />
+            <span>
+              {t("QC_ACTION_VIEW_PROJECTS")}
+            </span>
+          </div>
         </div>
       </section>
     </div>
