@@ -70,13 +70,15 @@ public class ProjectService {
 
     private final ServiceRequestRepository serviceRequestRepository;
 
+    private final ProjectNameGenerationService projectNameGenerationService;
+
     @Autowired
     BoundaryV2Util boundaryV2Util;
 
     @Autowired
     public ProjectService(
             ProjectRepository projectRepository,
-            ProjectValidator projectValidator, ProjectEnrichment projectEnrichment, ProjectConfiguration projectConfiguration, Producer producer, ProjectServiceUtil projectServiceUtil, ProjectWorkflowService workflowService, @Lazy ProjectFacilityService projectFacilityService, JdbcTemplate jdbcTemplate, ServiceRequestRepository serviceRequestRepository, @Qualifier("objectMapper") ObjectMapper mapper) {
+            ProjectValidator projectValidator, ProjectEnrichment projectEnrichment, ProjectConfiguration projectConfiguration, Producer producer, ProjectServiceUtil projectServiceUtil, ProjectWorkflowService workflowService, @Lazy ProjectFacilityService projectFacilityService, JdbcTemplate jdbcTemplate, ServiceRequestRepository serviceRequestRepository, @Qualifier("objectMapper") ObjectMapper mapper, ProjectNameGenerationService projectNameGenerationService) {
         this.projectRepository = projectRepository;
         this.projectValidator = projectValidator;
         this.projectEnrichment = projectEnrichment;
@@ -89,6 +91,7 @@ public class ProjectService {
         this.mapper = mapper;
         this.objectMapper = new ObjectMapper();
         this.projectFacilityService = projectFacilityService;
+        this.projectNameGenerationService = projectNameGenerationService;
     }
 
     public List<String> validateProjectIds(List<String> productIds) {
@@ -99,8 +102,22 @@ public class ProjectService {
         return projectRepository.findById(projectIds);
     }
 
-    public ProjectRequest createProject(ProjectRequest projectRequest) {
+    public ProjectCreateResult createProject(ProjectRequest projectRequest) {
         projectValidator.validateCreateProjectRequest(projectRequest);
+        boolean isDuplicate = false;
+        RequestInfo requestInfo = projectRequest.getRequestInfo();
+        // Check for empty names and generate names with duplicate check
+        for (Project project : projectRequest.getProjects()) {
+            if (project.getName() == null || project.getName().trim().isEmpty()) {
+                ProjectNameResult nameResult = projectNameGenerationService.generateNameAndCheckDuplicate(project, requestInfo);
+                if (nameResult.getName() != null) {
+                    project.setName(nameResult.getName());
+                    if (nameResult.getIsDuplicate()) {
+                        isDuplicate = true;
+                    }
+                }
+            }
+        }
         //Get parent projects if "parent" is present (For enrichment of projectHierarchy)
         List<Project> parentProjects = getParentProjects(projectRequest);
         //Validate Parent in request against projects fetched form database
@@ -111,7 +128,11 @@ public class ProjectService {
         producer.push(projectConfiguration.getSaveProjectTopic(), projectRequest);
         producer.push(projectConfiguration.getSaveProjectTopicIndexer(), projectRequest);
         log.info("Pushed to kafka");
-        return projectRequest;
+
+        return ProjectCreateResult.builder()
+                .projectRequest(projectRequest)
+                .isDuplicate(isDuplicate)
+                .build();
     }
 
     /**

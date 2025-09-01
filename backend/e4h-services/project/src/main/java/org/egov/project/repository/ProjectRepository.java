@@ -202,6 +202,46 @@ public class ProjectRepository extends GenericRepository<Project> {
         return statusAgregations;
     }
 
+    /**
+     * Checks if a project name already exists in the database for a given tenant
+     * @param projectName The project name to check
+     * @param tenantId The tenant ID
+     * @return true if the project name exists, false otherwise
+     */
+    public boolean isProjectNameExists(String projectName, String tenantId) {
+        try {
+            String sql = "SELECT COUNT(*) FROM project WHERE name = ? AND tenantid = ?";
+            Integer count = jdbcTemplate.queryForObject(sql, Integer.class, projectName, tenantId);
+            return count != null && count > 0;
+        } catch (Exception e) {
+            log.error("Error checking for existing project name: {}", projectName, e);
+            // If we can't check, assume it exists to be safe
+            return true;
+        }
+    }
+
+    /**
+     * Finds the highest existing project name with the given base name pattern
+     * @param baseName The base name pattern to search for
+     * @param tenantId The tenant ID
+     * @return The highest existing name or null if none found
+     */
+    public String findHighestExistingProjectName(String baseName, String tenantId) {
+        try {
+            String sql = "SELECT name FROM project WHERE name LIKE ? AND tenantid = ? ORDER BY createdtime DESC LIMIT 1";
+            List<String> existingNames = jdbcTemplate.queryForList(sql, String.class, baseName + "%", tenantId);
+            
+            if (!existingNames.isEmpty()) {
+                return existingNames.get(0);
+            }
+            
+            return null;
+        } catch (Exception e) {
+            log.error("Error finding highest existing name for base: {}", baseName, e);
+            return null;
+        }
+    }
+
     /* Fetch Project descendants based on Project ids */
     private List<Project> getProjectsDescendantsBasedOnProjectIds(List<String> projectIds, List<Object> preparedStmtListDescendants) {
         String query = queryBuilder.getProjectDescendantsSearchQueryBasedOnIds(projectIds, preparedStmtListDescendants);
