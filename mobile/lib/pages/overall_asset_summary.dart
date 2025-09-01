@@ -618,6 +618,21 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                                   fileSize: _displaySize(),
                                                 ),
                                               ),
+                                        DigitButton(
+                                          mainAxisSize: MainAxisSize.max,
+                                          label: 'BOM (Solar System)',
+                                          onPressed: () {
+                                            context.router.push(
+                                              DynamicFormsRoute(
+                                                  pageName:
+                                                      'ModuleMountingstructure',
+                                                  schemaName: 'AssetForm',
+                                                  projectId: _currentProjectId),
+                                            );
+                                          },
+                                          type: DigitButtonType.primary,
+                                          size: DigitButtonSize.large,
+                                        ),
                                       ],
                                     ))
                           ],
