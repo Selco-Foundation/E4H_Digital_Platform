@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:digit_ui_components/widgets/atoms/digit_stepper.dart';
@@ -8,6 +10,7 @@ import 'package:forms_engine/blocs/forms/forms.dart';
 import 'package:forms_engine/json_forms.dart';
 import 'package:forms_engine/models/schema_object/schema_object.dart';
 import 'package:reactive_forms/reactive_forms.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../model/appconfig/mdmsRequest.dart';
 import '../repositories/app_init_Repo.dart';
@@ -23,12 +26,14 @@ class DynamicFormsPage extends StatefulWidget {
   /// the page will show an error.
   final String? schemaName; // e.g. "AssetForm"
   final String? uniqueIdentifier; // e.g. "AssetForm.SELCO"
+  final String? projectId;
 
   const DynamicFormsPage({
     super.key,
     @PathParam() required this.pageName,
     this.schemaName,
     this.uniqueIdentifier,
+    this.projectId,
   });
 
   @override
@@ -152,10 +157,26 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
             final isLast = state.schema.pages.keys.last == widget.pageName;
             if (!isLast) return;
 
+            // ⬇️ NEW: gather all page values into a flat map
+            final Map<String, dynamic> bomValues = {};
+            state.schema.pages.forEach((pageKey, pageSchema) {
+              pageSchema.properties?.forEach((propKey, propSchema) {
+                bomValues[propKey] = propSchema.value;
+              });
+            });
+
+            // ⬇️ NEW: persist as a string for current project (fallback to 'default')
+            final prefs = await SharedPreferences.getInstance();
+            final projKey = widget.projectId ?? 'default';
+            await prefs.setString(
+                'bom_form_values_$projKey', jsonEncode(bomValues));
+
             final key = state.activeSchemaKey ?? state.schema.name;
             context.read<FormsBloc>().add(FormsEvent.clearForm(schemaKey: key));
 
             // context.router.push(const AcknowledgementRoute(isDirectCreate: true));
+            // context.router.popUntilRouteWithName(OverallAssetSummaryRoute.name);
+            context.router.popAndPush(const OverallAssetSummaryRoute());
           }
         },
         builder: (context, state) {

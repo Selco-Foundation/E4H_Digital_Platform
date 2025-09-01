@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:bloc/bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:isar/isar.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../data/nosql/cache_add_new_asset.dart';
 import '../../data/nosql/cache_asset_detail.dart';
@@ -335,6 +337,17 @@ class AssetSubmissionBloc
       if (completionReport != null && completionReport.filePath.isNotEmpty) {
         String photoId = await getFilestoreUrl(completionReport.filePath);
         print("photoId $photoId");
+
+        // Load BOM JSON (if any) from SharedPreferences for this project
+        final prefs = await SharedPreferences.getInstance();
+        // final bomString = prefs.getString('bom_form_values_$projectId');
+        final bomString = prefs.getString('bom_form_values_default');
+
+        // Wrap under {"bom": ...} as requested
+        final String? additionalJson = (bomString == null || bomString.isEmpty)
+            ? null
+            : jsonEncode({"bom": jsonDecode(bomString)}); // ensure valid JSON
+
         workflowDocuments.add(Document(
           documentType: "INSTALLATION_REPORT",
           fileStore: photoId,
@@ -343,6 +356,7 @@ class AssetSubmissionBloc
             latitude: completionReport.latitude,
             longitude: completionReport.longitude,
           ),
+          additionalDetailsJson: additionalJson,
         ));
       }
 
