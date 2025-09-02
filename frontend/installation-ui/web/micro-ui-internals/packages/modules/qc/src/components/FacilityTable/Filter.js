@@ -8,6 +8,8 @@ import {
 } from "@egovernments/digit-ui-react-components";
 import RefreshButton from "../RefreshButton";
 import useBoundary from "../../hooks/useBoundary";
+import CustomCheckBox from "../Custom/CustomCheckBox";
+import CustomFilterIcon from "../Custom/CustomFilterIcon";
 
 const Filter = ({ t, fieldPlan, onFilterChange, projectQueryFilter, statusesList }) => {
 
@@ -178,7 +180,7 @@ const Filter = ({ t, fieldPlan, onFilterChange, projectQueryFilter, statusesList
                 marginBottom: "20px",
               }}
             >
-              <FilterIcon />
+              <CustomFilterIcon fill={"#0B4B66"} />
               {t("CORE_COMMON_FILTER")}
             </div>
             <button
@@ -242,8 +244,8 @@ const Filter = ({ t, fieldPlan, onFilterChange, projectQueryFilter, statusesList
           </div>
           {statusesList?.map((option, index) => {
             return (
-              <div style={{ marginTop: "-30px" }}>
-                <CheckBox
+              <div>
+                <CustomCheckBox
                   key={index}
                   onChange={(e) => {handleStatusChange(option, e.target.checked)}}
                   checked={checkStatusFilterPresence(option.code)}

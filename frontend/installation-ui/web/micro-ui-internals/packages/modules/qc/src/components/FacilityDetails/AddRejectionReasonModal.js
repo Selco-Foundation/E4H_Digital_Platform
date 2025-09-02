@@ -1,28 +1,48 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from "react";
 import { Dropdown, DustbinIcon, TextArea } from "@egovernments/digit-ui-react-components";
 import CustomCloseSvg from "../CustomCloseSvg";
 
 const reasonOptions = [
-  { label: "Serial Number Incorrect", code: "Serial Number Incorrect" },
-  { label: "Model Number Incorrect", code: "Model Number Incorrect" },
   { label: "Image Not Clear", code: "Image Not Clear" },
-  { label: "Incorrect Brand", code: "Incorrect Brand" }
+  { label: "Incorrect Brand", code: "Incorrect Brand" },
+  { label: "Model Number Incorrect", code: "Model Number Incorrect" },
+  { label: "Serial Number Incorrect", code: "Serial Number Incorrect" }
 ];
 
-const AddRejectionReasonModal = ({ t, onClose, onSave }) => {
+const AddRejectionReasonModal = ({ t, onClose, onSave, rejectionReasons }) => {
 
+  const [reasonMenu, setReasonMenu] = useState(reasonOptions)
   const [reasons, setReasons] = useState([{ id: Date.now(), reason: "", comment: "" }]);
 
   const addReason = () => {
     setReasons([...reasons, { id: Date.now(), reason: "", comment: "" }]);
   };
 
+  useEffect(() => {
+    const savedRejectionCodes = rejectionReasons.map(r => r.reason);
+    const newReasonMenu = reasonMenu.filter(option => !savedRejectionCodes.includes(option.code));
+    newReasonMenu.sort((a, b) => a.label.localeCompare(b.label));
+    setReasonMenu(newReasonMenu);
+  }, [rejectionReasons]);
+
+  const updateReasonsMenu = (selectedReasonCodes) => {
+    const newReasonMenu = reasonMenu.filter(option => !selectedReasonCodes.includes(option.code));
+    newReasonMenu.sort((a, b) => a.label.localeCompare(b.label));
+    setReasonMenu(newReasonMenu);
+  }
+
   const updateReason = (id, key, value) => {
-    setReasons(reasons.map(r => r.id === id ? { ...r, [key]: value } : r));
+    const newReasons = reasons.map(r => r.id === id ? { ...r, [key]: value } : r);
+    const selectedReasonCodes = newReasons.map(r => r.reason);
+    setReasons(newReasons);
+    updateReasonsMenu(selectedReasonCodes);
   };
 
   const deleteReason = (id) => {
-    setReasons(reasons.filter(r => r.id !== id));
+    const newReasons = reasons.filter(r => r.id !== id);
+    const selectedReasonCodes = newReasons.map(r => r.reason);
+    setReasons(newReasons);
+    updateReasonsMenu(selectedReasonCodes);
   };
 
   const handleSave = () => {
@@ -57,8 +77,8 @@ const AddRejectionReasonModal = ({ t, onClose, onSave }) => {
             </div>
             <Dropdown
               t={t}
-              option={reasonOptions}
-              selected={reasonOptions?.find((opt) => opt.code === reason.reason)}
+              option={reasonMenu}
+              selected={reasonMenu?.find((opt) => opt.code === reason.reason)}
               optionKey={"label"}
               select={(e) => updateReason(reason.id, 'reason', e.code)}
             />
@@ -67,6 +87,7 @@ const AddRejectionReasonModal = ({ t, onClose, onSave }) => {
               onChange={(e) => updateReason(reason.id, 'comment', e.target.value)}
               value={reason.comment}
               placeholder={t("ES_ADDITIONAL_DETAILS_PLACEHOLDER")}
+              style={{ fontFamily: "Roboto" }}
             />
           </div>
         ))}
