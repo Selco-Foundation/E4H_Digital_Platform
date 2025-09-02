@@ -37,7 +37,8 @@ const Status = ({ complaints, onAssignmentChange, pgrfilters, statusArray }) => 
     tenant = codes
 
   }
-  const complaintsWithCount =Digit.Hooks.pgr.useComplaintStatusCount(complaints,tenant);
+  const complaintsWithCountRaw = Digit.Hooks.pgr.useComplaintStatusCount(complaints,tenant);
+  const complaintsWithCount = Array.isArray(complaintsWithCountRaw) ? complaintsWithCountRaw : [];
 
   const sortedComplaints = [...complaintsWithCount].sort((a, b) => {
     const indexA = statusOrder.indexOf(a.code);
