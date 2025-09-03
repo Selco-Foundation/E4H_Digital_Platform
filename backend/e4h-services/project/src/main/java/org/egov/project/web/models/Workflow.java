@@ -16,6 +16,8 @@ public class Workflow {
     private @Valid List<String> assignes = null;
     @JsonProperty("rating")
     private Integer rating = null;
+    @JsonProperty("additionalDetails")
+    private Object additionalDetails = null;
 
     public Workflow addDocumentsItem(Document documentsItem) {
         if (this.documents == null) {
@@ -50,6 +52,10 @@ public class Workflow {
         return this.rating;
     }
 
+    public Object getAdditionalDetails() {
+        return additionalDetails;
+    }
+
     @JsonProperty("action")
     public void setAction(final String action) {
         this.action = action;
@@ -73,6 +79,10 @@ public class Workflow {
     @JsonProperty("rating")
     public void setRating(final Integer rating) {
         this.rating = rating;
+    }
+    @JsonProperty("additionalDetails")
+    public void setAdditionalDetails(Object additionalDetails) {
+        this.additionalDetails = additionalDetails;
     }
 
     public Workflow(final String action, final String comments, final List<Document> documents, final List<String> assignes, final Integer rating) {
