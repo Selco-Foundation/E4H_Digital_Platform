@@ -72,6 +72,34 @@ public class ProjectNameGenerationService {
     }
 
     /**
+     * Helper method to extract state name from boundary string
+     * Handles both formats: "India_<StateName>" and direct "<StateName>"
+     */
+    private String extractStateNameFromBoundary(String boundary) {
+        if (boundary == null || boundary.trim().isEmpty()) {
+            return null;
+        }
+        
+        String[] boundaryParts = boundary.split("_");
+        String stateName = null;
+        
+        if (boundaryParts.length >= 2 && "India".equalsIgnoreCase(boundaryParts[0])) {
+            stateName = boundaryParts[1];
+        } else if (boundaryParts.length >= 1) {
+            stateName = boundaryParts[0];
+        }
+        
+        // Validate state name is not placeholder/invalid
+        if (stateName != null && !stateName.equalsIgnoreCase("nan") && 
+            !stateName.equalsIgnoreCase("XYZ") && stateName.trim().length() > 0) {
+            return stateName.trim();
+        }
+        
+        log.warn("Invalid state name found in boundary: {}, returning null", stateName);
+        return null;
+    }
+
+    /**
      * Gets the state code from project boundary or MDMS
      */
     private String getStateCode(Project project, RequestInfo requestInfo) {
@@ -79,9 +107,9 @@ public class ProjectNameGenerationService {
             // First try to get state code from MDMS based on boundary
             if (project.getAddress() != null && project.getAddress().getBoundary() != null) {
                 String boundary = project.getAddress().getBoundary();
-                String[] boundaryParts = boundary.split("_");
-                if (boundaryParts.length >= 2) {
-                    String stateName = boundaryParts[1]; // Second part is state
+                String stateName = extractStateNameFromBoundary(boundary);
+                
+                if (stateName != null) {
                     String stateCode = getCodeFromMDMS(project, requestInfo, project.getTenantId(), "State", stateName);
                     if (stateCode != null) {
                         log.info("Found state code from MDMS: {} for state: {}", stateCode, stateName);
@@ -196,9 +224,9 @@ public class ProjectNameGenerationService {
     private String getStateCodeFromFallback(Project project) {
         if (project.getAddress() != null && project.getAddress().getBoundary() != null) {
             String boundary = project.getAddress().getBoundary();
-            String[] boundaryParts = boundary.split("_");
-            if (boundaryParts.length >= 2) {
-                String stateName = boundaryParts[1]; // Second part is state
+            String stateName = extractStateNameFromBoundary(boundary);
+            
+            if (stateName != null) {
                 // Simple fallback: take first 2 characters of state name
                 return stateName.toUpperCase().substring(0, Math.min(2, stateName.length()));
             }
