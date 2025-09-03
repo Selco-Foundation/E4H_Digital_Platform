@@ -667,11 +667,14 @@ public class ProjectService {
         );
 
         existingProject.setAdditionalDetails(enrichedAdditionalDetails);
-        enrichedAdditionalDetails = mergeIntoAdditionalDetails(
-                existingProject.getAdditionalDetails(),
-                "bom",
-                request.getWorkflow().getAdditionalDetails()
-        );
+        Object bom = request.getWorkflow().getAdditionalDetails();
+        if(bom != null) {
+            enrichedAdditionalDetails = mergeIntoAdditionalDetails(
+                    existingProject.getAdditionalDetails(),
+                    "bom",
+                    bom
+            );
+        }
 
         // 4. Create a new Project instance with enriched additionalDetails
         Project updatedProject = Project.builder()
