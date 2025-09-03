@@ -44,7 +44,6 @@ dependencies:
   package_info_plus: ^8.0.0
   reactive_forms: ^17.0.0
   shared_preferences: ^2.2.3
-  digit_scanner: ^1.0.5
   qr_flutter: ^4.1.0
   shimmer: ^3.0.0
   cached_network_image: ^3.4.0
@@ -53,14 +52,26 @@ dependencies:
   video_player: ^2.9.5
   flutter_pdfview: ^1.4.1+1
   internet_connection_checker_plus: ^2.7.2
-  forms_engine:
+  digit_scanner: any
+#  digit_forms_engine: ^0.0.5-dev
+#  forms_engine:
+#    git:
+#      url: https://github.com/egovernments/health-campaign-field-worker-app.git
+#      path: packages/forms_engine
+#      ref: delivery_flow
+  digit_forms_engine:
     git:
       url: https://github.com/egovernments/health-campaign-field-worker-app.git
-      path: packages/forms_engine
-      ref: delivery_flow
+      path: packages/digit_forms_engine
+      ref: console-develop
 
 dependency_overrides:
   camera_android_camerax: ^0.5.0
+  digit_scanner:
+    git:
+      url: https://github.com/egovernments/health-campaign-field-worker-app.git
+      path: packages/digit_scanner
+      ref: console-develop
 
 dev_dependencies:
   flutter_test:

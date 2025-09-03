@@ -555,13 +555,6 @@ class _HomePageState extends State<HomePage> {
                       label: 'BOM (Solar System)',
                       type: DigitButtonType.primary,
                       onPressed: () {
-                        // context.router.push(
-                        //   DynamicFormsRoute(
-                        //     pageName: 'WeatherDetails',
-                        //     uniqueIdentifier: 'AssetForm.SELCO',
-                        //   ),
-                        // );
-
                         context.router.push(
                           DynamicFormsRoute(
                               pageName: 'ModuleMountingstructure',

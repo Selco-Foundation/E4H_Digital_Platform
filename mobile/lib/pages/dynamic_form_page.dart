@@ -1,14 +1,17 @@
 import 'dart:convert';
 
+import 'package:digit_forms_engine/blocs/forms/forms.dart';
+import 'package:digit_forms_engine/json_forms.dart';
+import 'package:digit_forms_engine/models/schema_object/schema_object.dart';
 import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:digit_ui_components/widgets/atoms/digit_stepper.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:forms_engine/blocs/forms/forms.dart';
-import 'package:forms_engine/json_forms.dart';
-import 'package:forms_engine/models/schema_object/schema_object.dart';
+// import 'package:forms_engine/blocs/forms/forms.dart';
+// import 'package:forms_engine/json_forms.dart';
+// import 'package:forms_engine/models/schema_object/schema_object.dart';
 import 'package:reactive_forms/reactive_forms.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -326,8 +329,10 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
                             .copyWith(color: theme.colorTheme.text.secondary),
                       ),
                     JsonForms(
+                      currentSchemaKey: currentKey,
                       propertySchema: pageSchema,
-                      childrens: const [], // add custom widgets if any
+                      pageName: widget.pageName,
+                      childrens: const [],
                       defaultValues: const {},
                     ),
                   ],
