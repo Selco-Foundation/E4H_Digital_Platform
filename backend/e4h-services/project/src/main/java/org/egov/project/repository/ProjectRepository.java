@@ -210,7 +210,7 @@ public class ProjectRepository extends GenericRepository<Project> {
      */
     public boolean isProjectNameExists(String projectName, String tenantId) {
         try {
-            String sql = "SELECT COUNT(*) FROM project WHERE name = ? AND tenantid = ?";
+            String sql = queryBuilder.getCheckProjectNameExistsQuery();
             Integer count = jdbcTemplate.queryForObject(sql, Integer.class, projectName, tenantId);
             return count != null && count > 0;
         } catch (Exception e) {
@@ -228,14 +228,43 @@ public class ProjectRepository extends GenericRepository<Project> {
      */
     public String findHighestExistingProjectName(String baseName, String tenantId) {
         try {
-            String sql = "SELECT name FROM project WHERE name LIKE ? AND tenantid = ? ORDER BY createdtime DESC LIMIT 1";
-            List<String> existingNames = jdbcTemplate.queryForList(sql, String.class, baseName + "%", tenantId);
+            // Escape LIKE wildcards in baseName to prevent SQL injection and incorrect matching
+            String escapedBaseName = queryBuilder.escapeLikeWildcards(baseName);
             
-            if (!existingNames.isEmpty()) {
-                return existingNames.get(0);
+            // Get all names that match the pattern to find the highest numeric suffix
+            String sql = queryBuilder.getFindHighestExistingProjectNameQuery();
+            List<String> existingNames = jdbcTemplate.queryForList(sql, String.class, escapedBaseName + "%", tenantId);
+            
+            if (existingNames.isEmpty()) {
+                return null;
             }
             
-            return null;
+            // Find the name with the highest numeric suffix
+            String highestName = baseName; // Start with base name
+            int highestSuffix = 0;
+            
+            for (String name : existingNames) {
+                if (name.equals(baseName)) {
+                    // Exact match - this is the base name
+                    highestName = name;
+                    highestSuffix = 0;
+                } else if (name.startsWith(baseName + "-")) {
+                    // Name with suffix like "Base-1", "Base-2", etc.
+                    try {
+                        String suffixPart = name.substring((baseName + "-").length());
+                        int suffix = Integer.parseInt(suffixPart);
+                        if (suffix > highestSuffix) {
+                            highestSuffix = suffix;
+                            highestName = name;
+                        }
+                    } catch (NumberFormatException e) {
+                        // Skip names with non-numeric suffixes
+                        log.debug("Skipping name with non-numeric suffix: {}", name);
+                    }
+                }
+            }
+            
+            return highestName;
         } catch (Exception e) {
             log.error("Error finding highest existing name for base: {}", baseName, e);
             return null;

@@ -107,17 +107,64 @@ public class ProjectService {
         boolean isDuplicate = false;
         RequestInfo requestInfo = projectRequest.getRequestInfo();
         // Check for empty names and generate names with duplicate check
+        // Use a Set to track generated names within this batch to prevent collisions
+        Set<String> generatedNamesInBatch = new HashSet<>();
+        
         for (Project project : projectRequest.getProjects()) {
             if (project.getName() == null || project.getName().trim().isEmpty()) {
-                ProjectNameResult nameResult = projectNameGenerationService.generateNameAndCheckDuplicate(project, requestInfo);
-                if (nameResult.getName() != null) {
-                    project.setName(nameResult.getName());
-                    if (nameResult.getIsDuplicate()) {
-                        isDuplicate = true;
+                try {
+                    ProjectNameResult nameResult = projectNameGenerationService.generateNameAndCheckDuplicate(project, requestInfo);
+                    
+                    // Null-safety check
+                    if (nameResult == null) {
+                        log.error("ProjectNameResult is null for project: {}", project.getId());
+                        throw new RuntimeException("Failed to generate project name for project: " + project.getId());
                     }
+                    
+                    String generatedName = nameResult.getName();
+                    if (generatedName != null && !generatedName.trim().isEmpty()) {
+                        // Check for batch-level duplicates (same name generated within this request)
+                        if (generatedNamesInBatch.contains(generatedName)) {
+                            log.warn("Duplicate name generated within batch for project: {}. Generated name: {}", 
+                                    project.getId(), generatedName);
+                            // Generate a unique name by appending a batch suffix
+                            generatedName = generateUniqueBatchName(generatedName, generatedNamesInBatch);
+                        }
+                        
+                        project.setName(generatedName);
+                        generatedNamesInBatch.add(generatedName);
+                        
+                        if (nameResult.getIsDuplicate()) {
+                            isDuplicate = true;
+                        }
+                    } else if (generatedName == null && project.getProjectType() != null && 
+                               ("FieldPlan".equals(project.getProjectType()) || "Facility".equals(project.getProjectType()))) {
+                        // This is expected for FieldPlan and Facility project types - skip name generation
+                        log.info("Skipping name generation for project type: {} for project: {}", 
+                                project.getProjectType(), project.getId());
+                        // Don't add to batch tracking since no name was generated
+                    } else {
+                        log.warn("Generated name is null or empty for project: {} with project type: {}", 
+                                project.getId(), project.getProjectType());
+                        // For non-skipped project types, this indicates an error
+                        throw new RuntimeException("Generated project name is null or empty for project: " + project.getId());
+                    }
+                } catch (Exception e) {
+                    log.error("Error generating name for project: {}", project.getId(), e);
+                    throw new RuntimeException("Failed to generate project name for project: " + project.getId(), e);
                 }
+            } else {
+                // If name is already set, add it to the batch tracking to prevent conflicts
+                String existingName = project.getName().trim();
+                if (generatedNamesInBatch.contains(existingName)) {
+                    log.warn("Duplicate name found within batch for project: {}. Name: {}", 
+                            project.getId(), existingName);
+                    throw new RuntimeException("Duplicate project name found within batch: " + existingName);
+                }
+                generatedNamesInBatch.add(existingName);
             }
         }
+        
         //Get parent projects if "parent" is present (For enrichment of projectHierarchy)
         List<Project> parentProjects = getParentProjects(projectRequest);
         //Validate Parent in request against projects fetched form database
@@ -133,6 +180,31 @@ public class ProjectService {
                 .projectRequest(projectRequest)
                 .isDuplicate(isDuplicate)
                 .build();
+    }
+
+    /**
+     * Generates a unique name within the current batch by appending a numeric suffix
+     * @param baseName The base name to make unique
+     * @param existingNamesInBatch Set of names already used in this batch
+     * @return A unique name that doesn't conflict with existing names in the batch
+     */
+    private String generateUniqueBatchName(String baseName, Set<String> existingNamesInBatch) {
+        int batchSuffix = 1;
+        String uniqueName = baseName;
+        
+        while (existingNamesInBatch.contains(uniqueName)) {
+            uniqueName = baseName + "-" + batchSuffix;
+            batchSuffix++;
+            
+            // Safety check to prevent infinite loops
+            if (batchSuffix > 1000) {
+                log.error("Unable to generate unique batch name for base: {}. Too many attempts.", baseName);
+                throw new RuntimeException("Unable to generate unique batch name after 1000 attempts for: " + baseName);
+            }
+        }
+        
+        log.info("Generated unique batch name: {} from base: {}", uniqueName, baseName);
+        return uniqueName;
     }
 
     /**

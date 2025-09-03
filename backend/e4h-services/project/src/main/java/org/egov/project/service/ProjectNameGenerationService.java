@@ -234,6 +234,16 @@ public class ProjectNameGenerationService {
             ZoneId.systemDefault()
         );
 
+        // Validate that start date is not greater than end date
+        if (startDate.isAfter(endDate)) {
+            throw new RuntimeException("Start date cannot be greater than end date. Start: " + startDate + ", End: " + endDate);
+        }
+
+        // Validate minimum project duration (at least 1 day)
+        if (startDate.toLocalDate().equals(endDate.toLocalDate())) {
+            throw new RuntimeException("Project must have a duration of at least 1 day. Start and end dates cannot be the same");
+        }
+
         int startYear = startDate.getYear();
         int endYear = endDate.getYear();
         
@@ -254,7 +264,16 @@ public class ProjectNameGenerationService {
         String highestExistingName = findHighestExistingName(baseName, tenantId);
         int nextSuffix = extractAndIncrementSuffix(highestExistingName, baseName);
         
-        return baseName + "-" + nextSuffix;
+        // Validate that the next suffix is reasonable (prevent infinite loops)
+        if (nextSuffix > 1000) {
+            log.error("Generated suffix {} is too high for base name: {}. This might indicate a problem.", nextSuffix, baseName);
+            throw new RuntimeException("Cannot generate unique project name. Too many duplicates exist for base: " + baseName);
+        }
+        
+        String uniqueName = baseName + "-" + nextSuffix;
+        log.info("Generated unique project name: {} (base: {}, suffix: {})", uniqueName, baseName, nextSuffix);
+        
+        return uniqueName;
     }
 
     /**
@@ -269,6 +288,11 @@ public class ProjectNameGenerationService {
      */
     private int extractAndIncrementSuffix(String existingName, String baseName) {
         if (existingName == null || !existingName.startsWith(baseName)) {
+            return 1;
+        }
+        
+        // If it's exactly the base name (no suffix), return 1
+        if (existingName.equals(baseName)) {
             return 1;
         }
         
