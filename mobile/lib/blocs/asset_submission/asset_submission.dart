@@ -338,16 +338,6 @@ class AssetSubmissionBloc
         String photoId = await getFilestoreUrl(completionReport.filePath);
         print("photoId $photoId");
 
-        // Load BOM JSON (if any) from SharedPreferences for this project
-        final prefs = await SharedPreferences.getInstance();
-        // final bomString = prefs.getString('bom_form_values_$projectId');
-        final bomString = prefs.getString('bom_form_values_default');
-
-        // Wrap under {"bom": ...} as requested
-        final String? additionalJson = (bomString == null || bomString.isEmpty)
-            ? null
-            : jsonEncode({"bom": jsonDecode(bomString)}); // ensure valid JSON
-
         workflowDocuments.add(Document(
           documentType: "INSTALLATION_REPORT",
           fileStore: photoId,
@@ -356,18 +346,31 @@ class AssetSubmissionBloc
             latitude: completionReport.latitude,
             longitude: completionReport.longitude,
           ),
-          additionalDetailsJson: additionalJson,
+          // additionalDetailsJson: additionalJson,
         ));
       }
 
+      print("projectId $projectId");
       print("documents $workflowDocuments");
       print("documents ${workflowDocuments.toString()}");
+
+      // Load BOM JSON (if any) from SharedPreferences for this project
+      final prefs = await SharedPreferences.getInstance();
+      // final bomString = prefs.getString('bom_form_values_$projectId');
+      final bomString = prefs.getString('bom_form_values_default');
+
+      Map<String, dynamic> additionalJson = {};
+      if (bomString != null && bomString.isNotEmpty) {
+        final decoded = jsonDecode(bomString);
+        additionalJson = decoded is Map<String, dynamic> ? decoded : decoded;
+      }
 
       await remoteRepo.updateProjectWorkflow(
         projectId: projectId,
         action: userType == USER_TYPES.FIELD_STAFF.name
             ? WORKFLOW_ACTIONS.SUBMIT_REPORT_A.name
             : WORKFLOW_ACTIONS.SUBMIT_REPORT_B.name,
+        additionalDetails: additionalJson,
         documents: workflowDocuments,
       );
 
@@ -376,6 +379,7 @@ class AssetSubmissionBloc
       if (!fromDraft) emit(const AssetSubmissionState.success());
       return true;
     } catch (e) {
+      print("e ${e.toString()}");
       String? errorMessage = "We are facing an issues please try again";
       if ((e.toString() == "Exception: No network connection") ||
           (e.toString() == "Exception: No internet access")) {
