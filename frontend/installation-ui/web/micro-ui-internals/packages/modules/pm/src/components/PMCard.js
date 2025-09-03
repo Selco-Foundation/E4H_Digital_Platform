@@ -11,7 +11,7 @@ const PMCard = () => {
   const userType = "employee";
 
   const handleCreateProjectRedirection = () => {
-    console.debug("clicked 1");
+    history.push(`/${window?.contextPath}/employee/pm/project/create`)
   };
 
   const handleViewProjectRedirection = () => {
