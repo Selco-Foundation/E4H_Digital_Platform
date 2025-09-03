@@ -102,9 +102,8 @@ public class ProjectService {
         return projectRepository.findById(projectIds);
     }
 
-    public ProjectCreateResult createProject(ProjectRequest projectRequest) {
+    public ProjectRequest createProject(ProjectRequest projectRequest) {
         projectValidator.validateCreateProjectRequest(projectRequest);
-        boolean isDuplicate = false;
         RequestInfo requestInfo = projectRequest.getRequestInfo();
         // Check for empty names and generate names with duplicate check
         // Use a Set to track generated names within this batch to prevent collisions
@@ -134,14 +133,36 @@ public class ProjectService {
                         project.setName(generatedName);
                         generatedNamesInBatch.add(generatedName);
                         
+                        // Add individual isDuplicate flag to project's additionalDetails
                         if (nameResult.getIsDuplicate()) {
-                            isDuplicate = true;
+                            Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(
+                                project.getAdditionalDetails(), 
+                                "isDuplicate", 
+                                true
+                            );
+                            project.setAdditionalDetails(enrichedAdditionalDetails);
+                            log.info("Project {} has duplicate name, marked isDuplicate=true", project.getId());
+                        } else {
+                            Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(
+                                project.getAdditionalDetails(), 
+                                "isDuplicate", 
+                                false
+                            );
+                            project.setAdditionalDetails(enrichedAdditionalDetails);
+                            log.info("Project {} has unique name, marked isDuplicate=false", project.getId());
                         }
                     } else if (generatedName == null && project.getProjectType() != null && 
                                ("FieldPlan".equals(project.getProjectType()) || "Facility".equals(project.getProjectType()))) {
                         // This is expected for FieldPlan and Facility project types - skip name generation
                         log.info("Skipping name generation for project type: {} for project: {}", 
                                 project.getProjectType(), project.getId());
+                        // Mark as not duplicate since no name generation was needed
+                        Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(
+                            project.getAdditionalDetails(), 
+                            "isDuplicate", 
+                            false
+                        );
+                        project.setAdditionalDetails(enrichedAdditionalDetails);
                         // Don't add to batch tracking since no name was generated
                     } else {
                         log.warn("Generated name is null or empty for project: {} with project type: {}", 
@@ -162,6 +183,15 @@ public class ProjectService {
                     throw new RuntimeException("Duplicate project name found within batch: " + existingName);
                 }
                 generatedNamesInBatch.add(existingName);
+                
+                // For projects with pre-existing names, mark as not duplicate
+                Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(
+                    project.getAdditionalDetails(), 
+                    "isDuplicate", 
+                    false
+                );
+                project.setAdditionalDetails(enrichedAdditionalDetails);
+                log.info("Project {} has pre-existing name, marked isDuplicate=false", project.getId());
             }
         }
         
@@ -176,10 +206,7 @@ public class ProjectService {
         producer.push(projectConfiguration.getSaveProjectTopicIndexer(), projectRequest);
         log.info("Pushed to kafka");
 
-        return ProjectCreateResult.builder()
-                .projectRequest(projectRequest)
-                .isDuplicate(isDuplicate)
-                .build();
+        return projectRequest;
     }
 
     /**

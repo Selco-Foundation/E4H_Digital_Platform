@@ -440,17 +440,11 @@ public class ProjectApiController {
     }
 
     @RequestMapping(value = "/v1/_create", method = RequestMethod.POST)
-    public ResponseEntity<ProjectCreateResponse> createProject(@ApiParam(value = "Details for the new Project.", required = true) @Valid @RequestBody ProjectRequest project) {
-        ProjectCreateResult result = projectService.createProject(project);
+    public ResponseEntity<ProjectResponse> createProject(@ApiParam(value = "Details for the new Project.", required = true) @Valid @RequestBody ProjectRequest project) {
+        ProjectRequest enrichedProjectRequest = projectService.createProject(project);
         ResponseInfo responseInfo = ResponseInfoFactory.createResponseInfo(project.getRequestInfo(), true);
-        ProjectResponse projectResponse = ProjectResponse.builder().responseInfo(responseInfo)
-                .project(result.getProjectRequest().getProjects())
-                .totalCount(null).build();
-        ProjectCreateResponse response = ProjectCreateResponse.builder()
-                .projectResponse(projectResponse)
-                .isDuplicate(result.getIsDuplicate())
-                .build();
-        return new ResponseEntity<ProjectCreateResponse>(response, HttpStatus.OK);
+        ProjectResponse projectResponse = ProjectResponse.builder().responseInfo(responseInfo).project(enrichedProjectRequest.getProjects()).build();
+        return new ResponseEntity<ProjectResponse>(projectResponse, HttpStatus.OK);
     }
 
     @RequestMapping(value = "/v1/_search", method = RequestMethod.POST)
