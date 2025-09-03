@@ -5,6 +5,10 @@ import { useTranslation } from "react-i18next";
 import { LOCALE } from "./constants/Localization";
 import { ComplaintIcon, Loader, CitizenHomeCard } from "@egovernments/digit-ui-react-components";
 import PMCard from "./components/PMCard";
+import DateRangeInput from "./components/CreateProject/DateRangeInput";
+import StateSelector from "./components/CreateProject/StateSelector";
+import DistrictSelector from "./components/CreateProject/DistrictSelector";
+import BlockSelector from "./components/CreateProject/BlockSelector";
 
 export const PMReducers = getRootReducer;
 
@@ -47,6 +51,10 @@ const componentsToRegister = {
   PMModule,
   PMLinks,
   PMCard,
+  PMDateRange: DateRangeInput,
+  PMStateSelector: StateSelector,
+  PMDistrictSelector: DistrictSelector,
+  PMBlockSelector: BlockSelector,
 };
 
 export const initPMComponents = () => {
