@@ -101,6 +101,7 @@ class ProjectRemoteRepository {
   Future<void> updateProjectWorkflow({
     required String projectId,
     required String action,
+    required Map<String, dynamic> additionalDetails,
     List<Document>? documents,
   }) async {
     final url = 'project/v1/project/workflow/update';
@@ -109,6 +110,7 @@ class ProjectRemoteRepository {
       'projectId': projectId,
       'workflow': {
         'action': action,
+        'additionalDetails': additionalDetails,
         if (documents != null) ...{
           'documents': documents.map((d) => d.toJsonForWorkflow()).toList()
         }
