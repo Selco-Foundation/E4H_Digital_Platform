@@ -137,7 +137,7 @@ public class ProjectService {
                         if (nameResult.getIsDuplicate()) {
                             Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(
                                 project.getAdditionalDetails(), 
-                                "isDuplicate", 
+                                "isDuplicateName",
                                 true
                             );
                             project.setAdditionalDetails(enrichedAdditionalDetails);
@@ -145,14 +145,14 @@ public class ProjectService {
                         } else {
                             Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(
                                 project.getAdditionalDetails(), 
-                                "isDuplicate", 
+                                "isDuplicateName",
                                 false
                             );
                             project.setAdditionalDetails(enrichedAdditionalDetails);
                             log.info("Project {} has unique name, marked isDuplicate=false", project.getId());
                         }
                     } else if (generatedName == null && project.getProjectType() != null && 
-                               ("FieldPlan".equals(project.getProjectType()) || "Facility".equals(project.getProjectType()))) {
+                               (PROJECT_TYPE_FIELDPLAN.equals(project.getProjectType()) || PROJECT_TYPE_FACILITY.equals(project.getProjectType()))) {
                         // This is expected for FieldPlan and Facility project types - skip name generation
                         log.info("Skipping name generation for project type: {} for project: {}", 
                                 project.getProjectType(), project.getId());
