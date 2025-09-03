@@ -108,63 +108,63 @@ public class ProjectService {
         // Check for empty names and generate names with duplicate check
         // Use a Set to track generated names within this batch to prevent collisions
         Set<String> generatedNamesInBatch = new HashSet<>();
-        
+
         for (Project project : projectRequest.getProjects()) {
             if (project.getName() == null || project.getName().trim().isEmpty()) {
                 try {
                     ProjectNameResult nameResult = projectNameGenerationService.generateNameAndCheckDuplicate(project, requestInfo);
-                    
+
                     // Null-safety check
                     if (nameResult == null) {
                         log.error("ProjectNameResult is null for project: {}", project.getId());
                         throw new CustomException("PROJECT_NAME_GENERATION_FAILED", "Failed to generate project name for project: " + project.getId());
                     }
-                    
+
                     String generatedName = nameResult.getName();
                     if (generatedName != null && !generatedName.trim().isEmpty()) {
                         // Check for batch-level duplicates (same name generated within this request)
                         boolean hasBatchDuplicateName = false;
                         if (generatedNamesInBatch.contains(generatedName)) {
-                            log.warn("Duplicate name generated within batch for project: {}. Generated name: {}", 
+                            log.warn("Duplicate name generated within batch for project: {}. Generated name: {}",
                                     project.getId(), generatedName);
                             // Generate a unique name by appending a batch suffix
                             generatedName = generateUniqueBatchName(generatedName, project.getTenantId(), generatedNamesInBatch);
                             hasBatchDuplicateName = true; // Mark that this project had a batch-level collision
                         }
-                        
+
                         project.setName(generatedName);
                         generatedNamesInBatch.add(generatedName);
-                        
+
                         // Add individual isDuplicate flag to project's additionalDetails
                         // isDuplicate = true if either database duplicate OR batch-level duplicate
                         boolean isDuplicateName = Boolean.TRUE.equals(nameResult.getIsDuplicateName()) || hasBatchDuplicateName;
                         Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(
-                            project.getAdditionalDetails(), 
+                            project.getAdditionalDetails(),
                             "isDuplicateName",
                             isDuplicateName
                         );
                         project.setAdditionalDetails(enrichedAdditionalDetails);
-                        
+
                         if (isDuplicateName) {
                             log.info("Project {} has duplicate name", project.getId());
                         } else {
                             log.info("Project {} has unique name", project.getId());
                         }
-                    } else if (generatedName == null && project.getProjectType() != null && 
+                    } else if (generatedName == null && project.getProjectType() != null &&
                                (PROJECT_TYPE_FIELDPLAN.equals(project.getProjectType()) || PROJECT_TYPE_FACILITY.equals(project.getProjectType()))) {
                         // This is expected for FieldPlan and Facility project types - skip name generation
-                        log.info("Skipping name generation for project type: {} for project: {}", 
+                        log.info("Skipping name generation for project type: {} for project: {}",
                                 project.getProjectType(), project.getId());
                         // Mark as not duplicate since no name generation was needed
                         Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(
-                            project.getAdditionalDetails(), 
+                            project.getAdditionalDetails(),
                             "isDuplicateName",
                             false
                         );
                         project.setAdditionalDetails(enrichedAdditionalDetails);
                         // Don't add to batch tracking since no name was generated
                     } else {
-                        log.warn("Generated name is null or empty for project: {} with project type: {}", 
+                        log.warn("Generated name is null or empty for project: {} with project type: {}",
                                 project.getId(), project.getProjectType());
                         // For non-skipped project types, this indicates an error
                         throw new CustomException("PROJECT_NAME_NULL_OR_EMPTY", "Generated project name is null or empty for project: " + project.getId());
@@ -177,15 +177,15 @@ public class ProjectService {
                 // If name is already set, add it to the batch tracking to prevent conflicts
                 String existingName = project.getName().trim();
                 if (generatedNamesInBatch.contains(existingName)) {
-                    log.warn("Duplicate name found within batch for project: {}. Name: {}", 
+                    log.warn("Duplicate name found within batch for project: {}. Name: {}",
                             project.getId(), existingName);
                     throw new CustomException("PROJECT_NAME_DUPLICATE_IN_BATCH", "Duplicate project name found within batch: " + existingName);
                 }
                 generatedNamesInBatch.add(existingName);
-                
+
                 // For projects with pre-existing names, mark as not duplicate
                 Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(
-                    project.getAdditionalDetails(), 
+                    project.getAdditionalDetails(),
                     "isDuplicateName",
                     false
                 );
@@ -193,7 +193,7 @@ public class ProjectService {
                 log.info("Project {} has pre-existing name, marked isDuplicate=false", project.getId());
             }
         }
-        
+
         //Get parent projects if "parent" is present (For enrichment of projectHierarchy)
         List<Project> parentProjects = getParentProjects(projectRequest);
         //Validate Parent in request against projects fetched form database
@@ -221,7 +221,7 @@ public class ProjectService {
         // Normalize to root: strip a trailing -digits if present
         String baseRoot = baseName.replaceFirst("-\\d+$", "");
         int next = 0;
-        
+
         try {
             String highestExisting = projectRepository.findHighestExistingProjectName(baseRoot, tenantId);
             if (highestExisting != null) {
@@ -229,10 +229,10 @@ public class ProjectService {
                     next = 1;
                 } else if (highestExisting.startsWith(baseRoot + "-")) {
                     String suffix = highestExisting.substring((baseRoot + "-").length());
-                    try { 
-                        next = Integer.parseInt(suffix) + 1; 
-                    } catch (NumberFormatException ignored) { 
-                        next = 1; 
+                    try {
+                        next = Integer.parseInt(suffix) + 1;
+                    } catch (NumberFormatException ignored) {
+                        next = 1;
                     }
                 }
             } else {
@@ -245,7 +245,7 @@ public class ProjectService {
 
         String candidate = (next <= 0) ? baseRoot + "-1" : baseRoot + "-" + next;
         int guard = 0;
-        
+
         while (existingNamesInBatch.contains(candidate)) {
             next++;
             candidate = baseRoot + "-" + next;
@@ -254,7 +254,7 @@ public class ProjectService {
                         "Unable to generate unique batch name after 1000 attempts for: " + baseRoot);
             }
         }
-        
+
         log.info("Generated unique batch name: {} from base: {}", candidate, baseRoot);
         return candidate;
     }
@@ -666,9 +666,9 @@ public class ProjectService {
                 updatedWorkflow.getState().getState()
         );
 
-        // Now merge the BOM data into the already enriched additionalDetails
+        existingProject.setAdditionalDetails(enrichedAdditionalDetails);
         enrichedAdditionalDetails = mergeIntoAdditionalDetails(
-                enrichedAdditionalDetails,  // Use the enriched object, not existingProject.getAdditionalDetails()
+                existingProject.getAdditionalDetails(),
                 "bom",
                 request.getWorkflow().getAdditionalDetails()
         );
