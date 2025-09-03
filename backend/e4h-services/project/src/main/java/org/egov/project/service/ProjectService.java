@@ -117,7 +117,7 @@ public class ProjectService {
                     // Null-safety check
                     if (nameResult == null) {
                         log.error("ProjectNameResult is null for project: {}", project.getId());
-                        throw new RuntimeException("Failed to generate project name for project: " + project.getId());
+                        throw new CustomException("PROJECT_NAME_GENERATION_FAILED", "Failed to generate project name for project: " + project.getId());
                     }
                     
                     String generatedName = nameResult.getName();
@@ -137,7 +137,7 @@ public class ProjectService {
                         
                         // Add individual isDuplicate flag to project's additionalDetails
                         // isDuplicate = true if either database duplicate OR batch-level duplicate
-                        boolean isDuplicateName = nameResult.getIsDuplicateName() || hasBatchDuplicateName;
+                        boolean isDuplicateName = Boolean.TRUE.equals(nameResult.getIsDuplicateName()) || hasBatchDuplicateName;
                         Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(
                             project.getAdditionalDetails(), 
                             "isDuplicateName",
@@ -167,11 +167,11 @@ public class ProjectService {
                         log.warn("Generated name is null or empty for project: {} with project type: {}", 
                                 project.getId(), project.getProjectType());
                         // For non-skipped project types, this indicates an error
-                        throw new RuntimeException("Generated project name is null or empty for project: " + project.getId());
+                        throw new CustomException("PROJECT_NAME_NULL_OR_EMPTY", "Generated project name is null or empty for project: " + project.getId());
                     }
                 } catch (Exception e) {
                     log.error("Error generating name for project: {}", project.getId(), e);
-                    throw new RuntimeException("Failed to generate project name for project: " + project.getId(), e);
+                    throw new CustomException("PROJECT_NAME_GENERATION_FAILED", "Failed to generate project name for project: " + project.getId());
                 }
             } else {
                 // If name is already set, add it to the batch tracking to prevent conflicts
@@ -179,7 +179,7 @@ public class ProjectService {
                 if (generatedNamesInBatch.contains(existingName)) {
                     log.warn("Duplicate name found within batch for project: {}. Name: {}", 
                             project.getId(), existingName);
-                    throw new RuntimeException("Duplicate project name found within batch: " + existingName);
+                    throw new CustomException("PROJECT_NAME_DUPLICATE_IN_BATCH", "Duplicate project name found within batch: " + existingName);
                 }
                 generatedNamesInBatch.add(existingName);
                 
