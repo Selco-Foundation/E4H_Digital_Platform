@@ -128,7 +128,7 @@ public class ProjectService {
                             log.warn("Duplicate name generated within batch for project: {}. Generated name: {}", 
                                     project.getId(), generatedName);
                             // Generate a unique name by appending a batch suffix
-                            generatedName = generateUniqueBatchName(generatedName, generatedNamesInBatch);
+                            generatedName = generateUniqueBatchName(generatedName, project.getTenantId(), generatedNamesInBatch);
                         }
                         
                         project.setName(generatedName);
@@ -184,27 +184,53 @@ public class ProjectService {
 
     /**
      * Generates a unique name within the current batch by appending a numeric suffix
+     * Derives the base root, looks up the highest suffix in DB, then chooses the next unused number
+     * considering both database and batch names for consistency with global scheme
      * @param baseName The base name to make unique
+     * @param tenantId The tenant ID for database lookup
      * @param existingNamesInBatch Set of names already used in this batch
-     * @return A unique name that doesn't conflict with existing names in the batch
+     * @return A unique name that doesn't conflict with existing names in the batch or database
      */
-    private String generateUniqueBatchName(String baseName, Set<String> existingNamesInBatch) {
-        int batchSuffix = 1;
-        String uniqueName = baseName;
+    private String generateUniqueBatchName(String baseName, String tenantId, Set<String> existingNamesInBatch) {
+        // Normalize to root: strip a trailing -digits if present
+        String baseRoot = baseName.replaceFirst("-\\d+$", "");
+        int next = 0;
         
-        while (existingNamesInBatch.contains(uniqueName)) {
-            uniqueName = baseName + "-" + batchSuffix;
-            batchSuffix++;
-            
-            // Safety check to prevent infinite loops
-            if (batchSuffix > 1000) {
-                log.error("Unable to generate unique batch name for base: {}. Too many attempts.", baseName);
-                throw new RuntimeException("Unable to generate unique batch name after 1000 attempts for: " + baseName);
+        try {
+            String highestExisting = projectRepository.findHighestExistingProjectName(baseRoot, tenantId);
+            if (highestExisting != null) {
+                if (highestExisting.equals(baseRoot)) {
+                    next = 1;
+                } else if (highestExisting.startsWith(baseRoot + "-")) {
+                    String suffix = highestExisting.substring((baseRoot + "-").length());
+                    try { 
+                        next = Integer.parseInt(suffix) + 1; 
+                    } catch (NumberFormatException ignored) { 
+                        next = 1; 
+                    }
+                }
+            } else {
+                next = 1;
+            }
+        } catch (Exception e) {
+            log.warn("Falling back to batch-only uniquing for base '{}': {}", baseRoot, e.getMessage());
+            next = 1;
+        }
+
+        String candidate = (next <= 0) ? baseRoot + "-1" : baseRoot + "-" + next;
+        int guard = 0;
+        
+        while (existingNamesInBatch.contains(candidate)) {
+            next++;
+            candidate = baseRoot + "-" + next;
+            if (++guard > 1000) {
+                throw new CustomException("PROJECT_NAME_GENERATION_FAILED",
+                        "Unable to generate unique batch name after 1000 attempts for: " + baseRoot);
             }
         }
         
-        log.info("Generated unique batch name: {} from base: {}", uniqueName, baseName);
-        return uniqueName;
+        log.info("Generated unique batch name: {} from base: {}", candidate, baseRoot);
+        return candidate;
     }
 
     /**
