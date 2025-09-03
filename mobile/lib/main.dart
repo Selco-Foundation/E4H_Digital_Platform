@@ -1,3 +1,5 @@
+import 'package:digit_forms_engine/blocs/app_localization.dart'
+    as forms_localization;
 import 'package:digit_scanner/blocs/app_localization.dart'
     as scanner_localization;
 import 'package:digit_ui_components/digit_components.dart';
@@ -7,7 +9,6 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:forms_engine/blocs/app_localization.dart' as forms_localization;
 import 'package:isar/isar.dart';
 import 'package:location/location.dart';
 
