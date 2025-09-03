@@ -333,7 +333,7 @@ public class ProjectNameGenerationService {
                 log.info("Skipping project name generation for project type: {}", project.getProjectType());
                 return ProjectNameResult.builder()
                     .name(null)
-                    .isDuplicate(false)
+                    .isDuplicateName(false)
                     .build();
             }
             
@@ -351,13 +351,13 @@ public class ProjectNameGenerationService {
                 String uniqueName = generateUniqueName(baseName, project.getTenantId());
                 return ProjectNameResult.builder()
                     .name(uniqueName)
-                    .isDuplicate(true)
+                    .isDuplicateName(true)
                     .build();
             } else {
                 // Use base name as it's unique
                 return ProjectNameResult.builder()
                     .name(baseName)
-                    .isDuplicate(false)
+                    .isDuplicateName(false)
                     .build();
             }
             

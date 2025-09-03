@@ -123,33 +123,32 @@ public class ProjectService {
                     String generatedName = nameResult.getName();
                     if (generatedName != null && !generatedName.trim().isEmpty()) {
                         // Check for batch-level duplicates (same name generated within this request)
+                        boolean hasBatchDuplicateName = false;
                         if (generatedNamesInBatch.contains(generatedName)) {
                             log.warn("Duplicate name generated within batch for project: {}. Generated name: {}", 
                                     project.getId(), generatedName);
                             // Generate a unique name by appending a batch suffix
                             generatedName = generateUniqueBatchName(generatedName, project.getTenantId(), generatedNamesInBatch);
+                            hasBatchDuplicateName = true; // Mark that this project had a batch-level collision
                         }
                         
                         project.setName(generatedName);
                         generatedNamesInBatch.add(generatedName);
                         
                         // Add individual isDuplicate flag to project's additionalDetails
-                        if (nameResult.getIsDuplicate()) {
-                            Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(
-                                project.getAdditionalDetails(), 
-                                "isDuplicateName",
-                                true
-                            );
-                            project.setAdditionalDetails(enrichedAdditionalDetails);
-                            log.info("Project {} has duplicate name, marked isDuplicate=true", project.getId());
+                        // isDuplicate = true if either database duplicate OR batch-level duplicate
+                        boolean isDuplicateName = nameResult.getIsDuplicateName() || hasBatchDuplicateName;
+                        Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(
+                            project.getAdditionalDetails(), 
+                            "isDuplicateName",
+                            isDuplicateName
+                        );
+                        project.setAdditionalDetails(enrichedAdditionalDetails);
+                        
+                        if (isDuplicateName) {
+                            log.info("Project {} has duplicate name", project.getId());
                         } else {
-                            Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(
-                                project.getAdditionalDetails(), 
-                                "isDuplicateName",
-                                false
-                            );
-                            project.setAdditionalDetails(enrichedAdditionalDetails);
-                            log.info("Project {} has unique name, marked isDuplicate=false", project.getId());
+                            log.info("Project {} has unique name", project.getId());
                         }
                     } else if (generatedName == null && project.getProjectType() != null && 
                                (PROJECT_TYPE_FIELDPLAN.equals(project.getProjectType()) || PROJECT_TYPE_FACILITY.equals(project.getProjectType()))) {
@@ -159,7 +158,7 @@ public class ProjectService {
                         // Mark as not duplicate since no name generation was needed
                         Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(
                             project.getAdditionalDetails(), 
-                            "isDuplicate", 
+                            "isDuplicateName",
                             false
                         );
                         project.setAdditionalDetails(enrichedAdditionalDetails);
@@ -187,7 +186,7 @@ public class ProjectService {
                 // For projects with pre-existing names, mark as not duplicate
                 Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(
                     project.getAdditionalDetails(), 
-                    "isDuplicate", 
+                    "isDuplicateName",
                     false
                 );
                 project.setAdditionalDetails(enrichedAdditionalDetails);
@@ -667,9 +666,9 @@ public class ProjectService {
                 updatedWorkflow.getState().getState()
         );
 
-        existingProject.setAdditionalDetails(enrichedAdditionalDetails);
+        // Now merge the BOM data into the already enriched additionalDetails
         enrichedAdditionalDetails = mergeIntoAdditionalDetails(
-                existingProject.getAdditionalDetails(),
+                enrichedAdditionalDetails,  // Use the enriched object, not existingProject.getAdditionalDetails()
                 "bom",
                 request.getWorkflow().getAdditionalDetails()
         );

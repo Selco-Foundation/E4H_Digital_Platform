@@ -12,5 +12,5 @@ import lombok.NoArgsConstructor;
 public class ProjectNameResult {
     
     private String name;
-    private Boolean isDuplicate;
+    private Boolean isDuplicateName;
 }
