@@ -72,4 +72,6 @@ public class IndexView {
     @JsonProperty("sendBackSubReason")
     private String sendBackSubReason;
 
+    @JsonProperty("latestRejectReason")
+    private String latestRejectReason;
 }

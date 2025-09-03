@@ -182,6 +182,23 @@ public class EnrichmentService {
             indexView.setSendBackSubReason(reason.getSubReason());
         }
 
+        Object additionalDetailObj = wrapper.getIncidentRequest().getIncident().getAdditionalDetail();
+
+        if (additionalDetailObj instanceof Map) {
+            Map<String, Object> additionalDetail = (Map<String, Object>) additionalDetailObj;
+
+            Object rejectReasonObj = additionalDetail.get("rejectReason");
+
+            if (rejectReasonObj instanceof List) {
+                List<?> rejectReasons = (List<?>) rejectReasonObj;
+
+                if (!rejectReasons.isEmpty()) {
+                    indexView.setLatestRejectReason(rejectReasons.get(rejectReasons.size() - 1).toString());
+                }
+            }
+        }
+
+
     }
 
     /**
