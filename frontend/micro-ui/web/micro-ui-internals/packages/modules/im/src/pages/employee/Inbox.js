@@ -166,7 +166,7 @@ const Inbox = () => {
 
     history.replace({
       pathname: location.pathname,
-      search: `filter=${JSON.stringify(searchParams)}&pageSize=${pageSize}&pageOffset=${pageOffset}`,
+      search: `${nearing === "1" ? `nearing=1&` : ``}filter=${JSON.stringify(searchParams)}&pageSize=${pageSize}&pageOffset=${pageOffset}`
     });
 
     (async () => {
