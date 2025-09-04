@@ -10,6 +10,7 @@ import org.egov.project.repository.ProjectRepository;
 import org.egov.project.util.BoundaryV2Util;
 import org.egov.project.util.MDMSUtils;
 import org.egov.project.web.models.ProjectNameResult;
+import org.egov.tracer.model.CustomException;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -249,7 +250,7 @@ public class ProjectNameGenerationService {
      */
     private String getDuration(Project project) {
         if (project.getStartDate() == null || project.getEndDate() == null) {
-            throw new RuntimeException("Start date and end date are required for project name generation");
+            throw new CustomException("INVALID_PROJECT_DATES", "Start date and end date are required for project name generation");
         }
 
         LocalDateTime startDate = LocalDateTime.ofInstant(
@@ -264,12 +265,12 @@ public class ProjectNameGenerationService {
 
         // Validate that start date is not greater than end date
         if (startDate.isAfter(endDate)) {
-            throw new RuntimeException("Start date cannot be greater than end date. Start: " + startDate + ", End: " + endDate);
+            throw new CustomException("INVALID_PROJECT_DATES", "Start date cannot be greater than end date. Start: " + startDate + ", End: " + endDate);
         }
 
         // Validate minimum project duration (at least 1 day)
         if (startDate.toLocalDate().equals(endDate.toLocalDate())) {
-            throw new RuntimeException("Project must have a duration of at least 1 day. Start and end dates cannot be the same");
+            throw new CustomException("INVALID_PROJECT_DURATION", "Project must have a duration of at least 1 day. Start and end dates cannot be the same");
         }
 
         int startYear = startDate.getYear();
@@ -295,7 +296,7 @@ public class ProjectNameGenerationService {
         // Validate that the next suffix is reasonable (prevent infinite loops)
         if (nextSuffix > 1000) {
             log.error("Generated suffix {} is too high for base name: {}. This might indicate a problem.", nextSuffix, baseName);
-            throw new RuntimeException("Cannot generate unique project name. Too many duplicates exist for base: " + baseName);
+            throw new CustomException("PROJECT_NAME_GENERATION_FAILED", "Cannot generate unique project name. Too many duplicates exist for base: " + baseName);
         }
         
         String uniqueName = baseName + "-" + nextSuffix;
@@ -391,7 +392,7 @@ public class ProjectNameGenerationService {
             
         } catch (Exception e) {
             log.error("Error generating project name for project: {}", project.getId(), e);
-            throw new RuntimeException("Failed to generate project name", e);
+            throw new CustomException("PROJECT_NAME_GENERATION_FAILED", "Failed to generate project name: " + e);
         }
     }
 }
