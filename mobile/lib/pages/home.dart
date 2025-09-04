@@ -550,20 +550,6 @@ class _HomePageState extends State<HomePage> {
                         );
                       },
                     ),
-                    const SizedBox(height: spacer6),
-                    DigitButton(
-                      label: 'BOM (Solar System)',
-                      type: DigitButtonType.primary,
-                      onPressed: () {
-                        context.router.push(
-                          DynamicFormsRoute(
-                              pageName: 'ModuleMountingstructure',
-                              schemaName: 'AssetForm'),
-                        );
-                      },
-                      size: DigitButtonSize.large,
-                      mainAxisSize: MainAxisSize.max,
-                    )
                   ],
                 ),
               ),
