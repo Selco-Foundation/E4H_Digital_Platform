@@ -26,11 +26,11 @@ public class FieldPlannerConfiguration {
     @Value("${egov.search.household.url}")
     private String householdServiceSearchUrl;
 
-    @Value("${egov.individual.host}")
-    private String individualServiceHost;
+    @Value("${egov.project.host}")
+    private String projectServiceHost;
 
-    @Value("${egov.search.individual.url}")
-    private String individualServiceSearchUrl;
+    @Value("${egov.search.project.url}")
+    private String projectServiceSearchUrl;
 
     @Value("${egov.facility.host}")
     private String facilityServiceHost;

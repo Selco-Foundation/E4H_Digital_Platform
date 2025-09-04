@@ -7,6 +7,7 @@ import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.egov.common.contract.request.RequestInfo;
+import org.egov.common.http.client.ServiceRequestClient;
 import org.egov.common.models.core.ProjectSearchURLParams;
 import org.egov.common.models.project.*;
 import org.egov.field_planner.config.FieldPlannerConfiguration;
@@ -35,6 +36,9 @@ public class FieldPlannerValidator {
     @Autowired
     FieldPlannerRepository fieldPlannerRepository;
 
+    @Autowired
+    private final ServiceRequestClient serviceRequestRepository;
+
     public static final String START_DATE_SHOULD_BE_LESS_THAN_END_DATE = "Start date should be less than end date";
     public static final String IS_NOT_PRESENT_IN_MDMS = " is not present in MDMS";
     public static final String TENANT_ID_IS_MANDATORY_IN_FIELDPLAN_REQUEST_BODY = "Tenant ID is mandatory in FieldPlan request body";
@@ -50,6 +54,10 @@ public class FieldPlannerValidator {
     @Qualifier("objectMapper")
     ObjectMapper mapper;
 
+    public FieldPlannerValidator(ServiceRequestClient serviceRequestRepository){
+        this.serviceRequestRepository = serviceRequestRepository;
+    }
+
     public void validateCreateFieldPlanRequest(FieldPlanRequest request) {
         Map<String, String> errorMap = new HashMap<>();
         RequestInfo requestInfo = request.getRequestInfo();
@@ -57,7 +65,7 @@ public class FieldPlannerValidator {
         //Verify if RequestInfo and UserInfo is present
         validateRequestInfo(requestInfo);
         //Verify if FieldPlan request and mandatory fields are present
-        validateFieldPlanRequest(request.getFieldPlans());
+        validateFieldPlanRequest(request);
 
         validateRequestMDMSData(request, request.getFieldPlans().get(0).getTenantId(), errorMap);
 
@@ -65,15 +73,28 @@ public class FieldPlannerValidator {
             throw new CustomException(errorMap);
     }
 
-    private void validateFieldPlanRequest(List<FieldPlan> fieldPlans) {
+    private void validateFieldPlanRequest(FieldPlanRequest request) {
         Map<String, String> errorMap = new HashMap<>();
 
-        if (fieldPlans == null || fieldPlans.size() == 0) {
-            log.error("Project list is empty. Projects is mandatory");
-            throw new CustomException("PROJECT", "Projects are mandatory");
+        if (request.getFieldPlans() == null || request.getFieldPlans().size() == 0) {
+            log.error("Field Plans list is empty. Field Plans is mandatory");
+            throw new CustomException("FIELDPLAN", "Field Plans are mandatory");
         }
 
-        for (FieldPlan fieldPlan : fieldPlans) {
+        for (FieldPlan fieldPlan : request.getFieldPlans()) {
+            if (fieldPlan.getProjectId() == null) {
+                log.error("Project ID is mandatory in FieldPlans");
+                throw new CustomException("FieldPlan", "Project ID is mandatory");
+            }
+            // Get existing project with projectID from project service
+            Project existingProject = getProjectById(request, fieldPlan);
+            if (existingProject == null) {
+                log.error("Project ID do not exist");
+                throw new CustomException("FieldPlan", "Project ID do not exist");
+            }
+            // Check if fieldPlan dates are within project dates
+            isFieldPlanWithinProject(existingProject, fieldPlan, errorMap);
+            
             if (fieldPlan == null) {
                 log.error("FieldPlan is mandatory in FieldPlans");
                 throw new CustomException("FieldPlan", "FieldPlan is mandatory");
@@ -166,6 +187,49 @@ public class FieldPlannerValidator {
                 log.error("The state code: " + state + mdmsNotPresent);
                 errorMap.put("INVALID_STATE_CODE", "The state code: " + state + mdmsNotPresent);
             }
+        }
+    }
+
+    public Project getProjectById(FieldPlanRequest request, FieldPlan fieldPlan) {
+        String projectId = fieldPlan.getProjectId();
+        Project project = Project.builder().id(projectId).tenantId(fieldPlan.getTenantId()).build();
+        ProjectRequest projectRequest = ProjectRequest.builder().requestInfo(request.getRequestInfo()).projects(List.of(project)).build();
+        String url = config.getProjectServiceHost() + config.getProjectServiceSearchUrl()+ "?tenantId="+fieldPlan.getTenantId()+"&offset=0&limit=100";
+        Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), projectRequest, Map.class);
+        ProjectResponse projectResponse = mapper.convertValue(response, ProjectResponse.class);
+        if(projectResponse != null && projectResponse.getProject() !=null && projectResponse.getProject().size() > 0){
+            return projectResponse.getProject().get(0);
+        }
+        return null;
+    }
+
+    public void isFieldPlanWithinProject(Project project, FieldPlan fieldPlan, Map<String, String> errorMap) {
+        if (project == null || fieldPlan == null) {
+            log.error("Project or FieldPlan is null");
+            errorMap.put("FIELDPLAN", "Project or FieldPlan is null");
+        }
+
+        Long projectStart = project.getStartDate();
+        Long projectEnd   = project.getEndDate();
+        Long fieldStart   = fieldPlan.getStartDate();
+        Long fieldEnd     = fieldPlan.getEndDate();
+
+        if (projectStart == null || projectEnd == null) {
+            log.error("Project dates are not mandatory");
+            errorMap.put("FIELDPLAN", "Project dates are not mandatory");
+        }
+        if (fieldStart == null || fieldEnd == null) {
+            log.error("FieldPlan dates are not mandatory");
+            errorMap.put("FIELDPLAN", "FieldPlan dates are not mandatory");
+        }
+
+        if (fieldStart < projectStart) {
+            log.error("The FieldPlan start date is earlier than the Project start date");
+            errorMap.put("FIELDPLAN", "The FieldPlan start date is earlier than the Project start date");
+        }
+        if (fieldEnd > projectEnd) {
+            log.error("The FieldPlan end date is later than the Project end date");
+            errorMap.put("FIELDPLAN", "The FieldPlan end date is later than the Project end date");
         }
     }
 }
