@@ -9,6 +9,8 @@ import DateRangeInput from "./components/CreateProject/DateRangeInput";
 import StateSelector from "./components/CreateProject/StateSelector";
 import DistrictSelector from "./components/CreateProject/DistrictSelector";
 import BlockSelector from "./components/CreateProject/BlockSelector";
+import DownloadTemplate from "./components/CreateProject/DownloadTemplate";
+import CustomUploadFile from "./components/CreateProject/CustomUploadFile";
 
 export const PMReducers = getRootReducer;
 
@@ -55,6 +57,8 @@ const componentsToRegister = {
   PMStateSelector: StateSelector,
   PMDistrictSelector: DistrictSelector,
   PMBlockSelector: BlockSelector,
+  PMDownloadTemplate: DownloadTemplate,
+  PMUploadFacilityData: CustomUploadFile
 };
 
 export const initPMComponents = () => {

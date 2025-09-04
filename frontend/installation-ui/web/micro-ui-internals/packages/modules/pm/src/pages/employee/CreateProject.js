@@ -216,29 +216,56 @@ const CreateProject = () => {
       },
       {
         key: "3",
-        head: "PM_CREATE_PROJECT_HEAD_FACILITY_DATA",
         body: [
-          // {
-          //   inline: true,
-          //   label: "PM_CREATE_PROJECT_LABEL_PROJECT_DATES",
-          //   isMandatory: true,
-          //   key: "projectDates2",
-          //   type: "component",
-          //   component: "PMDateRange",
-          //   disable: false,
-          //   customProps: {
-          //     name: "projectDates2",
-          //   },
-          //   route: "project-duration-2",
-          //   nextRoute: "",
-          //   populators: {
-          //     name: "projectDates2",
-          //     error: "Required",
-          //   },
-          // }
+          {
+            key: "downloadTemplate",
+            type: "component",
+            component: "PMDownloadTemplate",
+            withoutLabelFieldPair: true,
+            withoutLabel: true,
+            disable: false,
+            customProps: {
+              name: "downloadTemplate",
+              heading: "PM_CREATE_PROJECT_HEAD_DOWNLOAD_FACILITY_TEMPLATE",
+              description: "PM_CREATE_PROJECT_HEAD_DOWNLOAD_FACILITY_TEMPLATE_DESC",
+              t
+            },
+            route: "project-duration-2",
+            nextRoute: "",
+            populators: {
+              name: "downloadTemplate",
+              error: "Required",
+            },
+          }
+        ]
+      },
+      {
+        key: "3",
+        head: "PM_CREATE_PROJECT_HEAD_UPLOAD_FACILITY_DATA",
+        subHead: "PM_CREATE_PROJECT_HEAD_UPLOAD_FACILITY_DATA_DESC",
+        body: [
+          {
+            isMandatory: true,
+            key: "uploadFacilityData",
+            type: "component",
+            component: "PMUploadFacilityData",
+            withoutLabelFieldPair: true,
+            withoutLabel: true,
+            route: "upload-facility-data",
+            customProps: {
+              name: "uploadFacilityData",
+              allowedFileTypes: [".csv", ".xls", ".xlsx"],
+              t
+            },
+            nextRoute: "",
+            populators: {
+              name: "uploadFacilityData",
+              error: "Required",
+            },
+          }
         ]
       }
-    ], [projectTypeData, boundaryData, defaultFormData]
+    ], [t, projectTypeData, boundaryData, defaultFormData]
   )
 
   const filterConfig = (config, currentKey) => {
