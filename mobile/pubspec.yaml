@@ -52,26 +52,11 @@ dependencies:
   video_player: ^2.9.5
   flutter_pdfview: ^1.4.1+1
   internet_connection_checker_plus: ^2.7.2
-  digit_scanner: any
-#  digit_forms_engine: ^0.0.5-dev
-#  forms_engine:
-#    git:
-#      url: https://github.com/egovernments/health-campaign-field-worker-app.git
-#      path: packages/forms_engine
-#      ref: delivery_flow
-  digit_forms_engine:
-    git:
-      url: https://github.com/egovernments/health-campaign-field-worker-app.git
-      path: packages/digit_forms_engine
-      ref: console-develop
+  digit_scanner: ^1.0.6+3
+  digit_forms_engine: ^0.0.6-dev
 
 dependency_overrides:
   camera_android_camerax: ^0.5.0
-  digit_scanner:
-    git:
-      url: https://github.com/egovernments/health-campaign-field-worker-app.git
-      path: packages/digit_scanner
-      ref: console-develop
 
 dev_dependencies:
   flutter_test:
