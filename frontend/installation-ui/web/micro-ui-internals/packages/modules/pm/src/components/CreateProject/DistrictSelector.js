@@ -1,22 +1,27 @@
 import React, {useEffect, useMemo, useState} from "react";
 import {Dropdown, MultiSelectDropdown} from "@egovernments/digit-ui-react-components";
+import dateRange from "@egovernments/digit-ui-module-dss/src/components/DateRange";
+import _ from "lodash";
 
 const DistrictSelector = ({
-  data = {},
   setValue,
   props,
-  setError,
-  clearErrors,
 }) => {
 
-  const [selectedState, setSelectedState] = useState(data.state || null);
+  const { t, name, stateIdentifier, boundaryData, defaultValues = {} } = props;
+  const [selectedState, setSelectedState] = useState(defaultValues[stateIdentifier] || null);
   const [districtMenu, setDistrictMenu] = useState([]);
-  const [selectedDistricts, setSelectedDistricts] = useState(data.districts || []);
-  const { t, name, boundaryData } = props;
+  const [selectedDistricts, setSelectedDistricts] = useState([]);
 
   useEffect(() => {
-    setSelectedState(data.state || null);
-  }, [data.state]);
+    setSelectedState(defaultValues[stateIdentifier]);
+  }, [defaultValues[stateIdentifier]]);
+
+  useEffect(() => {
+    if (defaultValues[name] && !_.isEqual(_.sortBy(defaultValues[name], "code"), _.sortBy(selectedDistricts, "code"))) {
+      setSelectedDistricts(defaultValues[name]);
+    }
+  }, [defaultValues[name]])
 
   useEffect(() => {
     if (selectedDistricts?.length) {
@@ -24,7 +29,7 @@ const DistrictSelector = ({
     } else {
       setValue(name, undefined);
     }
-  }, [selectedDistricts, setError, clearErrors, name]);
+  }, [name, selectedDistricts]);
 
   useEffect(() => {
     if (boundaryData && selectedState) {

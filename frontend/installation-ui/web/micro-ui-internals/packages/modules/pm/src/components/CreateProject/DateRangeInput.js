@@ -1,18 +1,25 @@
 import React, {useEffect, useState} from "react";
+import _ from "lodash";
 
 const DateRangeInput = ({
-  data = {},
   register,
   setValue,
   props,
   setError,
   clearErrors,
 }) => {
-  const [dateRange, setDateRange] = useState(data?.projectDates || {
+
+  const { name, defaultValues = {} } = props;
+  const [dateRange, setDateRange] = useState({
     startDate: "",
     endDate: "",
   });
-  const { name } = props;
+
+  useEffect(() => {
+    if (defaultValues[name] && !_.isEqual(defaultValues[name], dateRange)) {
+      setDateRange(defaultValues[name]);
+    }
+  }, [defaultValues[name]]);
 
   useEffect(() => {
     const startDate = dateRange.startDate;
@@ -24,17 +31,17 @@ const DateRangeInput = ({
           type: "manual",
           message: "Start date cannot be after End date.",
         });
-        setDateRange(prevDateRange => ({
-          ...prevDateRange,
+        setDateRange(prev => ({
+          ...prev,
           endDate: ""
         }));
-        setValue(name, null);
+        setValue(name, undefined);
       } else {
         clearErrors(name);
-        setValue(name, { startDate, endDate });
+        setValue(name, dateRange);
       }
     }
-  }, [dateRange, setError, clearErrors, name]);
+  }, [name, dateRange]);
 
   const handleDateChange = (key, value) => {
     setDateRange(prevDateRange => ({
@@ -59,7 +66,7 @@ const DateRangeInput = ({
         className="employee-card-input"
         type="date"
         value={dateRange.startDate}
-        {...register("projectDates.startDate")}
+        {...register(`${name}.startDate`)}
         onChange={(e) =>
           handleDateChange("startDate", e.target.value)
         }
@@ -70,7 +77,7 @@ const DateRangeInput = ({
         type="date"
         value={dateRange.endDate}
         min={dateRange.startDate}
-        {...register("projectDates.endDate")}
+        {...register(`${name}.endDate`)}
         onChange={(e) =>
           handleDateChange("endDate", e.target.value)
         }
