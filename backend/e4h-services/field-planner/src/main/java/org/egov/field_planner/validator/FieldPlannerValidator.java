@@ -94,7 +94,7 @@ public class FieldPlannerValidator {
             }
             // Check if fieldPlan dates are within project dates
             isFieldPlanWithinProject(existingProject, fieldPlan, errorMap);
-            
+
             if (fieldPlan == null) {
                 log.error("FieldPlan is mandatory in FieldPlans");
                 throw new CustomException("FieldPlan", "FieldPlan is mandatory");
@@ -109,7 +109,7 @@ public class FieldPlannerValidator {
             }
             if ((fieldPlan.getStartDate() != null && fieldPlan.getEndDate() != null && fieldPlan.getEndDate() != 0) && (fieldPlan.getStartDate().compareTo(fieldPlan.getEndDate()) > 0)) {
                 log.error(START_DATE_SHOULD_BE_LESS_THAN_END_DATE);
-                errorMap.put("INVALID_DATE", START_DATE_SHOULD_BE_LESS_THAN_END_DATE);
+                errorMap.put("INVALID_DATE_ERROR", START_DATE_SHOULD_BE_LESS_THAN_END_DATE);
             }
             if (fieldPlan.getStartDate() != null && fieldPlan.getEndDate() != null && fieldPlan.getEndDate() != 0
                     && fieldPlan.getEndDate().compareTo(Instant.ofEpochMilli(fieldPlan.getStartDate()).plus(Duration.ofDays(1)).toEpochMilli()) < 0) {
@@ -216,7 +216,7 @@ public class FieldPlannerValidator {
 
         if (projectStart == null || projectEnd == null) {
             log.error("Project dates are not mandatory");
-            errorMap.put("FIELDPLAN", "Project dates are not mandatory");
+            errorMap.put("FIELDPLAN_PROJECT", "Project dates are not mandatory");
         }
         if (fieldStart == null || fieldEnd == null) {
             log.error("FieldPlan dates are not mandatory");
@@ -225,11 +225,11 @@ public class FieldPlannerValidator {
 
         if (fieldStart < projectStart) {
             log.error("The FieldPlan start date is earlier than the Project start date");
-            errorMap.put("FIELDPLAN", "The FieldPlan start date is earlier than the Project start date");
+            errorMap.put("FIELDPLAN_STARTDATE", "The FieldPlan start date is earlier than the Project start date");
         }
         if (fieldEnd > projectEnd) {
             log.error("The FieldPlan end date is later than the Project end date");
-            errorMap.put("FIELDPLAN", "The FieldPlan end date is later than the Project end date");
+            errorMap.put("FIELDPLAN_ENDDATE", "The FieldPlan end date is later than the Project end date");
         }
     }
 }
