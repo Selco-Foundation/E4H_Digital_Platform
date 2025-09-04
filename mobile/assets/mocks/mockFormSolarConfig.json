@@ -100,7 +100,7 @@
                 "fieldName": "mms_uom"
               },
               {
-                "type": "string",
+                "type": "integer",
                 "format": "text",
                 "label": "Capacity",
                 "order": 4,
@@ -233,7 +233,7 @@
                 "fieldName": "changeover1_uom"
               },
               {
-                "type": "string",
+                "type": "integer",
                 "format": "text",
                 "label": "Capacity",
                 "order": 4,
@@ -369,7 +369,7 @@
                 "fieldName": "changeover2_uom"
               },
               {
-                "type": "string",
+                "type": "integer",
                 "format": "text",
                 "label": "Capacity",
                 "order": 4,
@@ -505,7 +505,7 @@
                 "fieldName": "earthing_kit_uom"
               },
               {
-                "type": "string",
+                "type": "integer",
                 "format": "text",
                 "label": "Capacity",
                 "order": 4,
@@ -641,7 +641,7 @@
                 "fieldName": "lightning_protection_uom"
               },
               {
-                "type": "string",
+                "type": "integer",
                 "format": "text",
                 "label": "Capacity",
                 "order": 4,
@@ -777,7 +777,7 @@
                 "fieldName": "module_ajb_pv1f_uom_qty"
               },
               {
-                "type": "string",
+                "type": "integer",
                 "format": "text",
                 "label": "Capacity",
                 "order": 4,
@@ -788,7 +788,7 @@
                 "infoText": "",
                 "readOnly": false,
                 "deleteFlag": false,
-                "innerLabel": "Length",
+                "innerLabel": "",
                 "systemDate": false,
                 "errorMessage": "",
                 "includeInForm": true,
@@ -916,7 +916,7 @@
                 "fieldName": "ajb_inverter_dc_uom_qty"
               },
               {
-                "type": "string",
+                "type": "integer",
                 "format": "text",
                 "label": "Capacity",
                 "order": 4,
@@ -927,7 +927,7 @@
                 "infoText": "",
                 "readOnly": false,
                 "deleteFlag": false,
-                "innerLabel": "Length",
+                "innerLabel": "",
                 "systemDate": false,
                 "errorMessage": "",
                 "includeInForm": true,
@@ -1055,7 +1055,7 @@
                 "fieldName": "battery_battery_dc_uom_qty"
               },
               {
-                "type": "string",
+                "type": "integer",
                 "format": "text",
                 "label": "Capacity",
                 "order": 4,
@@ -1066,7 +1066,7 @@
                 "infoText": "",
                 "readOnly": false,
                 "deleteFlag": false,
-                "innerLabel": "Length",
+                "innerLabel": "",
                 "systemDate": false,
                 "errorMessage": "",
                 "includeInForm": true,
@@ -1194,7 +1194,7 @@
                 "fieldName": "battery_inverter_dc_uom_qty"
               },
               {
-                "type": "string",
+                "type": "integer",
                 "format": "text",
                 "label": "Capacity",
                 "order": 4,
@@ -1205,7 +1205,7 @@
                 "infoText": "",
                 "readOnly": false,
                 "deleteFlag": false,
-                "innerLabel": "Length",
+                "innerLabel": "",
                 "systemDate": false,
                 "errorMessage": "",
                 "includeInForm": true,
@@ -1333,7 +1333,7 @@
                 "fieldName": "dc_earthing_uom_qty"
               },
               {
-                "type": "string",
+                "type": "integer",
                 "format": "text",
                 "label": "Capacity",
                 "order": 4,
@@ -1469,7 +1469,7 @@
                 "fieldName": "earthing_cable_cos_sd_uom_qty"
               },
               {
-                "type": "string",
+                "type": "integer",
                 "format": "text",
                 "label": "Capacity",
                 "order": 4,
@@ -1480,7 +1480,7 @@
                 "infoText": "",
                 "readOnly": false,
                 "deleteFlag": false,
-                "innerLabel": "Length",
+                "innerLabel": "",
                 "systemDate": false,
                 "errorMessage": "",
                 "includeInForm": true,
@@ -1608,7 +1608,7 @@
                 "fieldName": "earthing_cable_cos_and_sd_uom_qty"
               },
               {
-                "type": "string",
+                "type": "integer",
                 "format": "text",
                 "label": "Capacity",
                 "order": 4,
@@ -1619,7 +1619,7 @@
                 "infoText": "",
                 "readOnly": false,
                 "deleteFlag": false,
-                "innerLabel": "Length",
+                "innerLabel": "",
                 "systemDate": false,
                 "errorMessage": "",
                 "includeInForm": true,
@@ -1747,7 +1747,7 @@
                 "fieldName": "voltage_sensing_red_uom_qty"
               },
               {
-                "type": "string",
+                "type": "integer",
                 "format": "text",
                 "label": "Capacity",
                 "order": 4,
@@ -1758,7 +1758,7 @@
                 "infoText": "",
                 "readOnly": false,
                 "deleteFlag": false,
-                "innerLabel": "Length",
+                "innerLabel": "",
                 "systemDate": false,
                 "errorMessage": "",
                 "includeInForm": true,
@@ -1886,7 +1886,7 @@
                 "fieldName": "earthing_cable_agib_uom_qty"
               },
               {
-                "type": "string",
+                "type": "integer",
                 "format": "text",
                 "label": "Capacity",
                 "order": 4,
@@ -1897,7 +1897,7 @@
                 "infoText": "",
                 "readOnly": false,
                 "deleteFlag": false,
-                "innerLabel": "Length",
+                "innerLabel": "",
                 "systemDate": false,
                 "errorMessage": "",
                 "includeInForm": true,
