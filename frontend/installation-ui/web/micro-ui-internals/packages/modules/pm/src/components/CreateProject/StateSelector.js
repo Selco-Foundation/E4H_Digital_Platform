@@ -1,22 +1,26 @@
 import React, {useEffect, useMemo, useState} from "react";
 import useBoundary from "../../hooks/useBoundary";
 import {Dropdown, MultiSelectDropdown} from "@egovernments/digit-ui-react-components";
+import _ from "lodash";
 
 const StateSelector = ({
-  data = {},
   setValue,
   props,
-  setError,
-  clearErrors,
 }) => {
 
+  const { t, name, boundaryData, defaultValues = {} } = props;
   const [stateMenu, setStateMenu] = useState([]);
-  const [selectedState, setSelectedState] = useState(data.state);
-  const { t, name, boundaryData } = props;
+  const [selectedState, setSelectedState] = useState(defaultValues[name]);
+
+  useEffect(() => {
+    if (defaultValues[name] &&  !_.isEqual(defaultValues[name], selectedState)) {
+      setSelectedState(defaultValues[name]);
+    }
+  }, [name, defaultValues[name]]);
 
   useEffect(() => {
     setValue(name, selectedState);
-  }, [selectedState, setError, clearErrors, name]);
+  }, [name, selectedState]);
 
   useEffect(() => {
     if (boundaryData) {

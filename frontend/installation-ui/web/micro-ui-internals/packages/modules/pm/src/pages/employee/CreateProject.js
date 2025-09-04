@@ -1,9 +1,13 @@
 import React, {useEffect, useMemo, useState} from "react";
-import {FormComposerV2} from "@egovernments/digit-ui-react-components";
+import { FormComposerV2, Modal } from "@egovernments/digit-ui-react-components";
 import {Stepper} from "@egovernments/digit-ui-components";
 import useMDMS from "../../hooks/useMDMS";
 import {useTranslation} from "react-i18next";
 import useBoundary from "../../hooks/useBoundary";
+import {ProjectService} from "../../services/Project";
+import useProject from "../../hooks/useProject";
+import {useHistory, useLocation} from "react-router-dom";
+import _ from "lodash";
 
 const CreateProject = () => {
 
@@ -11,6 +15,10 @@ const CreateProject = () => {
   const tenantId = Digit.ULBService.getStateId();
   const [currentKey, setCurrentKey] = useState(1);
   const [projectFormData, setProjectFormData] = useState({});
+  const [defaultFormData, setDefaultFormData] = useState({});
+  const [createdProject, setCreatedProject] = useState({});
+  const history = useHistory();
+  const location = useLocation();
   const { key, projectId } = Digit.Hooks.useQueryParams();
 
   const { data: boundaryData } = useBoundary("State");
@@ -24,6 +32,56 @@ const CreateProject = () => {
       enabled: true,
     }
   );
+
+  const { data: projectData } = useProject(projectId);
+
+  useEffect(() => {
+    if (projectId && key) {
+      setCurrentKey(parseInt(key));
+    }
+  }, []);
+
+  useEffect(() => {
+    if (projectData) {
+      setCreatedProject(projectData);
+    }
+  }, [projectData])
+
+  useEffect(() => {
+    if (createdProject?.id) {
+      history.replace({
+        pathname: location.pathname,
+        search: `projectId=${createdProject.id}&key=${currentKey}`,
+      });
+    }
+
+  }, [createdProject, currentKey])
+
+  const formatDate = (timestamp) => {
+    const date = new Date(timestamp);
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    const year = date.getFullYear();
+    return `${year}-${month}-${day}`;
+  };
+
+  useEffect(() => {
+    if (createdProject?.id && projectTypeData) {
+      const formData = {
+        projectDetails: {
+          projectType: projectTypeData.filter((projectType) => projectType.name === createdProject.projectType)?.[0],
+          justificationCode: createdProject.additionalDetails.justificationCode,
+          projectDuration: {
+            startDate: formatDate(createdProject.startDate),
+            endDate: formatDate(createdProject.endDate),
+          }
+        },
+        geographyDetails: createdProject.additionalDetails.geographyDetails,
+      }
+
+      setProjectFormData(formData);
+    }
+  }, [createdProject, projectTypeData]);
 
   const config = useMemo(
     () => [
@@ -57,7 +115,7 @@ const CreateProject = () => {
             type: "text",
             disable: false,
             route: "justification-code",
-            nextRoute: "project-dates",
+            nextRoute: "project-duration",
             populators: {
               name: "justificationCode",
               error: "Required",
@@ -67,17 +125,18 @@ const CreateProject = () => {
             inline: true,
             label: "PM_CREATE_PROJECT_LABEL_PROJECT_DATES",
             isMandatory: true,
-            key: "projectDates",
+            key: "projectDuration",
             type: "component",
             component: "PMDateRange",
             disable: false,
             customProps: {
-              name: "projectDates",
+              name: "projectDuration",
+              defaultValues: defaultFormData
             },
-            route: "project-dates",
+            route: "project-duration",
             nextRoute: "",
             populators: {
-              name: "projectDates",
+              name: "projectDuration",
               error: "Required"
             }
           }
@@ -97,6 +156,7 @@ const CreateProject = () => {
             component: "PMStateSelector",
             customProps: {
               name: "state",
+              defaultValues: defaultFormData,
               t,
               boundaryData
             },
@@ -117,8 +177,10 @@ const CreateProject = () => {
             component: "PMDistrictSelector",
             customProps: {
               name: "districts",
+              stateIdentifier: "state",
+              defaultValues: defaultFormData,
               t,
-              boundaryData
+              boundaryData,
             },
             disable: false,
             route: "districts",
@@ -137,6 +199,8 @@ const CreateProject = () => {
             component: "PMBlockSelector",
             customProps: {
               name: "blocks",
+              districtsIdentifier: "districts",
+              defaultValues: defaultFormData,
               t,
               boundaryData
             },
@@ -154,27 +218,27 @@ const CreateProject = () => {
         key: "3",
         head: "PM_CREATE_PROJECT_HEAD_FACILITY_DATA",
         body: [
-          {
-            inline: true,
-            label: "PM_CREATE_PROJECT_LABEL_PROJECT_DATES",
-            isMandatory: true,
-            key: "projectDates2",
-            type: "component",
-            component: "PMDateRange",
-            disable: false,
-            customProps: {
-              name: "projectDates2",
-            },
-            route: "project-dates-2",
-            nextRoute: "",
-            populators: {
-              name: "projectDates2",
-              error: "Required",
-            },
-          }
+          // {
+          //   inline: true,
+          //   label: "PM_CREATE_PROJECT_LABEL_PROJECT_DATES",
+          //   isMandatory: true,
+          //   key: "projectDates2",
+          //   type: "component",
+          //   component: "PMDateRange",
+          //   disable: false,
+          //   customProps: {
+          //     name: "projectDates2",
+          //   },
+          //   route: "project-duration-2",
+          //   nextRoute: "",
+          //   populators: {
+          //     name: "projectDates2",
+          //     error: "Required",
+          //   },
+          // }
         ]
       }
-    ], [t, projectTypeData, boundaryData]
+    ], [projectTypeData, boundaryData, defaultFormData]
   )
 
   const filterConfig = (config, currentKey) => {
@@ -185,17 +249,94 @@ const CreateProject = () => {
 
   useEffect(() => {
     setFilteredConfig(filterConfig(config, currentKey));
-  }, [config, currentKey]);
+  }, [config, currentKey])
 
   useEffect(() => {
-    console.debug("projectFormData", projectFormData);
-  }, [projectFormData])
+    switch (currentKey) {
+      case 1:
+        setDefaultFormData(projectFormData.projectDetails);
+        break;
+      case 2:
+        setDefaultFormData(projectFormData.geographyDetails);
+        break;
+    }
+  }, [projectFormData, currentKey]);
 
-  const upsertProject = (projectData) => {
-
+  const formatDataForCreate = (data) => {
+    return {
+      projectType: data.projectDetails.projectType.name,
+      projectSubType: "",
+      department: "",
+      description: "",
+      referenceID: "1",
+      parent: "",
+      startDate: (new Date(data.projectDetails.projectDuration.startDate)).getTime(),
+      endDate: (new Date(data.projectDetails.projectDuration.endDate)).getTime(),
+      additionalDetails: {
+        geographyDetails: data.geographyDetails,
+        justificationCode: data.projectDetails.justificationCode,
+      },
+      address: {
+        boundaryType: "State",
+        boundary: data.geographyDetails.state.code,
+        tenantId
+      },
+      tenantId
+    }
   }
 
-  const handleFormSubmit = (data) => {
+  const formatDataForUpdate = (data) => {
+    const project = {
+      ...createdProject,
+      projectType: data.projectDetails.projectType.name,
+      startDate: (new Date(data.projectDetails.projectDuration.startDate)).getTime(),
+      endDate: (new Date(data.projectDetails.projectDuration.endDate)).getTime(),
+      additionalDetails: {
+        ...createdProject.additionalDetails,
+        geographyDetails: data.geographyDetails,
+        justificationCode: data.projectDetails.justificationCode,
+      },
+      tenantId
+    }
+
+    if (project.address.boundary !== data.geographyDetails.state.code) {
+      project.address = {
+        boundaryType: "State",
+        boundary: data.geographyDetails.state.code,
+        tenantId
+      }
+    }
+
+    return project;
+  }
+
+  const upsertProject = async (projectData) => {
+
+    let projectUpsertData;
+    if (projectId) {
+      projectUpsertData = {
+        Projects: [formatDataForUpdate(projectData)],
+        apiOperation: "UPDATE"
+      };
+    } else {
+      projectUpsertData = {
+        Projects: [formatDataForCreate(projectData)],
+        apiOperation: "CREATE"
+      };
+    }
+
+    try {
+      const projectResponse = await ProjectService.upsertProject(projectUpsertData);
+      const createdProjectResponse = projectResponse.Project?.[0];
+      setCreatedProject(createdProjectResponse);
+      setCurrentKey(prev => prev + 1);
+
+    } catch (e) {
+      console.error(`Error ${ projectId ? `updating` : `creating` } project`, e);
+    }
+  }
+
+  const handleFormSubmit = async (data) => {
     switch (currentKey) {
       case 1:
         setProjectFormData(prev => ({...prev, projectDetails: data}));
@@ -204,16 +345,91 @@ const CreateProject = () => {
       case 2:
         const newProjectFormData = {...projectFormData, geographyDetails: data};
         setProjectFormData(newProjectFormData);
-        upsertProject(newProjectFormData)
+        await upsertProject(newProjectFormData)
         break;
     }
 
   }
 
+  const handleProjectDetailsChange = (formData) => {
+    if (formData?.projectType && !_.isEqual(projectFormData?.projectDetails?.projectType, formData.projectType)) {
+      setProjectFormData(prev => ({
+        ...prev,
+        projectDetails: {
+          ...prev.projectDetails,
+          projectType: formData.projectType,
+        }
+      }));
+
+    } else if (formData?.justificationCode && !_.isEqual(projectFormData?.projectDetails?.justificationCode, formData.justificationCode)) {
+      setProjectFormData(prev => ({
+        ...prev,
+        projectDetails: {
+          ...prev.projectDetails,
+          justificationCode: formData.justificationCode,
+        }
+      }))
+
+    } else if (
+      formData?.projectDuration?.startDate
+      && formData?.projectDuration?.endDate
+      && !_.isEqual(projectFormData?.projectDetails?.projectDuration, formData.projectDuration)
+    ) {
+      setProjectFormData(prev => ({
+        ...prev,
+        projectDetails: {
+          ...prev.projectDetails,
+          projectDuration: formData.projectDuration
+        }
+      }))
+    }
+  }
+
+  const handleGeographyDataChange = (formData) => {
+    if (formData?.state && !_.isEqual(projectFormData?.geographyDetails?.state, formData.state)) {
+      setProjectFormData(prev => ({
+        ...prev,
+        geographyDetails: {
+          ...prev.geographyDetails,
+          state: formData.state
+        }
+      }));
+
+    } else if (
+      formData?.districts
+      && !_.isEqual(_.sortBy(projectFormData?.geographyDetails?.districts, "code"), _.sortBy(formData.districts, "code"))
+    ) {
+      setProjectFormData(prev => ({
+        ...prev,
+        geographyDetails: {
+          ...prev.geographyDetails,
+          districts: formData.districts
+        }
+      }));
+
+    } else if (
+      formData?.blocks
+      && !_.isEqual(_.sortBy(projectFormData?.geographyDetails?.blocks, "code"), _.sortBy(formData.blocks, "code"))
+    ) {
+      setProjectFormData(prev => ({
+        ...prev,
+        geographyDetails: {
+          ...prev.geographyDetails,
+          blocks: formData.blocks
+        }
+      }));
+    }
+  }
+
   const handleFormValueChange = (setValue, formData) => {
-    // if (currentKey === 2) {
-    //   console.debug("handleFormValueChange", formData);
-    // }
+    switch (currentKey) {
+      case 1:
+        handleProjectDetailsChange(formData);
+        break;
+      case 2:
+        handleGeographyDataChange(formData);
+        break;
+    }
   }
 
   const getNextActionLabel = () => {
@@ -240,6 +456,11 @@ const CreateProject = () => {
 
   return (
     <div>
+      {createdProject?.name && (
+        <div style={{fontSize: "40px", fontWeight: "bold", fontFamily: "Roboto Condensed", marginBottom: "20px", color: "#0B0C0C"}}>
+          {createdProject?.name}
+        </div>
+      )}
       <Stepper
         customSteps={[
           "PM_CREATE_PROJECT_HEAD_PROJECT_DETAILS",
@@ -256,7 +477,7 @@ const CreateProject = () => {
         showSecondaryLabel={true}
         secondaryLabel={t("CORE_COMMON_BACK")}
         onFormValueChange={handleFormValueChange}
-        appData={getDefaultValues()}
+        defaultData={defaultFormData}
       />
     </div>
   )

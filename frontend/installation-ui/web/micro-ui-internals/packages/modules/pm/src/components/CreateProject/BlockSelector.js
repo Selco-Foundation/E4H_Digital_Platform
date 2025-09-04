@@ -1,22 +1,26 @@
 import React, {useEffect, useMemo, useState} from "react";
 import {Dropdown, MultiSelectDropdown} from "@egovernments/digit-ui-react-components";
+import _ from "lodash";
 
 const DistrictSelector = ({
-  data = {},
   setValue,
   props,
-  setError,
-  clearErrors,
 }) => {
 
-  const [selectedDistricts, setSelectedDistricts] = useState(data.districts || []);
+  const { t, name, districtsIdentifier, boundaryData, defaultValues = {} } = props;
+  const [selectedDistricts, setSelectedDistricts] = useState([]);
   const [blockMenu, setBlockMenu] = useState([]);
-  const [selectedBlocks, setSelectedBlocks] = useState(data.blocks || []);
-  const { t, name, boundaryData } = props;
+  const [selectedBlocks, setSelectedBlocks] = useState([]);
 
   useEffect(() => {
-    setSelectedDistricts(data.districts || []);
-  }, [data.districts]);
+    setSelectedDistricts(defaultValues[districtsIdentifier] || []);
+  }, [defaultValues[districtsIdentifier]]);
+
+  useEffect(() => {
+    if (defaultValues[name] && !_.isEqual(_.sortBy(defaultValues[name], "code"), _.sortBy(selectedBlocks, "code"))) {
+      setSelectedBlocks(defaultValues[name]);
+    }
+  }, [defaultValues[name]]);
 
   useEffect(() => {
     if (selectedBlocks?.length) {
@@ -24,7 +28,7 @@ const DistrictSelector = ({
     } else {
       setValue(name, undefined);
     }
-  }, [selectedBlocks, setError, clearErrors, name]);
+  }, [name, selectedBlocks]);
 
   useEffect(() => {
     if (boundaryData && selectedDistricts) {
@@ -43,8 +47,8 @@ const DistrictSelector = ({
     }
   }, [t, boundaryData, selectedDistricts])
 
-  const handleDistrictSelection = (districts) => {
-    setSelectedBlocks(districts);
+  const handleBlockSelection = (blocks) => {
+    setSelectedBlocks(blocks);
   }
 
   return (
@@ -53,7 +57,7 @@ const DistrictSelector = ({
         options={blockMenu}
         optionsKey={"name"}
         onSelect={(e) => {
-          handleDistrictSelection(e?.map(row=>{return row?.[1] ? row[1] : null}).filter(e=>e))
+          handleBlockSelection(e?.map(row=>{return row?.[1] ? row[1] : null}).filter(e=>e))
         }}
         selected={selectedBlocks}
       />
