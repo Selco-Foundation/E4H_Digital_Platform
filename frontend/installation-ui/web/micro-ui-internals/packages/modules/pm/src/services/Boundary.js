@@ -1,6 +1,6 @@
 import { Request } from "@egovernments/digit-ui-libraries";
 
-export const PMService = {
+export const BoundaryService = {
 
   fetchBoundaryRelations : async (boundaryType, codes) => {
     const endpoint = "/boundary-service/boundary-relationships/_search";

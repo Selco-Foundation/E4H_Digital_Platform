@@ -1,9 +1,9 @@
 import { useQuery, useQueryClient } from "react-query";
-import {PMService} from "../services/PM";
+import {BoundaryService} from "../services/Boundary";
 
 const fetchBoundaries = async (boundaryType, codes) => {
 
-  const boundaryResponse = await PMService.fetchBoundaryRelations(boundaryType, codes);
+  const boundaryResponse = await BoundaryService.fetchBoundaryRelations(boundaryType, codes);
 
   const states = [];
   const districts = [];
