@@ -151,11 +151,11 @@ public class FieldPlannerService {
                     .map(activity -> (String) activity.get("code"))
                     .collect(Collectors.joining("_"));
 
-            LocalDateTime startDate = LocalDateTime.ofInstant(
-                    Instant.ofEpochMilli(fieldPlan.getStartDate()),
+            LocalDateTime endDate = LocalDateTime.ofInstant(
+                    Instant.ofEpochMilli(fieldPlan.getEndDate()),
                     ZoneId.systemDefault()
             );
-            int startYear = startDate.getYear();
+            int startYear = endDate.getYear();
 
             baseName = String.format("%s-%s-%s", stateCode, concatenatedActivityCode, startYear);
 //
