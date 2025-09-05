@@ -4,6 +4,8 @@ ARG JAR_FILE
 
 COPY ${JAR_FILE} /flyway/jars/
 
+RUN cd /flyway/jars && ls -la
+
 COPY ./migration/main /flyway/sql
 
 COPY migrate.sh /usr/bin/migrate.sh
