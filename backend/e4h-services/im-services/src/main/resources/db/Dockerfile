@@ -1,5 +1,9 @@
 FROM egovio/flyway:10.7.1
 
+ARG JAR_FILE
+
+COPY ${JAR_FILE} /flyway/jars/
+
 COPY ./migration/main /flyway/sql
 
 COPY migrate.sh /usr/bin/migrate.sh
