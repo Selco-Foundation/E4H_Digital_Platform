@@ -191,9 +191,10 @@ class Scanner {
   String get resourceCode => 'RESOURCE_CODE';
   String get coreCommonSubmit => 'Core_common_submit';
   String get coreCommonSubmit2 => 'CORE_COMMON_SUBMIT';
-  // String get scannerDialogTitle => 'SCANNER_DIALOG_TITLE';
-  // String get scannerDialogContent => 'SCANNER_DIALOG_CONTENT';
-  // String get scannerDialogPrimaryAction => 'SCANNER_DIALOG_PRIMARY_ACTION';
+  String get scannerDialogTitle => 'SCANNER_DIALOG_TITLE';
+  String get scannerDialogContent => 'SCANNER_DIALOG_CONTENT';
+  String get scannerDialogPrimaryAction => 'SCANNER_DIALOG_PRIMARY_ACTION';
+  String get scannerDialogSecondaryAction => 'SCANNER_DIALOG_SECONDARY_ACTION';
   // String get scannedResourceCountMisMatch => 'SCANNED_RESOURCE_COUNT_MISMATCH';
 }
 
