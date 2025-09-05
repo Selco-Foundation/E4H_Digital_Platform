@@ -5,11 +5,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.selco.e4h.service.UpdateService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
+import org.selco.e4h.util.IMConstants;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.*;
 
+import static org.selco.e4h.util.IMConstants.*;
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -91,7 +93,7 @@ public class ElasticSearchClient {
 
         mustNot.add(Map.of("terms", Map.of(
                 "Data.currentProcessInstance.state.applicationStatus.keyword",
-                List.of("RESOLVED", "CLOSED_AFTER_RESOLUTION", "REJECTED")
+                List.of(REJECTED, CLOSED_AFTER_REJECTION, RESOLVED, CLOSED_AFTER_RESOLUTION)
         )));
 
         bool.put("must_not", mustNot);
