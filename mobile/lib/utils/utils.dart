@@ -262,7 +262,6 @@ Map<String, dynamic> transformSelcoFormMdmsDocToSchema(
       final prop = Map<String, dynamic>.from(raw as Map);
       final key = (prop['fieldName'] ?? 'field_${i + 1}').toString();
 
-      // Keep everything, just ensure map shape (reactive_forms + engine read these)
       propsMap[key] = {
         // core
         'type': prop['type'],
@@ -270,6 +269,8 @@ Map<String, dynamic> transformSelcoFormMdmsDocToSchema(
         'order': prop['order'],
         'value': prop['value'],
         'format': prop['format'],
+        'section': prop['section'],
+        'sectionDescription': prop['sectionDescription'],
         // flags
         'hidden': prop['hidden'],
         'readOnly': prop['readOnly'],
