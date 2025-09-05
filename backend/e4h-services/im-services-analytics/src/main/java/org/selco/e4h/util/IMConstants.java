@@ -54,4 +54,12 @@ public class IMConstants {
      * Exact key representing business service.
      */
     public static final String BUSINESS_SERVICE = "businessService";
+
+    public static final String REJECTED = "REJECTED";
+
+    public static final String RESOLVED = "RESOLVED";
+
+    public static final String CLOSED_AFTER_RESOLUTION = "CLOSEDAFTERRESOLUTION";
+
+    public static final String CLOSED_AFTER_REJECTION = "CLOSEDAFTERREJECTION";
 }
