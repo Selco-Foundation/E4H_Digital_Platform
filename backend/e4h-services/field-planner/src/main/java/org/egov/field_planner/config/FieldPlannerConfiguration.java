@@ -17,14 +17,14 @@ public class FieldPlannerConfiguration {
     @Value("${egov.product.host}")
     private String productHost;
 
-    @Value("${egov.search.product.variant.url}")
-    private String productVariantSearchUrl;
+    @Value("${fieldplan.facility.idgen.id.format}")
+    private String fieldPlanFacilityIdFormat;
 
     @Value("${egov.household.host}")
     private String householdServiceHost;
 
-    @Value("${egov.search.household.url}")
-    private String householdServiceSearchUrl;
+    @Value("${fieldPlan.facility.consumer.bulk.create.topic}")
+    private String bulkCreateFieldPlanFacilityTopic;
 
     @Value("${egov.project.host}")
     private String projectServiceHost;
@@ -55,8 +55,8 @@ public class FieldPlannerConfiguration {
     @Value("${fieldPlan.management.system.kafka.create.topic}")
     private String saveFieldPlanTopic;
 
-    @Value("${project.management.system.kafka.update.topic}")
-    private String updateProjectTopic;
+    @Value("${fieldPlan.facility.kafka.create.topic}")
+    private String createFieldPlanFacilityTopic;
 
     @Value("${project.search.max.limit}")
     private Integer maxLimit;

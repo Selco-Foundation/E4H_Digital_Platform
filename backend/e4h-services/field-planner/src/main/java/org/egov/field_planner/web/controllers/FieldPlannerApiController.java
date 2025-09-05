@@ -19,9 +19,7 @@ import org.egov.common.producer.Producer;
 import org.egov.common.utils.ResponseInfoFactory;
 import org.egov.field_planner.config.FieldPlannerConfiguration;
 import org.egov.field_planner.service.*;
-import org.egov.field_planner.web.models.FieldPlan;
-import org.egov.field_planner.web.models.FieldPlanRequest;
-import org.egov.field_planner.web.models.FieldPlanResponse;
+import org.egov.field_planner.web.models.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -49,16 +47,19 @@ public class FieldPlannerApiController {
 
     private final FieldPlannerService fieldPlannerService;
 
+    private final FieldPlannerFacilityService fieldPlannerFacilityService;
+
     @Autowired
     public FieldPlannerApiController(ObjectMapper objectMapper, HttpServletRequest httpServletRequest,
                                      Producer producer,
                                      FieldPlannerConfiguration fieldPlannerConfiguration,
-                                     FieldPlannerService fieldPlannerService) {
+                                     FieldPlannerService fieldPlannerService, FieldPlannerFacilityService fieldPlannerFacilityService) {
         this.objectMapper = objectMapper;
         this.httpServletRequest = httpServletRequest;
         this.producer = producer;
         this.fieldPlannerConfiguration = fieldPlannerConfiguration;
         this.fieldPlannerService = fieldPlannerService;
+        this.fieldPlannerFacilityService = fieldPlannerFacilityService;
     }
 
     @RequestMapping(value = "/_create", method = RequestMethod.POST)
@@ -70,5 +71,26 @@ public class FieldPlannerApiController {
                         .createResponseInfo(fieldPlanRequest.getRequestInfo(), true))
                 .build();
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
+    }
+
+    @RequestMapping(value = "/facility/_create", method = RequestMethod.POST)
+    public ResponseEntity<FieldPlanFacilityResponse> fieldPlanFacilityV1CreatePost(@ApiParam(value = "Capture linkage of Project and facility.", required = true) @Valid @RequestBody FieldPlanFacilityRequest request) {
+
+        FieldPlanFacility fieldPlanFacility = fieldPlannerFacilityService.create(request);
+        FieldPlanFacilityResponse response = FieldPlanFacilityResponse.builder()
+                .fieldPlanFacility(fieldPlanFacility)
+                .responseInfo(ResponseInfoFactory
+                        .createResponseInfo(request.getRequestInfo(), true))
+                .build();
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
+    }
+
+    @RequestMapping(value = "/facility/v1/bulk/_create", method = RequestMethod.POST)
+    public ResponseEntity<ResponseInfo> projectFacilityV1BulkCreatePost(@ApiParam(value = "Capture linkage of Project and facility.", required = true) @Valid @RequestBody FieldPlanFacilityBulkRequest request) {
+        request.getRequestInfo().setApiId(httpServletRequest.getRequestURI());
+        producer.push(fieldPlannerConfiguration.getBulkCreateFieldPlanFacilityTopic(), request);
+
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(ResponseInfoFactory
+                .createResponseInfo(request.getRequestInfo(), true));
     }
 }

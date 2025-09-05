@@ -4,7 +4,6 @@ public class Constants {
 
     public static final String SET_PROJECT_BENEFICIARIES = "setProjectBeneficiaries";
     public static final String VALIDATION_ERROR = "VALIDATION_ERROR";
-    public static final String PROJECT_TYPES = "projectTypes";
     public static final String MDMS_RESPONSE = "MdmsRes";
     public static final String GET_PROJECT_ID = "getProjectId";
     public static final String BENEFICIARY_ID = "beneficiaryId";
@@ -25,10 +24,11 @@ public class Constants {
     public static final String GET_PRODUCT_VARIANT_ID = "getProductVariantId";
     public static final String SET_PROJECT_RESOURCE = "setProjectResource";
     public static final String GET_PROJECT_FACILITIES = "getProjectFacilities";
-    public static final String SET_PROJECT_FACILITIES = "setProjectFacilities";
+    public static final String SET_FIELDPLAN_FACILITIES = "setFieldPlanFacilities";
     public static final String GET_FACILITY_ID = "getFacilityId";
+    public static final String GET_FIELDPLAN_ID = "getFieldPlanId";
     public static final String PIPE = "||";
-    public static final String PROJECT_ID = "projectId";
+    public static final String FIELDPLAN_ID = "fieldPlanId";
     public static final String TASK_QUANTITY = "taskQuantity";
     public static final String HOUSEHOLD_ID = "HouseholdId";
     public static final String SET_USER_ACTION = "setUserActions";

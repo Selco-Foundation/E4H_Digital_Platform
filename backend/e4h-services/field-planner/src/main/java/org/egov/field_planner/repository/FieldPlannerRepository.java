@@ -33,7 +33,7 @@ public class FieldPlannerRepository extends GenericRepository<FieldPlan> {
                                   FieldPlannerQueryBuilder queryBuilder,
                                   JdbcTemplate jdbcTemplate) {
         super(producer, namedParameterJdbcTemplate, redisTemplate, selectQueryBuilder,
-                planRowMapper, Optional.of("project"));
+                planRowMapper, Optional.of("fieldPlan"));
         this.queryBuilder = queryBuilder;
         this.jdbcTemplate = jdbcTemplate;
         this.fieldPlanRowMapper = fieldPlanRowMapper;

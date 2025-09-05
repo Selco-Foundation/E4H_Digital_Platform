@@ -9,11 +9,14 @@ import org.egov.common.service.IdGenService;
 import org.egov.field_planner.config.FieldPlannerConfiguration;
 import org.egov.field_planner.util.FieldPlannerServiceUtil;
 import org.egov.field_planner.web.models.FieldPlan;
-import org.egov.field_planner.web.models.FieldPlanRequest;
+import org.egov.field_planner.web.models.FieldPlanFacility;
+import org.egov.field_planner.web.models.FieldPlanFacilityBulkRequest;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
 
+import static org.egov.common.utils.CommonUtils.enrichForCreate;
+import static org.egov.common.utils.CommonUtils.getTenantId;
 import static org.egov.field_planner.util.FieldPlannerConstants.DRAFT_STATUS;
 
 @Service
@@ -28,7 +31,7 @@ public class FieldPlannerEnrichment {
 
     private final Producer producer;
 
-    private final FieldPlannerConfiguration projectConfiguration;
+    private final FieldPlannerConfiguration fieldPlannerConfiguration;
 
     private final IdGenService idGenService;
 
@@ -51,11 +54,16 @@ public class FieldPlannerEnrichment {
         fieldPlan.setAuditDetails(auditDetails);
     }
 
-    private void enrichFieldPlanNameOnCreate(FieldPlan fieldPlan, RequestInfo requestInfo) {
-        fieldPlan.setId(UUID.randomUUID().toString());
-        log.info("Project id set to " + fieldPlan.getId());
-        AuditDetails auditDetails = fieldPlanServiceUtil.getAuditDetails(requestInfo.getUserInfo().getUuid(), null, true);
-        fieldPlan.setAuditDetails(auditDetails);
+    public void enrichFieldPlanFacilityOnCreate(List<FieldPlanFacility> entities, FieldPlanFacilityBulkRequest request) throws Exception {
+        log.info("starting the enrichment for create project facility");
+
+        log.info("generating IDs using IdGenService");
+        List<String> idList = idGenService.getIdList(request.getRequestInfo(),
+                getTenantId(entities),
+                fieldPlannerConfiguration.getFieldPlanFacilityIdFormat(), "", entities.size());
+
+        enrichForCreate(entities, idList, request.getRequestInfo());
+        log.info("enrichment done");
     }
 
 

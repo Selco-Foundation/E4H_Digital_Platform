@@ -33,7 +33,9 @@ CREATE TABLE field_plan_facilities (
                                        status VARCHAR DEFAULT 'ACTIVE',
                                        created_time BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
                                        last_modified_time BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
-                                       additional_details JSONB DEFAULT '{}'
+                                       additional_details JSONB DEFAULT '{}',
+                                       last_modified_by    character varying(64),
+                                       is_deleted         boolean
 );
 
 CREATE INDEX idx_field_plan_facilities_tenant ON field_plan_facilities(tenant_id);

@@ -2,20 +2,18 @@ package org.egov.field_planner.service;
 
 import com.jayway.jsonpath.JsonPath;
 import lombok.extern.slf4j.Slf4j;
-import org.egov.common.contract.request.RequestInfo;
-import org.egov.common.models.project.Project;
-import org.egov.common.models.project.ProjectRequest;
+import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.egov.common.ds.Tuple;
+import org.egov.common.models.ErrorDetails;
 import org.egov.common.producer.Producer;
+import org.egov.common.validator.Validator;
 import org.egov.field_planner.config.FieldPlannerConfiguration;
 import org.egov.field_planner.repository.FieldPlannerRepository;
 import org.egov.field_planner.service.enrichment.FieldPlannerEnrichment;
 import org.egov.field_planner.util.FieldPlannerServiceUtil;
 import org.egov.field_planner.util.MDMSUtils;
 import org.egov.field_planner.validator.FieldPlannerValidator;
-import org.egov.field_planner.web.models.Activity;
-import org.egov.field_planner.web.models.FieldPlan;
-import org.egov.field_planner.web.models.FieldPlanRequest;
-import org.egov.field_planner.web.models.NameResult;
+import org.egov.field_planner.web.models.*;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -23,11 +21,11 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import static org.egov.common.utils.CommonUtils.*;
 import static org.egov.field_planner.util.FieldPlannerConstants.*;
 
 @Service
@@ -39,12 +37,13 @@ public class FieldPlannerService {
     private final Producer producer;
     private final FieldPlannerEnrichment fieldPlannerEnrichment;
 
+    private final List<Validator<FieldPlanFacilityBulkRequest, FieldPlanFacility>> validators;
     private final FieldPlannerConfiguration fieldPlannerConfiguration;
     private final MDMSUtils mdmsUtils;
 
     @Autowired
     public FieldPlannerService(
-            FieldPlannerRepository fieldPlannerRepository,
+            FieldPlannerRepository fieldPlannerRepository, List<Validator<FieldPlanFacilityBulkRequest, FieldPlanFacility>> validators,
             FieldPlannerValidator fieldPlannerValidator, FieldPlannerEnrichment fieldPlannerEnrichment, FieldPlannerConfiguration fieldPlannerConfiguration,
             Producer producer, FieldPlannerServiceUtil projectServiceUtil, MDMSUtils mdmsUtils) {
             this.fieldPlannerValidator = fieldPlannerValidator;
@@ -53,6 +52,7 @@ public class FieldPlannerService {
             this.fieldPlannerRepository = fieldPlannerRepository;
             this.fieldPlannerEnrichment = fieldPlannerEnrichment;
             this.mdmsUtils = mdmsUtils;
+            this.validators = validators;
     }
 
     public FieldPlanRequest createFieldPlan(FieldPlanRequest fieldPlanRequest) {
@@ -175,8 +175,6 @@ public class FieldPlannerService {
 
         return baseName;
     }
-
-
 
 
 }
