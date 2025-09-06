@@ -1,5 +1,5 @@
 import React, {useEffect, useMemo, useState} from "react";
-import { FormComposerV2, Modal } from "@egovernments/digit-ui-react-components";
+import { FormComposerV2 } from "@egovernments/digit-ui-react-components";
 import {Stepper} from "@egovernments/digit-ui-components";
 import useMDMS from "../../hooks/useMDMS";
 import {useTranslation} from "react-i18next";
@@ -8,6 +8,7 @@ import {ProjectService} from "../../services/Project";
 import useProject from "../../hooks/useProject";
 import {useHistory, useLocation} from "react-router-dom";
 import _ from "lodash";
+import CustomArrowRight from "../../components/Custom/CustomArrowRight";
 
 const CreateProject = () => {
 
@@ -20,6 +21,14 @@ const CreateProject = () => {
   const history = useHistory();
   const location = useLocation();
   const { key, projectId } = Digit.Hooks.useQueryParams();
+  const [mobileView, setMobileView] = useState(window.innerWidth <= 640);
+
+  useEffect(() => {
+    const handleResize = () => setMobileView(window.innerWidth <= 640);
+    window.addEventListener("resize", handleResize);
+
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const { data: boundaryData } = useBoundary("State");
 
@@ -482,7 +491,7 @@ const CreateProject = () => {
   }
 
   return (
-    <div>
+    <div style={{padding: mobileView ? "15px" : "0px"}}>
       {createdProject?.name && (
         <div style={{fontSize: "40px", fontWeight: "bold", fontFamily: "Roboto Condensed", marginBottom: "20px", color: "#0B0C0C"}}>
           {createdProject?.name}
@@ -496,6 +505,9 @@ const CreateProject = () => {
         ]}
         onStepClick={onStepClick}
         currentStep={currentKey}
+        style={{
+          marginBottom: "20px"
+        }}
       />
       <FormComposerV2
         config={filteredConfig}
@@ -504,7 +516,12 @@ const CreateProject = () => {
         showSecondaryLabel={true}
         secondaryLabel={t("CORE_COMMON_BACK")}
         onFormValueChange={handleFormValueChange}
-        defaultData={defaultFormData}
+        defaultData={getDefaultValues()}
+        showMultipleCardsWithoutNavs={true}
+        noBreakLine={true}
+        cardStyle={{padding: "20px"}}
+        actionClassName={"reverse-actionbar"}
+        submitIcon={<CustomArrowRight />}
       />
     </div>
   )

@@ -114,6 +114,7 @@
 @import "./pages/employee/sandbox.scss";
 @import "./pages/employee/searchaction.scss";
 @import "./pages/employee/customcheckbox.scss";
+@import "./pages/employee/reverseactionbar.scss";
 
 .wbh-header-container {
   display: flex !important;
@@ -817,8 +818,19 @@ input[type="number"] {
   justify-content: space-between;
   flex-direction: row-reverse;
 }
-.previous-button{
-  margin-left: 4rem;
+.previous-button {
+  width: 100%;
+}
+@media (min-width: 640px) {
+  .previous-button{
+    width: 240px;
+  }
+}
+@media (min-width: 48rem) {
+  .previous-button{
+    margin-left: 4rem;
+    width: 240px;
+  }
 }
 .view-composer-header-section{
   display: flex;
