@@ -1,10 +1,19 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import CustomFileIcon from "./CustomFileIcon";
 import CustomUploadIcon from "../Custom/CustomUploadIcon";
 import CustomDownloadIcon from "../Custom/CustomDownloadIcon";
 import CustomCloseSvg from "../Custom/CustomCloseSvg";
 
 const UploadedFilePreview = ({ t, file, onReupload, onRemove }) => {
+
+  const [mobileView, setMobileView] = useState(window.innerWidth <= 780);
+
+  useEffect(() => {
+    const handleResize = () => setMobileView(window.innerWidth <= 780);
+    window.addEventListener("resize", handleResize);
+
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const handleDownload = () => {
     const url = URL.createObjectURL(file);
@@ -30,6 +39,8 @@ const UploadedFilePreview = ({ t, file, onReupload, onRemove }) => {
         backgroundColor: "#fafafa",
         fontFamily: "Arial, sans-serif",
         position: "relative",
+        flexDirection: mobileView ? "column" : "row",
+        gap: mobileView ? "15px" : "0px"
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
