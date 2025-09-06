@@ -1,5 +1,5 @@
 import React, {useEffect, useMemo, useState} from "react";
-import { FormComposerV2 } from "@egovernments/digit-ui-react-components";
+import { FormComposerV2, Loader, Toast } from "@egovernments/digit-ui-react-components";
 import {Stepper} from "@egovernments/digit-ui-components";
 import useMDMS from "../../hooks/useMDMS";
 import {useTranslation} from "react-i18next";
@@ -9,6 +9,7 @@ import useProject from "../../hooks/useProject";
 import {useHistory, useLocation} from "react-router-dom";
 import _ from "lodash";
 import CustomArrowRight from "../../components/Custom/CustomArrowRight";
+import { IngestionService } from "../../services/Ingestion";
 
 const CreateProject = () => {
 
@@ -20,8 +21,11 @@ const CreateProject = () => {
   const [createdProject, setCreatedProject] = useState({});
   const history = useHistory();
   const location = useLocation();
-  const { key, projectId } = Digit.Hooks.useQueryParams();
+  const { key, projectId, succeedFileUpload, errorCode } = Digit.Hooks.useQueryParams();
   const [mobileView, setMobileView] = useState(window.innerWidth <= 640);
+  const [toast, setToast] = useState(null);
+  const [blockUI, setBlockUI] = useState(null);
+  const [invalidDataError, setInvalidDataError] = useState(null);
 
   useEffect(() => {
     const handleResize = () => setMobileView(window.innerWidth <= 640);
@@ -91,6 +95,54 @@ const CreateProject = () => {
       setProjectFormData(formData);
     }
   }, [createdProject, projectTypeData]);
+
+  const handleFacilityDataUpload = async (file) => {
+
+    setBlockUI(true);
+    let uploadedFile;
+    try {
+      const response = await IngestionService.uploadTemplateFile(file, succeedFileUpload || false, errorCode || "INVALID_DATA");
+
+      if (response.status === 200) {
+        setToast({
+          key: "success",
+          label: `Successfully uploaded file`,
+        })
+        uploadedFile =  {
+          name: file.name,
+          fileStoreId: "dummy_id"
+        }
+      }
+
+    } catch (e) {
+      console.error("Error uploading template", e);
+      if (e.status === 400) {
+        if (e.data.code === "INVALID_TEMPLATE") {
+          setToast({
+            key: "error",
+            label: `The uploaded file does not match the required template structure. Please download and use the latest template.`
+          })
+        } else if (e.data.code === "INVALID_DATA") {
+          setInvalidDataError({
+            label: `${e.data.invalidFacilitiesCount} ${t("PM_HEALTH_FACILITIES_VALIDATION_FAILED")}`
+          })
+          uploadedFile =  {
+            name: file.name,
+            fileStoreId: "dummy_id"
+          }
+        }
+      } else {
+        setToast({
+          key: "error",
+          label: `Error uploading file`,
+        })
+      }
+    } finally {
+      setBlockUI(false);
+    }
+
+    return uploadedFile;
+  }
 
   const config = useMemo(
     () => [
@@ -264,7 +316,12 @@ const CreateProject = () => {
             customProps: {
               name: "uploadFacilityData",
               allowedFileTypes: [".csv", ".xls", ".xlsx"],
-              t
+              handleFileUpload: handleFacilityDataUpload,
+              invalidDataError: invalidDataError,
+              errorViewLabel: "CORE_COMMON_VIEW_ERRORS",
+              t,
+              setToast,
+              setBlockUI
             },
             nextRoute: "",
             populators: {
@@ -274,7 +331,7 @@ const CreateProject = () => {
           }
         ]
       }
-    ], [t, projectTypeData, boundaryData, defaultFormData]
+    ], [t, projectTypeData, boundaryData, defaultFormData, invalidDataError]
   )
 
   const filterConfig = (config, currentKey) => {
@@ -492,6 +549,25 @@ const CreateProject = () => {
 
   return (
     <div style={{padding: mobileView ? "15px" : "0px"}}>
+      {blockUI && (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            height: "100%",
+            width: "100%",
+            zIndex: 5,
+            backgroundColor: "gray",
+            opacity: 0.5,
+            position: "fixed",
+            top: 0,
+            left: 0,
+          }}
+        >
+          <Loader />
+        </div>
+      )}
       {createdProject?.name && (
         <div style={{fontSize: "40px", fontWeight: "bold", fontFamily: "Roboto Condensed", marginBottom: "20px", color: "#0B0C0C"}}>
           {createdProject?.name}
@@ -523,6 +599,19 @@ const CreateProject = () => {
         actionClassName={"reverse-actionbar"}
         submitIcon={<CustomArrowRight />}
       />
+      {toast && (
+        <Toast
+          error={toast.key === "error"}
+          warning={toast.key === "warning"}
+          style={{
+            ...(toast.key === "error" ? {backgroundColor: "#B91900"} : {}),
+            ...(mobileView ? {bottom: "120px"} : {})
+          }}
+          label={t(toast.label)}
+          isDleteBtn={true}
+          onClose={() => setToast(null)}
+        />
+      )}
     </div>
   )
 
