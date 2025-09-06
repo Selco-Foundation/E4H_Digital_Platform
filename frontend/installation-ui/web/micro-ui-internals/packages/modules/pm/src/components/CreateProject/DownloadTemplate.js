@@ -21,7 +21,7 @@ const DownloadTemplate = ({ props }) => {
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          marginBottom: "8px",
+          marginBottom: "30px",
         }}
       >
         <h2 style={{ margin: 0, fontSize: "30px", fontWeight: "700" }}>

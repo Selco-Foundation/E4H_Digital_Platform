@@ -1,0 +1,33 @@
+.reverse-actionbar {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  max-width: 100%;
+
+  .submit-bar,
+  .submit-bar-disabled {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    align-items: center;
+  }
+}
+@media (min-width: 640px) {
+  .reverse-actionbar {
+    display: flex;
+    flex-direction: row-reverse;
+    justify-content: space-between;
+    max-width: 100%;
+
+    .submit-bar,
+    .submit-bar-disabled {
+      width: 240px;
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      align-items: center;
+    }
+  }
+}
+
