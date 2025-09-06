@@ -1,6 +1,5 @@
 import React, {useEffect, useMemo, useState} from "react";
-import {Dropdown, MultiSelectDropdown} from "@egovernments/digit-ui-react-components";
-import dateRange from "@egovernments/digit-ui-module-dss/src/components/DateRange";
+import {MultiSelectDropdown} from "@egovernments/digit-ui-react-components";
 import _ from "lodash";
 
 const DistrictSelector = ({
