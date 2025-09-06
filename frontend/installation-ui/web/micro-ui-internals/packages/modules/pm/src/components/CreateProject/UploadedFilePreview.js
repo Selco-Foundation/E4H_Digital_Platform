@@ -40,7 +40,8 @@ const UploadedFilePreview = ({ t, file, onReupload, onRemove }) => {
         fontFamily: "Arial, sans-serif",
         position: "relative",
         flexDirection: mobileView ? "column" : "row",
-        gap: mobileView ? "15px" : "0px"
+        gap: mobileView ? "15px" : "0px",
+        marginBottom: "15px",
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>

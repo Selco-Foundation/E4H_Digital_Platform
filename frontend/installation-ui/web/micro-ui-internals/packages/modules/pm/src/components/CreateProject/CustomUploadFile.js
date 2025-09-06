@@ -1,15 +1,16 @@
 import React, { useState, useRef } from "react";
 import { UploadIcon } from "@egovernments/digit-ui-react-components";
 import UploadedFilePreview from "./UploadedFilePreview";
+import UploadErrorCard from "./UploadErrorCard";
 
 const CustomUploadFile = ({ setError, clearErrors, props }) => {
 
-  const { t, name, allowedFileTypes = [] } = props;
+  const { t, name, allowedFileTypes = [], handleFileUpload, invalidDataError, errorViewLabel } = props;
   const [file, setFile] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef(null);
 
-  const validateAndSaveFile = (uploadedFile) => {
+  const validateAndSaveFile = async (uploadedFile) => {
     if (
       allowedFileTypes.length === 0 ||
       allowedFileTypes.includes(uploadedFile.type) ||
@@ -17,7 +18,10 @@ const CustomUploadFile = ({ setError, clearErrors, props }) => {
         uploadedFile.name.toLowerCase().endsWith(ext.toLowerCase())
       )
     ) {
-      setFile(uploadedFile);
+      const savedFile = await handleFileUpload(uploadedFile);
+      if (savedFile) {
+        setFile(savedFile);
+      }
       clearErrors(name);
     } else {
       setError(name, {
@@ -28,10 +32,10 @@ const CustomUploadFile = ({ setError, clearErrors, props }) => {
     }
   }
 
-  const handleFileChange = (e) => {
+  const handleFileChange = async (e) => {
     const uploadedFile = e.target.files[0];
     if (uploadedFile) {
-      validateAndSaveFile(uploadedFile);
+      await validateAndSaveFile(uploadedFile);
     }
   };
 
@@ -44,13 +48,13 @@ const CustomUploadFile = ({ setError, clearErrors, props }) => {
     setIsDragging(false);
   };
 
-  const handleDrop = (e) => {
+  const handleDrop = async (e) => {
     e.preventDefault();
     setIsDragging(false);
     const uploadedFile = e.dataTransfer.files[0];
 
     if (uploadedFile) {
-      validateAndSaveFile(uploadedFile);
+      await validateAndSaveFile(uploadedFile);
     }
   };
 
@@ -103,6 +107,7 @@ const CustomUploadFile = ({ setError, clearErrors, props }) => {
         </p>
       </div>
       {file && <UploadedFilePreview t={t} file={file} onRemove={() => setFile(null)} onReupload={openFileDialog} />}
+      {invalidDataError && <UploadErrorCard t={t} cardLabel={invalidDataError.label} viewActionLabel={errorViewLabel || "CORE_COMMON_VIEW_ERRORS"} />}
     </div>
   );
 };
