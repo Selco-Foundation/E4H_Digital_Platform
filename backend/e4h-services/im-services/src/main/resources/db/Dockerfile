@@ -1,18 +1,19 @@
-FROM egovio/flyway:10.7.1
+FROM openjdk:17-slim as builder
 
 ARG JAR_FILE
 
 COPY ${JAR_FILE} /tmp/im-services.jar
 
-RUN apt-get update && \
-    apt-get install -y openjdk-11-jdk && \
-    rm -rf /var/lib/apt/lists/*
-
 # Unpack only the migration classes into /flyway/jars
-RUN mkdir -p /flyway/jars/db  && \
+RUN mkdir -p /migrations  && \
     jar xf /tmp/im-services.jar BOOT-INF/classes/db/migration && \
-    cp -r BOOT-INF/classes/db/migration /flyway/jars/db/ && \
+    cp -r BOOT-INF/classes/db/migration/* /migrations/ && \
     rm -rf BOOT-INF /tmp/im-services.jar
+
+#flyway
+FROM egovio/flyway:10.7.1
+
+COPY --from builder /migrations /flyway/jars/db/migration
 
 COPY ./migration/main /flyway/sql
 
