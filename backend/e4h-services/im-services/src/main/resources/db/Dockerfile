@@ -4,10 +4,12 @@ ARG JAR_FILE
 
 COPY ${JAR_FILE} /tmp/im-services.jar
 
-# Unpack only the migration classes into /flyway/jars
-RUN mkdir -p /migrations  && \
-    jar xf /tmp/im-services.jar BOOT-INF/classes && \
-    cp -r BOOT-INF/classes/* /migrations/ && \
+# Unpack migration classes and dependencies
+RUN mkdir -p /migrations && \
+    cd /migrations && \
+    jar xf /tmp/im-services.jar BOOT-INF/classes BOOT-INF/lib && \
+    cp -r BOOT-INF/classes/* . && \
+    cp BOOT-INF/lib/*.jar . && \
     rm -rf BOOT-INF /tmp/im-services.jar
 
 #flyway
