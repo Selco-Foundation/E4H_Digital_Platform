@@ -10,7 +10,18 @@ const PMApp = () => {
   const { path } = useRouteMatch();
   const match = useRouteMatch();
 
-  const breadCrumbsConfig = {};
+  const breadCrumbsConfig = {
+    home: {
+      content: t("CS_COMMON_HOME"),
+      path: `/${window.contextPath}/employee`,
+      show: true,
+    },
+    projectCreation: {
+      content: t("PM_ACTION_CREATE_PROJECT"),
+      path: match.url + `/project/create`,
+      show: true,
+    }
+  };
 
   useEffect(() => {
     Digit.UserService.setType("employee");
@@ -20,6 +31,7 @@ const PMApp = () => {
     <div className="ground-container">
       <Switch>
           <Route path={`${path}/project/create`} exact={true}>
+            <BreadCrumb crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.projectCreation]} />
             <CreateProject />
           </Route>
       </Switch>
