@@ -4,7 +4,10 @@ ARG JAR_FILE
 
 COPY ${JAR_FILE} /tmp/im-services.jar
 
-RUN apk add --no-cache openjdk11
+RUN apt-get update && \
+    apt-get install -y openjdk-11-jdk && \
+    rm -rf /var/lib/apt/lists/*
+
 # Unpack only the migration classes into /flyway/jars
 RUN mkdir -p /flyway/jars && \
     jar xf /tmp/im-services.jar BOOT-INF/classes/db/migration && \
