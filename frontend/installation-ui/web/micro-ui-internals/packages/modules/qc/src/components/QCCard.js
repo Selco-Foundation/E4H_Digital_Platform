@@ -7,6 +7,12 @@ import CustomArrowRight from "./CustomArrowRight";
 const QCCard = () => {
   const history = useHistory();
   const { t } = useTranslation();
+  const { info } = Digit.UserService.getUser();
+  const currentUserRoles = info?.roles?.map(role => role.code);
+
+  if(!currentUserRoles?.includes("INSTALLATION_REPORT_APPROVER_QC_TEAM")) {
+    return null;
+  }
 
   const userType = "employee";
 

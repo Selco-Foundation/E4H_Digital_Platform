@@ -7,6 +7,12 @@ import { AddExpense, ListAlt } from "@egovernments/digit-ui-svg-components";
 const PMCard = () => {
   const history = useHistory();
   const { t } = useTranslation();
+  const { info } = Digit.UserService.getUser();
+  const currentUserRoles = info?.roles?.map(role => role.code);
+
+  if(!currentUserRoles?.includes("PROJECT_MANAGER")) {
+    return null;
+  }
 
   const userType = "employee";
 
