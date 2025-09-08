@@ -14,7 +14,11 @@ const DistrictSelector = ({
   const [loadDefaultValues, setLoadDefaultValues] = useState(true);
 
   useEffect(() => {
-    setLoadDefaultValues(true);
+    if (Object.keys(defaultValues).length) {
+      setLoadDefaultValues(true);
+    } else {
+      setLoadDefaultValues(false);
+    }
   }, [defaultValues]);
 
   useEffect(() => {
