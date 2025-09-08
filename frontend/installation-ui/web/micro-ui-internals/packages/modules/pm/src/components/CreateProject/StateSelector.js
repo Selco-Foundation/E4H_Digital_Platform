@@ -13,10 +13,10 @@ const StateSelector = ({
   const [selectedState, setSelectedState] = useState(defaultValues[name]);
 
   useEffect(() => {
-    if (defaultValues[name] &&  !_.isEqual(defaultValues[name], selectedState)) {
+    if (defaultValues[name]) {
       setSelectedState(defaultValues[name]);
     }
-  }, [name, defaultValues[name]]);
+  }, [defaultValues[name]]);
 
   useEffect(() => {
     setValue(name, selectedState);

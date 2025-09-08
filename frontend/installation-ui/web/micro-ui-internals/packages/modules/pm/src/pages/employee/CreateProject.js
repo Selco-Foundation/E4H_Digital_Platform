@@ -7,7 +7,6 @@ import useBoundary from "../../hooks/useBoundary";
 import {ProjectService} from "../../services/Project";
 import useProject from "../../hooks/useProject";
 import {useHistory, useLocation} from "react-router-dom";
-import _ from "lodash";
 import CustomArrowRight from "../../components/Custom/CustomArrowRight";
 import { IngestionService } from "../../services/Ingestion";
 
@@ -16,8 +15,9 @@ const CreateProject = () => {
   const { t } = useTranslation();
   const tenantId = Digit.ULBService.getStateId();
   const [currentKey, setCurrentKey] = useState(1);
-  const [projectFormData, setProjectFormData] = useState({});
+  const [persistedFormData, setPersistedFormData] = useState({});
   const [defaultFormData, setDefaultFormData] = useState({});
+  const [currentFormData, setCurrentFormData] = useState({});
   const [createdProject, setCreatedProject] = useState({});
   const history = useHistory();
   const location = useLocation();
@@ -26,6 +26,7 @@ const CreateProject = () => {
   const [toast, setToast] = useState(null);
   const [blockUI, setBlockUI] = useState(null);
   const [invalidDataError, setInvalidDataError] = useState(null);
+  const [updateFormData, setUpdateFormData] = useState(null);
 
   useEffect(() => {
     const handleResize = () => setMobileView(window.innerWidth <= 640);
@@ -92,7 +93,7 @@ const CreateProject = () => {
         geographyDetails: createdProject.additionalDetails.geographyDetails,
       }
 
-      setProjectFormData(formData);
+      setPersistedFormData(formData);
     }
   }, [createdProject, projectTypeData]);
 
@@ -142,6 +143,15 @@ const CreateProject = () => {
     }
 
     return uploadedFile;
+  }
+
+  const getDefaultValues = () => {
+    switch (currentKey) {
+      case 1:
+        return persistedFormData.projectDetails;
+      case 2:
+        return persistedFormData.geographyDetails;
+    }
   }
 
   const config = useMemo(
@@ -345,15 +355,23 @@ const CreateProject = () => {
   }, [config, currentKey])
 
   useEffect(() => {
+    if (updateFormData && defaultFormData) {
+      Object.keys(defaultFormData).forEach(key => {
+        updateFormData(key, defaultFormData[key]);
+      })
+    }
+  }, [defaultFormData, updateFormData]);
+
+  useEffect(() => {
     switch (currentKey) {
       case 1:
-        setDefaultFormData(projectFormData.projectDetails);
+        setDefaultFormData(persistedFormData.projectDetails);
         break;
       case 2:
-        setDefaultFormData(projectFormData.geographyDetails);
+        setDefaultFormData(persistedFormData.geographyDetails);
         break;
     }
-  }, [projectFormData, currentKey]);
+  }, [persistedFormData, currentKey]);
 
   const formatDataForCreate = (data) => {
     return {
@@ -432,97 +450,23 @@ const CreateProject = () => {
   const handleFormSubmit = async (data) => {
     switch (currentKey) {
       case 1:
-        setProjectFormData(prev => ({...prev, projectDetails: data}));
+        setPersistedFormData(prev => ({...prev, projectDetails: data}));
         setCurrentKey(prev => prev + 1);
         break;
       case 2:
-        const newProjectFormData = {...projectFormData, geographyDetails: data};
-        setProjectFormData(newProjectFormData);
-        await upsertProject(newProjectFormData)
+        const newProjectFormData = {...persistedFormData, geographyDetails: data};
+        setPersistedFormData(newProjectFormData);
+        await upsertProject(newProjectFormData);
         break;
-    }
-
-  }
-
-  const handleProjectDetailsChange = (formData) => {
-    if (formData?.projectType && !_.isEqual(projectFormData?.projectDetails?.projectType, formData.projectType)) {
-      setProjectFormData(prev => ({
-        ...prev,
-        projectDetails: {
-          ...prev.projectDetails,
-          projectType: formData.projectType,
-        }
-      }));
-
-    } else if (formData?.justificationCode && !_.isEqual(projectFormData?.projectDetails?.justificationCode, formData.justificationCode)) {
-      setProjectFormData(prev => ({
-        ...prev,
-        projectDetails: {
-          ...prev.projectDetails,
-          justificationCode: formData.justificationCode,
-        }
-      }))
-
-    } else if (
-      formData?.projectDuration?.startDate
-      && formData?.projectDuration?.endDate
-      && !_.isEqual(projectFormData?.projectDetails?.projectDuration, formData.projectDuration)
-    ) {
-      setProjectFormData(prev => ({
-        ...prev,
-        projectDetails: {
-          ...prev.projectDetails,
-          projectDuration: formData.projectDuration
-        }
-      }))
-    }
-  }
-
-  const handleGeographyDataChange = (formData) => {
-    if (formData?.state && !_.isEqual(projectFormData?.geographyDetails?.state, formData.state)) {
-      setProjectFormData(prev => ({
-        ...prev,
-        geographyDetails: {
-          ...prev.geographyDetails,
-          state: formData.state
-        }
-      }));
-
-    } else if (
-      formData?.districts
-      && !_.isEqual(_.sortBy(projectFormData?.geographyDetails?.districts, "code"), _.sortBy(formData.districts, "code"))
-    ) {
-      setProjectFormData(prev => ({
-        ...prev,
-        geographyDetails: {
-          ...prev.geographyDetails,
-          districts: formData.districts
-        }
-      }));
-
-    } else if (
-      formData?.blocks
-      && !_.isEqual(_.sortBy(projectFormData?.geographyDetails?.blocks, "code"), _.sortBy(formData.blocks, "code"))
-    ) {
-      setProjectFormData(prev => ({
-        ...prev,
-        geographyDetails: {
-          ...prev.geographyDetails,
-          blocks: formData.blocks
-        }
-      }));
     }
   }
 
   const handleFormValueChange = (setValue, formData) => {
-    switch (currentKey) {
-      case 1:
-        handleProjectDetailsChange(formData);
-        break;
-      case 2:
-        handleGeographyDataChange(formData);
-        break;
-    }
+    setCurrentFormData(formData);
+  }
+
+  const setFormAccessors = ({setValue}) => {
+    setUpdateFormData(() => setValue);
   }
 
   const getNextActionLabel = () => {
@@ -538,12 +482,18 @@ const CreateProject = () => {
     setCurrentKey(key + 1);
   }
 
-  const getDefaultValues = () => {
+  const handleBackNavigation = () => {
     switch (currentKey) {
       case 1:
-        return projectFormData.projectDetails;
+        // setPersistedFormData(prev => ({...prev, projectDetails : currentFormData}))
+        history.push(`/${window?.contextPath}/employee`);
+        break;
       case 2:
-        return projectFormData.geographyDetails;
+        // setPersistedFormData(prev => ({...prev, geographyDetails : currentFormData}))
+        setCurrentKey(prev => prev - 1);
+        break;
+      case 3:
+        setCurrentKey(prev => prev - 1);
     }
   }
 
@@ -591,8 +541,10 @@ const CreateProject = () => {
         label={getNextActionLabel()}
         showSecondaryLabel={true}
         secondaryLabel={t("CORE_COMMON_BACK")}
-        onFormValueChange={handleFormValueChange}
-        defaultData={getDefaultValues()}
+        onSecondayActionClick={handleBackNavigation}
+        // onFormValueChange={handleFormValueChange}
+        getFormAccessors={setFormAccessors}
+        // defaultData={getDefaultValues()}
         showMultipleCardsWithoutNavs={true}
         noBreakLine={true}
         cardStyle={{padding: "20px"}}

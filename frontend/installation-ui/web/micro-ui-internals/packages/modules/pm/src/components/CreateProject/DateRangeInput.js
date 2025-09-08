@@ -16,7 +16,7 @@ const DateRangeInput = ({
   });
 
   useEffect(() => {
-    if (defaultValues[name] && !_.isEqual(defaultValues[name], dateRange)) {
+    if (defaultValues[name]) {
       setDateRange(defaultValues[name]);
     }
   }, [defaultValues[name]]);
@@ -66,6 +66,7 @@ const DateRangeInput = ({
         className="employee-card-input"
         type="date"
         value={dateRange.startDate}
+        max={dateRange.endDate}
         {...register(`${name}.startDate`)}
         onChange={(e) =>
           handleDateChange("startDate", e.target.value)
