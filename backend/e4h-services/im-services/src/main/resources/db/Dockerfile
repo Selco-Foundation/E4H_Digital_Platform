@@ -23,4 +23,9 @@ COPY migrate.sh /usr/bin/migrate.sh
 
 RUN chmod +x /usr/bin/migrate.sh
 
+# Download Flyway CLI JARs
+RUN mkdir -p /flyway/flyway-cli && \
+    wget -O /flyway/flyway-cli/flyway-commandline-10.7.1.tar.gz https://repo1.maven.org/maven2/org/flywaydb/flyway-commandline/10.7.1/flyway-commandline-10.7.1-linux-x64.tar.gz && \
+    tar -xzf /flyway/flyway-cli/flyway-commandline-10.7.1.tar.gz -C /flyway/flyway-cli
+
 ENTRYPOINT ["/usr/bin/migrate.sh"]
