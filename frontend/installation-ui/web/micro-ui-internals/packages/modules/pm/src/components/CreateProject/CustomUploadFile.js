@@ -5,7 +5,7 @@ import UploadErrorCard from "./UploadErrorCard";
 
 const CustomUploadFile = ({ setError, clearErrors, props }) => {
 
-  const { t, name, allowedFileTypes = [], handleFileUpload, invalidDataError, errorViewLabel } = props;
+  const { t, heading, description, name, allowedFileTypes = [], handleFileUpload, invalidDataError, errorViewLabel } = props;
   const [file, setFile] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef(null);
@@ -64,11 +64,28 @@ const CustomUploadFile = ({ setError, clearErrors, props }) => {
 
   return (
     <div>
+      {heading && (
+        <h2 style={{ margin: 0, fontSize: "32px", fontWeight: "700", marginBottom: "20px" }}>
+          {t(heading)}
+        </h2>
+      )}
+      {description && (
+        <p
+          style={{
+            margin: 0,
+            fontSize: "14px",
+            lineHeight: "1.4",
+            marginBottom: "30px"
+          }}
+        >
+          {t(description)}
+        </p>
+      )}
       <div
         style={{
           border: "1px dashed #ccc",
           borderRadius: "6px",
-          padding: "40px",
+          padding: "24px",
           textAlign: "center",
           backgroundColor: isDragging ? "#f0f0f0" : "#fafafa",
           fontFamily: "Arial, sans-serif",
