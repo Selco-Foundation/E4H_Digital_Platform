@@ -4,7 +4,7 @@ CLASSPATH="/flyway/jars"
 for jar in /flyway/jars/*.jar; do
   CLASSPATH="$CLASSPATH:$jar"
 done
-CLASSPATH="$CLASSPATH:/flyway/flyway-cli/flyway-10.7.1/lib/flyway/*"
+CLASSPATH="$CLASSPATH:/flyway/flyway-cli/flyway-9.22.3/lib/community/*""
 
 exec java -cp "$CLASSPATH" org.flywaydb.commandline.Main \
   -url=$DB_URL \
