@@ -519,7 +519,7 @@ const CreateProject = () => {
             alignItems: "center",
             height: "100%",
             width: "100%",
-            zIndex: 5,
+            zIndex: 10000005,
             backgroundColor: "gray",
             opacity: 0.5,
             position: "fixed",
