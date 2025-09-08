@@ -581,6 +581,7 @@ const CreateProject = () => {
           fontWeight: "400",
           color: "#0B0C0C"
         }}
+        isDescriptionBold={true}
         // onFormValueChange={handleFormValueChange}
         getFormAccessors={setFormAccessors}
         // defaultData={getDefaultValues()}
