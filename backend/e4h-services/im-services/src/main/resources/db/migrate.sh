@@ -6,7 +6,6 @@ for jar in /flyway/jars/*.jar; do
 done
 CLASSPATH="$CLASSPATH:/flyway/flyway-cli/flyway-10.7.1/lib/*"
 
-
 exec java -cp "$CLASSPATH" org.flywaydb.commandline.Main \
   -url=$DB_URL \
   -table=$SCHEMA_TABLE \
@@ -15,4 +14,5 @@ exec java -cp "$CLASSPATH" org.flywaydb.commandline.Main \
   -locations=$FLYWAY_LOCATIONS \
   -baselineOnMigrate=true \
   -outOfOrder=true \
+  -X \
   migrate
