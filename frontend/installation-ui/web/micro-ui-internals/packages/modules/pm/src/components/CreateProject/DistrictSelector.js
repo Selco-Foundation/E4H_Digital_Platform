@@ -1,26 +1,35 @@
-import React, {useEffect, useMemo, useState} from "react";
+import React, {useEffect, useState} from "react";
 import {MultiSelectDropdown} from "@egovernments/digit-ui-react-components";
-import _ from "lodash";
 
 const DistrictSelector = ({
+  data,
   setValue,
   props,
 }) => {
 
   const { t, name, stateIdentifier, boundaryData, defaultValues = {} } = props;
-  const [selectedState, setSelectedState] = useState(defaultValues[stateIdentifier] || null);
+  const [selectedState, setSelectedState] = useState(defaultValues[stateIdentifier]);
   const [districtMenu, setDistrictMenu] = useState([]);
   const [selectedDistricts, setSelectedDistricts] = useState([]);
+  const [loadDefaultValues, setLoadDefaultValues] = useState(true);
 
   useEffect(() => {
-    setSelectedState(defaultValues[stateIdentifier]);
-  }, [defaultValues[stateIdentifier]]);
+    setLoadDefaultValues(true);
+  }, [defaultValues]);
 
   useEffect(() => {
-    if (defaultValues[name] && !_.isEqual(_.sortBy(defaultValues[name], "code"), _.sortBy(selectedDistricts, "code"))) {
-      setSelectedDistricts(defaultValues[name]);
+    if (!loadDefaultValues) {
+      setSelectedState(data[stateIdentifier]);
     }
-  }, [defaultValues[name]])
+  }, [data[stateIdentifier]]);
+
+  useEffect(() => {
+    if (loadDefaultValues) {
+      setSelectedState(defaultValues[stateIdentifier]);
+      setSelectedDistricts(defaultValues[name] || []);
+      setLoadDefaultValues(false);
+    }
+  }, [loadDefaultValues])
 
   useEffect(() => {
     if (selectedDistricts?.length) {
@@ -42,8 +51,10 @@ const DistrictSelector = ({
         }));
       setDistrictMenu(newDistrictMenu);
 
-      const newSelectedDistricts = selectedDistricts.filter((district) => district.stateCode === selectedStateCode);
-      setSelectedDistricts(newSelectedDistricts);
+      if (!loadDefaultValues) {
+        const newSelectedDistricts = selectedDistricts.filter((district) => district.stateCode === selectedStateCode);
+        setSelectedDistricts(newSelectedDistricts);
+      }
     }
   }, [t, boundaryData, selectedState])
 
