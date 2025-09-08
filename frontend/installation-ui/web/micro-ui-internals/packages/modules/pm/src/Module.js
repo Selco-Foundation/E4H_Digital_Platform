@@ -18,6 +18,12 @@ const PMModule = ({ stateCode, userType, tenants }) => {
   const moduleCode = "PM";
   const language = Digit.StoreData.getCurrentLanguage();
   const { isLoading, data: store } = Digit.Services.useStore({ stateCode, moduleCode, language });
+  const { info } = Digit.UserService.getUser();
+  const currentUserRoles = info?.roles?.map(role => role.code);
+
+  if(!currentUserRoles?.includes("PROJECT_MANAGER")) {
+    return null;
+  }
 
   if (isLoading) {
     return <Loader />;
