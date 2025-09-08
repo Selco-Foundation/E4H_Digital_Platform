@@ -3,6 +3,7 @@ package org.egov.im.service;
 import org.apache.kafka.common.protocol.types.Field;
 import org.egov.im.web.models.IncidentRequest;
 import org.egov.im.web.models.Priority;
+import org.egov.im.web.models.workflow.ProcessInstance;
 import org.egov.im.web.models.workflow.State;
 import org.egov.tracer.model.CustomException;
 import com.jayway.jsonpath.JsonPath;
@@ -15,6 +16,7 @@ import org.springframework.util.CollectionUtils;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static org.egov.im.util.IMConstants.*;
 
@@ -22,7 +24,7 @@ import static org.egov.im.util.IMConstants.*;
 @Service
 public class SLAService {
 
-    public long computeTotalSla(String currentState, List<State> states, List<String> previousStates) {
+    public long computeTotalSla(String currentState, List<State> states, List<ProcessInstance> processInstances) {
         log.info("SLAService::computeTotalSla called | currentState={}", currentState);
         Map<String, Long> stateToSlaMap = new HashMap<>();
         for (State state : states) {
@@ -33,6 +35,10 @@ public class SLAService {
         }
         long totalSla = 0;
         //calculating sla for all states till current state
+        List<String> previousStates = processInstances
+                .stream()
+                .map(p -> p.getState().getApplicationStatus())
+                .collect(Collectors.toList());
         previousStates.add(currentState);
         for(String state : previousStates){
             if(PENDINGFORASSIGNMENT.equals(state) || PENDINGATVENDOR.equals(state)
