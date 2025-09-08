@@ -2,6 +2,7 @@ import React, { useEffect } from "react";
 import { Redirect, Route, Switch, useHistory, useLocation } from "react-router-dom";
 import CitizenApp from "./pages/citizen";
 import EmployeeApp from "./pages/employee";
+import Auth from "./pages/employee/Auth";
 import SignUp from "./pages/employee/SignUp";
 import Otp from "./pages/employee/Otp";
 import ViewUrl from "./pages/employee/ViewUrl";
@@ -72,6 +73,9 @@ export const DigitApp = ({ stateCode, modules, appTenants, logoUrl, logoUrlWhite
   };
   return (
     <Switch>
+     <Route exact path={`/${window?.contextPath}/auth`}>
+        <Auth />
+      </Route>
      {allowedUserTypes?.some(userType=>userType=="employee")&& <Route path={`/${window?.contextPath}/employee`}>
         <EmployeeApp {...commonProps} />
       </Route>}

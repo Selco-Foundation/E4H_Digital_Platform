@@ -1,4 +1,4 @@
-import React from "react";
+import React, {useState} from "react";
 import { useTranslation } from "react-i18next";
 import { useHistory } from "react-router-dom";
 import CustomMenuIcon from "./CustomMenuIcon";
@@ -7,12 +7,31 @@ import CustomArrowRight from "./CustomArrowRight";
 const QCCard = () => {
   const history = useHistory();
   const { t } = useTranslation();
+  const [showCreateProjectPopup, setShowCreateProjectPopup] = useState(false);
 
   const userType = "employee";
 
   const handleClick = () => {
     history.push(`/${window?.contextPath}/employee/qc/field-plan`);
   };
+
+    const handleCreateProjectRedirection = () => {
+        setShowCreateProjectPopup(true);
+    };
+
+    const handleProceedToCreate = () => {
+        setShowCreateProjectPopup(false);
+        // Navigate to actual create project page
+        console.debug("Proceeding to create project");
+    };
+
+    const handleClosePopup = () => {
+        setShowCreateProjectPopup(false);
+    };
+
+    const handleViewProjectRedirection = () => {
+        console.debug("clicked 2");
+    };
 
   return (
     <div
