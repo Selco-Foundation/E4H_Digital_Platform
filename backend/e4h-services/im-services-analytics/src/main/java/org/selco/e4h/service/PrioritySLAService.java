@@ -37,7 +37,7 @@ public class PrioritySLAService {
 
     private static final ZoneId INDIA_ZONE = ZoneId.of("Asia/Kolkata");
 
-    public void computeAndUpdateSLA(SLARequest request, boolean transform) {
+    public void computeAndUpdateSLA(SLARequest request, boolean transform , boolean closedTickets) {
         int pageSize = 5000;
         int from = 0;
         boolean hasMore = true;
@@ -59,8 +59,8 @@ public class PrioritySLAService {
 
         while (hasMore) {
             List<Map<String, Object>> tickets = transform
-                    ? esClient.fetchOldOpenTicketsFromImServices(from, pageSize)
-                    : esClient.fetchOpenTickets(from, pageSize);
+                    ? esClient.fetchOldRequiredTicketsFromImServices(from, pageSize, closedTickets)
+                    : esClient.fetchRequiredTickets(from, pageSize,closedTickets);
 
             if (tickets.isEmpty()) break;
 
@@ -87,14 +87,18 @@ public class PrioritySLAService {
 
         String tenantId = (String) data.get("tenantId");
         String IncidentId = (String) incident.get("incidentId");
+
+        //get process instances
+        List<ProcessInstance> processInstances = workflowService.getAllProcessInstances(tenantId,IncidentId, requestInfo);
+        Collections.reverse(processInstances);
+
         if (tenantId.contains(".")) tenantId = tenantId.split("\\.")[0];
         String state = (String) ((Map<String, Object>) currentProcessInstance.get(STATE)).get("applicationStatus");
 
-        long createdTime = Long.parseLong(auditDetails.get("createdTime").toString());
         long lastModifiedTime = Long.parseLong(auditDetails.get("lastModifiedTime").toString());
         long now = Instant.now().toEpochMilli();
 
-        long businessElapsedFromCreated = calculateBusinessMillis(createdTime, now, bh);
+        long businessElapsedFromCreated = calculateBusinessDurationForAllStates(processInstances, bh);
         long businessElapsedFromModified = calculateBusinessMillis(lastModifiedTime, now, bh);
 
 
@@ -132,14 +136,10 @@ public class PrioritySLAService {
             currentProcessInstance.put(BUSINESS_SERVICE, updatedBusinessService);
         }
 
-        List<ProcessInstance> processInstances = workflowService.getAllProcessInstances(tenantId,IncidentId, requestInfo);
-        List<String> previousStates = processInstances
-                .stream()
-                .map(p -> p.getState().getApplicationStatus())
-                .collect(Collectors.toList());
+        Duration totalSla = computeTotalSla(tenantId, priority, state, slaMap, processInstances);
+        long definedTotalSla = totalSla.toMillis();
 
-        Duration totalSla = computeTotalSla(tenantId, priority, state, slaMap,previousStates);
-        long totalSlaRemaining = totalSla.toMillis() - businessElapsedFromCreated;
+        long totalSlaRemaining = definedTotalSla - businessElapsedFromCreated;
         long slaRemaining = stateSla - businessElapsedFromModified;
 
         Object incidentIdObj = incident.get("incidentId");
@@ -147,18 +147,23 @@ public class PrioritySLAService {
             log.warn("Incident ID is null for ticket: {}", ticket);
             return;
         }
+        boolean isAClosedTicket = state.equals(CLOSED_AFTER_REJECTION) || state.equals(CLOSED_AFTER_RESOLUTION)
+                || state.equals(REJECTED) || state.equals(RESOLVED);
 
         String incidentId = incidentIdObj.toString();
         if (transform) {
             Map<String, Object> fullDoc = buildDocumentToInsert(stateSla, slaRemaining, totalSlaRemaining, ticket);
             updateService.upsertTransformedTicket(incidentId, fullDoc);
-        } else {
+        }
+        else {
             updateService.updateSlaFields(
                     incidentId,
                     slaRemaining,
                     totalSlaRemaining,
                     stateSla,
-                    updatedBusinessService
+                    updatedBusinessService,
+                    isAClosedTicket,
+                    definedTotalSla
             );
         }
     }
@@ -280,6 +285,30 @@ public class PrioritySLAService {
         return total;
     }
 
+    public long calculateBusinessDurationForAllStates(List<ProcessInstance> processInstances, BusinessHours businessHours) {
+        if (processInstances == null || processInstances.isEmpty()) {
+            return 0;
+        }
+        long totalBusinessDuration = 0;
+
+        for (int i = 0; i < processInstances.size(); i++) {
+            ProcessInstance current = processInstances.get(i);
+            String state = current.getState().getApplicationStatus();
+
+            if (PENDING_RESOLUTION.equals(state) || PENDING_FOR_ASSIGNMENT.equals(state)
+                    || state.startsWith(PENDING_ASSIGNMENT_PREFIX) || state.startsWith(PENDING_RESOLUTION_PREFIX)) {
+
+                long prevStateTime = current.getAuditDetails().getCreatedTime();
+                long nextStateTime = (i + 1) < processInstances.size() ? processInstances.get(i + 1).getAuditDetails().getCreatedTime()
+                        : Instant.now().toEpochMilli();
+
+                totalBusinessDuration += calculateBusinessMillis(prevStateTime,nextStateTime, businessHours);
+            }
+        }
+
+        return totalBusinessDuration;
+    }
+
     public record TenantServiceStateKey(String tenantId, String businessService, String state) {}
 
     private Map<TenantServiceStateKey, Duration> loadSLADurationsFromBusinessService() {
@@ -310,12 +339,16 @@ public class PrioritySLAService {
         }
     }
 
-    private Duration computeTotalSla(String tenantId, String priority, String currentState, Map<TenantServiceStateKey, Duration> slaMap, List<String> previousStates) {
-        String businessService = "Incident_" + priority;
+    private Duration computeTotalSla(String tenantId, String priority, String currentState, Map<TenantServiceStateKey, Duration> slaMap, List<ProcessInstance> processInstances) {
+        String businessService = "Incident_" + capitalize(priority);
         Duration total = Duration.ZERO;
 
         //calculating sla for all states till current state
-        previousStates.add(currentState);
+        List<String> previousStates = processInstances
+                .stream()
+                .map(p -> p.getState().getApplicationStatus())
+                .collect(Collectors.toList());
+
         for(String state : previousStates){
             if(PENDING_FOR_ASSIGNMENT.equals(state) || PENDING_RESOLUTION.equals(state)
                     || state.startsWith(PENDING_ASSIGNMENT_PREFIX) || (state.startsWith(PENDING_RESOLUTION_PREFIX))){

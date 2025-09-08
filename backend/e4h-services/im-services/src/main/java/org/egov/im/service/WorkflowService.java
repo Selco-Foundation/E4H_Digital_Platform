@@ -114,10 +114,10 @@ public class WorkflowService {
     private void enrichTotalSla(IncidentRequestWrapper wrapper, ProcessInstance processInstance) {
         IncidentRequest request = wrapper.getIncidentRequest();
         log.debug("Enriching SLA for incident: {}", request.getIncident().getIncidentId());
-        Long createdTime = request.getIncident().getAuditDetails().getCreatedTime();
         String applicationStatus = request.getIncident().getApplicationStatus();
-        ZonedDateTime created = ZonedDateTime.ofInstant(Instant.ofEpochMilli(createdTime), ZoneId.of("Asia/Kolkata"));
-        ZonedDateTime now = ZonedDateTime.now(ZoneId.of("Asia/Kolkata"));
+        RequestInfo requestInfo= request.getRequestInfo();
+        String tenantId = request.getIncident().getTenantId();
+        String IncidentId = request.getIncident().getIncidentId();
 
         // Step 1: Fetch MDMS BusinessHours data
         Object mdmsData = mdmsUtils.fetchMDMSData(
@@ -142,24 +142,15 @@ public class WorkflowService {
         if (businessHourList == null || businessHourList.isEmpty()) {
             throw new CustomException("MDMS_MISSING", "BusinessHours config missing from MDMS");
         }
-        RequestInfo requestInfo= request.getRequestInfo();
-        String tenantId = request.getIncident().getTenantId();
-        String IncidentId = request.getIncident().getIncidentId();
-        List<ProcessInstance> processInstances = getAllProcessInstances(tenantId,IncidentId, requestInfo);
-        List<String> previousStates = processInstances
-                .stream()
-                .map(p -> p.getState().getApplicationStatus())
-                .collect(Collectors.toList());
 
-        if((applicationStatus.equals(CLOSED_AFTER_REJECTION) || applicationStatus.equals(CLOSED_AFTER_RESOLUTION)) && !processInstances.isEmpty()){
-            long prevStateTime = processInstances.get(0).getAuditDetails().getCreatedTime();
-            ZonedDateTime zonedPrevStateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(prevStateTime), ZoneId.of("Asia/Kolkata"));
-            now = zonedPrevStateTime;
-        }
+        //get all process instances
+        List<ProcessInstance> processInstances = getAllProcessInstances(tenantId,IncidentId, requestInfo);
+        Collections.reverse(processInstances);
+
         // Step 3: Use BusinessHoursUtil
         BusinessHoursUtil util = new BusinessHoursUtil(businessHourList);
-        long businessHoursElapsed = util.calculateBusinessDuration(created, now);
-        long definedTotalSla = slaService.computeTotalSla(applicationStatus, this.getStates(), previousStates);
+        long businessHoursElapsed = util.calculateBusinessDurationForAllStates(processInstances);
+        long definedTotalSla = slaService.computeTotalSla(applicationStatus, this.getStates(), processInstances);
         long totalSlaRemaining = definedTotalSla - businessHoursElapsed;
 
         wrapper.getIndexView().setDefinedTotalSla(definedTotalSla);
