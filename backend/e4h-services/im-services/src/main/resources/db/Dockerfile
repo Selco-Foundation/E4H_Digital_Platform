@@ -7,7 +7,7 @@ COPY ${JAR_FILE} /tmp/im-services.jar
 # Unpack only the migration classes into /flyway/jars
 RUN mkdir -p /migrations  && \
     jar xf /tmp/im-services.jar BOOT-INF/classes/db/migration && \
-    cp -r BOOT-INF/classes/db/migration/main/ /migrations/ && \
+    cp -r BOOT-INF/classes/db/migration/main/* /migrations/ && \
     rm -rf BOOT-INF /tmp/im-services.jar
 
 #flyway
