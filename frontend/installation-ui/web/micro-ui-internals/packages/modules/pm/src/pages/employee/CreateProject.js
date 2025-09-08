@@ -159,8 +159,6 @@ const CreateProject = () => {
     () => [
       {
         key: "1",
-        head: "PM_CREATE_PROJECT_HEAD_PROJECT_DETAILS",
-        subHead: "PM_CREATE_PROJECT_HEAD_PROJECT_DETAILS_DESC",
         body: [
           {
             inline: true,
@@ -216,8 +214,6 @@ const CreateProject = () => {
       },
       {
         key: "2",
-        head: "PM_CREATE_PROJECT_HEAD_GEOGRAPHY_DETAILS",
-        subHead: "PM_CREATE_PROJECT_HEAD_GEOGRAPHY_DETAILS_DESC",
         body: [
           {
             inline: true,
@@ -313,8 +309,6 @@ const CreateProject = () => {
       },
       {
         key: "3",
-        head: "PM_CREATE_PROJECT_HEAD_UPLOAD_FACILITY_DATA",
-        subHead: "PM_CREATE_PROJECT_HEAD_UPLOAD_FACILITY_DATA_DESC",
         body: [
           {
             isMandatory: true,
@@ -330,6 +324,8 @@ const CreateProject = () => {
               handleFileUpload: handleFacilityDataUpload,
               invalidDataError: invalidDataError,
               errorViewLabel: "CORE_COMMON_VIEW_ERRORS",
+              heading: "PM_CREATE_PROJECT_HEAD_UPLOAD_FACILITY_DATA",
+              description: "PM_CREATE_PROJECT_HEAD_UPLOAD_FACILITY_DATA_DESC",
               t,
               setToast,
               setBlockUI
@@ -480,6 +476,24 @@ const CreateProject = () => {
     }
   };
 
+  const getHeading = () => {
+    switch (currentKey) {
+      case 1:
+        return t("PM_CREATE_PROJECT_HEAD_PROJECT_DETAILS");
+      case 2:
+        return t("PM_CREATE_PROJECT_HEAD_GEOGRAPHY_DETAILS");
+    }
+  }
+
+  const getDescription = () => {
+    switch (currentKey) {
+      case 1:
+        return t("PM_CREATE_PROJECT_HEAD_PROJECT_DETAILS_DESC");
+      case 2:
+        return t("PM_CREATE_PROJECT_HEAD_GEOGRAPHY_DETAILS_DESC");
+    }
+  }
+
   const onStepClick = (key) => {
     if (key >= currentKey) return;
     setCurrentKey(key + 1);
@@ -555,6 +569,18 @@ const CreateProject = () => {
         showSecondaryLabel={true}
         secondaryLabel={t("CORE_COMMON_BACK")}
         onSecondayActionClick={handleBackNavigation}
+        heading={getHeading()}
+        headingStyle={{
+          fontSize: "32px",
+          marginBottom: "20px",
+        }}
+        description={getDescription()}
+        descriptionStyle={{
+          fontSize: "14px",
+          fontFamily: "Roboto",
+          fontWeight: "400",
+          color: "#0B0C0C"
+        }}
         // onFormValueChange={handleFormValueChange}
         getFormAccessors={setFormAccessors}
         // defaultData={getDefaultValues()}
