@@ -36,8 +36,8 @@ const DistrictSelector = ({
   }, [loadDefaultValues])
 
   useEffect(() => {
-    if (selectedDistricts?.length) {
-      setValue(name, selectedDistricts);
+    if (selectedDistricts.filter((block) => block.code !== "ALL_DISTRICTS").length) {
+      setValue(name, selectedDistricts.filter((block) => block.code !== "ALL_DISTRICTS"));
     } else {
       setValue(name, undefined);
     }
@@ -51,9 +51,15 @@ const DistrictSelector = ({
         .filter((district) => district.stateCode === selectedStateCode)
         .map((district) => ({
           ...district,
-          name: t(`DISTRICT_${district.code.toUpperCase()}`),
+          name: `DISTRICT_${district.code.toUpperCase()}`,
         }));
-      setDistrictMenu(newDistrictMenu);
+      setDistrictMenu([
+        {
+          code: "ALL_DISTRICTS",
+          name: "PM_ACTION_SELECT_ALL_DISTRICTS",
+        },
+        ...newDistrictMenu
+      ]);
 
       if (!loadDefaultValues) {
         const newSelectedDistricts = selectedDistricts.filter((district) => district.stateCode === selectedStateCode);
@@ -63,7 +69,12 @@ const DistrictSelector = ({
   }, [t, boundaryData, selectedState])
 
   const handleDistrictSelection = (districts) => {
-    setSelectedDistricts(districts);
+    const selectedDistrictCodes = districts.map((district) => district.code);
+    if (selectedDistrictCodes.includes("ALL_DISTRICTS")) {
+      setSelectedDistricts(districtMenu);
+    } else {
+      setSelectedDistricts(districts);
+    }
   }
 
   return (
@@ -74,6 +85,7 @@ const DistrictSelector = ({
         onSelect={(e) => {
           handleDistrictSelection(e?.map(row=>{return row?.[1] ? row[1] : null}).filter(e=>e))
         }}
+        defaultLabel={`${selectedDistricts.filter((block) => block.code !== "ALL_DISTRICTS").length || ""}`}
         selected={selectedDistricts}
       />
     </div>
