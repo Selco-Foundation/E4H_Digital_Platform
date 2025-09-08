@@ -603,20 +603,8 @@ public class ProjectService {
         // Check if only allowed fields are being updated
         return Objects.equals(projectFromDB.getId(), project.getId()) &&
                Objects.equals(projectFromDB.getTenantId(), project.getTenantId()) &&
-               Objects.equals(projectFromDB.getProjectNumber(), project.getProjectNumber()) &&
-               Objects.equals(projectFromDB.getProjectType(), project.getProjectType()) && // Read-only
-               Objects.equals(projectFromDB.getProjectSubType(), project.getProjectSubType()) &&
-               Objects.equals(projectFromDB.getDepartment(), project.getDepartment()) &&
-               Objects.equals(projectFromDB.getDescription(), project.getDescription()) &&
-               Objects.equals(projectFromDB.getReferenceID(), project.getReferenceID()) &&
-               Objects.equals(projectFromDB.getProjectTypeId(), project.getProjectTypeId()) &&
-               isValidAddressUpdate(projectFromDB.getAddress(), project.getAddress()) && // Read-only (state)
-               Objects.equals(projectFromDB.getIsTaskEnabled(), project.getIsTaskEnabled()) &&
-               Objects.equals(projectFromDB.getParent(), project.getParent()) &&
-               Objects.equals(projectFromDB.getProjectHierarchy(), project.getProjectHierarchy()) &&
-               Objects.equals(projectFromDB.getNatureOfWork(), project.getNatureOfWork()) &&
-               Objects.equals(projectFromDB.getIsDeleted(), project.getIsDeleted()) &&
-               Objects.equals(projectFromDB.getRowVersion(), project.getRowVersion()) &&
+               Objects.equals(projectFromDB.getProjectType(), project.getProjectType()) &&
+               isValidAddressUpdate(projectFromDB.getAddress(), project.getAddress()) &&
                isValidAdditionalDetailsUpdate(projectFromDB.getAdditionalDetails(), project.getAdditionalDetails());
         // Note: We allow startDate, endDate, name, additionalDetails.geographyDetails, and auditDetails to be different
     }
