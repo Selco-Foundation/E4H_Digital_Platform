@@ -495,12 +495,13 @@ public class ProjectService {
         projectFromDB.setAuditDetails(project.getAuditDetails());
 
         /*
-         * Ensure that no other properties are being updated besides the start and end dates
+         * Ensure that no other properties are being updated besides the start, end dates, name, and additional details
+         * Note: Name might be updated as a result of date changes, so we allow name updates
          */
-        if (!objectMapper.valueToTree(projectFromDB).equals(objectMapper.valueToTree(project))) {
+        if (!isValidCascadingUpdate(projectFromDB, project)) {
             throw new CustomException(
                     "PROJECT_CASCADE_UPDATE_ERROR",
-                    "Can only update Project dates and additional details if cascade Project date update true"
+                    "Can only update Project dates, name, and additional details if cascade Project date update true"
             );
         }
 
@@ -590,6 +591,67 @@ public class ProjectService {
         } catch (Exception e) {
             log.error("Error handling project name update for project: {}", project.getId(), e);
             // Don't throw exception - continue with update even if name generation fails
+        }
+    }
+
+    /**
+     * Validates if the cascading update only modifies allowed fields
+     * Allowed fields: startDate, endDate, name, additionalDetails.geographyDetails, auditDetails
+     * Read-only fields: projectType, state, justificationCode
+     */
+    private boolean isValidCascadingUpdate(Project projectFromDB, Project project) {
+        // Check if only allowed fields are being updated
+        return Objects.equals(projectFromDB.getId(), project.getId()) &&
+               Objects.equals(projectFromDB.getTenantId(), project.getTenantId()) &&
+               Objects.equals(projectFromDB.getProjectNumber(), project.getProjectNumber()) &&
+               Objects.equals(projectFromDB.getProjectType(), project.getProjectType()) && // Read-only
+               Objects.equals(projectFromDB.getProjectSubType(), project.getProjectSubType()) &&
+               Objects.equals(projectFromDB.getDepartment(), project.getDepartment()) &&
+               Objects.equals(projectFromDB.getDescription(), project.getDescription()) &&
+               Objects.equals(projectFromDB.getReferenceID(), project.getReferenceID()) &&
+               Objects.equals(projectFromDB.getProjectTypeId(), project.getProjectTypeId()) &&
+               Objects.equals(projectFromDB.getAddress(), project.getAddress()) && // Read-only (state)
+               Objects.equals(projectFromDB.getIsTaskEnabled(), project.getIsTaskEnabled()) &&
+               Objects.equals(projectFromDB.getParent(), project.getParent()) &&
+               Objects.equals(projectFromDB.getProjectHierarchy(), project.getProjectHierarchy()) &&
+               Objects.equals(projectFromDB.getNatureOfWork(), project.getNatureOfWork()) &&
+               Objects.equals(projectFromDB.getIsDeleted(), project.getIsDeleted()) &&
+               Objects.equals(projectFromDB.getRowVersion(), project.getRowVersion()) &&
+               isValidAdditionalDetailsUpdate(projectFromDB.getAdditionalDetails(), project.getAdditionalDetails());
+        // Note: We allow startDate, endDate, name, additionalDetails.geographyDetails, and auditDetails to be different
+    }
+
+    /**
+     * Validates if only allowed fields in additionalDetails are being updated
+     * Allowed: geographyDetails (districts, blocks)
+     * Read-only: justificationCode field
+     */
+    private boolean isValidAdditionalDetailsUpdate(Object originalAdditionalDetails, Object newAdditionalDetails) {
+        if (originalAdditionalDetails == null && newAdditionalDetails == null) {
+            return true;
+        }
+        if (originalAdditionalDetails == null || newAdditionalDetails == null) {
+            return false;
+        }
+
+        try {
+            // Convert to JsonNode for easier comparison
+            JsonNode originalNode = mapper.valueToTree(originalAdditionalDetails);
+            JsonNode newNode = mapper.valueToTree(newAdditionalDetails);
+
+            // Check if justificationCode is unchanged (read-only)
+            JsonNode originalJustification = originalNode.get("justificationCode");
+            JsonNode newJustification = newNode.get("justificationCode");
+            if (!Objects.equals(originalJustification, newJustification)) {
+                log.warn("justificationCode cannot be changed during cascading update");
+                return false;
+            }
+
+            return true;
+
+        } catch (Exception e) {
+            log.error("Error validating additionalDetails update", e);
+            return false;
         }
     }
 
