@@ -463,6 +463,11 @@ public class ProjectService {
         }
 
         /*
+         * Handle project name regeneration if needed
+         */
+        handleProjectNameUpdate(request, project, projectFromDB);
+
+        /*
          * Enrich the project with values other than the start, end dates, and AdditionalDetails,
          * and push the update to the message broker
          */
@@ -508,6 +513,11 @@ public class ProjectService {
         projectFromDB.setAuditDetails(originalAuditDetails);
 
         /*
+         * Handle project name regeneration if needed (dates changed)
+         */
+        handleProjectNameUpdate(request, project, projectFromDB);
+
+        /*
          * Update lastModifiedTime and lastModifiedBy for the project
          */
         projectEnrichment.enrichProjectRequestOnUpdate(project, projectFromDB, request.getRequestInfo());
@@ -519,6 +529,82 @@ public class ProjectService {
         producer.push(projectConfiguration.getUpdateProjectDateTopic(), request);
     }
 
+
+    /**
+     * Handles project name regeneration during updates
+     * Compares the new base name with existing name and updates if different
+     */
+    private void handleProjectNameUpdate(ProjectRequest request, Project project, Project projectFromDB) {
+        try {
+            // Skip name generation for FieldPlan and Facility project types
+            String projectType = project.getProjectType();
+            if (PROJECT_TYPE_FIELDPLAN.equals(projectType) || PROJECT_TYPE_FACILITY.equals(projectType)) {
+                log.info("Skipping name regeneration for project type: {} during update", projectType);
+                return;
+            }
+
+            // Generate new base name based on current project data
+            ProjectNameResult nameResult = projectNameGenerationService.generateNameAndCheckDuplicate(project, request.getRequestInfo());
+            
+            if (nameResult == null || nameResult.getName() == null) {
+                log.warn("Could not generate new name for project: {} during update", project.getId());
+                return;
+            }
+
+            String newBaseName = nameResult.getName();
+            String existingName = projectFromDB.getName();
+
+            // Extract base name from existing name (remove any suffix like -1, -2, etc.)
+            String existingBaseName = extractBaseNameFromExistingName(existingName);
+
+            // Compare base names (ignore suffixes)
+            if (!newBaseName.equals(existingBaseName)) {
+                log.info("Project name needs update. Existing: {}, New: {}", existingName, newBaseName);
+                
+                // Check if the new base name already exists in the system
+                boolean isNewNameDuplicate = projectRepository.isProjectNameExists(newBaseName, project.getTenantId());
+                
+                if (isNewNameDuplicate) {
+                    // Generate unique name with suffix
+                    String uniqueName = generateUniqueBatchName(newBaseName, project.getTenantId(), new HashSet<>());
+                    project.setName(uniqueName);
+                    log.info("Updated project name to unique name: {} (base: {})", uniqueName, newBaseName);
+                } else {
+                    // Use the new base name as it's unique
+                    project.setName(newBaseName);
+                    log.info("Updated project name to: {}", newBaseName);
+                }
+                
+                // Update isDuplicateName flag in additionalDetails
+                Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(
+                    project.getAdditionalDetails(),
+                    "isDuplicateName",
+                    isNewNameDuplicate
+                );
+                project.setAdditionalDetails(enrichedAdditionalDetails);
+                
+            } else {
+                log.info("Project name unchanged. Existing: {}, New base: {}", existingName, newBaseName);
+            }
+            
+        } catch (Exception e) {
+            log.error("Error handling project name update for project: {}", project.getId(), e);
+            // Don't throw exception - continue with update even if name generation fails
+        }
+    }
+
+    /**
+     * Extracts base name from existing name by removing numeric suffixes
+     * Example: "E4H-TS-2023-25-5" -> "E4H-TS-2023-25"
+     */
+    private String extractBaseNameFromExistingName(String existingName) {
+        if (existingName == null || existingName.trim().isEmpty()) {
+            return existingName;
+        }
+        
+        // Remove trailing numeric suffix pattern: -digits
+        return existingName.replaceFirst("-\\d+$", "");
+    }
 
     /**
      * Checks and enriches cascading project dates.
