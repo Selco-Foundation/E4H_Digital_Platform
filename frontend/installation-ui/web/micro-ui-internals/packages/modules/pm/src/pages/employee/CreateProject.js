@@ -27,6 +27,7 @@ const CreateProject = () => {
   const [blockUI, setBlockUI] = useState(null);
   const [invalidDataError, setInvalidDataError] = useState(null);
   const [updateFormData, setUpdateFormData] = useState(null);
+  const [getFormData, setGetFormData] = useState(null);
 
   useEffect(() => {
     const handleResize = () => setMobileView(window.innerWidth <= 640);
@@ -465,8 +466,9 @@ const CreateProject = () => {
     setCurrentFormData(formData);
   }
 
-  const setFormAccessors = ({setValue}) => {
+  const setFormAccessors = ({setValue, getValues}) => {
     setUpdateFormData(() => setValue);
+    setGetFormData(() => getValues)
   }
 
   const getNextActionLabel = () => {
@@ -485,11 +487,21 @@ const CreateProject = () => {
   const handleBackNavigation = () => {
     switch (currentKey) {
       case 1:
-        // setPersistedFormData(prev => ({...prev, projectDetails : currentFormData}))
+        const projectDetails = {
+          projectType: getFormData("projectType"),
+          justificationCode: getFormData("justificationCode"),
+          projectDuration: getFormData("projectDuration"),
+        }
+        setPersistedFormData(prev => ({...prev, projectDetails : projectDetails}))
         history.push(`/${window?.contextPath}/employee`);
         break;
       case 2:
-        // setPersistedFormData(prev => ({...prev, geographyDetails : currentFormData}))
+        const geographyDetails = {
+          state: getFormData("state"),
+          districts: getFormData("districts"),
+          blocks: getFormData("blocks"),
+        }
+        setPersistedFormData(prev => ({...prev, geographyDetails : geographyDetails}))
         setCurrentKey(prev => prev - 1);
         break;
       case 3:
