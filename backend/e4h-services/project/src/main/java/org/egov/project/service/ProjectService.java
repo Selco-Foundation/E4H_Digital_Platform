@@ -610,7 +610,7 @@ public class ProjectService {
                Objects.equals(projectFromDB.getDescription(), project.getDescription()) &&
                Objects.equals(projectFromDB.getReferenceID(), project.getReferenceID()) &&
                Objects.equals(projectFromDB.getProjectTypeId(), project.getProjectTypeId()) &&
-               Objects.equals(projectFromDB.getAddress(), project.getAddress()) && // Read-only (state)
+               isValidAddressUpdate(projectFromDB.getAddress(), project.getAddress()) && // Read-only (state)
                Objects.equals(projectFromDB.getIsTaskEnabled(), project.getIsTaskEnabled()) &&
                Objects.equals(projectFromDB.getParent(), project.getParent()) &&
                Objects.equals(projectFromDB.getProjectHierarchy(), project.getProjectHierarchy()) &&
@@ -619,6 +619,23 @@ public class ProjectService {
                Objects.equals(projectFromDB.getRowVersion(), project.getRowVersion()) &&
                isValidAdditionalDetailsUpdate(projectFromDB.getAdditionalDetails(), project.getAdditionalDetails());
         // Note: We allow startDate, endDate, name, additionalDetails.geographyDetails, and auditDetails to be different
+    }
+
+    /**
+     * Validates if only allowed fields in address are being updated
+     * Read-only: boundary (state cannot be changed)
+     * Other fields can be different (id, clientReferenceId, etc.)
+     */
+    private boolean isValidAddressUpdate(Address originalAddress, Address newAddress) {
+        if (originalAddress == null && newAddress == null) {
+            return true;
+        }
+        if (originalAddress == null || newAddress == null) {
+            return false;
+        }
+        
+        // Only validate that the boundary (state) hasn't changed
+        return Objects.equals(originalAddress.getBoundary(), newAddress.getBoundary());
     }
 
     /**
