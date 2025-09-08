@@ -14,6 +14,7 @@ RUN mkdir -p /flyway/jars/db  && \
     cp -r BOOT-INF/classes/db/migration /flyway/jars/db/ && \
     rm -rf BOOT-INF /tmp/im-services.jar
 
+COPY ./migration/main /flyway/sql
 
 COPY migrate.sh /usr/bin/migrate.sh
 
