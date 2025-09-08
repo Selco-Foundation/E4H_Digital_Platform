@@ -428,6 +428,7 @@ const CreateProject = () => {
     if (projectId) {
       projectUpsertData = {
         Projects: [formatDataForUpdate(projectData)],
+        isCascadingProjectDateUpdate: true,
         apiOperation: "UPDATE"
       };
     } else {
