@@ -13,7 +13,7 @@ RUN mkdir -p /migrations  && \
 #flyway
 FROM egovio/flyway:10.7.1
 
-COPY --from builder /migrations /flyway/jars/db/migration
+COPY --from=builder /migrations /flyway/jars/db/migration
 
 COPY ./migration/main /flyway/sql
 
