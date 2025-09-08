@@ -6,14 +6,14 @@ COPY ${JAR_FILE} /tmp/im-services.jar
 
 # Unpack only the migration classes into /flyway/jars
 RUN mkdir -p /migrations  && \
-    jar xf /tmp/im-services.jar BOOT-INF/classes/db/migration && \
-    cp -r BOOT-INF/classes/db/migration/main/ /migrations/ && \
+    jar xf /tmp/im-services.jar BOOT-INF/classes && \
+    cp -r BOOT-INF/classes/* /migrations/ && \
     rm -rf BOOT-INF /tmp/im-services.jar
 
 #flyway
 FROM egovio/flyway:10.7.1
 
-COPY --from=builder /migrations /flyway/jars/db/migration
+COPY --from=builder /migrations /flyway/jars
 
 COPY ./migration/main /flyway/sql
 
