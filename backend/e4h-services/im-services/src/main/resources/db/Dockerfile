@@ -9,12 +9,11 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Unpack only the migration classes into /flyway/jars
-RUN mkdir -p /flyway/jars/db/migration  && \
+RUN mkdir -p /flyway/jars/db  && \
     jar xf /tmp/im-services.jar BOOT-INF/classes/db/migration && \
-    cp -r BOOT-INF/classes/db/migration /flyway/jars/db/migration && \
+    cp -r BOOT-INF/classes/db/migration /flyway/jars/db/ && \
     rm -rf BOOT-INF /tmp/im-services.jar
 
-COPY ./migration/main /flyway/sql
 
 COPY migrate.sh /usr/bin/migrate.sh
 
