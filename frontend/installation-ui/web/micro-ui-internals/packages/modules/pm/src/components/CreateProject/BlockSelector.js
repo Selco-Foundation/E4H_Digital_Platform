@@ -1,5 +1,6 @@
 import React, {useEffect, useState} from "react";
 import {MultiSelectDropdown} from "@egovernments/digit-ui-react-components";
+import _ from "lodash";
 
 const DistrictSelector = ({
   data = {},
@@ -48,11 +49,26 @@ const DistrictSelector = ({
   }, [t, boundaryData, selectedDistricts])
 
   const handleBlockSelection = (blocks) => {
-    const selectedBlockCodes = blocks.map(block => block.code);
-    if (selectedBlockCodes.includes("ALL_BLOCKS")) {
-      setSelectedBlocks(blockMenu);
-    } else {
-      setSelectedBlocks(blocks);
+    const currentBlockSelection = blocks.map(block => block.code).sort((a, b) => a.code?.localeCompare(b.code));
+    const previousBlockSelection = selectedBlocks.map((block) => block.code).sort((a, b) => a.code?.localeCompare(b.code));
+
+    if (!_.isEqual(currentBlockSelection, previousBlockSelection)) {
+      const currentSelectionSelectAll = currentBlockSelection.includes("ALL_BLOCKS");
+      const previousSelectionSelectAll = previousBlockSelection.includes("ALL_BLOCKS");
+
+      if (previousSelectionSelectAll) {
+        if (currentSelectionSelectAll) {
+          setSelectedBlocks(blocks.filter((block) => block.code !== "ALL_BLOCKS"));
+        } else if (blocks.length === blockMenu.length - 1) {
+          setSelectedBlocks([]);
+        } else {
+          setSelectedBlocks(blocks);
+        }
+      } else if (currentSelectionSelectAll || blocks.length === blockMenu.length - 1) {
+        setSelectedBlocks(blockMenu);
+      } else {
+        setSelectedBlocks(blocks);
+      }
     }
   }
 
