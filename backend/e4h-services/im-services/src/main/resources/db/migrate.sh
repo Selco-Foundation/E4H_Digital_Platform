@@ -12,6 +12,7 @@ exec java -cp "$CLASSPATH" org.flywaydb.commandline.Main \
   -user=$FLYWAY_USER \
   -password=$FLYWAY_PASSWORD \
   -locations=$FLYWAY_LOCATIONS \
+  -jarDirs=/flyway/jars \
   -baselineOnMigrate=true \
   -outOfOrder=true \
   -X \
