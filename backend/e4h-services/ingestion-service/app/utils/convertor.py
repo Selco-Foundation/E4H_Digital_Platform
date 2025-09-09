@@ -494,7 +494,9 @@ def create_facility_payload(request_info: RequestInfo, row: Series, facility_sch
 def create_facility_for_projects_payload(request_info: RequestInfo, row: Series, facility_schema: List[Dict[str, Any]]):
     facility_type_name = safe_get(row, 'Facility Type (Mandatory)')
     facility_type_code = get_mdms_code_by_name(facility_schema, 'Facility Type', facility_type_name)
-
+    solar_solution_design_type_name = safe_get(row, 'Solution Design Type (Mandatory)')
+    solar_solution_design_type_code = get_mdms_code_by_name(facility_schema, 'Solution Design Type',
+                                                            solar_solution_design_type_name)
     return {
         'RequestInfo': request_info.model_dump(by_alias=True, exclude_none=True),
         'facilities': [
@@ -518,7 +520,7 @@ def create_facility_for_projects_payload(request_info: RequestInfo, row: Series,
                 },
                 'facility_details': {
                     'vendor_code': safe_get(row, 'Vendor Code (Mandatory)'),
-                    'solar_solution_design_type': 'NA',
+                    'solar_solution_design_type': solar_solution_design_type_code,
                     'pocName': safe_get(row, 'PoC Name (Mandatory)'),
                     'pocDesignation': safe_get(row, 'HC PoC Designation'),
                     'pocContact': safe_get(row, 'PoC Contact number (Mandatory)'),

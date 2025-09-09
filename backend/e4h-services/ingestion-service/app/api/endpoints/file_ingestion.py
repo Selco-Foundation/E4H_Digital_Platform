@@ -1791,7 +1791,6 @@ async def create_facilities_and_update_project(
 
     # parse + auth
     request_info = request_info_from_json(request_info)
-    get_authorized_request_info(request_info)
     mdms_client = MDMSClient(mdms_url)
 
     try:
