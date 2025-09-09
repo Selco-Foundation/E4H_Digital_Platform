@@ -34,8 +34,8 @@ public class BusinessHoursUtil {
 
         long duration = 0;
 
-        ZonedDateTime current = start.withZoneSameInstant(ZoneId.of("Asia/Kolkata"));
-        ZonedDateTime endZdt = end.withZoneSameInstant(ZoneId.of("Asia/Kolkata"));
+        ZonedDateTime current = start.withZoneSameInstant(ZoneId.of(ASIA_KOLKATA));
+        ZonedDateTime endZdt = end.withZoneSameInstant(ZoneId.of(ASIA_KOLKATA));
 
         while (!current.toLocalDate().isAfter(endZdt.toLocalDate())) {
             DayOfWeek dayOfWeek = current.getDayOfWeek();
@@ -75,13 +75,13 @@ public class BusinessHoursUtil {
                     || state.startsWith(PENDING_ASSIGNMENT_PREFIX) || state.startsWith(PENDING_RESOLUTION_PREFIX)) {
 
                 long prevStateTime = current.getAuditDetails().getCreatedTime();
-                ZonedDateTime zonedPrevStateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(prevStateTime), ZoneId.of("Asia/Kolkata"));
+                ZonedDateTime zonedPrevStateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(prevStateTime), ZoneId.of(ASIA_KOLKATA));
                 ZonedDateTime zonedNextStateTime;
                 if (i + 1 < processInstances.size()) {
                     long nextStateTime = processInstances.get(i + 1).getAuditDetails().getCreatedTime();
-                    zonedNextStateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(nextStateTime), ZoneId.of("Asia/Kolkata"));
+                    zonedNextStateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(nextStateTime), ZoneId.of(ASIA_KOLKATA));
                 } else {
-                    zonedNextStateTime = ZonedDateTime.now(ZoneId.of("Asia/Kolkata"));
+                    zonedNextStateTime = ZonedDateTime.now(ZoneId.of(ASIA_KOLKATA));
                 }
                 totalBusinessDuration += calculateBusinessDuration(zonedPrevStateTime, zonedNextStateTime);
             }

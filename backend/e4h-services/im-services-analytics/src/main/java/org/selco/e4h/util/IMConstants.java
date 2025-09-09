@@ -62,4 +62,6 @@ public class IMConstants {
     public static final String CLOSED_AFTER_RESOLUTION = "CLOSEDAFTERRESOLUTION";
 
     public static final String CLOSED_AFTER_REJECTION = "CLOSEDAFTERREJECTION";
+
+    public static final String INCIDENT_UNDERSCORE = "Incident_";
 }
