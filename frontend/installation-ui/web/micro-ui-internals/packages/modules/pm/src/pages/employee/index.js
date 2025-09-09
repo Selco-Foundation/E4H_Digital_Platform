@@ -4,6 +4,7 @@ import { Route, Switch, useRouteMatch } from "react-router-dom";
 import { BreadCrumb } from "@egovernments/digit-ui-react-components";
 import { useSelector } from "react-redux";
 import CreateProject from "./CreateProject";
+import Response from "./Response";
 
 const PMApp = () => {
   const { t } = useTranslation();
@@ -20,6 +21,11 @@ const PMApp = () => {
       content: t("PM_ACTION_CREATE_PROJECT"),
       path: match.url + `/project/create`,
       show: true,
+    },
+    response: {
+      content: t("PM_ACTION_RESPONSE"),
+      path: match.url + `/response`,
+      show: true,
     }
   };
 
@@ -34,6 +40,10 @@ const PMApp = () => {
             <BreadCrumb crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.projectCreation]} />
             <CreateProject />
           </Route>
+        <Route path={`${path}/response`} exact={true}>
+          <BreadCrumb crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.response]} />
+          <Response />
+        </Route>
       </Switch>
     </div>
   );
