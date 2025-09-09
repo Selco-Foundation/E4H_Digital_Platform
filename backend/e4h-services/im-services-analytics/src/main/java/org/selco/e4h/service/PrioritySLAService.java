@@ -108,7 +108,7 @@ public class PrioritySLAService {
 
         String existingBusinessService =null;
         if(incidentPriorityMap.containsKey(key)) {
-             existingBusinessService = "Incident_" + capitalize(incidentPriorityMap.get(key));
+             existingBusinessService = INCIDENT_UNDERSCORE +  capitalize(incidentPriorityMap.get(key));
         }
         else{
              existingBusinessService = "Incident_Medium";
@@ -126,7 +126,7 @@ public class PrioritySLAService {
 
         if (needsOverride && incidentPriorityMap.containsKey(key)) {
             priority = incidentPriorityMap.get(key);
-            updatedBusinessService = "Incident_" + capitalize(priority);
+            updatedBusinessService = INCIDENT_UNDERSCORE + capitalize(priority);
             currentProcessInstance.put(BUSINESS_SERVICE, updatedBusinessService);  // update ES doc in memory
         } else if (existingBusinessService != null && existingBusinessService.contains("_")) {
             priority = existingBusinessService.split("_")[1];
@@ -339,7 +339,7 @@ public class PrioritySLAService {
     }
 
     private Duration computeTotalSla(String tenantId, String priority, String currentState, Map<TenantServiceStateKey, Duration> slaMap, List<ProcessInstance> processInstances) {
-        String businessService = "Incident_" + capitalize(priority);
+        String businessService = INCIDENT_UNDERSCORE + capitalize(priority);
         Duration total = Duration.ZERO;
 
         //calculating sla for all states till current state
