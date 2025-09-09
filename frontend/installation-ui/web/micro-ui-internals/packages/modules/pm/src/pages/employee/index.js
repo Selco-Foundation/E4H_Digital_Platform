@@ -41,7 +41,7 @@ const PMApp = () => {
             <CreateProject />
           </Route>
         <Route path={`${path}/response`} exact={true}>
-          <BreadCrumb crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.response]} />
+          <BreadCrumb crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.projectCreation]} />
           <Response />
         </Route>
       </Switch>

@@ -54,10 +54,14 @@ const Response = (props) => {
     return (
         <Card>
             <BannerPicker response={appState} />
-            <CardText>{GetCardTextMessage("SUBMITTED")}</CardText>
-            <Link to={`/${window.contextPath}/employee`}>
-                <SubmitBar label={t("CORE_COMMON_GO_TO_HOME")} />
-            </Link>
+            <div style={{display: "flex"}}>
+                <Link to={`/${window.contextPath}/employee`}>
+                    <SubmitBar label={t("CORE_COMMON_GO_TO_HOME")} />
+                </Link>
+                <Link to={`/${window.contextPath}/employee`}>
+                    <SubmitBar label={t("CORE_COMMON_GO_TO_HOME")} />
+                </Link>
+            </div>
         </Card>
     );
 };
