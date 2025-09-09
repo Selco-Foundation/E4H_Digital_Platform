@@ -1,37 +1,20 @@
-import React, {useEffect, useMemo, useState} from "react";
+import React, {useEffect, useState} from "react";
 import {MultiSelectDropdown} from "@egovernments/digit-ui-react-components";
 
 const DistrictSelector = ({
-  data,
+  data = {},
   setValue,
   props,
 }) => {
 
-  const { t, name, districtsIdentifier, boundaryData, defaultValues = {} } = props;
-  const [selectedDistricts, setSelectedDistricts] = useState([]);
+  const { t, name, districtsIdentifier, boundaryData } = props;
+  const [selectedDistricts, setSelectedDistricts] = useState(data[districtsIdentifier] || []);
   const [blockMenu, setBlockMenu] = useState([]);
-  const [selectedBlocks, setSelectedBlocks] = useState([]);
-  const [loadDefaultValues, setLoadDefaultValues] = useState(true);
-
-  useEffect(() => {
-    if (Object.keys(defaultValues).length) {
-      setLoadDefaultValues(true);
-    } else {
-      setLoadDefaultValues(false);
-    }
-  }, [defaultValues]);
+  const [selectedBlocks, setSelectedBlocks] = useState(data[name] || []);
 
   useEffect(() => {
     setSelectedDistricts(data[districtsIdentifier] || []);
   }, [data[districtsIdentifier]]);
-
-  useEffect(() => {
-    if (loadDefaultValues) {
-      setSelectedDistricts(defaultValues[districtsIdentifier] || []);
-      setSelectedBlocks(defaultValues[name] || []);
-      setLoadDefaultValues(false);
-    }
-  }, [loadDefaultValues]);
 
   useEffect(() => {
     if (selectedBlocks.filter((block) => block.code !== "ALL_BLOCKS").length) {
@@ -59,10 +42,8 @@ const DistrictSelector = ({
         ...newBlockMenu
       ]);
 
-      if (!loadDefaultValues) {
-        const newSelectedBlocks = selectedBlocks.filter((block) => selectedDistrictCodes.includes(block.districtCode));
-        setSelectedBlocks(newSelectedBlocks);
-      }
+      const newSelectedBlocks = selectedBlocks.filter((block) => selectedDistrictCodes.includes(block.districtCode));
+      setSelectedBlocks(newSelectedBlocks);
     }
   }, [t, boundaryData, selectedDistricts])
 
