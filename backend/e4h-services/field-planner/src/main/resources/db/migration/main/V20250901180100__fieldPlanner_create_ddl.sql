@@ -11,7 +11,7 @@ CREATE TABLE field_plans (
                              selected_activities JSONB NOT NULL DEFAULT '[]',
                              created_by VARCHAR NOT NULL, -- References eg_hrms_employee.uuid
                              status VARCHAR DEFAULT 'ACTIVE',
-                             isDeleted boolean,
+                             isdeleted boolean,
                              last_modified_by    character varying(64),
                              created_time BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,
                              last_modified_time BIGINT DEFAULT EXTRACT(EPOCH FROM NOW()) * 1000,

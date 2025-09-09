@@ -46,9 +46,10 @@ public class FieldPlannerServiceUtil {
                 .collect(Collectors.toMap(p -> String.valueOf(p.getId()), Function.identity()));
     }
 
-    public void mergeAdditionalDetails(Project project, Project projectFromDb) {
-        project.setAdditionalDetails(jsonMerge(objectMapper.valueToTree(projectFromDb.getAdditionalDetails()),
-                objectMapper.valueToTree(project.getAdditionalDetails())));
+    public void mergeAdditionalDetails(FieldPlan fieldPlan, FieldPlan fieldPlanFromDb) {
+        JsonNode json = jsonMerge(objectMapper.valueToTree(fieldPlanFromDb.getAdditionalDetails()),
+                objectMapper.valueToTree(fieldPlan.getAdditionalDetails()));
+        fieldPlan.setAdditionalDetails(objectMapper.convertValue(json, Map.class));
     }
 
     /**

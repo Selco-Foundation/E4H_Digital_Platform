@@ -58,6 +58,9 @@ public class FieldPlannerConfiguration {
     @Value("${fieldPlan.facility.kafka.create.topic}")
     private String createFieldPlanFacilityTopic;
 
+    @Value("${fieldPlan.kafka.update.topic}")
+    private String updateFieldPlanTopic;
+
     @Value("${project.search.max.limit}")
     private Integer maxLimit;
 

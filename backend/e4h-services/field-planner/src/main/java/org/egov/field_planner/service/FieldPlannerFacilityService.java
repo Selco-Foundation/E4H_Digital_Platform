@@ -1,67 +1,65 @@
 package org.egov.field_planner.service;
 
-import com.jayway.jsonpath.JsonPath;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
-import org.egov.common.ds.Tuple;
-import org.egov.common.models.ErrorDetails;
 import org.egov.common.producer.Producer;
 import org.egov.common.validator.Validator;
 import org.egov.field_planner.config.FieldPlannerConfiguration;
+import org.egov.field_planner.repository.FieldPlanFacilityRepository;
 import org.egov.field_planner.repository.FieldPlannerRepository;
 import org.egov.field_planner.service.enrichment.FieldPlannerEnrichment;
-import org.egov.field_planner.util.FieldPlannerServiceUtil;
 import org.egov.field_planner.util.MDMSUtils;
 import org.egov.field_planner.validator.FieldPlannerValidator;
-import org.egov.field_planner.validator.facility.FPFacilityIdValidator;
-import org.egov.field_planner.validator.facility.FPFieldPlanIdValidator;
-import org.egov.field_planner.validator.facility.FPUniqueCombinationValidator;
 import org.egov.field_planner.web.models.*;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.util.*;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
+import java.lang.reflect.Method;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.egov.common.utils.CommonUtils.*;
-import static org.egov.field_planner.Constants.*;
-import static org.egov.field_planner.util.FieldPlannerConstants.*;
+import static org.egov.field_planner.Constants.GET_FIELDPLAN_ID;
 
 @Service
 @Slf4j
 public class FieldPlannerFacilityService {
 
-    private final FieldPlannerValidator fieldPlannerValidator;
+    private final FieldPlanFacilityRepository fieldPlanFacilityRepository;
+
     private final FieldPlannerRepository fieldPlannerRepository;
     private final Producer producer;
+
+    private final ServiceRequestRepository serviceRequestClient;
     private final FieldPlannerEnrichment fieldPlannerEnrichment;
 
     private final List<Validator<FieldPlanFacilityBulkRequest, FieldPlanFacility>> validators;
     private final FieldPlannerConfiguration fieldPlannerConfiguration;
     private final MDMSUtils mdmsUtils;
 
-    private final Predicate<Validator<FieldPlanFacilityBulkRequest, FieldPlanFacility>> isApplicableForCreate = validator ->
-            validator.getClass().equals(FPFacilityIdValidator.class)
-                    || validator.getClass().equals(FPFieldPlanIdValidator.class)
-                    || validator.getClass().equals(FPUniqueCombinationValidator.class);
+    @Qualifier("objectMapper")
+    private final ObjectMapper mapper;
 
     @Autowired
     public FieldPlannerFacilityService(
-            FieldPlannerRepository fieldPlannerRepository, List<Validator<FieldPlanFacilityBulkRequest, FieldPlanFacility>> validators,
+            FieldPlanFacilityRepository fieldPlanFacilityRepository, List<Validator<FieldPlanFacilityBulkRequest, FieldPlanFacility>> validators,
             FieldPlannerValidator fieldPlannerValidator, FieldPlannerEnrichment fieldPlannerEnrichment, FieldPlannerConfiguration fieldPlannerConfiguration,
-            Producer producer, FieldPlannerServiceUtil projectServiceUtil, MDMSUtils mdmsUtils) {
-            this.fieldPlannerValidator = fieldPlannerValidator;
+            Producer producer, FieldPlannerRepository fieldPlannerRepository, MDMSUtils mdmsUtils, ServiceRequestRepository serviceRequestClient, @Qualifier("objectMapper") ObjectMapper mapper) {
             this.producer = producer;
             this.fieldPlannerConfiguration = fieldPlannerConfiguration;
-            this.fieldPlannerRepository = fieldPlannerRepository;
+            this.fieldPlanFacilityRepository = fieldPlanFacilityRepository;
             this.fieldPlannerEnrichment = fieldPlannerEnrichment;
             this.mdmsUtils = mdmsUtils;
             this.validators = validators;
+            this.serviceRequestClient = serviceRequestClient;
+            this.mapper = mapper;
+            this.fieldPlannerRepository = fieldPlannerRepository;
     }
 
     public FieldPlanFacility create(FieldPlanFacilityRequest request) {
@@ -74,38 +72,101 @@ public class FieldPlannerFacilityService {
 
     public List<FieldPlanFacility> create(FieldPlanFacilityBulkRequest request, boolean isBulk) {
         log.info("received request to create bulk fieldplan facility");
-        Tuple<List<FieldPlanFacility>, Map<FieldPlanFacility, ErrorDetails>> tuple = validate(validators,
-                isApplicableForCreate, request,
-                isBulk);
-
-        Map<FieldPlanFacility, ErrorDetails> errorDetailsMap = tuple.getY();
-        List<FieldPlanFacility> validEntities = tuple.getX();
+//
+        validateCreateFieldPlanRequest(request);
+        List<FieldPlanFacility> fieldPlanFacilities = request.getFieldPlanFacilities();
         try {
-            if (!validEntities.isEmpty()) {
-                log.info("processing {} valid entities", validEntities.size());
-                fieldPlannerEnrichment.enrichFieldPlanFacilityOnCreate(validEntities, request);
-                producer.push(fieldPlannerConfiguration.getCreateFieldPlanFacilityTopic(), validEntities);
+            if (!fieldPlanFacilities.isEmpty()) {
+                log.info("processing {} valid entities", fieldPlanFacilities.size());
+                fieldPlannerEnrichment.enrichFieldPlanFacilityOnCreate(fieldPlanFacilities, request);
+                producer.push(fieldPlannerConfiguration.getCreateFieldPlanFacilityTopic(), fieldPlanFacilities);
                 log.info("successfully created project facility");
             }
         } catch (Exception exception) {
             log.error("error occurred while creating project facility: {}", ExceptionUtils.getStackTrace(exception));
-            populateErrorDetails(request, errorDetailsMap, validEntities, exception, SET_FIELDPLAN_FACILITIES);
         }
 
-        handleErrors(errorDetailsMap, isBulk, VALIDATION_ERROR);
-
-        return validEntities;
+        return fieldPlanFacilities;
     }
 
-    private Tuple<List<FieldPlanFacility>, Map<FieldPlanFacility, ErrorDetails>> validate(List<Validator<FieldPlanFacilityBulkRequest, FieldPlanFacility>> validators,
-                                                                                      Predicate<Validator<FieldPlanFacilityBulkRequest, FieldPlanFacility>> applicableValidators,
-                                                                                        FieldPlanFacilityBulkRequest request, boolean isBulk) {
-        log.info("validating request");
-        Map<FieldPlanFacility, ErrorDetails> errorDetailsMap = new HashMap<>();
+    public void validateCreateFieldPlanRequest(FieldPlanFacilityBulkRequest request) {
+        Map<String, String> errorMap = new HashMap<>();
+
+        //Verify if facilityId is valid
+        validateFacilityIds(request, errorMap);
+        //Verify if FieldPlanId is valid
+        validateFieldPlanIds(request, errorMap);
+
+        if (!errorMap.isEmpty())
+            throw new CustomException(errorMap);
+    }
+
+    private void validateFacilityIds(FieldPlanFacilityBulkRequest request, Map<String, String> errorMap) {
+
         List<FieldPlanFacility> validEntities = request.getFieldPlanFacilities().stream()
-                .filter(notHavingErrors()).toList();
-        log.info("validation successful, found valid fieldplan facility");
-        return new Tuple<>(validEntities, errorDetailsMap);
+                .filter(notHavingErrors())
+                .toList();
+        if (!validEntities.isEmpty()) {
+            AtomicInteger counter = new AtomicInteger(1);
+            for (FieldPlanFacility facility : validEntities){
+                try {
+                    Facility response = getFacilityById(facility.getFacilityId());
+                    if(response==null)
+                        throw new CustomException("FACILITY_ERROR", "Facility ID do not exist");
+
+                    if (!response.getFacilityId().equals(facility.getFacilityId())) {
+                        int i = counter.getAndIncrement();
+                        errorMap.put("INVALID_FACILITY"+i, "FacilityId does not exist: " + facility.getFacilityId());
+                    }
+
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    log.error("error while fetching facility list", ExceptionUtils.getStackTrace(e));
+                    throw new CustomException("FACILITY_ERROR", "error while calling facility service");
+                }
+            }
+        }
+    }
+
+    private void validateFieldPlanIds(FieldPlanFacilityBulkRequest request, Map<String, String> errorMap) {
+        List<FieldPlanFacility> validEntities = request.getFieldPlanFacilities().stream()
+                .filter(notHavingErrors())
+                .toList();
+        if (!validEntities.isEmpty()) {
+            Class<?> objClass = getObjClass(validEntities);
+            Method idMethod = getMethod(GET_FIELDPLAN_ID, objClass);
+            List<String> entityIds = validEntities.stream().map(FieldPlanFacility::getFieldPlanId).toList();
+            try {
+                AtomicInteger counter = new AtomicInteger(1);
+                List<String> existingFieldPlansIds = fieldPlannerRepository.validateIds(entityIds, getIdFieldName(idMethod));
+                validEntities.stream().filter(notHavingErrors()).filter(entity -> {
+                            boolean invalid = !existingFieldPlansIds.contains(entity.getFieldPlanId());
+                            if (invalid) {
+                                int i = counter.getAndIncrement();
+                                errorMap.put("INVALID_FIELDPLAN"+i, "FIELDPLAN_ID does not exist: " + entity.getFieldPlanId());
+                            }
+                            return invalid;
+                        })
+                        .toList();
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                log.error("error while fetching facility list", ExceptionUtils.getStackTrace(e));
+                throw new CustomException("FIELDPLAN_ERROR", "error while calling fieldplan");
+            }
+        }
+    }
+
+    public Facility getFacilityById(String facilityId) {
+
+        String url = fieldPlannerConfiguration.getFacilityServiceHost() + fieldPlannerConfiguration.getFacilityServiceSearchUrlV2()+ "?facilityId="+facilityId;
+        Object response = serviceRequestClient.fetchResult(new StringBuilder(url));
+
+        FacilitySearchResponse facilityList = mapper.convertValue(response, FacilitySearchResponse.class);
+        if(facilityList != null && facilityList.getFacilities() !=null && facilityList.getFacilities().size() > 0){
+            return facilityList.getFacilities().get(0);
+        }
+        return null;
     }
 
 

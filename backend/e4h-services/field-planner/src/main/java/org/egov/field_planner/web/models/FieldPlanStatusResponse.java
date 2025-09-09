@@ -13,7 +13,7 @@ import java.util.List;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class FieldPlanResponse {
+public class FieldPlanStatusResponse {
 
     @JsonProperty("ResponseInfo")
     private ResponseInfo responseInfo;
@@ -21,6 +21,6 @@ public class FieldPlanResponse {
     @JsonProperty("FieldPlans")
     private List<FieldPlan> fieldPlans;
 
-    @JsonProperty("TotalCount")
-    private Integer totalCount = 0;
+    @JsonProperty
+    private Integer totalCount;
 }

@@ -30,7 +30,7 @@ public class FieldPlanFacility {
             min = 2,
             max = 64
     ) String fieldPlanId = null;
-    @JsonProperty("isDeleted")
+    @JsonProperty("isdeleted")
     private Boolean isDeleted;
     @JsonProperty("id")
     protected @Size(

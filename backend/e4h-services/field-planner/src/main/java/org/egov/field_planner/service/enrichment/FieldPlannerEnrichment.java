@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.models.AuditDetails;
 import org.egov.common.contract.request.RequestInfo;
+import org.egov.common.models.project.Project;
 import org.egov.common.producer.Producer;
 import org.egov.common.service.IdGenService;
 import org.egov.field_planner.config.FieldPlannerConfiguration;
@@ -64,6 +65,14 @@ public class FieldPlannerEnrichment {
 
         enrichForCreate(entities, idList, request.getRequestInfo());
         log.info("enrichment done");
+    }
+
+    /* Enrich Project update request with last modified by and last modified time */
+    public void enrichFieldPlanRequestOnUpdate(FieldPlan fieldPlan, FieldPlan fieldPlanFromDB, RequestInfo requestInfo) {
+        fieldPlan.setAuditDetails(fieldPlanFromDB.getAuditDetails());
+        AuditDetails auditDetails = fieldPlanServiceUtil.getAuditDetails(requestInfo.getUserInfo().getUuid(), fieldPlanFromDB.getAuditDetails(), false);
+        fieldPlan.setAuditDetails(auditDetails);
+        log.info("Enriched project audit details for project " + fieldPlan.getId());
     }
 
 

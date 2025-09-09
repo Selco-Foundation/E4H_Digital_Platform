@@ -23,6 +23,6 @@ public class FieldPlanFacilityRepository extends GenericRepository<FieldPlanFaci
                                        RedisTemplate<String, Object> redisTemplate,
                                        SelectQueryBuilder selectQueryBuilder, FieldPlanFacilityRowMapper fieldPlanFacilityRowMapper) {
         super(producer, namedParameterJdbcTemplate, redisTemplate, selectQueryBuilder,
-                fieldPlanFacilityRowMapper, Optional.of("fieldPlan_facility"));
+                fieldPlanFacilityRowMapper, Optional.of("field_plan_facilities"));
     }
 }

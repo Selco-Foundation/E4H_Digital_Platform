@@ -9,6 +9,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.egov.common.contract.request.RequestInfo;
+import org.egov.common.models.project.ApiOperation;
 import org.springframework.validation.annotation.Validated;
 
 import java.util.ArrayList;
@@ -26,4 +27,10 @@ public class FieldPlanRequest {
     @JsonProperty("FieldPlans")
     private @NotNull @Valid @Size(min = 1)
     List<FieldPlan> fieldPlans = new ArrayList();
+
+    @JsonProperty("isCascadingProjectDateUpdate")
+    private @Valid boolean isCascadingProjectDateUpdate = false;
+    
+    @JsonProperty("apiOperation")
+    private @Valid ApiOperation apiOperation = null;
 }

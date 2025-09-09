@@ -8,6 +8,8 @@ import org.egov.common.producer.Producer;
 import org.egov.field_planner.repository.querybuilder.FieldPlannerQueryBuilder;
 import org.egov.field_planner.repository.rowmapper.*;
 import org.egov.field_planner.web.models.FieldPlan;
+import org.egov.field_planner.web.models.FieldPlanRequest;
+import org.egov.field_planner.web.models.FieldPlanSearchCriteria;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -33,7 +35,7 @@ public class FieldPlannerRepository extends GenericRepository<FieldPlan> {
                                   FieldPlannerQueryBuilder queryBuilder,
                                   JdbcTemplate jdbcTemplate) {
         super(producer, namedParameterJdbcTemplate, redisTemplate, selectQueryBuilder,
-                planRowMapper, Optional.of("fieldPlan"));
+                planRowMapper, Optional.of("field_plans"));
         this.queryBuilder = queryBuilder;
         this.jdbcTemplate = jdbcTemplate;
         this.fieldPlanRowMapper = fieldPlanRowMapper;
@@ -47,6 +49,40 @@ public class FieldPlannerRepository extends GenericRepository<FieldPlan> {
         return fieldPlans;
     }
 
+    public List<FieldPlan> getFieldPlans(FieldPlanRequest request, Integer limit, Integer offset, String tenantId, Boolean includeDeleted, Long lastChangedSince, Long createdFrom, Long createdTo) {
+        //Fetch FieldPlans based on search criteria
+        List<Object> preparedStmtList = new ArrayList<>();
+        FieldPlanSearchCriteria criteria = FieldPlanSearchCriteria.builder()
+                .fieldPlans(request.getFieldPlans())
+                .limit(limit)
+                .offset(offset)
+                .tenantId(tenantId)
+                .includeDeleted(includeDeleted)
+                .createdFrom(createdFrom)
+                .createdTo(createdTo)
+                .lastChangedSince(lastChangedSince)
+                .preparedStmtList(preparedStmtList)
+                .isCountQuery(false) // change as needed
+                .build();
+
+        String query = queryBuilder.getFieldPlanSearchQuery(criteria);
+        List<FieldPlan> fieldPlanList = jdbcTemplate.query(query, fieldPlanRowMapper, preparedStmtList.toArray());
+
+        log.info("Fetched project list based on given search criteria");
+        return fieldPlanList;
+    }
+
+    public Integer getFieldPlanCount(FieldPlanRequest request, String tenantId, Long lastChangedSince, Boolean includeDeleted, Long createdFrom, Long createdTo) {
+        List<Object> preparedStatement = new ArrayList<>();
+        String query = queryBuilder.getSearchCountQueryString(request.getFieldPlans(), tenantId, lastChangedSince, includeDeleted, createdFrom, createdTo, preparedStatement);
+
+        if (query == null)
+            return 0;
+
+        Integer count = jdbcTemplate.queryForObject(query, preparedStatement.toArray(), Integer.class);
+        log.info("Total FieldPlans count is : " + count);
+        return count;
+    }
     
 
 }

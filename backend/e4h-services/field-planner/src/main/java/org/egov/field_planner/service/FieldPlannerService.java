@@ -1,10 +1,11 @@
 package org.egov.field_planner.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jayway.jsonpath.JsonPath;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.exception.ExceptionUtils;
-import org.egov.common.ds.Tuple;
-import org.egov.common.models.ErrorDetails;
+import org.egov.common.contract.models.AuditDetails;
+import org.egov.common.contract.request.RequestInfo;
 import org.egov.common.producer.Producer;
 import org.egov.common.validator.Validator;
 import org.egov.field_planner.config.FieldPlannerConfiguration;
@@ -16,16 +17,15 @@ import org.egov.field_planner.validator.FieldPlannerValidator;
 import org.egov.field_planner.web.models.*;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.*;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import static org.egov.common.utils.CommonUtils.*;
 import static org.egov.field_planner.util.FieldPlannerConstants.*;
 
 @Service
@@ -37,15 +37,21 @@ public class FieldPlannerService {
     private final Producer producer;
     private final FieldPlannerEnrichment fieldPlannerEnrichment;
 
+    private final FieldPlannerServiceUtil fieldPlanServiceUtil;
+
     private final List<Validator<FieldPlanFacilityBulkRequest, FieldPlanFacility>> validators;
     private final FieldPlannerConfiguration fieldPlannerConfiguration;
     private final MDMSUtils mdmsUtils;
 
     @Autowired
+    @Qualifier("objectMapper")
+    ObjectMapper mapper;
+
+    @Autowired
     public FieldPlannerService(
             FieldPlannerRepository fieldPlannerRepository, List<Validator<FieldPlanFacilityBulkRequest, FieldPlanFacility>> validators,
             FieldPlannerValidator fieldPlannerValidator, FieldPlannerEnrichment fieldPlannerEnrichment, FieldPlannerConfiguration fieldPlannerConfiguration,
-            Producer producer, FieldPlannerServiceUtil projectServiceUtil, MDMSUtils mdmsUtils) {
+            Producer producer, FieldPlannerServiceUtil projectServiceUtil, MDMSUtils mdmsUtils, FieldPlannerServiceUtil fieldPlanServiceUtil) {
             this.fieldPlannerValidator = fieldPlannerValidator;
             this.producer = producer;
             this.fieldPlannerConfiguration = fieldPlannerConfiguration;
@@ -53,6 +59,7 @@ public class FieldPlannerService {
             this.fieldPlannerEnrichment = fieldPlannerEnrichment;
             this.mdmsUtils = mdmsUtils;
             this.validators = validators;
+            this.fieldPlanServiceUtil = fieldPlanServiceUtil;
     }
 
     public FieldPlanRequest createFieldPlan(FieldPlanRequest fieldPlanRequest) {
@@ -79,6 +86,41 @@ public class FieldPlannerService {
             log.info("Pushed to kafka");
         }
         return fieldPlanRequest;
+    }
+
+    public FieldPlanRequest updateProject(FieldPlanRequest request) {
+        /*
+         * Validate the update project request
+         */
+        fieldPlannerValidator.validateUpdateFieldPlanRequest(request);
+        log.info("Update fieldplan request validated");
+
+        /*
+         * Search for fieldplan based on fieldplan IDs provided in the request
+         */
+        List<FieldPlan> fieldPlansFromDB = searchFieldPlan(
+                getSearchFieldPlanRequest(request.getFieldPlans(), request.getRequestInfo()),
+                fieldPlannerConfiguration.getMaxLimit(), fieldPlannerConfiguration.getDefaultOffset(),
+                request.getFieldPlans().get(0).getTenantId(), false, null, null, null);
+        log.info("Fetched fieldPlan for update request");
+
+        /*
+         * Validate the update fieldplan request against the fieldplans fetched from the database
+         */
+        fieldPlannerValidator.validateUpdateAgainstDB(request.getFieldPlans(), fieldPlansFromDB);
+
+        /*
+         * Process each project in the update request
+         */
+        for (FieldPlan fieldPlan : request.getFieldPlans()) {
+            processFieldPlanUpdate(request, fieldPlan, fieldPlansFromDB);
+        }
+
+        return request;
+    }
+
+    public Integer countAllFieldPlans(FieldPlanRequest request, String tenantId, Long lastChangedSince, Boolean includeDeleted, Long createdFrom, Long createdTo) {
+        return fieldPlannerRepository.getFieldPlanCount(request, tenantId, lastChangedSince, includeDeleted, createdFrom, createdTo);
     }
 
     public NameResult CheckDuplicateAndGenerateName(FieldPlan fieldPlan) {
@@ -176,5 +218,227 @@ public class FieldPlannerService {
         return baseName;
     }
 
+    /**
+     * Handles project name regeneration during updates
+     * Compares the new base name with existing name and updates if different
+     */
+    private void handleFieldPlanNameUpdate(FieldPlanRequest request, FieldPlan fieldPlan, FieldPlan fieldPlanFromDB) {
+        try {
+            String newBaseName = getStateActivitiesYearFormat(request, fieldPlan.getTenantId(), fieldPlan);
+//            String baseName = "KA-MT_HO-2024";
+            if(newBaseName == null){
+                throw new CustomException("FORMAT ERROR", "Cannot generate the fieldplan name");
+            };
+
+            String existingName = fieldPlanFromDB.getName();
+            // Extract base name from existing name (remove any suffix like -1, -2, etc.)
+            String existingBaseName = removeLastSuffix(existingName);
+            if (newBaseName.equals(existingBaseName)) {
+                log.info("Project name unchanged. Existing: {}, New base: {}", existingName, newBaseName);
+                return;
+            }
+
+            log.info("FieldPlan name needs update. Existing: {}, New: {}", existingName, newBaseName);
+            fieldPlan.setName(newBaseName);
+            NameResult result = CheckDuplicateAndGenerateName(fieldPlan);
+            if (result.isDuplicate()) {
+                fieldPlan.setIsDuplicate(true);
+                fieldPlan.setName(result.getGeneratedName());
+                log.info("Duplicate found. Using generated name: " + result.getGeneratedName());
+//                return fieldPlanRequest;
+            } else {
+                log.info("No duplicate. Name is: " + result.getGeneratedName());
+            }
+
+        } catch (Exception e) {
+            log.error("Error handling project name update for project: {}", fieldPlan.getId(), e);
+            // Don't throw exception - continue with update even if name generation fails
+        }
+    }
+
+    public static String removeLastSuffix(String code) {
+        if (code == null || code.isEmpty()) {
+            return code;
+        }
+
+        int lastDash = code.lastIndexOf('-');
+        if (lastDash == -1) {
+            return code; // pas de tiret donc rien à enlever
+        }
+
+        String suffix = code.substring(lastDash + 1);
+
+        // Vérifie si le suffixe est numérique OU alphanumérique
+        if (suffix.matches("[A-Za-z0-9]+")) {
+            return code.substring(0, lastDash); // enlève le suffixe
+        }
+
+        return code; // si le suffixe contient autre chose, on garde
+    }
+
+    /* Construct FieldPlan Request object for search which contains fieldplan id and tenantId */
+    private FieldPlanRequest getSearchFieldPlanRequest(List<FieldPlan> fieldPlans, RequestInfo requestInfo) {
+        List<FieldPlan> fieldPlanList = new ArrayList<>();
+
+        for (FieldPlan fieldPlan : fieldPlans) {
+            String projectId = fieldPlan.getId();
+            FieldPlan newFieldPlan = FieldPlan.builder()
+                    .id(projectId)
+                    .tenantId(fieldPlan.getTenantId())
+                    .build();
+
+            fieldPlanList.add(newFieldPlan);
+        }
+        return FieldPlanRequest.builder()
+                .requestInfo(requestInfo)
+                .fieldPlans(fieldPlanList)
+                .build();
+    }
+
+    public List<FieldPlan> searchFieldPlan(FieldPlanRequest request, Integer limit, Integer offset, String tenantId, Boolean includeDeleted, Long lastChangedSince, Long createdFrom, Long createdTo) {
+        fieldPlannerValidator.validateSearchProjectRequest(request, limit, offset, tenantId, createdFrom, createdTo);
+        List<FieldPlan> fieldPlanList = fieldPlannerRepository.getFieldPlans(request, limit, offset, tenantId, includeDeleted, lastChangedSince, createdFrom, createdTo);
+        return fieldPlanList;
+    }
+
+    private void processFieldPlanUpdate(FieldPlanRequest request, FieldPlan fieldPlan, List<FieldPlan> fieldPlansFromDB) {
+        /*
+         * Convert fieldplan ID to string for comparison
+         */
+        String fieldPlanId = String.valueOf(fieldPlan.getId());
+
+        /*
+         * Find the project from the database that matches the current project ID
+         */
+        FieldPlan fielPlanFromDB = findFieldPlanById(fieldPlanId, fieldPlansFromDB);
+        boolean isCascadingProjectDateUpdate = request.isCascadingProjectDateUpdate();
+
+        if (fielPlanFromDB != null) {
+            /*
+             * Merge additional details of the project from the request and project from DB
+             */
+            fieldPlanServiceUtil.mergeAdditionalDetails(fieldPlan, fielPlanFromDB);
+
+            /*
+             * Handle cases where cascading project date update is true
+             */
+            if (isCascadingProjectDateUpdate) {
+                handleUpdateFieldPlan(request, fieldPlan, fielPlanFromDB);
+            }
+            /*
+             * Handle cases for normal update flow
+             */
+            else {
+//                handleNormalUpdate(request, project, projectFromDB);
+            }
+        }
+    }
+
+    private void handleUpdateFieldPlan(FieldPlanRequest request, FieldPlan fieldPlan, FieldPlan fieldPlanFromDB) {
+        /*
+         * Save original values of start date, end date, and additional details
+         */
+        Long originalStartDate = fieldPlanFromDB.getStartDate();
+        Long originalEndDate = fieldPlanFromDB.getEndDate();
+        Object originalGeographyDetails = fieldPlanFromDB.getGeographyDetails();
+        Object originalActivity = fieldPlanFromDB.getActivities();
+        AuditDetails originalAuditDetails = fieldPlanFromDB.getAuditDetails();
+
+
+        /*
+         * Update the project with new start date, end date, and additional details
+         */
+        fieldPlanFromDB.setStartDate(fieldPlan.getStartDate());
+        fieldPlanFromDB.setEndDate(fieldPlan.getEndDate());
+        fieldPlanFromDB.setGeographyDetails(fieldPlan.getGeographyDetails());
+        fieldPlanFromDB.setActivities(fieldPlan.getActivities());
+        fieldPlanFromDB.setAuditDetails(fieldPlan.getAuditDetails());
+
+        /*
+         * Ensure that no other properties are being updated besides the start and end dates
+         */
+        if (!isValidCascadingUpdate(fieldPlanFromDB, fieldPlan)) {
+            throw new CustomException(
+                    "FIELDPLANE_CASCADE_UPDATE_ERROR",
+                    "Can only update FieldPlan dates, geographyDetails and additional details if cascade FieldPlan date update true"
+            );
+        }
+
+        /*
+         * Restore original values of start date, end date, and additional details
+         */
+        fieldPlanFromDB.setStartDate(originalStartDate);
+        fieldPlanFromDB.setEndDate(originalEndDate);
+        fieldPlanFromDB.setGeographyDetails(mapper.convertValue(originalGeographyDetails, Map.class));
+        fieldPlanFromDB.setActivities((List<Map<String, Object>>) originalActivity);
+        fieldPlanFromDB.setAuditDetails(originalAuditDetails);
+
+        /*
+         * Update lastModifiedTime and lastModifiedBy for the project
+         */
+        fieldPlannerEnrichment.enrichFieldPlanRequestOnUpdate(fieldPlan, fieldPlanFromDB, request.getRequestInfo());
+
+        /*
+         * Handle project name regeneration if needed (dates changed)
+         */
+        handleFieldPlanNameUpdate(request, fieldPlan, fieldPlanFromDB);
+
+        /*
+         * Check and enrich cascading project dates and push the update to the message broker
+         */
+        producer.push(fieldPlannerConfiguration.getUpdateFieldPlanTopic(), request);
+    }
+
+    private boolean isValidCascadingUpdate(FieldPlan fieldPlanFromDB, FieldPlan fieldPlan) {
+        // Check if only allowed fields are being updated
+        return Objects.equals(fieldPlanFromDB.getId(), fieldPlan.getId()) &&
+                Objects.equals(fieldPlanFromDB.getTenantId(), fieldPlan.getTenantId()) &&
+                isValidGeographyDetailsUpdate(fieldPlanFromDB.getGeographyDetails(), fieldPlan.getGeographyDetails());
+        // Note: We allow startDate, endDate, name, geographyDetails, activities and auditDetails to be different
+    }
+
+    /**
+     * Validates if only allowed fields in additionalDetails are being updated
+     * Allowed: geographyDetails (districts, blocks)
+     * Read-only: justificationCode field
+     */
+    private boolean isValidGeographyDetailsUpdate(Object originalGeographyDetails, Object newGeographyDetails) {
+        if (originalGeographyDetails == null && newGeographyDetails == null) {
+            return true;
+        }
+        if (originalGeographyDetails == null || newGeographyDetails == null) {
+            return false;
+        }
+
+        try {
+            // Convert to JsonNode for easier comparison
+            JsonNode originalNode = mapper.valueToTree(originalGeographyDetails);
+            JsonNode newNode = mapper.valueToTree(newGeographyDetails);
+
+            // Check if state is unchanged (read-only)
+            JsonNode originalState = originalNode.get("state");
+            JsonNode newState = newNode.get("state");
+            if (!Objects.equals(originalState, newState)) {
+                log.warn("State cannot be changed during cascading update");
+                return false;
+            }
+
+            return true;
+
+        } catch (Exception e) {
+            log.error("Error validating geographyDetails update", e);
+            return false;
+        }
+    }
+
+    private FieldPlan findFieldPlanById(String fieldPlanId, List<FieldPlan> fieldPlansFromDB) {
+        /*
+         * Find and return the project with the matching ID from the list of fieldplan fetched from the database
+         */
+        return fieldPlansFromDB.stream()
+                .filter(p -> fieldPlanId.equals(String.valueOf(p.getId())))
+                .findFirst()
+                .orElse(null);
+    }
 
 }
