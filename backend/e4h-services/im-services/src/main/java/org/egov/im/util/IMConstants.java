@@ -178,4 +178,6 @@ public class IMConstants {
     public static final String PENDING_ASSIGNMENT_PREFIX = "PENDING_ASSIGNMENT_";
 
     public static final String PENDING_RESOLUTION_PREFIX = "PENDING_RESOLUTION_";
+
+    public static final String ASIA_KOLKATA = "Asia/Kolkata";
 }
