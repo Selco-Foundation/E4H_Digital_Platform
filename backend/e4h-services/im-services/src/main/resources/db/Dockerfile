@@ -13,20 +13,23 @@ RUN mkdir -p /migrations && \
     rm -rf BOOT-INF /tmp/im-services.jar
 
 #flyway
-FROM egovio/flyway:10.7.1
+FROM openjdk:17-slim as flywaydl
+
+RUN apt-get update && apt-get install -y wget && \
+    mkdir -p /flyway/flyway-cli && \
+    wget -O /flyway/flyway-cli/flyway-commandline-9.22.3.tar.gz https://repo1.maven.org/maven2/org/flywaydb/flyway-commandline/9.22.3/flyway-commandline-9.22.3-linux-x64.tar.gz && \
+    tar -xzf /flyway/flyway-cli/flyway-commandline-9.22.3.tar.gz -C /flyway/flyway-cli && \
+    rm /flyway/flyway-cli/flyway-commandline-9.22.3.tar.gz && \
+    rm -rf /flyway/flyway-cli/flyway-9.22.3/jre /flyway/flyway-cli/flyway-9.22.3/licenses /flyway/flyway-cli/flyway-9.22.3/assets /flyway/flyway-cli/flyway-9.22.3/README.txt
+
+FROM openjdk:17-slim
 
 COPY --from=builder /migrations /flyway/jars
-
+COPY --from=flywaydl /flyway/flyway-cli /flyway/flyway-cli
 COPY ./migration/main /flyway/sql
 
 COPY migrate.sh /usr/bin/migrate.sh
 
 RUN chmod +x /usr/bin/migrate.sh
-
-# Download Flyway CLI JARs
-RUN apt-get update && apt-get install -y wget && \
-    mkdir -p /flyway/flyway-cli && \
-    wget -O /flyway/flyway-cli/flyway-commandline-9.22.3.tar.gz https://repo1.maven.org/maven2/org/flywaydb/flyway-commandline/9.22.3/flyway-commandline-9.22.3-linux-x64.tar.gz && \
-    tar -xzf /flyway/flyway-cli/flyway-commandline-9.22.3.tar.gz -C /flyway/flyway-cli
 
 ENTRYPOINT ["/usr/bin/migrate.sh"]
