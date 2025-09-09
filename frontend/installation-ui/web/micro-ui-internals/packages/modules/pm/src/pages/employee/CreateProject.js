@@ -18,7 +18,6 @@ const CreateProject = () => {
   const [currentKey, setCurrentKey] = useState(1);
   const [persistedFormData, setPersistedFormData] = useState({});
   const [defaultFormData, setDefaultFormData] = useState({});
-  const [currentFormData, setCurrentFormData] = useState({});
   const [createdProject, setCreatedProject] = useState({});
   const history = useHistory();
   const location = useLocation();
@@ -27,7 +26,6 @@ const CreateProject = () => {
   const [toast, setToast] = useState(null);
   const [blockUI, setBlockUI] = useState(null);
   const [invalidDataError, setInvalidDataError] = useState(null);
-  const [updateFormData, setUpdateFormData] = useState(null);
   const [getFormData, setGetFormData] = useState(null);
   const [showBackAlert, setShowBackAlert] = useState(false);
 
@@ -148,15 +146,6 @@ const CreateProject = () => {
     return uploadedFile;
   }
 
-  const getDefaultValues = () => {
-    switch (currentKey) {
-      case 1:
-        return persistedFormData.projectDetails;
-      case 2:
-        return persistedFormData.geographyDetails;
-    }
-  }
-
   const config = useMemo(
     () => [
       {
@@ -203,7 +192,6 @@ const CreateProject = () => {
             disable: false,
             customProps: {
               name: "projectDuration",
-              defaultValues: defaultFormData
             },
             route: "project-duration",
             nextRoute: "",
@@ -226,7 +214,6 @@ const CreateProject = () => {
             component: "PMStateSelector",
             customProps: {
               name: "state",
-              defaultValues: defaultFormData,
               t,
               boundaryData
             },
@@ -248,7 +235,6 @@ const CreateProject = () => {
             customProps: {
               name: "districts",
               stateIdentifier: "state",
-              defaultValues: defaultFormData,
               t,
               boundaryData,
             },
@@ -270,7 +256,6 @@ const CreateProject = () => {
             customProps: {
               name: "blocks",
               districtsIdentifier: "districts",
-              defaultValues: defaultFormData,
               t,
               boundaryData
             },
@@ -340,7 +325,7 @@ const CreateProject = () => {
           }
         ]
       }
-    ], [t, projectTypeData, boundaryData, defaultFormData, invalidDataError]
+    ], [t, projectTypeData, boundaryData, invalidDataError]
   )
 
   const filterConfig = (config, currentKey) => {
@@ -352,14 +337,6 @@ const CreateProject = () => {
   useEffect(() => {
     setFilteredConfig(filterConfig(config, currentKey));
   }, [config, currentKey])
-
-  useEffect(() => {
-    if (updateFormData && defaultFormData) {
-      Object.keys(defaultFormData).forEach(key => {
-        updateFormData(key, defaultFormData[key]);
-      })
-    }
-  }, [defaultFormData, updateFormData]);
 
   useEffect(() => {
     switch (currentKey) {
@@ -462,11 +439,10 @@ const CreateProject = () => {
   }
 
   const handleFormValueChange = (setValue, formData) => {
-    setCurrentFormData(formData);
+
   }
 
   const setFormAccessors = ({setValue, getValues}) => {
-    setUpdateFormData(() => setValue);
     setGetFormData(() => getValues)
   }
 
@@ -504,12 +480,6 @@ const CreateProject = () => {
   const handleBackNavigation = () => {
     switch (currentKey) {
       case 1:
-        const projectDetails = {
-          projectType: getFormData("projectType"),
-          justificationCode: getFormData("justificationCode"),
-          projectDuration: getFormData("projectDuration"),
-        }
-        setPersistedFormData(prev => ({...prev, projectDetails : projectDetails}));
         setShowBackAlert(true);
         break;
       case 2:
@@ -535,7 +505,15 @@ const CreateProject = () => {
       case 3:
          setShowBackAlert(false);
          setCurrentKey(prev => prev - 1);
-         break;
+    }
+  }
+
+  const getDefaultValues = () => {
+    switch (currentKey) {
+      case 1:
+        return persistedFormData.projectDetails;
+      case 2:
+        return persistedFormData.geographyDetails;
     }
   }
 
@@ -578,6 +556,7 @@ const CreateProject = () => {
         }}
       />
       <FormComposerV2
+        key={JSON.stringify(defaultFormData)}
         config={filteredConfig}
         onSubmit={handleFormSubmit}
         label={getNextActionLabel()}
@@ -599,7 +578,7 @@ const CreateProject = () => {
         isDescriptionBold={true}
         // onFormValueChange={handleFormValueChange}
         getFormAccessors={setFormAccessors}
-        // defaultData={getDefaultValues()}
+        defaultValues={getDefaultValues()}
         showMultipleCardsWithoutNavs={true}
         noBreakLine={true}
         cardStyle={{padding: "20px"}}

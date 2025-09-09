@@ -2,38 +2,19 @@ import React, {useEffect, useState} from "react";
 import {MultiSelectDropdown} from "@egovernments/digit-ui-react-components";
 
 const DistrictSelector = ({
-  data,
+  data = {},
   setValue,
   props,
 }) => {
 
-  const { t, name, stateIdentifier, boundaryData, defaultValues = {} } = props;
-  const [selectedState, setSelectedState] = useState(defaultValues[stateIdentifier]);
+  const { t, name, stateIdentifier, boundaryData } = props;
+  const [selectedState, setSelectedState] = useState(data[stateIdentifier]);
   const [districtMenu, setDistrictMenu] = useState([]);
-  const [selectedDistricts, setSelectedDistricts] = useState([]);
-  const [loadDefaultValues, setLoadDefaultValues] = useState(true);
+  const [selectedDistricts, setSelectedDistricts] = useState(data[name] || []);
 
   useEffect(() => {
-    if (Object.keys(defaultValues).length) {
-      setLoadDefaultValues(true);
-    } else {
-      setLoadDefaultValues(false);
-    }
-  }, [defaultValues]);
-
-  useEffect(() => {
-    if (!loadDefaultValues) {
-      setSelectedState(data[stateIdentifier]);
-    }
+    setSelectedState(data[stateIdentifier]);
   }, [data[stateIdentifier]]);
-
-  useEffect(() => {
-    if (loadDefaultValues) {
-      setSelectedState(defaultValues[stateIdentifier]);
-      setSelectedDistricts(defaultValues[name] || []);
-      setLoadDefaultValues(false);
-    }
-  }, [loadDefaultValues])
 
   useEffect(() => {
     if (selectedDistricts.filter((block) => block.code !== "ALL_DISTRICTS").length) {
@@ -61,10 +42,8 @@ const DistrictSelector = ({
         ...newDistrictMenu
       ]);
 
-      if (!loadDefaultValues) {
-        const newSelectedDistricts = selectedDistricts.filter((district) => district.stateCode === selectedStateCode);
-        setSelectedDistricts(newSelectedDistricts);
-      }
+      const newSelectedDistricts = selectedDistricts.filter((district) => district.stateCode === selectedStateCode);
+      setSelectedDistricts(newSelectedDistricts);
     }
   }, [t, boundaryData, selectedState])
 

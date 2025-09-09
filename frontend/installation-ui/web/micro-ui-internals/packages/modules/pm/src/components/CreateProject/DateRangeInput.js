@@ -1,7 +1,7 @@
 import React, {useEffect, useState} from "react";
-import _ from "lodash";
 
 const DateRangeInput = ({
+  data = {},
   register,
   setValue,
   props,
@@ -9,17 +9,11 @@ const DateRangeInput = ({
   clearErrors,
 }) => {
 
-  const { name, defaultValues = {} } = props;
-  const [dateRange, setDateRange] = useState({
+  const { name } = props;
+  const [dateRange, setDateRange] = useState(data[name] || {
     startDate: "",
     endDate: "",
   });
-
-  useEffect(() => {
-    if (defaultValues[name]) {
-      setDateRange(defaultValues[name]);
-    }
-  }, [defaultValues[name]]);
 
   useEffect(() => {
     const startDate = dateRange.startDate;
