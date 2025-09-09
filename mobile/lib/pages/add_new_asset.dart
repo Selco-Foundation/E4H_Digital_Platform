@@ -238,7 +238,20 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
 
   void _addNewAsset(int maxAssets) {
     if (_assets.length < maxAssets) {
-      setState(() => _assets.add(AssetModel(serialNumber: '')));
+      setState(() {
+        final newAsset = AssetModel(serialNumber: '');
+
+        // Copy battery/panel properties from first asset to maintain consistency
+        if (_assets.isNotEmpty &&
+            (currentAssetType == 'battery' || currentAssetType == 'panel')) {
+          newAsset.batteryType = _assets.first.batteryType;
+          newAsset.batteryVoltage = _assets.first.batteryVoltage;
+          newAsset.batteryCapacity = _assets.first.batteryCapacity;
+          newAsset.panelCapacity = _assets.first.panelCapacity;
+        }
+
+        _assets.add(newAsset);
+      });
     } else {
       context.showSnackBar(
         SnackBar(
@@ -346,7 +359,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                   }
                 });
 
-                // 2) prefill the futures map so each card has its future ready
+                // Prefill the futures map so each card has its future ready
                 _cachedImageFutures.clear();
                 for (var i = 0; i < _assets.length; i++) {
                   final path = _assets[i].photoPath;
@@ -377,8 +390,11 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
               orElse: () => 0,
             ),
             builder: (ctx, maxAssets) {
+              // Fixed validation logic
               final isDisabled = _assets.length != maxAssets ||
                   _assets.any((a) => !_isAssetComplete(a, currentAssetType));
+              debugPrint(
+                  "isDisable $isDisabled, assets: ${_assets.length}, max: $maxAssets");
 
               return Scaffold(
                 body: ScrollableContent(
@@ -463,11 +479,11 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                           const SizedBox(height: spacer4),
                           assetTypeState.maybeWhen(
                               battery: () => _batteryCapacity(theme, textTheme,
-                                  _assets.first, currentAssetType.titleCase),
+                                  _assets, currentAssetType.titleCase),
                               panel: () => _panelCapacity(
                                     theme,
                                     textTheme,
-                                    _assets.first,
+                                    _assets,
                                     currentAssetType.titleCase,
                                   ),
                               orElse: () => const SizedBox()),
@@ -642,7 +658,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                         asset.photoPath = copiedPath;
                         asset.latitude = _latitude.toString();
                         asset.longitude = _longitude.toString();
-                        // invalidate this card’s future so it reloads the new local file
+                        // invalidate this card's future so it reloads the new local file
                         _cachedImageFutures.remove(index);
                       });
                     },
@@ -701,166 +717,195 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
   }
 
   Widget _batteryCapacity(ThemeData theme, DigitTextTheme textTheme,
-          AssetModel asset, String heading) =>
-      Column(
-        children: [
-          DigitCard(
-            children: [
-              Text(
-                '$heading Capacity',
-                style: textTheme.headingXl
-                    .copyWith(color: theme.colorTheme.primary.primary2),
-              ),
-              LabeledField(
-                label: '$heading Type',
-                capitalizedFirstLetter: false,
-                child: DigitDropdown(
-                    sentenceCaseEnabled: false,
-                    items: typesField
-                        .map((type) => DropdownItem(name: type, code: type))
-                        .toList(),
-                    selectedOption: DropdownItem(
-                      name: asset.batteryType ?? '',
-                      code: asset.batteryType ?? '',
-                    ),
-                    onSelect: (DropdownItem sel) {
-                      setState(() => asset.batteryType = sel.code);
-                    }),
-              ),
-              Row(
-                children: [
-                  Expanded(
-                    flex: 3,
-                    child: LabeledField(
-                      label: 'Voltage',
-                      capitalizedFirstLetter: false,
-                      child: DigitDropdown(
-                        sentenceCaseEnabled: false,
-                        items: voltages
-                            .map((type) => DropdownItem(name: type, code: type))
-                            .toList(),
-                        selectedOption: DropdownItem(
-                          name: asset.batteryVoltage ?? '',
-                          code: asset.batteryVoltage ?? '',
-                        ),
-                        onSelect: (DropdownItem sel) {
-                          setState(() => asset.batteryVoltage = sel.code);
-                        },
+      List<AssetModel> assets, String heading) {
+    // Use first asset to control the values for all assets
+    final firstAsset =
+        assets.isNotEmpty ? assets.first : AssetModel(serialNumber: '');
+
+    return Column(
+      children: [
+        DigitCard(
+          children: [
+            Text(
+              '$heading Capacity',
+              style: textTheme.headingXl
+                  .copyWith(color: theme.colorTheme.primary.primary2),
+            ),
+            LabeledField(
+              label: '$heading Type',
+              capitalizedFirstLetter: false,
+              child: DigitDropdown(
+                  sentenceCaseEnabled: false,
+                  items: typesField
+                      .map((type) => DropdownItem(name: type, code: type))
+                      .toList(),
+                  selectedOption: DropdownItem(
+                    name: firstAsset.batteryType ?? '',
+                    code: firstAsset.batteryType ?? '',
+                  ),
+                  onSelect: (DropdownItem sel) {
+                    setState(() {
+                      // Update all assets with the same value
+                      for (var asset in assets) {
+                        asset.batteryType = sel.code;
+                      }
+                    });
+                  }),
+            ),
+            Row(
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: LabeledField(
+                    label: 'Voltage',
+                    capitalizedFirstLetter: false,
+                    child: DigitDropdown(
+                      sentenceCaseEnabled: false,
+                      items: voltages
+                          .map((type) => DropdownItem(name: type, code: type))
+                          .toList(),
+                      selectedOption: DropdownItem(
+                        name: firstAsset.batteryVoltage ?? '',
+                        code: firstAsset.batteryVoltage ?? '',
                       ),
+                      onSelect: (DropdownItem sel) {
+                        setState(() {
+                          // Update all assets with the same value
+                          for (var asset in assets) {
+                            asset.batteryVoltage = sel.code;
+                          }
+                        });
+                      },
                     ),
                   ),
-                  const SizedBox(width: spacer6),
-                  Expanded(
-                    flex: 1,
-                    child: LabeledField(
-                      label: 'Unit',
-                      capitalizedFirstLetter: false,
-                      child: DigitTextFormInput(
-                        controller: TextEditingController(),
-                        isDisabled: true,
-                        initialValue: '$voltageUom',
-                        keyboardType: TextInputType.text,
-                      ),
+                ),
+                const SizedBox(width: spacer6),
+                Expanded(
+                  flex: 1,
+                  child: LabeledField(
+                    label: 'Unit',
+                    capitalizedFirstLetter: false,
+                    child: DigitTextFormInput(
+                      controller: TextEditingController(),
+                      isDisabled: true,
+                      initialValue: '$voltageUom',
+                      keyboardType: TextInputType.text,
                     ),
                   ),
-                ],
-              ),
-              Row(
-                children: [
-                  Expanded(
-                    flex: 3,
-                    child: LabeledField(
-                      label: 'Current',
-                      capitalizedFirstLetter: false,
-                      child: DigitDropdown(
+                ),
+              ],
+            ),
+            Row(
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: LabeledField(
+                    label: 'Current',
+                    capitalizedFirstLetter: false,
+                    child: DigitDropdown(
+                      sentenceCaseEnabled: false,
+                      items: assetCapacity
+                          .map((type) => DropdownItem(name: type, code: type))
+                          .toList(),
+                      selectedOption: DropdownItem(
+                        name: firstAsset.batteryCapacity ?? '',
+                        code: firstAsset.batteryCapacity ?? '',
+                      ),
+                      onSelect: (DropdownItem sel) {
+                        setState(() {
+                          // Update all assets with the same value
+                          for (var asset in assets) {
+                            asset.batteryCapacity = sel.code;
+                          }
+                        });
+                      },
+                    ),
+                  ),
+                ),
+                const SizedBox(width: spacer6),
+                Expanded(
+                  flex: 1,
+                  child: LabeledField(
+                    label: 'Unit',
+                    capitalizedFirstLetter: false,
+                    child: DigitTextFormInput(
+                      controller: TextEditingController(),
+                      isDisabled: true,
+                      initialValue: assetCapacityUom,
+                      keyboardType: TextInputType.text,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: spacer8),
+      ],
+    );
+  }
+
+  Widget _panelCapacity(ThemeData theme, DigitTextTheme textTheme,
+      List<AssetModel> assets, String heading) {
+    // Use first asset to control the values for all assets
+    final firstAsset =
+        assets.isNotEmpty ? assets.first : AssetModel(serialNumber: '');
+
+    return Column(
+      children: [
+        DigitCard(
+          children: [
+            Text(
+              '$heading Capacity',
+              style: textTheme.headingXl
+                  .copyWith(color: theme.colorTheme.primary.primary2),
+            ),
+            Row(
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: LabeledField(
+                    label: 'Voltage',
+                    capitalizedFirstLetter: false,
+                    child: DigitDropdown(
                         sentenceCaseEnabled: false,
                         items: assetCapacity
                             .map((type) => DropdownItem(name: type, code: type))
                             .toList(),
                         selectedOption: DropdownItem(
-                          name: asset.batteryCapacity ?? '',
-                          code: asset.batteryCapacity ?? '',
+                          name: firstAsset.panelCapacity ?? '',
+                          code: firstAsset.panelCapacity ?? '',
                         ),
                         onSelect: (DropdownItem sel) {
-                          setState(() => asset.batteryCapacity = sel.code);
-                        },
-                      ),
+                          setState(() {
+                            // Update all assets with the same value
+                            for (var asset in assets) {
+                              asset.panelCapacity = sel.code;
+                            }
+                          });
+                        }),
+                  ),
+                ),
+                const SizedBox(width: spacer6),
+                Expanded(
+                  flex: 1,
+                  child: LabeledField(
+                    label: 'Unit',
+                    capitalizedFirstLetter: false,
+                    child: DigitTextFormInput(
+                      controller: TextEditingController(),
+                      isDisabled: true,
+                      initialValue: assetCapacityUom,
+                      keyboardType: TextInputType.text,
                     ),
                   ),
-                  const SizedBox(width: spacer6),
-                  Expanded(
-                    flex: 1,
-                    child: LabeledField(
-                      label: 'Unit',
-                      capitalizedFirstLetter: false,
-                      child: DigitTextFormInput(
-                        controller: TextEditingController(),
-                        isDisabled: true,
-                        initialValue: assetCapacityUom,
-                        keyboardType: TextInputType.text,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: spacer8),
-        ],
-      );
-
-  Widget _panelCapacity(ThemeData theme, DigitTextTheme textTheme,
-          AssetModel asset, String heading) =>
-      Column(
-        children: [
-          DigitCard(
-            children: [
-              Text(
-                '$heading Capacity',
-                style: textTheme.headingXl
-                    .copyWith(color: theme.colorTheme.primary.primary2),
-              ),
-              Row(
-                children: [
-                  Expanded(
-                    flex: 3,
-                    child: LabeledField(
-                      label: 'Voltage',
-                      capitalizedFirstLetter: false,
-                      child: DigitDropdown(
-                          sentenceCaseEnabled: false,
-                          items: assetCapacity
-                              .map((type) =>
-                                  DropdownItem(name: type, code: type))
-                              .toList(),
-                          selectedOption: DropdownItem(
-                            name: asset.panelCapacity ?? '',
-                            code: asset.panelCapacity ?? '',
-                          ),
-                          onSelect: (DropdownItem sel) {
-                            setState(() => asset.panelCapacity = sel.code);
-                          }),
-                    ),
-                  ),
-                  const SizedBox(width: spacer6),
-                  Expanded(
-                    flex: 1,
-                    child: LabeledField(
-                      label: 'Unit',
-                      capitalizedFirstLetter: false,
-                      child: DigitTextFormInput(
-                        controller: TextEditingController(),
-                        isDisabled: true,
-                        initialValue: assetCapacityUom,
-                        keyboardType: TextInputType.text,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: spacer8),
-        ],
-      );
+                ),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: spacer8),
+      ],
+    );
+  }
 }
