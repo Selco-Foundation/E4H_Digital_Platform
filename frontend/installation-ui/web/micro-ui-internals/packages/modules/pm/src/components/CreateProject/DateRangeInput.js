@@ -1,4 +1,5 @@
 import React, {useEffect, useState} from "react";
+import FormattedDateInput from "../Custom/FormattedDateInput";
 
 const DateRangeInput = ({
   data = {},
@@ -55,27 +56,25 @@ const DateRangeInput = ({
         gap: "8px",
       }}
     >
-      <input
+      <FormattedDateInput
         style={{ width: "240px" }}
         className="employee-card-input"
-        type="date"
         value={dateRange.startDate}
         max={dateRange.endDate}
-        {...register(`${name}.startDate`)}
         onChange={(e) =>
           handleDateChange("startDate", e.target.value)
         }
+        {...register(`${name}.startDate`)}
       />
-      <input
+      <FormattedDateInput
         style={{ width: "240px" }}
         className="employee-card-input"
-        type="date"
         value={dateRange.endDate}
         min={dateRange.startDate}
-        {...register(`${name}.endDate`)}
         onChange={(e) =>
           handleDateChange("endDate", e.target.value)
         }
+        {...register(`${name}.endDate`)}
       />
     </div>
   );
