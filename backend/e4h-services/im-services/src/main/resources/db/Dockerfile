@@ -22,7 +22,7 @@ RUN apt-get update && apt-get install -y wget && \
     rm /flyway/flyway-cli/flyway-commandline-9.22.3.tar.gz && \
     rm -rf /flyway/flyway-cli/flyway-9.22.3/jre /flyway/flyway-cli/flyway-9.22.3/licenses /flyway/flyway-cli/flyway-9.22.3/assets /flyway/flyway-cli/flyway-9.22.3/README.txt
 
-FROM openjdk:17-slim
+FROM egovio/flyway:10.7.1
 
 COPY --from=builder /migrations /flyway/jars
 COPY --from=flywaydl /flyway/flyway-cli /flyway/flyway-cli
