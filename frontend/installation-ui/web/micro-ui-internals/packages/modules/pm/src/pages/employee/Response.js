@@ -1,5 +1,5 @@
 import React from "react";
-import { Card, Banner, CardText, SubmitBar } from "@selco/digit-ui-react-components";
+import { Card, Banner, CardText, SubmitBar } from "@egovernments/digit-ui-react-components";
 import { Link, useRouteMatch } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
@@ -11,7 +11,7 @@ const GetActionMessage = ({ action }) => {
     } else if (action === "RATE") {
         return t(`CS_COMMON_COMPLAINT_RATED`);
     } else {
-        return t(`CS_COMMON_COMPLAINT_SUBMITTED`);
+        return t(`PM_LABEL_PROJECT_CREATED`);
     }
 };
 
@@ -38,6 +38,7 @@ const BannerPicker = ({ response }) => {
                 message={GetActionMessage("SUBMITTED")}
                 complaintNumber={"1234567890"}
                 successful={true}
+                whichSvg="tick"
             />
         );
     } else {
@@ -54,12 +55,24 @@ const Response = (props) => {
     return (
         <Card>
             <BannerPicker response={appState} />
-            <div style={{display: "flex"}}>
-                <Link to={`/${window.contextPath}/employee`}>
-                    <SubmitBar label={t("CORE_COMMON_GO_TO_HOME")} />
+            <div style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "flex-end",
+                gap: "16px"
+            }}>
+                <Link to={`/${window.contextPath}/employee`} style={{ textDecoration: "none" }}>
+                    <SubmitBar label={t("CS_COMMON_HOME")}
+                               style={{
+                                   backgroundColor: "transparent",
+                                   color: "#C84C0E" ,
+                                   border: "1px solid #C84C0E",
+                                   boxShadow: "none",
+                                   fontWeight: "600"
+                               }} />
                 </Link>
                 <Link to={`/${window.contextPath}/employee`}>
-                    <SubmitBar label={t("CORE_COMMON_GO_TO_HOME")} />
+                    <SubmitBar label={t("PM_LABEL_CREATE_FIELD_PLAN")} />
                 </Link>
             </div>
         </Card>
