@@ -30,18 +30,20 @@ const DistrictSelector = ({
       const selectedStateCode = selectedState?.code;
 
       const newDistrictMenu = boundaryData.districts
-        .filter((district) => district.stateCode === selectedStateCode)
+        ?.filter((district) => district.stateCode === selectedStateCode)
         .map((district) => ({
           ...district,
           name: `DISTRICT_${district.code.toUpperCase()}`,
         }));
-      setDistrictMenu([
-        {
-          code: "ALL_DISTRICTS",
-          name: "PM_ACTION_SELECT_ALL_DISTRICTS",
-        },
-        ...newDistrictMenu
-      ]);
+      setDistrictMenu(
+        newDistrictMenu ? [
+          {
+            code: "ALL_DISTRICTS",
+            name: "PM_ACTION_SELECT_ALL_DISTRICTS",
+          },
+          ...newDistrictMenu
+        ] : []
+      );
 
       const newSelectedDistricts = selectedDistricts.filter((district) => district.stateCode === selectedStateCode);
       setSelectedDistricts(newSelectedDistricts);

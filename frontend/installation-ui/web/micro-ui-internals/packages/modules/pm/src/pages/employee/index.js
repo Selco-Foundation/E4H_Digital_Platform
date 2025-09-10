@@ -5,6 +5,7 @@ import { BreadCrumb } from "@egovernments/digit-ui-react-components";
 import { useSelector } from "react-redux";
 import CreateProject from "./CreateProject";
 import Response from "./Response";
+import CreateFieldPlan from "./CreateFieldPlan";
 
 const PMApp = () => {
   const { t } = useTranslation();
@@ -26,6 +27,11 @@ const PMApp = () => {
       content: t("PM_ACTION_CREATE_PROJECT"),
       path: match.url + `/response`,
       show: true,
+    },
+    fieldPlanCreation: {
+      content: t("PM_ACTION_CREATE_FIELD_PLAN"),
+      path: match.url + `/project/1234567890/field-plan/create`,
+      show: true,
     }
   };
 
@@ -36,10 +42,14 @@ const PMApp = () => {
   return (
     <div className="ground-container">
       <Switch>
-          <Route path={`${path}/project/create`} exact={true}>
-            <BreadCrumb crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.projectCreation]} />
-            <CreateProject />
-          </Route>
+        <Route path={`${path}/project/create`} exact={true}>
+          <BreadCrumb crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.projectCreation]} />
+          <CreateProject />
+        </Route>
+        <Route path={`${path}/project/:projectId/field-plan/create`} exact={true}>
+          <BreadCrumb crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.fieldPlanCreation]} />
+          <CreateFieldPlan />
+        </Route>
         <Route path={`${path}/response`} exact={true}>
           <BreadCrumb crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.response]} />
           <Response />

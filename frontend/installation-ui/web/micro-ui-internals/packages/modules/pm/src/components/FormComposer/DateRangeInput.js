@@ -15,6 +15,14 @@ const DateRangeInput = ({
     startDate: "",
     endDate: "",
   });
+  const [mobileView, setMobileView] = useState(window.innerWidth <= 460);
+
+  useEffect(() => {
+    const handleResize = () => setMobileView(window.innerWidth <= 460);
+    window.addEventListener("resize", handleResize);
+
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   useEffect(() => {
     const startDate = dateRange.startDate;
@@ -54,10 +62,10 @@ const DateRangeInput = ({
         alignItems: "center",
         justifyContent: "space-between",
         gap: "8px",
+        flexDirection: mobileView ? "column" : "row",
       }}
     >
       <FormattedDateInput
-        style={{ width: "240px" }}
         className="employee-card-input"
         value={dateRange.startDate}
         max={dateRange.endDate}
@@ -67,7 +75,6 @@ const DateRangeInput = ({
         {...register(`${name}.startDate`)}
       />
       <FormattedDateInput
-        style={{ width: "240px" }}
         className="employee-card-input"
         value={dateRange.endDate}
         min={dateRange.startDate}
