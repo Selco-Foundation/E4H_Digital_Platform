@@ -51,6 +51,10 @@ public class ProjectAddressQueryBuilder {
     private static final String STATUS_COUNT_QUERY = "SELECT status, COUNT(*) AS occurrences " +
             "FROM project prj where prj.status is not null and prj.projecttype = 'Facility' ";
 
+    // Project Name Generation Queries
+    private static final String CHECK_PROJECT_NAME_EXISTS_QUERY = "SELECT COUNT(*) FROM project WHERE name = ? AND tenantid = ?";
+    private static final String FIND_HIGHEST_EXISTING_PROJECT_NAME_QUERY = "SELECT name FROM project WHERE name LIKE ? AND tenantid = ? ORDER BY name ASC";
+
     private final ProjectConfiguration config;
 
     /* Add WHERE clause before first condition, ADD and for subsequent conditions. Do not add AND before any condition and after "(" */
@@ -505,5 +509,33 @@ public class ProjectAddressQueryBuilder {
             query += " ORDER BY " + defaultSortField + " " + defaultSortOrder;
         }
         return query;
+    }
+
+    /**
+     * Builds the query to check if a project name exists
+     * @return The SQL query string
+     */
+    public String getCheckProjectNameExistsQuery() {
+        return CHECK_PROJECT_NAME_EXISTS_QUERY;
+    }
+
+    /**
+     * Builds the query to find the highest existing project name with pattern matching
+     * @return The SQL query string
+     */
+    public String getFindHighestExistingProjectNameQuery() {
+        return FIND_HIGHEST_EXISTING_PROJECT_NAME_QUERY;
+    }
+
+    /**
+     * Escapes LIKE wildcards in the base name to prevent SQL injection and incorrect matching
+     * @param baseName The base name to escape
+     * @return The escaped base name
+     */
+    public String escapeLikeWildcards(String baseName) {
+        if (baseName == null) {
+            return null;
+        }
+        return baseName.replace("%", "\\%").replace("_", "\\_");
     }
 }
