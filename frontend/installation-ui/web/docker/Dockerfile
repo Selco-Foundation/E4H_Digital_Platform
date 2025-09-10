@@ -1,30 +1,23 @@
-FROM egovio/alpine-node-builder-14:yarn AS build
-
+# FROM egovio/alpine-node-builder-14:yarn AS build
+FROM ghcr.io/egovernments/alpine-node-builder-14:yarn AS build
 RUN apk update && apk upgrade
-
 RUN apk add --no-cache git>2.30.0
-
 ARG WORK_DIR
-ARG PUBLIC_PATH
-
 WORKDIR /app
-
-ENV NODE_OPTIONS "--max-old-space-size=8192"
+ENV NODE_OPTIONS "--max-old-space-size=8168"
 
 COPY ${WORK_DIR} .
-
 RUN ls -lah
 
 #RUN node web/envs.js
 RUN cd web/ \
-    && chmod +x install-deps.sh \
     &&  ./install-deps.sh \
     && yarn install \
-    && yarn build:webpack
+    && yarn build:webpack 
 
 FROM nginx:mainline-alpine
 #FROM ghcr.io/egovernments/nginx:mainline-alpine
-ENV WORK_DIR=/var/web/digit-ui
+ENV WORK_DIR=/var/web/installation-qc
 
 RUN mkdir -p ${WORK_DIR}
 

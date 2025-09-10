@@ -27,7 +27,7 @@
     "dev:qc": "cd packages/modules/qc && yarn start",
     "build": "run-p build:**",
     "build:qc": "cd packages/modules/qc && yarn build",
-    "deploy:jenkins": "./scripts/jenkins.sh",
+    "deploy:jenkins": "./scripts/jenkins.sh", 
     "clean": "rm -rf node_modules"
   },
   "resolutions": {

@@ -10,7 +10,7 @@ module.exports = {
   module: {
     rules: [
       {
-        test: /\.(js|jsx)$/,
+        test: /\.(js)$/,
         exclude: /node_modules/,
         use: {
           loader: "babel-loader",
@@ -20,19 +20,12 @@ module.exports = {
           }
         },
       },
-      {
-        test: /\.css$/i,
-        use: ["style-loader", "css-loader"],
-      }
     ],
   },
-  resolve: {
-    extensions: [".js", ".jsx"]
-  },
   output: {
-    filename: "[name]-[contenthash].bundle.js",
+    filename: "[name].bundle.js",
     path: path.resolve(__dirname, "build"),
-    publicPath: process.env.PUBLIC_PATH || "/digit-ui/"
+    publicPath: "/workbench-ui/",
   },
   optimization: {
     splitChunks: {
