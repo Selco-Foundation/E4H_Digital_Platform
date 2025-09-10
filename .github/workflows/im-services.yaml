@@ -81,7 +81,6 @@ jobs:
       - name: Prepare DB migration build context
         run: |
           cp backend/e4h-services/im-services/target/*.jar backend/e4h-services/im-services/src/main/resources/db/im-services.jar
-          cd backend/e4h-services/im-services/src/main/resources/db/
 
       - name: Build and Push Docker image for im-Service-DB
         run: |
