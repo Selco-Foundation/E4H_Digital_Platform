@@ -5,7 +5,7 @@ import { DateRange } from "@egovernments/digit-ui-svg-components";
 const FormattedDateInput = ({
   value,
   onChange,
-  style,
+  style = {},
   className,
   dateFormat = "dd MMMM yyyy",
   ...props
@@ -23,7 +23,6 @@ const FormattedDateInput = ({
         alignItems: "center",
         border: "1px solid #444",
         padding: "8px 12px",
-        minWidth: "200px",
         justifyContent: "space-between",
         cursor: "pointer",
         ...style,

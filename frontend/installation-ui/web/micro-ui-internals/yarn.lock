@@ -1808,6 +1808,27 @@
     react-joyride "2.5.5"
     react-table "7.7.0"
 
+"@egovernments/digit-ui-react-components@1.8.24":
+  version "1.8.24"
+  resolved "https://registry.yarnpkg.com/@egovernments/digit-ui-react-components/-/digit-ui-react-components-1.8.24.tgz#bd24377eb59fc281aec575f797bed0847dd621f4"
+  integrity sha512-7CK+UGkpESKGQd2hmg5L6FY5IjLjv2gWy11EBBPLYwq/ZT38PgPo7lhhSVJ9scdv6drj353biiBJfosVejWjGA==
+  dependencies:
+    "@cyntler/react-doc-viewer" "1.10.3"
+    "@egovernments/digit-ui-components" "0.2.0"
+    "@egovernments/digit-ui-svg-components" "1.0.23"
+    "@googlemaps/js-api-loader" "1.13.10"
+    "@hookform/resolvers" "1.3.7"
+    ajv "8.11.2"
+    ajv-errors "3.0.0"
+    ajv-formats "2.1.1"
+    json-schema-to-yup "1.8.8"
+    react-date-range "1.3.0"
+    react-drag-drop-files "2.3.10"
+    react-hook-form "6.15.8"
+    react-i18next "11.16.2"
+    react-joyride "2.5.5"
+    react-table "7.7.0"
+
 "@egovernments/digit-ui-svg-components@1.0.12":
   version "1.0.12"
   resolved "https://registry.yarnpkg.com/@egovernments/digit-ui-svg-components/-/digit-ui-svg-components-1.0.12.tgz#4121c3538877c09911626956909f198702f0e487"
@@ -1827,6 +1848,11 @@
   version "1.0.15"
   resolved "https://registry.yarnpkg.com/@egovernments/digit-ui-svg-components/-/digit-ui-svg-components-1.0.15.tgz#8fce27ae45b158d35179d1e73ce2811bfd605f5c"
   integrity sha512-ztbuXxPCQx3V3zamtNJoUw9VR8PmQRY5sRJRYdteKBenCpAz+O9hRNRzpCEJvqtxCe/lxswbCCy5hTsV2W8H2g==
+
+"@egovernments/digit-ui-svg-components@1.0.23":
+  version "1.0.23"
+  resolved "https://registry.yarnpkg.com/@egovernments/digit-ui-svg-components/-/digit-ui-svg-components-1.0.23.tgz#2d8f8d0a9432040ba03bf7050452c3240079705f"
+  integrity sha512-lrm8M8BOAM1ukwTD5l5Buy8/+dvR/ODPO5LwuZDmNV5mMOSaI/yr0YYzI0xzqAUtLf9Rir2mm4iHKfIFdxfQiQ==
 
 "@emotion/babel-plugin@^11.13.5":
   version "11.13.5"

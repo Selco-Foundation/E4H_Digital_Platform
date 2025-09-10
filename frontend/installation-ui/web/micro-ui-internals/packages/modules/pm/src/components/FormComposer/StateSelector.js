@@ -7,7 +7,7 @@ const StateSelector = ({
   props,
 }) => {
 
-  const { t, name, boundaryData } = props;
+  const { t, name, boundaryData, disable } = props;
   const [stateMenu, setStateMenu] = useState([]);
   const [selectedState, setSelectedState] = useState(data[name]);
 
@@ -18,7 +18,7 @@ const StateSelector = ({
   useEffect(() => {
     if (boundaryData) {
       setStateMenu(
-        boundaryData.states.map((state) => ({
+        boundaryData.states?.map((state) => ({
           ...state,
           name: t(`STATE_${state.code.toUpperCase()}`),
         }))
@@ -33,6 +33,7 @@ const StateSelector = ({
   return (
     <div className={"employee-select-wrap"}>
       <Dropdown
+        disable={disable}
         t={t}
         option={stateMenu}
         optionKey={"name"}

@@ -2,7 +2,7 @@ import React, {useEffect, useState} from "react";
 import {MultiSelectDropdown} from "@egovernments/digit-ui-react-components";
 import _ from "lodash";
 
-const DistrictSelector = ({
+const BlockSelector = ({
   data = {},
   setValue,
   props,
@@ -30,18 +30,20 @@ const DistrictSelector = ({
       const selectedDistrictCodes = selectedDistricts.map((district) => district.code);
 
       const newBlockMenu = boundaryData.blocks
-        .filter((block) => selectedDistrictCodes.includes(block.districtCode))
+        ?.filter((block) => selectedDistrictCodes.includes(block.districtCode))
         .map((block) => ({
           ...block,
           name: `BLOCK_${block.code.toUpperCase()}`,
         }));
-      setBlockMenu([
-        {
-          code: "ALL_BLOCKS",
-          name: "PM_ACTION_SELECT_ALL_BLOCKS",
-        },
-        ...newBlockMenu
-      ]);
+      setBlockMenu(
+        newBlockMenu ? [
+          {
+            code: "ALL_BLOCKS",
+            name: "PM_ACTION_SELECT_ALL_BLOCKS",
+          },
+          ...newBlockMenu
+        ] : []
+      );
 
       const newSelectedBlocks = selectedBlocks.filter((block) => selectedDistrictCodes.includes(block.districtCode));
       setSelectedBlocks(newSelectedBlocks);
@@ -87,4 +89,4 @@ const DistrictSelector = ({
   );
 };
 
-export default DistrictSelector;
+export default BlockSelector;
