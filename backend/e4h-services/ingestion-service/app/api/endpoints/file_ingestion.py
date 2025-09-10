@@ -30,7 +30,7 @@ from app.utils.convertor import request_info_from_json, create_vendor_request, c
     get_user_creation_payload_supervisors, \
     get_staff_creation_payload, create_project_payload, get_installation_spoc_creation_payload, \
     get_staff_search_payload, create_incident_data_update_payload, \
-    get_incident_data_update_request_info, create_facility_for_projects_payload
+    get_incident_data_update_request_info
 from app.utils.facility_service_client import FacilityServiceClient
 from app.utils.im_service_client import IMServiceClient
 from app.utils.mdms_client import MDMSClient
@@ -1881,7 +1881,7 @@ async def create_facilities_and_update_project(
                                 project_id=project_id,
                                 facility_id=facility_id
                             )
-                            if project_resp.status_code in (200, 201):
+                            if project_resp.status_code in (200, 201, 202):
                                 df.at[index, 'Project Linking Status'] = "Linked"
                             else:
                                 df.at[index, 'Project Linking Status'] = f"Failed: {project_resp.status_code} {project_resp.text}"
@@ -1902,7 +1902,7 @@ async def create_facilities_and_update_project(
 
                 # Create facility payload and call service
                 try:
-                    facility_payload = create_facility_for_projects_payload(request_info, row, facility_schema)
+                    facility_payload = create_facility_payload(request_info, row, facility_schema)
                     create_resp = facility_client.create_facility(facility_payload)
                 except Exception as e:
                     df.at[index, 'Facility Creation Status'] = f"Exception during create: {str(e)}"
@@ -1934,7 +1934,7 @@ async def create_facilities_and_update_project(
                                 project_id=project_id,
                                 facility_id=created_id
                             )
-                            if project_resp.status_code in (200, 201):
+                            if project_resp.status_code in (200, 201, 202):
                                 df.at[index, 'Project Linking Status'] = "Linked"
                             else:
                                 df.at[index, 'Project Linking Status'] = f"Failed: {project_resp.status_code} {project_resp.text}"

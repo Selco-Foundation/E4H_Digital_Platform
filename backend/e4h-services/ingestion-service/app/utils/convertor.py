@@ -490,48 +490,6 @@ def create_facility_payload(request_info: RequestInfo, row: Series, facility_sch
         ]
     }
 
-
-def create_facility_for_projects_payload(request_info: RequestInfo, row: Series, facility_schema: List[Dict[str, Any]]):
-    facility_type_name = safe_get(row, 'Facility Type (Mandatory)')
-    facility_type_code = get_mdms_code_by_name(facility_schema, 'Facility Type', facility_type_name)
-    solar_solution_design_type_name = safe_get(row, 'Solution Design Type (Mandatory)')
-    solar_solution_design_type_code = get_mdms_code_by_name(facility_schema, 'Solution Design Type',
-                                                            solar_solution_design_type_name)
-    return {
-        'RequestInfo': request_info.model_dump(by_alias=True, exclude_none=True),
-        'facilities': [
-            {
-                'tenant_id': 'in',
-                'facility_name': safe_get(row, 'Facility Name (Mandatory)'),
-                'facility_type': facility_type_code,
-                'facility_category': safe_get(row, 'Category', 'HEALTH'),
-                'facility_ownership': safe_get(row, 'Ownership', 'GOVERNMENT'),
-                'facility_region': safe_get(row, 'Region', 'RURAL'),
-                'isActive': True,
-                'boundaryCode': safe_get(row, 'Boundary Code (Mandatory)'),
-                'address': {
-                    'tenantId': 'in',
-                    'latitude': safe_get(row, 'Latitude'),
-                    'longitude': safe_get(row, 'Longitude'),
-                    'addressLine1': safe_get(row, 'Address'),
-                    'state': safe_get(row, 'State'),
-                    'district': safe_get(row, 'District'),
-                    'block': safe_get(row, 'Block')
-                },
-                'facility_details': {
-                    'vendor_code': safe_get(row, 'Vendor Code (Mandatory)'),
-                    'solar_solution_design_type': solar_solution_design_type_code,
-                    'pocName': safe_get(row, 'PoC Name (Mandatory)'),
-                    'pocDesignation': safe_get(row, 'HC PoC Designation'),
-                    'pocContact': safe_get(row, 'PoC Contact number (Mandatory)'),
-                    'hfr_id': safe_get(row, 'HFR ID'),
-                    'nin_id': safe_get(row, 'NIN ID')
-                }
-            }
-        ]
-    }
-
-
 def convert_response_to_facility(response: Dict[str, Any], role_type: str):
     return {
         "Country": "India",
