@@ -26,6 +26,7 @@ FROM egovio/flyway:10.7.1
 
 COPY --from=builder /migrations /flyway/jars
 COPY --from=flywaydl /flyway/flyway-cli /flyway/flyway-cli
+
 COPY ./migration/main /flyway/sql
 
 COPY migrate.sh /usr/bin/migrate.sh
