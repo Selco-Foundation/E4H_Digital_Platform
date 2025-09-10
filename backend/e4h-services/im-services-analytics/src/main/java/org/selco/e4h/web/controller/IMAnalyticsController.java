@@ -26,11 +26,12 @@ public class IMAnalyticsController {
     @PostMapping("/computeSLA")
     public ResponseEntity<String> computeSLA(
             @Valid @RequestBody SLARequest request,
-            @RequestParam(name = "transform", defaultValue = "false") boolean transform
+            @RequestParam(name = "transform", defaultValue = "false") boolean transform,
+            @RequestParam(name = "closedtickets", defaultValue = "false") boolean closedTickets
     ) {
         try {
             log.info("SLA computation triggered for tenant: {}, transform={}", request.getTenantId(), transform);
-            slaService.computeAndUpdateSLA(request, transform);
+            slaService.computeAndUpdateSLA(request, transform,closedTickets);
             return ResponseEntity.ok("SLA computation completed successfully");
         } catch (Exception e) {
             log.error("Error during SLA computation for tenant: {}", request.getTenantId(), e);
