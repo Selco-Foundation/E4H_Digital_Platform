@@ -9,6 +9,7 @@ public class ProjectConstants {
     public static final String MDMS_HCM_ATTENDANCE_MODULE_NAME = "HCM-ATTENDANCE";
     public static final String MASTER_DEPARTMENT = "Department";
     public static final String MASTER_PROJECTTYPE = "ProjectType";
+    public static final String MASTER_STATEINFO = "StateInfo";
     //location
     public static final String MASTER_NATUREOFWORK = "NatureOfWork";
     public static final String MASTER_ATTENDANCE_SESSION = "AttendanceSessions";
