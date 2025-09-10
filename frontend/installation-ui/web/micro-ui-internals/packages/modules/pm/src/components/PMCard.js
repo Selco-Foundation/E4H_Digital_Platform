@@ -63,7 +63,7 @@ const PMCard = () => {
             width: "70%",
           }}
         >
-          {t("CS_COMMON_PROJECTS")}
+          {t("PM_COMMON_PROJECTS")}
         </div>
       </div>
       <div>
@@ -74,9 +74,9 @@ const PMCard = () => {
             alignItems: "center",
             color: "#C84C0E",
             cursor: "pointer",
-            marginBottom: "8px",
+            marginBottom: "15px",
             fontSize: "16px",
-            fontWeight: "bold",
+            fontWeight: "500",
             fontFamily: "Roboto",
           }}
           onClick={handleCreateProjectRedirection}
@@ -94,7 +94,7 @@ const PMCard = () => {
             color: "#C84C0E",
             cursor: "pointer",
             fontSize: "16px",
-            fontWeight: "bold",
+            fontWeight: "500",
             fontFamily: "Roboto",
           }}
           onClick={handleViewProjectRedirection}
