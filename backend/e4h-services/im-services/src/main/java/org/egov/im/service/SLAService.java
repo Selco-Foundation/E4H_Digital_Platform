@@ -39,7 +39,8 @@ public class SLAService {
                 .stream()
                 .map(p -> p.getState().getApplicationStatus())
                 .collect(Collectors.toList());
-        if(previousStates.isEmpty() || !previousStates.getLast().equals(currentState)){
+
+        if(previousStates.isEmpty() || !previousStates.get(previousStates.size() - 1).equals(currentState)){
             previousStates.add(currentState);
         }
         for(String state : previousStates){
