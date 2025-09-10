@@ -82,7 +82,6 @@ jobs:
         run: |
           cp backend/e4h-services/im-services/target/*.jar backend/e4h-services/im-services/src/main/resources/db/im-services.jar
           cd backend/e4h-services/im-services/src/main/resources/db/
-          ls -la
 
       - name: Build and Push Docker image for im-Service-DB
         run: |

@@ -15,5 +15,4 @@ exec java -cp "$CLASSPATH" org.flywaydb.commandline.Main \
   -jarDirs=/flyway/jars \
   -baselineOnMigrate=true \
   -outOfOrder=true \
-  -X \
   migrate
