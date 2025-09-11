@@ -29,8 +29,8 @@ public class FieldPlanRequest {
     List<FieldPlan> fieldPlans = new ArrayList();
 
     @JsonProperty("isCascadingProjectDateUpdate")
-    private @Valid boolean isCascadingProjectDateUpdate = false;
+    private @Valid boolean isCascadingFieldPlanDateUpdate = false;
     
     @JsonProperty("apiOperation")
-    private @Valid ApiOperation apiOperation = null;
+    private @Valid ApiOperation apiOperation =   null;
 }

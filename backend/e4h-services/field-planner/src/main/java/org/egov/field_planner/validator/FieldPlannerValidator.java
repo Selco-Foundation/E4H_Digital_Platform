@@ -86,13 +86,13 @@ public class FieldPlannerValidator {
                 log.error("Project ID is mandatory in FieldPlans");
                 throw new CustomException("FieldPlan", "Project ID is mandatory");
             }
-            // Get existing project with projectID from project service
+            // Get existing fieldPlan with projectID from fieldPlan service
 //            Project existingProject = getProjectById(request, fieldPlan);
 //            if (existingProject == null) {
 //                log.error("Project ID do not exist");
 //                throw new CustomException("FieldPlan", "Project ID do not exist");
 //            }
-            // Check if fieldPlan dates are within project dates
+            // Check if fieldPlan dates are within fieldPlan dates
 //            isFieldPlanWithinProject(existingProject, fieldPlan, errorMap);
 
             if (fieldPlan == null) {
@@ -141,7 +141,7 @@ public class FieldPlannerValidator {
     private void validateRequestMDMSData(FieldPlanRequest request, String tenantId, Map<String, String> errorMap) {
         String rootTenantId = tenantId.split("\\.")[0];
 
-        //Get MDMS data using create project request and tenantId
+        //Get MDMS data using create fieldPlan request and tenantId
         Object mdmsData = mdmsUtils.mDMSCall(request, rootTenantId);
 
         validateMDMSData(request.getFieldPlans(), mdmsData, errorMap);
@@ -174,8 +174,8 @@ public class FieldPlannerValidator {
             String state = (String)geographyDetails.get("state");
             String mdmsNotPresent = IS_NOT_PRESENT_IN_MDMS;
 //            if (!fieldPlan.getActivities().isEmpty() && !typeOfProjectRes.contains(fieldPlan.getActivities())) {
-//                log.error("The project type: " + fieldPlan.getActivities() + mdmsNotPresent);
-//                errorMap.put("INVALID_PROJECT_TYPE", "The project type: " + fieldPlan.getActivities() + mdmsNotPresent);
+//                log.error("The fieldPlan type: " + fieldPlan.getActivities() + mdmsNotPresent);
+//                errorMap.put("INVALID_PROJECT_TYPE", "The fieldPlan type: " + fieldPlan.getActivities() + mdmsNotPresent);
 //            }
             log.info("Validate Tenant Id with MDMS");
             if (!StringUtils.isBlank(fieldPlan.getTenantId()) && !tenantRes.contains(fieldPlan.getTenantId())) {
@@ -270,7 +270,7 @@ public class FieldPlannerValidator {
 
 
     /* Validates search FieldPlan request body and parameters*/
-    public void validateSearchProjectRequest(FieldPlanRequest request, Integer limit, Integer offset, String tenantId, Long createdFrom, Long createdTo) {
+    public void validateSearchFieldPlanRequest(FieldPlanRequest request, Integer limit, Integer offset, String tenantId, Long createdFrom, Long createdTo) {
         Map<String, String> errorMap = new HashMap<>();
         RequestInfo requestInfo = request.getRequestInfo();
 

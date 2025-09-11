@@ -51,7 +51,7 @@ public class FieldPlannerService {
     public FieldPlannerService(
             FieldPlannerRepository fieldPlannerRepository, List<Validator<FieldPlanFacilityBulkRequest, FieldPlanFacility>> validators,
             FieldPlannerValidator fieldPlannerValidator, FieldPlannerEnrichment fieldPlannerEnrichment, FieldPlannerConfiguration fieldPlannerConfiguration,
-            Producer producer, FieldPlannerServiceUtil projectServiceUtil, MDMSUtils mdmsUtils, FieldPlannerServiceUtil fieldPlanServiceUtil) {
+            Producer producer, MDMSUtils mdmsUtils, FieldPlannerServiceUtil fieldPlanServiceUtil) {
             this.fieldPlannerValidator = fieldPlannerValidator;
             this.producer = producer;
             this.fieldPlannerConfiguration = fieldPlannerConfiguration;
@@ -88,9 +88,9 @@ public class FieldPlannerService {
         return fieldPlanRequest;
     }
 
-    public FieldPlanRequest updateProject(FieldPlanRequest request) {
+    public FieldPlanRequest updateFieldPlan(FieldPlanRequest request) {
         /*
-         * Validate the update project request
+         * Validate the update fieldPlan request
          */
         fieldPlannerValidator.validateUpdateFieldPlanRequest(request);
         log.info("Update fieldplan request validated");
@@ -110,7 +110,7 @@ public class FieldPlannerService {
         fieldPlannerValidator.validateUpdateAgainstDB(request.getFieldPlans(), fieldPlansFromDB);
 
         /*
-         * Process each project in the update request
+         * Process each fieldPlan in the update request
          */
         for (FieldPlan fieldPlan : request.getFieldPlans()) {
             processFieldPlanUpdate(request, fieldPlan, fieldPlansFromDB);
@@ -219,7 +219,7 @@ public class FieldPlannerService {
     }
 
     /**
-     * Handles project name regeneration during updates
+     * Handles fieldPlan name regeneration during updates
      * Compares the new base name with existing name and updates if different
      */
     private void handleFieldPlanNameUpdate(FieldPlanRequest request, FieldPlan fieldPlan, FieldPlan fieldPlanFromDB) {
@@ -234,7 +234,7 @@ public class FieldPlannerService {
             // Extract base name from existing name (remove any suffix like -1, -2, etc.)
             String existingBaseName = removeLastSuffix(existingName);
             if (newBaseName.equals(existingBaseName)) {
-                log.info("Project name unchanged. Existing: {}, New base: {}", existingName, newBaseName);
+                log.info("FieldPlan name unchanged. Existing: {}, New base: {}", existingName, newBaseName);
                 return;
             }
 
@@ -251,7 +251,7 @@ public class FieldPlannerService {
             }
 
         } catch (Exception e) {
-            log.error("Error handling project name update for project: {}", fieldPlan.getId(), e);
+            log.error("Error handling fieldPlan name update for fieldPlan: {}", fieldPlan.getId(), e);
             // Don't throw exception - continue with update even if name generation fails
         }
     }
@@ -281,9 +281,9 @@ public class FieldPlannerService {
         List<FieldPlan> fieldPlanList = new ArrayList<>();
 
         for (FieldPlan fieldPlan : fieldPlans) {
-            String projectId = fieldPlan.getId();
+            String fieldPlanId = fieldPlan.getId();
             FieldPlan newFieldPlan = FieldPlan.builder()
-                    .id(projectId)
+                    .id(fieldPlanId)
                     .tenantId(fieldPlan.getTenantId())
                     .build();
 
@@ -296,7 +296,7 @@ public class FieldPlannerService {
     }
 
     public List<FieldPlan> searchFieldPlan(FieldPlanRequest request, Integer limit, Integer offset, String tenantId, Boolean includeDeleted, Long lastChangedSince, Long createdFrom, Long createdTo) {
-        fieldPlannerValidator.validateSearchProjectRequest(request, limit, offset, tenantId, createdFrom, createdTo);
+        fieldPlannerValidator.validateSearchFieldPlanRequest(request, limit, offset, tenantId, createdFrom, createdTo);
         List<FieldPlan> fieldPlanList = fieldPlannerRepository.getFieldPlans(request, limit, offset, tenantId, includeDeleted, lastChangedSince, createdFrom, createdTo);
         return fieldPlanList;
     }
@@ -308,28 +308,28 @@ public class FieldPlannerService {
         String fieldPlanId = String.valueOf(fieldPlan.getId());
 
         /*
-         * Find the project from the database that matches the current project ID
+         * Find the fieldPlan from the database that matches the current fieldPlan ID
          */
         FieldPlan fielPlanFromDB = findFieldPlanById(fieldPlanId, fieldPlansFromDB);
-        boolean isCascadingProjectDateUpdate = request.isCascadingProjectDateUpdate();
+        boolean isCascadingFieldPlanDateUpdate = request.isCascadingFieldPlanDateUpdate();
 
         if (fielPlanFromDB != null) {
             /*
-             * Merge additional details of the project from the request and project from DB
+             * Merge additional details of the fieldPlan from the request and fieldPlan from DB
              */
             fieldPlanServiceUtil.mergeAdditionalDetails(fieldPlan, fielPlanFromDB);
 
             /*
-             * Handle cases where cascading project date update is true
+             * Handle cases where cascading fieldPlan date update is true
              */
-            if (isCascadingProjectDateUpdate) {
+            if (isCascadingFieldPlanDateUpdate) {
                 handleUpdateFieldPlan(request, fieldPlan, fielPlanFromDB);
             }
             /*
              * Handle cases for normal update flow
              */
             else {
-//                handleNormalUpdate(request, project, projectFromDB);
+//                handleNormalUpdate(request, fieldPlan, fieldPlanFromDB);
             }
         }
     }
@@ -346,7 +346,7 @@ public class FieldPlannerService {
 
 
         /*
-         * Update the project with new start date, end date, and additional details
+         * Update the fieldPlan with new start date, end date, and additional details
          */
         fieldPlanFromDB.setStartDate(fieldPlan.getStartDate());
         fieldPlanFromDB.setEndDate(fieldPlan.getEndDate());
@@ -374,17 +374,17 @@ public class FieldPlannerService {
         fieldPlanFromDB.setAuditDetails(originalAuditDetails);
 
         /*
-         * Update lastModifiedTime and lastModifiedBy for the project
+         * Update lastModifiedTime and lastModifiedBy for the fieldPlan
          */
         fieldPlannerEnrichment.enrichFieldPlanRequestOnUpdate(fieldPlan, fieldPlanFromDB, request.getRequestInfo());
 
         /*
-         * Handle project name regeneration if needed (dates changed)
+         * Handle fieldPlan name regeneration if needed (dates changed)
          */
         handleFieldPlanNameUpdate(request, fieldPlan, fieldPlanFromDB);
 
         /*
-         * Check and enrich cascading project dates and push the update to the message broker
+         * Check and enrich cascading fieldPlan dates and push the update to the message broker
          */
         producer.push(fieldPlannerConfiguration.getUpdateFieldPlanTopic(), request);
     }
@@ -433,7 +433,7 @@ public class FieldPlannerService {
 
     private FieldPlan findFieldPlanById(String fieldPlanId, List<FieldPlan> fieldPlansFromDB) {
         /*
-         * Find and return the project with the matching ID from the list of fieldplan fetched from the database
+         * Find and return the fieldPlan with the matching ID from the list of fieldplan fetched from the database
          */
         return fieldPlansFromDB.stream()
                 .filter(p -> fieldPlanId.equals(String.valueOf(p.getId())))
