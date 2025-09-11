@@ -3,11 +3,8 @@
   "version": "1.0.0",
   "main": "index.js",
   "workspaces": [
-    "packages/libraries",
     "example",
     "packages/css",
-    "packages/react-components",
-    "packages/svg-components",
     "packages/modules/*"
   ],
   "author": "JaganKumar <jagan.kumar@egov.org.in>",
@@ -31,11 +28,12 @@
     "clean": "rm -rf node_modules"
   },
   "resolutions": {
-    "**/@babel/runtime": "7.20.1",
+  "**/@babel/runtime": "7.20.1",
+    "**/@babel/traverse":"7.25.9",
     "**/babel-preset-react-app": "10.0.0",
-    "**/@babel/traverse": "7.25.9",
-    "**/styled-components": "5.0.0",
-    "fast-uri": "2.1.0",
+    "**/@jridgewell/gen-mapping": "0.3.5",
+    "**/ajv": "8.11.2",
+    "fast-uri":"2.1.0"
     "**/minimatch": "7.4.6",
     "minimatch": "7.4.6",
     "**/glob": "7.2.3",
