@@ -32,7 +32,7 @@ initLibraries().then(() => {
 });
 
 const moduleReducers = (initData) => ({
-  initData,
+  initData, qc: QCReducers(initData),
 });
 
 const initDigitUI = () => {
