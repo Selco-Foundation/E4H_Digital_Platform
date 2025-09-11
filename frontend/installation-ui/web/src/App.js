@@ -1,39 +1,51 @@
-import React from "react";
+/**
+ * The above code initializes various Digit UI modules and components, sets up customizations, and
+ * renders the DigitUI component based on the enabled modules and state code.
+ * @returns The `App` component is being returned, which renders the `DigitUI` component with the
+ * specified props such as `stateCode`, `enabledModules`, `moduleReducers`, and `defaultLanding`. The
+ * `DigitUI` component is responsible for rendering the UI based on the provided configuration and
+ * modules.
+ */
+import React, { Suspense } from "react";
 import { initLibraries } from "@egovernments/digit-ui-libraries";
-import { DigitUI,initCoreComponents } from "@egovernments/digit-ui-module-core";
-import { initUtilitiesComponents } from "@egovernments/digit-ui-module-utilities";
 import { UICustomizations } from "./Customisations/UICustomizations";
+import { initUtilitiesComponents } from "@egovernments/digit-ui-module-utilities";
+import { Loader } from "@egovernments/digit-ui-components";
 import { QCReducers, initQCComponents } from "@selco/digit-ui-module-qc";
 
 window.contextPath = window?.globalConfigs?.getConfig("CONTEXT_PATH");
+
+// Lazy load DigitUI
+const DigitUI = React.lazy(() =>
+  import("@egovernments/digit-ui-module-core").then((mod) => ({
+    default: mod.DigitUI,
+  }))
+);
 
 const enabledModules = [
   "QC",
   "Utilities",
 ];
 
-const moduleReducers = (initData) => ({
-  initData, qc: QCReducers(initData),
-});
-
-const initDigitUI = () => {
-  window.Digit.ComponentRegistryService.setupRegistry({
-    PaymentModule,
-    ...paymentConfigs,
-    PaymentLinks,
-  });
-  initCoreComponents();
-  initUtilitiesComponents();
-  initQCComponents();
-
-  window.Digit.Customizations = {
-    commonUiConfig: UICustomizations,
-  };
-};
-
 initLibraries().then(() => {
   initDigitUI();
 });
+
+const moduleReducers = (initData) => ({
+  initData,
+});
+
+const initDigitUI = () => {
+  window.Digit.ComponentRegistryService.setupRegistry({});
+  window.Digit.Customizations = {
+    QC: {},
+    commonUiConfig: UICustomizations,
+  };
+
+  initUtilitiesComponents();
+  initQCComponents();
+
+};
 
 function App() {
   window.contextPath = window?.globalConfigs?.getConfig("CONTEXT_PATH");
@@ -44,12 +56,15 @@ function App() {
     return <h1>stateCode is not defined</h1>;
   }
   return (
-    <DigitUI
-      stateCode={stateCode}
-      enabledModules={enabledModules}
-      moduleReducers={moduleReducers}
-      defaultLanding="employee"
-    />
+    <Suspense fallback={<Loader page={true} variant={"PageLoader"} />}>
+      <DigitUI
+        stateCode={stateCode}
+        enabledModules={enabledModules}
+        moduleReducers={moduleReducers}
+        defaultLanding="employee"
+        allowedUserTypes={["employee"]}
+      />
+    </Suspense>
   );
 }
 
