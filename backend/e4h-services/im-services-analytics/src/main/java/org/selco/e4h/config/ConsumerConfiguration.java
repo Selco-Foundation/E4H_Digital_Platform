@@ -45,4 +45,10 @@ public class ConsumerConfiguration {
 
 	@Value("${incident.kafka.update.topic.indexer}")
 	private String updateTopicIndexer;
+
+    @Value("${egov.workflow.host}")
+    private String wfHost;
+
+    @Value("${egov.workflow.processinstance.search.path}")
+    private String wfProcessInstanceSearchPath;
 }

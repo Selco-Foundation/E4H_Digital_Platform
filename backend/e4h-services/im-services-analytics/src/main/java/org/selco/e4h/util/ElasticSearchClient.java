@@ -5,11 +5,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.selco.e4h.service.UpdateService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
+import org.selco.e4h.util.IMConstants;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.*;
 
+import static org.selco.e4h.util.IMConstants.*;
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -35,12 +37,12 @@ public class ElasticSearchClient {
 
     private static final String DOC_PATH = "_doc";
 
-    public List<Map<String, Object>> fetchOpenTickets(int from, int size) {
-        return fetchTickets(INDEX_NAME, from, size);
+    public List<Map<String, Object>> fetchRequiredTickets(int from, int size ,boolean closedTickets) {
+        return fetchTickets(INDEX_NAME, from, size, closedTickets);
     }
 
-    public List<Map<String, Object>> fetchOldOpenTicketsFromImServices(int from, int size) {
-        return fetchTickets(OLD_INDEX_NAME, from, size);
+    public List<Map<String, Object>> fetchOldRequiredTicketsFromImServices(int from, int size, boolean closedTickets) {
+        return fetchTickets(OLD_INDEX_NAME, from, size,  closedTickets);
     }
 
     public Map<String, Object> getHFByTenantId(String tenantId) {
@@ -51,9 +53,9 @@ public class ElasticSearchClient {
         return fetchAllPHCs(phcIndex, from, size);
     }
 
-    private List<Map<String, Object>> fetchTickets(String indexName, int from, int size) {
+    private List<Map<String, Object>> fetchTickets(String indexName, int from, int size, Boolean closedTickets) {
         String uri = getBaseUrl() + "/" + indexName + "/" + SEARCH_PATH;
-        Map<String, Object> query = buildOpenTicketQuery(from, size);
+        Map<String, Object> query = buildRequiredTicketQuery(from, size, closedTickets);
         HttpEntity<Object> entity = new HttpEntity<>(query, updateService.buildHeaders());
 
         try {
@@ -100,17 +102,19 @@ public class ElasticSearchClient {
         }
     }
 
-    private Map<String, Object> buildOpenTicketQuery(int from, int size) {
+    private Map<String, Object> buildRequiredTicketQuery(int from, int size, Boolean closedTickets) {
         Map<String, Object> query = new HashMap<>();
         Map<String, Object> bool = new HashMap<>();
 
         List<Map<String, Object>> mustNot = new ArrayList<>();
         mustNot.add(Map.of("term", Map.of("Data.currentProcessInstance.state.isTerminateState", true)));
 
-        mustNot.add(Map.of("terms", Map.of(
-                "Data.currentProcessInstance.state.applicationStatus.keyword",
-                List.of("RESOLVED", "CLOSED_AFTER_RESOLUTION", "REJECTED")
-        )));
+        if(!closedTickets) {
+            mustNot.add(Map.of("terms", Map.of(
+                    "Data.currentProcessInstance.state.applicationStatus.keyword",
+                    List.of(REJECTED, CLOSED_AFTER_REJECTION, RESOLVED, CLOSED_AFTER_RESOLUTION)
+            )));
+        }
 
         bool.put("must_not", mustNot);
         query.put("query", Map.of("bool", bool));
