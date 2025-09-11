@@ -107,9 +107,9 @@ public class ElasticSearchClient {
         Map<String, Object> bool = new HashMap<>();
 
         List<Map<String, Object>> mustNot = new ArrayList<>();
-        mustNot.add(Map.of("term", Map.of("Data.currentProcessInstance.state.isTerminateState", true)));
 
         if(!closedTickets) {
+            mustNot.add(Map.of("term", Map.of("Data.currentProcessInstance.state.isTerminateState", true)));
             mustNot.add(Map.of("terms", Map.of(
                     "Data.currentProcessInstance.state.applicationStatus.keyword",
                     List.of(REJECTED, CLOSED_AFTER_REJECTION, RESOLVED, CLOSED_AFTER_RESOLUTION)
