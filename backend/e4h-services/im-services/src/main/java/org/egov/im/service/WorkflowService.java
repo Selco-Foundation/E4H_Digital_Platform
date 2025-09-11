@@ -146,7 +146,6 @@ public class WorkflowService {
         //get all process instances
         List<ProcessInstance> processInstances = getAllProcessInstances(tenantId,IncidentId, requestInfo);
         Collections.reverse(processInstances);
-
         // Step 3: Use BusinessHoursUtil
         BusinessHoursUtil util = new BusinessHoursUtil(businessHourList);
         long businessHoursElapsed = util.calculateBusinessDurationForAllStates(processInstances);
