@@ -146,12 +146,6 @@ public class WorkflowService {
         //get all process instances
         List<ProcessInstance> processInstances = getAllProcessInstances(tenantId,IncidentId, requestInfo);
         Collections.reverse(processInstances);
-
-        if((applicationStatus.equals(CLOSED_AFTER_REJECTION) || applicationStatus.equals(CLOSED_AFTER_RESOLUTION)) && !processInstances.isEmpty()){
-            long prevStateTime = processInstances.get(0).getAuditDetails().getCreatedTime();
-            ZonedDateTime zonedPrevStateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(prevStateTime), ZoneId.of("Asia/Kolkata"));
-            now = zonedPrevStateTime;
-        }
         // Step 3: Use BusinessHoursUtil
         BusinessHoursUtil util = new BusinessHoursUtil(businessHourList);
         long businessHoursElapsed = util.calculateBusinessDurationForAllStates(processInstances);
