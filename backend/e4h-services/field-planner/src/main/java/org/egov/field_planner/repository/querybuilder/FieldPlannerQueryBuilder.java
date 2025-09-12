@@ -3,13 +3,18 @@ package org.egov.field_planner.repository.querybuilder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.egov.common.models.project.Project;
+import org.egov.common.models.core.URLParams;
 import org.egov.field_planner.config.FieldPlannerConfiguration;
 import org.egov.field_planner.web.models.FieldPlan;
 import org.egov.field_planner.web.models.FieldPlanSearchCriteria;
+import org.egov.field_planner.web.models.FieldPlanSearchRequest;
 import org.springframework.stereotype.Component;
+import org.springframework.util.CollectionUtils;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static org.egov.field_planner.util.FieldPlannerConstants.DOT;
 
@@ -87,87 +92,70 @@ public class FieldPlannerQueryBuilder {
         return queryBuilder.toString();
     }
 
-    public String getFieldPlanSearchQuery(FieldPlanSearchCriteria criteria) {
+    public String getFieldPlanSearchQuery(FieldPlanSearchCriteria criteria, URLParams urlParams, List<Object> preparedStmtList) {
         //This uses a ternary operator to choose between FIELDPLANS_COUNT_QUERY or FETCH_FIELDPLAN_QUERY based on the value of isCountQuery.
         String query = criteria.isCountQuery() ? FIELDPLAN_COUNT_QUERY : FETCH_FIELDPLAN_QUERY;
         StringBuilder queryBuilder = new StringBuilder(query);
 
-        Integer count = criteria.getFieldPlans().size();
+        addClause(criteria.getTenantId(), preparedStmtList, queryBuilder);
+        extracted(urlParams.getLastChangedSince(), preparedStmtList, criteria, queryBuilder);
 
-        for (FieldPlan fieldPlan : criteria.getFieldPlans()) {
+//        if (criteria.getFromDate() != null && criteria.getFromDate() != 0) {
+//            addClauseIfRequired(criteria.getPreparedStmtList(), queryBuilder);
+//            queryBuilder.append(" fp.created_time >= ? ");
+//            criteria.getPreparedStmtList().add(criteria.getFromDate());
+//        }
+//
+//        if (criteria.getToDate() != null && criteria.getToDate() != 0) {
+//            addClauseIfRequired(criteria.getPreparedStmtList(), queryBuilder);
+//            queryBuilder.append(" fp.created_time <= ? ");
+//            criteria.getPreparedStmtList().add(criteria.getToDate());
+//        }
 
-            addClause(criteria.getTenantId(), criteria.getPreparedStmtList(), queryBuilder);
-
-            /*
-             * If isAncestorProjectId is set to true, Then either id equals to project id or projectHierarchy
-             *  should have id of the project
-             */
-            extracted(criteria.getLastChangedSince(), criteria.getPreparedStmtList(), fieldPlan, queryBuilder);
-
-            if (criteria.getCreatedFrom() != null && criteria.getCreatedFrom() != 0) {
-                addClauseIfRequired(criteria.getPreparedStmtList(), queryBuilder);
-                queryBuilder.append(" fp.created_time >= ? ");
-                criteria.getPreparedStmtList().add(criteria.getCreatedFrom());
-            }
-
-            if (criteria.getCreatedTo() != null && criteria.getCreatedTo() != 0) {
-                addClauseIfRequired(criteria.getPreparedStmtList(), queryBuilder);
-                queryBuilder.append(" fp.created_time <= ? ");
-                criteria.getPreparedStmtList().add(criteria.getCreatedTo());
-            }
-
-            //Add clause if includeDeleted is true in request parameter
-            addIsDeletedCondition(criteria.getPreparedStmtList(), queryBuilder, criteria.getIncludeDeleted());
-
-//            queryBuilder.append(" )");
-            count--;
-            addORClause(count, queryBuilder);
-        }
+        //Add clause if includeDeleted is true in request parameter
+        addIsDeletedCondition(preparedStmtList, queryBuilder, urlParams.getIncludeDeleted());
 
         if (criteria.isCountQuery()) {
             return queryBuilder.toString();
         }
 
         //Wrap constructed SQL query with where criteria in pagination query
-        return addPaginationWrapper(queryBuilder.toString(), criteria.getPreparedStmtList(), criteria.getLimit(), criteria.getOffset());
+        return addPaginationWrapper(queryBuilder.toString(), preparedStmtList, urlParams.getLimit(), urlParams.getOffset());
     }
 
-    private static void extracted(Long lastChangedSince, List<Object> preparedStmtList, FieldPlan fieldPlan, StringBuilder queryBuilder) {
+    private void extracted(Long lastChangedSince, List<Object> preparedStmtList, FieldPlanSearchCriteria fieldPlan, StringBuilder queryBuilder) {
 
-        if (StringUtils.isNotBlank(fieldPlan.getName())) {
+        if (!CollectionUtils.isEmpty(fieldPlan.getIds())) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
-            queryBuilder.append(" fp.name LIKE ? ");
-            preparedStmtList.add('%' + fieldPlan.getName() + '%');
+            queryBuilder.append(" fp.id IN (").append(createQuery(fieldPlan.getIds())).append(")");
+            preparedStmtList.addAll(fieldPlan.getIds());
         }
 
-        if (fieldPlan.getHealthFacilityNumber() != 0) {
+        if (!CollectionUtils.isEmpty(fieldPlan.getProjectId())) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
-            queryBuilder.append(" fp.health_facility_number=? ");
-            preparedStmtList.add(fieldPlan.getHealthFacilityNumber());
+            queryBuilder.append(" fp.project_id IN (").append(createQuery(fieldPlan.getProjectId())).append(")");
+            preparedStmtList.addAll(fieldPlan.getProjectId());
         }
 
-        if (StringUtils.isNotBlank(fieldPlan.getProjectId())) {
+        // Check if workflowStatuses filter is provided
+        if (!CollectionUtils.isEmpty(fieldPlan.getStatuses())) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
-            queryBuilder.append(" fp.project_id =? ");
-            preparedStmtList.add(fieldPlan.getProjectId());
+            queryBuilder.append(" prj.status IN (");
+            String placeholders = fieldPlan.getStatuses().stream().map(ws -> "?").collect(Collectors.joining(", "));
+            queryBuilder.append(placeholders).append(") ");
+            preparedStmtList.addAll(fieldPlan.getStatuses());
         }
 
-//        if (project.getAddress() != null && StringUtils.isNotBlank(project.getAddress().getBoundary())) {
-//            addClauseIfRequired(preparedStmtList, queryBuilder);
-//            queryBuilder.append(" addr.boundary=? ");
-//            preparedStmtList.add(project.getAddress().getBoundary());
-//        }
-
-        if (fieldPlan.getStartDate() != null && fieldPlan.getStartDate() != 0) {
+        if (fieldPlan.getFromDate() != null && fieldPlan.getFromDate() != 0) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
             queryBuilder.append(" fp.start_date >= ? ");
-            preparedStmtList.add(fieldPlan.getStartDate());
+            preparedStmtList.add(fieldPlan.getFromDate());
         }
 
-        if (fieldPlan.getEndDate() != null && fieldPlan.getEndDate() != 0) {
+        if (fieldPlan.getToDate() != null && fieldPlan.getToDate() != 0) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
             queryBuilder.append(" fp.end_date <= ? ");
-            preparedStmtList.add(fieldPlan.getEndDate());
+            preparedStmtList.add(fieldPlan.getToDate());
         }
 
         if (lastChangedSince != null && lastChangedSince != 0) {
@@ -212,21 +200,21 @@ public class FieldPlannerQueryBuilder {
     }
 
     /* Returns query to get total projects count based on project search params */
-    public String getSearchCountQueryString(List<FieldPlan> fieldPlans, String tenantId, Long lastChangedSince, Boolean includeDeleted, Long createdFrom, Long createdTo, List<Object> preparedStatement) {
-        FieldPlanSearchCriteria criteria = FieldPlanSearchCriteria.builder()
-                .fieldPlans(fieldPlans)
-                .limit(config.getMaxLimit())
-                .offset(config.getDefaultOffset())
-                .tenantId(tenantId)
-                .includeDeleted(includeDeleted)
-                .createdFrom(createdFrom)
-                .createdTo(createdTo)
-                .lastChangedSince(lastChangedSince)
-                .preparedStmtList(preparedStatement)
-                .isCountQuery(true)
-                .build();
+    public String getSearchCountQueryString(FieldPlanSearchRequest request, String tenantId, Long lastChangedSince, Boolean includeDeleted, List<Object> preparedStatement) {
+        FieldPlanSearchCriteria criteria = request.getFieldPlan();
+        criteria.setCountQuery(true);
+        URLParams urlParams = URLParams.builder().tenantId(tenantId).includeDeleted(includeDeleted).lastChangedSince(lastChangedSince).build();
+        return getFieldPlanSearchQuery(criteria, urlParams, preparedStatement);
+    }
 
-        return getFieldPlanSearchQuery(criteria);
+    private String createQuery(Collection<String> ids) {
+        StringBuilder builder = new StringBuilder();
+        int length = ids.size();
+        for (int i = 0; i < length; i++) {
+            builder.append(" ? ");
+            if (i != length - 1) builder.append(",");
+        }
+        return builder.toString();
     }
 
 }

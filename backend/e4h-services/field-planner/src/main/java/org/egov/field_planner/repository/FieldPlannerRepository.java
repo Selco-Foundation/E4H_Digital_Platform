@@ -3,13 +3,14 @@ package org.egov.field_planner.repository;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.common.data.query.builder.SelectQueryBuilder;
 import org.egov.common.data.repository.GenericRepository;
-import org.egov.common.models.project.*;
+import org.egov.common.models.core.URLParams;
 import org.egov.common.producer.Producer;
 import org.egov.field_planner.repository.querybuilder.FieldPlannerQueryBuilder;
 import org.egov.field_planner.repository.rowmapper.*;
 import org.egov.field_planner.web.models.FieldPlan;
 import org.egov.field_planner.web.models.FieldPlanRequest;
 import org.egov.field_planner.web.models.FieldPlanSearchCriteria;
+import org.egov.field_planner.web.models.FieldPlanSearchRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -49,32 +50,23 @@ public class FieldPlannerRepository extends GenericRepository<FieldPlan> {
         return fieldPlans;
     }
 
-    public List<FieldPlan> getFieldPlans(FieldPlanRequest request, Integer limit, Integer offset, String tenantId, Boolean includeDeleted, Long lastChangedSince, Long createdFrom, Long createdTo) {
+    public List<FieldPlan> getFieldPlans(FieldPlanSearchRequest request, Integer limit, Integer offset, String tenantId, Boolean includeDeleted, Long lastChangedSince, Long createdFrom, Long createdTo) {
         //Fetch FieldPlans based on search criteria
         List<Object> preparedStmtList = new ArrayList<>();
-        FieldPlanSearchCriteria criteria = FieldPlanSearchCriteria.builder()
-                .fieldPlans(request.getFieldPlans())
-                .limit(limit)
-                .offset(offset)
-                .tenantId(tenantId)
-                .includeDeleted(includeDeleted)
-                .createdFrom(createdFrom)
-                .createdTo(createdTo)
-                .lastChangedSince(lastChangedSince)
-                .preparedStmtList(preparedStmtList)
-                .isCountQuery(false) // change as needed
-                .build();
+        FieldPlanSearchCriteria criteria = request.getFieldPlan();
+        criteria.setCountQuery(false);
+        URLParams urlParams = URLParams.builder().limit(limit).offset(offset).tenantId(tenantId).includeDeleted(includeDeleted).lastChangedSince(lastChangedSince).build();
 
-        String query = queryBuilder.getFieldPlanSearchQuery(criteria);
+        String query = queryBuilder.getFieldPlanSearchQuery(criteria, urlParams, preparedStmtList);
         List<FieldPlan> fieldPlanList = jdbcTemplate.query(query, fieldPlanRowMapper, preparedStmtList.toArray());
 
         log.info("Fetched project list based on given search criteria");
         return fieldPlanList;
     }
 
-    public Integer getFieldPlanCount(FieldPlanRequest request, String tenantId, Long lastChangedSince, Boolean includeDeleted, Long createdFrom, Long createdTo) {
+    public Integer getFieldPlanCount(FieldPlanSearchRequest request, String tenantId, Long lastChangedSince, Boolean includeDeleted) {
         List<Object> preparedStatement = new ArrayList<>();
-        String query = queryBuilder.getSearchCountQueryString(request.getFieldPlans(), tenantId, lastChangedSince, includeDeleted, createdFrom, createdTo, preparedStatement);
+        String query = queryBuilder.getSearchCountQueryString(request, tenantId, lastChangedSince, includeDeleted, preparedStatement);
 
         if (query == null)
             return 0;

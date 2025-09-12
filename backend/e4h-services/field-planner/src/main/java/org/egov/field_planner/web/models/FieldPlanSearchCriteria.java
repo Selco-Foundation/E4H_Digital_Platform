@@ -1,65 +1,42 @@
 package org.egov.field_planner.web.models;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.Valid;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
-import org.egov.common.models.project.Project;
+import lombok.NoArgsConstructor;
+import org.springframework.validation.annotation.Validated;
 
 import java.util.List;
 
 /**
  * Encapsulates all parameters for building a project search query.
  */
+@Validated
 @Data
+@AllArgsConstructor
+@NoArgsConstructor
 @Builder
 public class FieldPlanSearchCriteria {
 
-    /**
-     * The list of FieldPlan objects to filter on.
-     */
-    private List<FieldPlan> fieldPlans;
+    @JsonProperty("ids")
+    private @Valid List<String> ids = null;
 
-    /**
-     * Maximum number of records to return (pagination).
-     */
-    private Integer limit;
+    @JsonProperty("projectIds")
+    private @Valid List<String> projectId = null;
 
-    /**
-     * Offset into the result set (pagination).
-     */
-    private Integer offset;
+    @JsonProperty("statuses")
+    private @Valid List<String> statuses = null;
 
-    /**
-     * Tenant identifier (state or city level).
-     */
+    @JsonProperty("assignedToMe")
+    private String assignedToMe = null;
+
     private String tenantId;
 
-    /**
-     * Whether to include deleted projects.
-     */
-    private Boolean includeDeleted;
+    private Long fromDate;
 
-    /**
-     * Only include FieldPlan created on or after this timestamp.
-     */
-    private Long createdFrom;
-
-    /**
-     * Only include projects modified since this timestamp.
-     */
-    private Long lastChangedSince;
-
-    /**
-     * Only include FieldPlan created on or before this timestamp.
-     */
-    private Long createdTo;
-
-    /**
-     * Prepared‐statement parameter list (will be populated as query is built).
-     */
-    private List<Object> preparedStmtList;
-
-    /**
-     * If true, build a COUNT(*) query; otherwise build a fetch query.
-     */
+    private Long toDate;
+    
     private boolean isCountQuery;
 }

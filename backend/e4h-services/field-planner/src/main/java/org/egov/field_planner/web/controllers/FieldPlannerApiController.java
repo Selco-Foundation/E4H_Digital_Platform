@@ -5,10 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.annotations.ApiParam;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotNull;
 import org.egov.common.contract.response.ResponseInfo;
+import org.egov.common.models.core.URLParams;
 import org.egov.common.producer.Producer;
 import org.egov.common.utils.ResponseInfoFactory;
 import org.egov.field_planner.config.FieldPlannerConfiguration;
@@ -20,10 +18,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -78,29 +73,50 @@ public class FieldPlannerApiController {
         return new ResponseEntity<FieldPlanResponse>(fieldPlanResponse, HttpStatus.OK);
     }
 
+//    @RequestMapping(value = "/_search", method = RequestMethod.POST)
+//    public ResponseEntity<FieldPlanResponse> searchfieldPlan(
+//            @ApiParam(value = "Details for the fieldPlan.", required = true) @Valid @RequestBody FieldPlanRequest request,
+//            @NotNull @Min(0) @Max(1000) @ApiParam(value = "Pagination - limit records in response", required = true) @Valid @RequestParam(value = "limit", required = true) Integer limit,
+//            @NotNull @Min(0) @ApiParam(value = "Pagination - offset from which records should be returned in response", required = true) @Valid @RequestParam(value = "offset", required = true) Integer offset,
+//            @NotNull @ApiParam(value = "Unique id for a tenant.", required = true) @Valid @RequestParam(value = "tenantId", required = true) String tenantId,
+//            @ApiParam(value = "epoch of the time since when the changes on the object should be picked up. Search results from this parameter should include both newly created fieldplan since this time as well as any modified objects since this time. This criterion is included to help polling clients to get the changes in system since a last time they synchronized with the platform. ") @Valid @RequestParam(value = "lastChangedSince", required = false) Long lastChangedSince,
+//            @ApiParam(value = "Used in search APIs to specify if (soft) deleted records should be included in search results.", defaultValue = "false") @Valid @RequestParam(value = "includeDeleted", required = false, defaultValue = "false") Boolean includeDeleted,
+//            @ApiParam(value = "Used in fieldplan search API to limit the search results to only those fieldPlans whose creation date is after the specified 'createdFrom' date", defaultValue = "false") @Valid @RequestParam(value = "createdFrom", required = false) Long createdFrom,
+//            @ApiParam(value = "Used in fieldplan search API to limit the search results to only those fieldPlans whose creation date is before the specified 'createdTo' date", defaultValue = "false") @Valid @RequestParam(value = "createdTo", required = false) Long createdTo
+//    ) {
+//        List<FieldPlan> fieldPlans = fieldPlannerService.searchFieldPlan(
+//                request,
+//                limit,
+//                offset,
+//                tenantId,
+//                includeDeleted,
+//                lastChangedSince,
+//                createdFrom,
+//                createdTo
+//        );
+//        ResponseInfo responseInfo = ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), true);
+//        Integer count = fieldPlannerService.countAllFieldPlans(request, tenantId, lastChangedSince, includeDeleted, createdFrom, createdTo);
+//        FieldPlanResponse fieldPlanResponse = FieldPlanResponse.builder().responseInfo(responseInfo).fieldPlans(fieldPlans).totalCount(count).build();
+//        return new ResponseEntity<FieldPlanResponse>(fieldPlanResponse, HttpStatus.OK);
+//    }
+
     @RequestMapping(value = "/_search", method = RequestMethod.POST)
-    public ResponseEntity<FieldPlanResponse> searchfieldPlan(
-            @ApiParam(value = "Details for the fieldPlan.", required = true) @Valid @RequestBody FieldPlanRequest request,
-            @NotNull @Min(0) @Max(1000) @ApiParam(value = "Pagination - limit records in response", required = true) @Valid @RequestParam(value = "limit", required = true) Integer limit,
-            @NotNull @Min(0) @ApiParam(value = "Pagination - offset from which records should be returned in response", required = true) @Valid @RequestParam(value = "offset", required = true) Integer offset,
-            @NotNull @ApiParam(value = "Unique id for a tenant.", required = true) @Valid @RequestParam(value = "tenantId", required = true) String tenantId,
-            @ApiParam(value = "epoch of the time since when the changes on the object should be picked up. Search results from this parameter should include both newly created fieldplan since this time as well as any modified objects since this time. This criterion is included to help polling clients to get the changes in system since a last time they synchronized with the platform. ") @Valid @RequestParam(value = "lastChangedSince", required = false) Long lastChangedSince,
-            @ApiParam(value = "Used in search APIs to specify if (soft) deleted records should be included in search results.", defaultValue = "false") @Valid @RequestParam(value = "includeDeleted", required = false, defaultValue = "false") Boolean includeDeleted,
-            @ApiParam(value = "Used in fieldplan search API to limit the search results to only those fieldPlans whose creation date is after the specified 'createdFrom' date", defaultValue = "false") @Valid @RequestParam(value = "createdFrom", required = false) Long createdFrom,
-            @ApiParam(value = "Used in fieldplan search API to limit the search results to only those fieldPlans whose creation date is before the specified 'createdTo' date", defaultValue = "false") @Valid @RequestParam(value = "createdTo", required = false) Long createdTo
+    public ResponseEntity<FieldPlanResponse> searchfieldPlanV2(
+            @ApiParam(value = "Details for the fieldPlan.", required = true) @Valid @RequestBody FieldPlanSearchRequest request,
+            @Valid @ModelAttribute URLParams urlParams
     ) {
         List<FieldPlan> fieldPlans = fieldPlannerService.searchFieldPlan(
                 request,
-                limit,
-                offset,
-                tenantId,
-                includeDeleted,
-                lastChangedSince,
-                createdFrom,
-                createdTo
+                urlParams.getLimit(),
+                urlParams.getOffset(),
+                urlParams.getTenantId(),
+                urlParams.getIncludeDeleted(),
+                urlParams.getLastChangedSince(),
+                request.getFieldPlan().getFromDate(),
+                request.getFieldPlan().getToDate()
         );
         ResponseInfo responseInfo = ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), true);
-        Integer count = fieldPlannerService.countAllFieldPlans(request, tenantId, lastChangedSince, includeDeleted, createdFrom, createdTo);
+        Integer count = fieldPlannerService.countAllFieldPlans(request, urlParams.getTenantId(), urlParams.getLastChangedSince(), urlParams.getIncludeDeleted());
         FieldPlanResponse fieldPlanResponse = FieldPlanResponse.builder().responseInfo(responseInfo).fieldPlans(fieldPlans).totalCount(count).build();
         return new ResponseEntity<FieldPlanResponse>(fieldPlanResponse, HttpStatus.OK);
     }

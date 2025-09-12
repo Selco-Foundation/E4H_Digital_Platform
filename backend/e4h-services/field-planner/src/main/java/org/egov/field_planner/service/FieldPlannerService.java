@@ -92,7 +92,7 @@ public class FieldPlannerService {
         /*
          * Validate the update fieldPlan request
          */
-        fieldPlannerValidator.validateUpdateFieldPlanRequest(request);
+//        fieldPlannerValidator.validateUpdateFieldPlanRequest(request);
         log.info("Update fieldplan request validated");
 
         /*
@@ -119,8 +119,8 @@ public class FieldPlannerService {
         return request;
     }
 
-    public Integer countAllFieldPlans(FieldPlanRequest request, String tenantId, Long lastChangedSince, Boolean includeDeleted, Long createdFrom, Long createdTo) {
-        return fieldPlannerRepository.getFieldPlanCount(request, tenantId, lastChangedSince, includeDeleted, createdFrom, createdTo);
+    public Integer countAllFieldPlans(FieldPlanSearchRequest request, String tenantId, Long lastChangedSince, Boolean includeDeleted) {
+        return fieldPlannerRepository.getFieldPlanCount(request, tenantId, lastChangedSince, includeDeleted);
     }
 
     public NameResult CheckDuplicateAndGenerateName(FieldPlan fieldPlan) {
@@ -277,25 +277,16 @@ public class FieldPlannerService {
     }
 
     /* Construct FieldPlan Request object for search which contains fieldplan id and tenantId */
-    private FieldPlanRequest getSearchFieldPlanRequest(List<FieldPlan> fieldPlans, RequestInfo requestInfo) {
-        List<FieldPlan> fieldPlanList = new ArrayList<>();
-
-        for (FieldPlan fieldPlan : fieldPlans) {
-            String fieldPlanId = fieldPlan.getId();
-            FieldPlan newFieldPlan = FieldPlan.builder()
-                    .id(fieldPlanId)
-                    .tenantId(fieldPlan.getTenantId())
-                    .build();
-
-            fieldPlanList.add(newFieldPlan);
-        }
-        return FieldPlanRequest.builder()
+    private FieldPlanSearchRequest getSearchFieldPlanRequest(List<FieldPlan> fieldPlans, RequestInfo requestInfo) {
+        List<String> fieldPlanIds = fieldPlans.stream().map(FieldPlan::getId).toList();
+        FieldPlanSearchCriteria criteria = FieldPlanSearchCriteria.builder().ids(fieldPlanIds).tenantId(fieldPlans.get(0).getTenantId()).build();
+        return FieldPlanSearchRequest.builder()
                 .requestInfo(requestInfo)
-                .fieldPlans(fieldPlanList)
+                .fieldPlan(criteria)
                 .build();
     }
 
-    public List<FieldPlan> searchFieldPlan(FieldPlanRequest request, Integer limit, Integer offset, String tenantId, Boolean includeDeleted, Long lastChangedSince, Long createdFrom, Long createdTo) {
+    public List<FieldPlan> searchFieldPlan(FieldPlanSearchRequest request, Integer limit, Integer offset, String tenantId, Boolean includeDeleted, Long lastChangedSince, Long createdFrom, Long createdTo) {
         fieldPlannerValidator.validateSearchFieldPlanRequest(request, limit, offset, tenantId, createdFrom, createdTo);
         List<FieldPlan> fieldPlanList = fieldPlannerRepository.getFieldPlans(request, limit, offset, tenantId, includeDeleted, lastChangedSince, createdFrom, createdTo);
         return fieldPlanList;

@@ -1,20 +1,19 @@
 package org.egov.field_planner.validator;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jayway.jsonpath.JsonPath;
-import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.common.http.client.ServiceRequestClient;
-import org.egov.common.models.core.ProjectSearchURLParams;
 import org.egov.common.models.project.*;
 import org.egov.field_planner.config.FieldPlannerConfiguration;
 import org.egov.field_planner.repository.FieldPlannerRepository;
 import org.egov.field_planner.util.MDMSUtils;
 import org.egov.field_planner.web.models.FieldPlan;
 import org.egov.field_planner.web.models.FieldPlanRequest;
+import org.egov.field_planner.web.models.FieldPlanSearchCriteria;
+import org.egov.field_planner.web.models.FieldPlanSearchRequest;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -25,7 +24,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.*;
-import java.util.stream.Collectors;
 
 import static org.egov.field_planner.util.FieldPlannerConstants.*;
 
@@ -87,13 +85,13 @@ public class FieldPlannerValidator {
                 throw new CustomException("FieldPlan", "Project ID is mandatory");
             }
             // Get existing fieldPlan with projectID from fieldPlan service
-//            Project existingProject = getProjectById(request, fieldPlan);
-//            if (existingProject == null) {
-//                log.error("Project ID do not exist");
-//                throw new CustomException("FieldPlan", "Project ID do not exist");
-//            }
+            Project existingProject = getProjectById(request, fieldPlan);
+            if (existingProject == null) {
+                log.error("Project ID do not exist");
+                throw new CustomException("FieldPlan", "Project ID do not exist");
+            }
             // Check if fieldPlan dates are within fieldPlan dates
-//            isFieldPlanWithinProject(existingProject, fieldPlan, errorMap);
+            isFieldPlanWithinProject(existingProject, fieldPlan, errorMap);
 
             if (fieldPlan == null) {
                 log.error("FieldPlan is mandatory in FieldPlans");
@@ -270,7 +268,7 @@ public class FieldPlannerValidator {
 
 
     /* Validates search FieldPlan request body and parameters*/
-    public void validateSearchFieldPlanRequest(FieldPlanRequest request, Integer limit, Integer offset, String tenantId, Long createdFrom, Long createdTo) {
+    public void validateSearchFieldPlanRequest(FieldPlanSearchRequest request, Integer limit, Integer offset, String tenantId, Long createdFrom, Long createdTo) {
         Map<String, String> errorMap = new HashMap<>();
         RequestInfo requestInfo = request.getRequestInfo();
 
@@ -279,9 +277,7 @@ public class FieldPlannerValidator {
         //Verify if search fieldplan request parameters are valid
         validateSearchFieldPlanRequestParams(limit, offset, tenantId, createdFrom, createdTo);
         //Verify if search fieldplan request is valid
-        validateSearchProjectRequest(request.getFieldPlans(), tenantId, createdFrom);
-        //Verify if project request have multiple tenant Ids
-        validateMultipleTenantIds(request);
+        validateSearchProjectRequest(request.getFieldPlan(), tenantId, createdFrom);
         //Verify MDMS Data
         // TODO: Uncomment and fix as per HCM once we get clarity
         // validateRequestMDMSData(project, tenantId, errorMap);
@@ -319,22 +315,18 @@ public class FieldPlannerValidator {
     }
 
     /* Validates Search Project Request body */
-    private void validateSearchProjectRequest(List<FieldPlan> fieldPlans, String tenantId, Long createdFrom) {
-        checkFieldPlansIfEmpty(fieldPlans);
+    private void validateSearchProjectRequest(FieldPlanSearchCriteria fieldPlan, String tenantId, Long createdFrom) {
+//        checkFieldPlansIfEmpty(fieldPlans);
+        doNullAndEmptyChecks(tenantId, createdFrom, fieldPlan);
+//
+        if ((fieldPlan.getFromDate() != null && fieldPlan.getToDate() != null && fieldPlan.getToDate() != 0) && (fieldPlan.getFromDate().compareTo(fieldPlan.getToDate()) > 0)) {
+            log.error(START_DATE_SHOULD_BE_LESS_THAN_END_DATE);
+            throw new CustomException("INVALID_DATE", START_DATE_SHOULD_BE_LESS_THAN_END_DATE);
+        }
 
-        for (FieldPlan fieldPlan : fieldPlans) {
-            doNullAndEmptyChecks(tenantId, createdFrom, fieldPlan);
-
-            if ((fieldPlan.getStartDate() != null && fieldPlan.getEndDate() != null && fieldPlan.getEndDate() != 0) && (fieldPlan.getStartDate().compareTo(fieldPlan.getEndDate()) > 0)) {
-                log.error(START_DATE_SHOULD_BE_LESS_THAN_END_DATE);
-                throw new CustomException("INVALID_DATE", START_DATE_SHOULD_BE_LESS_THAN_END_DATE);
-            }
-
-            if ((fieldPlan.getStartDate() == null || fieldPlan.getStartDate() == 0) && (fieldPlan.getEndDate() != null && fieldPlan.getEndDate() != 0)) {
-                log.error("Start date is required if end date is passed");
-                throw new CustomException("INVALID_DATE", "Start date is required if end date is passed");
-            }
-
+        if ((fieldPlan.getFromDate() == null || fieldPlan.getFromDate() == 0) && (fieldPlan.getToDate() != null && fieldPlan.getToDate() != 0)) {
+            log.error("Start date is required if end date is passed");
+            throw new CustomException("INVALID_DATE", "Start date is required if end date is passed");
         }
     }
 
@@ -345,7 +337,7 @@ public class FieldPlannerValidator {
         }
     }
 
-    private static void doNullAndEmptyChecks(String tenantId, Long createdFrom, FieldPlan fieldPlan) {
+    private static void doNullAndEmptyChecks(String tenantId, Long createdFrom, FieldPlanSearchCriteria fieldPlan) {
         if (fieldPlan == null) {
             log.error("fieldPlan is mandatory in FieldPlans");
             throw new CustomException("FIELDPLAN", "FieldPlan is mandatory");
@@ -354,12 +346,11 @@ public class FieldPlannerValidator {
             log.error(TENANT_ID_IS_MANDATORY_IN_FIELDPLAN_REQUEST_BODY);
             throw new CustomException("TENANT_ID", "Tenant ID is mandatory");
         }
-        if (StringUtils.isBlank(fieldPlan.getId()) && StringUtils.isBlank(fieldPlan.getProjectId())
-                && StringUtils.isBlank(fieldPlan.getName())
-                && (fieldPlan.getStartDate() == null || fieldPlan.getStartDate() == 0)
-                && (fieldPlan.getEndDate() == null || fieldPlan.getEndDate() == 0)
-                && (createdFrom == null || createdFrom == 0)
-                && (fieldPlan.getGeographyDetails() == null)) {
+        if ((fieldPlan.getIds()==null || fieldPlan.getIds().isEmpty()) && (fieldPlan.getProjectId()==null || fieldPlan.getProjectId().isEmpty())
+                && (fieldPlan.getStatuses()==null || fieldPlan.getStatuses().isEmpty())
+                && (fieldPlan.getFromDate() == null || fieldPlan.getFromDate() == 0)
+                && (fieldPlan.getToDate() == null || fieldPlan.getToDate() == 0)
+                && (createdFrom == null || createdFrom == 0)) {
             log.error("Any one fieldPlan search field is required for FieldPlan Search");
             throw new CustomException("FIELDPLAN_SEARCH_FIELDS", "Any one fieldplan search field is required");
         }
