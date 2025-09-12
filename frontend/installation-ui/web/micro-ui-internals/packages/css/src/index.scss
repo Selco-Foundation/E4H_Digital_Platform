@@ -819,20 +819,6 @@ input[type="number"] {
   justify-content: space-between;
   flex-direction: row-reverse;
 }
-.previous-button {
-  width: 100%;
-}
-@media (min-width: 640px) {
-  .previous-button{
-    width: 240px;
-  }
-}
-@media (min-width: 48rem) {
-  .previous-button{
-    margin-left: 4rem;
-    width: 240px;
-  }
-}
 .view-composer-header-section{
   display: flex;
   justify-content: space-between;

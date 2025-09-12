@@ -12,6 +12,11 @@
     gap: 10px;
     align-items: center;
   }
+
+  .previous-button {
+    margin-left: 0;
+    width: 100%;
+  }
 }
 @media (min-width: 640px) {
   .reverse-actionbar {
@@ -27,6 +32,19 @@
       justify-content: center;
       gap: 10px;
       align-items: center;
+    }
+
+    .previous-button{
+      width: 240px;
+    }
+  }
+}
+
+@media (min-width: 48rem) {
+  .reverse-actionbar {
+    .previous-button{
+      margin-left: 4rem;
+      width: 240px;
     }
   }
 }

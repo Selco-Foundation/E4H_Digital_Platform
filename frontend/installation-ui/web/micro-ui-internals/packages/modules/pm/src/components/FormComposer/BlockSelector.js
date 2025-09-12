@@ -1,6 +1,5 @@
 import React, {useEffect, useState} from "react";
-import {MultiSelectDropdown} from "@egovernments/digit-ui-react-components";
-import _ from "lodash";
+import {MultiSelectDropdown} from "@egovernments/digit-ui-components";
 
 const BlockSelector = ({
   data = {},
@@ -8,18 +7,20 @@ const BlockSelector = ({
   props,
 }) => {
 
-  const { t, name, districtsIdentifier, boundaryData } = props;
+  const { t, name, districtsIdentifier, boundaryData, selectedOptions = [] } = props;
   const [selectedDistricts, setSelectedDistricts] = useState(data[districtsIdentifier] || []);
   const [blockMenu, setBlockMenu] = useState([]);
-  const [selectedBlocks, setSelectedBlocks] = useState(data[name] || []);
+  const [selectedBlocks, setSelectedBlocks] = useState(
+    data[name]?.sort((a, b) => a.code?.localeCompare(b.code)) || []
+  );
 
   useEffect(() => {
     setSelectedDistricts(data[districtsIdentifier] || []);
   }, [data[districtsIdentifier]]);
 
   useEffect(() => {
-    if (selectedBlocks.filter((block) => block.code !== "ALL_BLOCKS").length) {
-      setValue(name, selectedBlocks.filter((block) => block.code !== "ALL_BLOCKS"));
+    if (selectedBlocks.length) {
+      setValue(name, selectedBlocks);
     } else {
       setValue(name, undefined);
     }
@@ -35,43 +36,18 @@ const BlockSelector = ({
           ...block,
           name: `BLOCK_${block.code.toUpperCase()}`,
         }));
-      setBlockMenu(
-        newBlockMenu ? [
-          {
-            code: "ALL_BLOCKS",
-            name: "PM_ACTION_SELECT_ALL_BLOCKS",
-          },
-          ...newBlockMenu
-        ] : []
-      );
+      setBlockMenu(newBlockMenu);
 
       const newSelectedBlocks = selectedBlocks.filter((block) => selectedDistrictCodes.includes(block.districtCode));
-      setSelectedBlocks(newSelectedBlocks);
+      setSelectedBlocks(newSelectedBlocks.sort((a, b) => a.code?.localeCompare(b.code)));
     }
   }, [t, boundaryData, selectedDistricts])
 
-  const handleBlockSelection = (blocks) => {
-    const currentBlockSelection = blocks.map(block => block.code).sort((a, b) => a.code?.localeCompare(b.code));
-    const previousBlockSelection = selectedBlocks.map((block) => block.code).sort((a, b) => a.code?.localeCompare(b.code));
-
-    if (!_.isEqual(currentBlockSelection, previousBlockSelection)) {
-      const currentSelectionSelectAll = currentBlockSelection.includes("ALL_BLOCKS");
-      const previousSelectionSelectAll = previousBlockSelection.includes("ALL_BLOCKS");
-
-      if (previousSelectionSelectAll) {
-        if (currentSelectionSelectAll) {
-          setSelectedBlocks(blocks.filter((block) => block.code !== "ALL_BLOCKS"));
-        } else if (blocks.length === blockMenu.length - 1) {
-          setSelectedBlocks([]);
-        } else {
-          setSelectedBlocks(blocks);
-        }
-      } else if (currentSelectionSelectAll || blocks.length === blockMenu.length - 1) {
-        setSelectedBlocks(blockMenu);
-      } else {
-        setSelectedBlocks(blocks);
-      }
-    }
+  const handleBlockSelection = (blocks = []) => {
+    const selectedBlockCodes = blocks.map((block) => block.code);
+    const selectedOptionsExcludedInSelection = selectedOptions.filter((option) => !selectedBlockCodes.includes(option.code));
+    const newSelectedBlocks = [...blocks, ...selectedOptionsExcludedInSelection];
+    setSelectedBlocks(newSelectedBlocks.sort((a, b) => a.code?.localeCompare(b.code)));
   }
 
   return (
@@ -82,8 +58,12 @@ const BlockSelector = ({
         onSelect={(e) => {
           handleBlockSelection(e?.map(row=>{return row?.[1] ? row[1] : null}).filter(e=>e))
         }}
-        defaultLabel={`${selectedBlocks.filter((block) => block.code !== "ALL_BLOCKS").length || ""}`}
+        defaultLabel={selectedBlocks.length ? `${selectedBlocks.length} Blocks Selected` : ""}
+        defaultUnit={"Blocks"}
         selected={selectedBlocks}
+        addSelectAllCheck={true}
+        frozenData={[...selectedOptions]}
+        selectAllLabel={t("PM_ACTION_SELECT_ALL_BLOCKS")}
       />
     </div>
   );

@@ -1,6 +1,5 @@
 import React, {useEffect, useState} from "react";
-import {MultiSelectDropdown} from "@egovernments/digit-ui-react-components";
-import _ from "lodash";
+import {MultiSelectDropdown} from "@egovernments/digit-ui-components";
 
 const DistrictSelector = ({
   data = {},
@@ -8,18 +7,20 @@ const DistrictSelector = ({
   props,
 }) => {
 
-  const { t, name, stateIdentifier, boundaryData } = props;
+  const { t, name, stateIdentifier, boundaryData, selectedOptions = [] } = props;
   const [selectedState, setSelectedState] = useState(data[stateIdentifier]);
   const [districtMenu, setDistrictMenu] = useState([]);
-  const [selectedDistricts, setSelectedDistricts] = useState(data[name] || []);
+  const [selectedDistricts, setSelectedDistricts] = useState(
+    data[name]?.sort((a, b) => a.code?.localeCompare(b.code)) || []
+  );
 
   useEffect(() => {
     setSelectedState(data[stateIdentifier]);
   }, [data[stateIdentifier]]);
 
   useEffect(() => {
-    if (selectedDistricts.filter((block) => block.code !== "ALL_DISTRICTS").length) {
-      setValue(name, selectedDistricts.filter((block) => block.code !== "ALL_DISTRICTS"));
+    if (selectedDistricts.length) {
+      setValue(name, selectedDistricts);
     } else {
       setValue(name, undefined);
     }
@@ -35,43 +36,18 @@ const DistrictSelector = ({
           ...district,
           name: `DISTRICT_${district.code.toUpperCase()}`,
         }));
-      setDistrictMenu(
-        newDistrictMenu ? [
-          {
-            code: "ALL_DISTRICTS",
-            name: "PM_ACTION_SELECT_ALL_DISTRICTS",
-          },
-          ...newDistrictMenu
-        ] : []
-      );
+      setDistrictMenu(newDistrictMenu);
 
       const newSelectedDistricts = selectedDistricts.filter((district) => district.stateCode === selectedStateCode);
-      setSelectedDistricts(newSelectedDistricts);
+      setSelectedDistricts(newSelectedDistricts.sort((a, b) => a.code?.localeCompare(b.code)));
     }
-  }, [t, boundaryData, selectedState])
+  }, [t, boundaryData, selectedOptions, selectedState])
 
-  const handleDistrictSelection = (districts) => {
-    const currentDistrictSelection = districts.map(district => district.code).sort((a, b) => a.code?.localeCompare(b.code));
-    const previousDistrictSelection = selectedDistricts.map((district) => district.code).sort((a, b) => a.code?.localeCompare(b.code));
-
-    if (!_.isEqual(currentDistrictSelection, previousDistrictSelection)) {
-      const currentSelectionSelectAll = currentDistrictSelection.includes("ALL_DISTRICTS");
-      const previousSelectionSelectAll = previousDistrictSelection.includes("ALL_DISTRICTS");
-
-      if (previousSelectionSelectAll) {
-        if (currentSelectionSelectAll) {
-          setSelectedDistricts(districts.filter((district) => district.code !== "ALL_DISTRICTS"));
-        } else if (districts.length === districtMenu.length - 1) {
-          setSelectedDistricts([]);
-        } else {
-          setSelectedDistricts(districts);
-        }
-      } else if (currentSelectionSelectAll || districts.length === districtMenu.length - 1) {
-        setSelectedDistricts(districtMenu);
-      } else {
-        setSelectedDistricts(districts);
-      }
-    }
+  const handleDistrictSelection = (districts = []) => {
+    const selectedDistrictCodes = districts.map((district) => district.code);
+    const selectedOptionsExcludedInSelection = selectedOptions.filter((option) => !selectedDistrictCodes.includes(option.code));
+    const newSelectedDistricts = [...districts, ...selectedOptionsExcludedInSelection];
+    setSelectedDistricts(newSelectedDistricts.sort((a, b) => a.code?.localeCompare(b.code)));
   }
 
   return (
@@ -82,8 +58,12 @@ const DistrictSelector = ({
         onSelect={(e) => {
           handleDistrictSelection(e?.map(row=>{return row?.[1] ? row[1] : null}).filter(e=>e))
         }}
-        defaultLabel={`${selectedDistricts.filter((block) => block.code !== "ALL_DISTRICTS").length || ""}`}
+        defaultLabel={selectedDistricts.length ? `${selectedDistricts.length} Districts Selected` : ""}
+        defaultUnit={"Districts"}
         selected={selectedDistricts}
+        addSelectAllCheck={true}
+        frozenData={[...selectedOptions]}
+        selectAllLabel={t("PM_ACTION_SELECT_ALL_DISTRICTS")}
       />
     </div>
   );

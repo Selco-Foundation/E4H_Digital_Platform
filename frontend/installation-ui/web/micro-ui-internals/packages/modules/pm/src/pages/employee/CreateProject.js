@@ -157,7 +157,7 @@ const CreateProject = () => {
             isMandatory: true,
             key: "projectType",
             type: "dropdown",
-            disable: false,
+            disable: !!createdProject?.projectType,
             route: "name",
             nextRoute: "justification-code",
             populators: {
@@ -174,7 +174,7 @@ const CreateProject = () => {
             isMandatory: true,
             key: "justificationCode",
             type: "text",
-            disable: false,
+            disable: !!createdProject?.additionalDetails?.justificationCode,
             route: "justification-code",
             nextRoute: "project-duration",
             populators: {
@@ -214,6 +214,7 @@ const CreateProject = () => {
             component: "PMStateSelector",
             customProps: {
               name: "state",
+              disable: !!createdProject?.additionalDetails?.geographyDetails?.state,
               t,
               boundaryData
             },
@@ -235,6 +236,7 @@ const CreateProject = () => {
             customProps: {
               name: "districts",
               stateIdentifier: "state",
+              selectedOptions: createdProject?.additionalDetails?.geographyDetails?.districts || [],
               t,
               boundaryData,
             },
@@ -256,6 +258,7 @@ const CreateProject = () => {
             customProps: {
               name: "blocks",
               districtsIdentifier: "districts",
+              selectedOptions: createdProject?.additionalDetails?.geographyDetails?.blocks || [],
               t,
               boundaryData
             },
@@ -325,7 +328,7 @@ const CreateProject = () => {
           }
         ]
       }
-    ], [t, projectTypeData, boundaryData, invalidDataError]
+    ], [t, projectTypeData, boundaryData, createdProject, invalidDataError]
   )
 
   const filterConfig = (config, currentKey) => {
@@ -418,9 +421,17 @@ const CreateProject = () => {
       const createdProjectResponse = projectResponse.Project?.[0];
       setCreatedProject(createdProjectResponse);
       setCurrentKey(prev => prev + 1);
+      setToast({
+        key: "success",
+        label: `Successfully ${ projectId ? `updated` : `created` } project draft`,
+      })
 
     } catch (e) {
       console.error(`Error ${ projectId ? `updating` : `creating` } project`, e);
+      setToast({
+        key: "error",
+        label: `Error ${ projectId ? `updating` : `creating` } project`,
+      })
     }
   }
 
