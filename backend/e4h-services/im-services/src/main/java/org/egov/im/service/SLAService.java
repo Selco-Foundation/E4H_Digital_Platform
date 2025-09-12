@@ -1,7 +1,9 @@
 package org.egov.im.service;
 
+import org.apache.kafka.common.protocol.types.Field;
 import org.egov.im.web.models.IncidentRequest;
 import org.egov.im.web.models.Priority;
+import org.egov.im.web.models.workflow.ProcessInstance;
 import org.egov.im.web.models.workflow.State;
 import org.egov.tracer.model.CustomException;
 import com.jayway.jsonpath.JsonPath;
@@ -14,6 +16,7 @@ import org.springframework.util.CollectionUtils;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static org.egov.im.util.IMConstants.*;
 
@@ -21,7 +24,7 @@ import static org.egov.im.util.IMConstants.*;
 @Service
 public class SLAService {
 
-    public long computeTotalSla(String currentState, List<State> states) {
+    public long computeTotalSla(String currentState, List<State> states, List<ProcessInstance> processInstances) {
         log.info("SLAService::computeTotalSla called | currentState={}", currentState);
         Map<String, Long> stateToSlaMap = new HashMap<>();
         for (State state : states) {
@@ -31,24 +34,32 @@ public class SLAService {
             }
         }
         long totalSla = 0;
-        if (PENDINGFORASSIGNMENT.equals(currentState) || PENDINGATVENDOR.equals(currentState)) {
-            totalSla += stateToSlaMap.getOrDefault(PENDINGFORASSIGNMENT, 0L);
+        //calculating sla for all states till current state
+        List<String> previousStates = processInstances
+                .stream()
+                .map(p -> p.getState().getApplicationStatus())
+                .collect(Collectors.toList());
+
+        if(previousStates.isEmpty() || !previousStates.get(previousStates.size() - 1).equals(currentState)){
+            previousStates.add(currentState);
+        }
+        for(String state : previousStates){
+            if(PENDINGFORASSIGNMENT.equals(state) || PENDINGATVENDOR.equals(state)
+                    || state.startsWith(PENDING_ASSIGNMENT_PREFIX) || (state.startsWith(PENDING_RESOLUTION_PREFIX))){
+                totalSla += stateToSlaMap.getOrDefault(state, 0L);
+            }
+        }
+
+        //add positive follow-up state
+        if (PENDINGFORASSIGNMENT.equals(currentState)) {
             totalSla += stateToSlaMap.getOrDefault(PENDINGATVENDOR, 0L);
             log.debug("Computed SLA for combined state={} totalSla={}", currentState, totalSla);
         } else if (currentState.startsWith(PENDING_ASSIGNMENT_PREFIX)) {
             String suffix = currentState.replace(PENDING_ASSIGNMENT_PREFIX, "");
             String resolutionState = PENDING_RESOLUTION_PREFIX + suffix;
-            totalSla += stateToSlaMap.getOrDefault(currentState, 0L);
             totalSla += stateToSlaMap.getOrDefault(resolutionState, 0L);
             log.debug("Computed SLA for assignment workflow | currentState={} resolutionState={} totalSla={}",
                     currentState, resolutionState, totalSla);
-        } else if (currentState.startsWith(PENDING_RESOLUTION_PREFIX)) {
-            String suffix = currentState.replace(PENDING_RESOLUTION_PREFIX, "");
-            String assignmentState = PENDING_ASSIGNMENT_PREFIX + suffix;
-            totalSla += stateToSlaMap.getOrDefault(currentState, 0L);
-            totalSla += stateToSlaMap.getOrDefault(assignmentState, 0L);
-            log.debug("Computed SLA for resolution workflow | currentState={} assignmentState={} totalSla={}",
-                    currentState, assignmentState, totalSla);
         }
         return totalSla;
     }

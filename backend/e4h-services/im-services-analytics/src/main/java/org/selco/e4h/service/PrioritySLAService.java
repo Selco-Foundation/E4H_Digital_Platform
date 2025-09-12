@@ -3,11 +3,14 @@ package org.selco.e4h.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.minidev.json.JSONArray;
+import org.apache.kafka.common.protocol.types.Field;
+import org.egov.common.contract.request.RequestInfo;
 import org.selco.e4h.util.ElasticSearchClient;
 import org.selco.e4h.util.IMConstants;
 import org.selco.e4h.util.MdmsUtil;
 import org.selco.e4h.web.models.BusinessHours;
 import org.selco.e4h.web.models.SLARequest;
+import org.selco.e4h.web.models.workflow.ProcessInstance;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
@@ -15,6 +18,7 @@ import java.time.*;
 import java.time.format.TextStyle;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static org.selco.e4h.util.IMConstants.*;
 
@@ -29,14 +33,15 @@ public class PrioritySLAService {
     private final MdmsUtil mdmsUtil;
     private final ElasticSearchClient esClient;
     private final JdbcTemplate jdbcTemplate;
+    private final WorkflowService workflowService;
 
     private static final ZoneId INDIA_ZONE = ZoneId.of("Asia/Kolkata");
 
-    public void computeAndUpdateSLA(SLARequest request, boolean transform) {
+    public void computeAndUpdateSLA(SLARequest request, boolean transform , boolean closedTickets) {
         int pageSize = 5000;
         int from = 0;
         boolean hasMore = true;
-
+        RequestInfo requestInfo = request.getRequestInfo();
         Map<String, Map<String, JSONArray>> serviceDefMdms = mdmsUtil.fetchMdmsData(
                 request.getRequestInfo(), request.getTenantId(),
                 IMConstants.INCIDENT,
@@ -54,14 +59,14 @@ public class PrioritySLAService {
 
         while (hasMore) {
             List<Map<String, Object>> tickets = transform
-                    ? esClient.fetchOldOpenTicketsFromImServices(from, pageSize)
-                    : esClient.fetchOpenTickets(from, pageSize);
+                    ? esClient.fetchOldRequiredTicketsFromImServices(from, pageSize, closedTickets)
+                    : esClient.fetchRequiredTickets(from, pageSize,closedTickets);
 
             if (tickets.isEmpty()) break;
 
             for (Map<String, Object> ticket : tickets) {
                 try {
-                    updateTicket(ticket, slaMap, bh, transform, incidentTypeToPriority);
+                    updateTicket(ticket, slaMap, bh, transform, incidentTypeToPriority, requestInfo);
                 } catch (Exception e) {
                     log.error("Error processing ticket: {}", ticket, e);
                 }
@@ -74,21 +79,26 @@ public class PrioritySLAService {
 
 
     private void updateTicket(Map<String, Object> ticket, Map<TenantServiceStateKey, Duration> slaMap,
-                              BusinessHours bh, boolean transform, Map<String, String> incidentPriorityMap) {
+                              BusinessHours bh, boolean transform, Map<String, String> incidentPriorityMap ,RequestInfo requestInfo) {
         Map<String, Object> data = (Map<String, Object>) ticket.get("Data");
         Map<String, Object> auditDetails = (Map<String, Object>) data.get("auditDetails");
         Map<String, Object> incident = (Map<String, Object>) data.get("incident");
         Map<String, Object> currentProcessInstance = (Map<String, Object>) data.get("currentProcessInstance");
 
         String tenantId = (String) data.get("tenantId");
+        String IncidentId = (String) incident.get("incidentId");
+
+        //get process instances
+        List<ProcessInstance> processInstances = workflowService.getAllProcessInstances(tenantId,IncidentId, requestInfo);
+        Collections.reverse(processInstances);
+
         if (tenantId.contains(".")) tenantId = tenantId.split("\\.")[0];
         String state = (String) ((Map<String, Object>) currentProcessInstance.get(STATE)).get("applicationStatus");
 
-        long createdTime = Long.parseLong(auditDetails.get("createdTime").toString());
         long lastModifiedTime = Long.parseLong(auditDetails.get("lastModifiedTime").toString());
         long now = Instant.now().toEpochMilli();
 
-        long businessElapsedFromCreated = calculateBusinessMillis(createdTime, now, bh);
+        long businessElapsedFromCreated = calculateBusinessDurationForAllStates(processInstances, bh);
         long businessElapsedFromModified = calculateBusinessMillis(lastModifiedTime, now, bh);
 
 
@@ -98,7 +108,7 @@ public class PrioritySLAService {
 
         String existingBusinessService =null;
         if(incidentPriorityMap.containsKey(key)) {
-             existingBusinessService = "Incident_" + incidentPriorityMap.get(key);
+             existingBusinessService = INCIDENT_UNDERSCORE + incidentPriorityMap.get(key);
         }
         else{
              existingBusinessService = "Incident_Medium";
@@ -116,7 +126,7 @@ public class PrioritySLAService {
 
         if (needsOverride && incidentPriorityMap.containsKey(key)) {
             priority = incidentPriorityMap.get(key);
-            updatedBusinessService = "Incident_" + capitalize(priority);
+            updatedBusinessService = INCIDENT_UNDERSCORE + capitalize(priority);
             currentProcessInstance.put(BUSINESS_SERVICE, updatedBusinessService);  // update ES doc in memory
         } else if (existingBusinessService != null && existingBusinessService.contains("_")) {
             priority = existingBusinessService.split("_")[1];
@@ -126,8 +136,10 @@ public class PrioritySLAService {
             currentProcessInstance.put(BUSINESS_SERVICE, updatedBusinessService);
         }
 
-        Duration totalSla = computeTotalSla(tenantId, priority, state, slaMap);
-        long totalSlaRemaining = totalSla.toMillis() - businessElapsedFromCreated;
+        Duration totalSla = computeTotalSla(tenantId, priority, state, slaMap, processInstances);
+        long definedTotalSla = totalSla.toMillis();
+
+        long totalSlaRemaining = definedTotalSla - businessElapsedFromCreated;
         long slaRemaining = stateSla - businessElapsedFromModified;
 
         Object incidentIdObj = incident.get("incidentId");
@@ -135,18 +147,23 @@ public class PrioritySLAService {
             log.warn("Incident ID is null for ticket: {}", ticket);
             return;
         }
+        boolean isAClosedTicket = state.equals(CLOSED_AFTER_REJECTION) || state.equals(CLOSED_AFTER_RESOLUTION)
+                || state.equals(REJECTED) || state.equals(RESOLVED);
 
         String incidentId = incidentIdObj.toString();
         if (transform) {
             Map<String, Object> fullDoc = buildDocumentToInsert(stateSla, slaRemaining, totalSlaRemaining, ticket);
             updateService.upsertTransformedTicket(incidentId, fullDoc);
-        } else {
+        }
+        else {
             updateService.updateSlaFields(
                     incidentId,
                     slaRemaining,
                     totalSlaRemaining,
                     stateSla,
-                    updatedBusinessService
+                    updatedBusinessService,
+                    isAClosedTicket,
+                    definedTotalSla
             );
         }
     }
@@ -268,6 +285,30 @@ public class PrioritySLAService {
         return total;
     }
 
+    public long calculateBusinessDurationForAllStates(List<ProcessInstance> processInstances, BusinessHours businessHours) {
+        if (processInstances == null || processInstances.isEmpty()) {
+            return 0;
+        }
+        long totalBusinessDuration = 0;
+
+        for (int i = 0; i < processInstances.size(); i++) {
+            ProcessInstance current = processInstances.get(i);
+            String state = current.getState().getApplicationStatus();
+
+            if (PENDING_RESOLUTION.equals(state) || PENDING_FOR_ASSIGNMENT.equals(state)
+                    || state.startsWith(PENDING_ASSIGNMENT_PREFIX) || state.startsWith(PENDING_RESOLUTION_PREFIX)) {
+
+                long prevStateTime = current.getAuditDetails().getCreatedTime();
+                long nextStateTime = (i + 1) < processInstances.size() ? processInstances.get(i + 1).getAuditDetails().getCreatedTime()
+                        : Instant.now().toEpochMilli();
+
+                totalBusinessDuration += calculateBusinessMillis(prevStateTime,nextStateTime, businessHours);
+            }
+        }
+
+        return totalBusinessDuration;
+    }
+
     public record TenantServiceStateKey(String tenantId, String businessService, String state) {}
 
     private Map<TenantServiceStateKey, Duration> loadSLADurationsFromBusinessService() {
@@ -298,25 +339,29 @@ public class PrioritySLAService {
         }
     }
 
-    private Duration computeTotalSla(String tenantId, String priority, String currentState, Map<TenantServiceStateKey, Duration> slaMap) {
-        String businessService = "Incident_" + priority;
+    private Duration computeTotalSla(String tenantId, String priority, String currentState, Map<TenantServiceStateKey, Duration> slaMap, List<ProcessInstance> processInstances) {
+        String businessService = INCIDENT_UNDERSCORE + capitalize(priority);
         Duration total = Duration.ZERO;
 
-        if (currentState.equals(PENDING_FOR_ASSIGNMENT) || currentState.equals(PENDING_RESOLUTION)) {
-            total = total.plus(getDurationFromMap(slaMap, tenantId, businessService, PENDING_FOR_ASSIGNMENT));
+        //calculating sla for all states till current state
+        List<String> previousStates = processInstances
+                .stream()
+                .map(p -> p.getState().getApplicationStatus())
+                .collect(Collectors.toList());
+
+        for(String state : previousStates){
+            if(PENDING_FOR_ASSIGNMENT.equals(state) || PENDING_RESOLUTION.equals(state)
+                    || state.startsWith(PENDING_ASSIGNMENT_PREFIX) || (state.startsWith(PENDING_RESOLUTION_PREFIX))){
+                total = total.plus(getDurationFromMap(slaMap, tenantId, businessService, state));
+            }
+        }
+        if (currentState.equals(PENDING_FOR_ASSIGNMENT)) {
             total = total.plus(getDurationFromMap(slaMap, tenantId, businessService, PENDING_RESOLUTION));
         } else if (currentState.startsWith(PENDING_ASSIGNMENT_PREFIX)) {
             String suffix = currentState.replace(PENDING_ASSIGNMENT_PREFIX, "");
             String resolutionState = PENDING_RESOLUTION_PREFIX + suffix;
-            total = total.plus(getDurationFromMap(slaMap, tenantId, businessService, currentState));
             total = total.plus(getDurationFromMap(slaMap, tenantId, businessService, resolutionState));
-        } else if (currentState.startsWith(PENDING_RESOLUTION_PREFIX)) {
-            String suffix = currentState.replace(PENDING_RESOLUTION_PREFIX, "");
-            String assignmentState = PENDING_ASSIGNMENT_PREFIX + suffix;
-            total = total.plus(getDurationFromMap(slaMap, tenantId, businessService, assignmentState));
-            total = total.plus(getDurationFromMap(slaMap, tenantId, businessService, currentState));
         }
-
         return total;
     }
 

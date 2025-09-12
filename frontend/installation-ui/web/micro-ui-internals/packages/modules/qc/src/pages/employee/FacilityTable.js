@@ -8,6 +8,7 @@ import { setSelectedFacility, setSelectedFieldPlan } from "../../redux/actions";
 import SearchActionCentre from "../../components/FacilityTable/SearchAction";
 import useFieldPlan from "../../hooks/useFieldPlan";
 import useFacility from "../../hooks/useFacility";
+import CustomCheckBox from "../../components/Custom/CustomCheckBox";
 
 const FacilityTable = ({ t }) => {
 
@@ -170,16 +171,21 @@ const FacilityTable = ({ t }) => {
     {
       id: "selection",
       Header: () => (
-        <div style={{ marginTop: "-1.2em", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <CheckBox checked={mainCheck} onChange={mainCheckboxChange} />
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", top: 0 }}>
+          <CustomCheckBox
+            checked={mainCheck}
+            onChange={mainCheckboxChange}
+            styles={{ width: "24px", height: "24px" }}
+          />
         </div>
       ),
       Cell: ({ row }) => {
         return row.original["status"] === "SUBMITTED_BY_SUPERVISOR" ? (
-          <div style={{ marginTop: "-1.2em", marginBottom: "-0.8em", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <CheckBox
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <CustomCheckBox
               checked={selectedFacilities.some((facilityId) => facilityId === row.original["id"])}
               onChange={() => sideCheckboxChange(row.original["id"])}
+              styles={{ width: "24px", height: "24px" }}
             />
           </div>
         ) : (

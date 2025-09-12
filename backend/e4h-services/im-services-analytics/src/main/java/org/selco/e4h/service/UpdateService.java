@@ -134,12 +134,15 @@ public class UpdateService {
 		}
 	}
 
-	public void updateSlaFields(String incidentId, long slaRemaining, long totalSlaRemaining, long stateSla, String businessService) {
+	public void updateSlaFields(String incidentId, long slaRemaining, long totalSlaRemaining, long stateSla, String businessService, Boolean isAClosedTicket, long definedTotalSla) {
 		Map<String, Object> dataMap = new HashMap<>();
-		dataMap.put("slaRemaining", slaRemaining);
-		dataMap.put("totalSlaRemaining", totalSlaRemaining);
-		dataMap.put("stateSla", stateSla);
 
+        if(!isAClosedTicket) {
+            dataMap.put("slaRemaining", slaRemaining);
+            dataMap.put("stateSla", stateSla);
+        }
+        dataMap.put("totalSlaRemaining", totalSlaRemaining);
+        dataMap.put("definedTotalSla", definedTotalSla);
 		if (businessService != null) {
 			Map<String, Object> currentProcessInstance = new HashMap<>();
 			currentProcessInstance.put("businessService", businessService);

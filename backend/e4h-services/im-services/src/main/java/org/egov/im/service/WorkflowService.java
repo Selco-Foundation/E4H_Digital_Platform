@@ -114,10 +114,10 @@ public class WorkflowService {
     private void enrichTotalSla(IncidentRequestWrapper wrapper, ProcessInstance processInstance) {
         IncidentRequest request = wrapper.getIncidentRequest();
         log.debug("Enriching SLA for incident: {}", request.getIncident().getIncidentId());
-        Long createdTime = request.getIncident().getAuditDetails().getCreatedTime();
         String applicationStatus = request.getIncident().getApplicationStatus();
-        ZonedDateTime created = ZonedDateTime.ofInstant(Instant.ofEpochMilli(createdTime), ZoneId.of("Asia/Kolkata"));
-        ZonedDateTime now = ZonedDateTime.now(ZoneId.of("Asia/Kolkata"));
+        RequestInfo requestInfo= request.getRequestInfo();
+        String tenantId = request.getIncident().getTenantId();
+        String IncidentId = request.getIncident().getIncidentId();
 
         // Step 1: Fetch MDMS BusinessHours data
         Object mdmsData = mdmsUtils.fetchMDMSData(
@@ -143,11 +143,14 @@ public class WorkflowService {
             throw new CustomException("MDMS_MISSING", "BusinessHours config missing from MDMS");
         }
 
+        //get all process instances
+        List<ProcessInstance> processInstances = getAllProcessInstances(tenantId,IncidentId, requestInfo);
+        Collections.reverse(processInstances);
+
         // Step 3: Use BusinessHoursUtil
         BusinessHoursUtil util = new BusinessHoursUtil(businessHourList);
-        long businessHoursElapsed = util.calculateBusinessDuration(created, now);
-
-        long definedTotalSla = slaService.computeTotalSla(applicationStatus, this.getStates());
+        long businessHoursElapsed = util.calculateBusinessDurationForAllStates(processInstances);
+        long definedTotalSla = slaService.computeTotalSla(applicationStatus, this.getStates(), processInstances);
         long totalSlaRemaining = definedTotalSla - businessHoursElapsed;
 
         wrapper.getIndexView().setDefinedTotalSla(definedTotalSla);
@@ -315,6 +318,28 @@ public class WorkflowService {
 
         return businessIdToWorkflow;
     }
+
+    private List<ProcessInstance> getAllProcessInstances(String tenantId, String IncidentId, RequestInfo requestInfo){
+
+        RequestInfoWrapper requestInfoWrapper = RequestInfoWrapper.builder().requestInfo(requestInfo).build();
+
+        StringBuilder URL = getprocessInstanceSearchURL(tenantId, IncidentId);
+        URL.append("&").append("history=true");
+
+        Object result = repository.fetchResult(URL, requestInfoWrapper);
+        ProcessInstanceResponse processInstanceResponse = null;
+        try {
+            processInstanceResponse = mapper.convertValue(result, ProcessInstanceResponse.class);
+        } catch (IllegalArgumentException e) {
+            throw new CustomException("PARSING ERROR", "Failed to parse response of workflow processInstance search");
+        }
+        if (processInstanceResponse == null || CollectionUtils.isEmpty(processInstanceResponse.getProcessInstances())) {
+            return Collections.emptyList();
+        }
+
+        return processInstanceResponse.getProcessInstances();
+    }
+
 
     /**
      * Method to integrate with workflow
