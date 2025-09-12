@@ -195,7 +195,7 @@ def check_db_duplicates(cache, facility_client, add_err, df, row_idx, hfr=None, 
     If DB call fails, we log error for that row and skip further validation.
     """
     row = df.loc[row_idx]
-    boundary_code = str(row.get("Boundary Code", "")).strip()
+    boundary_code = str(row.get("Boundary Code (Mandatory)", "")).strip()
     tenant_id = "in"
 
     try:
