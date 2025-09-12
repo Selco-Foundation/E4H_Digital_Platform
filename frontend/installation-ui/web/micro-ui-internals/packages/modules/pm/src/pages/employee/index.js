@@ -7,6 +7,7 @@ import CreateProject from "./CreateProject";
 import Response from "./Response";
 import CreateFieldPlan from "./CreateFieldPlan";
 import ProjectDetails from "./ProjectDetails";
+import ProjectTable from "./ProjectTable";
 
 const PMApp = () => {
   const { t } = useTranslation();
@@ -38,6 +39,11 @@ const PMApp = () => {
       content: t("PM_PROJECT_PROJECT_DETAILS"),
       path: match.url + `/project/1234567890/details`,
       show: true,
+    },
+    project: {
+      content: t("PM_LABEL_MY_PROJECTS"),
+      path: match.url + `/projects`,
+      show: true,
     }
   };
 
@@ -63,6 +69,10 @@ const PMApp = () => {
         <Route path={`${path}/response`} exact={true}>
           <BreadCrumb crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.response]} />
           <Response />
+        </Route>
+        <Route path={`${path}/projects`} exact={true}>
+          <BreadCrumb crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.project]} />
+          <ProjectTable />
         </Route>
       </Switch>
     </div>
