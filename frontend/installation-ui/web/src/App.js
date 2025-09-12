@@ -34,7 +34,7 @@ initLibraries().then(() => {
 });
 
 const moduleReducers = (initData) => ({
-  initData, pgr: PGRReducers(initData), qc: QCReducers(initData), pm: PMReducers(initData),
+  initData, qc: QCReducers(initData), pm: PMReducers(initData),
 });
 
 const initDigitUI = () => {
