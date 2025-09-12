@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@egovernments/digit-ui-react-components": "1.8.24",
+    "@egovernments/digit-ui-components": "0.2.0-beta.63",
     "lodash.merge": "4.6.2",
     "microbundle-crl": "0.13.11",
     "react": "17.0.2",
