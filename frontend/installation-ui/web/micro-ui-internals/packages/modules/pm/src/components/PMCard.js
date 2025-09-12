@@ -1,10 +1,12 @@
-import React from "react";
+import React, {useState} from "react";
 import { useTranslation } from "react-i18next";
 import { useHistory } from "react-router-dom";
 import { AdminPanelSettings } from "@egovernments/digit-ui-svg-components";
 import { AddExpense, ListAlt } from "@egovernments/digit-ui-svg-components";
+import IntroModal from "./IntroModal"
 
 const PMCard = () => {
+  const [showIntro, setShowIntro] = useState(false);
   const history = useHistory();
   const { t } = useTranslation();
   const { info } = Digit.UserService.getUser();
@@ -79,7 +81,7 @@ const PMCard = () => {
             fontWeight: "500",
             fontFamily: "Roboto",
           }}
-          onClick={handleCreateProjectRedirection}
+          onClick={() => setShowIntro(true)}
         >
           <AddExpense />
           <span>
@@ -105,6 +107,8 @@ const PMCard = () => {
           </span>
         </div>
       </div>
+
+      <IntroModal open={showIntro} onClose={() => setShowIntro(false)} t={t} action={handleCreateProjectRedirection} />
     </div>
   );
 }
