@@ -74,7 +74,7 @@ function App() {
       enabledModules={enabledModules}
       moduleReducers={moduleReducers}
       defaultLanding="employee"
-      allowedUserTypes={["employee"]
+      allowedUserTypes={["employee"]}
     />
   );
 }
