@@ -3,11 +3,8 @@
   "version": "1.0.0",
   "main": "index.js",
   "workspaces": [
-    "packages/libraries",
     "example",
     "packages/css",
-    "packages/react-components",
-    "packages/svg-components",
     "packages/modules/*"
   ],
   "author": "JaganKumar <jagan.kumar@egov.org.in>",
@@ -27,19 +24,16 @@
     "dev:qc": "cd packages/modules/qc && yarn start",
     "build": "run-p build:**",
     "build:qc": "cd packages/modules/qc && yarn build",
-    "deploy:jenkins": "./scripts/jenkins.sh",
+    "deploy:jenkins": "./scripts/jenkins.sh", 
     "clean": "rm -rf node_modules"
   },
   "resolutions": {
     "**/@babel/runtime": "7.20.1",
-    "**/babel-preset-react-app": "10.0.0",
-    "**/@babel/traverse": "7.25.9",
     "**/styled-components": "5.0.0",
-    "fast-uri": "2.1.0",
-    "**/minimatch": "7.4.6",
-    "minimatch": "7.4.6",
-    "**/glob": "7.2.3",
-    "glob": "7.2.3"   
+    "**/@babel/traverse": "7.25.9",
+    "**/babel-preset-react-app": "10.0.0",
+    "**/@jridgewell/gen-mapping": "0.3.5",
+    "**/minimatch": "7.4.6"  
   },
   "devDependencies": {
     "husky": "7.0.4",
