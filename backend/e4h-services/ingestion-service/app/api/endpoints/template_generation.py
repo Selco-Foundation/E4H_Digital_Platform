@@ -43,9 +43,9 @@ DB_CONFIG = {
             summary='Generate facility ingestion template Excel file with schema, already present data and boundary codes',
             response_description="Returns Excel template with facility schema, facility data and boundary codes")
 async def get_facility_ingestion_template_with_data(
+        background_tasks: BackgroundTasks,
         facility_service: FacilityTemplateService = Depends(),
-        payload: dict = Body(..., description="Payload object"),
-        background_tasks: BackgroundTasks = Depends()
+    payload: dict = Body(..., description="Payload object")
 ):
     request_info = request_info_from_json(payload.get("request_info", {}))
     boundary_data = payload.get("boundary_data", {})

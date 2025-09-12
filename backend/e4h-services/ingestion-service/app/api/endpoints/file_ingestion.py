@@ -1663,13 +1663,13 @@ def process_update_incident_data_response(response, df, idx):
              summary='Validate facility Excel file before processing',
              response_description='Returns validation report Excel with PASSED/FAILED rows')
 async def validate_facilities_excel_sheet(
+        background_tasks: BackgroundTasks,
         facility_file: UploadFile = File(..., description="Excel file containing facility data"),
         facility_sheet_name: str = Form(default="FacilityIngestionTemplate",
                                         description="Name of the sheet containing facility data"),
         boundary_sheet_name: str = Form(default="BoundaryCodes",
                                         description="Name of the sheet containing boundary data"),
-        request_info: str = Form(default=""),
-        background_tasks: BackgroundTasks = Depends()
+        request_info: str = Form(default="")
 ):
     temp_input_file = None
     request_info_obj = request_info_from_json(request_info)
@@ -1788,12 +1788,12 @@ async def validate_facilities_excel_sheet(
              summary='Create passed facility in Excel file and add them to project',
              response_description='Created facilities from PASSED rows and added to the given project if selected')
 async def create_facilities_and_update_project(
+        background_tasks: BackgroundTasks,
         facility_file: UploadFile = File(description="Validated Excel file with PASSED/FAILED status"),
         facility_sheet_name: str = Form(default="FacilityIngestionTemplate",
                                         description="Name of the sheet containing facility data"),
         project_id: str = Form(description="Project ID"),
-        request_info: str = Form(default=""),
-        background_tasks: BackgroundTasks = Depends()
+        request_info: str = Form(default="")
 ):
     input_temp_file = None
     output_temp_file = None
@@ -1846,7 +1846,7 @@ async def create_facilities_and_update_project(
                     return c
             return None
 
-        include_col = find_col("Include in Project (Mandatory)")
+        include_col = find_col("Include in Project")
         facility_id_col = find_col("Facility Id") or "Facility Id"
         status_col = find_col("status") or "status"
 

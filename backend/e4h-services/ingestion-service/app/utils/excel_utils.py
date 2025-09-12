@@ -122,21 +122,28 @@ def lock_prefilled_rows_in_excel(
     # Enable protection
     ws.protection.sheet = True
     ws.protection.select_unlocked_cells = True
+    ws.protection.formatColumns = True
+    ws.protection.insertRows = False
     wb.save(file_path)
 
 
-def add_validations_to_excel(file_path: str, sheet_name: str, validations: Dict[str, Dict[str, str]]):
+def add_validations_to_excel(file_path: str, sheet_name: str, validations: Dict[str, Dict[str, str]],
+                             allow_blank: bool = True,
+                             max_extra_rows: int = 1000
+                             ):
     """
     Adds Excel data validation (pattern + uniqueness) to specified columns.
     :param file_path: Excel file path
     :param sheet_name: Sheet where validation needs to be added
     :param validations: Dict[column_name] = {"type": "regex"/"unique", "pattern"/"message": str}
+    :param allow_blank: Boolean
+    :param max_extra_rows: Maximum extra number of rows to allow
     """
     wb = load_workbook(file_path)
     ws = wb[sheet_name]
 
     header_row = 1
-    max_row = ws.max_row + 1000  # allow future rows for data entry
+    max_row = ws.max_row + max_extra_rows  # allow future rows for data entry
     header_cells = {cell.value.strip(): cell for cell in ws[header_row] if cell.value}
 
     for col_name, config in validations.items():
@@ -154,7 +161,7 @@ def add_validations_to_excel(file_path: str, sheet_name: str, validations: Dict[
             if pattern == "^\\d{10}$":  # 10-digit number validation
                 formula = f'AND(ISNUMBER({col_letter}2),LEN({col_letter}2)=10)'
                 dv = DataValidation(type="custom", formula1=formula,
-                                    showErrorMessage=True, error=config.get("message", "Invalid value"))
+                                    showErrorMessage=True, error=config.get("message", "Invalid value"),allow_blank=allow_blank)
                 ws.add_data_validation(dv)
                 dv.add(data_range)
             else:
@@ -167,7 +174,7 @@ def add_validations_to_excel(file_path: str, sheet_name: str, validations: Dict[
             # Enforce uniqueness using COUNTIF formula
             formula = f'COUNTIF(${col_letter}:${col_letter},{col_letter}2)=1'
             dv_unique = DataValidation(type="custom", formula1=formula,
-                                       showErrorMessage=True, error=config.get("message", "Must be unique"))
+                                       showErrorMessage=True, error=config.get("message", "Must be unique"),allow_blank=allow_blank)
             ws.add_data_validation(dv_unique)
             dv_unique.add(data_range)
 

@@ -14,7 +14,7 @@ def project_facility_validation(
         raise HTTPException(status_code=400, detail="Boundary data is missing or empty")
 
     if "BoundaryCode" not in boundary_data.columns:
-        raise HTTPException(status_code=400, detail="Boundary data missing 'Boundary Code' column")
+        raise HTTPException(status_code=400, detail="Boundary data missing 'BoundaryCode' column")
 
     allowed_boundary_codes = set(
         str(x).strip() for x in boundary_data["BoundaryCode"] if pd.notna(x)
@@ -68,7 +68,7 @@ def validate_boundary_codes(df, allowed_boundary_codes, add_err):
 
 def validate_columns(df, schema, add_err):
     for col in schema["column_list"]:
-        col_name = f"{col['name']}{' (Mandatory)' if col.get('required') else ''}"
+        col_name = format_col_name(col)
 
         # Check if column exists
         if col_name not in df.columns:
@@ -77,27 +77,27 @@ def validate_columns(df, schema, add_err):
             continue
 
         for i, val in enumerate(df[col_name]):
-            # ✅ Treat NaN or None as empty string
+            # Treat NaN or None as empty string
             if pd.isna(val):
                 str_val = ""
             else:
                 str_val = str(val).strip()
 
-            # ✅ Check mandatory
+            # Check mandatory
             if col.get("required") and not str_val:
                 add_err(i, f"{col_name} is mandatory")
                 continue
 
-            # ✅ Skip pattern/type checks if empty
+            # Skip pattern/type checks if empty
             if not str_val:
                 continue
 
-            # ✅ Pattern validation
+            # Pattern validation
             if col.get("pattern"):
                 if not re.fullmatch(col["pattern"], str_val):  # fullmatch is safer than match
                     add_err(i, f"{col_name} does not match pattern {col['pattern']}")
 
-            # ✅ Enum validation (case-insensitive)
+            # Enum validation (case-insensitive)
             if col.get("type") == "enum-yes-no" and str_val.lower() not in {"yes", "no"}:
                 add_err(i, f"{col_name} must be Yes or No")
 
@@ -106,7 +106,7 @@ def validate_unique_ids(df, schema, add_err):
 
     for col in unique_columns:
         seen = {}
-        col_name = col["name"]
+        col_name = format_col_name(col)
 
         for i, val in enumerate(df.get(col_name, [])):
             if pd.isna(val):
@@ -124,11 +124,34 @@ def validate_unique_ids(df, schema, add_err):
 
 
 def validate_row_constraints(df, schema, add_err):
+    """
+    Validates row-level constraints defined in schema against DataFrame rows.
+    Handles cases where df column names may have '(Mandatory)' suffix,
+    while row_constraints fields are without the suffix.
+    """
     row_constraints = schema.get("row_constraints", [])
+
+    # Build mapping: base column name -> formatted column name in df
+    col_map = {}
+    for col in schema.get("column_list", []):
+        base_name = col.get("name", "").strip()
+        formatted_name = format_col_name(col)
+        if formatted_name in df.columns:
+            col_map[base_name] = formatted_name
+        elif base_name in df.columns:
+            col_map[base_name] = base_name
+
     for idx, row in df.iterrows():
         for rc in row_constraints:
-            fields = rc.fields
-            values = [str(row.get(f, "")).strip() for f in fields]
+            fields = [col_map.get(f, f) for f in rc.fields]
+            values = []
+            for f in fields:
+                val = row.get(f, "")
+                if pd.isna(val):
+                    val = ""
+                else:
+                    val = str(val).strip()
+                values.append(val)
 
             if rc.type == "atLeastOneRequired" and not any(values):
                 add_err(idx, rc.message)
@@ -206,3 +229,15 @@ def check_db_duplicates(cache, facility_client, add_err, df, row_idx, hfr=None, 
     except Exception as e:
         # Catch unexpected errors and fail the row
         add_err(row_idx, f"Unexpected error during DB duplicate check: {e}")
+
+def format_col_name(col: dict) -> str:
+    """
+    Formats column name with '(Mandatory)' if 'required' is True.
+    Example:
+        {"name": "Facility Name", "required": True}
+        -> "Facility Name (Mandatory)"
+    """
+    name = col.get("name", "")
+    required = col.get("required", False)
+    return f"{name}{' (Mandatory)' if required else ''}"
+
