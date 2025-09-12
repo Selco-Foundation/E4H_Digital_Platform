@@ -6,6 +6,7 @@ import { useSelector } from "react-redux";
 import CreateProject from "./CreateProject";
 import Response from "./Response";
 import CreateFieldPlan from "./CreateFieldPlan";
+import ProjectDetails from "./ProjectDetails";
 
 const PMApp = () => {
   const { t } = useTranslation();
@@ -32,6 +33,11 @@ const PMApp = () => {
       content: t("PM_ACTION_CREATE_FIELD_PLAN"),
       path: match.url + `/project/1234567890/field-plan/create`,
       show: true,
+    },
+    projectDetails: {
+      content: t("PM_PROJECT_PROJECT_DETAILS"),
+      path: match.url + `/project/1234567890/details`,
+      show: true,
     }
   };
 
@@ -45,6 +51,10 @@ const PMApp = () => {
         <Route path={`${path}/project/create`} exact={true}>
           <BreadCrumb crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.projectCreation]} />
           <CreateProject />
+        </Route>
+        <Route path={`${path}/project/:projectId/details`} exact={true}>
+          <BreadCrumb crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.projectDetails]} />
+          <ProjectDetails />
         </Route>
         <Route path={`${path}/project/:projectId/field-plan/create`} exact={true}>
           <BreadCrumb crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.fieldPlanCreation]} />
