@@ -55,8 +55,6 @@ def validate_boundary_codes(df, allowed_boundary_codes, add_err):
     Validates that 'Boundary Code' column in df only contains values
     from allowed_boundary_codes set. Only validates rows in df passed here.
     """
-    if "Boundary Code (Mandatory)" not in df.columns:
-        raise HTTPException(status_code=400, detail="Missing 'Boundary Code' column in uploaded file")
 
     for i, val in enumerate(df["Boundary Code (Mandatory)"]):
         if pd.isna(val) or str(val).strip() == "":

@@ -86,7 +86,7 @@ class FacilityTemplateService:
                         dropdowns_map[header_name] = dropdown_options
 
                 # --- 2. Yes/No Dropdowns ---
-                if col.get("type", "").lower() in ["enum-yes-no", "BOOLEAN"]:
+                if col.get("type", "") in ["enum-yes-no"]:
                     dropdowns_map[header_name] = ["Yes", "No"]
                     editable_columns.append(header_name)
 

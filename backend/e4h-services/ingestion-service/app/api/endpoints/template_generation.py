@@ -6,6 +6,7 @@ import pandas as pd
 from PIL import ImageDraw, Image, ImageFont
 from fastapi import APIRouter, Form, HTTPException, Depends, Body
 from fastapi.responses import FileResponse
+from fastapi import BackgroundTasks
 from openpyxl.utils import get_column_letter
 
 from app.core.logging import AppLogger
@@ -43,7 +44,8 @@ DB_CONFIG = {
             response_description="Returns Excel template with facility schema, facility data and boundary codes")
 async def get_facility_ingestion_template_with_data(
         facility_service: FacilityTemplateService = Depends(),
-        payload: dict = Body(..., description="Payload object")
+        payload: dict = Body(..., description="Payload object"),
+        background_tasks: BackgroundTasks = Depends()
 ):
     request_info = request_info_from_json(payload.get("request_info", {}))
     boundary_data = payload.get("boundary_data", {})
@@ -83,7 +85,7 @@ async def get_facility_ingestion_template_with_data(
             logger.error(f"Error generating template file: {e}")
             cleanup_temp_file(output_file_path)
             raise HTTPException(status_code=500, detail=f"Template generation error: {str(e)}")
-
+        background_tasks.add_task(cleanup_temp_file, output_file_path)
         return FileResponse(
             path=output_file_path,
             filename=output_filename,

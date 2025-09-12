@@ -12,7 +12,7 @@ from openpyxl.styles import Protection
 from openpyxl.utils.dataframe import dataframe_to_rows
 
 from app.utils.facility_validator import project_facility_validation
-from fastapi import APIRouter, File, Form, UploadFile, HTTPException
+from fastapi import APIRouter, File, Form, UploadFile, HTTPException, BackgroundTasks, Depends
 from fastapi.responses import FileResponse
 import psycopg2
 from starlette.responses import JSONResponse, StreamingResponse
@@ -32,6 +32,7 @@ from app.utils.convertor import request_info_from_json, create_vendor_request, c
     get_staff_search_payload, create_incident_data_update_payload, \
     get_incident_data_update_request_info
 from app.utils.facility_service_client import FacilityServiceClient
+from app.utils.file_utils import cleanup_temp_file
 from app.utils.im_service_client import IMServiceClient
 from app.utils.mdms_client import MDMSClient
 from app.utils.organization_service_client import OrganizationServiceClient
@@ -1667,7 +1668,8 @@ async def validate_facilities_excel_sheet(
                                         description="Name of the sheet containing facility data"),
         boundary_sheet_name: str = Form(default="BoundaryCodes",
                                         description="Name of the sheet containing boundary data"),
-        request_info: str = Form(default="")
+        request_info: str = Form(default=""),
+        background_tasks: BackgroundTasks = Depends()
 ):
     temp_input_file = None
     request_info_obj = request_info_from_json(request_info)
@@ -1697,6 +1699,10 @@ async def validate_facilities_excel_sheet(
 
         df = pd.read_excel(temp_input_file.name, sheet_name=facility_sheet_name)
         df.columns = [str(c).strip() for c in df.columns]
+
+        # ----------------- Read Facility Column ----------------- #
+        if 'Facility Id' not in df.columns:
+            raise HTTPException(status_code=400, detail=f"Facility Column in '{facility_sheet_name}' not found")
 
         # Ensure status/error columns exist
         if 'status' not in df.columns:
@@ -1760,6 +1766,8 @@ async def validate_facilities_excel_sheet(
         output_temp_file_path = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx").name
         wb.save(output_temp_file_path)
 
+        background_tasks.add_task(cleanup_temp_file, output_temp_file_path)
+
         response = FileResponse(
             path=output_temp_file_path,
             filename=f"facility_validation_results_{timestamp}.xlsx",
@@ -1784,7 +1792,8 @@ async def create_facilities_and_update_project(
         facility_sheet_name: str = Form(default="FacilityIngestionTemplate",
                                         description="Name of the sheet containing facility data"),
         project_id: str = Form(description="Project ID"),
-        request_info: str = Form(default="")
+        request_info: str = Form(default=""),
+        background_tasks: BackgroundTasks = Depends()
 ):
     input_temp_file = None
     output_temp_file = None
@@ -1984,6 +1993,7 @@ async def create_facilities_and_update_project(
                 ws.cell(row=r_idx, column=c_idx, value=value)
 
         wb.save(output_file_path)
+        background_tasks.add_task(cleanup_temp_file, output_file_path)
 
         return FileResponse(
             path=output_file_path,
@@ -2000,7 +2010,4 @@ async def create_facilities_and_update_project(
     finally:
         if input_temp_file and os.path.exists(input_temp_file.name):
             os.unlink(input_temp_file.name)
-        if output_temp_file and os.path.exists(output_temp_file.name):
-            # keep output for user — don't delete here; optionally delete old ones later
-            pass
 
