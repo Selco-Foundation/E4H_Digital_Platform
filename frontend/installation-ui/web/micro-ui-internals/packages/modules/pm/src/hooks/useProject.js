@@ -3,7 +3,7 @@ import {ProjectService} from "../services/Project";
 
 const fetchProject = async (filter, limit, offset) => {
   const response = await ProjectService.fetchProjects(filter, limit, offset);
-  return response?.Project?.[0]?.project;
+  return response?.Project?.[0] ? { ... response.Project[0].project, status: response.Project[0].status } : null;
 }
 
 const useProject = (projectId) => {

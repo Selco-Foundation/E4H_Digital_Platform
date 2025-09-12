@@ -1,0 +1,203 @@
+$primary-blue: #1976d2;
+$primary-blue-dark: #1565c0;
+$border-color: #e0e0e0;
+$text-primary: #333333;
+$text-secondary: #666666;
+$background-white: white;
+$background-gray: #f8f9fa;
+$background-hover: #f0f7ff;
+$background-action: #e3f2fd;
+$font-family: Roboto;
+$border-radius: 10px;
+$box-shadow: 1px 1px 4px 0px rgba(0,0,0,0.2);
+
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+}
+
+@mixin hover-transition {
+  transition: background-color 0.2s ease;
+
+  &:hover {
+    background-color: $background-hover;
+  }
+}
+
+@mixin cell-padding {
+  padding: 16px 18px;
+}
+
+.project-details-table {
+  display: flex;
+  overflow-x: auto;
+  overflow-y: visible;
+  box-shadow: $box-shadow;
+  width: 100%;
+
+  .table {
+    width: 100%;
+    min-width: fit-content;
+    border-collapse: collapse;
+    font-family: $font-family;
+    font-size: 14px;
+    background-color: $background-white;
+    border: 1px solid $border-color;
+
+    thead {
+      th {
+        background-color: #EEEEEE;
+        color: #0B4B66;
+        font-weight: 600;
+        text-align: left;
+        @include cell-padding;
+        font-size: 16px;
+        line-height: 18px;
+        position: relative;
+
+        &:not(:last-child)::after {
+          content: '';
+          position: absolute;
+          right: 0;
+          top: 8px;
+          bottom: 8px;
+          width: 1px;
+          background-color: #787878;
+        }
+
+        &[style*="min-width: 100px"] {
+          text-align: center;
+          width: 60px;
+          min-width: 60px;
+          padding: 12px;
+        }
+      }
+    }
+
+    tbody {
+      td {
+        @include cell-padding;
+        border-right: 1px solid $border-color;
+        border-bottom: 1px solid $border-color;
+        color: $text-secondary;
+        font-size: 14px;
+        line-height: 1.4;
+
+        &:last-child {
+          border-right: none;
+        }
+
+        &:has(input[type="checkbox"]) {
+          text-align: center;
+          width: 60px;
+          min-width: 60px;
+          padding: 12px;
+        }
+      }
+
+      tr {
+        &:nth-child(even) {
+          background-color: $background-gray;
+        }
+
+        &:nth-child(odd) {
+          background-color: $background-white;
+        }
+
+        &:hover {
+          background-color: $background-hover;
+          cursor: pointer;
+        }
+
+        td:first-child {
+          font-weight: 500;
+          color: $text-primary;
+        }
+      }
+    }
+  }
+
+  .pagination {
+    @include flex-center;
+    justify-content: flex-end;
+    padding: 16px 0;
+    gap: 12px;
+    font-size: 14px;
+    color: $text-secondary;
+    background-color: #FAFAFA;
+    border-top: 1px solid $border-color;
+    margin-top: 0;
+
+    select {
+      padding: 6px 12px;
+      border: 1px solid $border-color;
+      border-radius: $border-radius;
+      background-color: $background-white;
+      font-size: 14px;
+      margin: 0 8px;
+
+      &:focus {
+        outline: 2px solid $primary-blue;
+        outline-offset: -1px;
+      }
+    }
+
+    .cp {
+      padding: 8px;
+      cursor: pointer;
+      border-radius: $border-radius;
+      @include hover-transition;
+
+      &:hover {
+        background-color: #f0f0f0;
+      }
+    }
+  }
+
+  .actionBarWrapper {
+    background-color: $background-action;
+    border: 1px solid $primary-blue;
+    border-radius: $border-radius;
+    padding: 12px 16px;
+    margin-top: 16px;
+    @include flex-center;
+    justify-content: space-between;
+
+    .search-instruction-header {
+      color: $text-primary;
+      font-weight: 500;
+    }
+  }
+
+  .toast {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+    padding: 12px 16px;
+    border-radius: $border-radius;
+    background-color: $background-white;
+    box-shadow: $box-shadow;
+    border-left: 4px solid $primary-blue;
+
+    &.error {
+      border-left-color: #d32f2f;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .table {
+      min-width: 800px;
+      white-space: nowrap;
+    }
+
+    .table th,
+    .table td {
+      min-width: 120px;
+
+      &:first-child {
+        min-width: 150px;
+      }
+    }
+  }
+}
