@@ -256,11 +256,6 @@ public class FieldPlannerValidator {
         // TODO: Uncomment and fix as per HCM once we get clarity
         // validateRequestMDMSData(request, tenantId, errorMap);
 
-        //Get boundaries in list from all Projects in request body for validation
-//        Map<String, List<String>> boundariesForValidation = getBoundaryForValidation(request.getProjects());
-//        validateBoundary(boundariesForValidation, tenantId, requestInfo, errorMap);
-//        log.info("Boundaries in request validated with Location Service");
-
 
         if (!errorMap.isEmpty())
             throw new CustomException(errorMap);

@@ -140,7 +140,7 @@ public class FieldPlannerQueryBuilder {
         // Check if workflowStatuses filter is provided
         if (!CollectionUtils.isEmpty(fieldPlan.getStatuses())) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
-            queryBuilder.append(" prj.status IN (");
+            queryBuilder.append(" fp.status IN (");
             String placeholders = fieldPlan.getStatuses().stream().map(ws -> "?").collect(Collectors.joining(", "));
             queryBuilder.append(placeholders).append(") ");
             preparedStmtList.addAll(fieldPlan.getStatuses());
@@ -169,12 +169,6 @@ public class FieldPlannerQueryBuilder {
         if (!includeDeleted) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
             queryBuilder.append(" fp.isdeleted = false ");
-        }
-    }
-
-    private void addORClause(Integer count, StringBuilder queryBuilder) {
-        if (count > 0) {
-            queryBuilder.append(" OR ( ");
         }
     }
 

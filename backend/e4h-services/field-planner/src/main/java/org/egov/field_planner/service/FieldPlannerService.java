@@ -92,7 +92,7 @@ public class FieldPlannerService {
         /*
          * Validate the update fieldPlan request
          */
-//        fieldPlannerValidator.validateUpdateFieldPlanRequest(request);
+        fieldPlannerValidator.validateUpdateFieldPlanRequest(request);
         log.info("Update fieldplan request validated");
 
         /*
