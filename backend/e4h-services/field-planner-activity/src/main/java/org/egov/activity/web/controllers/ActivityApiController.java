@@ -1,0 +1,118 @@
+package org.egov.activity.web.controllers;
+
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.swagger.annotations.ApiParam;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
+import org.egov.common.contract.response.ResponseInfo;
+import org.egov.common.models.core.URLParams;
+import org.egov.common.producer.Producer;
+import org.egov.common.utils.ResponseInfoFactory;
+import org.egov.activity.config.ActivityConfiguration;
+import org.egov.activity.service.*;
+import org.egov.activity.web.models.*;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Controller;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.*;
+
+
+@Controller
+@RequestMapping("/v1/activities")
+@Validated
+public class ActivityApiController {
+
+    private final ObjectMapper objectMapper;
+
+    private final HttpServletRequest httpServletRequest;
+
+    private final Producer producer;
+
+    private final ActivityConfiguration fieldPlannerConfiguration;
+
+    private final ActivityService activityService;
+
+    @Autowired
+    public ActivityApiController(ObjectMapper objectMapper, HttpServletRequest httpServletRequest,
+                                 Producer producer,
+                                 ActivityConfiguration fieldPlannerConfiguration,
+                                 ActivityService activityService) {
+        this.objectMapper = objectMapper;
+        this.httpServletRequest = httpServletRequest;
+        this.producer = producer;
+        this.fieldPlannerConfiguration = fieldPlannerConfiguration;
+        this.activityService = activityService;
+    }
+
+//    @RequestMapping(value = "/_create", method = RequestMethod.POST)
+//    public ResponseEntity<ActivityFacilityResponse> createFieldPlanActivityV1CreatePost(@ApiParam(value = "Capture linkage of Project and facility.", required = true) @Valid @RequestBody ActivityFacilityBulkRequest request) {
+//
+//        List<ActivityFacility> activityFacilities = activityService.createActivityFacility(request);
+//        ActivityFacilityResponse response = ActivityFacilityResponse.builder()
+//                .activityFacilities(activityFacilities)
+//                .responseInfo(ResponseInfoFactory
+//                        .createResponseInfo(request.getRequestInfo(), true))
+//                .build();
+//        return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
+//    }
+
+//    @RequestMapping(value = "/_update", method = RequestMethod.POST)
+//    public ResponseEntity<FieldPlanResponse> updateFieldPlan(@ApiParam(value = "Details for the updated Project.", required = true) @Valid @RequestBody ActivityRequest fieldPlanRequest) {
+//        ActivityRequest enrichedFieldPlanRequest = activityService.updateProject(fieldPlanRequest);
+//
+//        ResponseInfo responseInfo = ResponseInfoFactory.createResponseInfo(fieldPlanRequest.getRequestInfo(), true);
+//        FieldPlanResponse fieldPlanResponse = FieldPlanResponse.builder().responseInfo(responseInfo).fieldPlans(enrichedFieldPlanRequest.getFieldPlans()).build();
+//        return new ResponseEntity<FieldPlanResponse>(fieldPlanResponse, HttpStatus.OK);
+//    }
+
+    @RequestMapping(value = "/_search", method = RequestMethod.POST)
+    public ResponseEntity<ActivityFacilityResponse> searchProject(
+            @ApiParam(value = "Details for the fieldPlan.", required = true) @Valid @RequestBody ActivityFacilitySearchRequest request,
+            @Valid @ModelAttribute URLParams urlParams
+    ) {
+        List<ActivityFacility> fieldPlans = activityService.searchActivity(
+                request,
+                urlParams.getLimit(),
+                urlParams.getOffset(),
+                urlParams.getTenantId(),
+                urlParams.getIncludeDeleted(),
+                urlParams.getLastChangedSince()
+        );
+        ResponseInfo responseInfo = ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), true);
+        Integer count = activityService.countAllFieldPlans(request, urlParams.getTenantId(), urlParams.getLastChangedSince(), urlParams.getIncludeDeleted());
+        ActivityFacilityResponse activityFacilityResponse = ActivityFacilityResponse.builder().responseInfo(responseInfo).activityFacilities(fieldPlans).totalCount(count).build();
+        return new ResponseEntity<ActivityFacilityResponse>(activityFacilityResponse, HttpStatus.OK);
+    }
+
+    @RequestMapping(value = "/_assign-spoc", method = RequestMethod.POST)
+    public ResponseEntity<ActivityAssignmentResponse> activityAssignmentV1CreatePost(@ApiParam(value = "Capture linkage of Project and facility.", required = true) @Valid @RequestBody ActivityAssignmentBulkRequest request) {
+
+        List<ActivityAssignment> activityAssignments = activityService.createActivityAssignment(request);
+        ActivityAssignmentResponse response = ActivityAssignmentResponse.builder()
+                .activityAssignment(activityAssignments)
+                .responseInfo(ResponseInfoFactory
+                        .createResponseInfo(request.getRequestInfo(), true))
+                .build();
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
+    }
+
+    @RequestMapping(value = "/_assign-staff", method = RequestMethod.POST)
+    public ResponseEntity<ActivityFacilityResponse> activityFacilityV1CreatePost(@ApiParam(value = "Capture linkage of Project and facility.", required = true) @Valid @RequestBody ActivityFacilityBulkRequest request) {
+
+        List<ActivityFacility> activityFacilities = activityService.createActivityFacility(request);
+        ActivityFacilityResponse response = ActivityFacilityResponse.builder()
+                .activityFacilities(activityFacilities)
+                .responseInfo(ResponseInfoFactory
+                        .createResponseInfo(request.getRequestInfo(), true))
+                .build();
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
+    }
+}
