@@ -5,6 +5,7 @@ import com.jayway.jsonpath.JsonPath;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.egov.activity.repository.ActivityRepository;
+import org.egov.activity.service.ServiceRequestRepository;
 import org.egov.activity.web.models.*;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.common.http.client.ServiceRequestClient;
@@ -33,6 +34,8 @@ public class ActivityValidator {
     @Autowired
     private final ServiceRequestClient serviceRequestRepository;
 
+    private ServiceRequestRepository serviceRequest;
+
     private final ActivityConfiguration activityConfiguration;
 
     public static final String START_DATE_SHOULD_BE_LESS_THAN_END_DATE = "Start date should be less than end date";
@@ -50,9 +53,10 @@ public class ActivityValidator {
     @Qualifier("objectMapper")
     ObjectMapper mapper;
 
-    public ActivityValidator(ServiceRequestClient serviceRequestRepository, ActivityConfiguration activityConfiguration){
+    public ActivityValidator(ServiceRequestClient serviceRequestRepository, ActivityConfiguration activityConfiguration, ServiceRequestRepository serviceRequest){
         this.serviceRequestRepository = serviceRequestRepository;
         this.activityConfiguration = activityConfiguration;
+        this.serviceRequest = serviceRequest;
     }
 
     public void validateCreateActivityAssignmentRequest(ActivityAssignmentBulkRequest request) {
@@ -146,6 +150,11 @@ public class ActivityValidator {
         }
 
         for (ActivityFacility activityFacility : request.getActivityFacilities()) {
+            if (activityFacility == null) {
+                log.error("Activity Assignment is mandatory in Activities");
+                throw new CustomException("Activity", "Activity is mandatory");
+            }
+
             if (activityFacility.getFieldPlanId() == null) {
                 log.error("FieldPlan ID is mandatory in FieldPlans");
                 throw new CustomException("FieldPlan", "Project ID is mandatory");
@@ -154,18 +163,21 @@ public class ActivityValidator {
             FieldPlan existingFieldPlan = getFieldPlanById(request.getRequestInfo(), activityFacility.getFieldPlanId(), activityFacility.getTenantId());
             if (existingFieldPlan == null) {
                 log.error("FieldPlan ID do not exist");
-                throw new CustomException("Activity", "FieldPlan ID do not exist");
+                throw new CustomException("Activity_FieldPlan", "FieldPlan ID do not exist");
             }
 
             if (activityFacility.getFacilityId() == null) {
                 log.error("Facility ID is mandatory in FieldPlans");
-                throw new CustomException("Activity", "Facility ID is mandatory");
+                throw new CustomException("Activity_FACILITY", "Facility ID is mandatory");
             }
 
-            if (activityFacility == null) {
-                log.error("Activity Assignment is mandatory in Activities");
-                throw new CustomException("Activity", "Activity is mandatory");
+            // Get existing facility with facilityId from facility service
+            Facility existingfacility = getFacilityById(activityFacility.getFacilityId());
+            if (existingfacility == null) {
+                log.error("Facility ID do not exist");
+                throw new CustomException("Activity_ERROR", "Facility ID do not exist");
             }
+
             if (StringUtils.isBlank(activityFacility.getTenantId())) {
                 log.error(TENANT_ID_IS_MANDATORY_IN_ACTIVITY_REQUEST_BODY);
                 errorMap.put("TENANT_ID", "Tenant ID is mandatory");
@@ -403,15 +415,15 @@ public class ActivityValidator {
         }
     }
 
-//    public Facility getFacilityById(String facilityId) {
-//
-//        String url = fieldPlannerConfiguration.getFacilityServiceHost() + fieldPlannerConfiguration.getFacilityServiceSearchUrlV2()+ "?facilityId="+facilityId;
-//        Object response = serviceRequestClient.fetchResult(new StringBuilder(url));
-//
-//        FacilitySearchResponse facilityList = mapper.convertValue(response, FacilitySearchResponse.class);
-//        if(facilityList != null && facilityList.getFacilities() !=null && facilityList.getFacilities().size() > 0){
-//            return facilityList.getFacilities().get(0);
-//        }
-//        return null;
-//    }
+    public Facility getFacilityById(String facilityId) {
+
+        String url = activityConfiguration.getFacilityServiceHost() + activityConfiguration.getFacilityServiceSearchUrlV2()+ "?facilityId="+facilityId;
+        Object response = serviceRequest.fetchResult(new StringBuilder(url));
+
+        FacilitySearchResponse facilityList = mapper.convertValue(response, FacilitySearchResponse.class);
+        if(facilityList != null && facilityList.getFacilities() !=null && facilityList.getFacilities().size() > 0){
+            return facilityList.getFacilities().get(0);
+        }
+        return null;
+    }
 }
