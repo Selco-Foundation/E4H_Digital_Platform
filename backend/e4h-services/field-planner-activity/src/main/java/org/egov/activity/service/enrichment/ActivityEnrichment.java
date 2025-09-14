@@ -80,11 +80,11 @@ public class ActivityEnrichment {
 //    }
 
     /* Enrich Project update request with last modified by and last modified time */
-    public void enrichFieldPlanRequestOnUpdate(FieldPlan fieldPlan, FieldPlan fieldPlanFromDB, RequestInfo requestInfo) {
-        fieldPlan.setAuditDetails(fieldPlanFromDB.getAuditDetails());
-        AuditDetails auditDetails = fieldPlanServiceUtil.getAuditDetails(requestInfo.getUserInfo().getUuid(), fieldPlanFromDB.getAuditDetails(), false);
-        fieldPlan.setAuditDetails(auditDetails);
-        log.info("Enriched project audit details for project " + fieldPlan.getId());
+    public void enrichFieldPlanRequestOnUpdate(ActivityFacility activityFacility, ActivityFacility activityFacilityFromDB, RequestInfo requestInfo) {
+        activityFacility.setAuditDetails(activityFacilityFromDB.getAuditDetails());
+        AuditDetails auditDetails = fieldPlanServiceUtil.getAuditDetails(requestInfo.getUserInfo().getUuid(), activityFacilityFromDB.getAuditDetails(), false);
+        activityFacility.setAuditDetails(auditDetails);
+        log.info("Enriched activity audit details for project " + activityFacility.getId());
     }
 
 

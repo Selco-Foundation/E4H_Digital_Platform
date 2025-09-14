@@ -64,14 +64,14 @@ public class ActivityApiController {
 //        return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
 //    }
 
-//    @RequestMapping(value = "/_update", method = RequestMethod.POST)
-//    public ResponseEntity<FieldPlanResponse> updateFieldPlan(@ApiParam(value = "Details for the updated Project.", required = true) @Valid @RequestBody ActivityRequest fieldPlanRequest) {
-//        ActivityRequest enrichedFieldPlanRequest = activityService.updateProject(fieldPlanRequest);
-//
-//        ResponseInfo responseInfo = ResponseInfoFactory.createResponseInfo(fieldPlanRequest.getRequestInfo(), true);
-//        FieldPlanResponse fieldPlanResponse = FieldPlanResponse.builder().responseInfo(responseInfo).fieldPlans(enrichedFieldPlanRequest.getFieldPlans()).build();
-//        return new ResponseEntity<FieldPlanResponse>(fieldPlanResponse, HttpStatus.OK);
-//    }
+    @RequestMapping(value = "/_update", method = RequestMethod.POST)
+    public ResponseEntity<ActivityFacilityResponse> updateFieldPlan(@ApiParam(value = "Details for the updated Project.", required = true) @Valid @RequestBody ActivityFacilityBulkRequest request) {
+        ActivityFacilityBulkRequest enrichedFieldPlanRequest = activityService.updateProject(request);
+
+        ResponseInfo responseInfo = ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), true);
+        ActivityFacilityResponse activityFacilityResponse = ActivityFacilityResponse.builder().responseInfo(responseInfo).activityFacilities(enrichedFieldPlanRequest.getActivityFacilities()).build();
+        return new ResponseEntity<ActivityFacilityResponse>(activityFacilityResponse, HttpStatus.OK);
+    }
 
     @RequestMapping(value = "/_search", method = RequestMethod.POST)
     public ResponseEntity<ActivityFacilityResponse> searchProject(

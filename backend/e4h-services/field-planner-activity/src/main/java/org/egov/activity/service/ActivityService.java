@@ -3,7 +3,8 @@ package org.egov.activity.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
-import org.egov.common.contract.models.AuditDetails;
+import org.egov.activity.util.ActivityServiceUtil;
+import org.egov.common.contract.request.RequestInfo;
 import org.egov.common.producer.Producer;
 import org.egov.activity.config.ActivityConfiguration;
 import org.egov.activity.repository.ActivityRepository;
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @Service
 @Slf4j
@@ -27,7 +29,7 @@ public class ActivityService {
 
     private final Producer producer;
 
-    private final ServiceRequestRepository serviceRequestClient;
+    private final ActivityServiceUtil activityServiceUtil;
     private final ActivityEnrichment activityEnrichment;
 
     private final ActivityValidator activityValidator;
@@ -41,13 +43,13 @@ public class ActivityService {
     @Autowired
     public ActivityService(
             ActivityRepository activityRepository, ActivityEnrichment activityEnrichment, ActivityConfiguration activityConfiguration, ActivityValidator activityValidator,
-            Producer producer, MDMSUtils mdmsUtils, ServiceRequestRepository serviceRequestClient, @Qualifier("objectMapper") ObjectMapper mapper) {
+            Producer producer, MDMSUtils mdmsUtils, ActivityServiceUtil activityServiceUtil, @Qualifier("objectMapper") ObjectMapper mapper) {
             this.producer = producer;
             this.activityConfiguration = activityConfiguration;
             this.activityRepository = activityRepository;
             this.activityEnrichment = activityEnrichment;
             this.mdmsUtils = mdmsUtils;
-            this.serviceRequestClient = serviceRequestClient;
+            this.activityServiceUtil = activityServiceUtil;
             this.mapper = mapper;
             this.activityValidator = activityValidator;
     }
@@ -55,7 +57,7 @@ public class ActivityService {
     public List<ActivityFacility> createActivityFacility(ActivityFacilityBulkRequest request) {
         log.info("received request to create bulk fieldplan facility");
 
-//        activityValidator.validateCreateActivityFacilityRequest(request);
+        activityValidator.validateCreateActivityFacilityRequest(request);
         List<ActivityFacility> activityFacilities = request.getActivityFacilities();
         try {
             for (ActivityFacility activityFacility : activityFacilities) {
@@ -100,113 +102,109 @@ public class ActivityService {
         return activityRepository.getActivitiesCount(request, tenantId, lastChangedSince, includeDeleted);
     }
 
-//    public ActivityRequest updateProject(ActivityRequest request) {
-//        /*
-//         * Validate the update project request
-//         */
-//        activityValidator.validateUpdateFieldPlanRequest(request);
-//        log.info("Update fieldplan request validated");
-//
-//        /*
-//         * Search for fieldplan based on fieldplan IDs provided in the request
-//         */
-//        List<FieldPlan> fieldPlansFromDB = searchFieldPlan(
-//                getSearchFieldPlanRequest(request.getFieldPlans(), request.getRequestInfo()),
-//                fieldPlannerConfiguration.getMaxLimit(), fieldPlannerConfiguration.getDefaultOffset(),
-//                request.getFieldPlans().get(0).getTenantId(), false, null, null, null);
-//        log.info("Fetched fieldPlan for update request");
-//
-//        /*
-//         * Validate the update fieldplan request against the fieldplans fetched from the database
-//         */
-//        fieldPlannerValidator.validateUpdateAgainstDB(request.getFieldPlans(), fieldPlansFromDB);
-//
-//        /*
-//         * Process each project in the update request
-//         */
-//        for (FieldPlan fieldPlan : request.getFieldPlans()) {
-//            processFieldPlanUpdate(request, fieldPlan, fieldPlansFromDB);
-//        }
-//
-//        return request;
-//    }
+    public ActivityFacilityBulkRequest updateProject(ActivityFacilityBulkRequest request) {
+        /*
+         * Validate the update activity request
+         */
+        activityValidator.validateCreateActivityFacilityRequest(request);
+        log.info("Update activity facility request validated");
 
-//    private void processFieldPlanUpdate(ActivityRequest request, FieldPlan fieldPlan, List<FieldPlan> fieldPlansFromDB) {
-//        /*
-//         * Convert fieldplan ID to string for comparison
-//         */
-//        String fieldPlanId = String.valueOf(fieldPlan.getId());
-//
-//        /*
-//         * Find the project from the database that matches the current project ID
-//         */
-//        FieldPlan fielPlanFromDB = findFieldPlanById(fieldPlanId, fieldPlansFromDB);
-//
-//        if (fielPlanFromDB != null) {
-//            /*
-//             * Merge additional details of the project from the request and project from DB
-//             */
-//            fieldPlanServiceUtil.mergeAdditionalDetails(fieldPlan, fielPlanFromDB);
-//
-//            handleUpdateFieldPlan(request, fieldPlan, fielPlanFromDB);
-//
-//        }
-//    }
+        /*
+         * Search for fieldplan based on fieldplan IDs provided in the request
+         */
+        List<ActivityFacility> activityFacilityListFromDB = searchActivity(
+                getSearchActivityRequest(request.getActivityFacilities(), request.getRequestInfo()),
+                activityConfiguration.getMaxLimit(), activityConfiguration.getDefaultOffset(),
+                request.getActivityFacilities().get(0).getTenantId(), false, null);
+        log.info("Fetched activities for update request");
 
-//    private void handleUpdateFieldPlan(ActivityRequest request, FieldPlan fieldPlan, FieldPlan fieldPlanFromDB) {
-//        /*
-//         * Save original values of start date, end date, and additional details
-//         */
-//        Long originalStartDate = fieldPlanFromDB.getStartDate();
-//        Long originalEndDate = fieldPlanFromDB.getEndDate();
-//        Object originalGeographyDetails = fieldPlanFromDB.getGeographyDetails();
-//        Object originalActivity = fieldPlanFromDB.getActivities();
-//        AuditDetails originalAuditDetails = fieldPlanFromDB.getAuditDetails();
-//
-//
-//        /*
-//         * Update the project with new start date, end date, and additional details
-//         */
-//        fieldPlanFromDB.setStartDate(fieldPlan.getStartDate());
-//        fieldPlanFromDB.setEndDate(fieldPlan.getEndDate());
-//        fieldPlanFromDB.setGeographyDetails(fieldPlan.getGeographyDetails());
-//        fieldPlanFromDB.setActivities(fieldPlan.getActivities());
-//        fieldPlanFromDB.setAuditDetails(fieldPlan.getAuditDetails());
-//
-//        /*
-//         * Ensure that no other properties are being updated besides the start and end dates
-//         */
-//        if (!isValidCascadingUpdate(fieldPlanFromDB, fieldPlan)) {
-//            throw new CustomException(
-//                    "FIELDPLANE_CASCADE_UPDATE_ERROR",
-//                    "Can only update FieldPlan dates, geographyDetails and additional details if cascade FieldPlan date update true"
-//            );
-//        }
-//
-//        /*
-//         * Restore original values of start date, end date, and additional details
-//         */
-//        fieldPlanFromDB.setStartDate(originalStartDate);
-//        fieldPlanFromDB.setEndDate(originalEndDate);
-//        fieldPlanFromDB.setGeographyDetails(mapper.convertValue(originalGeographyDetails, Map.class));
-//        fieldPlanFromDB.setActivities((List<Map<String, Object>>) originalActivity);
-//        fieldPlanFromDB.setAuditDetails(originalAuditDetails);
-//
-//        /*
-//         * Update lastModifiedTime and lastModifiedBy for the project
-//         */
-//        fieldPlannerEnrichment.enrichFieldPlanRequestOnUpdate(fieldPlan, fieldPlanFromDB, request.getRequestInfo());
-//
-//        /*
-//         * Handle project name regeneration if needed (dates changed)
-//         */
-////        handleFieldPlanNameUpdate(request, fieldPlan, fieldPlanFromDB);
-//
-//        /*
-//         * Check and enrich cascading project dates and push the update to the message broker
-//         */
-//        producer.push(fieldPlannerConfiguration.getUpdateFieldPlanTopic(), request);
-//    }
+        /*
+         * Validate the update fieldplan request against the fieldplans fetched from the database
+         */
+        activityValidator.validateUpdateAgainstDB(request.getActivityFacilities(), activityFacilityListFromDB);
+
+        /*
+         * Process each project in the update request
+         */
+        for (ActivityFacility activityFacility : request.getActivityFacilities()) {
+            processFieldPlanUpdate(request, activityFacility, activityFacilityListFromDB);
+        }
+
+        return request;
+    }
+
+    private ActivityFacilitySearchRequest getSearchActivityRequest(List<ActivityFacility> activityFacilities, RequestInfo requestInfo) {
+        List<String> activityFacilityIds = activityFacilities.stream().map(ActivityFacility::getId).toList();
+        ActivityFacilitySearchCriteria criteria = ActivityFacilitySearchCriteria.builder().ids(activityFacilityIds).tenantId(activityFacilities.get(0).getTenantId()).build();
+        return ActivityFacilitySearchRequest.builder()
+                .requestInfo(requestInfo)
+                .criteria(criteria)
+                .build();
+    }
+
+    private void processFieldPlanUpdate(ActivityFacilityBulkRequest request, ActivityFacility activityFacility, List<ActivityFacility> activityFacilityListFromDB) {
+        /*
+         * Convert activity facility ID to string for comparison
+         */
+        String activityFacilityId = String.valueOf(activityFacility.getId());
+
+        /*
+         * Find the activity from the database that matches the current project ID
+         */
+        ActivityFacility activityFacilityFromDB = findActivityFacilityById(activityFacilityId, activityFacilityListFromDB);
+
+        if (activityFacilityFromDB != null) {
+            /*
+             * Merge additional details of the project from the request and project from DB
+             */
+            activityServiceUtil.mergeAdditionalDetails(activityFacility, activityFacilityFromDB);
+
+            handleUpdateFieldPlan(request, activityFacility, activityFacilityFromDB);
+
+        }
+    }
+
+    private void handleUpdateFieldPlan(ActivityFacilityBulkRequest request, ActivityFacility activityFacility, ActivityFacility activityFacilityFromDB) {
+
+        /*
+         * Ensure that no other properties are being updated besides the start and end dates
+         */
+        if (!isValidCascadingUpdate(activityFacilityFromDB, activityFacility)) {
+            throw new CustomException(
+                    "ACTIVITY_CASCADE_UPDATE_ERROR",
+                    "Can only update Activity facility dates, geographyDetails and additional details if cascade FieldPlan date update true"
+            );
+        }
+
+        /*
+         * Update lastModifiedTime and lastModifiedBy for the activity
+         */
+        activityEnrichment.enrichFieldPlanRequestOnUpdate(activityFacility, activityFacilityFromDB, request.getRequestInfo());
+
+        /*
+         * Check and enrich cascading project dates and push the update to the message broker
+         */
+        producer.push(activityConfiguration.getUpdateActivityFacilityTopic(), request);
+    }
+
+    private boolean isValidCascadingUpdate(ActivityFacility activityFacilityFromDB, ActivityFacility activityFacility) {
+        // Check if only allowed fields are being updated
+        return Objects.equals(activityFacilityFromDB.getId(), activityFacility.getId()) &&
+                Objects.equals(activityFacilityFromDB.getTenantId(), activityFacility.getTenantId()) &&
+                Objects.equals(activityFacilityFromDB.getActivityId(), activityFacility.getActivityId()) &&
+                Objects.equals(activityFacilityFromDB.getFacilityId(), activityFacility.getFacilityId());
+        // Note: We allow assignedUser, status, conditionsMet, additionalDetails to be different
+    }
+
+    private ActivityFacility findActivityFacilityById(String activityFacilityId, List<ActivityFacility> activityFacilityListFromDB) {
+        /*
+         * Find and return the activity with the matching ID from the list of activity fetched from the database
+         */
+        return activityFacilityListFromDB.stream()
+                .filter(p -> activityFacilityId.equals(String.valueOf(p.getId())))
+                .findFirst()
+                .orElse(null);
+    }
 
 
 }

@@ -3,6 +3,7 @@ package org.egov.activity.util;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.egov.activity.web.models.ActivityFacility;
 import org.egov.common.contract.models.AuditDetails;
 import org.egov.common.models.project.Project;
 import org.egov.activity.web.models.FieldPlan;
@@ -46,10 +47,10 @@ public class ActivityServiceUtil {
                 .collect(Collectors.toMap(p -> String.valueOf(p.getId()), Function.identity()));
     }
 
-    public void mergeAdditionalDetails(FieldPlan fieldPlan, FieldPlan fieldPlanFromDb) {
-        JsonNode json = jsonMerge(objectMapper.valueToTree(fieldPlanFromDb.getAdditionalDetails()),
-                objectMapper.valueToTree(fieldPlan.getAdditionalDetails()));
-        fieldPlan.setAdditionalDetails(objectMapper.convertValue(json, Map.class));
+    public void mergeAdditionalDetails(ActivityFacility activityFacility, ActivityFacility activityFacilityFromDb) {
+        JsonNode json = jsonMerge(objectMapper.valueToTree(activityFacilityFromDb.getAdditionalDetails()),
+                objectMapper.valueToTree(activityFacility.getAdditionalDetails()));
+        activityFacility.setAdditionalDetails(objectMapper.convertValue(json, Map.class));
     }
 
     /**

@@ -48,15 +48,6 @@ public class ActivityQueryBuilder {
         }
     }
 
-    /* Add conditional clause */
-    private static void addConditionalClause(List<Object> values, StringBuilder queryString) {
-        if (values.isEmpty())
-            queryString.append(" WHERE ");
-        else {
-            queryString.append(" OR ");
-        }
-    }
-
     private static void addClause(String tenantId, List<Object> preparedStmtList, StringBuilder queryBuilder) {
         if (StringUtils.isNotBlank(tenantId)) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
@@ -139,12 +130,6 @@ public class ActivityQueryBuilder {
         if (!includeDeleted) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
             queryBuilder.append(" fa.isdeleted = false ");
-        }
-    }
-
-    private void addORClause(Integer count, StringBuilder queryBuilder) {
-        if (count > 0) {
-            queryBuilder.append(" OR ( ");
         }
     }
 

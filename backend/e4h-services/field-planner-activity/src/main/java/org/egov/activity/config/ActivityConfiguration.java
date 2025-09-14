@@ -58,8 +58,8 @@ public class ActivityConfiguration {
     @Value("${activity.facility.kafka.create.topic}")
     private String createActivityFacilityTopic;
 
-    @Value("${fieldPlan.kafka.update.topic}")
-    private String updateFieldPlanTopic;
+    @Value("${activity.kafka.update.topic}")
+    private String updateActivityFacilityTopic;
 
     @Value("${project.search.max.limit}")
     private Integer maxLimit;
