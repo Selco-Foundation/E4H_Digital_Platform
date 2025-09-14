@@ -290,30 +290,6 @@ public class ActivityValidator {
         }
     }
 
-    /* Validates Update Project request body */
-    public void validateUpdateFieldPlanRequest(ActivityFacilityBulkRequest request) {
-        Map<String, String> errorMap = new HashMap<>();
-        RequestInfo requestInfo = request.getRequestInfo();
-
-        //Verify if RequestInfo and UserInfo is present
-        validateRequestInfo(requestInfo);
-        //Verify Project request and if mandatory fields are present
-        validateActivityAssignmentRequest(request);
-        //Verify if project request have multiple tenant Ids
-        validateMultipleTenantIds(request);
-
-        //Verify if FieldPlan id is present
-        for (FieldPlan fieldPlan : request.getFieldPlans()) {
-            if (StringUtils.isBlank(fieldPlan.getId())) {
-                log.error("FieldPlan Id is mandatory");
-                throw new CustomException("UPDATE_FIELDPLAN", "FieldPlan Id is mandatory");
-            }
-        }
-
-        if (!errorMap.isEmpty())
-            throw new CustomException(errorMap);
-    }
-
 
     /* Validates search FieldPlan request body and parameters*/
     public void validateSearchActivityRequest(ActivityFacilitySearchRequest request, Integer limit, Integer offset, String tenantId) {
@@ -426,62 +402,6 @@ public class ActivityValidator {
             }
         }
     }
-
-//    private void validateFacilityIds(ActivityFacilityBulkRequest request, Map<String, String> errorMap) {
-//
-//        List<ActivityFacility> validEntities = request.getFieldPlanFacilities().stream()
-//                .filter(notHavingErrors())
-//                .toList();
-//        if (!validEntities.isEmpty()) {
-//            AtomicInteger counter = new AtomicInteger(1);
-//            for (ActivityFacility facility : validEntities){
-//                try {
-//                    Facility response = getFacilityById(facility.getFacilityId());
-//                    if(response==null)
-//                        throw new CustomException("FACILITY_ERROR", "Facility ID do not exist");
-//
-//                    if (!response.getFacilityId().equals(facility.getFacilityId())) {
-//                        int i = counter.getAndIncrement();
-//                        errorMap.put("INVALID_FACILITY"+i, "FacilityId does not exist: " + facility.getFacilityId());
-//                    }
-//
-//                } catch (Exception e) {
-//                    e.printStackTrace();
-//                    log.error("error while fetching facility list", ExceptionUtils.getStackTrace(e));
-//                    throw new CustomException("FACILITY_ERROR", "error while calling facility service");
-//                }
-//            }
-//        }
-//    }
-
-//    private void validateFieldPlanIds(ActivityAssignmentBulkRequest request, Map<String, String> errorMap) {
-//        List<ActivityAssignment> validEntities = request.getActivityAssignments().stream()
-//                .filter(notHavingErrors())
-//                .toList();
-//        if (!validEntities.isEmpty()) {
-//            Class<?> objClass = getObjClass(validEntities);
-//            Method idMethod = getMethod(GET_FIELDPLAN_ID, objClass);
-//            List<String> entityIds = validEntities.stream().map(ActivityAssignment::getFieldPlanId).toList();
-//            try {
-//                AtomicInteger counter = new AtomicInteger(1);
-//                List<String> existingFieldPlansIds = fieldPlannerRepository.validateIds(entityIds, getIdFieldName(idMethod));
-//                validEntities.stream().filter(notHavingErrors()).filter(entity -> {
-//                            boolean invalid = !existingFieldPlansIds.contains(entity.getFieldPlanId());
-//                            if (invalid) {
-//                                int i = counter.getAndIncrement();
-//                                errorMap.put("INVALID_FIELDPLAN"+i, "FIELDPLAN_ID does not exist: " + entity.getFieldPlanId());
-//                            }
-//                            return invalid;
-//                        })
-//                        .toList();
-//
-//            } catch (Exception e) {
-//                e.printStackTrace();
-//                log.error("error while fetching facility list", ExceptionUtils.getStackTrace(e));
-//                throw new CustomException("FIELDPLAN_ERROR", "error while calling fieldplan");
-//            }
-//        }
-//    }
 
 //    public Facility getFacilityById(String facilityId) {
 //
