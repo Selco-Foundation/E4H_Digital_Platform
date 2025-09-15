@@ -23,6 +23,9 @@ import java.util.Optional;
 @Slf4j
 public class UpdateService {
 
+    @Value("${es.index.computed.sla.im.services}")
+    private String computedSlaImServicesIndex;
+
 	@Autowired
 	private UpdateUtils indexerUtils;
 
@@ -156,7 +159,7 @@ public class UpdateService {
 		updateBody.put("doc", doc);
 
 
-		String url = config.getEsHostUrl() + "/computed-sla-im-services/_update/" + incidentId;
+		String url = config.getEsHostUrl() + "/" + computedSlaImServicesIndex + "/_update/" + incidentId;
 		HttpEntity<Map<String, Object>> entity = new HttpEntity<>(updateBody, buildHeaders());
 
 		try {

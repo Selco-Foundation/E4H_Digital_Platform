@@ -17,6 +17,9 @@ import static org.selco.e4h.util.IMConstants.*;
 @RequiredArgsConstructor
 public class ElasticSearchClient {
 
+    @Value("${es.index.computed.sla.im.services}")
+    private String computedSlaImServicesIndex;
+
     private final RestTemplate restTemplate;
     private final UpdateService updateService;
 
@@ -30,7 +33,7 @@ public class ElasticSearchClient {
     private String phcIndex;
 
     private static final String SEARCH_PATH = "_search";
-    private static final String INDEX_NAME = "computed-sla-im-services";
+    private static final String INDEX_NAME = computedSlaImServicesIndex;
     private static final String OLD_INDEX_NAME = "im-services";
 
     private static final String INDEX_NAME_PHC = "phc-master-list-new-2";
