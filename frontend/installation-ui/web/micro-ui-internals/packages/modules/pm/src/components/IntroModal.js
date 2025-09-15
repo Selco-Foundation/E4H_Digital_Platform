@@ -3,7 +3,9 @@ import ReactDOM from "react-dom";
 import { SubmitBar } from "@egovernments/digit-ui-react-components";
 import CustomArrowRight from "../components/Custom/CustomArrowRight";
 import CustomCloseSvg from "../components/Custom/CustomCloseSvg";
-import {welcome_1, welcome_2, welcome_3} from "../media/welcome";
+import {welcome_1} from "../media/welcome_1";
+import {welcome_2} from "../media/welcome_2";
+import {welcome_3} from "../media/welcome_3";
 
 const overlayRootId = "project-intro-overlay-root";
 
