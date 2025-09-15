@@ -1673,7 +1673,6 @@ async def validate_facilities_excel_sheet(
 ):
     temp_input_file = None
     request_info_obj = request_info_from_json(request_info)
-    get_authorized_request_info(request_info_obj)
     mdms_client = MDMSClient(mdms_url)
     facility_client = FacilityServiceClient(facility_service_url)
 
@@ -1798,7 +1797,7 @@ async def create_facilities_and_update_project(
     input_temp_file = None
     output_temp_file = None
 
-    # parse + auth
+    # parse
     request_info = request_info_from_json(request_info)
     mdms_client = MDMSClient(mdms_url)
 

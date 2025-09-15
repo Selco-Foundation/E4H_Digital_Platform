@@ -49,7 +49,6 @@ async def get_facility_ingestion_template_with_data(
 ):
     request_info = request_info_from_json(payload.get("request_info", {}))
     boundary_data = payload.get("boundary_data", {})
-    get_authorized_request_info(request_info)
     mdms_client = MDMSClient(mdms_url)
     try:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
