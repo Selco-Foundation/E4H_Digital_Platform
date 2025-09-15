@@ -1,6 +1,6 @@
 import React, {useEffect, useMemo, useRef, useState} from "react";
 import {useTranslation} from "react-i18next";
-import {Loader, Table, SubmitBar, ArrowUp, ArrowDown} from "@egovernments/digit-ui-react-components";
+import {Loader, Table, SubmitBar} from "@egovernments/digit-ui-react-components";
 import {Link} from "react-router-dom";
 
 const SAMPLE_PROJECTS = [
@@ -139,7 +139,7 @@ const ProjectTable = () => {
         </span>
     );
 
-    const SortHeader2 = ({label, field}) => (
+    const SortHeader = ({label, field}) => (
         <span
             onClick={() => toggleSort(field)}
             style={{cursor: "pointer", userSelect: "none", color: '#0B0C0C', fontSize: "16px"}}
@@ -149,55 +149,6 @@ const ProjectTable = () => {
             {sortBy === field ? (sortDir === SORT_DIR.DESC ? "↑" : "↓") : "↑↓"}
         </span>
     );
-
-    const SortHeader = ({label, field}) => {
-        const getSortIcon = () => {
-            if (sortBy !== field) {
-                return (
-                    <span style={{display: "inline-flex", flexDirection: "column", marginLeft: "4px"}}>
-          <svg width="12" height="6" viewBox="0 0 12 6" fill="none" style={{opacity: 0.5}}>
-            <path d="M6 0L11.1962 5.25H0.803848L6 0Z" fill="#0B0C0C"/>
-          </svg>
-          <svg width="12" height="6" viewBox="0 0 12 6" fill="none" style={{opacity: 0.5, marginTop: "-2px"}}>
-            <path d="M6 6L0.803848 0.75H11.1962L6 6Z" fill="#0B0C0C"/>
-          </svg>
-        </span>
-                );
-            }
-
-            if (sortDir === SORT_DIR.DESC) {
-                return (
-                    <svg width="12" height="6" viewBox="0 0 12 6" fill="none" style={{marginLeft: "4px"}}>
-                        <path d="M6 6L0.803848 0.75H11.1962L6 6Z" fill="#0B0C0C"/>
-                    </svg>
-                );
-            }
-
-            return (
-                <svg width="12" height="6" viewBox="0 0 12 6" fill="none" style={{marginLeft: "4px"}}>
-                    <path d="M6 0L11.1962 5.25H0.803848L6 0Z" fill="#0B0C0C"/>
-                </svg>
-            );
-        };
-
-        return (
-            <span
-                onClick={() => toggleSort(field)}
-                style={{
-                    cursor: "pointer",
-                    userSelect: "none",
-                    color: '#0B0C0C',
-                    fontSize: "16px",
-                    display: "flex",
-                    alignItems: "center"
-                }}
-                title="Click to sort"
-            >
-      {label}
-                {getSortIcon()}
-    </span>
-        );
-    };
 
     const GetCell = (value) => (
         <span
