@@ -1,6 +1,6 @@
 import React, {useEffect, useMemo, useRef, useState} from "react";
 import {useTranslation} from "react-i18next";
-import {Loader, Table, SubmitBar} from "@egovernments/digit-ui-react-components";
+import {Loader, Table, SubmitBar, ArrowUp, ArrowDown} from "@egovernments/digit-ui-react-components";
 import {Link} from "react-router-dom";
 
 const SAMPLE_PROJECTS = [
@@ -63,6 +63,7 @@ const ProjectTable = () => {
     const {t} = useTranslation();
     const [search, setSearch] = useState("");
     const [query, setQuery] = useState("");
+    const [loading, setLoading] = useState(false);
 
     const [pageSize, setPageSize] = useState(5);
     const [pageOffset, setPageOffset] = useState(0);
@@ -123,28 +124,91 @@ const ProjectTable = () => {
     const toggleSort = (field) => {
         if (sortBy !== field) {
             setSortBy(field);
-            setSortDir(SORT_DIR.DESC); // default to DESC like screenshot caret
+            setSortDir(SORT_DIR.DESC);
         } else {
             setSortDir((d) => (d === SORT_DIR.DESC ? SORT_DIR.ASC : SORT_DIR.DESC));
         }
     };
 
-    const SortHeader = ({label, field}) => (
-        <span
-            onClick={() => toggleSort(field)}
-            style={{cursor: "pointer", userSelect: "none"}}
-            title="Click to sort"
-        >
-      {label}{" "}
-            {sortBy === field ? (sortDir === SORT_DIR.DESC ? "⇂" : "⇃") : "↕"}
-    </span>
+    const DefaultHeader = ({label}) => (
+        <span style={{
+            color: '#0B0C0C',
+            fontSize: "16px"
+        }}>
+            {label}
+        </span>
     );
 
-    const GetCell = (value) => <span className="cell-text">{value}</span>;
+    const SortHeader2 = ({label, field}) => (
+        <span
+            onClick={() => toggleSort(field)}
+            style={{cursor: "pointer", userSelect: "none", color: '#0B0C0C', fontSize: "16px"}}
+            title="Click to sort"
+        >
+            {label}{" "}
+            {sortBy === field ? (sortDir === SORT_DIR.DESC ? "↑" : "↓") : "↑↓"}
+        </span>
+    );
+
+    const SortHeader = ({label, field}) => {
+        const getSortIcon = () => {
+            if (sortBy !== field) {
+                return (
+                    <span style={{display: "inline-flex", flexDirection: "column", marginLeft: "4px"}}>
+          <svg width="12" height="6" viewBox="0 0 12 6" fill="none" style={{opacity: 0.5}}>
+            <path d="M6 0L11.1962 5.25H0.803848L6 0Z" fill="#0B0C0C"/>
+          </svg>
+          <svg width="12" height="6" viewBox="0 0 12 6" fill="none" style={{opacity: 0.5, marginTop: "-2px"}}>
+            <path d="M6 6L0.803848 0.75H11.1962L6 6Z" fill="#0B0C0C"/>
+          </svg>
+        </span>
+                );
+            }
+
+            if (sortDir === SORT_DIR.DESC) {
+                return (
+                    <svg width="12" height="6" viewBox="0 0 12 6" fill="none" style={{marginLeft: "4px"}}>
+                        <path d="M6 6L0.803848 0.75H11.1962L6 6Z" fill="#0B0C0C"/>
+                    </svg>
+                );
+            }
+
+            return (
+                <svg width="12" height="6" viewBox="0 0 12 6" fill="none" style={{marginLeft: "4px"}}>
+                    <path d="M6 0L11.1962 5.25H0.803848L6 0Z" fill="#0B0C0C"/>
+                </svg>
+            );
+        };
+
+        return (
+            <span
+                onClick={() => toggleSort(field)}
+                style={{
+                    cursor: "pointer",
+                    userSelect: "none",
+                    color: '#0B0C0C',
+                    fontSize: "16px",
+                    display: "flex",
+                    alignItems: "center"
+                }}
+                title="Click to sort"
+            >
+      {label}
+                {getSortIcon()}
+    </span>
+        );
+    };
+
+    const GetCell = (value) => (
+        <span
+            className="cell-text"
+            style={{color: "#0B0C0C"}}>
+            {value}
+        </span>);
 
     const columns = [
         {
-            Header: t("PM_LABEL_PROJECT_NAME"),
+            Header: <DefaultHeader label={t("PM_LABEL_PROJECT_NAME")} />,
             accessor: "projectName",
             Cell: ({row}) => (
                 <div>
@@ -157,15 +221,15 @@ const ProjectTable = () => {
                         {row.original.projectName}
                     </Link>
                 </div>
-            ),
+            )
         },
         {
-            Header: t("PM_PROJECT_INFO_STATE"),
+            Header: <DefaultHeader label={t("PM_PROJECT_INFO_STATE")} />,
             accessor: "state",
             Cell: ({row}) => GetCell(row.original.state),
         },
         {
-            Header: t("PM_LABEL_PROJECT_TYPE"),
+            Header: <DefaultHeader label={t("PM_LABEL_PROJECT_TYPE")} />,
             accessor: "projectType",
             Cell: ({row}) => GetCell(row.original.projectType),
         },
@@ -180,12 +244,12 @@ const ProjectTable = () => {
             Cell: ({row}) => GetCell(row.original.endDate),
         },
         {
-            Header: t("CORE_COMMON_STATUS"),
+            Header: <DefaultHeader label={t("CORE_COMMON_STATUS")} />,
             accessor: "status",
             Cell: ({row}) => GetCell(row.original.status),
         },
         {
-            Header: t("PM_LABEL_PROJECT_NO_OF_HFS"),
+            Header: <DefaultHeader label={t("PM_LABEL_PROJECT_NO_OF_HFS")} />,
             accessor: "numberOfHealthFacilities",
             Cell: ({row}) => GetCell(row.original.noOfHFs),
         },
@@ -273,34 +337,31 @@ const ProjectTable = () => {
 
             <div style={{backgroundColor: "white"}}>
                 <div style={{padding: "20px"}}>
-                    <div style={{fontSize: "20px", fontWeight: "bold", marginBottom: "24px"}}>
-                        {t("PM_PROJECTS")}
-                    </div>
 
-                    {false ? (
-                        <Loader/>
-                    ) : (
-                        <div style={{margin: "0 0px", overflow: "auto"}}>
-                            <Table
-                                t={t || ((k) => k)}
-                                data={paged}
-                                columns={columns}
-                                getCellProps={() => ({
-                                    style: {
-                                        maxWidth: "100%",
-                                        padding: "17.24px 18px",
-                                        fontSize: "15px",
-                                    },
-                                })}
-                                onNextPage={onNextPage}
-                                onPrevPage={onPrevPage}
-                                currentPage={Math.floor(pageOffset / pageSize)}
-                                totalRecords={filtered.length}
-                                onPageSizeChange={onPageSizeChange}
-                                pageSizeLimit={pageSize}
-                            />
-                        </div>
-                    )}
+                    {loading
+                        ? (<Loader/>)
+                        : (
+                            <div style={{margin: "0 0px", overflow: "auto"}}>
+                                <Table
+                                    t={t || ((k) => k)}
+                                    data={paged}
+                                    columns={columns}
+                                    getCellProps={() => ({
+                                        style: {
+                                            maxWidth: "100%",
+                                            padding: "16px",
+                                            fontSize: "16px"
+                                        },
+                                    })}
+                                    onNextPage={onNextPage}
+                                    onPrevPage={onPrevPage}
+                                    currentPage={Math.floor(pageOffset / pageSize)}
+                                    totalRecords={filtered.length}
+                                    onPageSizeChange={onPageSizeChange}
+                                    pageSizeLimit={pageSize}
+                                />
+                            </div>
+                        )}
                 </div>
             </div>
         </div>
