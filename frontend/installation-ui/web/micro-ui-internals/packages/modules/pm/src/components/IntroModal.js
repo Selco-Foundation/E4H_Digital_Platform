@@ -2,11 +2,10 @@ import React, { useEffect, Fragment } from "react";
 import ReactDOM from "react-dom";
 import { SubmitBar } from "@egovernments/digit-ui-react-components";
 import CustomArrowRight from "../components/Custom/CustomArrowRight";
-import CustomCloseSvg from "../components/Custom/CustomCloseSvg"
-
-const welcome1 = "https://e4h-dev.selcofoundation.org/filestore/v1/files/file?tenantId=in&fileStoreId=900a3c77-28cd-408b-821e-402708fae1b6";
-const welcome2 = "https://e4h-dev.selcofoundation.org/filestore/v1/files/file?tenantId=in&fileStoreId=82b5f820-2a7b-4ab4-9b30-62815d3e8f08";
-const welcome3 = "https://e4h-dev.selcofoundation.org/filestore/v1/files/file?tenantId=in&fileStoreId=108aa25b-5e77-4c10-b82c-3bd053e374db";
+import CustomCloseSvg from "../components/Custom/CustomCloseSvg";
+import {welcome_1} from "../media/welcome_1";
+import {welcome_2} from "../media/welcome_2";
+import {welcome_3} from "../media/welcome_3";
 
 const overlayRootId = "project-intro-overlay-root";
 
@@ -162,7 +161,7 @@ const IntroModal = ({ open, onClose, t, action }) => {
 
                         <div id="pm-modal-grid" style={styles.grid}>
                             <div style={styles.item}>
-                                <img width={120} src={welcome1} alt={t("PM_TEAM_MEMBER_DETAILS")} loading="lazy"/>
+                                <img width={120} src={welcome_1} alt={t("PM_TEAM_MEMBER_DETAILS")} loading="lazy"/>
                                 <div>
                                     <h3 style={styles.itemTitle}>
                                         {t("PM_TEAM_MEMBER_DETAILS")}
@@ -174,7 +173,7 @@ const IntroModal = ({ open, onClose, t, action }) => {
                             </div>
 
                             <div style={styles.item}>
-                                <img width={120} src={welcome2} alt={t("PM_HEALTH_FACILITIES_LIST")} loading="lazy"/>
+                                <img width={120} src={welcome_2} alt={t("PM_HEALTH_FACILITIES_LIST")} loading="lazy"/>
                                 <div>
                                     <h3 style={styles.itemTitle}>
                                         {t("PM_HEALTH_FACILITIES_LIST")}
@@ -186,7 +185,7 @@ const IntroModal = ({ open, onClose, t, action }) => {
                             </div>
 
                             <div style={{ ...styles.item, ...styles.itemNoBorder }}>
-                                <img width={120} src={welcome3} alt={t("PM_SAVE_REPORTS")} loading="lazy"/>
+                                <img width={120} src={welcome_3} alt={t("PM_SAVE_REPORTS")} loading="lazy"/>
                                 <div>
                                     <h3 style={styles.itemTitle}>{t("PM_SAVE_REPORTS")}</h3>
                                     <p style={styles.itemSub}>
