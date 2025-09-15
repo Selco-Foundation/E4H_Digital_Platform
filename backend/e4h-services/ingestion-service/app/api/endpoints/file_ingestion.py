@@ -1,3 +1,4 @@
+import io
 import json
 import os
 import tempfile
@@ -6,10 +7,15 @@ import uuid
 from typing import Optional, Dict, List
 
 import pandas as pd
-from fastapi import APIRouter, File, Form, UploadFile, HTTPException
+from openpyxl import load_workbook
+from openpyxl.styles import Protection
+from openpyxl.utils.dataframe import dataframe_to_rows
+
+from app.utils.facility_validator import project_facility_validation
+from fastapi import APIRouter, File, Form, UploadFile, HTTPException, BackgroundTasks, Depends
 from fastapi.responses import FileResponse
 import psycopg2
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, StreamingResponse
 import requests
 
 from app.core.logging import AppLogger
@@ -21,9 +27,13 @@ from app.schemas.request_info import RequestInfo
 from app.schemas.request_info import RequestInfo
 from app.producer.producer import Producer
 from app.utils.convertor import request_info_from_json, create_vendor_request, create_facility_payload, \
-    get_project_creation_payload, get_user_creation_payload_staff, get_user_creation_payload_supervisors, get_staff_creation_payload, create_project_payload, \
-        get_installation_spoc_creation_payload, get_staff_search_payload, check_role_mismatch_for_user_type
+    get_project_creation_payload, check_role_mismatch_for_user_type, get_user_creation_payload_staff, \
+    get_user_creation_payload_supervisors, \
+    get_staff_creation_payload, create_project_payload, get_installation_spoc_creation_payload, \
+    get_staff_search_payload, create_incident_data_update_payload, \
+    get_incident_data_update_request_info
 from app.utils.facility_service_client import FacilityServiceClient
+from app.utils.file_utils import cleanup_temp_file
 from app.utils.im_service_client import IMServiceClient
 from app.utils.mdms_client import MDMSClient
 from app.utils.organization_service_client import OrganizationServiceClient
@@ -1549,3 +1559,356 @@ def process_update_response(response, df, idx, update_data):
     except Exception as e:
         df.at[idx, 'status'] = 'failed'
         df.at[idx, 'error'] = str(e)
+
+
+@router.post('/facilitiesValidateData',
+             summary='Validate facility Excel file before processing',
+             response_description='Returns validation report Excel with PASSED/FAILED rows')
+async def validate_facilities_excel_sheet(
+        background_tasks: BackgroundTasks,
+        facility_file: UploadFile = File(..., description="Excel file containing facility data"),
+        facility_sheet_name: str = Form(default="FacilityIngestionTemplate",
+                                        description="Name of the sheet containing facility data"),
+        boundary_sheet_name: str = Form(default="BoundaryCodes",
+                                        description="Name of the sheet containing boundary data"),
+        request_info: str = Form(default="")
+):
+    temp_input_file = None
+    request_info_obj = request_info_from_json(request_info)
+    mdms_client = MDMSClient(mdms_url)
+    facility_client = FacilityServiceClient(facility_service_url)
+
+    try:
+        # Save uploaded Excel to a temp file
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as temp_input_file:
+            content = await facility_file.read()
+            temp_input_file.write(content)
+            temp_input_file.flush()
+
+        # Load workbook to preserve everything
+        wb = load_workbook(temp_input_file.name)
+
+        # ----------------- Read Boundary Sheet ----------------- #
+        if boundary_sheet_name not in wb.sheetnames:
+            raise HTTPException(status_code=400, detail=f"Boundary sheet '{boundary_sheet_name}' not found")
+
+        boundary_data_df = pd.read_excel(temp_input_file.name, sheet_name=boundary_sheet_name)
+
+        # ----------------- Read Facility Sheet ----------------- #
+        if facility_sheet_name not in wb.sheetnames:
+            raise HTTPException(status_code=400, detail=f"Facility sheet '{facility_sheet_name}' not found")
+
+        df = pd.read_excel(temp_input_file.name, sheet_name=facility_sheet_name)
+        df.columns = [str(c).strip() for c in df.columns]
+
+        # ----------------- Read Facility Column ----------------- #
+        if 'Facility Id' not in df.columns:
+            raise HTTPException(status_code=400, detail=f"Facility Column in '{facility_sheet_name}' not found")
+
+        # Ensure status/error columns exist
+        if 'status' not in df.columns:
+            df['status'] = ''
+        if 'error' not in df.columns:
+            df['error'] = ''
+
+        # ----------------- Run Validation ----------------- #
+        validation_errors = project_facility_validation(
+            df,
+            mdms_client,
+            request_info_obj,
+            facility_client,
+            boundary_data_df
+        )
+
+        # Mark rows based on validation results
+        error_count = 0
+        for i, errs in enumerate(validation_errors):
+            if errs:
+                df.at[i, 'status'] = 'FAILED'
+                df.at[i, 'error'] = "; ".join(dict.fromkeys(errs))
+                error_count += 1
+            else:
+                df.at[i, 'status'] = 'PASSED'
+                df.at[i, 'error'] = ''
+
+        # ----------------- Update Facility Sheet In-Place ----------------- #
+        ws = wb[facility_sheet_name]
+        header_values = [cell.value for cell in ws[1]]
+
+        # Add status/error columns if missing
+        for col_name in ["status", "error"]:
+            if col_name not in header_values:
+                new_col_idx = len(header_values) + 1
+                cell = ws.cell(row=1, column=new_col_idx, value=col_name)
+                header_values.append(col_name)
+
+                # lock header cell
+                cell.protection = Protection(locked=True)
+
+                # lock all data cells in this new column
+                for r_idx in range(2, ws.max_row + 1):
+                    ws.cell(row=r_idx, column=new_col_idx).protection = Protection(locked=True)
+
+        # Write data rows back (without header row)
+        for r_idx, row in enumerate(dataframe_to_rows(df, index=False, header=False), start=2):
+            for c_idx, value in enumerate(row, start=1):
+                cell = ws.cell(row=r_idx, column=c_idx, value=value)
+
+                # force lock for status/error columns
+                if ws.cell(1, c_idx).value in ["status", "error"]:
+                    cell.protection = Protection(locked=True)
+
+        # Ensure sheet protection is ON
+        ws.protection.sheet = True
+        ws.protection.enable()
+
+        # ----------------- Save to new temp file ----------------- #
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_temp_file_path = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx").name
+        wb.save(output_temp_file_path)
+
+        background_tasks.add_task(cleanup_temp_file, output_temp_file_path)
+
+        response = FileResponse(
+            path=output_temp_file_path,
+            filename=f"facility_validation_results_{timestamp}.xlsx",
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+        response.headers["X-Error-Count"] = str(error_count)
+
+        return response
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Validation failed: {str(e)}")
+    finally:
+        if temp_input_file and os.path.exists(temp_input_file.name):
+            os.unlink(temp_input_file.name)
+
+
+@router.post('/createFacilityAndUpdateProject',
+             summary='Create passed facility in Excel file and add them to project',
+             response_description='Created facilities from PASSED rows and added to the given project if selected')
+async def create_facilities_and_update_project(
+        background_tasks: BackgroundTasks,
+        facility_file: UploadFile = File(description="Validated Excel file with PASSED/FAILED status"),
+        facility_sheet_name: str = Form(default="FacilityIngestionTemplate",
+                                        description="Name of the sheet containing facility data"),
+        project_id: str = Form(description="Project ID"),
+        request_info: str = Form(default="")
+):
+    input_temp_file = None
+    output_temp_file = None
+
+    # parse
+    request_info = request_info_from_json(request_info)
+    mdms_client = MDMSClient(mdms_url)
+
+    try:
+        # ---------- save uploaded file ----------
+        input_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
+        content = await facility_file.read()
+        input_temp_file.write(content)
+        input_temp_file.close()
+        facility_file_path = input_temp_file.name
+
+        # ---------- prepare output path & load workbook ----------
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_filename = f"facility_creation_and_project_update_results_{timestamp}.xlsx"
+        output_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
+        output_temp_file.close()
+        output_file_path = output_temp_file.name
+
+        wb = load_workbook(facility_file_path)
+        if facility_sheet_name not in wb.sheetnames:
+            raise HTTPException(status_code=400, detail=f"Sheet '{facility_sheet_name}' not found")
+        ws = wb[facility_sheet_name]
+
+        # ---------- read sheet into DataFrame ----------
+        df = pd.read_excel(facility_file_path, sheet_name=facility_sheet_name)
+        df.columns = [str(c).strip() for c in df.columns]
+
+        # sanity checks
+        # status/error are validation artifacts from previous step
+        if 'status' not in df.columns or 'error' not in df.columns:
+            raise HTTPException(status_code=400, detail="Missing 'status'/'error' columns. Please upload validated file.")
+
+        # Ensure all rows are PASSED
+        failed_rows = df[df['status'].str.upper() != 'PASSED']
+        if not failed_rows.empty:
+            raise HTTPException(
+                status_code=400,
+                detail="Validation failed: Some rows are not marked as PASSED. Please upload a fully validated file."
+            )
+
+        # helper to find a column by partial name (case insensitive)
+        def find_col(partial):
+            for c in df.columns:
+                if partial.lower() in str(c).lower():
+                    return c
+            return None
+
+        include_col = find_col("Include in Project")
+        facility_id_col = find_col("Facility Id") or "Facility Id"
+        status_col = find_col("status") or "status"
+
+        # add result columns if missing
+        if 'Facility Creation Status' not in df.columns:
+            df['Facility Creation Status'] = ''
+        if 'Project Linking Status' not in df.columns:
+            df['Project Linking Status'] = ''
+
+        facility_client = FacilityServiceClient(facility_service_url)
+        project_client = ProjectServiceClient(project_service_url)
+        facility_schema = mdms_client.get_column_definitions_with_metadata(
+            request_info, 'data-ingestion.FacilityIngestionSchema'
+        )
+
+        # iterate all rows — handle existing facility ids (linking) and new rows (create -> link)
+        for index, row in df.iterrows():
+            try:
+                # normalize facility id and include flag
+                facility_id_val = row.get(facility_id_col, None)
+                facility_id = None
+                if pd.notna(facility_id_val) and str(facility_id_val).strip():
+                    facility_id = str(facility_id_val).strip()
+
+                include_val = ''
+                if include_col:
+                    include_val = str(row.get(include_col, "")).strip().lower()
+                else:
+                    include_val = str(row.get("Include in Project (Mandatory)", "")).strip().lower()
+
+                should_link = include_val == "yes"
+
+                # ---------- CASE A: existing facility_id present -> skip creation, attempt linking if requested ----------
+                if facility_id:
+                    df.at[index, 'Facility Creation Status'] = "Already Exists"
+                    # attempt linking if requested
+                    if should_link:
+                        try:
+                            project_resp = project_client.create_project_facility(
+                                request_info=request_info,
+                                project_id=project_id,
+                                facility_id=facility_id
+                            )
+                            if project_resp.status_code in (200, 201, 202):
+                                df.at[index, 'Project Linking Status'] = "Linked"
+                            else:
+                                df.at[index, 'Project Linking Status'] = f"Failed: {project_resp.status_code} {project_resp.text}"
+                        except Exception as e:
+                            df.at[index, 'Project Linking Status'] = f"Exception: {str(e)}"
+                    else:
+                        df.at[index, 'Project Linking Status'] = "Skipped (Include in Project != Yes)"
+
+                    # continue to next row
+                    continue
+
+                # ---------- CASE B: no facility_id -> only create if validation PASSED ----------
+                row_status = str(row.get(status_col, "")).strip().upper()
+                if row_status != "PASSED":
+                    df.at[index, 'Facility Creation Status'] = "Skipped (Validation not PASSED)"
+                    df.at[index, 'Project Linking Status'] = "Not Attempted"
+                    continue
+
+                # Create facility payload and call service
+                try:
+                    facility_payload = create_facility_payload(request_info, row, facility_schema)
+                    create_resp = facility_client.create_facility(facility_payload)
+                except Exception as e:
+                    df.at[index, 'Facility Creation Status'] = f"Exception during create: {str(e)}"
+                    df.at[index, 'Project Linking Status'] = "Not Attempted"
+                    continue
+
+                # handle create response
+                if create_resp.status_code in (200, 201):
+                    # keep validation status column untouched; write creation column
+                    created_id = None
+                    try:
+                        facilities = create_resp.json()
+                        if isinstance(facilities, list) and len(facilities) > 0:
+                            created_id = facilities[0].get("facility_id")
+                    except Exception as e:
+                        print(f"Warning: Could not parse create response JSON: {e}")
+                        created_id = None
+
+                    df.at[index, 'Facility Creation Status'] = "Created" if created_id else "Created (id missing)"
+                    # update facility id column in sheet so future re-uploads contain id (optional)
+                    if created_id:
+                        df.at[index, facility_id_col] = created_id
+
+                    # Now link if requested
+                    if should_link and created_id:
+                        try:
+                            project_resp = project_client.create_project_facility(
+                                request_info=request_info,
+                                project_id=project_id,
+                                facility_id=created_id
+                            )
+                            if project_resp.status_code in (200, 201, 202):
+                                df.at[index, 'Project Linking Status'] = "Linked"
+                            else:
+                                df.at[index, 'Project Linking Status'] = f"Failed: {project_resp.status_code} {project_resp.text}"
+                        except Exception as e:
+                            df.at[index, 'Project Linking Status'] = f"Exception: {str(e)}"
+                    elif should_link and not created_id:
+                        df.at[index, 'Project Linking Status'] = "Skipped (no facility id after create)"
+                    else:
+                        df.at[index, 'Project Linking Status'] = "Skipped (Include in Project != Yes)"
+
+                elif create_resp.status_code == 400:
+                    try:
+                        error_data = create_resp.json()
+                        error_message = error_data.get('Errors', [{}])[0].get('message', 'Unknown error')
+                    except Exception:
+                        error_message = create_resp.text
+                    df.at[index, 'Facility Creation Status'] = f"Failed: {error_message}"
+                    df.at[index, 'Project Linking Status'] = "Not Attempted"
+                else:
+                    df.at[index, 'Facility Creation Status'] = f"Failed: {create_resp.status_code} {create_resp.text}"
+                    df.at[index, 'Project Linking Status'] = "Not Attempted"
+
+            except Exception as e:
+                # any unexpected error per row
+                df.at[index, 'Facility Creation Status'] = f"Exception: {str(e)}"
+                df.at[index, 'Project Linking Status'] = "Not Attempted"
+                continue
+
+        # ---------- write results back into workbook preserving formatting ----------
+        # Ensure headers exist in sheet (without wiping template)
+        header_values = [cell.value for cell in ws[1]]
+
+        for col_name in ["Facility Creation Status", "Project Linking Status"]:
+            if col_name not in header_values:
+                ws.cell(row=1, column=len(header_values) + 1, value=col_name)
+                header_values.append(col_name)
+                if col_name not in df.columns:
+                    df[col_name] = ""  # ensure column exists in dataframe
+
+        # Delete data rows only (preserve header row and template formatting)
+        if ws.max_row > 1:
+            ws.delete_rows(2, ws.max_row - 1)
+
+        # Write data rows back (without header row)
+        for r_idx, row in enumerate(dataframe_to_rows(df, index=False, header=False), start=2):
+            for c_idx, value in enumerate(row, start=1):
+                ws.cell(row=r_idx, column=c_idx, value=value)
+
+        wb.save(output_file_path)
+        background_tasks.add_task(cleanup_temp_file, output_file_path)
+
+        return FileResponse(
+            path=output_file_path,
+            filename=output_filename,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+
+    except Exception as e:
+        logger.error(f"Error finalizing facility data: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to finalize facility data: {str(e)}"
+        )
+    finally:
+        if input_temp_file and os.path.exists(input_temp_file.name):
+            os.unlink(input_temp_file.name)
+
