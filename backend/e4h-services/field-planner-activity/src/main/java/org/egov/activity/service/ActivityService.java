@@ -169,6 +169,8 @@ public class ActivityService {
         /*
          * Ensure that no other properties are being updated besides the start and end dates
          */
+        Activity existingActivity = activityRepository.getActivityByCode(activityFacility.getActivityId());
+        activityFacility.setActivityId(existingActivity.getId());
         if (!isValidCascadingUpdate(activityFacilityFromDB, activityFacility)) {
             throw new CustomException(
                     "ACTIVITY_CASCADE_UPDATE_ERROR",

@@ -261,8 +261,8 @@ public class ActivityValidator {
     }
 
     public FieldPlan getFieldPlanById(RequestInfo request, String fieldPlanId, String tenantId) {
-        FieldPlan fieldPlan = FieldPlan.builder().id(fieldPlanId).tenantId(tenantId).build();
-        FieldPlanRequest fieldPlanRequest = FieldPlanRequest.builder().requestInfo(request).fieldPlans(List.of(fieldPlan)).build();
+        FieldPlanSearchCriteria fieldPlan = FieldPlanSearchCriteria.builder().ids(List.of(fieldPlanId)).tenantId(tenantId).build();
+        FieldPlanSearchRequest fieldPlanRequest = FieldPlanSearchRequest.builder().requestInfo(request).fieldPlan(fieldPlan).build();
         String url = config.getFieldPlanServiceHost() + config.getFieldPlanServiceSearchUrl()+ "?tenantId="+tenantId+"&offset=0&limit=100";
         Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), fieldPlanRequest, Map.class);
         FieldPlanResponse fieldPlanResponse = mapper.convertValue(response, FieldPlanResponse.class);
