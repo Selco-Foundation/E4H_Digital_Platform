@@ -1,18 +1,9 @@
-import React from "react";
+import React, {Suspense} from "react";
 import ReactDOM from "react-dom";
-import { PGRReducers } from "@egovernments/digit-ui-module-pgr";
 import { initLibraries } from "@egovernments/digit-ui-libraries";
-// import { paymentConfigs, PaymentLinks, PaymentModule } from "@egovernments/digit-ui-module-common";
-import { DigitUI, initCoreComponents } from "@egovernments/digit-ui-module-core";
-import { initDSSComponents } from "@egovernments/digit-ui-module-dss";
-import { initEngagementComponents } from "@egovernments/digit-ui-module-engagement";
-import { initHRMSComponents } from "@egovernments/digit-ui-module-hrms";
 import { initUtilitiesComponents } from "@egovernments/digit-ui-module-utilities";
-import { initWorkbenchComponents } from "@egovernments/digit-ui-module-workbench";
-import { initPGRComponents } from "@egovernments/digit-ui-module-pgr";
-import { initOpenPaymentComponents } from "@egovernments/digit-ui-module-open-payment";
-import { initSandboxComponents } from "@egovernments/digit-ui-module-sandbox";
 import { QCReducers, initQCComponents } from "@selco/digit-ui-module-qc";
+import { Loader } from "@egovernments/digit-ui-components";
 
 import "@selco/installation-ui-css/example/index.css";
 
@@ -21,18 +12,16 @@ import { UICustomizations } from "./UICustomizations";
 
 var Digit = window.Digit || {};
 
+// Lazy load DigitUI
+const DigitUI = React.lazy(() =>
+  import("@egovernments/digit-ui-module-core").then((mod) => ({
+    default: mod.DigitUI,
+  }))
+);
+
 const enabledModules = [
   "QC",
-  "DSS",
-  "HRMS",
-  "Workbench",
-  //  "Engagement", "NDSS","QuickPayLinks", "Payment",
   "Utilities",
-  "PGR",
-  //added to check fsm
-  // "FSM"
-  "Sandbox",
-  "OpenPayment",
 ];
 
 const initTokens = (stateCode) => {
@@ -79,29 +68,17 @@ const initDigitUI = () => {
   }
 
   window.Digit.Customizations = {
-    PGR: pgrCustomizations,
+    QC: {},
     commonUiConfig: UICustomizations,
   };
-  initEngagementComponents();
 
   window?.Digit.ComponentRegistryService.setupRegistry({
     ...overrideComponents,
-    // PaymentModule,
-    // ...paymentConfigs,
-    // PaymentLinks,
   });
-  initCoreComponents();
-  initDSSComponents();
-  initHRMSComponents();
   initUtilitiesComponents();
-  initWorkbenchComponents();
-  initPGRComponents();
-  initOpenPaymentComponents();
-  initSandboxComponents();
   initQCComponents();
 
   const moduleReducers = (initData) => ({
-    pgr: PGRReducers(initData),
     qc: QCReducers(initData),
   });
 
@@ -110,13 +87,15 @@ const initDigitUI = () => {
   initTokens(stateCode);
 
   ReactDOM.render(
-    <DigitUI
-      stateCode={stateCode}
-      enabledModules={enabledModules}
-      defaultLanding="employee"
-      allowedUserTypes={["employee","citizen"]}
-      moduleReducers={moduleReducers}
-    />,
+    <Suspense fallback={<Loader page={true} variant={"PageLoader"} />}>
+      <DigitUI
+        stateCode={stateCode}
+        enabledModules={enabledModules}
+        defaultLanding="employee"
+        allowedUserTypes={["employee"]}
+        moduleReducers={moduleReducers}
+      />
+    </Suspense>,
     document.getElementById("root")
   );
 };

@@ -39,7 +39,10 @@ public class SLAService {
                 .stream()
                 .map(p -> p.getState().getApplicationStatus())
                 .collect(Collectors.toList());
-        previousStates.add(currentState);
+
+        if(previousStates.isEmpty() || !previousStates.get(previousStates.size() - 1).equals(currentState)){
+            previousStates.add(currentState);
+        }
         for(String state : previousStates){
             if(PENDINGFORASSIGNMENT.equals(state) || PENDINGATVENDOR.equals(state)
                     || state.startsWith(PENDING_ASSIGNMENT_PREFIX) || (state.startsWith(PENDING_RESOLUTION_PREFIX))){
