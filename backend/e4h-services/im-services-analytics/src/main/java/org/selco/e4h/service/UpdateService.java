@@ -7,6 +7,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.selco.e4h.config.ConsumerConfiguration;
+import org.springframework.beans.factory.annotation.Value;
 import org.selco.e4h.util.UpdateUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
