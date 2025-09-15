@@ -23,7 +23,7 @@ const PMCard = () => {
   };
 
   const handleViewProjectRedirection = () => {
-    console.debug("clicked 2");
+      history.push(`/${window?.contextPath}/employee/pm/projects`)
   };
 
   return (
