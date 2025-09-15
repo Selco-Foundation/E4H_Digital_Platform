@@ -9,8 +9,6 @@ CLASSPATH="$CLASSPATH:/flyway/flyway-cli/flyway-9.22.3/lib/*:/flyway/flyway-cli/
 exec java -cp "$CLASSPATH" org.flywaydb.commandline.Main \
   -url=$DB_URL \
   -table=$SCHEMA_TABLE \
-  -user=$FLYWAY_USER \
-  -password=$FLYWAY_PASSWORD \
   -locations=$FLYWAY_LOCATIONS \
   -jarDirs=/flyway/jars \
   -baselineOnMigrate=true \
