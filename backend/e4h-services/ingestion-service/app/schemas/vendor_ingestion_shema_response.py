@@ -23,11 +23,17 @@ class MDMSColumn(BaseModel):
     required: Optional[bool] = None
     pattern: Optional[str] = None
     mdmsSource: Optional[MDMSDataSource] = None
+    code: Optional[str] = None
 
+class RowConstraint(BaseModel):
+    message: Optional[str] = None
+    type: Optional[str] = None
+    fields: Optional[List[str]] = None
 
 class MDMSData(BaseModel):
     id: Optional[int] = None
     columns: Optional[List[MDMSColumn]] = None
+    rowConstraints: Optional[List[RowConstraint]] = None
 
     class Config:
         extra = "allow"

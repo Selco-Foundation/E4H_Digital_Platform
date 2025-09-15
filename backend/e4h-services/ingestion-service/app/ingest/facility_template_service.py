@@ -9,8 +9,9 @@ from app.core.logging import AppLogger
 from app.schemas.boundary import Boundary
 from app.schemas.request_info import RequestInfo
 from app.schemas.vendor_ingestion_shema_response import IngestionSchemaResponse
-from app.utils.convertor import convert_json_to_boundary
-from app.utils.excel_utils import add_dropdowns_to_excel, lock_excel_columns
+from app.utils.convertor import convert_json_to_boundary, format_facility_data_for_template
+from app.utils.excel_utils import add_dropdowns_to_excel, lock_excel_columns, add_validations_to_excel, \
+    lock_prefilled_rows_in_excel
 from app.utils.file_utils import create_empty_excel_file, create_excel_data_writer
 
 logger = AppLogger().get_logger()
@@ -48,6 +49,120 @@ class FacilityTemplateService:
         }
         response = requests.get(url, params=params, headers=headers, json=payload)
         return convert_json_to_boundary(response.text)
+
+
+    def generate_template_file_with_data(self, output_path: str,
+                               facility_schema: List[Dict[str, Any]],
+                               boundary_list: List[Boundary],
+                               facility_data: List[Dict[str, Any]],
+                               ) -> None:
+        """
+            Generates FacilityIngestionTemplate.xlsx with:
+            - Facility schema columns (with mandatory indicators)
+            - Dropdowns (from MDMS + Yes/No types)
+            - Regex validation comments (for pattern columns)
+            - Boundary data sheet
+            - Existing facility data sheet
+            """
+        try:
+            create_empty_excel_file(output_path)
+
+            # 1. Prepare headers + dropdowns + validation map
+            output_list = []
+            dropdowns_map = {}
+            column_validations = {}
+            editable_columns = []
+
+            for col in facility_schema:
+                mandatory_indicator = "(Mandatory)" if col.get("required") else ""
+                header_name = f"{col.get('name')} {mandatory_indicator}".strip()
+                output_list.append(header_name)
+
+                # --- 1. MDMS Dropdowns ---
+                mdms_values = col.get("mdms_values")
+                if mdms_values:
+                    dropdown_options = [item.get("name") for item in mdms_values if item.get("name")]
+                    if dropdown_options:
+                        dropdowns_map[header_name] = dropdown_options
+
+                # --- 2. Yes/No Dropdowns ---
+                if col.get("type", "") in ["enum-yes-no"]:
+                    dropdowns_map[header_name] = ["Yes", "No"]
+                    editable_columns.append(header_name)
+
+                # --- 3. Pattern Validation ---
+                if col.get("pattern"):
+                    column_validations[header_name] = {
+                        "type": "regex",
+                        "pattern": col["pattern"],
+                        "message": f"Must match pattern: {col['pattern']}"
+                    }
+
+                # --- 4. Unique Validation (cannot be enforced in Excel, add hint) ---
+                if col.get("type") in ["Unique_Id"]:
+                    column_validations[header_name] = {
+                        "type": "unique",
+                        "message": "Values must be unique across rows"
+                    }
+
+            # Add Existing Facilities Sheet (Optional)
+            formatted_facilities = []
+            if facility_data:
+                formatted_facilities = format_facility_data_for_template(facility_data, facility_schema, output_list)
+
+            df_facility = pd.DataFrame(formatted_facilities, columns=output_list)
+            facility_writer = create_excel_data_writer(
+                output_path,
+                "FacilityIngestionTemplate"
+            )
+            facility_writer.write_data(df_facility)
+
+            # Add Dropdowns
+            add_dropdowns_to_excel(
+                file_path=output_path,
+                sheet_name="FacilityIngestionTemplate",
+                dropdowns=dropdowns_map
+            )
+
+            # Add Validations (Regex + Unique) as comments/hints
+            add_validations_to_excel(
+                file_path=output_path,
+                sheet_name="FacilityIngestionTemplate",
+                validations=column_validations
+            )
+
+            # Add Boundary Data Sheet
+            boundary_records = self._format_boundary_data(boundary_list)
+            df_boundary = pd.DataFrame(boundary_records)
+            boundary_writer = create_excel_data_writer(
+                output_path,
+                "BoundaryCodes"
+            )
+            boundary_writer.write_data(df_boundary)
+
+            lock_excel_columns(
+                file_path=output_path,
+                sheet_name="BoundaryCodes",
+                column_headers_to_unlock=[]
+            )
+
+
+            # Lock prefilled rows except editable columns
+            if formatted_facilities:
+                lock_prefilled_rows_in_excel(
+                    file_path=output_path,
+                    sheet_name="FacilityIngestionTemplate",
+                    editable_columns=editable_columns,
+                    total_rows=len(formatted_facilities),
+                    total_columns=len(output_list),
+                    extra_append_rows=1000
+                )
+
+            logger.info(f"Successfully created template file at {output_path}")
+        except Exception as e:
+            logger.error(f"Error generating template file: {e}")
+            raise
+
 
     def generate_template_file(self, output_path: str,
                                facility_schema: List[Dict[str, Any]],
