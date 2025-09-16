@@ -42,28 +42,16 @@ public class FieldPlanFacilityConsumer {
         }
     }
 
-//    @KafkaListener(topics = "${project.facility.consumer.bulk.update.topic}")
-//    public List<ProjectFacility> bulkUpdate(Map<String, Object> consumerRecord,
-//                                            @Header(KafkaHeaders.RECEIVED_TOPIC) String topic) {
-//        try {
-//            ProjectFacilityBulkRequest request = objectMapper.convertValue(consumerRecord, ProjectFacilityBulkRequest.class);
-//            return service.update(request, true);
-//        } catch (Exception exception) {
-//            log.error("error in project facility consumer bulk update", ExceptionUtils.getStackTrace(exception));
-//            return Collections.emptyList();
-//        }
-//    }
-//
-//    @KafkaListener(topics = "${project.facility.consumer.bulk.delete.topic}")
-//    public List<ProjectFacility> bulkDelete(Map<String, Object> consumerRecord,
-//                                            @Header(KafkaHeaders.RECEIVED_TOPIC) String topic) {
-//        try {
-//            ProjectFacilityBulkRequest request = objectMapper.convertValue(consumerRecord, ProjectFacilityBulkRequest.class);
-//            return service.delete(request, true);
-//        } catch (Exception exception) {
-//            log.error("error in project facility consumer bulk delete", ExceptionUtils.getStackTrace(exception));
-//            return Collections.emptyList();
-//        }
-//    }
+    @KafkaListener(topics = "${fieldPlan.facility.consumer.bulk.delete.topic}")
+    public List<FieldPlanFacility> bulkUnassign(Map<String, Object> consumerRecord,
+                                              @Header(KafkaHeaders.RECEIVED_TOPIC) String topic) {
+        try {
+            FieldPlanFacilityBulkRequest request = objectMapper.convertValue(consumerRecord, FieldPlanFacilityBulkRequest.class);
+            return service.unassignBulk(request, true);
+        } catch (Exception exception) {
+            log.error("error in fieldplan facility consumer bulk delete", ExceptionUtils.getStackTrace(exception));
+            return Collections.emptyList();
+        }
+    }
 
 }

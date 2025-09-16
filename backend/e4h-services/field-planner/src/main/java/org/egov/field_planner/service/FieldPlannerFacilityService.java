@@ -89,6 +89,33 @@ public class FieldPlannerFacilityService {
         return fieldPlanFacilities;
     }
 
+    public FieldPlanFacility unassign(FieldPlanFacilityRequest request) {
+        log.info("received request to create fieldplan facility");
+        FieldPlanFacilityBulkRequest bulkRequest = FieldPlanFacilityBulkRequest.builder().requestInfo(request.getRequestInfo())
+                .fieldPlanFacilities(Collections.singletonList(request.getFieldPlanFacility())).build();
+        log.info("creating bulk request");
+        return unassignBulk(bulkRequest, false).get(0);
+    }
+
+    public List<FieldPlanFacility> unassignBulk(FieldPlanFacilityBulkRequest request, boolean isBulk) {
+        log.info("received request to unassign bulk fieldplan facility");
+//
+        validateCreateFieldPlanRequest(request);
+        List<FieldPlanFacility> fieldPlanFacilities = request.getFieldPlanFacilities();
+        try {
+            if (!fieldPlanFacilities.isEmpty()) {
+                log.info("processing {} valid entities", fieldPlanFacilities.size());
+                fieldPlannerEnrichment.enrichFieldPlanFacilityOnCreate(fieldPlanFacilities, request);
+                producer.push(fieldPlannerConfiguration.getDeleteFieldPlanFacilityTopic(), fieldPlanFacilities);
+                log.info("successfully created project facility");
+            }
+        } catch (Exception exception) {
+            log.error("error occurred while creating project facility: {}", ExceptionUtils.getStackTrace(exception));
+        }
+
+        return fieldPlanFacilities;
+    }
+
     public void validateCreateFieldPlanRequest(FieldPlanFacilityBulkRequest request) {
         Map<String, String> errorMap = new HashMap<>();
 

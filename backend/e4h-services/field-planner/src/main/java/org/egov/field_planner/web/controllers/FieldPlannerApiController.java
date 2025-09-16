@@ -141,4 +141,25 @@ public class FieldPlannerApiController {
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(ResponseInfoFactory
                 .createResponseInfo(request.getRequestInfo(), true));
     }
+
+    @RequestMapping(value = "/facility/_unassign", method = RequestMethod.POST)
+    public ResponseEntity<FieldPlanFacilityResponse> fieldPlanFacilityUnassign(@ApiParam(value = "Capture linkage of Field Plan and facility.", required = true) @Valid @RequestBody FieldPlanFacilityRequest request) {
+
+        FieldPlanFacility fieldPlanFacility = fieldPlannerFacilityService.unassign(request);
+        FieldPlanFacilityResponse response = FieldPlanFacilityResponse.builder()
+                .fieldPlanFacility(fieldPlanFacility)
+                .responseInfo(ResponseInfoFactory
+                        .createResponseInfo(request.getRequestInfo(), true))
+                .build();
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
+    }
+
+    @RequestMapping(value = "/facility/v1/bulk/_unassign", method = RequestMethod.POST)
+    public ResponseEntity<ResponseInfo> fieldPlanFacilityUnassignBulk(@ApiParam(value = "Capture linkage of Field Plan and facility.", required = true) @Valid @RequestBody FieldPlanFacilityBulkRequest request) {
+        request.getRequestInfo().setApiId(httpServletRequest.getRequestURI());
+        producer.push(fieldPlannerConfiguration.getBulkCreateFieldPlanFacilityTopic(), request);
+
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(ResponseInfoFactory
+                .createResponseInfo(request.getRequestInfo(), true));
+    }
 }
