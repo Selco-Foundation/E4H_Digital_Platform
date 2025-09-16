@@ -78,7 +78,7 @@ Step-by-step flow:
     - For Production: Create `hotfix/v<version>-*` from `main`, merge back to both `main` and `develop`.
 
 ## Best Practices
-- Always merge hotfixes back to both `main` and `develop` to avoid code drift.
+- Before creating new release branch merge `main` into `develop` to avoid code drift.
 - Use clear naming conventions for branches and tags.
 
 
