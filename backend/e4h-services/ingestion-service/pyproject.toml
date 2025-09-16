@@ -17,4 +17,8 @@ dependencies = [
     "requests>=2.32.4",
     "uvicorn>=0.35.0",
     "fastapi-health>=0.4.0",
+    "greenlet>=3.2.4",
+    "pillow>=11.3.0",
+    "psycopg>=3.2.9",
+    "sqlalchemy>=2.0.43",
 ]

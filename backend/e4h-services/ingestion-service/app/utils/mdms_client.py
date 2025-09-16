@@ -66,7 +66,8 @@ class MDMSClient:
                 "type": col.type,
                 "required": col.required,
                 "pattern": col.pattern,
-                "mdms_values": []
+                "mdms_values": [],
+                "code": col.code
             }
 
             if col.mdmsSource:
@@ -77,6 +78,39 @@ class MDMSClient:
 
             result.append(column_info)
 
+        return result
+
+
+    def get_column_definitions_and_row_constraints_with_metadata(self, request_info: RequestInfo, schema_code: str) -> Dict[str, Any]:
+        response = self.fetch_schema_column_definitions(request_info, schema_code)
+
+        if not response.mdms or not response.mdms[0].data:
+            return {}
+
+        result = {}
+        columns = response.mdms[0].data.columns or []
+        row_constraints = response.mdms[0].data.rowConstraints or []
+        result["row_constraints"] = row_constraints
+        column_list = []
+
+        for col in columns:
+            column_info = {
+                "name": col.name,
+                "type": col.type,
+                "required": col.required,
+                "pattern": col.pattern,
+                "mdms_values": [],
+                "code": col.code
+            }
+
+            if col.mdmsSource:
+                dependent_schema_code = f"{col.mdmsSource.module}.{col.mdmsSource.master}"
+                mdms_response = self.fetch_schema_column_definitions(request_info, dependent_schema_code)
+                if mdms_response.mdms:
+                    column_info["mdms_values"] = [mdms.data.model_dump() for mdms in mdms_response.mdms if mdms.data]
+
+            column_list.append(column_info)
+        result["column_list"] = column_list
         return result
 
     def get_tenant_mapping(self, request_info: RequestInfo, tenant_ids: List[str]) -> Dict:
