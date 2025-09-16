@@ -8,8 +8,8 @@ import {ProjectService} from "../../services/Project";
 import useProject from "../../hooks/useProject";
 import {useHistory, useLocation} from "react-router-dom";
 import CustomArrowRight from "../../components/Custom/CustomArrowRight";
-import { IngestionService } from "../../services/Ingestion";
 import CustomCloseSvg from "../../components/Custom/CustomCloseSvg";
+import { PMService } from "../../services/PMService";
 
 const CreateProject = () => {
 
@@ -98,47 +98,66 @@ const CreateProject = () => {
     }
   }, [createdProject, projectTypeData]);
 
+  const handleFacilityDataDownload = async () => {
+    setBlockUI(true);
+    try {
+      await PMService.projectFacilityDataTemplateDownload(createdProject.additionalDetails.geographyDetails, t);
+      setToast({
+        label: t("PM_TOAST_FACILITY_TEMPLATE_DOWNLOAD_SUCCESS"),
+        key: "success",
+      })
+
+    } catch (error) {
+      console.error("Error downloading project facility data template", error);
+      setToast({
+        label: t("PM_TOAST_FACILITY_TEMPLATE_DOWNLOAD_ERROR"),
+        key: "error"
+      })
+
+    } finally {
+      setBlockUI(false);
+    }
+  }
+
   const handleFacilityDataUpload = async (file) => {
 
     setBlockUI(true);
     let uploadedFile;
     try {
-      const response = await IngestionService.uploadTemplateFile(file, succeedFileUpload || false, errorCode || "INVALID_DATA");
+      const response = await PMService.projectFacilityDataTemplateUpload(file, createdProject?.id);
 
-      if (response.status === 200) {
+      if (response.errorCode === "INVALID_TEMPLATE") {
+        setToast({
+          key: "error",
+          label: t("PM_TOAST_FACILITY_DATA_UPLOAD_TEMPLATE_ERROR")
+        })
+
+      } else if (response.errorCode === "INVALID_DATA") {
+        setInvalidDataError({
+          label: `${response.errorCount} ${t("PM_HEALTH_FACILITIES_VALIDATION_FAILED")}`
+        })
+        uploadedFile = {
+          name: response.file.name || file.name,
+          data: response.file.data,
+        }
+
+      } else {
         setToast({
           key: "success",
-          label: `Successfully uploaded file`,
+          label: t("PM_TOAST_FACILITY_DATA_UPLOAD_SUCCESS"),
         })
-        uploadedFile =  {
-          name: file.name,
-          fileStoreId: "dummy_id"
+        uploadedFile = {
+          name: response.file.name || file.name,
+          data: response.file.data,
         }
       }
 
     } catch (e) {
       console.error("Error uploading template", e);
-      if (e.status === 400) {
-        if (e.data.code === "INVALID_TEMPLATE") {
-          setToast({
-            key: "error",
-            label: `The uploaded file does not match the required template structure. Please download and use the latest template.`
-          })
-        } else if (e.data.code === "INVALID_DATA") {
-          setInvalidDataError({
-            label: `${e.data.invalidFacilitiesCount} ${t("PM_HEALTH_FACILITIES_VALIDATION_FAILED")}`
-          })
-          uploadedFile =  {
-            name: file.name,
-            fileStoreId: "dummy_id"
-          }
-        }
-      } else {
-        setToast({
-          key: "error",
-          label: `Error uploading file`,
-        })
-      }
+      setToast({
+        key: "error",
+        label: t("PM_TOAST_FACILITY_DATA_UPLOAD_ERROR"),
+      })
     } finally {
       setBlockUI(false);
     }
@@ -286,6 +305,7 @@ const CreateProject = () => {
               name: "downloadTemplate",
               heading: "PM_CREATE_PROJECT_HEAD_DOWNLOAD_FACILITY_TEMPLATE",
               description: "PM_CREATE_PROJECT_HEAD_DOWNLOAD_FACILITY_TEMPLATE_DESC",
+              handleDownload: handleFacilityDataDownload,
               t
             },
             route: "project-duration-2",
@@ -402,6 +422,7 @@ const CreateProject = () => {
 
   const upsertProject = async (projectData) => {
 
+    setBlockUI(true);
     let projectUpsertData;
     if (projectId) {
       projectUpsertData = {
@@ -423,15 +444,18 @@ const CreateProject = () => {
       setCurrentKey(prev => prev + 1);
       setToast({
         key: "success",
-        label: `Successfully ${ projectId ? `updated` : `created` } project draft`,
+        label: projectId ? t("PM_TOAST_DRAFT_PROJECT_UPDATION_SUCCESS") : t("PM_TOAST_DRAFT_PROJECT_CREATION_SUCCESS"),
       })
 
     } catch (e) {
       console.error(`Error ${ projectId ? `updating` : `creating` } project`, e);
       setToast({
         key: "error",
-        label: `Error ${ projectId ? `updating` : `creating` } project`,
+        label: projectId ? t("PM_TOAST_DRAFT_PROJECT_UPDATION_ERROR") : t("PM_TOAST_DRAFT_PROJECT_CREATION_ERROR"),
       })
+
+    } finally {
+      setBlockUI(false);
     }
   }
 

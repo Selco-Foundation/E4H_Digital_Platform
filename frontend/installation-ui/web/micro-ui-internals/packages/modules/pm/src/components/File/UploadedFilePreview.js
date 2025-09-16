@@ -6,17 +6,17 @@ import CustomCloseSvg from "../Custom/CustomCloseSvg";
 
 const UploadedFilePreview = ({ t, file, onReupload, onRemove }) => {
 
-  const [mobileView, setMobileView] = useState(window.innerWidth <= 780);
+  const [mobileView, setMobileView] = useState(window.innerWidth <= 1020);
 
   useEffect(() => {
-    const handleResize = () => setMobileView(window.innerWidth <= 780);
+    const handleResize = () => setMobileView(window.innerWidth <= 1020);
     window.addEventListener("resize", handleResize);
 
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
   const handleDownload = () => {
-    const url = URL.createObjectURL(file);
+    const url = URL.createObjectURL(file.data);
     const link = document.createElement("a");
     link.href = url;
     link.download = file.name;
@@ -44,13 +44,15 @@ const UploadedFilePreview = ({ t, file, onReupload, onRemove }) => {
         marginBottom: "15px",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "12px", maxWidth: "100%" }}>
         {<CustomFileIcon file={file} width={"30px"} height={"30px"} />}
         <span
           style={{
             fontSize: "16px",
             color: "#787878",
             fontWeight: "bold",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
           }}
         >
           {file.name}
@@ -77,7 +79,7 @@ const UploadedFilePreview = ({ t, file, onReupload, onRemove }) => {
             width={"20px"}
             styles={{marginRight: "5px"}}
           />
-          <span style={{ color: "#C84C0E", fontSize: "16px", fontWeight: "500", fontFamily: "Roboto" }}>
+          <span style={{ color: "#C84C0E", fontSize: "16px", fontWeight: "500", fontFamily: "Roboto", minWidth: "fit-content" }}>
             {t("CORE_COMMON_RE_UPLOAD")}
           </span>
         </button>
@@ -101,7 +103,7 @@ const UploadedFilePreview = ({ t, file, onReupload, onRemove }) => {
             width={"15px"}
             styles={{marginRight: "5px"}}
           />
-          <span style={{ color: "#C84C0E", fontSize: "16px", fontWeight: "500", fontFamily: "Roboto" }}>
+          <span style={{ color: "#C84C0E", fontSize: "16px", fontWeight: "500", fontFamily: "Roboto", minWidth: "fit-content" }}>
             {t("CORE_COMMON_DOWNLOAD")}
           </span>
         </button>

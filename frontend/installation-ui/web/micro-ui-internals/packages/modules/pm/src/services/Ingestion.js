@@ -1,68 +1,52 @@
-import { Request } from "@egovernments/digit-ui-libraries";
+import { CustomRequest } from "../components/Custom/CustomRequest";
 
 export const IngestionService = {
 
-  downloadTemplateFile : async (boundaryCodes) => {
-    const endpoint = "/ingestion-service/_download";
-    const params = {
-      tenantId : "in",
-    }
+  downloadTemplateFile : async (boundaryData) => {
+    const endpoint = "/ingestion-service/template/facilityIngestionTemplateWithData";
     const headers = {
       "Content-Type" : "application/json"
     }
 
-    return await Request({
+    await CustomRequest({
       url : endpoint,
+      data : boundaryData,
       userService : true,
       method : "POST",
       auth : true,
-      params : params,
       headers : headers,
+      fileDownload: true,
+      responseType: "blob",
+      defaultFilename: "download.xlsx"
     });
   },
 
-  uploadTemplateFile : async (boundaryCodes, succeed, code) => {
-    const endpoint = "/ingestion-service/_download";
-    const params = {
-      tenantId : "in",
-    }
-    const headers = {
-      "Content-Type" : "application/json"
-    }
+  validateFacilityDataTemplate: async (filledFacilityData) => {
+    const endpoint = "/ingestion-service/ingest/facilitiesValidateData";
 
-    async function fakeApiCall(shouldSucceed = true, errorCode, delay = 4000) {
-      return new Promise((resolve, reject) => {
-        setTimeout(() => {
-          if (shouldSucceed) {
-            resolve({
-              status: 200,
-              message: "Request successful",
-              data: { id: 1, name: "Dummy User" },
-            });
-          } else {
-            reject({
-              status: 400,
-              message: "Something went wrong",
-              data: {
-                code: errorCode,
-                invalidFacilitiesCount: 48
-              }
-            });
-          }
-        }, delay);
-      });
-    }
+    return await CustomRequest({
+      url : endpoint,
+      data : filledFacilityData,
+      userService : true,
+      method : "POST",
+      auth : true,
+      customRequestInfo: (data, RequestInfo) => {data.append("request_info", JSON.stringify(RequestInfo))},
+      responseType: "blob",
+    })
+  },
 
-    return await fakeApiCall(succeed, code);
-    // const { data: { files: fileStoreIds } = {} } = await Digit.UploadServices.MultipleFilesStorage(module, e.target.files, tenantId)
-    // return await Request({
-    //   url : endpoint,
-    //   userService : true,
-    //   method : "POST",
-    //   auth : true,
-    //   params : params,
-    //   headers : headers,
-    // });
+  uploadTemplateFile : async (validatedFacilityData) => {
+    const endpoint = "/ingestion-service/ingest/createFacilityAndUpdateProject";
+
+    return await CustomRequest({
+      url : endpoint,
+      data : validatedFacilityData,
+      userService : true,
+      method : "POST",
+      auth : true,
+      customRequestInfo: (data, RequestInfo) => {data.append("request_info", JSON.stringify(RequestInfo))},
+      responseType: "blob",
+    });
   }
 
 }

@@ -99,7 +99,8 @@ module.exports = function (app) {
     "/project/facility/v1/_search",
     "/asset-registry/v1/asset/_search",
     "/project/v1/project/workflow/update",
-    "/inbox/v2/project/_search"
+    "/inbox/v2/project/_search",
+    "/ingestion-service/"
   ].forEach((location) => app.use(location, createProxy));
   ["/pb-egov-assets"].forEach((location) => app.use(location, assetsProxy));
   ["/mdms-v2/v2/_create"].forEach((location) => app.use(location, mdmsProxy));

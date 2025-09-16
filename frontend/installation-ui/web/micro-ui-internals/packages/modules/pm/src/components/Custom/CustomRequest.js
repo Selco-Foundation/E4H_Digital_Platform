@@ -42,60 +42,80 @@ const userServiceData = () => ({ userInfo: Digit.UserService.getUser()?.info });
 
 window.Digit = window.Digit || {};
 window.Digit = { ...window.Digit, RequestCache: window.Digit.RequestCache || {} };
-export const CustomRequest = ({
+
+const getFilename = (disposition, fallback) => {
+  if (!disposition || typeof disposition !== 'string') {
+    return fallback;
+  }
+
+  try {
+    // Try RFC5987 first (filename*=UTF-8''...)
+    const rfc5987Match = disposition.match(/filename\*=UTF-8''([^;,\s]+)/i);
+    if (rfc5987Match) {
+      return decodeURIComponent(rfc5987Match[1]);
+    }
+
+    // Try RFC2183/RFC2616 (filename="..." or filename=...)
+    const standardMatch = disposition.match(/filename\s*=\s*"?([^";,\s]+)"?/i);
+    if (standardMatch) {
+      return standardMatch[1].trim();
+    }
+
+    return fallback;
+  } catch (error) {
+    console.warn('Error parsing Content-Disposition filename:', error);
+    return fallback;
+  }
+};
+
+export const CustomRequest = async ({
   method = "POST",
   url,
   data = {},
   headers = {},
   params = {},
-  auth=true,
+  auth = true,
   urlParams = {},
   userService,
   locale = true,
   authHeader = false,
   setTimeParam = true,
-  userDownload = false,
+  fileDownload = false,
+  defaultFilename,
+  responseType,
   noRequestInfo = false,
   reqTimestamp = false,
+  customRequestInfo = (data, RequestInfo) => {
+    data.RequestInfo = RequestInfo;
+  },
 }) => {
 
   const ts = new Date().getTime();
 
-  if (method.toUpperCase() === "POST") {
-    data.RequestInfo = {
+  if (method.toUpperCase() === "POST" && !noRequestInfo) {
+    let RequestInfo = {
       apiId: "Rainmaker",
     };
 
     if (auth) {
-      data.RequestInfo = { ...data.RequestInfo, ...requestInfo() };
+      RequestInfo = { ...RequestInfo, ...requestInfo() };
     }
     if (userService) {
-      data.RequestInfo = { ...data.RequestInfo, ...userServiceData() };
+      RequestInfo = { ...RequestInfo, ...userServiceData() };
     }
     if (locale) {
-      data.RequestInfo = { ...data.RequestInfo, msgId: `${ts}|${Digit.StoreData.getCurrentLanguage()}` };
-    }
-
-    if (noRequestInfo) {
-      delete data.RequestInfo;
+      RequestInfo = { ...RequestInfo, msgId: `${ts}|${Digit.StoreData.getCurrentLanguage()}` };
     }
 
     const privacy = Digit.Utils.getPrivacyObject();
     if (privacy && !url.includes("/edcr/rest/dcr/")) {
-      if(!noRequestInfo){
-        data.RequestInfo = { ...data.RequestInfo, plainAccessRequest: { ...privacy } };
-      }
+      RequestInfo = { ...RequestInfo, plainAccessRequest: { ...privacy } };
     }
+
+    customRequestInfo(data, RequestInfo);
   }
 
-  const headers1 = {
-    "Content-Type": "application/json",
-    Accept: window?.globalConfigs?.getConfig("ENABLE_SINGLEINSTANCE") ? "application/pdf,application/json" : "application/pdf",
-  };
-
   if (authHeader) headers = { ...headers, ...authHeaders() };
-
-  if (userDownload) headers = { ...headers, ...headers1 };
 
   if (setTimeParam) {
     params._ = Date.now();
@@ -113,5 +133,27 @@ export const CustomRequest = ({
     })
     .join("/");
 
-  return Axios({ method, url: _url, data, params, headers });
+  const response =
+    fileDownload || responseType
+      ? await Axios({ method, url: _url, data, params, headers, responseType: responseType || "blob" })
+      : await Axios({ method, url: _url, data, params, headers });
+
+  if (fileDownload) {
+    const blob = new Blob([response.data], {
+      type: response.headers["content-type"],
+    });
+
+    const filename = getFilename(response.headers["content-disposition"], defaultFilename);
+
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  }
+
+  return response;
 };

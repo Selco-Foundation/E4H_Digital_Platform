@@ -18,10 +18,8 @@ const CustomUploadFile = ({ setError, clearErrors, props }) => {
         uploadedFile.name.toLowerCase().endsWith(ext.toLowerCase())
       )
     ) {
-      const savedFile = await handleFileUpload(uploadedFile);
-      if (savedFile) {
-        setFile(savedFile);
-      }
+      const savedFile = await handleFileUpload(uploadedFile, setFile);
+      setFile(savedFile);
       clearErrors(name);
     } else {
       setError(name, {

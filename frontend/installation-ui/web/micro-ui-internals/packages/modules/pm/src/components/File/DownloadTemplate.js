@@ -3,11 +3,7 @@ import { DownloadIcon } from "@egovernments/digit-ui-react-components";
 
 const DownloadTemplate = ({ props }) => {
 
-  const { t, heading, description } = props;
-
-  const handleDownload = () => {
-    alert("Downloading template...");
-  };
+  const { t, heading, description, handleDownload } = props;
 
   return (
     <div
