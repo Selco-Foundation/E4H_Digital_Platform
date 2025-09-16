@@ -30,12 +30,13 @@ main  <----------------------+         hotfix/*
 ```
 
 Step-by-step flow:
-1. Developers create `feature/*` branches from `develop` and merge back after review.
+1.  Developers create `feature/*` branches from `develop` and merge back after review.
 2. `develop` is deployed to the **dev** environment.
-3. After QA signoff, a `release/*` branch is created and merged to `main` via PR (Once got approved by client).
-4. `main` is deployed to **uat** environment.
-5. After final signoff, the exact image tested in UAT is promoted to **production** (no rebuild), and a tag is created on `main` for reference.
-6. Hotfixes:
+3.  Create `release/*` from develop at the start of the sprint and update it incrementally with each feature after qa signoff
+4.  After QA signoff for sprint, the `release/*` branch is merged to `main` via PR (Once got approved by client).
+5. `main` is deployed to **uat** environment.
+6.  After final signoff, the exact image tested in UAT is promoted to **production** (no rebuild), and a tag is created on `main` for reference.
+7.  Hotfixes:
     - For UAT: use `hotfix-uat-<description>` from `release/*` or `main`, merge back to both `main` and `release/*` (if open).
     - For Production: use `hotfix-v<version>-<description>` from `main`, merge back to both `main`.
 
@@ -59,13 +60,14 @@ Step-by-step flow:
     - Code in `develop` is deployed to the **dev** environment.
 
 2. **Release Preparation**
-    - After QA signoff, create a `release/*` branch from `develop`.
+    - create a `release/*` branch from `develop` at the start of the sprint
     - Raise a PR from `release/*` to `main`.
+    - Update it incrementally with each feature after qa signoff
     - Share the PR with the client for review.
 
 3. **UAT Deployment**
     - After client signoff, merge the PR to `main`.
-    - Deploy the code from `main` to the **uat** environment.
+    - Deploy the c[ode from `main` to the **uat** env]()ironment.
 
 4. **Production Release**
     - After final signoff (QA & client), promote the exact image tested in UAT to **production** (no new build).
