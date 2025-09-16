@@ -157,7 +157,7 @@ public class FieldPlannerApiController {
     @RequestMapping(value = "/facility/v1/bulk/_unassign", method = RequestMethod.POST)
     public ResponseEntity<ResponseInfo> fieldPlanFacilityUnassignBulk(@ApiParam(value = "Capture linkage of Field Plan and facility.", required = true) @Valid @RequestBody FieldPlanFacilityBulkRequest request) {
         request.getRequestInfo().setApiId(httpServletRequest.getRequestURI());
-        producer.push(fieldPlannerConfiguration.getBulkCreateFieldPlanFacilityTopic(), request);
+        producer.push(fieldPlannerConfiguration.getBulkUnassignFieldPlanFacilityTopic(), request);
 
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(ResponseInfoFactory
                 .createResponseInfo(request.getRequestInfo(), true));

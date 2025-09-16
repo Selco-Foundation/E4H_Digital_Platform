@@ -26,6 +26,9 @@ public class FieldPlannerConfiguration {
     @Value("${fieldPlan.facility.consumer.bulk.create.topic}")
     private String bulkCreateFieldPlanFacilityTopic;
 
+    @Value("${fieldPlan.facility.consumer.bulk.unassign.topic}")
+    private String bulkUnassignFieldPlanFacilityTopic;
+
     @Value("${egov.project.host}")
     private String projectServiceHost;
 
@@ -58,7 +61,7 @@ public class FieldPlannerConfiguration {
     @Value("${fieldPlan.facility.kafka.create.topic}")
     private String createFieldPlanFacilityTopic;
 
-    @Value("${fieldPlan.facility.kafka.delete.topic}")
+    @Value("${fieldPlan.facility.kafka.unassign.topic}")
     private String deleteFieldPlanFacilityTopic;
 
     @Value("${fieldPlan.kafka.update.topic}")

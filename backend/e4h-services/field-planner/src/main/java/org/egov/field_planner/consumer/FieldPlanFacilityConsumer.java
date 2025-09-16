@@ -42,7 +42,7 @@ public class FieldPlanFacilityConsumer {
         }
     }
 
-    @KafkaListener(topics = "${fieldPlan.facility.consumer.bulk.delete.topic}")
+    @KafkaListener(topics = "${fieldPlan.facility.consumer.bulk.unassign.topic}")
     public List<FieldPlanFacility> bulkUnassign(Map<String, Object> consumerRecord,
                                               @Header(KafkaHeaders.RECEIVED_TOPIC) String topic) {
         try {
