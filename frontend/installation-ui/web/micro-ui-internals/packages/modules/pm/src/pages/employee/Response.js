@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 
-const BannerPicker = ({ response, message, complaintNumber }) => {
+const BannerPicker = ({ response, message, complaintNumber, info }) => {
 
     if (response) {
         return (
@@ -12,6 +12,7 @@ const BannerPicker = ({ response, message, complaintNumber }) => {
                 message={message}
                 complaintNumber={complaintNumber}
                 successful={true}
+                info={info}
                 whichSvg="tick"
             />
         );
@@ -20,12 +21,18 @@ const BannerPicker = ({ response, message, complaintNumber }) => {
     }
 };
 
-const Response = (props) => {
+const Response = () => {
     const { t } = useTranslation();
-    const appState = useSelector((state) => state)["pm"];
+    const responseData = useSelector((state) => state.pm.common.responseData);
+
     return (
         <Card>
-            <BannerPicker response={appState} message={appState.message} complaintNumber={appState.complaintNumber}/>
+            <BannerPicker
+              response={responseData.response}
+              message={responseData.message}
+              complaintNumber={responseData.createdId}
+              info={responseData.info}
+            />
             <div style={{
                 display: "flex",
                 alignItems: "center",
@@ -51,10 +58,13 @@ const Response = (props) => {
                         {t("CS_COMMON_HOME")}
                     </div>
                 </Link>
-                <Link to={`/${window.contextPath}/employee`}>
-                    <SubmitBar label={t("PM_LABEL_CREATE_FIELD_PLAN")}
-                               style={{ boxShadow: "none" }}/>
-                </Link>
+                {responseData.secondaryRedirectionLabel && responseData.onSecondaryRedirection && (
+                    <SubmitBar
+                      label={responseData.secondaryRedirectionLabel}
+                      style={{ boxShadow: "none" }}
+                      onSubmit={() => responseData.onSecondaryRedirection()}
+                    />
+                )}
             </div>
         </Card>
     );

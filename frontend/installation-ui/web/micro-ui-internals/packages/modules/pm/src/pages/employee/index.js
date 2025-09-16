@@ -26,7 +26,7 @@ const PMApp = () => {
       show: true,
     },
     response: {
-      content: t("PM_ACTION_CREATE_PROJECT"),
+      content: t("CORE_COMMON_RESPONSE"),
       path: match.url + `/response`,
       show: true,
     },

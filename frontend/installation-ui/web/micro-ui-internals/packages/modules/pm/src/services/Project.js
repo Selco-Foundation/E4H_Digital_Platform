@@ -44,6 +44,38 @@ export const ProjectService = {
       auth : true,
       headers : headers,
     });
-  }
+  },
+
+  updateProjectWorkflow : async (projectId, workflowAction, workflowComment, transactionComments) => {
+    const endpoint = "/project/v1/project/workflow/update";
+    const queryObj = {
+      projectId: projectId,
+      workflow: {
+        action: workflowAction,
+        comment: workflowComment
+      }
+    }
+
+    if (transactionComments?.length) {
+      queryObj.transactions = [
+        {
+          comments: [...transactionComments]
+        }
+      ]
+    }
+
+    const headers = {
+      "Content-Type" : "application/json"
+    }
+
+    return await Request({
+      url : endpoint,
+      data : queryObj,
+      method : "POST",
+      userService : true,
+      auth : true,
+      headers : headers,
+    });
+  },
 
 }

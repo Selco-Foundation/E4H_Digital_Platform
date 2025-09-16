@@ -1,14 +1,22 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { UploadIcon } from "@egovernments/digit-ui-react-components";
 import UploadedFilePreview from "./UploadedFilePreview";
 import UploadErrorCard from "./UploadErrorCard";
 
-const CustomUploadFile = ({ setError, clearErrors, props }) => {
+const CustomUploadFile = ({ setError, setValue, clearErrors, props }) => {
 
   const { t, heading, description, name, allowedFileTypes = [], handleFileUpload, invalidDataError, errorViewLabel } = props;
   const [file, setFile] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    if (file && !file?.errorCodes?.length) {
+      setValue(name, file);
+    } else {
+      setValue(name, undefined);
+    }
+  }, [file]);
 
   const validateAndSaveFile = async (uploadedFile) => {
     if (
@@ -61,7 +69,7 @@ const CustomUploadFile = ({ setError, clearErrors, props }) => {
   };
 
   return (
-    <div>
+    <div style={{marginBottom: "25px"}}>
       {heading && (
         <h2 style={{ margin: 0, fontSize: "32px", fontWeight: "700", marginBottom: "20px" }}>
           {t(heading)}

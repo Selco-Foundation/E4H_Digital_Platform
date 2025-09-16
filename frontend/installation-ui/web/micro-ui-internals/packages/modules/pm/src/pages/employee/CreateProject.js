@@ -10,6 +10,8 @@ import {useHistory, useLocation} from "react-router-dom";
 import CustomArrowRight from "../../components/Custom/CustomArrowRight";
 import CustomCloseSvg from "../../components/Custom/CustomCloseSvg";
 import { PMService } from "../../services/PMService";
+import { useDispatch } from "react-redux";
+import { populateResponsePage } from "../../redux/actions";
 
 const CreateProject = () => {
 
@@ -21,13 +23,14 @@ const CreateProject = () => {
   const [createdProject, setCreatedProject] = useState({});
   const history = useHistory();
   const location = useLocation();
-  const { key, projectId, succeedFileUpload, errorCode } = Digit.Hooks.useQueryParams();
+  const { key, projectId } = Digit.Hooks.useQueryParams();
   const [mobileView, setMobileView] = useState(window.innerWidth <= 640);
   const [toast, setToast] = useState(null);
   const [blockUI, setBlockUI] = useState(null);
   const [invalidDataError, setInvalidDataError] = useState(null);
   const [getFormData, setGetFormData] = useState(null);
   const [showBackAlert, setShowBackAlert] = useState(false);
+  const dispatch = useDispatch();
 
   useEffect(() => {
     const handleResize = () => setMobileView(window.innerWidth <= 640);
@@ -48,13 +51,13 @@ const CreateProject = () => {
     }
   );
 
-  const { data: projectData } = useProject(projectId);
+  const { data: projectData, revalidate: invalidateProjectData } = useProject(projectId);
 
   useEffect(() => {
-    if (projectId && key) {
+    if (createdProject?.id && key) {
       setCurrentKey(parseInt(key));
     }
-  }, []);
+  }, [createdProject?.id]);
 
   useEffect(() => {
     if (projectData) {
@@ -139,6 +142,7 @@ const CreateProject = () => {
         uploadedFile = {
           name: response.file.name || file.name,
           data: response.file.data,
+          errorCodes: ["INVALID_DATA"]
         }
 
       } else {
@@ -181,11 +185,11 @@ const CreateProject = () => {
             nextRoute: "justification-code",
             populators: {
               name: "projectType",
-              error: "Required",
+              error: t("CORE_COMMON_REQUIRED"),
               optionsKey: "name",
               required: true,
-              options: projectTypeData || []
-            }
+              options: projectTypeData || [],
+            },
           },
           {
             inline: true,
@@ -198,7 +202,7 @@ const CreateProject = () => {
             nextRoute: "project-duration",
             populators: {
               name: "justificationCode",
-              error: "Required",
+              error: t("CORE_COMMON_REQUIRED"),
             },
           },
           {
@@ -216,10 +220,10 @@ const CreateProject = () => {
             nextRoute: "",
             populators: {
               name: "projectDuration",
-              error: "Required"
-            }
-          }
-        ]
+              error: t("CORE_COMMON_REQUIRED"),
+            },
+          },
+        ],
       },
       {
         key: "2",
@@ -235,15 +239,15 @@ const CreateProject = () => {
               name: "state",
               disable: !!createdProject?.additionalDetails?.geographyDetails?.state,
               t,
-              boundaryData
+              boundaryData,
             },
             disable: false,
             route: "state",
             nextRoute: "districts",
             populators: {
               name: "state",
-              error: "Required"
-            }
+              error: t("CORE_COMMON_REQUIRED"),
+            },
           },
           {
             inline: true,
@@ -264,8 +268,8 @@ const CreateProject = () => {
             nextRoute: "blocks",
             populators: {
               name: "districts",
-              error: "Required"
-            }
+              error: t("CORE_COMMON_REQUIRED"),
+            },
           },
           {
             inline: true,
@@ -279,17 +283,17 @@ const CreateProject = () => {
               districtsIdentifier: "districts",
               selectedOptions: createdProject?.additionalDetails?.geographyDetails?.blocks || [],
               t,
-              boundaryData
+              boundaryData,
             },
             disable: false,
             route: "blocks",
             nextRoute: "",
             populators: {
               name: "blocks",
-              error: "Required"
-            }
-          }
-        ]
+              error: t("CORE_COMMON_REQUIRED"),
+            },
+          },
+        ],
       },
       {
         key: "3",
@@ -306,22 +310,22 @@ const CreateProject = () => {
               heading: "PM_CREATE_PROJECT_HEAD_DOWNLOAD_FACILITY_TEMPLATE",
               description: "PM_CREATE_PROJECT_HEAD_DOWNLOAD_FACILITY_TEMPLATE_DESC",
               handleDownload: handleFacilityDataDownload,
-              t
+              t,
             },
             route: "project-duration-2",
             nextRoute: "",
             populators: {
               name: "downloadTemplate",
-              error: "Required",
+              error: t("CORE_COMMON_REQUIRED"),
             },
-          }
-        ]
+          },
+        ],
       },
       {
         key: "3",
         body: [
           {
-            isMandatory: true,
+            isMandatory: !createdProject?.status,
             key: "uploadFacilityData",
             type: "component",
             component: "PMUploadFacilityData",
@@ -338,18 +342,19 @@ const CreateProject = () => {
               description: "PM_CREATE_PROJECT_HEAD_UPLOAD_FACILITY_DATA_DESC",
               t,
               setToast,
-              setBlockUI
+              setBlockUI,
             },
             nextRoute: "",
             populators: {
               name: "uploadFacilityData",
-              error: "Required",
+              error: t("PM_PROJECT_ERROR_FACILITY_DATA_REQUIRED"),
             },
-          }
-        ]
-      }
-    ], [t, projectTypeData, boundaryData, createdProject, invalidDataError]
-  )
+          },
+        ],
+      },
+    ],
+    [t, projectTypeData, boundaryData, createdProject, invalidDataError]
+  );
 
   const filterConfig = (config, currentKey) => {
     return config.filter((step) => parseInt(step.key) === currentKey);
@@ -375,7 +380,7 @@ const CreateProject = () => {
   const formatDataForCreate = (data) => {
     return {
       projectType: data.projectDetails.projectType.name,
-      projectSubType: "",
+      projectSubType: "PROJECT",
       department: "",
       description: "",
       referenceID: "1",
@@ -424,7 +429,7 @@ const CreateProject = () => {
 
     setBlockUI(true);
     let projectUpsertData;
-    if (projectId) {
+    if (createdProject?.id) {
       projectUpsertData = {
         Projects: [formatDataForUpdate(projectData)],
         isCascadingProjectDateUpdate: true,
@@ -440,41 +445,26 @@ const CreateProject = () => {
     try {
       const projectResponse = await ProjectService.upsertProject(projectUpsertData);
       const createdProjectResponse = projectResponse.Project?.[0];
-      setCreatedProject(createdProjectResponse);
+      setCreatedProject({
+        ...createdProjectResponse,
+        status: createdProjectResponse.additionalDetails.status,
+      });
       setCurrentKey(prev => prev + 1);
       setToast({
         key: "success",
-        label: projectId ? t("PM_TOAST_DRAFT_PROJECT_UPDATION_SUCCESS") : t("PM_TOAST_DRAFT_PROJECT_CREATION_SUCCESS"),
+        label: createdProject?.id ? t("PM_TOAST_DRAFT_PROJECT_UPDATION_SUCCESS") : t("PM_TOAST_DRAFT_PROJECT_CREATION_SUCCESS"),
       })
 
     } catch (e) {
-      console.error(`Error ${ projectId ? `updating` : `creating` } project`, e);
+      console.error(`Error ${ createdProject?.id ? `updating` : `creating` } project`, e);
       setToast({
         key: "error",
-        label: projectId ? t("PM_TOAST_DRAFT_PROJECT_UPDATION_ERROR") : t("PM_TOAST_DRAFT_PROJECT_CREATION_ERROR"),
+        label: createdProject?.id ? t("PM_TOAST_DRAFT_PROJECT_UPDATION_ERROR") : t("PM_TOAST_DRAFT_PROJECT_CREATION_ERROR"),
       })
 
     } finally {
       setBlockUI(false);
     }
-  }
-
-  const handleFormSubmit = async (data) => {
-    switch (currentKey) {
-      case 1:
-        setPersistedFormData(prev => ({...prev, projectDetails: data}));
-        setCurrentKey(prev => prev + 1);
-        break;
-      case 2:
-        const newProjectFormData = {...persistedFormData, geographyDetails: data};
-        setPersistedFormData(newProjectFormData);
-        await upsertProject(newProjectFormData);
-        break;
-    }
-  }
-
-  const handleFormValueChange = (setValue, formData) => {
-
   }
 
   const setFormAccessors = ({setValue, getValues}) => {
@@ -510,6 +500,54 @@ const CreateProject = () => {
   const onStepClick = (key) => {
     if (key >= currentKey) return;
     setCurrentKey(key + 1);
+  }
+
+  const handleCompleteProjectCreation = async () => {
+
+    if (!createdProject?.id) {
+      return;
+    }
+
+    try {
+      let response = {};
+      if (!createdProject?.status) {
+        response = await ProjectService.updateProjectWorkflow(createdProject.id, "SCHEDULED", "Schedule Project");
+        await invalidateProjectData();
+      }
+
+      dispatch(populateResponsePage({
+        response: response,
+        message: !!createdProject?.status ? t("PM_COMMON_PROJECT_UPDATED") : t("PM_COMMON_PROJECT_CREATED"),
+        createdId: createdProject.name,
+        info: t("PM_COMMON_PROJECT_NAME"),
+        secondaryRedirectionLabel: t("PM_LABEL_CREATE_FIELD_PLAN"),
+        onSecondaryRedirection: () => history.push(`/${window?.contextPath}/employee/pm/project/${createdProject.id}/details`),
+      }))
+      history.push(`/${window?.contextPath}/employee/pm/response`);
+
+    } catch (error) {
+      console.error("Error updating project workflow", error);
+      setToast({
+        key: "error",
+        label: t("PM_TOAST_DRAFT_PROJECT_WORKFLOW_UPDATE_ERROR"),
+      })
+    }
+  }
+
+  const handleFormSubmit = async (data) => {
+    switch (currentKey) {
+      case 1:
+        setPersistedFormData(prev => ({...prev, projectDetails: data}));
+        setCurrentKey(prev => prev + 1);
+        break;
+      case 2:
+        const newProjectFormData = {...persistedFormData, geographyDetails: data};
+        setPersistedFormData(newProjectFormData);
+        await upsertProject(newProjectFormData);
+        break;
+      case 3:
+        await handleCompleteProjectCreation();
+    }
   }
 
   const handleBackNavigation = () => {
@@ -611,7 +649,6 @@ const CreateProject = () => {
           color: "#0B0C0C"
         }}
         isDescriptionBold={true}
-        // onFormValueChange={handleFormValueChange}
         getFormAccessors={setFormAccessors}
         defaultValues={getDefaultValues()}
         showMultipleCardsWithoutNavs={true}
