@@ -1,175 +1,118 @@
-import React, {useEffect, useMemo, useRef, useState} from "react";
-import {useTranslation} from "react-i18next";
-import {Loader, Table, SubmitBar} from "@egovernments/digit-ui-react-components";
-import {Link} from "react-router-dom";
+import React, { useEffect, useRef, useState, useMemo, useCallback } from "react";
+import { useTranslation } from "react-i18next";
+import { Loader, Table, SubmitBar } from "@egovernments/digit-ui-react-components";
+import { Link, useHistory, useLocation } from "react-router-dom";
+import useProject from "../../hooks/useProject";
 
-const SAMPLE_PROJECTS = [
-    {
-        id: "MH-QC_HO-2024-200centres-ASSAM",
-        projectName: "MH-QC_HO-2024-200centres",
-        state: "Assam",
-        projectType: "Livelihood",
-        startDate: "08/05/2025",
-        endDate: "08/10/2025",
-        status: "Scheduled",
-        noOfHFs: 564,
-    },
-    {
-        id: "MH-QC_HO-2024-200centres-MANIPUR",
-        projectName: "MH-QC_HO-2024-200centres",
-        state: "Manipur",
-        projectType: "Livelihood",
-        startDate: "08/05/2025",
-        endDate: "08/10/2025",
-        status: "In Progress",
-        noOfHFs: 1244,
-    },
-    {
-        id: "MH-QC_HO-2024-200centres-KARNATAKA",
-        projectName: "MH-QC_HO-2024-200centres",
-        state: "Karnataka",
-        projectType: "Medtech",
-        startDate: "08/05/2025",
-        endDate: "08/10/2025",
-        status: "Completed",
-        noOfHFs: 4534,
-    },
-];
-
-for (let i = 4; i <= 18; i++) {
-    SAMPLE_PROJECTS.push({
-        id: `MH-QC_HO-2024-${200 + i}centres-${i}`,
-        projectName: `MH-QC_HO-2024-${200 + i}centres`,
-        state: ["Assam", "Manipur", "Karnataka", "Odisha", "Kerala"][i % 5],
-        projectType: ["Livelihood", "Medtech", "Healthcare"][i % 3],
-        startDate: "08/05/2025",
-        endDate: "08/10/2025",
-        status: ["Scheduled", "In Progress", "Completed"][i % 3],
-        noOfHFs: 300 + i * 37,
-    });
-}
-
-const SORT_DIR = {
-    ASC: "ASC",
-    DESC: "DESC",
-};
-
-const parseDate = (ddmmyyyy) => {
-    const [dd, mm, yyyy] = ddmmyyyy.split("/").map((s) => parseInt(s, 10));
-    return new Date(yyyy, mm - 1, dd).getTime();
+const formatDate = (timestamp) => {
+    const date = new Date(timestamp);
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    const year = date.getFullYear();
+    return `${month}/${day}/${year}`;
 };
 
 const ProjectTable = () => {
-    const {t} = useTranslation();
-    const [search, setSearch] = useState("");
-    const [query, setQuery] = useState("");
-    const [loading, setLoading] = useState(false);
+    const { t } = useTranslation();
+    const history = useHistory();
+    const location = useLocation();
+    const queryParams = new URLSearchParams(window.location.search);
 
-    const [pageSize, setPageSize] = useState(5);
-    const [pageOffset, setPageOffset] = useState(0);
+    const initialFilter = useMemo(() => {
+        try {
+            const filterParam = queryParams.get("filter");
+            return filterParam ? JSON.parse(filterParam) : {
+                subProjectTypeId: "PROJECT"
+            };
+        } catch (error) {
+            return {
+                subProjectTypeId: "PROJECT"
+            };
+        }
+    }, []);
+
+    const [queryFilter, setQueryFilter] = useState(initialFilter);
+    const [pageSize, setPageSize] = useState(parseInt(queryParams.get("pageSize")) || 10);
+    const [pageOffset, setPageOffset] = useState(parseInt(queryParams.get("pageOffset")) || 0);
+    const [searchText, setSearchText] = useState(queryFilter.name || "");
+
+    const prevSearchParamsRef = useRef(JSON.stringify(queryFilter));
     const prevPageSizeRef = useRef(pageSize);
 
-    const [sortBy, setSortBy] = useState(null);
-    const [sortDir, setSortDir] = useState(SORT_DIR.DESC);
+    const { isLoading, isError, error, data } = useProject(
+        queryFilter,
+        pageSize,
+        pageOffset
+    );
 
     useEffect(() => {
-        if (prevPageSizeRef.current !== pageSize) {
+        history.replace({
+            pathname: location.pathname,
+            search: `filter=${JSON.stringify(queryFilter)}&pageSize=${pageSize}&pageOffset=${pageOffset}`
+        });
+    }, [queryFilter, pageSize, pageOffset]);
+
+    useEffect(() => {
+        const prevSearchParams = prevSearchParamsRef.current;
+        const currentSearchParams = JSON.stringify(queryFilter);
+
+        if (prevSearchParams !== currentSearchParams || prevPageSizeRef.current !== pageSize) {
             setPageOffset(0);
+            prevSearchParamsRef.current = currentSearchParams;
             prevPageSizeRef.current = pageSize;
         }
-    }, [pageSize]);
+    }, [queryFilter, pageSize]);
 
-    const filtered = useMemo(() => {
-        const q = (query || "").trim().toLowerCase();
-        let out = SAMPLE_PROJECTS.filter((p) =>
-            q ? p.id.toLowerCase().includes(q) : true
-        );
+    const handleSearch = () => {
+        setQueryFilter({
+            name: searchText,
+            subProjectTypeId: "PROJECT"
+        });
+    };
 
-        if (sortBy === "startDate") {
-            out = out.sort((a, b) => {
-                    const da = parseDate(a.startDate);
-                    const db = parseDate(b.startDate);
-                    return sortDir === SORT_DIR.ASC ? da - db : db - da;
-                }
-            );
-        } else if (sortBy === "endDate") {
-            out = out.sort((a, b) => {
-                    const da = parseDate(a.endDate);
-                    const db = parseDate(b.endDate);
-                    return sortDir === SORT_DIR.ASC ? da - db : db - da;
-                }
-            );
-        }
-        return out;
-    }, [query, sortBy, sortDir]);
-
-    const paged = useMemo(() => {
-        const start = pageOffset;
-        const end = pageOffset + pageSize;
-        return filtered.slice(start, end);
-    }, [filtered, pageOffset, pageSize]);
+    const handleClear = () => {
+        setSearchText("");
+        setQueryFilter({
+            subProjectTypeId: "PROJECT"
+        });
+    };
 
     const onNextPage = () => {
-        const next = pageOffset + pageSize;
-        if (next < filtered.length) setPageOffset(next);
+        setPageOffset(pageOffset + pageSize);
     };
+
     const onPrevPage = () => {
-        const prev = pageOffset - pageSize;
-        if (prev >= 0) setPageOffset(prev);
+        setPageOffset(pageOffset - pageSize);
     };
+
     const onPageSizeChange = (e) => {
         setPageSize(parseInt(e.target.value, 10));
     };
 
-    const toggleSort = (field) => {
-        if (sortBy !== field) {
-            setSortBy(field);
-            setSortDir(SORT_DIR.DESC);
-        } else {
-            setSortDir((d) => (d === SORT_DIR.DESC ? SORT_DIR.ASC : SORT_DIR.DESC));
-        }
-    };
-
-    const DefaultHeader = ({label}) => (
-        <span style={{
-            color: '#0B0C0C',
-            fontSize: "16px"
-        }}>
+    const DefaultHeader = ({ label }) => (
+        <span style={{ color: '#0B0C0C', fontSize: "16px" }}>
             {label}
         </span>
     );
 
-    const SortHeader = ({label, field}) => (
-        <span
-            onClick={() => toggleSort(field)}
-            style={{cursor: "pointer", userSelect: "none", color: '#0B0C0C', fontSize: "16px"}}
-            title="Click to sort"
-        >
-            {label}{" "}
-            {sortBy === field ? (sortDir === SORT_DIR.DESC ? "↑" : "↓") : "↑↓"}
+    const GetCell = (value) => (
+        <span className="cell-text" style={{ color: "#0B0C0C" }}>
+            {value}
         </span>
     );
-
-    const GetCell = (value) => (
-        <span
-            className="cell-text"
-            style={{color: "#0B0C0C"}}>
-            {value}
-        </span>);
 
     const columns = [
         {
             Header: <DefaultHeader label={t("PM_LABEL_PROJECT_NAME")} />,
             accessor: "projectName",
-            Cell: ({row}) => (
+            Cell: ({ row }) => (
                 <div>
                     <Link
-                        to="#"
-                        onClick={(e) => e.preventDefault()}
+                        to={`/${window.contextPath}/employee/pm/project/${row.original.id}/details`}
                         className="link"
-                        style={{color: "#C84C0E", textDecoration: "none"}}
+                        style={{ color: "#C84C0E", textDecoration: "none" }}
                     >
-                        {row.original.projectName}
+                        {row.original.name || row.original.projectNumber}
                     </Link>
                 </div>
             )
@@ -177,37 +120,60 @@ const ProjectTable = () => {
         {
             Header: <DefaultHeader label={t("PM_PROJECT_INFO_STATE")} />,
             accessor: "state",
-            Cell: ({row}) => GetCell(row.original.state),
+            Cell: ({ row }) => GetCell(
+                row.original.additionalDetails?.geographyDetails?.state?.code !== "-" ?
+                    t(`STATE_${row.original.additionalDetails?.geographyDetails?.state?.code.toUpperCase()}`) :
+                    "-"
+            ),
         },
         {
             Header: <DefaultHeader label={t("PM_LABEL_PROJECT_TYPE")} />,
             accessor: "projectType",
-            Cell: ({row}) => GetCell(row.original.projectType),
+            Cell: ({ row }) => GetCell(row.original.projectType || "-"),
         },
         {
-            Header: <SortHeader label={t("CORE_COMMON_START_DATE")} field="startDate"/>,
+            Header: <DefaultHeader label={t("CORE_COMMON_START_DATE")} />,
             accessor: "startDate",
-            Cell: ({row}) => GetCell(row.original.startDate),
+            Cell: ({ row }) => GetCell(row.original.startDate ? formatDate(row.original.startDate) : "-"),
         },
         {
-            Header: <SortHeader label={t("CS_END_DATE")} field="endDate"/>,
+            Header: <DefaultHeader label={t("CS_END_DATE")} />,
             accessor: "endDate",
-            Cell: ({row}) => GetCell(row.original.endDate),
+            Cell: ({ row }) => GetCell(row.original.endDate ? formatDate(row.original.endDate) : "-"),
         },
         {
             Header: <DefaultHeader label={t("CORE_COMMON_STATUS")} />,
             accessor: "status",
-            Cell: ({row}) => GetCell(row.original.status),
+            Cell: ({ row }) => GetCell(t(`PM_PROJECT_STATUS_${row.original.status ? row.original.status.toUpperCase() : "DRAFT"}`)),
         },
         {
             Header: <DefaultHeader label={t("PM_LABEL_PROJECT_NO_OF_HFS")} />,
             accessor: "numberOfHealthFacilities",
-            Cell: ({row}) => GetCell(row.original.noOfHFs),
+            Cell: ({ row }) => GetCell(row.original.additionalDetails?.countProjectFacilities || 0),
         },
     ];
 
     return (
-        <div style={{marginTop: "20px", padding: "0px 10px", overflow: "auto"}}>
+        <div style={{ marginTop: "20px", padding: "0px 10px", overflow: "auto" }}>
+            {isLoading && (
+                <div
+                    style={{
+                        display: "flex",
+                        justifyContent: "center",
+                        alignItems: "center",
+                        height: "100%",
+                        width: "100%",
+                        zIndex: 5,
+                        backgroundColor: "rgba(255, 255, 255, 0.7)",
+                        position: "fixed",
+                        top: 0,
+                        left: 0,
+                    }}
+                >
+                    <Loader />
+                </div>
+            )}
+
             <div
                 style={{
                     fontSize: "40px",
@@ -227,7 +193,7 @@ const ProjectTable = () => {
                     marginBottom: "16px",
                     borderRadius: "2px",
                 }}>
-                <div style={{marginBottom: "8px", color: "#0B0C0C", fontWeight: 600}}>
+                <div style={{ marginBottom: "8px", color: "#0B0C0C", fontWeight: 600 }}>
                     {t("PM_LABEL_SEARCH_PROJECT_ID")}
                 </div>
                 <div
@@ -239,9 +205,9 @@ const ProjectTable = () => {
                     }}>
                     <input
                         type="text"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        placeholder={t("PM_LABEL_SEARCH_PROJECT_ID")}
+                        value={searchText}
+                        onChange={(e) => setSearchText(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
                         style={{
                             width: "420px",
                             maxWidth: "100%",
@@ -260,11 +226,7 @@ const ProjectTable = () => {
                         }}>
                         <button
                             type="button"
-                            onClick={() => {
-                                setSearch("");
-                                setQuery("");
-                                setPageOffset(0);
-                            }}
+                            onClick={handleClear}
                             style={{
                                 border: "none",
                                 background: "transparent",
@@ -276,43 +238,48 @@ const ProjectTable = () => {
                         </button>
                         <SubmitBar
                             label={t("CORE_COMMON_SEARCH")}
-                            onSubmit={() => {
-                                setQuery(search);
-                                setPageOffset(0);
-                            }}
-                            style={{width: 180}}
+                            onSubmit={handleSearch}
+                            style={{ width: 180 }}
                         />
                     </div>
                 </div>
             </div>
 
-            <div style={{backgroundColor: "white"}}>
-                <div style={{padding: "20px"}}>
-
-                    {loading
-                        ? (<Loader/>)
-                        : (
-                            <div style={{margin: "0 0px", overflow: "auto"}}>
-                                <Table
-                                    t={t || ((k) => k)}
-                                    data={paged}
-                                    columns={columns}
-                                    getCellProps={() => ({
-                                        style: {
-                                            maxWidth: "100%",
-                                            padding: "16px",
-                                            fontSize: "16px"
-                                        },
-                                    })}
-                                    onNextPage={onNextPage}
-                                    onPrevPage={onPrevPage}
-                                    currentPage={Math.floor(pageOffset / pageSize)}
-                                    totalRecords={filtered.length}
-                                    onPageSizeChange={onPageSizeChange}
-                                    pageSizeLimit={pageSize}
-                                />
-                            </div>
-                        )}
+            <div style={{ backgroundColor: "white" }}>
+                <div style={{ padding: "20px" }}>
+                    {data?.projects && data.projects.length > 0 ? (
+                        <div style={{ margin: "0 0px", overflow: "auto" }}>
+                            <Table
+                                t={t}
+                                data={data.projects}
+                                columns={columns}
+                                getCellProps={() => ({
+                                    style: {
+                                        maxWidth: "100%",
+                                        padding: "16px",
+                                        fontSize: "16px"
+                                    },
+                                })}
+                                onNextPage={onNextPage}
+                                onPrevPage={onPrevPage}
+                                currentPage={Math.floor(pageOffset / pageSize)}
+                                totalRecords={data.totalCount || 0}
+                                onPageSizeChange={onPageSizeChange}
+                                pageSizeLimit={pageSize}
+                            />
+                        </div>
+                    ) : (
+                        <div style={{
+                            display: "flex",
+                            justifyContent: "center",
+                            alignItems: "center",
+                            height: "200px",
+                            fontSize: "18px",
+                            color: "#666"
+                        }}>
+                            {!isLoading && t("CS_NO_FACILITIES_FOUND")}
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
