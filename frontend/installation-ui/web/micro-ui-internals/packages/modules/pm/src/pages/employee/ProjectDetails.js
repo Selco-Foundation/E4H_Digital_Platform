@@ -17,6 +17,7 @@ const ProjectDetails = () => {
   const [pageSize, setPageSize] = useState(parseInt(queryParams.get("pageSize")) || 10);
   const [pageOffset, setPageOffset] = useState(parseInt(queryParams.get("pageOffset")) || 0);
   const prevPageSizeRef = useRef(pageSize);
+  const [createdProject, setCreatedProject] = useState(null);
 
   useEffect(() => {
     const handleResize = () => setMobileView(window.innerWidth <= 640);
@@ -25,6 +26,10 @@ const ProjectDetails = () => {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  const { isLoading: projectDataLoading, data: projectData } = useProject({
+    id: [projectId],
+  });
+
   useEffect(() => {
     if (prevPageSizeRef.current !== pageSize) {
       setPageOffset(0);
@@ -32,7 +37,12 @@ const ProjectDetails = () => {
     }
   }, [pageSize]);
 
-  const { isLoading: projectDataLoading, data: projectData } = useProject(projectId);
+  useEffect(() => {
+    const project = projectData?.projects?.[0];
+    if (project) {
+      setCreatedProject(project);
+    }
+  }, [projectData])
 
   const data = [
     {
@@ -179,12 +189,12 @@ const ProjectDetails = () => {
 
   return (
     <div style={{padding: mobileView ? "15px" : "0px"}}>
-      {projectData?.name && (
+      {createdProject?.name && (
         <div style={{fontSize: "40px", fontWeight: "bold", fontFamily: "Roboto Condensed", marginBottom: "20px", color: "#0B0C0C"}}>
-          {projectData?.name}
+          {createdProject?.name}
         </div>
       )}
-      {projectData && (<InfoCard t={t} project={projectData} />)}
+      {createdProject && (<InfoCard t={t} project={createdProject} />)}
       <div style={{display: "flex", gap: "15px", alignItems: "center", marginTop: "20px", marginBottom: "25px"}}>
         <div style={{fontSize: "32px", fontWeight: "bold", fontFamily: "Roboto Condensed", color: "#0B0C0C"}}>
           {t("CS_COMMON_FIELD_PLANS")}

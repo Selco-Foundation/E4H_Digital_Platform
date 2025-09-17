@@ -51,7 +51,9 @@ const CreateProject = () => {
     }
   );
 
-  const { data: projectData, revalidate: invalidateProjectData } = useProject(projectId);
+  const { data: projectData, revalidate: invalidateProjectData } = useProject({
+    id: [projectId],
+  });
 
   useEffect(() => {
     if (createdProject?.id && key) {
@@ -60,8 +62,9 @@ const CreateProject = () => {
   }, [createdProject?.id]);
 
   useEffect(() => {
-    if (projectData) {
-      setCreatedProject(projectData);
+    const project = projectData?.projects?.[0];
+    if (project) {
+      setCreatedProject(project);
     }
   }, [projectData])
 

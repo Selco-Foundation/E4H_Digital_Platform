@@ -1,21 +1,34 @@
 import { useQuery, useQueryClient } from "react-query";
 import {ProjectService} from "../services/Project";
 
-const fetchProject = async (filter, limit, offset) => {
-  const response = await ProjectService.fetchProjects(filter, limit, offset);
-  return response?.Project?.[0] ? { ... response.Project[0].project, status: response.Project[0].status } : null;
+const formatProjects = (rawProjects) => {
+  return rawProjects.map((rawProject) => {
+    return {
+      ...rawProject.project,
+      status: rawProject.status,
+    }
+  })
 }
 
-const useProject = (projectId) => {
+const fetchProject = async (filter, limit, offset) => {
+  const response = await ProjectService.fetchProjects(filter, limit, offset);
+  return {
+    projects: formatProjects(response?.Project),
+    totalCount: response.totalCount,
+  };
+}
+
+const useProject = (queryFilter = {}, limit = 10, offset = 0) => {
+
+  const { id } = queryFilter;
 
   const filter = {
-    Project: {
-      id: [projectId],
-    }
+    Project: {}
   }
 
-  const limit = 1;
-  const offset = 0;
+  if (id?.length) {
+    filter.Project.id = id;
+  }
 
   const queryClient = useQueryClient();
   const { isLoading, isError, error, data } = useQuery(

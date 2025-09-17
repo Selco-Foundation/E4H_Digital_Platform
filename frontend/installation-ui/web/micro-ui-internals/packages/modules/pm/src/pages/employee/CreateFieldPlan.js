@@ -16,7 +16,7 @@ const CreateFieldPlan = () => {
   const [currentKey, setCurrentKey] = useState(1);
   const [persistedFormData, setPersistedFormData] = useState({});
   const [defaultFormData, setDefaultFormData] = useState({});
-  const [project, setProject] = useState(null);
+  const [createdProject, setCreatedProject] = useState(null);
   const { key, fieldPlanId } = Digit.Hooks.useQueryParams();
   const [mobileView, setMobileView] = useState(window.innerWidth <= 640);
   const [toast, setToast] = useState(null);
@@ -44,7 +44,9 @@ const CreateFieldPlan = () => {
     enabled: true,
   });
 
-  const { data: projectData } = useProject(projectId);
+  const { data: projectData } = useProject({
+    id: [projectId],
+  });
 
   useEffect(() => {
     if (fieldPlanId && key) {
@@ -53,16 +55,17 @@ const CreateFieldPlan = () => {
   }, []);
 
   useEffect(() => {
-    if (projectData) {
-      setProject(projectData);
+    const project = projectData?.projects?.[0];
+    if (project) {
+      setCreatedProject(project);
     }
   }, [projectData]);
 
   useEffect(() => {
-    if (fetchedBoundaryData && project) {
-      const selectedStateCode = project.additionalDetails.geographyDetails.state.code;
-      const selectedDistrictCodes = project.additionalDetails.geographyDetails.districts.map((district) => district.code);
-      const selectedBlockCodes = project.additionalDetails.geographyDetails.blocks.map((block) => block.code);
+    if (fetchedBoundaryData && createdProject) {
+      const selectedStateCode = createdProject.additionalDetails.geographyDetails.state.code;
+      const selectedDistrictCodes = createdProject.additionalDetails.geographyDetails.districts.map((district) => district.code);
+      const selectedBlockCodes = createdProject.additionalDetails.geographyDetails.blocks.map((block) => block.code);
 
       const states = fetchedBoundaryData.states.filter((state) => state.code === selectedStateCode);
       const districts = fetchedBoundaryData.districts.filter((district) => selectedDistrictCodes.includes(district.code));
@@ -74,19 +77,19 @@ const CreateFieldPlan = () => {
         blocks,
       });
     }
-  }, [fetchedBoundaryData, project]);
+  }, [fetchedBoundaryData, createdProject]);
 
   useEffect(() => {
-    if (project) {
+    if (createdProject) {
       const formData = {
         fieldPlanDetails: {
-          state: project.additionalDetails.geographyDetails.state,
+          state: createdProject.additionalDetails.geographyDetails.state,
         }
       }
 
       setPersistedFormData(formData);
     }
-  }, [project])
+  }, [createdProject])
 
   const handleFacilityDataUpload = async (file) => {
     setBlockUI(true);
@@ -450,7 +453,6 @@ const CreateFieldPlan = () => {
     }
   }
 
-  console.debug("defaultFormData", defaultFormData);
   return (
     <div style={{padding: mobileView ? "15px" : "0px"}}>
       {blockUI && (
@@ -472,9 +474,9 @@ const CreateFieldPlan = () => {
           <Loader />
         </div>
       )}
-      {project?.name && (
+      {createdProject?.name && (
         <div style={{fontSize: "40px", fontWeight: "bold", fontFamily: "Roboto Condensed", marginBottom: "20px", color: "#0B0C0C"}}>
-          {project?.name}
+          {createdProject?.name}
         </div>
       )}
       <Stepper
