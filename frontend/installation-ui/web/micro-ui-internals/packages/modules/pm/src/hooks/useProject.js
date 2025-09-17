@@ -20,7 +20,7 @@ const fetchProject = async (filter, limit, offset) => {
 
 const useProject = (queryFilter = {}, limit = 10, offset = 0) => {
 
-  const { id } = queryFilter;
+  const { id, name } = queryFilter;
 
   const filter = {
     Project: {}
@@ -28,6 +28,10 @@ const useProject = (queryFilter = {}, limit = 10, offset = 0) => {
 
   if (id?.length) {
     filter.Project.id = id;
+  }
+
+  if (name) {
+    filter.Project.name = name;
   }
 
   const queryClient = useQueryClient();
