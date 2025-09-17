@@ -27,12 +27,16 @@ const Response = () => {
 
     return (
         <Card>
-            <BannerPicker
-              response={responseData.response}
-              message={responseData.message}
-              complaintNumber={responseData.createdId}
-              info={responseData.info}
-            />
+            {responseData ? (
+                <BannerPicker
+                  response={responseData.response}
+                  message={responseData.message}
+                  complaintNumber={responseData.createdId}
+                  info={responseData.info}
+                />
+            ) : (
+                <span>{t("CORE_COMMON_RESPONSE_PAGE_INFO")}</span>
+            )}
             <div style={{
                 display: "flex",
                 alignItems: "center",
@@ -58,7 +62,7 @@ const Response = () => {
                         {t("CS_COMMON_HOME")}
                     </div>
                 </Link>
-                {responseData.secondaryRedirectionLabel && responseData.onSecondaryRedirection && (
+                {responseData?.secondaryRedirectionLabel && responseData?.onSecondaryRedirection && (
                     <SubmitBar
                       label={responseData.secondaryRedirectionLabel}
                       style={{ boxShadow: "none" }}

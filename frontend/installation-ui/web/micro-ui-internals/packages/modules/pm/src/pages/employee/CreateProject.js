@@ -11,7 +11,7 @@ import CustomArrowRight from "../../components/Custom/CustomArrowRight";
 import CustomCloseSvg from "../../components/Custom/CustomCloseSvg";
 import { PMService } from "../../services/PMService";
 import { useDispatch } from "react-redux";
-import { populateResponsePage } from "../../redux/actions";
+import { populateResponsePage, populateWorkingProject } from "../../redux/actions";
 
 const CreateProject = () => {
 
@@ -64,6 +64,7 @@ const CreateProject = () => {
   useEffect(() => {
     const project = projectData?.projects?.[0];
     if (project) {
+      dispatch(populateWorkingProject(project));
       setCreatedProject(project);
     }
   }, [projectData])
