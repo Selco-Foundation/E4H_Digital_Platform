@@ -97,7 +97,7 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
   const [comments, setComments] = useState("");
   const [file, setFile] = useState(null);
   const tenantId = Digit.ULBService.getCurrentTenantId();
-  const [uploadedFile, setUploadedFile] = useState(Array);
+  const [uploadedFile, setUploadedFile] = useState([]);
   const allowedFileTypes = /(docx|pdf|jpg|xlsx)$/i;
   const stateId = Digit.ULBService.getStateId();
   const [uploadedImages, setUploadedImagesIds] = useState(null);
@@ -414,15 +414,12 @@ export const ComplaintDetails = (props) => {
     }
   };
   React.useEffect(() => {
-    window.addEventListener("resize", () => {
-      onResize();
-    });
+    window.addEventListener("resize", onResize);
     return () => {
-      window.addEventListener("resize", () => {
-        onResize();
-      });
+      window.removeEventListener("resize", onResize);
     };
   }, []);
+
   const [toast, setToast] = useState(false);
   const [error, setError] = useState("");
   const stateTenantId = Digit.ULBService.getStateId();
@@ -460,14 +457,13 @@ export const ComplaintDetails = (props) => {
 
   const [imagesToShowBelowComplaintDetails, setImagesToShowBelowComplaintDetails] = useState([]);
 
-  // RAIN-5692 PGR : GRO is assigning complaint, Selecting employee and assign. Its not getting assigned.
-  // Fix for next action  assignee dropdown issue
-  if (workflowDetails && workflowDetails?.data) {
-    workflowDetails.data.initialActionState = workflowDetails?.data?.initialActionState || { ...workflowDetails?.data?.actionState } || {};
+  if (workflowDetails?.data) {
+    workflowDetails.data.initialActionState =
+      workflowDetails.data.initialActionState || (workflowDetails.data.actionState ? { ...workflowDetails.data.actionState } : {});
     workflowDetails.data.actionState = { ...workflowDetails.data };
   }
   if (complaintDetails) {
-    complaintDetails.details.CS_COMPLAINT_DETAILS_TICKET_NO = complaintDetails?.details?.CS_COMPLAINT_DETAILS_TICKET_NO.split("/")[0];
+    complaintDetails.details.CS_COMPLAINT_DETAILS_TICKET_NO = complaintDetails?.details?.CS_COMPLAINT_DETAILS_TICKET_NO?.split("/")?.[0] || "";
   }
 
   const timeline = workflowDetails?.data?.timeline || [];
@@ -616,6 +612,7 @@ export const ComplaintDetails = (props) => {
       case "REOPEN":
         setPopup(true);
         setDisplayMenu(false);
+        break;
       case "CLOSE":
         setPopup(true);
         setDisplayMenu(false);
