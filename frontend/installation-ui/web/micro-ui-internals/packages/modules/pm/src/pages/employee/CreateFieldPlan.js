@@ -173,7 +173,7 @@ const CreateFieldPlan = () => {
             customProps: {
               name: "districts",
               stateIdentifier: "state",
-              disabledOptions: [],
+              selectedOptions: [],
               t,
               boundaryData,
             },
@@ -195,7 +195,7 @@ const CreateFieldPlan = () => {
             customProps: {
               name: "blocks",
               districtsIdentifier: "districts",
-              disabledOptions: [],
+              selectedOptions: [],
               t,
               boundaryData,
             },
@@ -250,7 +250,7 @@ const CreateFieldPlan = () => {
             customProps: {
               name: "activities",
               t,
-              activityTypeData: activityData
+              activityData,
             },
             route: "activities",
             nextRoute: "",
