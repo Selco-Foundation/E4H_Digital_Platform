@@ -15,16 +15,9 @@ export const ProjectService = {
       "Content-Type" : "application/json"
     }
 
-    const requestBody = {
-      Project: {
-        ...queryFilter.Project,
-        subProjectTypeId: "PROJECT",
-      }
-    };
-
     return await Request({
       url : endpoint,
-      data : requestBody,
+      data : queryFilter,
       userService : true,
       method : "POST",
       auth : true,

@@ -21,23 +21,26 @@ const ProjectTable = () => {
     const initialFilter = useMemo(() => {
         try {
             const filterParam = queryParams.get("filter");
-            return filterParam ? JSON.parse(filterParam) : {};
+            return filterParam ? JSON.parse(filterParam) : {
+                subProjectTypeId: "PROJECT"
+            };
         } catch (error) {
-            return {};
+            return {
+                subProjectTypeId: "PROJECT"
+            };
         }
     }, []);
 
     const [queryFilter, setQueryFilter] = useState(initialFilter);
-    const [pageSize, setPageSize] = useState(parseInt(queryParams.get("pageSize")) || 5);
+    const [pageSize, setPageSize] = useState(parseInt(queryParams.get("pageSize")) || 10);
     const [pageOffset, setPageOffset] = useState(parseInt(queryParams.get("pageOffset")) || 0);
     const [searchText, setSearchText] = useState(queryFilter.name || "");
 
     const prevSearchParamsRef = useRef(JSON.stringify(queryFilter));
     const prevPageSizeRef = useRef(pageSize);
 
-    // Use the existing useProject hook
     const { isLoading, isError, error, data } = useProject(
-        { ...queryFilter, name: queryFilter.name || "" },
+        queryFilter,
         pageSize,
         pageOffset
     );
@@ -62,13 +65,16 @@ const ProjectTable = () => {
 
     const handleSearch = () => {
         setQueryFilter({
-            name: searchText
+            name: searchText,
+            subProjectTypeId: "PROJECT"
         });
     };
 
     const handleClear = () => {
         setSearchText("");
-        setQueryFilter({});
+        setQueryFilter({
+            subProjectTypeId: "PROJECT"
+        });
     };
 
     const onNextPage = () => {
@@ -102,8 +108,7 @@ const ProjectTable = () => {
             Cell: ({ row }) => (
                 <div>
                     <Link
-                        to="#"
-                        onClick={(e) => e.preventDefault()}
+                        to={`/${window.contextPath}/employee/pm/project/${row.original.id}/details`}
                         className="link"
                         style={{ color: "#C84C0E", textDecoration: "none" }}
                     >
@@ -139,7 +144,7 @@ const ProjectTable = () => {
         {
             Header: <DefaultHeader label={t("CORE_COMMON_STATUS")} />,
             accessor: "status",
-            Cell: ({ row }) => GetCell(row.original.status || "-"),
+            Cell: ({ row }) => GetCell(t(`PM_PROJECT_STATUS_${row.original.status ? row.original.status.toUpperCase() : "DRAFT"}`)),
         },
         {
             Header: <DefaultHeader label={t("PM_LABEL_PROJECT_NO_OF_HFS")} />,
