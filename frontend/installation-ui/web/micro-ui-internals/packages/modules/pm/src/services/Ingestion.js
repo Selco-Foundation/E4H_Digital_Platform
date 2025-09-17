@@ -29,8 +29,9 @@ export const IngestionService = {
       data : filledFacilityData,
       userService : true,
       method : "POST",
+      attachAuthHeaders: true,
       auth : true,
-      customRequestInfo: (data, RequestInfo) => {data.append("request_info", JSON.stringify(RequestInfo))},
+      attachRequestInfo: (data, RequestInfo) => {data.append("request_info", JSON.stringify(RequestInfo))},
       responseType: "blob",
     })
   },
@@ -43,8 +44,9 @@ export const IngestionService = {
       data : validatedFacilityData,
       userService : true,
       method : "POST",
+      attachAuthHeaders: true,
       auth : true,
-      customRequestInfo: (data, RequestInfo) => {data.append("request_info", JSON.stringify(RequestInfo))},
+      attachRequestInfo: (data, RequestInfo) => {data.append("request_info", JSON.stringify(RequestInfo))},
       responseType: "blob",
     });
   }

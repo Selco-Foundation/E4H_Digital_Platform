@@ -36,6 +36,7 @@ const requestInfo = () => ({
 
 const authHeaders = () => ({
   "auth-token": Digit.UserService.getUser()?.access_token || null,
+  tenantId: Digit.ULBService.getCurrentTenantId(),
 });
 
 const userServiceData = () => ({ userInfo: Digit.UserService.getUser()?.info });
@@ -78,14 +79,14 @@ export const CustomRequest = async ({
   urlParams = {},
   userService,
   locale = true,
-  authHeader = false,
+  attachAuthHeaders = false,
   setTimeParam = true,
   fileDownload = false,
   defaultFilename,
   responseType,
   noRequestInfo = false,
   reqTimestamp = false,
-  customRequestInfo = (data, RequestInfo) => {
+  attachRequestInfo = (data, RequestInfo) => {
     data.RequestInfo = RequestInfo;
   },
 }) => {
@@ -112,10 +113,10 @@ export const CustomRequest = async ({
       RequestInfo = { ...RequestInfo, plainAccessRequest: { ...privacy } };
     }
 
-    customRequestInfo(data, RequestInfo);
+    attachRequestInfo(data, RequestInfo);
   }
 
-  if (authHeader) headers = { ...headers, ...authHeaders() };
+  if (attachAuthHeaders) headers = { ...headers, ...authHeaders() };
 
   if (setTimeParam) {
     params._ = Date.now();
