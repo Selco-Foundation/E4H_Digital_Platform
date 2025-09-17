@@ -462,8 +462,9 @@ export const ComplaintDetails = (props) => {
       workflowDetails.data.initialActionState || (workflowDetails.data.actionState ? { ...workflowDetails.data.actionState } : {});
     workflowDetails.data.actionState = { ...workflowDetails.data };
   }
-  if (complaintDetails) {
-    complaintDetails.details.CS_COMPLAINT_DETAILS_TICKET_NO = complaintDetails?.details?.CS_COMPLAINT_DETAILS_TICKET_NO?.split("/")?.[0] || "";
+  if (complaintDetails?.details) {
+    complaintDetails.details.CS_COMPLAINT_DETAILS_TICKET_NO =
+      complaintDetails.details.CS_COMPLAINT_DETAILS_TICKET_NO?.split("/")?.[0] || "";
   }
 
   const timeline = workflowDetails?.data?.timeline || [];
@@ -830,8 +831,10 @@ export const ComplaintDetails = (props) => {
   };
   return (
     <React.Fragment>
-      <div style={{ color: "#9e1b32", marginBottom: "10px", display:"flex", justifyContent: "end", marginRight: "15px" }}>
-        <div onClick={handleBack} style={{ width: "fit-content", cursor: "pointer" }}>{t("CS_COMMON_BACK")}</div>
+      <div style={{ color: "#9e1b32", marginBottom: "10px", display: "flex", justifyContent: "end", marginRight: "15px" }}>
+        <div onClick={handleBack} style={{ width: "fit-content", cursor: "pointer" }}>
+          {t("CS_COMMON_BACK")}
+        </div>
       </div>
       <Card>
         <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
@@ -932,16 +935,14 @@ export const ComplaintDetails = (props) => {
         />
       ) : null}
       {toast && assignResponse && assignResponse?.IncidentWrappers && <Toast label={t(`CS_ACTION_${selectedAction}_TEXT`)} onClose={closeToast} />}
-      {!isLoading &&
-        complaintDetails?.incident?.applicationStatus !== "CLOSEDAFTERRESOLUTION" &&
-        workflowDetails?.data?.nextActions?.length > 0 && (
-          <ActionBar style={{ marginLeft: isIpadView ? "250px" : "none" }}>
-            {displayMenu && workflowDetails?.data?.nextActions ? (
-              <Menu options={workflowDetails?.data?.nextActions.map((action) => action.action)} t={t} onSelect={onActionSelect} />
-            ) : null}
-            <SubmitBar label={t("WF_TAKE_ACTION")} onSubmit={() => setDisplayMenu(!displayMenu)} />
-          </ActionBar>
-        )}
+      {!isLoading && complaintDetails?.incident?.applicationStatus !== "CLOSEDAFTERRESOLUTION" && workflowDetails?.data?.nextActions?.length > 0 && (
+        <ActionBar style={{ marginLeft: isIpadView ? "250px" : "none" }}>
+          {displayMenu && workflowDetails?.data?.nextActions ? (
+            <Menu options={workflowDetails?.data?.nextActions.map((action) => action.action)} t={t} onSelect={onActionSelect} />
+          ) : null}
+          <SubmitBar label={t("WF_TAKE_ACTION")} onSubmit={() => setDisplayMenu(!displayMenu)} />
+        </ActionBar>
+      )}
       {error && error[0].message && <Toast error={error[0].message} label={error[0].message} onClose={closeToast} />}
     </React.Fragment>
   );
