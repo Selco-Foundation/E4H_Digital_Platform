@@ -79,6 +79,14 @@ const CreateProject = () => {
 
   }, [createdProject, currentKey])
 
+  useEffect(()=>{
+    if(toast){
+      setTimeout(()=>{
+        setToast(null);
+      },2500)
+    }
+  },[toast])
+
   const formatDate = (timestamp) => {
     const date = new Date(timestamp);
     const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -449,9 +457,10 @@ const CreateProject = () => {
     try {
       const projectResponse = await ProjectService.upsertProject(projectUpsertData);
       const createdProjectResponse = projectResponse.Project?.[0];
-      setCreatedProject({
-        ...createdProjectResponse,
-        status: createdProjectResponse.additionalDetails.status,
+      await invalidateProjectData();
+      history.replace({
+        pathname: location.pathname,
+        search: `projectId=${createdProjectResponse.id}&key=${currentKey + 1}`,
       });
       setCurrentKey(prev => prev + 1);
       setToast({
