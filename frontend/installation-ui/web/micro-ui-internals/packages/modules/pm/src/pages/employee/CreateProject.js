@@ -596,7 +596,7 @@ const CreateProject = () => {
     switch (currentKey) {
       case 1:
         setShowBackAlert(false);
-        history.push(`/${window?.contextPath}/employee`);
+        window.history.back();
         break;
       case 3:
          setShowBackAlert(false);
