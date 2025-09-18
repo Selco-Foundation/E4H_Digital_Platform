@@ -213,8 +213,11 @@ const ProjectDetails = () => {
             justifyContent: "space-around",
             alignItems: "center",
             height: "32px",
-            padding: "0px 20px"
+            padding: "0px 20px",
+            cursor: !createdProject?.status ? "default" : "pointer",
+            opacity: !createdProject?.status ? "0.5" : "1",
           }}
+          disabled={!createdProject?.status}
           onClick={() => setShowIntro(true)}
         >
           <span
