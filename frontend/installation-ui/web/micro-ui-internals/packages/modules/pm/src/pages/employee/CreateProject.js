@@ -228,6 +228,8 @@ const CreateProject = () => {
             disable: false,
             customProps: {
               name: "projectDuration",
+              disableStartDate: !!createdProject?.id,
+              disableEndDate: false,
             },
             route: "project-duration",
             nextRoute: "",

@@ -8,15 +8,21 @@ const FormattedDateInput = ({
   style = {},
   className,
   dateFormat = "dd MMMM yyyy",
+  disabled = false,
   ...props
 }) => {
 
   const inputRef = useRef(null);
 
+  const handleDatePickerOpen = (e) => {
+    if (disabled) return;
+    inputRef?.current?.showPicker();
+  }
+
   return (
     <div
       className={className}
-      onClick={() => inputRef?.current?.showPicker()}
+      onClick={handleDatePickerOpen}
       style={{
         position: "relative",
         display: "inline-flex",
@@ -24,7 +30,8 @@ const FormattedDateInput = ({
         border: "1px solid #444",
         padding: "8px 12px",
         justifyContent: "space-between",
-        cursor: "pointer",
+        cursor: disabled ? "default" : "pointer",
+        opacity: disabled ? 0.5 : 1,
         ...style,
       }}
     >
@@ -42,6 +49,7 @@ const FormattedDateInput = ({
           opacity: 0,
           pointerEvents: "none",
         }}
+        disabled={disabled}
         {...props}
       />
       <span

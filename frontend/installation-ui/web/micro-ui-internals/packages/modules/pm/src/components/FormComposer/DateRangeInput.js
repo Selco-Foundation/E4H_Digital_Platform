@@ -10,7 +10,7 @@ const DateRangeInput = ({
   clearErrors,
 }) => {
 
-  const { name } = props;
+  const { name, disableStartDate, disableEndDate } = props;
   const [dateRange, setDateRange] = useState(data[name] || {
     startDate: "",
     endDate: "",
@@ -72,6 +72,7 @@ const DateRangeInput = ({
         onChange={(e) =>
           handleDateChange("startDate", e.target.value)
         }
+        disabled={disableStartDate}
         {...register(`${name}.startDate`)}
       />
       <FormattedDateInput
@@ -81,6 +82,7 @@ const DateRangeInput = ({
         onChange={(e) =>
           handleDateChange("endDate", e.target.value)
         }
+        disabled={disableEndDate}
         {...register(`${name}.endDate`)}
       />
     </div>
