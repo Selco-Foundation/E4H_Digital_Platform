@@ -121,7 +121,7 @@ const gridStyles = `
     }
 `;
 
-const IntroModal = ({open, onClose, t, action}) => {
+const IntroModal = ({open, onClose, t, action, title, subTitle, description}) => {
   useEffect(() => {
     const onKey = (e) => e.key === "Escape" && onClose?.();
     if (open) document.addEventListener("keydown", onKey);
@@ -144,10 +144,10 @@ const IntroModal = ({open, onClose, t, action}) => {
           <div style={styles.header}>
             <div style={styles.titleWrap}>
               <h2 style={styles.title}>
-                {t("PM_BEFORE_CREATING_PROJECT_TITLE")}
+                {t(title)}
               </h2>
               <p style={styles.subtitle}>
-                {t("PM_BEFORE_CREATING_PROJECT_SUBTITLE")}
+                {t(subTitle)}
               </p>
             </div>
             <button aria-label="Close" style={styles.closeBtn} onClick={onClose}>
@@ -157,7 +157,7 @@ const IntroModal = ({open, onClose, t, action}) => {
 
           <div style={styles.body}>
             <p style={styles.intro}>
-              {t("PM_BEFORE_CREATING_PROJECT_DESC")}
+              {t(description)}
             </p>
 
             <div id="pm-modal-grid" style={styles.grid}>

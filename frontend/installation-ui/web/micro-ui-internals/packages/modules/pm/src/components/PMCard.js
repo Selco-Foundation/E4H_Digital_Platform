@@ -108,7 +108,15 @@ const PMCard = () => {
         </div>
       </div>
 
-      <IntroModal open={showIntro} onClose={() => setShowIntro(false)} t={t} action={handleCreateProjectRedirection} />
+      <IntroModal
+        open={showIntro}
+        onClose={() => setShowIntro(false)}
+        t={t}
+        action={handleCreateProjectRedirection}
+        title={"PM_BEFORE_CREATING_PROJECT_TITLE"}
+        subTitle={"PM_BEFORE_CREATING_PROJECT_SUBTITLE"}
+        description={"PM_BEFORE_CREATING_PROJECT_DESC"}
+      />
     </div>
   );
 }

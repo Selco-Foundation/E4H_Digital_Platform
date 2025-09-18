@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { Link, useHistory, useRouteMatch } from "react-router-dom";
 import { populateWorkingProject } from "../../redux/actions";
 import { useDispatch } from "react-redux";
+import IntroModal from "../../components/IntroModal";
 
 const ProjectDetails = () => {
 
@@ -21,6 +22,7 @@ const ProjectDetails = () => {
   const prevPageSizeRef = useRef(pageSize);
   const [createdProject, setCreatedProject] = useState(null);
   const dispatch = useDispatch();
+  const [showIntro, setShowIntro] = useState(false);
 
   useEffect(() => {
     const handleResize = () => setMobileView(window.innerWidth <= 640);
@@ -213,7 +215,7 @@ const ProjectDetails = () => {
             height: "32px",
             padding: "0px 20px"
           }}
-          onClick={handleFieldPlanCreationNavigation}
+          onClick={() => setShowIntro(true)}
         >
           <span
             style={{
@@ -244,6 +246,15 @@ const ProjectDetails = () => {
         </button>
       </div>
       {renderFieldPlanTable()}
+      <IntroModal
+        open={showIntro}
+        onClose={() => setShowIntro(false)}
+        t={t}
+        action={handleFieldPlanCreationNavigation}
+        title={"PM_BEFORE_CREATING_FIELD_PLAN_TITLE"}
+        subTitle={"PM_BEFORE_CREATING_FIELD_PLAN_SUBTITLE"}
+        description={"PM_BEFORE_CREATING_FIELD_PLAN_DESC"}
+      />
     </div>
   )
 }
