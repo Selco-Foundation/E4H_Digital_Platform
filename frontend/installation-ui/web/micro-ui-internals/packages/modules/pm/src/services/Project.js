@@ -1,35 +1,41 @@
-import { Request } from "@egovernments/digit-ui-libraries";
+import {Request} from "@egovernments/digit-ui-libraries";
 
 export const ProjectService = {
 
-  fetchProjects : async (queryFilter, limit, offset) => {
+  fetchProjects: async (queryFilter, limit, offset, sortBy, sortDir) => {
     const endpoint = "/project/v2/_search";
     const params = {
-      tenantId : "in",
+      tenantId: "in",
       offset,
       limit,
-      includeAncestors : false,
-      includeDescendants : false
+      includeAncestors: false,
+      includeDescendants: false
     }
+
+    if (sortBy) {
+      params.sortBy = sortBy;
+      params.sortDirection = sortDir || "DESC";
+    }
+
     const headers = {
-      "Content-Type" : "application/json"
+      "Content-Type": "application/json"
     }
 
     return await Request({
-      url : endpoint,
-      data : queryFilter,
-      userService : true,
-      method : "POST",
-      auth : true,
-      params : params,
-      headers : headers,
+      url: endpoint,
+      data: queryFilter,
+      userService: true,
+      method: "POST",
+      auth: true,
+      params: params,
+      headers: headers,
     });
   },
 
-  upsertProject : async (projectData) => {
+  upsertProject: async (projectData) => {
     let endpoint = "/project/v1/_create";
     const headers = {
-      "Content-Type" : "application/json"
+      "Content-Type": "application/json"
     }
 
     if (projectData.apiOperation === "UPDATE") {
@@ -37,16 +43,16 @@ export const ProjectService = {
     }
 
     return await Request({
-      url : endpoint,
+      url: endpoint,
       data: projectData,
-      userService : true,
-      method : "POST",
-      auth : true,
-      headers : headers,
+      userService: true,
+      method: "POST",
+      auth: true,
+      headers: headers,
     });
   },
 
-  updateProjectWorkflow : async (projectId, workflowAction, workflowComment, transactionComments) => {
+  updateProjectWorkflow: async (projectId, workflowAction, workflowComment, transactionComments) => {
     const endpoint = "/project/v1/project/workflow/update";
     const queryObj = {
       projectId: projectId,
@@ -65,16 +71,16 @@ export const ProjectService = {
     }
 
     const headers = {
-      "Content-Type" : "application/json"
+      "Content-Type": "application/json"
     }
 
     return await Request({
-      url : endpoint,
-      data : queryObj,
-      method : "POST",
-      userService : true,
-      auth : true,
-      headers : headers,
+      url: endpoint,
+      data: queryObj,
+      method: "POST",
+      userService: true,
+      auth: true,
+      headers: headers,
     });
   },
 
