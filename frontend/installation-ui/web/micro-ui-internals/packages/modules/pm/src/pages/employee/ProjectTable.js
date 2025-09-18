@@ -41,7 +41,7 @@ const ProjectTable = () => {
   const [pageSize, setPageSize] = useState(parseInt(queryParams.get("pageSize")) || 10);
   const [pageOffset, setPageOffset] = useState(parseInt(queryParams.get("pageOffset")) || 0);
   const [searchText, setSearchText] = useState(queryFilter.name || "");
-  const [sortBy, setSortBy] = useState(queryParams.get("sortBy") || null);
+  const [sortBy, setSortBy] = useState(queryParams.get("sortBy") || "");
   const [sortDir, setSortDir] = useState(queryParams.get("sortDir") || SORT_DIR.DESC);
 
   const prevSearchParamsRef = useRef(JSON.stringify(queryFilter));
@@ -201,7 +201,7 @@ const ProjectTable = () => {
     {
       Header: <DefaultHeader label={t("PM_LABEL_PROJECT_NO_OF_HFS")}/>,
       accessor: "numberOfHealthFacilities",
-      Cell: ({row}) => GetCell(row.original.additionalDetails?.hisCount || 0),
+      Cell: ({row}) => GetCell(row.original.additionalDetails?.hlsCount || 0),
     },
   ];
 
