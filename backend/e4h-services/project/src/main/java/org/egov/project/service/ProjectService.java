@@ -306,7 +306,9 @@ public class ProjectService {
             getFacilityProject(projects, projectSearchRequest.getRequestInfo());
 
         // Enrich all projects with HLS (Health Center) count
-        if(PROJECT_SUB_TYPE.equals(projectSearchRequest.getProject().getSubProjectTypeId())) {
+        if (projectSearchRequest.getProject() != null
+                && projectSearchRequest.getProject().getSubProjectTypeId() != null
+                && PROJECT_SUB_TYPE.equalsIgnoreCase(projectSearchRequest.getProject().getSubProjectTypeId())) {
             projects = enrichProjectsWithHlsCount(projects, projectSearchRequest.getRequestInfo());
         }
 
