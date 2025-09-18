@@ -27,6 +27,7 @@ const CreateProject = () => {
   const [mobileView, setMobileView] = useState(window.innerWidth <= 640);
   const [toast, setToast] = useState(null);
   const [blockUI, setBlockUI] = useState(null);
+  const [file, setFile] = useState(null);
   const [invalidDataError, setInvalidDataError] = useState(null);
   const [getFormData, setGetFormData] = useState(null);
   const [showBackAlert, setShowBackAlert] = useState(false);
@@ -178,7 +179,7 @@ const CreateProject = () => {
       setBlockUI(false);
     }
 
-    return uploadedFile;
+    setFile(uploadedFile);
   }
 
   const config = useMemo(
@@ -355,6 +356,9 @@ const CreateProject = () => {
               t,
               setToast,
               setBlockUI,
+              setInvalidDataError,
+              file,
+              setFile,
             },
             nextRoute: "",
             populators: {
@@ -365,7 +369,7 @@ const CreateProject = () => {
         ],
       },
     ],
-    [t, projectTypeData, boundaryData, createdProject, invalidDataError]
+    [t, projectTypeData, boundaryData, createdProject, file, invalidDataError]
   );
 
   const filterConfig = (config, currentKey) => {
@@ -578,7 +582,11 @@ const CreateProject = () => {
         setCurrentKey(prev => prev - 1);
         break;
       case 3:
-        setShowBackAlert(true);
+        if (file) {
+          setShowBackAlert(true);
+        } else {
+          setCurrentKey(prev => prev - 1);
+        }
     }
   }
 

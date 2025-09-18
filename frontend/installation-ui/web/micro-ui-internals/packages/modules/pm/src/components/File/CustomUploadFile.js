@@ -5,10 +5,19 @@ import UploadErrorCard from "./UploadErrorCard";
 
 const CustomUploadFile = ({ setError, setValue, clearErrors, props }) => {
 
-  const { t, heading, description, name, allowedFileTypes = [], handleFileUpload, invalidDataError, errorViewLabel } = props;
-  const [file, setFile] = useState(null);
+  const {
+    t, heading, description, name, allowedFileTypes = [], file, setFile,
+    handleFileUpload, invalidDataError, errorViewLabel, setInvalidDataError
+  } = props;
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      setFile(null);
+      setInvalidDataError(null);
+    }
+  }, []);
 
   useEffect(() => {
     if (file && !file?.errorCodes?.length) {
@@ -26,8 +35,7 @@ const CustomUploadFile = ({ setError, setValue, clearErrors, props }) => {
         uploadedFile.name.toLowerCase().endsWith(ext.toLowerCase())
       )
     ) {
-      const savedFile = await handleFileUpload(uploadedFile, setFile);
-      setFile(savedFile);
+      await handleFileUpload(uploadedFile, setFile);
       clearErrors(name);
     } else {
       setError(name, {
@@ -40,7 +48,6 @@ const CustomUploadFile = ({ setError, setValue, clearErrors, props }) => {
 
   const handleFileChange = async (e) => {
     const uploadedFile = e.target.files[0];
-    console.debug("Uploading file");
     if (uploadedFile) {
       await validateAndSaveFile(uploadedFile);
     }
@@ -71,6 +78,7 @@ const CustomUploadFile = ({ setError, setValue, clearErrors, props }) => {
 
   const handleRemove = () => {
     setFile(null);
+    setInvalidDataError(null);
 
     if (fileInputRef.current) {
       fileInputRef.current.value = '';

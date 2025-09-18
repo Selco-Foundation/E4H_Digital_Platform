@@ -109,6 +109,7 @@ const UploadedFilePreview = ({ t, file, onReupload, onRemove }) => {
         </button>
       </div>
       <button
+        type={"button"}
         style={{
           cursor: "pointer",
           position: "absolute",
@@ -122,10 +123,7 @@ const UploadedFilePreview = ({ t, file, onReupload, onRemove }) => {
           alignItems: "center",
           padding: "0"
         }}
-        onClick={(e) => {
-          e.stopPropagation();
-          onRemove();
-        }}
+        onClick={onRemove}
       >
         <CustomCloseSvg height={"24"} width={"24"} fill="#EEEEEE" iconFill={"#0B4B66"}/>
       </button>
