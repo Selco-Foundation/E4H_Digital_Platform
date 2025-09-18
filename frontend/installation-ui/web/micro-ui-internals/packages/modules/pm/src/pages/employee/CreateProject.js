@@ -77,7 +77,7 @@ const CreateProject = () => {
       });
     }
 
-  }, [createdProject, currentKey])
+  }, [createdProject?.id, currentKey])
 
   useEffect(()=>{
     if(toast){
@@ -525,9 +525,9 @@ const CreateProject = () => {
       let response = {};
       if (!createdProject?.status) {
         response = await ProjectService.updateProjectWorkflow(createdProject.id, "SCHEDULED", "Schedule Project");
-        await invalidateProjectData();
       }
 
+      await invalidateProjectData();
       dispatch(populateResponsePage({
         response: response,
         message: !!createdProject?.status ? t("PM_COMMON_PROJECT_UPDATED") : t("PM_COMMON_PROJECT_CREATED"),
