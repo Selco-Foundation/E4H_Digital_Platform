@@ -55,11 +55,13 @@ const DistrictSelector = ({
       <MultiSelectDropdown
         options={districtMenu}
         optionsKey={"name"}
-        onSelect={(e) => {
+        onSelect={() => {
+          // Triggering state update here causes render issues since dropdown within is remains open
+        }}
+        onClose={(e) => {
           handleDistrictSelection(e?.map(row=>{return row?.[1] ? row[1] : null}).filter(e=>e))
         }}
-        defaultLabel={selectedDistricts.length ? `${selectedDistricts.length} Districts Selected` : ""}
-        defaultUnit={"Districts"}
+        defaultLabel={selectedDistricts.length ? `${selectedDistricts.length} Selected` :  ""}
         selected={selectedDistricts}
         addSelectAllCheck={true}
         frozenData={[...selectedOptions]}
