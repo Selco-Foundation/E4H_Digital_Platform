@@ -36,10 +36,7 @@ import java.sql.Array;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static org.egov.project.util.ProjectConstants.SUBMITTED_BY_SUPERVISOR;
-
-import static org.egov.project.util.ProjectConstants.PROJECT_TYPE_FACILITY;
-import static org.egov.project.util.ProjectConstants.PROJECT_TYPE_FIELDPLAN;
+import static org.egov.project.util.ProjectConstants.*;
 
 @Service
 @Slf4j
@@ -308,6 +305,11 @@ public class ProjectService {
                 && projectSearchRequest.getProject().getProjectTypeId().equals(PROJECT_TYPE_FACILITY))
             getFacilityProject(projects, projectSearchRequest.getRequestInfo());
 
+        // Enrich all projects with HLS (Health Center) count
+        if(PROJECT_SUB_TYPE.equals(projectSearchRequest.getProject().getSubProjectTypeId())) {
+            projects = enrichProjectsWithHlsCount(projects, projectSearchRequest.getRequestInfo());
+        }
+
         return projects;
     }
 
@@ -374,6 +376,81 @@ public class ProjectService {
         }
 
         return listProjects;
+    }
+
+    /**
+     * Enriches all projects with HLS (Health Center) count by searching for linked ProjectFacility entities
+     * and adding the count to each project's additionalDetails
+     *
+     * @param projects List of projects to enrich
+     * @param requestInfo Request information for the search
+     * @return List of projects with HLS count added to additionalDetails
+     * @throws Exception if there's an error during the enrichment process
+     */
+    public List<Project> enrichProjectsWithHlsCount(List<Project> projects, RequestInfo requestInfo) throws Exception {
+        if (projects == null || projects.isEmpty()) {
+            return projects;
+        }
+
+        log.info("Enriching {} projects with HLS count", projects.size());
+
+        for (Project project : projects) {
+            try {
+                // Create search criteria for ProjectFacility linked to this project
+                List<String> projectIds = new ArrayList<>();
+                projectIds.add(project.getId());
+
+                ProjectFacilitySearch projectFacilitySearch = ProjectFacilitySearch.builder()
+                        .projectId(projectIds)
+                        .facilityId(null) // Search for all facilities linked to this project
+                        .build();
+
+                ProjectFacilitySearchRequest projectFacilitySearchRequest = ProjectFacilitySearchRequest.builder()
+                        .projectFacility(projectFacilitySearch)
+                        .requestInfo(requestInfo)
+                        .build();
+
+                // Search for ProjectFacility entities linked to this project
+                SearchResponse<ProjectFacility> searchResponse = projectFacilityService.search(
+                        projectFacilitySearchRequest,
+                        1000,
+                        0,
+                        project.getTenantId(),
+                        null,
+                        false
+                );
+
+                // Get the count of linked health centers
+                int hlsCount = 0;
+                if (searchResponse != null && searchResponse.getResponse() != null) {
+                    hlsCount = searchResponse.getResponse().size();
+                }
+
+                // Add HLS count to project's additionalDetails
+                Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(
+                        project.getAdditionalDetails(),
+                        "hlsCount",
+                        hlsCount
+                );
+                project.setAdditionalDetails(enrichedAdditionalDetails);
+
+                log.debug("Project {} enriched with HLS count: {}", project.getId(), hlsCount);
+
+            } catch (Exception e) {
+                log.error("Error enriching project {} with HLS count: {}", project.getId(), e.getMessage(), e);
+                // Continue processing other projects even if one fails
+                // Set HLS count to 0 for this project
+                Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(
+                        project.getAdditionalDetails(),
+                        "hlsCount",
+                        0
+                );
+                project.setAdditionalDetails(enrichedAdditionalDetails);
+            }
+        }
+
+        log.info("Successfully enriched all projects with HLS count");
+        return projects;
     }
 
     public ProjectRequest updateProject(ProjectRequest request) {
