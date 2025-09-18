@@ -26,7 +26,7 @@ const Response = () => {
   const responseData = useSelector((state) => state.pm.common.responseData);
 
   return (
-    <Card>
+    <Card style={{margin: "10px"}}>
       {responseData ? (
         <BannerPicker
           response={responseData.response}
@@ -41,7 +41,8 @@ const Response = () => {
         display: "flex",
         alignItems: "center",
         justifyContent: "flex-end",
-        gap: "16px"
+        gap: "16px",
+        marginTop: "10px",
       }}>
         <Link to={`/${window.contextPath}/employee`} style={{textDecoration: "none"}}>
           <div style={{
@@ -49,14 +50,14 @@ const Response = () => {
             color: "#C84C0E",
             border: "1px solid #C84C0E",
             boxShadow: "none",
-            fontWeight: "600",
-            padding: "10px 24px",
+            fontWeight: "500",
+            padding: "7px 24px",
             minWidth: "200px",
             display: "flex",
             justifyContent: "center",
             alignItems: "center",
             cursor: "pointer",
-            fontSize: "16px",
+            fontSize: "20px",
             textAlign: "center"
           }}>
             {t("CS_COMMON_HOME")}
@@ -65,7 +66,14 @@ const Response = () => {
         {responseData?.secondaryRedirectionLabel && responseData?.onSecondaryRedirection && (
           <SubmitBar
             label={responseData.secondaryRedirectionLabel}
-            style={{boxShadow: "none"}}
+            style={{
+              boxShadow: "none",
+              width: "200px",
+            }}
+            headerStyle={{
+              fontSize: "20px",
+              fontWeight: "500",
+            }}
             onSubmit={() => responseData.onSecondaryRedirection()}
           />
         )}
