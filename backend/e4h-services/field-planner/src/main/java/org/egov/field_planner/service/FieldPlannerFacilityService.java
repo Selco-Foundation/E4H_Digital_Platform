@@ -147,7 +147,6 @@ public class FieldPlannerFacilityService {
                     }
 
                 } catch (Exception e) {
-                    e.printStackTrace();
                     log.error("error while fetching facility list", ExceptionUtils.getStackTrace(e));
                     throw new CustomException("FACILITY_ERROR", "error while calling facility service");
                 }
@@ -177,7 +176,6 @@ public class FieldPlannerFacilityService {
                         .toList();
 
             } catch (Exception e) {
-                e.printStackTrace();
                 log.error("error while fetching facility list", ExceptionUtils.getStackTrace(e));
                 throw new CustomException("FIELDPLAN_ERROR", "error while calling fieldplan");
             }
