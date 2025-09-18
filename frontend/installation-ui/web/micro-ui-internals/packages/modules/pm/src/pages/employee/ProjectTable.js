@@ -288,6 +288,8 @@ const ProjectTable = () => {
                 border: "none",
                 background: "transparent",
                 color: "#C84C0E",
+                fontSize: "16px",
+                fontFamily: "Roboto",
                 fontWeight: 400,
                 cursor: "pointer",
               }}>
