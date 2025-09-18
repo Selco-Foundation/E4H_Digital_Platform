@@ -873,3 +873,12 @@ input[type="number"] {
     color: #0B0C0C
   }
 }
+
+.digit-multiselectdropdown-wrap {
+  .digit-multiselectdropodwn-menuitem {
+    .digit-label.selectAll {
+      font-size: 16px;
+      text-decoration: underline;
+    }
+  }
+}

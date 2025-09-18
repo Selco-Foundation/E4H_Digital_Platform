@@ -83,12 +83,12 @@ const InfoCard = ({ t, project }) => {
           flexDirection: mobileView ? "column" : "row",
         }}
       >
-        <div>
+        <div style={{width: mobileView ? "100%" : "40%"}}>
           {PropertyCard(t("PM_PROJECT_INFO_TYPE_OF_PROJECT"), projectType)}
-          {PropertyCard(t("PM_PROJECT_INFO_PROJECT_STATUS"), `PM_PROJECT_STATUS_${status ? status.toUpperCase() : "DRAFT"}`)}
+          {PropertyCard(t("PM_PROJECT_INFO_PROJECT_STATUS"), t(`PM_PROJECT_STATUS_${status ? status.toUpperCase() : "DRAFT"}`))}
           {PropertyCard(t("PM_PROJECT_INFO_PROJECT_DATES"), `${formatDate(startDate)} - ${formatDate(endDate)}`)}
         </div>
-        <div>
+        <div style={{width: mobileView ? "100%" : "40%"}}>
           {PropertyCard(t("PM_PROJECT_INFO_STATE"), t(`STATE_${geographyDetails.state.code.toUpperCase()}`))}
           {PropertyCard(
             t("PM_PROJECT_INFO_DISTRICTS"),

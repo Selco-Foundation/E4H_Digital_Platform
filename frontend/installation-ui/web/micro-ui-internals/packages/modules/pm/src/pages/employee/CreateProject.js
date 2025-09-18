@@ -11,7 +11,7 @@ import CustomArrowRight from "../../components/Custom/CustomArrowRight";
 import CustomCloseSvg from "../../components/Custom/CustomCloseSvg";
 import { PMService } from "../../services/PMService";
 import { useDispatch } from "react-redux";
-import { populateResponsePage } from "../../redux/actions";
+import { populateResponsePage, populateWorkingProject } from "../../redux/actions";
 
 const CreateProject = () => {
 
@@ -64,6 +64,7 @@ const CreateProject = () => {
   useEffect(() => {
     const project = projectData?.projects?.[0];
     if (project) {
+      dispatch(populateWorkingProject(project));
       setCreatedProject(project);
     }
   }, [projectData])
@@ -77,6 +78,14 @@ const CreateProject = () => {
     }
 
   }, [createdProject, currentKey])
+
+  useEffect(()=>{
+    if(toast){
+      setTimeout(()=>{
+        setToast(null);
+      },2500)
+    }
+  },[toast])
 
   const formatDate = (timestamp) => {
     const date = new Date(timestamp);
@@ -448,9 +457,10 @@ const CreateProject = () => {
     try {
       const projectResponse = await ProjectService.upsertProject(projectUpsertData);
       const createdProjectResponse = projectResponse.Project?.[0];
-      setCreatedProject({
-        ...createdProjectResponse,
-        status: createdProjectResponse.additionalDetails.status,
+      await invalidateProjectData();
+      history.replace({
+        pathname: location.pathname,
+        search: `projectId=${createdProjectResponse.id}&key=${currentKey + 1}`,
       });
       setCurrentKey(prev => prev + 1);
       setToast({

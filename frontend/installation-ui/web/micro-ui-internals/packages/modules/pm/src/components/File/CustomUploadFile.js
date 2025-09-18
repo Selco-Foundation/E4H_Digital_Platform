@@ -40,6 +40,7 @@ const CustomUploadFile = ({ setError, setValue, clearErrors, props }) => {
 
   const handleFileChange = async (e) => {
     const uploadedFile = e.target.files[0];
+    console.debug("Uploading file");
     if (uploadedFile) {
       await validateAndSaveFile(uploadedFile);
     }
@@ -67,6 +68,14 @@ const CustomUploadFile = ({ setError, setValue, clearErrors, props }) => {
   const openFileDialog = () => {
     fileInputRef.current.click();
   };
+
+  const handleRemove = () => {
+    setFile(null);
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  }
 
   return (
     <div style={{marginBottom: "25px"}}>
@@ -118,7 +127,6 @@ const CustomUploadFile = ({ setError, setValue, clearErrors, props }) => {
         <p style={{ margin: 0, fontSize: "14px", color: "#666" }}>
           {t("CORE_COMMON_DRAG_AND_DROP_OR")} {" "}
           <span
-            onClick={openFileDialog}
             style={{
               color: "#c44d2d",
               fontWeight: "500",
@@ -129,7 +137,7 @@ const CustomUploadFile = ({ setError, setValue, clearErrors, props }) => {
           </span>
         </p>
       </div>
-      {file && <UploadedFilePreview t={t} file={file} onRemove={() => setFile(null)} onReupload={openFileDialog} />}
+      {file && <UploadedFilePreview t={t} file={file} onRemove={handleRemove} onReupload={openFileDialog} />}
       {invalidDataError && <UploadErrorCard t={t} cardLabel={invalidDataError.label} viewActionLabel={errorViewLabel || "CORE_COMMON_VIEW_ERRORS"} />}
     </div>
   );

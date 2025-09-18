@@ -8,6 +8,8 @@ import CustomArrowRight from "../../components/Custom/CustomArrowRight";
 import CustomCloseSvg from "../../components/Custom/CustomCloseSvg";
 import { Button, FormComposerV2, Loader, PopUp, Toast } from "@egovernments/digit-ui-react-components";
 import {Stepper} from "@egovernments/digit-ui-components";
+import { useDispatch } from "react-redux";
+import { populateWorkingProject } from "../../redux/actions";
 
 const CreateFieldPlan = () => {
 
@@ -27,6 +29,7 @@ const CreateFieldPlan = () => {
   const [boundaryData, setBoundaryData] = useState({});
   const url = window.location.href;
   const projectId = url.split("project/")[1].split("/")[0];
+  const dispatch = useDispatch();
 
   useEffect(() => {
     const handleResize = () => setMobileView(window.innerWidth <= 640);
@@ -57,6 +60,7 @@ const CreateFieldPlan = () => {
   useEffect(() => {
     const project = projectData?.projects?.[0];
     if (project) {
+      dispatch(populateWorkingProject(project));
       setCreatedProject(project);
     }
   }, [projectData]);
@@ -173,7 +177,7 @@ const CreateFieldPlan = () => {
             customProps: {
               name: "districts",
               stateIdentifier: "state",
-              disabledOptions: [],
+              selectedOptions: [],
               t,
               boundaryData,
             },
@@ -195,7 +199,7 @@ const CreateFieldPlan = () => {
             customProps: {
               name: "blocks",
               districtsIdentifier: "districts",
-              disabledOptions: [],
+              selectedOptions: [],
               t,
               boundaryData,
             },
@@ -250,7 +254,7 @@ const CreateFieldPlan = () => {
             customProps: {
               name: "activities",
               t,
-              activityTypeData: activityData
+              activityData,
             },
             route: "activities",
             nextRoute: "",

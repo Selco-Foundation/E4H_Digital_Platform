@@ -4,6 +4,8 @@ import InfoCard from "../../components/ProjectDetails/InfoCard";
 import { Button, Loader, Table } from "@egovernments/digit-ui-react-components";
 import { useTranslation } from "react-i18next";
 import { Link, useHistory, useRouteMatch } from "react-router-dom";
+import { populateWorkingProject } from "../../redux/actions";
+import { useDispatch } from "react-redux";
 
 const ProjectDetails = () => {
 
@@ -18,6 +20,7 @@ const ProjectDetails = () => {
   const [pageOffset, setPageOffset] = useState(parseInt(queryParams.get("pageOffset")) || 0);
   const prevPageSizeRef = useRef(pageSize);
   const [createdProject, setCreatedProject] = useState(null);
+  const dispatch = useDispatch();
 
   useEffect(() => {
     const handleResize = () => setMobileView(window.innerWidth <= 640);
@@ -40,6 +43,7 @@ const ProjectDetails = () => {
   useEffect(() => {
     const project = projectData?.projects?.[0];
     if (project) {
+      dispatch(populateWorkingProject(project));
       setCreatedProject(project);
     }
   }, [projectData])
