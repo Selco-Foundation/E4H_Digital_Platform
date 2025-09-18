@@ -78,9 +78,13 @@ jobs:
           build-args: |
             JAR_FILE=backend/e4h-services/im-services/target/*.jar
 
+      - name: Prepare DB migration build context
+        run: |
+          cp backend/e4h-services/im-services/target/*.jar backend/e4h-services/im-services/src/main/resources/db/im-services.jar
+
       - name: Build and Push Docker image for im-Service-DB
         run: |
-          docker build  -t selcohub/im-services-db:${{ env.VERSION }}-${{ env.commit_hash }} -f  Dockerfile .
+          docker build  --build-arg JAR_FILE=im-services.jar -t selcohub/im-services-db:${{ env.VERSION }}-${{ env.commit_hash }} -f  Dockerfile .
           docker push selcohub/im-services-db:${{ env.VERSION }}-${{ env.commit_hash }}
         working-directory: backend/e4h-services/im-services/src/main/resources/db
 

@@ -224,7 +224,7 @@ class ProjectServiceClient:
         }
         try:
             response = requests.post(url, headers=headers, json=payload)
-            print(f"Project Facility created successfully: {json.loads(response.text)}")
+            print(f"Project Facility called successfully: {json.loads(response.text)}")
             return response
 
         except requests.exceptions.HTTPError as http_err:

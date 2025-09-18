@@ -50,12 +50,16 @@ public class MDMSUtils {
 
         ModuleDetail projectMDMSModuleDetail = getMDMSModuleRequestData(request);
         ModuleDetail projectDepartmentModuleDetail = getDepartmentModuleRequestData(request);
+        ModuleDetail projectTypeModuleDetail = getProjectTypeModuleRequestData(request);
+        ModuleDetail stateInfoModuleDetail = getStateInfoModuleRequestData(request);
         ModuleDetail projectTenantModuleDetail = getTenantModuleRequestData(request);
         ModuleDetail attendanceModuleDetail = getAttendanceModuleRequestData(request);
 
         List<ModuleDetail> moduleDetails = new LinkedList<>();
         moduleDetails.add(projectMDMSModuleDetail);
         moduleDetails.add(projectDepartmentModuleDetail);
+        moduleDetails.add(projectTypeModuleDetail);
+        moduleDetails.add(stateInfoModuleDetail);
         moduleDetails.add(projectTenantModuleDetail);
         moduleDetails.add(attendanceModuleDetail);
 
@@ -131,6 +135,34 @@ public class MDMSUtils {
                 .moduleName(MDMS_HCM_ATTENDANCE_MODULE_NAME).build();
 
         return attendanceModuleDetail;
+    }
+
+    private ModuleDetail getProjectTypeModuleRequestData(ProjectRequest request) {
+        List<Project> projects = request.getProjects();
+        List<MasterDetail> projectDepartmentMasterDetails = new ArrayList<>();
+
+        MasterDetail departmentMasterDetails = MasterDetail.builder().name(MASTER_PROJECTTYPE)
+                .filter(FILTER_ACTIVE_TRUE).build();
+        projectDepartmentMasterDetails.add(departmentMasterDetails);
+
+        ModuleDetail projectDepartmentModuleDetail = ModuleDetail.builder().masterDetails(projectDepartmentMasterDetails)
+                .moduleName(MDMS_COMMON_MASTERS_MODULE_NAME).build();
+
+        return projectDepartmentModuleDetail;
+    }
+
+    private ModuleDetail getStateInfoModuleRequestData(ProjectRequest request) {
+        List<Project> projects = request.getProjects();
+        List<MasterDetail> projectDepartmentMasterDetails = new ArrayList<>();
+
+        MasterDetail departmentMasterDetails = MasterDetail.builder().name(MASTER_STATEINFO)
+                .filter(FILTER_ACTIVE_TRUE).build();
+        projectDepartmentMasterDetails.add(departmentMasterDetails);
+
+        ModuleDetail projectDepartmentModuleDetail = ModuleDetail.builder().masterDetails(projectDepartmentMasterDetails)
+                .moduleName(MDMS_COMMON_MASTERS_MODULE_NAME).build();
+
+        return projectDepartmentModuleDetail;
     }
 
 }
