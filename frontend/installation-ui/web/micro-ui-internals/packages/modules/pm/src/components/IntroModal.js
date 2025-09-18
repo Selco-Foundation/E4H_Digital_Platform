@@ -27,7 +27,7 @@ const styles = {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    zIndex: 1000
+    zIndex: 10000000
   },
   container: {
     background: "#fff",
@@ -37,7 +37,8 @@ const styles = {
     border: "1px solid #EEE",
     boxShadow: "0 10px 25px rgba(0,0,0,0.05)",
     overflow: "hidden",
-    fontFamily: "Roboto, system-ui, -apple-system, Segoe UI, Helvetica, Arial"
+    fontFamily: "Roboto, system-ui, -apple-system, Segoe UI, Helvetica, Arial",
+    margin: "10px"
   },
   header: {
     display: "flex",
@@ -49,7 +50,7 @@ const styles = {
   title: {
     margin: 0,
     color: "#0B4B66",
-    fontSize: "2rem",
+    fontSize: "40px",
     fontWeight: 700,
     lineHeight: 1.15,
     letterSpacing: "0",
@@ -57,7 +58,7 @@ const styles = {
   subtitle: {
     margin: "0.25rem 0 0 0",
     color: "#111827",
-    fontSize: "1rem",
+    fontSize: "20px",
     lineHeight: 1.4,
     fontWeight: 500,
   },
@@ -71,8 +72,8 @@ const styles = {
   },
   body: {padding: "1.5rem"},
   intro: {
-    color: "#374151",
-    fontSize: "0.95rem",
+    color: "#000000",
+    fontSize: "16px",
     margin: 0,
   },
   grid: {
@@ -106,7 +107,7 @@ const styles = {
   footer: {
     display: "flex",
     justifyContent: "flex-end",
-    padding: "0 1.5rem 1.5rem 1.5rem",
+    padding: "0 3rem 2rem 1.5rem",
     marginTop: "0.5rem",
   }
 };
@@ -206,7 +207,8 @@ const IntroModal = ({open, onClose, t, action}) => {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                gap: "10px"
+                gap: "10px",
+                width: "155px",
               }}
               submitIcon={<CustomArrowRight/>}
             />
