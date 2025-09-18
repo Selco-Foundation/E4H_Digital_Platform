@@ -2,7 +2,7 @@ import { Request } from "@egovernments/digit-ui-libraries";
 
 export const ProjectService = {
 
-  fetchProjects : async (queryFilter, limit, offset) => {
+  fetchProjects : async (queryFilter, limit, offset, sortBy, sortDir) => {
     const endpoint = "/project/v2/_search";
     const params = {
       tenantId : "in",
@@ -11,6 +11,12 @@ export const ProjectService = {
       includeAncestors : false,
       includeDescendants : false
     }
+
+    if (sortBy) {
+      params.sortBy = sortBy;
+      params.sortDirection = sortDir || "DESC";
+    }
+
     const headers = {
       "Content-Type" : "application/json"
     }

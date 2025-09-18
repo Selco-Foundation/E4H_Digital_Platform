@@ -10,15 +10,15 @@ const formatProjects = (rawProjects) => {
   })
 }
 
-const fetchProject = async (filter, limit, offset) => {
-  const response = await ProjectService.fetchProjects(filter, limit, offset);
+const fetchProject = async (filter, limit, offset, sortBy, sortDir) => {
+  const response = await ProjectService.fetchProjects(filter, limit, offset, sortBy, sortDir);
   return {
     projects: formatProjects(response?.Project),
     totalCount: response.totalCount,
   };
 }
 
-const useProject = (queryFilter = {}, limit = 10, offset = 0) => {
+const useProject = (queryFilter = {}, limit = 10, offset = 0, sortBy = null, sortDir = "DESC") => {
 
   const { id, name, subProjectTypeId } = queryFilter;
 
@@ -40,8 +40,8 @@ const useProject = (queryFilter = {}, limit = 10, offset = 0) => {
 
   const queryClient = useQueryClient();
   const { isLoading, isError, error, data } = useQuery(
-    ["PROJECT", filter, limit, offset],
-    () => fetchProject(filter, limit, offset)
+    ["PROJECT", filter, limit, offset, sortBy, sortDir],
+    () => fetchProject(filter, limit, offset, sortBy, sortDir)
   );
 
   return {

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { Loader, Table, SubmitBar } from "@egovernments/digit-ui-react-components";
+import { ArrowUpward, ArrowDownward, ImportExport } from "@egovernments/digit-ui-svg-components";
 import { Link, useHistory, useLocation } from "react-router-dom";
 import useProject from "../../hooks/useProject";
 
@@ -10,6 +11,11 @@ const formatDate = (timestamp) => {
     const day = String(date.getDate()).padStart(2, "0");
     const year = date.getFullYear();
     return `${month}/${day}/${year}`;
+};
+
+const SORT_DIR = {
+    ASC: "ASC",
+    DESC: "DESC",
 };
 
 const ProjectTable = () => {
@@ -35,6 +41,8 @@ const ProjectTable = () => {
     const [pageSize, setPageSize] = useState(parseInt(queryParams.get("pageSize")) || 10);
     const [pageOffset, setPageOffset] = useState(parseInt(queryParams.get("pageOffset")) || 0);
     const [searchText, setSearchText] = useState(queryFilter.name || "");
+    const [sortBy, setSortBy] = useState(queryParams.get("sortBy") || null);
+    const [sortDir, setSortDir] = useState(queryParams.get("sortDir") || SORT_DIR.DESC);
 
     const prevSearchParamsRef = useRef(JSON.stringify(queryFilter));
     const prevPageSizeRef = useRef(pageSize);
@@ -42,15 +50,17 @@ const ProjectTable = () => {
     const { isLoading, isError, error, data } = useProject(
         queryFilter,
         pageSize,
-        pageOffset
+        pageOffset,
+        sortBy,
+        sortDir
     );
 
     useEffect(() => {
         history.replace({
             pathname: location.pathname,
-            search: `filter=${JSON.stringify(queryFilter)}&pageSize=${pageSize}&pageOffset=${pageOffset}`
+            search: `filter=${JSON.stringify(queryFilter)}&pageSize=${pageSize}&pageOffset=${pageOffset}&sortBy=${sortBy}&sortDir=${sortDir}`
         });
-    }, [queryFilter, pageSize, pageOffset]);
+    }, [queryFilter, pageSize, pageOffset, sortBy, sortDir]);
 
     useEffect(() => {
         const prevSearchParams = prevSearchParamsRef.current;
@@ -75,6 +85,8 @@ const ProjectTable = () => {
         setQueryFilter({
             subProjectTypeId: "PROJECT"
         });
+        setSortBy(null);
+        setSortDir(SORT_DIR.DESC);
     };
 
     const onNextPage = () => {
@@ -89,11 +101,51 @@ const ProjectTable = () => {
         setPageSize(parseInt(e.target.value, 10));
     };
 
+    const toggleSort = (field) => {
+        if (sortBy !== field) {
+            setSortBy(field);
+            setSortDir(SORT_DIR.DESC);
+        } else {
+            setSortDir((d) => (d === SORT_DIR.DESC ? SORT_DIR.ASC : SORT_DIR.DESC));
+        }
+    };
+
     const DefaultHeader = ({ label }) => (
         <span style={{ color: '#0B0C0C', fontSize: "16px" }}>
             {label}
         </span>
     );
+
+    const SortHeader = ({ label, field }) => {
+        const iconStyle = { width: 24, height: 24 };
+        const getSortIcon = () => {
+            if (sortBy !== field) {
+                return <ImportExport style={{ ...iconStyle }} fill={"#0B0C0C"}/>;
+            }
+            return sortDir === SORT_DIR.DESC ?
+                <ArrowDownward style={{ ...iconStyle, width: 20 }} fill={"#0B0C0C"} /> :
+                <ArrowUpward style={{ ...iconStyle, width: 20 }} fill={"#0B0C0C"} />;
+        };
+
+        return (
+            <div
+                onClick={() => toggleSort(field)}
+                style={{
+                    cursor: "pointer",
+                    userSelect: "none",
+                    color: '#0B0C0C',
+                    fontSize: "16px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "2px"
+                }}
+                title="Click to sort"
+            >
+                {label}
+                {getSortIcon()}
+            </div>
+        );
+    };
 
     const GetCell = (value) => (
         <span className="cell-text" style={{ color: "#0B0C0C" }}>
@@ -132,12 +184,12 @@ const ProjectTable = () => {
             Cell: ({ row }) => GetCell(row.original.projectType || "-"),
         },
         {
-            Header: <DefaultHeader label={t("CORE_COMMON_START_DATE")} />,
+            Header: <SortHeader label={t("CORE_COMMON_START_DATE")} field="startDate" />,
             accessor: "startDate",
             Cell: ({ row }) => GetCell(row.original.startDate ? formatDate(row.original.startDate) : "-"),
         },
         {
-            Header: <DefaultHeader label={t("CS_END_DATE")} />,
+            Header: <SortHeader label={t("CS_END_DATE")} field="endDate" />,
             accessor: "endDate",
             Cell: ({ row }) => GetCell(row.original.endDate ? formatDate(row.original.endDate) : "-"),
         },
@@ -193,7 +245,12 @@ const ProjectTable = () => {
                     marginBottom: "16px",
                     borderRadius: "2px",
                 }}>
-                <div style={{ marginBottom: "8px", color: "#0B0C0C", fontWeight: 600 }}>
+                <div style={{
+                    marginBottom: "8px",
+                    color: "#0B0C0C",
+                    fontWeight: 400,
+                    fontSize: "16px"
+                }}>
                     {t("PM_LABEL_SEARCH_PROJECT_ID")}
                 </div>
                 <div
@@ -231,7 +288,7 @@ const ProjectTable = () => {
                                 border: "none",
                                 background: "transparent",
                                 color: "#C84C0E",
-                                fontWeight: 600,
+                                fontWeight: 400,
                                 cursor: "pointer",
                             }}>
                             {t("CORE_COMMON_CLEAR_SEARCH")}
