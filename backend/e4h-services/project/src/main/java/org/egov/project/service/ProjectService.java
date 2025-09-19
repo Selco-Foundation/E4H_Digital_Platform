@@ -612,7 +612,7 @@ public class ProjectService {
 
     /**
      * Handles project name regeneration during updates
-     * Compares the new base name with existing name and updates if different
+     * Only regenerates name if the underlying data that affects the name has changed
      */
     private void handleProjectNameUpdate(ProjectRequest request, Project project, Project projectFromDB) {
         try {
@@ -620,6 +620,13 @@ public class ProjectService {
             String projectType = project.getProjectType();
             if (PROJECT_TYPE_FIELDPLAN.equals(projectType) || PROJECT_TYPE_FACILITY.equals(projectType)) {
                 log.info("Skipping name regeneration for project type: {} during update", projectType);
+                return;
+            }
+
+            // Check if name-affecting data has changed
+            if (!hasNameAffectingDataChanged(project, projectFromDB)) {
+                log.info("No name-affecting data changed for project: {}, keeping existing name: {}", 
+                        project.getId(), projectFromDB.getName());
                 return;
             }
 
@@ -671,6 +678,41 @@ public class ProjectService {
             log.error("Error handling project name update for project: {}", project.getId(), e);
             // Don't throw exception - continue with update even if name generation fails
         }
+    }
+
+    /**
+     * Checks if any data that affects project name generation has changed
+     * Name is affected by: startDate, endDate, projectType, address.boundary (state)
+     */
+    private boolean hasNameAffectingDataChanged(Project project, Project projectFromDB) {
+        // Check if start date changed
+        if (!Objects.equals(project.getStartDate(), projectFromDB.getStartDate())) {
+            log.info("Start date changed for project: {} - name regeneration needed", project.getId());
+            return true;
+        }
+        
+        // Check if end date changed
+        if (!Objects.equals(project.getEndDate(), projectFromDB.getEndDate())) {
+            log.info("End date changed for project: {} - name regeneration needed", project.getId());
+            return true;
+        }
+        
+        // Check if project type changed
+        if (!Objects.equals(project.getProjectType(), projectFromDB.getProjectType())) {
+            log.info("Project type changed for project: {} - name regeneration needed", project.getId());
+            return true;
+        }
+        
+        // Check if address boundary (state) changed
+        String currentBoundary = project.getAddress() != null ? project.getAddress().getBoundary() : null;
+        String existingBoundary = projectFromDB.getAddress() != null ? projectFromDB.getAddress().getBoundary() : null;
+        if (!Objects.equals(currentBoundary, existingBoundary)) {
+            log.info("Address boundary changed for project: {} - name regeneration needed", project.getId());
+            return true;
+        }
+        
+        log.info("No name-affecting data changed for project: {}", project.getId());
+        return false;
     }
 
     /**
