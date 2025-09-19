@@ -147,6 +147,7 @@ const CreateProject = () => {
           key: "error",
           label: t("PM_TOAST_FACILITY_DATA_UPLOAD_TEMPLATE_ERROR")
         })
+        setInvalidDataError(null);
 
       } else if (response.errorCode === "INVALID_DATA") {
         setInvalidDataError({
@@ -163,6 +164,7 @@ const CreateProject = () => {
           key: "success",
           label: t("PM_TOAST_FACILITY_DATA_UPLOAD_SUCCESS"),
         })
+        setInvalidDataError(null);
         uploadedFile = {
           name: response.file.name || file.name,
           data: response.file.data,
