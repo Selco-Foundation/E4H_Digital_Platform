@@ -117,7 +117,7 @@ const CreateProject = () => {
   const handleFacilityDataDownload = async () => {
     setBlockUI(true);
     try {
-      await PMService.projectFacilityDataTemplateDownload(createdProject.additionalDetails.geographyDetails, t);
+      await PMService.projectFacilityDataTemplateDownload(createdProject.id, createdProject.additionalDetails.geographyDetails, t);
       setToast({
         label: t("PM_TOAST_FACILITY_TEMPLATE_DOWNLOAD_SUCCESS"),
         key: "success",

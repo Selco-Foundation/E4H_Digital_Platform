@@ -2,7 +2,7 @@ import { IngestionService } from "./Ingestion";
 
 export const PMService = {
 
-  projectFacilityDataTemplateDownload: async (boundaryData, t) => {
+  projectFacilityDataTemplateDownload: async (projectId, boundaryData, t) => {
 
     const formatDistricts = (districts, blocks) => {
       const formattedDistricts = [];
@@ -47,7 +47,8 @@ export const PMService = {
     }
 
     return await IngestionService.downloadTemplateFile({
-      boundary_data: formattedBoundaryData
+      boundary_data: formattedBoundaryData,
+      project_id: projectId,
     });
   },
 
