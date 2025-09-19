@@ -23,6 +23,7 @@ const CreateFieldPlan = () => {
   const [mobileView, setMobileView] = useState(window.innerWidth <= 640);
   const [toast, setToast] = useState(null);
   const [blockUI, setBlockUI] = useState(null);
+  const [file, setFile] = useState(null);
   const [invalidDataError, setInvalidDataError] = useState(null);
   const [getFormData, setGetFormData] = useState(null);
   const [showBackAlert, setShowBackAlert] = useState(false);
@@ -96,49 +97,10 @@ const CreateFieldPlan = () => {
   }, [createdProject])
 
   const handleFacilityDataUpload = async (file) => {
-    setBlockUI(true);
-    let uploadedFile;
-    try {
-      const response = await IngestionService.uploadTemplateFile(file, succeedFileUpload || false, errorCode || "INVALID_DATA");
-
-      if (response.status === 200) {
-        setToast({
-          key: "success",
-          label: `Successfully uploaded file`,
-        });
-        uploadedFile = {
-          name: file.name,
-          fileStoreId: "dummy_id",
-        };
-      }
-    } catch (e) {
-      console.error("Error uploading template", e);
-      if (e.status === 400) {
-        if (e.data.code === "INVALID_TEMPLATE") {
-          setToast({
-            key: "error",
-            label: `The uploaded file does not match the required template structure. Please download and use the latest template.`,
-          });
-        } else if (e.data.code === "INVALID_DATA") {
-          setInvalidDataError({
-            label: `${e.data.invalidFacilitiesCount} ${t("PM_HEALTH_FACILITIES_VALIDATION_FAILED")}`,
-          });
-          uploadedFile = {
-            name: file.name,
-            fileStoreId: "dummy_id",
-          };
-        }
-      } else {
-        setToast({
-          key: "error",
-          label: `Error uploading file`,
-        });
-      }
-    } finally {
-      setBlockUI(false);
-    }
-
-    return uploadedFile;
+    setFile({
+      name: file.name,
+      data: file
+    });
   };
 
   const config = useMemo(
@@ -312,6 +274,9 @@ const CreateFieldPlan = () => {
               t,
               setToast,
               setBlockUI,
+              setInvalidDataError,
+              file,
+              setFile,
             },
             nextRoute: "",
             populators: {
@@ -344,7 +309,7 @@ const CreateFieldPlan = () => {
         ],
       },
     ],
-    [t, activityData, boundaryData, invalidDataError]
+    [t, activityData, boundaryData, file, invalidDataError]
   );
 
   const filterConfig = (config, currentKey) => {
