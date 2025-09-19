@@ -66,10 +66,13 @@ def format_facility_data_for_template(
                     val = ""
             row[c["header"]] = val
         
-        # Add "Include in Project" column value if project_id is provided
-        if project_id and "Include in Project (Mandatory)" in headers:
+        # Add "Include in Project" column value (always add it)
+        if "Include in Project (Mandatory)" in headers:
             include_value = facility.get("include_in_project", "No")
             row["Include in Project (Mandatory)"] = include_value
+            # Debug logging
+            facility_id = facility.get("facility_id", "unknown")
+            print(f"DEBUG: Facility {facility_id} - include_in_project field: {facility.get('include_in_project', 'NOT_SET')} -> setting to: {include_value}")
             
         formatted_rows.append(row)
 

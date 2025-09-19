@@ -69,7 +69,8 @@ async def get_facility_ingestion_template_with_data(
             for boundary in boundary_list:
                 try:
                     results = facility_client.search_facility(tenant_id='in', boundary_code=boundary.code)
-                    all_facilities.extend(results.get('facilities', []))
+                    facilities = results.get('facilities', [])
+                    all_facilities.extend(facilities)
                 except Exception as e:
                     print(f"Error fetching boundary facilities: {e}")
 
@@ -92,8 +93,16 @@ async def get_facility_ingestion_template_with_data(
                 facility_id = facility.get("facility_id")
                 if facility_id in project_linked_facility_ids:
                     facility["include_in_project"] = "Yes"
+                    logger.info(f"Facility {facility_id} is linked to project - marking as Yes")
                 else:
+
                     facility["include_in_project"] = "No"
+                    logger.info(f"Facility {facility_id} is NOT linked to project - marking as No")
+        else:
+            # If no project_id provided, set all facilities to "No"
+            for facility in all_facilities:
+                facility["include_in_project"] = "No"
+                logger.info(f"No project_id provided - marking facility {facility.get('facility_id')} as No")
 
         try:
             facility_service.generate_template_file_with_data(
@@ -459,4 +468,5 @@ async def get_facility_QR_for_autologin(
         )
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
 
