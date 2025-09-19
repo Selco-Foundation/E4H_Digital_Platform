@@ -87,7 +87,7 @@ async def get_facility_ingestion_template_with_data(
                 # Continue without project facility data if there's an error
 
         # Mark facilities as included in project if they are already linked
-        if project_linked_facility_ids:
+        if project_id:
             for facility in all_facilities:
                 facility_id = facility.get("facility_id")
                 if facility_id in project_linked_facility_ids:
