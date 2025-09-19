@@ -526,7 +526,7 @@ const CreateProject = () => {
     if (!createdProject?.id) {
       return;
     }
-
+    setBlockUI(true);
     try {
       let response = {};
       if (!createdProject?.status) {
@@ -540,7 +540,7 @@ const CreateProject = () => {
         createdId: createdProject.name,
         info: t("PM_COMMON_PROJECT_NAME"),
         secondaryRedirectionLabel: t("PM_LABEL_CREATE_FIELD_PLAN"),
-        onSecondaryRedirection: () => history.push(`/${window?.contextPath}/employee/pm/project/${createdProject.id}/details`),
+        onSecondaryRedirection: () => history.push(`/${window?.contextPath}/employee/pm/project/${createdProject.id}/field-plans`),
       }))
       history.push(`/${window?.contextPath}/employee/pm/response`);
 
@@ -550,6 +550,8 @@ const CreateProject = () => {
         key: "error",
         label: t("PM_TOAST_DRAFT_PROJECT_WORKFLOW_UPDATE_ERROR"),
       })
+    } finally {
+      setBlockUI(false);
     }
   }
 
