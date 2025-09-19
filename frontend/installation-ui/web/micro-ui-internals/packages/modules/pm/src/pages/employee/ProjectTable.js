@@ -1,6 +1,6 @@
 import React, {useEffect, useRef, useState, useMemo, useCallback} from "react";
 import {useTranslation} from "react-i18next";
-import {Loader, Table, SubmitBar} from "@egovernments/digit-ui-react-components";
+import {Loader, TextInput, Table, SubmitBar} from "@egovernments/digit-ui-react-components";
 import {ArrowUpward, ArrowDownward, ImportExport} from "@egovernments/digit-ui-svg-components";
 import {Link, useHistory, useLocation} from "react-router-dom";
 import useProject from "../../hooks/useProject";
@@ -85,7 +85,7 @@ const ProjectTable = () => {
     setQueryFilter({
       subProjectTypeId: "PROJECT"
     });
-    setSortBy(null);
+    setSortBy("");
     setSortDir(SORT_DIR.DESC);
   };
 
@@ -260,21 +260,21 @@ const ProjectTable = () => {
             justifyContent: "space-between",
             width: "100%",
           }}>
-          <input
-            type="text"
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-            style={{
-              width: "420px",
-              maxWidth: "100%",
-              height: "40px",
-              border: "1px solid #D6D5D4",
-              borderRadius: "2px",
-              padding: "0 12px",
-              fontSize: "16px",
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSearch();
             }}
-          />
+          >
+            <TextInput
+              name="serviceRequestId"
+              value={searchText}
+              onChange={(e) => {
+                setSearchText(e.target.value);
+              }}
+              style={{ width: "300px", marginBottom: "0" }}
+            ></TextInput>
+          </form>
           <div
             style={{
               display: "flex",
@@ -298,7 +298,6 @@ const ProjectTable = () => {
             <SubmitBar
               label={t("CORE_COMMON_SEARCH")}
               onSubmit={handleSearch}
-              style={{width: 180}}
             />
           </div>
         </div>
