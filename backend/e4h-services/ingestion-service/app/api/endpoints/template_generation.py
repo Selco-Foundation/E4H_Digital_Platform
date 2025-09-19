@@ -49,6 +49,7 @@ async def get_facility_ingestion_template_with_data(
 ):
     request_info = request_info_from_json(payload.get("request_info", {}))
     boundary_data = payload.get("boundary_data", {})
+    project_id = payload.get("project_id")
     mdms_client = MDMSClient(mdms_url)
     try:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -72,12 +73,35 @@ async def get_facility_ingestion_template_with_data(
                 except Exception as e:
                     print(f"Error fetching boundary facilities: {e}")
 
+        # Fetch project-linked facilities if project_id is provided
+        project_linked_facility_ids = set()
+        if project_id and project_service_url:
+            try:
+                project_client = ProjectServiceClient(project_service_url)
+                project_facilities_response = project_client.search_project_facility(request_info, project_id)
+                project_facilities = project_facilities_response.get("ProjectFacilities", [])
+                project_linked_facility_ids = {pf.get("facilityId") for pf in project_facilities if pf.get("facilityId")}
+                logger.info(f"Found {len(project_linked_facility_ids)} facilities linked to project {project_id}")
+            except Exception as e:
+                logger.error(f"Error fetching project facilities: {e}")
+                # Continue without project facility data if there's an error
+
+        # Mark facilities as included in project if they are already linked
+        if project_linked_facility_ids:
+            for facility in all_facilities:
+                facility_id = facility.get("facility_id")
+                if facility_id in project_linked_facility_ids:
+                    facility["include_in_project"] = "Yes"
+                else:
+                    facility["include_in_project"] = "No"
+
         try:
             facility_service.generate_template_file_with_data(
                 output_path=output_file_path,
                 facility_schema=facility_schema,
                 boundary_list=boundary_list,
-                facility_data=all_facilities
+                facility_data=all_facilities,
+                project_id=project_id
             )
             logger.info(f"Successfully created facility ingestion template at {output_file_path}")
         except Exception as e:

@@ -22,6 +22,7 @@ def format_facility_data_for_template(
     facility_data: List[Dict[str, Any]],
     facility_schema: List[Dict[str, Any]],
     headers: List[str],
+    project_id: str = None,
 ) -> List[Dict[str, Any]]:
     """
     Converts raw facility data into rows, aligned with `headers`
@@ -64,6 +65,12 @@ def format_facility_data_for_template(
                 else:
                     val = ""
             row[c["header"]] = val
+        
+        # Add "Include in Project" column value if project_id is provided
+        if project_id and "Include in Project (Mandatory)" in headers:
+            include_value = facility.get("include_in_project", "No")
+            row["Include in Project (Mandatory)"] = include_value
+            
         formatted_rows.append(row)
 
     return formatted_rows

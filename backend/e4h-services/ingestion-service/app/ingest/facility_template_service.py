@@ -55,6 +55,7 @@ class FacilityTemplateService:
                                facility_schema: List[Dict[str, Any]],
                                boundary_list: List[Boundary],
                                facility_data: List[Dict[str, Any]],
+                               project_id: str = None
                                ) -> None:
         """
             Generates FacilityIngestionTemplate.xlsx with:
@@ -105,10 +106,17 @@ class FacilityTemplateService:
                         "message": "Values must be unique across rows"
                     }
 
+            # Add "Include in Project" column if project_id is provided
+            if project_id:
+                include_column = "Include in Project (Mandatory)"
+                output_list.append(include_column)
+                dropdowns_map[include_column] = ["Yes", "No"]
+                editable_columns.append(include_column)
+
             # Add Existing Facilities Sheet (Optional)
             formatted_facilities = []
             if facility_data:
-                formatted_facilities = format_facility_data_for_template(facility_data, facility_schema, output_list)
+                formatted_facilities = format_facility_data_for_template(facility_data, facility_schema, output_list, project_id)
 
             df_facility = pd.DataFrame(formatted_facilities, columns=output_list)
             facility_writer = create_excel_data_writer(
