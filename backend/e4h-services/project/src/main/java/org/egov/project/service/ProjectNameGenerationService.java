@@ -352,10 +352,21 @@ public class ProjectNameGenerationService {
     }
 
     /**
-     * Generates project name and checks for duplicates
+     * Generates project name and checks for duplicates (for creation)
      * Returns a result object with the generated name and duplicate status
      */
     public ProjectNameResult generateNameAndCheckDuplicate(Project project, RequestInfo requestInfo) {
+        return generateNameAndCheckDuplicate(project, requestInfo, null);
+    }
+
+    /**
+     * Generates project name and checks for duplicates
+     * Returns a result object with the generated name and duplicate status
+     * @param project The project to generate name for
+     * @param requestInfo Request information
+     * @param excludeProjectId Project ID to exclude from duplicate check (for updates)
+     */
+    public ProjectNameResult generateNameAndCheckDuplicate(Project project, RequestInfo requestInfo, String excludeProjectId) {
         try {
             // Check if project type is FieldPlan or Facility - skip name generation
             if (shouldSkipNameGeneration(project)) {
@@ -372,8 +383,15 @@ public class ProjectNameGenerationService {
             String duration = getDuration(project);
             String baseName = String.format("%s-%s-%s", projectCode, stateCode, duration);
             
-            // Check if base name exists
-            boolean isDuplicate = isProjectNameExists(baseName, project.getTenantId());
+            // Check if base name exists (with optional exclusion for updates)
+            boolean isDuplicate;
+            if (excludeProjectId != null) {
+                // For updates: exclude current project from duplicate check
+                isDuplicate = projectRepository.isProjectNameExistsExcludingProject(baseName, project.getTenantId(), excludeProjectId);
+            } else {
+                // For creation: check all projects
+                isDuplicate = isProjectNameExists(baseName, project.getTenantId());
+            }
             
             if (isDuplicate) {
                 // Generate unique name with suffix

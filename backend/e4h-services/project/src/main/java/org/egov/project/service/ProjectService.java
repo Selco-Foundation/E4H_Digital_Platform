@@ -630,8 +630,8 @@ public class ProjectService {
                 return;
             }
 
-            // Generate new base name based on current project data
-            ProjectNameResult nameResult = projectNameGenerationService.generateNameAndCheckDuplicate(project, request.getRequestInfo());
+            // Generate new base name based on current project data (exclude current project from duplicate check)
+            ProjectNameResult nameResult = projectNameGenerationService.generateNameAndCheckDuplicate(project, request.getRequestInfo(), project.getId());
             
             if (nameResult == null || nameResult.getName() == null) {
                 log.warn("Could not generate new name for project: {} during update", project.getId());
@@ -648,25 +648,15 @@ public class ProjectService {
             if (!newBaseName.equals(existingBaseName)) {
                 log.info("Project name needs update. Existing: {}, New: {}", existingName, newBaseName);
                 
-                // Check if the new base name already exists in the system
-                boolean isNewNameDuplicate = projectRepository.isProjectNameExists(newBaseName, project.getTenantId());
-                
-                if (isNewNameDuplicate) {
-                    // Generate unique name with suffix
-                    String uniqueName = generateUniqueBatchName(newBaseName, project.getTenantId(), new HashSet<>());
-                    project.setName(uniqueName);
-                    log.info("Updated project name to unique name: {} (base: {})", uniqueName, newBaseName);
-                } else {
-                    // Use the new base name as it's unique
-                    project.setName(newBaseName);
-                    log.info("Updated project name to: {}", newBaseName);
-                }
+                // Use the generated name (already checked for duplicates with exclusion)
+                project.setName(nameResult.getName());
+                log.info("Updated project name to: {}", nameResult.getName());
                 
                 // Update isDuplicateName flag in additionalDetails
                 Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(
                     project.getAdditionalDetails(),
                     "isDuplicateName",
-                    isNewNameDuplicate
+                    nameResult.getIsDuplicateName()
                 );
                 project.setAdditionalDetails(enrichedAdditionalDetails);
                 
