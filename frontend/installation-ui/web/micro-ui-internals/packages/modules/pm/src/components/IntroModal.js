@@ -34,7 +34,7 @@ const styles = {
     width: "100%",
     maxWidth: "82rem", // ~1312px
     borderRadius: "0",
-    border: "1px solid #EEE",
+    border: "1px solid #79797996",
     boxShadow: "0 10px 25px rgba(0,0,0,0.05)",
     overflow: "hidden",
     fontFamily: "Roboto, system-ui, -apple-system, Segoe UI, Helvetica, Arial",

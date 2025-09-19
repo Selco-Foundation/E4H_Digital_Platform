@@ -244,6 +244,7 @@ const ProjectTable = () => {
           padding: "24px",
           marginBottom: "16px",
           borderRadius: "2px",
+          minWidth: "700px",
         }}>
         <div style={{
           marginBottom: "8px",
@@ -303,42 +304,40 @@ const ProjectTable = () => {
         </div>
       </div>
 
-      <div style={{backgroundColor: "white"}}>
-        <div style={{padding: "20px"}}>
-          {data?.projects && data.projects.length > 0 ? (
-            <div style={{margin: "0 0px", overflow: "auto"}}>
-              <Table
-                t={t}
-                data={data.projects}
-                columns={columns}
-                getCellProps={() => ({
-                  style: {
-                    maxWidth: "100%",
-                    padding: "16px",
-                    fontSize: "16px"
-                  },
-                })}
-                onNextPage={onNextPage}
-                onPrevPage={onPrevPage}
-                currentPage={Math.floor(pageOffset / pageSize)}
-                totalRecords={data.totalCount || 0}
-                onPageSizeChange={onPageSizeChange}
-                pageSizeLimit={pageSize}
-              />
-            </div>
-          ) : (
-            <div style={{
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              height: "200px",
-              fontSize: "18px",
-              color: "#666"
-            }}>
-              {!isLoading && t("CS_NO_PROJECTS_FOUND")}
-            </div>
-          )}
-        </div>
+      <div style={{backgroundColor: "white", padding: "20px", minWidth: "700px"}}>
+        {data?.projects && data.projects.length > 0 ? (
+          <div style={{margin: "0 0px", overflow: "auto"}}>
+            <Table
+              t={t}
+              data={data.projects}
+              columns={columns}
+              getCellProps={() => ({
+                style: {
+                  maxWidth: "100%",
+                  padding: "16px",
+                  fontSize: "16px"
+                },
+              })}
+              onNextPage={onNextPage}
+              onPrevPage={onPrevPage}
+              currentPage={Math.floor(pageOffset / pageSize)}
+              totalRecords={data.totalCount || 0}
+              onPageSizeChange={onPageSizeChange}
+              pageSizeLimit={pageSize}
+            />
+          </div>
+        ) : (
+          <div style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            height: "200px",
+            fontSize: "18px",
+            color: "#666"
+          }}>
+            {!isLoading && t("CS_NO_PROJECTS_FOUND")}
+          </div>
+        )}
       </div>
     </div>
   );

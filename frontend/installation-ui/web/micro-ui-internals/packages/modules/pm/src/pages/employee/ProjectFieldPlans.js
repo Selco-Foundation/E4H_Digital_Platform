@@ -167,7 +167,7 @@ const ProjectFieldPlans = () => {
   const renderFieldPlanTable = () => {
 
     return (
-      <div style={{ borderRadius: "6px", overflow: "hidden" }}>
+      <div style={{ borderRadius: "6px", overflow: "hidden", boxShadow: "0px 0px 4px 0 rgba(0, 0, 0, 0.2)" }}>
         <Table
           t={t}
           data={data}

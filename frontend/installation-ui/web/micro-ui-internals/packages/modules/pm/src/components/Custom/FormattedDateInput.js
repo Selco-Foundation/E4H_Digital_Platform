@@ -61,9 +61,7 @@ const FormattedDateInput = ({
       >
         {value ? format(new Date(value), dateFormat) : ""}
       </span>
-      <span>
-        <DateRange fill={"#505A5F"} />
-      </span>
+      <DateRange fill={"#505A5F"} />
     </div>
   );
 }
