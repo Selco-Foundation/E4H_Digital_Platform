@@ -34,8 +34,8 @@ const InfoCard = ({ t, project }) => {
     return `${day} ${month} ${year}`;
   };
 
-  const handleEditProjectNavigation = () => {
-    history.push(`/${window.contextPath}/employee/pm/project/create?projectId=${id}&key=1`);
+  const handleProjectDetailsNavigation = () => {
+    history.push(`/${window.contextPath}/employee/pm/project/${id}/details`);
   }
 
   return (
@@ -72,7 +72,7 @@ const InfoCard = ({ t, project }) => {
           padding: "0px",
           backgroundColor: "white",
         }}
-        onClick={handleEditProjectNavigation}
+        onClick={handleProjectDetailsNavigation}
       >
         <EditIcon />
       </button>

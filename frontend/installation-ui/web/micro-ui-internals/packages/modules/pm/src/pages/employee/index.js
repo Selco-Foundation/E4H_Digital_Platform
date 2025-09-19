@@ -6,8 +6,9 @@ import { useSelector } from "react-redux";
 import CreateProject from "./CreateProject";
 import Response from "./Response";
 import CreateFieldPlan from "./CreateFieldPlan";
-import ProjectDetails from "./ProjectDetails";
+import ProjectFieldPlans from "./ProjectFieldPlans";
 import ProjectTable from "./ProjectTable";
+import ProjectDetails from "./ProjectDetails";
 
 const PMApp = () => {
   const { t } = useTranslation();
@@ -22,7 +23,7 @@ const PMApp = () => {
       show: true,
     },
     projectCreation: {
-      content: t("PM_ACTION_CREATE_PROJECT"),
+      content: pmStore?.workingProject?.status ? t("PM_ACTION_EDIT_PROJECT") : t("PM_ACTION_CREATE_PROJECT"),
       internalLink: match.url + `/project/create`,
       show: true,
     },
@@ -31,8 +32,13 @@ const PMApp = () => {
       internalLink: match.url + `/projects`,
       show: true,
     },
-    projectDetails: {
+    projectFieldPlans: {
       content: pmStore?.workingProject?.name,
+      internalLink: match.url + `/project/${pmStore?.workingProject?.id}/field-plans`,
+      show: true,
+    },
+    projectDetails: {
+      content: t("CS_COMMON_DETAILS"),
       internalLink: match.url + `/project/${pmStore?.workingProject?.id}/details`,
       show: true,
     },
@@ -69,17 +75,24 @@ const PMApp = () => {
           />
           <ProjectTable />
         </Route>
+        <Route path={`${path}/project/:projectId/field-plans`} exact={true}>
+          <BreadCrumb
+            spanStyle={{ color: "#0B0C0C" }}
+            crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.projects, breadCrumbsConfig.projectFieldPlans]}
+          />
+          <ProjectFieldPlans />
+        </Route>
         <Route path={`${path}/project/:projectId/details`} exact={true}>
           <BreadCrumb
             spanStyle={{ color: "#0B0C0C" }}
-            crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.projects, breadCrumbsConfig.projectDetails]}
+            crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.projects, breadCrumbsConfig.projectFieldPlans, breadCrumbsConfig.projectDetails]}
           />
           <ProjectDetails />
         </Route>
         <Route path={`${path}/project/:projectId/field-plan/create`} exact={true}>
           <BreadCrumb
             spanStyle={{ color: "#0B0C0C" }}
-            crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.projects, breadCrumbsConfig.projectDetails, breadCrumbsConfig.fieldPlanCreation]}
+            crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.projects, breadCrumbsConfig.projectFieldPlans, breadCrumbsConfig.fieldPlanCreation]}
           />
           <CreateFieldPlan />
         </Route>

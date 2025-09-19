@@ -160,7 +160,7 @@ const ProjectTable = () => {
       Cell: ({row}) => (
         <div>
           <Link
-            to={`/${window.contextPath}/employee/pm/project/${row.original.id}/details`}
+            to={`/${window.contextPath}/employee/pm/project/${row.original.id}/field-plans`}
             className="link"
             style={{color: "#C84C0E", textDecoration: "none"}}
           >
