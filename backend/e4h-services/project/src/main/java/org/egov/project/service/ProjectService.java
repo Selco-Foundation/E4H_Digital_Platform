@@ -607,6 +607,7 @@ public class ProjectService {
          */
         checkAndEnrichCascadingProjectDates(request, project);
         producer.push(projectConfiguration.getUpdateProjectDateTopic(), request);
+        producer.push(projectConfiguration.getUpdateProjectTopicIndexer(), request);
     }
 
 
