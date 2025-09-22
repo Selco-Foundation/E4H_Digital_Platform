@@ -416,7 +416,7 @@ const CreateFieldPlan = () => {
     switch (currentKey) {
       case 1:
         setShowBackAlert(false);
-        history.push(`/${window?.contextPath}/employee`);
+        window.history.back();
         break;
       case 2:
         setShowBackAlert(false);
