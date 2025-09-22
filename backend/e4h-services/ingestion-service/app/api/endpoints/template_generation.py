@@ -76,6 +76,7 @@ async def get_facility_ingestion_template_with_data(
 
         # Fetch project-linked facilities if project_id is provided
         project_linked_facility_ids = set()
+        project_facilities_data = []
         if project_id and project_service_url:
             try:
                 project_client = ProjectServiceClient(project_service_url)
@@ -83,9 +84,30 @@ async def get_facility_ingestion_template_with_data(
                 project_facilities = project_facilities_response.get("ProjectFacilities", [])
                 project_linked_facility_ids = {pf.get("facilityId") for pf in project_facilities if pf.get("facilityId")}
                 logger.info(f"Found {len(project_linked_facility_ids)} facilities linked to project {project_id}")
+                
+                # Fetch full facility data for project-linked facilities
+                for pf in project_facilities:
+                    facility_id = pf.get("facilityId")
+                    if facility_id:
+                        try:
+                            facility_data = facility_client.search_facility(tenant_id='in', facility_id=facility_id)
+                            if facility_data and facility_data.get('facilities'):
+                                project_facilities_data.extend(facility_data.get('facilities', []))
+                        except Exception as e:
+                            logger.error(f"Error fetching facility {facility_id}: {e}")
+                            
             except Exception as e:
                 logger.error(f"Error fetching project facilities: {e}")
                 # Continue without project facility data if there's an error
+        
+        # Combine boundary facilities with project facilities (avoid duplicates)
+        existing_facility_ids = {f.get('facility_id') for f in all_facilities}
+        for pf_facility in project_facilities_data:
+            if pf_facility.get('facility_id') not in existing_facility_ids:
+                all_facilities.append(pf_facility)
+                logger.info(f"Added project facility {pf_facility.get('facility_id')} to template")
+        
+        logger.info(f"Total facilities in template: {len(all_facilities)} (boundary: {len(existing_facility_ids)}, project: {len(project_facilities_data)})")
 
         # Mark facilities as included in project if they are already linked
         if project_id:
