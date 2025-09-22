@@ -105,6 +105,14 @@ const CreateFieldPlan = () => {
     });
   };
 
+  const formatDate = (timestamp) => {
+    const date = new Date(timestamp);
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    const year = date.getFullYear();
+    return `${year}-${month}-${day}`;
+  };
+
   const config = useMemo(
     () => [
       {
@@ -185,6 +193,10 @@ const CreateFieldPlan = () => {
             disable: false,
             customProps: {
               name: "fieldPlanDuration",
+              minimumStartDate: formatDate(createdProject?.startDate),
+              maximumStartDate: formatDate(createdProject?.endDate),
+              minimumEndDate: formatDate(createdProject?.startDate),
+              maximumEndDate: formatDate(createdProject?.endDate),
             },
             route: "field-plan-duration",
             nextRoute: "number-of-health-facilities",

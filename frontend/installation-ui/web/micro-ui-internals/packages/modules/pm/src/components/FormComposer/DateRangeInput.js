@@ -10,7 +10,11 @@ const DateRangeInput = ({
   clearErrors,
 }) => {
 
-  const { name, disableStartDate, disableEndDate } = props;
+  const {
+    name, disableStartDate, disableEndDate,
+    minimumStartDate = "", maximumStartDate = "",
+    minimumEndDate = "", maximumEndDate = "",
+  } = props;
   const [dateRange, setDateRange] = useState(data[name] || {
     startDate: "",
     endDate: "",
@@ -68,7 +72,8 @@ const DateRangeInput = ({
       <FormattedDateInput
         className="employee-card-input"
         value={dateRange.startDate}
-        max={dateRange.endDate}
+        min={minimumStartDate}
+        max={dateRange.endDate || maximumStartDate}
         onChange={(e) =>
           handleDateChange("startDate", e.target.value)
         }
@@ -78,7 +83,8 @@ const DateRangeInput = ({
       <FormattedDateInput
         className="employee-card-input"
         value={dateRange.endDate}
-        min={dateRange.startDate}
+        min={dateRange.startDate || minimumEndDate}
+        max={maximumEndDate}
         onChange={(e) =>
           handleDateChange("endDate", e.target.value)
         }
