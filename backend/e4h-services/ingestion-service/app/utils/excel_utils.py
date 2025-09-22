@@ -206,10 +206,10 @@ def add_validations_to_excel(file_path: str,
 
         elif config["type"] == "unique":
             # Enforce uniqueness using COUNTIF formula
-            formula = (
-                f'OR(LEN({col_letter}2)=0,'
-                f'COUNTIF(${col_letter}:${col_letter},{col_letter}2)=1)'
-            )
+            if allow_blank:
+                formula = f'OR(LEN({col_letter}2)=0, COUNTIF(${col_letter}:${col_letter},{col_letter}2)=1)'
+            else:
+                formula = f'COUNTIF(${col_letter}:${col_letter},{col_letter}2)=1'
             dv_unique = DataValidation(type="custom", formula1=formula,
                                        showErrorMessage=True, error=config.get("message", "Must be unique"),allow_blank=allow_blank)
             ws.add_data_validation(dv_unique)
