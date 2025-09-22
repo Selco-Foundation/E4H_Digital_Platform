@@ -9,7 +9,8 @@ import CustomCloseSvg from "../../components/Custom/CustomCloseSvg";
 import { Button, FormComposerV2, Loader, PopUp, Toast } from "@egovernments/digit-ui-react-components";
 import {Stepper} from "@egovernments/digit-ui-components";
 import { useDispatch } from "react-redux";
-import { populateWorkingProject } from "../../redux/actions";
+import { populateResponsePage, populateWorkingProject } from "../../redux/actions";
+import { useHistory } from "react-router-dom";
 
 const CreateFieldPlan = () => {
 
@@ -28,6 +29,7 @@ const CreateFieldPlan = () => {
   const [getFormData, setGetFormData] = useState(null);
   const [showBackAlert, setShowBackAlert] = useState(false);
   const [boundaryData, setBoundaryData] = useState({});
+  const history = useHistory();
   const url = window.location.href;
   const projectId = url.split("project/")[1].split("/")[0];
   const dispatch = useDispatch();
@@ -348,6 +350,19 @@ const CreateFieldPlan = () => {
         setCurrentKey((prev) => prev + 1);
         // await upsertFieldPlan(newFormData);
         break;
+      case 3:
+        dispatch(
+          populateResponsePage({
+            response: {},
+            message: t("PM_COMMON_FIELD_PLAN_CREATED"),
+            createdId: "KA-QC_HO-2024-200",
+            info: t("PM_COMMON_FIELD_PLAN_NAME"),
+            secondaryRedirectionLabel: t("PM_LABEL_GO_TO_PROJECT"),
+            onSecondaryRedirection: () => history.push(`/${window?.contextPath}/employee/pm/project/${createdProject.id}/field-plans`),
+          })
+        );
+        history.push(`/${window?.contextPath}/employee/pm/response`);
+        break;
     }
   };
 
@@ -444,10 +459,13 @@ const CreateFieldPlan = () => {
         </div>
       )}
       {createdProject?.name && (
-        <div style={{fontSize: "40px", fontWeight: "bold", fontFamily: "Roboto Condensed", marginBottom: "20px", color: "#0B0C0C"}}>
+        <div style={{fontSize: "40px", fontWeight: "700", fontFamily: "Roboto Condensed", marginBottom: "20px", color: "#0B0C0C"}}>
           {createdProject?.name}
         </div>
       )}
+      <div style={{fontSize: "32px", fontWeight: "700", fontFamily: "Roboto Condensed", marginBottom: "20px", color: "#0B0C0C"}}>
+        {t("PM_COMMON_NEW_FIELD_PLAN")}
+      </div>
       <Stepper
         customSteps={[
           "PM_CREATE_FIELD_PLAN_HEAD_FIELD_PLAN_DETAILS",
