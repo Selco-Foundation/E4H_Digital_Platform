@@ -8,7 +8,7 @@ from typing import Optional, Dict, List
 
 import pandas as pd
 from openpyxl import load_workbook
-from openpyxl.styles import Protection, Font
+from openpyxl.styles import Protection, Font, PatternFill
 from openpyxl.utils.dataframe import dataframe_to_rows
 
 from app.utils.excel_utils import autofit_columns
@@ -1755,6 +1755,7 @@ async def validate_facilities_excel_sheet(
                 for r_idx in range(2, ws.max_row + 1):
                     ws.cell(row=r_idx, column=new_col_idx).protection = Protection(locked=True)
 
+        grey_fill = PatternFill(start_color="D3D3D3", end_color="D3D3D3", fill_type="solid")
         # Write data rows back (without header row)
         for r_idx, row in enumerate(dataframe_to_rows(df, index=False, header=False), start=2):
             for c_idx, value in enumerate(row, start=1):
@@ -1763,6 +1764,7 @@ async def validate_facilities_excel_sheet(
                 # force lock for status/error columns
                 if ws.cell(1, c_idx).value in ["status", "error"]:
                     cell.protection = Protection(locked=True)
+                    cell.fill = grey_fill
 
         # Ensure sheet protection is ON
         ws.protection.sheet = True
