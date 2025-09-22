@@ -23,8 +23,8 @@ def add_dropdowns_to_excel(
         if not options:
             continue
         options_str = ",".join(options)
-        allow_blank = allow_blank_map.get(column_header, True)
-        dv = DataValidation(type="list", formula1=f'"{options_str}"', allowBlank=allow_blank)
+        allow_blank = (allow_blank_map or {}).get(column_header, True)
+        dv = DataValidation(type="list",showErrorMessage=True, formula1=f'"{options_str}"', allow_blank=allow_blank)
         dv.error = 'Please select from the list'
         dv.errorTitle = 'Invalid Entry'
         for cell in ws[header_row]:
