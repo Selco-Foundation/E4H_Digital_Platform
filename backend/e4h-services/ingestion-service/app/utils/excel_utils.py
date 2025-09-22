@@ -11,7 +11,7 @@ def add_dropdowns_to_excel(
         file_path: str,
         sheet_name: str,
         dropdowns: Dict[str, List[str]],
-        allow_blank: bool = True,
+        allow_blank_map: Dict[str, bool],
         max_extra_rows: int = 1000
 ):
     wb = load_workbook(file_path)
@@ -23,7 +23,8 @@ def add_dropdowns_to_excel(
         if not options:
             continue
         options_str = ",".join(options)
-        dv = DataValidation(type="list", formula1=f'"{options_str}"', allow_blank=allow_blank)
+        allow_blank = allow_blank_map.get(column_header, True)
+        dv = DataValidation(type="list", formula1=f'"{options_str}"', allowBlank=allow_blank)
         dv.error = 'Please select from the list'
         dv.errorTitle = 'Invalid Entry'
         for cell in ws[header_row]:
@@ -77,7 +78,7 @@ def lock_excel_columns(
 
     # Enable worksheet protection and allow selection of unlocked cells
     ws.protection.sheet = True
-
+    ws.protection.formatColumns = True
     wb.save(file_path)
 
 
@@ -120,15 +121,22 @@ def lock_prefilled_rows_in_excel(
             ws.cell(row=row_idx, column=col_idx).protection = Protection(locked=False)
 
     # Enable protection
-    ws.protection.sheet = True
     ws.protection.select_unlocked_cells = True
     ws.protection.formatColumns = True
-    ws.protection.insertRows = False
+    ws.protection.format_columns = True
+    ws.column_dimensions.max_outline = True
+    ws.protection.insertRows = True
+    ws.protection.insert_Rows = True
+    ws.protection.sheet = True
+    ws.protection.enable()
+
     wb.save(file_path)
 
 
-def add_validations_to_excel(file_path: str, sheet_name: str, validations: Dict[str, Dict[str, str]],
-                             allow_blank: bool = True,
+def add_validations_to_excel(file_path: str,
+                             sheet_name: str,
+                             validations: Dict[str, Dict[str, str]],
+                             allow_blank_map: Dict[str, bool],
                              max_extra_rows: int = 1000
                              ):
     """
@@ -136,7 +144,7 @@ def add_validations_to_excel(file_path: str, sheet_name: str, validations: Dict[
     :param file_path: Excel file path
     :param sheet_name: Sheet where validation needs to be added
     :param validations: Dict[column_name] = {"type": "regex"/"unique", "pattern"/"message": str}
-    :param allow_blank: Boolean
+    :param allow_blank_map: Dict[str,bool]
     :param max_extra_rows: Maximum extra number of rows to allow
     """
     wb = load_workbook(file_path)
@@ -154,6 +162,7 @@ def add_validations_to_excel(file_path: str, sheet_name: str, validations: Dict[
         col_idx = header_cell.column
         col_letter = get_column_letter(col_idx)
         data_range = f"{col_letter}2:{col_letter}{max_row}"
+        allow_blank = allow_blank_map.get(col_name, True)
 
         if config["type"] == "regex":
             pattern = config["pattern"]
@@ -172,10 +181,55 @@ def add_validations_to_excel(file_path: str, sheet_name: str, validations: Dict[
 
         elif config["type"] == "unique":
             # Enforce uniqueness using COUNTIF formula
-            formula = f'COUNTIF(${col_letter}:${col_letter},{col_letter}2)=1'
+            formula = (
+                f'OR(LEN({col_letter}2)=0,'
+                f'COUNTIF(${col_letter}:${col_letter},{col_letter}2)=1)'
+            )
             dv_unique = DataValidation(type="custom", formula1=formula,
                                        showErrorMessage=True, error=config.get("message", "Must be unique"),allow_blank=allow_blank)
             ws.add_data_validation(dv_unique)
             dv_unique.add(data_range)
+
+    wb.save(file_path)
+
+
+def autofit_columns(file_path: str, sheet_name: str, auto_fit: bool = True,
+                    default_width: int = 20, max_width: int = 50) -> None:
+    """
+    Adjust column widths in a given Excel sheet.
+
+    Args:
+        file_path: Path to the Excel file
+        sheet_name: Name of the sheet to adjust
+        auto_fit: If True, width is based on longest text length in each column
+        default_width: Default width if auto_fit is False
+        max_width: Maximum allowed column width
+    """
+    wb = load_workbook(file_path)
+    if sheet_name not in wb.sheetnames:
+        raise ValueError(f"Sheet '{sheet_name}' not found in {file_path}")
+
+    ws = wb[sheet_name]
+
+    # Load data with pandas for convenience
+    try:
+        df = pd.read_excel(file_path, sheet_name=sheet_name)
+    except Exception:
+        df = None  # fallback: will just use worksheet cells
+
+    for i, col in enumerate(ws.iter_cols(min_row=1, max_row=ws.max_row), start=1):
+        col_letter = get_column_letter(i)
+
+        if auto_fit:
+            # Use DataFrame if available for cleaner text handling
+            if df is not None and df.shape[1] >= i:
+                texts = [str(df.columns[i - 1])] + df.iloc[:, i - 1].astype(str).tolist()
+            else:
+                texts = [str(cell.value) for cell in col if cell.value is not None]
+
+            max_length = max((len(str(t)) for t in texts if t), default=default_width)
+            ws.column_dimensions[col_letter].width = min(max_length + 2, max_width)  # padding
+        else:
+            ws.column_dimensions[col_letter].width = default_width
 
     wb.save(file_path)
