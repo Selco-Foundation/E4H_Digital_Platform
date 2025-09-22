@@ -53,6 +53,7 @@ public class ProjectAddressQueryBuilder {
 
     // Project Name Generation Queries
     private static final String CHECK_PROJECT_NAME_EXISTS_QUERY = "SELECT COUNT(*) FROM project WHERE name = ? AND tenantid = ?";
+    private static final String CHECK_PROJECT_NAME_EXISTS_EXCLUDING_PROJECT_QUERY = "SELECT COUNT(*) FROM project WHERE name = ? AND tenantid = ? AND id != ?";
     private static final String FIND_HIGHEST_EXISTING_PROJECT_NAME_QUERY = "SELECT name FROM project WHERE name LIKE ? AND tenantid = ? ORDER BY name ASC";
 
     private final ProjectConfiguration config;
@@ -517,6 +518,14 @@ public class ProjectAddressQueryBuilder {
      */
     public String getCheckProjectNameExistsQuery() {
         return CHECK_PROJECT_NAME_EXISTS_QUERY;
+    }
+
+    /**
+     * Builds the query to check if a project name exists, excluding a specific project
+     * @return The SQL query string
+     */
+    public String getCheckProjectNameExistsExcludingProjectQuery() {
+        return CHECK_PROJECT_NAME_EXISTS_EXCLUDING_PROJECT_QUERY;
     }
 
     /**

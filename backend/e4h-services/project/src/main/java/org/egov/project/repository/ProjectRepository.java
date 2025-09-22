@@ -221,6 +221,26 @@ public class ProjectRepository extends GenericRepository<Project> {
     }
 
     /**
+     * Checks if a project name already exists in the database for a given tenant, excluding a specific project
+     * This is useful during updates to avoid false positives when the current project has the same name
+     * @param projectName The project name to check
+     * @param tenantId The tenant ID
+     * @param excludeProjectId The project ID to exclude from the check
+     * @return true if the project name exists (excluding the specified project), false otherwise
+     */
+    public boolean isProjectNameExistsExcludingProject(String projectName, String tenantId, String excludeProjectId) {
+        try {
+            String sql = queryBuilder.getCheckProjectNameExistsExcludingProjectQuery();
+            Integer count = jdbcTemplate.queryForObject(sql, Integer.class, projectName, tenantId, excludeProjectId);
+            return count != null && count > 0;
+        } catch (Exception e) {
+            log.error("Error checking for existing project name excluding project {}: {}", excludeProjectId, projectName, e);
+            // If we can't check, assume it exists to be safe
+            return true;
+        }
+    }
+
+    /**
      * Finds the highest existing project name with the given base name pattern
      * @param baseName The base name pattern to search for
      * @param tenantId The tenant ID

@@ -55,6 +55,7 @@ class FacilityTemplateService:
                                facility_schema: List[Dict[str, Any]],
                                boundary_list: List[Boundary],
                                facility_data: List[Dict[str, Any]],
+                               project_id: str = None
                                ) -> None:
         """
             Generates FacilityIngestionTemplate.xlsx with:
@@ -105,10 +106,36 @@ class FacilityTemplateService:
                         "message": "Values must be unique across rows"
                     }
 
+            # Debug: Log all columns before adding Include in Project
+            logger.info(f"Columns from schema: {output_list}")
+            
+            # Check if "Include in Project" column already exists (with or without "(Mandatory)")
+            existing_include_column = None
+            for col in output_list:
+                if "Include in Project" in col:
+                    existing_include_column = col
+                    break
+            
+            if existing_include_column:
+                # Use the existing column
+                include_column = existing_include_column
+                dropdowns_map[include_column] = ["Yes", "No"]
+                editable_columns.append(include_column)
+                logger.info(f"Using existing column: {include_column}")
+            else:
+                # Add new "Include in Project" column
+                include_column = "Include in Project"
+                output_list.append(include_column)
+                dropdowns_map[include_column] = ["Yes", "No"]
+                editable_columns.append(include_column)
+                logger.info(f"Added new column: {include_column}")
+            
+            logger.info(f"Final columns: {output_list}")
+
             # Add Existing Facilities Sheet (Optional)
             formatted_facilities = []
             if facility_data:
-                formatted_facilities = format_facility_data_for_template(facility_data, facility_schema, output_list)
+                formatted_facilities = format_facility_data_for_template(facility_data, facility_schema, output_list, project_id)
 
             df_facility = pd.DataFrame(formatted_facilities, columns=output_list)
             facility_writer = create_excel_data_writer(
