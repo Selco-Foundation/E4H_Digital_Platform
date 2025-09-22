@@ -60,10 +60,7 @@ public class EscalationController {
             
             // Fetch master data
             List<EscalationRecipient> escalationRecipients = masterDataService.fetchEscalationRecipients(requestInfo);
-//            List<String> activeTenantIds = masterDataService.fetchActiveTenantIds(requestInfo);
-            List<String> activeTenantIds = new ArrayList<>();
-            activeTenantIds.add("pg");
-            activeTenantIds.add("as");
+            List<String> activeTenantIds = masterDataService.fetchActiveTenantIds(requestInfo);
             if (escalationRecipients.isEmpty()) {
                 log.warn("No escalation recipients found in MDMS");
                 escalationStatusService.publishGeneralFailureStatus("daily", "No escalation recipients found in MDMS");
@@ -123,10 +120,7 @@ public class EscalationController {
             
             // Fetch master data
             List<EscalationRecipient> escalationRecipients = masterDataService.fetchEscalationRecipients(requestInfo);
-//            List<String> activeTenantIds = masterDataService.fetchActiveTenantIds(requestInfo);
-            List<String> activeTenantIds = new ArrayList<>();
-            activeTenantIds.add("pg");
-            activeTenantIds.add("as");
+            List<String> activeTenantIds = masterDataService.fetchActiveTenantIds(requestInfo);
             if (escalationRecipients.isEmpty()) {
                 log.warn("No escalation recipients found in MDMS");
                 escalationStatusService.publishGeneralFailureStatus("weekly", "No escalation recipients found in MDMS");
