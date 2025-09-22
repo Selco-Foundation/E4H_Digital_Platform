@@ -9,6 +9,7 @@ public class ActivityConstants {
     public static final String MDMS_HCM_ATTENDANCE_MODULE_NAME = "HCM-ATTENDANCE";
     public static final String MASTER_STATE_INFO = "StateInfo";
     public static final String MASTER_ACTIVITIES = "Activities";
+    public static final String BOM_FORM = "BOM_FORM";
     //location
     public static final String DRAFT_STATUS = "DRAFT";
 

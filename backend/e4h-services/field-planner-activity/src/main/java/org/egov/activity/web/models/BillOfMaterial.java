@@ -2,10 +2,12 @@ package org.egov.activity.web.models;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.annotation.Generated;
+import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.egov.common.contract.models.AuditDetails;
 import org.springframework.validation.annotation.Validated;
 
 import java.util.Map;
@@ -19,47 +21,32 @@ import java.util.Map;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class Facility {
+public class BillOfMaterial {
 
     @JsonProperty("id")
     private String id = null;
 
-    @JsonProperty("tenant_id")
+    @JsonProperty("tenantId")
     private String tenantId = null;
 
-    @JsonProperty("facility_id")
+    @JsonProperty("facilityId")
     private String facilityId = null;
 
-    @JsonProperty("facility_category")
-    private String facilityCategory = null;
+    @JsonProperty("name")
+    private String name = null;
 
-    @JsonProperty("facility_type")
-    private String facilityType = null;
-
-    @JsonProperty("facility_subtype")
-    private String facilitySubtype = null;
-
-    @JsonProperty("facility_name")
-    private String facilityName = null;
-
-    @JsonProperty("facility_ownership")
-    private String facilityOwnership = null;
-
-    @JsonProperty("facility_region")
-    private String facilityRegion = null;
-
-    @JsonProperty("wfStatus")
-    private String wfStatus = null;
+    @JsonProperty("assignUser")
+    private String assignUser = null;
 
     @JsonProperty("additionalDetails")
     private Map<String, Object> additionalDetails = null;
 
-    @JsonProperty("facility_details")
-    private Map<String, Object> facilityDetails = null;
+    @JsonProperty("data")
+    private Map<String, Object> data = null;
 
     @JsonProperty("isActive")
     private Boolean isActive = null;
 
-    @JsonProperty("boundaryCode")
-    private String boundaryCode = null;
+    @JsonProperty("auditDetails")
+    protected @Valid AuditDetails auditDetails;
 }

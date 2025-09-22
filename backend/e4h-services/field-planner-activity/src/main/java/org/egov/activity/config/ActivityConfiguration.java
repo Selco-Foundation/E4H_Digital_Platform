@@ -61,6 +61,12 @@ public class ActivityConfiguration {
     @Value("${activity.kafka.update.topic}")
     private String updateActivityFacilityTopic;
 
+    @Value("${bom.kafka.create.topic}")
+    private String createBOMTopic;
+
+    @Value("${bom.kafka.update.topic}")
+    private String updateBOMTopic;
+
     @Value("${project.search.max.limit}")
     private Integer maxLimit;
 
