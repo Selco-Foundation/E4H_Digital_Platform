@@ -1775,7 +1775,7 @@ async def validate_facilities_excel_sheet(
         output_temp_file_path = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx").name
         wb.save(output_temp_file_path)
 
-        autofit_columns(output_temp_file_path, "FacilityMapping", auto_fit=True)
+        autofit_columns(output_temp_file_path, facility_sheet_name, auto_fit=True)
 
         background_tasks.add_task(cleanup_temp_file, output_temp_file_path)
 
@@ -2005,7 +2005,7 @@ async def create_facilities_and_update_project(
 
         wb.save(output_file_path)
 
-        autofit_columns(output_file_path, "FacilityMapping", auto_fit=True)
+        autofit_columns(output_file_path, facility_sheet_name , auto_fit=True)
 
         background_tasks.add_task(cleanup_temp_file, output_file_path)
 

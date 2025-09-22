@@ -1,4 +1,4 @@
-from typing import Dict, List, Union, Any
+from typing import Dict, List, Union, Any, Optional
 
 import pandas as pd
 from openpyxl import load_workbook
@@ -11,7 +11,7 @@ def add_dropdowns_to_excel(
         file_path: str,
         sheet_name: str,
         dropdowns: Dict[str, List[str]],
-        allow_blank_map: Dict[str, bool],
+        allow_blank_map: Optional[Dict[str, bool]],
         max_extra_rows: int = 1000
 ):
     wb = load_workbook(file_path)
