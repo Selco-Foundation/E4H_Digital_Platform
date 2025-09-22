@@ -108,14 +108,14 @@ class FacilityTemplateService:
 
             # Debug: Log all columns before adding Include in Project
             logger.info(f"Columns from schema: {output_list}")
-            
+
             # Check if "Include in Project" column already exists (with or without "(Mandatory)")
             existing_include_column = None
             for col in output_list:
                 if "Include in Project" in col:
                     existing_include_column = col
                     break
-            
+
             if existing_include_column:
                 # Use the existing column
                 include_column = existing_include_column
@@ -129,7 +129,7 @@ class FacilityTemplateService:
                 dropdowns_map[include_column] = ["Yes", "No"]
                 editable_columns.append(include_column)
                 logger.info(f"Added new column: {include_column}")
-            
+
             logger.info(f"Final columns: {output_list}")
 
             # Add Existing Facilities Sheet (Optional)
