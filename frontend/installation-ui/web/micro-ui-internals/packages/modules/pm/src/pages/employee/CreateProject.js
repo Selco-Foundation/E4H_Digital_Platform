@@ -230,7 +230,7 @@ const CreateProject = () => {
             disable: false,
             customProps: {
               name: "projectDuration",
-              disableStartDate: !!createdProject?.id,
+              disableStartDate: !!createdProject?.status,
               disableEndDate: false,
             },
             route: "project-duration",
@@ -276,7 +276,7 @@ const CreateProject = () => {
             customProps: {
               name: "districts",
               stateIdentifier: "state",
-              selectedOptions: createdProject?.additionalDetails?.geographyDetails?.districts || [],
+              selectedOptions: createdProject?.status ? createdProject?.additionalDetails?.geographyDetails?.districts || [] : [],
               t,
               boundaryData,
             },
@@ -298,7 +298,7 @@ const CreateProject = () => {
             customProps: {
               name: "blocks",
               districtsIdentifier: "districts",
-              selectedOptions: createdProject?.additionalDetails?.geographyDetails?.blocks || [],
+              selectedOptions: createdProject?.status ? createdProject?.additionalDetails?.geographyDetails?.blocks || [] : [],
               t,
               boundaryData,
             },
