@@ -94,7 +94,8 @@ def validate_columns(df, schema, add_err):
 
             # Pattern validation
             if col.get("pattern"):
-                if not re.fullmatch(col["pattern"], str_val):  # fullmatch is safer than match
+                pattern_val = str_val.split(".")[0] if str_val.endswith(".0") else str_val
+                if not re.fullmatch(col["pattern"], pattern_val):  # fullmatch is safer than match
                     add_err(i, f"{col_name} does not match pattern {col['pattern']}")
 
             # Enum validation (case-insensitive)

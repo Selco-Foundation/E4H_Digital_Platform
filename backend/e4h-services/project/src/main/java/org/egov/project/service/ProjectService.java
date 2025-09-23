@@ -607,12 +607,13 @@ public class ProjectService {
          */
         checkAndEnrichCascadingProjectDates(request, project);
         producer.push(projectConfiguration.getUpdateProjectDateTopic(), request);
+        producer.push(projectConfiguration.getUpdateProjectTopicIndexer(), request);
     }
 
 
     /**
      * Handles project name regeneration during updates
-     * Compares the new base name with existing name and updates if different
+     * Only regenerates name if the underlying data that affects the name has changed
      */
     private void handleProjectNameUpdate(ProjectRequest request, Project project, Project projectFromDB) {
         try {
@@ -623,8 +624,15 @@ public class ProjectService {
                 return;
             }
 
-            // Generate new base name based on current project data
-            ProjectNameResult nameResult = projectNameGenerationService.generateNameAndCheckDuplicate(project, request.getRequestInfo());
+            // Check if name-affecting data has changed
+            if (!hasNameAffectingDataChanged(project, projectFromDB)) {
+                log.info("No name-affecting data changed for project: {}, keeping existing name: {}", 
+                        project.getId(), projectFromDB.getName());
+                return;
+            }
+
+            // Generate new base name based on current project data (exclude current project from duplicate check)
+            ProjectNameResult nameResult = projectNameGenerationService.generateNameAndCheckDuplicate(project, request.getRequestInfo(), project.getId());
             
             if (nameResult == null || nameResult.getName() == null) {
                 log.warn("Could not generate new name for project: {} during update", project.getId());
@@ -641,25 +649,15 @@ public class ProjectService {
             if (!newBaseName.equals(existingBaseName)) {
                 log.info("Project name needs update. Existing: {}, New: {}", existingName, newBaseName);
                 
-                // Check if the new base name already exists in the system
-                boolean isNewNameDuplicate = projectRepository.isProjectNameExists(newBaseName, project.getTenantId());
-                
-                if (isNewNameDuplicate) {
-                    // Generate unique name with suffix
-                    String uniqueName = generateUniqueBatchName(newBaseName, project.getTenantId(), new HashSet<>());
-                    project.setName(uniqueName);
-                    log.info("Updated project name to unique name: {} (base: {})", uniqueName, newBaseName);
-                } else {
-                    // Use the new base name as it's unique
-                    project.setName(newBaseName);
-                    log.info("Updated project name to: {}", newBaseName);
-                }
+                // Use the generated name (already checked for duplicates with exclusion)
+                project.setName(nameResult.getName());
+                log.info("Updated project name to: {}", nameResult.getName());
                 
                 // Update isDuplicateName flag in additionalDetails
                 Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(
                     project.getAdditionalDetails(),
                     "isDuplicateName",
-                    isNewNameDuplicate
+                    nameResult.getIsDuplicateName()
                 );
                 project.setAdditionalDetails(enrichedAdditionalDetails);
                 
@@ -671,6 +669,41 @@ public class ProjectService {
             log.error("Error handling project name update for project: {}", project.getId(), e);
             // Don't throw exception - continue with update even if name generation fails
         }
+    }
+
+    /**
+     * Checks if any data that affects project name generation has changed
+     * Name is affected by: startDate, endDate, projectType, address.boundary (state)
+     */
+    private boolean hasNameAffectingDataChanged(Project project, Project projectFromDB) {
+        // Check if start date changed
+        if (!Objects.equals(project.getStartDate(), projectFromDB.getStartDate())) {
+            log.info("Start date changed for project: {} - name regeneration needed", project.getId());
+            return true;
+        }
+        
+        // Check if end date changed
+        if (!Objects.equals(project.getEndDate(), projectFromDB.getEndDate())) {
+            log.info("End date changed for project: {} - name regeneration needed", project.getId());
+            return true;
+        }
+        
+        // Check if project type changed
+        if (!Objects.equals(project.getProjectType(), projectFromDB.getProjectType())) {
+            log.info("Project type changed for project: {} - name regeneration needed", project.getId());
+            return true;
+        }
+        
+        // Check if address boundary (state) changed
+        String currentBoundary = project.getAddress() != null ? project.getAddress().getBoundary() : null;
+        String existingBoundary = projectFromDB.getAddress() != null ? projectFromDB.getAddress().getBoundary() : null;
+        if (!Objects.equals(currentBoundary, existingBoundary)) {
+            log.info("Address boundary changed for project: {} - name regeneration needed", project.getId());
+            return true;
+        }
+        
+        log.info("No name-affecting data changed for project: {}", project.getId());
+        return false;
     }
 
     /**
