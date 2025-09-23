@@ -304,25 +304,31 @@ class ProjectServiceClient:
             print(f"An error occurred: {req_err}")
             raise req_err
 
-    def unlink_project_facility(self, request_info: RequestInfo, project_id: str, facility_id: str):
+    def unlink_project_facility(self, request_info: RequestInfo, project_id: str, facility_id: str, project_facility_data: Dict[str, Any] = None):
         """
         Unlink a facility from a project by setting isDeleted to True
         """
         try:
-            # Use existing search method to find the ProjectFacility record
-            search_response = self.search_project_facility(request_info, project_id)
-            project_facilities = search_response.get("ProjectFacilities", [])
-            
-            # Find the specific facility in the results
-            target_facility = None
-            for pf in project_facilities:
-                if pf.get("facilityId") == facility_id:
-                    target_facility = pf
-                    break
-            
-            if not target_facility:
-                print(f"No ProjectFacility record found for facility {facility_id} and project {project_id}")
-                return None
+            # Use provided project_facility_data if available, otherwise search for it
+            if project_facility_data:
+                target_facility = project_facility_data
+                print(f"Using provided ProjectFacility data for facility {facility_id}")
+            else:
+                # Fallback: Use existing search method to find the ProjectFacility record
+                print(f"Searching for ProjectFacility record for facility {facility_id}")
+                search_response = self.search_project_facility(request_info, project_id)
+                project_facilities = search_response.get("ProjectFacilities", [])
+                
+                # Find the specific facility in the results
+                target_facility = None
+                for pf in project_facilities:
+                    if pf.get("facilityId") == facility_id:
+                        target_facility = pf
+                        break
+                
+                if not target_facility:
+                    print(f"No ProjectFacility record found for facility {facility_id} and project {project_id}")
+                    return None
             
             project_facility_id = target_facility.get("id")
             row_version = target_facility.get("rowVersion", 1)

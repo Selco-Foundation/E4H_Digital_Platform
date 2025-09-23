@@ -98,7 +98,20 @@ async def get_facility_ingestion_template_with_data(
                     # Unlink facilities from project
                     for facility_id in facilities_to_unlink:
                         try:
-                            project_client.unlink_project_facility(request_info, project_id, facility_id)
+                            # Find the project facility data from the already fetched project facilities
+                            project_facility_data = None
+                            for pf in project_facilities:
+                                if pf.get("facilityId") == facility_id:
+                                    project_facility_data = pf
+                                    break
+                            
+                            # Pass the facility data to avoid redundant search
+                            project_client.unlink_project_facility(
+                                request_info, 
+                                project_id, 
+                                facility_id, 
+                                project_facility_data
+                            )
                             logger.info(f"Successfully unlinked facility {facility_id} from project {project_id}")
                         except Exception as e:
                             logger.error(f"Error unlinking facility {facility_id} from project {project_id}: {e}")
