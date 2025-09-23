@@ -36,6 +36,8 @@ class FacilityServiceClient:
         tenant_id: str,
         facility_id: Optional[str] = None,
         boundary_code: Optional[str] = None,
+        hfr_id: Optional[str] = None,
+        nin_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         limit = 1000
         offset = 0
@@ -54,6 +56,10 @@ class FacilityServiceClient:
                 params["facilityid"] = facility_id
             if boundary_code:
                 params["boundaryCode"] = boundary_code
+            if hfr_id:
+                params["hfrId"] = hfr_id
+            if nin_id:
+                params["ninId"] = nin_id
 
             response = requests.get(url, headers=headers, params=params)
             response.raise_for_status()

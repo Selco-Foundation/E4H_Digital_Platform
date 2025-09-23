@@ -10,39 +10,38 @@ module.exports = {
   module: {
     rules: [
       {
-        test: /\.(js|jsx)$/,
+        test: /\.(js)$/,
         exclude: /node_modules/,
-        use: {
-          loader: "babel-loader",
-          options: {
-            presets: ["@babel/preset-env", "@babel/preset-react"],
-            plugins: ["@babel/plugin-proposal-optional-chaining"]
-          }
-        },
+        use: ["babel-loader"],
       },
       {
         test: /\.css$/i,
         use: ["style-loader", "css-loader"],
-      }
+      },
+      {
+        test: /\.(png|jpe?g|gif)$/i,
+        use: [
+          {
+            loader: 'file-loader',
+          },
+        ],
+      },
     ],
   },
-  resolve: {
-    extensions: [".js", ".jsx"]
-  },
   output: {
-    filename: "[name]-[contenthash].bundle.js",
+    filename: "[name].bundle.js",
     path: path.resolve(__dirname, "build"),
-    publicPath: process.env.PUBLIC_PATH || "/digit-ui/"
+    publicPath: "/installation-qc/",
   },
   optimization: {
     splitChunks: {
       chunks: 'all',
-      minSize: 20000,
-      maxSize: 50000,
-      enforceSizeThreshold: 50000,
-      minChunks: 1,
-      maxAsyncRequests: 30,
-      maxInitialRequests: 30
+      minSize:20000,
+      maxSize:50000,
+      enforceSizeThreshold:50000,
+      minChunks:1,
+      maxAsyncRequests:30,
+      maxInitialRequests:30
     },
   },
   plugins: [

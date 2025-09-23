@@ -1,7 +1,7 @@
 import datetime
 import json
 import time
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Union
 from datetime import datetime
 
 import pandas as pd
@@ -18,25 +18,87 @@ from app.schemas.vendor_ingestion_shema_response import (
     MDMSDataSource, ResponseInfo)
 
 
-def request_info_from_json(request_info_str: str) -> RequestInfo:
+def format_facility_data_for_template(
+    facility_data: List[Dict[str, Any]],
+    facility_schema: List[Dict[str, Any]],
+    headers: List[str],
+    project_id: str = None,
+) -> List[Dict[str, Any]]:
     """
-    Parses a JSON string and constructs a RequestInfo object using pydantic.
-    Handles nested objects (PlainAccessRequest, User) automatically.
+    Converts raw facility data into rows, aligned with `headers`
+    (already computed from facility_schema in generate_template_file).
+    """
 
-    Args:
-        request_info_str: The JSON string to parse.
+    def get_nested_value(data: Dict[str, Any], path: str):
+        cur = data
+        for part in path.split("."):
+            if isinstance(cur, dict) and part in cur:
+                cur = cur[part]
+            else:
+                return ""
+        return "" if cur is None else cur
 
-    Returns:
-        A RequestInfo object.
+    compiled_cols = []
+    for col, header in zip(facility_schema, headers):
+        mdms_values = col.get("mdms_values") or []
+        code_to_name = {mv.get("code"): mv.get("name") for mv in mdms_values if mv.get("code")}
+        compiled_cols.append({
+            "header": header,
+            "path": col.get("code", ""),
+            "type": (col.get("type") or "").strip().lower(),
+            "code_to_name": code_to_name,
+        })
 
-    Raises:
-        json.JSONDecodeError: If the input string is not valid JSON.
-        pydantic.ValidationError: If the parsed JSON does not conform to the
-                                  RequestInfo pydantic model.
+    formatted_rows: List[Dict[str, Any]] = []
+    for facility in facility_data:
+        row = {}
+        for c in compiled_cols:
+            val = get_nested_value(facility, c["path"])
+            if c["code_to_name"] and isinstance(val, str):
+                val = c["code_to_name"].get(val, val)
+
+            if c["type"] in ("enum-yes-no", "boolean"):
+                if isinstance(val, bool):
+                    val = "Yes" if val else "No"
+                elif isinstance(val, str):
+                    val = "Yes" if val.strip().lower() in ("true", "yes", "1") else "No"
+                else:
+                    val = ""
+            row[c["header"]] = val
+        
+        # Add "Include in Project" column value (find the actual column name)
+        include_column_name = None
+        for header in headers:
+            if "Include in Project" in header:
+                include_column_name = header
+                break
+        
+        if include_column_name:
+            include_value = facility.get("include_in_project", "No")
+            row[include_column_name] = include_value
+            # Debug logging
+            facility_id = facility.get("facility_id", "unknown")
+            print(f"DEBUG: Facility {facility_id} - include_in_project field: {facility.get('include_in_project', 'NOT_SET')} -> setting to: {include_value} in column: {include_column_name}")
+            
+        formatted_rows.append(row)
+
+    return formatted_rows
+
+
+def request_info_from_json(request_info_input: Union[str, Dict[str, Any]]) -> RequestInfo:
+    """
+    Accepts either a JSON string or a dictionary and constructs a RequestInfo object using pydantic.
     """
     try:
-        data: Dict[str, Any] = json.loads(request_info_str)
+        if isinstance(request_info_input, str):
+            data: Dict[str, Any] = json.loads(request_info_input)
+        elif isinstance(request_info_input, dict):
+            data = request_info_input
+        else:
+            raise TypeError(f"Invalid type for request_info: {type(request_info_input)}")
+
         return RequestInfo(**data)
+
     except json.JSONDecodeError as e:
         print(f"Error: Invalid JSON string: {e}")
         raise
@@ -443,8 +505,6 @@ def create_facility_payload(request_info: RequestInfo, row: Series, facility_sch
             }
         ]
     }
-
-
 
 def convert_response_to_facility(response: Dict[str, Any], role_type: str):
     return {
