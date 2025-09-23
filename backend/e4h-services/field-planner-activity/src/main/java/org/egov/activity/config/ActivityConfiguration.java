@@ -14,14 +14,8 @@ import java.util.List;
 @Component
 public class ActivityConfiguration {
 
-    @Value("${egov.product.host}")
-    private String productHost;
-
     @Value("${fieldplan.facility.idgen.id.format}")
     private String fieldPlanFacilityIdFormat;
-
-    @Value("${egov.household.host}")
-    private String householdServiceHost;
 
     @Value("${egov.fieldplan.host}")
     private String fieldPlanServiceHost;
@@ -94,12 +88,6 @@ public class ActivityConfiguration {
     @Value("${egov.boundary.search.url}")
     private String boundarySearchUrl;
 
-    @Value("${project.task.no.resource.validation.status}")
-    private List<String> noResourceStatuses;
-
-    @Value("${project.attendance.feature.enabled:true}")
-    private Boolean isAttendanceFeatureEnabled;
-
     @Value("${egov.workflow.host}")
     private String wfHost;
 
@@ -114,15 +102,6 @@ public class ActivityConfiguration {
 
     @Value("${egov.workflow.business.service}")
     private String businessService;
-
-    @Value("${egov.asset.host}")
-    private String assetHost;
-
-    @Value("${egov.asset.search.url}")
-    private String assetSearchUrl;
-
-    @Value("${egov.asset.update.url}")
-    private String assetUpdateUrl;
 
     @Value("${egov.hrms.host}")
     private String hrmsHost;
