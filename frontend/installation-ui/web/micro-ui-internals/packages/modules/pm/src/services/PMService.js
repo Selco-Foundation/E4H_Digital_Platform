@@ -88,7 +88,7 @@ export const PMService = {
     } catch (error) {
       console.error("Error validating facility data", error);
 
-      if (error.status === 400) {
+      if (error.response.status === 400) {
         return {
           errorCode: "INVALID_TEMPLATE",
         }

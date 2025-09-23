@@ -75,7 +75,8 @@ const QCCard = () => {
       >
         {t("CS_COMMON_HOME_INBOX_DESC")}
       </div>
-      <div
+      <button
+        type="button"
         style={{
           width: 116,
           height: 32,
@@ -92,14 +93,21 @@ const QCCard = () => {
           cursor: "pointer",
           position: "absolute",
           bottom: "24px",
+          border: "none",
         }}
         onClick={handleClick}
       >
-        <span>
+        <span
+          style={{
+            fontFamily: "Roboto",
+            fontWeight: "500",
+            fontSize: "16px",
+          }}
+        >
           {t("CORE_COMMON_VIEW")}
         </span>
         <CustomArrowRight color={"white"} height={"14px"} width={"14px"} />
-      </div>
+      </button>
     </div>
   );
 }

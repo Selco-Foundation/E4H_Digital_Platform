@@ -69,7 +69,7 @@ const PMCard = () => {
         </div>
       </div>
       <div>
-        <div
+        <button
           style={{
             display: "flex",
             gap: "8px",
@@ -80,6 +80,8 @@ const PMCard = () => {
             fontSize: "16px",
             fontWeight: "500",
             fontFamily: "Roboto",
+            background: "transparent",
+            border: "none",
           }}
           onClick={() => setShowIntro(true)}
         >
@@ -87,8 +89,8 @@ const PMCard = () => {
           <span>
             {t("QC_ACTION_CREATE_PROJECT")}
           </span>
-        </div>
-        <div
+        </button>
+        <button
           style={{
             display: "flex",
             gap: "8px",
@@ -98,6 +100,8 @@ const PMCard = () => {
             fontSize: "16px",
             fontWeight: "500",
             fontFamily: "Roboto",
+            background: "transparent",
+            border: "none",
           }}
           onClick={handleViewProjectRedirection}
         >
@@ -105,7 +109,7 @@ const PMCard = () => {
           <span>
             {t("QC_ACTION_VIEW_PROJECTS")}
           </span>
-        </div>
+        </button>
       </div>
 
       <IntroModal

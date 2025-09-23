@@ -3,7 +3,6 @@ import FormattedDateInput from "../Custom/FormattedDateInput";
 
 const DateRangeInput = ({
   data = {},
-  register,
   setValue,
   props,
   setError,
@@ -78,7 +77,6 @@ const DateRangeInput = ({
           handleDateChange("startDate", e.target.value)
         }
         disabled={disableStartDate}
-        {...register(`${name}.startDate`)}
       />
       <FormattedDateInput
         className="employee-card-input"
@@ -89,7 +87,6 @@ const DateRangeInput = ({
           handleDateChange("endDate", e.target.value)
         }
         disabled={disableEndDate}
-        {...register(`${name}.endDate`)}
       />
     </div>
   );

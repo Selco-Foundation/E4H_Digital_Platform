@@ -3,8 +3,8 @@ import React from "react";
 const CustomDownloadIcon = ({ styles, height="24", width = "19", className, onClick, fill = "#505A5F" }) => (
   <svg
     style={{ ...styles }}
-    width={height}
-    height={width}
+    width={width}
+    height={height}
     viewBox="0 0 19 24"
     fill={fill}
     xmlns="http://www.w3.org/2000/svg"

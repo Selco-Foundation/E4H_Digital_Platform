@@ -82,8 +82,6 @@ const styles = {
     marginTop: "2rem",
     gridTemplateColumns: "1fr",
   },
-  gridLg: "@media (min-width: 768px)",
-  gridXl: "@media (min-width: 1024px)",
   item: {
     display: "flex",
     alignItems: "center",

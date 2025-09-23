@@ -107,6 +107,9 @@ export const CustomRequest = async ({
     if (locale) {
       RequestInfo = { ...RequestInfo, msgId: `${ts}|${Digit.StoreData.getCurrentLanguage()}` };
     }
+    if (reqTimestamp) {
+      RequestInfo = { ...RequestInfo, ts: Number(ts) };
+    }
 
     const privacy = Digit.Utils.getPrivacyObject();
     if (privacy && !url.includes("/edcr/rest/dcr/")) {
@@ -120,10 +123,6 @@ export const CustomRequest = async ({
 
   if (setTimeParam) {
     params._ = Date.now();
-  }
-
-  if (reqTimestamp) {
-    data.RequestInfo = { ...data.RequestInfo, ts: Number(ts) };
   }
 
   let _url = url

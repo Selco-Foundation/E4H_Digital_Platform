@@ -14,9 +14,13 @@ const FormattedDateInput = ({
 
   const inputRef = useRef(null);
 
-  const handleDatePickerOpen = (e) => {
+  const handleDatePickerOpen = () => {
     if (disabled) return;
-    inputRef?.current?.showPicker();
+    if (inputRef?.current?.showPicker) inputRef.current.showPicker();
+    else {
+      inputRef?.current?.focus();
+      inputRef?.current?.click();
+    }
   }
 
   return (
