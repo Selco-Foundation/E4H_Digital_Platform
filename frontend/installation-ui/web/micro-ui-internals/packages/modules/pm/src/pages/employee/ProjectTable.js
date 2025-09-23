@@ -7,10 +7,10 @@ import useProject from "../../hooks/useProject";
 
 const formatDate = (timestamp) => {
   const date = new Date(timestamp);
-  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const month = date.toLocaleString("en-US", { month: "long" });
   const day = String(date.getDate()).padStart(2, "0");
   const year = date.getFullYear();
-  return `${month}/${day}/${year}`;
+  return `${day} ${month} ${year}`;
 };
 
 const SORT_DIR = {
@@ -311,10 +311,11 @@ const ProjectTable = () => {
               t={t}
               data={data.projects}
               columns={columns}
+              customTableWrapperClassName={"pm-projects-table"}
               getCellProps={() => ({
                 style: {
                   maxWidth: "100%",
-                  padding: "16px",
+                  padding: "20px 18px",
                   fontSize: "16px"
                 },
               })}

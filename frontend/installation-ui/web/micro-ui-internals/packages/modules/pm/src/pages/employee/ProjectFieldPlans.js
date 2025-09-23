@@ -50,13 +50,21 @@ const ProjectFieldPlans = () => {
     }
   }, [projectData])
 
+  const formatDate = (timestamp) => {
+    const date = new Date(timestamp);
+    const month = date.toLocaleString("en-US", { month: "long" });
+    const day = String(date.getDate()).padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day} ${month} ${year}`;
+  };
+
   const data = [
     {
       id: "1234",
       fieldPlanName: "Field Plan 1",
       activities: ["Tag", "Tag", "Tag", "Tag", "Tag", "Tag"],
-      startDate: "10/12/25",
-      endDate: "10/12/25",
+      startDate: 1758240000000,
+      endDate: 1758240000000,
       numberOfHealthFacilities: 1000,
       status: "Scheduled"
     },
@@ -122,12 +130,12 @@ const ProjectFieldPlans = () => {
       {
         id: "startDate",
         Header: () => GetHead("Start Date"),
-        Cell: ({ row }) => GetCell(row.original["startDate"]),
+        Cell: ({ row }) => GetCell(row.original["startDate"] ? formatDate(row.original["startDate"]) : "-"),
       },
       {
         id: "endDate",
         Header: () => GetHead("End Date"),
-        Cell: ({ row }) => GetCell(row.original["endDate"]),
+        Cell: ({ row }) => GetCell(row.original["endDate"] ? formatDate(row.original["endDate"]) : "-"),
       },
       {
         id: "numberOfHealthFacilities",
