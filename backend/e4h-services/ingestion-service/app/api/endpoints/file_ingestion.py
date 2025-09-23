@@ -8,6 +8,13 @@ from typing import Optional, Dict, List
 
 import pandas as pd
 from openpyxl import load_workbook
+from openpyxl.styles import Protection, Font, PatternFill
+from openpyxl.utils.dataframe import dataframe_to_rows
+
+from app.utils.excel_utils import autofit_columns
+from app.utils.facility_validator import project_facility_validation
+from fastapi import APIRouter, File, Form, UploadFile, HTTPException, BackgroundTasks, Depends
+from openpyxl import load_workbook
 from openpyxl.styles import Protection
 from openpyxl.utils.dataframe import dataframe_to_rows
 
@@ -1665,7 +1672,7 @@ def process_update_incident_data_response(response, df, idx):
 async def validate_facilities_excel_sheet(
         background_tasks: BackgroundTasks,
         facility_file: UploadFile = File(..., description="Excel file containing facility data"),
-        facility_sheet_name: str = Form(default="FacilityIngestionTemplate",
+        facility_sheet_name: str = Form(default="FacilityMapping",
                                         description="Name of the sheet containing facility data"),
         boundary_sheet_name: str = Form(default="BoundaryCodes",
                                         description="Name of the sheet containing boundary data"),
@@ -1738,6 +1745,7 @@ async def validate_facilities_excel_sheet(
             if col_name not in header_values:
                 new_col_idx = len(header_values) + 1
                 cell = ws.cell(row=1, column=new_col_idx, value=col_name)
+                cell.font = Font(bold=True)
                 header_values.append(col_name)
 
                 # lock header cell
@@ -1747,6 +1755,7 @@ async def validate_facilities_excel_sheet(
                 for r_idx in range(2, ws.max_row + 1):
                     ws.cell(row=r_idx, column=new_col_idx).protection = Protection(locked=True)
 
+        grey_fill = PatternFill(start_color="D3D3D3", end_color="D3D3D3", fill_type="solid")
         # Write data rows back (without header row)
         for r_idx, row in enumerate(dataframe_to_rows(df, index=False, header=False), start=2):
             for c_idx, value in enumerate(row, start=1):
@@ -1755,6 +1764,7 @@ async def validate_facilities_excel_sheet(
                 # force lock for status/error columns
                 if ws.cell(1, c_idx).value in ["status", "error"]:
                     cell.protection = Protection(locked=True)
+                    cell.fill = grey_fill
 
         # Ensure sheet protection is ON
         ws.protection.sheet = True
@@ -1764,6 +1774,8 @@ async def validate_facilities_excel_sheet(
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         output_temp_file_path = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx").name
         wb.save(output_temp_file_path)
+
+        autofit_columns(output_temp_file_path, facility_sheet_name, auto_fit=True)
 
         background_tasks.add_task(cleanup_temp_file, output_temp_file_path)
 
@@ -1789,13 +1801,12 @@ async def validate_facilities_excel_sheet(
 async def create_facilities_and_update_project(
         background_tasks: BackgroundTasks,
         facility_file: UploadFile = File(description="Validated Excel file with PASSED/FAILED status"),
-        facility_sheet_name: str = Form(default="FacilityIngestionTemplate",
+        facility_sheet_name: str = Form(default="FacilityMapping",
                                         description="Name of the sheet containing facility data"),
         project_id: str = Form(description="Project ID"),
         request_info: str = Form(default="")
 ):
     input_temp_file = None
-    output_temp_file = None
 
     # parse
     request_info = request_info_from_json(request_info)
@@ -1977,7 +1988,8 @@ async def create_facilities_and_update_project(
 
         for col_name in ["Facility Creation Status", "Project Linking Status"]:
             if col_name not in header_values:
-                ws.cell(row=1, column=len(header_values) + 1, value=col_name)
+                cell = ws.cell(row=1, column=len(header_values) + 1, value=col_name)
+                cell.font = Font(bold=True)
                 header_values.append(col_name)
                 if col_name not in df.columns:
                     df[col_name] = ""  # ensure column exists in dataframe
@@ -1992,6 +2004,9 @@ async def create_facilities_and_update_project(
                 ws.cell(row=r_idx, column=c_idx, value=value)
 
         wb.save(output_file_path)
+
+        autofit_columns(output_file_path, facility_sheet_name , auto_fit=True)
+
         background_tasks.add_task(cleanup_temp_file, output_file_path)
 
         return FileResponse(
