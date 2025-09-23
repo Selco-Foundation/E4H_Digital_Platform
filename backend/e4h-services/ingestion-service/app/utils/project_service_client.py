@@ -308,25 +308,54 @@ class ProjectServiceClient:
         """
         Unlink a facility from a project by setting isDeleted to True
         """
-        url = f"{self.project_service_url}/project/facility/v1/_update"
-        headers = {
-            "Content-Type": "application/json"
-        }
-
-        payload = {
-            'RequestInfo': request_info.model_dump(by_alias=True, exclude_none=True),
-            'ProjectFacility': {
-                'facilityId': facility_id,
-                'projectId': project_id,
-                'isDeleted': True,
-                'tenantId': 'in'
-            }
-        }
         try:
-            response = requests.post(url, headers=headers, json=payload)
-            response.raise_for_status()
-            print(f"Project Facility unlinked successfully: {json.loads(response.text)}")
-            return response
+            # Use existing search method to find the ProjectFacility record
+            search_response = self.search_project_facility(request_info, project_id)
+            project_facilities = search_response.get("ProjectFacilities", [])
+            
+            # Find the specific facility in the results
+            target_facility = None
+            for pf in project_facilities:
+                if pf.get("facilityId") == facility_id:
+                    target_facility = pf
+                    break
+            
+            if not target_facility:
+                print(f"No ProjectFacility record found for facility {facility_id} and project {project_id}")
+                return None
+            
+            project_facility_id = target_facility.get("id")
+            row_version = target_facility.get("rowVersion", 1)
+            
+            if not project_facility_id:
+                print(f"No ID found for ProjectFacility record")
+                return None
+            
+            print(f"Found ProjectFacility record with ID: {project_facility_id}, rowVersion: {row_version}")
+            
+            # Now update the record to set isDeleted = True
+            update_url = f"{self.project_service_url}/project/facility/v1/_update"
+            update_headers = {
+                "Content-Type": "application/json"
+            }
+
+            update_payload = {
+                'RequestInfo': request_info.model_dump(by_alias=True, exclude_none=True),
+                'ProjectFacility': {
+                    'id': project_facility_id,
+                    'facilityId': facility_id,
+                    'projectId': project_id,
+                    'isDeleted': True,
+                    'tenantId': 'in',
+                    'rowVersion': row_version
+                }
+            }
+            
+            update_response = requests.post(update_url, headers=update_headers, json=update_payload)
+            update_response.raise_for_status()
+            print(f"Project Facility unlinked successfully: {json.loads(update_response.text)}")
+            return update_response
+            
         except requests.exceptions.HTTPError as http_err:
             print(f"HTTP error occurred: {http_err}")
             raise http_err
