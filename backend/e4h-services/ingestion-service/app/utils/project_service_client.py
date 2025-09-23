@@ -303,3 +303,39 @@ class ProjectServiceClient:
         except requests.exceptions.RequestException as req_err:
             print(f"An error occurred: {req_err}")
             raise req_err
+
+    def unlink_project_facility(self, request_info: RequestInfo, project_id: str, facility_id: str):
+        """
+        Unlink a facility from a project by setting isDeleted to True
+        """
+        url = f"{self.project_service_url}/project/facility/v1/_update"
+        headers = {
+            "Content-Type": "application/json"
+        }
+
+        payload = {
+            'RequestInfo': request_info.model_dump(by_alias=True, exclude_none=True),
+            'ProjectFacility': {
+                'facilityId': facility_id,
+                'projectId': project_id,
+                'isDeleted': True,
+                'tenantId': 'in'
+            }
+        }
+        try:
+            response = requests.post(url, headers=headers, json=payload)
+            response.raise_for_status()
+            print(f"Project Facility unlinked successfully: {json.loads(response.text)}")
+            return response
+        except requests.exceptions.HTTPError as http_err:
+            print(f"HTTP error occurred: {http_err}")
+            raise http_err
+        except requests.exceptions.ConnectionError as conn_err:
+            print(f"Connection error occurred: {conn_err}")
+            raise conn_err
+        except requests.exceptions.Timeout as timeout_err:
+            print(f"Timeout error occurred: {timeout_err}")
+            raise timeout_err
+        except requests.exceptions.RequestException as req_err:
+            print(f"An error occurred: {req_err}")
+            raise req_err
