@@ -6,7 +6,10 @@ import io.swagger.annotations.ApiParam;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.egov.common.contract.response.ResponseInfo;
+import org.egov.common.models.core.SearchResponse;
 import org.egov.common.models.core.URLParams;
+import org.egov.common.models.project.ProjectFacility;
+import org.egov.common.models.project.ProjectFacilityBulkResponse;
 import org.egov.common.producer.Producer;
 import org.egov.common.utils.ResponseInfoFactory;
 import org.egov.field_planner.config.FieldPlannerConfiguration;
@@ -113,6 +116,29 @@ public class FieldPlannerApiController {
 
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(ResponseInfoFactory
                 .createResponseInfo(request.getRequestInfo(), true));
+    }
+
+    @RequestMapping(value = "/facility/_search", method = RequestMethod.POST)
+    public ResponseEntity<FieldPlanFacilityBulkResponse> fieldPlanFacilityV2SearchPost(
+            @Valid @ModelAttribute URLParams urlParams,
+            @ApiParam(value = "Capture details of Project facility.", required = true) @Valid @RequestBody FieldPlanFacilitySearchRequest request
+    ) throws Exception {
+        SearchResponse<FieldPlanFacility> searchResponse = fieldPlannerFacilityService.search(
+                request,
+                urlParams.getLimit(),
+                urlParams.getOffset(),
+                urlParams.getTenantId(),
+                urlParams.getLastChangedSince(),
+                urlParams.getIncludeDeleted()
+        );
+        FieldPlanFacilityBulkResponse response = FieldPlanFacilityBulkResponse.builder()
+                .fieldPlanFacilities(searchResponse.getResponse())
+                .totalCount(searchResponse.getTotalCount())
+                .responseInfo(ResponseInfoFactory
+                        .createResponseInfo(request.getRequestInfo(), true))
+                .build();
+
+        return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
     @RequestMapping(value = "/facility/_unassign", method = RequestMethod.POST)

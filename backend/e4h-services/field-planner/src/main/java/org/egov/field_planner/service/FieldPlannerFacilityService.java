@@ -3,6 +3,8 @@ package org.egov.field_planner.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.egov.common.models.core.SearchResponse;
+import org.egov.common.models.project.ProjectFacility;
 import org.egov.common.producer.Producer;
 import org.egov.common.validator.Validator;
 import org.egov.field_planner.config.FieldPlannerConfiguration;
@@ -87,6 +89,30 @@ public class FieldPlannerFacilityService {
         }
 
         return fieldPlanFacilities;
+    }
+
+    public SearchResponse<FieldPlanFacility> search(FieldPlanFacilitySearchRequest request,
+                                                  Integer limit,
+                                                  Integer offset,
+                                                  String tenantId,
+                                                  Long lastChangedSince,
+                                                  Boolean includeDeleted) throws Exception {
+        log.info("received request to search project facility");
+
+        if (isSearchByIdOnly(request.getCriteria())) {
+            log.info("searching project facility by id");
+            List<String> ids = request.getCriteria().getId();
+            log.info("fetching fieldplan facility with ids: {}", ids);
+            List<FieldPlanFacility> fieldPlanFacilities = fieldPlanFacilityRepository.findById(ids, includeDeleted).stream()
+                    .filter(lastChangedSince(lastChangedSince))
+                    .filter(havingTenantId(tenantId))
+                    .filter(includeDeleted(includeDeleted))
+                    .toList();
+            return SearchResponse.<FieldPlanFacility>builder().response(fieldPlanFacilities).build();
+        }
+        log.info("searching project facility using criteria");
+        return fieldPlanFacilityRepository.findWithCount(request.getCriteria(),
+                limit, offset, tenantId, lastChangedSince, includeDeleted);
     }
 
     public FieldPlanFacility unassign(FieldPlanFacilityRequest request) {

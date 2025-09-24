@@ -8,7 +8,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.egov.common.contract.request.RequestInfo;
-import org.egov.common.models.project.ProjectFacility;
 import org.springframework.validation.annotation.Validated;
 
 @Validated
@@ -16,10 +15,9 @@ import org.springframework.validation.annotation.Validated;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class FieldPlanFacilityRequest {
+public class FieldPlanFacilitySearchRequest {
     @JsonProperty("RequestInfo")
     private @NotNull @Valid RequestInfo requestInfo = null;
-
     @JsonProperty("FieldPlanFacility")
-    private @NotNull @Valid FieldPlanFacility fieldPlanFacility;
+    private @NotNull @Valid FieldPlanFacilitySearch criteria;
 }
