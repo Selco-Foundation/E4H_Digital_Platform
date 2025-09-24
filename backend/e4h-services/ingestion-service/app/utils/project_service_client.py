@@ -331,10 +331,10 @@ class ProjectServiceClient:
                     return None
             
             project_facility_id = target_facility.get("id")
-            row_version = target_facility.get("rowVersion", 1)
+            row_version = target_facility.get("rowVersion")
             
             if not project_facility_id:
-                print(f"No ID found for ProjectFacility record")
+                print("No ID found for ProjectFacility record")
                 return None
             
             print(f"Found ProjectFacility record with ID: {project_facility_id}, rowVersion: {row_version}")
@@ -345,16 +345,22 @@ class ProjectServiceClient:
                 "Content-Type": "application/json"
             }
 
+            # Build ProjectFacility payload - only include rowVersion if present
+            project_facility_payload = {
+                'id': project_facility_id,
+                'facilityId': facility_id,
+                'projectId': project_id,
+                'isDeleted': True,
+                'tenantId': 'in'
+            }
+            
+            # Only add rowVersion if it exists in the source record
+            if row_version is not None:
+                project_facility_payload['rowVersion'] = row_version
+
             update_payload = {
                 'RequestInfo': request_info.model_dump(by_alias=True, exclude_none=True),
-                'ProjectFacility': {
-                    'id': project_facility_id,
-                    'facilityId': facility_id,
-                    'projectId': project_id,
-                    'isDeleted': True,
-                    'tenantId': 'in',
-                    'rowVersion': row_version
-                }
+                'ProjectFacility': project_facility_payload
             }
             
             update_response = requests.post(update_url, headers=update_headers, json=update_payload)
