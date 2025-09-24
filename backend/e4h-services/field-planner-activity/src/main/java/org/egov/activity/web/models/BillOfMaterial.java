@@ -8,8 +8,10 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.egov.common.contract.models.AuditDetails;
+import org.egov.common.models.project.Document;
 import org.springframework.validation.annotation.Validated;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -40,6 +42,9 @@ public class BillOfMaterial {
 
     @JsonProperty("additionalDetails")
     private Map<String, Object> additionalDetails = null;
+
+    @JsonProperty("documents")
+    private @Valid List<Document> documents = null;
 
     @JsonProperty("data")
     private Map<String, Object> data = null;
