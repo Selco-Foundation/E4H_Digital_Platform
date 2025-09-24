@@ -4,22 +4,25 @@ import EmployeeApp from "./App";
 import { useTranslation } from "react-i18next";
 import { LOCALE } from "./constants/Localization";
 import { ComplaintIcon, Loader, CitizenHomeCard } from "@egovernments/digit-ui-react-components";
-import FieldPlanTable from "./pages/employee/FieldPlanTable";
-import FacilityTable from "./pages/employee/FacilityTable";
-import FacilityDetails from "./pages/employee/FacilityDetails";
-import QCCard from "./components/QCCard";
-import { useSelector } from "react-redux";
+import PMCard from "./components/PMCard";
+import DateRangeInput from "./components/FormComposer/DateRangeInput";
+import StateSelector from "./components/FormComposer/StateSelector";
+import DistrictSelector from "./components/FormComposer/DistrictSelector";
+import BlockSelector from "./components/FormComposer/BlockSelector";
+import DownloadTemplate from "./components/File/DownloadTemplate";
+import CustomUploadFile from "./components/File/CustomUploadFile";
+import ActivitySelector from "./components/FormComposer/ActivitySelector";
 
-export const QCReducers = getRootReducer;
+export const PMReducers = getRootReducer;
 
-const QCModule = ({ stateCode, userType, tenants }) => {
-  const moduleCode = "QC";
+const PMModule = ({ stateCode, userType, tenants }) => {
+  const moduleCode = "PM";
   const language = Digit.StoreData.getCurrentLanguage();
   const { isLoading, data: store } = Digit.Services.useStore({ stateCode, moduleCode, language });
   const { info } = Digit.UserService.getUser();
   const currentUserRoles = info?.roles?.map(role => role.code);
 
-  if(!currentUserRoles?.includes("INSTALLATION_REPORT_APPROVER_QC_TEAM")) {
+  if(!currentUserRoles?.includes("PROJECT_MANAGER")) {
     return null;
   }
 
@@ -27,11 +30,11 @@ const QCModule = ({ stateCode, userType, tenants }) => {
     return <Loader />;
   }
 
-  Digit.SessionStorage.set("IM_TENANTS", tenants);
+  Digit.SessionStorage.set("PM_TENANTS", tenants);
   return <EmployeeApp />;
 };
 
-const QCLinks = ({ matchPath }) => {
+const PMLinks = ({ matchPath }) => {
   const { t } = useTranslation();
   const [params, setParams, clearParams] = Digit.Hooks.useSessionStorage("PGR_CITIZEN_CREATE_COMPLAINT", {});
 
@@ -54,15 +57,19 @@ const QCLinks = ({ matchPath }) => {
 };
 
 const componentsToRegister = {
-  QCModule,
-  QCLinks,
-  QCCard,
-  QCFieldPlanTable : FieldPlanTable,
-  QCFacilityTable : FacilityTable,
-  QCFacilityDetails : FacilityDetails
+  PMModule,
+  PMLinks,
+  PMCard,
+  PMDateRange: DateRangeInput,
+  PMStateSelector: StateSelector,
+  PMDistrictSelector: DistrictSelector,
+  PMBlockSelector: BlockSelector,
+  PMDownloadTemplate: DownloadTemplate,
+  PMUploadFacilityData: CustomUploadFile,
+  PMActivitySelector: ActivitySelector
 };
 
-export const initQCComponents = () => {
+export const initPMComponents = () => {
   Object.entries(componentsToRegister).forEach(([key, value]) => {
     Digit.ComponentRegistryService.setComponent(key, value);
   });
