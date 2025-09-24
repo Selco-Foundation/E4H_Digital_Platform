@@ -36,10 +36,7 @@ import java.sql.Array;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static org.egov.project.util.ProjectConstants.SUBMITTED_BY_SUPERVISOR;
-
-import static org.egov.project.util.ProjectConstants.PROJECT_TYPE_FACILITY;
-import static org.egov.project.util.ProjectConstants.PROJECT_TYPE_FIELDPLAN;
+import static org.egov.project.util.ProjectConstants.*;
 
 @Service
 @Slf4j
@@ -308,6 +305,13 @@ public class ProjectService {
                 && projectSearchRequest.getProject().getProjectTypeId().equals(PROJECT_TYPE_FACILITY))
             getFacilityProject(projects, projectSearchRequest.getRequestInfo());
 
+        // Enrich all projects with HLS (Health Center) count
+        if (projectSearchRequest.getProject() != null
+                && projectSearchRequest.getProject().getSubProjectTypeId() != null
+                && PROJECT_SUB_TYPE.equalsIgnoreCase(projectSearchRequest.getProject().getSubProjectTypeId())) {
+            projects = enrichProjectsWithHlsCount(projects, projectSearchRequest.getRequestInfo());
+        }
+
         return projects;
     }
 
@@ -374,6 +378,81 @@ public class ProjectService {
         }
 
         return listProjects;
+    }
+
+    /**
+     * Enriches all projects with HLS (Health Center) count by searching for linked ProjectFacility entities
+     * and adding the count to each project's additionalDetails
+     *
+     * @param projects List of projects to enrich
+     * @param requestInfo Request information for the search
+     * @return List of projects with HLS count added to additionalDetails
+     * @throws Exception if there's an error during the enrichment process
+     */
+    public List<Project> enrichProjectsWithHlsCount(List<Project> projects, RequestInfo requestInfo) throws Exception {
+        if (projects == null || projects.isEmpty()) {
+            return projects;
+        }
+
+        log.info("Enriching {} projects with HLS count", projects.size());
+
+        for (Project project : projects) {
+            try {
+                // Create search criteria for ProjectFacility linked to this project
+                List<String> projectIds = new ArrayList<>();
+                projectIds.add(project.getId());
+
+                ProjectFacilitySearch projectFacilitySearch = ProjectFacilitySearch.builder()
+                        .projectId(projectIds)
+                        .facilityId(null) // Search for all facilities linked to this project
+                        .build();
+
+                ProjectFacilitySearchRequest projectFacilitySearchRequest = ProjectFacilitySearchRequest.builder()
+                        .projectFacility(projectFacilitySearch)
+                        .requestInfo(requestInfo)
+                        .build();
+
+                // Search for ProjectFacility entities linked to this project
+                SearchResponse<ProjectFacility> searchResponse = projectFacilityService.search(
+                        projectFacilitySearchRequest,
+                        1000,
+                        0,
+                        project.getTenantId(),
+                        null,
+                        false
+                );
+
+                // Get the count of linked health centers
+                int hlsCount = 0;
+                if (searchResponse != null && searchResponse.getResponse() != null) {
+                    hlsCount = searchResponse.getResponse().size();
+                }
+
+                // Add HLS count to project's additionalDetails
+                Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(
+                        project.getAdditionalDetails(),
+                        "hlsCount",
+                        hlsCount
+                );
+                project.setAdditionalDetails(enrichedAdditionalDetails);
+
+                log.debug("Project {} enriched with HLS count: {}", project.getId(), hlsCount);
+
+            } catch (Exception e) {
+                log.error("Error enriching project {} with HLS count: {}", project.getId(), e.getMessage(), e);
+                // Continue processing other projects even if one fails
+                // Set HLS count to 0 for this project
+                Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(
+                        project.getAdditionalDetails(),
+                        "hlsCount",
+                        0
+                );
+                project.setAdditionalDetails(enrichedAdditionalDetails);
+            }
+        }
+
+        log.info("Successfully enriched all projects with HLS count");
+        return projects;
     }
 
     public ProjectRequest updateProject(ProjectRequest request) {
@@ -528,12 +607,13 @@ public class ProjectService {
          */
         checkAndEnrichCascadingProjectDates(request, project);
         producer.push(projectConfiguration.getUpdateProjectDateTopic(), request);
+        producer.push(projectConfiguration.getUpdateProjectTopicIndexer(), request);
     }
 
 
     /**
      * Handles project name regeneration during updates
-     * Compares the new base name with existing name and updates if different
+     * Only regenerates name if the underlying data that affects the name has changed
      */
     private void handleProjectNameUpdate(ProjectRequest request, Project project, Project projectFromDB) {
         try {
@@ -544,8 +624,15 @@ public class ProjectService {
                 return;
             }
 
-            // Generate new base name based on current project data
-            ProjectNameResult nameResult = projectNameGenerationService.generateNameAndCheckDuplicate(project, request.getRequestInfo());
+            // Check if name-affecting data has changed
+            if (!hasNameAffectingDataChanged(project, projectFromDB)) {
+                log.info("No name-affecting data changed for project: {}, keeping existing name: {}", 
+                        project.getId(), projectFromDB.getName());
+                return;
+            }
+
+            // Generate new base name based on current project data (exclude current project from duplicate check)
+            ProjectNameResult nameResult = projectNameGenerationService.generateNameAndCheckDuplicate(project, request.getRequestInfo(), project.getId());
             
             if (nameResult == null || nameResult.getName() == null) {
                 log.warn("Could not generate new name for project: {} during update", project.getId());
@@ -562,25 +649,15 @@ public class ProjectService {
             if (!newBaseName.equals(existingBaseName)) {
                 log.info("Project name needs update. Existing: {}, New: {}", existingName, newBaseName);
                 
-                // Check if the new base name already exists in the system
-                boolean isNewNameDuplicate = projectRepository.isProjectNameExists(newBaseName, project.getTenantId());
-                
-                if (isNewNameDuplicate) {
-                    // Generate unique name with suffix
-                    String uniqueName = generateUniqueBatchName(newBaseName, project.getTenantId(), new HashSet<>());
-                    project.setName(uniqueName);
-                    log.info("Updated project name to unique name: {} (base: {})", uniqueName, newBaseName);
-                } else {
-                    // Use the new base name as it's unique
-                    project.setName(newBaseName);
-                    log.info("Updated project name to: {}", newBaseName);
-                }
+                // Use the generated name (already checked for duplicates with exclusion)
+                project.setName(nameResult.getName());
+                log.info("Updated project name to: {}", nameResult.getName());
                 
                 // Update isDuplicateName flag in additionalDetails
                 Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(
                     project.getAdditionalDetails(),
                     "isDuplicateName",
-                    isNewNameDuplicate
+                    nameResult.getIsDuplicateName()
                 );
                 project.setAdditionalDetails(enrichedAdditionalDetails);
                 
@@ -592,6 +669,41 @@ public class ProjectService {
             log.error("Error handling project name update for project: {}", project.getId(), e);
             // Don't throw exception - continue with update even if name generation fails
         }
+    }
+
+    /**
+     * Checks if any data that affects project name generation has changed
+     * Name is affected by: startDate, endDate, projectType, address.boundary (state)
+     */
+    private boolean hasNameAffectingDataChanged(Project project, Project projectFromDB) {
+        // Check if start date changed
+        if (!Objects.equals(project.getStartDate(), projectFromDB.getStartDate())) {
+            log.info("Start date changed for project: {} - name regeneration needed", project.getId());
+            return true;
+        }
+        
+        // Check if end date changed
+        if (!Objects.equals(project.getEndDate(), projectFromDB.getEndDate())) {
+            log.info("End date changed for project: {} - name regeneration needed", project.getId());
+            return true;
+        }
+        
+        // Check if project type changed
+        if (!Objects.equals(project.getProjectType(), projectFromDB.getProjectType())) {
+            log.info("Project type changed for project: {} - name regeneration needed", project.getId());
+            return true;
+        }
+        
+        // Check if address boundary (state) changed
+        String currentBoundary = project.getAddress() != null ? project.getAddress().getBoundary() : null;
+        String existingBoundary = projectFromDB.getAddress() != null ? projectFromDB.getAddress().getBoundary() : null;
+        if (!Objects.equals(currentBoundary, existingBoundary)) {
+            log.info("Address boundary changed for project: {} - name regeneration needed", project.getId());
+            return true;
+        }
+        
+        log.info("No name-affecting data changed for project: {}", project.getId());
+        return false;
     }
 
     /**
