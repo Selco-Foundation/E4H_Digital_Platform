@@ -47,7 +47,7 @@ async def get_facility_ingestion_template_with_data(
         facility_service: FacilityTemplateService = Depends(),
     payload: dict = Body(..., description="Payload object")
 ):
-    request_info = request_info_from_json(payload.get("request_info", {}))
+    request_info = request_info_from_json(payload.get("RequestInfo", {}))
     boundary_data = payload.get("boundary_data", {})
     project_id = payload.get("project_id")
     mdms_client = MDMSClient(mdms_url)
