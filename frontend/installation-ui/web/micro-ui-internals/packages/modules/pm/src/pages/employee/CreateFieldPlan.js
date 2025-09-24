@@ -9,8 +9,10 @@ import CustomCloseSvg from "../../components/Custom/CustomCloseSvg";
 import { Button, FormComposerV2, Loader, PopUp, Toast } from "@egovernments/digit-ui-react-components";
 import {Stepper} from "@egovernments/digit-ui-components";
 import { useDispatch } from "react-redux";
-import { populateResponsePage, populateWorkingProject } from "../../redux/actions";
+import { populateResponsePage, populateWorkingFieldPlan, populateWorkingProject } from "../../redux/actions";
 import { useHistory } from "react-router-dom";
+import useFieldPlan from "../../hooks/useFieldPlan";
+import { FieldPlanService } from "../../services/FieldPlan";
 
 const CreateFieldPlan = () => {
 
@@ -20,6 +22,7 @@ const CreateFieldPlan = () => {
   const [persistedFormData, setPersistedFormData] = useState({});
   const [defaultFormData, setDefaultFormData] = useState({});
   const [createdProject, setCreatedProject] = useState(null);
+  const [createdFieldPlan, setCreatedFieldPlan] = useState(null);
   const { key, fieldPlanId } = Digit.Hooks.useQueryParams();
   const [mobileView, setMobileView] = useState(window.innerWidth <= 640);
   const [toast, setToast] = useState(null);
@@ -28,7 +31,7 @@ const CreateFieldPlan = () => {
   const [invalidDataError, setInvalidDataError] = useState(null);
   const [getFormData, setGetFormData] = useState(null);
   const [showBackAlert, setShowBackAlert] = useState(false);
-  const [boundaryData, setBoundaryData] = useState({});
+  const [boundaryData, setBoundaryData] = useState(null);
   const history = useHistory();
   const url = window.location.href;
   const projectId = url.split("project/")[1].split("/")[0];
@@ -54,11 +57,16 @@ const CreateFieldPlan = () => {
     id: [projectId],
   });
 
+  const { data: fieldPlanData, revalidate: invalidateFieldPlanData } = useFieldPlan({
+    tenantId,
+    ids: [fieldPlanId],
+  });
+
   useEffect(() => {
-    if (fieldPlanId && key) {
+    if (createdFieldPlan?.id && key) {
       setCurrentKey(parseInt(key));
     }
-  }, []);
+  }, [createdFieldPlan?.id]);
 
   useEffect(() => {
     const project = projectData?.projects?.[0];
@@ -67,6 +75,32 @@ const CreateFieldPlan = () => {
       setCreatedProject(project);
     }
   }, [projectData]);
+
+  useEffect(() => {
+    const fieldPlan = fieldPlanData?.fieldPlans?.[0];
+    if (fieldPlan) {
+      dispatch(populateWorkingFieldPlan(fieldPlan));
+      setCreatedFieldPlan(fieldPlan);
+    }
+  }, [fieldPlanData]);
+
+  useEffect(() => {
+    if (createdFieldPlan?.id) {
+      history.replace({
+        pathname: location.pathname,
+        search: `fieldPlanId=${createdFieldPlan.id}&key=${currentKey}`,
+      });
+    }
+
+  }, [createdFieldPlan?.id, currentKey])
+
+  useEffect(()=>{
+    if(toast){
+      setTimeout(()=>{
+        setToast(null);
+      },2500)
+    }
+  },[toast])
 
   useEffect(() => {
     if (fetchedBoundaryData && createdProject) {
@@ -86,8 +120,41 @@ const CreateFieldPlan = () => {
     }
   }, [fetchedBoundaryData, createdProject]);
 
+  const formatDateForForm = (timestamp) => {
+    const date = new Date(timestamp);
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    const year = date.getFullYear();
+    return `${year}-${month}-${day}`;
+  };
+
   useEffect(() => {
-    if (createdProject) {
+    if (createdFieldPlan?.id && boundaryData && activityData) {
+      const savedActivityCodes = createdFieldPlan.activities.map((activity) => activity.code);
+
+      const formData = {
+        fieldPlanDetails: {
+          state: boundaryData.states
+            .filter((state) => state.code === createdFieldPlan.geographyDetails.state)
+            .map((state) => ({
+              code: state?.code,
+              name: t(`STATE_${state?.code.toUpperCase()}`),
+            }))
+            ?.[0],
+
+          districts: boundaryData.districts.filter((district) => createdFieldPlan.geographyDetails.districts.includes(district.code)),
+          blocks: boundaryData.blocks.filter((block) => createdFieldPlan.geographyDetails.blocks.includes(block.code)),
+          fieldPlanDuration: {
+            startDate: formatDateForForm(createdFieldPlan.startDate),
+            endDate: formatDateForForm(createdFieldPlan.endDate),
+          },
+          healthFacilitiesCount: createdFieldPlan.healthFacilityNumber,
+          activities: activityData.filter((activity) => savedActivityCodes.includes(activity.code)),
+        }
+      }
+
+      setPersistedFormData(formData);
+    } else if (createdProject) {
       const formData = {
         fieldPlanDetails: {
           state: createdProject.additionalDetails.geographyDetails.state,
@@ -96,7 +163,7 @@ const CreateFieldPlan = () => {
 
       setPersistedFormData(formData);
     }
-  }, [createdProject])
+  }, [createdProject, createdFieldPlan, boundaryData, activityData]);
 
   const handleFacilityDataUpload = async (file) => {
     setFile({
@@ -347,27 +414,103 @@ const CreateFieldPlan = () => {
     }
   }, [persistedFormData, currentKey]);
 
-  const upsertFieldPlan = async (projectData) => {};
+  const formatDataForUpdate = (data) => {
+    return {
+      ...createdFieldPlan,
+      healthFacilityNumber: parseInt(data.healthFacilitiesCount, 10),
+      startDate: (new Date(data.fieldPlanDuration.startDate)).getTime(),
+      endDate: (new Date(data.fieldPlanDuration.endDate)).getTime(),
+      geographyDetails: {
+        state: data.state.code,
+        districts: data.districts.map((district) => district.code),
+        blocks: data.blocks.map((block) => block.code),
+      },
+      activities: data.activities.map((activity) => ({
+        code: activity.code,
+        name: activity.name,
+      })),
+    }
+  }
+
+  const formatDataForCreate = (data) => {
+    return {
+      tenantId,
+      healthFacilityNumber: parseInt(data.healthFacilitiesCount, 10),
+      projectId: createdProject?.id,
+      startDate: (new Date(data.fieldPlanDuration.startDate)).getTime(),
+      endDate: (new Date(data.fieldPlanDuration.endDate)).getTime(),
+      geographyDetails: {
+        state: data.state.code,
+        districts: data.districts.map((district) => district.code),
+        blocks: data.blocks.map((block) => block.code),
+      },
+      activities: data.activities.map((activity) => ({
+        code: activity.code,
+        name: activity.name,
+      })),
+    }
+  }
+
+  const upsertFieldPlan = async (fieldPlanFormData) => {
+
+    setBlockUI(true);
+    let fieldPlanUpsertData;
+    if (createdFieldPlan?.id) {
+      fieldPlanUpsertData = {
+        FieldPlans: [formatDataForUpdate(fieldPlanFormData)],
+        isCascadingProjectDateUpdate: true,
+        apiOperation: "UPDATE"
+      };
+    } else {
+      fieldPlanUpsertData = {
+        FieldPlans: [formatDataForCreate(fieldPlanFormData)],
+        apiOperation: "CREATE"
+      };
+    }
+
+    try {
+      const fieldPlanResponse = await FieldPlanService.upsertFieldPlan(fieldPlanUpsertData);
+      const upsertedFieldPlanResponse = fieldPlanResponse.FieldPlans?.[0];
+      await invalidateFieldPlanData();
+      history.replace({
+        pathname: location.pathname,
+        search: `fieldPlanId=${upsertedFieldPlanResponse.id}&key=${currentKey + 1}`,
+      });
+      setCurrentKey(prev => prev + 1);
+      setToast({
+        key: "success",
+        label: createdFieldPlan?.id ? t("PM_TOAST_DRAFT_FIELD_PLAN_UPDATION_SUCCESS") : t("PM_TOAST_DRAFT_FIELD_PLAN_CREATION_SUCCESS"),
+      })
+
+    } catch (e) {
+      console.error(`Error ${ createdFieldPlan?.id ? `updating` : `creating` } field plan`, e);
+      setToast({
+        key: "error",
+        label: createdFieldPlan?.id ? t("PM_TOAST_DRAFT_FIELD_PLAN_UPDATION_ERROR") : t("PM_TOAST_DRAFT_FIELD_PLAN_CREATION_ERROR"),
+      })
+
+    } finally {
+      setBlockUI(false);
+    }
+
+  };
 
   const handleFormSubmit = async (data) => {
-    console.debug("data", data);
     switch (currentKey) {
       case 1:
         setPersistedFormData((prev) => ({ ...prev, fieldPlanDetails: data }));
-        setCurrentKey((prev) => prev + 1);
+        await upsertFieldPlan(data);
         break;
       case 2:
-        const newFormData = { ...persistedFormData, facilityData: data };
-        setPersistedFormData(newFormData);
+        setPersistedFormData((prev) => ({ ...prev, facilityData: data }));
         setCurrentKey((prev) => prev + 1);
-        // await upsertFieldPlan(newFormData);
         break;
       case 3:
         dispatch(
           populateResponsePage({
             response: {},
-            message: t("PM_COMMON_FIELD_PLAN_CREATED"),
-            createdId: "KA-QC_HO-2024-200",
+            message: !!createdFieldPlan?.status ? t("PM_COMMON_FIELD_PLAN_UPDATED") : t("PM_COMMON_FIELD_PLAN_CREATED"),
+            createdId: createdFieldPlan?.name,
             info: t("PM_COMMON_FIELD_PLAN_NAME"),
             secondaryRedirectionLabel: t("PM_LABEL_GO_TO_PROJECT"),
             onSecondaryRedirection: () => history.push(`/${window?.contextPath}/employee/pm/project/${createdProject.id}/field-plans`),
@@ -476,7 +619,7 @@ const CreateFieldPlan = () => {
         </div>
       )}
       <div style={{fontSize: "32px", fontWeight: "700", fontFamily: "Roboto Condensed", marginBottom: "20px", color: "#0B0C0C"}}>
-        {t("PM_COMMON_NEW_FIELD_PLAN")}
+        {createdFieldPlan?.name || t("PM_COMMON_NEW_FIELD_PLAN")}
       </div>
       <Stepper
         customSteps={[
