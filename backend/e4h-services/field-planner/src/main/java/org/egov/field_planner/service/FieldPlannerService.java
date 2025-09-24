@@ -175,7 +175,8 @@ public class FieldPlannerService {
         String stateCode = null;
         String concatenatedActivityCode = null;
         Map<String, Object> geographyDetails = fieldPlan.getGeographyDetails();
-        String state = (String)geographyDetails.get("state");
+        String stateBoundary = (String)geographyDetails.get("state");
+        String state = fieldPlanServiceUtil.extractStateName(stateBoundary);
         List<Map<String, Object>> activities = fieldPlan.getActivities();
         try {
             activitiesRes = JsonPath.read(mdmsData, jsonPathForActivities);
