@@ -5,7 +5,7 @@ from fastapi import HTTPException
 
 
 def project_facility_validation(
-    df, mdms_client, request_info, facility_client, boundary_data
+    df, mdms_client, request_info, facility_client, boundary_data, schemaName
 ):
     """Main function that orchestrates all facility file validations."""
 
@@ -35,7 +35,7 @@ def project_facility_validation(
     new_rows = new_rows.reset_index()
 
     schema = mdms_client.get_column_definitions_and_row_constraints_with_metadata(
-        request_info, 'data-ingestion.FacilityIngestionSchema'
+        request_info, schemaName
     )
 
     # Use positional index mapping to reference errors in original df

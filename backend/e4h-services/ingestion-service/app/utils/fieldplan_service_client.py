@@ -19,10 +19,10 @@ class FieldPlanServiceClient:
 
         payload = {
             'RequestInfo': request_info.model_dump(by_alias=True, exclude_none=True),
-            'fieldPlanFacility': {
+            'FieldPlanFacility': {
                 'facilityId': facility_id,
                 'fieldPlanId': fieldPlan_id,
-                'isDeleted': False,
+                'isdeleted': False,
                 'tenantId': 'in'
             }
         }
