@@ -3,7 +3,6 @@ import useBoundary from "../../hooks/useBoundary";
 import useMDMS from "../../hooks/useMDMS";
 import useProject from "../../hooks/useProject";
 import { useTranslation } from "react-i18next";
-import { IngestionService } from "../../services/Ingestion";
 import CustomArrowRight from "../../components/Custom/CustomArrowRight";
 import CustomCloseSvg from "../../components/Custom/CustomCloseSvg";
 import { Button, FormComposerV2, Loader, PopUp, Toast } from "@egovernments/digit-ui-react-components";
@@ -13,6 +12,7 @@ import { populateResponsePage, populateWorkingFieldPlan, populateWorkingProject 
 import { useHistory } from "react-router-dom";
 import useFieldPlan from "../../hooks/useFieldPlan";
 import { FieldPlanService } from "../../services/FieldPlan";
+import { PMService } from "../../services/PMService";
 
 const CreateFieldPlan = () => {
 
@@ -138,7 +138,7 @@ const CreateFieldPlan = () => {
             .filter((state) => state.code === createdFieldPlan.geographyDetails.state)
             .map((state) => ({
               code: state?.code,
-              name: t(`STATE_${state?.code.toUpperCase()}`),
+              name: `STATE_${state?.code.toUpperCase()}`,
             }))
             ?.[0],
 
@@ -165,11 +165,88 @@ const CreateFieldPlan = () => {
     }
   }, [createdProject, createdFieldPlan, boundaryData, activityData]);
 
-  const handleFacilityDataUpload = async (file) => {
-    setFile({
-      name: file.name,
-      data: file
-    });
+  const handleFacilityDataDownload = async () => {
+
+    setBlockUI(true);
+    try {
+      const geographyDetails = {
+        state: boundaryData.states
+          .filter((state) => state.code === createdFieldPlan.geographyDetails.state)
+          .map((state) => ({
+            code: state?.code,
+          }))
+          ?.[0],
+
+        districts: boundaryData.districts.filter((district) => createdFieldPlan.geographyDetails.districts.includes(district.code)),
+        blocks: boundaryData.blocks.filter((block) => createdFieldPlan.geographyDetails.blocks.includes(block.code)),
+      }
+      await PMService.downloadFieldPlanFacilityDataTemplate(createdFieldPlan.id, geographyDetails, t);
+
+      setToast({
+        label: t("PM_TOAST_FACILITY_TEMPLATE_DOWNLOAD_SUCCESS"),
+        key: "success",
+      })
+
+    } catch (error) {
+      console.error("Error downloading project facility data template", error);
+      setToast({
+        label: t("PM_TOAST_FACILITY_TEMPLATE_DOWNLOAD_ERROR"),
+        key: "error"
+      })
+
+    } finally {
+      setBlockUI(false);
+    }
+  }
+
+  const handleFacilityDataUpload = async (chosenFile) => {
+
+    setBlockUI(true);
+    let uploadedFile;
+    try {
+      const response = await PMService.uploadFieldPlanFacilityDataTemplate(chosenFile, createdFieldPlan.id);
+
+      if (response.errorCode === "INVALID_TEMPLATE") {
+        setToast({
+          key: "error",
+          label: t("PM_TOAST_FACILITY_DATA_UPLOAD_TEMPLATE_ERROR")
+        })
+        setInvalidDataError(null);
+
+      } else if (response.errorCode === "INVALID_DATA") {
+        setInvalidDataError({
+          label: `${response.errorCount} ${t("PM_HEALTH_FACILITIES_VALIDATION_FAILED")}`
+        })
+        uploadedFile = {
+          name: response.file.name || chosenFile.name,
+          data: response.file.data,
+          errorCodes: ["INVALID_DATA"]
+        }
+
+      } else {
+        setToast({
+          key: "success",
+          label: t("PM_TOAST_FACILITY_DATA_UPLOAD_SUCCESS"),
+        })
+        setInvalidDataError(null);
+        uploadedFile = {
+          name: response.file.name || chosenFile.name,
+          data: response.file.data,
+        }
+      }
+
+    } catch (e) {
+      console.error("Error uploading template", e);
+      setToast({
+        key: "error",
+        label: t("PM_TOAST_FACILITY_DATA_UPLOAD_ERROR"),
+      })
+
+    } finally {
+      setBlockUI(false);
+    }
+
+    setFile(uploadedFile);
   };
 
   const formatDate = (timestamp) => {
@@ -322,6 +399,7 @@ const CreateFieldPlan = () => {
               name: "downloadTemplate",
               heading: "PM_CREATE_FIELD_PLAN_HEAD_DOWNLOAD_FACILITY_TEMPLATE",
               description: "PM_CREATE_FIELD_PLAN_HEAD_DOWNLOAD_FACILITY_TEMPLATE_DESC",
+              handleDownload: handleFacilityDataDownload,
               t,
             },
             route: "project-duration-2",
@@ -390,7 +468,7 @@ const CreateFieldPlan = () => {
         ],
       },
     ],
-    [t, activityData, boundaryData, file, invalidDataError]
+    [t, activityData, boundaryData, createdFieldPlan, file, invalidDataError]
   );
 
   const filterConfig = (config, currentKey) => {
@@ -529,7 +607,7 @@ const CreateFieldPlan = () => {
     if (currentKey === 1 || currentKey === 2) {
       return t("CORE_COMMON_NEXT");
     } else {
-      return t("CORE_COMMON_SAVE");
+      return t("CORE_COMMON_SUBMIT");
     }
   };
 
