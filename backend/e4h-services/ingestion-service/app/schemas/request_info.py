@@ -15,3 +15,6 @@ class RequestInfo(BaseModel):
     correlation_id: Optional[str] = Field(default=None, alias="correlationId")
     plain_access_request: Optional[PlainAccessRequest] = Field(default=None, alias="plainAccessRequest")
     user_info: Optional[User] = Field(default=None, alias="userInfo")
+    
+    class Config:
+        extra = "allow"  # Allow extra fields in the model

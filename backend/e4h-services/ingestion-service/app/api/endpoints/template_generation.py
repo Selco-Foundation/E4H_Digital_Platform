@@ -3,14 +3,17 @@ from typing import Optional, List
 import psycopg2
 
 import pandas as pd
-from fastapi import APIRouter, Form, HTTPException, Depends
+from PIL import ImageDraw, Image, ImageFont
+from fastapi import APIRouter, Form, HTTPException, Depends, Body
 from fastapi.responses import FileResponse
+from fastapi import BackgroundTasks
 from openpyxl.utils import get_column_letter
 
 from app.core.logging import AppLogger
 from app.decorators.rbac_validator import get_authorized_request_info
 from app.ingest.facility_template_service import FacilityTemplateService
 from app.ingest.project_service import ProjectService
+from app.schemas.boundary import Boundary, flatten_boundaries
 from app.utils.convertor import request_info_from_json
 from app.utils.excel_utils import add_dropdowns_to_excel
 from app.utils.facility_service_client import FacilityServiceClient
@@ -35,6 +38,175 @@ DB_CONFIG = {
     "user": os.getenv("DB_USER"),
     "password": os.getenv("DB_PASSWORD")
 }
+
+@router.post('/facilityIngestionTemplateWithData',
+            summary='Generate facility ingestion template Excel file with schema, already present data and boundary codes',
+            response_description="Returns Excel template with facility schema, facility data and boundary codes")
+async def get_facility_ingestion_template_with_data(
+        background_tasks: BackgroundTasks,
+        facility_service: FacilityTemplateService = Depends(),
+    payload: dict = Body(..., description="Payload object")
+):
+    request_info = request_info_from_json(payload.get("RequestInfo", {}))
+    boundary_data = payload.get("boundary_data", {})
+    project_id = payload.get("project_id")
+    mdms_client = MDMSClient(mdms_url)
+    try:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_filename = f"facility_ingestion_template_{timestamp}.xlsx"
+        output_file_path = create_temp_file(suffix=".xlsx")
+        try:
+            facility_schema = mdms_client.get_column_definitions_with_metadata(request_info, 'data-ingestion.FacilityIngestionSchema')
+            boundary_list: List[Boundary] = flatten_boundaries(boundary_data)
+        except Exception as e:
+            logger.error(f"Error fetching data from external services: {e}")
+            cleanup_temp_file(output_file_path)
+            raise HTTPException(status_code=502, detail=f"External service error: {str(e)}")
+
+        # Handle facility unlinking for project-linked facilities not in current boundaries
+        if project_id and project_service_url:
+            try:
+                # Get all project-linked facilities
+                project_client = ProjectServiceClient(project_service_url)
+                project_facilities_response = project_client.search_project_facility(request_info, project_id)
+                project_facilities = project_facilities_response.get("ProjectFacilities", [])
+                project_linked_facility_ids = {pf.get("facilityId") for pf in project_facilities if pf.get("facilityId")}
+                logger.info(f"Found {len(project_linked_facility_ids)} facilities currently linked to project {project_id}")
+                
+                if project_linked_facility_ids:
+                    # Get all facilities in current boundaries
+                    facility_client = FacilityServiceClient(facility_service_url)
+                    current_boundary_facility_ids = set()
+                    
+                    for boundary in boundary_list:
+                        try:
+                            results = facility_client.search_facility(tenant_id='in', boundary_code=boundary.code)
+                            facilities = results.get('facilities', [])
+                            for facility in facilities:
+                                facility_id = facility.get('facility_id')
+                                if facility_id:
+                                    current_boundary_facility_ids.add(facility_id)
+                        except Exception as e:
+                            logger.error(f"Error fetching facilities for boundary {boundary.code}: {e}")
+                    
+                    logger.info(f"Found {len(current_boundary_facility_ids)} facilities in current boundaries")
+                    
+                    # Find project-linked facilities that are NOT in current boundaries
+                    facilities_to_unlink = project_linked_facility_ids - current_boundary_facility_ids
+                    logger.info(f"Found {len(facilities_to_unlink)} facilities to unlink: {facilities_to_unlink}")
+                    
+                    # Unlink facilities from project
+                    for facility_id in facilities_to_unlink:
+                        try:
+                            # Find the project facility data from the already fetched project facilities
+                            project_facility_data = None
+                            for pf in project_facilities:
+                                if pf.get("facilityId") == facility_id:
+                                    project_facility_data = pf
+                                    break
+                            
+                            # Pass the facility data to avoid redundant search
+                            project_client.unlink_project_facility(
+                                request_info, 
+                                project_id, 
+                                facility_id, 
+                                project_facility_data
+                            )
+                            logger.info(f"Successfully unlinked facility {facility_id} from project {project_id}")
+                        except Exception as e:
+                            logger.error(f"Error unlinking facility {facility_id} from project {project_id}: {e}")
+                            
+            except Exception as e:
+                logger.error(f"Error handling facility unlinking: {e}")
+                # Continue with template generation even if unlinking fails
+
+        all_facilities = []
+        if facility_service_url:
+            facility_client = FacilityServiceClient(facility_service_url)
+            for boundary in boundary_list:
+                try:
+                    results = facility_client.search_facility(tenant_id='in', boundary_code=boundary.code)
+                    facilities = results.get('facilities', [])
+                    all_facilities.extend(facilities)
+                except Exception as e:
+                    print(f"Error fetching boundary facilities: {e}")
+
+        # Fetch project-linked facilities if project_id is provided
+        project_linked_facility_ids = set()
+        project_facilities_data = []
+        if project_id and project_service_url:
+            try:
+                project_client = ProjectServiceClient(project_service_url)
+                project_facilities_response = project_client.search_project_facility(request_info, project_id)
+                project_facilities = project_facilities_response.get("ProjectFacilities", [])
+                project_linked_facility_ids = {pf.get("facilityId") for pf in project_facilities if pf.get("facilityId")}
+                logger.info(f"Found {len(project_linked_facility_ids)} facilities linked to project {project_id}")
+
+                # Fetch full facility data for project-linked facilities
+                for pf in project_facilities:
+                    facility_id = pf.get("facilityId")
+                    if facility_id:
+                        try:
+                            facility_data = facility_client.search_facility(tenant_id='in', facility_id=facility_id)
+                            if facility_data and facility_data.get('facilities'):
+                                project_facilities_data.extend(facility_data.get('facilities', []))
+                        except Exception as e:
+                            logger.error(f"Error fetching facility {facility_id}: {e}")
+
+            except Exception as e:
+                logger.error(f"Error fetching project facilities: {e}")
+                # Continue without project facility data if there's an error
+
+        # Combine boundary facilities with project facilities (avoid duplicates)
+        existing_facility_ids = {f.get('facility_id') for f in all_facilities}
+        for pf_facility in project_facilities_data:
+            if pf_facility.get('facility_id') not in existing_facility_ids:
+                all_facilities.append(pf_facility)
+                logger.info(f"Added project facility {pf_facility.get('facility_id')} to template")
+
+        logger.info(f"Total facilities in template: {len(all_facilities)} (boundary: {len(existing_facility_ids)}, project: {len(project_facilities_data)})")
+
+        # Mark facilities as included in project if they are already linked
+        if project_id:
+            for facility in all_facilities:
+                facility_id = facility.get("facility_id")
+                if facility_id in project_linked_facility_ids:
+                    facility["include_in_project"] = "Yes"
+                    logger.info(f"Facility {facility_id} is linked to project - marking as Yes")
+                else:
+
+                    facility["include_in_project"] = "No"
+                    logger.info(f"Facility {facility_id} is NOT linked to project - marking as No")
+        else:
+            # If no project_id provided, set all facilities to "No"
+            for facility in all_facilities:
+                facility["include_in_project"] = "No"
+                logger.info(f"No project_id provided - marking facility {facility.get('facility_id')} as No")
+
+        try:
+            facility_service.generate_template_file_with_data(
+                output_path=output_file_path,
+                facility_schema=facility_schema,
+                boundary_list=boundary_list,
+                facility_data=all_facilities,
+                project_id=project_id
+            )
+            logger.info(f"Successfully created facility ingestion template at {output_file_path}")
+        except Exception as e:
+            logger.error(f"Error generating template file: {e}")
+            cleanup_temp_file(output_file_path)
+            raise HTTPException(status_code=500, detail=f"Template generation error: {str(e)}")
+        background_tasks.add_task(cleanup_temp_file, output_file_path)
+        return FileResponse(
+            path=output_file_path,
+            filename=output_filename,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+
+    except Exception as e:
+        logger.error(f"Unhandled error in get_facility_ingestion_template: {e}")
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
+
 
 @router.get('/facilityIngestion',
             summary='Generate facility ingestion template Excel file with schema and boundary codes',

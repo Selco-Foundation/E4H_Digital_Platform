@@ -16,6 +16,12 @@ const QCModule = ({ stateCode, userType, tenants }) => {
   const moduleCode = "QC";
   const language = Digit.StoreData.getCurrentLanguage();
   const { isLoading, data: store } = Digit.Services.useStore({ stateCode, moduleCode, language });
+  const { info } = Digit.UserService.getUser();
+  const currentUserRoles = info?.roles?.map(role => role.code);
+
+  if(!currentUserRoles?.includes("INSTALLATION_REPORT_APPROVER_QC_TEAM")) {
+    return null;
+  }
 
   if (isLoading) {
     return <Loader />;

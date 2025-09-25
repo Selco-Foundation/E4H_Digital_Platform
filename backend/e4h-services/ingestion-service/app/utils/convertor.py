@@ -1,11 +1,14 @@
 import datetime
 import json
 import time
-from typing import Any, Dict, List, Optional
+from typing import Dict, Any, Optional, List, Union
+from datetime import datetime
 
 import pandas as pd
 from pandas import Series
+from psycopg.types import none
 from pydantic import ValidationError
+from sqlalchemy import false, true
 
 from app.schemas.boundary import Boundary
 from app.schemas.request_info import RequestInfo
@@ -15,25 +18,87 @@ from app.schemas.vendor_ingestion_shema_response import (
     MDMSDataSource, ResponseInfo)
 
 
-def request_info_from_json(request_info_str: str) -> RequestInfo:
+def format_facility_data_for_template(
+    facility_data: List[Dict[str, Any]],
+    facility_schema: List[Dict[str, Any]],
+    headers: List[str],
+    project_id: str = None,
+) -> List[Dict[str, Any]]:
     """
-    Parses a JSON string and constructs a RequestInfo object using pydantic.
-    Handles nested objects (PlainAccessRequest, User) automatically.
+    Converts raw facility data into rows, aligned with `headers`
+    (already computed from facility_schema in generate_template_file).
+    """
 
-    Args:
-        request_info_str: The JSON string to parse.
+    def get_nested_value(data: Dict[str, Any], path: str):
+        cur = data
+        for part in path.split("."):
+            if isinstance(cur, dict) and part in cur:
+                cur = cur[part]
+            else:
+                return ""
+        return "" if cur is None else cur
 
-    Returns:
-        A RequestInfo object.
+    compiled_cols = []
+    for col, header in zip(facility_schema, headers):
+        mdms_values = col.get("mdms_values") or []
+        code_to_name = {mv.get("code"): mv.get("name") for mv in mdms_values if mv.get("code")}
+        compiled_cols.append({
+            "header": header,
+            "path": col.get("code", ""),
+            "type": (col.get("type") or "").strip().lower(),
+            "code_to_name": code_to_name,
+        })
 
-    Raises:
-        json.JSONDecodeError: If the input string is not valid JSON.
-        pydantic.ValidationError: If the parsed JSON does not conform to the
-                                  RequestInfo pydantic model.
+    formatted_rows: List[Dict[str, Any]] = []
+    for facility in facility_data:
+        row = {}
+        for c in compiled_cols:
+            val = get_nested_value(facility, c["path"])
+            if c["code_to_name"] and isinstance(val, str):
+                val = c["code_to_name"].get(val, val)
+
+            if c["type"] in ("enum-yes-no", "boolean"):
+                if isinstance(val, bool):
+                    val = "Yes" if val else "No"
+                elif isinstance(val, str):
+                    val = "Yes" if val.strip().lower() in ("true", "yes", "1") else "No"
+                else:
+                    val = ""
+            row[c["header"]] = val
+        
+        # Add "Include in Project" column value (find the actual column name)
+        include_column_name = None
+        for header in headers:
+            if "Include in Project" in header:
+                include_column_name = header
+                break
+        
+        if include_column_name:
+            include_value = facility.get("include_in_project", "No")
+            row[include_column_name] = include_value
+            # Debug logging
+            facility_id = facility.get("facility_id", "unknown")
+            print(f"DEBUG: Facility {facility_id} - include_in_project field: {facility.get('include_in_project', 'NOT_SET')} -> setting to: {include_value} in column: {include_column_name}")
+            
+        formatted_rows.append(row)
+
+    return formatted_rows
+
+
+def request_info_from_json(request_info_input: Union[str, Dict[str, Any]]) -> RequestInfo:
+    """
+    Accepts either a JSON string or a dictionary and constructs a RequestInfo object using pydantic.
     """
     try:
-        data: Dict[str, Any] = json.loads(request_info_str)
+        if isinstance(request_info_input, str):
+            data: Dict[str, Any] = json.loads(request_info_input)
+        elif isinstance(request_info_input, dict):
+            data = request_info_input
+        else:
+            raise TypeError(f"Invalid type for request_info: {type(request_info_input)}")
+
         return RequestInfo(**data)
+
     except json.JSONDecodeError as e:
         print(f"Error: Invalid JSON string: {e}")
         raise
@@ -441,8 +506,6 @@ def create_facility_payload(request_info: RequestInfo, row: Series, facility_sch
         ]
     }
 
-
-
 def convert_response_to_facility(response: Dict[str, Any], role_type: str):
     return {
         "Country": "India",
@@ -519,8 +582,64 @@ def get_mdms_code_by_name(schema_list: List[Dict[str, Any]], field_name: str, va
 
     raise ValueError(f"Field name '{field_name}' not found in MDMS schema.")
 
+def get_expected_roles_for_staff() -> List[str]:
+    return ["INSTALLATION_REPORT_PART_A_EDITOR", "EMPLOYEE"]
 
-def get_incident_request_info():
+def get_expected_roles_for_supervisor() -> List[str]:
+    return ["INSTALLATION_REPORT_PART_B_EDITOR", "INSTALLATION_REPORT_PART_A_REVIEWER", "EMPLOYEE"]
+
+def check_role_mismatch_for_user_type(existing_user: Dict[str, Any], user_type: str) -> Dict[str, Any]:
+    if user_type.lower() == "staff" or user_type.lower() == "field_staff":
+        expected_roles = get_expected_roles_for_staff()
+    elif user_type.lower() == "supervisor" or user_type.lower() == "field_supervisor":
+        expected_roles = get_expected_roles_for_supervisor()
+    else:
+        return {
+            "has_mismatch": False,
+            "current_roles": [],
+            "expected_roles": [],
+            "mismatch_details": f"Unknown user type: {user_type}"
+        }
+
+    # Extract current roles from user data
+    current_roles = []
+    user_data = existing_user.get("user", {})
+    roles = user_data.get("roles", [])
+
+    for role in roles:
+        role_code = role.get("code", "")
+        if role_code:
+            current_roles.append(role_code)
+
+    # Check for mismatches
+    missing_roles = []
+    unexpected_roles = []
+
+    for expected_role in expected_roles:
+        if expected_role not in current_roles:
+            missing_roles.append(expected_role)
+
+    for current_role in current_roles:
+        if current_role not in expected_roles:
+            unexpected_roles.append(current_role)
+
+    has_mismatch = bool(missing_roles or unexpected_roles)
+
+    mismatch_details = ""
+    if has_mismatch:
+        if missing_roles:
+            mismatch_details += f"Missing roles: {', '.join(missing_roles)}. "
+        if unexpected_roles:
+            mismatch_details += f"Unexpected roles: {', '.join(unexpected_roles)}."
+
+    return {
+        "has_mismatch": has_mismatch,
+        "current_roles": current_roles,
+        "expected_roles": expected_roles,
+        "mismatch_details": mismatch_details.strip()
+    }
+
+def get_incident_data_update_request_info():
     return {
         "apiId": "Rainmaker",
         "authToken": "222d0cf6-07c2-4d90-8a71-0292c200ae74",
@@ -604,8 +723,6 @@ def create_update_payload(search_response: dict, update_data: dict) -> dict:
     original_type = incident.get('incidentType', '')
     original_subtype = incident.get('incidentSubType', '')
 
-
-
     details = {
         "CS_COMPLAINT_DETAILS_TICKET_NO": incident.get("incidentId"),
         "CS_COMPLAINT_DETAILS_APPLICATION_STATUS": f"CS_COMMON_{incident.get('applicationStatus', 'PENDINGFORASSIGNMENT')}",
@@ -658,62 +775,4 @@ def create_update_payload(search_response: dict, update_data: dict) -> dict:
         "incident": incident,
         "audit": audit,
         "RequestInfo": request_info
-
-    }
-
-def get_expected_roles_for_staff() -> List[str]:
-    return ["INSTALLATION_REPORT_PART_A_EDITOR", "EMPLOYEE"]
-
-def get_expected_roles_for_supervisor() -> List[str]:
-    return ["INSTALLATION_REPORT_PART_B_EDITOR", "INSTALLATION_REPORT_PART_A_REVIEWER", "EMPLOYEE"]
-
-def check_role_mismatch_for_user_type(existing_user: Dict[str, Any], user_type: str) -> Dict[str, Any]:
-    if user_type.lower() == "staff" or user_type.lower() == "field_staff":
-        expected_roles = get_expected_roles_for_staff()
-    elif user_type.lower() == "supervisor" or user_type.lower() == "field_supervisor":
-        expected_roles = get_expected_roles_for_supervisor()
-    else:
-        return {
-            "has_mismatch": False,
-            "current_roles": [],
-            "expected_roles": [],
-            "mismatch_details": f"Unknown user type: {user_type}"
-        }
-
-    # Extract current roles from user data
-    current_roles = []
-    user_data = existing_user.get("user", {})
-    roles = user_data.get("roles", [])
-
-    for role in roles:
-        role_code = role.get("code", "")
-        if role_code:
-            current_roles.append(role_code)
-
-    # Check for mismatches
-    missing_roles = []
-    unexpected_roles = []
-
-    for expected_role in expected_roles:
-        if expected_role not in current_roles:
-            missing_roles.append(expected_role)
-
-    for current_role in current_roles:
-        if current_role not in expected_roles:
-            unexpected_roles.append(current_role)
-
-    has_mismatch = bool(missing_roles or unexpected_roles)
-
-    mismatch_details = ""
-    if has_mismatch:
-        if missing_roles:
-            mismatch_details += f"Missing roles: {', '.join(missing_roles)}. "
-        if unexpected_roles:
-            mismatch_details += f"Unexpected roles: {', '.join(unexpected_roles)}."
-
-    return {
-        "has_mismatch": has_mismatch,
-        "current_roles": current_roles,
-        "expected_roles": expected_roles,
-        "mismatch_details": mismatch_details.strip()
     }

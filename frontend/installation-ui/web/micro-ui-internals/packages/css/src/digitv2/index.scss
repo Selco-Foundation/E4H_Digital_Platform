@@ -164,3 +164,8 @@
     color: theme(digitv2.chart.chart-5) !important;
   }
 }
+
+ .digit-topbar{
+ @media (max-width: 30rem) {
+    height: 4.5rem;
+  } }

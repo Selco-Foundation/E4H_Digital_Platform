@@ -114,6 +114,9 @@
 @import "./pages/employee/sandbox.scss";
 @import "./pages/employee/searchaction.scss";
 @import "./pages/employee/customcheckbox.scss";
+@import "./pages/employee/reverseactionbar.scss";
+@import "./pages/employee/projectdetailstable.scss";
+@import "./pages/employee/pmprojectstable.scss";
 
 .wbh-header-container {
   display: flex !important;
@@ -687,6 +690,7 @@ input[type="number"] {
 }
 .employee-app-wrapper {
   min-height: calc(100vh - 8em);
+  margin: 0;
 }
 
 .ws-custom-wrapper {
@@ -816,9 +820,6 @@ input[type="number"] {
   justify-content: space-between;
   flex-direction: row-reverse;
 }
-.previous-button{
-  margin-left: 4rem;
-}
 .view-composer-header-section{
   display: flex;
   justify-content: space-between;
@@ -865,5 +866,20 @@ input[type="number"] {
 .workbench-localization-add-popup{
   .digit-popup-children-wrap{
     overflow: visible !important;
+  }
+}
+
+.digit-bread-crumb--item{
+  .digit-bread-crumb-seperator{
+    color: #0B0C0C
+  }
+}
+
+.digit-multiselectdropdown-wrap {
+  .digit-multiselectdropodwn-menuitem {
+    .digit-label.selectAll {
+      font-size: 16px;
+      text-decoration: underline;
+    }
   }
 }
