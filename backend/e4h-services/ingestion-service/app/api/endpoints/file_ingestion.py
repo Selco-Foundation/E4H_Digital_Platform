@@ -2005,14 +2005,16 @@ async def create_facilities_and_update_project(
             request_info, 'data-ingestion.FacilityIngestionSchema'
         )
 
-        # iterate all rows — handle existing facility ids (linking) and new rows (create -> link)
+        # --- NEW: fetch already linked facilities once ---
+        linked_facilities_resp = project_client.search_project_facility(request_info, project_id)
+        linked_facilities = linked_facilities_resp.get("ProjectFacilities", []) if linked_facilities_resp else []
+        linked_facility_ids = {pf.get("facilityId") for pf in linked_facilities if pf.get("facilityId")}
+
         for index, row in df.iterrows():
             try:
                 # normalize facility id and include flag
                 facility_id_val = row.get(facility_id_col, None)
-                facility_id = None
-                if pd.notna(facility_id_val) and str(facility_id_val).strip():
-                    facility_id = str(facility_id_val).strip()
+                facility_id = str(facility_id_val).strip() if pd.notna(facility_id_val) and str(facility_id_val).strip() else None
 
                 include_val = ''
                 if include_col:
@@ -2022,30 +2024,49 @@ async def create_facilities_and_update_project(
 
                 should_link = include_val == "yes"
 
-                # ---------- CASE A: existing facility_id present -> skip creation, attempt linking if requested ----------
+                # ---------- CASE A: existing facility_id ----------
                 if facility_id:
                     df.at[index, 'Facility Creation Status'] = "Already Exists"
-                    # attempt linking if requested
-                    if should_link:
-                        try:
-                            project_resp = project_client.create_project_facility(
-                                request_info=request_info,
-                                project_id=project_id,
-                                facility_id=facility_id
-                            )
-                            if project_resp.status_code in (200, 201, 202):
-                                df.at[index, 'Project Linking Status'] = "Linked"
-                            else:
-                                df.at[index, 'Project Linking Status'] = f"Failed: {project_resp.status_code} {project_resp.text}"
-                        except Exception as e:
-                            df.at[index, 'Project Linking Status'] = f"Exception: {str(e)}"
+
+                    if facility_id in linked_facility_ids:
+                        if should_link:
+                            # already linked → skip API
+                            df.at[index, 'Project Linking Status'] = "Already Linked"
+                        else:
+                            # linked but Excel says No → unlink
+                            try:
+                                project_facility_data = next((pf for pf in linked_facilities if pf.get("facilityId") == facility_id), None)
+                                project_client.unlink_project_facility(
+                                    request_info=request_info,
+                                    project_id=project_id,
+                                    facility_id=facility_id,
+                                    project_facility_data=project_facility_data
+                                )
+                                df.at[index, 'Project Linking Status'] = "Unlinked"
+                                linked_facility_ids.remove(facility_id)
+                            except Exception as e:
+                                df.at[index, 'Project Linking Status'] = f"Exception during unlink: {str(e)}"
                     else:
-                        df.at[index, 'Project Linking Status'] = "Skipped (Include in Project != Yes)"
+                        if should_link:
+                            try:
+                                project_resp = project_client.create_project_facility(
+                                    request_info=request_info,
+                                    project_id=project_id,
+                                    facility_id=facility_id
+                                )
+                                if project_resp.status_code in (200, 201, 202):
+                                    df.at[index, 'Project Linking Status'] = "Linked"
+                                    linked_facility_ids.add(facility_id)
+                                else:
+                                    df.at[index, 'Project Linking Status'] = f"Failed: {project_resp.status_code} {project_resp.text}"
+                            except Exception as e:
+                                df.at[index, 'Project Linking Status'] = f"Exception: {str(e)}"
+                        else:
+                            df.at[index, 'Project Linking Status'] = "Skipped (Include in Project != Yes)"
 
-                    # continue to next row
-                    continue
+                    continue  # Case A done
 
-                # ---------- CASE B: no facility_id -> only create if validation PASSED ----------
+                # ---------- CASE B: creation flow (unchanged) ----------
                 row_status = str(row.get(status_col, "")).strip().upper()
                 if row_status != "PASSED":
                     df.at[index, 'Facility Creation Status'] = "Skipped (Validation not PASSED)"
