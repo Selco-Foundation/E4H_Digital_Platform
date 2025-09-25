@@ -117,7 +117,7 @@ const CreateProject = () => {
   const handleFacilityDataDownload = async () => {
     setBlockUI(true);
     try {
-      await PMService.projectFacilityDataTemplateDownload(createdProject.id, createdProject.additionalDetails.geographyDetails, t);
+      await PMService.downloadProjectFacilityDataTemplate(createdProject.id, createdProject.additionalDetails.geographyDetails, t);
       setToast({
         label: t("PM_TOAST_FACILITY_TEMPLATE_DOWNLOAD_SUCCESS"),
         key: "success",
@@ -140,7 +140,7 @@ const CreateProject = () => {
     setBlockUI(true);
     let uploadedFile;
     try {
-      const response = await PMService.projectFacilityDataTemplateUpload(file, createdProject?.id);
+      const response = await PMService.uploadProjectFacilityDataTemplate(file, createdProject?.id);
 
       if (response.errorCode === "INVALID_TEMPLATE") {
         setToast({
@@ -496,7 +496,7 @@ const CreateProject = () => {
     if (currentKey === 1 || currentKey === 2) {
       return t("CORE_COMMON_NEXT");
     } else {
-      return t("CORE_COMMON_SAVE");
+      return t("CORE_COMMON_SUBMIT");
     }
   };
 
