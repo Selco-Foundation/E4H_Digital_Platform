@@ -1,0 +1,16 @@
+
+.pm-projects-table {
+  .table {
+    thead {
+      th:last-child {
+        text-align: center !important;
+      }
+    }
+
+    tbody {
+      td:last-child {
+        text-align: center;
+      }
+    }
+  }
+}
