@@ -639,7 +639,7 @@ def check_role_mismatch_for_user_type(existing_user: Dict[str, Any], user_type: 
         "mismatch_details": mismatch_details.strip()
     }
 
-def get_incident_data_update_request_info():
+def get_incident_request_info():
     return {
         "apiId": "Rainmaker",
         "authToken": "222d0cf6-07c2-4d90-8a71-0292c200ae74",
