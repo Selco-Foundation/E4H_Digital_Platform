@@ -101,11 +101,21 @@ async def get_facility_ingestion_template_with_data(
                 # Continue without project facility data if there's an error
 
         # Combine boundary facilities with project facilities (avoid duplicates)
+        # Only include project facilities that belong to the current boundary codes
         existing_facility_ids = {f.get('facility_id') for f in all_facilities}
+        valid_boundary_codes = {boundary.code for boundary in boundary_list}
+        
         for pf_facility in project_facilities_data:
-            if pf_facility.get('facility_id') not in existing_facility_ids:
+            facility_id = pf_facility.get('facility_id')
+            facility_boundary_code = pf_facility.get('boundary_code') or pf_facility.get('boundaryCode')
+            
+            # Only add if not already present and belongs to current boundary codes
+            if (facility_id not in existing_facility_ids and 
+                facility_boundary_code in valid_boundary_codes):
                 all_facilities.append(pf_facility)
-                logger.info(f"Added project facility {pf_facility.get('facility_id')} to template")
+                logger.info(f"Added project facility {facility_id} to template (boundary: {facility_boundary_code})")
+            elif facility_boundary_code not in valid_boundary_codes:
+                logger.info(f"Skipped project facility {facility_id} - boundary code {facility_boundary_code} not in current boundary list")
 
         logger.info(f"Total facilities in template: {len(all_facilities)} (boundary: {len(existing_facility_ids)}, project: {len(project_facilities_data)})")
 
