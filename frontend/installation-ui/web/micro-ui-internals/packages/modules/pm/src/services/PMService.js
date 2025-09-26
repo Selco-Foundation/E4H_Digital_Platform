@@ -73,6 +73,7 @@ export const PMService = {
     try {
       const validationRequest = new FormData();
       validationRequest.append("facility_file", file);
+      validationRequest.append("project_id", projectId);
       const validationResponse = await IngestionService.validateProjectFacilityData(validationRequest);
 
       validatedFile = extractBlobFile(validationResponse);
