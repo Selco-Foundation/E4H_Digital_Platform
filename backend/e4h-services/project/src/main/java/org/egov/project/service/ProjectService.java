@@ -793,12 +793,21 @@ public class ProjectService {
     /**
      * Handles facility unlinking when geography details (boundary codes) are changed
      * Only processes unlinking when geographyDetails is explicitly present in the request
+     * Only allows unlinking for Draft projects (status = null)
      */
     private void handleFacilityUnlinkingOnGeographyChange(ProjectRequest request, Project project, Project projectFromDB) {
         try {
             // Guard: Only process unlinking if geographyDetails is explicitly present in the request
             if (!hasGeographyDetailsInRequest(project.getAdditionalDetails())) {
                 log.debug("No geographyDetails in request for project: {} - skipping facility unlinking", project.getId());
+                return;
+            }
+
+            // STATUS CHECK: Only allow facility unlinking for Draft projects (status = null or missing)
+            String projectStatus = getProjectStatus(project);
+            if (!isDraftProject(projectStatus)) {
+                log.info("Project {} has status '{}' - facility unlinking not allowed. Only Draft projects (status=null or missing) can unlink facilities.", 
+                        project.getId(), projectStatus);
                 return;
             }
 
@@ -840,6 +849,40 @@ public class ProjectService {
             log.error("Error checking for geographyDetails in request", e);
             return false;
         }
+    }
+
+    /**
+     * Gets the project status from additionalDetails
+     * Returns null if status is not present, null, or if additionalDetails is empty
+     */
+    private String getProjectStatus(Project project) {
+        try {
+            Object additionalDetails = project.getAdditionalDetails();
+            if (additionalDetails == null) {
+                return null; // No additionalDetails = Draft status
+            }
+            
+            JsonNode additionalDetailsNode = mapper.valueToTree(additionalDetails);
+            
+            // If additionalDetails is empty or doesn't have status field, it's Draft
+            if (additionalDetailsNode == null || additionalDetailsNode.isNull() || !additionalDetailsNode.has("status")) {
+                return null; // No status field = Draft status
+            }
+            
+            JsonNode statusNode = additionalDetailsNode.get("status");
+            return (statusNode != null && !statusNode.isNull()) ? statusNode.asText() : null;
+        } catch (Exception e) {
+            log.error("Error getting project status for project: {}", project.getId(), e);
+            return null; // Default to Draft on error
+        }
+    }
+
+    /**
+     * Checks if the project is in Draft status
+     * Draft status is indicated by status = null
+     */
+    private boolean isDraftProject(String projectStatus) {
+        return projectStatus == null;
     }
 
     /**
