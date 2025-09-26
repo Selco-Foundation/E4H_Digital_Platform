@@ -501,6 +501,11 @@ public class ProjectService {
 
         if (projectFromDB != null) {
             /*
+             * Check if geography details (boundary codes) have changed and unlink facilities if needed
+             */
+            handleFacilityUnlinkingOnGeographyChange(request, project, projectFromDB);
+
+            /*
              * Merge additional details of the project from the request and project from DB
              */
             projectServiceUtil.mergeAdditionalDetails(project, projectFromDB);
@@ -783,6 +788,230 @@ public class ProjectService {
         
         // Remove trailing numeric suffix pattern: -digits
         return existingName.replaceFirst("-\\d+$", "");
+    }
+
+    /**
+     * Handles facility unlinking when geography details (boundary codes) are changed
+     */
+    private void handleFacilityUnlinkingOnGeographyChange(ProjectRequest request, Project project, Project projectFromDB) {
+        try {
+            // Extract boundary codes from old and new geography details
+            Set<String> oldBoundaryCodes = extractBoundaryCodesFromGeographyDetails(projectFromDB.getAdditionalDetails());
+            Set<String> newBoundaryCodes = extractBoundaryCodesFromGeographyDetails(project.getAdditionalDetails());
+
+            // Check if boundary codes have changed
+            if (!oldBoundaryCodes.equals(newBoundaryCodes)) {
+                log.info("Geography details changed for project: {}. Old boundaries: {}, New boundaries: {}",
+                        project.getId(), oldBoundaryCodes, newBoundaryCodes);
+
+                // Unlink facilities that are no longer associated with the new boundary codes
+                unlinkProjectFacilities(project.getId(), project.getTenantId(), request.getRequestInfo(), newBoundaryCodes);
+            }
+        } catch (Exception e) {
+            log.error("Error handling facility unlinking for project: {}", project.getId(), e);
+            // Don't throw exception - continue with update even if facility unlinking fails
+        }
+    }
+
+    /**
+     * Extracts boundary codes from geography details in additional details
+     */
+    private Set<String> extractBoundaryCodesFromGeographyDetails(Object additionalDetails) {
+        Set<String> boundaryCodes = new HashSet<>();
+
+        if (additionalDetails == null) {
+            return boundaryCodes;
+        }
+
+        try {
+            JsonNode additionalDetailsNode = mapper.valueToTree(additionalDetails);
+            JsonNode geographyDetails = additionalDetailsNode.get("geographyDetails");
+
+            if (geographyDetails != null) {
+                // Extract boundary codes from blocks
+                JsonNode blocks = geographyDetails.get("blocks");
+                if (blocks != null && blocks.isArray()) {
+                    for (JsonNode block : blocks) {
+                        JsonNode code = block.get("code");
+                        if (code != null && !code.isNull()) {
+                            boundaryCodes.add(code.asText());
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.error("Error extracting boundary codes from geography details", e);
+        }
+
+        return boundaryCodes;
+    }
+
+    /**
+     * Unlinks facilities that are no longer associated with the project's new boundary codes
+     */
+    private void unlinkProjectFacilities(String projectId, String tenantId, RequestInfo requestInfo, Set<String> newBoundaryCodes) {
+        try {
+            log.info("Starting selective facility unlinking for project: {} with new boundary codes: {}", projectId, newBoundaryCodes);
+            
+            // Step 1: Get all facilities currently linked to the project
+            List<ProjectFacility> linkedProjectFacilities = getFacilitiesLinkedToProject(projectId, tenantId, requestInfo);
+            
+            if (linkedProjectFacilities.isEmpty()) {
+                log.info("No facilities currently linked to project: {}", projectId);
+                return;
+            }
+            
+            // Step 2: Get all facilities associated with the new boundary codes
+            Set<String> facilitiesInNewBoundaries = getFacilitiesByBoundaryCodes(newBoundaryCodes, tenantId, requestInfo);
+            
+            // Step 3: Find facilities to unlink (linked to project but not in new boundary codes)
+            List<ProjectFacility> facilitiesToUnlink = linkedProjectFacilities.stream()
+                    .filter(projectFacility -> !facilitiesInNewBoundaries.contains(projectFacility.getFacilityId()))
+                    .collect(Collectors.toList());
+            
+            if (facilitiesToUnlink.isEmpty()) {
+                log.info("No facilities need to be unlinked for project: {}", projectId);
+                return;
+            }
+            
+            log.info("Found {} facilities to unlink out of {} linked facilities for project: {}", 
+                    facilitiesToUnlink.size(), linkedProjectFacilities.size(), projectId);
+            
+            // Step 4: Set isDeleted = true for the identified facilities using update API
+            List<ProjectFacility> facilitiesToUpdate = facilitiesToUnlink.stream()
+                    .map(projectFacility -> {
+                        // Create a copy with isDeleted = true
+                        return ProjectFacility.builder()
+                                .id(projectFacility.getId())
+                                .projectId(projectFacility.getProjectId())
+                                .facilityId(projectFacility.getFacilityId())
+                                .tenantId(projectFacility.getTenantId())
+                                .isDeleted(true) // Set isDeleted = true
+                                .rowVersion(projectFacility.getRowVersion())
+                                .auditDetails(projectFacility.getAuditDetails())
+                                .build();
+                    })
+                    .collect(Collectors.toList());
+            
+            // Use update API to set isDeleted = true
+            ProjectFacilityBulkRequest updateRequest = ProjectFacilityBulkRequest.builder()
+                    .requestInfo(requestInfo)
+                    .projectFacilities(facilitiesToUpdate)
+                    .build();
+            
+            projectFacilityService.update(updateRequest, true);
+            
+            log.info("Successfully unlinked {} facilities for project: {} by setting isDeleted=true", facilitiesToUpdate.size(), projectId);
+            
+        } catch (Exception e) {
+            log.error("Error unlinking facilities for project: {}", projectId, e);
+            throw new CustomException("FACILITY_UNLINKING_FAILED", 
+                    "Failed to unlink facilities for project: " + projectId + ". Error: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Gets all facilities currently linked to a project
+     */
+    private List<ProjectFacility> getFacilitiesLinkedToProject(String projectId, String tenantId, RequestInfo requestInfo) {
+        try {
+            List<String> projectIds = new ArrayList<>();
+            projectIds.add(projectId);
+
+            ProjectFacilitySearch projectFacilitySearch = ProjectFacilitySearch.builder()
+                    .projectId(projectIds)
+                    .facilityId(null)
+                    .build();
+
+            ProjectFacilitySearchRequest projectFacilitySearchRequest = ProjectFacilitySearchRequest.builder()
+                    .projectFacility(projectFacilitySearch)
+                    .requestInfo(requestInfo)
+                    .build();
+
+            SearchResponse<ProjectFacility> searchResponse = projectFacilityService.search(
+                    projectFacilitySearchRequest,
+                    1000, // Large limit to get all facilities
+                    0,
+                    tenantId,
+                    null,
+                    false
+            );
+
+            return (searchResponse != null && searchResponse.getResponse() != null)
+                    ? searchResponse.getResponse()
+                    : new ArrayList<>();
+
+        } catch (Exception e) {
+            log.error("Error getting facilities linked to project: {}", projectId, e);
+            return new ArrayList<>();
+        }
+    }
+
+    /**
+     * Gets all facility IDs associated with the given boundary codes
+     */
+    private Set<String> getFacilitiesByBoundaryCodes(Set<String> boundaryCodes, String tenantId, RequestInfo requestInfo) {
+        Set<String> facilityIds = new HashSet<>();
+
+        if (boundaryCodes.isEmpty()) {
+            return facilityIds;
+        }
+
+        try {
+            // Search facilities by boundary codes
+            for (String boundaryCode : boundaryCodes) {
+                Set<String> facilitiesForBoundary = searchFacilitiesByBoundaryCode(boundaryCode, tenantId, requestInfo);
+                facilityIds.addAll(facilitiesForBoundary);
+            }
+
+            log.info("Found {} unique facilities across {} boundary codes", facilityIds.size(), boundaryCodes.size());
+
+        } catch (Exception e) {
+            log.error("Error getting facilities by boundary codes: {}", boundaryCodes, e);
+        }
+
+        return facilityIds;
+    }
+
+    /**
+     * Searches facilities by a specific boundary code
+     */
+    private Set<String> searchFacilitiesByBoundaryCode(String boundaryCode, String tenantId, RequestInfo requestInfo) {
+        Set<String> facilityIds = new HashSet<>();
+
+        try {
+            // Build facility search URL with boundary code filter
+            StringBuilder facilitySearchUrl = new StringBuilder();
+            facilitySearchUrl.append(projectConfiguration.getFacilityServiceHost())
+                    .append(projectConfiguration.getFacilityServiceSearchUrlV2())
+                    .append("?tenant_id=")
+                    .append(tenantId)
+                    .append("&boundary_code=")
+                    .append(boundaryCode);
+
+            log.debug("Searching facilities for boundary code: {} with URL: {}", boundaryCode, facilitySearchUrl);
+
+            // Call facility service
+            Object response = serviceRequestRepository.fetchResult(facilitySearchUrl);
+
+            if (response != null) {
+                FacilitySearchResponse facilitySearchResponse = mapper.convertValue(response, FacilitySearchResponse.class);
+
+                if (facilitySearchResponse != null && facilitySearchResponse.getFacilities() != null) {
+                    facilityIds = facilitySearchResponse.getFacilities().stream()
+                            .map(Facility::getFacilityId)
+                            .filter(Objects::nonNull)
+                            .collect(Collectors.toSet());
+
+                    log.debug("Found {} facilities for boundary code: {}", facilityIds.size(), boundaryCode);
+                }
+            }
+
+        } catch (Exception e) {
+            log.error("Error searching facilities for boundary code: {}", boundaryCode, e);
+        }
+
+        return facilityIds;
     }
 
     /**
