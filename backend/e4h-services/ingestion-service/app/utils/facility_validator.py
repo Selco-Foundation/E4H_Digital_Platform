@@ -102,6 +102,13 @@ def validate_columns(df, schema, add_err):
             if col.get("type") == "enum-yes-no" and str_val.lower() not in {"yes", "no"}:
                 add_err(i, f"{col_name} must be Yes or No")
 
+            # --- Dropdown check (MDMS values) ---
+            mdms_values = col.get("mdms_values")
+            if mdms_values:
+                allowed_values = [v.get("name") for v in mdms_values if v.get("name")]
+                if str_val not in allowed_values:
+                    add_err(i, f"Invalid value in column '{col_name}'")
+
 def validate_unique_ids(df, schema, add_err):
     unique_columns = [c for c in schema["column_list"] if c["type"] == "Unique_Id"]
 
