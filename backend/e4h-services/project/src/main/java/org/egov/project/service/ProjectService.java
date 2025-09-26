@@ -833,10 +833,9 @@ public class ProjectService {
 
         try {
             JsonNode additionalDetailsNode = mapper.valueToTree(additionalDetails);
-            JsonNode geographyDetails = additionalDetailsNode.get("geographyDetails");
-            
-            // Return true only if geographyDetails is explicitly present (not null)
-            return geographyDetails != null && !geographyDetails.isNull();
+            // Return true if the key is explicitly present in payload (even if null)
+            return additionalDetailsNode != null && !additionalDetailsNode.isNull()
+                    && additionalDetailsNode.has("geographyDetails");
         } catch (Exception e) {
             log.error("Error checking for geographyDetails in request", e);
             return false;
@@ -893,7 +892,14 @@ public class ProjectService {
             
             // Step 2: Get all facilities associated with the new boundary codes
             Set<String> facilitiesInNewBoundaries = getFacilitiesByBoundaryCodes(newBoundaryCodes, tenantId, requestInfo);
-            
+
+            // Defensive guard: if boundaries are non-empty but lookup yielded zero, skip unlink to avoid data loss
+            if (!newBoundaryCodes.isEmpty() && facilitiesInNewBoundaries.isEmpty()) {
+                log.warn("Facility lookup returned 0 results for non-empty boundaries {}. Skipping unlink to avoid accidental data loss for project: {}",
+                        newBoundaryCodes, projectId);
+                return;
+            }
+
             // Step 3: Find facilities to unlink (linked to project but not in new boundary codes)
             List<ProjectFacility> facilitiesToUnlink = linkedProjectFacilities.stream()
                     .filter(projectFacility -> !facilitiesInNewBoundaries.contains(projectFacility.getFacilityId()))
