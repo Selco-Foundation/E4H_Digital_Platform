@@ -792,9 +792,16 @@ public class ProjectService {
 
     /**
      * Handles facility unlinking when geography details (boundary codes) are changed
+     * Only processes unlinking when geographyDetails is explicitly present in the request
      */
     private void handleFacilityUnlinkingOnGeographyChange(ProjectRequest request, Project project, Project projectFromDB) {
         try {
+            // Guard: Only process unlinking if geographyDetails is explicitly present in the request
+            if (!hasGeographyDetailsInRequest(project.getAdditionalDetails())) {
+                log.debug("No geographyDetails in request for project: {} - skipping facility unlinking", project.getId());
+                return;
+            }
+
             // Extract boundary codes from old and new geography details
             Set<String> oldBoundaryCodes = extractBoundaryCodesFromGeographyDetails(projectFromDB.getAdditionalDetails());
             Set<String> newBoundaryCodes = extractBoundaryCodesFromGeographyDetails(project.getAdditionalDetails());
@@ -806,10 +813,33 @@ public class ProjectService {
 
                 // Unlink facilities that are no longer associated with the new boundary codes
                 unlinkProjectFacilities(project.getId(), project.getTenantId(), request.getRequestInfo(), newBoundaryCodes);
+            } else {
+                log.debug("Geography details unchanged for project: {} - no facility unlinking needed", project.getId());
             }
         } catch (Exception e) {
             log.error("Error handling facility unlinking for project: {}", project.getId(), e);
             // Don't throw exception - continue with update even if facility unlinking fails
+        }
+    }
+
+    /**
+     * Checks if geographyDetails is explicitly present in the request
+     * This prevents unlinking facilities when geography wasn't actually modified
+     */
+    private boolean hasGeographyDetailsInRequest(Object additionalDetails) {
+        if (additionalDetails == null) {
+            return false;
+        }
+
+        try {
+            JsonNode additionalDetailsNode = mapper.valueToTree(additionalDetails);
+            JsonNode geographyDetails = additionalDetailsNode.get("geographyDetails");
+            
+            // Return true only if geographyDetails is explicitly present (not null)
+            return geographyDetails != null && !geographyDetails.isNull();
+        } catch (Exception e) {
+            log.error("Error checking for geographyDetails in request", e);
+            return false;
         }
     }
 
@@ -984,9 +1014,9 @@ public class ProjectService {
             StringBuilder facilitySearchUrl = new StringBuilder();
             facilitySearchUrl.append(projectConfiguration.getFacilityServiceHost())
                     .append(projectConfiguration.getFacilityServiceSearchUrlV2())
-                    .append("?tenant_id=")
+                    .append("?tenantId=")
                     .append(tenantId)
-                    .append("&boundary_code=")
+                    .append("&boundaryCode=")
                     .append(boundaryCode);
 
             log.debug("Searching facilities for boundary code: {} with URL: {}", boundaryCode, facilitySearchUrl);
