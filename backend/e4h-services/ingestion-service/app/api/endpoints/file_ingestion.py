@@ -1672,6 +1672,7 @@ def process_update_incident_data_response(response, df, idx):
 async def validate_facilities_excel_sheet(
         background_tasks: BackgroundTasks,
         facility_file: UploadFile = File(..., description="Excel file containing facility data"),
+        project_id: str = Form(description="Project ID"),
         facility_sheet_name: str = Form(default="FacilityMapping",
                                         description="Name of the sheet containing facility data"),
         boundary_sheet_name: str = Form(default="BoundaryCodes",
@@ -1682,6 +1683,7 @@ async def validate_facilities_excel_sheet(
     request_info_obj = request_info_from_json(request_info)
     mdms_client = MDMSClient(mdms_url)
     facility_client = FacilityServiceClient(facility_service_url)
+    project_client = ProjectServiceClient(project_service_url)
 
     try:
         # Save uploaded Excel to a temp file
@@ -1698,6 +1700,32 @@ async def validate_facilities_excel_sheet(
             raise HTTPException(status_code=400, detail=f"Boundary sheet '{boundary_sheet_name}' not found")
 
         boundary_data_df = pd.read_excel(temp_input_file.name, sheet_name=boundary_sheet_name)
+
+        # ----------------- Validate Boundary Sheet Against Project ----------------- #
+        projects = project_client.search_project(request_info_obj, project_id)
+        if not projects or "Project" not in projects or len(projects["Project"]) == 0:
+            raise HTTPException(status_code=400, detail=f"No project found for id {project_id}")
+
+        project = projects["Project"][0]["project"]
+        geography = project.get("additionalDetails", {}).get("geographyDetails", {})
+
+        # Valid codes directly as a set (no loop needed)
+        valid_boundary_codes = {str(block["code"]).strip() for block in geography.get("blocks", []) if
+                                block.get("code")}
+
+        # Uploaded codes directly as a set
+        uploaded_codes = set(boundary_data_df["BoundaryCode"].dropna().astype(str).str.strip())
+
+        # Equality check
+        if uploaded_codes != valid_boundary_codes:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error": "BoundaryCode mismatch",
+                    "missing": list(valid_boundary_codes - uploaded_codes),
+                    "extra": list(uploaded_codes - valid_boundary_codes)
+                }
+            )
 
         # ----------------- Read Facility Sheet ----------------- #
         if facility_sheet_name not in wb.sheetnames:
