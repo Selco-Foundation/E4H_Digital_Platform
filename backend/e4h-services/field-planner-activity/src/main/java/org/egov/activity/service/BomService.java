@@ -116,8 +116,8 @@ public class BomService {
         return request;
     }
 
-    public void generateBOMPdf(GenerateBOMPdfRequest request, String key, String tenantId){
-        getBOMPdfFile(key, tenantId, request);
+    public byte[] generateBOMPdf(GenerateBOMPdfRequest request, String key, String tenantId){
+        return getBOMPdfFile(key, tenantId, request);
     }
 
     private BomSearchRequest getSearchBOMRequest(List<BillOfMaterial> billOfMaterials, RequestInfo requestInfo) {
@@ -192,16 +192,19 @@ public class BomService {
                 .orElse(null);
     }
 
-    public Facility getBOMPdfFile(String key, String tenantId, GenerateBOMPdfRequest request) {
+    public byte[] getBOMPdfFile(String key, String tenantId, GenerateBOMPdfRequest request) {
 
         String url = activityConfiguration.getPdfServiceHost() + activityConfiguration.getPdfCreateNoSaveUrl()+ "?key="+key+"&tenantId="+tenantId;
         Object response = serviceRequest.fetchResult(new StringBuilder(url), request);
 
-//        FacilitySearchResponse facilityList = mapper.convertValue(response, FacilitySearchResponse.class);
-//        if(facilityList != null && facilityList.getFacilities() !=null && facilityList.getFacilities().size() > 0){
-//            return facilityList.getFacilities().get(0);
-//        }
-        return null;
+        byte[] pdfDoc = mapper.convertValue(response, byte[].class);
+        if(pdfDoc == null){
+            throw new CustomException(
+                    "ERROR_PDF_GENERATION",
+                    "Error occured while generating PDF"
+            );
+        }
+        return pdfDoc;
     }
 
 

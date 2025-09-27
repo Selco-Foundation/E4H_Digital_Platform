@@ -19,8 +19,7 @@ import org.egov.common.models.project.ProjectResponse;
 import org.egov.common.producer.Producer;
 import org.egov.common.utils.ResponseInfoFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -96,16 +95,21 @@ public class BOMApiController {
     }
 
     @RequestMapping(value = "/_generate_pdf", method = RequestMethod.POST)
-    public ResponseEntity<String> generatePDF(
+    public ResponseEntity<byte[]> generatePDF(
             @ApiParam(value = "Generate pdf file for BOM", required = true) @Valid @RequestBody GenerateBOMPdfRequest request,
             @NotNull @ApiParam(value = "Unique key for pdf format generation", required = true) @Valid @RequestParam(value = "key", required = true) String key,
             @NotNull @ApiParam(value = "Unique id for a tenant.", required = true) @Valid @RequestParam(value = "tenantId", required = true) String tenantId
     ) {
-       bomService.generateBOMPdf(
-                request, key,
-                tenantId
-        );
+        byte[] pdfBytes = bomService.generateBOMPdf(request, key, tenantId);
 
-        return new ResponseEntity<>("OK", HttpStatus.OK);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.setContentDisposition(ContentDisposition
+                .attachment()
+                .filename("report.pdf")
+                .build());
+        headers.setContentLength(pdfBytes.length);
+
+        return new ResponseEntity<>(pdfBytes, headers, HttpStatus.OK);
     }
 }
