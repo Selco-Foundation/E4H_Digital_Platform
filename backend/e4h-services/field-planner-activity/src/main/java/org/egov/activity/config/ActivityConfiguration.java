@@ -32,6 +32,12 @@ public class ActivityConfiguration {
     @Value("${egov.v2.search.facility.url}")
     private String facilityServiceSearchUrlV2;
 
+    @Value("${egov.pdf.host}")
+    private String pdfServiceHost;
+
+    @Value("${egov.createnosave.pdf.url}")
+    private String pdfCreateNoSaveUrl;
+
     @Value("${search.api.limit:100}")
     private String searchApiLimit;
 
