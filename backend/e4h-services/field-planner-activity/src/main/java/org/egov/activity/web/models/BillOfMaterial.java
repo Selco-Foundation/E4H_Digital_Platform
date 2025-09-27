@@ -8,7 +8,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.egov.common.contract.models.AuditDetails;
-import org.egov.common.models.project.Document;
 import org.springframework.validation.annotation.Validated;
 
 import java.util.List;

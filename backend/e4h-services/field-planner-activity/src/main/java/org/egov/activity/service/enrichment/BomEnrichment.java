@@ -5,20 +5,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.egov.activity.config.ActivityConfiguration;
 import org.egov.activity.repository.ActivityRepository;
 import org.egov.activity.util.ActivityServiceUtil;
-import org.egov.activity.web.models.Activity;
-import org.egov.activity.web.models.ActivityFacility;
 import org.egov.activity.web.models.BillOfMaterial;
+import org.egov.activity.web.models.Document;
 import org.egov.common.contract.models.AuditDetails;
 import org.egov.common.contract.request.RequestInfo;
-import org.egov.common.models.project.Document;
-import org.egov.common.models.project.Project;
 import org.egov.common.service.IdGenService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.UUID;
-
-import static org.egov.activity.util.ActivityConstants.SCHEDULED_STATUS;
 
 @Service
 @Slf4j

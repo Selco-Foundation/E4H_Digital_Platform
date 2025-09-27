@@ -5,11 +5,17 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.annotations.ApiParam;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
 import org.egov.activity.config.ActivityConfiguration;
 import org.egov.activity.service.BomService;
 import org.egov.activity.web.models.*;
 import org.egov.common.contract.response.ResponseInfo;
 import org.egov.common.models.core.URLParams;
+import org.egov.common.models.project.Project;
+import org.egov.common.models.project.ProjectRequest;
+import org.egov.common.models.project.ProjectResponse;
 import org.egov.common.producer.Producer;
 import org.egov.common.utils.ResponseInfoFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,10 +23,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.ModelAttribute;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -90,5 +93,19 @@ public class BOMApiController {
         Integer count = bomService.countAllFieldPlans(request, urlParams.getTenantId(), urlParams.getLastChangedSince(), urlParams.getIncludeDeleted());
         BomResponse bomResponse = BomResponse.builder().responseInfo(responseInfo).billOfMaterials(billOfMaterials).totalCount(count).build();
         return new ResponseEntity<BomResponse>(bomResponse, HttpStatus.OK);
+    }
+
+    @RequestMapping(value = "/_generate_pdf", method = RequestMethod.POST)
+    public ResponseEntity<String> generatePDF(
+            @ApiParam(value = "Generate pdf file for BOM", required = true) @Valid @RequestBody GenerateBOMPdfRequest request,
+            @NotNull @ApiParam(value = "Unique key for pdf format generation", required = true) @Valid @RequestParam(value = "key", required = true) String key,
+            @NotNull @ApiParam(value = "Unique id for a tenant.", required = true) @Valid @RequestParam(value = "tenantId", required = true) String tenantId
+    ) {
+       bomService.generateBOMPdf(
+                request, key,
+                tenantId
+        );
+
+        return new ResponseEntity<>("OK", HttpStatus.OK);
     }
 }

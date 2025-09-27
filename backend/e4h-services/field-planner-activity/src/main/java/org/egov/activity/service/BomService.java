@@ -36,12 +36,14 @@ public class BomService {
     private final ActivityConfiguration activityConfiguration;
     private final MDMSUtils mdmsUtils;
 
+    private ServiceRequestRepository serviceRequest;
+
     @Qualifier("objectMapper")
     private final ObjectMapper mapper;
 
     @Autowired
     public BomService(
-            BomRepository bomRepository, BomEnrichment bomEnrichment, ActivityConfiguration activityConfiguration, BomValidator bomValidator,
+            BomRepository bomRepository, BomEnrichment bomEnrichment, ActivityConfiguration activityConfiguration, BomValidator bomValidator, ServiceRequestRepository serviceRequest,
             Producer producer, MDMSUtils mdmsUtils, ActivityServiceUtil activityServiceUtil, @Qualifier("objectMapper") ObjectMapper mapper) {
             this.producer = producer;
             this.activityConfiguration = activityConfiguration;
@@ -51,6 +53,7 @@ public class BomService {
             this.activityServiceUtil = activityServiceUtil;
             this.mapper = mapper;
             this.bomValidator = bomValidator;
+            this.serviceRequest = serviceRequest;
     }
 
     public List<BillOfMaterial> createBillOfMaterial(BomBulkRequest request) {
@@ -111,6 +114,10 @@ public class BomService {
         }
 
         return request;
+    }
+
+    public void generateBOMPdf(GenerateBOMPdfRequest request, String key, String tenantId){
+        getBOMPdfFile(key, tenantId, request);
     }
 
     private BomSearchRequest getSearchBOMRequest(List<BillOfMaterial> billOfMaterials, RequestInfo requestInfo) {
@@ -183,6 +190,18 @@ public class BomService {
                 .filter(p -> bomId.equals(String.valueOf(p.getId())))
                 .findFirst()
                 .orElse(null);
+    }
+
+    public Facility getBOMPdfFile(String key, String tenantId, GenerateBOMPdfRequest request) {
+
+        String url = activityConfiguration.getPdfServiceHost() + activityConfiguration.getPdfCreateNoSaveUrl()+ "?key="+key+"&tenantId="+tenantId;
+        Object response = serviceRequest.fetchResult(new StringBuilder(url), request);
+
+//        FacilitySearchResponse facilityList = mapper.convertValue(response, FacilitySearchResponse.class);
+//        if(facilityList != null && facilityList.getFacilities() !=null && facilityList.getFacilities().size() > 0){
+//            return facilityList.getFacilities().get(0);
+//        }
+        return null;
     }
 
 
