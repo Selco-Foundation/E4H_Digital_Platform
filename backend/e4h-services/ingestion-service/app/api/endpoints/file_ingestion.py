@@ -1672,6 +1672,7 @@ def process_update_incident_data_response(response, df, idx):
 async def validate_facilities_excel_sheet(
         background_tasks: BackgroundTasks,
         facility_file: UploadFile = File(..., description="Excel file containing facility data"),
+        project_id: str = Form(description="Project ID"),
         facility_sheet_name: str = Form(default="FacilityMapping",
                                         description="Name of the sheet containing facility data"),
         boundary_sheet_name: str = Form(default="BoundaryCodes",
@@ -1682,6 +1683,7 @@ async def validate_facilities_excel_sheet(
     request_info_obj = request_info_from_json(request_info)
     mdms_client = MDMSClient(mdms_url)
     facility_client = FacilityServiceClient(facility_service_url)
+    project_client = ProjectServiceClient(project_service_url)
 
     try:
         # Save uploaded Excel to a temp file
@@ -1698,6 +1700,32 @@ async def validate_facilities_excel_sheet(
             raise HTTPException(status_code=400, detail=f"Boundary sheet '{boundary_sheet_name}' not found")
 
         boundary_data_df = pd.read_excel(temp_input_file.name, sheet_name=boundary_sheet_name)
+
+        # ----------------- Validate Boundary Sheet Against Project ----------------- #
+        projects = project_client.search_project(request_info_obj, project_id)
+        if not projects or "Project" not in projects or len(projects["Project"]) == 0:
+            raise HTTPException(status_code=400, detail=f"No project found for id {project_id}")
+
+        project = projects["Project"][0]["project"]
+        geography = project.get("additionalDetails", {}).get("geographyDetails", {})
+
+        # Valid codes directly as a set (no loop needed)
+        valid_boundary_codes = {str(block["code"]).strip() for block in geography.get("blocks", []) if
+                                block.get("code")}
+
+        # Uploaded codes directly as a set
+        uploaded_codes = set(boundary_data_df["BoundaryCode"].dropna().astype(str).str.strip())
+
+        # Equality check
+        if uploaded_codes != valid_boundary_codes:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error": "BoundaryCode mismatch",
+                    "missing": list(valid_boundary_codes - uploaded_codes),
+                    "extra": list(uploaded_codes - valid_boundary_codes)
+                }
+            )
 
         # ----------------- Read Facility Sheet ----------------- #
         if facility_sheet_name not in wb.sheetnames:
@@ -1872,14 +1900,16 @@ async def create_facilities_and_update_project(
             request_info, 'data-ingestion.FacilityIngestionSchema'
         )
 
-        # iterate all rows — handle existing facility ids (linking) and new rows (create -> link)
+        # --- NEW: fetch already linked facilities once ---
+        linked_facilities_resp = project_client.search_project_facility(request_info, project_id)
+        linked_facilities = linked_facilities_resp.get("ProjectFacilities", []) if linked_facilities_resp else []
+        linked_facility_ids = {pf.get("facilityId") for pf in linked_facilities if pf.get("facilityId")}
+
         for index, row in df.iterrows():
             try:
                 # normalize facility id and include flag
                 facility_id_val = row.get(facility_id_col, None)
-                facility_id = None
-                if pd.notna(facility_id_val) and str(facility_id_val).strip():
-                    facility_id = str(facility_id_val).strip()
+                facility_id = str(facility_id_val).strip() if pd.notna(facility_id_val) and str(facility_id_val).strip() else None
 
                 include_val = ''
                 if include_col:
@@ -1889,30 +1919,49 @@ async def create_facilities_and_update_project(
 
                 should_link = include_val == "yes"
 
-                # ---------- CASE A: existing facility_id present -> skip creation, attempt linking if requested ----------
+                # ---------- CASE A: existing facility_id ----------
                 if facility_id:
                     df.at[index, 'Facility Creation Status'] = "Already Exists"
-                    # attempt linking if requested
-                    if should_link:
-                        try:
-                            project_resp = project_client.create_project_facility(
-                                request_info=request_info,
-                                project_id=project_id,
-                                facility_id=facility_id
-                            )
-                            if project_resp.status_code in (200, 201, 202):
-                                df.at[index, 'Project Linking Status'] = "Linked"
-                            else:
-                                df.at[index, 'Project Linking Status'] = f"Failed: {project_resp.status_code} {project_resp.text}"
-                        except Exception as e:
-                            df.at[index, 'Project Linking Status'] = f"Exception: {str(e)}"
+
+                    if facility_id in linked_facility_ids:
+                        if should_link:
+                            # already linked → skip API
+                            df.at[index, 'Project Linking Status'] = "Already Linked"
+                        else:
+                            # linked but Excel says No → unlink
+                            try:
+                                project_facility_data = next((pf for pf in linked_facilities if pf.get("facilityId") == facility_id), None)
+                                project_client.unlink_project_facility(
+                                    request_info=request_info,
+                                    project_id=project_id,
+                                    facility_id=facility_id,
+                                    project_facility_data=project_facility_data
+                                )
+                                df.at[index, 'Project Linking Status'] = "Unlinked"
+                                linked_facility_ids.remove(facility_id)
+                            except Exception as e:
+                                df.at[index, 'Project Linking Status'] = f"Exception during unlink: {str(e)}"
                     else:
-                        df.at[index, 'Project Linking Status'] = "Skipped (Include in Project != Yes)"
+                        if should_link:
+                            try:
+                                project_resp = project_client.create_project_facility(
+                                    request_info=request_info,
+                                    project_id=project_id,
+                                    facility_id=facility_id
+                                )
+                                if project_resp.status_code in (200, 201, 202):
+                                    df.at[index, 'Project Linking Status'] = "Linked"
+                                    linked_facility_ids.add(facility_id)
+                                else:
+                                    df.at[index, 'Project Linking Status'] = f"Failed: {project_resp.status_code} {project_resp.text}"
+                            except Exception as e:
+                                df.at[index, 'Project Linking Status'] = f"Exception: {str(e)}"
+                        else:
+                            df.at[index, 'Project Linking Status'] = "Skipped (Include in Project != Yes)"
 
-                    # continue to next row
-                    continue
+                    continue  # Case A done
 
-                # ---------- CASE B: no facility_id -> only create if validation PASSED ----------
+                # ---------- CASE B: creation flow (unchanged) ----------
                 row_status = str(row.get(status_col, "")).strip().upper()
                 if row_status != "PASSED":
                     df.at[index, 'Facility Creation Status'] = "Skipped (Validation not PASSED)"
