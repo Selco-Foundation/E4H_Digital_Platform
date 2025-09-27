@@ -17,6 +17,7 @@ from app.schemas.boundary import Boundary, flatten_boundaries
 from app.utils.convertor import request_info_from_json
 from app.utils.excel_utils import add_dropdowns_to_excel
 from app.utils.facility_service_client import FacilityServiceClient
+from app.utils.fieldplan_service_client import FieldPlanServiceClient
 from app.utils.file_utils import create_temp_file, cleanup_temp_file
 from app.utils.mdms_client import MDMSClient
 from app.utils.project_service_client import ProjectServiceClient
@@ -31,6 +32,7 @@ load_dotenv()
 mdms_url = os.getenv("MDMS_URL")
 project_service_url = os.getenv("PROJECT_SERVICE_URL")
 facility_service_url = os.getenv("FACILITY_SERVICE_URL")
+fieldPlan_service_url = os.getenv("FIELDPLAN_SERVICE_URL")
 DB_CONFIG = {
     "host": os.getenv("DB_HOST"),
     "port": int(os.getenv("DB_PORT", 5432)),
@@ -172,7 +174,7 @@ async def get_facility_ingestion_template_with_data(
 ):
     request_info = request_info_from_json(payload.get("request_info", {}))
     boundary_data = payload.get("boundary_data", {})
-    project_id = payload.get("fieldplan_id")
+    fieldplan_id = payload.get("fieldplan_id")
     mdms_client = MDMSClient(mdms_url)
     try:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -197,13 +199,81 @@ async def get_facility_ingestion_template_with_data(
                 except Exception as e:
                     print(f"Error fetching boundary facilities: {e}")
 
+                # Fetch fieldplan-linked facilities if fieldplan_id is provided
+                fieldplan_linked_facility_ids = set()
+                fieldplan_facilities_data = []
+                if fieldplan_id and fieldPlan_service_url:
+                    try:
+                        fieldplan_client = FieldPlanServiceClient(fieldPlan_service_url)
+                        fieldplan_facilities_response = fieldplan_client.search_fieldplan_facility(request_info, fieldplan_id)
+                        fieldplan_facilities = fieldplan_facilities_response.get("FieldPlanFacilities", [])
+                        fieldplan_linked_facility_ids = {pf.get("facilityId") for pf in fieldplan_facilities if
+                                                       pf.get("facilityId")}
+                        logger.info(
+                            f"Found {len(fieldplan_linked_facility_ids)} facilities linked to fieldplan {fieldplan_id}")
+
+                        # Fetch full facility data for fieldplan-linked facilities
+                        for pf in fieldplan_facilities:
+                            facility_id = pf.get("facilityId")
+                            if facility_id:
+                                try:
+                                    facility_data = facility_client.search_facility(tenant_id='in',
+                                                                                    facility_id=facility_id)
+                                    if facility_data and facility_data.get('facilities'):
+                                        fieldplan_facilities_data.extend(facility_data.get('facilities', []))
+                                except Exception as e:
+                                    logger.error(f"Error fetching facility {facility_id}: {e}")
+
+                    except Exception as e:
+                        logger.error(f"Error fetching fieldplan facilities: {e}")
+                        # Continue without fieldplan facility data if there's an error
+
+                # Combine boundary facilities with fieldplan facilities (avoid duplicates)
+                # Only include fieldplan facilities that belong to the current boundary codes
+                existing_facility_ids = {f.get('facility_id') for f in all_facilities}
+                valid_boundary_codes = {boundary.code for boundary in boundary_list}
+
+                for pf_facility in fieldplan_facilities_data:
+                    facility_id = pf_facility.get('facility_id')
+                    facility_boundary_code = pf_facility.get('boundary_code') or pf_facility.get('boundaryCode')
+
+                    # Only add if not already present and belongs to current boundary codes
+                    if (facility_id not in existing_facility_ids and
+                            facility_boundary_code in valid_boundary_codes):
+                        all_facilities.append(pf_facility)
+                        logger.info(
+                            f"Added fieldplan facility {facility_id} to template (boundary: {facility_boundary_code})")
+                    elif facility_boundary_code not in valid_boundary_codes:
+                        logger.info(
+                            f"Skipped fieldplan facility {facility_id} - boundary code {facility_boundary_code} not in current boundary list")
+
+                logger.info(
+                    f"Total facilities in template: {len(all_facilities)} (boundary: {len(existing_facility_ids)}, fieldplan: {len(fieldplan_facilities_data)})")
+
+                # Mark facilities as included in fieldplan if they are already linked
+                if fieldplan_id:
+                    for facility in all_facilities:
+                        facility_id = facility.get("facility_id")
+                        if facility_id in fieldplan_linked_facility_ids:
+                            facility["include_in_fieldplan"] = "Yes"
+                            logger.info(f"Facility {facility_id} is linked to fieldplan - marking as Yes")
+                        else:
+
+                            facility["include_in_fieldplan"] = "No"
+                            logger.info(f"Facility {facility_id} is NOT linked to fieldplan - marking as No")
+                else:
+                    # If no fieldplan_id provided, set all facilities to "No"
+                    for facility in all_facilities:
+                        facility["include_in_fieldplan"] = "No"
+                        logger.info(f"No fieldplan_id provided - marking facility {facility.get('facility_id')} as No")
+
         try:
             facility_service.generate_template_file_with_data(
                 output_path=output_file_path,
                 facility_schema=facility_schema,
                 boundary_list=boundary_list,
                 facility_data=all_facilities,
-                project_id=project_id,
+                project_id=fieldplan_id,
                 extra_append_rows=0
             )
             logger.info(f"Successfully created facility ingestion template at {output_file_path}")
