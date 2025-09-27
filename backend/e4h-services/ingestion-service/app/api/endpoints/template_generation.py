@@ -63,63 +63,6 @@ async def get_facility_ingestion_template_with_data(
             cleanup_temp_file(output_file_path)
             raise HTTPException(status_code=502, detail=f"External service error: {str(e)}")
 
-        # Handle facility unlinking for project-linked facilities not in current boundaries
-        if project_id and project_service_url:
-            try:
-                # Get all project-linked facilities
-                project_client = ProjectServiceClient(project_service_url)
-                project_facilities_response = project_client.search_project_facility(request_info, project_id)
-                project_facilities = project_facilities_response.get("ProjectFacilities", [])
-                project_linked_facility_ids = {pf.get("facilityId") for pf in project_facilities if pf.get("facilityId")}
-                logger.info(f"Found {len(project_linked_facility_ids)} facilities currently linked to project {project_id}")
-                
-                if project_linked_facility_ids:
-                    # Get all facilities in current boundaries
-                    facility_client = FacilityServiceClient(facility_service_url)
-                    current_boundary_facility_ids = set()
-                    
-                    for boundary in boundary_list:
-                        try:
-                            results = facility_client.search_facility(tenant_id='in', boundary_code=boundary.code)
-                            facilities = results.get('facilities', [])
-                            for facility in facilities:
-                                facility_id = facility.get('facility_id')
-                                if facility_id:
-                                    current_boundary_facility_ids.add(facility_id)
-                        except Exception as e:
-                            logger.error(f"Error fetching facilities for boundary {boundary.code}: {e}")
-                    
-                    logger.info(f"Found {len(current_boundary_facility_ids)} facilities in current boundaries")
-                    
-                    # Find project-linked facilities that are NOT in current boundaries
-                    facilities_to_unlink = project_linked_facility_ids - current_boundary_facility_ids
-                    logger.info(f"Found {len(facilities_to_unlink)} facilities to unlink: {facilities_to_unlink}")
-                    
-                    # Unlink facilities from project
-                    for facility_id in facilities_to_unlink:
-                        try:
-                            # Find the project facility data from the already fetched project facilities
-                            project_facility_data = None
-                            for pf in project_facilities:
-                                if pf.get("facilityId") == facility_id:
-                                    project_facility_data = pf
-                                    break
-                            
-                            # Pass the facility data to avoid redundant search
-                            project_client.unlink_project_facility(
-                                request_info, 
-                                project_id, 
-                                facility_id, 
-                                project_facility_data
-                            )
-                            logger.info(f"Successfully unlinked facility {facility_id} from project {project_id}")
-                        except Exception as e:
-                            logger.error(f"Error unlinking facility {facility_id} from project {project_id}: {e}")
-                            
-            except Exception as e:
-                logger.error(f"Error handling facility unlinking: {e}")
-                # Continue with template generation even if unlinking fails
-
         all_facilities = []
         if facility_service_url:
             facility_client = FacilityServiceClient(facility_service_url)
@@ -158,11 +101,21 @@ async def get_facility_ingestion_template_with_data(
                 # Continue without project facility data if there's an error
 
         # Combine boundary facilities with project facilities (avoid duplicates)
+        # Only include project facilities that belong to the current boundary codes
         existing_facility_ids = {f.get('facility_id') for f in all_facilities}
+        valid_boundary_codes = {boundary.code for boundary in boundary_list}
+        
         for pf_facility in project_facilities_data:
-            if pf_facility.get('facility_id') not in existing_facility_ids:
+            facility_id = pf_facility.get('facility_id')
+            facility_boundary_code = pf_facility.get('boundary_code') or pf_facility.get('boundaryCode')
+            
+            # Only add if not already present and belongs to current boundary codes
+            if (facility_id not in existing_facility_ids and 
+                facility_boundary_code in valid_boundary_codes):
                 all_facilities.append(pf_facility)
-                logger.info(f"Added project facility {pf_facility.get('facility_id')} to template")
+                logger.info(f"Added project facility {facility_id} to template (boundary: {facility_boundary_code})")
+            elif facility_boundary_code not in valid_boundary_codes:
+                logger.info(f"Skipped project facility {facility_id} - boundary code {facility_boundary_code} not in current boundary list")
 
         logger.info(f"Total facilities in template: {len(all_facilities)} (boundary: {len(existing_facility_ids)}, project: {len(project_facilities_data)})")
 
