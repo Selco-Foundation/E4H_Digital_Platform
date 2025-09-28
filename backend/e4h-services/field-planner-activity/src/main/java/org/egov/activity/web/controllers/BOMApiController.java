@@ -97,10 +97,9 @@ public class BOMApiController {
     @RequestMapping(value = "/_generate_pdf", method = RequestMethod.POST)
     public ResponseEntity<byte[]> generatePDF(
             @ApiParam(value = "Generate pdf file for BOM", required = true) @Valid @RequestBody GenerateBOMPdfRequest request,
-            @NotNull @ApiParam(value = "Unique key for pdf format generation", required = true) @Valid @RequestParam(value = "key", required = true) String key,
             @NotNull @ApiParam(value = "Unique id for a tenant.", required = true) @Valid @RequestParam(value = "tenantId", required = true) String tenantId
     ) {
-        byte[] pdfBytes = bomService.generateBOMPdf(request, key, tenantId);
+        byte[] pdfBytes = bomService.generateBOMPdf(request, tenantId);
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_PDF);

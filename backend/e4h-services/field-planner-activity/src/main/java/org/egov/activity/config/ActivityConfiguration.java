@@ -38,6 +38,9 @@ public class ActivityConfiguration {
     @Value("${egov.createnosave.pdf.url}")
     private String pdfCreateNoSaveUrl;
 
+    @Value("${egov.pdf.key}")
+    private String bomKeypdf;
+
     @Value("${search.api.limit:100}")
     private String searchApiLimit;
 

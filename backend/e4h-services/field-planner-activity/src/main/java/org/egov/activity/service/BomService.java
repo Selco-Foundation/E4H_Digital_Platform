@@ -116,8 +116,8 @@ public class BomService {
         return request;
     }
 
-    public byte[] generateBOMPdf(GenerateBOMPdfRequest request, String key, String tenantId){
-        return getBOMPdfFile(key, tenantId, request);
+    public byte[] generateBOMPdf(GenerateBOMPdfRequest request, String tenantId){
+        return getBOMPdfFile(activityConfiguration.getBomKeypdf(), tenantId, request);
     }
 
     private BomSearchRequest getSearchBOMRequest(List<BillOfMaterial> billOfMaterials, RequestInfo requestInfo) {
