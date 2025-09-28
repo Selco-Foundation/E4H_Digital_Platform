@@ -30,7 +30,6 @@ public class FieldPlanFacilityRowMapper implements RowMapper<FieldPlanFacility> 
                                     ? null
                                     : objectMapper.readValue(resultSet.getString("additional_details"), AdditionalFields.class))
                     .auditDetails(AuditDetails.builder()
-                            .createdBy(resultSet.getString("created_by"))
                             .createdTime(resultSet.getLong("created_time"))
                             .lastModifiedBy(resultSet.getString("last_modified_by"))
                             .lastModifiedTime(resultSet.getLong("lastmodifiedtime"))
