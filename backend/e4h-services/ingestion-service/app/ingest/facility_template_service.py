@@ -56,7 +56,7 @@ class FacilityTemplateService:
                                boundary_list: List[Boundary],
                                facility_data: List[Dict[str, Any]],
                                extra_append_rows: int,
-                               project_id: str = None
+                               type: str = None
                                ) -> None:
         """
             Generates FacilityIngestionTemplate.xlsx with:
@@ -144,7 +144,7 @@ class FacilityTemplateService:
             # Add Existing Facilities Sheet (Optional)
             formatted_facilities = []
             if facility_data:
-                formatted_facilities = format_facility_data_for_template(facility_data, facility_schema, output_list, project_id)
+                formatted_facilities = format_facility_data_for_template(facility_data, facility_schema, output_list, type)
 
             df_facility = pd.DataFrame(formatted_facilities, columns=output_list)
             facility_writer = create_excel_data_writer(

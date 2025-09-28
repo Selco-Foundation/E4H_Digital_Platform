@@ -83,11 +83,11 @@ class FieldPlanServiceClient:
                 response = requests.post(url, headers=headers, json=payload, params=params)
                 response.raise_for_status()
                 data = response.json()
-                all_facilities.extend(data.get("ProjectFacilities", []))
+                all_facilities.extend(data.get("FieldPlanFacilities", []))
 
             return {
                 "TotalCount": total_count,
-                "ProjectFacilities": all_facilities
+                "FieldPlanFacilities": all_facilities
             }
 
         except requests.exceptions.HTTPError as http_err:
