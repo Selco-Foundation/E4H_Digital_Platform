@@ -42,7 +42,7 @@ public class ActivityRepository extends GenericRepository<ActivityFacility> {
         this.activityDataRowMapper = activityDataRowMapper;
     }
 
-    public List<ActivityFacility> getActivities(ActivityFacilitySearchRequest request, Integer limit, Integer offset, String tenantId, Boolean includeDeleted, Long lastChangedSince) {
+    public List<ActivityFacility> getActivitiesFacility(ActivityFacilitySearchRequest request, Integer limit, Integer offset, String tenantId, Boolean includeDeleted, Long lastChangedSince) {
         //Fetch FieldPlans based on search criteria
         List<Object> preparedStmtList = new ArrayList<>();
         ActivityFacilitySearchCriteria criteria = request.getCriteria();

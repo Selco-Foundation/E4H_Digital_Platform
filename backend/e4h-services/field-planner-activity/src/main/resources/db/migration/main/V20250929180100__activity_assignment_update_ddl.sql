@@ -1,0 +1,1 @@
+ALTER TABLE public.activity_assignments ADD "role" jsonb NULL;

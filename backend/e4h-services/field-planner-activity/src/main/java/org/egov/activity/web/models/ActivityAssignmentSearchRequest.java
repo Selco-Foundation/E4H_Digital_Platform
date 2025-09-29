@@ -7,23 +7,18 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.egov.common.contract.response.ResponseInfo;
+import org.egov.common.contract.request.RequestInfo;
 import org.springframework.validation.annotation.Validated;
-
-import java.util.List;
 
 @Validated
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class ActivityAssignmentResponse {
-    @JsonProperty("ResponseInfo")
-    private @NotNull @Valid ResponseInfo responseInfo = null;
+public class ActivityAssignmentSearchRequest {
+    @JsonProperty("RequestInfo")
+    private @NotNull @Valid RequestInfo requestInfo = null;
 
     @JsonProperty("ActivityAssignment")
-    private @NotNull @Valid List<ActivityAssignment> activityAssignment = null;
-
-    @JsonProperty("TotalCount")
-    private Integer totalCount = 0;
+    private @NotNull @Valid  ActivityAssignmentSearchCriteria criteria;
 }

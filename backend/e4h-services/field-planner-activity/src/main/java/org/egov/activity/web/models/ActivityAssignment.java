@@ -39,6 +39,9 @@ public class ActivityAssignment {
     @JsonProperty("tenantId")
     protected String tenantId;
 
+    @JsonProperty("role")
+    protected Map<String, Object> role;
+
     @JsonProperty("activityId")
     protected String activityId;
 

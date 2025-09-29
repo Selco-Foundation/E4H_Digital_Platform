@@ -322,6 +322,25 @@ public class ActivityValidator {
             throw new CustomException(errorMap);
     }
 
+    /* Validates search FieldPlan request body and parameters*/
+    public void validateSearchAssignActivityRequest(ActivityAssignmentSearchRequest request, Integer limit, Integer offset, String tenantId) {
+        Map<String, String> errorMap = new HashMap<>();
+        RequestInfo requestInfo = request.getRequestInfo();
+
+        //Verify if RequestInfo and UserInfo is present
+        validateRequestInfo(requestInfo);
+        //Verify if search fieldplan request parameters are valid
+        validateSearchFieldPlanRequestParams(limit, offset, tenantId);
+        //Verify if search fieldplan request is valid
+        validateActivityAssignmentSearchRequest(request.getCriteria(), tenantId);
+        //Verify MDMS Data
+        // TODO: Uncomment and fix as per HCM once we get clarity
+        // validateRequestMDMSData(project, tenantId, errorMap);
+
+        if (!errorMap.isEmpty())
+            throw new CustomException(errorMap);
+    }
+
     /* Validates if search Project request parameters are valid */
     private void validateSearchFieldPlanRequestParams(Integer limit, Integer offset, String tenantId) {
         if (limit == null) {
@@ -345,6 +364,15 @@ public class ActivityValidator {
         checkFieldPlansIfEmpty(criteria);
 
         doNullAndEmptyChecks(tenantId, criteria);
+    }
+
+    private void validateActivityAssignmentSearchRequest(ActivityAssignmentSearchCriteria criteria, String tenantId) {
+        if (criteria == null) {
+            log.error("Activity is empty. Activity is mandatory");
+            throw new CustomException("Activity", "Activity are mandatory");
+        }
+
+        doNullAndEmptyChecksActivityAssignment(tenantId, criteria);
     }
 
     private static void checkFieldPlansIfEmpty(ActivityFacilitySearchCriteria activityFacilities) {
@@ -373,6 +401,30 @@ public class ActivityValidator {
         }
 
         if (!activityFacility.getTenantId().equals(tenantId)) {
+            log.error("Tenant Id must be same in URL param as well as project request body");
+            throw new CustomException("MULTIPLE_TENANTS", "Tenant Id must be same in URL param and project request");
+        }
+    }
+
+    private static void doNullAndEmptyChecksActivityAssignment(String tenantId, ActivityAssignmentSearchCriteria criteria) {
+        if (criteria == null) {
+            log.error("fieldPlan is mandatory in FieldPlans");
+            throw new CustomException("FIELDPLAN", "FieldPlan is mandatory");
+        }
+        if (StringUtils.isBlank(criteria.getTenantId())) {
+            log.error(TENANT_ID_IS_MANDATORY_IN_ACTIVITY_REQUEST_BODY);
+            throw new CustomException("TENANT_ID", "Tenant ID is mandatory");
+        }
+        if ((criteria.getIds()==null || criteria.getIds().isEmpty()) && (criteria.getFieldPlanId()==null || criteria.getFieldPlanId().isEmpty())
+                && (criteria.getStatuses()==null || criteria.getStatuses().isEmpty()) && (criteria.getActivityId()==null || criteria.getActivityId().isEmpty())
+                && StringUtils.isBlank(criteria.getAssignedTo())
+                && StringUtils.isBlank(criteria.getAssignedBy()))
+        {
+            log.error("Any one Activity search field is required for FieldPlan Search");
+            throw new CustomException("ACTIVITY_SEARCH_FIELDS", "Any one activity search field is required");
+        }
+
+        if (!criteria.getTenantId().equals(tenantId)) {
             log.error("Tenant Id must be same in URL param as well as project request body");
             throw new CustomException("MULTIPLE_TENANTS", "Tenant Id must be same in URL param and project request");
         }

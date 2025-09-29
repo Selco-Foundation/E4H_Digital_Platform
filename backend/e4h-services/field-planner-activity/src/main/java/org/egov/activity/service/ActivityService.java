@@ -3,6 +3,7 @@ package org.egov.activity.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.egov.activity.repository.ActivityAssignmentRepository;
 import org.egov.activity.util.ActivityServiceUtil;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.common.producer.Producer;
@@ -18,7 +19,6 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 
 @Service
@@ -26,6 +26,8 @@ import java.util.Objects;
 public class ActivityService {
 
     private final ActivityRepository activityRepository;
+
+    private final ActivityAssignmentRepository activityAssignmentRepository;
 
     private final Producer producer;
 
@@ -43,7 +45,7 @@ public class ActivityService {
     @Autowired
     public ActivityService(
             ActivityRepository activityRepository, ActivityEnrichment activityEnrichment, ActivityConfiguration activityConfiguration, ActivityValidator activityValidator,
-            Producer producer, MDMSUtils mdmsUtils, ActivityServiceUtil activityServiceUtil, @Qualifier("objectMapper") ObjectMapper mapper) {
+            Producer producer, MDMSUtils mdmsUtils, ActivityServiceUtil activityServiceUtil, @Qualifier("objectMapper") ObjectMapper mapper, ActivityAssignmentRepository activityAssignmentRepository) {
             this.producer = producer;
             this.activityConfiguration = activityConfiguration;
             this.activityRepository = activityRepository;
@@ -52,6 +54,7 @@ public class ActivityService {
             this.activityServiceUtil = activityServiceUtil;
             this.mapper = mapper;
             this.activityValidator = activityValidator;
+            this.activityAssignmentRepository = activityAssignmentRepository;
     }
 
     public List<ActivityFacility> createActivityFacility(ActivityFacilityBulkRequest request) {
@@ -94,12 +97,22 @@ public class ActivityService {
 
     public List<ActivityFacility> searchActivity(ActivityFacilitySearchRequest request, Integer limit, Integer offset, String tenantId, Boolean includeDeleted, Long lastChangedSince) {
         activityValidator.validateSearchActivityRequest(request, limit, offset, tenantId);
-        List<ActivityFacility> activityFacilities = activityRepository.getActivities(request, limit, offset, tenantId, includeDeleted, lastChangedSince);
+        List<ActivityFacility> activityFacilities = activityRepository.getActivitiesFacility(request, limit, offset, tenantId, includeDeleted, lastChangedSince);
         return activityFacilities;
     }
 
-    public Integer countAllFieldPlans(ActivityFacilitySearchRequest request, String tenantId, Long lastChangedSince, Boolean includeDeleted) {
+    public List<ActivityAssignment> searchAssignedActivity(ActivityAssignmentSearchRequest request, Integer limit, Integer offset, String tenantId, Boolean includeDeleted, Long lastChangedSince) {
+        activityValidator.validateSearchAssignActivityRequest(request, limit, offset, tenantId);
+        List<ActivityAssignment> activityFacilities = activityAssignmentRepository.getActivitiesAssignment(request, limit, offset, tenantId, includeDeleted, lastChangedSince);
+        return activityFacilities;
+    }
+
+    public Integer countAllFacilityActivities(ActivityFacilitySearchRequest request, String tenantId, Long lastChangedSince, Boolean includeDeleted) {
         return activityRepository.getActivitiesCount(request, tenantId, lastChangedSince, includeDeleted);
+    }
+
+    public Integer countAllAssignedActivities(ActivityAssignmentSearchRequest request, String tenantId, Long lastChangedSince, Boolean includeDeleted) {
+        return activityAssignmentRepository.getActivitiesCount(request, tenantId, lastChangedSince, includeDeleted);
     }
 
     public ActivityFacilityBulkRequest updateProject(ActivityFacilityBulkRequest request) {
