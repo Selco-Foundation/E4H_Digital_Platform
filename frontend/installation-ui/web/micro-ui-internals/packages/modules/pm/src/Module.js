@@ -12,6 +12,7 @@ import BlockSelector from "./components/FormComposer/BlockSelector";
 import DownloadTemplate from "./components/File/DownloadTemplate";
 import CustomUploadFile from "./components/File/CustomUploadFile";
 import ActivitySelector from "./components/FormComposer/ActivitySelector";
+import ActivityDetails from "./components/CreateFieldPlan/ActivityDetails";
 
 export const PMReducers = getRootReducer;
 
@@ -66,7 +67,8 @@ const componentsToRegister = {
   PMBlockSelector: BlockSelector,
   PMDownloadTemplate: DownloadTemplate,
   PMUploadFacilityData: CustomUploadFile,
-  PMActivitySelector: ActivitySelector
+  PMActivitySelector: ActivitySelector,
+  PMActivityDetails: ActivityDetails,
 };
 
 export const initPMComponents = () => {

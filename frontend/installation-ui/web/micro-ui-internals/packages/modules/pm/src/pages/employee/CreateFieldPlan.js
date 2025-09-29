@@ -449,20 +449,22 @@ const CreateFieldPlan = () => {
         key: "3",
         body: [
           {
-            inline: true,
-            label: "PM_CREATE_FIELD_PLAN_LABEL_ACTIVITIES",
             isMandatory: true,
-            key: "dummyActivities",
-            type: "dropdown",
+            key: "activityDetails",
+            withoutLabelFieldPair: true,
+            withoutLabel: true,
+            type: "component",
+            component: "PMActivityDetails",
             disable: false,
-            route: "dummyActivities",
+            route: "activity-details",
+            customProps: {
+              t,
+            },
             nextRoute: "",
             populators: {
-              name: "dummyActivities",
+              name: "activityDetails",
               error: "Required",
-              optionsKey: "name",
               required: true,
-              options: activityData || [],
             },
           },
         ],
@@ -736,9 +738,9 @@ const CreateFieldPlan = () => {
         defaultValues={getDefaultValues()}
         showMultipleCardsWithoutNavs={true}
         noBreakLine={true}
-        cardStyle={{padding: "20px"}}
+        cardStyle={{padding: "20px", overflow: "hidden"}}
         actionClassName={"reverse-actionbar"}
-        submitIcon={<CustomArrowRight />}
+        // submitIcon={<CustomArrowRight />}
       />
       {toast && (
         <Toast
