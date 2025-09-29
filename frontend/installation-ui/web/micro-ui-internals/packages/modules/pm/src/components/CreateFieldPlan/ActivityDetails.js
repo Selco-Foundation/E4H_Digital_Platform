@@ -352,7 +352,26 @@ const ActivityDetails = ({ setError, setValue, clearErrors, props }) => {
           justifyContent: "center",
         }}
       >
-        <CheckCircleOutline fill={isSent ? "#00703C" : "#505A5F"} />
+        {isSent ? (
+          <CheckCircleOutline fill={"#00703C"} />
+        ) : (
+          <button
+            type={"button"}
+            disabled={disableRemoval}
+            style={{
+              cursor: disableRemoval ? "default" : "pointer",
+              backgroundColor: "transparent",
+              display: "flex",
+              alignItems: "center",
+              padding: "0",
+              borderRadius: "3px",
+              opacity: disableRemoval ? "0.5" : "1",
+            }}
+            onClick={() => removeUserEntry(activity, index)}
+          >
+            <CustomCloseSvg fill={"transparent"} height={"20px"} width={"20px"} />
+          </button>
+        )}
       </div>
       <span
         style={{
@@ -360,30 +379,9 @@ const ActivityDetails = ({ setError, setValue, clearErrors, props }) => {
           color: "rgba(212, 53, 28)",
           height: "14px",
           marginTop: "1px",
-          display: "block"
+          display: "block",
         }}
-      >
-
-      </span>
-      <button
-        type={"button"}
-        disabled={disableRemoval}
-        style={{
-          cursor: disableRemoval ? "default" : "pointer",
-          position: "absolute",
-          top: "1px",
-          right: "1px",
-          backgroundColor: "transparent",
-          display: "flex",
-          alignItems: "center",
-          padding: "0",
-          borderRadius: "3px",
-          opacity: disableRemoval ? "0.5" : "1",
-        }}
-        onClick={() => removeUserEntry(activity, index)}
-      >
-        <CustomCloseSvg fill={"transparent"} height={"20px"} width={"20px"} />
-      </button>
+      ></span>
     </div>
   );
 
@@ -443,7 +441,7 @@ const ActivityDetails = ({ setError, setValue, clearErrors, props }) => {
       },
       {
         id: "email",
-        Header: () => GetHead("Activity SPOC Email"),
+        Header: () => GetHead("Email"),
         Cell: ({ row }) => GetCell(
           row.original["users"].map((userEntry, i, usersArray) => {
             return UserTextInput(row.original["activity"], i, "email", userEntry?.email, usersArray.length - 1 === i);
@@ -467,6 +465,7 @@ const ActivityDetails = ({ setError, setValue, clearErrors, props }) => {
     setData((prevState) => prevState.map((dataEntry) => ({
       ...dataEntry,
       users: [
+        // ...dataEntry.users.filter((userEntry) => userEntry.isEmailSent),
         {
           startDate: { value: "", error: "", },
           endDate: { value: "", error: "", },
@@ -541,21 +540,21 @@ const ActivityDetails = ({ setError, setValue, clearErrors, props }) => {
           gap: "10px",
         }}
       >
-        <button
-          type="button"
-          onClick={handleActivityDataClear}
-          style={{
-            border: "none",
-            background: "transparent",
-            color: "#C84C0E",
-            fontSize: "16px",
-            fontFamily: "Roboto",
-            fontWeight: 400,
-            cursor: "pointer",
-          }}
-        >
-          {t("CORE_COMMON_CLEAR")}
-        </button>
+        {/*<button*/}
+        {/*  type="button"*/}
+        {/*  onClick={handleActivityDataClear}*/}
+        {/*  style={{*/}
+        {/*    border: "none",*/}
+        {/*    background: "transparent",*/}
+        {/*    color: "#C84C0E",*/}
+        {/*    fontSize: "16px",*/}
+        {/*    fontFamily: "Roboto",*/}
+        {/*    fontWeight: 400,*/}
+        {/*    cursor: "pointer",*/}
+        {/*  }}*/}
+        {/*>*/}
+        {/*  {t("CORE_COMMON_CLEAR")}*/}
+        {/*</button>*/}
         <SubmitBar
           label={t("CORE_COMMON_SAVE")}
           style={{
