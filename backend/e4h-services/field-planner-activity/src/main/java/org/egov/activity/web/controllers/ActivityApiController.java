@@ -110,6 +110,18 @@ public class ActivityApiController {
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
     }
 
+    @RequestMapping(value = "/_unassign-activity", method = RequestMethod.POST)
+    public ResponseEntity<ActivityAssignmentResponse> activityAssignmentUnassign(@ApiParam(value = "Capture linkage of Field Plan and facility.", required = true) @Valid @RequestBody ActivityAssignmentBulkRequest request) {
+
+        List<ActivityAssignment> activityAssignments = activityService.unassignActivityAssignment(request);
+        ActivityAssignmentResponse response = ActivityAssignmentResponse.builder()
+                .activityAssignment(activityAssignments)
+                .responseInfo(ResponseInfoFactory
+                        .createResponseInfo(request.getRequestInfo(), true))
+                .build();
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
+    }
+
     @RequestMapping(value = "/_assign-staff", method = RequestMethod.POST)
     public ResponseEntity<ActivityFacilityResponse> activityFacilityV1CreatePost(@ApiParam(value = "Capture linkage of Project and facility.", required = true) @Valid @RequestBody ActivityFacilityBulkRequest request) {
 

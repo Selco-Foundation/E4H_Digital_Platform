@@ -95,6 +95,25 @@ public class ActivityService {
         return activityAssignments;
     }
 
+    public List<ActivityAssignment> unassignActivityAssignment(ActivityAssignmentBulkRequest request) {
+        log.info("received request to create bulk fieldplan facility");
+
+        activityValidator.validateDeleteActivityAssignmentRequest(request);
+        List<ActivityAssignment> activityAssignments = request.getActivityAssignments();
+        try {
+            for (ActivityAssignment activityAssignment : activityAssignments) {
+                log.info("processing {} valid entities", activityAssignment);
+                activityEnrichment.enrichFieldPlanRequestOnDelete(activityAssignment, request.getRequestInfo());
+            }
+            log.info("successfully unassign fieldplan activities");
+            producer.push(activityConfiguration.getUnassignActivityAssignmentTopic(), request);
+        } catch (Exception exception) {
+            log.error("error occurred while creating project facility: {}", ExceptionUtils.getStackTrace(exception));
+        }
+
+        return activityAssignments;
+    }
+
     public List<ActivityFacility> searchActivity(ActivityFacilitySearchRequest request, Integer limit, Integer offset, String tenantId, Boolean includeDeleted, Long lastChangedSince) {
         activityValidator.validateSearchActivityRequest(request, limit, offset, tenantId);
         List<ActivityFacility> activityFacilities = activityRepository.getActivitiesFacility(request, limit, offset, tenantId, includeDeleted, lastChangedSince);
