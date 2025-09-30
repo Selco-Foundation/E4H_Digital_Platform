@@ -14,6 +14,9 @@ class CacheProjectWorkflow {
   Id id = Isar.autoIncrement;
 
   @Index()
+  late String projectId;
+
+  @Index()
   late String status;
 
   @Embedded()
@@ -31,6 +34,7 @@ class CacheProjectWorkflow {
   CacheProjectWorkflow({
     required this.status,
     required this.project,
+    required this.projectId,
     this.workflow,
     this.transactions,
   });

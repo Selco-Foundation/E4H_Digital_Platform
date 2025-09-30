@@ -1,4 +1,5 @@
 import 'dart:collection';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
@@ -314,10 +315,106 @@ Map<String, dynamic> transformSelcoFormMdmsDocToSchema(
   };
 }
 
+/// rawDoc must be in your mock/MDMS AS-IS format:
+/// {
+///   "name": "...",
+///   "version": ...,
+///   "pages": [
+///     { "page": "...", "properties": [ { "fieldName": "...", "value": "" }, ... ] },
+///     ...
+///   ]
+/// }
+///
+/// `flatValues` is a map of fieldName -> value (you already collect this).
+///
+/// Returns a NEW doc with each matching property's `value` set.
+/// (Shape remains identical to the raw doc.)
+
+/// Inject flat values (fieldName -> value) into your RAW MDMS/mock doc
+/// without changing its shape (pages: [ ... properties: [ ... ] ]).
+Map<String, dynamic> injectValuesIntoRawDoc2({
+  required Map<String, dynamic> rawDoc,
+  required Map<String, dynamic> flatValues,
+}) {
+  // deep copy to avoid mutating originals
+  final doc = jsonDecode(jsonEncode(rawDoc)) as Map<String, dynamic>;
+  final pages = (doc['pages'] as List?) ?? const [];
+
+  for (final p in pages) {
+    if (p is! Map) continue;
+    final props = (p['properties'] as List?) ?? const [];
+    for (final item in props) {
+      if (item is! Map) continue;
+      final fieldName = item['fieldName']?.toString();
+      if (fieldName != null && flatValues.containsKey(fieldName)) {
+        item['value'] = flatValues[fieldName];
+      }
+    }
+  }
+  return doc;
+}
+
+Map<String, dynamic> injectValuesIntoRawDoc({
+  required Map<String, dynamic> rawDoc,
+  required Map<String, dynamic> flatValues,
+}) {
+  final doc = jsonDecode(jsonEncode(rawDoc)) as Map<String, dynamic>;
+
+  final pagesField = doc['pages'];
+  if (pagesField is List) {
+    // old pattern: pages is a List of page objects
+    for (final p in pagesField) {
+      if (p is! Map) continue;
+      final propsList = p['properties'];
+      if (propsList is List) {
+        for (final item in propsList) {
+          if (item is Map) {
+            final fieldName = item['fieldName']?.toString();
+            if (fieldName != null && flatValues.containsKey(fieldName)) {
+              item['value'] = flatValues[fieldName];
+            }
+          }
+        }
+      }
+    }
+    // no change to ordering
+    doc['pages'] = pagesField;
+  } else if (pagesField is Map) {
+    // new pattern: pages is a Map<String, pageObj>
+    final pagesMap = <String, dynamic>{};
+    pagesField.forEach((key, pObj) {
+      if (pObj is Map) {
+        final propsField = pObj['properties'];
+        if (propsField is Map) {
+          final propsMap = <String, dynamic>{};
+          propsField.forEach((fieldKey, propRaw) {
+            if (propRaw is Map) {
+              final fieldName = propRaw['fieldName']?.toString() ?? fieldKey;
+              if (flatValues.containsKey(fieldName)) {
+                propRaw['value'] = flatValues[fieldName];
+              }
+              propsMap[fieldKey] = propRaw;
+            } else {
+              propsMap[fieldKey] = propRaw;
+            }
+          });
+          pObj['properties'] = propsMap;
+        }
+      }
+      pagesMap[key] = pObj;
+    });
+    doc['pages'] = pagesMap;
+  } else {
+    // unknown “pages” type — do nothing
+  }
+
+  return doc;
+}
+
 class DioErrorParser {
   static Exception parse(DioError dioErr) {
     debugPrint("Dio error: ${dioErr.response?.data ?? dioErr}");
-
+    print("Dio error: ${dioErr}");
     final serverData = dioErr.response?.data;
     if (serverData is Map<String, dynamic> &&
         serverData.containsKey('Errors')) {

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
 import 'package:selco/model/solution_design_type/solution_design_type.dart';
+import 'package:selco/model/solution_design_type_bom/solution_design_type_bom.dart';
 
 import '../data/remote_client.dart';
 import '../data/secure_storage/secureStore.dart';
@@ -371,6 +372,59 @@ class AppInitRepo {
     }
   }
 
+  Future<List<Mdms<SolutionDesignTypeBom>>> searchSolutionDesignTypeBom(
+      MdmsRequestModel mdmsRequestBody) async {
+    final body = mdmsRequestBody.toJson();
+
+    final SecureStore storage = SecureStore();
+
+    // try to fetch locally
+    String? localSolutionDesignBom = await storage.getSolutionDesignTypeBom();
+    if (localSolutionDesignBom != null) {
+      final List<dynamic> decodedList =
+          json.decode(localSolutionDesignBom) as List<dynamic>;
+      return decodedList
+          .map((item) => Mdms<SolutionDesignTypeBom>.fromJson(
+                item as Map<String, dynamic>,
+                (json) => SolutionDesignTypeBom.fromJson(
+                    json as Map<String, dynamic>),
+              ))
+          .toList();
+    }
+
+    if (envConfig.variables.envType == EnvType.dev) {
+      return _loadLocalMdms<SolutionDesignTypeBom>(
+        'assets/mocks/mockSolutionDesignTypeBomForm.json',
+        (json) => SolutionDesignTypeBom.fromJson(json),
+      );
+    }
+
+    final client = DioClient().dio;
+    final headers = <String, String>{
+      "Access-Control-Allow-Origin": "*",
+      "authorization": "Basic ZWdvdi11c2VyLWNsaWVudDo=",
+    };
+
+    try {
+      final response = await client.post("egov-mdms-service/v2/_search",
+          data: body, options: Options(headers: headers));
+
+      final List<dynamic> payloadList = response.data['mdms'] as List<dynamic>;
+      final List<Mdms<SolutionDesignTypeBom>> result = payloadList
+          .map((item) => Mdms<SolutionDesignTypeBom>.fromJson(
+                item as Map<String, dynamic>,
+                (json) => SolutionDesignTypeBom.fromJson(
+                    json as Map<String, dynamic>),
+              ))
+          .toList();
+
+      await storage.setSolutionDesignTypeBom(result);
+      return result;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   /// Load schema by its logical name, e.g. "AssetForm"
   Future<Map<String, dynamic>?> loadByName(String name) async {
     final SecureStore storage = SecureStore();
@@ -473,7 +527,7 @@ class AppInitRepo {
     if (envConfig.variables.envType == EnvType.dev) {
       // <-- THIS is the fix: return *raw maps*, not Mdms<T>
       print("It's getting here");
-      return _loadLocalMdmsRaw('assets/mocks/mockFormSolarConfig.json');
+      return _loadLocalMdmsRaw('assets/mocks/mockBOMFormConfig.updated.json');
     }
 
     // PROD call

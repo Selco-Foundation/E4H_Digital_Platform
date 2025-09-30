@@ -29,24 +29,29 @@ const CacheProjectWorkflowSchema = CollectionSchema(
       type: IsarType.object,
       target: r'ProjectModel',
     ),
-    r'status': PropertySchema(
+    r'projectId': PropertySchema(
       id: 2,
+      name: r'projectId',
+      type: IsarType.string,
+    ),
+    r'status': PropertySchema(
+      id: 3,
       name: r'status',
       type: IsarType.string,
     ),
     r'transactions': PropertySchema(
-      id: 3,
+      id: 4,
       name: r'transactions',
       type: IsarType.objectList,
       target: r'Transaction',
     ),
     r'updatedAt': PropertySchema(
-      id: 4,
+      id: 5,
       name: r'updatedAt',
       type: IsarType.dateTime,
     ),
     r'workflow': PropertySchema(
-      id: 5,
+      id: 6,
       name: r'workflow',
       type: IsarType.object,
       target: r'Workflow',
@@ -58,6 +63,19 @@ const CacheProjectWorkflowSchema = CollectionSchema(
   deserializeProp: _cacheProjectWorkflowDeserializeProp,
   idName: r'id',
   indexes: {
+    r'projectId': IndexSchema(
+      id: 3305656282123791113,
+      name: r'projectId',
+      unique: false,
+      replace: false,
+      properties: [
+        IndexPropertySchema(
+          name: r'projectId',
+          type: IndexType.hash,
+          caseSensitive: true,
+        )
+      ],
+    ),
     r'status': IndexSchema(
       id: -107785170620420283,
       name: r'status',
@@ -101,6 +119,7 @@ int _cacheProjectWorkflowEstimateSize(
   bytesCount += 3 +
       ProjectModelSchema.estimateSize(
           object.project, allOffsets[ProjectModel]!, allOffsets);
+  bytesCount += 3 + object.projectId.length * 3;
   bytesCount += 3 + object.status.length * 3;
   {
     final list = object.transactions;
@@ -139,16 +158,17 @@ void _cacheProjectWorkflowSerialize(
     ProjectModelSchema.serialize,
     object.project,
   );
-  writer.writeString(offsets[2], object.status);
+  writer.writeString(offsets[2], object.projectId);
+  writer.writeString(offsets[3], object.status);
   writer.writeObjectList<Transaction>(
-    offsets[3],
+    offsets[4],
     allOffsets,
     TransactionSchema.serialize,
     object.transactions,
   );
-  writer.writeDateTime(offsets[4], object.updatedAt);
+  writer.writeDateTime(offsets[5], object.updatedAt);
   writer.writeObject<Workflow>(
-    offsets[5],
+    offsets[6],
     allOffsets,
     WorkflowSchema.serialize,
     object.workflow,
@@ -168,22 +188,23 @@ CacheProjectWorkflow _cacheProjectWorkflowDeserialize(
           allOffsets,
         ) ??
         ProjectModel(),
-    status: reader.readString(offsets[2]),
+    projectId: reader.readString(offsets[2]),
+    status: reader.readString(offsets[3]),
     transactions: reader.readObjectList<Transaction>(
-      offsets[3],
+      offsets[4],
       TransactionSchema.deserialize,
       allOffsets,
       Transaction(),
     ),
     workflow: reader.readObjectOrNull<Workflow>(
-      offsets[5],
+      offsets[6],
       WorkflowSchema.deserialize,
       allOffsets,
     ),
   );
   object.createdAt = reader.readDateTime(offsets[0]);
   object.id = id;
-  object.updatedAt = reader.readDateTimeOrNull(offsets[4]);
+  object.updatedAt = reader.readDateTimeOrNull(offsets[5]);
   return object;
 }
 
@@ -206,15 +227,17 @@ P _cacheProjectWorkflowDeserializeProp<P>(
     case 2:
       return (reader.readString(offset)) as P;
     case 3:
+      return (reader.readString(offset)) as P;
+    case 4:
       return (reader.readObjectList<Transaction>(
         offset,
         TransactionSchema.deserialize,
         allOffsets,
         Transaction(),
       )) as P;
-    case 4:
-      return (reader.readDateTimeOrNull(offset)) as P;
     case 5:
+      return (reader.readDateTimeOrNull(offset)) as P;
+    case 6:
       return (reader.readObjectOrNull<Workflow>(
         offset,
         WorkflowSchema.deserialize,
@@ -316,6 +339,51 @@ extension CacheProjectWorkflowQueryWhere
         upper: upperId,
         includeUpper: includeUpper,
       ));
+    });
+  }
+
+  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow, QAfterWhereClause>
+      projectIdEqualTo(String projectId) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.equalTo(
+        indexName: r'projectId',
+        value: [projectId],
+      ));
+    });
+  }
+
+  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow, QAfterWhereClause>
+      projectIdNotEqualTo(String projectId) {
+    return QueryBuilder.apply(this, (query) {
+      if (query.whereSort == Sort.asc) {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'projectId',
+              lower: [],
+              upper: [projectId],
+              includeUpper: false,
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'projectId',
+              lower: [projectId],
+              includeLower: false,
+              upper: [],
+            ));
+      } else {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'projectId',
+              lower: [projectId],
+              includeLower: false,
+              upper: [],
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'projectId',
+              lower: [],
+              upper: [projectId],
+              includeUpper: false,
+            ));
+      }
     });
   }
 
@@ -475,6 +543,144 @@ extension CacheProjectWorkflowQueryFilter on QueryBuilder<CacheProjectWorkflow,
         includeLower: includeLower,
         upper: upper,
         includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
+      QAfterFilterCondition> projectIdEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'projectId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
+      QAfterFilterCondition> projectIdGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'projectId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
+      QAfterFilterCondition> projectIdLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'projectId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
+      QAfterFilterCondition> projectIdBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'projectId',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
+      QAfterFilterCondition> projectIdStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'projectId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
+      QAfterFilterCondition> projectIdEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'projectId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
+          QAfterFilterCondition>
+      projectIdContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'projectId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
+          QAfterFilterCondition>
+      projectIdMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'projectId',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
+      QAfterFilterCondition> projectIdIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'projectId',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
+      QAfterFilterCondition> projectIdIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'projectId',
+        value: '',
       ));
     });
   }
@@ -861,6 +1067,20 @@ extension CacheProjectWorkflowQuerySortBy
   }
 
   QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow, QAfterSortBy>
+      sortByProjectId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'projectId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow, QAfterSortBy>
+      sortByProjectIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'projectId', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow, QAfterSortBy>
       sortByStatus() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'status', Sort.asc);
@@ -920,6 +1140,20 @@ extension CacheProjectWorkflowQuerySortThenBy
   }
 
   QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow, QAfterSortBy>
+      thenByProjectId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'projectId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow, QAfterSortBy>
+      thenByProjectIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'projectId', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow, QAfterSortBy>
       thenByStatus() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'status', Sort.asc);
@@ -958,6 +1192,13 @@ extension CacheProjectWorkflowQueryWhereDistinct
   }
 
   QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow, QDistinct>
+      distinctByProjectId({bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'projectId', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow, QDistinct>
       distinctByStatus({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'status', caseSensitive: caseSensitive);
@@ -991,6 +1232,13 @@ extension CacheProjectWorkflowQueryProperty on QueryBuilder<
       projectProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'project');
+    });
+  }
+
+  QueryBuilder<CacheProjectWorkflow, String, QQueryOperations>
+      projectIdProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'projectId');
     });
   }
 

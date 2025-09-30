@@ -58,10 +58,7 @@ abstract class _$AppRouter extends RootStackRouter {
       );
     },
     DynamicFormsRoute.name: (routeData) {
-      final pathParams = routeData.inheritedPathParams;
-      final args = routeData.argsAs<DynamicFormsRouteArgs>(
-          orElse: () => DynamicFormsRouteArgs(
-              pageName: pathParams.getString('pageName')));
+      final args = routeData.argsAs<DynamicFormsRouteArgs>();
       return AutoRoutePage<dynamic>(
         routeData: routeData,
         child: DynamicFormsPage(
@@ -327,7 +324,7 @@ class DynamicFormsRoute extends PageRouteInfo<DynamicFormsRouteArgs> {
     required String pageName,
     String? schemaName,
     String? uniqueIdentifier,
-    String? projectId,
+    required String projectId,
     List<PageRouteInfo>? children,
   }) : super(
           DynamicFormsRoute.name,
@@ -354,7 +351,7 @@ class DynamicFormsRouteArgs {
     required this.pageName,
     this.schemaName,
     this.uniqueIdentifier,
-    this.projectId,
+    required this.projectId,
   });
 
   final Key? key;
@@ -365,7 +362,7 @@ class DynamicFormsRouteArgs {
 
   final String? uniqueIdentifier;
 
-  final String? projectId;
+  final String projectId;
 
   @override
   String toString() {

@@ -175,7 +175,8 @@ mixin _$InitState {
             List<Mdms<System>> system,
             List<Mdms<Warranty>> warranty,
             List<Mdms<Brand>> brand,
-            List<Mdms<SolutionDesignType>> solutionDesign)
+            List<Mdms<SolutionDesignType>> solutionDesign,
+            List<Mdms<SolutionDesignTypeBom>> solutionDesignBom)
         initialized,
   }) =>
       throw _privateConstructorUsedError;
@@ -189,7 +190,8 @@ mixin _$InitState {
             List<Mdms<System>> system,
             List<Mdms<Warranty>> warranty,
             List<Mdms<Brand>> brand,
-            List<Mdms<SolutionDesignType>> solutionDesign)?
+            List<Mdms<SolutionDesignType>> solutionDesign,
+            List<Mdms<SolutionDesignTypeBom>> solutionDesignBom)?
         initialized,
   }) =>
       throw _privateConstructorUsedError;
@@ -203,7 +205,8 @@ mixin _$InitState {
             List<Mdms<System>> system,
             List<Mdms<Warranty>> warranty,
             List<Mdms<Brand>> brand,
-            List<Mdms<SolutionDesignType>> solutionDesign)?
+            List<Mdms<SolutionDesignType>> solutionDesign,
+            List<Mdms<SolutionDesignTypeBom>> solutionDesignBom)?
         initialized,
     required TResult orElse(),
   }) =>
@@ -292,7 +295,8 @@ class _$UninitializedImpl extends _Uninitialized {
             List<Mdms<System>> system,
             List<Mdms<Warranty>> warranty,
             List<Mdms<Brand>> brand,
-            List<Mdms<SolutionDesignType>> solutionDesign)
+            List<Mdms<SolutionDesignType>> solutionDesign,
+            List<Mdms<SolutionDesignTypeBom>> solutionDesignBom)
         initialized,
   }) {
     return uninitialized();
@@ -309,7 +313,8 @@ class _$UninitializedImpl extends _Uninitialized {
             List<Mdms<System>> system,
             List<Mdms<Warranty>> warranty,
             List<Mdms<Brand>> brand,
-            List<Mdms<SolutionDesignType>> solutionDesign)?
+            List<Mdms<SolutionDesignType>> solutionDesign,
+            List<Mdms<SolutionDesignTypeBom>> solutionDesignBom)?
         initialized,
   }) {
     return uninitialized?.call();
@@ -326,7 +331,8 @@ class _$UninitializedImpl extends _Uninitialized {
             List<Mdms<System>> system,
             List<Mdms<Warranty>> warranty,
             List<Mdms<Brand>> brand,
-            List<Mdms<SolutionDesignType>> solutionDesign)?
+            List<Mdms<SolutionDesignType>> solutionDesign,
+            List<Mdms<SolutionDesignTypeBom>> solutionDesignBom)?
         initialized,
     required TResult orElse(),
   }) {
@@ -386,7 +392,8 @@ abstract class _$$InitializedImplCopyWith<$Res> {
       List<Mdms<System>> system,
       List<Mdms<Warranty>> warranty,
       List<Mdms<Brand>> brand,
-      List<Mdms<SolutionDesignType>> solutionDesign});
+      List<Mdms<SolutionDesignType>> solutionDesign,
+      List<Mdms<SolutionDesignTypeBom>> solutionDesignBom});
 
   $MdmsResponseModelCopyWith<$Res> get appConfig;
 }
@@ -409,6 +416,7 @@ class __$$InitializedImplCopyWithImpl<$Res>
     Object? warranty = null,
     Object? brand = null,
     Object? solutionDesign = null,
+    Object? solutionDesignBom = null,
   }) {
     return _then(_$InitializedImpl(
       appConfig: null == appConfig
@@ -439,6 +447,10 @@ class __$$InitializedImplCopyWithImpl<$Res>
           ? _value._solutionDesign
           : solutionDesign // ignore: cast_nullable_to_non_nullable
               as List<Mdms<SolutionDesignType>>,
+      solutionDesignBom: null == solutionDesignBom
+          ? _value._solutionDesignBom
+          : solutionDesignBom // ignore: cast_nullable_to_non_nullable
+              as List<Mdms<SolutionDesignTypeBom>>,
     ));
   }
 
@@ -461,13 +473,15 @@ class _$InitializedImpl extends Initialized {
       required final List<Mdms<System>> system,
       required final List<Mdms<Warranty>> warranty,
       required final List<Mdms<Brand>> brand,
-      required final List<Mdms<SolutionDesignType>> solutionDesign})
+      required final List<Mdms<SolutionDesignType>> solutionDesign,
+      required final List<Mdms<SolutionDesignTypeBom>> solutionDesignBom})
       : _assetCount = assetCount,
         _assetType = assetType,
         _system = system,
         _warranty = warranty,
         _brand = brand,
         _solutionDesign = solutionDesign,
+        _solutionDesignBom = solutionDesignBom,
         super._();
 
   @override
@@ -520,9 +534,18 @@ class _$InitializedImpl extends Initialized {
     return EqualUnmodifiableListView(_solutionDesign);
   }
 
+  final List<Mdms<SolutionDesignTypeBom>> _solutionDesignBom;
+  @override
+  List<Mdms<SolutionDesignTypeBom>> get solutionDesignBom {
+    if (_solutionDesignBom is EqualUnmodifiableListView)
+      return _solutionDesignBom;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_solutionDesignBom);
+  }
+
   @override
   String toString() {
-    return 'InitState.initialized(appConfig: $appConfig, assetCount: $assetCount, assetType: $assetType, system: $system, warranty: $warranty, brand: $brand, solutionDesign: $solutionDesign)';
+    return 'InitState.initialized(appConfig: $appConfig, assetCount: $assetCount, assetType: $assetType, system: $system, warranty: $warranty, brand: $brand, solutionDesign: $solutionDesign, solutionDesignBom: $solutionDesignBom)';
   }
 
   @override
@@ -540,7 +563,9 @@ class _$InitializedImpl extends Initialized {
             const DeepCollectionEquality().equals(other._warranty, _warranty) &&
             const DeepCollectionEquality().equals(other._brand, _brand) &&
             const DeepCollectionEquality()
-                .equals(other._solutionDesign, _solutionDesign));
+                .equals(other._solutionDesign, _solutionDesign) &&
+            const DeepCollectionEquality()
+                .equals(other._solutionDesignBom, _solutionDesignBom));
   }
 
   @override
@@ -552,7 +577,8 @@ class _$InitializedImpl extends Initialized {
       const DeepCollectionEquality().hash(_system),
       const DeepCollectionEquality().hash(_warranty),
       const DeepCollectionEquality().hash(_brand),
-      const DeepCollectionEquality().hash(_solutionDesign));
+      const DeepCollectionEquality().hash(_solutionDesign),
+      const DeepCollectionEquality().hash(_solutionDesignBom));
 
   @JsonKey(ignore: true)
   @override
@@ -571,11 +597,12 @@ class _$InitializedImpl extends Initialized {
             List<Mdms<System>> system,
             List<Mdms<Warranty>> warranty,
             List<Mdms<Brand>> brand,
-            List<Mdms<SolutionDesignType>> solutionDesign)
+            List<Mdms<SolutionDesignType>> solutionDesign,
+            List<Mdms<SolutionDesignTypeBom>> solutionDesignBom)
         initialized,
   }) {
     return initialized(appConfig, assetCount, assetType, system, warranty,
-        brand, solutionDesign);
+        brand, solutionDesign, solutionDesignBom);
   }
 
   @override
@@ -589,11 +616,12 @@ class _$InitializedImpl extends Initialized {
             List<Mdms<System>> system,
             List<Mdms<Warranty>> warranty,
             List<Mdms<Brand>> brand,
-            List<Mdms<SolutionDesignType>> solutionDesign)?
+            List<Mdms<SolutionDesignType>> solutionDesign,
+            List<Mdms<SolutionDesignTypeBom>> solutionDesignBom)?
         initialized,
   }) {
     return initialized?.call(appConfig, assetCount, assetType, system, warranty,
-        brand, solutionDesign);
+        brand, solutionDesign, solutionDesignBom);
   }
 
   @override
@@ -607,13 +635,14 @@ class _$InitializedImpl extends Initialized {
             List<Mdms<System>> system,
             List<Mdms<Warranty>> warranty,
             List<Mdms<Brand>> brand,
-            List<Mdms<SolutionDesignType>> solutionDesign)?
+            List<Mdms<SolutionDesignType>> solutionDesign,
+            List<Mdms<SolutionDesignTypeBom>> solutionDesignBom)?
         initialized,
     required TResult orElse(),
   }) {
     if (initialized != null) {
       return initialized(appConfig, assetCount, assetType, system, warranty,
-          brand, solutionDesign);
+          brand, solutionDesign, solutionDesignBom);
     }
     return orElse();
   }
@@ -658,7 +687,8 @@ abstract class Initialized extends InitState {
           required final List<Mdms<System>> system,
           required final List<Mdms<Warranty>> warranty,
           required final List<Mdms<Brand>> brand,
-          required final List<Mdms<SolutionDesignType>> solutionDesign}) =
+          required final List<Mdms<SolutionDesignType>> solutionDesign,
+          required final List<Mdms<SolutionDesignTypeBom>> solutionDesignBom}) =
       _$InitializedImpl;
   const Initialized._() : super._();
 
@@ -669,6 +699,7 @@ abstract class Initialized extends InitState {
   List<Mdms<Warranty>> get warranty;
   List<Mdms<Brand>> get brand;
   List<Mdms<SolutionDesignType>> get solutionDesign;
+  List<Mdms<SolutionDesignTypeBom>> get solutionDesignBom;
   @JsonKey(ignore: true)
   _$$InitializedImplCopyWith<_$InitializedImpl> get copyWith =>
       throw _privateConstructorUsedError;

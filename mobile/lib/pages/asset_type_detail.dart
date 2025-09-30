@@ -56,7 +56,7 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
     context.read<AppInitialization>().state.maybeWhen(
         orElse: () => [],
         initialized: (appConfig, assetCount, assetType, system, warranty, brand,
-            solutionDesign) {
+            solutionDesign, _) {
           assetWarranties = warranty
               .map((w) => w.data)
               .where((w) =>
