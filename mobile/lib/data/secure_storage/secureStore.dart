@@ -1,8 +1,8 @@
 import 'dart:convert';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:selco/model/solution_design_type/solution_design_type.dart';
-import 'package:selco/model/solution_design_type_bom/solution_design_type_bom.dart';
+import '../../model/solution_design_type/solution_design_type.dart';
+import '../../model/solution_design_type_bom/solution_design_type_bom.dart';
 
 import '../../model/appconfig/mdmsResponse.dart';
 import '../../model/asset_count/asset_count.dart';
