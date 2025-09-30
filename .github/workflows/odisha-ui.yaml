@@ -4,8 +4,6 @@ on:
     branches:
       - develop
       - staging
-    tags:
-      - 'v*'
     paths:
       - 'frontend/micro-ui/**'
   workflow_dispatch:
@@ -16,7 +14,7 @@ permissions:
 
 jobs:
   Docker_Image_Build:
-    if: (github.event_name == 'push' && (startsWith(github.ref, 'refs/heads/develop') || startsWith(github.ref, 'refs/heads/staging') || startsWith(github.ref, 'refs/tags/v'))) || github.event_name == 'workflow_dispatch'
+    if: (github.event_name == 'push' && (startsWith(github.ref, 'refs/heads/develop') || startsWith(github.ref, 'refs/heads/staging'))) || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -49,15 +47,6 @@ jobs:
           commit_hash=$(git log -1 --pretty=format:%H -- frontend/micro-ui)
           echo "commit_hash=$commit_hash" >> $GITHUB_ENV
 
-      - name: Set GA Measurement ID
-        run: |
-          if [[ "${GITHUB_REF}" == "refs/heads/develop" ]]; then
-            echo "GA_MEASUREMENT_ID=${{ vars.DEV_MEASUREMENT_ID }}" >> $GITHUB_ENV
-          elif [[ "${GITHUB_REF}" == "refs/heads/staging" ]]; then
-            echo "GA_MEASUREMENT_ID=${{ vars.STAGING_MEASUREMENT_ID }}" >> $GITHUB_ENV
-          elif [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
-            echo "GA_MEASUREMENT_ID=${{ vars.PROD_MEASUREMENT_ID }}" >> $GITHUB_ENV
-          fi
       
 
       - name: Build and push
@@ -72,7 +61,7 @@ jobs:
           build-args: |
             PUBLIC_PATH=/odisha/
             WORK_DIR=frontend/micro-ui/
-            GA_MEASUREMENT_ID=${{ env.GA_MEASUREMENT_ID }}
+
 
 #  Workflow_Trigger:
 #    if: startsWith(github.ref, 'refs/heads/develop')
