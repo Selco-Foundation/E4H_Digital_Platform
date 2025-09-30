@@ -1,7 +1,14 @@
 package org.egov.util;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.models.AuditDetails;
+import org.egov.common.contract.request.RequestInfo;
+import org.egov.config.Configuration;
+import org.egov.repository.ServiceRequestRepository;
+import org.egov.tracer.model.CustomException;
+import org.egov.web.models.Employee;
+import org.egov.web.models.EmployeeResponse;
 import org.egov.web.models.Function;
 import org.egov.web.models.Organisation;
 import org.springframework.stereotype.Component;
@@ -11,6 +18,17 @@ import java.util.List;
 @Component
 @Slf4j
 public class OrganisationUtil {
+
+    private final ServiceRequestRepository serviceRequestRepository;
+    private final Configuration config;
+    private final ObjectMapper mapper;
+
+    public OrganisationUtil(ServiceRequestRepository serviceRequestRepository, Configuration config, ObjectMapper mapper) {
+        this.serviceRequestRepository = serviceRequestRepository;
+        this.config = config;
+        this.mapper = mapper;
+    }
+
     /**
      * Method to set auditDetails for create/update flows of organisations
      *
@@ -50,4 +68,26 @@ public class OrganisationUtil {
             }
         }
     }
+
+    public AuditDetails getAuditDetails(String by, AuditDetails auditDetails, Boolean isCreate) {
+        Long time = System.currentTimeMillis();
+        if (isCreate)
+            return AuditDetails.builder().createdBy(by).lastModifiedBy(by).createdTime(time).lastModifiedTime(time).build();
+        else
+            return AuditDetails.builder().createdBy(auditDetails.getCreatedBy()).lastModifiedBy(by)
+                    .createdTime(auditDetails.getCreatedTime()).lastModifiedTime(time).build();
+    }
+
+    public Employee getUserById(RequestInfo requestInfo, String userId) {
+
+        String url = config.getHrmsHost() + config.getHrmsEndPoint()+ "?tenantId=in&uuids="+userId;
+        Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), requestInfo);
+
+        EmployeeResponse employeeResponse = mapper.convertValue(response, EmployeeResponse.class);
+        if (employeeResponse == null || employeeResponse.getEmployees() == null || employeeResponse.getEmployees().isEmpty()) {
+            throw new CustomException("EMPLOYEE_NOT_FOUND", "Employee not found with ID: " + userId);
+        }
+        return employeeResponse.getEmployees().get(0);
+    }
+
 }
