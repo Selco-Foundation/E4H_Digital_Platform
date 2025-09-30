@@ -3,12 +3,12 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
-import 'package:selco/model/request/requestInfo.dart';
-import 'package:selco/model/response/otp_response.dart';
 
 import '../data/remote_client.dart';
 import '../data/secure_storage/secureStore.dart';
 import '../model/login/loginModel.dart';
+import '../model/request/requestInfo.dart';
+import '../model/response/otp_response.dart';
 import '../model/response/responsemodel.dart';
 import '../model/role_actions/role_actions_model.dart';
 import '../utils/envConfig.dart';
@@ -19,7 +19,7 @@ class AuthRepository {
     final formData = body.toJson();
 
     if (envConfig.variables.envType == EnvType.dev) {
-      return _loadLocalAuth();
+      // return _loadLocalAuth();
     }
 
     //make a custom Dio client which will not send the request with the interceptor

@@ -1,19 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:isar/isar.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:selco/data/nosql/cache_add_new_asset.dart';
-import 'package:selco/data/nosql/cache_asset_count.dart';
-import 'package:selco/data/nosql/cache_asset_detail.dart';
-import 'package:selco/data/nosql/cache_bom_doc.dart';
-import 'package:selco/data/nosql/cache_completion_report.dart';
-import 'package:selco/data/nosql/cache_media_upload.dart';
-import 'package:selco/data/nosql/cache_project_facility.dart';
-import 'package:selco/data/nosql/cache_project_workflow.dart';
-import 'package:selco/data/nosql/cache_specification.dart';
-import 'package:selco/data/nosql/cache_sync_record.dart';
-import 'package:selco/data/nosql/cache_unsubmitted_project.dart';
 
+import '../data/nosql/cache_add_new_asset.dart';
+import '../data/nosql/cache_asset_count.dart';
+import '../data/nosql/cache_asset_detail.dart';
+import '../data/nosql/cache_bom_doc.dart';
+import '../data/nosql/cache_completion_report.dart';
+import '../data/nosql/cache_media_upload.dart';
 import '../data/nosql/cache_project_asset.dart';
+import '../data/nosql/cache_project_facility.dart';
+import '../data/nosql/cache_project_workflow.dart';
+import '../data/nosql/cache_specification.dart';
+import '../data/nosql/cache_sync_record.dart';
+import '../data/nosql/cache_unsubmitted_project.dart';
 import '../data/nosql/localization.dart';
 
 final scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();

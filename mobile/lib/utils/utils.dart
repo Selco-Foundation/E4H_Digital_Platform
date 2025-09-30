@@ -44,10 +44,6 @@ class IdGen {
 
 Future<String> copyFileToLocalDir(File sourceFile) async {
   try {
-    // final status = await Permission.storage.status;
-    // if (!status.isGranted) {
-    //   await Permission.storage.request();
-    // }
     final appDocDir = await getApplicationDocumentsDirectory();
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     final fileName = '${timestamp}_${sourceFile.uri.pathSegments.last}';
@@ -60,9 +56,6 @@ Future<String> copyFileToLocalDir(File sourceFile) async {
   }
 }
 
-/// Given either a local file‑system path or an http(s) URL, returns
-/// a [File] pointing at the data (downloaded to temporary dir if needed),
-/// or null if neither exists nor could be fetched.
 Future<File?> resolveFilePath(String path) async {
   if (path.startsWith('http://') || path.startsWith('https://')) {
     try {
@@ -174,12 +167,6 @@ bool isValidUuid(String value) {
 /// A simple in‑memory cache of downloaded files.
 final Map<String, File> _fileCache = {};
 
-/// Tries to turn [idOrPath] into a local [File]:
-/// 1. If it's already in `_fileCache`, return it.
-/// 2. If `isValidUuid(idOrPath)` is true, downloads from
-///    `$fileStoreFileUrl$idOrPath` and caches it.
-/// 3. Otherwise treats `idOrPath` as a filesystem path and returns the file if it exists.
-/// Returns `null` if neither download nor local file exists.
 Future<File?> getCachedFile(String idOrPath) async {
   if (_fileCache.containsKey(idOrPath)) return _fileCache[idOrPath];
 
@@ -313,45 +300,6 @@ Map<String, dynamic> transformSelcoFormMdmsDocToSchema(
     'summary': summary,
     'pages': pagesMap, // <--- map now, not list
   };
-}
-
-/// rawDoc must be in your mock/MDMS AS-IS format:
-/// {
-///   "name": "...",
-///   "version": ...,
-///   "pages": [
-///     { "page": "...", "properties": [ { "fieldName": "...", "value": "" }, ... ] },
-///     ...
-///   ]
-/// }
-///
-/// `flatValues` is a map of fieldName -> value (you already collect this).
-///
-/// Returns a NEW doc with each matching property's `value` set.
-/// (Shape remains identical to the raw doc.)
-
-/// Inject flat values (fieldName -> value) into your RAW MDMS/mock doc
-/// without changing its shape (pages: [ ... properties: [ ... ] ]).
-Map<String, dynamic> injectValuesIntoRawDoc2({
-  required Map<String, dynamic> rawDoc,
-  required Map<String, dynamic> flatValues,
-}) {
-  // deep copy to avoid mutating originals
-  final doc = jsonDecode(jsonEncode(rawDoc)) as Map<String, dynamic>;
-  final pages = (doc['pages'] as List?) ?? const [];
-
-  for (final p in pages) {
-    if (p is! Map) continue;
-    final props = (p['properties'] as List?) ?? const [];
-    for (final item in props) {
-      if (item is! Map) continue;
-      final fieldName = item['fieldName']?.toString();
-      if (fieldName != null && flatValues.containsKey(fieldName)) {
-        item['value'] = flatValues[fieldName];
-      }
-    }
-  }
-  return doc;
 }
 
 Map<String, dynamic> injectValuesIntoRawDoc({

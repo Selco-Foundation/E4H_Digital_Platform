@@ -145,8 +145,6 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
       return;
     }
 
-    // IMPORTANT: choose a stable cache key so multiple schemas can coexist.
-    // Prefer schemaName/uniqueIdentifier over schemaObj.name to avoid collisions.
     final schemaObj = SchemaObject.fromJson(schemaJson);
     final cacheKey =
         widget.schemaName ?? widget.uniqueIdentifier ?? schemaObj.name;

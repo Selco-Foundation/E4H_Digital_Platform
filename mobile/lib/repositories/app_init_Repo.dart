@@ -2,8 +2,6 @@ import 'dart:convert';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
-import 'package:selco/model/solution_design_type/solution_design_type.dart';
-import 'package:selco/model/solution_design_type_bom/solution_design_type_bom.dart';
 
 import '../data/remote_client.dart';
 import '../data/secure_storage/secureStore.dart';
@@ -13,6 +11,8 @@ import '../model/asset_count/asset_count.dart';
 import '../model/asset_type/asset_type.dart';
 import '../model/brand/brand.dart';
 import '../model/mdms/mdms.dart';
+import '../model/solution_design_type/solution_design_type.dart';
+import '../model/solution_design_type_bom/solution_design_type_bom.dart';
 import '../model/system/system.dart';
 import '../model/warranty/warranty.dart';
 import '../utils/envConfig.dart';
