@@ -108,7 +108,8 @@ class _AssetCountPageState extends State<AssetCountPage> {
       body: BlocBuilder<AppInitialization, InitState>(
         builder: (_, init) {
           init.maybeWhen(
-            initialized: (_, list, __, ___, ____, _____, solutionDesign) {
+            initialized:
+                (_, list, __, ___, ____, _____, solutionDesign, ______) {
               // set min/max for each from list
               final inv = list.firstWhere(
                   (e) => e.data.assetTypeCode.toUpperCase() == 'INVERTER');

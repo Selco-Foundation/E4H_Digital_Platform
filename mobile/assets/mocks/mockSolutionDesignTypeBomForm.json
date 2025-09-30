@@ -1,0 +1,45 @@
+{
+  "ResponseInfo": {
+    "apiId": null,
+    "ver": null,
+    "ts": null,
+    "resMsgId": "uief87324",
+    "msgId": null,
+    "status": "successful"
+  },
+  "mdms": [
+    {
+      "id": "d52a792e-b002-41a3-8db7-1dae1ef9ef62",
+      "tenantId": "in",
+      "schemaCode": "common-masters.SolutionDesignTypeBOMForms",
+      "uniqueIdentifier": "",
+      "data": {
+        "solutionDesignTypeCode": "RMS_Single_Phase",
+        "bomForms": [
+          {
+            "name": "RMS_Single_Phase_BOM_Solar"
+          },
+          {
+            "name": "RMS_Single_Phase_BOM_luminaries"
+          },
+          {
+            "name": "RMS_Single_Phase_BOM_rms"
+          },
+          {
+            "name": "RMS_Single_Phase_BOM_wiring"
+          },
+          {
+            "name": "RMS_Single_Phase_BOM_system"
+          }
+        ]
+      },
+      "isActive": true,
+      "auditDetails": {
+        "createdBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "lastModifiedBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "createdTime": 1748705921801,
+        "lastModifiedTime": 1748705921801
+      }
+    }
+  ]
+}

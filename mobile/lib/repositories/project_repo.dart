@@ -31,7 +31,7 @@ class ProjectRemoteRepository {
 
       if (envConfig.variables.envType == EnvType.dev) {
         print("EnvType.dev got here");
-        // return _loadLocalProjects();
+        return _loadLocalProjects();
       }
 
       response = await dio.post(
@@ -101,7 +101,7 @@ class ProjectRemoteRepository {
   Future<void> updateProjectWorkflow({
     required String projectId,
     required String action,
-    required Map<String, dynamic> additionalDetails,
+    // required Map<String, dynamic> additionalDetails,
     List<Document>? documents,
   }) async {
     final url = 'project/v1/project/workflow/update';
@@ -110,7 +110,7 @@ class ProjectRemoteRepository {
       'projectId': projectId,
       'workflow': {
         'action': action,
-        'additionalDetails': additionalDetails,
+        // 'additionalDetails': additionalDetails,
         if (documents != null) ...{
           'documents': documents.map((d) => d.toJsonForWorkflow()).toList()
         }
@@ -243,6 +243,7 @@ class ProjectRepository {
       // INSERT fresh
       for (final wf in newList) {
         await col.put(CacheProjectWorkflow(
+          projectId: wf.project.id,
           status: wf.status ?? '',
           project: wf.project,
           transactions: wf.transactions,
@@ -270,6 +271,28 @@ class ProjectRepository {
               workflow: c.workflow,
             ))
         .toList();
+  }
+
+  Future<String?> getSolutionDesignTypeFromCache(
+      Isar isar, String projectId) async {
+    print("projectId $projectId");
+
+    final row = await isar.cacheProjectWorkflows
+        .where()
+        .projectIdEqualTo(projectId)
+        .findFirst();
+    print("got here -----");
+    if (row == null) return null;
+
+    try {
+      print("row.project. ${row.project}");
+      final sys = row.project.additionalDetails?.facility?.facilityDetails
+          ?.solar_solution_design_type
+          ?.toString();
+      print("sys $sys");
+      if (sys != null && sys.isNotEmpty) return sys;
+    } catch (_) {}
+    return null;
   }
 }
 

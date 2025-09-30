@@ -4,6 +4,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:selco/data/nosql/cache_add_new_asset.dart';
 import 'package:selco/data/nosql/cache_asset_count.dart';
 import 'package:selco/data/nosql/cache_asset_detail.dart';
+import 'package:selco/data/nosql/cache_bom_doc.dart';
 import 'package:selco/data/nosql/cache_completion_report.dart';
 import 'package:selco/data/nosql/cache_media_upload.dart';
 import 'package:selco/data/nosql/cache_project_facility.dart';
@@ -55,8 +56,9 @@ class Constants {
           CacheUnsubmittedProjectSchema,
           CacheSyncRecordSchema,
           CacheCompletionReportSchema,
+          CacheBomDocSchema,
         ],
-        name: 'HCM',
+        name: 'E4H',
         inspector: true,
         directory: directory.path,
       );
@@ -69,7 +71,7 @@ class Constants {
 }
 
 class RequestInfoData {
-  static const String apiId = 'hcm';
+  static const String apiId = 'project-api';
   static const String ver = '.01';
   static num ts = DateTime.now().millisecondsSinceEpoch;
   static const did = "1";

@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:digit_forms_engine/blocs/forms/forms.dart';
 import 'package:digit_forms_engine/json_forms.dart';
 import 'package:digit_forms_engine/models/schema_object/schema_object.dart';
@@ -9,14 +7,13 @@ import 'package:digit_ui_components/widgets/atoms/digit_stepper.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-// import 'package:forms_engine/blocs/forms/forms.dart';
-// import 'package:forms_engine/json_forms.dart';
-// import 'package:forms_engine/models/schema_object/schema_object.dart';
 import 'package:reactive_forms/reactive_forms.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
+import '../blocs/project/project.dart';
+import '../data/secure_storage/secureStore.dart';
 import '../model/appconfig/mdmsRequest.dart';
 import '../repositories/app_init_Repo.dart';
+import '../repositories/bom_repo.dart';
 import '../router/app_router.dart';
 import '../utils/utils.dart';
 import '../widgets/header/back_navigation_help_header.dart';
@@ -24,19 +21,16 @@ import '../widgets/header/back_navigation_help_header.dart';
 @RoutePage()
 class DynamicFormsPage extends StatefulWidget {
   final String pageName;
-
-  /// Provide one of these (or both). If both are null and nothing is in FormsBloc,
-  /// the page will show an error.
   final String? schemaName; // e.g. "AssetForm"
   final String? uniqueIdentifier; // e.g. "AssetForm.SELCO"
-  final String? projectId;
+  final String projectId;
 
   const DynamicFormsPage({
     super.key,
     @PathParam() required this.pageName,
     this.schemaName,
     this.uniqueIdentifier,
-    this.projectId,
+    required this.projectId,
   });
 
   @override
@@ -47,13 +41,18 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
   final _repo = AppInitRepo();
   bool _loadedOnce = false;
 
-  /// Choose the currently active schema key. If none explicitly set,
-  /// fall back to the first cached one.
   String? _currentSchemaKey(FormsState state) {
+    // Prefer a schema that actually contains this page
+    for (final entry in state.cachedSchemas.entries) {
+      final s = entry.value;
+      if (s.pages.containsKey(widget.pageName)) return entry.key;
+    }
+    // Otherwise, use active if present
     if (state.activeSchemaKey != null &&
         state.cachedSchemas.containsKey(state.activeSchemaKey)) {
       return state.activeSchemaKey;
     }
+    // Or the first one
     if (state.cachedSchemas.isNotEmpty) {
       return state.cachedSchemas.keys.first;
     }
@@ -62,11 +61,23 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
 
   Future<void> _ensureSchemaLoaded() async {
     final bloc = context.read<FormsBloc>();
-    if (bloc.state.cachedSchemas.isNotEmpty) return;
 
+    // Figure out which schema key we want to use in the cache.
+    final requestedKey = widget.schemaName ?? widget.uniqueIdentifier;
+
+    // If we already have the requested schema cached, just activate it.
+    if (requestedKey != null &&
+        bloc.state.cachedSchemas.containsKey(requestedKey)) {
+      bloc.add(FormsUpdateEvent(
+        schema: bloc.state.cachedSchemas[requestedKey]!,
+        schemaKey: requestedKey,
+      ));
+      return;
+    }
+
+    // Otherwise, load it from storage / MDMS (same as you had)
     Map<String, dynamic>? schemaJson;
 
-    // 1) Try secure storage
     if (widget.schemaName != null) {
       schemaJson = await _repo.loadByName(widget.schemaName!);
     }
@@ -74,13 +85,12 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
         ? await _repo.loadByUniqueIdentifier(widget.uniqueIdentifier!)
         : null;
 
-    // 2) Fallback: fetch raw -> transform -> save -> USE NOW
     if (schemaJson == null) {
       try {
         final rawDocs = await _repo.searchFormConfigsRaw(
           const MdmsRequestModel(
             mdmsCriteria: MdmsCriteriaModel(
-              tenantId: 'in', // or envConfig.variables.tenantId
+              tenantId: 'in',
               moduleDetails: [
                 MdmsModuleDetailsModel(
                   moduleName: 'SELCO',
@@ -109,20 +119,20 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
         if (chosen != null && chosen.isNotEmpty) {
           final transformed = transformSelcoFormMdmsDocToSchema(chosen);
 
+          // carry uniqueIdentifier
           final uid = chosen['uniqueIdentifier']?.toString();
           if (uid != null && uid.isNotEmpty) {
             transformed['uniqueIdentifier'] = uid;
           }
 
-          // Persist for future launches (non-blocking for UI)
+          // Store for future runs (non-blocking)
           // ignore: unawaited_futures
           _repo.upsertTransformedSchema(transformed);
 
-          // Use immediately (don’t wait to read back from storage)
           schemaJson = transformed;
         }
       } catch (_) {
-        // swallow; we'll show snackbar if still null
+        // ignore; we'll fallback to snackbar below if still null
       }
     }
 
@@ -130,14 +140,26 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
 
     if (schemaJson == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Form schema not found')),
+        const SnackBar(content: Text('Loading schema')),
       );
       return;
     }
 
+    // IMPORTANT: choose a stable cache key so multiple schemas can coexist.
+    // Prefer schemaName/uniqueIdentifier over schemaObj.name to avoid collisions.
     final schemaObj = SchemaObject.fromJson(schemaJson);
-    final key = schemaObj.name;
-    bloc.add(FormsUpdateEvent(schema: schemaObj, schemaKey: key));
+    final cacheKey =
+        widget.schemaName ?? widget.uniqueIdentifier ?? schemaObj.name;
+
+    await SecureStore()
+        .setRawSchemaDoc(cacheKey, Map<String, dynamic>.from(schemaJson));
+
+    bloc.add(FormsUpdateEvent(schema: schemaObj, schemaKey: cacheKey));
+  }
+
+  bool _isLastPage(SchemaObject schema) {
+    final lastKey = schema.pages.keys.isEmpty ? null : schema.pages.keys.last;
+    return lastKey == widget.pageName;
   }
 
   @override
@@ -160,25 +182,49 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
             final isLast = state.schema.pages.keys.last == widget.pageName;
             if (!isLast) return;
 
-            // ⬇️ NEW: gather all page values into a flat map
-            final Map<String, dynamic> bomValues = {};
+            // 1) Take current page values into a flat map
+            final Map<String, dynamic> flatValues = {};
             state.schema.pages.forEach((pageKey, pageSchema) {
               pageSchema.properties?.forEach((propKey, propSchema) {
-                bomValues[propKey] = propSchema.value;
+                flatValues[propKey] = propSchema.value;
               });
             });
 
-            // ⬇️ NEW: persist as a string for current project (fallback to 'default')
-            final prefs = await SharedPreferences.getInstance();
-            final projKey = widget.projectId ?? 'default';
-            await prefs.setString(
-                'bom_form_values_$projKey', jsonEncode(bomValues));
+            // 2) Identify projectschema key
+            final projectId = widget.projectId;
+            final schemaKey = widget.schemaName ??
+                widget.uniqueIdentifier ??
+                state.schema.name;
+
+            // 3) Load the RAW schema doc AS-IS (you saved this when opening the screen)
+            final rawDoc = await SecureStore().getRawSchemaDoc(schemaKey);
+            if (rawDoc != null) {
+              // 4) Merge values into RAW doc (keeps same shape as your mock/pages/properties)
+              final withValues = injectValuesIntoRawDoc(
+                  rawDoc: rawDoc, flatValues: flatValues);
+
+              // 5) Save to Isar as a BOM draft unique per (projectId, schemaKey)
+              final isar = context.read<ProjectBloc>().isar;
+
+              // asset_submission.dart before submitAllDirtyForProject
+              print(
+                  '[BOM:form] isarInstance=${identityHashCode(isar)} project=$projectId schema=$schemaKey');
+              final assignUserUuid =
+                  await SecureStore().getSelectedIndividual();
+
+              await BomRepository().saveLocal(
+                isar: isar,
+                projectId: projectId,
+                schemaKey: schemaKey,
+                rawDocWithValues: withValues,
+                facilityId: null,
+                assignUserUuid: assignUserUuid,
+                bomName: schemaKey, // or a prettier label
+              );
+            }
 
             final key = state.activeSchemaKey ?? state.schema.name;
             context.read<FormsBloc>().add(FormsEvent.clearForm(schemaKey: key));
-
-            // context.router.push(const AcknowledgementRoute(isDirectCreate: true));
-            // context.router.popUntilRouteWithName(OverallAssetSummaryRoute.name);
             context.router.popAndPush(const OverallAssetSummaryRoute());
           }
         },
@@ -186,7 +232,6 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
           final currentKey = _currentSchemaKey(state);
 
           if (currentKey == null) {
-            // Still loading schema or none found
             return const Center(child: CircularProgressIndicator());
           }
 
@@ -194,10 +239,13 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
           if (schemaObject == null) {
             return const Center(child: Text('Form schema missing.'));
           }
-
+          print("widget.pageName ${widget.pageName}");
+          print("schemaObject.pages ${schemaObject.pages}");
           final pageSchema = schemaObject.pages[widget.pageName];
+          print(
+              "schemaObject.pages[widget.pageName] ${schemaObject.pages[widget.pageName]}");
           if (pageSchema == null) {
-            return const Center(child: Text('Form page not found.'));
+            return const Center(child: Text('Loading Form page'));
           }
 
           final pageIndex =
@@ -224,65 +272,114 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
                       label: (pageIndex) < schemaObject.pages.length - 1
                           ? (pageSchema.actionLabel ?? 'Next')
                           : (pageSchema.actionLabel ?? 'Submit'),
-                      onPressed: () {
-                        // Validate only current page
-                        final keys = pageSchema.properties?.keys ?? [];
-                        for (final k in keys) {
-                          final c = form.control(k);
-                          c.markAsTouched();
-                          c.updateValueAndValidity();
-                        }
-                        final isValid =
-                            keys.every((k) => form.control(k).valid);
-                        if (!isValid) return;
+                      onPressed: () async {
+                        try {
+                          // 1) Validate current page with feedback
+                          final propKeys =
+                              (pageSchema.properties?.keys.toList() ??
+                                  <String>[]);
+                          final missing = <String>[];
+                          final invalid = <String>[];
 
-                        // Extract values & update page schema
-                        final values =
-                            JsonForms.getFormValues(form, pageSchema);
-                        final updatedPage = pageSchema.copyWith(
-                          properties: Map.fromEntries(
-                            pageSchema.properties?.entries.map(
-                                  (e) => values.containsKey(e.key)
-                                      ? MapEntry(
-                                          e.key,
-                                          e.value
-                                              .copyWith(value: values[e.key]))
-                                      : MapEntry(e.key, e.value),
-                                ) ??
-                                [],
-                          ),
-                        );
+                          for (final k in propKeys) {
+                            if (form.contains(k)) {
+                              final c = form.control(k);
+                              c.markAsTouched();
+                              c.updateValueAndValidity();
+                              if (!c.valid) invalid.add(k);
+                            } else {
+                              missing.add(k);
+                            }
+                          }
 
-                        // Push back to bloc: replace only this page
-                        context.read<FormsBloc>().add(
-                              FormsUpdateEvent(
-                                schema: schemaObject.copyWith(
-                                  pages: Map.fromEntries(
-                                    schemaObject.pages.entries.map(
-                                      (entry) => MapEntry(
-                                        entry.key,
-                                        entry.key == widget.pageName
-                                            ? updatedPage
-                                            : entry.value,
+                          if (missing.isNotEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                  content: Text(
+                                      'Form config mismatch. Missing control: ${missing.first}')),
+                            );
+                            return;
+                          }
+                          if (invalid.isNotEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                  content:
+                                      Text('Please correct: ${invalid.first}')),
+                            );
+                            return;
+                          }
+
+                          // 2) Merge CURRENT page values into the bloc schema
+                          final values =
+                              JsonForms.getFormValues(form, pageSchema);
+                          final updatedPage = pageSchema.copyWith(
+                            properties: Map.fromEntries(
+                              pageSchema.properties?.entries.map(
+                                    (e) => values.containsKey(e.key)
+                                        ? MapEntry(
+                                            e.key,
+                                            e.value
+                                                .copyWith(value: values[e.key]))
+                                        : MapEntry(e.key, e.value),
+                                  ) ??
+                                  [],
+                            ),
+                          );
+
+                          context.read<FormsBloc>().add(
+                                FormsUpdateEvent(
+                                  schema: schemaObject.copyWith(
+                                    pages: Map.fromEntries(
+                                      schemaObject.pages.entries.map(
+                                        (entry) => MapEntry(
+                                          entry.key,
+                                          entry.key == widget.pageName
+                                              ? updatedPage
+                                              : entry.value,
+                                        ),
                                       ),
                                     ),
                                   ),
+                                  schemaKey: currentKey,
                                 ),
-                                schemaKey: currentKey,
-                              ),
-                            );
+                              );
 
-                        // Next page or submit
-                        if (pageIndex < schemaObject.pages.length - 1) {
-                          final nextKey = schemaObject.pages.entries
-                              .elementAt(pageIndex + 1)
-                              .key;
-                          context.router
-                              .push(DynamicFormsRoute(pageName: nextKey));
-                        } else {
+                          // 3) Decide using the SAME logic as your listener
+                          final lastPage = _isLastPage(schemaObject);
+
+                          if (!lastPage) {
+                            // Go to next page by ordered key
+                            final keysOrdered =
+                                schemaObject.pages.keys.toList(growable: false);
+                            final idx = keysOrdered.indexOf(widget.pageName);
+                            final nextKey =
+                                (idx >= 0 && idx < keysOrdered.length - 1)
+                                    ? keysOrdered[idx + 1]
+                                    : null;
+
+                            if (nextKey == null) {
+                              // Fallback: submit if we can’t find a next key
+                              context.read<FormsBloc>().add(
+                                  FormsEvent.submit(schemaKey: currentKey));
+                            } else {
+                              context.router.push(DynamicFormsRoute(
+                                  pageName: nextKey,
+                                  projectId: widget.projectId));
+                            }
+                            return;
+                          }
+
+                          // 4) Last page → submit
                           context
                               .read<FormsBloc>()
                               .add(FormsEvent.submit(schemaKey: currentKey));
+                        } catch (e, st) {
+                          debugPrint('[DynamicForms] onPressed error: $e\n$st');
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                                content: Text(
+                                    'Something went wrong while submitting this page')),
+                          );
                         }
                       },
                       type: DigitButtonType.primary,

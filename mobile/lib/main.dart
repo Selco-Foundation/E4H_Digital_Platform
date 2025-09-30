@@ -125,9 +125,10 @@ class _MainAppState extends State<MainApp> {
           ],
           child: BlocBuilder<AppInitialization, InitState>(
             builder: (context, state) => state.maybeWhen(
-                orElse: () => const Center(child: Text('error Initializing')),
+                orElse: () =>
+                    const Scaffold(body: Center(child: Text('loading...'))),
                 initialized: (appConfig, assetCount, assetType, system,
-                    warranty, brand, solutionDesign) {
+                    warranty, brand, solutionDesign, solutionDesignBom) {
                   final initialModuleList =
                       appConfig.appConfig!.appConfig?[0].backendInterface;
                   final languages =
@@ -175,7 +176,6 @@ class _MainAppState extends State<MainApp> {
                                     getLocalizationString(
                                         widget.isar, selectedLocale),
                                     languages!),
-                            // 🔴 REQUIRED for forms_engine / JsonForms
                             forms_localization.FormLocalization.getDelegate(
                               getLocalizationString(
                                   widget.isar, selectedLocale),

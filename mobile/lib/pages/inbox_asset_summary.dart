@@ -79,11 +79,12 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
     try {
       final repo = ProjectRemoteRepository();
       await repo.updateProjectWorkflow(
-          projectId: projectId,
-          action: userType == USER_TYPES.SUPERVISOR.name
-              ? WORKFLOW_ACTIONS.SUBMIT_REPORT_B.name
-              : WORKFLOW_ACTIONS.SUBMIT_REPORT_A.name,
-          additionalDetails: {});
+        projectId: projectId,
+        action: userType == USER_TYPES.SUPERVISOR.name
+            ? WORKFLOW_ACTIONS.SUBMIT_REPORT_B.name
+            : WORKFLOW_ACTIONS.SUBMIT_REPORT_A.name,
+        //    additionalDetails: {}
+      );
 
       // 5. On success: pop the spinner only
       if (dialogCtx != null && mounted) {

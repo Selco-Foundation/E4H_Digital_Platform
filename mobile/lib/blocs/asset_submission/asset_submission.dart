@@ -1,10 +1,8 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:bloc/bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:isar/isar.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../data/nosql/cache_add_new_asset.dart';
 import '../../data/nosql/cache_asset_detail.dart';
@@ -21,6 +19,7 @@ import '../../model/entities/project_facility.dart';
 import '../../model/project_workflow/project_workflow.dart';
 import '../../repositories/app_init_Repo.dart';
 import '../../repositories/assetRepo.dart';
+import '../../repositories/bom_repo.dart';
 import '../../repositories/project_facility_repo.dart';
 import '../../repositories/project_repo.dart';
 import '../../utils/utils.dart';
@@ -351,18 +350,27 @@ class AssetSubmissionBloc
       }
 
       print("projectId $projectId");
-      print("documents $workflowDocuments");
-      print("documents ${workflowDocuments.toString()}");
+      print("document1 $workflowDocuments");
+      print("document2 ${workflowDocuments.toString()}");
 
-      // Load BOM JSON (if any) from SharedPreferences for this project
-      final prefs = await SharedPreferences.getInstance();
-      // final bomString = prefs.getString('bom_form_values_$projectId');
-      final bomString = prefs.getString('bom_form_values_default');
+      try {
+        final tenantId = envConfig.variables.tenantId;
+        final assignUserUuid = await SecureStore().getSelectedIndividual();
 
-      Map<String, dynamic> additionalJson = {};
-      if (bomString != null && bomString.isNotEmpty) {
-        final decoded = jsonDecode(bomString);
-        additionalJson = decoded is Map<String, dynamic> ? decoded : decoded;
+        print(
+            '[BOM:submit] isarInstance=${identityHashCode(_isar)} project=$projectId');
+
+        await BomRepository().submitMergedForProject(
+          isar: _isar,
+          projectId: projectId,
+          tenantId: tenantId,
+          facilityId: facilityId,
+          assignUserUuid: assignUserUuid ?? '',
+        );
+      } catch (e) {
+        print('BOM submission error: $e');
+        emit(AssetSubmissionState.failure("BOM submission error: $e"));
+        return false;
       }
 
       await remoteRepo.updateProjectWorkflow(
@@ -370,7 +378,7 @@ class AssetSubmissionBloc
         action: userType == USER_TYPES.FIELD_STAFF.name
             ? WORKFLOW_ACTIONS.SUBMIT_REPORT_A.name
             : WORKFLOW_ACTIONS.SUBMIT_REPORT_B.name,
-        additionalDetails: additionalJson,
+        // additionalDetails: {},
         documents: workflowDocuments,
       );
 

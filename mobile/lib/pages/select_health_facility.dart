@@ -403,7 +403,7 @@ class InstallationReportCard extends StatelessWidget {
             initState.maybeWhen(
                 orElse: () => <Mdms<SolutionDesignType>>[],
                 initialized: (appConfig, assetCount, assetType, system,
-                        warranty, brand, solutionDesign) =>
+                        warranty, brand, solutionDesign, _) =>
                     solutionDesign);
 
         final code = systemDesignCode ?? '';
