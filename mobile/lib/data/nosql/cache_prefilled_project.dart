@@ -6,7 +6,10 @@ part 'cache_prefilled_project.g.dart';
 class CachePrefilledProject {
   Id id = Isar.autoIncrement;
 
-  @Index()
+  @Index(
+      composite: [CompositeIndex('userType')],
+      unique: true,
+      caseSensitive: true)
   late String projectId;
 
   late String userType;

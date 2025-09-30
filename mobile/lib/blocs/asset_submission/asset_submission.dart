@@ -383,7 +383,10 @@ class AssetSubmissionBloc
       );
 
       await _draftRepo.delete(projectId, userType);
-
+      await PrefilledProjectRepository(_isar).delete(
+        projectId: projectId,
+        userType: userType,
+      );
       if (!fromDraft) emit(const AssetSubmissionState.success());
       return true;
     } catch (e) {

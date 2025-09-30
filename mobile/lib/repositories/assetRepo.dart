@@ -11,7 +11,6 @@ import '../data/nosql/cache_asset_count.dart';
 import '../data/nosql/cache_asset_detail.dart';
 import '../data/nosql/cache_media_upload.dart';
 import '../data/nosql/cache_specification.dart';
-import '../data/nosql/cache_unsubmitted_project.dart';
 import '../data/remote_client.dart';
 import '../model/asset/asset.dart';
 import '../model/entities/project_facility.dart';
@@ -20,6 +19,7 @@ import '../model/transaction/transaction.dart';
 import '../repositories/project_facility_repo.dart';
 import '../utils/envConfig.dart';
 import '../utils/utils.dart';
+import 'project_repo.dart';
 
 class FileStoreResponse {
   final String fileStoreId;
@@ -169,23 +169,18 @@ class AssetRepository {
   /// Fetch remote assets and upsert into all your Isar caches,
   /// clearing only the matching CacheAddNewAsset per serialNumber,
   /// and wholesale-clearing media before re-inserting.
-
   Future<void> syncRemoteToLocal(
       {required ProjectWorkflow project,
       required String projectId,
       required String userType,
       required Isar isar}) async {
     try {
-      final draft = await isar.cacheUnsubmittedProjects
-          .where()
-          .projectIdEqualTo(projectId)
-          .filter()
-          .userTypeEqualTo(userType)
-          .findFirst();
-      if (draft != null) {
-        // there’s already an unsubmitted draft; skip the whole sync
-        return;
-      }
+      final draft = await PrefilledProjectRepository(isar).exists(
+        projectId: projectId,
+        userType: userType,
+      );
+      if (draft) return;
+
       // 1) facilityId lookup
       final facilityId = (await ProjectFacilityRepository().search(
         ProjectFacilitySearchModel(projectId: [projectId]),

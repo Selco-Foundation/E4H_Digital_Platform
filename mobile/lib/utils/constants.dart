@@ -8,6 +8,7 @@ import '../data/nosql/cache_asset_detail.dart';
 import '../data/nosql/cache_bom_doc.dart';
 import '../data/nosql/cache_completion_report.dart';
 import '../data/nosql/cache_media_upload.dart';
+import '../data/nosql/cache_prefilled_project.dart';
 import '../data/nosql/cache_project_asset.dart';
 import '../data/nosql/cache_project_facility.dart';
 import '../data/nosql/cache_project_workflow.dart';
@@ -57,6 +58,7 @@ class Constants {
           CacheSyncRecordSchema,
           CacheCompletionReportSchema,
           CacheBomDocSchema,
+          CachePrefilledProjectSchema,
         ],
         name: 'E4H',
         inspector: true,

@@ -5,7 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../blocs/inbox_type/inbox_type.dart';
+import '../blocs/project/project.dart';
 import '../blocs/report_type/report_type.dart';
+import '../blocs/selected_project/selected_project.dart';
+import '../blocs/user_type/user_type.dart';
+import '../repositories/project_repo.dart';
 import '../router/app_router.dart';
 
 @RoutePage()
@@ -64,10 +68,27 @@ class _DataSaveSuccessPageState extends State<DataSaveSuccessPage> {
                     type: DigitButtonType.primary,
                     size: DigitButtonSize.large,
                     label: rejectedReport ? 'Back to Landing Page' : 'Next',
-                    onPressed: () {
+                    onPressed: () async {
                       if (rejectedReport) {
                         context.router.replaceAll([const HomeRoute()]);
                       } else {
+                        final selected = context
+                            .read<SelectedProjectBloc>()
+                            .state
+                            .whenOrNull(selected: (s) => s);
+                        final projectId = selected?.project.id;
+                        final userType =
+                            context.read<UserTypeBloc>().state.maybeWhen(
+                                  supervisor: () => 'SUPERVISOR',
+                                  orElse: () => 'STAFF',
+                                );
+                        if (projectId != null) {
+                          final isar = context.read<ProjectBloc>().isar;
+                          await PrefilledProjectRepository(isar).addOrTouch(
+                            projectId: projectId,
+                            userType: userType,
+                          );
+                        }
                         context.router.push(const OverallAssetSummaryRoute());
                       }
                     }),
