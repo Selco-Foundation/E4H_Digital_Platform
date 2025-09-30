@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:isar/isar.dart';
 import 'package:selco/data/nosql/cache_unsubmitted_project.dart';
 
+import '../data/nosql/cache_prefilled_project.dart';
 import '../data/nosql/cache_project_workflow.dart';
 import '../data/remote_client.dart';
 import '../model/document/document.dart';
@@ -380,5 +381,72 @@ class UnsubmittedProjectRepository {
         await col.delete(e.id);
       }
     });
+  }
+}
+
+class PrefilledProjectRepository {
+  final Isar _isar;
+  PrefilledProjectRepository(this._isar);
+
+  /// Upsert (projectId,userType). Touches `updatedAt` if present; otherwise inserts.
+  Future<CachePrefilledProject> addOrTouch({
+    required String projectId,
+    required String userType,
+  }) async {
+    final col = _isar.cachePrefilledProjects;
+    final existing = await col
+        .where()
+        .projectIdEqualTo(projectId)
+        .filter()
+        .userTypeEqualTo(userType)
+        .findFirst();
+
+    final now = DateTime.now();
+    return _isar.writeTxn(() async {
+      if (existing != null) {
+        existing.updatedAt = now;
+        await col.put(existing);
+        return existing;
+      } else {
+        final row =
+            CachePrefilledProject(projectId: projectId, userType: userType)
+              ..createdAt = now
+              ..updatedAt = now;
+        await col.put(row);
+        return row;
+      }
+    });
+  }
+
+  Future<bool> exists({
+    required String projectId,
+    required String userType,
+  }) async {
+    final col = _isar.cachePrefilledProjects;
+    final row = await col
+        .where()
+        .projectIdEqualTo(projectId)
+        .filter()
+        .userTypeEqualTo(userType)
+        .findFirst();
+    return row != null;
+  }
+
+  Future<void> delete({
+    required String projectId,
+    required String userType,
+  }) async {
+    final col = _isar.cachePrefilledProjects;
+    final row = await col
+        .where()
+        .projectIdEqualTo(projectId)
+        .filter()
+        .userTypeEqualTo(userType)
+        .findFirst();
+    if (row != null) {
+      await _isar.writeTxn(() async {
+        await col.delete(row.id);
+      });
+    }
   }
 }

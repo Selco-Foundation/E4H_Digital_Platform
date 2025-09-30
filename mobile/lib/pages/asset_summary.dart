@@ -102,9 +102,6 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
   }
 
   void _openImage(String path) {
-    // Navigator.of(context).push(MaterialPageRoute(
-    //   builder: (_) => ImageViewerPage(path: path),
-    // ));
     context.router.push(ImageViewerRoute(path: path));
   }
 
