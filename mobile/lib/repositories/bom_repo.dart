@@ -663,52 +663,6 @@ class BomRepository {
     });
   }
 
-  // -------- Old split flow kept (optional) ----------
-  Future<void> submitAllDirtyForProject({
-    required Isar isar,
-    required String projectId,
-    required String tenantId,
-    required String facilityId,
-    required String assignUserUuid,
-  }) async {
-    // Keep for backward compatibility if you still call this somewhere.
-    await enrichProjectDocs(
-      isar: isar,
-      projectId: projectId,
-      tenantId: tenantId,
-      facilityId: facilityId,
-      assignUserUuid: assignUserUuid,
-    );
-
-    final dirty = (await getAllForProject(isar, projectId))
-        .where((d) => d.isDirty)
-        .toList();
-    if (dirty.isEmpty) return;
-
-    final creates = <CacheBomDoc>[];
-    final updates = <CacheBomDoc>[];
-
-    for (final d in dirty) {
-      if (d.serverBomId == null || d.serverBomId!.isEmpty) {
-        creates.add(d);
-      } else {
-        updates.add(d);
-      }
-    }
-
-    if (creates.isNotEmpty) {
-      final body = await _buildRequestBody(creates);
-      await _dio.post('activity/v1/bom/_create', data: body);
-      await _markClean(isar, creates);
-    }
-
-    if (updates.isNotEmpty) {
-      final body = await _buildRequestBody(updates, isUpdate: true);
-      await _dio.post('activity/v1/bom/_update', data: body);
-      await _markClean(isar, updates);
-    }
-  }
-
   Future<Map<String, dynamic>> _buildRequestBody(List<CacheBomDoc> docs,
       {bool isUpdate = false}) async {
     final bomArray = docs.map<Map<String, dynamic>>((d) {

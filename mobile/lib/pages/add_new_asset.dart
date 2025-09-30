@@ -390,11 +390,8 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
               orElse: () => 0,
             ),
             builder: (ctx, maxAssets) {
-              // Fixed validation logic
               final isDisabled = _assets.length != maxAssets ||
                   _assets.any((a) => !_isAssetComplete(a, currentAssetType));
-              debugPrint(
-                  "isDisable $isDisabled, assets: ${_assets.length}, max: $maxAssets");
 
               return Scaffold(
                 body: ScrollableContent(
