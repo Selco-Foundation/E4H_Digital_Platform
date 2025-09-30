@@ -1,0 +1,938 @@
+// GENERATED CODE - DO NOT MODIFY BY HAND
+
+part of 'cache_prefilled_project.dart';
+
+// **************************************************************************
+// IsarCollectionGenerator
+// **************************************************************************
+
+// coverage:ignore-file
+// ignore_for_file: duplicate_ignore, non_constant_identifier_names, constant_identifier_names, invalid_use_of_protected_member, unnecessary_cast, prefer_const_constructors, lines_longer_than_80_chars, require_trailing_commas, inference_failure_on_function_invocation, unnecessary_parenthesis, unnecessary_raw_strings, unnecessary_null_checks, join_return_with_assignment, prefer_final_locals, avoid_js_rounded_ints, avoid_positional_boolean_parameters, always_specify_types
+
+extension GetCachePrefilledProjectCollection on Isar {
+  IsarCollection<CachePrefilledProject> get cachePrefilledProjects =>
+      this.collection();
+}
+
+const CachePrefilledProjectSchema = CollectionSchema(
+  name: r'CachePrefilledProject',
+  id: -3627976238618208958,
+  properties: {
+    r'createdAt': PropertySchema(
+      id: 0,
+      name: r'createdAt',
+      type: IsarType.dateTime,
+    ),
+    r'projectId': PropertySchema(
+      id: 1,
+      name: r'projectId',
+      type: IsarType.string,
+    ),
+    r'updatedAt': PropertySchema(
+      id: 2,
+      name: r'updatedAt',
+      type: IsarType.dateTime,
+    ),
+    r'userType': PropertySchema(
+      id: 3,
+      name: r'userType',
+      type: IsarType.string,
+    )
+  },
+  estimateSize: _cachePrefilledProjectEstimateSize,
+  serialize: _cachePrefilledProjectSerialize,
+  deserialize: _cachePrefilledProjectDeserialize,
+  deserializeProp: _cachePrefilledProjectDeserializeProp,
+  idName: r'id',
+  indexes: {
+    r'projectId': IndexSchema(
+      id: 3305656282123791113,
+      name: r'projectId',
+      unique: false,
+      replace: false,
+      properties: [
+        IndexPropertySchema(
+          name: r'projectId',
+          type: IndexType.hash,
+          caseSensitive: true,
+        )
+      ],
+    )
+  },
+  links: {},
+  embeddedSchemas: {},
+  getId: _cachePrefilledProjectGetId,
+  getLinks: _cachePrefilledProjectGetLinks,
+  attach: _cachePrefilledProjectAttach,
+  version: '3.1.0+1',
+);
+
+int _cachePrefilledProjectEstimateSize(
+  CachePrefilledProject object,
+  List<int> offsets,
+  Map<Type, List<int>> allOffsets,
+) {
+  var bytesCount = offsets.last;
+  bytesCount += 3 + object.projectId.length * 3;
+  bytesCount += 3 + object.userType.length * 3;
+  return bytesCount;
+}
+
+void _cachePrefilledProjectSerialize(
+  CachePrefilledProject object,
+  IsarWriter writer,
+  List<int> offsets,
+  Map<Type, List<int>> allOffsets,
+) {
+  writer.writeDateTime(offsets[0], object.createdAt);
+  writer.writeString(offsets[1], object.projectId);
+  writer.writeDateTime(offsets[2], object.updatedAt);
+  writer.writeString(offsets[3], object.userType);
+}
+
+CachePrefilledProject _cachePrefilledProjectDeserialize(
+  Id id,
+  IsarReader reader,
+  List<int> offsets,
+  Map<Type, List<int>> allOffsets,
+) {
+  final object = CachePrefilledProject(
+    projectId: reader.readString(offsets[1]),
+    userType: reader.readString(offsets[3]),
+  );
+  object.createdAt = reader.readDateTime(offsets[0]);
+  object.id = id;
+  object.updatedAt = reader.readDateTimeOrNull(offsets[2]);
+  return object;
+}
+
+P _cachePrefilledProjectDeserializeProp<P>(
+  IsarReader reader,
+  int propertyId,
+  int offset,
+  Map<Type, List<int>> allOffsets,
+) {
+  switch (propertyId) {
+    case 0:
+      return (reader.readDateTime(offset)) as P;
+    case 1:
+      return (reader.readString(offset)) as P;
+    case 2:
+      return (reader.readDateTimeOrNull(offset)) as P;
+    case 3:
+      return (reader.readString(offset)) as P;
+    default:
+      throw IsarError('Unknown property with id $propertyId');
+  }
+}
+
+Id _cachePrefilledProjectGetId(CachePrefilledProject object) {
+  return object.id;
+}
+
+List<IsarLinkBase<dynamic>> _cachePrefilledProjectGetLinks(
+    CachePrefilledProject object) {
+  return [];
+}
+
+void _cachePrefilledProjectAttach(
+    IsarCollection<dynamic> col, Id id, CachePrefilledProject object) {
+  object.id = id;
+}
+
+extension CachePrefilledProjectQueryWhereSort
+    on QueryBuilder<CachePrefilledProject, CachePrefilledProject, QWhere> {
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject, QAfterWhere>
+      anyId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(const IdWhereClause.any());
+    });
+  }
+}
+
+extension CachePrefilledProjectQueryWhere on QueryBuilder<CachePrefilledProject,
+    CachePrefilledProject, QWhereClause> {
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject, QAfterWhereClause>
+      idEqualTo(Id id) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IdWhereClause.between(
+        lower: id,
+        upper: id,
+      ));
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject, QAfterWhereClause>
+      idNotEqualTo(Id id) {
+    return QueryBuilder.apply(this, (query) {
+      if (query.whereSort == Sort.asc) {
+        return query
+            .addWhereClause(
+              IdWhereClause.lessThan(upper: id, includeUpper: false),
+            )
+            .addWhereClause(
+              IdWhereClause.greaterThan(lower: id, includeLower: false),
+            );
+      } else {
+        return query
+            .addWhereClause(
+              IdWhereClause.greaterThan(lower: id, includeLower: false),
+            )
+            .addWhereClause(
+              IdWhereClause.lessThan(upper: id, includeUpper: false),
+            );
+      }
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject, QAfterWhereClause>
+      idGreaterThan(Id id, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(
+        IdWhereClause.greaterThan(lower: id, includeLower: include),
+      );
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject, QAfterWhereClause>
+      idLessThan(Id id, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(
+        IdWhereClause.lessThan(upper: id, includeUpper: include),
+      );
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject, QAfterWhereClause>
+      idBetween(
+    Id lowerId,
+    Id upperId, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IdWhereClause.between(
+        lower: lowerId,
+        includeLower: includeLower,
+        upper: upperId,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject, QAfterWhereClause>
+      projectIdEqualTo(String projectId) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.equalTo(
+        indexName: r'projectId',
+        value: [projectId],
+      ));
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject, QAfterWhereClause>
+      projectIdNotEqualTo(String projectId) {
+    return QueryBuilder.apply(this, (query) {
+      if (query.whereSort == Sort.asc) {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'projectId',
+              lower: [],
+              upper: [projectId],
+              includeUpper: false,
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'projectId',
+              lower: [projectId],
+              includeLower: false,
+              upper: [],
+            ));
+      } else {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'projectId',
+              lower: [projectId],
+              includeLower: false,
+              upper: [],
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'projectId',
+              lower: [],
+              upper: [projectId],
+              includeUpper: false,
+            ));
+      }
+    });
+  }
+}
+
+extension CachePrefilledProjectQueryFilter on QueryBuilder<
+    CachePrefilledProject, CachePrefilledProject, QFilterCondition> {
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject,
+      QAfterFilterCondition> createdAtEqualTo(DateTime value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'createdAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject,
+      QAfterFilterCondition> createdAtGreaterThan(
+    DateTime value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'createdAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject,
+      QAfterFilterCondition> createdAtLessThan(
+    DateTime value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'createdAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject,
+      QAfterFilterCondition> createdAtBetween(
+    DateTime lower,
+    DateTime upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'createdAt',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject,
+      QAfterFilterCondition> idEqualTo(Id value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'id',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject,
+      QAfterFilterCondition> idGreaterThan(
+    Id value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'id',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject,
+      QAfterFilterCondition> idLessThan(
+    Id value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'id',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject,
+      QAfterFilterCondition> idBetween(
+    Id lower,
+    Id upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'id',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject,
+      QAfterFilterCondition> projectIdEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'projectId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject,
+      QAfterFilterCondition> projectIdGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'projectId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject,
+      QAfterFilterCondition> projectIdLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'projectId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject,
+      QAfterFilterCondition> projectIdBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'projectId',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject,
+      QAfterFilterCondition> projectIdStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'projectId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject,
+      QAfterFilterCondition> projectIdEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'projectId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject,
+          QAfterFilterCondition>
+      projectIdContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'projectId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject,
+          QAfterFilterCondition>
+      projectIdMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'projectId',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject,
+      QAfterFilterCondition> projectIdIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'projectId',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject,
+      QAfterFilterCondition> projectIdIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'projectId',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject,
+      QAfterFilterCondition> updatedAtIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'updatedAt',
+      ));
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject,
+      QAfterFilterCondition> updatedAtIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'updatedAt',
+      ));
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject,
+      QAfterFilterCondition> updatedAtEqualTo(DateTime? value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'updatedAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject,
+      QAfterFilterCondition> updatedAtGreaterThan(
+    DateTime? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'updatedAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject,
+      QAfterFilterCondition> updatedAtLessThan(
+    DateTime? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'updatedAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject,
+      QAfterFilterCondition> updatedAtBetween(
+    DateTime? lower,
+    DateTime? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'updatedAt',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject,
+      QAfterFilterCondition> userTypeEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'userType',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject,
+      QAfterFilterCondition> userTypeGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'userType',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject,
+      QAfterFilterCondition> userTypeLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'userType',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject,
+      QAfterFilterCondition> userTypeBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'userType',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject,
+      QAfterFilterCondition> userTypeStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'userType',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject,
+      QAfterFilterCondition> userTypeEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'userType',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject,
+          QAfterFilterCondition>
+      userTypeContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'userType',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject,
+          QAfterFilterCondition>
+      userTypeMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'userType',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject,
+      QAfterFilterCondition> userTypeIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'userType',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject,
+      QAfterFilterCondition> userTypeIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'userType',
+        value: '',
+      ));
+    });
+  }
+}
+
+extension CachePrefilledProjectQueryObject on QueryBuilder<
+    CachePrefilledProject, CachePrefilledProject, QFilterCondition> {}
+
+extension CachePrefilledProjectQueryLinks on QueryBuilder<CachePrefilledProject,
+    CachePrefilledProject, QFilterCondition> {}
+
+extension CachePrefilledProjectQuerySortBy
+    on QueryBuilder<CachePrefilledProject, CachePrefilledProject, QSortBy> {
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject, QAfterSortBy>
+      sortByCreatedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'createdAt', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject, QAfterSortBy>
+      sortByCreatedAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'createdAt', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject, QAfterSortBy>
+      sortByProjectId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'projectId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject, QAfterSortBy>
+      sortByProjectIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'projectId', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject, QAfterSortBy>
+      sortByUpdatedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'updatedAt', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject, QAfterSortBy>
+      sortByUpdatedAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'updatedAt', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject, QAfterSortBy>
+      sortByUserType() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'userType', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject, QAfterSortBy>
+      sortByUserTypeDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'userType', Sort.desc);
+    });
+  }
+}
+
+extension CachePrefilledProjectQuerySortThenBy
+    on QueryBuilder<CachePrefilledProject, CachePrefilledProject, QSortThenBy> {
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject, QAfterSortBy>
+      thenByCreatedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'createdAt', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject, QAfterSortBy>
+      thenByCreatedAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'createdAt', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject, QAfterSortBy>
+      thenById() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'id', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject, QAfterSortBy>
+      thenByIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'id', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject, QAfterSortBy>
+      thenByProjectId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'projectId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject, QAfterSortBy>
+      thenByProjectIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'projectId', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject, QAfterSortBy>
+      thenByUpdatedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'updatedAt', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject, QAfterSortBy>
+      thenByUpdatedAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'updatedAt', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject, QAfterSortBy>
+      thenByUserType() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'userType', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject, QAfterSortBy>
+      thenByUserTypeDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'userType', Sort.desc);
+    });
+  }
+}
+
+extension CachePrefilledProjectQueryWhereDistinct
+    on QueryBuilder<CachePrefilledProject, CachePrefilledProject, QDistinct> {
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject, QDistinct>
+      distinctByCreatedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'createdAt');
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject, QDistinct>
+      distinctByProjectId({bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'projectId', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject, QDistinct>
+      distinctByUpdatedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'updatedAt');
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject, QDistinct>
+      distinctByUserType({bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'userType', caseSensitive: caseSensitive);
+    });
+  }
+}
+
+extension CachePrefilledProjectQueryProperty on QueryBuilder<
+    CachePrefilledProject, CachePrefilledProject, QQueryProperty> {
+  QueryBuilder<CachePrefilledProject, int, QQueryOperations> idProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'id');
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, DateTime, QQueryOperations>
+      createdAtProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'createdAt');
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, String, QQueryOperations>
+      projectIdProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'projectId');
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, DateTime?, QQueryOperations>
+      updatedAtProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'updatedAt');
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, String, QQueryOperations>
+      userTypeProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'userType');
+    });
+  }
+}

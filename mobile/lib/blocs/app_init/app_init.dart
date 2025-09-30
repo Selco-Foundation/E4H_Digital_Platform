@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:selco/model/solution_design_type/solution_design_type.dart';
+import 'package:selco/model/solution_design_type_bom/solution_design_type_bom.dart';
 
 import '../../model/appconfig/mdmsRequest.dart';
 import '../../model/appconfig/mdmsResponse.dart';
@@ -10,6 +10,7 @@ import '../../model/asset_count/asset_count.dart';
 import '../../model/asset_type/asset_type.dart';
 import '../../model/brand/brand.dart';
 import '../../model/mdms/mdms.dart';
+import '../../model/solution_design_type/solution_design_type.dart';
 import '../../model/system/system.dart';
 import '../../model/warranty/warranty.dart';
 import '../../repositories/app_init_Repo.dart';
@@ -102,7 +103,14 @@ class AppInitialization extends Bloc<InitEvent, InitState> {
       )));
       final solutionDesignList = solutionDesign ?? [];
 
-      // -------------------- form
+      final solutionDesignBom =
+          await appInitRepo.searchSolutionDesignTypeBom(MdmsRequestModel(
+              mdmsCriteria: MdmsCriteriaModel(
+        tenantId: envConfig.variables.tenantId,
+        schemaCode: "asset.SolutionDesignTypeBom",
+        moduleDetails: [],
+      )));
+      final solutionDesignBomList = solutionDesignBom ?? [];
 
       // ---- Fetch FormConfig docs (raw) ----
       final formsDocs = await appInitRepo.searchFormConfigsRaw(
@@ -110,7 +118,7 @@ class AppInitialization extends Bloc<InitEvent, InitState> {
           mdmsCriteria: MdmsCriteriaModel(
             tenantId: envConfig.variables.tenantId,
             moduleDetails: [
-              MdmsModuleDetailsModel(
+              const MdmsModuleDetailsModel(
                 moduleName: 'SELCO',
                 masterDetails: [MdmsMasterDetailsModel('FormConfig')],
               ),
@@ -132,26 +140,21 @@ class AppInitialization extends Bloc<InitEvent, InitState> {
         await appInitRepo.upsertTransformedSchema(transformed);
       }
 
-      // -------------------- form
-
       //go to the initialized state once configuration details are fetched
       emit(InitState.initialized(
-        appConfig: appConfig,
-        assetCount: assetCountList,
-        assetType: assetTypeList,
-        system: systemList,
-        warranty: warrantyList,
-        brand: brandList,
-        solutionDesign: solutionDesignList,
-      ));
+          appConfig: appConfig,
+          assetCount: assetCountList,
+          assetType: assetTypeList,
+          system: systemList,
+          warranty: warrantyList,
+          brand: brandList,
+          solutionDesign: solutionDesignList,
+          solutionDesignBom: solutionDesignBomList));
     } catch (err) {
       rethrow;
     }
   }
 
-  /// Old function used `transformJson`. You said you'll save RAW.
-  /// Keeping a helper here in case you want to call it elsewhere.
-  /// Pass the full MDMS document; this will extract and save doc['data'].
   Future<void> storeSchema(dynamic mdmsDoc) async {
     final appInitRepo = AppInitRepo();
 
@@ -189,13 +192,14 @@ class InitEvent with _$InitEvent {
 class InitState with _$InitState {
   const InitState._();
   const factory InitState.uninitialized() = _Uninitialized;
-  const factory InitState.initialized({
-    required MdmsResponseModel appConfig,
-    required List<Mdms<AssetCount>> assetCount,
-    required List<Mdms<AssetType>> assetType,
-    required List<Mdms<System>> system,
-    required List<Mdms<Warranty>> warranty,
-    required List<Mdms<Brand>> brand,
-    required List<Mdms<SolutionDesignType>> solutionDesign,
-  }) = Initialized;
+  const factory InitState.initialized(
+          {required MdmsResponseModel appConfig,
+          required List<Mdms<AssetCount>> assetCount,
+          required List<Mdms<AssetType>> assetType,
+          required List<Mdms<System>> system,
+          required List<Mdms<Warranty>> warranty,
+          required List<Mdms<Brand>> brand,
+          required List<Mdms<SolutionDesignType>> solutionDesign,
+          required List<Mdms<SolutionDesignTypeBom>> solutionDesignBom}) =
+      Initialized;
 }

@@ -51,11 +51,12 @@ class _SelectAssetTypePageState extends State<SelectAssetTypePage> {
 
     // 1) pull out system list and mdms asset types
     final systemList = initState.maybeWhen<List<Mdms<System>>>(
-      initialized: (_, __, ___, system, ____, _____, solutionDesign) => system,
+      initialized: (_, __, ___, system, ____, _____, solutionDesign, ______) =>
+          system,
       orElse: () => [],
     );
     final mdmsAssetTypes = initState.maybeWhen<List<Mdms<AssetType>>>(
-      initialized: (_, __, ___, ____, _____, ______, solutionDesign) =>
+      initialized: (_, __, ___, ____, _____, ______, solutionDesign, _______) =>
           ___, // see positions
       orElse: () => [],
     );
@@ -174,7 +175,7 @@ class _SelectAssetTypePageState extends State<SelectAssetTypePage> {
                       initState.maybeWhen(
                           orElse: () => [],
                           initialized: (appConfig, assetCount, assetType,
-                                  system, warranty, brand, solutionDesign) =>
+                                  system, warranty, brand, solutionDesign, _) =>
                               assetType);
 
                   return Padding(

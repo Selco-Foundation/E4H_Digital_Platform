@@ -440,14 +440,14 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
 // Systems & Brands as lists of Mdms<T>
     final List<Mdms<System>> systemMdmsList = initState.maybeWhen(
       initialized: (appConfig, assetCount, assetType, system, warranty, brand,
-              solutionDesign) =>
+              solutionDesign, _) =>
           system,
       orElse: () => <Mdms<System>>[],
     );
 
     final List<Mdms<Brand>> brandMdmsList = initState.maybeWhen(
       initialized: (appConfig, assetCount, assetType, system, warranty, brand,
-              solutionDesign) =>
+              solutionDesign, _) =>
           brand,
       orElse: () => <Mdms<Brand>>[],
     );

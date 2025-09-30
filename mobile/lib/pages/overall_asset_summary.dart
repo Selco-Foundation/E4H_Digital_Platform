@@ -12,6 +12,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:isar/isar.dart';
 import 'package:path/path.dart' show basename;
 
+import '../blocs/app_init/app_init.dart';
 import '../blocs/asset_submission/asset_submission.dart';
 import '../blocs/asset_summary/asset_summary.dart';
 import '../blocs/asset_type/asset_type.dart';
@@ -46,9 +47,9 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
   String? _currentProjectId;
   double? _latitude;
   double? _longitude;
+  String? _solutionDesignTypeCode;
   late String userType = "";
   List<PlatformFile> _initialCompletion = [];
-  final Map<String, File> _fileCache = {};
   StreamSubscription<LocationState>? _locSub;
 
   @override
@@ -75,6 +76,10 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
       final selState = context.read<SelectedProjectBloc>().state;
       selState.whenOrNull(selected: (project) {
         _currentProjectId = project.project.id;
+        _solutionDesignTypeCode = "RMS_Single_Phase";
+        // project?.project?.additionalDetails?.facility //todo remove when all solutionTypes are found
+        //         ?.facilityDetails?.solar_solution_design_type ??
+        //     "RMS_Single_Phase";
         context
             .read<CacheAssetBloc>()
             .add(CacheAssetEvent.start(project.project.id, userType, project));
@@ -184,6 +189,69 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
         )
       ];
     });
+  }
+
+  /// Decides BOTH the label shown on the button and the destination route.
+  /// We look at the BOM form's `name` and infer a friendly label + (schemaName, pageName).
+  ({String label, String schemaName, String pageName}) _bomRouteAndLabel(
+      String name) {
+    final n = name.toLowerCase();
+
+    // Try to extract the token after "..._bom_"
+    final bomMatch = RegExp(r'_bom_([a-z0-9]+)$').firstMatch(n);
+    final token =
+        bomMatch?.group(1) ?? n.split('_').last; // fallback: last segment
+
+    switch (token) {
+      case 'system':
+      case 'parameters':
+      case 'parameter':
+        return (
+          label: 'Fill System Parameters',
+          schemaName: 'AssetForm.SystemParameters',
+          pageName: 'SystemFunctionalityParameters_1',
+        );
+      case 'solar':
+      case 'solarsystem':
+        return (
+          label: 'Fill BOM Solar System',
+          schemaName: 'AssetForm',
+          pageName: 'ModuleMountingstructure',
+        );
+      case 'luminaries':
+      case 'luminary':
+      case 'fan':
+      case 'fans':
+        return (
+          label: 'Fill BOM Luminaries',
+          schemaName: 'AssetForm.LuminariesFan',
+          pageName: 'Luminaires_Fans_Page1',
+        );
+      case 'wiring':
+      case 'load':
+      case 'loadwiring':
+        return (
+          label: 'Fill BOM Load Wiring',
+          schemaName: 'AssetForm.LoadWiring',
+          pageName: 'BOM.LoadWiring',
+        );
+      case 'rms':
+        return (
+          label: 'Fill BOM RMS',
+          schemaName: 'AssetForm.RMS',
+          pageName: 'BOM.RMS',
+        );
+      default:
+        // Fallback: humanize raw name and open Solar page
+        final pretty = name
+            .replaceAll('_', ' ')
+            .replaceAllMapped(RegExp(r'\b([a-z])'), (m) => m[1]!.toUpperCase());
+        return (
+          label: 'Fill $pretty',
+          schemaName: 'AssetForm',
+          pageName: 'ModuleMountingstructure',
+        );
+    }
   }
 
   @override
@@ -554,54 +622,49 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
 
                             const SizedBox(height: spacer4),
                             userState.maybeWhen(
-                                orElse: () => Container(),
-                                supervisor: () => Column(
-                                      children: [
-                                        isNewReport || isInboxReport
-                                            ? DigitCard(
-                                                children: [
-                                                  Text(
-                                                    'Installation Completion Report',
-                                                    style: textTheme.headingM
-                                                        .copyWith(
-                                                            color: theme
-                                                                .colorTheme
-                                                                .primary
-                                                                .primary2),
-                                                  ),
-                                                  Text(
-                                                    'Please scan and upload the installation completion report',
-                                                    style: textTheme.bodyS
-                                                        .copyWith(
-                                                            color: theme
-                                                                .colorTheme
-                                                                .text
-                                                                .secondary),
-                                                  ),
-                                                  FileUploadWidget(
-                                                    initialFiles:
-                                                        _initialCompletion,
-                                                    allowedExtensions: ["pdf"],
-                                                    showPreview: true,
-                                                    allowMultiples: false,
-                                                    label: 'Upload',
-                                                    onFilesSelected: (files) {
-                                                      if (files.isEmpty ||
-                                                          files.first.path ==
-                                                              null) {
-                                                        return <PlatformFile,
-                                                            String?>{};
-                                                      }
-                                                      _ensureLocationLoaded();
-                                                      _handleUpload(
-                                                          files.first);
-                                                      return <PlatformFile,
-                                                          String?>{};
-                                                    },
-                                                  ),
-                                                ],
-                                              )
-                                            : GestureDetector(
+                              orElse: () => Container(),
+                              supervisor: () => Column(
+                                children: [
+                                  DigitCard(
+                                    children: [
+                                      ...(isNewReport || isInboxReport
+                                          ? [
+                                              Text(
+                                                'Installation Completion Report',
+                                                style: textTheme.headingM
+                                                    .copyWith(
+                                                        color: theme.colorTheme
+                                                            .primary.primary2),
+                                              ),
+                                              Text(
+                                                'Please scan and upload the installation completion report',
+                                                style: textTheme.bodyS.copyWith(
+                                                    color: theme.colorTheme.text
+                                                        .secondary),
+                                              ),
+                                              FileUploadWidget(
+                                                initialFiles:
+                                                    _initialCompletion,
+                                                allowedExtensions: ["pdf"],
+                                                showPreview: true,
+                                                allowMultiples: false,
+                                                label: 'Upload',
+                                                onFilesSelected: (files) {
+                                                  if (files.isEmpty ||
+                                                      files.first.path ==
+                                                          null) {
+                                                    return <PlatformFile,
+                                                        String?>{};
+                                                  }
+                                                  _ensureLocationLoaded();
+                                                  _handleUpload(files.first);
+                                                  return <PlatformFile,
+                                                      String?>{};
+                                                },
+                                              ),
+                                            ]
+                                          : [
+                                              GestureDetector(
                                                 onTap: () {
                                                   print("filePath $filePath");
                                                   if (filePath != null &&
@@ -617,24 +680,109 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                                       'No report yet',
                                                   fileSize: _displaySize(),
                                                 ),
-                                              ),
-                                        DigitButton(
-                                          mainAxisSize: MainAxisSize.max,
-                                          label: 'BOM (Solar System)',
-                                          onPressed: () {
-                                            context.router.push(
-                                              DynamicFormsRoute(
-                                                  pageName:
-                                                      'ModuleMountingstructure',
-                                                  schemaName: 'AssetForm',
-                                                  projectId: _currentProjectId),
-                                            );
+                                              )
+                                            ]),
+                                      ...[
+                                        BlocBuilder<AppInitialization,
+                                            InitState>(
+                                          builder: (context, state) {
+                                            return state.maybeWhen(
+                                                orElse: () =>
+                                                    const SizedBox.shrink(),
+                                                initialized: (appConfig,
+                                                    assetCount,
+                                                    assetType,
+                                                    system,
+                                                    warranty,
+                                                    brand,
+                                                    solutionDesign,
+                                                    solutionDesignBom) {
+                                                  return Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .stretch,
+                                                    children: [
+                                                      Builder(
+                                                        builder: (_) {
+                                                          final matches =
+                                                              solutionDesignBom
+                                                                  .where(
+                                                            (e) =>
+                                                                e.data
+                                                                    .solutionDesignTypeCode ==
+                                                                _solutionDesignTypeCode,
+                                                          );
+
+                                                          final matching = matches
+                                                                  .isNotEmpty
+                                                              ? matches.first
+                                                              : null; // <-- nullable
+                                                          final entries = matching
+                                                                  ?.data
+                                                                  .bomForms ??
+                                                              const [];
+
+                                                          if (entries.isEmpty) {
+                                                            return const SizedBox
+                                                                .shrink();
+                                                          }
+
+                                                          return Builder(
+                                                              builder:
+                                                                  (context) {
+                                                            return Column(
+                                                              crossAxisAlignment:
+                                                                  CrossAxisAlignment
+                                                                      .stretch,
+                                                              children: [
+                                                                for (final entry
+                                                                    in entries) ...[
+                                                                  Builder(
+                                                                      builder:
+                                                                          (_) {
+                                                                    final r =
+                                                                        _bomRouteAndLabel(
+                                                                            entry.name);
+                                                                    return DigitButton(
+                                                                        mainAxisSize:
+                                                                            MainAxisSize
+                                                                                .max,
+                                                                        label: r
+                                                                            .label,
+                                                                        onPressed:
+                                                                            () {
+                                                                          final r =
+                                                                              _bomRouteAndLabel(entry.name);
+                                                                          context.router.push(DynamicFormsRoute(
+                                                                              pageName: r.pageName,
+                                                                              schemaName: r.schemaName,
+                                                                              projectId: _currentProjectId!));
+                                                                        },
+                                                                        type: DigitButtonType
+                                                                            .secondary,
+                                                                        size: DigitButtonSize
+                                                                            .large);
+                                                                  }),
+                                                                  const SizedBox(
+                                                                      height:
+                                                                          spacer4),
+                                                                ],
+                                                              ],
+                                                            );
+                                                          });
+                                                        },
+                                                      ),
+                                                    ],
+                                                  );
+                                                });
                                           },
-                                          type: DigitButtonType.primary,
-                                          size: DigitButtonSize.large,
-                                        ),
-                                      ],
-                                    ))
+                                        )
+                                      ]
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            )
                           ],
                         ),
                       ),

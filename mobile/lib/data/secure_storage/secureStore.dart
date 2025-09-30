@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:selco/model/solution_design_type/solution_design_type.dart';
+import 'package:selco/model/solution_design_type_bom/solution_design_type_bom.dart';
 
 import '../../model/appconfig/mdmsResponse.dart';
 import '../../model/asset_count/asset_count.dart';
@@ -113,18 +114,20 @@ class SecureStore {
     return await storage.read(key: 'solutionDesign');
   }
 
-  // ======= FORMS SCHEMAS (secure) =======
+  //SolutionDesignType
+  Future setSolutionDesignTypeBom(
+      List<Mdms<SolutionDesignTypeBom>> list) async {
+    final List<Map<String, dynamic>> jsonList = list
+        .map((mdms) =>
+            mdms.toJson((solutionDesignBom) => solutionDesignBom.toJson()))
+        .toList();
+    await storage.write(key: 'solutionDesignBom', value: json.encode(jsonList));
+  }
 
-  /// Save the ENTIRE forms schema map that `storeSchema` manages.
-  /// The structure mirrors your SharedPreferences approach:
-  /// {
-  ///   "AssetForm": {
-  ///     "data": <transformed schema map>,
-  ///     "currentVersion": 1,
-  ///     "previousVersion": 0
-  ///   },
-  ///   "AnotherForm": { ... }
-  /// }
+  Future<String?> getSolutionDesignTypeBom() async {
+    return await storage.read(key: 'solutionDesignBom');
+  }
+
   Future<void> setFormSchemas(Map<String, dynamic> schemas) async {
     await storage.write(
       key: 'forms_schemas',
@@ -135,7 +138,6 @@ class SecureStore {
   /// Read the entire forms schema map. Returns `null` if unset.
   Future<String?> getFormSchemas() async {
     final raw = await storage.read(key: 'forms_schemas');
-    print('FORM SCHEMA JSON: $raw');
   }
 
   //access token
@@ -203,5 +205,60 @@ class SecureStore {
 
   Future deleteSelectedIndividual() async {
     await storage.delete(key: 'individualId');
+  }
+
+  String _kRawSchema(String schemaKey) => 'raw_schema_$schemaKey';
+  String _kProjDoc(String projectId, String schemaKey) =>
+      'proj_doc_${projectId}_$schemaKey';
+  String _kBomId(String projectId, String schemaKey) =>
+      'bom_id_${projectId}_$schemaKey';
+
+  // RAW schema (MDMS/mock) AS-IS
+  Future<void> setRawSchemaDoc(
+      String schemaKey, Map<String, dynamic> raw) async {
+    await storage.write(key: _kRawSchema(schemaKey), value: jsonEncode(raw));
+  }
+
+  Future<Map<String, dynamic>?> getRawSchemaDoc(String schemaKey) async {
+    final s = await storage.read(key: _kRawSchema(schemaKey));
+    if (s == null || s.isEmpty) return null;
+    final d = jsonDecode(s);
+    return d is Map<String, dynamic> ? d : null;
+  }
+
+  Future<void> deleteRawSchemaDoc(String schemaKey) async {
+    await storage.delete(key: _kRawSchema(schemaKey));
+  }
+
+  // Project doc (RAW + values injected) — POST this to server
+  Future<void> setProjectFormDoc(
+      String projectId, String schemaKey, Map<String, dynamic> doc) async {
+    await storage.write(
+        key: _kProjDoc(projectId, schemaKey), value: jsonEncode(doc));
+  }
+
+  Future<Map<String, dynamic>?> getProjectFormDoc(
+      String projectId, String schemaKey) async {
+    final s = await storage.read(key: _kProjDoc(projectId, schemaKey));
+    if (s == null || s.isEmpty) return null;
+    final d = jsonDecode(s);
+    return d is Map<String, dynamic> ? d : null;
+  }
+
+  Future<void> deleteProjectFormDoc(String projectId, String schemaKey) async {
+    await storage.delete(key: _kProjDoc(projectId, schemaKey));
+  }
+
+  // BOM id (for server update)
+  Future<void> setBomId(String projectId, String schemaKey, String id) async {
+    await storage.write(key: _kBomId(projectId, schemaKey), value: id);
+  }
+
+  Future<String?> getBomId(String projectId, String schemaKey) async {
+    return storage.read(key: _kBomId(projectId, schemaKey));
+  }
+
+  Future<void> deleteBomId(String projectId, String schemaKey) async {
+    await storage.delete(key: _kBomId(projectId, schemaKey));
   }
 }
