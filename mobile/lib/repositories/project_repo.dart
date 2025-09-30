@@ -31,7 +31,7 @@ class ProjectRemoteRepository {
 
       if (envConfig.variables.envType == EnvType.dev) {
         print("EnvType.dev got here");
-        return _loadLocalProjects();
+        // return _loadLocalProjects();
       }
 
       response = await dio.post(
