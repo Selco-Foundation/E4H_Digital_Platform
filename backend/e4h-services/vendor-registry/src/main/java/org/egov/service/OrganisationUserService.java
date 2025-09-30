@@ -76,9 +76,9 @@ public class OrganisationUserService {
         List<OrgUser> orgUserList = userRepository.getOrgUsers(request, urlParams);
         List<OrgUserEnriched> orgUserEnricheds = new ArrayList<>();
         for (OrgUser orgUser: orgUserList){
-            Employee employee = organisationUtil.getUserById(request.getRequestInfo(), orgUser.getUserId());
+            Employee employee = organisationUtil.getUserById(request, orgUser.getUserId());
             OrgUserEnriched enriched = OrgUserEnriched.builder()
-                    .user(employee)
+                    .user(employee.getUser())
                     .userId(orgUser.getUserId())
                     .tenantId(orgUser.getTenantId())
                     .organizationId(orgUser.getOrganizationId())

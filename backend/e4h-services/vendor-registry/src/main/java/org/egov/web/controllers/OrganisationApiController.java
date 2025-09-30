@@ -87,7 +87,7 @@ public class OrganisationApiController {
     }
 
     @RequestMapping(value = "/user/_search", method = RequestMethod.POST)
-    public ResponseEntity<OrgUserResponseSearch> projectStaffV1SearchPost(
+    public ResponseEntity<OrgUserResponseSearch> OrganisationUsersV1SearchPost(
             @Valid @ModelAttribute URLParams urlParams,
             @ApiParam(value = "Capture details of Project staff.", required = true) @Valid @RequestBody OrgUserSearchRequest request
     ) throws Exception {

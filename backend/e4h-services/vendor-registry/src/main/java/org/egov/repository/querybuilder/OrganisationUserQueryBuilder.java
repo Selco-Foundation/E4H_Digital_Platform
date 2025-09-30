@@ -17,10 +17,10 @@ public class OrganisationUserQueryBuilder {
 
     private final Configuration config;
 
-    private static final String FETCH_ORGANISATION_USER_QUERY = "SELECT ou.id as id, ou.tenantid as tenantid, " +
-            "ou.organizationid as organizationid, ou.userid as userid, " +
+    private static final String FETCH_ORGANISATION_USER_QUERY = "SELECT ou.id as id, ou.tenantid as tenantId, " +
+            "ou.organizationid as organizationId, ou.userid as userId, ou.additionaldetails as additionalDetails, " +
             "ou.createdby as createdBy, ou.lastmodifiedby as lastModifiedBy, " +
-            "ou.createdtime as createdTime, ou.lastmodifiedtime as lastModifiedTime " +
+            "ou.createdtime as createdTime, ou.lastmodifiedtime as lastModifiedTime, ou.isdeleted as isDeleted " +
             "FROM eg_org_user ou";
 
     private static final String PAGINATION_WRAPPER = "SELECT * FROM " +
@@ -97,17 +97,17 @@ public class OrganisationUserQueryBuilder {
         log.info("OrganisationQueryBuilder::getOrganisationQuery");
         //default
         if (pagination == null || pagination.getSortBy() == null) {
-            queryBuilder.append(" ORDER BY org.created_time ");
+            queryBuilder.append(" ORDER BY ou.createdtime ");
         } else {
             switch (pagination.getSortBy()) {
                 case "name":
-                    queryBuilder.append(" ORDER BY org.name ");
+                    queryBuilder.append(" ORDER BY ou.name ");
                     break;
                 case "type":
-                    queryBuilder.append(" ORDER BY orgFunction.type ");
+                    queryBuilder.append(" ORDER BY ou.type ");
                     break;
                 default:
-                    queryBuilder.append(" ORDER BY est.created_time ");
+                    queryBuilder.append(" ORDER BY ou.createdtime ");
                     break;
             }
         }

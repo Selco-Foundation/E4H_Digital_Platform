@@ -34,20 +34,20 @@ public class OrgUserRowMapper implements RowMapper<OrgUser> {
         try {
             return OrgUser.builder()
                     .id(resultSet.getString("id"))
-                    .tenantId(resultSet.getString("tenantid"))
-                    .organizationId(resultSet.getString("projectId"))
-                    .userId(resultSet.getString("staffId"))
+                    .tenantId(resultSet.getString("tenantId"))
+                    .organizationId(resultSet.getString("organizationId"))
+                    .userId(resultSet.getString("userId"))
                     .additionalDetails(
                             resultSet.getString("additionalDetails") == null
                                     ? null
                                     : objectMapper.readValue(resultSet.getString("additionalDetails"), Map.class))
                     .auditDetails(AuditDetails.builder()
-                            .createdBy(resultSet.getString("createdby"))
-                            .createdTime(resultSet.getLong("createdtime"))
-                            .lastModifiedBy(resultSet.getString("lastmodifiedby"))
-                            .lastModifiedTime(resultSet.getLong("lastmodifiedtime"))
+                            .createdBy(resultSet.getString("createdBy"))
+                            .createdTime(resultSet.getLong("createdTime"))
+                            .lastModifiedBy(resultSet.getString("lastModifiedBy"))
+                            .lastModifiedTime(resultSet.getLong("lastModifiedTime"))
                             .build())
-                    .isDeleted(resultSet.getBoolean("isdeleted"))
+                    .isDeleted(resultSet.getBoolean("isDeleted"))
                     .build();
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);

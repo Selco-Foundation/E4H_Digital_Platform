@@ -32,7 +32,7 @@ public class OrgUserEnriched {
             max = 64
     ) String userId = null;
     @JsonProperty("user")
-    private Employee user = null;
+    private User user = null;
     @JsonProperty("organizationId")
     private @NotNull @Size(
             min = 2,

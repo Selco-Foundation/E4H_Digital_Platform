@@ -89,7 +89,7 @@ public class OrganisationUserServiceValidator {
                 throw new CustomException("USERID", "User ID is mandatory");
             }
             // Get existing user with userId from hrms service
-            Employee employee = organisationUtil.getUserById(request.getRequestInfo(), orgUser.getUserId());
+            Employee employee = organisationUtil.getUserById(request, orgUser.getUserId());
             if (employee == null) {
                 log.error("user ID do not exist");
                 throw new CustomException("HRMS", "User ID do not exist");
@@ -103,7 +103,7 @@ public class OrganisationUserServiceValidator {
                 log.error("Organization is mandatory in Activity request body");
                 errorMap.put("ORGANIZATION", "Organization ID is mandatory");
             }
-            OrgSearchCriteria searchCriteria = OrgSearchCriteria.builder().id(List.of(orgUser.getOrganizationId())).build();
+            OrgSearchCriteria searchCriteria = OrgSearchCriteria.builder().id(List.of(orgUser.getOrganizationId())).tenantId(orgUser.getTenantId()).build();
             OrgSearchRequest orgSearchRequest = OrgSearchRequest.builder().requestInfo(request.getRequestInfo()).searchCriteria(searchCriteria).build();
             List<Organisation> organisations = organisationService.searchOrganisation(orgSearchRequest);
             if(organisations == null || organisations.isEmpty()){

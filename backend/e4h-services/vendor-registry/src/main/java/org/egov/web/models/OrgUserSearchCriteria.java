@@ -30,7 +30,7 @@ public class OrgUserSearchCriteria {
     @JsonProperty("organizationIds")
     private @Valid List<String> organizationId = null;
 
-    @JsonProperty("tenantid")
+    @JsonProperty("tenantId")
     private String tenantId;
 
 }
