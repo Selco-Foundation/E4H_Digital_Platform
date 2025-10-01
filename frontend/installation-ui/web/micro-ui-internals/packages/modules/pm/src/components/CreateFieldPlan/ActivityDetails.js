@@ -3,128 +3,43 @@ import FormattedDateInput from "../Custom/FormattedDateInput";
 import { Dropdown, SubmitBar, Table, TextInput } from "@egovernments/digit-ui-react-components";
 import { CheckCircleOutline } from "@egovernments/digit-ui-svg-components";
 import CustomCloseSvg from "../Custom/CustomCloseSvg";
+import useOrganization from "../../hooks/useOrganization";
+import OrganizationUserDropdown from "./OrganizationUserDropdown";
 
 const ActivityDetails = ({ setError, setValue, clearErrors, props }) => {
 
-  const { t } = props;
+  const { t, fieldPlanActivities = [], activityData } = props;
   const [data, setData] = useState([]);
   const [organizationOptions, setOrganizationOptions] = useState([]);
-  const [roleOptions, setRoleOptions] = useState([]);
 
-  const formatDate = (timestamp) => {
-    const date = new Date(timestamp);
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    const year = date.getFullYear();
-    return `${year}-${month}-${day}`;
-  };
+  const { data: organizationData } = useOrganization();
 
   useEffect(() => {
-    setData([
-      {
-        activity: "Installation",
-        users: [
-          {
-            startDate: {
-              value: formatDate(1886889600000),
-              error: "",
-            },
-            endDate: {
-              value: formatDate(1886889600000),
-              error: "",
-            },
-            poNumber: {
-              value: "1234567890",
-              error: "",
-            },
-            organization: {
-              value: {
-                code: "Selco",
-                name: "Selco",
-              },
-              error: "",
-            },
-            role: {
-              value: {
-                code: "SPOC",
-                name: "SPOC",
-              },
-              error: "",
-            },
-            email: {
-              value: "abcd@abcd.com",
-              error: "",
-            },
-            isEmailSent: false,
-          }
-        ]
-      },
-      {
-        activity: "Assessment",
-        users: [
-          {
-            startDate: {
-              value: formatDate(1886889600000),
-              error: "",
-            },
-            endDate: {
-              value: formatDate(1886889600000),
-              error: "",
-            },
-            poNumber: {
-              value: "1234567890",
-              error: "",
-            },
-            organization: {
-              value: {
-                code: "Selco",
-                name: "Selco",
-              },
-              error: "",
-            },
-            role: {
-              value: {
-                code: "SPOC",
-                name: "SPOC",
-              },
-              error: "",
-            },
-            email: {
-              value: "abcd@abcd.com",
-              error: "",
-            },
-            isEmailSent: true,
-          }
-        ]
-      }
-    ])
+    if (organizationData) {
+      setOrganizationOptions(organizationData.organizations);
+    }
+  }, [organizationData]);
 
-    setOrganizationOptions([
-      {
-        code: "Selco",
-        name: "Selco",
-      },
-      {
-        code: "Beehyv",
-        name: "Beehyv",
-      }
-    ])
-
-    setRoleOptions([
-      {
-        code: "SPOC",
-        name: "SPOC",
-      },
-      {
-        code: "Reviewer",
-        name: "Reviewer",
-      }
-    ])
-  }, []);
+  useEffect(() => {
+    setData(fieldPlanActivities.map((activity) => ({
+      activity: activity,
+      users: [
+        {
+          startDate: { value: "", error: "", },
+          endDate: { value: "", error: "", },
+          poNumber: { value: "", error: "", },
+          organization: { value: null, error: "", },
+          role: { value: null, error: "", },
+          email: { value: "", error: "", },
+          isEmailSent: false,
+        }
+      ],
+    })));
+  }, [fieldPlanActivities]);
 
   const addUserEntry = (activity) => {
     setData((prevState) => prevState?.map((dataEntry) => {
-      if (dataEntry.activity !== activity) return dataEntry;
+      if (dataEntry.activity.code !== activity.code) return dataEntry;
 
       return  {
         ...dataEntry,
@@ -146,7 +61,7 @@ const ActivityDetails = ({ setError, setValue, clearErrors, props }) => {
 
   const removeUserEntry = (activity, index) => {
     setData((prevState) => prevState?.map((dataEntry) => {
-      if (dataEntry.activity !== activity) return dataEntry;
+      if (dataEntry.activity.code !== activity.code) return dataEntry;
       return {
         ...dataEntry,
         users: dataEntry.users.filter((useEntry, i) => i !== index),
@@ -157,7 +72,7 @@ const ActivityDetails = ({ setError, setValue, clearErrors, props }) => {
   const handleUserDataChange = (activity, index, fieldName, fieldValue) => {
 
     setData((prevState) => prevState?.map((dataEntry) => {
-      if (dataEntry.activity !== activity) return dataEntry;
+      if (dataEntry.activity.code !== activity.code) return dataEntry;
 
       return  {
         ...dataEntry,
@@ -205,7 +120,7 @@ const ActivityDetails = ({ setError, setValue, clearErrors, props }) => {
           lineHeight: "24px",
         }}
       >
-        {activity}
+        {activity.name}
       </span>
       <button
         type="button"
@@ -291,6 +206,9 @@ const ActivityDetails = ({ setError, setValue, clearErrors, props }) => {
       <TextInput
         value={fieldValue.value}
         onChange={(e) => handleUserDataChange(activity, index, fieldName, e.target.value)}
+        style={{
+          minWidth: "190px",
+        }}
       />
       <span
         style={{
@@ -306,7 +224,7 @@ const ActivityDetails = ({ setError, setValue, clearErrors, props }) => {
     </div>
   )
 
-  const UserDropDown = (options, optionKey = "name", activity, index, fieldName, fieldValue, isLast) => (
+  const UserDropDownInput = (options, optionKey = "name", activity, index, fieldName, fieldValue, isLast) => (
     <div
       style={{
         padding: "21px 20px 6px 20px",
@@ -319,6 +237,39 @@ const ActivityDetails = ({ setError, setValue, clearErrors, props }) => {
         optionKey={optionKey}
         selected={fieldValue.value}
         select={(option) => handleUserDataChange(activity, index, fieldName, option)}
+        style={{
+          minWidth: "190px",
+        }}
+      />
+      <span
+        style={{
+          fontSize: "14px",
+          color: "rgba(212, 53, 28)",
+          height: "14px",
+          marginTop: "1px",
+          display: "block"
+        }}
+      >
+        {fieldValue.error}
+      </span>
+    </div>
+  )
+
+  const OrganizationUserDropDownInput = (organization, activity, index, fieldName, fieldValue, isLast) => (
+    <div
+      style={{
+        padding: "21px 20px 6px 20px",
+        borderBottom: isLast ? "none" : "1px solid #EEEEEE",
+      }}
+    >
+      <OrganizationUserDropdown
+        t={t}
+        organizationIds={[organization?.value?.id || ""]}
+        selected={fieldValue.value}
+        onSelect={(option) => handleUserDataChange(activity, index, fieldName, option)}
+        style={{
+          minWidth: "190px",
+        }}
       />
       <span
         style={{
@@ -426,7 +377,7 @@ const ActivityDetails = ({ setError, setValue, clearErrors, props }) => {
         Header: () => GetHead("Organization"),
         Cell: ({ row }) => GetCell(
           row.original["users"]?.map((userEntry, i, usersArray) => {
-            return UserDropDown(organizationOptions, "name", row.original["activity"], i, "organization", userEntry?.organization, usersArray.length - 1 === i);
+            return UserDropDownInput(organizationOptions, "name", row.original["activity"], i, "organization", userEntry?.organization, usersArray.length - 1 === i);
           })
         ),
       },
@@ -435,7 +386,10 @@ const ActivityDetails = ({ setError, setValue, clearErrors, props }) => {
         Header: () => GetHead("Role"),
         Cell: ({ row }) => GetCell(
           row.original["users"]?.map((userEntry, i, usersArray) => {
-            return UserDropDown(roleOptions, "name", row.original["activity"], i, "role", userEntry?.role, usersArray.length - 1 === i);
+            return UserDropDownInput(
+              activityData?.filter((activity) => activity?.code === row.original["activity"]?.code)?.[0]?.roles,
+              "name", row.original["activity"], i, "role", userEntry?.role, usersArray.length - 1 === i
+            );
           })
         ),
       },
@@ -444,7 +398,7 @@ const ActivityDetails = ({ setError, setValue, clearErrors, props }) => {
         Header: () => GetHead("Email"),
         Cell: ({ row }) => GetCell(
           row.original["users"].map((userEntry, i, usersArray) => {
-            return UserTextInput(row.original["activity"], i, "email", userEntry?.email, usersArray.length - 1 === i);
+            return OrganizationUserDropDownInput(userEntry.organization, row.original["activity"], i, "email", userEntry?.email, usersArray.length - 1 === i);
           })
         ),
       },
@@ -458,7 +412,7 @@ const ActivityDetails = ({ setError, setValue, clearErrors, props }) => {
         ),
       },
     ],
-    [organizationOptions, roleOptions]
+    [data, organizationOptions, activityData]
   );
 
   const handleActivityDataClear = () => {
@@ -505,7 +459,6 @@ const ActivityDetails = ({ setError, setValue, clearErrors, props }) => {
       })
     }))
 
-    console.debug("faultyData", faultyData);
     if (faultyData) {
       setData(validatedData);
     } else {
