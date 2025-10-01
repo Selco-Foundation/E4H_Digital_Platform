@@ -23,7 +23,7 @@ import static org.egov.activity.util.ActivityConstants.DOT;
 public class ActivityAssignmentQueryBuilder {
 
     private static final String FETCH_ACTIVITY_QUERY = "SELECT aa.id as aa_activityAssignmentId, aa.tenant_id as aa_tenantId, aa.activity_id as aa_activityId, " +
-            "aa.field_plan_id as aa_fieldPlanId, aa.status as aa_status, aa.assigned_to as aa_assignedTo, aa.assigned_by as aa_assignedBy, " +
+            "aa.field_plan_id as aa_fieldPlanId, aa.status as aa_status, aa.assigned_to as aa_assignedTo, aa.assigned_by as aa_assignedBy, aa.emailsent as aa_emailSent, aa.isdeleted as aa_isdeleted,  " +
             "aa.additional_details as aa_additionalDetails, aa.start_date as aa_startDate, aa.end_date as aa_endDate, aa.role as aa_role, aa.created_time as aa_createdTime, " +
             "aa.last_modified_time as aa_lastModifiedTime " +
             " " +

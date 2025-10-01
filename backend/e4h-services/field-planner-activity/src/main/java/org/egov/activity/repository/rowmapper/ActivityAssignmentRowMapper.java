@@ -31,6 +31,8 @@ public class ActivityAssignmentRowMapper implements RowMapper<ActivityAssignment
                     .assignedBy(resultSet.getString("aa_assignedBy"))
                     .startDate(resultSet.getLong("aa_startDate"))
                     .endDate(resultSet.getLong("aa_endDate"))
+                    .isDeleted(resultSet.getBoolean("aa_isdeleted"))
+                    .isEmailSent(resultSet.getBoolean("aa_emailSent"))
                     .additionalDetails(
                             resultSet.getString("aa_additionalDetails") == null
                                     ? null

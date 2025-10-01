@@ -63,6 +63,9 @@ public class ActivityAssignment {
     @JsonProperty("auditDetails")
     protected @Valid AuditDetails auditDetails;
 
+    @JsonProperty("isEmailSent")
+    private Boolean isEmailSent;
+
     private static Boolean $default$hasErrors() {
         return Boolean.FALSE;
     }
