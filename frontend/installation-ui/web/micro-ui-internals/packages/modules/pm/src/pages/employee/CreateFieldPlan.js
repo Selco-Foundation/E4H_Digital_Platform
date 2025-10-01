@@ -424,7 +424,7 @@ const CreateFieldPlan = () => {
             route: "upload-facility-data",
             customProps: {
               name: "uploadFacilityData",
-              allowedFileTypes: [".csv", ".xls", ".xlsx"],
+              allowedFileTypes: [".xlsx"],
               handleFileUpload: handleFacilityDataUpload,
               invalidDataError: invalidDataError,
               errorViewLabel: "CORE_COMMON_VIEW_ERRORS",
@@ -458,7 +458,9 @@ const CreateFieldPlan = () => {
             disable: false,
             route: "activity-details",
             customProps: {
+              fieldPlanActivities: createdFieldPlan?.activities,
               t,
+              activityData,
             },
             nextRoute: "",
             populators: {
@@ -738,7 +740,7 @@ const CreateFieldPlan = () => {
         defaultValues={getDefaultValues()}
         showMultipleCardsWithoutNavs={true}
         noBreakLine={true}
-        cardStyle={{padding: "20px", overflow: "hidden"}}
+        cardStyle={{padding: "20px"}}
         actionClassName={"reverse-actionbar"}
         // submitIcon={<CustomArrowRight />}
       />
