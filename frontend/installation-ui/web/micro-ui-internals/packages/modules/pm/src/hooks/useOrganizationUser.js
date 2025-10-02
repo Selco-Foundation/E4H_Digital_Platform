@@ -4,6 +4,7 @@ import { VendorService } from "../services/Vendor";
 const formatOrganizationUsers = (organizationUsers) => {
   return organizationUsers.map((organizationUser) => ({
     ...organizationUser.user,
+    organizationId: organizationUser.organizationId,
   }))
 }
 
@@ -17,12 +18,16 @@ const fetchOrganizationUsers = async (filter, limit, offset) => {
 
 const useOrganizationUser = (queryFilter = {}, limit = 1000, offset = 0) => {
 
-  const { organizationIds } = queryFilter;
+  const { tenantId, organizationIds } = queryFilter;
 
   const filter = {
     OrgUser: {
       tenantId: Digit.ULBService.getCurrentTenantId(),
     }
+  }
+
+  if (tenantId) {
+    filter.OrgUser.tenantId = tenantId;
   }
 
   if (organizationIds) {
