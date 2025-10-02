@@ -182,6 +182,7 @@ const CreateFieldPlan = () => {
                     ? activityAssignmentData.activityAssignments
                       // .filter((assignment) => assignment.activityId === activity.code)
                       .map((assignment) => ({
+                        id: assignment.id,
                         startDate: { value: formatDate(assignment.startDate), error: "", },
                         endDate: { value: formatDate(assignment.endDate), error: "", },
                         poNumber: { value: "1234", error: "", },
@@ -328,7 +329,7 @@ const CreateFieldPlan = () => {
         const newUserEntry = {}
 
         Object.keys(userEntry).forEach((key) => {
-          if (key === "isEmailSent") {
+          if (["id", "isEmailSent", "deleteAssignment"].includes(key)) {
             newUserEntry[key] =  userEntry[key];
           }
           else if (!userEntry[key].value) {
@@ -356,11 +357,14 @@ const CreateFieldPlan = () => {
     setBlockUI(true);
 
     try {
-      const activityUserAssignment = [];
+      const activityUserAssignmentsForCreate = [];
+      const activityUserAssignmentsForUpdate = [];
+      const activityUserAssignmentsForDelete = [];
 
       activityData.forEach((dataEntry) => {
         dataEntry.users.forEach((userEntry) => {
-          activityUserAssignment.push({
+
+          const activityUserAssignment = {
             tenantId: Digit.ULBService.getCurrentTenantId(),
             assignedTo: userEntry.email.value.uuid,
             assignedBy: Digit.UserService.getUser()?.info?.uuid,
@@ -369,11 +373,35 @@ const CreateFieldPlan = () => {
             activityId: dataEntry.activity.code,
             startDate: (new Date(userEntry.startDate.value)).getTime(),
             endDate: (new Date(userEntry.endDate.value)).getTime(),
-          })
+          };
+
+          if (userEntry.deleteAssignment) {
+            activityUserAssignmentsForDelete.push({
+              id: userEntry.id,
+              ...activityUserAssignment
+            });
+
+          } else if (userEntry.id) {
+            activityUserAssignmentsForUpdate.push({
+              id: userEntry.id,
+              ...activityUserAssignment
+            });
+
+          } else {
+            activityUserAssignmentsForCreate.push(activityUserAssignment);
+          }
         })
       });
 
-      await ActivityService.assignActivity(activityUserAssignment);
+      if (activityUserAssignmentsForCreate.length) {
+        await ActivityService.createActivityAssignment(activityUserAssignmentsForCreate);
+      }
+      if (activityUserAssignmentsForUpdate.length) {
+        await ActivityService.updateActivityAssignment(activityUserAssignmentsForUpdate);
+      }
+      if (activityUserAssignmentsForDelete.length) {
+        await ActivityService.deleteActivityAssignment(activityUserAssignmentsForDelete);
+      }
 
     } catch (error) {
       console.error("Error assigning users in activity details", error);
@@ -725,6 +753,10 @@ const CreateFieldPlan = () => {
 
   };
 
+  const saveAndUpdateFieldPlan = (fieldPlanFormData) => {
+
+  }
+
   const handleFormSubmit = async (data) => {
     switch (currentKey) {
       case 1:
@@ -736,6 +768,7 @@ const CreateFieldPlan = () => {
         setCurrentKey((prev) => prev + 1);
         break;
       case 3:
+        saveAndUpdateFieldPlan(data);
         dispatch(
           populateResponsePage({
             response: {},
