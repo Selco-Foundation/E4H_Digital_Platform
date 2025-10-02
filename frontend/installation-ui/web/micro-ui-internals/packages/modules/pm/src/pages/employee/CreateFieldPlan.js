@@ -73,7 +73,7 @@ const CreateFieldPlan = () => {
     organizationIds,
   });
 
-  const { data: activityAssignmentData } = useActivityAssignment({
+  const { data: activityAssignmentData, revalidate: invalidateActivityAssignmentData } = useActivityAssignment({
     fieldPlanIds: [fieldPlanId],
   })
 
@@ -180,9 +180,10 @@ const CreateFieldPlan = () => {
                 ...(
                   activityAssignmentData?.activityAssignments
                     ? activityAssignmentData.activityAssignments
-                      // .filter((assignment) => assignment.activityId === activity.code)
+                      .filter((assignment) => assignment.activityId === activity.code)
                       .map((assignment) => ({
                         id: assignment.id,
+                        auditDetails: assignment.auditDetails,
                         startDate: { value: formatDate(assignment.startDate), error: "", },
                         endDate: { value: formatDate(assignment.endDate), error: "", },
                         poNumber: { value: "1234", error: "", },
@@ -329,7 +330,7 @@ const CreateFieldPlan = () => {
         const newUserEntry = {}
 
         Object.keys(userEntry).forEach((key) => {
-          if (["id", "isEmailSent", "deleteAssignment"].includes(key)) {
+          if (["id", "isEmailSent", "deleteAssignment", "auditDetails"].includes(key)) {
             newUserEntry[key] =  userEntry[key];
           }
           else if (!userEntry[key].value) {
@@ -354,61 +355,54 @@ const CreateFieldPlan = () => {
   }
 
   const assignActivityUsers = async (activityData) => {
-    setBlockUI(true);
 
-    try {
-      const activityUserAssignmentsForCreate = [];
-      const activityUserAssignmentsForUpdate = [];
-      const activityUserAssignmentsForDelete = [];
+    const activityUserAssignmentsForCreate = [];
+    const activityUserAssignmentsForUpdate = [];
+    const activityUserAssignmentsForDelete = [];
 
-      activityData.forEach((dataEntry) => {
-        dataEntry.users.forEach((userEntry) => {
+    activityData.forEach((dataEntry) => {
+      dataEntry.users.forEach((userEntry) => {
 
-          const activityUserAssignment = {
-            tenantId: Digit.ULBService.getCurrentTenantId(),
-            assignedTo: userEntry.email.value.uuid,
-            assignedBy: Digit.UserService.getUser()?.info?.uuid,
-            fieldPlanId: createdFieldPlan?.id,
-            role: userEntry.role.value,
-            activityId: dataEntry.activity.code,
-            startDate: (new Date(userEntry.startDate.value)).getTime(),
-            endDate: (new Date(userEntry.endDate.value)).getTime(),
-          };
+        const activityUserAssignment = {
+          tenantId: Digit.ULBService.getCurrentTenantId(),
+          assignedTo: userEntry.email.value.uuid,
+          assignedBy: Digit.UserService.getUser()?.info?.uuid,
+          fieldPlanId: createdFieldPlan?.id,
+          role: userEntry.role.value,
+          activityId: dataEntry.activity.code,
+          startDate: (new Date(userEntry.startDate.value)).getTime(),
+          endDate: (new Date(userEntry.endDate.value)).getTime(),
+        };
 
-          if (userEntry.deleteAssignment) {
-            activityUserAssignmentsForDelete.push({
-              id: userEntry.id,
-              ...activityUserAssignment
-            });
+        if (userEntry.deleteAssignment) {
+          activityUserAssignmentsForDelete.push({
+            ...userEntry,
+            ...activityUserAssignment
+          });
 
-          } else if (userEntry.id) {
-            activityUserAssignmentsForUpdate.push({
-              id: userEntry.id,
-              ...activityUserAssignment
-            });
+        } else if (userEntry.id) {
+          activityUserAssignmentsForUpdate.push({
+            id: userEntry.id,
+            ...activityUserAssignment
+          });
 
-          } else {
-            activityUserAssignmentsForCreate.push(activityUserAssignment);
-          }
-        })
-      });
+        } else {
+          activityUserAssignmentsForCreate.push(activityUserAssignment);
+        }
+      })
+    });
 
-      if (activityUserAssignmentsForCreate.length) {
-        await ActivityService.createActivityAssignment(activityUserAssignmentsForCreate);
-      }
-      if (activityUserAssignmentsForUpdate.length) {
-        await ActivityService.updateActivityAssignment(activityUserAssignmentsForUpdate);
-      }
-      if (activityUserAssignmentsForDelete.length) {
-        await ActivityService.deleteActivityAssignment(activityUserAssignmentsForDelete);
-      }
-
-    } catch (error) {
-      console.error("Error assigning users in activity details", error);
-
-    } finally {
-      setBlockUI(false);
+    if (activityUserAssignmentsForCreate.length) {
+      await ActivityService.createActivityAssignment(activityUserAssignmentsForCreate);
     }
+    if (activityUserAssignmentsForUpdate.length) {
+      await ActivityService.updateActivityAssignment(activityUserAssignmentsForUpdate);
+    }
+    if (activityUserAssignmentsForDelete.length) {
+      await ActivityService.deleteActivityAssignment(activityUserAssignmentsForDelete);
+    }
+
+    await invalidateActivityAssignmentData();
   }
 
   const handleActivityDataSave = async (activityData) => {
@@ -424,7 +418,16 @@ const CreateFieldPlan = () => {
       }));
 
     } else {
-      await assignActivityUsers(activityData);
+      try {
+        setBlockUI(true);
+        await assignActivityUsers(activityData);
+
+      } catch (error) {
+        console.error("Error assigning users for field plan activities", error);
+
+      } finally {
+        setBlockUI(false);
+      }
     }
   }
 
@@ -753,8 +756,83 @@ const CreateFieldPlan = () => {
 
   };
 
-  const saveAndUpdateFieldPlan = (fieldPlanFormData) => {
+  const validateRolesPresence = (activityFormData) => {
+    let allRolesPresent = true;
 
+    activityFormData.forEach((dataEntry) => {
+      const completeRoleCodes = activityData?.filter((activity) => activity?.code === dataEntry.activity?.code)?.[0]?.roles
+        ?.map((role) => role?.code);
+
+      const selectedRoleCodes = dataEntry.users.map((user) => user?.role?.value?.code);
+
+      completeRoleCodes?.forEach((code) => {
+        if (!selectedRoleCodes.includes(code)) {
+          allRolesPresent = false;
+        }
+      })
+    })
+
+    return allRolesPresent;
+  }
+
+  const saveAndUpdateFieldPlan = async (activityData) => {
+
+    const { faultyData, validatedData } = validateActivityData(activityData);
+
+    if (faultyData) {
+      setPersistedFormData((prevState) => ({
+        ...prevState,
+        activityDetails: {
+          activityUserAssignment: validatedData,
+        },
+      }));
+
+    } else if (!validateRolesPresence(activityData)) {
+      setToast({
+        key: "error",
+        label: "Please select at least one user for each role across all activities",
+      })
+
+    } else {
+      setBlockUI(true);
+
+      try {
+        await assignActivityUsers(activityData);
+
+        let schedulingFieldPlan = false;
+        if (createdFieldPlan?.status === "DRAFT") {
+          schedulingFieldPlan = true;
+          const fieldPlanUpdateData = {
+            FieldPlans: [{
+              ...createdFieldPlan,
+              status: "SCHEDULED"
+            }],
+            isCascadingProjectDateUpdate: true,
+            apiOperation: "UPDATE"
+          };
+          await FieldPlanService.upsertFieldPlan(fieldPlanUpdateData);
+          await invalidateFieldPlanData();
+        }
+
+        dispatch(
+          populateResponsePage({
+            response: {},
+            message: schedulingFieldPlan ? t("PM_COMMON_FIELD_PLAN_CREATED") : t("PM_COMMON_FIELD_PLAN_UPDATED"),
+            createdId: createdFieldPlan?.name,
+            info: t("PM_COMMON_FIELD_PLAN_NAME"),
+            secondaryRedirectionLabel: t("PM_LABEL_GO_TO_PROJECT"),
+            onSecondaryRedirection: () => history.push(`/${window?.contextPath}/employee/pm/project/${createdProject.id}/field-plans`),
+          })
+        );
+        history.push(`/${window?.contextPath}/employee/pm/response`);
+
+      } catch (error) {
+        console.error("Error submitting field plan creation form", error);
+
+      } finally {
+        setBlockUI(false);
+      }
+    }
   }
 
   const handleFormSubmit = async (data) => {
@@ -768,18 +846,7 @@ const CreateFieldPlan = () => {
         setCurrentKey((prev) => prev + 1);
         break;
       case 3:
-        saveAndUpdateFieldPlan(data);
-        dispatch(
-          populateResponsePage({
-            response: {},
-            message: !!createdFieldPlan?.status ? t("PM_COMMON_FIELD_PLAN_UPDATED") : t("PM_COMMON_FIELD_PLAN_CREATED"),
-            createdId: createdFieldPlan?.name,
-            info: t("PM_COMMON_FIELD_PLAN_NAME"),
-            secondaryRedirectionLabel: t("PM_LABEL_GO_TO_PROJECT"),
-            onSecondaryRedirection: () => history.push(`/${window?.contextPath}/employee/pm/project/${createdProject.id}/field-plans`),
-          })
-        );
-        history.push(`/${window?.contextPath}/employee/pm/response`);
+        await saveAndUpdateFieldPlan(data.activityUserAssignment);
         break;
     }
   };
