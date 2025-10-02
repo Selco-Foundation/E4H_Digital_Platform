@@ -14,6 +14,9 @@ import useFieldPlan from "../../hooks/useFieldPlan";
 import { FieldPlanService } from "../../services/FieldPlan";
 import { PMService } from "../../services/PMService";
 import { ActivityService } from "../../services/Activity";
+import useOrganization from "../../hooks/useOrganization";
+import useOrganizationUser from "../../hooks/useOrganizationUser";
+import useActivityAssignment from "../../hooks/useActivityAssignment";
 
 const CreateFieldPlan = () => {
 
@@ -37,6 +40,7 @@ const CreateFieldPlan = () => {
   const url = window.location.href;
   const projectId = url.split("project/")[1].split("/")[0];
   const dispatch = useDispatch();
+  const [organizationIds, setOrganizationIds] = useState([""]);
 
   useEffect(() => {
     const handleResize = () => setMobileView(window.innerWidth <= 640);
@@ -63,6 +67,16 @@ const CreateFieldPlan = () => {
     ids: [fieldPlanId],
   });
 
+  const { data: organizationData } = useOrganization();
+
+  const { data: organizationUserData } = useOrganizationUser({
+    organizationIds,
+  });
+
+  const { data: activityAssignmentData } = useActivityAssignment({
+    fieldPlanIds: [fieldPlanId],
+  })
+
   useEffect(() => {
     if (createdFieldPlan?.id && key) {
       setCurrentKey(parseInt(key));
@@ -84,6 +98,12 @@ const CreateFieldPlan = () => {
       setCreatedFieldPlan(fieldPlan);
     }
   }, [fieldPlanData]);
+
+  useEffect(() => {
+    if (organizationData) {
+      setOrganizationIds(organizationData.organizations.map((organization) => organization.id));
+    }
+  }, [organizationData]);
 
   useEffect(() => {
     if (createdFieldPlan?.id) {
@@ -157,15 +177,39 @@ const CreateFieldPlan = () => {
             .map((activity) => ({
               activity: activity,
               users: [
-                {
-                  startDate: { value: "", error: "", },
-                  endDate: { value: "", error: "", },
-                  poNumber: { value: "", error: "", },
-                  organization: { value: null, error: "", },
-                  role: { value: null, error: "", },
-                  email: { value: "", error: "", },
-                  isEmailSent: false,
-                }
+                ...(
+                  activityAssignmentData?.activityAssignments
+                    ? activityAssignmentData.activityAssignments
+                      // .filter((assignment) => assignment.activityId === activity.code)
+                      .map((assignment) => ({
+                        startDate: { value: formatDate(assignment.startDate), error: "", },
+                        endDate: { value: formatDate(assignment.endDate), error: "", },
+                        poNumber: { value: "1234", error: "", },
+                        organization: {
+                          value: organizationData?.organizations?.filter((organization) => (
+                            organization?.id === organizationUserData?.organizationUsers?.filter((user) => user.uuid === assignment.assignedTo)?.[0]?.organizationId
+                          ))?.[0],
+                          error: "",
+                        },
+                        role: { value: assignment.role, error: "", },
+                        email: {
+                          value: organizationUserData?.organizationUsers?.filter((user) => user.uuid === assignment.assignedTo)?.[0],
+                          error: "",
+                        },
+                        isEmailSent: assignment.isEmailSent,
+                      }))
+                    : [
+                      {
+                        startDate: { value: "", error: "", },
+                        endDate: { value: "", error: "", },
+                        poNumber: { value: "", error: "", },
+                        organization: { value: null, error: "", },
+                        role: { value: null, error: "", },
+                        email: { value: "", error: "", },
+                        isEmailSent: false,
+                      }
+                    ]
+                )
               ],
             })),
         }
@@ -181,7 +225,7 @@ const CreateFieldPlan = () => {
 
       setPersistedFormData(formData);
     }
-  }, [createdProject, createdFieldPlan, boundaryData, activityData]);
+  }, [createdProject, createdFieldPlan, boundaryData, activityData, activityAssignmentData, organizationData, organizationUserData]);
 
   const handleFacilityDataDownload = async () => {
 
@@ -563,6 +607,7 @@ const CreateFieldPlan = () => {
               onActivityDataSave: handleActivityDataSave,
               t,
               activityData,
+              organizationData,
             },
             nextRoute: "",
             populators: {
@@ -573,7 +618,7 @@ const CreateFieldPlan = () => {
         ],
       },
     ],
-    [t, activityData, boundaryData, createdProject, createdFieldPlan, file, invalidDataError]
+    [t, activityData, boundaryData, createdProject, createdFieldPlan, organizationData, file, invalidDataError]
   );
 
   const filterConfig = (config, currentKey) => {

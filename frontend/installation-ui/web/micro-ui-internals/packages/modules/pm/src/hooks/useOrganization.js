@@ -11,12 +11,16 @@ const fetchOrganizations = async (filter, limit, offset) => {
 
 const useOrganization = (queryFilter = {}, limit = 1000, offset = 0) => {
 
-  const { } = queryFilter;
+  const { tenantId } = queryFilter;
 
   const filter = {
     SearchCriteria: {
       tenantId: Digit.ULBService.getCurrentTenantId(),
     }
+  }
+
+  if (tenantId) {
+    filter.SearchCriteria.tenantId = tenantId;
   }
 
   const queryClient = useQueryClient();

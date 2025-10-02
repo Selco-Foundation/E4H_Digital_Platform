@@ -12,11 +12,9 @@ const ActivityDetails = ({
   props
 }) => {
 
-  const { t, name, fieldPlanStartDate, fieldPlanEndDate, onActivityDataSave, activityData } = props;
+  const { t, name, fieldPlanStartDate, fieldPlanEndDate, onActivityDataSave, activityData, organizationData } = props;
   const [activityAssignmentData, setActivityAssignmentData] = useState(data[name] || []);
   const [organizationOptions, setOrganizationOptions] = useState([]);
-
-  const { data: organizationData } = useOrganization();
 
   useEffect(() => {
     setValue(name, activityAssignmentData);
