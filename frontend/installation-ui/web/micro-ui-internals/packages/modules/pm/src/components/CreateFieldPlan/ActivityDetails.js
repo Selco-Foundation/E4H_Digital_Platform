@@ -6,13 +6,21 @@ import CustomCloseSvg from "../Custom/CustomCloseSvg";
 import useOrganization from "../../hooks/useOrganization";
 import OrganizationUserDropdown from "./OrganizationUserDropdown";
 
-const ActivityDetails = ({ setError, setValue, clearErrors, props }) => {
+const ActivityDetails = ({
+  data = {},
+  setValue,
+  props
+}) => {
 
-  const { t, fieldPlanActivities = [], activityData } = props;
-  const [data, setData] = useState([]);
+  const { t, name, fieldPlanStartDate, fieldPlanEndDate, onActivityDataSave, activityData } = props;
+  const [activityAssignmentData, setActivityAssignmentData] = useState(data[name] || []);
   const [organizationOptions, setOrganizationOptions] = useState([]);
 
   const { data: organizationData } = useOrganization();
+
+  useEffect(() => {
+    setValue(name, activityAssignmentData);
+  }, [activityAssignmentData]);
 
   useEffect(() => {
     if (organizationData) {
@@ -20,25 +28,8 @@ const ActivityDetails = ({ setError, setValue, clearErrors, props }) => {
     }
   }, [organizationData]);
 
-  useEffect(() => {
-    setData(fieldPlanActivities.map((activity) => ({
-      activity: activity,
-      users: [
-        {
-          startDate: { value: "", error: "", },
-          endDate: { value: "", error: "", },
-          poNumber: { value: "", error: "", },
-          organization: { value: null, error: "", },
-          role: { value: null, error: "", },
-          email: { value: "", error: "", },
-          isEmailSent: false,
-        }
-      ],
-    })));
-  }, [fieldPlanActivities]);
-
   const addUserEntry = (activity) => {
-    setData((prevState) => prevState?.map((dataEntry) => {
+    setActivityAssignmentData((prevState) => prevState?.map((dataEntry) => {
       if (dataEntry.activity.code !== activity.code) return dataEntry;
 
       return  {
@@ -60,7 +51,7 @@ const ActivityDetails = ({ setError, setValue, clearErrors, props }) => {
   }
 
   const removeUserEntry = (activity, index) => {
-    setData((prevState) => prevState?.map((dataEntry) => {
+    setActivityAssignmentData((prevState) => prevState?.map((dataEntry) => {
       if (dataEntry.activity.code !== activity.code) return dataEntry;
       return {
         ...dataEntry,
@@ -71,7 +62,7 @@ const ActivityDetails = ({ setError, setValue, clearErrors, props }) => {
 
   const handleUserDataChange = (activity, index, fieldName, fieldValue) => {
 
-    setData((prevState) => prevState?.map((dataEntry) => {
+    setActivityAssignmentData((prevState) => prevState?.map((dataEntry) => {
       if (dataEntry.activity.code !== activity.code) return dataEntry;
 
       return  {
@@ -167,7 +158,7 @@ const ActivityDetails = ({ setError, setValue, clearErrors, props }) => {
     </div>
   )
 
-  const UserDateInput = (activity, index, fieldName, fieldValue, isLast) => (
+  const UserDateInput = (activity, index, fieldName, fieldValue, isLast, minimum, maximum) => (
     <div
       style={{
         padding: "21px 20px 6px 20px",
@@ -177,6 +168,8 @@ const ActivityDetails = ({ setError, setValue, clearErrors, props }) => {
       <FormattedDateInput
         value={fieldValue.value}
         onChange={(e) => handleUserDataChange(activity, index, fieldName, e.target.value)}
+        min={minimum}
+        max={maximum}
         className={"employee-card-input"}
         style={{
           minWidth: "190px",
@@ -350,7 +343,10 @@ const ActivityDetails = ({ setError, setValue, clearErrors, props }) => {
         Header: () => GetHead("Start Date"),
         Cell: ({ row }) => GetCell(
           row.original["users"]?.map((userEntry, i, usersArray) => {
-            return UserDateInput(row.original["activity"], i, "startDate", userEntry?.startDate, usersArray.length - 1 === i)
+            return UserDateInput(
+              row.original["activity"], i, "startDate", userEntry?.startDate,
+              usersArray.length - 1 === i, fieldPlanStartDate, userEntry?.endDate?.value || fieldPlanEndDate
+            )
           })
         ),
       },
@@ -359,7 +355,10 @@ const ActivityDetails = ({ setError, setValue, clearErrors, props }) => {
         Header: () => GetHead("End Date"),
         Cell: ({ row }) => GetCell(
           row.original["users"]?.map((userEntry, i, usersArray) => {
-            return UserDateInput(row.original["activity"], i, "endDate", userEntry?.endDate, usersArray.length - 1 === i);
+            return UserDateInput(
+              row.original["activity"], i, "endDate", userEntry?.endDate,
+              usersArray.length - 1 === i, userEntry?.startDate?.value || fieldPlanStartDate, fieldPlanEndDate
+            );
           })
         ),
       },
@@ -412,11 +411,11 @@ const ActivityDetails = ({ setError, setValue, clearErrors, props }) => {
         ),
       },
     ],
-    [data, organizationOptions, activityData]
+    [activityAssignmentData, organizationOptions, activityData, fieldPlanStartDate, fieldPlanEndDate]
   );
 
   const handleActivityDataClear = () => {
-    setData((prevState) => prevState.map((dataEntry) => ({
+    setActivityAssignmentData((prevState) => prevState.map((dataEntry) => ({
       ...dataEntry,
       users: [
         // ...dataEntry.users.filter((userEntry) => userEntry.isEmailSent),
@@ -433,44 +432,11 @@ const ActivityDetails = ({ setError, setValue, clearErrors, props }) => {
     })))
   }
 
-  const handleActivityDataSave = (activityData) => {
-    let faultyData = false;
-    const validatedData = activityData.map((dataEntry, i) => ({
-      ...dataEntry,
-      users: dataEntry.users.map((userEntry) => {
-        const newUserEntry = {}
-
-        Object.keys(userEntry).forEach((key) => {
-          if (key === "isEmailSent") {
-            newUserEntry[key] =  userEntry[key];
-          }
-          else if (!userEntry[key].value) {
-            faultyData = true;
-            newUserEntry[key] = {
-              ...userEntry[key],
-              error: t("CORE_COMMON_REQUIRED")
-            };
-          } else {
-            newUserEntry[key] =  userEntry[key];
-          }
-        })
-
-        return newUserEntry;
-      })
-    }))
-
-    if (faultyData) {
-      setData(validatedData);
-    } else {
-      console.debug("data", data);
-    }
-  }
-
   return (
     <div>
       <Table
         t={t}
-        data={data}
+        data={activityAssignmentData}
         columns={columns}
         customTableWrapperClassName={"activity-details-table"}
         getCellProps={() => {
@@ -514,7 +480,7 @@ const ActivityDetails = ({ setError, setValue, clearErrors, props }) => {
             width: "220px",
             maxWidth: "50%",
           }}
-          onSubmit={() => handleActivityDataSave(data)}
+          onSubmit={() => onActivityDataSave(activityAssignmentData)}
         />
       </div>
     </div>

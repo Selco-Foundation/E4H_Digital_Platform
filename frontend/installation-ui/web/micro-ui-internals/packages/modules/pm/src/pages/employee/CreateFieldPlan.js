@@ -13,6 +13,7 @@ import { useHistory } from "react-router-dom";
 import useFieldPlan from "../../hooks/useFieldPlan";
 import { FieldPlanService } from "../../services/FieldPlan";
 import { PMService } from "../../services/PMService";
+import { ActivityService } from "../../services/Activity";
 
 const CreateFieldPlan = () => {
 
@@ -150,6 +151,23 @@ const CreateFieldPlan = () => {
           },
           healthFacilitiesCount: createdFieldPlan.healthFacilityNumber,
           activities: activityData.filter((activity) => savedActivityCodes.includes(activity.code)),
+        },
+        activityDetails: {
+          activityUserAssignment: createdFieldPlan.activities
+            .map((activity) => ({
+              activity: activity,
+              users: [
+                {
+                  startDate: { value: "", error: "", },
+                  endDate: { value: "", error: "", },
+                  poNumber: { value: "", error: "", },
+                  organization: { value: null, error: "", },
+                  role: { value: null, error: "", },
+                  email: { value: "", error: "", },
+                  isEmailSent: false,
+                }
+              ],
+            })),
         }
       }
 
@@ -256,6 +274,87 @@ const CreateFieldPlan = () => {
     const year = date.getFullYear();
     return `${year}-${month}-${day}`;
   };
+
+  const validateActivityData = (activityData) => {
+    let faultyData = false;
+
+    const validatedData = activityData.map((dataEntry) => ({
+      ...dataEntry,
+      users: dataEntry.users.map((userEntry) => {
+        const newUserEntry = {}
+
+        Object.keys(userEntry).forEach((key) => {
+          if (key === "isEmailSent") {
+            newUserEntry[key] =  userEntry[key];
+          }
+          else if (!userEntry[key].value) {
+            faultyData = true;
+            newUserEntry[key] = {
+              ...userEntry[key],
+              error: t("CORE_COMMON_REQUIRED")
+            };
+          } else {
+            newUserEntry[key] =  userEntry[key];
+          }
+        })
+
+        return newUserEntry;
+      })
+    }))
+
+    return {
+      faultyData,
+      validatedData,
+    }
+  }
+
+  const assignActivityUsers = async (activityData) => {
+    setBlockUI(true);
+
+    try {
+      const activityUserAssignment = [];
+
+      activityData.forEach((dataEntry) => {
+        dataEntry.users.forEach((userEntry) => {
+          activityUserAssignment.push({
+            tenantId: Digit.ULBService.getCurrentTenantId(),
+            assignedTo: userEntry.email.value.uuid,
+            assignedBy: Digit.UserService.getUser()?.info?.uuid,
+            fieldPlanId: createdFieldPlan?.id,
+            role: userEntry.role.value,
+            activityId: dataEntry.activity.code,
+            startDate: (new Date(userEntry.startDate.value)).getTime(),
+            endDate: (new Date(userEntry.endDate.value)).getTime(),
+          })
+        })
+      });
+
+      await ActivityService.assignActivity(activityUserAssignment);
+
+    } catch (error) {
+      console.error("Error assigning users in activity details", error);
+
+    } finally {
+      setBlockUI(false);
+    }
+  }
+
+  const handleActivityDataSave = async (activityData) => {
+
+    const { faultyData, validatedData } = validateActivityData(activityData);
+
+    if (faultyData) {
+      setPersistedFormData((prevState) => ({
+        ...prevState,
+        activityDetails: {
+          activityUserAssignment: validatedData,
+        },
+      }));
+
+    } else {
+      await assignActivityUsers(activityData);
+    }
+  }
 
   const config = useMemo(
     () => [
@@ -449,8 +548,8 @@ const CreateFieldPlan = () => {
         key: "3",
         body: [
           {
-            isMandatory: true,
-            key: "activityDetails",
+            isMandatory: false,
+            key: "activityUserAssignment",
             withoutLabelFieldPair: true,
             withoutLabel: true,
             type: "component",
@@ -458,7 +557,10 @@ const CreateFieldPlan = () => {
             disable: false,
             route: "activity-details",
             customProps: {
-              fieldPlanActivities: createdFieldPlan?.activities,
+              name: "activityUserAssignment",
+              fieldPlanStartDate: createdFieldPlan?.startDate ? formatDate(createdFieldPlan.startDate) : "",
+              fieldPlanEndDate: createdFieldPlan?.endDate ? formatDate(createdFieldPlan.endDate) : "",
+              onActivityDataSave: handleActivityDataSave,
               t,
               activityData,
             },
@@ -466,13 +568,12 @@ const CreateFieldPlan = () => {
             populators: {
               name: "activityDetails",
               error: "Required",
-              required: true,
             },
           },
         ],
       },
     ],
-    [t, activityData, boundaryData, createdFieldPlan, file, invalidDataError]
+    [t, activityData, boundaryData, createdProject, createdFieldPlan, file, invalidDataError]
   );
 
   const filterConfig = (config, currentKey) => {
@@ -493,6 +594,8 @@ const CreateFieldPlan = () => {
       case 2:
         setDefaultFormData(persistedFormData.facilityData);
         break;
+      case 3:
+        setDefaultFormData(persistedFormData.activityDetails);
     }
   }, [persistedFormData, currentKey]);
 
@@ -669,8 +772,8 @@ const CreateFieldPlan = () => {
     switch (currentKey) {
       case 1:
         return persistedFormData.fieldPlanDetails;
-      case 2:
-        return persistedFormData.facilityData;
+      case 3:
+        return persistedFormData.activityDetails;
     }
   }
 
