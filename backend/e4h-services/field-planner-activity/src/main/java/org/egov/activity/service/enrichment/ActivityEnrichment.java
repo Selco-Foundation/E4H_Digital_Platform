@@ -75,7 +75,7 @@ public class ActivityEnrichment {
         if(existingActivity ==null) {
             throw new CustomException("ACTIVITY", "Activity code do not exist on Activity Table");
         }
-        activityAssignment.setActivityId(existingActivity.getCode());
+        activityAssignment.setActivityCode(existingActivity.getCode());
     }
 
     public void enrichActivityRequestOnCreate(Activity activity, RequestInfo requestInfo) {
@@ -86,11 +86,19 @@ public class ActivityEnrichment {
     }
 
     /* Enrich Project update request with last modified by and last modified time */
-    public void enrichFieldPlanRequestOnUpdate(ActivityFacility activityFacility, ActivityFacility activityFacilityFromDB, RequestInfo requestInfo) {
+    public void enrichActivityFacilityRequestOnUpdate(ActivityFacility activityFacility, ActivityFacility activityFacilityFromDB, RequestInfo requestInfo) {
         activityFacility.setAuditDetails(activityFacilityFromDB.getAuditDetails());
         AuditDetails auditDetails = fieldPlanServiceUtil.getAuditDetails(requestInfo.getUserInfo().getUuid(), activityFacilityFromDB.getAuditDetails(), false);
         activityFacility.setAuditDetails(auditDetails);
-        log.info("Enriched activity audit details for project " + activityFacility.getId());
+        log.info("Enriched activity facility audit details for activity " + activityFacility.getId());
+    }
+
+    /* Enrich Project update request with last modified by and last modified time */
+    public void enrichActivityAssignmentRequestOnUpdate(ActivityAssignment activityAssignment, ActivityAssignment activityAssignmentFromDB, RequestInfo requestInfo) {
+        activityAssignment.setAuditDetails(activityAssignmentFromDB.getAuditDetails());
+        AuditDetails auditDetails = fieldPlanServiceUtil.getAuditDetails(requestInfo.getUserInfo().getUuid(), activityAssignmentFromDB.getAuditDetails(), false);
+        activityAssignment.setAuditDetails(auditDetails);
+        log.info("Enriched activity assignment audit details for project " + activityAssignment.getId());
     }
 
     /* Enrich Project update request with last modified by and last modified time */

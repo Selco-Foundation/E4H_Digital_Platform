@@ -52,31 +52,12 @@ public class ActivityApiController {
     }
 
     @RequestMapping(value = "/_update", method = RequestMethod.POST)
-    public ResponseEntity<ActivityFacilityResponse> updateFieldPlan(@ApiParam(value = "Details for the updated Project.", required = true) @Valid @RequestBody ActivityFacilityBulkRequest request) {
-        ActivityFacilityBulkRequest enrichedFieldPlanRequest = activityService.updateProject(request);
+    public ResponseEntity<ActivityFacilityResponse> updateActivityAssignment(@ApiParam(value = "Details for the updated Project.", required = true) @Valid @RequestBody ActivityFacilityBulkRequest request) {
+        ActivityFacilityBulkRequest enrichedFieldPlanRequest = activityService.updateActivityFacitlity(request);
 
         ResponseInfo responseInfo = ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), true);
         ActivityFacilityResponse activityFacilityResponse = ActivityFacilityResponse.builder().responseInfo(responseInfo).activityFacilities(enrichedFieldPlanRequest.getActivityFacilities()).build();
         return new ResponseEntity<ActivityFacilityResponse>(activityFacilityResponse, HttpStatus.OK);
-    }
-
-    @RequestMapping(value = "/assignment/_search", method = RequestMethod.POST)
-    public ResponseEntity<ActivityAssignmentResponse> searchActivityAssignment(
-            @ApiParam(value = "Details for the fieldPlan.", required = true) @Valid @RequestBody ActivityAssignmentSearchRequest request,
-            @Valid @ModelAttribute URLParams urlParams
-    ) {
-        List<ActivityAssignment> activityAssignments = activityService.searchAssignedActivity(
-                request,
-                urlParams.getLimit(),
-                urlParams.getOffset(),
-                urlParams.getTenantId(),
-                urlParams.getIncludeDeleted(),
-                urlParams.getLastChangedSince()
-        );
-        ResponseInfo responseInfo = ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), true);
-        Integer count = activityService.countAllAssignedActivities(request, urlParams.getTenantId(), urlParams.getLastChangedSince(), urlParams.getIncludeDeleted());
-        ActivityAssignmentResponse activityAssignmentResponse = ActivityAssignmentResponse.builder().responseInfo(responseInfo).activityAssignment(activityAssignments).totalCount(count).build();
-        return new ResponseEntity<ActivityAssignmentResponse>(activityAssignmentResponse, HttpStatus.OK);
     }
 
     @RequestMapping(value = "/_search", method = RequestMethod.POST)
@@ -108,6 +89,34 @@ public class ActivityApiController {
                         .createResponseInfo(request.getRequestInfo(), true))
                 .build();
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
+    }
+
+    @RequestMapping(value = "/assignment/_update", method = RequestMethod.POST)
+    public ResponseEntity<ActivityAssignmentResponse> updateFieldPlan(@ApiParam(value = "Details for the updated Project.", required = true) @Valid @RequestBody ActivityAssignmentBulkRequest request) {
+        ActivityAssignmentBulkRequest enrichedFieldPlanRequest = activityService.updateActivityAssignment(request);
+
+        ResponseInfo responseInfo = ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), true);
+        ActivityAssignmentResponse activityAssignmentResponse = ActivityAssignmentResponse.builder().responseInfo(responseInfo).activityAssignment(enrichedFieldPlanRequest.getActivityAssignments()).build();
+        return new ResponseEntity<ActivityAssignmentResponse>(activityAssignmentResponse, HttpStatus.OK);
+    }
+
+    @RequestMapping(value = "/assignment/_search", method = RequestMethod.POST)
+    public ResponseEntity<ActivityAssignmentResponse> searchActivityAssignment(
+            @ApiParam(value = "Details for the fieldPlan.", required = true) @Valid @RequestBody ActivityAssignmentSearchRequest request,
+            @Valid @ModelAttribute URLParams urlParams
+    ) {
+        List<ActivityAssignment> activityAssignments = activityService.searchAssignedActivity(
+                request,
+                urlParams.getLimit(),
+                urlParams.getOffset(),
+                urlParams.getTenantId(),
+                urlParams.getIncludeDeleted(),
+                urlParams.getLastChangedSince()
+        );
+        ResponseInfo responseInfo = ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), true);
+        Integer count = activityService.countAllAssignedActivities(request, urlParams.getTenantId(), urlParams.getLastChangedSince(), urlParams.getIncludeDeleted());
+        ActivityAssignmentResponse activityAssignmentResponse = ActivityAssignmentResponse.builder().responseInfo(responseInfo).activityAssignment(activityAssignments).totalCount(count).build();
+        return new ResponseEntity<ActivityAssignmentResponse>(activityAssignmentResponse, HttpStatus.OK);
     }
 
     @RequestMapping(value = "/_unassign-activity", method = RequestMethod.POST)

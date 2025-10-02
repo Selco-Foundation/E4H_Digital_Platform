@@ -48,6 +48,9 @@ public class ActivityAssignment {
     @JsonProperty("activityId")
     protected String activityId;
 
+    @JsonProperty("activityCode")
+    protected String activityCode;
+
     @JsonProperty("startDate")
     private Long startDate = null;
 
