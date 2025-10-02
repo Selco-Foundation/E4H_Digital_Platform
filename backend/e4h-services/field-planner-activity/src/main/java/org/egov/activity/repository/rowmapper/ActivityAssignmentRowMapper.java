@@ -33,6 +33,7 @@ public class ActivityAssignmentRowMapper implements RowMapper<ActivityAssignment
                     .endDate(resultSet.getLong("aa_endDate"))
                     .isDeleted(resultSet.getBoolean("aa_isdeleted"))
                     .isEmailSent(resultSet.getBoolean("aa_emailSent"))
+                    .pocNumber(resultSet.getString("aa_pocNumber"))
                     .additionalDetails(
                             resultSet.getString("aa_additionalDetails") == null
                                     ? null

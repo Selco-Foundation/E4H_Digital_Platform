@@ -30,6 +30,9 @@ public class ActivityAssignment {
     @JsonProperty("fieldPlanId")
     private String fieldPlanId = null;
 
+    @JsonProperty("pocNumber")
+    private String pocNumber = null;
+
     @JsonProperty("isDeleted")
     private Boolean isDeleted;
 

@@ -3,16 +3,13 @@ package org.egov.activity.service.enrichment;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.activity.repository.ActivityRepository;
-import org.egov.activity.web.models.Activity;
-import org.egov.activity.web.models.ActivityAssignment;
-import org.egov.activity.web.models.ActivityFacility;
+import org.egov.activity.web.models.*;
 import org.egov.common.contract.models.AuditDetails;
 import org.egov.common.contract.request.RequestInfo;
-import org.egov.common.producer.Producer;
 import org.egov.common.service.IdGenService;
 import org.egov.activity.config.ActivityConfiguration;
 import org.egov.activity.util.ActivityServiceUtil;
-import org.egov.activity.web.models.FieldPlan;
+import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -48,7 +45,11 @@ public class ActivityEnrichment {
 
     /* Enrich FieldPlan with id and audit details */
     private void enrichActivityAssignmentRequestOnCreate(ActivityAssignment activityAssignment, RequestInfo requestInfo) {
-        Activity existingActivity = activityRepository.getActivityByCode(activityAssignment.getActivityId());
+        ActivitySearchCriteria criteria = ActivitySearchCriteria.builder().code(List.of(activityAssignment.getActivityId())).build();
+        Activity existingActivity = activityRepository.getActivityList(criteria);
+        if(existingActivity ==null) {
+            throw new CustomException("ACTIVITY", "Activity code do not exist on Activity Table");
+        }
         activityAssignment.setId(UUID.randomUUID().toString());
         activityAssignment.setStatus(ACTIVE_STATUS);
         activityAssignment.setActivityId(existingActivity.getId());
@@ -60,24 +61,29 @@ public class ActivityEnrichment {
     public void enrichActivityFacilityRequestOnCreate(ActivityFacility activityFacility, RequestInfo requestInfo) {
         activityFacility.setId(UUID.randomUUID().toString());
         activityFacility.setStatus(SCHEDULED_STATUS);
-        Activity existingActivity = activityRepository.getActivityByCode(activityFacility.getActivityId());
+        ActivitySearchCriteria criteria = ActivitySearchCriteria.builder().code(List.of(activityFacility.getActivityId())).build();
+        Activity existingActivity = activityRepository.getActivityList(criteria);
         activityFacility.setActivityId(existingActivity.getId());
         log.info("Activity id set to " + activityFacility.getId());
         AuditDetails auditDetails = fieldPlanServiceUtil.getAuditDetails(requestInfo.getUserInfo().getUuid(), null, true);
         activityFacility.setAuditDetails(auditDetails);
     }
 
-//    public void enrichFieldPlanFacilityOnCreate(List<ActivityFacility> entities, ActivityFacilityBulkRequest request) throws Exception {
-//        log.info("starting the enrichment for create project facility");
-//
-//        log.info("generating IDs using IdGenService");
-//        List<String> idList = idGenService.getIdList(request.getRequestInfo(),
-//                getTenantId(entities),
-//                fieldPlannerConfiguration.getFieldPlanFacilityIdFormat(), "", entities.size());
-//
-//        enrichForCreate(entities, idList, request.getRequestInfo());
-//        log.info("enrichment done");
-//    }
+    public void enrichActivityOnSearch(ActivityAssignment activityAssignment) {
+        ActivitySearchCriteria criteria = ActivitySearchCriteria.builder().ids(List.of(activityAssignment.getActivityId())).build();
+        Activity existingActivity = activityRepository.getActivityList(criteria);
+        if(existingActivity ==null) {
+            throw new CustomException("ACTIVITY", "Activity code do not exist on Activity Table");
+        }
+        activityAssignment.setActivityId(existingActivity.getCode());
+    }
+
+    public void enrichActivityRequestOnCreate(Activity activity, RequestInfo requestInfo) {
+        activity.setId(UUID.randomUUID().toString());
+        log.info("Activity id set to " + activity.getId());
+        AuditDetails auditDetails = fieldPlanServiceUtil.getAuditDetails(requestInfo.getUserInfo().getUuid(), null, true);
+        activity.setAuditDetails(auditDetails);
+    }
 
     /* Enrich Project update request with last modified by and last modified time */
     public void enrichFieldPlanRequestOnUpdate(ActivityFacility activityFacility, ActivityFacility activityFacilityFromDB, RequestInfo requestInfo) {

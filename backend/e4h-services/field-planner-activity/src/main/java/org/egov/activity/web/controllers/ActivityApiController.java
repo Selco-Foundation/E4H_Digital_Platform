@@ -39,17 +39,17 @@ public class ActivityApiController {
         this.activityService = activityService;
     }
 
-//    @RequestMapping(value = "/_create", method = RequestMethod.POST)
-//    public ResponseEntity<ActivityFacilityResponse> createFieldPlanActivityV1CreatePost(@ApiParam(value = "Capture linkage of Project and facility.", required = true) @Valid @RequestBody ActivityFacilityBulkRequest request) {
-//
-//        List<ActivityFacility> activityFacilities = activityService.createActivityFacility(request);
-//        ActivityFacilityResponse response = ActivityFacilityResponse.builder()
-//                .activityFacilities(activityFacilities)
-//                .responseInfo(ResponseInfoFactory
-//                        .createResponseInfo(request.getRequestInfo(), true))
-//                .build();
-//        return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
-//    }
+    @RequestMapping(value = "/_create", method = RequestMethod.POST)
+    public ResponseEntity<ActivityResponse> createActivity(@ApiParam(value = "Create activity data.", required = true) @Valid @RequestBody ActivityBulkRequest request) {
+
+        List<Activity> activities = activityService.createActivity(request);
+        ActivityResponse response = ActivityResponse.builder()
+                .activities(activities)
+                .responseInfo(ResponseInfoFactory
+                        .createResponseInfo(request.getRequestInfo(), true))
+                .build();
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
+    }
 
     @RequestMapping(value = "/_update", method = RequestMethod.POST)
     public ResponseEntity<ActivityFacilityResponse> updateFieldPlan(@ApiParam(value = "Details for the updated Project.", required = true) @Valid @RequestBody ActivityFacilityBulkRequest request) {

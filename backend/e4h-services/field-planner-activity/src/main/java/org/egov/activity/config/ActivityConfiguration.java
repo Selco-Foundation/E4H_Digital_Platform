@@ -64,6 +64,9 @@ public class ActivityConfiguration {
     @Value("${activity.facility.kafka.create.topic}")
     private String createActivityFacilityTopic;
 
+    @Value("${activity.kafka.create.topic}")
+    private String createActivityTopic;
+
     @Value("${activity.kafka.update.topic}")
     private String updateActivityFacilityTopic;
 

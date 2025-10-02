@@ -56,9 +56,9 @@ public class ActivityRepository extends GenericRepository<ActivityFacility> {
         return activityFacilities;
     }
 
-    public Activity getActivityByCode(String code) {
+    public Activity getActivityList(ActivitySearchCriteria criteria) {
         List<Object> preparedStmtList = new ArrayList<>();
-        String query = queryBuilder.getActivityDataList(code, preparedStmtList);
+        String query = queryBuilder.getActivityDataList(criteria, preparedStmtList);
         List<Activity> activities = jdbcTemplate.query(query, activityDataRowMapper, preparedStmtList.toArray());
         log.info("Fetched project status agregation list based on given Parent Ids");
         if (activities !=null && !activities.isEmpty())

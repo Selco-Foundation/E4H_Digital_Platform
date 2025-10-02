@@ -57,6 +57,23 @@ public class ActivityService {
             this.activityAssignmentRepository = activityAssignmentRepository;
     }
 
+    public List<Activity> createActivity(ActivityBulkRequest request) {
+        log.info("received request to create bulk activity bulk");
+        List<Activity> activities = request.getActivities();
+        try {
+            for (Activity activity : activities) {
+                log.info("processing {} valid entities", activity);
+                activityEnrichment.enrichActivityRequestOnCreate(activity, request.getRequestInfo());
+            }
+            producer.push(activityConfiguration.getCreateActivityTopic(), request);
+            log.info("successfully created activity");
+        } catch (Exception exception) {
+            log.error("error occurred while creating activity: {}", ExceptionUtils.getStackTrace(exception));
+        }
+
+        return activities;
+    }
+
     public List<ActivityFacility> createActivityFacility(ActivityFacilityBulkRequest request) {
         log.info("received request to create bulk fieldplan facility");
 
@@ -70,7 +87,7 @@ public class ActivityService {
             producer.push(activityConfiguration.getCreateActivityFacilityTopic(), request);
             log.info("successfully created activity facility");
         } catch (Exception exception) {
-            log.error("error occurred while creating project facility: {}", ExceptionUtils.getStackTrace(exception));
+            log.error("error occurred while creating Activity facility: {}", ExceptionUtils.getStackTrace(exception));
         }
 
         return activityFacilities;
@@ -89,14 +106,14 @@ public class ActivityService {
             log.info("successfully created project facility");
             producer.push(activityConfiguration.getCreateActivityAssignmentTopic(), request);
         } catch (Exception exception) {
-            log.error("error occurred while creating project facility: {}", ExceptionUtils.getStackTrace(exception));
+            log.error("error occurred while creating Activity Assignment: {}", ExceptionUtils.getStackTrace(exception));
         }
 
         return activityAssignments;
     }
 
     public List<ActivityAssignment> unassignActivityAssignment(ActivityAssignmentBulkRequest request) {
-        log.info("received request to create bulk fieldplan facility");
+        log.info("received request to unassign bulk Activity facility");
 
         activityValidator.validateDeleteActivityAssignmentRequest(request);
         List<ActivityAssignment> activityAssignments = request.getActivityAssignments();
@@ -123,6 +140,10 @@ public class ActivityService {
     public List<ActivityAssignment> searchAssignedActivity(ActivityAssignmentSearchRequest request, Integer limit, Integer offset, String tenantId, Boolean includeDeleted, Long lastChangedSince) {
         activityValidator.validateSearchAssignActivityRequest(request, limit, offset, tenantId);
         List<ActivityAssignment> activityFacilities = activityAssignmentRepository.getActivitiesAssignment(request, limit, offset, tenantId, includeDeleted, lastChangedSince);
+        for (ActivityAssignment activityAssignment : activityFacilities) {
+            log.info("processing get activity code", activityAssignment);
+            activityEnrichment.enrichActivityOnSearch(activityAssignment);
+        }
         return activityFacilities;
     }
 
@@ -201,7 +222,8 @@ public class ActivityService {
         /*
          * Ensure that no other properties are being updated besides the start and end dates
          */
-        Activity existingActivity = activityRepository.getActivityByCode(activityFacility.getActivityId());
+        ActivitySearchCriteria criteria = ActivitySearchCriteria.builder().ids(List.of(activityFacility.getActivityId())).build();
+        Activity existingActivity = activityRepository.getActivityList(criteria);
         activityFacility.setActivityId(existingActivity.getId());
         if (!isValidCascadingUpdate(activityFacilityFromDB, activityFacility)) {
             throw new CustomException(
