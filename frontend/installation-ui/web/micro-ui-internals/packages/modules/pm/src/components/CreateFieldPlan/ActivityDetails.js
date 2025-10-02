@@ -53,7 +53,8 @@ const ActivityDetails = ({
       if (dataEntry.activity.code !== activity.code) return dataEntry;
       return {
         ...dataEntry,
-        users: dataEntry.users.filter((useEntry, i) => i !== index),
+        users: dataEntry.users.filter((userEntry, i) => !!userEntry.id || i !== index)
+          .map((userEntry, i) => (userEntry.id && i === index) ? { ...userEntry, deleteAssignment: true } : userEntry),
       }
     }))
   }
@@ -341,6 +342,8 @@ const ActivityDetails = ({
         Header: () => GetHead("Start Date"),
         Cell: ({ row }) => GetCell(
           row.original["users"]?.map((userEntry, i, usersArray) => {
+            if (userEntry.deleteAssignment) return;
+            if (userEntry.deleteAssignment) return;
             return UserDateInput(
               row.original["activity"], i, "startDate", userEntry?.startDate,
               usersArray.length - 1 === i, fieldPlanStartDate, userEntry?.endDate?.value || fieldPlanEndDate
@@ -353,6 +356,7 @@ const ActivityDetails = ({
         Header: () => GetHead("End Date"),
         Cell: ({ row }) => GetCell(
           row.original["users"]?.map((userEntry, i, usersArray) => {
+            if (userEntry.deleteAssignment) return;
             return UserDateInput(
               row.original["activity"], i, "endDate", userEntry?.endDate,
               usersArray.length - 1 === i, userEntry?.startDate?.value || fieldPlanStartDate, fieldPlanEndDate
@@ -365,6 +369,7 @@ const ActivityDetails = ({
         Header: () => GetHead("PO Number"),
         Cell: ({ row }) => GetCell(
           row.original["users"]?.map((userEntry, i, usersArray) => {
+            if (userEntry.deleteAssignment) return;
             return UserTextInput(row.original["activity"], i, "poNumber", userEntry?.poNumber, usersArray.length - 1 === i);
           })
         ),
@@ -374,6 +379,7 @@ const ActivityDetails = ({
         Header: () => GetHead("Organization"),
         Cell: ({ row }) => GetCell(
           row.original["users"]?.map((userEntry, i, usersArray) => {
+            if (userEntry.deleteAssignment) return;
             return UserDropDownInput(organizationOptions, "name", row.original["activity"], i, "organization", userEntry?.organization, usersArray.length - 1 === i);
           })
         ),
@@ -383,6 +389,7 @@ const ActivityDetails = ({
         Header: () => GetHead("Role"),
         Cell: ({ row }) => GetCell(
           row.original["users"]?.map((userEntry, i, usersArray) => {
+            if (userEntry.deleteAssignment) return;
             return UserDropDownInput(
               activityData?.filter((activity) => activity?.code === row.original["activity"]?.code)?.[0]?.roles,
               "name", row.original["activity"], i, "role", userEntry?.role, usersArray.length - 1 === i
@@ -394,7 +401,8 @@ const ActivityDetails = ({
         id: "email",
         Header: () => GetHead("Email"),
         Cell: ({ row }) => GetCell(
-          row.original["users"].map((userEntry, i, usersArray) => {
+          row.original["users"]?.map((userEntry, i, usersArray) => {
+            if (userEntry.deleteAssignment) return;
             return OrganizationUserDropDownInput(userEntry.organization, row.original["activity"], i, "email", userEntry?.email, usersArray.length - 1 === i);
           })
         ),
@@ -403,7 +411,8 @@ const ActivityDetails = ({
         id: "emailSent",
         Header: () => GetHead(""),
         Cell: ({ row }) => GetCell(
-          row.original["users"].map((userEntry, i, usersArray) => {
+          row.original["users"]?.map((userEntry, i, usersArray) => {
+            if (userEntry.deleteAssignment) return;
             return UserEmailSentCheck(userEntry.isEmailSent, row.original["activity"], i, usersArray.length - 1 === i, usersArray.length === 1);
           })
         ),

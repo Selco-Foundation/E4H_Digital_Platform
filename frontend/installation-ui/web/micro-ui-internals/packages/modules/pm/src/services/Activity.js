@@ -24,8 +24,48 @@ export const ActivityService = {
     });
   },
 
-  assignActivity: async (activityAssignmentData) => {
+  createActivityAssignment: async (activityAssignmentData) => {
     const endpoint = "/activity/v1/activities/_assign-activity";
+    const headers = {
+      "Content-Type": "application/json"
+    }
+
+    const assignmentData = {
+      ActivityAssignment: activityAssignmentData,
+    }
+
+    return await Request({
+      url: endpoint,
+      data: assignmentData,
+      userService: true,
+      method: "POST",
+      auth: true,
+      headers: headers,
+    });
+  },
+
+  updateActivityAssignment: async (activityAssignmentData) => {
+    const endpoint = "/activity/v1/activities/_assign-activity";
+    const headers = {
+      "Content-Type": "application/json"
+    }
+
+    const assignmentData = {
+      ActivityAssignment: activityAssignmentData,
+    }
+
+    return await Request({
+      url: endpoint,
+      data: assignmentData,
+      userService: true,
+      method: "POST",
+      auth: true,
+      headers: headers,
+    });
+  },
+
+  deleteActivityAssignment: async (activityAssignmentData) => {
+    const endpoint = "/activity/v1/activities/_unassign-activity";
     const headers = {
       "Content-Type": "application/json"
     }
