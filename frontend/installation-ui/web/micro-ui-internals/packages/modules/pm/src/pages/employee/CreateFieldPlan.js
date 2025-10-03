@@ -485,7 +485,7 @@ const CreateFieldPlan = () => {
             customProps: {
               name: "districts",
               stateIdentifier: "state",
-              selectedOptions: [],
+              selectedOptions: (createdFieldPlan?.id && createdFieldPlan?.status !== "DRAFT") ? boundaryData?.districts?.filter((district) => createdFieldPlan.geographyDetails.districts.includes(district?.code)) : [],
               t,
               boundaryData,
             },
@@ -507,7 +507,7 @@ const CreateFieldPlan = () => {
             customProps: {
               name: "blocks",
               districtsIdentifier: "districts",
-              selectedOptions: [],
+              selectedOptions: (createdFieldPlan?.id && createdFieldPlan?.status !== "DRAFT") ? boundaryData?.blocks?.filter((block) => createdFieldPlan.geographyDetails.blocks.includes(block?.code)) : [],
               t,
               boundaryData,
             },
@@ -565,6 +565,7 @@ const CreateFieldPlan = () => {
             disable: false,
             customProps: {
               name: "activities",
+              selectedOptions: (createdFieldPlan?.id && createdFieldPlan?.status !== "DRAFT") ? activityData.filter((activity) => createdFieldPlan.activities.map((activity) => activity.code).includes(activity?.code)) : [],
               t,
               activityData,
             },
