@@ -45,7 +45,7 @@ export const ActivityService = {
   },
 
   updateActivityAssignment: async (activityAssignmentData) => {
-    const endpoint = "/activity/v1/activities/_assign-activity";
+    const endpoint = "/activity/v1/activities/assignment/_update";
     const headers = {
       "Content-Type": "application/json"
     }
