@@ -72,6 +72,19 @@ public class ActivityValidator {
             throw new CustomException(errorMap);
     }
 
+    public void validateUpdateActivityAssignment(ActivityAssignmentBulkRequest request) {
+        Map<String, String> errorMap = new HashMap<>();
+        RequestInfo requestInfo = request.getRequestInfo();
+
+        //Verify if RequestInfo and UserInfo is present
+        validateRequestInfo(requestInfo);
+        //Verify if ActivityAssignment request and mandatory fields are present
+        validateUpdateActivityAssignmentRequest(request);
+
+        if (!errorMap.isEmpty())
+            throw new CustomException(errorMap);
+    }
+
     public void validateDeleteActivityAssignmentRequest(ActivityAssignmentBulkRequest request) {
         Map<String, String> errorMap = new HashMap<>();
         RequestInfo requestInfo = request.getRequestInfo();
@@ -134,6 +147,63 @@ public class ActivityValidator {
             }
             // Get existing project with projectID from project service
             ActivitySearchCriteria criteria = ActivitySearchCriteria.builder().code(List.of(activityAssignment.getActivityId())).build();
+            Activity existingActivity = activityRepository.getActivityObject(criteria);
+            if (existingActivity == null) {
+                log.error("Activity code do not exist");
+                throw new CustomException("Activity", "Activity code do not exist");
+            }
+
+            if ((activityAssignment.getStartDate() != null && activityAssignment.getEndDate() != null && activityAssignment.getEndDate() != 0) && (activityAssignment.getStartDate().compareTo(activityAssignment.getEndDate()) > 0)) {
+                log.error(START_DATE_SHOULD_BE_LESS_THAN_END_DATE);
+                errorMap.put("INVALID_DATE_ERROR", START_DATE_SHOULD_BE_LESS_THAN_END_DATE);
+            }
+            if (activityAssignment.getStartDate() != null && activityAssignment.getEndDate() != null && activityAssignment.getEndDate() != 0
+                    && activityAssignment.getEndDate().compareTo(Instant.ofEpochMilli(activityAssignment.getStartDate()).plus(Duration.ofDays(1)).toEpochMilli()) < 0) {
+                log.error("Start date and end date difference should at least be 1 day.");
+                errorMap.put("INVALID_DATE", "Start date and end date difference should at least be 1 day.");
+            }
+        }
+
+        if (!errorMap.isEmpty())
+            throw new CustomException(errorMap);
+    }
+
+    private void validateUpdateActivityAssignmentRequest(ActivityAssignmentBulkRequest request) {
+        Map<String, String> errorMap = new HashMap<>();
+
+        if (request.getActivityAssignments() == null || request.getActivityAssignments().size() == 0) {
+            log.error("Field Plans list is empty. Field Plans is mandatory");
+            throw new CustomException("FIELDPLAN", "Field Plans are mandatory");
+        }
+
+        for (ActivityAssignment activityAssignment : request.getActivityAssignments()) {
+            if (activityAssignment.getFieldPlanId() == null) {
+                log.error("FieldPlan ID is mandatory in FieldPlans");
+                throw new CustomException("FieldPlan", "Project ID is mandatory");
+            }
+            if (StringUtils.isBlank(activityAssignment.getTenantId())) {
+                log.error(TENANT_ID_IS_MANDATORY_IN_ACTIVITY_REQUEST_BODY);
+                errorMap.put("TENANT_ID", "Tenant ID is mandatory");
+            }
+            // Get existing project with projectID from project service
+            FieldPlan existingFieldPlan = getFieldPlanById(request.getRequestInfo(), activityAssignment.getFieldPlanId(), activityAssignment.getTenantId());
+            if (existingFieldPlan == null) {
+                log.error("FieldPlan ID do not exist");
+                throw new CustomException("FieldPlan", "Project ID do not exist");
+            }
+//             Check if fieldPlan dates are within project dates
+            isActivityAsignmentWithinFieldPlan(existingFieldPlan, activityAssignment, errorMap);
+
+            if (activityAssignment == null) {
+                log.error("Activity Assignment is mandatory in Activities");
+                throw new CustomException("Activity", "Activity is mandatory");
+            }
+            if (activityAssignment.getActivityId() == null) {
+                log.error(ACTIVITIES_IS_MANDATORY_IN_ACTIVITY_REQUEST_BODY);
+                errorMap.put("ACTIVITIES", "Activity is mandatory");
+            }
+            // Get existing project with projectID from project service
+            ActivitySearchCriteria criteria = ActivitySearchCriteria.builder().ids(List.of(activityAssignment.getActivityId())).build();
             Activity existingActivity = activityRepository.getActivityObject(criteria);
             if (existingActivity == null) {
                 log.error("Activity code do not exist");

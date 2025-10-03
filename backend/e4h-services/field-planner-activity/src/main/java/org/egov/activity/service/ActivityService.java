@@ -190,7 +190,7 @@ public class ActivityService {
         /*
          * Validate the update activity request
          */
-        activityValidator.validateCreateActivityAssignmentRequest(request);
+        activityValidator.validateUpdateActivityAssignment(request);
         log.info("Update activity assignment request validated");
 
         /*
