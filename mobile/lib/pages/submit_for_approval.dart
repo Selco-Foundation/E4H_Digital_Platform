@@ -11,14 +11,16 @@ import 'package:file_picker/src/platform_file.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:isar/isar.dart';
-import 'package:path/path.dart' show basename;
+import 'package:path/path.dart' as p;
 import 'package:recase/recase.dart';
 
+import '../blocs/app_init/app_init.dart';
 import '../blocs/asset_submission/asset_submission.dart';
 import '../blocs/asset_type/asset_type.dart';
 import '../blocs/cache_asset/cache_asset.dart';
 import '../blocs/cache_completion_report/cache_completion_report.dart';
 import '../blocs/overall_asset_summary/overall_asset_summary.dart';
+import '../blocs/project_bom/project_bom.dart';
 import '../blocs/selected_project/selected_project.dart';
 import '../blocs/user_type/user_type.dart';
 import '../data/nosql/cache_completion_report.dart';
@@ -29,6 +31,7 @@ import '../utils/extensions.dart';
 import '../utils/utils.dart';
 import '../widgets/button/footer_button.dart';
 import '../widgets/header/back_navigation_help_header.dart';
+import '../widgets/summary/summary.dart';
 
 @RoutePage()
 class SubmitForApprovalPage extends StatefulWidget {
@@ -48,9 +51,11 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
   bool rejection1 = false;
   bool rejection2 = false;
   bool rejection3 = false;
+  String? _solutionDesignTypeCode;
 
   // for completion report upload
-  List<PlatformFile> _initialCompletion = [];
+  List<PlatformFile> _pickedFiles = [];
+  List<ExistingReport> _existingReports = [];
 
   StreamSubscription<LocationState>? _locSub;
 
@@ -67,87 +72,67 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
       selState.whenOrNull(selected: (selProject) {
         projectId = selProject.project.id;
         project = selProject;
+        _solutionDesignTypeCode = "RMS_Single_Phase";
       });
 
       context
           .read<CacheAssetBloc>()
           .add(CacheAssetEvent.start(projectId, userType, project));
-
-      _loadInitialCompletion();
-      // });
+      context.read<ProjectBomBloc>().add(
+            ProjectBomEvent.syncIfNeeded(
+              projectId: projectId,
+              userType: userType,
+            ),
+          );
+      _loadExistingCompletion();
     });
   }
 
-  Future<void> _loadInitialCompletion() async {
+  Future<void> _loadExistingCompletion() async {
     final isar = context.read<CacheAssetBloc>().isar;
 
-    print("projectId $projectId");
-    // 1) Try the local cache first
     final cached = await isar.cacheCompletionReports
         .where()
         .projectIdEqualTo(projectId)
-        .findFirst();
+        .findAll();
 
-    if (cached?.filePath.isNotEmpty == true) {
-      // whether it's a uuid or a path, _getCachedFile will handle it
-      final file = await getCachedFile(cached!.filePath);
-      if (file != null) {
-        final persistentPath = await copyFileToLocalDir(file);
-        if (!mounted) return;
-        setState(() async {
-          _initialCompletion = [
-            PlatformFile(
-              name: basename(persistentPath),
-              path: persistentPath,
-              size: await File(persistentPath).length(),
-            )
-          ];
-          filePath = persistentPath;
-        });
-        return;
-      }
-    }
-
-    // 2) Fallback to workflow.documents
-    final wf = context.read<SelectedProjectBloc>().state.whenOrNull(
-          selected: (wf) => wf,
-        );
-    final docs = wf?.workflow?.documents ?? [];
-
-    final files = <PlatformFile>[];
-    for (final doc in docs) {
-      final key = doc.fileStore;
-      if (key != null) {
-        final file = await getCachedFile(key);
-        if (file != null) {
-          final persistentPath = await copyFileToLocalDir(file);
-          files.add(PlatformFile(
-            // name: basename(file.path),
-            // path: file.path,
-            // size: await file.length(),
-            name: basename(persistentPath),
-            path: persistentPath,
-            size: await File(persistentPath).length(),
+    final list = <ExistingReport>[];
+    for (final c in cached) {
+      if (c.filePath.isNotEmpty) {
+        final f = await getCachedFile(c.filePath);
+        if (f != null) {
+          final local = await copyFileToLocalDir(f);
+          list.add(ExistingReport(
+            isarId: c.id,
+            filePath: local,
+            fileName: p.basename(local),
+            fileType: inferFileType(local),
           ));
-          filePath = persistentPath;
         }
       }
     }
-
-    if (files.isNotEmpty & mounted) {
-      setState(() {
-        _initialCompletion = files;
-      });
-    }
+    if (!mounted) return;
+    setState(() {
+      _existingReports = list;
+    });
   }
 
-  void _handleUpload(PlatformFile platformFile) async {
-    final file = File(platformFile.path!);
-    final copiedPath = await copyFileToLocalDir(file);
+  Future<void> _handleUpload(List<PlatformFile> files) async {
+    final copied = <PlatformFile>[];
+    for (final pf in files) {
+      if (pf.path == null) continue;
+      final f = File(pf.path!);
+      final dest = await copyFileToLocalDir(f);
+      copied.add(PlatformFile(
+        name: p.basename(dest),
+        path: dest,
+        size: File(dest).lengthSync(),
+      ));
+    }
+    if (!mounted) return;
     setState(() {
-      filePath = copiedPath;
+      _pickedFiles = copied;
     });
-    debugPrint("filePath: $filePath");
   }
 
   @override
@@ -184,217 +169,363 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
     final textTheme = theme.digitTextTheme(context);
 
     final allChecked = rejection1 && rejection2 && rejection3;
+    final isSupervisor = userType == USER_TYPES.SUPERVISOR.name;
 
-    return Scaffold(
-      body: MultiBlocListener(
-        listeners: [
-          BlocListener<CacheAssetBloc, CacheAssetState>(
-            listener: (context, cacheState) {
-              cacheState.whenOrNull(
-                success: () {
-                  context.read<OverallAssetSummaryBloc>().add(
-                        OverallAssetSummaryEvent.loadCounts(
-                            projectId: projectId),
-                      );
-                },
-                failure: (error) {
-                  context.read<OverallAssetSummaryBloc>().add(
-                        OverallAssetSummaryEvent.loadCounts(
-                            projectId: projectId),
-                      );
-                  context.showSnackBar(
-                    SnackBar(content: Text("Sync failed: $error")),
-                  );
-                },
-                // loading: (_) // we show loading in the summary widget itself
-              );
-            },
-          ),
-          BlocListener<AssetSubmissionBloc, AssetSubmissionState>(
-            listener: (context, submissionState) {
-              submissionState.maybeWhen(
-                loading: () {
-                  showDialog(
-                    context: context,
-                    barrierDismissible: false,
-                    builder: (_) => const Center(
-                      child: CircularProgressIndicator(),
-                    ),
-                  );
-                },
-                success: () {
-                  Navigator.of(context, rootNavigator: true).pop();
-                  context.router.replace(const InboxRoute());
-                },
-                failure: (message) {
-                  Navigator.of(context, rootNavigator: true).pop();
-                  context.showSnackBar(SnackBar(content: Text(message)));
-                },
-                orElse: () {},
-              );
-            },
-          ),
-        ],
-        child: ScrollableContent(
-          enableFixedDigitButton: true,
-          backgroundColor: theme.colorTheme.generic.background,
-          header: const BackNavigationHelpHeaderWidget(
-            showBackNavigation: true,
-            showHelp: false,
-          ),
-          footer: BlocBuilder<SelectedProjectBloc, SelectedProjectState>(
-            builder: (context, selProjectState) {
-              return BlocBuilder<AssetSubmissionBloc, AssetSubmissionState>(
-                builder: (context, submissionState) {
-                  final submitting = submissionState.maybeWhen(
-                      loading: () => true, orElse: () => false);
-
-                  final selProject =
-                      selProjectState.whenOrNull(selected: (wf) => wf);
-                  if (selProject == null) {
-                    return const SizedBox.shrink();
-                  }
-
-                  final isRejectedByQc = selProject.status ==
-                      WORKFLOW_STATUS_FIELD_STAFF.REJECTED_BY_QC_SPOC.name;
-                  bool isFieldStaff = userType == USER_TYPES.FIELD_STAFF.name;
-
-                  if (isFieldStaff && isRejectedByQc) {
-                    return const SizedBox.shrink();
-                  }
-
-                  bool disableWithoutSupervisorReport =
-                      userType == USER_TYPES.SUPERVISOR.name &&
-                          filePath!.isEmpty;
-
-                  return FooterButton(
-                      showSuffixIcon: false,
-                      isDisabled: !allChecked ||
-                          submitting ||
-                          disableWithoutSupervisorReport,
-                      text: submitting ? "loading" : "Re-Submit for Approval",
-                      onPress: () {
-                        print("allChecked $allChecked");
-                        print("submitting $submitting");
-                        print("submitting ${!allChecked || submitting}");
-                        if (!allChecked || submitting) return;
-                        if (userType == USER_TYPES.SUPERVISOR.name &&
-                            filePath!.isNotEmpty) {
-                          context.read<CacheCompletionReportBloc>().add(
-                                CacheCompletionReportEvent.addOrUpdate(
-                                  CacheCompletionReport(
-                                    projectId: projectId,
-                                    filePath: filePath!,
-                                    latitude: _latitude.toString(),
-                                    longitude: _longitude.toString(),
-                                  ),
-                                ),
-                              );
-                        }
-                        context.read<AssetSubmissionBloc>().add(
-                              AssetSubmissionEvent.submitAll(
-                                  projectId: projectId, userType: userType),
-                            );
-                      });
-                },
-              );
-            },
-          ),
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                  vertical: spacer2, horizontal: spacer4),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Summary',
-                    style: textTheme.headingXl
-                        .copyWith(color: theme.colorTheme.primary.primary2),
-                  ),
-                  const SizedBox(height: spacer4),
-                  const RejectedEditAssetSummary(),
-                  if (userType == USER_TYPES.SUPERVISOR.name) ...[
-                    const SizedBox(height: spacer4),
-                    DigitCard(
-                      children: [
-                        Text(
-                          'Installation Completion Report',
-                          style: textTheme.headingM.copyWith(
-                              color: theme.colorTheme.primary.primary2),
-                        ),
-                        Text(
-                          'Please scan and upload the installation completion report',
-                          style: textTheme.bodyS
-                              .copyWith(color: theme.colorTheme.text.secondary),
-                        ),
-                        FileUploadWidget(
-                          openFile: true,
-                          initialFiles: _initialCompletion,
-                          allowedExtensions: const ['pdf'],
-                          showPreview: true,
-                          allowMultiples: false,
-                          label: 'Upload',
-                          onFilesSelected: (files) {
-                            if (files.isEmpty || files.first.path == null)
-                              return <PlatformFile, String?>{};
-                            _ensureLocationLoaded();
-                            _handleUpload(files.first);
-                            return <PlatformFile, String?>{};
-                          },
-                        ),
-                        RejectionReasonsList(
-                          comments: context
-                                  .read<SelectedProjectBloc>()
-                                  .state
-                                  .whenOrNull(
-                                    selected: (wf) => wf.transactions
-                                        ?.expand(
-                                            (tx) => tx.comments ?? <Comment>[])
-                                        .toList(),
-                                  ) ??
-                              <Comment>[],
-                          excludeStandardTypes: true,
-                        ),
-                      ],
-                    ),
-                  ],
-                  const SizedBox(height: spacer4),
-                  Text(
-                    "Rejection List",
-                    style: textTheme.headingXl
-                        .copyWith(color: theme.colorTheme.primary.primary2),
-                  ),
-                  const SizedBox(height: spacer1),
-                  DigitCard(children: [
-                    DigitCheckbox(
-                        label: 'Inverter Rejection reason 1',
-                        onChanged: (value) {
-                          setState(() {
-                            rejection1 = value;
-                          });
-                        }),
-                    const SizedBox(height: spacer1),
-                    DigitCheckbox(
-                        label: 'Inverter Rejection reason 2',
-                        onChanged: (value) {
-                          setState(() {
-                            rejection2 = value;
-                          });
-                        }),
-                    const SizedBox(height: spacer1),
-                    DigitCheckbox(
-                        label: 'Panel  Rejection reason 1',
-                        onChanged: (value) {
-                          setState(() {
-                            rejection3 = value;
-                          });
-                        }),
-                  ])
-                ],
-              ),
+    return BlocListener<ProjectBomBloc, ProjectBomState>(
+      listener: (context, state) {
+        state.maybeWhen(
+          loading: () {},
+          success: (docCount, _) {
+            _loadExistingCompletion();
+          },
+          failure: (msg) {
+            context
+                .showSnackBar(SnackBar(content: Text('BOM sync failed: $msg')));
+          },
+          orElse: () {},
+        );
+      },
+      child: Scaffold(
+        body: MultiBlocListener(
+          listeners: [
+            BlocListener<CacheAssetBloc, CacheAssetState>(
+              listener: (context, cacheState) {
+                cacheState.whenOrNull(
+                  success: () {
+                    context.read<OverallAssetSummaryBloc>().add(
+                          OverallAssetSummaryEvent.loadCounts(
+                              projectId: projectId),
+                        );
+                  },
+                  failure: (error) {
+                    context.read<OverallAssetSummaryBloc>().add(
+                          OverallAssetSummaryEvent.loadCounts(
+                              projectId: projectId),
+                        );
+                    context.showSnackBar(
+                      SnackBar(content: Text("Sync failed: $error")),
+                    );
+                  },
+                  // loading: (_) // we show loading in the summary widget itself
+                );
+              },
+            ),
+            BlocListener<AssetSubmissionBloc, AssetSubmissionState>(
+              listener: (context, submissionState) {
+                submissionState.maybeWhen(
+                  loading: () {
+                    showDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (_) => const Center(
+                        child: CircularProgressIndicator(),
+                      ),
+                    );
+                  },
+                  success: () {
+                    Navigator.of(context, rootNavigator: true).pop();
+                    context.router.replace(const InboxRoute());
+                  },
+                  failure: (message) {
+                    Navigator.of(context, rootNavigator: true).pop();
+                    context.showSnackBar(SnackBar(content: Text(message)));
+                  },
+                  orElse: () {},
+                );
+              },
             ),
           ],
+          child: ScrollableContent(
+            enableFixedDigitButton: true,
+            backgroundColor: theme.colorTheme.generic.background,
+            header: const BackNavigationHelpHeaderWidget(
+              showBackNavigation: true,
+              showHelp: false,
+            ),
+            footer: BlocBuilder<SelectedProjectBloc, SelectedProjectState>(
+              builder: (context, selProjectState) {
+                return BlocBuilder<AssetSubmissionBloc, AssetSubmissionState>(
+                  builder: (context, submissionState) {
+                    final submitting = submissionState.maybeWhen(
+                        loading: () => true, orElse: () => false);
+
+                    final selProject =
+                        selProjectState.whenOrNull(selected: (wf) => wf);
+                    if (selProject == null) {
+                      return const SizedBox.shrink();
+                    }
+
+                    final isRejectedByQc = selProject.status ==
+                        WORKFLOW_STATUS_FIELD_STAFF.REJECTED_BY_QC_SPOC.name;
+                    bool isFieldStaff = userType == USER_TYPES.FIELD_STAFF.name;
+
+                    if (isFieldStaff && isRejectedByQc) {
+                      return const SizedBox.shrink();
+                    }
+
+                    // Determine if completion requirement is needed
+                    final requireCompletion = isSupervisor;
+                    final hasCompletion =
+                        _existingReports.isNotEmpty || _pickedFiles.isNotEmpty;
+
+                    final isDisabled = !allChecked ||
+                        submitting ||
+                        (requireCompletion && !hasCompletion);
+
+                    return FooterButton(
+                        showSuffixIcon: false,
+                        isDisabled: isDisabled,
+                        text: submitting
+                            ? "loading..."
+                            : "Re-Submit for Approval",
+                        onPress: () async {
+                          print("allChecked $allChecked");
+                          print("submitting $submitting");
+                          print("submitting ${!allChecked || submitting}");
+                          if (isDisabled) return;
+                          await _ensureLocationLoaded();
+
+                          // Build file inputs (existing + picked)
+                          final lat = _latitude?.toString() ?? '';
+                          final lng = _longitude?.toString() ?? '';
+
+                          final inputs = <CompletionFileInput>[];
+                          for (final e in _existingReports) {
+                            inputs.add(CompletionFileInput(
+                              projectId: projectId,
+                              filePath: e.filePath,
+                              fileType: e.fileType,
+                              fileName: e.fileName,
+                              latitude: lat,
+                              longitude: lng,
+                              index: null,
+                            ));
+                          }
+                          for (final pf in _pickedFiles) {
+                            if (pf.path == null) continue;
+                            inputs.add(CompletionFileInput(
+                              projectId: projectId,
+                              filePath: pf.path!,
+                              fileType: inferFileType(pf.path!),
+                              fileName: pf.name,
+                              latitude: lat,
+                              longitude: lng,
+                              index: null,
+                            ));
+                          }
+                          context.read<AssetSubmissionBloc>().add(
+                                AssetSubmissionEvent.submitAll(
+                                    projectId: projectId, userType: userType),
+                              );
+                        });
+                  },
+                );
+              },
+            ),
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                    vertical: spacer2, horizontal: spacer4),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Summary',
+                      style: textTheme.headingXl
+                          .copyWith(color: theme.colorTheme.primary.primary2),
+                    ),
+                    const SizedBox(height: spacer4),
+                    const RejectedEditAssetSummary(),
+                    if (userType == USER_TYPES.SUPERVISOR.name) ...[
+                      const SizedBox(height: spacer4),
+                      DigitCard(
+                        children: [
+                          Text(
+                            'Installation Completion Report',
+                            style: textTheme.headingM.copyWith(
+                                color: theme.colorTheme.primary.primary2),
+                          ),
+                          ...[
+                            BlocBuilder<AppInitialization, InitState>(
+                              builder: (context, state) {
+                                return state.maybeWhen(
+                                  orElse: () => const SizedBox.shrink(),
+                                  initialized: (
+                                    appConfig,
+                                    assetCount,
+                                    assetType,
+                                    system,
+                                    warranty,
+                                    brand,
+                                    solutionDesign,
+                                    solutionDesignBom,
+                                  ) {
+                                    return Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.stretch,
+                                      children: [
+                                        Builder(
+                                          builder: (_) {
+                                            final matches =
+                                                solutionDesignBom.where(
+                                              (e) =>
+                                                  e.data
+                                                      .solutionDesignTypeCode ==
+                                                  _solutionDesignTypeCode,
+                                            );
+
+                                            final matching = matches.isNotEmpty
+                                                ? matches.first
+                                                : null;
+                                            final entries =
+                                                matching?.data.bomForms ??
+                                                    const [];
+
+                                            if (entries.isEmpty) {
+                                              return const SizedBox.shrink();
+                                            }
+
+                                            return Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.stretch,
+                                              children: [
+                                                for (final entry
+                                                    in entries) ...[
+                                                  Builder(
+                                                    builder: (_) {
+                                                      final r =
+                                                          bomRouteAndLabel(
+                                                              entry.name);
+                                                      return DigitButton(
+                                                        mainAxisSize:
+                                                            MainAxisSize.max,
+                                                        label: r.label,
+                                                        onPressed: () {
+                                                          final r =
+                                                              bomRouteAndLabel(
+                                                                  entry.name);
+                                                          context.router.push(
+                                                              DynamicFormsRoute(
+                                                            pageName:
+                                                                r.pageName,
+                                                            schemaName:
+                                                                r.schemaName,
+                                                            projectId:
+                                                                projectId!,
+                                                          ));
+                                                        },
+                                                        type: DigitButtonType
+                                                            .secondary,
+                                                        size: DigitButtonSize
+                                                            .large,
+                                                      );
+                                                    },
+                                                  ),
+                                                  const SizedBox(
+                                                      height: spacer4),
+                                                ],
+                                              ],
+                                            );
+                                          },
+                                        ),
+                                      ],
+                                    );
+                                  },
+                                );
+                              },
+                            )
+                          ],
+                          Text(
+                            'Please scan and upload the installation completion report',
+                            style: textTheme.bodyS.copyWith(
+                                color: theme.colorTheme.text.secondary),
+                          ),
+                          FileUploadWidget(
+                            allowedExtensions: const [
+                              "pdf",
+                              "jpg",
+                              "jpeg",
+                              "png"
+                            ],
+                            showPreview: true,
+                            allowMultiples: true,
+                            label: 'Upload',
+                            onFilesSelected: (files) {
+                              if (files.isEmpty) {
+                                return <PlatformFile, String?>{};
+                              }
+                              _ensureLocationLoaded();
+                              _handleUpload(files);
+                              return <PlatformFile, String?>{};
+                            },
+                          ),
+                          existingFilesSection(
+                            context: context,
+                            existing: _existingReports,
+                            showEditButton: true,
+                            onTapImage: (path) => context.router
+                                .push(ImageViewerRoute(path: path)),
+                            onTapPdf: (path) =>
+                                context.router.push(PdfViewerRoute(path: path)),
+                            onRemove: (r) {
+                              setState(() {
+                                _existingReports.remove(r);
+                              });
+                            },
+                          ),
+                          RejectionReasonsList(
+                            comments: context
+                                    .read<SelectedProjectBloc>()
+                                    .state
+                                    .whenOrNull(
+                                      selected: (wf) => wf.transactions
+                                          ?.expand((tx) =>
+                                              tx.comments ?? <Comment>[])
+                                          .toList(),
+                                    ) ??
+                                <Comment>[],
+                            excludeStandardTypes: true,
+                          ),
+                        ],
+                      ),
+                    ],
+                    const SizedBox(height: spacer4),
+                    Text(
+                      "Rejection List",
+                      style: textTheme.headingXl
+                          .copyWith(color: theme.colorTheme.primary.primary2),
+                    ),
+                    const SizedBox(height: spacer1),
+                    DigitCard(children: [
+                      DigitCheckbox(
+                          label: 'Inverter Rejection reason 1',
+                          onChanged: (value) {
+                            setState(() {
+                              rejection1 = value;
+                            });
+                          }),
+                      const SizedBox(height: spacer1),
+                      DigitCheckbox(
+                          label: 'Inverter Rejection reason 2',
+                          onChanged: (value) {
+                            setState(() {
+                              rejection2 = value;
+                            });
+                          }),
+                      const SizedBox(height: spacer1),
+                      DigitCheckbox(
+                          label: 'Panel  Rejection reason 1',
+                          onChanged: (value) {
+                            setState(() {
+                              rejection3 = value;
+                            });
+                          }),
+                    ])
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

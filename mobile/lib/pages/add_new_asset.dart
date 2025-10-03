@@ -166,8 +166,6 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                   : [];
               voltageUom = voltageUomField?.options?.firstOrNull ?? '';
 
-              print("voltageUom $voltageUom");
-
               return assetType;
             },
           );
@@ -283,7 +281,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
           return file;
         }
       } catch (e) {
-        print('Error downloading image: $e');
+        debugPrint('Error downloading image: $e');
       }
     } else {
       final file = File(path);

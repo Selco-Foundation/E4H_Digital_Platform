@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:isar/isar.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:selco/data/nosql/cache_project_bom_values.dart';
 
 import '../data/nosql/cache_add_new_asset.dart';
 import '../data/nosql/cache_asset_count.dart';
@@ -59,6 +60,7 @@ class Constants {
           CacheCompletionReportSchema,
           CacheBomDocSchema,
           CachePrefilledProjectSchema,
+          CacheProjectBomValuesSchema,
         ],
         name: 'E4H',
         inspector: true,

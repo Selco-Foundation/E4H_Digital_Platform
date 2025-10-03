@@ -18,45 +18,90 @@ final _privateConstructorUsedError = UnsupportedError(
 mixin _$CacheCompletionReportEvent {
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(String projectId) get,
-    required TResult Function(CacheCompletionReport report) addOrUpdate,
-    required TResult Function(int id) delete,
+    required TResult Function(String projectId) load,
+    required TResult Function(
+            String projectId,
+            String filePath,
+            String fileType,
+            String fileName,
+            String latitude,
+            String longitude,
+            int? index)
+        addOrUpdate,
+    required TResult Function(List<CompletionFileInput> files) addMany,
+    required TResult Function(int id) removeById,
+    required TResult Function(String projectId, String filePath) removeByPath,
+    required TResult Function(List<String> entryIds) deleteManyByEntryId,
+    required TResult Function(String projectId) clearProject,
+    required TResult Function(String projectId, List<CompletionFileInput> files)
+        replaceAllForProject,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(String projectId)? get,
-    TResult? Function(CacheCompletionReport report)? addOrUpdate,
-    TResult? Function(int id)? delete,
+    TResult? Function(String projectId)? load,
+    TResult? Function(String projectId, String filePath, String fileType,
+            String fileName, String latitude, String longitude, int? index)?
+        addOrUpdate,
+    TResult? Function(List<CompletionFileInput> files)? addMany,
+    TResult? Function(int id)? removeById,
+    TResult? Function(String projectId, String filePath)? removeByPath,
+    TResult? Function(List<String> entryIds)? deleteManyByEntryId,
+    TResult? Function(String projectId)? clearProject,
+    TResult? Function(String projectId, List<CompletionFileInput> files)?
+        replaceAllForProject,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(String projectId)? get,
-    TResult Function(CacheCompletionReport report)? addOrUpdate,
-    TResult Function(int id)? delete,
+    TResult Function(String projectId)? load,
+    TResult Function(String projectId, String filePath, String fileType,
+            String fileName, String latitude, String longitude, int? index)?
+        addOrUpdate,
+    TResult Function(List<CompletionFileInput> files)? addMany,
+    TResult Function(int id)? removeById,
+    TResult Function(String projectId, String filePath)? removeByPath,
+    TResult Function(List<String> entryIds)? deleteManyByEntryId,
+    TResult Function(String projectId)? clearProject,
+    TResult Function(String projectId, List<CompletionFileInput> files)?
+        replaceAllForProject,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(_Get value) get,
+    required TResult Function(_Load value) load,
     required TResult Function(_AddOrUpdate value) addOrUpdate,
-    required TResult Function(_Delete value) delete,
+    required TResult Function(_AddMany value) addMany,
+    required TResult Function(_RemoveById value) removeById,
+    required TResult Function(_RemoveByPath value) removeByPath,
+    required TResult Function(_DeleteManyByEntryId value) deleteManyByEntryId,
+    required TResult Function(_ClearProject value) clearProject,
+    required TResult Function(_ReplaceAllForProject value) replaceAllForProject,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(_Get value)? get,
+    TResult? Function(_Load value)? load,
     TResult? Function(_AddOrUpdate value)? addOrUpdate,
-    TResult? Function(_Delete value)? delete,
+    TResult? Function(_AddMany value)? addMany,
+    TResult? Function(_RemoveById value)? removeById,
+    TResult? Function(_RemoveByPath value)? removeByPath,
+    TResult? Function(_DeleteManyByEntryId value)? deleteManyByEntryId,
+    TResult? Function(_ClearProject value)? clearProject,
+    TResult? Function(_ReplaceAllForProject value)? replaceAllForProject,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(_Get value)? get,
+    TResult Function(_Load value)? load,
     TResult Function(_AddOrUpdate value)? addOrUpdate,
-    TResult Function(_Delete value)? delete,
+    TResult Function(_AddMany value)? addMany,
+    TResult Function(_RemoveById value)? removeById,
+    TResult Function(_RemoveByPath value)? removeByPath,
+    TResult Function(_DeleteManyByEntryId value)? deleteManyByEntryId,
+    TResult Function(_ClearProject value)? clearProject,
+    TResult Function(_ReplaceAllForProject value)? replaceAllForProject,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -83,18 +128,19 @@ class _$CacheCompletionReportEventCopyWithImpl<$Res,
 }
 
 /// @nodoc
-abstract class _$$GetImplCopyWith<$Res> {
-  factory _$$GetImplCopyWith(_$GetImpl value, $Res Function(_$GetImpl) then) =
-      __$$GetImplCopyWithImpl<$Res>;
+abstract class _$$LoadImplCopyWith<$Res> {
+  factory _$$LoadImplCopyWith(
+          _$LoadImpl value, $Res Function(_$LoadImpl) then) =
+      __$$LoadImplCopyWithImpl<$Res>;
   @useResult
   $Res call({String projectId});
 }
 
 /// @nodoc
-class __$$GetImplCopyWithImpl<$Res>
-    extends _$CacheCompletionReportEventCopyWithImpl<$Res, _$GetImpl>
-    implements _$$GetImplCopyWith<$Res> {
-  __$$GetImplCopyWithImpl(_$GetImpl _value, $Res Function(_$GetImpl) _then)
+class __$$LoadImplCopyWithImpl<$Res>
+    extends _$CacheCompletionReportEventCopyWithImpl<$Res, _$LoadImpl>
+    implements _$$LoadImplCopyWith<$Res> {
+  __$$LoadImplCopyWithImpl(_$LoadImpl _value, $Res Function(_$LoadImpl) _then)
       : super(_value, _then);
 
   @pragma('vm:prefer-inline')
@@ -102,7 +148,7 @@ class __$$GetImplCopyWithImpl<$Res>
   $Res call({
     Object? projectId = null,
   }) {
-    return _then(_$GetImpl(
+    return _then(_$LoadImpl(
       null == projectId
           ? _value.projectId
           : projectId // ignore: cast_nullable_to_non_nullable
@@ -113,22 +159,22 @@ class __$$GetImplCopyWithImpl<$Res>
 
 /// @nodoc
 
-class _$GetImpl implements _Get {
-  const _$GetImpl(this.projectId);
+class _$LoadImpl implements _Load {
+  const _$LoadImpl(this.projectId);
 
   @override
   final String projectId;
 
   @override
   String toString() {
-    return 'CacheCompletionReportEvent.get(projectId: $projectId)';
+    return 'CacheCompletionReportEvent.load(projectId: $projectId)';
   }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$GetImpl &&
+            other is _$LoadImpl &&
             (identical(other.projectId, projectId) ||
                 other.projectId == projectId));
   }
@@ -139,39 +185,69 @@ class _$GetImpl implements _Get {
   @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
-  _$$GetImplCopyWith<_$GetImpl> get copyWith =>
-      __$$GetImplCopyWithImpl<_$GetImpl>(this, _$identity);
+  _$$LoadImplCopyWith<_$LoadImpl> get copyWith =>
+      __$$LoadImplCopyWithImpl<_$LoadImpl>(this, _$identity);
 
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(String projectId) get,
-    required TResult Function(CacheCompletionReport report) addOrUpdate,
-    required TResult Function(int id) delete,
+    required TResult Function(String projectId) load,
+    required TResult Function(
+            String projectId,
+            String filePath,
+            String fileType,
+            String fileName,
+            String latitude,
+            String longitude,
+            int? index)
+        addOrUpdate,
+    required TResult Function(List<CompletionFileInput> files) addMany,
+    required TResult Function(int id) removeById,
+    required TResult Function(String projectId, String filePath) removeByPath,
+    required TResult Function(List<String> entryIds) deleteManyByEntryId,
+    required TResult Function(String projectId) clearProject,
+    required TResult Function(String projectId, List<CompletionFileInput> files)
+        replaceAllForProject,
   }) {
-    return get(projectId);
+    return load(projectId);
   }
 
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(String projectId)? get,
-    TResult? Function(CacheCompletionReport report)? addOrUpdate,
-    TResult? Function(int id)? delete,
+    TResult? Function(String projectId)? load,
+    TResult? Function(String projectId, String filePath, String fileType,
+            String fileName, String latitude, String longitude, int? index)?
+        addOrUpdate,
+    TResult? Function(List<CompletionFileInput> files)? addMany,
+    TResult? Function(int id)? removeById,
+    TResult? Function(String projectId, String filePath)? removeByPath,
+    TResult? Function(List<String> entryIds)? deleteManyByEntryId,
+    TResult? Function(String projectId)? clearProject,
+    TResult? Function(String projectId, List<CompletionFileInput> files)?
+        replaceAllForProject,
   }) {
-    return get?.call(projectId);
+    return load?.call(projectId);
   }
 
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(String projectId)? get,
-    TResult Function(CacheCompletionReport report)? addOrUpdate,
-    TResult Function(int id)? delete,
+    TResult Function(String projectId)? load,
+    TResult Function(String projectId, String filePath, String fileType,
+            String fileName, String latitude, String longitude, int? index)?
+        addOrUpdate,
+    TResult Function(List<CompletionFileInput> files)? addMany,
+    TResult Function(int id)? removeById,
+    TResult Function(String projectId, String filePath)? removeByPath,
+    TResult Function(List<String> entryIds)? deleteManyByEntryId,
+    TResult Function(String projectId)? clearProject,
+    TResult Function(String projectId, List<CompletionFileInput> files)?
+        replaceAllForProject,
     required TResult orElse(),
   }) {
-    if (get != null) {
-      return get(projectId);
+    if (load != null) {
+      return load(projectId);
     }
     return orElse();
   }
@@ -179,44 +255,59 @@ class _$GetImpl implements _Get {
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(_Get value) get,
+    required TResult Function(_Load value) load,
     required TResult Function(_AddOrUpdate value) addOrUpdate,
-    required TResult Function(_Delete value) delete,
+    required TResult Function(_AddMany value) addMany,
+    required TResult Function(_RemoveById value) removeById,
+    required TResult Function(_RemoveByPath value) removeByPath,
+    required TResult Function(_DeleteManyByEntryId value) deleteManyByEntryId,
+    required TResult Function(_ClearProject value) clearProject,
+    required TResult Function(_ReplaceAllForProject value) replaceAllForProject,
   }) {
-    return get(this);
+    return load(this);
   }
 
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(_Get value)? get,
+    TResult? Function(_Load value)? load,
     TResult? Function(_AddOrUpdate value)? addOrUpdate,
-    TResult? Function(_Delete value)? delete,
+    TResult? Function(_AddMany value)? addMany,
+    TResult? Function(_RemoveById value)? removeById,
+    TResult? Function(_RemoveByPath value)? removeByPath,
+    TResult? Function(_DeleteManyByEntryId value)? deleteManyByEntryId,
+    TResult? Function(_ClearProject value)? clearProject,
+    TResult? Function(_ReplaceAllForProject value)? replaceAllForProject,
   }) {
-    return get?.call(this);
+    return load?.call(this);
   }
 
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(_Get value)? get,
+    TResult Function(_Load value)? load,
     TResult Function(_AddOrUpdate value)? addOrUpdate,
-    TResult Function(_Delete value)? delete,
+    TResult Function(_AddMany value)? addMany,
+    TResult Function(_RemoveById value)? removeById,
+    TResult Function(_RemoveByPath value)? removeByPath,
+    TResult Function(_DeleteManyByEntryId value)? deleteManyByEntryId,
+    TResult Function(_ClearProject value)? clearProject,
+    TResult Function(_ReplaceAllForProject value)? replaceAllForProject,
     required TResult orElse(),
   }) {
-    if (get != null) {
-      return get(this);
+    if (load != null) {
+      return load(this);
     }
     return orElse();
   }
 }
 
-abstract class _Get implements CacheCompletionReportEvent {
-  const factory _Get(final String projectId) = _$GetImpl;
+abstract class _Load implements CacheCompletionReportEvent {
+  const factory _Load(final String projectId) = _$LoadImpl;
 
   String get projectId;
   @JsonKey(ignore: true)
-  _$$GetImplCopyWith<_$GetImpl> get copyWith =>
+  _$$LoadImplCopyWith<_$LoadImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
 
@@ -226,7 +317,14 @@ abstract class _$$AddOrUpdateImplCopyWith<$Res> {
           _$AddOrUpdateImpl value, $Res Function(_$AddOrUpdateImpl) then) =
       __$$AddOrUpdateImplCopyWithImpl<$Res>;
   @useResult
-  $Res call({CacheCompletionReport report});
+  $Res call(
+      {String projectId,
+      String filePath,
+      String fileType,
+      String fileName,
+      String latitude,
+      String longitude,
+      int? index});
 }
 
 /// @nodoc
@@ -240,13 +338,43 @@ class __$$AddOrUpdateImplCopyWithImpl<$Res>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? report = null,
+    Object? projectId = null,
+    Object? filePath = null,
+    Object? fileType = null,
+    Object? fileName = null,
+    Object? latitude = null,
+    Object? longitude = null,
+    Object? index = freezed,
   }) {
     return _then(_$AddOrUpdateImpl(
-      null == report
-          ? _value.report
-          : report // ignore: cast_nullable_to_non_nullable
-              as CacheCompletionReport,
+      projectId: null == projectId
+          ? _value.projectId
+          : projectId // ignore: cast_nullable_to_non_nullable
+              as String,
+      filePath: null == filePath
+          ? _value.filePath
+          : filePath // ignore: cast_nullable_to_non_nullable
+              as String,
+      fileType: null == fileType
+          ? _value.fileType
+          : fileType // ignore: cast_nullable_to_non_nullable
+              as String,
+      fileName: null == fileName
+          ? _value.fileName
+          : fileName // ignore: cast_nullable_to_non_nullable
+              as String,
+      latitude: null == latitude
+          ? _value.latitude
+          : latitude // ignore: cast_nullable_to_non_nullable
+              as String,
+      longitude: null == longitude
+          ? _value.longitude
+          : longitude // ignore: cast_nullable_to_non_nullable
+              as String,
+      index: freezed == index
+          ? _value.index
+          : index // ignore: cast_nullable_to_non_nullable
+              as int?,
     ));
   }
 }
@@ -254,14 +382,34 @@ class __$$AddOrUpdateImplCopyWithImpl<$Res>
 /// @nodoc
 
 class _$AddOrUpdateImpl implements _AddOrUpdate {
-  const _$AddOrUpdateImpl(this.report);
+  const _$AddOrUpdateImpl(
+      {required this.projectId,
+      required this.filePath,
+      required this.fileType,
+      required this.fileName,
+      required this.latitude,
+      required this.longitude,
+      this.index});
 
   @override
-  final CacheCompletionReport report;
+  final String projectId;
+  @override
+  final String filePath;
+  @override
+  final String fileType;
+// "pdf" | "image" | "unknown"
+  @override
+  final String fileName;
+  @override
+  final String latitude;
+  @override
+  final String longitude;
+  @override
+  final int? index;
 
   @override
   String toString() {
-    return 'CacheCompletionReportEvent.addOrUpdate(report: $report)';
+    return 'CacheCompletionReportEvent.addOrUpdate(projectId: $projectId, filePath: $filePath, fileType: $fileType, fileName: $fileName, latitude: $latitude, longitude: $longitude, index: $index)';
   }
 
   @override
@@ -269,11 +417,24 @@ class _$AddOrUpdateImpl implements _AddOrUpdate {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _$AddOrUpdateImpl &&
-            (identical(other.report, report) || other.report == report));
+            (identical(other.projectId, projectId) ||
+                other.projectId == projectId) &&
+            (identical(other.filePath, filePath) ||
+                other.filePath == filePath) &&
+            (identical(other.fileType, fileType) ||
+                other.fileType == fileType) &&
+            (identical(other.fileName, fileName) ||
+                other.fileName == fileName) &&
+            (identical(other.latitude, latitude) ||
+                other.latitude == latitude) &&
+            (identical(other.longitude, longitude) ||
+                other.longitude == longitude) &&
+            (identical(other.index, index) || other.index == index));
   }
 
   @override
-  int get hashCode => Object.hash(runtimeType, report);
+  int get hashCode => Object.hash(runtimeType, projectId, filePath, fileType,
+      fileName, latitude, longitude, index);
 
   @JsonKey(ignore: true)
   @override
@@ -284,33 +445,66 @@ class _$AddOrUpdateImpl implements _AddOrUpdate {
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(String projectId) get,
-    required TResult Function(CacheCompletionReport report) addOrUpdate,
-    required TResult Function(int id) delete,
+    required TResult Function(String projectId) load,
+    required TResult Function(
+            String projectId,
+            String filePath,
+            String fileType,
+            String fileName,
+            String latitude,
+            String longitude,
+            int? index)
+        addOrUpdate,
+    required TResult Function(List<CompletionFileInput> files) addMany,
+    required TResult Function(int id) removeById,
+    required TResult Function(String projectId, String filePath) removeByPath,
+    required TResult Function(List<String> entryIds) deleteManyByEntryId,
+    required TResult Function(String projectId) clearProject,
+    required TResult Function(String projectId, List<CompletionFileInput> files)
+        replaceAllForProject,
   }) {
-    return addOrUpdate(report);
+    return addOrUpdate(
+        projectId, filePath, fileType, fileName, latitude, longitude, index);
   }
 
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(String projectId)? get,
-    TResult? Function(CacheCompletionReport report)? addOrUpdate,
-    TResult? Function(int id)? delete,
+    TResult? Function(String projectId)? load,
+    TResult? Function(String projectId, String filePath, String fileType,
+            String fileName, String latitude, String longitude, int? index)?
+        addOrUpdate,
+    TResult? Function(List<CompletionFileInput> files)? addMany,
+    TResult? Function(int id)? removeById,
+    TResult? Function(String projectId, String filePath)? removeByPath,
+    TResult? Function(List<String> entryIds)? deleteManyByEntryId,
+    TResult? Function(String projectId)? clearProject,
+    TResult? Function(String projectId, List<CompletionFileInput> files)?
+        replaceAllForProject,
   }) {
-    return addOrUpdate?.call(report);
+    return addOrUpdate?.call(
+        projectId, filePath, fileType, fileName, latitude, longitude, index);
   }
 
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(String projectId)? get,
-    TResult Function(CacheCompletionReport report)? addOrUpdate,
-    TResult Function(int id)? delete,
+    TResult Function(String projectId)? load,
+    TResult Function(String projectId, String filePath, String fileType,
+            String fileName, String latitude, String longitude, int? index)?
+        addOrUpdate,
+    TResult Function(List<CompletionFileInput> files)? addMany,
+    TResult Function(int id)? removeById,
+    TResult Function(String projectId, String filePath)? removeByPath,
+    TResult Function(List<String> entryIds)? deleteManyByEntryId,
+    TResult Function(String projectId)? clearProject,
+    TResult Function(String projectId, List<CompletionFileInput> files)?
+        replaceAllForProject,
     required TResult orElse(),
   }) {
     if (addOrUpdate != null) {
-      return addOrUpdate(report);
+      return addOrUpdate(
+          projectId, filePath, fileType, fileName, latitude, longitude, index);
     }
     return orElse();
   }
@@ -318,9 +512,14 @@ class _$AddOrUpdateImpl implements _AddOrUpdate {
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(_Get value) get,
+    required TResult Function(_Load value) load,
     required TResult Function(_AddOrUpdate value) addOrUpdate,
-    required TResult Function(_Delete value) delete,
+    required TResult Function(_AddMany value) addMany,
+    required TResult Function(_RemoveById value) removeById,
+    required TResult Function(_RemoveByPath value) removeByPath,
+    required TResult Function(_DeleteManyByEntryId value) deleteManyByEntryId,
+    required TResult Function(_ClearProject value) clearProject,
+    required TResult Function(_ReplaceAllForProject value) replaceAllForProject,
   }) {
     return addOrUpdate(this);
   }
@@ -328,9 +527,14 @@ class _$AddOrUpdateImpl implements _AddOrUpdate {
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(_Get value)? get,
+    TResult? Function(_Load value)? load,
     TResult? Function(_AddOrUpdate value)? addOrUpdate,
-    TResult? Function(_Delete value)? delete,
+    TResult? Function(_AddMany value)? addMany,
+    TResult? Function(_RemoveById value)? removeById,
+    TResult? Function(_RemoveByPath value)? removeByPath,
+    TResult? Function(_DeleteManyByEntryId value)? deleteManyByEntryId,
+    TResult? Function(_ClearProject value)? clearProject,
+    TResult? Function(_ReplaceAllForProject value)? replaceAllForProject,
   }) {
     return addOrUpdate?.call(this);
   }
@@ -338,9 +542,14 @@ class _$AddOrUpdateImpl implements _AddOrUpdate {
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(_Get value)? get,
+    TResult Function(_Load value)? load,
     TResult Function(_AddOrUpdate value)? addOrUpdate,
-    TResult Function(_Delete value)? delete,
+    TResult Function(_AddMany value)? addMany,
+    TResult Function(_RemoveById value)? removeById,
+    TResult Function(_RemoveByPath value)? removeByPath,
+    TResult Function(_DeleteManyByEntryId value)? deleteManyByEntryId,
+    TResult Function(_ClearProject value)? clearProject,
+    TResult Function(_ReplaceAllForProject value)? replaceAllForProject,
     required TResult orElse(),
   }) {
     if (addOrUpdate != null) {
@@ -351,30 +560,234 @@ class _$AddOrUpdateImpl implements _AddOrUpdate {
 }
 
 abstract class _AddOrUpdate implements CacheCompletionReportEvent {
-  const factory _AddOrUpdate(final CacheCompletionReport report) =
-      _$AddOrUpdateImpl;
+  const factory _AddOrUpdate(
+      {required final String projectId,
+      required final String filePath,
+      required final String fileType,
+      required final String fileName,
+      required final String latitude,
+      required final String longitude,
+      final int? index}) = _$AddOrUpdateImpl;
 
-  CacheCompletionReport get report;
+  String get projectId;
+  String get filePath;
+  String get fileType; // "pdf" | "image" | "unknown"
+  String get fileName;
+  String get latitude;
+  String get longitude;
+  int? get index;
   @JsonKey(ignore: true)
   _$$AddOrUpdateImplCopyWith<_$AddOrUpdateImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
 
 /// @nodoc
-abstract class _$$DeleteImplCopyWith<$Res> {
-  factory _$$DeleteImplCopyWith(
-          _$DeleteImpl value, $Res Function(_$DeleteImpl) then) =
-      __$$DeleteImplCopyWithImpl<$Res>;
+abstract class _$$AddManyImplCopyWith<$Res> {
+  factory _$$AddManyImplCopyWith(
+          _$AddManyImpl value, $Res Function(_$AddManyImpl) then) =
+      __$$AddManyImplCopyWithImpl<$Res>;
+  @useResult
+  $Res call({List<CompletionFileInput> files});
+}
+
+/// @nodoc
+class __$$AddManyImplCopyWithImpl<$Res>
+    extends _$CacheCompletionReportEventCopyWithImpl<$Res, _$AddManyImpl>
+    implements _$$AddManyImplCopyWith<$Res> {
+  __$$AddManyImplCopyWithImpl(
+      _$AddManyImpl _value, $Res Function(_$AddManyImpl) _then)
+      : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? files = null,
+  }) {
+    return _then(_$AddManyImpl(
+      files: null == files
+          ? _value._files
+          : files // ignore: cast_nullable_to_non_nullable
+              as List<CompletionFileInput>,
+    ));
+  }
+}
+
+/// @nodoc
+
+class _$AddManyImpl implements _AddMany {
+  const _$AddManyImpl({required final List<CompletionFileInput> files})
+      : _files = files;
+
+  final List<CompletionFileInput> _files;
+  @override
+  List<CompletionFileInput> get files {
+    if (_files is EqualUnmodifiableListView) return _files;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_files);
+  }
+
+  @override
+  String toString() {
+    return 'CacheCompletionReportEvent.addMany(files: $files)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$AddManyImpl &&
+            const DeepCollectionEquality().equals(other._files, _files));
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(runtimeType, const DeepCollectionEquality().hash(_files));
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$AddManyImplCopyWith<_$AddManyImpl> get copyWith =>
+      __$$AddManyImplCopyWithImpl<_$AddManyImpl>(this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function(String projectId) load,
+    required TResult Function(
+            String projectId,
+            String filePath,
+            String fileType,
+            String fileName,
+            String latitude,
+            String longitude,
+            int? index)
+        addOrUpdate,
+    required TResult Function(List<CompletionFileInput> files) addMany,
+    required TResult Function(int id) removeById,
+    required TResult Function(String projectId, String filePath) removeByPath,
+    required TResult Function(List<String> entryIds) deleteManyByEntryId,
+    required TResult Function(String projectId) clearProject,
+    required TResult Function(String projectId, List<CompletionFileInput> files)
+        replaceAllForProject,
+  }) {
+    return addMany(files);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function(String projectId)? load,
+    TResult? Function(String projectId, String filePath, String fileType,
+            String fileName, String latitude, String longitude, int? index)?
+        addOrUpdate,
+    TResult? Function(List<CompletionFileInput> files)? addMany,
+    TResult? Function(int id)? removeById,
+    TResult? Function(String projectId, String filePath)? removeByPath,
+    TResult? Function(List<String> entryIds)? deleteManyByEntryId,
+    TResult? Function(String projectId)? clearProject,
+    TResult? Function(String projectId, List<CompletionFileInput> files)?
+        replaceAllForProject,
+  }) {
+    return addMany?.call(files);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function(String projectId)? load,
+    TResult Function(String projectId, String filePath, String fileType,
+            String fileName, String latitude, String longitude, int? index)?
+        addOrUpdate,
+    TResult Function(List<CompletionFileInput> files)? addMany,
+    TResult Function(int id)? removeById,
+    TResult Function(String projectId, String filePath)? removeByPath,
+    TResult Function(List<String> entryIds)? deleteManyByEntryId,
+    TResult Function(String projectId)? clearProject,
+    TResult Function(String projectId, List<CompletionFileInput> files)?
+        replaceAllForProject,
+    required TResult orElse(),
+  }) {
+    if (addMany != null) {
+      return addMany(files);
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(_Load value) load,
+    required TResult Function(_AddOrUpdate value) addOrUpdate,
+    required TResult Function(_AddMany value) addMany,
+    required TResult Function(_RemoveById value) removeById,
+    required TResult Function(_RemoveByPath value) removeByPath,
+    required TResult Function(_DeleteManyByEntryId value) deleteManyByEntryId,
+    required TResult Function(_ClearProject value) clearProject,
+    required TResult Function(_ReplaceAllForProject value) replaceAllForProject,
+  }) {
+    return addMany(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(_Load value)? load,
+    TResult? Function(_AddOrUpdate value)? addOrUpdate,
+    TResult? Function(_AddMany value)? addMany,
+    TResult? Function(_RemoveById value)? removeById,
+    TResult? Function(_RemoveByPath value)? removeByPath,
+    TResult? Function(_DeleteManyByEntryId value)? deleteManyByEntryId,
+    TResult? Function(_ClearProject value)? clearProject,
+    TResult? Function(_ReplaceAllForProject value)? replaceAllForProject,
+  }) {
+    return addMany?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(_Load value)? load,
+    TResult Function(_AddOrUpdate value)? addOrUpdate,
+    TResult Function(_AddMany value)? addMany,
+    TResult Function(_RemoveById value)? removeById,
+    TResult Function(_RemoveByPath value)? removeByPath,
+    TResult Function(_DeleteManyByEntryId value)? deleteManyByEntryId,
+    TResult Function(_ClearProject value)? clearProject,
+    TResult Function(_ReplaceAllForProject value)? replaceAllForProject,
+    required TResult orElse(),
+  }) {
+    if (addMany != null) {
+      return addMany(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class _AddMany implements CacheCompletionReportEvent {
+  const factory _AddMany({required final List<CompletionFileInput> files}) =
+      _$AddManyImpl;
+
+  List<CompletionFileInput> get files;
+  @JsonKey(ignore: true)
+  _$$AddManyImplCopyWith<_$AddManyImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class _$$RemoveByIdImplCopyWith<$Res> {
+  factory _$$RemoveByIdImplCopyWith(
+          _$RemoveByIdImpl value, $Res Function(_$RemoveByIdImpl) then) =
+      __$$RemoveByIdImplCopyWithImpl<$Res>;
   @useResult
   $Res call({int id});
 }
 
 /// @nodoc
-class __$$DeleteImplCopyWithImpl<$Res>
-    extends _$CacheCompletionReportEventCopyWithImpl<$Res, _$DeleteImpl>
-    implements _$$DeleteImplCopyWith<$Res> {
-  __$$DeleteImplCopyWithImpl(
-      _$DeleteImpl _value, $Res Function(_$DeleteImpl) _then)
+class __$$RemoveByIdImplCopyWithImpl<$Res>
+    extends _$CacheCompletionReportEventCopyWithImpl<$Res, _$RemoveByIdImpl>
+    implements _$$RemoveByIdImplCopyWith<$Res> {
+  __$$RemoveByIdImplCopyWithImpl(
+      _$RemoveByIdImpl _value, $Res Function(_$RemoveByIdImpl) _then)
       : super(_value, _then);
 
   @pragma('vm:prefer-inline')
@@ -382,8 +795,8 @@ class __$$DeleteImplCopyWithImpl<$Res>
   $Res call({
     Object? id = null,
   }) {
-    return _then(_$DeleteImpl(
-      null == id
+    return _then(_$RemoveByIdImpl(
+      id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
               as int,
@@ -393,22 +806,22 @@ class __$$DeleteImplCopyWithImpl<$Res>
 
 /// @nodoc
 
-class _$DeleteImpl implements _Delete {
-  const _$DeleteImpl(this.id);
+class _$RemoveByIdImpl implements _RemoveById {
+  const _$RemoveByIdImpl({required this.id});
 
   @override
   final int id;
 
   @override
   String toString() {
-    return 'CacheCompletionReportEvent.delete(id: $id)';
+    return 'CacheCompletionReportEvent.removeById(id: $id)';
   }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$DeleteImpl &&
+            other is _$RemoveByIdImpl &&
             (identical(other.id, id) || other.id == id));
   }
 
@@ -418,39 +831,69 @@ class _$DeleteImpl implements _Delete {
   @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
-  _$$DeleteImplCopyWith<_$DeleteImpl> get copyWith =>
-      __$$DeleteImplCopyWithImpl<_$DeleteImpl>(this, _$identity);
+  _$$RemoveByIdImplCopyWith<_$RemoveByIdImpl> get copyWith =>
+      __$$RemoveByIdImplCopyWithImpl<_$RemoveByIdImpl>(this, _$identity);
 
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(String projectId) get,
-    required TResult Function(CacheCompletionReport report) addOrUpdate,
-    required TResult Function(int id) delete,
+    required TResult Function(String projectId) load,
+    required TResult Function(
+            String projectId,
+            String filePath,
+            String fileType,
+            String fileName,
+            String latitude,
+            String longitude,
+            int? index)
+        addOrUpdate,
+    required TResult Function(List<CompletionFileInput> files) addMany,
+    required TResult Function(int id) removeById,
+    required TResult Function(String projectId, String filePath) removeByPath,
+    required TResult Function(List<String> entryIds) deleteManyByEntryId,
+    required TResult Function(String projectId) clearProject,
+    required TResult Function(String projectId, List<CompletionFileInput> files)
+        replaceAllForProject,
   }) {
-    return delete(id);
+    return removeById(id);
   }
 
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(String projectId)? get,
-    TResult? Function(CacheCompletionReport report)? addOrUpdate,
-    TResult? Function(int id)? delete,
+    TResult? Function(String projectId)? load,
+    TResult? Function(String projectId, String filePath, String fileType,
+            String fileName, String latitude, String longitude, int? index)?
+        addOrUpdate,
+    TResult? Function(List<CompletionFileInput> files)? addMany,
+    TResult? Function(int id)? removeById,
+    TResult? Function(String projectId, String filePath)? removeByPath,
+    TResult? Function(List<String> entryIds)? deleteManyByEntryId,
+    TResult? Function(String projectId)? clearProject,
+    TResult? Function(String projectId, List<CompletionFileInput> files)?
+        replaceAllForProject,
   }) {
-    return delete?.call(id);
+    return removeById?.call(id);
   }
 
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(String projectId)? get,
-    TResult Function(CacheCompletionReport report)? addOrUpdate,
-    TResult Function(int id)? delete,
+    TResult Function(String projectId)? load,
+    TResult Function(String projectId, String filePath, String fileType,
+            String fileName, String latitude, String longitude, int? index)?
+        addOrUpdate,
+    TResult Function(List<CompletionFileInput> files)? addMany,
+    TResult Function(int id)? removeById,
+    TResult Function(String projectId, String filePath)? removeByPath,
+    TResult Function(List<String> entryIds)? deleteManyByEntryId,
+    TResult Function(String projectId)? clearProject,
+    TResult Function(String projectId, List<CompletionFileInput> files)?
+        replaceAllForProject,
     required TResult orElse(),
   }) {
-    if (delete != null) {
-      return delete(id);
+    if (removeById != null) {
+      return removeById(id);
     }
     return orElse();
   }
@@ -458,45 +901,844 @@ class _$DeleteImpl implements _Delete {
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(_Get value) get,
+    required TResult Function(_Load value) load,
     required TResult Function(_AddOrUpdate value) addOrUpdate,
-    required TResult Function(_Delete value) delete,
+    required TResult Function(_AddMany value) addMany,
+    required TResult Function(_RemoveById value) removeById,
+    required TResult Function(_RemoveByPath value) removeByPath,
+    required TResult Function(_DeleteManyByEntryId value) deleteManyByEntryId,
+    required TResult Function(_ClearProject value) clearProject,
+    required TResult Function(_ReplaceAllForProject value) replaceAllForProject,
   }) {
-    return delete(this);
+    return removeById(this);
   }
 
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(_Get value)? get,
+    TResult? Function(_Load value)? load,
     TResult? Function(_AddOrUpdate value)? addOrUpdate,
-    TResult? Function(_Delete value)? delete,
+    TResult? Function(_AddMany value)? addMany,
+    TResult? Function(_RemoveById value)? removeById,
+    TResult? Function(_RemoveByPath value)? removeByPath,
+    TResult? Function(_DeleteManyByEntryId value)? deleteManyByEntryId,
+    TResult? Function(_ClearProject value)? clearProject,
+    TResult? Function(_ReplaceAllForProject value)? replaceAllForProject,
   }) {
-    return delete?.call(this);
+    return removeById?.call(this);
   }
 
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(_Get value)? get,
+    TResult Function(_Load value)? load,
     TResult Function(_AddOrUpdate value)? addOrUpdate,
-    TResult Function(_Delete value)? delete,
+    TResult Function(_AddMany value)? addMany,
+    TResult Function(_RemoveById value)? removeById,
+    TResult Function(_RemoveByPath value)? removeByPath,
+    TResult Function(_DeleteManyByEntryId value)? deleteManyByEntryId,
+    TResult Function(_ClearProject value)? clearProject,
+    TResult Function(_ReplaceAllForProject value)? replaceAllForProject,
     required TResult orElse(),
   }) {
-    if (delete != null) {
-      return delete(this);
+    if (removeById != null) {
+      return removeById(this);
     }
     return orElse();
   }
 }
 
-abstract class _Delete implements CacheCompletionReportEvent {
-  const factory _Delete(final int id) = _$DeleteImpl;
+abstract class _RemoveById implements CacheCompletionReportEvent {
+  const factory _RemoveById({required final int id}) = _$RemoveByIdImpl;
 
   int get id;
   @JsonKey(ignore: true)
-  _$$DeleteImplCopyWith<_$DeleteImpl> get copyWith =>
+  _$$RemoveByIdImplCopyWith<_$RemoveByIdImpl> get copyWith =>
       throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class _$$RemoveByPathImplCopyWith<$Res> {
+  factory _$$RemoveByPathImplCopyWith(
+          _$RemoveByPathImpl value, $Res Function(_$RemoveByPathImpl) then) =
+      __$$RemoveByPathImplCopyWithImpl<$Res>;
+  @useResult
+  $Res call({String projectId, String filePath});
+}
+
+/// @nodoc
+class __$$RemoveByPathImplCopyWithImpl<$Res>
+    extends _$CacheCompletionReportEventCopyWithImpl<$Res, _$RemoveByPathImpl>
+    implements _$$RemoveByPathImplCopyWith<$Res> {
+  __$$RemoveByPathImplCopyWithImpl(
+      _$RemoveByPathImpl _value, $Res Function(_$RemoveByPathImpl) _then)
+      : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? projectId = null,
+    Object? filePath = null,
+  }) {
+    return _then(_$RemoveByPathImpl(
+      projectId: null == projectId
+          ? _value.projectId
+          : projectId // ignore: cast_nullable_to_non_nullable
+              as String,
+      filePath: null == filePath
+          ? _value.filePath
+          : filePath // ignore: cast_nullable_to_non_nullable
+              as String,
+    ));
+  }
+}
+
+/// @nodoc
+
+class _$RemoveByPathImpl implements _RemoveByPath {
+  const _$RemoveByPathImpl({required this.projectId, required this.filePath});
+
+  @override
+  final String projectId;
+  @override
+  final String filePath;
+
+  @override
+  String toString() {
+    return 'CacheCompletionReportEvent.removeByPath(projectId: $projectId, filePath: $filePath)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$RemoveByPathImpl &&
+            (identical(other.projectId, projectId) ||
+                other.projectId == projectId) &&
+            (identical(other.filePath, filePath) ||
+                other.filePath == filePath));
+  }
+
+  @override
+  int get hashCode => Object.hash(runtimeType, projectId, filePath);
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$RemoveByPathImplCopyWith<_$RemoveByPathImpl> get copyWith =>
+      __$$RemoveByPathImplCopyWithImpl<_$RemoveByPathImpl>(this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function(String projectId) load,
+    required TResult Function(
+            String projectId,
+            String filePath,
+            String fileType,
+            String fileName,
+            String latitude,
+            String longitude,
+            int? index)
+        addOrUpdate,
+    required TResult Function(List<CompletionFileInput> files) addMany,
+    required TResult Function(int id) removeById,
+    required TResult Function(String projectId, String filePath) removeByPath,
+    required TResult Function(List<String> entryIds) deleteManyByEntryId,
+    required TResult Function(String projectId) clearProject,
+    required TResult Function(String projectId, List<CompletionFileInput> files)
+        replaceAllForProject,
+  }) {
+    return removeByPath(projectId, filePath);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function(String projectId)? load,
+    TResult? Function(String projectId, String filePath, String fileType,
+            String fileName, String latitude, String longitude, int? index)?
+        addOrUpdate,
+    TResult? Function(List<CompletionFileInput> files)? addMany,
+    TResult? Function(int id)? removeById,
+    TResult? Function(String projectId, String filePath)? removeByPath,
+    TResult? Function(List<String> entryIds)? deleteManyByEntryId,
+    TResult? Function(String projectId)? clearProject,
+    TResult? Function(String projectId, List<CompletionFileInput> files)?
+        replaceAllForProject,
+  }) {
+    return removeByPath?.call(projectId, filePath);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function(String projectId)? load,
+    TResult Function(String projectId, String filePath, String fileType,
+            String fileName, String latitude, String longitude, int? index)?
+        addOrUpdate,
+    TResult Function(List<CompletionFileInput> files)? addMany,
+    TResult Function(int id)? removeById,
+    TResult Function(String projectId, String filePath)? removeByPath,
+    TResult Function(List<String> entryIds)? deleteManyByEntryId,
+    TResult Function(String projectId)? clearProject,
+    TResult Function(String projectId, List<CompletionFileInput> files)?
+        replaceAllForProject,
+    required TResult orElse(),
+  }) {
+    if (removeByPath != null) {
+      return removeByPath(projectId, filePath);
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(_Load value) load,
+    required TResult Function(_AddOrUpdate value) addOrUpdate,
+    required TResult Function(_AddMany value) addMany,
+    required TResult Function(_RemoveById value) removeById,
+    required TResult Function(_RemoveByPath value) removeByPath,
+    required TResult Function(_DeleteManyByEntryId value) deleteManyByEntryId,
+    required TResult Function(_ClearProject value) clearProject,
+    required TResult Function(_ReplaceAllForProject value) replaceAllForProject,
+  }) {
+    return removeByPath(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(_Load value)? load,
+    TResult? Function(_AddOrUpdate value)? addOrUpdate,
+    TResult? Function(_AddMany value)? addMany,
+    TResult? Function(_RemoveById value)? removeById,
+    TResult? Function(_RemoveByPath value)? removeByPath,
+    TResult? Function(_DeleteManyByEntryId value)? deleteManyByEntryId,
+    TResult? Function(_ClearProject value)? clearProject,
+    TResult? Function(_ReplaceAllForProject value)? replaceAllForProject,
+  }) {
+    return removeByPath?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(_Load value)? load,
+    TResult Function(_AddOrUpdate value)? addOrUpdate,
+    TResult Function(_AddMany value)? addMany,
+    TResult Function(_RemoveById value)? removeById,
+    TResult Function(_RemoveByPath value)? removeByPath,
+    TResult Function(_DeleteManyByEntryId value)? deleteManyByEntryId,
+    TResult Function(_ClearProject value)? clearProject,
+    TResult Function(_ReplaceAllForProject value)? replaceAllForProject,
+    required TResult orElse(),
+  }) {
+    if (removeByPath != null) {
+      return removeByPath(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class _RemoveByPath implements CacheCompletionReportEvent {
+  const factory _RemoveByPath(
+      {required final String projectId,
+      required final String filePath}) = _$RemoveByPathImpl;
+
+  String get projectId;
+  String get filePath;
+  @JsonKey(ignore: true)
+  _$$RemoveByPathImplCopyWith<_$RemoveByPathImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class _$$DeleteManyByEntryIdImplCopyWith<$Res> {
+  factory _$$DeleteManyByEntryIdImplCopyWith(_$DeleteManyByEntryIdImpl value,
+          $Res Function(_$DeleteManyByEntryIdImpl) then) =
+      __$$DeleteManyByEntryIdImplCopyWithImpl<$Res>;
+  @useResult
+  $Res call({List<String> entryIds});
+}
+
+/// @nodoc
+class __$$DeleteManyByEntryIdImplCopyWithImpl<$Res>
+    extends _$CacheCompletionReportEventCopyWithImpl<$Res,
+        _$DeleteManyByEntryIdImpl>
+    implements _$$DeleteManyByEntryIdImplCopyWith<$Res> {
+  __$$DeleteManyByEntryIdImplCopyWithImpl(_$DeleteManyByEntryIdImpl _value,
+      $Res Function(_$DeleteManyByEntryIdImpl) _then)
+      : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? entryIds = null,
+  }) {
+    return _then(_$DeleteManyByEntryIdImpl(
+      entryIds: null == entryIds
+          ? _value._entryIds
+          : entryIds // ignore: cast_nullable_to_non_nullable
+              as List<String>,
+    ));
+  }
+}
+
+/// @nodoc
+
+class _$DeleteManyByEntryIdImpl implements _DeleteManyByEntryId {
+  const _$DeleteManyByEntryIdImpl({required final List<String> entryIds})
+      : _entryIds = entryIds;
+
+  final List<String> _entryIds;
+  @override
+  List<String> get entryIds {
+    if (_entryIds is EqualUnmodifiableListView) return _entryIds;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_entryIds);
+  }
+
+  @override
+  String toString() {
+    return 'CacheCompletionReportEvent.deleteManyByEntryId(entryIds: $entryIds)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$DeleteManyByEntryIdImpl &&
+            const DeepCollectionEquality().equals(other._entryIds, _entryIds));
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(runtimeType, const DeepCollectionEquality().hash(_entryIds));
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$DeleteManyByEntryIdImplCopyWith<_$DeleteManyByEntryIdImpl> get copyWith =>
+      __$$DeleteManyByEntryIdImplCopyWithImpl<_$DeleteManyByEntryIdImpl>(
+          this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function(String projectId) load,
+    required TResult Function(
+            String projectId,
+            String filePath,
+            String fileType,
+            String fileName,
+            String latitude,
+            String longitude,
+            int? index)
+        addOrUpdate,
+    required TResult Function(List<CompletionFileInput> files) addMany,
+    required TResult Function(int id) removeById,
+    required TResult Function(String projectId, String filePath) removeByPath,
+    required TResult Function(List<String> entryIds) deleteManyByEntryId,
+    required TResult Function(String projectId) clearProject,
+    required TResult Function(String projectId, List<CompletionFileInput> files)
+        replaceAllForProject,
+  }) {
+    return deleteManyByEntryId(entryIds);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function(String projectId)? load,
+    TResult? Function(String projectId, String filePath, String fileType,
+            String fileName, String latitude, String longitude, int? index)?
+        addOrUpdate,
+    TResult? Function(List<CompletionFileInput> files)? addMany,
+    TResult? Function(int id)? removeById,
+    TResult? Function(String projectId, String filePath)? removeByPath,
+    TResult? Function(List<String> entryIds)? deleteManyByEntryId,
+    TResult? Function(String projectId)? clearProject,
+    TResult? Function(String projectId, List<CompletionFileInput> files)?
+        replaceAllForProject,
+  }) {
+    return deleteManyByEntryId?.call(entryIds);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function(String projectId)? load,
+    TResult Function(String projectId, String filePath, String fileType,
+            String fileName, String latitude, String longitude, int? index)?
+        addOrUpdate,
+    TResult Function(List<CompletionFileInput> files)? addMany,
+    TResult Function(int id)? removeById,
+    TResult Function(String projectId, String filePath)? removeByPath,
+    TResult Function(List<String> entryIds)? deleteManyByEntryId,
+    TResult Function(String projectId)? clearProject,
+    TResult Function(String projectId, List<CompletionFileInput> files)?
+        replaceAllForProject,
+    required TResult orElse(),
+  }) {
+    if (deleteManyByEntryId != null) {
+      return deleteManyByEntryId(entryIds);
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(_Load value) load,
+    required TResult Function(_AddOrUpdate value) addOrUpdate,
+    required TResult Function(_AddMany value) addMany,
+    required TResult Function(_RemoveById value) removeById,
+    required TResult Function(_RemoveByPath value) removeByPath,
+    required TResult Function(_DeleteManyByEntryId value) deleteManyByEntryId,
+    required TResult Function(_ClearProject value) clearProject,
+    required TResult Function(_ReplaceAllForProject value) replaceAllForProject,
+  }) {
+    return deleteManyByEntryId(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(_Load value)? load,
+    TResult? Function(_AddOrUpdate value)? addOrUpdate,
+    TResult? Function(_AddMany value)? addMany,
+    TResult? Function(_RemoveById value)? removeById,
+    TResult? Function(_RemoveByPath value)? removeByPath,
+    TResult? Function(_DeleteManyByEntryId value)? deleteManyByEntryId,
+    TResult? Function(_ClearProject value)? clearProject,
+    TResult? Function(_ReplaceAllForProject value)? replaceAllForProject,
+  }) {
+    return deleteManyByEntryId?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(_Load value)? load,
+    TResult Function(_AddOrUpdate value)? addOrUpdate,
+    TResult Function(_AddMany value)? addMany,
+    TResult Function(_RemoveById value)? removeById,
+    TResult Function(_RemoveByPath value)? removeByPath,
+    TResult Function(_DeleteManyByEntryId value)? deleteManyByEntryId,
+    TResult Function(_ClearProject value)? clearProject,
+    TResult Function(_ReplaceAllForProject value)? replaceAllForProject,
+    required TResult orElse(),
+  }) {
+    if (deleteManyByEntryId != null) {
+      return deleteManyByEntryId(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class _DeleteManyByEntryId implements CacheCompletionReportEvent {
+  const factory _DeleteManyByEntryId({required final List<String> entryIds}) =
+      _$DeleteManyByEntryIdImpl;
+
+  List<String> get entryIds;
+  @JsonKey(ignore: true)
+  _$$DeleteManyByEntryIdImplCopyWith<_$DeleteManyByEntryIdImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class _$$ClearProjectImplCopyWith<$Res> {
+  factory _$$ClearProjectImplCopyWith(
+          _$ClearProjectImpl value, $Res Function(_$ClearProjectImpl) then) =
+      __$$ClearProjectImplCopyWithImpl<$Res>;
+  @useResult
+  $Res call({String projectId});
+}
+
+/// @nodoc
+class __$$ClearProjectImplCopyWithImpl<$Res>
+    extends _$CacheCompletionReportEventCopyWithImpl<$Res, _$ClearProjectImpl>
+    implements _$$ClearProjectImplCopyWith<$Res> {
+  __$$ClearProjectImplCopyWithImpl(
+      _$ClearProjectImpl _value, $Res Function(_$ClearProjectImpl) _then)
+      : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? projectId = null,
+  }) {
+    return _then(_$ClearProjectImpl(
+      null == projectId
+          ? _value.projectId
+          : projectId // ignore: cast_nullable_to_non_nullable
+              as String,
+    ));
+  }
+}
+
+/// @nodoc
+
+class _$ClearProjectImpl implements _ClearProject {
+  const _$ClearProjectImpl(this.projectId);
+
+  @override
+  final String projectId;
+
+  @override
+  String toString() {
+    return 'CacheCompletionReportEvent.clearProject(projectId: $projectId)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$ClearProjectImpl &&
+            (identical(other.projectId, projectId) ||
+                other.projectId == projectId));
+  }
+
+  @override
+  int get hashCode => Object.hash(runtimeType, projectId);
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$ClearProjectImplCopyWith<_$ClearProjectImpl> get copyWith =>
+      __$$ClearProjectImplCopyWithImpl<_$ClearProjectImpl>(this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function(String projectId) load,
+    required TResult Function(
+            String projectId,
+            String filePath,
+            String fileType,
+            String fileName,
+            String latitude,
+            String longitude,
+            int? index)
+        addOrUpdate,
+    required TResult Function(List<CompletionFileInput> files) addMany,
+    required TResult Function(int id) removeById,
+    required TResult Function(String projectId, String filePath) removeByPath,
+    required TResult Function(List<String> entryIds) deleteManyByEntryId,
+    required TResult Function(String projectId) clearProject,
+    required TResult Function(String projectId, List<CompletionFileInput> files)
+        replaceAllForProject,
+  }) {
+    return clearProject(projectId);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function(String projectId)? load,
+    TResult? Function(String projectId, String filePath, String fileType,
+            String fileName, String latitude, String longitude, int? index)?
+        addOrUpdate,
+    TResult? Function(List<CompletionFileInput> files)? addMany,
+    TResult? Function(int id)? removeById,
+    TResult? Function(String projectId, String filePath)? removeByPath,
+    TResult? Function(List<String> entryIds)? deleteManyByEntryId,
+    TResult? Function(String projectId)? clearProject,
+    TResult? Function(String projectId, List<CompletionFileInput> files)?
+        replaceAllForProject,
+  }) {
+    return clearProject?.call(projectId);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function(String projectId)? load,
+    TResult Function(String projectId, String filePath, String fileType,
+            String fileName, String latitude, String longitude, int? index)?
+        addOrUpdate,
+    TResult Function(List<CompletionFileInput> files)? addMany,
+    TResult Function(int id)? removeById,
+    TResult Function(String projectId, String filePath)? removeByPath,
+    TResult Function(List<String> entryIds)? deleteManyByEntryId,
+    TResult Function(String projectId)? clearProject,
+    TResult Function(String projectId, List<CompletionFileInput> files)?
+        replaceAllForProject,
+    required TResult orElse(),
+  }) {
+    if (clearProject != null) {
+      return clearProject(projectId);
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(_Load value) load,
+    required TResult Function(_AddOrUpdate value) addOrUpdate,
+    required TResult Function(_AddMany value) addMany,
+    required TResult Function(_RemoveById value) removeById,
+    required TResult Function(_RemoveByPath value) removeByPath,
+    required TResult Function(_DeleteManyByEntryId value) deleteManyByEntryId,
+    required TResult Function(_ClearProject value) clearProject,
+    required TResult Function(_ReplaceAllForProject value) replaceAllForProject,
+  }) {
+    return clearProject(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(_Load value)? load,
+    TResult? Function(_AddOrUpdate value)? addOrUpdate,
+    TResult? Function(_AddMany value)? addMany,
+    TResult? Function(_RemoveById value)? removeById,
+    TResult? Function(_RemoveByPath value)? removeByPath,
+    TResult? Function(_DeleteManyByEntryId value)? deleteManyByEntryId,
+    TResult? Function(_ClearProject value)? clearProject,
+    TResult? Function(_ReplaceAllForProject value)? replaceAllForProject,
+  }) {
+    return clearProject?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(_Load value)? load,
+    TResult Function(_AddOrUpdate value)? addOrUpdate,
+    TResult Function(_AddMany value)? addMany,
+    TResult Function(_RemoveById value)? removeById,
+    TResult Function(_RemoveByPath value)? removeByPath,
+    TResult Function(_DeleteManyByEntryId value)? deleteManyByEntryId,
+    TResult Function(_ClearProject value)? clearProject,
+    TResult Function(_ReplaceAllForProject value)? replaceAllForProject,
+    required TResult orElse(),
+  }) {
+    if (clearProject != null) {
+      return clearProject(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class _ClearProject implements CacheCompletionReportEvent {
+  const factory _ClearProject(final String projectId) = _$ClearProjectImpl;
+
+  String get projectId;
+  @JsonKey(ignore: true)
+  _$$ClearProjectImplCopyWith<_$ClearProjectImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class _$$ReplaceAllForProjectImplCopyWith<$Res> {
+  factory _$$ReplaceAllForProjectImplCopyWith(_$ReplaceAllForProjectImpl value,
+          $Res Function(_$ReplaceAllForProjectImpl) then) =
+      __$$ReplaceAllForProjectImplCopyWithImpl<$Res>;
+  @useResult
+  $Res call({String projectId, List<CompletionFileInput> files});
+}
+
+/// @nodoc
+class __$$ReplaceAllForProjectImplCopyWithImpl<$Res>
+    extends _$CacheCompletionReportEventCopyWithImpl<$Res,
+        _$ReplaceAllForProjectImpl>
+    implements _$$ReplaceAllForProjectImplCopyWith<$Res> {
+  __$$ReplaceAllForProjectImplCopyWithImpl(_$ReplaceAllForProjectImpl _value,
+      $Res Function(_$ReplaceAllForProjectImpl) _then)
+      : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? projectId = null,
+    Object? files = null,
+  }) {
+    return _then(_$ReplaceAllForProjectImpl(
+      projectId: null == projectId
+          ? _value.projectId
+          : projectId // ignore: cast_nullable_to_non_nullable
+              as String,
+      files: null == files
+          ? _value._files
+          : files // ignore: cast_nullable_to_non_nullable
+              as List<CompletionFileInput>,
+    ));
+  }
+}
+
+/// @nodoc
+
+class _$ReplaceAllForProjectImpl implements _ReplaceAllForProject {
+  const _$ReplaceAllForProjectImpl(
+      {required this.projectId, required final List<CompletionFileInput> files})
+      : _files = files;
+
+  @override
+  final String projectId;
+  final List<CompletionFileInput> _files;
+  @override
+  List<CompletionFileInput> get files {
+    if (_files is EqualUnmodifiableListView) return _files;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_files);
+  }
+
+  @override
+  String toString() {
+    return 'CacheCompletionReportEvent.replaceAllForProject(projectId: $projectId, files: $files)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$ReplaceAllForProjectImpl &&
+            (identical(other.projectId, projectId) ||
+                other.projectId == projectId) &&
+            const DeepCollectionEquality().equals(other._files, _files));
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      runtimeType, projectId, const DeepCollectionEquality().hash(_files));
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$ReplaceAllForProjectImplCopyWith<_$ReplaceAllForProjectImpl>
+      get copyWith =>
+          __$$ReplaceAllForProjectImplCopyWithImpl<_$ReplaceAllForProjectImpl>(
+              this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function(String projectId) load,
+    required TResult Function(
+            String projectId,
+            String filePath,
+            String fileType,
+            String fileName,
+            String latitude,
+            String longitude,
+            int? index)
+        addOrUpdate,
+    required TResult Function(List<CompletionFileInput> files) addMany,
+    required TResult Function(int id) removeById,
+    required TResult Function(String projectId, String filePath) removeByPath,
+    required TResult Function(List<String> entryIds) deleteManyByEntryId,
+    required TResult Function(String projectId) clearProject,
+    required TResult Function(String projectId, List<CompletionFileInput> files)
+        replaceAllForProject,
+  }) {
+    return replaceAllForProject(projectId, files);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function(String projectId)? load,
+    TResult? Function(String projectId, String filePath, String fileType,
+            String fileName, String latitude, String longitude, int? index)?
+        addOrUpdate,
+    TResult? Function(List<CompletionFileInput> files)? addMany,
+    TResult? Function(int id)? removeById,
+    TResult? Function(String projectId, String filePath)? removeByPath,
+    TResult? Function(List<String> entryIds)? deleteManyByEntryId,
+    TResult? Function(String projectId)? clearProject,
+    TResult? Function(String projectId, List<CompletionFileInput> files)?
+        replaceAllForProject,
+  }) {
+    return replaceAllForProject?.call(projectId, files);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function(String projectId)? load,
+    TResult Function(String projectId, String filePath, String fileType,
+            String fileName, String latitude, String longitude, int? index)?
+        addOrUpdate,
+    TResult Function(List<CompletionFileInput> files)? addMany,
+    TResult Function(int id)? removeById,
+    TResult Function(String projectId, String filePath)? removeByPath,
+    TResult Function(List<String> entryIds)? deleteManyByEntryId,
+    TResult Function(String projectId)? clearProject,
+    TResult Function(String projectId, List<CompletionFileInput> files)?
+        replaceAllForProject,
+    required TResult orElse(),
+  }) {
+    if (replaceAllForProject != null) {
+      return replaceAllForProject(projectId, files);
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(_Load value) load,
+    required TResult Function(_AddOrUpdate value) addOrUpdate,
+    required TResult Function(_AddMany value) addMany,
+    required TResult Function(_RemoveById value) removeById,
+    required TResult Function(_RemoveByPath value) removeByPath,
+    required TResult Function(_DeleteManyByEntryId value) deleteManyByEntryId,
+    required TResult Function(_ClearProject value) clearProject,
+    required TResult Function(_ReplaceAllForProject value) replaceAllForProject,
+  }) {
+    return replaceAllForProject(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(_Load value)? load,
+    TResult? Function(_AddOrUpdate value)? addOrUpdate,
+    TResult? Function(_AddMany value)? addMany,
+    TResult? Function(_RemoveById value)? removeById,
+    TResult? Function(_RemoveByPath value)? removeByPath,
+    TResult? Function(_DeleteManyByEntryId value)? deleteManyByEntryId,
+    TResult? Function(_ClearProject value)? clearProject,
+    TResult? Function(_ReplaceAllForProject value)? replaceAllForProject,
+  }) {
+    return replaceAllForProject?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(_Load value)? load,
+    TResult Function(_AddOrUpdate value)? addOrUpdate,
+    TResult Function(_AddMany value)? addMany,
+    TResult Function(_RemoveById value)? removeById,
+    TResult Function(_RemoveByPath value)? removeByPath,
+    TResult Function(_DeleteManyByEntryId value)? deleteManyByEntryId,
+    TResult Function(_ClearProject value)? clearProject,
+    TResult Function(_ReplaceAllForProject value)? replaceAllForProject,
+    required TResult orElse(),
+  }) {
+    if (replaceAllForProject != null) {
+      return replaceAllForProject(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class _ReplaceAllForProject implements CacheCompletionReportEvent {
+  const factory _ReplaceAllForProject(
+          {required final String projectId,
+          required final List<CompletionFileInput> files}) =
+      _$ReplaceAllForProjectImpl;
+
+  String get projectId;
+  List<CompletionFileInput> get files;
+  @JsonKey(ignore: true)
+  _$$ReplaceAllForProjectImplCopyWith<_$ReplaceAllForProjectImpl>
+      get copyWith => throw _privateConstructorUsedError;
 }
 
 /// @nodoc
@@ -505,33 +1747,28 @@ mixin _$CacheCompletionReportState {
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
-    required TResult Function(CacheCompletionReport report) loaded,
-    required TResult Function(CacheCompletionReport report) addedOrUpdated,
-    required TResult Function() deleted,
-    required TResult Function() notFound,
-    required TResult Function(String message) error,
+    required TResult Function(
+            String projectId, List<CacheCompletionReport> files)
+        loaded,
+    required TResult Function(String message) failure,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
-    TResult? Function(CacheCompletionReport report)? loaded,
-    TResult? Function(CacheCompletionReport report)? addedOrUpdated,
-    TResult? Function()? deleted,
-    TResult? Function()? notFound,
-    TResult? Function(String message)? error,
+    TResult? Function(String projectId, List<CacheCompletionReport> files)?
+        loaded,
+    TResult? Function(String message)? failure,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
-    TResult Function(CacheCompletionReport report)? loaded,
-    TResult Function(CacheCompletionReport report)? addedOrUpdated,
-    TResult Function()? deleted,
-    TResult Function()? notFound,
-    TResult Function(String message)? error,
+    TResult Function(String projectId, List<CacheCompletionReport> files)?
+        loaded,
+    TResult Function(String message)? failure,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -540,10 +1777,7 @@ mixin _$CacheCompletionReportState {
     required TResult Function(_Initial value) initial,
     required TResult Function(_Loading value) loading,
     required TResult Function(_Loaded value) loaded,
-    required TResult Function(_AddedOrUpdated value) addedOrUpdated,
-    required TResult Function(_Deleted value) deleted,
-    required TResult Function(_NotFound value) notFound,
-    required TResult Function(_Error value) error,
+    required TResult Function(_Failure value) failure,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -551,10 +1785,7 @@ mixin _$CacheCompletionReportState {
     TResult? Function(_Initial value)? initial,
     TResult? Function(_Loading value)? loading,
     TResult? Function(_Loaded value)? loaded,
-    TResult? Function(_AddedOrUpdated value)? addedOrUpdated,
-    TResult? Function(_Deleted value)? deleted,
-    TResult? Function(_NotFound value)? notFound,
-    TResult? Function(_Error value)? error,
+    TResult? Function(_Failure value)? failure,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -562,10 +1793,7 @@ mixin _$CacheCompletionReportState {
     TResult Function(_Initial value)? initial,
     TResult Function(_Loading value)? loading,
     TResult Function(_Loaded value)? loaded,
-    TResult Function(_AddedOrUpdated value)? addedOrUpdated,
-    TResult Function(_Deleted value)? deleted,
-    TResult Function(_NotFound value)? notFound,
-    TResult Function(_Error value)? error,
+    TResult Function(_Failure value)? failure,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -631,11 +1859,10 @@ class _$InitialImpl implements _Initial {
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
-    required TResult Function(CacheCompletionReport report) loaded,
-    required TResult Function(CacheCompletionReport report) addedOrUpdated,
-    required TResult Function() deleted,
-    required TResult Function() notFound,
-    required TResult Function(String message) error,
+    required TResult Function(
+            String projectId, List<CacheCompletionReport> files)
+        loaded,
+    required TResult Function(String message) failure,
   }) {
     return initial();
   }
@@ -645,11 +1872,9 @@ class _$InitialImpl implements _Initial {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
-    TResult? Function(CacheCompletionReport report)? loaded,
-    TResult? Function(CacheCompletionReport report)? addedOrUpdated,
-    TResult? Function()? deleted,
-    TResult? Function()? notFound,
-    TResult? Function(String message)? error,
+    TResult? Function(String projectId, List<CacheCompletionReport> files)?
+        loaded,
+    TResult? Function(String message)? failure,
   }) {
     return initial?.call();
   }
@@ -659,11 +1884,9 @@ class _$InitialImpl implements _Initial {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
-    TResult Function(CacheCompletionReport report)? loaded,
-    TResult Function(CacheCompletionReport report)? addedOrUpdated,
-    TResult Function()? deleted,
-    TResult Function()? notFound,
-    TResult Function(String message)? error,
+    TResult Function(String projectId, List<CacheCompletionReport> files)?
+        loaded,
+    TResult Function(String message)? failure,
     required TResult orElse(),
   }) {
     if (initial != null) {
@@ -678,10 +1901,7 @@ class _$InitialImpl implements _Initial {
     required TResult Function(_Initial value) initial,
     required TResult Function(_Loading value) loading,
     required TResult Function(_Loaded value) loaded,
-    required TResult Function(_AddedOrUpdated value) addedOrUpdated,
-    required TResult Function(_Deleted value) deleted,
-    required TResult Function(_NotFound value) notFound,
-    required TResult Function(_Error value) error,
+    required TResult Function(_Failure value) failure,
   }) {
     return initial(this);
   }
@@ -692,10 +1912,7 @@ class _$InitialImpl implements _Initial {
     TResult? Function(_Initial value)? initial,
     TResult? Function(_Loading value)? loading,
     TResult? Function(_Loaded value)? loaded,
-    TResult? Function(_AddedOrUpdated value)? addedOrUpdated,
-    TResult? Function(_Deleted value)? deleted,
-    TResult? Function(_NotFound value)? notFound,
-    TResult? Function(_Error value)? error,
+    TResult? Function(_Failure value)? failure,
   }) {
     return initial?.call(this);
   }
@@ -706,10 +1923,7 @@ class _$InitialImpl implements _Initial {
     TResult Function(_Initial value)? initial,
     TResult Function(_Loading value)? loading,
     TResult Function(_Loaded value)? loaded,
-    TResult Function(_AddedOrUpdated value)? addedOrUpdated,
-    TResult Function(_Deleted value)? deleted,
-    TResult Function(_NotFound value)? notFound,
-    TResult Function(_Error value)? error,
+    TResult Function(_Failure value)? failure,
     required TResult orElse(),
   }) {
     if (initial != null) {
@@ -763,11 +1977,10 @@ class _$LoadingImpl implements _Loading {
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
-    required TResult Function(CacheCompletionReport report) loaded,
-    required TResult Function(CacheCompletionReport report) addedOrUpdated,
-    required TResult Function() deleted,
-    required TResult Function() notFound,
-    required TResult Function(String message) error,
+    required TResult Function(
+            String projectId, List<CacheCompletionReport> files)
+        loaded,
+    required TResult Function(String message) failure,
   }) {
     return loading();
   }
@@ -777,11 +1990,9 @@ class _$LoadingImpl implements _Loading {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
-    TResult? Function(CacheCompletionReport report)? loaded,
-    TResult? Function(CacheCompletionReport report)? addedOrUpdated,
-    TResult? Function()? deleted,
-    TResult? Function()? notFound,
-    TResult? Function(String message)? error,
+    TResult? Function(String projectId, List<CacheCompletionReport> files)?
+        loaded,
+    TResult? Function(String message)? failure,
   }) {
     return loading?.call();
   }
@@ -791,11 +2002,9 @@ class _$LoadingImpl implements _Loading {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
-    TResult Function(CacheCompletionReport report)? loaded,
-    TResult Function(CacheCompletionReport report)? addedOrUpdated,
-    TResult Function()? deleted,
-    TResult Function()? notFound,
-    TResult Function(String message)? error,
+    TResult Function(String projectId, List<CacheCompletionReport> files)?
+        loaded,
+    TResult Function(String message)? failure,
     required TResult orElse(),
   }) {
     if (loading != null) {
@@ -810,10 +2019,7 @@ class _$LoadingImpl implements _Loading {
     required TResult Function(_Initial value) initial,
     required TResult Function(_Loading value) loading,
     required TResult Function(_Loaded value) loaded,
-    required TResult Function(_AddedOrUpdated value) addedOrUpdated,
-    required TResult Function(_Deleted value) deleted,
-    required TResult Function(_NotFound value) notFound,
-    required TResult Function(_Error value) error,
+    required TResult Function(_Failure value) failure,
   }) {
     return loading(this);
   }
@@ -824,10 +2030,7 @@ class _$LoadingImpl implements _Loading {
     TResult? Function(_Initial value)? initial,
     TResult? Function(_Loading value)? loading,
     TResult? Function(_Loaded value)? loaded,
-    TResult? Function(_AddedOrUpdated value)? addedOrUpdated,
-    TResult? Function(_Deleted value)? deleted,
-    TResult? Function(_NotFound value)? notFound,
-    TResult? Function(_Error value)? error,
+    TResult? Function(_Failure value)? failure,
   }) {
     return loading?.call(this);
   }
@@ -838,10 +2041,7 @@ class _$LoadingImpl implements _Loading {
     TResult Function(_Initial value)? initial,
     TResult Function(_Loading value)? loading,
     TResult Function(_Loaded value)? loaded,
-    TResult Function(_AddedOrUpdated value)? addedOrUpdated,
-    TResult Function(_Deleted value)? deleted,
-    TResult Function(_NotFound value)? notFound,
-    TResult Function(_Error value)? error,
+    TResult Function(_Failure value)? failure,
     required TResult orElse(),
   }) {
     if (loading != null) {
@@ -861,7 +2061,7 @@ abstract class _$$LoadedImplCopyWith<$Res> {
           _$LoadedImpl value, $Res Function(_$LoadedImpl) then) =
       __$$LoadedImplCopyWithImpl<$Res>;
   @useResult
-  $Res call({CacheCompletionReport report});
+  $Res call({String projectId, List<CacheCompletionReport> files});
 }
 
 /// @nodoc
@@ -875,13 +2075,18 @@ class __$$LoadedImplCopyWithImpl<$Res>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? report = null,
+    Object? projectId = null,
+    Object? files = null,
   }) {
     return _then(_$LoadedImpl(
-      null == report
-          ? _value.report
-          : report // ignore: cast_nullable_to_non_nullable
-              as CacheCompletionReport,
+      projectId: null == projectId
+          ? _value.projectId
+          : projectId // ignore: cast_nullable_to_non_nullable
+              as String,
+      files: null == files
+          ? _value._files
+          : files // ignore: cast_nullable_to_non_nullable
+              as List<CacheCompletionReport>,
     ));
   }
 }
@@ -889,14 +2094,24 @@ class __$$LoadedImplCopyWithImpl<$Res>
 /// @nodoc
 
 class _$LoadedImpl implements _Loaded {
-  const _$LoadedImpl(this.report);
+  const _$LoadedImpl(
+      {required this.projectId,
+      required final List<CacheCompletionReport> files})
+      : _files = files;
 
   @override
-  final CacheCompletionReport report;
+  final String projectId;
+  final List<CacheCompletionReport> _files;
+  @override
+  List<CacheCompletionReport> get files {
+    if (_files is EqualUnmodifiableListView) return _files;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_files);
+  }
 
   @override
   String toString() {
-    return 'CacheCompletionReportState.loaded(report: $report)';
+    return 'CacheCompletionReportState.loaded(projectId: $projectId, files: $files)';
   }
 
   @override
@@ -904,11 +2119,14 @@ class _$LoadedImpl implements _Loaded {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _$LoadedImpl &&
-            (identical(other.report, report) || other.report == report));
+            (identical(other.projectId, projectId) ||
+                other.projectId == projectId) &&
+            const DeepCollectionEquality().equals(other._files, _files));
   }
 
   @override
-  int get hashCode => Object.hash(runtimeType, report);
+  int get hashCode => Object.hash(
+      runtimeType, projectId, const DeepCollectionEquality().hash(_files));
 
   @JsonKey(ignore: true)
   @override
@@ -921,13 +2139,12 @@ class _$LoadedImpl implements _Loaded {
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
-    required TResult Function(CacheCompletionReport report) loaded,
-    required TResult Function(CacheCompletionReport report) addedOrUpdated,
-    required TResult Function() deleted,
-    required TResult Function() notFound,
-    required TResult Function(String message) error,
+    required TResult Function(
+            String projectId, List<CacheCompletionReport> files)
+        loaded,
+    required TResult Function(String message) failure,
   }) {
-    return loaded(report);
+    return loaded(projectId, files);
   }
 
   @override
@@ -935,13 +2152,11 @@ class _$LoadedImpl implements _Loaded {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
-    TResult? Function(CacheCompletionReport report)? loaded,
-    TResult? Function(CacheCompletionReport report)? addedOrUpdated,
-    TResult? Function()? deleted,
-    TResult? Function()? notFound,
-    TResult? Function(String message)? error,
+    TResult? Function(String projectId, List<CacheCompletionReport> files)?
+        loaded,
+    TResult? Function(String message)? failure,
   }) {
-    return loaded?.call(report);
+    return loaded?.call(projectId, files);
   }
 
   @override
@@ -949,15 +2164,13 @@ class _$LoadedImpl implements _Loaded {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
-    TResult Function(CacheCompletionReport report)? loaded,
-    TResult Function(CacheCompletionReport report)? addedOrUpdated,
-    TResult Function()? deleted,
-    TResult Function()? notFound,
-    TResult Function(String message)? error,
+    TResult Function(String projectId, List<CacheCompletionReport> files)?
+        loaded,
+    TResult Function(String message)? failure,
     required TResult orElse(),
   }) {
     if (loaded != null) {
-      return loaded(report);
+      return loaded(projectId, files);
     }
     return orElse();
   }
@@ -968,10 +2181,7 @@ class _$LoadedImpl implements _Loaded {
     required TResult Function(_Initial value) initial,
     required TResult Function(_Loading value) loading,
     required TResult Function(_Loaded value) loaded,
-    required TResult Function(_AddedOrUpdated value) addedOrUpdated,
-    required TResult Function(_Deleted value) deleted,
-    required TResult Function(_NotFound value) notFound,
-    required TResult Function(_Error value) error,
+    required TResult Function(_Failure value) failure,
   }) {
     return loaded(this);
   }
@@ -982,10 +2192,7 @@ class _$LoadedImpl implements _Loaded {
     TResult? Function(_Initial value)? initial,
     TResult? Function(_Loading value)? loading,
     TResult? Function(_Loaded value)? loaded,
-    TResult? Function(_AddedOrUpdated value)? addedOrUpdated,
-    TResult? Function(_Deleted value)? deleted,
-    TResult? Function(_NotFound value)? notFound,
-    TResult? Function(_Error value)? error,
+    TResult? Function(_Failure value)? failure,
   }) {
     return loaded?.call(this);
   }
@@ -996,10 +2203,7 @@ class _$LoadedImpl implements _Loaded {
     TResult Function(_Initial value)? initial,
     TResult Function(_Loading value)? loading,
     TResult Function(_Loaded value)? loaded,
-    TResult Function(_AddedOrUpdated value)? addedOrUpdated,
-    TResult Function(_Deleted value)? deleted,
-    TResult Function(_NotFound value)? notFound,
-    TResult Function(_Error value)? error,
+    TResult Function(_Failure value)? failure,
     required TResult orElse(),
   }) {
     if (loaded != null) {
@@ -1010,458 +2214,32 @@ class _$LoadedImpl implements _Loaded {
 }
 
 abstract class _Loaded implements CacheCompletionReportState {
-  const factory _Loaded(final CacheCompletionReport report) = _$LoadedImpl;
+  const factory _Loaded(
+      {required final String projectId,
+      required final List<CacheCompletionReport> files}) = _$LoadedImpl;
 
-  CacheCompletionReport get report;
+  String get projectId;
+  List<CacheCompletionReport> get files;
   @JsonKey(ignore: true)
   _$$LoadedImplCopyWith<_$LoadedImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
 
 /// @nodoc
-abstract class _$$AddedOrUpdatedImplCopyWith<$Res> {
-  factory _$$AddedOrUpdatedImplCopyWith(_$AddedOrUpdatedImpl value,
-          $Res Function(_$AddedOrUpdatedImpl) then) =
-      __$$AddedOrUpdatedImplCopyWithImpl<$Res>;
-  @useResult
-  $Res call({CacheCompletionReport report});
-}
-
-/// @nodoc
-class __$$AddedOrUpdatedImplCopyWithImpl<$Res>
-    extends _$CacheCompletionReportStateCopyWithImpl<$Res, _$AddedOrUpdatedImpl>
-    implements _$$AddedOrUpdatedImplCopyWith<$Res> {
-  __$$AddedOrUpdatedImplCopyWithImpl(
-      _$AddedOrUpdatedImpl _value, $Res Function(_$AddedOrUpdatedImpl) _then)
-      : super(_value, _then);
-
-  @pragma('vm:prefer-inline')
-  @override
-  $Res call({
-    Object? report = null,
-  }) {
-    return _then(_$AddedOrUpdatedImpl(
-      null == report
-          ? _value.report
-          : report // ignore: cast_nullable_to_non_nullable
-              as CacheCompletionReport,
-    ));
-  }
-}
-
-/// @nodoc
-
-class _$AddedOrUpdatedImpl implements _AddedOrUpdated {
-  const _$AddedOrUpdatedImpl(this.report);
-
-  @override
-  final CacheCompletionReport report;
-
-  @override
-  String toString() {
-    return 'CacheCompletionReportState.addedOrUpdated(report: $report)';
-  }
-
-  @override
-  bool operator ==(Object other) {
-    return identical(this, other) ||
-        (other.runtimeType == runtimeType &&
-            other is _$AddedOrUpdatedImpl &&
-            (identical(other.report, report) || other.report == report));
-  }
-
-  @override
-  int get hashCode => Object.hash(runtimeType, report);
-
-  @JsonKey(ignore: true)
-  @override
-  @pragma('vm:prefer-inline')
-  _$$AddedOrUpdatedImplCopyWith<_$AddedOrUpdatedImpl> get copyWith =>
-      __$$AddedOrUpdatedImplCopyWithImpl<_$AddedOrUpdatedImpl>(
-          this, _$identity);
-
-  @override
-  @optionalTypeArgs
-  TResult when<TResult extends Object?>({
-    required TResult Function() initial,
-    required TResult Function() loading,
-    required TResult Function(CacheCompletionReport report) loaded,
-    required TResult Function(CacheCompletionReport report) addedOrUpdated,
-    required TResult Function() deleted,
-    required TResult Function() notFound,
-    required TResult Function(String message) error,
-  }) {
-    return addedOrUpdated(report);
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function()? initial,
-    TResult? Function()? loading,
-    TResult? Function(CacheCompletionReport report)? loaded,
-    TResult? Function(CacheCompletionReport report)? addedOrUpdated,
-    TResult? Function()? deleted,
-    TResult? Function()? notFound,
-    TResult? Function(String message)? error,
-  }) {
-    return addedOrUpdated?.call(report);
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult maybeWhen<TResult extends Object?>({
-    TResult Function()? initial,
-    TResult Function()? loading,
-    TResult Function(CacheCompletionReport report)? loaded,
-    TResult Function(CacheCompletionReport report)? addedOrUpdated,
-    TResult Function()? deleted,
-    TResult Function()? notFound,
-    TResult Function(String message)? error,
-    required TResult orElse(),
-  }) {
-    if (addedOrUpdated != null) {
-      return addedOrUpdated(report);
-    }
-    return orElse();
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult map<TResult extends Object?>({
-    required TResult Function(_Initial value) initial,
-    required TResult Function(_Loading value) loading,
-    required TResult Function(_Loaded value) loaded,
-    required TResult Function(_AddedOrUpdated value) addedOrUpdated,
-    required TResult Function(_Deleted value) deleted,
-    required TResult Function(_NotFound value) notFound,
-    required TResult Function(_Error value) error,
-  }) {
-    return addedOrUpdated(this);
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(_Initial value)? initial,
-    TResult? Function(_Loading value)? loading,
-    TResult? Function(_Loaded value)? loaded,
-    TResult? Function(_AddedOrUpdated value)? addedOrUpdated,
-    TResult? Function(_Deleted value)? deleted,
-    TResult? Function(_NotFound value)? notFound,
-    TResult? Function(_Error value)? error,
-  }) {
-    return addedOrUpdated?.call(this);
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult maybeMap<TResult extends Object?>({
-    TResult Function(_Initial value)? initial,
-    TResult Function(_Loading value)? loading,
-    TResult Function(_Loaded value)? loaded,
-    TResult Function(_AddedOrUpdated value)? addedOrUpdated,
-    TResult Function(_Deleted value)? deleted,
-    TResult Function(_NotFound value)? notFound,
-    TResult Function(_Error value)? error,
-    required TResult orElse(),
-  }) {
-    if (addedOrUpdated != null) {
-      return addedOrUpdated(this);
-    }
-    return orElse();
-  }
-}
-
-abstract class _AddedOrUpdated implements CacheCompletionReportState {
-  const factory _AddedOrUpdated(final CacheCompletionReport report) =
-      _$AddedOrUpdatedImpl;
-
-  CacheCompletionReport get report;
-  @JsonKey(ignore: true)
-  _$$AddedOrUpdatedImplCopyWith<_$AddedOrUpdatedImpl> get copyWith =>
-      throw _privateConstructorUsedError;
-}
-
-/// @nodoc
-abstract class _$$DeletedImplCopyWith<$Res> {
-  factory _$$DeletedImplCopyWith(
-          _$DeletedImpl value, $Res Function(_$DeletedImpl) then) =
-      __$$DeletedImplCopyWithImpl<$Res>;
-}
-
-/// @nodoc
-class __$$DeletedImplCopyWithImpl<$Res>
-    extends _$CacheCompletionReportStateCopyWithImpl<$Res, _$DeletedImpl>
-    implements _$$DeletedImplCopyWith<$Res> {
-  __$$DeletedImplCopyWithImpl(
-      _$DeletedImpl _value, $Res Function(_$DeletedImpl) _then)
-      : super(_value, _then);
-}
-
-/// @nodoc
-
-class _$DeletedImpl implements _Deleted {
-  const _$DeletedImpl();
-
-  @override
-  String toString() {
-    return 'CacheCompletionReportState.deleted()';
-  }
-
-  @override
-  bool operator ==(Object other) {
-    return identical(this, other) ||
-        (other.runtimeType == runtimeType && other is _$DeletedImpl);
-  }
-
-  @override
-  int get hashCode => runtimeType.hashCode;
-
-  @override
-  @optionalTypeArgs
-  TResult when<TResult extends Object?>({
-    required TResult Function() initial,
-    required TResult Function() loading,
-    required TResult Function(CacheCompletionReport report) loaded,
-    required TResult Function(CacheCompletionReport report) addedOrUpdated,
-    required TResult Function() deleted,
-    required TResult Function() notFound,
-    required TResult Function(String message) error,
-  }) {
-    return deleted();
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function()? initial,
-    TResult? Function()? loading,
-    TResult? Function(CacheCompletionReport report)? loaded,
-    TResult? Function(CacheCompletionReport report)? addedOrUpdated,
-    TResult? Function()? deleted,
-    TResult? Function()? notFound,
-    TResult? Function(String message)? error,
-  }) {
-    return deleted?.call();
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult maybeWhen<TResult extends Object?>({
-    TResult Function()? initial,
-    TResult Function()? loading,
-    TResult Function(CacheCompletionReport report)? loaded,
-    TResult Function(CacheCompletionReport report)? addedOrUpdated,
-    TResult Function()? deleted,
-    TResult Function()? notFound,
-    TResult Function(String message)? error,
-    required TResult orElse(),
-  }) {
-    if (deleted != null) {
-      return deleted();
-    }
-    return orElse();
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult map<TResult extends Object?>({
-    required TResult Function(_Initial value) initial,
-    required TResult Function(_Loading value) loading,
-    required TResult Function(_Loaded value) loaded,
-    required TResult Function(_AddedOrUpdated value) addedOrUpdated,
-    required TResult Function(_Deleted value) deleted,
-    required TResult Function(_NotFound value) notFound,
-    required TResult Function(_Error value) error,
-  }) {
-    return deleted(this);
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(_Initial value)? initial,
-    TResult? Function(_Loading value)? loading,
-    TResult? Function(_Loaded value)? loaded,
-    TResult? Function(_AddedOrUpdated value)? addedOrUpdated,
-    TResult? Function(_Deleted value)? deleted,
-    TResult? Function(_NotFound value)? notFound,
-    TResult? Function(_Error value)? error,
-  }) {
-    return deleted?.call(this);
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult maybeMap<TResult extends Object?>({
-    TResult Function(_Initial value)? initial,
-    TResult Function(_Loading value)? loading,
-    TResult Function(_Loaded value)? loaded,
-    TResult Function(_AddedOrUpdated value)? addedOrUpdated,
-    TResult Function(_Deleted value)? deleted,
-    TResult Function(_NotFound value)? notFound,
-    TResult Function(_Error value)? error,
-    required TResult orElse(),
-  }) {
-    if (deleted != null) {
-      return deleted(this);
-    }
-    return orElse();
-  }
-}
-
-abstract class _Deleted implements CacheCompletionReportState {
-  const factory _Deleted() = _$DeletedImpl;
-}
-
-/// @nodoc
-abstract class _$$NotFoundImplCopyWith<$Res> {
-  factory _$$NotFoundImplCopyWith(
-          _$NotFoundImpl value, $Res Function(_$NotFoundImpl) then) =
-      __$$NotFoundImplCopyWithImpl<$Res>;
-}
-
-/// @nodoc
-class __$$NotFoundImplCopyWithImpl<$Res>
-    extends _$CacheCompletionReportStateCopyWithImpl<$Res, _$NotFoundImpl>
-    implements _$$NotFoundImplCopyWith<$Res> {
-  __$$NotFoundImplCopyWithImpl(
-      _$NotFoundImpl _value, $Res Function(_$NotFoundImpl) _then)
-      : super(_value, _then);
-}
-
-/// @nodoc
-
-class _$NotFoundImpl implements _NotFound {
-  const _$NotFoundImpl();
-
-  @override
-  String toString() {
-    return 'CacheCompletionReportState.notFound()';
-  }
-
-  @override
-  bool operator ==(Object other) {
-    return identical(this, other) ||
-        (other.runtimeType == runtimeType && other is _$NotFoundImpl);
-  }
-
-  @override
-  int get hashCode => runtimeType.hashCode;
-
-  @override
-  @optionalTypeArgs
-  TResult when<TResult extends Object?>({
-    required TResult Function() initial,
-    required TResult Function() loading,
-    required TResult Function(CacheCompletionReport report) loaded,
-    required TResult Function(CacheCompletionReport report) addedOrUpdated,
-    required TResult Function() deleted,
-    required TResult Function() notFound,
-    required TResult Function(String message) error,
-  }) {
-    return notFound();
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function()? initial,
-    TResult? Function()? loading,
-    TResult? Function(CacheCompletionReport report)? loaded,
-    TResult? Function(CacheCompletionReport report)? addedOrUpdated,
-    TResult? Function()? deleted,
-    TResult? Function()? notFound,
-    TResult? Function(String message)? error,
-  }) {
-    return notFound?.call();
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult maybeWhen<TResult extends Object?>({
-    TResult Function()? initial,
-    TResult Function()? loading,
-    TResult Function(CacheCompletionReport report)? loaded,
-    TResult Function(CacheCompletionReport report)? addedOrUpdated,
-    TResult Function()? deleted,
-    TResult Function()? notFound,
-    TResult Function(String message)? error,
-    required TResult orElse(),
-  }) {
-    if (notFound != null) {
-      return notFound();
-    }
-    return orElse();
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult map<TResult extends Object?>({
-    required TResult Function(_Initial value) initial,
-    required TResult Function(_Loading value) loading,
-    required TResult Function(_Loaded value) loaded,
-    required TResult Function(_AddedOrUpdated value) addedOrUpdated,
-    required TResult Function(_Deleted value) deleted,
-    required TResult Function(_NotFound value) notFound,
-    required TResult Function(_Error value) error,
-  }) {
-    return notFound(this);
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(_Initial value)? initial,
-    TResult? Function(_Loading value)? loading,
-    TResult? Function(_Loaded value)? loaded,
-    TResult? Function(_AddedOrUpdated value)? addedOrUpdated,
-    TResult? Function(_Deleted value)? deleted,
-    TResult? Function(_NotFound value)? notFound,
-    TResult? Function(_Error value)? error,
-  }) {
-    return notFound?.call(this);
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult maybeMap<TResult extends Object?>({
-    TResult Function(_Initial value)? initial,
-    TResult Function(_Loading value)? loading,
-    TResult Function(_Loaded value)? loaded,
-    TResult Function(_AddedOrUpdated value)? addedOrUpdated,
-    TResult Function(_Deleted value)? deleted,
-    TResult Function(_NotFound value)? notFound,
-    TResult Function(_Error value)? error,
-    required TResult orElse(),
-  }) {
-    if (notFound != null) {
-      return notFound(this);
-    }
-    return orElse();
-  }
-}
-
-abstract class _NotFound implements CacheCompletionReportState {
-  const factory _NotFound() = _$NotFoundImpl;
-}
-
-/// @nodoc
-abstract class _$$ErrorImplCopyWith<$Res> {
-  factory _$$ErrorImplCopyWith(
-          _$ErrorImpl value, $Res Function(_$ErrorImpl) then) =
-      __$$ErrorImplCopyWithImpl<$Res>;
+abstract class _$$FailureImplCopyWith<$Res> {
+  factory _$$FailureImplCopyWith(
+          _$FailureImpl value, $Res Function(_$FailureImpl) then) =
+      __$$FailureImplCopyWithImpl<$Res>;
   @useResult
   $Res call({String message});
 }
 
 /// @nodoc
-class __$$ErrorImplCopyWithImpl<$Res>
-    extends _$CacheCompletionReportStateCopyWithImpl<$Res, _$ErrorImpl>
-    implements _$$ErrorImplCopyWith<$Res> {
-  __$$ErrorImplCopyWithImpl(
-      _$ErrorImpl _value, $Res Function(_$ErrorImpl) _then)
+class __$$FailureImplCopyWithImpl<$Res>
+    extends _$CacheCompletionReportStateCopyWithImpl<$Res, _$FailureImpl>
+    implements _$$FailureImplCopyWith<$Res> {
+  __$$FailureImplCopyWithImpl(
+      _$FailureImpl _value, $Res Function(_$FailureImpl) _then)
       : super(_value, _then);
 
   @pragma('vm:prefer-inline')
@@ -1469,7 +2247,7 @@ class __$$ErrorImplCopyWithImpl<$Res>
   $Res call({
     Object? message = null,
   }) {
-    return _then(_$ErrorImpl(
+    return _then(_$FailureImpl(
       null == message
           ? _value.message
           : message // ignore: cast_nullable_to_non_nullable
@@ -1480,22 +2258,22 @@ class __$$ErrorImplCopyWithImpl<$Res>
 
 /// @nodoc
 
-class _$ErrorImpl implements _Error {
-  const _$ErrorImpl(this.message);
+class _$FailureImpl implements _Failure {
+  const _$FailureImpl(this.message);
 
   @override
   final String message;
 
   @override
   String toString() {
-    return 'CacheCompletionReportState.error(message: $message)';
+    return 'CacheCompletionReportState.failure(message: $message)';
   }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$ErrorImpl &&
+            other is _$FailureImpl &&
             (identical(other.message, message) || other.message == message));
   }
 
@@ -1505,21 +2283,20 @@ class _$ErrorImpl implements _Error {
   @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
-  _$$ErrorImplCopyWith<_$ErrorImpl> get copyWith =>
-      __$$ErrorImplCopyWithImpl<_$ErrorImpl>(this, _$identity);
+  _$$FailureImplCopyWith<_$FailureImpl> get copyWith =>
+      __$$FailureImplCopyWithImpl<_$FailureImpl>(this, _$identity);
 
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
-    required TResult Function(CacheCompletionReport report) loaded,
-    required TResult Function(CacheCompletionReport report) addedOrUpdated,
-    required TResult Function() deleted,
-    required TResult Function() notFound,
-    required TResult Function(String message) error,
+    required TResult Function(
+            String projectId, List<CacheCompletionReport> files)
+        loaded,
+    required TResult Function(String message) failure,
   }) {
-    return error(message);
+    return failure(message);
   }
 
   @override
@@ -1527,13 +2304,11 @@ class _$ErrorImpl implements _Error {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
-    TResult? Function(CacheCompletionReport report)? loaded,
-    TResult? Function(CacheCompletionReport report)? addedOrUpdated,
-    TResult? Function()? deleted,
-    TResult? Function()? notFound,
-    TResult? Function(String message)? error,
+    TResult? Function(String projectId, List<CacheCompletionReport> files)?
+        loaded,
+    TResult? Function(String message)? failure,
   }) {
-    return error?.call(message);
+    return failure?.call(message);
   }
 
   @override
@@ -1541,15 +2316,13 @@ class _$ErrorImpl implements _Error {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
-    TResult Function(CacheCompletionReport report)? loaded,
-    TResult Function(CacheCompletionReport report)? addedOrUpdated,
-    TResult Function()? deleted,
-    TResult Function()? notFound,
-    TResult Function(String message)? error,
+    TResult Function(String projectId, List<CacheCompletionReport> files)?
+        loaded,
+    TResult Function(String message)? failure,
     required TResult orElse(),
   }) {
-    if (error != null) {
-      return error(message);
+    if (failure != null) {
+      return failure(message);
     }
     return orElse();
   }
@@ -1560,12 +2333,9 @@ class _$ErrorImpl implements _Error {
     required TResult Function(_Initial value) initial,
     required TResult Function(_Loading value) loading,
     required TResult Function(_Loaded value) loaded,
-    required TResult Function(_AddedOrUpdated value) addedOrUpdated,
-    required TResult Function(_Deleted value) deleted,
-    required TResult Function(_NotFound value) notFound,
-    required TResult Function(_Error value) error,
+    required TResult Function(_Failure value) failure,
   }) {
-    return error(this);
+    return failure(this);
   }
 
   @override
@@ -1574,12 +2344,9 @@ class _$ErrorImpl implements _Error {
     TResult? Function(_Initial value)? initial,
     TResult? Function(_Loading value)? loading,
     TResult? Function(_Loaded value)? loaded,
-    TResult? Function(_AddedOrUpdated value)? addedOrUpdated,
-    TResult? Function(_Deleted value)? deleted,
-    TResult? Function(_NotFound value)? notFound,
-    TResult? Function(_Error value)? error,
+    TResult? Function(_Failure value)? failure,
   }) {
-    return error?.call(this);
+    return failure?.call(this);
   }
 
   @override
@@ -1588,24 +2355,21 @@ class _$ErrorImpl implements _Error {
     TResult Function(_Initial value)? initial,
     TResult Function(_Loading value)? loading,
     TResult Function(_Loaded value)? loaded,
-    TResult Function(_AddedOrUpdated value)? addedOrUpdated,
-    TResult Function(_Deleted value)? deleted,
-    TResult Function(_NotFound value)? notFound,
-    TResult Function(_Error value)? error,
+    TResult Function(_Failure value)? failure,
     required TResult orElse(),
   }) {
-    if (error != null) {
-      return error(this);
+    if (failure != null) {
+      return failure(this);
     }
     return orElse();
   }
 }
 
-abstract class _Error implements CacheCompletionReportState {
-  const factory _Error(final String message) = _$ErrorImpl;
+abstract class _Failure implements CacheCompletionReportState {
+  const factory _Failure(final String message) = _$FailureImpl;
 
   String get message;
   @JsonKey(ignore: true)
-  _$$ErrorImplCopyWith<_$ErrorImpl> get copyWith =>
+  _$$FailureImplCopyWith<_$FailureImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }

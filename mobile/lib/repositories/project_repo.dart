@@ -396,9 +396,7 @@ class PrefilledProjectRepository {
     final col = _isar.cachePrefilledProjects;
     final existing = await col
         .where()
-        .projectIdEqualTo(projectId)
-        .filter()
-        .userTypeEqualTo(userType)
+        .projectIdUserTypeEqualTo(projectId, userType)
         .findFirst();
 
     final now = DateTime.now();
@@ -425,9 +423,7 @@ class PrefilledProjectRepository {
     final col = _isar.cachePrefilledProjects;
     final row = await col
         .where()
-        .projectIdEqualTo(projectId)
-        .filter()
-        .userTypeEqualTo(userType)
+        .projectIdUserTypeEqualTo(projectId, userType)
         .findFirst();
     return row != null;
   }
@@ -439,9 +435,7 @@ class PrefilledProjectRepository {
     final col = _isar.cachePrefilledProjects;
     final row = await col
         .where()
-        .projectIdEqualTo(projectId)
-        .filter()
-        .userTypeEqualTo(userType)
+        .projectIdUserTypeEqualTo(projectId, userType)
         .findFirst();
     if (row != null) {
       await _isar.writeTxn(() async {
