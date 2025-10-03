@@ -183,10 +183,10 @@ const CreateFieldPlan = () => {
                       .filter((assignment) => assignment.activityCode === activity.code)
                       .map((assignment) => ({
                         id: assignment.id,
-                        auditDetails: assignment.auditDetails,
+                        savedAssignment: assignment,
                         startDate: { value: formatDate(assignment.startDate), error: "", },
                         endDate: { value: formatDate(assignment.endDate), error: "", },
-                        poNumber: { value: "1234", error: "", },
+                        poNumber: { value: assignment.pocNumber, error: "", },
                         organization: {
                           value: organizationData?.organizations?.filter((organization) => (
                             organization?.id === organizationUserData?.organizationUsers?.filter((user) => user.uuid === assignment.assignedTo)?.[0]?.organizationId
@@ -329,12 +329,12 @@ const CreateFieldPlan = () => {
       users: dataEntry.users.map((userEntry) => {
         const newUserEntry = {}
 
-        if (Object.keys(userEntry).every((key) => (["id", "isEmailSent", "deleteAssignment", "auditDetails"].includes(key) || !userEntry[key].value))) {
+        if (Object.keys(userEntry).every((key) => (["id", "isEmailSent", "deleteAssignment", "savedAssignment"].includes(key) || !userEntry[key].value))) {
           return userEntry;
         }
 
         Object.keys(userEntry).forEach((key) => {
-          if (["id", "isEmailSent", "deleteAssignment", "auditDetails"].includes(key)) {
+          if (["id", "isEmailSent", "deleteAssignment", "savedAssignment"].includes(key)) {
             newUserEntry[key] =  userEntry[key];
           }
           else if (!userEntry[key].value) {
@@ -367,7 +367,7 @@ const CreateFieldPlan = () => {
     activityData.forEach((dataEntry) => {
       dataEntry.users.forEach((userEntry) => {
 
-        if (Object.keys(userEntry).every((key) => (["id", "isEmailSent", "deleteAssignment", "auditDetails"].includes(key) || !userEntry[key].value))) {
+        if (Object.keys(userEntry).every((key) => (["id", "isEmailSent", "deleteAssignment", "savedAssignment"].includes(key) || !userEntry[key].value))) {
           return;
         }
 
@@ -378,20 +378,25 @@ const CreateFieldPlan = () => {
           fieldPlanId: createdFieldPlan?.id,
           role: userEntry.role.value,
           activityId: dataEntry.activity.code,
+          pocNumber: userEntry.poNumber.value,
           startDate: (new Date(userEntry.startDate.value)).getTime(),
           endDate: (new Date(userEntry.endDate.value)).getTime(),
         };
 
         if (userEntry.deleteAssignment) {
           activityUserAssignmentsForDelete.push({
-            ...userEntry,
-            ...activityUserAssignment
+            ...userEntry.savedAssignment,
+            ...activityUserAssignment,
+            activityId: userEntry.savedAssignment?.activityId,
+            activityCode: dataEntry.activity.code,
           });
 
         } else if (userEntry.id) {
           activityUserAssignmentsForUpdate.push({
-            id: userEntry.id,
-            ...activityUserAssignment
+            ...userEntry.savedAssignment,
+            ...activityUserAssignment,
+            activityId: userEntry.savedAssignment?.activityId,
+            activityCode: dataEntry.activity.code,
           });
 
         } else {

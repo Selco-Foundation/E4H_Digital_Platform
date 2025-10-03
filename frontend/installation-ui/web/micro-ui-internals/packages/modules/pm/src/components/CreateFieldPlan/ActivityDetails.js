@@ -369,7 +369,6 @@ const ActivityDetails = ({
         Cell: ({ row }) => GetCell(
           row.original["users"]?.map((userEntry, i, usersArray) => {
             if (userEntry.deleteAssignment) return;
-            if (userEntry.deleteAssignment) return;
             return UserDateInput(
               row.original["activity"], i, "startDate", userEntry?.startDate,
               usersArray.length - 1 === i, fieldPlanStartDate, userEntry?.endDate?.value || fieldPlanEndDate
@@ -439,31 +438,16 @@ const ActivityDetails = ({
         Cell: ({ row }) => GetCell(
           row.original["users"]?.map((userEntry, i, usersArray) => {
             if (userEntry.deleteAssignment) return;
-            return UserEmailSentCheck(userEntry.isEmailSent, row.original["activity"], i, usersArray.length - 1 === i, usersArray.length === 1);
+            return UserEmailSentCheck(
+              userEntry.isEmailSent, row.original["activity"], i, usersArray.length - 1 === i,
+              usersArray.filter((userEntry) => !userEntry.deleteAssignment).length === 1
+            );
           })
         ),
       },
     ],
     [activityAssignmentData, organizationOptions, activityData, fieldPlanStartDate, fieldPlanEndDate]
   );
-
-  const handleActivityDataClear = () => {
-    setActivityAssignmentData((prevState) => prevState.map((dataEntry) => ({
-      ...dataEntry,
-      users: [
-        // ...dataEntry.users.filter((userEntry) => userEntry.isEmailSent),
-        {
-          startDate: { value: "", error: "", },
-          endDate: { value: "", error: "", },
-          poNumber: { value: "", error: "", },
-          organization: { value: null, error: "", },
-          role: { value: null, error: "", },
-          email: { value: "", error: "", },
-          isEmailSent: false,
-        }
-      ]
-    })))
-  }
 
   return (
     <div>
@@ -492,21 +476,6 @@ const ActivityDetails = ({
           gap: "10px",
         }}
       >
-        {/*<button*/}
-        {/*  type="button"*/}
-        {/*  onClick={handleActivityDataClear}*/}
-        {/*  style={{*/}
-        {/*    border: "none",*/}
-        {/*    background: "transparent",*/}
-        {/*    color: "#C84C0E",*/}
-        {/*    fontSize: "16px",*/}
-        {/*    fontFamily: "Roboto",*/}
-        {/*    fontWeight: 400,*/}
-        {/*    cursor: "pointer",*/}
-        {/*  }}*/}
-        {/*>*/}
-        {/*  {t("CORE_COMMON_CLEAR")}*/}
-        {/*</button>*/}
         <SubmitBar
           label={t("CORE_COMMON_SAVE")}
           style={{
