@@ -46,7 +46,7 @@ public class ActivityEnrichment {
     /* Enrich FieldPlan with id and audit details */
     private void enrichActivityAssignmentRequestOnCreate(ActivityAssignment activityAssignment, RequestInfo requestInfo) {
         ActivitySearchCriteria criteria = ActivitySearchCriteria.builder().code(List.of(activityAssignment.getActivityId())).build();
-        Activity existingActivity = activityRepository.getActivityList(criteria);
+        Activity existingActivity = activityRepository.getActivityObject(criteria);
         if(existingActivity ==null) {
             throw new CustomException("ACTIVITY", "Activity code do not exist on Activity Table");
         }
@@ -62,7 +62,7 @@ public class ActivityEnrichment {
         activityFacility.setId(UUID.randomUUID().toString());
         activityFacility.setStatus(SCHEDULED_STATUS);
         ActivitySearchCriteria criteria = ActivitySearchCriteria.builder().code(List.of(activityFacility.getActivityId())).build();
-        Activity existingActivity = activityRepository.getActivityList(criteria);
+        Activity existingActivity = activityRepository.getActivityObject(criteria);
         activityFacility.setActivityId(existingActivity.getId());
         log.info("Activity id set to " + activityFacility.getId());
         AuditDetails auditDetails = fieldPlanServiceUtil.getAuditDetails(requestInfo.getUserInfo().getUuid(), null, true);
@@ -71,7 +71,7 @@ public class ActivityEnrichment {
 
     public void enrichActivityOnSearch(ActivityAssignment activityAssignment) {
         ActivitySearchCriteria criteria = ActivitySearchCriteria.builder().ids(List.of(activityAssignment.getActivityId())).build();
-        Activity existingActivity = activityRepository.getActivityList(criteria);
+        Activity existingActivity = activityRepository.getActivityObject(criteria);
         if(existingActivity ==null) {
             throw new CustomException("ACTIVITY", "Activity code do not exist on Activity Table");
         }

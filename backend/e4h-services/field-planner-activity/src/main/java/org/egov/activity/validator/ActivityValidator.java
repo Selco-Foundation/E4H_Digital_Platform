@@ -133,8 +133,8 @@ public class ActivityValidator {
                 errorMap.put("ACTIVITIES", "Activity is mandatory");
             }
             // Get existing project with projectID from project service
-            ActivitySearchCriteria criteria = ActivitySearchCriteria.builder().ids(List.of(activityAssignment.getActivityId())).build();
-            Activity existingActivity = activityRepository.getActivityList(criteria);
+            ActivitySearchCriteria criteria = ActivitySearchCriteria.builder().code(List.of(activityAssignment.getActivityId())).build();
+            Activity existingActivity = activityRepository.getActivityObject(criteria);
             if (existingActivity == null) {
                 log.error("Activity code do not exist");
                 throw new CustomException("Activity", "Activity code do not exist");

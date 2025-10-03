@@ -56,7 +56,7 @@ public class ActivityRepository extends GenericRepository<ActivityFacility> {
         return activityFacilities;
     }
 
-    public Activity getActivityList(ActivitySearchCriteria criteria) {
+    public Activity getActivityObject(ActivitySearchCriteria criteria) {
         List<Object> preparedStmtList = new ArrayList<>();
         String query = queryBuilder.getActivityDataList(criteria, preparedStmtList);
         List<Activity> activities = jdbcTemplate.query(query, activityDataRowMapper, preparedStmtList.toArray());

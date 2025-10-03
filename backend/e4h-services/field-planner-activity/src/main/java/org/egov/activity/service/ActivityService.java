@@ -285,7 +285,7 @@ public class ActivityService {
          * Ensure that no other properties are being updated besides the start and end dates
          */
         ActivitySearchCriteria criteria = ActivitySearchCriteria.builder().ids(List.of(activityFacility.getActivityId())).build();
-        Activity existingActivity = activityRepository.getActivityList(criteria);
+        Activity existingActivity = activityRepository.getActivityObject(criteria);
         activityFacility.setActivityId(existingActivity.getId());
         if (!isValidCascadingUpdateActivityFacility(activityFacilityFromDB, activityFacility)) {
             throw new CustomException(
