@@ -44,6 +44,12 @@ public class FieldPlannerConfiguration {
     @Value("${egov.v2.search.facility.url}")
     private String facilityServiceSearchUrlV2;
 
+    @Value("${egov.fieldplan.activity.host}")
+    private String fieldPlanActivityServiceHost;
+
+    @Value("${egov.fieldplan.activity.search.url}")
+    private String fieldPlanActivitySearchUrl;
+
     @Value("${search.api.limit:100}")
     private String searchApiLimit;
 

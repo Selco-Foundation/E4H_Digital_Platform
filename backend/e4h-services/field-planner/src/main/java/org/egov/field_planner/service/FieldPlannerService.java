@@ -4,8 +4,14 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jayway.jsonpath.JsonPath;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.egov.common.contract.models.AuditDetails;
 import org.egov.common.contract.request.RequestInfo;
+import org.egov.common.http.client.ServiceRequestClient;
+import org.egov.common.models.core.SearchResponse;
+import org.egov.common.models.project.Project;
+import org.egov.common.models.project.ProjectRequest;
+import org.egov.common.models.project.ProjectResponse;
 import org.egov.common.producer.Producer;
 import org.egov.common.validator.Validator;
 import org.egov.field_planner.config.FieldPlannerConfiguration;
@@ -42,6 +48,9 @@ public class FieldPlannerService {
     private final List<Validator<FieldPlanFacilityBulkRequest, FieldPlanFacility>> validators;
     private final FieldPlannerConfiguration fieldPlannerConfiguration;
     private final MDMSUtils mdmsUtils;
+    private final ServiceRequestClient serviceRequestRepository;
+
+    private final FieldPlannerFacilityService facilityService;
 
     @Autowired
     @Qualifier("objectMapper")
@@ -49,9 +58,9 @@ public class FieldPlannerService {
 
     @Autowired
     public FieldPlannerService(
-            FieldPlannerRepository fieldPlannerRepository, List<Validator<FieldPlanFacilityBulkRequest, FieldPlanFacility>> validators,
+            FieldPlannerRepository fieldPlannerRepository, List<Validator<FieldPlanFacilityBulkRequest, FieldPlanFacility>> validators, FieldPlannerFacilityService facilityService,
             FieldPlannerValidator fieldPlannerValidator, FieldPlannerEnrichment fieldPlannerEnrichment, FieldPlannerConfiguration fieldPlannerConfiguration,
-            Producer producer, MDMSUtils mdmsUtils, FieldPlannerServiceUtil fieldPlanServiceUtil) {
+            Producer producer, MDMSUtils mdmsUtils, FieldPlannerServiceUtil fieldPlanServiceUtil, ServiceRequestClient serviceRequestRepository) {
             this.fieldPlannerValidator = fieldPlannerValidator;
             this.producer = producer;
             this.fieldPlannerConfiguration = fieldPlannerConfiguration;
@@ -60,6 +69,8 @@ public class FieldPlannerService {
             this.mdmsUtils = mdmsUtils;
             this.validators = validators;
             this.fieldPlanServiceUtil = fieldPlanServiceUtil;
+            this.serviceRequestRepository = serviceRequestRepository;
+            this.facilityService = facilityService;
     }
 
     public FieldPlanRequest createFieldPlan(FieldPlanRequest fieldPlanRequest) {
@@ -370,10 +381,21 @@ public class FieldPlannerService {
          */
         fieldPlannerEnrichment.enrichFieldPlanRequestOnUpdate(fieldPlan, fieldPlanFromDB, request.getRequestInfo());
 
-        /*
-         * Handle fieldPlan name regeneration if needed (dates changed)
-         */
-        handleFieldPlanNameUpdate(request, fieldPlan, fieldPlanFromDB);
+        // If status equals to scheduled, so dont update the fieldplan name
+        if(StringUtils.equals(fieldPlan.getStatus(), "SCHEDULED")){
+            try {
+                validateFieldPlanSubmission(request, fieldPlan);
+            } catch (Exception e) {
+                e.printStackTrace();
+                throw new RuntimeException(e);
+            }
+        }
+        else{
+            /*
+             * Handle fieldPlan name regeneration if needed (dates changed)
+             */
+            handleFieldPlanNameUpdate(request, fieldPlan, fieldPlanFromDB);
+        }
 
         /*
          * Check and enrich cascading fieldPlan dates and push the update to the message broker
@@ -431,6 +453,76 @@ public class FieldPlannerService {
                 .filter(p -> fieldPlanId.equals(String.valueOf(p.getId())))
                 .findFirst()
                 .orElse(null);
+    }
+
+    private void validateFieldPlanSubmission(FieldPlanRequest request, FieldPlan fieldPlan) throws Exception {
+        if (fieldPlan == null) {
+            log.error("Field Plan is mandatory");
+            throw new CustomException("FIELDPLAN", "Field Plan is mandatory");
+        }
+        if (fieldPlan.getId() == null) {
+            log.error("FieldPlan ID is mandatory");
+            throw new CustomException("FIELDPLAN", "FieldPlan ID");
+        }
+
+        List<ActivityAssignment> activityAssignmentList = getFieldPlanActivityAssignment(request, fieldPlan);
+        if(activityAssignmentList==null || activityAssignmentList.isEmpty()){
+            log.error("Activity Assignment is empty for the fieldplan");
+            throw new CustomException("FIELDPLAN", "Activity Assignment is empty for the fieldplan");
+        }
+        if(!hasSpocAndReviewer(activityAssignmentList)){
+            throw new CustomException("FIELDPLAN", "INSTALLATION_REVIEWER and INSTALLATION_SPOC need to be assigned for the fieldplan");
+        }
+
+        SearchResponse<FieldPlanFacility> fieldPlanFacilitySearchResponse = getFieldPlanFacilities(request, fieldPlan);
+        if(fieldPlanFacilitySearchResponse== null || fieldPlanFacilitySearchResponse.getResponse().isEmpty() || fieldPlanFacilitySearchResponse.getTotalCount()==0){
+            log.error("No facility is linked to the fieldplan");
+            throw new CustomException("FIELDPLAN", "No facility is linked to the fieldplan");
+        }
+    }
+
+    public List<ActivityAssignment> getFieldPlanActivityAssignment(FieldPlanRequest request, FieldPlan fieldPlan) {
+        String fieldPlanId = fieldPlan.getId();
+        ActivityAssignmentSearchCriteria criteria = ActivityAssignmentSearchCriteria.builder().fieldPlanId(List.of(fieldPlanId)).tenantId(fieldPlan.getTenantId()).build();
+        ActivityAssignmentSearchRequest assignmentSearchRequest = ActivityAssignmentSearchRequest.builder().criteria(criteria).requestInfo(request.getRequestInfo()).build();
+        String url = fieldPlannerConfiguration.getFieldPlanActivityServiceHost() + fieldPlannerConfiguration.getFieldPlanActivitySearchUrl()+ "?tenantId="+fieldPlan.getTenantId()+"&offset=0&limit=100";
+        Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), assignmentSearchRequest, Map.class);
+        ActivityAssignmentResponse activityAssignmentList = mapper.convertValue(response, ActivityAssignmentResponse.class);
+        if(activityAssignmentList != null && activityAssignmentList.getActivityAssignment() !=null){
+            return activityAssignmentList.getActivityAssignment();
+        }
+        return null;
+    }
+
+    public boolean hasSpocAndReviewer(List<ActivityAssignment> activityAssignmentList) {
+        boolean hasSpoc = false;
+        boolean hasReviewer = false;
+
+        for (ActivityAssignment assignment : activityAssignmentList) {
+            Map<String, Object> roleMap = assignment.getRole();
+            if ("INSTALLATION_SPOC".equalsIgnoreCase((String) roleMap.get("code"))) {
+                hasSpoc = true;
+            }
+            if ("INSTALLATION_REVIEWER".equalsIgnoreCase((String) roleMap.get("code"))) {
+                hasReviewer = true;
+            }
+            if (hasSpoc && hasReviewer) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public SearchResponse<FieldPlanFacility> getFieldPlanFacilities(FieldPlanRequest request, FieldPlan fieldPlan) throws Exception {
+        List<String> listFieldPlanId = new ArrayList<>();
+        listFieldPlanId.add(fieldPlan.getId());
+        FieldPlanFacilitySearch criteria = FieldPlanFacilitySearch.builder().field_plan_id(listFieldPlanId).build();
+        FieldPlanFacilitySearchRequest searchRequest =  FieldPlanFacilitySearchRequest.builder().requestInfo(request.getRequestInfo()).criteria(criteria).build();
+        SearchResponse<FieldPlanFacility> response = facilityService.search(searchRequest, fieldPlannerConfiguration.getMaxLimit(), fieldPlannerConfiguration.getDefaultOffset(),
+                request.getFieldPlans().get(0).getTenantId(), null, false);
+
+        return response;
     }
 
 }
