@@ -23,28 +23,48 @@ const CacheCompletionReportSchema = CollectionSchema(
       name: r'createdAt',
       type: IsarType.dateTime,
     ),
-    r'filePath': PropertySchema(
+    r'entryId': PropertySchema(
       id: 1,
+      name: r'entryId',
+      type: IsarType.string,
+    ),
+    r'fileName': PropertySchema(
+      id: 2,
+      name: r'fileName',
+      type: IsarType.string,
+    ),
+    r'filePath': PropertySchema(
+      id: 3,
       name: r'filePath',
       type: IsarType.string,
     ),
+    r'fileType': PropertySchema(
+      id: 4,
+      name: r'fileType',
+      type: IsarType.string,
+    ),
+    r'index': PropertySchema(
+      id: 5,
+      name: r'index',
+      type: IsarType.long,
+    ),
     r'latitude': PropertySchema(
-      id: 2,
+      id: 6,
       name: r'latitude',
       type: IsarType.string,
     ),
     r'longitude': PropertySchema(
-      id: 3,
+      id: 7,
       name: r'longitude',
       type: IsarType.string,
     ),
     r'projectId': PropertySchema(
-      id: 4,
+      id: 8,
       name: r'projectId',
       type: IsarType.string,
     ),
     r'updatedAt': PropertySchema(
-      id: 5,
+      id: 9,
       name: r'updatedAt',
       type: IsarType.dateTime,
     )
@@ -67,6 +87,45 @@ const CacheCompletionReportSchema = CollectionSchema(
           caseSensitive: true,
         )
       ],
+    ),
+    r'entryId': IndexSchema(
+      id: 3733379884318738402,
+      name: r'entryId',
+      unique: true,
+      replace: true,
+      properties: [
+        IndexPropertySchema(
+          name: r'entryId',
+          type: IndexType.hash,
+          caseSensitive: true,
+        )
+      ],
+    ),
+    r'filePath': IndexSchema(
+      id: 2918041768256347220,
+      name: r'filePath',
+      unique: false,
+      replace: false,
+      properties: [
+        IndexPropertySchema(
+          name: r'filePath',
+          type: IndexType.hash,
+          caseSensitive: false,
+        )
+      ],
+    ),
+    r'fileType': IndexSchema(
+      id: 7039474923339286733,
+      name: r'fileType',
+      unique: false,
+      replace: false,
+      properties: [
+        IndexPropertySchema(
+          name: r'fileType',
+          type: IndexType.hash,
+          caseSensitive: false,
+        )
+      ],
     )
   },
   links: {},
@@ -83,7 +142,15 @@ int _cacheCompletionReportEstimateSize(
   Map<Type, List<int>> allOffsets,
 ) {
   var bytesCount = offsets.last;
+  bytesCount += 3 + object.entryId.length * 3;
+  {
+    final value = object.fileName;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
   bytesCount += 3 + object.filePath.length * 3;
+  bytesCount += 3 + object.fileType.length * 3;
   bytesCount += 3 + object.latitude.length * 3;
   bytesCount += 3 + object.longitude.length * 3;
   bytesCount += 3 + object.projectId.length * 3;
@@ -97,11 +164,15 @@ void _cacheCompletionReportSerialize(
   Map<Type, List<int>> allOffsets,
 ) {
   writer.writeDateTime(offsets[0], object.createdAt);
-  writer.writeString(offsets[1], object.filePath);
-  writer.writeString(offsets[2], object.latitude);
-  writer.writeString(offsets[3], object.longitude);
-  writer.writeString(offsets[4], object.projectId);
-  writer.writeDateTime(offsets[5], object.updatedAt);
+  writer.writeString(offsets[1], object.entryId);
+  writer.writeString(offsets[2], object.fileName);
+  writer.writeString(offsets[3], object.filePath);
+  writer.writeString(offsets[4], object.fileType);
+  writer.writeLong(offsets[5], object.index);
+  writer.writeString(offsets[6], object.latitude);
+  writer.writeString(offsets[7], object.longitude);
+  writer.writeString(offsets[8], object.projectId);
+  writer.writeDateTime(offsets[9], object.updatedAt);
 }
 
 CacheCompletionReport _cacheCompletionReportDeserialize(
@@ -111,14 +182,18 @@ CacheCompletionReport _cacheCompletionReportDeserialize(
   Map<Type, List<int>> allOffsets,
 ) {
   final object = CacheCompletionReport(
-    filePath: reader.readString(offsets[1]),
-    latitude: reader.readString(offsets[2]),
-    longitude: reader.readString(offsets[3]),
-    projectId: reader.readString(offsets[4]),
+    entryId: reader.readString(offsets[1]),
+    fileName: reader.readStringOrNull(offsets[2]),
+    filePath: reader.readString(offsets[3]),
+    fileType: reader.readStringOrNull(offsets[4]) ?? 'unknown',
+    index: reader.readLongOrNull(offsets[5]),
+    latitude: reader.readString(offsets[6]),
+    longitude: reader.readString(offsets[7]),
+    projectId: reader.readString(offsets[8]),
   );
   object.createdAt = reader.readDateTime(offsets[0]);
   object.id = id;
-  object.updatedAt = reader.readDateTimeOrNull(offsets[5]);
+  object.updatedAt = reader.readDateTimeOrNull(offsets[9]);
   return object;
 }
 
@@ -134,12 +209,20 @@ P _cacheCompletionReportDeserializeProp<P>(
     case 1:
       return (reader.readString(offset)) as P;
     case 2:
-      return (reader.readString(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 3:
       return (reader.readString(offset)) as P;
     case 4:
-      return (reader.readString(offset)) as P;
+      return (reader.readStringOrNull(offset) ?? 'unknown') as P;
     case 5:
+      return (reader.readLongOrNull(offset)) as P;
+    case 6:
+      return (reader.readString(offset)) as P;
+    case 7:
+      return (reader.readString(offset)) as P;
+    case 8:
+      return (reader.readString(offset)) as P;
+    case 9:
       return (reader.readDateTimeOrNull(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -158,6 +241,63 @@ List<IsarLinkBase<dynamic>> _cacheCompletionReportGetLinks(
 void _cacheCompletionReportAttach(
     IsarCollection<dynamic> col, Id id, CacheCompletionReport object) {
   object.id = id;
+}
+
+extension CacheCompletionReportByIndex
+    on IsarCollection<CacheCompletionReport> {
+  Future<CacheCompletionReport?> getByEntryId(String entryId) {
+    return getByIndex(r'entryId', [entryId]);
+  }
+
+  CacheCompletionReport? getByEntryIdSync(String entryId) {
+    return getByIndexSync(r'entryId', [entryId]);
+  }
+
+  Future<bool> deleteByEntryId(String entryId) {
+    return deleteByIndex(r'entryId', [entryId]);
+  }
+
+  bool deleteByEntryIdSync(String entryId) {
+    return deleteByIndexSync(r'entryId', [entryId]);
+  }
+
+  Future<List<CacheCompletionReport?>> getAllByEntryId(
+      List<String> entryIdValues) {
+    final values = entryIdValues.map((e) => [e]).toList();
+    return getAllByIndex(r'entryId', values);
+  }
+
+  List<CacheCompletionReport?> getAllByEntryIdSync(List<String> entryIdValues) {
+    final values = entryIdValues.map((e) => [e]).toList();
+    return getAllByIndexSync(r'entryId', values);
+  }
+
+  Future<int> deleteAllByEntryId(List<String> entryIdValues) {
+    final values = entryIdValues.map((e) => [e]).toList();
+    return deleteAllByIndex(r'entryId', values);
+  }
+
+  int deleteAllByEntryIdSync(List<String> entryIdValues) {
+    final values = entryIdValues.map((e) => [e]).toList();
+    return deleteAllByIndexSync(r'entryId', values);
+  }
+
+  Future<Id> putByEntryId(CacheCompletionReport object) {
+    return putByIndex(r'entryId', object);
+  }
+
+  Id putByEntryIdSync(CacheCompletionReport object, {bool saveLinks = true}) {
+    return putByIndexSync(r'entryId', object, saveLinks: saveLinks);
+  }
+
+  Future<List<Id>> putAllByEntryId(List<CacheCompletionReport> objects) {
+    return putAllByIndex(r'entryId', objects);
+  }
+
+  List<Id> putAllByEntryIdSync(List<CacheCompletionReport> objects,
+      {bool saveLinks = true}) {
+    return putAllByIndexSync(r'entryId', objects, saveLinks: saveLinks);
+  }
 }
 
 extension CacheCompletionReportQueryWhereSort
@@ -284,6 +424,141 @@ extension CacheCompletionReportQueryWhere on QueryBuilder<CacheCompletionReport,
       }
     });
   }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport, QAfterWhereClause>
+      entryIdEqualTo(String entryId) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.equalTo(
+        indexName: r'entryId',
+        value: [entryId],
+      ));
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport, QAfterWhereClause>
+      entryIdNotEqualTo(String entryId) {
+    return QueryBuilder.apply(this, (query) {
+      if (query.whereSort == Sort.asc) {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'entryId',
+              lower: [],
+              upper: [entryId],
+              includeUpper: false,
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'entryId',
+              lower: [entryId],
+              includeLower: false,
+              upper: [],
+            ));
+      } else {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'entryId',
+              lower: [entryId],
+              includeLower: false,
+              upper: [],
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'entryId',
+              lower: [],
+              upper: [entryId],
+              includeUpper: false,
+            ));
+      }
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport, QAfterWhereClause>
+      filePathEqualTo(String filePath) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.equalTo(
+        indexName: r'filePath',
+        value: [filePath],
+      ));
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport, QAfterWhereClause>
+      filePathNotEqualTo(String filePath) {
+    return QueryBuilder.apply(this, (query) {
+      if (query.whereSort == Sort.asc) {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'filePath',
+              lower: [],
+              upper: [filePath],
+              includeUpper: false,
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'filePath',
+              lower: [filePath],
+              includeLower: false,
+              upper: [],
+            ));
+      } else {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'filePath',
+              lower: [filePath],
+              includeLower: false,
+              upper: [],
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'filePath',
+              lower: [],
+              upper: [filePath],
+              includeUpper: false,
+            ));
+      }
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport, QAfterWhereClause>
+      fileTypeEqualTo(String fileType) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.equalTo(
+        indexName: r'fileType',
+        value: [fileType],
+      ));
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport, QAfterWhereClause>
+      fileTypeNotEqualTo(String fileType) {
+    return QueryBuilder.apply(this, (query) {
+      if (query.whereSort == Sort.asc) {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'fileType',
+              lower: [],
+              upper: [fileType],
+              includeUpper: false,
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'fileType',
+              lower: [fileType],
+              includeLower: false,
+              upper: [],
+            ));
+      } else {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'fileType',
+              lower: [fileType],
+              includeLower: false,
+              upper: [],
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'fileType',
+              lower: [],
+              upper: [fileType],
+              includeUpper: false,
+            ));
+      }
+    });
+  }
 }
 
 extension CacheCompletionReportQueryFilter on QueryBuilder<
@@ -340,6 +615,300 @@ extension CacheCompletionReportQueryFilter on QueryBuilder<
         includeLower: includeLower,
         upper: upper,
         includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport,
+      QAfterFilterCondition> entryIdEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'entryId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport,
+      QAfterFilterCondition> entryIdGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'entryId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport,
+      QAfterFilterCondition> entryIdLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'entryId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport,
+      QAfterFilterCondition> entryIdBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'entryId',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport,
+      QAfterFilterCondition> entryIdStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'entryId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport,
+      QAfterFilterCondition> entryIdEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'entryId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport,
+          QAfterFilterCondition>
+      entryIdContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'entryId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport,
+          QAfterFilterCondition>
+      entryIdMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'entryId',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport,
+      QAfterFilterCondition> entryIdIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'entryId',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport,
+      QAfterFilterCondition> entryIdIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'entryId',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport,
+      QAfterFilterCondition> fileNameIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'fileName',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport,
+      QAfterFilterCondition> fileNameIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'fileName',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport,
+      QAfterFilterCondition> fileNameEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'fileName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport,
+      QAfterFilterCondition> fileNameGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'fileName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport,
+      QAfterFilterCondition> fileNameLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'fileName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport,
+      QAfterFilterCondition> fileNameBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'fileName',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport,
+      QAfterFilterCondition> fileNameStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'fileName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport,
+      QAfterFilterCondition> fileNameEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'fileName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport,
+          QAfterFilterCondition>
+      fileNameContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'fileName',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport,
+          QAfterFilterCondition>
+      fileNameMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'fileName',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport,
+      QAfterFilterCondition> fileNameIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'fileName',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport,
+      QAfterFilterCondition> fileNameIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'fileName',
+        value: '',
       ));
     });
   }
@@ -483,6 +1052,144 @@ extension CacheCompletionReportQueryFilter on QueryBuilder<
   }
 
   QueryBuilder<CacheCompletionReport, CacheCompletionReport,
+      QAfterFilterCondition> fileTypeEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'fileType',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport,
+      QAfterFilterCondition> fileTypeGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'fileType',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport,
+      QAfterFilterCondition> fileTypeLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'fileType',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport,
+      QAfterFilterCondition> fileTypeBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'fileType',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport,
+      QAfterFilterCondition> fileTypeStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'fileType',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport,
+      QAfterFilterCondition> fileTypeEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'fileType',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport,
+          QAfterFilterCondition>
+      fileTypeContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'fileType',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport,
+          QAfterFilterCondition>
+      fileTypeMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'fileType',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport,
+      QAfterFilterCondition> fileTypeIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'fileType',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport,
+      QAfterFilterCondition> fileTypeIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'fileType',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport,
       QAfterFilterCondition> idEqualTo(Id value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
@@ -530,6 +1237,80 @@ extension CacheCompletionReportQueryFilter on QueryBuilder<
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.between(
         property: r'id',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport,
+      QAfterFilterCondition> indexIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'index',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport,
+      QAfterFilterCondition> indexIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'index',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport,
+      QAfterFilterCondition> indexEqualTo(int? value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'index',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport,
+      QAfterFilterCondition> indexGreaterThan(
+    int? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'index',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport,
+      QAfterFilterCondition> indexLessThan(
+    int? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'index',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport,
+      QAfterFilterCondition> indexBetween(
+    int? lower,
+    int? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'index',
         lower: lower,
         includeLower: includeLower,
         upper: upper,
@@ -1050,6 +1831,34 @@ extension CacheCompletionReportQuerySortBy
   }
 
   QueryBuilder<CacheCompletionReport, CacheCompletionReport, QAfterSortBy>
+      sortByEntryId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'entryId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport, QAfterSortBy>
+      sortByEntryIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'entryId', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport, QAfterSortBy>
+      sortByFileName() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'fileName', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport, QAfterSortBy>
+      sortByFileNameDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'fileName', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport, QAfterSortBy>
       sortByFilePath() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'filePath', Sort.asc);
@@ -1060,6 +1869,34 @@ extension CacheCompletionReportQuerySortBy
       sortByFilePathDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'filePath', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport, QAfterSortBy>
+      sortByFileType() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'fileType', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport, QAfterSortBy>
+      sortByFileTypeDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'fileType', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport, QAfterSortBy>
+      sortByIndex() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'index', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport, QAfterSortBy>
+      sortByIndexDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'index', Sort.desc);
     });
   }
 
@@ -1137,6 +1974,34 @@ extension CacheCompletionReportQuerySortThenBy
   }
 
   QueryBuilder<CacheCompletionReport, CacheCompletionReport, QAfterSortBy>
+      thenByEntryId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'entryId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport, QAfterSortBy>
+      thenByEntryIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'entryId', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport, QAfterSortBy>
+      thenByFileName() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'fileName', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport, QAfterSortBy>
+      thenByFileNameDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'fileName', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport, QAfterSortBy>
       thenByFilePath() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'filePath', Sort.asc);
@@ -1151,6 +2016,20 @@ extension CacheCompletionReportQuerySortThenBy
   }
 
   QueryBuilder<CacheCompletionReport, CacheCompletionReport, QAfterSortBy>
+      thenByFileType() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'fileType', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport, QAfterSortBy>
+      thenByFileTypeDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'fileType', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport, QAfterSortBy>
       thenById() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'id', Sort.asc);
@@ -1161,6 +2040,20 @@ extension CacheCompletionReportQuerySortThenBy
       thenByIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'id', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport, QAfterSortBy>
+      thenByIndex() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'index', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport, QAfterSortBy>
+      thenByIndexDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'index', Sort.desc);
     });
   }
 
@@ -1231,9 +2124,37 @@ extension CacheCompletionReportQueryWhereDistinct
   }
 
   QueryBuilder<CacheCompletionReport, CacheCompletionReport, QDistinct>
+      distinctByEntryId({bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'entryId', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport, QDistinct>
+      distinctByFileName({bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'fileName', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport, QDistinct>
       distinctByFilePath({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'filePath', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport, QDistinct>
+      distinctByFileType({bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'fileType', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, CacheCompletionReport, QDistinct>
+      distinctByIndex() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'index');
     });
   }
 
@@ -1282,9 +2203,36 @@ extension CacheCompletionReportQueryProperty on QueryBuilder<
   }
 
   QueryBuilder<CacheCompletionReport, String, QQueryOperations>
+      entryIdProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'entryId');
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, String?, QQueryOperations>
+      fileNameProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'fileName');
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, String, QQueryOperations>
       filePathProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'filePath');
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, String, QQueryOperations>
+      fileTypeProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'fileType');
+    });
+  }
+
+  QueryBuilder<CacheCompletionReport, int?, QQueryOperations> indexProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'index');
     });
   }
 

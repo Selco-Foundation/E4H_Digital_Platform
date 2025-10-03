@@ -418,12 +418,22 @@
 //   }
 // }
 
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:dio/dio.dart';
 import 'package:isar/isar.dart';
+import 'package:path/path.dart' as p;
 
 import '../data/nosql/cache_bom_doc.dart';
+import '../data/nosql/cache_completion_report.dart';
+import '../data/nosql/cache_project_bom_values.dart';
 import '../data/remote_client.dart';
+import '../model/document/document.dart';
+import '../model/entities/project_facility.dart';
+import '../repositories/project_facility_repo.dart';
 import '../utils/envConfig.dart' as env;
+import '../utils/utils.dart';
 import 'project_repo.dart';
 
 final envConfigs = env.EnvironmentConfiguration.instance;
@@ -587,6 +597,7 @@ class BomRepository {
     required String tenantId,
     required String facilityId,
     required String assignUserUuid,
+    required List<Document>? documents,
     getSolutionName, // inject resolver
   }) async {
     // 1) Enrich once
@@ -631,6 +642,9 @@ class BomRepository {
 
     // 6) Build payload (merged)
     final payload = {
+      if (documents != null) ...{
+        'documents': documents.map((d) => d.toJsonForWorkflow()).toList()
+      },
       "bom": [
         {
           if (isUpdate) "id": firstId,
@@ -648,7 +662,6 @@ class BomRepository {
 
     print("payload $payload");
 
-    // 7) POST
     final path =
         isUpdate ? 'activity/v1/bom/_update' : 'activity/v1/bom/_create';
     await _dio.post(path, data: payload);
@@ -661,6 +674,198 @@ class BomRepository {
         await isar.cacheBomDocs.put(d);
       }
     });
+  }
+
+  Future<Map<String, dynamic>> searchBom({
+    required List<String> facilityIds,
+    int offset = 0,
+    int limit = 100,
+  }) async {
+    final tenantId = envConfigs.variables.tenantId;
+    final path =
+        "/activity/v1/bom/_search?tenantId=${tenantId}&offset=$offset&limit=$limit";
+
+    Response response;
+    final body = {
+      "bom": {
+        "facilityIds": facilityIds,
+        "tenantId": tenantId,
+      }
+    };
+
+    try {
+      response = await _dio.post(path, data: body);
+      return response.data as Map<String, dynamic>;
+    } catch (err) {
+      rethrow;
+    }
+  }
+
+  // ------------------------ New: BOM Sync -------------------------------
+
+  /// Convert local path -> 'pdf' | 'image' | 'unknown'
+  String _inferType(String path) {
+    final ext = p.extension(path).toLowerCase();
+    const img = {'.jpg', '.jpeg', '.png', '.heic', '.webp'};
+    if (ext == '.pdf') return 'pdf';
+    if (img.contains(ext)) return 'image';
+    return 'unknown';
+  }
+
+  /// Fetch BOM for [projectId] (resolving facilityId internally),
+  /// cache the BOM `data` per (projectId, userType), and
+  /// replace completion reports with BOM `documents`.
+  ///
+  /// Returns (docCount, savedBomValues).
+  Future<({int docCount, bool savedBomValues})> syncBomForProject(
+      {required String projectId,
+      required String userType,
+      required Isar isar}) async {
+    try {
+      final facilityId = (await ProjectFacilityRepository().search(
+        ProjectFacilitySearchModel(projectId: [projectId]),
+        isar,
+      ))
+          .facilityId;
+      if (facilityId == null || facilityId.isEmpty) {
+        return (docCount: 0, savedBomValues: false);
+      }
+
+      // 2) Fetch from server
+      final res = await searchBom(facilityIds: [facilityId]);
+      final boms = (res['bom'] as List?) ?? const [];
+      print("bom $boms");
+      if (boms.isEmpty) {
+        return (docCount: 0, savedBomValues: false);
+      }
+
+      // If multiple BOMs, pick the first. Adjust to merge if you prefer.
+      final bom = (boms.first as Map<String, dynamic>);
+
+      // 3) Save BOM `data` for (projectId, userType)
+      bool savedValues = false;
+      print("bom $bom");
+      final data = (bom['data'] as Map<String, dynamic>?);
+      if (data != null) {
+        final entryKey = '$projectId::$userType';
+        await isar.writeTxn(() async {
+          await isar.cacheProjectBomValues.put(
+            CacheProjectBomValues()
+              ..projectId = projectId
+              ..userType = userType
+              ..entryKey = entryKey
+              ..dataJson = jsonEncode(data)
+              ..updatedAt = DateTime.now(),
+          );
+        });
+        savedValues = true;
+      }
+
+      print("bom stuff $bom");
+      // 4) Convert BOM documents → local files → CacheCompletionReport rows
+      final docs = (bom['documents'] as List?) ?? const [];
+      print("docs $docs");
+      final toInsert = <CacheCompletionReport>[];
+
+      for (final d in docs) {
+        final m = (d as Document?);
+        final fileStoreId = m?.fileStore ?? '';
+        if (fileStoreId.isEmpty) continue;
+
+        final remote = await getCachedFile(fileStoreId);
+        if (remote == null) continue;
+
+        final local = await copyFileToLocalDir(remote);
+        final fileType = _inferType(local);
+
+        final entryId = '$projectId::$local';
+        toInsert.add(
+          CacheCompletionReport(
+            projectId: projectId,
+            filePath: local,
+            entryId: entryId,
+            latitude: m?.geoLocation?.latitude ?? "",
+            longitude: m?.geoLocation?.longitude ?? "",
+            fileName: p.basename(local),
+            fileType: fileType,
+            index: null,
+          )..createdAt = DateTime.now(),
+        );
+      }
+
+      // 5) Replace all completion reports for this project atomically
+      await isar.writeTxn(() async {
+        final existing = await isar.cacheCompletionReports
+            .where()
+            .projectIdEqualTo(projectId)
+            .findAll();
+        for (final r in existing) {
+          await isar.cacheCompletionReports.delete(r.id);
+        }
+        if (toInsert.isNotEmpty) {
+          await isar.cacheCompletionReports.putAll(toInsert);
+        }
+      });
+
+      return (docCount: toInsert.length, savedBomValues: savedValues);
+    } catch (e, stack) {
+      // Print full error & stacktrace
+      print("syncBomForProject ERROR: $e");
+      print(stack);
+      throw Exception("Error syncing bom");
+    }
+  }
+
+  // inside class BomRepository
+
+  /// Calls /activity/v1/bom/_generate_pdf, passing the bom data stored in Isar for (projectId, userType),
+  /// and returns the bytes (Uint8List). Throws on error.
+  Future<Uint8List> generateBomPdf({
+    required Isar isar,
+    required String projectId,
+    required String userType,
+  }) async {
+    // 1. Load stored BOM values JSON
+    final entryKey = '$projectId::$userType';
+    final rec = await isar.cacheProjectBomValues
+        .where()
+        .entryKeyEqualTo(entryKey)
+        .findFirst();
+    if (rec == null) {
+      throw Exception("No BOM values found for project");
+    }
+    final Map<String, dynamic> bomData =
+        jsonDecode(rec.dataJson) as Map<String, dynamic>;
+
+    // 2. Build request body
+    final tenantId = env.envConfig.variables.tenantId;
+    final body = {
+      "bom": bomData,
+    };
+
+    final path = "/activity/v1/bom/_generate_pdf?tenantId=$tenantId";
+
+    final response = await _dio.post<List<int>>(
+      path,
+      data: body,
+      options: Options(
+        responseType: ResponseType.bytes,
+        // headers: {"Accept": "application/pdf"},
+      ),
+    );
+
+    final data = response.data;
+    if (data == null) {
+      throw Exception("Empty PDF response");
+    }
+
+    if (data is Uint8List) {
+      return data;
+    }
+    if (data is List<int>) {
+      return Uint8List.fromList(data);
+    }
+    throw Exception("Unexpected PDF response type: ${data.runtimeType}");
   }
 
   Future<Map<String, dynamic>> _buildRequestBody(List<CacheBomDoc> docs,

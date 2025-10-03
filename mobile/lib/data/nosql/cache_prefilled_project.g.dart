@@ -45,14 +45,19 @@ const CachePrefilledProjectSchema = CollectionSchema(
   deserializeProp: _cachePrefilledProjectDeserializeProp,
   idName: r'id',
   indexes: {
-    r'projectId': IndexSchema(
-      id: 3305656282123791113,
-      name: r'projectId',
-      unique: false,
+    r'projectId_userType': IndexSchema(
+      id: 7361976672142893280,
+      name: r'projectId_userType',
+      unique: true,
       replace: false,
       properties: [
         IndexPropertySchema(
           name: r'projectId',
+          type: IndexType.hash,
+          caseSensitive: true,
+        ),
+        IndexPropertySchema(
+          name: r'userType',
           type: IndexType.hash,
           caseSensitive: true,
         )
@@ -140,6 +145,99 @@ void _cachePrefilledProjectAttach(
   object.id = id;
 }
 
+extension CachePrefilledProjectByIndex
+    on IsarCollection<CachePrefilledProject> {
+  Future<CachePrefilledProject?> getByProjectIdUserType(
+      String projectId, String userType) {
+    return getByIndex(r'projectId_userType', [projectId, userType]);
+  }
+
+  CachePrefilledProject? getByProjectIdUserTypeSync(
+      String projectId, String userType) {
+    return getByIndexSync(r'projectId_userType', [projectId, userType]);
+  }
+
+  Future<bool> deleteByProjectIdUserType(String projectId, String userType) {
+    return deleteByIndex(r'projectId_userType', [projectId, userType]);
+  }
+
+  bool deleteByProjectIdUserTypeSync(String projectId, String userType) {
+    return deleteByIndexSync(r'projectId_userType', [projectId, userType]);
+  }
+
+  Future<List<CachePrefilledProject?>> getAllByProjectIdUserType(
+      List<String> projectIdValues, List<String> userTypeValues) {
+    final len = projectIdValues.length;
+    assert(userTypeValues.length == len,
+        'All index values must have the same length');
+    final values = <List<dynamic>>[];
+    for (var i = 0; i < len; i++) {
+      values.add([projectIdValues[i], userTypeValues[i]]);
+    }
+
+    return getAllByIndex(r'projectId_userType', values);
+  }
+
+  List<CachePrefilledProject?> getAllByProjectIdUserTypeSync(
+      List<String> projectIdValues, List<String> userTypeValues) {
+    final len = projectIdValues.length;
+    assert(userTypeValues.length == len,
+        'All index values must have the same length');
+    final values = <List<dynamic>>[];
+    for (var i = 0; i < len; i++) {
+      values.add([projectIdValues[i], userTypeValues[i]]);
+    }
+
+    return getAllByIndexSync(r'projectId_userType', values);
+  }
+
+  Future<int> deleteAllByProjectIdUserType(
+      List<String> projectIdValues, List<String> userTypeValues) {
+    final len = projectIdValues.length;
+    assert(userTypeValues.length == len,
+        'All index values must have the same length');
+    final values = <List<dynamic>>[];
+    for (var i = 0; i < len; i++) {
+      values.add([projectIdValues[i], userTypeValues[i]]);
+    }
+
+    return deleteAllByIndex(r'projectId_userType', values);
+  }
+
+  int deleteAllByProjectIdUserTypeSync(
+      List<String> projectIdValues, List<String> userTypeValues) {
+    final len = projectIdValues.length;
+    assert(userTypeValues.length == len,
+        'All index values must have the same length');
+    final values = <List<dynamic>>[];
+    for (var i = 0; i < len; i++) {
+      values.add([projectIdValues[i], userTypeValues[i]]);
+    }
+
+    return deleteAllByIndexSync(r'projectId_userType', values);
+  }
+
+  Future<Id> putByProjectIdUserType(CachePrefilledProject object) {
+    return putByIndex(r'projectId_userType', object);
+  }
+
+  Id putByProjectIdUserTypeSync(CachePrefilledProject object,
+      {bool saveLinks = true}) {
+    return putByIndexSync(r'projectId_userType', object, saveLinks: saveLinks);
+  }
+
+  Future<List<Id>> putAllByProjectIdUserType(
+      List<CachePrefilledProject> objects) {
+    return putAllByIndex(r'projectId_userType', objects);
+  }
+
+  List<Id> putAllByProjectIdUserTypeSync(List<CachePrefilledProject> objects,
+      {bool saveLinks = true}) {
+    return putAllByIndexSync(r'projectId_userType', objects,
+        saveLinks: saveLinks);
+  }
+}
+
 extension CachePrefilledProjectQueryWhereSort
     on QueryBuilder<CachePrefilledProject, CachePrefilledProject, QWhere> {
   QueryBuilder<CachePrefilledProject, CachePrefilledProject, QAfterWhere>
@@ -221,28 +319,28 @@ extension CachePrefilledProjectQueryWhere on QueryBuilder<CachePrefilledProject,
   }
 
   QueryBuilder<CachePrefilledProject, CachePrefilledProject, QAfterWhereClause>
-      projectIdEqualTo(String projectId) {
+      projectIdEqualToAnyUserType(String projectId) {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(IndexWhereClause.equalTo(
-        indexName: r'projectId',
+        indexName: r'projectId_userType',
         value: [projectId],
       ));
     });
   }
 
   QueryBuilder<CachePrefilledProject, CachePrefilledProject, QAfterWhereClause>
-      projectIdNotEqualTo(String projectId) {
+      projectIdNotEqualToAnyUserType(String projectId) {
     return QueryBuilder.apply(this, (query) {
       if (query.whereSort == Sort.asc) {
         return query
             .addWhereClause(IndexWhereClause.between(
-              indexName: r'projectId',
+              indexName: r'projectId_userType',
               lower: [],
               upper: [projectId],
               includeUpper: false,
             ))
             .addWhereClause(IndexWhereClause.between(
-              indexName: r'projectId',
+              indexName: r'projectId_userType',
               lower: [projectId],
               includeLower: false,
               upper: [],
@@ -250,15 +348,60 @@ extension CachePrefilledProjectQueryWhere on QueryBuilder<CachePrefilledProject,
       } else {
         return query
             .addWhereClause(IndexWhereClause.between(
-              indexName: r'projectId',
+              indexName: r'projectId_userType',
               lower: [projectId],
               includeLower: false,
               upper: [],
             ))
             .addWhereClause(IndexWhereClause.between(
-              indexName: r'projectId',
+              indexName: r'projectId_userType',
               lower: [],
               upper: [projectId],
+              includeUpper: false,
+            ));
+      }
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject, QAfterWhereClause>
+      projectIdUserTypeEqualTo(String projectId, String userType) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.equalTo(
+        indexName: r'projectId_userType',
+        value: [projectId, userType],
+      ));
+    });
+  }
+
+  QueryBuilder<CachePrefilledProject, CachePrefilledProject, QAfterWhereClause>
+      projectIdEqualToUserTypeNotEqualTo(String projectId, String userType) {
+    return QueryBuilder.apply(this, (query) {
+      if (query.whereSort == Sort.asc) {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'projectId_userType',
+              lower: [projectId],
+              upper: [projectId, userType],
+              includeUpper: false,
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'projectId_userType',
+              lower: [projectId, userType],
+              includeLower: false,
+              upper: [projectId],
+            ));
+      } else {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'projectId_userType',
+              lower: [projectId, userType],
+              includeLower: false,
+              upper: [projectId],
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'projectId_userType',
+              lower: [projectId],
+              upper: [projectId, userType],
               includeUpper: false,
             ));
       }
