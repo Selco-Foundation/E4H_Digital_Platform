@@ -328,26 +328,28 @@ class AssetSubmissionBloc
         print("documents $workflowDocuments");
       }
 
-      final completionReport = await _isar.cacheCompletionReports
+      final completionReports = await _isar.cacheCompletionReports
           .where()
           .projectIdEqualTo(projectId)
-          .findFirst();
-      print("completionReport $completionReport");
-      if (completionReport != null && completionReport.filePath.isNotEmpty) {
-        String photoId = await getFilestoreUrl(completionReport.filePath);
-        print("photoId $photoId");
+          .findAll();
 
-        workflowDocuments.add(Document(
+      final completionDocuments = <Document>[];
+
+      for (final report in completionReports) {
+        if (report.filePath.isEmpty) continue;
+        String mediaId = await getFilestoreUrl(report.filePath);
+        print("mediaId $mediaId");
+        completionDocuments.add(Document(
           documentType: "INSTALLATION_REPORT",
-          fileStore: photoId,
-          documentUid: "INSTALLATION-REPORT-$photoId",
+          fileStore: mediaId,
+          documentUid: "INSTALLATION-REPORT-${report.fileType}-$mediaId",
           geoLocation: GeoLocation(
-            latitude: completionReport.latitude,
-            longitude: completionReport.longitude,
+            latitude: report.latitude,
+            longitude: report.longitude,
           ),
-          // additionalDetailsJson: additionalJson,
         ));
       }
+      print("completionDocuments ${completionDocuments.toString()}");
 
       print("projectId $projectId");
       print("document1 $workflowDocuments");
@@ -366,6 +368,7 @@ class AssetSubmissionBloc
           tenantId: tenantId,
           facilityId: facilityId,
           assignUserUuid: assignUserUuid ?? '',
+          documents: completionDocuments,
         );
       } catch (e) {
         print('BOM submission error: $e');
@@ -378,7 +381,6 @@ class AssetSubmissionBloc
         action: userType == USER_TYPES.FIELD_STAFF.name
             ? WORKFLOW_ACTIONS.SUBMIT_REPORT_A.name
             : WORKFLOW_ACTIONS.SUBMIT_REPORT_B.name,
-        // additionalDetails: {},
         documents: workflowDocuments,
       );
 

@@ -359,6 +359,19 @@ Map<String, dynamic> injectValuesIntoRawDoc({
   return doc;
 }
 
+String basenameUtil(String path) {
+  final norm = path.replaceAll('\\', '/');
+  final idx = norm.lastIndexOf('/');
+  return idx == -1 ? norm : norm.substring(idx + 1);
+}
+
+String inferFileTypeFromName(String name) {
+  final lower = name.toLowerCase();
+  if (lower.endsWith('.pdf')) return 'pdf';
+  // You can get fancier here (png/jpg/jpeg/webp → 'image')
+  return 'image';
+}
+
 class DioErrorParser {
   static Exception parse(DioError dioErr) {
     debugPrint("Dio error: ${dioErr.response?.data ?? dioErr}");

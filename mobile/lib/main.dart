@@ -11,6 +11,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:isar/isar.dart';
 import 'package:location/location.dart';
+import 'package:selco/blocs/project_bom/project_bom.dart';
 
 import 'blocs/app_init/app_init.dart';
 import 'blocs/asset_rejection/asset_rejection.dart';
@@ -121,7 +122,8 @@ class _MainAppState extends State<MainApp> {
             BlocProvider(create: (context) => CacheAssetBloc(widget.isar)),
             BlocProvider(
                 create: (context) => CacheCompletionReportBloc(widget.isar)),
-            BlocProvider(create: (context) => RejectionBloc())
+            BlocProvider(create: (context) => ProjectBomBloc(widget.isar)),
+            BlocProvider(create: (context) => RejectionBloc()),
           ],
           child: BlocBuilder<AppInitialization, InitState>(
             builder: (context, state) => state.maybeWhen(
