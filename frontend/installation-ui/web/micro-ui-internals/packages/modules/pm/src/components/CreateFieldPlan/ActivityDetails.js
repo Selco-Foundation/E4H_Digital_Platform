@@ -1,9 +1,8 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import FormattedDateInput from "../Custom/FormattedDateInput";
 import { Dropdown, SubmitBar, Table, TextInput } from "@egovernments/digit-ui-react-components";
 import { CheckCircleOutline } from "@egovernments/digit-ui-svg-components";
 import CustomCloseSvg from "../Custom/CustomCloseSvg";
-import useOrganization from "../../hooks/useOrganization";
 import OrganizationUserDropdown from "./OrganizationUserDropdown";
 
 const ActivityDetails = ({
@@ -53,7 +52,8 @@ const ActivityDetails = ({
       if (dataEntry.activity.code !== activity.code) return dataEntry;
       return {
         ...dataEntry,
-        users: dataEntry.users.filter((userEntry, i) => !!userEntry.id || i !== index)
+        users: dataEntry.users
+          .filter((userEntry, i) => !!userEntry.id || i !== index)
           .map((userEntry, i) => (userEntry.id && i === index) ? { ...userEntry, deleteAssignment: true } : userEntry),
       }
     }))
@@ -151,7 +151,7 @@ const ActivityDetails = ({
             color: "#C84C0E"
           }}
         >
-            {t("CORE_COMMON_ADD_NEW")}
+            {t("PM_ACTION_ADD_ROLE")}
           </span>
       </button>
     </div>
@@ -159,6 +159,7 @@ const ActivityDetails = ({
 
   const UserDateInput = (activity, index, fieldName, fieldValue, isLast, minimum, maximum) => (
     <div
+      key={index}
       style={{
         padding: "21px 20px 6px 20px",
         borderBottom: isLast ? "none" : "1px solid #EEEEEE",
@@ -188,36 +189,59 @@ const ActivityDetails = ({
     </div>
   )
 
-  const UserTextInput = (activity, index, fieldName, fieldValue, isLast) => (
-    <div
-      style={{
-        padding: "21px 20px 6px 20px",
-        borderBottom: isLast ? "none" : "1px solid #EEEEEE",
-      }}
-    >
-      <TextInput
-        value={fieldValue.value}
-        onChange={(e) => handleUserDataChange(activity, index, fieldName, e.target.value)}
+  const UserTextInput = (activity, index, fieldName, fieldValue, isLast) => {
+
+    const [textEntered, setTextEntered] = useState(fieldValue.value);
+    const inputRef = useRef(null);
+
+    useEffect(() => {
+
+      if (textEntered === fieldValue.value) return;
+
+      const handler = setTimeout(() => {
+        handleUserDataChange(activity, index, fieldName, textEntered)
+      }, 2500);
+
+      return () => {
+        clearTimeout(handler);
+      };
+    }, [textEntered]);
+
+    return (
+      <div
+        key={index}
         style={{
-          minWidth: "190px",
-        }}
-      />
-      <span
-        style={{
-          fontSize: "14px",
-          color: "rgba(212, 53, 28)",
-          height: "14px",
-          marginTop: "1px",
-          display: "block"
+          padding: "21px 20px 6px 20px",
+          borderBottom: isLast ? "none" : "1px solid #EEEEEE",
         }}
       >
+        <TextInput
+          value={textEntered}
+          type={"number"}
+          inputRef={inputRef}
+          onChange={(e) => setTextEntered(e.target.value)}
+          style={{
+            minWidth: "190px",
+          }}
+        />
+        <span
+          style={{
+            fontSize: "14px",
+            color: "rgba(212, 53, 28)",
+            height: "14px",
+            marginTop: "1px",
+            display: "block"
+          }}
+        >
         {fieldValue.error}
       </span>
-    </div>
-  )
+      </div>
+    )
+  }
 
   const UserDropDownInput = (options, optionKey = "name", activity, index, fieldName, fieldValue, isLast) => (
     <div
+      key={index}
       style={{
         padding: "21px 20px 6px 20px",
         borderBottom: isLast ? "none" : "1px solid #EEEEEE",
@@ -249,6 +273,7 @@ const ActivityDetails = ({
 
   const OrganizationUserDropDownInput = (organization, activity, index, fieldName, fieldValue, isLast) => (
     <div
+      key={index}
       style={{
         padding: "21px 20px 6px 20px",
         borderBottom: isLast ? "none" : "1px solid #EEEEEE",
@@ -279,6 +304,7 @@ const ActivityDetails = ({
 
   const UserEmailSentCheck = (isSent, activity, index, isLast, disableRemoval) => (
     <div
+      key={index}
       style={{
         padding: "21px 20px 6px 20px",
         borderBottom: isLast ? "none" : "1px solid #EEEEEE",
