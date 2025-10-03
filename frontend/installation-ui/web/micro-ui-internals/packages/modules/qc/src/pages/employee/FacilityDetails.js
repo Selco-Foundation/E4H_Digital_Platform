@@ -127,15 +127,16 @@ const FacilityDetails = ({t}) => {
         />
       })}
 
-      {aggregatedAssets?.installationReport && (
+      {aggregatedAssets?.bomCompletionReport && (
         <Summary
           t={t}
           sectionName="InstallationCompletionReport"
           section="INSTALLATION_COMPLETION_REPORT"
           report={{
-            ...aggregatedAssets?.installationReport,
+            ...aggregatedAssets?.bomCompletionReport,
             name: `${facilityDetails.facilityName}.pdf`
           }}
+          supportingDocuments={aggregatedAssets.installationReportDocuments}
           isReport={true}
         />
       )}

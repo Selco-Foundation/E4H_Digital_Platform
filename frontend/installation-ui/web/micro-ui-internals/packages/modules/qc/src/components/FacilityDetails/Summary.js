@@ -8,7 +8,7 @@ import { setRejectionReasons } from "../../redux/actions";
 import { ImageViewer } from "@egovernments/digit-ui-react-components";
 import CustomCloseSvg from "../CustomCloseSvg";
 
-const Summary = ({ t, sectionName, section, count, specifications, details, items, images, videos, report, isReport }) => {
+const Summary = ({ t, sectionName, section, count, specifications, details, items, images, videos, report, isReport, supportingDocuments }) => {
 
   const [expanded, setExpanded] = useState(false);
   const [showRejectionModal, setShowRejectionModal] = useState(false);
@@ -136,7 +136,7 @@ const Summary = ({ t, sectionName, section, count, specifications, details, item
 
       {expanded &&
         (isReport ? (
-          report && <SystemParameterReport file={report} />
+          report && <SystemParameterReport file={report} supportingDocuments={supportingDocuments} />
         ) : (
           <div style={{ padding: "20px" }}>
             <Section title={t(`QC_INSTALLATION_ASSET_COUNT`)}>

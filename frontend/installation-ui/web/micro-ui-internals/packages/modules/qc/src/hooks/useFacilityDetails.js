@@ -58,11 +58,13 @@ const generateAuditTrail = (workflow, transactions) => {
 const getAssetAggregation = async (workflow) => {
   const assetAggregation = {
     images: {},
-    videos: {}
+    videos: {},
+    installationReportDocuments: []
   };
 
   if (workflow) {
-    for (const row of workflow) {
+    for (let i = 0; i < workflow.length; i++) {
+      const row = workflow[i];
       const action = row.action;
 
       if (action === "SUBMIT_REPORT_A" || action === "SUBMIT_REPORT_B") {
@@ -70,7 +72,7 @@ const getAssetAggregation = async (workflow) => {
           const documentType = document.documentType;
           const fileStoreResponse = await QCService.fetchImageFromFileStore(document.fileStoreId);
           const fileUrl = Digit.Utils.getFileUrl(fileStoreResponse[document.fileStoreId]);
-          const size = await QCService.fetchDocumentSize(fileUrl);
+          const fileDetails = await QCService.fetchDocumentDetails(fileUrl);
 
           if (documentType.toUpperCase().includes("IMAGE")) {
             const assetType = documentType.split("-")[0].toUpperCase();
@@ -85,18 +87,26 @@ const getAssetAggregation = async (workflow) => {
             if (assetAggregation.videos[assetType]) {
               assetAggregation.videos[assetType].push({
                 fileUrl,
-                size
+                size: fileDetails.size,
               });
             } else {
               assetAggregation.videos[assetType] = [{
                 fileUrl,
-                size
+                size: fileDetails.size
               }];
             }
-          } else if (documentType.toUpperCase() === "INSTALLATION_REPORT") {
-            assetAggregation.installationReport = {
+          } else if (i === 0 && documentType.toUpperCase() === "INSTALLATION_REPORT") {
+            assetAggregation.installationReportDocuments = [
+              ...assetAggregation.installationReportDocuments,
+              {
+                fileUrl,
+                ...fileDetails
+              }
+            ];
+          } else if (i === 0 && documentType.toUpperCase() === "BOM_COMPLETION_REPORT") {
+            assetAggregation.bomCompletionReport = {
               fileUrl,
-              size: size
+              ...fileDetails
             };
           }
         }
