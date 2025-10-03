@@ -178,9 +178,9 @@ const CreateFieldPlan = () => {
               activity: activity,
               users: [
                 ...(
-                  activityAssignmentData?.activityAssignments
+                  activityAssignmentData?.activityAssignments?.filter((assignment) => assignment.activityCode === activity.code)?.length
                     ? activityAssignmentData.activityAssignments
-                      .filter((assignment) => assignment.activityId === activity.code)
+                      .filter((assignment) => assignment.activityCode === activity.code)
                       .map((assignment) => ({
                         id: assignment.id,
                         auditDetails: assignment.auditDetails,
@@ -329,6 +329,10 @@ const CreateFieldPlan = () => {
       users: dataEntry.users.map((userEntry) => {
         const newUserEntry = {}
 
+        if (Object.keys(userEntry).every((key) => (["id", "isEmailSent", "deleteAssignment", "auditDetails"].includes(key) || !userEntry[key].value))) {
+          return userEntry;
+        }
+
         Object.keys(userEntry).forEach((key) => {
           if (["id", "isEmailSent", "deleteAssignment", "auditDetails"].includes(key)) {
             newUserEntry[key] =  userEntry[key];
@@ -362,6 +366,10 @@ const CreateFieldPlan = () => {
 
     activityData.forEach((dataEntry) => {
       dataEntry.users.forEach((userEntry) => {
+
+        if (Object.keys(userEntry).every((key) => (["id", "isEmailSent", "deleteAssignment", "auditDetails"].includes(key) || !userEntry[key].value))) {
+          return;
+        }
 
         const activityUserAssignment = {
           tenantId: Digit.ULBService.getCurrentTenantId(),
@@ -402,7 +410,9 @@ const CreateFieldPlan = () => {
       await ActivityService.deleteActivityAssignment(activityUserAssignmentsForDelete);
     }
 
-    await invalidateActivityAssignmentData();
+    if (activityUserAssignmentsForCreate.length || activityUserAssignmentsForUpdate.length || activityUserAssignmentsForDelete.length) {
+      await invalidateActivityAssignmentData();
+    }
   }
 
   const handleActivityDataSave = async (activityData) => {
@@ -421,9 +431,17 @@ const CreateFieldPlan = () => {
       try {
         setBlockUI(true);
         await assignActivityUsers(activityData);
+        setToast({
+          key: "success",
+          label: t("PM_TOAST_ACTIVITY_DETAILS_SAVE_SUCCESS"),
+        })
 
       } catch (error) {
         console.error("Error assigning users for field plan activities", error);
+        setToast({
+          key: "error",
+          label: t("PM_TOAST_ACTIVITY_DETAILS_SAVE_ERROR"),
+        })
 
       } finally {
         setBlockUI(false);
@@ -760,7 +778,8 @@ const CreateFieldPlan = () => {
     let allRolesPresent = true;
 
     activityFormData.forEach((dataEntry) => {
-      const completeRoleCodes = activityData?.filter((activity) => activity?.code === dataEntry.activity?.code)?.[0]?.roles
+      const completeRoleCodes = activityData
+        ?.filter((activity) => activity?.code === dataEntry.activity?.code)?.[0]?.roles
         ?.map((role) => role?.code);
 
       const selectedRoleCodes = dataEntry.users.map((user) => user?.role?.value?.code);
@@ -775,7 +794,7 @@ const CreateFieldPlan = () => {
     return allRolesPresent;
   }
 
-  const saveAndUpdateFieldPlan = async (activityData) => {
+  const saveActivityDetailsAndUpdateFieldPlan = async (activityData) => {
 
     const { faultyData, validatedData } = validateActivityData(activityData);
 
@@ -790,18 +809,17 @@ const CreateFieldPlan = () => {
     } else if (!validateRolesPresence(activityData)) {
       setToast({
         key: "error",
-        label: "Please select at least one user for each role across all activities",
+        label: t("PM_TOAST_ACTIVITY_DETAILS_ROLES_PRESENCE_ERROR"),
       })
 
     } else {
       setBlockUI(true);
+      const schedulingFieldPlan = createdFieldPlan?.status === "DRAFT";
 
       try {
         await assignActivityUsers(activityData);
 
-        let schedulingFieldPlan = false;
-        if (createdFieldPlan?.status === "DRAFT") {
-          schedulingFieldPlan = true;
+        if (schedulingFieldPlan) {
           const fieldPlanUpdateData = {
             FieldPlans: [{
               ...createdFieldPlan,
@@ -828,6 +846,10 @@ const CreateFieldPlan = () => {
 
       } catch (error) {
         console.error("Error submitting field plan creation form", error);
+        setToast({
+          key: "error",
+          label: schedulingFieldPlan ? t("PM_TOAST_FIELD_PLAN_SUBMIT_CREATE_ERROR") : t("PM_TOAST_FIELD_PLAN_SUBMIT_UPDATE_ERROR"),
+        })
 
       } finally {
         setBlockUI(false);
@@ -846,8 +868,7 @@ const CreateFieldPlan = () => {
         setCurrentKey((prev) => prev + 1);
         break;
       case 3:
-        await saveAndUpdateFieldPlan(data.activityUserAssignment);
-        break;
+        await saveActivityDetailsAndUpdateFieldPlan(data.activityUserAssignment);
     }
   };
 
