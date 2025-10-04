@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:digit_forms_engine/blocs/forms/forms.dart';
 import 'package:digit_forms_engine/json_forms.dart';
 import 'package:digit_forms_engine/models/schema_object/schema_object.dart';
@@ -21,8 +23,8 @@ import '../widgets/header/back_navigation_help_header.dart';
 @RoutePage()
 class DynamicFormsPage extends StatefulWidget {
   final String pageName;
-  final String? schemaName; // e.g. "AssetForm"
-  final String? uniqueIdentifier; // e.g. "AssetForm.SELCO"
+  final String? schemaName;
+  final String? uniqueIdentifier;
   final String projectId;
 
   const DynamicFormsPage({
@@ -41,31 +43,40 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
   final _repo = AppInitRepo();
   bool _loadedOnce = false;
 
-  String? _currentSchemaKey(FormsState state) {
-    // Prefer a schema that actually contains this page
+  String? _currentSchemaKey2(FormsState state) {
     for (final entry in state.cachedSchemas.entries) {
       final s = entry.value;
       if (s.pages.containsKey(widget.pageName)) return entry.key;
     }
-    // Otherwise, use active if present
     if (state.activeSchemaKey != null &&
         state.cachedSchemas.containsKey(state.activeSchemaKey)) {
       return state.activeSchemaKey;
     }
-    // Or the first one
     if (state.cachedSchemas.isNotEmpty) {
       return state.cachedSchemas.keys.first;
     }
     return null;
   }
 
+  String? _currentSchemaKey(FormsState state) {
+    final requested = widget.schemaName ?? widget.uniqueIdentifier;
+    if (requested != null && state.cachedSchemas.containsKey(requested)) {
+      return requested;
+    }
+    final active = state.activeSchemaKey;
+    if (active != null && state.cachedSchemas.containsKey(active)) {
+      return active;
+    }
+    for (final e in state.cachedSchemas.entries) {
+      if (e.value.pages.containsKey(widget.pageName)) return e.key;
+    }
+    return state.cachedSchemas.isEmpty ? null : state.cachedSchemas.keys.first;
+  }
+
   Future<void> _ensureSchemaLoaded() async {
     final bloc = context.read<FormsBloc>();
-
-    // Figure out which schema key we want to use in the cache.
     final requestedKey = widget.schemaName ?? widget.uniqueIdentifier;
 
-    // If we already have the requested schema cached, just activate it.
     if (requestedKey != null &&
         bloc.state.cachedSchemas.containsKey(requestedKey)) {
       bloc.add(FormsUpdateEvent(
@@ -75,9 +86,7 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
       return;
     }
 
-    // Otherwise, load it from storage / MDMS (same as you had)
     Map<String, dynamic>? schemaJson;
-
     if (widget.schemaName != null) {
       schemaJson = await _repo.loadByName(widget.schemaName!);
     }
@@ -118,21 +127,16 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
 
         if (chosen != null && chosen.isNotEmpty) {
           final transformed = transformSelcoFormMdmsDocToSchema(chosen);
-
-          // carry uniqueIdentifier
           final uid = chosen['uniqueIdentifier']?.toString();
           if (uid != null && uid.isNotEmpty) {
             transformed['uniqueIdentifier'] = uid;
           }
-
-          // Store for future runs (non-blocking)
           // ignore: unawaited_futures
           _repo.upsertTransformedSchema(transformed);
-
           schemaJson = transformed;
         }
       } catch (_) {
-        // ignore; we'll fallback to snackbar below if still null
+        // fallback
       }
     }
 
@@ -149,9 +153,7 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
     final cacheKey =
         widget.schemaName ?? widget.uniqueIdentifier ?? schemaObj.name;
 
-    await SecureStore()
-        .setRawSchemaDoc(cacheKey, Map<String, dynamic>.from(schemaJson));
-
+    await SecureStore().setRawSchemaDoc(cacheKey, Map.from(schemaJson));
     bloc.add(FormsUpdateEvent(schema: schemaObj, schemaKey: cacheKey));
   }
 
@@ -165,14 +167,12 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
     super.didChangeDependencies();
     if (_loadedOnce) return;
     _loadedOnce = true;
-    // kick off loading without holding onto BuildContext across the await
     Future(() => _ensureSchemaLoaded());
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-
     return Scaffold(
       body: BlocConsumer<FormsBloc, FormsState>(
         listener: (context, state) async {
@@ -180,7 +180,7 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
             final isLast = state.schema.pages.keys.last == widget.pageName;
             if (!isLast) return;
 
-            // 1) Take current page values into a flat map
+            // 1) Flat values
             final Map<String, dynamic> flatValues = {};
             state.schema.pages.forEach((pageKey, pageSchema) {
               pageSchema.properties?.forEach((propKey, propSchema) {
@@ -188,27 +188,28 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
               });
             });
 
-            // 2) Identify projectschema key
             final projectId = widget.projectId;
             final schemaKey = widget.schemaName ??
                 widget.uniqueIdentifier ??
                 state.schema.name;
 
-            // 3) Load the RAW schema doc AS-IS (you saved this when opening the screen)
             final rawDoc = await SecureStore().getRawSchemaDoc(schemaKey);
             if (rawDoc != null) {
-              // 4) Merge values into RAW doc (keeps same shape as your mock/pages/properties)
               final withValues = injectValuesIntoRawDoc(
-                  rawDoc: rawDoc, flatValues: flatValues);
-
-              // 5) Save to Isar as a BOM draft unique per (projectId, schemaKey)
+                rawDoc: rawDoc,
+                flatValues: flatValues,
+              );
               final isar = context.read<ProjectBloc>().isar;
-
-              // asset_submission.dart before submitAllDirtyForProject
-              print(
-                  '[BOM:form] isarInstance=${identityHashCode(isar)} project=$projectId schema=$schemaKey');
               final assignUserUuid =
                   await SecureStore().getSelectedIndividual();
+
+              // --- Instrumentation and saving local ---
+              // final beforeDocs = await isar.cacheBomDocs
+              //     .where()
+              //     .projectIdEqualToAnySchemaKey(projectId)
+              //     .findAll();
+              // print("[BOM][Instr] before saveLocal docs = $beforeDocs");
+              // print("[BOM][Instr] withValues = $withValues");
 
               await BomRepository().saveLocal(
                 isar: isar,
@@ -217,8 +218,44 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
                 rawDocWithValues: withValues,
                 facilityId: null,
                 assignUserUuid: assignUserUuid,
-                bomName: schemaKey, // or a prettier label
+                bomName: schemaKey,
               );
+
+              // Propagate to cacheProjectBomValues
+              // final merged = BomRepository().extractKVFromRawDoc(withValues);
+              // final entryKey = '$projectId::${USER_TYPES.SUPERVISOR.name}';
+              // print(
+              //     "[BOM][Instr] writing cacheProjectBomValues entryKey=$entryKey merged=$merged");
+              // await isar.writeTxn(() async {
+              //   await isar.cacheProjectBomValues.put(
+              //     CacheProjectBomValues()
+              //       ..projectId = projectId
+              //       ..userType = USER_TYPES.SUPERVISOR.name
+              //       ..entryKey = entryKey
+              //       ..dataJson = jsonEncode(jsonSafe(merged))
+              //       ..updatedAt = DateTime.now(),
+              //   );
+              // });
+
+              final kvFromThisPage =
+                  BomRepository().extractKVFromRawDoc(withValues);
+              final filtered = Map<String, dynamic>.from(kvFromThisPage)
+                ..removeWhere((k, v) => v is String && v.trim().isEmpty);
+
+              await BomRepository().mergeKvForEntryKey(
+                isar: isar,
+                projectId: projectId,
+                userType: USER_TYPES.SUPERVISOR.name,
+                kvUpdate: filtered,
+              );
+
+              // final afterRec = await isar.cacheProjectBomValues
+              //     .where()
+              //     .entryKeyEqualTo(entryKey)
+              //     .findFirst();
+              // print("[BOM][Instr] after put rec = $afterRec");
+            } else {
+              print("[BOM][Error] rawDoc null for schemaKey=$schemaKey");
             }
 
             final key = state.activeSchemaKey ?? state.schema.name;
@@ -228,24 +265,18 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
         },
         builder: (context, state) {
           final currentKey = _currentSchemaKey(state);
-
           if (currentKey == null) {
             return const Center(child: CircularProgressIndicator());
           }
-
           final schemaObject = state.cachedSchemas[currentKey];
           if (schemaObject == null) {
             return const Center(child: Text('Form schema missing.'));
           }
-          print("widget.pageName ${widget.pageName}");
-          print("schemaObject.pages ${schemaObject.pages}");
           final pageSchema = schemaObject.pages[widget.pageName];
-          print(
-              "schemaObject.pages[widget.pageName] ${schemaObject.pages[widget.pageName]}");
           if (pageSchema == null) {
-            return const Center(child: Text('Loading Form page'));
+            Future.microtask(_ensureSchemaLoaded);
+            return const Center(child: CircularProgressIndicator());
           }
-
           final pageIndex =
               schemaObject.pages.keys.toList().indexOf(widget.pageName);
 
@@ -271,114 +302,102 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
                           ? (pageSchema.actionLabel ?? 'Next')
                           : (pageSchema.actionLabel ?? 'Submit'),
                       onPressed: () async {
-                        try {
-                          // 1) Validate current page with feedback
-                          final propKeys =
-                              (pageSchema.properties?.keys.toList() ??
-                                  <String>[]);
-                          final missing = <String>[];
-                          final invalid = <String>[];
+                        print(
+                            "[DynamicForm] onPressed tapped page=${widget.pageName} state=$state");
+                        // validation & logic ...
+                        final propKeys =
+                            (pageSchema.properties?.keys.toList() ??
+                                <String>[]);
+                        final missing = <String>[];
+                        final invalid = <String>[];
 
-                          for (final k in propKeys) {
-                            if (form.contains(k)) {
-                              final c = form.control(k);
-                              c.markAsTouched();
-                              c.updateValueAndValidity();
-                              if (!c.valid) invalid.add(k);
-                            } else {
-                              missing.add(k);
-                            }
+                        for (final k in propKeys) {
+                          if (form.contains(k)) {
+                            final c = form.control(k);
+                            c.markAsTouched();
+                            c.updateValueAndValidity();
+                            if (!c.valid) invalid.add(k);
+                          } else {
+                            missing.add(k);
                           }
+                        }
 
-                          if (missing.isNotEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                  content: Text(
-                                      'Form config mismatch. Missing control: ${missing.first}')),
-                            );
-                            return;
-                          }
-                          if (invalid.isNotEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                  content:
-                                      Text('Please correct: ${invalid.first}')),
-                            );
-                            return;
-                          }
-
-                          // 2) Merge CURRENT page values into the bloc schema
-                          final values =
-                              JsonForms.getFormValues(form, pageSchema);
-                          final updatedPage = pageSchema.copyWith(
-                            properties: Map.fromEntries(
-                              pageSchema.properties?.entries.map(
-                                    (e) => values.containsKey(e.key)
-                                        ? MapEntry(
-                                            e.key,
-                                            e.value
-                                                .copyWith(value: values[e.key]))
-                                        : MapEntry(e.key, e.value),
-                                  ) ??
-                                  [],
-                            ),
+                        if (missing.isNotEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                                content: Text(
+                                    'Form config mismatch: missing ${missing.first}')),
                           );
+                          return;
+                        }
+                        if (invalid.isNotEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                                content:
+                                    Text('Please correct: ${invalid.first}')),
+                          );
+                          return;
+                        }
 
-                          context.read<FormsBloc>().add(
-                                FormsUpdateEvent(
-                                  schema: schemaObject.copyWith(
-                                    pages: Map.fromEntries(
-                                      schemaObject.pages.entries.map(
-                                        (entry) => MapEntry(
-                                          entry.key,
-                                          entry.key == widget.pageName
-                                              ? updatedPage
-                                              : entry.value,
-                                        ),
+                        final values =
+                            JsonForms.getFormValues(form, pageSchema);
+                        final updatedPage = pageSchema.copyWith(
+                          properties: Map.fromEntries(
+                            pageSchema.properties?.entries.map(
+                                  (e) => values.containsKey(e.key)
+                                      ? MapEntry(
+                                          e.key,
+                                          e.value
+                                              .copyWith(value: values[e.key]),
+                                        )
+                                      : MapEntry(e.key, e.value),
+                                ) ??
+                                [],
+                          ),
+                        );
+
+                        context.read<FormsBloc>().add(
+                              FormsUpdateEvent(
+                                schema: schemaObject.copyWith(
+                                  pages: Map.fromEntries(
+                                    schemaObject.pages.entries.map(
+                                      (entry) => MapEntry(
+                                        entry.key,
+                                        entry.key == widget.pageName
+                                            ? updatedPage
+                                            : entry.value,
                                       ),
                                     ),
                                   ),
-                                  schemaKey: currentKey,
                                 ),
-                              );
+                                schemaKey: currentKey,
+                              ),
+                            );
 
-                          // 3) Decide using the SAME logic as your listener
-                          final lastPage = _isLastPage(schemaObject);
-
-                          if (!lastPage) {
-                            // Go to next page by ordered key
-                            final keysOrdered =
-                                schemaObject.pages.keys.toList(growable: false);
-                            final idx = keysOrdered.indexOf(widget.pageName);
-                            final nextKey =
-                                (idx >= 0 && idx < keysOrdered.length - 1)
-                                    ? keysOrdered[idx + 1]
-                                    : null;
-
-                            if (nextKey == null) {
-                              // Fallback: submit if we can’t find a next key
-                              context.read<FormsBloc>().add(
-                                  FormsEvent.submit(schemaKey: currentKey));
-                            } else {
-                              context.router.push(DynamicFormsRoute(
-                                  pageName: nextKey,
-                                  projectId: widget.projectId));
-                            }
-                            return;
+                        final lastPage = _isLastPage(schemaObject);
+                        if (!lastPage) {
+                          final keys = schemaObject.pages.keys.toList();
+                          final idx = keys.indexOf(widget.pageName);
+                          final next = (idx >= 0 && idx < keys.length - 1)
+                              ? keys[idx + 1]
+                              : null;
+                          if (next == null) {
+                            context
+                                .read<FormsBloc>()
+                                .add(FormsEvent.submit(schemaKey: currentKey));
+                          } else {
+                            context.router.push(DynamicFormsRoute(
+                              pageName: next,
+                              projectId: widget.projectId,
+                              schemaName: currentKey,
+                            ));
                           }
-
-                          // 4) Last page → submit
-                          context
-                              .read<FormsBloc>()
-                              .add(FormsEvent.submit(schemaKey: currentKey));
-                        } catch (e, st) {
-                          debugPrint('[DynamicForms] onPressed error: $e\n$st');
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content: Text(
-                                    'Something went wrong while submitting this page')),
-                          );
+                          return;
                         }
+
+                        context.read<FormsBloc>().add(
+                              FormsEvent.submit(schemaKey: currentKey),
+                            );
                       },
                       type: DigitButtonType.primary,
                       size: DigitButtonSize.large,
@@ -394,10 +413,8 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
                     height: spacer8,
                     child: DigitStepper(
                       activeIndex: pageIndex,
-                      stepperList: List.generate(
-                        schemaObject.pages.length,
-                        (_) => const StepperData(),
-                      ),
+                      stepperList: List.generate(schemaObject.pages.length,
+                          (_) => const StepperData()),
                       stepperDirection: Axis.horizontal,
                       inverted: true,
                     ),

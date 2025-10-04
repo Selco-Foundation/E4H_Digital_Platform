@@ -59,7 +59,7 @@ class AssetRepository {
 
     // Handle extension for files without one
     if (!fileName.contains('.')) {
-      final ext = _getExtensionFromMime(mimeType ?? 'application/octet-stream');
+      final ext = getExtensionFromMime(mimeType ?? 'application/octet-stream');
       fileName = '$fileName.$ext';
     }
 
@@ -382,7 +382,9 @@ class AssetRepository {
             if (parts.length != 2) continue;
 
             final assetTypeFromDoc = parts[0];
+            print("assetTypeFromDoc $assetTypeFromDoc");
             final itemTypeFromDoc = parts[1];
+            print("itemTypeFromDoc $itemTypeFromDoc");
 
             await isar.cacheMediaUploads.put(
               CacheMediaUpload(
@@ -429,45 +431,6 @@ class AssetRepository {
     } on DioError catch (dioErr) {
       final msg = dioErr.response?.data?.toString() ?? dioErr.message;
       throw DioErrorParser.parse(dioErr);
-    }
-  }
-
-  String _getExtensionFromMime(String mimeType) {
-    const map = {
-      'image/jpeg': 'jpg',
-      'image/png': 'png',
-      'application/pdf': 'pdf',
-      'video/mp4': 'mp4',
-      'video/quicktime': 'mov',
-      'text/plain': 'txt',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
-          'docx',
-      'application/msword': 'doc',
-      'application/vnd.ms-excel': 'xls',
-      'text/csv': 'csv',
-      'audio/mpeg': 'mp3',
-      'video/x-msvideo': 'avi',
-      'video/x-ms-wmv': 'wmv',
-      'application/x-mpegurl': 'm3u8',
-      'video/mp2t': 'ts',
-    };
-    return map[mimeType] ?? 'dat';
-  }
-
-  String _lookupMimeType(String fileName) {
-    final ext = fileName.split(".").last.toLowerCase();
-    switch (ext) {
-      case "png":
-        return "image/png";
-      case "jpg":
-      case "jpeg":
-        return "image/jpeg";
-      case "mp4":
-        return "video/mp4";
-      case "mov":
-        return "video/quicktime";
-      default:
-        return "application/octet-stream";
     }
   }
 }
