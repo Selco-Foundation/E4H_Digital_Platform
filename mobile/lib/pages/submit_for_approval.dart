@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/services/location_bloc.dart';
@@ -10,7 +9,6 @@ import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:file_picker/src/platform_file.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:isar/isar.dart';
 import 'package:path/path.dart' as p;
 import 'package:recase/recase.dart';
 
@@ -23,7 +21,6 @@ import '../blocs/overall_asset_summary/overall_asset_summary.dart';
 import '../blocs/project_bom/project_bom.dart';
 import '../blocs/selected_project/selected_project.dart';
 import '../blocs/user_type/user_type.dart';
-import '../data/nosql/cache_completion_report.dart';
 import '../model/comment/comment.dart';
 import '../model/project_workflow/project_workflow.dart';
 import '../router/app_router.dart';
@@ -31,6 +28,7 @@ import '../utils/extensions.dart';
 import '../utils/utils.dart';
 import '../widgets/button/footer_button.dart';
 import '../widgets/header/back_navigation_help_header.dart';
+import '../widgets/summary/existing_or_loader.dart';
 import '../widgets/summary/summary.dart';
 
 @RoutePage()
@@ -44,8 +42,7 @@ class SubmitForApprovalPage extends StatefulWidget {
 class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
   late String userType = "";
   late String projectId = "";
-  late ProjectWorkflow project;
-  String? filePath = "";
+  ProjectWorkflow? project;
   double? _latitude;
   double? _longitude;
   bool rejection1 = false;
@@ -77,58 +74,43 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
 
       context
           .read<CacheAssetBloc>()
-          .add(CacheAssetEvent.start(projectId, userType, project));
+          .add(CacheAssetEvent.start(projectId, userType, project!));
       context.read<ProjectBomBloc>().add(
             ProjectBomEvent.syncIfNeeded(
               projectId: projectId,
               userType: userType,
             ),
           );
-      _loadExistingCompletion();
+      _loadInitialCompletion();
     });
   }
 
-  Future<void> _loadExistingCompletion() async {
+  Future<void> _loadInitialCompletion() async {
     final isar = context.read<CacheAssetBloc>().isar;
 
-    final cached = await isar.cacheCompletionReports
-        .where()
-        .projectIdEqualTo(projectId)
-        .findAll();
+    final combined = await loadInitialCompletion(
+      isar: isar,
+      projectId: projectId,
+      projectWorkflow: project!,
+    );
 
-    final list = <ExistingReport>[];
-    for (final c in cached) {
-      if (c.filePath.isNotEmpty) {
-        final f = await getCachedFile(c.filePath);
-        if (f != null) {
-          final local = await copyFileToLocalDir(f);
-          list.add(ExistingReport(
-            isarId: c.id,
-            filePath: local,
-            fileName: p.basename(local),
-            fileType: inferFileType(local),
-          ));
-        }
-      }
-    }
     if (!mounted) return;
     setState(() {
-      _existingReports = list;
+      _existingReports = combined.map((pf) {
+        final path = pf.path!;
+        return ExistingReport(
+          isarId: null,
+          filePath: path,
+          fileName: p.basename(path),
+          fileType: inferFileType(path),
+        );
+      }).toList();
+      _pickedFiles = [];
     });
   }
 
-  Future<void> _handleUpload(List<PlatformFile> files) async {
-    final copied = <PlatformFile>[];
-    for (final pf in files) {
-      if (pf.path == null) continue;
-      final f = File(pf.path!);
-      final dest = await copyFileToLocalDir(f);
-      copied.add(PlatformFile(
-        name: p.basename(dest),
-        path: dest,
-        size: File(dest).lengthSync(),
-      ));
-    }
+  Future<void> _handleUploads(List<PlatformFile> picked) async {
+    final copied = await copyPickedFilesLocally(picked);
     if (!mounted) return;
     setState(() {
       _pickedFiles = copied;
@@ -175,8 +157,8 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
       listener: (context, state) {
         state.maybeWhen(
           loading: () {},
-          success: (docCount, _) {
-            _loadExistingCompletion();
+          success: (_) async {
+            await _loadInitialCompletion();
           },
           failure: (msg) {
             context
@@ -455,21 +437,32 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                                 return <PlatformFile, String?>{};
                               }
                               _ensureLocationLoaded();
-                              _handleUpload(files);
+                              _handleUploads(files);
                               return <PlatformFile, String?>{};
                             },
                           ),
-                          existingFilesSection(
-                            context: context,
-                            existing: _existingReports,
-                            showEditButton: true,
-                            onTapImage: (path) => context.router
-                                .push(ImageViewerRoute(path: path)),
-                            onTapPdf: (path) =>
-                                context.router.push(PdfViewerRoute(path: path)),
+                          // existingFilesSection(
+                          //   context: context,
+                          //   existing: _existingReports,
+                          //   showEditButton: true,
+                          //   onTapImage: (path) => context.router
+                          //       .push(ImageViewerRoute(path: path)),
+                          //   onTapPdf: (path) =>
+                          //       context.router.push(PdfViewerRoute(path: path)),
+                          //   onRemove: (r) {
+                          //     setState(() {
+                          //       _existingReports.remove(r);
+                          //     });
+                          //   },
+                          // ),
+                          ExistingFilesOrLoader(
+                            existingReports: _existingReports,
+                            workflowDocuments:
+                                project?.workflow?.documents ?? [],
+                            readOnly: false,
                             onRemove: (r) {
                               setState(() {
-                                _existingReports.remove(r);
+                                _existingReports?.remove(r);
                               });
                             },
                           ),

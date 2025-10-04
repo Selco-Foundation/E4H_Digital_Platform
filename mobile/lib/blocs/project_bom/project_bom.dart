@@ -1,12 +1,13 @@
-// lib/blocs/project_bom/project_bom_bloc.dart
-import 'dart:typed_data';
+import 'dart:io';
 
 import 'package:bloc/bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:isar/isar.dart';
 
+import '../../model/document/document.dart';
 import '../../repositories/bom_repo.dart';
 import '../../repositories/project_repo.dart';
+import '../../utils/utils.dart';
 
 part 'project_bom.freezed.dart';
 
@@ -21,11 +22,12 @@ class ProjectBomEvent with _$ProjectBomEvent {
     required String projectId,
     required String userType,
   }) = _ForceSync;
-
-  const factory ProjectBomEvent.downloadPdf({
+  const factory ProjectBomEvent.downloadWorkflowDocument({
     required String projectId,
     required String userType,
-  }) = _DownloadPdf;
+    required List<Document> workflowDocuments,
+    required String docType,
+  }) = _DownloadWorkflowDocument;
 }
 
 @freezed
@@ -33,12 +35,15 @@ class ProjectBomState with _$ProjectBomState {
   const factory ProjectBomState.initial() = _Initial;
   const factory ProjectBomState.loading() = _Loading;
   const factory ProjectBomState.success({
-    required int docCount,
     required bool savedBomValues,
   }) = _Success;
   const factory ProjectBomState.failure(String message) = _Failure;
-  const factory ProjectBomState.downloading() = _Downloading;
-  const factory ProjectBomState.pdfReady(Uint8List bytes) = _PdfReady;
+  const factory ProjectBomState.documentDownloadInProgress() =
+      _DocDownloadInProgress;
+  const factory ProjectBomState.documentDownloadSuccess(File file) =
+      _DocDownloadSuccess;
+  const factory ProjectBomState.documentDownloadFailure(String error) =
+      _DocDownloadFailure;
 }
 
 class ProjectBomBloc extends Bloc<ProjectBomEvent, ProjectBomState> {
@@ -48,7 +53,7 @@ class ProjectBomBloc extends Bloc<ProjectBomEvent, ProjectBomState> {
   ProjectBomBloc(this._isar) : super(const ProjectBomState.initial()) {
     on<_SyncIfNeeded>(_onSyncIfNeeded);
     on<_ForceSync>(_onForceSync);
-    on<_DownloadPdf>(_onDownloadPdf);
+    on<_DownloadWorkflowDocument>(_onDownloadWorkflowDocument);
   }
 
   Future<void> _onSyncIfNeeded(
@@ -59,12 +64,8 @@ class ProjectBomBloc extends Bloc<ProjectBomEvent, ProjectBomState> {
     try {
       final isPrefilled =
           await _isPrefilledProject(_isar, event.projectId, event.userType);
-      print("isPrefilled $isPrefilled");
-      print("project ${event.projectId}");
-      print("userType ${event.userType}");
       if (isPrefilled) {
         emit(const ProjectBomState.success(
-          docCount: 0,
           savedBomValues: false,
         ));
         return;
@@ -77,7 +78,6 @@ class ProjectBomBloc extends Bloc<ProjectBomEvent, ProjectBomState> {
       );
 
       emit(ProjectBomState.success(
-        docCount: r.docCount,
         savedBomValues: r.savedBomValues,
       ));
     } catch (e) {
@@ -97,7 +97,6 @@ class ProjectBomBloc extends Bloc<ProjectBomEvent, ProjectBomState> {
         userType: event.userType,
       );
       emit(ProjectBomState.success(
-        docCount: r.docCount,
         savedBomValues: r.savedBomValues,
       ));
     } catch (e) {
@@ -105,21 +104,31 @@ class ProjectBomBloc extends Bloc<ProjectBomEvent, ProjectBomState> {
     }
   }
 
-  // Handler:
-  Future<void> _onDownloadPdf(
-    _DownloadPdf event,
+  Future<void> _onDownloadWorkflowDocument(
+    _DownloadWorkflowDocument event,
     Emitter<ProjectBomState> emit,
   ) async {
-    emit(const ProjectBomState.downloading());
+    emit(const ProjectBomState.documentDownloadInProgress());
     try {
-      final bytes = await _bomRepo.generateBomPdf(
-        isar: _isar,
-        projectId: event.projectId,
-        userType: event.userType,
+      final docs = event.workflowDocuments;
+      final match = docs.firstWhere(
+        (d) =>
+            d.documentType == event.docType &&
+            d.fileStore != null &&
+            d.fileStore!.isNotEmpty,
+        orElse: () =>
+            throw Exception("No document of type ${event.docType} in workflow"),
       );
-      emit(ProjectBomState.pdfReady(bytes));
-    } catch (e) {
-      emit(ProjectBomState.failure("PDF download failed: $e"));
+
+      final fileStoreId = match.fileStore!;
+      final file = await getCachedFile(fileStoreId);
+      if (file == null) {
+        throw Exception(
+            "Could not retrieve file from fileStoreId $fileStoreId");
+      }
+      emit(ProjectBomState.documentDownloadSuccess(file));
+    } catch (e, st) {
+      emit(ProjectBomState.documentDownloadFailure(e.toString()));
     }
   }
 

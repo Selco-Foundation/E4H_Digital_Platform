@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/services/location_bloc.dart';
@@ -9,7 +8,6 @@ import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:file_picker/src/platform_file.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:isar/isar.dart';
 import 'package:path/path.dart' as p;
 
 import '../blocs/app_init/app_init.dart';
@@ -24,7 +22,7 @@ import '../blocs/project_bom/project_bom.dart';
 import '../blocs/report_type/report_type.dart';
 import '../blocs/selected_project/selected_project.dart';
 import '../blocs/user_type/user_type.dart';
-import '../data/nosql/cache_completion_report.dart';
+import '../model/project_workflow/project_workflow.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
 import '../utils/i18_key_constants.dart' as i18;
@@ -32,6 +30,7 @@ import '../utils/utils.dart';
 import '../widgets/button/footer_button.dart';
 import '../widgets/cards/element_asset_summary.dart';
 import '../widgets/header/back_navigation_help_header.dart';
+import '../widgets/summary/existing_or_loader.dart';
 import '../widgets/summary/summary.dart';
 
 @RoutePage()
@@ -44,9 +43,8 @@ class OverallAssetSummaryPage extends StatefulWidget {
 }
 
 class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
-  /// Legacy single-card view; mirrors the first selected file (if any).
-  String? filePath = "";
   String? _currentProjectId;
+  ProjectWorkflow? projectWorkflow;
   double? _latitude;
   double? _longitude;
   String? _solutionDesignTypeCode;
@@ -80,6 +78,7 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
       final selState = context.read<SelectedProjectBloc>().state;
       selState.whenOrNull(selected: (project) {
         _currentProjectId = project.project.id;
+        projectWorkflow = project;
         _solutionDesignTypeCode = "RMS_Single_Phase";
         context
             .read<CacheAssetBloc>()
@@ -130,54 +129,14 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
   Future<void> _loadInitialCompletion() async {
     final isar = context.read<CacheAssetBloc>().isar;
 
-    // (1) Load ALL locally cached completion reports for this project
-    final cachedList = await isar.cacheCompletionReports
-        .where()
-        .projectIdEqualTo(_currentProjectId!)
-        .findAll();
+    final combined = await loadInitialCompletion(
+      isar: isar,
+      projectId: _currentProjectId!,
+      projectWorkflow: projectWorkflow!,
+    );
 
-    final localFiles = <PlatformFile>[];
-    for (final cached in cachedList) {
-      if (cached.filePath.isNotEmpty) {
-        final f = await getCachedFile(cached.filePath);
-        if (f != null) {
-          final pth = await copyFileToLocalDir(f);
-          localFiles.add(PlatformFile(
-            name: p.basename(pth),
-            path: pth,
-            size: File(pth).lengthSync(),
-          ));
-        }
-      }
-    }
-
-    // (2) Fallback to any server-side docs on the workflow (INSTALLATION_REPORT)
-    final wf = context
-        .read<SelectedProjectBloc>()
-        .state
-        .whenOrNull(selected: (wf) => wf);
-    final docs = wf?.workflow?.documents ?? [];
-
-    final serverFiles = <PlatformFile>[];
-    for (final doc in docs) {
-      if (doc.documentType == 'INSTALLATION_REPORT' && doc.fileStore != null) {
-        final f = await getCachedFile(doc.fileStore!);
-        if (f != null) {
-          final pth = await copyFileToLocalDir(f);
-          serverFiles.add(PlatformFile(
-            name: p.basename(pth),
-            path: pth,
-            size: File(pth).lengthSync(),
-          ));
-        }
-      }
-    }
-
-    final combined = [...localFiles, ...serverFiles];
     if (!mounted) return;
-
     setState(() {
-      // Build custom-existing list; these are the "initial files"
       _existingReports = combined.map((pf) {
         final path = pf.path!;
         return ExistingReport(
@@ -187,130 +146,17 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
           fileType: inferFileType(path),
         );
       }).toList();
-
-      _pickedFiles = []; // none picked yet
-      filePath = combined.isNotEmpty ? combined.first.path : "";
+      _pickedFiles = [];
     });
   }
 
-  /// Handle newly picked files (multi). We do NOT touch _existingReports here.
   Future<void> _handleUploads(List<PlatformFile> picked) async {
-    final copied = <PlatformFile>[];
-    for (final pf in picked) {
-      if (pf.path == null) continue;
-      final f = File(pf.path!);
-      final dest = await copyFileToLocalDir(f);
-      copied.add(
-        PlatformFile(
-          name: p.basename(dest),
-          path: dest,
-          size: File(dest).lengthSync(),
-        ),
-      );
-    }
-
+    final copied = await copyPickedFilesLocally(picked);
     if (!mounted) return;
     setState(() {
-      _pickedFiles = copied; // widget previews these
-      filePath = _pickedFiles.isNotEmpty ? _pickedFiles.first.path : "";
+      _pickedFiles = copied;
     });
   }
-
-  void _openInitialImage(String path) {
-    context.router.push(ImageViewerRoute(path: path));
-  }
-
-  void _openInitialPdf(String path) {
-    context.router.push(PdfViewerRoute(path: path));
-  }
-
-  // Widget _existingInitialFilesSection(
-  //     {required BuildContext context,
-  //     required DigitTextTheme textTheme,
-  //     showEditButton = true}) {
-  //   if (_existingReports.isEmpty) return const SizedBox.shrink();
-  //
-  //   final images =
-  //       _existingReports.where((e) => e.fileType == 'image').toList();
-  //   final pdfs = _existingReports.where((e) => e.fileType == 'pdf').toList();
-  //
-  //   return Column(
-  //     crossAxisAlignment: CrossAxisAlignment.stretch,
-  //     children: [
-  //       if (images.isNotEmpty) ...[
-  //         SingleChildScrollView(
-  //           scrollDirection: Axis.horizontal,
-  //           child: Row(
-  //             children: images.asMap().entries.map((entry) {
-  //               final img = entry.value;
-  //
-  //               return Padding(
-  //                 padding: const EdgeInsets.only(right: spacer2),
-  //                 child: Stack(
-  //                   clipBehavior: Clip.none,
-  //                   children: [
-  //                     GestureDetector(
-  //                       onTap: () => _openInitialImage(img.filePath),
-  //                       child: Image.file(
-  //                         File(img.filePath),
-  //                         width: spacer12 * 2,
-  //                         height: spacer12 * 2,
-  //                         fit: BoxFit.cover,
-  //                       ),
-  //                     ),
-  //                     if (showEditButton == true)
-  //                       cancelIcon(
-  //                         context: context,
-  //                         onPress: () {
-  //                           setState(() => _existingReports.removeAt(
-  //                                 _existingReports.indexOf(img),
-  //                               ));
-  //                         },
-  //                       ),
-  //                   ],
-  //                 ),
-  //               );
-  //             }).toList(),
-  //           ),
-  //         ),
-  //         const SizedBox(height: spacer3),
-  //       ],
-  //       if (pdfs.isNotEmpty) ...[
-  //         const SizedBox(height: spacer2),
-  //         Column(
-  //           children: pdfs.asMap().entries.map((entry) {
-  //             final pdf = entry.value;
-  //
-  //             return Padding(
-  //               padding: const EdgeInsets.only(bottom: spacer2),
-  //               child: Stack(
-  //                 clipBehavior: Clip.none,
-  //                 children: [
-  //                   GestureDetector(
-  //                     onTap: () => _openInitialPdf(pdf.filePath),
-  //                     child: pdfCard(
-  //                       context: context,
-  //                       filePath: pdf.filePath,
-  //                       fileSize: fileSizeFor(pdf.filePath),
-  //                     ),
-  //                   ),
-  //                   if (showEditButton == true)
-  //                     cancelIcon(
-  //                         context: context,
-  //                         onPress: () {
-  //                           setState(() => _existingReports.removeAt(
-  //                                 _existingReports.indexOf(pdf),
-  //                               ));
-  //                         })
-  //                 ],
-  //               ),
-  //             );
-  //           }).toList(),
-  //         ),
-  //       ],
-  //     ],
-  //   );
-  // }
 
   @override
   Widget build(BuildContext context) {
@@ -321,16 +167,13 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
       listener: (context, state) {
         state.maybeWhen(
           loading: () {},
-          success: (docCount, savedBomValues) async {
+          success: (savedBomValues) async {
             await _loadInitialCompletion();
-            if (docCount > 0) {
-              context.showSnackBar(
-                SnackBar(content: Text('BOM synced: $docCount document(s)')),
-              );
-            }
+            context.read<OverallAssetSummaryBloc>().add(
+                OverallAssetSummaryEvent.loadCounts(
+                    projectId: _currentProjectId!));
           },
           failure: (msg) {
-            print("msg $msg");
             context.showSnackBar(
               const SnackBar(content: Text('BOM sync failed')),
             );
@@ -872,49 +715,51 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                                         String?>{};
                                                   },
                                                 ),
-                                                // _existingInitialFilesSection(
-                                                //     context: context,
-                                                //     textTheme: textTheme,
-                                                //     showEditButton: true),
-                                                existingFilesSection(
-                                                  context: context,
-                                                  existing: _existingReports,
-                                                  showEditButton: true,
-                                                  onTapImage: (path) => context
-                                                      .router
-                                                      .push(ImageViewerRoute(
-                                                          path: path)),
-                                                  onTapPdf: (path) => context
-                                                      .router
-                                                      .push(PdfViewerRoute(
-                                                          path: path)),
+                                                // existingFilesSection(
+                                                //   context: context,
+                                                //   existing: _existingReports,
+                                                //   showEditButton: true,
+                                                //   onTapImage: (path) => context
+                                                //       .router
+                                                //       .push(ImageViewerRoute(
+                                                //           path: path)),
+                                                //   onTapPdf: (path) => context
+                                                //       .router
+                                                //       .push(PdfViewerRoute(
+                                                //           path: path)),
+                                                //   onRemove: (r) {
+                                                //     setState(() {
+                                                //       _existingReports
+                                                //           .remove(r);
+                                                //     });
+                                                //   },
+                                                // ),
+                                                ExistingFilesOrLoader(
+                                                  existingReports:
+                                                      _existingReports,
+                                                  workflowDocuments:
+                                                      projectWorkflow?.workflow
+                                                              ?.documents ??
+                                                          [],
+                                                  readOnly: false,
                                                   onRemove: (r) {
                                                     setState(() {
                                                       _existingReports
-                                                          .remove(r);
+                                                          ?.remove(r);
                                                     });
                                                   },
-                                                )
+                                                ),
                                               ]
                                             : [
-                                                // _existingInitialFilesSection(
-                                                //     context: context,
-                                                //     textTheme: textTheme,
-                                                //     showEditButton: false),
-                                                existingFilesSection(
-                                                  context: context,
-                                                  existing: _existingReports,
-                                                  showEditButton: false,
-                                                  onTapImage: (path) => context
-                                                      .router
-                                                      .push(ImageViewerRoute(
-                                                          path: path)),
-                                                  onTapPdf: (path) => context
-                                                      .router
-                                                      .push(PdfViewerRoute(
-                                                          path: path)),
-                                                  onRemove: (r) {},
-                                                )
+                                                ExistingFilesOrLoader(
+                                                  existingReports:
+                                                      _existingReports,
+                                                  workflowDocuments:
+                                                      projectWorkflow?.workflow
+                                                              ?.documents ??
+                                                          [],
+                                                  readOnly: true,
+                                                ),
                                               ]),
                                       ],
                                     ),

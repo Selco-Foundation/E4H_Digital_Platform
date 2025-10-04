@@ -355,6 +355,43 @@ class AssetSubmissionBloc
       print("document1 $workflowDocuments");
       print("document2 ${workflowDocuments.toString()}");
 
+      String bomFileStoreId;
+      try {
+        // fetch bytes
+        final bomBytes = await BomRepository().generateBomPdf(
+          isar: _isar,
+          projectId: projectId,
+          userType: userType,
+        );
+        // upload to file store as PDF
+        final bomFileName =
+            "bom_${projectId}_${DateTime.now().millisecondsSinceEpoch}.pdf";
+        bomFileStoreId = await BomRepository().uploadPdfToFileStore(
+          bomBytes!,
+          bomFileName,
+        );
+        // determine lat/lon for BOM doc: use first media file if exists
+        String lat = "", lon = "";
+        if (workflowDocuments.isNotEmpty) {
+          lat = workflowDocuments.first.geoLocation?.latitude ?? "";
+          lon = workflowDocuments.first.geoLocation?.longitude ?? "";
+        }
+        // add BOM document
+        workflowDocuments.add(
+          Document(
+            documentType: "INSTALLATION_REPORT_BOM",
+            fileStore: bomFileStoreId,
+            documentUid:
+                "BOM-${projectId}-${DateTime.now().millisecondsSinceEpoch}",
+            geoLocation: GeoLocation(latitude: lat, longitude: lon),
+          ),
+        );
+      } catch (e) {
+        print("Error fetching/uploading BOM PDF: $e");
+        emit(AssetSubmissionState.failure("Failed to attach BOM PDF: $e"));
+        return false;
+      }
+
       try {
         final tenantId = envConfig.variables.tenantId;
         final assignUserUuid = await SecureStore().getSelectedIndividual();
@@ -368,7 +405,6 @@ class AssetSubmissionBloc
           tenantId: tenantId,
           facilityId: facilityId,
           assignUserUuid: assignUserUuid ?? '',
-          documents: completionDocuments,
         );
       } catch (e) {
         print('BOM submission error: $e');
@@ -381,7 +417,7 @@ class AssetSubmissionBloc
         action: userType == USER_TYPES.FIELD_STAFF.name
             ? WORKFLOW_ACTIONS.SUBMIT_REPORT_A.name
             : WORKFLOW_ACTIONS.SUBMIT_REPORT_B.name,
-        documents: workflowDocuments,
+        documents: [...workflowDocuments, ...completionDocuments],
       );
 
       await _draftRepo.delete(projectId, userType);
@@ -389,6 +425,7 @@ class AssetSubmissionBloc
         projectId: projectId,
         userType: userType,
       );
+      await CompletionReportRepository(_isar).delete(projectId: projectId);
       if (!fromDraft) emit(const AssetSubmissionState.success());
       return true;
     } catch (e) {

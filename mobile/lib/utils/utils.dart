@@ -3,14 +3,19 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
+import 'package:file_picker/src/platform_file.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
+import 'package:isar/isar.dart';
+import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 
 import '../blocs/app_init/app_init.dart';
 import '../data/app_shared_preferences.dart';
+import '../data/nosql/cache_completion_report.dart';
+import '../model/project_workflow/project_workflow.dart';
 import '../repositories/app_init_Repo.dart';
 import '../repositories/assetRepo.dart';
 
@@ -177,7 +182,9 @@ Future<File?> getCachedFile(String idOrPath) async {
       final resp = await http.get(uri);
       if (resp.statusCode == 200) {
         final dir = await getTemporaryDirectory();
-        final file = File('${dir.path}/${uri.pathSegments.last}');
+        final safeName = idOrPath.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
+        final file = File(
+            '${dir.path}/${DateTime.now().millisecondsSinceEpoch}_$safeName');
         await file.writeAsBytes(resp.bodyBytes);
         _fileCache[idOrPath] = file;
         return file;
@@ -359,6 +366,33 @@ Map<String, dynamic> injectValuesIntoRawDoc({
   return doc;
 }
 
+dynamic jsonSafe(dynamic v) {
+  if (v is DateTime) return v.toUtc().toIso8601String();
+  if (v is Map) {
+    return v.map((k, val) => MapEntry(k.toString(), jsonSafe(val)));
+  }
+  if (v is List) return v.map(jsonSafe).toList();
+  return v;
+}
+
+Map<String, dynamic> deepMerge(
+  Map<String, dynamic> base,
+  Map<String, dynamic> update,
+) {
+  final result = Map<String, dynamic>.from(base);
+  update.forEach((k, v) {
+    if (v is Map && result[k] is Map) {
+      result[k] = deepMerge(
+        Map<String, dynamic>.from(result[k] as Map),
+        Map<String, dynamic>.from(v as Map),
+      );
+    } else {
+      result[k] = v;
+    }
+  });
+  return result;
+}
+
 String basenameUtil(String path) {
   final norm = path.replaceAll('\\', '/');
   final idx = norm.lastIndexOf('/');
@@ -370,6 +404,94 @@ String inferFileTypeFromName(String name) {
   if (lower.endsWith('.pdf')) return 'pdf';
   // You can get fancier here (png/jpg/jpeg/webp → 'image')
   return 'image';
+}
+
+String getExtensionFromMime(String mimeType) {
+  const map = {
+    'image/jpeg': 'jpg',
+    'image/png': 'png',
+    'application/pdf': 'pdf',
+    'video/mp4': 'mp4',
+    'video/quicktime': 'mov',
+    'text/plain': 'txt',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+        'docx',
+    'application/msword': 'doc',
+    'application/vnd.ms-excel': 'xls',
+    'text/csv': 'csv',
+    'audio/mpeg': 'mp3',
+    'video/x-msvideo': 'avi',
+    'video/x-ms-wmv': 'wmv',
+    'application/x-mpegurl': 'm3u8',
+    'video/mp2t': 'ts',
+  };
+  return map[mimeType] ?? 'dat';
+}
+
+Future<List<PlatformFile>> loadInitialCompletion({
+  required Isar isar,
+  required String projectId,
+  required ProjectWorkflow projectWorkflow,
+}) async {
+  final cachedList = await isar.cacheCompletionReports
+      .where()
+      .projectIdEqualTo(projectId)
+      .findAll();
+
+  final localFiles = <PlatformFile>[];
+  for (final cached in cachedList) {
+    if (cached.filePath.isNotEmpty) {
+      final f = await getCachedFile(cached.filePath);
+      if (f != null) {
+        final pth = await copyFileToLocalDir(f);
+        localFiles.add(PlatformFile(
+          name: p.basename(pth),
+          path: pth,
+          size: File(pth).lengthSync(),
+        ));
+      }
+    }
+  }
+
+  final docs = projectWorkflow.workflow?.documents ?? [];
+
+  final serverFiles = <PlatformFile>[];
+  for (final doc in docs) {
+    if (doc.documentType!.contains('INSTALLATION_REPORT') &&
+        (doc.fileStore != null && doc.fileStore!.isNotEmpty)) {
+      final idOrUrl = doc.fileStore ?? '';
+      if (idOrUrl.isEmpty) continue;
+      final f = await getCachedFile(idOrUrl);
+      if (f != null) {
+        final pth = await copyFileToLocalDir(f);
+        serverFiles.add(PlatformFile(
+          name: p.basename(pth),
+          path: pth,
+          size: File(pth).lengthSync(),
+        ));
+      }
+    }
+  }
+
+  return [...localFiles, ...serverFiles];
+}
+
+Future<List<PlatformFile>> copyPickedFilesLocally(
+    List<PlatformFile> picked) async {
+  final copied = <PlatformFile>[];
+  for (final pf in picked) {
+    if (pf.path == null) continue;
+    final f = File(pf.path!);
+    final dest = await copyFileToLocalDir(f);
+    copied.add(
+      PlatformFile(
+        name: p.basename(dest),
+        path: dest,
+        size: File(dest).lengthSync(),
+      ),
+    );
+  }
+  return copied;
 }
 
 class DioErrorParser {

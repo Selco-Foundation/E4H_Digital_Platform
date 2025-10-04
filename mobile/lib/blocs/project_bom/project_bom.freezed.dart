@@ -22,21 +22,27 @@ mixin _$ProjectBomEvent {
   TResult when<TResult extends Object?>({
     required TResult Function(String projectId, String userType) syncIfNeeded,
     required TResult Function(String projectId, String userType) forceSync,
-    required TResult Function(String projectId, String userType) downloadPdf,
+    required TResult Function(String projectId, String userType,
+            List<Document> workflowDocuments, String docType)
+        downloadWorkflowDocument,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(String projectId, String userType)? syncIfNeeded,
     TResult? Function(String projectId, String userType)? forceSync,
-    TResult? Function(String projectId, String userType)? downloadPdf,
+    TResult? Function(String projectId, String userType,
+            List<Document> workflowDocuments, String docType)?
+        downloadWorkflowDocument,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(String projectId, String userType)? syncIfNeeded,
     TResult Function(String projectId, String userType)? forceSync,
-    TResult Function(String projectId, String userType)? downloadPdf,
+    TResult Function(String projectId, String userType,
+            List<Document> workflowDocuments, String docType)?
+        downloadWorkflowDocument,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -44,21 +50,23 @@ mixin _$ProjectBomEvent {
   TResult map<TResult extends Object?>({
     required TResult Function(_SyncIfNeeded value) syncIfNeeded,
     required TResult Function(_ForceSync value) forceSync,
-    required TResult Function(_DownloadPdf value) downloadPdf,
+    required TResult Function(_DownloadWorkflowDocument value)
+        downloadWorkflowDocument,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_SyncIfNeeded value)? syncIfNeeded,
     TResult? Function(_ForceSync value)? forceSync,
-    TResult? Function(_DownloadPdf value)? downloadPdf,
+    TResult? Function(_DownloadWorkflowDocument value)?
+        downloadWorkflowDocument,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_SyncIfNeeded value)? syncIfNeeded,
     TResult Function(_ForceSync value)? forceSync,
-    TResult Function(_DownloadPdf value)? downloadPdf,
+    TResult Function(_DownloadWorkflowDocument value)? downloadWorkflowDocument,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -184,7 +192,9 @@ class _$SyncIfNeededImpl implements _SyncIfNeeded {
   TResult when<TResult extends Object?>({
     required TResult Function(String projectId, String userType) syncIfNeeded,
     required TResult Function(String projectId, String userType) forceSync,
-    required TResult Function(String projectId, String userType) downloadPdf,
+    required TResult Function(String projectId, String userType,
+            List<Document> workflowDocuments, String docType)
+        downloadWorkflowDocument,
   }) {
     return syncIfNeeded(projectId, userType);
   }
@@ -194,7 +204,9 @@ class _$SyncIfNeededImpl implements _SyncIfNeeded {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(String projectId, String userType)? syncIfNeeded,
     TResult? Function(String projectId, String userType)? forceSync,
-    TResult? Function(String projectId, String userType)? downloadPdf,
+    TResult? Function(String projectId, String userType,
+            List<Document> workflowDocuments, String docType)?
+        downloadWorkflowDocument,
   }) {
     return syncIfNeeded?.call(projectId, userType);
   }
@@ -204,7 +216,9 @@ class _$SyncIfNeededImpl implements _SyncIfNeeded {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(String projectId, String userType)? syncIfNeeded,
     TResult Function(String projectId, String userType)? forceSync,
-    TResult Function(String projectId, String userType)? downloadPdf,
+    TResult Function(String projectId, String userType,
+            List<Document> workflowDocuments, String docType)?
+        downloadWorkflowDocument,
     required TResult orElse(),
   }) {
     if (syncIfNeeded != null) {
@@ -218,7 +232,8 @@ class _$SyncIfNeededImpl implements _SyncIfNeeded {
   TResult map<TResult extends Object?>({
     required TResult Function(_SyncIfNeeded value) syncIfNeeded,
     required TResult Function(_ForceSync value) forceSync,
-    required TResult Function(_DownloadPdf value) downloadPdf,
+    required TResult Function(_DownloadWorkflowDocument value)
+        downloadWorkflowDocument,
   }) {
     return syncIfNeeded(this);
   }
@@ -228,7 +243,8 @@ class _$SyncIfNeededImpl implements _SyncIfNeeded {
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_SyncIfNeeded value)? syncIfNeeded,
     TResult? Function(_ForceSync value)? forceSync,
-    TResult? Function(_DownloadPdf value)? downloadPdf,
+    TResult? Function(_DownloadWorkflowDocument value)?
+        downloadWorkflowDocument,
   }) {
     return syncIfNeeded?.call(this);
   }
@@ -238,7 +254,7 @@ class _$SyncIfNeededImpl implements _SyncIfNeeded {
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_SyncIfNeeded value)? syncIfNeeded,
     TResult Function(_ForceSync value)? forceSync,
-    TResult Function(_DownloadPdf value)? downloadPdf,
+    TResult Function(_DownloadWorkflowDocument value)? downloadWorkflowDocument,
     required TResult orElse(),
   }) {
     if (syncIfNeeded != null) {
@@ -341,7 +357,9 @@ class _$ForceSyncImpl implements _ForceSync {
   TResult when<TResult extends Object?>({
     required TResult Function(String projectId, String userType) syncIfNeeded,
     required TResult Function(String projectId, String userType) forceSync,
-    required TResult Function(String projectId, String userType) downloadPdf,
+    required TResult Function(String projectId, String userType,
+            List<Document> workflowDocuments, String docType)
+        downloadWorkflowDocument,
   }) {
     return forceSync(projectId, userType);
   }
@@ -351,7 +369,9 @@ class _$ForceSyncImpl implements _ForceSync {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(String projectId, String userType)? syncIfNeeded,
     TResult? Function(String projectId, String userType)? forceSync,
-    TResult? Function(String projectId, String userType)? downloadPdf,
+    TResult? Function(String projectId, String userType,
+            List<Document> workflowDocuments, String docType)?
+        downloadWorkflowDocument,
   }) {
     return forceSync?.call(projectId, userType);
   }
@@ -361,7 +381,9 @@ class _$ForceSyncImpl implements _ForceSync {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(String projectId, String userType)? syncIfNeeded,
     TResult Function(String projectId, String userType)? forceSync,
-    TResult Function(String projectId, String userType)? downloadPdf,
+    TResult Function(String projectId, String userType,
+            List<Document> workflowDocuments, String docType)?
+        downloadWorkflowDocument,
     required TResult orElse(),
   }) {
     if (forceSync != null) {
@@ -375,7 +397,8 @@ class _$ForceSyncImpl implements _ForceSync {
   TResult map<TResult extends Object?>({
     required TResult Function(_SyncIfNeeded value) syncIfNeeded,
     required TResult Function(_ForceSync value) forceSync,
-    required TResult Function(_DownloadPdf value) downloadPdf,
+    required TResult Function(_DownloadWorkflowDocument value)
+        downloadWorkflowDocument,
   }) {
     return forceSync(this);
   }
@@ -385,7 +408,8 @@ class _$ForceSyncImpl implements _ForceSync {
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_SyncIfNeeded value)? syncIfNeeded,
     TResult? Function(_ForceSync value)? forceSync,
-    TResult? Function(_DownloadPdf value)? downloadPdf,
+    TResult? Function(_DownloadWorkflowDocument value)?
+        downloadWorkflowDocument,
   }) {
     return forceSync?.call(this);
   }
@@ -395,7 +419,7 @@ class _$ForceSyncImpl implements _ForceSync {
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_SyncIfNeeded value)? syncIfNeeded,
     TResult Function(_ForceSync value)? forceSync,
-    TResult Function(_DownloadPdf value)? downloadPdf,
+    TResult Function(_DownloadWorkflowDocument value)? downloadWorkflowDocument,
     required TResult orElse(),
   }) {
     if (forceSync != null) {
@@ -421,22 +445,28 @@ abstract class _ForceSync implements ProjectBomEvent {
 }
 
 /// @nodoc
-abstract class _$$DownloadPdfImplCopyWith<$Res>
+abstract class _$$DownloadWorkflowDocumentImplCopyWith<$Res>
     implements $ProjectBomEventCopyWith<$Res> {
-  factory _$$DownloadPdfImplCopyWith(
-          _$DownloadPdfImpl value, $Res Function(_$DownloadPdfImpl) then) =
-      __$$DownloadPdfImplCopyWithImpl<$Res>;
+  factory _$$DownloadWorkflowDocumentImplCopyWith(
+          _$DownloadWorkflowDocumentImpl value,
+          $Res Function(_$DownloadWorkflowDocumentImpl) then) =
+      __$$DownloadWorkflowDocumentImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({String projectId, String userType});
+  $Res call(
+      {String projectId,
+      String userType,
+      List<Document> workflowDocuments,
+      String docType});
 }
 
 /// @nodoc
-class __$$DownloadPdfImplCopyWithImpl<$Res>
-    extends _$ProjectBomEventCopyWithImpl<$Res, _$DownloadPdfImpl>
-    implements _$$DownloadPdfImplCopyWith<$Res> {
-  __$$DownloadPdfImplCopyWithImpl(
-      _$DownloadPdfImpl _value, $Res Function(_$DownloadPdfImpl) _then)
+class __$$DownloadWorkflowDocumentImplCopyWithImpl<$Res>
+    extends _$ProjectBomEventCopyWithImpl<$Res, _$DownloadWorkflowDocumentImpl>
+    implements _$$DownloadWorkflowDocumentImplCopyWith<$Res> {
+  __$$DownloadWorkflowDocumentImplCopyWithImpl(
+      _$DownloadWorkflowDocumentImpl _value,
+      $Res Function(_$DownloadWorkflowDocumentImpl) _then)
       : super(_value, _then);
 
   @pragma('vm:prefer-inline')
@@ -444,8 +474,10 @@ class __$$DownloadPdfImplCopyWithImpl<$Res>
   $Res call({
     Object? projectId = null,
     Object? userType = null,
+    Object? workflowDocuments = null,
+    Object? docType = null,
   }) {
-    return _then(_$DownloadPdfImpl(
+    return _then(_$DownloadWorkflowDocumentImpl(
       projectId: null == projectId
           ? _value.projectId
           : projectId // ignore: cast_nullable_to_non_nullable
@@ -454,53 +486,85 @@ class __$$DownloadPdfImplCopyWithImpl<$Res>
           ? _value.userType
           : userType // ignore: cast_nullable_to_non_nullable
               as String,
+      workflowDocuments: null == workflowDocuments
+          ? _value._workflowDocuments
+          : workflowDocuments // ignore: cast_nullable_to_non_nullable
+              as List<Document>,
+      docType: null == docType
+          ? _value.docType
+          : docType // ignore: cast_nullable_to_non_nullable
+              as String,
     ));
   }
 }
 
 /// @nodoc
 
-class _$DownloadPdfImpl implements _DownloadPdf {
-  const _$DownloadPdfImpl({required this.projectId, required this.userType});
+class _$DownloadWorkflowDocumentImpl implements _DownloadWorkflowDocument {
+  const _$DownloadWorkflowDocumentImpl(
+      {required this.projectId,
+      required this.userType,
+      required final List<Document> workflowDocuments,
+      required this.docType})
+      : _workflowDocuments = workflowDocuments;
 
   @override
   final String projectId;
   @override
   final String userType;
+  final List<Document> _workflowDocuments;
+  @override
+  List<Document> get workflowDocuments {
+    if (_workflowDocuments is EqualUnmodifiableListView)
+      return _workflowDocuments;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_workflowDocuments);
+  }
+
+  @override
+  final String docType;
 
   @override
   String toString() {
-    return 'ProjectBomEvent.downloadPdf(projectId: $projectId, userType: $userType)';
+    return 'ProjectBomEvent.downloadWorkflowDocument(projectId: $projectId, userType: $userType, workflowDocuments: $workflowDocuments, docType: $docType)';
   }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$DownloadPdfImpl &&
+            other is _$DownloadWorkflowDocumentImpl &&
             (identical(other.projectId, projectId) ||
                 other.projectId == projectId) &&
             (identical(other.userType, userType) ||
-                other.userType == userType));
+                other.userType == userType) &&
+            const DeepCollectionEquality()
+                .equals(other._workflowDocuments, _workflowDocuments) &&
+            (identical(other.docType, docType) || other.docType == docType));
   }
 
   @override
-  int get hashCode => Object.hash(runtimeType, projectId, userType);
+  int get hashCode => Object.hash(runtimeType, projectId, userType,
+      const DeepCollectionEquality().hash(_workflowDocuments), docType);
 
   @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
-  _$$DownloadPdfImplCopyWith<_$DownloadPdfImpl> get copyWith =>
-      __$$DownloadPdfImplCopyWithImpl<_$DownloadPdfImpl>(this, _$identity);
+  _$$DownloadWorkflowDocumentImplCopyWith<_$DownloadWorkflowDocumentImpl>
+      get copyWith => __$$DownloadWorkflowDocumentImplCopyWithImpl<
+          _$DownloadWorkflowDocumentImpl>(this, _$identity);
 
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function(String projectId, String userType) syncIfNeeded,
     required TResult Function(String projectId, String userType) forceSync,
-    required TResult Function(String projectId, String userType) downloadPdf,
+    required TResult Function(String projectId, String userType,
+            List<Document> workflowDocuments, String docType)
+        downloadWorkflowDocument,
   }) {
-    return downloadPdf(projectId, userType);
+    return downloadWorkflowDocument(
+        projectId, userType, workflowDocuments, docType);
   }
 
   @override
@@ -508,9 +572,12 @@ class _$DownloadPdfImpl implements _DownloadPdf {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(String projectId, String userType)? syncIfNeeded,
     TResult? Function(String projectId, String userType)? forceSync,
-    TResult? Function(String projectId, String userType)? downloadPdf,
+    TResult? Function(String projectId, String userType,
+            List<Document> workflowDocuments, String docType)?
+        downloadWorkflowDocument,
   }) {
-    return downloadPdf?.call(projectId, userType);
+    return downloadWorkflowDocument?.call(
+        projectId, userType, workflowDocuments, docType);
   }
 
   @override
@@ -518,11 +585,14 @@ class _$DownloadPdfImpl implements _DownloadPdf {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(String projectId, String userType)? syncIfNeeded,
     TResult Function(String projectId, String userType)? forceSync,
-    TResult Function(String projectId, String userType)? downloadPdf,
+    TResult Function(String projectId, String userType,
+            List<Document> workflowDocuments, String docType)?
+        downloadWorkflowDocument,
     required TResult orElse(),
   }) {
-    if (downloadPdf != null) {
-      return downloadPdf(projectId, userType);
+    if (downloadWorkflowDocument != null) {
+      return downloadWorkflowDocument(
+          projectId, userType, workflowDocuments, docType);
     }
     return orElse();
   }
@@ -532,9 +602,10 @@ class _$DownloadPdfImpl implements _DownloadPdf {
   TResult map<TResult extends Object?>({
     required TResult Function(_SyncIfNeeded value) syncIfNeeded,
     required TResult Function(_ForceSync value) forceSync,
-    required TResult Function(_DownloadPdf value) downloadPdf,
+    required TResult Function(_DownloadWorkflowDocument value)
+        downloadWorkflowDocument,
   }) {
-    return downloadPdf(this);
+    return downloadWorkflowDocument(this);
   }
 
   @override
@@ -542,9 +613,10 @@ class _$DownloadPdfImpl implements _DownloadPdf {
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_SyncIfNeeded value)? syncIfNeeded,
     TResult? Function(_ForceSync value)? forceSync,
-    TResult? Function(_DownloadPdf value)? downloadPdf,
+    TResult? Function(_DownloadWorkflowDocument value)?
+        downloadWorkflowDocument,
   }) {
-    return downloadPdf?.call(this);
+    return downloadWorkflowDocument?.call(this);
   }
 
   @override
@@ -552,29 +624,33 @@ class _$DownloadPdfImpl implements _DownloadPdf {
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_SyncIfNeeded value)? syncIfNeeded,
     TResult Function(_ForceSync value)? forceSync,
-    TResult Function(_DownloadPdf value)? downloadPdf,
+    TResult Function(_DownloadWorkflowDocument value)? downloadWorkflowDocument,
     required TResult orElse(),
   }) {
-    if (downloadPdf != null) {
-      return downloadPdf(this);
+    if (downloadWorkflowDocument != null) {
+      return downloadWorkflowDocument(this);
     }
     return orElse();
   }
 }
 
-abstract class _DownloadPdf implements ProjectBomEvent {
-  const factory _DownloadPdf(
+abstract class _DownloadWorkflowDocument implements ProjectBomEvent {
+  const factory _DownloadWorkflowDocument(
       {required final String projectId,
-      required final String userType}) = _$DownloadPdfImpl;
+      required final String userType,
+      required final List<Document> workflowDocuments,
+      required final String docType}) = _$DownloadWorkflowDocumentImpl;
 
   @override
   String get projectId;
   @override
   String get userType;
+  List<Document> get workflowDocuments;
+  String get docType;
   @override
   @JsonKey(ignore: true)
-  _$$DownloadPdfImplCopyWith<_$DownloadPdfImpl> get copyWith =>
-      throw _privateConstructorUsedError;
+  _$$DownloadWorkflowDocumentImplCopyWith<_$DownloadWorkflowDocumentImpl>
+      get copyWith => throw _privateConstructorUsedError;
 }
 
 /// @nodoc
@@ -583,30 +659,33 @@ mixin _$ProjectBomState {
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
-    required TResult Function(int docCount, bool savedBomValues) success,
+    required TResult Function(bool savedBomValues) success,
     required TResult Function(String message) failure,
-    required TResult Function() downloading,
-    required TResult Function(Uint8List bytes) pdfReady,
+    required TResult Function() documentDownloadInProgress,
+    required TResult Function(File file) documentDownloadSuccess,
+    required TResult Function(String error) documentDownloadFailure,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
-    TResult? Function(int docCount, bool savedBomValues)? success,
+    TResult? Function(bool savedBomValues)? success,
     TResult? Function(String message)? failure,
-    TResult? Function()? downloading,
-    TResult? Function(Uint8List bytes)? pdfReady,
+    TResult? Function()? documentDownloadInProgress,
+    TResult? Function(File file)? documentDownloadSuccess,
+    TResult? Function(String error)? documentDownloadFailure,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
-    TResult Function(int docCount, bool savedBomValues)? success,
+    TResult Function(bool savedBomValues)? success,
     TResult Function(String message)? failure,
-    TResult Function()? downloading,
-    TResult Function(Uint8List bytes)? pdfReady,
+    TResult Function()? documentDownloadInProgress,
+    TResult Function(File file)? documentDownloadSuccess,
+    TResult Function(String error)? documentDownloadFailure,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -616,8 +695,12 @@ mixin _$ProjectBomState {
     required TResult Function(_Loading value) loading,
     required TResult Function(_Success value) success,
     required TResult Function(_Failure value) failure,
-    required TResult Function(_Downloading value) downloading,
-    required TResult Function(_PdfReady value) pdfReady,
+    required TResult Function(_DocDownloadInProgress value)
+        documentDownloadInProgress,
+    required TResult Function(_DocDownloadSuccess value)
+        documentDownloadSuccess,
+    required TResult Function(_DocDownloadFailure value)
+        documentDownloadFailure,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -626,8 +709,9 @@ mixin _$ProjectBomState {
     TResult? Function(_Loading value)? loading,
     TResult? Function(_Success value)? success,
     TResult? Function(_Failure value)? failure,
-    TResult? Function(_Downloading value)? downloading,
-    TResult? Function(_PdfReady value)? pdfReady,
+    TResult? Function(_DocDownloadInProgress value)? documentDownloadInProgress,
+    TResult? Function(_DocDownloadSuccess value)? documentDownloadSuccess,
+    TResult? Function(_DocDownloadFailure value)? documentDownloadFailure,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -636,8 +720,9 @@ mixin _$ProjectBomState {
     TResult Function(_Loading value)? loading,
     TResult Function(_Success value)? success,
     TResult Function(_Failure value)? failure,
-    TResult Function(_Downloading value)? downloading,
-    TResult Function(_PdfReady value)? pdfReady,
+    TResult Function(_DocDownloadInProgress value)? documentDownloadInProgress,
+    TResult Function(_DocDownloadSuccess value)? documentDownloadSuccess,
+    TResult Function(_DocDownloadFailure value)? documentDownloadFailure,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -701,10 +786,11 @@ class _$InitialImpl implements _Initial {
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
-    required TResult Function(int docCount, bool savedBomValues) success,
+    required TResult Function(bool savedBomValues) success,
     required TResult Function(String message) failure,
-    required TResult Function() downloading,
-    required TResult Function(Uint8List bytes) pdfReady,
+    required TResult Function() documentDownloadInProgress,
+    required TResult Function(File file) documentDownloadSuccess,
+    required TResult Function(String error) documentDownloadFailure,
   }) {
     return initial();
   }
@@ -714,10 +800,11 @@ class _$InitialImpl implements _Initial {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
-    TResult? Function(int docCount, bool savedBomValues)? success,
+    TResult? Function(bool savedBomValues)? success,
     TResult? Function(String message)? failure,
-    TResult? Function()? downloading,
-    TResult? Function(Uint8List bytes)? pdfReady,
+    TResult? Function()? documentDownloadInProgress,
+    TResult? Function(File file)? documentDownloadSuccess,
+    TResult? Function(String error)? documentDownloadFailure,
   }) {
     return initial?.call();
   }
@@ -727,10 +814,11 @@ class _$InitialImpl implements _Initial {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
-    TResult Function(int docCount, bool savedBomValues)? success,
+    TResult Function(bool savedBomValues)? success,
     TResult Function(String message)? failure,
-    TResult Function()? downloading,
-    TResult Function(Uint8List bytes)? pdfReady,
+    TResult Function()? documentDownloadInProgress,
+    TResult Function(File file)? documentDownloadSuccess,
+    TResult Function(String error)? documentDownloadFailure,
     required TResult orElse(),
   }) {
     if (initial != null) {
@@ -746,8 +834,12 @@ class _$InitialImpl implements _Initial {
     required TResult Function(_Loading value) loading,
     required TResult Function(_Success value) success,
     required TResult Function(_Failure value) failure,
-    required TResult Function(_Downloading value) downloading,
-    required TResult Function(_PdfReady value) pdfReady,
+    required TResult Function(_DocDownloadInProgress value)
+        documentDownloadInProgress,
+    required TResult Function(_DocDownloadSuccess value)
+        documentDownloadSuccess,
+    required TResult Function(_DocDownloadFailure value)
+        documentDownloadFailure,
   }) {
     return initial(this);
   }
@@ -759,8 +851,9 @@ class _$InitialImpl implements _Initial {
     TResult? Function(_Loading value)? loading,
     TResult? Function(_Success value)? success,
     TResult? Function(_Failure value)? failure,
-    TResult? Function(_Downloading value)? downloading,
-    TResult? Function(_PdfReady value)? pdfReady,
+    TResult? Function(_DocDownloadInProgress value)? documentDownloadInProgress,
+    TResult? Function(_DocDownloadSuccess value)? documentDownloadSuccess,
+    TResult? Function(_DocDownloadFailure value)? documentDownloadFailure,
   }) {
     return initial?.call(this);
   }
@@ -772,8 +865,9 @@ class _$InitialImpl implements _Initial {
     TResult Function(_Loading value)? loading,
     TResult Function(_Success value)? success,
     TResult Function(_Failure value)? failure,
-    TResult Function(_Downloading value)? downloading,
-    TResult Function(_PdfReady value)? pdfReady,
+    TResult Function(_DocDownloadInProgress value)? documentDownloadInProgress,
+    TResult Function(_DocDownloadSuccess value)? documentDownloadSuccess,
+    TResult Function(_DocDownloadFailure value)? documentDownloadFailure,
     required TResult orElse(),
   }) {
     if (initial != null) {
@@ -827,10 +921,11 @@ class _$LoadingImpl implements _Loading {
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
-    required TResult Function(int docCount, bool savedBomValues) success,
+    required TResult Function(bool savedBomValues) success,
     required TResult Function(String message) failure,
-    required TResult Function() downloading,
-    required TResult Function(Uint8List bytes) pdfReady,
+    required TResult Function() documentDownloadInProgress,
+    required TResult Function(File file) documentDownloadSuccess,
+    required TResult Function(String error) documentDownloadFailure,
   }) {
     return loading();
   }
@@ -840,10 +935,11 @@ class _$LoadingImpl implements _Loading {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
-    TResult? Function(int docCount, bool savedBomValues)? success,
+    TResult? Function(bool savedBomValues)? success,
     TResult? Function(String message)? failure,
-    TResult? Function()? downloading,
-    TResult? Function(Uint8List bytes)? pdfReady,
+    TResult? Function()? documentDownloadInProgress,
+    TResult? Function(File file)? documentDownloadSuccess,
+    TResult? Function(String error)? documentDownloadFailure,
   }) {
     return loading?.call();
   }
@@ -853,10 +949,11 @@ class _$LoadingImpl implements _Loading {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
-    TResult Function(int docCount, bool savedBomValues)? success,
+    TResult Function(bool savedBomValues)? success,
     TResult Function(String message)? failure,
-    TResult Function()? downloading,
-    TResult Function(Uint8List bytes)? pdfReady,
+    TResult Function()? documentDownloadInProgress,
+    TResult Function(File file)? documentDownloadSuccess,
+    TResult Function(String error)? documentDownloadFailure,
     required TResult orElse(),
   }) {
     if (loading != null) {
@@ -872,8 +969,12 @@ class _$LoadingImpl implements _Loading {
     required TResult Function(_Loading value) loading,
     required TResult Function(_Success value) success,
     required TResult Function(_Failure value) failure,
-    required TResult Function(_Downloading value) downloading,
-    required TResult Function(_PdfReady value) pdfReady,
+    required TResult Function(_DocDownloadInProgress value)
+        documentDownloadInProgress,
+    required TResult Function(_DocDownloadSuccess value)
+        documentDownloadSuccess,
+    required TResult Function(_DocDownloadFailure value)
+        documentDownloadFailure,
   }) {
     return loading(this);
   }
@@ -885,8 +986,9 @@ class _$LoadingImpl implements _Loading {
     TResult? Function(_Loading value)? loading,
     TResult? Function(_Success value)? success,
     TResult? Function(_Failure value)? failure,
-    TResult? Function(_Downloading value)? downloading,
-    TResult? Function(_PdfReady value)? pdfReady,
+    TResult? Function(_DocDownloadInProgress value)? documentDownloadInProgress,
+    TResult? Function(_DocDownloadSuccess value)? documentDownloadSuccess,
+    TResult? Function(_DocDownloadFailure value)? documentDownloadFailure,
   }) {
     return loading?.call(this);
   }
@@ -898,8 +1000,9 @@ class _$LoadingImpl implements _Loading {
     TResult Function(_Loading value)? loading,
     TResult Function(_Success value)? success,
     TResult Function(_Failure value)? failure,
-    TResult Function(_Downloading value)? downloading,
-    TResult Function(_PdfReady value)? pdfReady,
+    TResult Function(_DocDownloadInProgress value)? documentDownloadInProgress,
+    TResult Function(_DocDownloadSuccess value)? documentDownloadSuccess,
+    TResult Function(_DocDownloadFailure value)? documentDownloadFailure,
     required TResult orElse(),
   }) {
     if (loading != null) {
@@ -919,7 +1022,7 @@ abstract class _$$SuccessImplCopyWith<$Res> {
           _$SuccessImpl value, $Res Function(_$SuccessImpl) then) =
       __$$SuccessImplCopyWithImpl<$Res>;
   @useResult
-  $Res call({int docCount, bool savedBomValues});
+  $Res call({bool savedBomValues});
 }
 
 /// @nodoc
@@ -933,14 +1036,9 @@ class __$$SuccessImplCopyWithImpl<$Res>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? docCount = null,
     Object? savedBomValues = null,
   }) {
     return _then(_$SuccessImpl(
-      docCount: null == docCount
-          ? _value.docCount
-          : docCount // ignore: cast_nullable_to_non_nullable
-              as int,
       savedBomValues: null == savedBomValues
           ? _value.savedBomValues
           : savedBomValues // ignore: cast_nullable_to_non_nullable
@@ -952,16 +1050,14 @@ class __$$SuccessImplCopyWithImpl<$Res>
 /// @nodoc
 
 class _$SuccessImpl implements _Success {
-  const _$SuccessImpl({required this.docCount, required this.savedBomValues});
+  const _$SuccessImpl({required this.savedBomValues});
 
-  @override
-  final int docCount;
   @override
   final bool savedBomValues;
 
   @override
   String toString() {
-    return 'ProjectBomState.success(docCount: $docCount, savedBomValues: $savedBomValues)';
+    return 'ProjectBomState.success(savedBomValues: $savedBomValues)';
   }
 
   @override
@@ -969,14 +1065,12 @@ class _$SuccessImpl implements _Success {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _$SuccessImpl &&
-            (identical(other.docCount, docCount) ||
-                other.docCount == docCount) &&
             (identical(other.savedBomValues, savedBomValues) ||
                 other.savedBomValues == savedBomValues));
   }
 
   @override
-  int get hashCode => Object.hash(runtimeType, docCount, savedBomValues);
+  int get hashCode => Object.hash(runtimeType, savedBomValues);
 
   @JsonKey(ignore: true)
   @override
@@ -989,12 +1083,13 @@ class _$SuccessImpl implements _Success {
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
-    required TResult Function(int docCount, bool savedBomValues) success,
+    required TResult Function(bool savedBomValues) success,
     required TResult Function(String message) failure,
-    required TResult Function() downloading,
-    required TResult Function(Uint8List bytes) pdfReady,
+    required TResult Function() documentDownloadInProgress,
+    required TResult Function(File file) documentDownloadSuccess,
+    required TResult Function(String error) documentDownloadFailure,
   }) {
-    return success(docCount, savedBomValues);
+    return success(savedBomValues);
   }
 
   @override
@@ -1002,12 +1097,13 @@ class _$SuccessImpl implements _Success {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
-    TResult? Function(int docCount, bool savedBomValues)? success,
+    TResult? Function(bool savedBomValues)? success,
     TResult? Function(String message)? failure,
-    TResult? Function()? downloading,
-    TResult? Function(Uint8List bytes)? pdfReady,
+    TResult? Function()? documentDownloadInProgress,
+    TResult? Function(File file)? documentDownloadSuccess,
+    TResult? Function(String error)? documentDownloadFailure,
   }) {
-    return success?.call(docCount, savedBomValues);
+    return success?.call(savedBomValues);
   }
 
   @override
@@ -1015,14 +1111,15 @@ class _$SuccessImpl implements _Success {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
-    TResult Function(int docCount, bool savedBomValues)? success,
+    TResult Function(bool savedBomValues)? success,
     TResult Function(String message)? failure,
-    TResult Function()? downloading,
-    TResult Function(Uint8List bytes)? pdfReady,
+    TResult Function()? documentDownloadInProgress,
+    TResult Function(File file)? documentDownloadSuccess,
+    TResult Function(String error)? documentDownloadFailure,
     required TResult orElse(),
   }) {
     if (success != null) {
-      return success(docCount, savedBomValues);
+      return success(savedBomValues);
     }
     return orElse();
   }
@@ -1034,8 +1131,12 @@ class _$SuccessImpl implements _Success {
     required TResult Function(_Loading value) loading,
     required TResult Function(_Success value) success,
     required TResult Function(_Failure value) failure,
-    required TResult Function(_Downloading value) downloading,
-    required TResult Function(_PdfReady value) pdfReady,
+    required TResult Function(_DocDownloadInProgress value)
+        documentDownloadInProgress,
+    required TResult Function(_DocDownloadSuccess value)
+        documentDownloadSuccess,
+    required TResult Function(_DocDownloadFailure value)
+        documentDownloadFailure,
   }) {
     return success(this);
   }
@@ -1047,8 +1148,9 @@ class _$SuccessImpl implements _Success {
     TResult? Function(_Loading value)? loading,
     TResult? Function(_Success value)? success,
     TResult? Function(_Failure value)? failure,
-    TResult? Function(_Downloading value)? downloading,
-    TResult? Function(_PdfReady value)? pdfReady,
+    TResult? Function(_DocDownloadInProgress value)? documentDownloadInProgress,
+    TResult? Function(_DocDownloadSuccess value)? documentDownloadSuccess,
+    TResult? Function(_DocDownloadFailure value)? documentDownloadFailure,
   }) {
     return success?.call(this);
   }
@@ -1060,8 +1162,9 @@ class _$SuccessImpl implements _Success {
     TResult Function(_Loading value)? loading,
     TResult Function(_Success value)? success,
     TResult Function(_Failure value)? failure,
-    TResult Function(_Downloading value)? downloading,
-    TResult Function(_PdfReady value)? pdfReady,
+    TResult Function(_DocDownloadInProgress value)? documentDownloadInProgress,
+    TResult Function(_DocDownloadSuccess value)? documentDownloadSuccess,
+    TResult Function(_DocDownloadFailure value)? documentDownloadFailure,
     required TResult orElse(),
   }) {
     if (success != null) {
@@ -1072,11 +1175,8 @@ class _$SuccessImpl implements _Success {
 }
 
 abstract class _Success implements ProjectBomState {
-  const factory _Success(
-      {required final int docCount,
-      required final bool savedBomValues}) = _$SuccessImpl;
+  const factory _Success({required final bool savedBomValues}) = _$SuccessImpl;
 
-  int get docCount;
   bool get savedBomValues;
   @JsonKey(ignore: true)
   _$$SuccessImplCopyWith<_$SuccessImpl> get copyWith =>
@@ -1149,10 +1249,11 @@ class _$FailureImpl implements _Failure {
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
-    required TResult Function(int docCount, bool savedBomValues) success,
+    required TResult Function(bool savedBomValues) success,
     required TResult Function(String message) failure,
-    required TResult Function() downloading,
-    required TResult Function(Uint8List bytes) pdfReady,
+    required TResult Function() documentDownloadInProgress,
+    required TResult Function(File file) documentDownloadSuccess,
+    required TResult Function(String error) documentDownloadFailure,
   }) {
     return failure(message);
   }
@@ -1162,10 +1263,11 @@ class _$FailureImpl implements _Failure {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
-    TResult? Function(int docCount, bool savedBomValues)? success,
+    TResult? Function(bool savedBomValues)? success,
     TResult? Function(String message)? failure,
-    TResult? Function()? downloading,
-    TResult? Function(Uint8List bytes)? pdfReady,
+    TResult? Function()? documentDownloadInProgress,
+    TResult? Function(File file)? documentDownloadSuccess,
+    TResult? Function(String error)? documentDownloadFailure,
   }) {
     return failure?.call(message);
   }
@@ -1175,10 +1277,11 @@ class _$FailureImpl implements _Failure {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
-    TResult Function(int docCount, bool savedBomValues)? success,
+    TResult Function(bool savedBomValues)? success,
     TResult Function(String message)? failure,
-    TResult Function()? downloading,
-    TResult Function(Uint8List bytes)? pdfReady,
+    TResult Function()? documentDownloadInProgress,
+    TResult Function(File file)? documentDownloadSuccess,
+    TResult Function(String error)? documentDownloadFailure,
     required TResult orElse(),
   }) {
     if (failure != null) {
@@ -1194,8 +1297,12 @@ class _$FailureImpl implements _Failure {
     required TResult Function(_Loading value) loading,
     required TResult Function(_Success value) success,
     required TResult Function(_Failure value) failure,
-    required TResult Function(_Downloading value) downloading,
-    required TResult Function(_PdfReady value) pdfReady,
+    required TResult Function(_DocDownloadInProgress value)
+        documentDownloadInProgress,
+    required TResult Function(_DocDownloadSuccess value)
+        documentDownloadSuccess,
+    required TResult Function(_DocDownloadFailure value)
+        documentDownloadFailure,
   }) {
     return failure(this);
   }
@@ -1207,8 +1314,9 @@ class _$FailureImpl implements _Failure {
     TResult? Function(_Loading value)? loading,
     TResult? Function(_Success value)? success,
     TResult? Function(_Failure value)? failure,
-    TResult? Function(_Downloading value)? downloading,
-    TResult? Function(_PdfReady value)? pdfReady,
+    TResult? Function(_DocDownloadInProgress value)? documentDownloadInProgress,
+    TResult? Function(_DocDownloadSuccess value)? documentDownloadSuccess,
+    TResult? Function(_DocDownloadFailure value)? documentDownloadFailure,
   }) {
     return failure?.call(this);
   }
@@ -1220,8 +1328,9 @@ class _$FailureImpl implements _Failure {
     TResult Function(_Loading value)? loading,
     TResult Function(_Success value)? success,
     TResult Function(_Failure value)? failure,
-    TResult Function(_Downloading value)? downloading,
-    TResult Function(_PdfReady value)? pdfReady,
+    TResult Function(_DocDownloadInProgress value)? documentDownloadInProgress,
+    TResult Function(_DocDownloadSuccess value)? documentDownloadSuccess,
+    TResult Function(_DocDownloadFailure value)? documentDownloadFailure,
     required TResult orElse(),
   }) {
     if (failure != null) {
@@ -1241,35 +1350,37 @@ abstract class _Failure implements ProjectBomState {
 }
 
 /// @nodoc
-abstract class _$$DownloadingImplCopyWith<$Res> {
-  factory _$$DownloadingImplCopyWith(
-          _$DownloadingImpl value, $Res Function(_$DownloadingImpl) then) =
-      __$$DownloadingImplCopyWithImpl<$Res>;
+abstract class _$$DocDownloadInProgressImplCopyWith<$Res> {
+  factory _$$DocDownloadInProgressImplCopyWith(
+          _$DocDownloadInProgressImpl value,
+          $Res Function(_$DocDownloadInProgressImpl) then) =
+      __$$DocDownloadInProgressImplCopyWithImpl<$Res>;
 }
 
 /// @nodoc
-class __$$DownloadingImplCopyWithImpl<$Res>
-    extends _$ProjectBomStateCopyWithImpl<$Res, _$DownloadingImpl>
-    implements _$$DownloadingImplCopyWith<$Res> {
-  __$$DownloadingImplCopyWithImpl(
-      _$DownloadingImpl _value, $Res Function(_$DownloadingImpl) _then)
+class __$$DocDownloadInProgressImplCopyWithImpl<$Res>
+    extends _$ProjectBomStateCopyWithImpl<$Res, _$DocDownloadInProgressImpl>
+    implements _$$DocDownloadInProgressImplCopyWith<$Res> {
+  __$$DocDownloadInProgressImplCopyWithImpl(_$DocDownloadInProgressImpl _value,
+      $Res Function(_$DocDownloadInProgressImpl) _then)
       : super(_value, _then);
 }
 
 /// @nodoc
 
-class _$DownloadingImpl implements _Downloading {
-  const _$DownloadingImpl();
+class _$DocDownloadInProgressImpl implements _DocDownloadInProgress {
+  const _$DocDownloadInProgressImpl();
 
   @override
   String toString() {
-    return 'ProjectBomState.downloading()';
+    return 'ProjectBomState.documentDownloadInProgress()';
   }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
-        (other.runtimeType == runtimeType && other is _$DownloadingImpl);
+        (other.runtimeType == runtimeType &&
+            other is _$DocDownloadInProgressImpl);
   }
 
   @override
@@ -1280,12 +1391,13 @@ class _$DownloadingImpl implements _Downloading {
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
-    required TResult Function(int docCount, bool savedBomValues) success,
+    required TResult Function(bool savedBomValues) success,
     required TResult Function(String message) failure,
-    required TResult Function() downloading,
-    required TResult Function(Uint8List bytes) pdfReady,
+    required TResult Function() documentDownloadInProgress,
+    required TResult Function(File file) documentDownloadSuccess,
+    required TResult Function(String error) documentDownloadFailure,
   }) {
-    return downloading();
+    return documentDownloadInProgress();
   }
 
   @override
@@ -1293,12 +1405,13 @@ class _$DownloadingImpl implements _Downloading {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
-    TResult? Function(int docCount, bool savedBomValues)? success,
+    TResult? Function(bool savedBomValues)? success,
     TResult? Function(String message)? failure,
-    TResult? Function()? downloading,
-    TResult? Function(Uint8List bytes)? pdfReady,
+    TResult? Function()? documentDownloadInProgress,
+    TResult? Function(File file)? documentDownloadSuccess,
+    TResult? Function(String error)? documentDownloadFailure,
   }) {
-    return downloading?.call();
+    return documentDownloadInProgress?.call();
   }
 
   @override
@@ -1306,14 +1419,15 @@ class _$DownloadingImpl implements _Downloading {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
-    TResult Function(int docCount, bool savedBomValues)? success,
+    TResult Function(bool savedBomValues)? success,
     TResult Function(String message)? failure,
-    TResult Function()? downloading,
-    TResult Function(Uint8List bytes)? pdfReady,
+    TResult Function()? documentDownloadInProgress,
+    TResult Function(File file)? documentDownloadSuccess,
+    TResult Function(String error)? documentDownloadFailure,
     required TResult orElse(),
   }) {
-    if (downloading != null) {
-      return downloading();
+    if (documentDownloadInProgress != null) {
+      return documentDownloadInProgress();
     }
     return orElse();
   }
@@ -1325,10 +1439,14 @@ class _$DownloadingImpl implements _Downloading {
     required TResult Function(_Loading value) loading,
     required TResult Function(_Success value) success,
     required TResult Function(_Failure value) failure,
-    required TResult Function(_Downloading value) downloading,
-    required TResult Function(_PdfReady value) pdfReady,
+    required TResult Function(_DocDownloadInProgress value)
+        documentDownloadInProgress,
+    required TResult Function(_DocDownloadSuccess value)
+        documentDownloadSuccess,
+    required TResult Function(_DocDownloadFailure value)
+        documentDownloadFailure,
   }) {
-    return downloading(this);
+    return documentDownloadInProgress(this);
   }
 
   @override
@@ -1338,10 +1456,11 @@ class _$DownloadingImpl implements _Downloading {
     TResult? Function(_Loading value)? loading,
     TResult? Function(_Success value)? success,
     TResult? Function(_Failure value)? failure,
-    TResult? Function(_Downloading value)? downloading,
-    TResult? Function(_PdfReady value)? pdfReady,
+    TResult? Function(_DocDownloadInProgress value)? documentDownloadInProgress,
+    TResult? Function(_DocDownloadSuccess value)? documentDownloadSuccess,
+    TResult? Function(_DocDownloadFailure value)? documentDownloadFailure,
   }) {
-    return downloading?.call(this);
+    return documentDownloadInProgress?.call(this);
   }
 
   @override
@@ -1351,94 +1470,96 @@ class _$DownloadingImpl implements _Downloading {
     TResult Function(_Loading value)? loading,
     TResult Function(_Success value)? success,
     TResult Function(_Failure value)? failure,
-    TResult Function(_Downloading value)? downloading,
-    TResult Function(_PdfReady value)? pdfReady,
+    TResult Function(_DocDownloadInProgress value)? documentDownloadInProgress,
+    TResult Function(_DocDownloadSuccess value)? documentDownloadSuccess,
+    TResult Function(_DocDownloadFailure value)? documentDownloadFailure,
     required TResult orElse(),
   }) {
-    if (downloading != null) {
-      return downloading(this);
+    if (documentDownloadInProgress != null) {
+      return documentDownloadInProgress(this);
     }
     return orElse();
   }
 }
 
-abstract class _Downloading implements ProjectBomState {
-  const factory _Downloading() = _$DownloadingImpl;
+abstract class _DocDownloadInProgress implements ProjectBomState {
+  const factory _DocDownloadInProgress() = _$DocDownloadInProgressImpl;
 }
 
 /// @nodoc
-abstract class _$$PdfReadyImplCopyWith<$Res> {
-  factory _$$PdfReadyImplCopyWith(
-          _$PdfReadyImpl value, $Res Function(_$PdfReadyImpl) then) =
-      __$$PdfReadyImplCopyWithImpl<$Res>;
+abstract class _$$DocDownloadSuccessImplCopyWith<$Res> {
+  factory _$$DocDownloadSuccessImplCopyWith(_$DocDownloadSuccessImpl value,
+          $Res Function(_$DocDownloadSuccessImpl) then) =
+      __$$DocDownloadSuccessImplCopyWithImpl<$Res>;
   @useResult
-  $Res call({Uint8List bytes});
+  $Res call({File file});
 }
 
 /// @nodoc
-class __$$PdfReadyImplCopyWithImpl<$Res>
-    extends _$ProjectBomStateCopyWithImpl<$Res, _$PdfReadyImpl>
-    implements _$$PdfReadyImplCopyWith<$Res> {
-  __$$PdfReadyImplCopyWithImpl(
-      _$PdfReadyImpl _value, $Res Function(_$PdfReadyImpl) _then)
+class __$$DocDownloadSuccessImplCopyWithImpl<$Res>
+    extends _$ProjectBomStateCopyWithImpl<$Res, _$DocDownloadSuccessImpl>
+    implements _$$DocDownloadSuccessImplCopyWith<$Res> {
+  __$$DocDownloadSuccessImplCopyWithImpl(_$DocDownloadSuccessImpl _value,
+      $Res Function(_$DocDownloadSuccessImpl) _then)
       : super(_value, _then);
 
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? bytes = freezed,
+    Object? file = null,
   }) {
-    return _then(_$PdfReadyImpl(
-      freezed == bytes
-          ? _value.bytes
-          : bytes // ignore: cast_nullable_to_non_nullable
-              as Uint8List,
+    return _then(_$DocDownloadSuccessImpl(
+      null == file
+          ? _value.file
+          : file // ignore: cast_nullable_to_non_nullable
+              as File,
     ));
   }
 }
 
 /// @nodoc
 
-class _$PdfReadyImpl implements _PdfReady {
-  const _$PdfReadyImpl(this.bytes);
+class _$DocDownloadSuccessImpl implements _DocDownloadSuccess {
+  const _$DocDownloadSuccessImpl(this.file);
 
   @override
-  final Uint8List bytes;
+  final File file;
 
   @override
   String toString() {
-    return 'ProjectBomState.pdfReady(bytes: $bytes)';
+    return 'ProjectBomState.documentDownloadSuccess(file: $file)';
   }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$PdfReadyImpl &&
-            const DeepCollectionEquality().equals(other.bytes, bytes));
+            other is _$DocDownloadSuccessImpl &&
+            (identical(other.file, file) || other.file == file));
   }
 
   @override
-  int get hashCode =>
-      Object.hash(runtimeType, const DeepCollectionEquality().hash(bytes));
+  int get hashCode => Object.hash(runtimeType, file);
 
   @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
-  _$$PdfReadyImplCopyWith<_$PdfReadyImpl> get copyWith =>
-      __$$PdfReadyImplCopyWithImpl<_$PdfReadyImpl>(this, _$identity);
+  _$$DocDownloadSuccessImplCopyWith<_$DocDownloadSuccessImpl> get copyWith =>
+      __$$DocDownloadSuccessImplCopyWithImpl<_$DocDownloadSuccessImpl>(
+          this, _$identity);
 
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
-    required TResult Function(int docCount, bool savedBomValues) success,
+    required TResult Function(bool savedBomValues) success,
     required TResult Function(String message) failure,
-    required TResult Function() downloading,
-    required TResult Function(Uint8List bytes) pdfReady,
+    required TResult Function() documentDownloadInProgress,
+    required TResult Function(File file) documentDownloadSuccess,
+    required TResult Function(String error) documentDownloadFailure,
   }) {
-    return pdfReady(bytes);
+    return documentDownloadSuccess(file);
   }
 
   @override
@@ -1446,12 +1567,13 @@ class _$PdfReadyImpl implements _PdfReady {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
-    TResult? Function(int docCount, bool savedBomValues)? success,
+    TResult? Function(bool savedBomValues)? success,
     TResult? Function(String message)? failure,
-    TResult? Function()? downloading,
-    TResult? Function(Uint8List bytes)? pdfReady,
+    TResult? Function()? documentDownloadInProgress,
+    TResult? Function(File file)? documentDownloadSuccess,
+    TResult? Function(String error)? documentDownloadFailure,
   }) {
-    return pdfReady?.call(bytes);
+    return documentDownloadSuccess?.call(file);
   }
 
   @override
@@ -1459,14 +1581,15 @@ class _$PdfReadyImpl implements _PdfReady {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
-    TResult Function(int docCount, bool savedBomValues)? success,
+    TResult Function(bool savedBomValues)? success,
     TResult Function(String message)? failure,
-    TResult Function()? downloading,
-    TResult Function(Uint8List bytes)? pdfReady,
+    TResult Function()? documentDownloadInProgress,
+    TResult Function(File file)? documentDownloadSuccess,
+    TResult Function(String error)? documentDownloadFailure,
     required TResult orElse(),
   }) {
-    if (pdfReady != null) {
-      return pdfReady(bytes);
+    if (documentDownloadSuccess != null) {
+      return documentDownloadSuccess(file);
     }
     return orElse();
   }
@@ -1478,10 +1601,14 @@ class _$PdfReadyImpl implements _PdfReady {
     required TResult Function(_Loading value) loading,
     required TResult Function(_Success value) success,
     required TResult Function(_Failure value) failure,
-    required TResult Function(_Downloading value) downloading,
-    required TResult Function(_PdfReady value) pdfReady,
+    required TResult Function(_DocDownloadInProgress value)
+        documentDownloadInProgress,
+    required TResult Function(_DocDownloadSuccess value)
+        documentDownloadSuccess,
+    required TResult Function(_DocDownloadFailure value)
+        documentDownloadFailure,
   }) {
-    return pdfReady(this);
+    return documentDownloadSuccess(this);
   }
 
   @override
@@ -1491,10 +1618,11 @@ class _$PdfReadyImpl implements _PdfReady {
     TResult? Function(_Loading value)? loading,
     TResult? Function(_Success value)? success,
     TResult? Function(_Failure value)? failure,
-    TResult? Function(_Downloading value)? downloading,
-    TResult? Function(_PdfReady value)? pdfReady,
+    TResult? Function(_DocDownloadInProgress value)? documentDownloadInProgress,
+    TResult? Function(_DocDownloadSuccess value)? documentDownloadSuccess,
+    TResult? Function(_DocDownloadFailure value)? documentDownloadFailure,
   }) {
-    return pdfReady?.call(this);
+    return documentDownloadSuccess?.call(this);
   }
 
   @override
@@ -1504,22 +1632,191 @@ class _$PdfReadyImpl implements _PdfReady {
     TResult Function(_Loading value)? loading,
     TResult Function(_Success value)? success,
     TResult Function(_Failure value)? failure,
-    TResult Function(_Downloading value)? downloading,
-    TResult Function(_PdfReady value)? pdfReady,
+    TResult Function(_DocDownloadInProgress value)? documentDownloadInProgress,
+    TResult Function(_DocDownloadSuccess value)? documentDownloadSuccess,
+    TResult Function(_DocDownloadFailure value)? documentDownloadFailure,
     required TResult orElse(),
   }) {
-    if (pdfReady != null) {
-      return pdfReady(this);
+    if (documentDownloadSuccess != null) {
+      return documentDownloadSuccess(this);
     }
     return orElse();
   }
 }
 
-abstract class _PdfReady implements ProjectBomState {
-  const factory _PdfReady(final Uint8List bytes) = _$PdfReadyImpl;
+abstract class _DocDownloadSuccess implements ProjectBomState {
+  const factory _DocDownloadSuccess(final File file) = _$DocDownloadSuccessImpl;
 
-  Uint8List get bytes;
+  File get file;
   @JsonKey(ignore: true)
-  _$$PdfReadyImplCopyWith<_$PdfReadyImpl> get copyWith =>
+  _$$DocDownloadSuccessImplCopyWith<_$DocDownloadSuccessImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class _$$DocDownloadFailureImplCopyWith<$Res> {
+  factory _$$DocDownloadFailureImplCopyWith(_$DocDownloadFailureImpl value,
+          $Res Function(_$DocDownloadFailureImpl) then) =
+      __$$DocDownloadFailureImplCopyWithImpl<$Res>;
+  @useResult
+  $Res call({String error});
+}
+
+/// @nodoc
+class __$$DocDownloadFailureImplCopyWithImpl<$Res>
+    extends _$ProjectBomStateCopyWithImpl<$Res, _$DocDownloadFailureImpl>
+    implements _$$DocDownloadFailureImplCopyWith<$Res> {
+  __$$DocDownloadFailureImplCopyWithImpl(_$DocDownloadFailureImpl _value,
+      $Res Function(_$DocDownloadFailureImpl) _then)
+      : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? error = null,
+  }) {
+    return _then(_$DocDownloadFailureImpl(
+      null == error
+          ? _value.error
+          : error // ignore: cast_nullable_to_non_nullable
+              as String,
+    ));
+  }
+}
+
+/// @nodoc
+
+class _$DocDownloadFailureImpl implements _DocDownloadFailure {
+  const _$DocDownloadFailureImpl(this.error);
+
+  @override
+  final String error;
+
+  @override
+  String toString() {
+    return 'ProjectBomState.documentDownloadFailure(error: $error)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$DocDownloadFailureImpl &&
+            (identical(other.error, error) || other.error == error));
+  }
+
+  @override
+  int get hashCode => Object.hash(runtimeType, error);
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$DocDownloadFailureImplCopyWith<_$DocDownloadFailureImpl> get copyWith =>
+      __$$DocDownloadFailureImplCopyWithImpl<_$DocDownloadFailureImpl>(
+          this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function() initial,
+    required TResult Function() loading,
+    required TResult Function(bool savedBomValues) success,
+    required TResult Function(String message) failure,
+    required TResult Function() documentDownloadInProgress,
+    required TResult Function(File file) documentDownloadSuccess,
+    required TResult Function(String error) documentDownloadFailure,
+  }) {
+    return documentDownloadFailure(error);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function()? initial,
+    TResult? Function()? loading,
+    TResult? Function(bool savedBomValues)? success,
+    TResult? Function(String message)? failure,
+    TResult? Function()? documentDownloadInProgress,
+    TResult? Function(File file)? documentDownloadSuccess,
+    TResult? Function(String error)? documentDownloadFailure,
+  }) {
+    return documentDownloadFailure?.call(error);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function()? initial,
+    TResult Function()? loading,
+    TResult Function(bool savedBomValues)? success,
+    TResult Function(String message)? failure,
+    TResult Function()? documentDownloadInProgress,
+    TResult Function(File file)? documentDownloadSuccess,
+    TResult Function(String error)? documentDownloadFailure,
+    required TResult orElse(),
+  }) {
+    if (documentDownloadFailure != null) {
+      return documentDownloadFailure(error);
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(_Initial value) initial,
+    required TResult Function(_Loading value) loading,
+    required TResult Function(_Success value) success,
+    required TResult Function(_Failure value) failure,
+    required TResult Function(_DocDownloadInProgress value)
+        documentDownloadInProgress,
+    required TResult Function(_DocDownloadSuccess value)
+        documentDownloadSuccess,
+    required TResult Function(_DocDownloadFailure value)
+        documentDownloadFailure,
+  }) {
+    return documentDownloadFailure(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(_Initial value)? initial,
+    TResult? Function(_Loading value)? loading,
+    TResult? Function(_Success value)? success,
+    TResult? Function(_Failure value)? failure,
+    TResult? Function(_DocDownloadInProgress value)? documentDownloadInProgress,
+    TResult? Function(_DocDownloadSuccess value)? documentDownloadSuccess,
+    TResult? Function(_DocDownloadFailure value)? documentDownloadFailure,
+  }) {
+    return documentDownloadFailure?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(_Initial value)? initial,
+    TResult Function(_Loading value)? loading,
+    TResult Function(_Success value)? success,
+    TResult Function(_Failure value)? failure,
+    TResult Function(_DocDownloadInProgress value)? documentDownloadInProgress,
+    TResult Function(_DocDownloadSuccess value)? documentDownloadSuccess,
+    TResult Function(_DocDownloadFailure value)? documentDownloadFailure,
+    required TResult orElse(),
+  }) {
+    if (documentDownloadFailure != null) {
+      return documentDownloadFailure(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class _DocDownloadFailure implements ProjectBomState {
+  const factory _DocDownloadFailure(final String error) =
+      _$DocDownloadFailureImpl;
+
+  String get error;
+  @JsonKey(ignore: true)
+  _$$DocDownloadFailureImplCopyWith<_$DocDownloadFailureImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }

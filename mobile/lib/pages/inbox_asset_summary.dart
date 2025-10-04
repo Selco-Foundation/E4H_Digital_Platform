@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
@@ -8,9 +7,9 @@ import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:digit_ui_components/widgets/molecules/show_pop_up.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:open_file/open_file.dart';
-import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as p;
 
+import '../blocs/app_init/app_init.dart';
 import '../blocs/asset_type/asset_type.dart';
 import '../blocs/cache_asset/cache_asset.dart';
 import '../blocs/inbox_type/inbox_type.dart';
@@ -19,12 +18,15 @@ import '../blocs/project_bom/project_bom.dart';
 import '../blocs/report_type/report_type.dart';
 import '../blocs/selected_project/selected_project.dart';
 import '../blocs/user_type/user_type.dart';
+import '../model/project_workflow/project_workflow.dart';
 import '../repositories/project_repo.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
 import '../utils/utils.dart';
 import '../widgets/cards/element_asset_summary.dart';
 import '../widgets/header/back_navigation_help_header.dart';
+import '../widgets/summary/existing_or_loader.dart';
+import '../widgets/summary/summary.dart';
 
 @RoutePage()
 class InboxAssetSummaryPage extends StatefulWidget {
@@ -37,6 +39,9 @@ class InboxAssetSummaryPage extends StatefulWidget {
 class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
   late String userType = "";
   String? _currentProjectId;
+  ProjectWorkflow? workflow;
+  String? _solutionDesignTypeCode;
+  List<ExistingReport> _existingReports = [];
 
   @override
   void initState() {
@@ -48,18 +53,19 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
           );
       context.read<SelectedProjectBloc>().state.whenOrNull(selected: (proj) {
         _currentProjectId = proj.project.id;
+        _solutionDesignTypeCode = "RMS_Single_Phase";
+        workflow = proj;
         context
             .read<CacheAssetBloc>()
             .add(CacheAssetEvent.start(proj.project.id, userType, proj));
+        _loadInitialCompletion();
       });
     });
   }
 
   Future<void> _sendBackReport(BuildContext popupCtx) async {
-    // 1. Dismiss the confirmation popup
     Navigator.of(popupCtx).pop();
 
-    // 2. Grab projectId
     final projectId = _currentProjectId;
     if (projectId == null) {
       context.showSnackBar(
@@ -68,7 +74,6 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
       return;
     }
 
-    // 3. Show a full‐screen loading spinner and capture its BuildContext
     BuildContext? dialogCtx;
     showDialog(
       context: context,
@@ -88,7 +93,6 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
             : WORKFLOW_ACTIONS.SUBMIT_REPORT_A.name,
       );
 
-      // 5. On success: pop the spinner only
       if (dialogCtx != null && mounted) {
         Navigator.of(dialogCtx!).pop();
       }
@@ -105,6 +109,29 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
         SnackBar(content: Text("Failed to send back: $e")),
       );
     }
+  }
+
+  Future<void> _loadInitialCompletion() async {
+    final isar = context.read<CacheAssetBloc>().isar;
+
+    final combined = await loadInitialCompletion(
+      isar: isar,
+      projectId: _currentProjectId!,
+      projectWorkflow: workflow!,
+    );
+
+    if (!mounted) return;
+    setState(() {
+      _existingReports = combined.map((pf) {
+        final path = pf.path!;
+        return ExistingReport(
+          isarId: null,
+          filePath: path,
+          fileName: p.basename(path),
+          fileType: inferFileType(path),
+        );
+      }).toList();
+    });
   }
 
   @override
@@ -166,32 +193,7 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
               );
 
               return BlocListener<ProjectBomBloc, ProjectBomState>(
-                listener: (context, projectBomState) {
-                  projectBomState.maybeWhen(
-                    pdfReady: (bytes) async {
-                      try {
-                        // 1. Get a directory to save
-                        final dir = await getApplicationDocumentsDirectory();
-                        final fileName = "bom_$_currentProjectId.pdf";
-                        final file = File('${dir.path}/$fileName');
-                        await file.writeAsBytes(bytes);
-
-                        // 2. Open the file
-                        await OpenFile.open(file.path);
-
-                        context.showSnackBar(const SnackBar(
-                            content: Text("BOM PDF downloaded & opened")));
-                      } catch (e) {
-                        context.showSnackBar(SnackBar(
-                            content: Text("Error saving/opening file: $e")));
-                      }
-                    },
-                    failure: (msg) {
-                      context.showSnackBar(SnackBar(content: Text(msg)));
-                    },
-                    orElse: () {},
-                  );
-                },
+                listener: (context, projectBomState) {},
                 child: BlocBuilder<InboxTypeBloc, InboxTypeState>(
                   builder: (context, inboxState) {
                     return ScrollableContent(
@@ -202,48 +204,7 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
                         showHelp: false,
                       ),
                       footer: inboxState.maybeWhen(
-                        approved: () => userType == USER_TYPES.FIELD_STAFF.name
-                            ? const SizedBox.shrink()
-                            : BlocBuilder<ProjectBomBloc, ProjectBomState>(
-                                builder: (context, projectBomState) {
-                                  final isDownloading =
-                                      projectBomState.maybeWhen(
-                                    downloading: () => true,
-                                    orElse: () => false,
-                                  );
-                                  return DigitCard(
-                                    margin: const EdgeInsets.only(top: spacer2),
-                                    children: [
-                                      DigitButton(
-                                        isDisabled: isDownloading,
-                                        label: "Download Report",
-                                        mainAxisSize: MainAxisSize.max,
-                                        type: DigitButtonType.primary,
-                                        size: DigitButtonSize.large,
-                                        suffixIcon: Icons.file_download,
-                                        onPressed: () async {
-                                          if (_currentProjectId != null) {
-                                            context.read<ProjectBomBloc>().add(
-                                                  ProjectBomEvent.forceSync(
-                                                      projectId:
-                                                          _currentProjectId!,
-                                                      userType: userType),
-                                                );
-
-                                            context.read<ProjectBomBloc>().add(
-                                                  ProjectBomEvent.downloadPdf(
-                                                    projectId:
-                                                        _currentProjectId!,
-                                                    userType: userType,
-                                                  ),
-                                                );
-                                          }
-                                        },
-                                      ),
-                                    ],
-                                  );
-                                },
-                              ),
+                        approved: () => const SizedBox.shrink(),
                         orElse: () => DigitCard(
                           margin: const EdgeInsets.only(top: spacer2),
                           children: [
@@ -390,6 +351,146 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
                                   ),
                                 ],
                               ),
+                              const SizedBox(height: spacer4),
+
+                              // ── COMPLETION REPORT (Supervisor only) ────────────────
+                              if (userType == USER_TYPES.SUPERVISOR.name)
+                                Column(
+                                  children: [
+                                    DigitCard(
+                                      children: [
+                                        Text(
+                                          'Installation Completion Report',
+                                          style: textTheme.headingM.copyWith(
+                                            color: theme
+                                                .colorTheme.primary.primary2,
+                                          ),
+                                        ),
+                                        ...[
+                                          BlocBuilder<AppInitialization,
+                                              InitState>(
+                                            builder: (context, state) {
+                                              return state.maybeWhen(
+                                                orElse: () =>
+                                                    const SizedBox.shrink(),
+                                                initialized: (
+                                                  appConfig,
+                                                  assetCount,
+                                                  assetType,
+                                                  system,
+                                                  warranty,
+                                                  brand,
+                                                  solutionDesign,
+                                                  solutionDesignBom,
+                                                ) {
+                                                  return Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .stretch,
+                                                    children: [
+                                                      Builder(
+                                                        builder: (_) {
+                                                          final matches =
+                                                              solutionDesignBom
+                                                                  .where(
+                                                            (e) =>
+                                                                e.data
+                                                                    .solutionDesignTypeCode ==
+                                                                _solutionDesignTypeCode,
+                                                          );
+
+                                                          final matching =
+                                                              matches.isNotEmpty
+                                                                  ? matches
+                                                                      .first
+                                                                  : null;
+                                                          final entries = matching
+                                                                  ?.data
+                                                                  .bomForms ??
+                                                              const [];
+
+                                                          if (entries.isEmpty) {
+                                                            return const SizedBox
+                                                                .shrink();
+                                                          }
+
+                                                          return Column(
+                                                            crossAxisAlignment:
+                                                                CrossAxisAlignment
+                                                                    .stretch,
+                                                            children: [
+                                                              for (final entry
+                                                                  in entries) ...[
+                                                                Builder(
+                                                                  builder: (_) {
+                                                                    final r =
+                                                                        bomRouteAndLabel(
+                                                                            entry.name);
+                                                                    return DigitButton(
+                                                                      mainAxisSize:
+                                                                          MainAxisSize
+                                                                              .max,
+                                                                      label: r
+                                                                          .label,
+                                                                      onPressed:
+                                                                          () {
+                                                                        final r =
+                                                                            bomRouteAndLabel(entry.name);
+                                                                        context
+                                                                            .router
+                                                                            .push(DynamicFormsRoute(
+                                                                          pageName:
+                                                                              r.pageName,
+                                                                          schemaName:
+                                                                              r.schemaName,
+                                                                          projectId:
+                                                                              _currentProjectId!,
+                                                                        ));
+                                                                      },
+                                                                      type: DigitButtonType
+                                                                          .secondary,
+                                                                      size: DigitButtonSize
+                                                                          .large,
+                                                                    );
+                                                                  },
+                                                                ),
+                                                                const SizedBox(
+                                                                    height:
+                                                                        spacer4),
+                                                              ],
+                                                            ],
+                                                          );
+                                                        },
+                                                      ),
+                                                    ],
+                                                  );
+                                                },
+                                              );
+                                            },
+                                          )
+                                        ],
+                                        // existingFilesSection(
+                                        //   context: context,
+                                        //   existing: _existingReports,
+                                        //   showEditButton: false,
+                                        //   onTapImage: (path) => context.router
+                                        //       .push(
+                                        //           ImageViewerRoute(path: path)),
+                                        //   onTapPdf: (path) => context.router
+                                        //       .push(PdfViewerRoute(path: path)),
+                                        //   onRemove: (r) {},
+                                        // )
+                                        ExistingFilesOrLoader(
+                                          existingReports: _existingReports,
+                                          workflowDocuments:
+                                              workflow?.workflow?.documents ??
+                                                  [],
+                                          readOnly: true,
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                )
                             ],
                           ),
                         ),
