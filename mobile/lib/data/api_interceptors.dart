@@ -46,6 +46,7 @@ class AuthTokenInterceptor extends Interceptor {
                 action: options.path.split('/').last,
                 did: RequestInfoData.did,
                 key: RequestInfoData.key,
+                msgId: "${DateTime.now().millisecondsSinceEpoch}|en_IN",
                 authToken: authToken,
                 userInfo: accessInfo?.userRequest)
             .toJson(),

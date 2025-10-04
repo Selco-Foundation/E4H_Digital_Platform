@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:isar/isar.dart';
 
+import '../../utils/utils.dart';
+
 part 'cache_bom_doc.g.dart';
 
 @collection
@@ -29,6 +31,7 @@ class CacheBomDoc {
   @ignore
   Map<String, dynamic> get dataMap =>
       jsonDecode(dataJson) as Map<String, dynamic>;
+
   @ignore
-  set dataMap(Map<String, dynamic> v) => dataJson = jsonEncode(v);
+  set dataMap(Map<String, dynamic> v) => dataJson = jsonEncode(jsonSafe(v));
 }

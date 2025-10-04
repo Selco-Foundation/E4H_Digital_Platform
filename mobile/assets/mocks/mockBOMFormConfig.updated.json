@@ -5286,7 +5286,8 @@
                 "systemDate": false,
                 "errorMessage": "",
                 "includeInForm": true,
-                "required": true
+                "required": true,
+                "fieldName": "rms_product_model_number"
               },
               {
                 "section": "RMS Type Installed",
@@ -5306,6 +5307,7 @@
                 "errorMessage": "",
                 "includeInForm": true,
                 "required": true,
+                "fieldName": "rms_type_installed",
                 "enums": [
                   {
                     "code": "TYPE_1",
@@ -5344,7 +5346,15 @@
                 "systemDate": false,
                 "errorMessage": "",
                 "includeInForm": true,
-                "required": true
+                "required": true,
+                "fieldName": "rms_type_description",
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Description is required"
+                  }
+                ]
               },
               {
                 "section": "RMS IP Number/MAC ID",
@@ -5363,7 +5373,15 @@
                 "systemDate": false,
                 "errorMessage": "",
                 "includeInForm": true,
-                "required": true
+                "required": true,
+                "fieldName": "rms_ip_mac_id",
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "IP Number/MAC ID is required"
+                  }
+                ]
               },
               {
                 "section": "RMS Serial Number",
@@ -5382,7 +5400,15 @@
                 "systemDate": false,
                 "errorMessage": "",
                 "includeInForm": true,
-                "required": true
+                "required": true,
+                "fieldName": "rms_serial_number",
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Serial Number is required"
+                  }
+                ]
               },
               {
                 "section": "SIM Number",
@@ -5401,7 +5427,15 @@
                 "systemDate": false,
                 "errorMessage": "",
                 "includeInForm": true,
-                "required": true
+                "required": true,
+                "fieldName": "rms_sim_number",
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "SIM Number is required"
+                  }
+                ]
               },
               {
                 "section": "Installation status",
@@ -5421,6 +5455,7 @@
                 "errorMessage": "",
                 "includeInForm": true,
                 "required": true,
+                "fieldName": "rms_installation_status",
                 "enums": [
                   {
                     "code": "COMPLETED",
@@ -5455,7 +5490,15 @@
                 "systemDate": false,
                 "errorMessage": "",
                 "includeInForm": true,
-                "required": true
+                "required": true,
+                "fieldName": "rms_installation_notes",
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Installation notes are required"
+                  }
+                ]
               },
               {
                 "section": "Meter Status",
@@ -5475,6 +5518,7 @@
                 "errorMessage": "",
                 "includeInForm": true,
                 "required": true,
+                "fieldName": "rms_meter_status",
                 "enums": [
                   {
                     "code": "ACTIVE",
@@ -5509,7 +5553,15 @@
                 "systemDate": false,
                 "errorMessage": "",
                 "includeInForm": true,
-                "required": true
+                "required": true,
+                "fieldName": "rms_meter_status_notes",
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Meter status notes are required"
+                  }
+                ]
               },
               {
                 "section": "Date of Installation completed",
@@ -5528,26 +5580,15 @@
                 "systemDate": true,
                 "errorMessage": "",
                 "includeInForm": true,
-                "required": true
-              },
-              {
-                "section": "Time of installation",
-                "type": "string",
-                "format": "time",
-                "label": "description",
-                "order": 12,
-                "value": "",
-                "hidden": false,
-                "tooltip": "Format: HH:MM AM/PM",
-                "helpText": "",
-                "infoText": "",
-                "readOnly": false,
-                "deleteFlag": false,
-                "innerLabel": "",
-                "systemDate": false,
-                "errorMessage": "",
-                "includeInForm": true,
-                "required": true
+                "required": true,
+                "fieldName": "rms_installation_date",
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Installation date is required"
+                  }
+                ]
               },
               {
                 "section": "Name of the person installed",
@@ -5566,7 +5607,15 @@
                 "systemDate": false,
                 "errorMessage": "",
                 "includeInForm": true,
-                "required": true
+                "required": true,
+                "fieldName": "rms_installer_name",
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Installer name is required"
+                  }
+                ]
               },
               {
                 "section": "Mob No. of the person installed",
@@ -5585,7 +5634,15 @@
                 "systemDate": false,
                 "errorMessage": "Enter valid mobile number",
                 "includeInForm": true,
-                "required": true
+                "required": true,
+                "fieldName": "rms_installer_mobile",
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Installer mobile number is required"
+                  }
+                ]
               },
               {
                 "section": "Mobile service Provider of RMS device",
@@ -5604,7 +5661,15 @@
                 "systemDate": false,
                 "errorMessage": "",
                 "includeInForm": true,
-                "required": true
+                "required": true,
+                "fieldName": "rms_service_provider",
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Service provider is required"
+                  }
+                ]
               },
               {
                 "section": "Availability of Airtel Network",
@@ -5624,6 +5689,7 @@
                 "errorMessage": "",
                 "includeInForm": true,
                 "required": true,
+                "fieldName": "rms_airtel_network_available",
                 "enums": [
                   {
                     "code": "YES",
@@ -5658,7 +5724,8 @@
                 "systemDate": false,
                 "errorMessage": "",
                 "includeInForm": true,
-                "required": true
+                "required": true,
+                "fieldName": "rms_network_notes"
               },
               {
                 "section": "Type of RMS",
@@ -5678,6 +5745,7 @@
                 "errorMessage": "",
                 "includeInForm": true,
                 "required": true,
+                "fieldName": "rms_type",
                 "enums": [
                   {
                     "code": "SINGLE_PHASE",
@@ -5712,7 +5780,15 @@
                 "systemDate": false,
                 "errorMessage": "",
                 "includeInForm": true,
-                "required": true
+                "required": true,
+                "fieldName": "rms_type_notes",
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "RMS type notes are required"
+                  }
+                ]
               },
               {
                 "section": "RMS - CSQ value",
@@ -5731,7 +5807,15 @@
                 "systemDate": false,
                 "errorMessage": "",
                 "includeInForm": true,
-                "required": true
+                "required": true,
+                "fieldName": "rms_csq_value",
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "CSQ value is required"
+                  }
+                ]
               }
             ]
           }
@@ -12647,7 +12731,7 @@
             "properties": [
               {
                 "type": "string",
-                "format": "text",
+                "format": "date",
                 "label": "Date of recording",
                 "order": 1,
                 "value": "",
@@ -12667,31 +12751,6 @@
                     "type": "required",
                     "value": true,
                     "message": "Date of recording is required"
-                  }
-                ]
-              },
-              {
-                "type": "string",
-                "format": "text",
-                "label": "Time of recording",
-                "order": 2,
-                "value": "",
-                "hidden": false,
-                "tooltip": "",
-                "helpText": "",
-                "infoText": "",
-                "readOnly": false,
-                "deleteFlag": false,
-                "innerLabel": "",
-                "systemDate": false,
-                "errorMessage": "",
-                "includeInForm": true,
-                "fieldName": "sfp_time",
-                "validations": [
-                  {
-                    "type": "required",
-                    "value": true,
-                    "message": "Time of recording is required"
                   }
                 ]
               },
@@ -14672,7 +14731,7 @@
             "label": "Changeover Switch settings",
             "order": 3,
             "description": "",
-            "actionLabel": "Submit",
+            "actionLabel": "Next",
             "properties": [
               {
                 "type": "string",
@@ -15309,6 +15368,345 @@
                   }
                 ]
               }
+            ]
+          },
+          {
+            "page": "SystemFunctionalityParameters_4",
+            "type": "object",
+            "label": "Changeover Switch settings",
+            "order": 4,
+            "description": "",
+            "actionLabel": "Submit",
+            "properties": [
+              [
+                {
+                  "section": "Inverter output current at full load (All solar loads turned on continuously for 10 minutes)",
+                  "type": "string",
+                  "format": "text",
+                  "label": "Inverter output current at full load (Y-Phase & Neutral)",
+                  "order": 1,
+                  "value": "",
+                  "hidden": false,
+                  "tooltip": "",
+                  "helpText": "",
+                  "infoText": "",
+                  "readOnly": false,
+                  "deleteFlag": false,
+                  "innerLabel": "A",
+                  "systemDate": false,
+                  "errorMessage": "",
+                  "includeInForm": true,
+                  "required": true,
+                  "fieldName": "inv_full_i_yn",
+                  "validations": [
+                    { "type": "required", "value": true, "message": "Required" }
+                  ]
+                },
+                {
+                  "section": "Inverter output current at full load (All solar loads turned on continuously for 10 minutes)",
+                  "type": "string",
+                  "format": "text",
+                  "label": "Inverter output current at full load (B-Phase & Neutral)",
+                  "order": 2,
+                  "value": "",
+                  "hidden": false,
+                  "tooltip": "",
+                  "helpText": "",
+                  "infoText": "",
+                  "readOnly": false,
+                  "deleteFlag": false,
+                  "innerLabel": "A",
+                  "systemDate": false,
+                  "errorMessage": "",
+                  "includeInForm": true,
+                  "required": true,
+                  "fieldName": "inv_full_i_bn",
+                  "validations": [
+                    { "type": "required", "value": true, "message": "Required" }
+                  ]
+                },
+                {
+                  "section": "Measurement with Grid ON",
+                  "type": "string",
+                  "format": "text",
+                  "label": "Grid input voltage (R-Phase & Neutral)",
+                  "order": 3,
+                  "value": "",
+                  "hidden": false,
+                  "tooltip": "",
+                  "helpText": "",
+                  "infoText": "",
+                  "readOnly": false,
+                  "deleteFlag": false,
+                  "innerLabel": "V",
+                  "systemDate": false,
+                  "errorMessage": "",
+                  "includeInForm": true,
+                  "required": true,
+                  "fieldName": "grid_on_v_rn",
+                  "validations": [
+                    { "type": "required", "value": true, "message": "Required" }
+                  ]
+                },
+                {
+                  "section": "Measurement with Grid ON",
+                  "type": "string",
+                  "format": "text",
+                  "label": "Grid input frequency (R-Phase & Neutral)",
+                  "order": 4,
+                  "value": "",
+                  "hidden": false,
+                  "tooltip": "",
+                  "helpText": "",
+                  "infoText": "",
+                  "readOnly": false,
+                  "deleteFlag": false,
+                  "innerLabel": "Hz",
+                  "systemDate": false,
+                  "errorMessage": "",
+                  "includeInForm": true,
+                  "required": true,
+                  "fieldName": "grid_on_f_rn",
+                  "validations": [
+                    { "type": "required", "value": true, "message": "Required" }
+                  ]
+                },
+
+                {
+                  "section": "Measurement with Grid ON",
+                  "type": "string",
+                  "format": "text",
+                  "label": "Grid input voltage (Y-Phase & Neutral)",
+                  "order": 5,
+                  "value": "",
+                  "hidden": false,
+                  "tooltip": "",
+                  "helpText": "",
+                  "infoText": "",
+                  "readOnly": false,
+                  "deleteFlag": false,
+                  "innerLabel": "V",
+                  "systemDate": false,
+                  "errorMessage": "",
+                  "includeInForm": true,
+                  "required": true,
+                  "fieldName": "grid_on_v_yn",
+                  "validations": [
+                    { "type": "required", "value": true, "message": "Required" }
+                  ]
+                },
+                {
+                  "section": "Measurement with Grid ON",
+                  "type": "string",
+                  "format": "text",
+                  "label": "Grid input frequency (Y-Phase & Neutral)",
+                  "order": 6,
+                  "value": "",
+                  "hidden": false,
+                  "tooltip": "",
+                  "helpText": "",
+                  "infoText": "",
+                  "readOnly": false,
+                  "deleteFlag": false,
+                  "innerLabel": "Hz",
+                  "systemDate": false,
+                  "errorMessage": "",
+                  "includeInForm": true,
+                  "required": true,
+                  "fieldName": "grid_on_f_yn",
+                  "validations": [
+                    { "type": "required", "value": true, "message": "Required" }
+                  ]
+                },
+
+                {
+                  "section": "Measurement with Grid ON",
+                  "type": "string",
+                  "format": "text",
+                  "label": "Grid input voltage (B-Phase & Neutral)",
+                  "order": 7,
+                  "value": "",
+                  "hidden": false,
+                  "tooltip": "",
+                  "helpText": "",
+                  "infoText": "",
+                  "readOnly": false,
+                  "deleteFlag": false,
+                  "innerLabel": "V",
+                  "systemDate": false,
+                  "errorMessage": "",
+                  "includeInForm": true,
+                  "required": true,
+                  "fieldName": "grid_on_v_bn",
+                  "validations": [
+                    { "type": "required", "value": true, "message": "Required" }
+                  ]
+                },
+                {
+                  "section": "Measurement with Grid ON",
+                  "type": "string",
+                  "format": "text",
+                  "label": "Grid input frequency (B-Phase & Neutral)",
+                  "order": 8,
+                  "value": "",
+                  "hidden": false,
+                  "tooltip": "",
+                  "helpText": "",
+                  "infoText": "",
+                  "readOnly": false,
+                  "deleteFlag": false,
+                  "innerLabel": "Hz",
+                  "systemDate": false,
+                  "errorMessage": "",
+                  "includeInForm": true,
+                  "required": true,
+                  "fieldName": "grid_on_f_bn",
+                  "validations": [
+                    { "type": "required", "value": true, "message": "Required" }
+                  ]
+                },
+
+                {
+                  "section": "Measurement with Grid ON",
+                  "type": "string",
+                  "format": "text",
+                  "label": "Grid input voltage (R-Phase & Y-Phase)",
+                  "order": 9,
+                  "value": "",
+                  "hidden": false,
+                  "tooltip": "",
+                  "helpText": "",
+                  "infoText": "",
+                  "readOnly": false,
+                  "deleteFlag": false,
+                  "innerLabel": "V",
+                  "systemDate": false,
+                  "errorMessage": "",
+                  "includeInForm": true,
+                  "required": true,
+                  "fieldName": "grid_on_v_ry",
+                  "validations": [
+                    { "type": "required", "value": true, "message": "Required" }
+                  ]
+                },
+                {
+                  "section": "Measurement with Grid ON",
+                  "type": "string",
+                  "format": "text",
+                  "label": "Grid input frequency (R-Phase & Y-Phase)",
+                  "order": 10,
+                  "value": "",
+                  "hidden": false,
+                  "tooltip": "",
+                  "helpText": "",
+                  "infoText": "",
+                  "readOnly": false,
+                  "deleteFlag": false,
+                  "innerLabel": "Hz",
+                  "systemDate": false,
+                  "errorMessage": "",
+                  "includeInForm": true,
+                  "required": true,
+                  "fieldName": "grid_on_f_ry",
+                  "validations": [
+                    { "type": "required", "value": true, "message": "Required" }
+                  ]
+                },
+
+                {
+                  "section": "Measurement with Grid ON",
+                  "type": "string",
+                  "format": "text",
+                  "label": "Grid input voltage (R-Phase & B-Phase)",
+                  "order": 11,
+                  "value": "",
+                  "hidden": false,
+                  "tooltip": "",
+                  "helpText": "",
+                  "infoText": "",
+                  "readOnly": false,
+                  "deleteFlag": false,
+                  "innerLabel": "V",
+                  "systemDate": false,
+                  "errorMessage": "",
+                  "includeInForm": true,
+                  "required": true,
+                  "fieldName": "grid_on_v_rb",
+                  "validations": [
+                    { "type": "required", "value": true, "message": "Required" }
+                  ]
+                },
+                {
+                  "section": "Measurement with Grid ON",
+                  "type": "string",
+                  "format": "text",
+                  "label": "Grid input frequency (R-Phase & B-Phase)",
+                  "order": 12,
+                  "value": "",
+                  "hidden": false,
+                  "tooltip": "",
+                  "helpText": "",
+                  "infoText": "",
+                  "readOnly": false,
+                  "deleteFlag": false,
+                  "innerLabel": "Hz",
+                  "systemDate": false,
+                  "errorMessage": "",
+                  "includeInForm": true,
+                  "required": true,
+                  "fieldName": "grid_on_f_rb",
+                  "validations": [
+                    { "type": "required", "value": true, "message": "Required" }
+                  ]
+                },
+
+                {
+                  "section": "Measurement with Grid ON",
+                  "type": "string",
+                  "format": "text",
+                  "label": "Grid input voltage (B-Phase & Y-Phase)",
+                  "order": 13,
+                  "value": "",
+                  "hidden": false,
+                  "tooltip": "",
+                  "helpText": "",
+                  "infoText": "",
+                  "readOnly": false,
+                  "deleteFlag": false,
+                  "innerLabel": "V",
+                  "systemDate": false,
+                  "errorMessage": "",
+                  "includeInForm": true,
+                  "required": true,
+                  "fieldName": "grid_on_v_by",
+                  "validations": [
+                    { "type": "required", "value": true, "message": "Required" }
+                  ]
+                },
+                {
+                  "section": "Measurement with Grid ON",
+                  "type": "string",
+                  "format": "text",
+                  "label": "Grid input frequency (B-Phase & Y-Phase)",
+                  "order": 14,
+                  "value": "",
+                  "hidden": false,
+                  "tooltip": "",
+                  "helpText": "",
+                  "infoText": "",
+                  "readOnly": false,
+                  "deleteFlag": false,
+                  "innerLabel": "Hz",
+                  "systemDate": false,
+                  "errorMessage": "",
+                  "includeInForm": true,
+                  "required": true,
+                  "fieldName": "grid_on_f_by",
+                  "validations": [
+                    { "type": "required", "value": true, "message": "Required" }
+                  ]
+                }
+              ]
             ]
           }
         ]

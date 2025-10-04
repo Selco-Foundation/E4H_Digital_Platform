@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
 import 'package:isar/isar.dart';
+import 'package:selco/data/nosql/cache_completion_report.dart';
 import 'package:selco/data/nosql/cache_unsubmitted_project.dart';
 
 import '../data/nosql/cache_prefilled_project.dart';
@@ -437,6 +438,21 @@ class PrefilledProjectRepository {
         .where()
         .projectIdUserTypeEqualTo(projectId, userType)
         .findFirst();
+    if (row != null) {
+      await _isar.writeTxn(() async {
+        await col.delete(row.id);
+      });
+    }
+  }
+}
+
+class CompletionReportRepository {
+  final Isar _isar;
+  CompletionReportRepository(this._isar);
+
+  Future<void> delete({required String projectId}) async {
+    final col = _isar.cacheCompletionReports;
+    final row = await col.where().projectIdEqualTo(projectId).findFirst();
     if (row != null) {
       await _isar.writeTxn(() async {
         await col.delete(row.id);
