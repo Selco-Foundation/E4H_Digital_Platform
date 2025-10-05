@@ -156,9 +156,7 @@ public class FieldPlannerFacilityService {
 
     private void validateFacilityIds(FieldPlanFacilityBulkRequest request, Map<String, String> errorMap) {
 
-        List<FieldPlanFacility> validEntities = request.getFieldPlanFacilities().stream()
-                .filter(notHavingErrors())
-                .toList();
+        List<FieldPlanFacility> validEntities = request.getFieldPlanFacilities();
         if (!validEntities.isEmpty()) {
             AtomicInteger counter = new AtomicInteger(1);
             for (FieldPlanFacility facility : validEntities){
@@ -181,9 +179,7 @@ public class FieldPlannerFacilityService {
     }
 
     private void validateFieldPlanIds(FieldPlanFacilityBulkRequest request, Map<String, String> errorMap) {
-        List<FieldPlanFacility> validEntities = request.getFieldPlanFacilities().stream()
-                .filter(notHavingErrors())
-                .toList();
+        List<FieldPlanFacility> validEntities = request.getFieldPlanFacilities();
         if (!validEntities.isEmpty()) {
             Class<?> objClass = getObjClass(validEntities);
             Method idMethod = getMethod(GET_FIELDPLAN_ID, objClass);
@@ -191,7 +187,7 @@ public class FieldPlannerFacilityService {
             try {
                 AtomicInteger counter = new AtomicInteger(1);
                 List<String> existingFieldPlansIds = fieldPlannerRepository.validateIds(entityIds, getIdFieldName(idMethod));
-                validEntities.stream().filter(notHavingErrors()).filter(entity -> {
+                validEntities.stream().filter(entity -> {
                             boolean invalid = !existingFieldPlansIds.contains(entity.getFieldPlanId());
                             if (invalid) {
                                 int i = counter.getAndIncrement();
