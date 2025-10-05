@@ -318,6 +318,11 @@ public class FieldPlannerService {
 
         if (fielPlanFromDB != null) {
             /*
+             * Check if geography details (boundary codes) have changed and unlink facilities if needed
+             */
+//            handleFacilityUnlinkingOnGeographyChange(request, fieldPlan, fielPlanFromDB);
+
+            /*
              * Merge additional details of the fieldPlan from the request and fieldPlan from DB
              */
             fieldPlanServiceUtil.mergeAdditionalDetails(fieldPlan, fielPlanFromDB);
@@ -392,7 +397,7 @@ public class FieldPlannerService {
         }
         else{
             /*
-             * Handle fieldPlan name regeneration if needed (dates changed)
+             * Handle fieldPlan name regeneration if needed (dates changed or activity)
              */
             handleFieldPlanNameUpdate(request, fieldPlan, fieldPlanFromDB);
         }
@@ -514,6 +519,43 @@ public class FieldPlannerService {
         return false;
     }
 
+    /**
+     * Gets all facilities currently linked to a project
+     */
+    private List<FieldPlanFacility> getFacilitiesLinkedToFacility(String fieldPlanId, String tenantId, RequestInfo requestInfo) {
+        try {
+            List<String> fieldPlanIds = new ArrayList<>();
+            fieldPlanIds.add(fieldPlanId);
+
+            FieldPlanFacilitySearch projectFacilitySearch = FieldPlanFacilitySearch.builder()
+                    .facility_id(fieldPlanIds)
+                    .facility_id(null)
+                    .build();
+
+            FieldPlanFacilitySearchRequest projectFacilitySearchRequest = FieldPlanFacilitySearchRequest.builder()
+                    .criteria(projectFacilitySearch)
+                    .requestInfo(requestInfo)
+                    .build();
+
+            SearchResponse<FieldPlanFacility> searchResponse = facilityService.search(
+                    projectFacilitySearchRequest,
+                    1000, // Large limit to get all facilities
+                    0,
+                    tenantId,
+                    null,
+                    false
+            );
+
+            return (searchResponse != null && searchResponse.getResponse() != null)
+                    ? searchResponse.getResponse()
+                    : new ArrayList<>();
+
+        } catch (Exception e) {
+            log.error("Error getting facilities linked to project: {}", fieldPlanId, e);
+            return new ArrayList<>();
+        }
+    }
+
     public SearchResponse<FieldPlanFacility> getFieldPlanFacilities(FieldPlanRequest request, FieldPlan fieldPlan) throws Exception {
         List<String> listFieldPlanId = new ArrayList<>();
         listFieldPlanId.add(fieldPlan.getId());
@@ -523,6 +565,174 @@ public class FieldPlannerService {
                 request.getFieldPlans().get(0).getTenantId(), null, false);
 
         return response;
+    }
+
+    /**
+     * Handles facility unlinking when geography details (boundary codes) are changed
+     * Only processes unlinking when geographyDetails is explicitly present in the request
+     * Only allows unlinking for Draft projects (status = null)
+     */
+    private void handleFacilityUnlinkingOnGeographyChange(FieldPlanRequest request, FieldPlan fieldPlan, FieldPlan fieldPlanFromDB) {
+        try {
+            // Guard: Only process unlinking if geographyDetails is explicitly present in the request
+            if (fieldPlan.getGeographyDetails() == null) {
+                log.debug("No geographyDetails in request for field plan: {} - skipping facility unlinking", fieldPlan.getId());
+                return;
+            }
+
+            // STATUS CHECK: Only allow facility unlinking for Draft field plan (status = null or missing)
+            String fieldPlanStatus = fieldPlan.getStatus();
+            if (!fieldPlanStatus.equals(DRAFT_STATUS)) {
+                log.info("Field Plan {} has status '{}' - facility unlinking not allowed. Only Draft field  plans (status=DRAFT) can unlink facilities.",
+                        fieldPlan.getId(), fieldPlanStatus);
+                return;
+            }
+            // Extract boundary codes from old and new geography details
+            Set<String> oldBoundaryCodes = extractBoundaryCodesFromGeographyDetails(fieldPlanFromDB.getGeographyDetails());
+            Set<String> newBoundaryCodes = extractBoundaryCodesFromGeographyDetails(fieldPlan.getGeographyDetails());
+
+            // Check if boundary codes have changed
+            if (!oldBoundaryCodes.equals(newBoundaryCodes)) {
+                log.info("Geography details changed for field  plan: {}. Old boundaries: {}, New boundaries: {}",
+                        fieldPlan.getId(), oldBoundaryCodes, newBoundaryCodes);
+
+                // Unlink facilities that are no longer associated with the new boundary codes
+                unlinkFieldplanFacilities(fieldPlan.getId(), fieldPlan.getTenantId(), request.getRequestInfo(), newBoundaryCodes);
+            } else {
+                log.debug("Geography details unchanged for project: {} - no facility unlinking needed", fieldPlan.getId());
+            }
+        } catch (Exception e) {
+            log.error("Error handling facility unlinking for project: {}", fieldPlan.getId(), e);
+            // Don't throw exception - continue with update even if facility unlinking fails
+        }
+    }
+
+    /**
+     * Extracts boundary codes from geography details in additional details
+     */
+    private Set<String> extractBoundaryCodesFromGeographyDetails(Object geographyDetails) {
+        Set<String> boundaryCodes = new HashSet<>();
+
+        if (geographyDetails == null) {
+            return boundaryCodes;
+        }
+
+        try {
+            JsonNode geographyDetailsNode = mapper.valueToTree(geographyDetails);
+            if (geographyDetailsNode != null) {
+                // Extract boundary codes from blocks
+                JsonNode blocks = geographyDetailsNode.get("blocks");
+                if (blocks != null && blocks.isArray()) {
+                    for (JsonNode block : blocks) {
+                        JsonNode code = block.get("code");
+                        if (code != null && !code.isNull()) {
+                            boundaryCodes.add(code.asText());
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.error("Error extracting boundary codes from geography details", e);
+        }
+
+        return boundaryCodes;
+    }
+
+    /**
+     * Unlinks facilities that are no longer associated with the fieldplan's new boundary codes
+     */
+    private void unlinkFieldplanFacilities(String fieldPlanId, String tenantId, RequestInfo requestInfo, Set<String> newBoundaryCodes) {
+        try {
+            log.info("Starting selective facility unlinking for field plan: {} with new boundary codes: {}", fieldPlanId, newBoundaryCodes);
+
+            // Step 1: Get all facilities currently linked to the field plan
+            List<FieldPlanFacility> linkedFieldPlanFacilities = getFacilitiesLinkedToFacility(fieldPlanId, tenantId, requestInfo);
+
+            if (linkedFieldPlanFacilities.isEmpty()) {
+                log.info("No facilities currently linked to field plan: {}", fieldPlanId);
+                return;
+            }
+
+            // Step 2: Get all facilities associated with the new boundary codes
+            Set<String> facilitiesInNewBoundaries = getFacilitiesByBoundaryCodes(newBoundaryCodes, tenantId, requestInfo);
+
+            // Defensive guard: if boundaries are non-empty but lookup yielded zero, skip unlink to avoid data loss
+            if (!newBoundaryCodes.isEmpty() && facilitiesInNewBoundaries.isEmpty()) {
+                log.warn("Facility lookup returned 0 results for non-empty boundaries {}. Skipping unlink to avoid accidental data loss for field plan: {}",
+                        newBoundaryCodes, fieldPlanId);
+                return;
+            }
+
+            // Step 3: Find facilities to unlink (linked to field plan but not in new boundary codes)
+            List<FieldPlanFacility> facilitiesToUnlink = linkedFieldPlanFacilities.stream()
+                    .filter(projectFacility -> !facilitiesInNewBoundaries.contains(projectFacility.getFacilityId()))
+                    .collect(Collectors.toList());
+
+            if (facilitiesToUnlink.isEmpty()) {
+                log.info("No facilities need to be unlinked for field plan: {}", fieldPlanId);
+                return;
+            }
+
+            log.info("Found {} facilities to unlink out of {} linked facilities for field plan: {}",
+                    facilitiesToUnlink.size(), linkedFieldPlanFacilities.size(), fieldPlanId);
+
+            // Step 4: Set isDeleted = true for the identified facilities using update API
+            List<FieldPlanFacility> facilitiesToUpdate = facilitiesToUnlink.stream()
+                    .map(fieldplanFacility -> {
+                        // Create a copy with isDeleted = true
+                        return FieldPlanFacility.builder()
+                                .id(fieldplanFacility.getId())
+                                .fieldPlanId(fieldplanFacility.getFieldPlanId())
+                                .facilityId(fieldplanFacility.getFacilityId())
+                                .tenantId(fieldplanFacility.getTenantId())
+                                .isDeleted(true) // Set isDeleted = true
+                                .rowVersion(fieldplanFacility.getRowVersion())
+                                .auditDetails(fieldplanFacility.getAuditDetails())
+                                .build();
+                    })
+                    .collect(Collectors.toList());
+
+            // Use update API to set isDeleted = true
+            FieldPlanFacilityBulkRequest updateRequest = FieldPlanFacilityBulkRequest.builder()
+                    .requestInfo(requestInfo)
+                    .fieldPlanFacilities(facilitiesToUpdate)
+                    .build();
+
+            facilityService.unassignBulk(updateRequest, true);
+
+            log.info("Successfully unlinked {} facilities for project: {} by setting isDeleted=true", facilitiesToUpdate.size(), fieldPlanId);
+
+        } catch (Exception e) {
+            log.error("Error unlinking facilities for project: {}", fieldPlanId, e);
+            throw new CustomException("FACILITY_UNLINKING_FAILED",
+                    "Failed to unlink facilities for project: " + fieldPlanId + ". Error: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Gets all facility IDs associated with the given boundary codes
+     */
+    private Set<String> getFacilitiesByBoundaryCodes(Set<String> boundaryCodes, String tenantId, RequestInfo requestInfo) {
+        Set<String> facilityIds = new HashSet<>();
+
+        if (boundaryCodes.isEmpty()) {
+            return facilityIds;
+        }
+
+        try {
+            // Search facilities by boundary codes
+            for (String boundaryCode : boundaryCodes) {
+                Set<String> facilitiesForBoundary = facilityService.searchFacilitiesByBoundaryCode(boundaryCode, tenantId, requestInfo);
+                facilityIds.addAll(facilitiesForBoundary);
+            }
+
+            log.info("Found {} unique facilities across {} boundary codes", facilityIds.size(), boundaryCodes.size());
+
+        } catch (Exception e) {
+            log.error("Error getting facilities by boundary codes: {}", boundaryCodes, e);
+        }
+
+        return facilityIds;
     }
 
 }

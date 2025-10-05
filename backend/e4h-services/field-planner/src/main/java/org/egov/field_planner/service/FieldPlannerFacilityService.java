@@ -3,6 +3,7 @@ package org.egov.field_planner.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.egov.common.contract.request.RequestInfo;
 import org.egov.common.models.core.SearchResponse;
 import org.egov.common.models.project.ProjectFacility;
 import org.egov.common.producer.Producer;
@@ -20,11 +21,9 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.lang.reflect.Method;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import static org.egov.common.utils.CommonUtils.*;
 import static org.egov.field_planner.Constants.GET_FIELDPLAN_ID;
@@ -130,8 +129,10 @@ public class FieldPlannerFacilityService {
         List<FieldPlanFacility> fieldPlanFacilities = request.getFieldPlanFacilities();
         try {
             if (!fieldPlanFacilities.isEmpty()) {
-                log.info("processing {} valid entities", fieldPlanFacilities.size());
-                fieldPlannerEnrichment.enrichFieldPlanFacilityOnCreate(fieldPlanFacilities, request);
+                for (FieldPlanFacility fieldPlanFacility : fieldPlanFacilities){
+                    log.info("processing {} valid entities", fieldPlanFacilities.size());
+                    fieldPlannerEnrichment.enrichFieldPlanFacilityRequestOnDelete(fieldPlanFacility, request.getRequestInfo());
+                }
                 producer.push(fieldPlannerConfiguration.getDeleteFieldPlanFacilityTopic(), fieldPlanFacilities);
                 log.info("successfully created project facility");
             }
@@ -214,6 +215,47 @@ public class FieldPlannerFacilityService {
             return facilityList.getFacilities().get(0);
         }
         return null;
+    }
+
+    /**
+     * Searches facilities by a specific boundary code
+     */
+    public Set<String> searchFacilitiesByBoundaryCode(String boundaryCode, String tenantId, RequestInfo requestInfo) {
+        Set<String> facilityIds = new HashSet<>();
+
+        try {
+            // Build facility search URL with boundary code filter
+            StringBuilder facilitySearchUrl = new StringBuilder();
+            facilitySearchUrl.append(fieldPlannerConfiguration.getFacilityServiceHost())
+                    .append(fieldPlannerConfiguration.getFacilityServiceSearchUrlV2())
+                    .append("?tenantId=")
+                    .append(tenantId)
+                    .append("&boundaryCode=")
+                    .append(boundaryCode);
+
+            log.debug("Searching facilities for boundary code: {} with URL: {}", boundaryCode, facilitySearchUrl);
+
+            // Call facility service
+            Object response = serviceRequestClient.fetchResult(facilitySearchUrl);
+
+            if (response != null) {
+                FacilitySearchResponse facilitySearchResponse = mapper.convertValue(response, FacilitySearchResponse.class);
+
+                if (facilitySearchResponse != null && facilitySearchResponse.getFacilities() != null) {
+                    facilityIds = facilitySearchResponse.getFacilities().stream()
+                            .map(Facility::getFacilityId)
+                            .filter(Objects::nonNull)
+                            .collect(Collectors.toSet());
+
+                    log.debug("Found {} facilities for boundary code: {}", facilityIds.size(), boundaryCode);
+                }
+            }
+
+        } catch (Exception e) {
+            log.error("Error searching facilities for boundary code: {}", boundaryCode, e);
+        }
+
+        return facilityIds;
     }
 
 
