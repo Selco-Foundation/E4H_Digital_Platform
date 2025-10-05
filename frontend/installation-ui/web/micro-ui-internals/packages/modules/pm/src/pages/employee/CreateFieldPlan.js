@@ -207,7 +207,7 @@ const CreateFieldPlan = () => {
                         poNumber: { value: "", error: "", },
                         organization: { value: null, error: "", },
                         role: { value: null, error: "", },
-                        email: { value: "", error: "", },
+                        email: { value: null, error: "", },
                         isEmailSent: false,
                       }
                     ]
@@ -558,6 +558,9 @@ const CreateFieldPlan = () => {
             populators: {
               name: "healthFacilitiesCount",
               error: "Required",
+              validation: {
+                max: 1000000,
+              },
             },
           },
           {
@@ -570,7 +573,7 @@ const CreateFieldPlan = () => {
             disable: false,
             customProps: {
               name: "activities",
-              selectedOptions: (createdFieldPlan?.id && createdFieldPlan?.status !== "DRAFT") ? activityData.filter((activity) => createdFieldPlan.activities.map((activity) => activity.code).includes(activity?.code)) : [],
+              selectedOptions: (createdFieldPlan?.id && createdFieldPlan?.status !== "DRAFT") ? activityData?.filter((activity) => createdFieldPlan.activities.map((activity) => activity.code).includes(activity?.code)) : [],
               t,
               activityData,
             },

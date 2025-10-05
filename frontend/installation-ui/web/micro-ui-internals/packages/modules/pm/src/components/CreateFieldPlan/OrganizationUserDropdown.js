@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { Dropdown } from "@egovernments/digit-ui-react-components";
 import useOrganizationUser from "../../hooks/useOrganizationUser";
+import CustomDropdown from "../Custom/CustomDropdown";
 
-const OrganizationUserDropdown = ({ t, organizationIds = [], selected = {}, onSelect, style = {} }) => {
+const OrganizationUserDropdown = ({ t, organizationIds = [], selected, onSelect, style = {} }) => {
 
   const [userOptions, setUserOptions] = useState([]);
 
@@ -22,14 +22,11 @@ const OrganizationUserDropdown = ({ t, organizationIds = [], selected = {}, onSe
   }, [organizationUserData])
 
   return (
-    <Dropdown
+    <CustomDropdown
       t={t}
       option={userOptions}
       optionKey={"emailKey"}
-      selected={{
-        ...selected,
-        emailKey: selected.emailId,
-      }}
+      selected={ selected ? { ...selected, emailKey: selected.emailId, } : null }
       select={onSelect}
       style={{
         ...style

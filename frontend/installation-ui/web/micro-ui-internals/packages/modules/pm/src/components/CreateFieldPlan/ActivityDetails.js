@@ -4,6 +4,7 @@ import { Dropdown, SubmitBar, Table, TextInput } from "@egovernments/digit-ui-re
 import { CheckCircleOutline } from "@egovernments/digit-ui-svg-components";
 import CustomCloseSvg from "../Custom/CustomCloseSvg";
 import OrganizationUserDropdown from "./OrganizationUserDropdown";
+import CustomDropdown from "../Custom/CustomDropdown";
 
 const ActivityDetails = ({
   data = {},
@@ -39,7 +40,7 @@ const ActivityDetails = ({
             poNumber: { value: "", error: "", },
             organization: { value: null, error: "", },
             role: { value: null, error: "", },
-            email: { value: "", error: "", },
+            email: { value: null, error: "", },
             isEmailSent: false,
           }
         ],
@@ -74,7 +75,13 @@ const ActivityDetails = ({
             [fieldName] : {
               value: fieldValue,
               error: "",
-            }
+            },
+            ...(fieldName === "organization" && {
+              email: {
+                value: null,
+                error: "",
+              }
+            })
           };
         }),
       };
@@ -200,7 +207,7 @@ const ActivityDetails = ({
 
       const handler = setTimeout(() => {
         handleUserDataChange(activity, index, fieldName, textEntered)
-      }, 2500);
+      }, 1500);
 
       return () => {
         clearTimeout(handler);
@@ -247,7 +254,7 @@ const ActivityDetails = ({
         borderBottom: isLast ? "none" : "1px solid #EEEEEE",
       }}
     >
-      <Dropdown
+      <CustomDropdown
         t={t}
         option={options}
         optionKey={optionKey}

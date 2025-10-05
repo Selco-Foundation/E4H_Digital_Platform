@@ -10,7 +10,7 @@ const BannerPicker = ({response, message, complaintNumber, info}) => {
     return (
       <Banner
         message={message}
-        complaintNumber={complaintNumber}
+        applicationNumber={complaintNumber}
         successful={true}
         info={info}
         whichSvg="tick"
