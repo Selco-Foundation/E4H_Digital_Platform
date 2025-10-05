@@ -23,6 +23,7 @@ import '../blocs/report_type/report_type.dart';
 import '../blocs/selected_project/selected_project.dart';
 import '../blocs/user_type/user_type.dart';
 import '../model/project_workflow/project_workflow.dart';
+import '../repositories/bom_repo.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
 import '../utils/i18_key_constants.dart' as i18;
@@ -649,32 +650,46 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                                                     final r =
                                                                         bomRouteAndLabel(
                                                                             entry.name);
-                                                                    return DigitButton(
-                                                                      mainAxisSize:
-                                                                          MainAxisSize
-                                                                              .max,
-                                                                      label: r
-                                                                          .label,
-                                                                      onPressed:
-                                                                          () {
-                                                                        final r =
-                                                                            bomRouteAndLabel(entry.name);
+                                                                    final isar =
                                                                         context
-                                                                            .router
-                                                                            .push(DynamicFormsRoute(
-                                                                          pageName:
-                                                                              r.pageName,
-                                                                          schemaName:
-                                                                              r.schemaName,
-                                                                          projectId:
-                                                                              _currentProjectId!,
-                                                                        ));
-                                                                      },
-                                                                      type: DigitButtonType
-                                                                          .secondary,
-                                                                      size: DigitButtonSize
-                                                                          .large,
-                                                                    );
+                                                                            .read<ProjectBloc>()
+                                                                            .isar;
+                                                                    return FutureBuilder<
+                                                                            String>(
+                                                                        future: BomRepository().resolveBomActionLabel(
+                                                                            isar:
+                                                                                isar,
+                                                                            projectId:
+                                                                                _currentProjectId!,
+                                                                            schemaKey: r
+                                                                                .schemaName,
+                                                                            isInboxView:
+                                                                                false),
+                                                                        builder:
+                                                                            (context,
+                                                                                snap) {
+                                                                          final labelWord = snap.hasData
+                                                                              ? snap.data!
+                                                                              : '...';
+                                                                          return DigitButton(
+                                                                            mainAxisSize:
+                                                                                MainAxisSize.max,
+                                                                            label:
+                                                                                '$labelWord ${r.label}',
+                                                                            onPressed:
+                                                                                () {
+                                                                              context.router.push(DynamicFormsRoute(
+                                                                                pageName: r.pageName,
+                                                                                schemaName: r.schemaName,
+                                                                                projectId: _currentProjectId!,
+                                                                              ));
+                                                                            },
+                                                                            type:
+                                                                                DigitButtonType.secondary,
+                                                                            size:
+                                                                                DigitButtonSize.large,
+                                                                          );
+                                                                        });
                                                                   },
                                                                 ),
                                                                 const SizedBox(
@@ -715,25 +730,6 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                                         String?>{};
                                                   },
                                                 ),
-                                                // existingFilesSection(
-                                                //   context: context,
-                                                //   existing: _existingReports,
-                                                //   showEditButton: true,
-                                                //   onTapImage: (path) => context
-                                                //       .router
-                                                //       .push(ImageViewerRoute(
-                                                //           path: path)),
-                                                //   onTapPdf: (path) => context
-                                                //       .router
-                                                //       .push(PdfViewerRoute(
-                                                //           path: path)),
-                                                //   onRemove: (r) {
-                                                //     setState(() {
-                                                //       _existingReports
-                                                //           .remove(r);
-                                                //     });
-                                                //   },
-                                                // ),
                                                 ExistingFilesOrLoader(
                                                   existingReports:
                                                       _existingReports,

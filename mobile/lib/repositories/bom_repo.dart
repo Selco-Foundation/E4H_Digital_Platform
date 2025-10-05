@@ -519,4 +519,33 @@ class BomRepository {
       await isar.cacheProjectBomValues.put(rec);
     });
   }
+
+  Future<bool> hasBomForSchema({
+    required Isar isar,
+    required String projectId,
+    required String schemaKey,
+  }) async {
+    final existing = await isar.cacheBomDocs
+        .where()
+        .projectIdEqualToAnySchemaKey(projectId)
+        .filter()
+        .schemaKeyEqualTo(schemaKey)
+        .findFirst();
+    return existing != null;
+  }
+
+  Future<String> resolveBomActionLabel({
+    required Isar isar,
+    required String projectId,
+    required String schemaKey,
+    required bool isInboxView,
+  }) async {
+    if (isInboxView) return 'View';
+    final exists = await hasBomForSchema(
+      isar: isar,
+      projectId: projectId,
+      schemaKey: schemaKey,
+    );
+    return exists ? 'Edit' : 'View';
+  }
 }
