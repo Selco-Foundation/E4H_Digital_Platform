@@ -46,4 +46,9 @@ public class FieldPlanFacility {
     protected @Valid AdditionalFields additionalFields;
     @JsonProperty("auditDetails")
     protected @Valid AuditDetails auditDetails;
+    @JsonProperty("rowVersion")
+    protected Integer rowVersion;
+    @JsonProperty("hasErrors")
+    protected Boolean hasErrors;
+
 }
