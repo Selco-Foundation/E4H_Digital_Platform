@@ -38,8 +38,6 @@ String fileSizeFor(String path) {
   }
 }
 
-/// Decides BOTH the label shown on the button and the destination route.
-/// We look at the BOM form's `name` and infer a friendly label + (schemaName, pageName).
 ({String label, String schemaName, String pageName}) bomRouteAndLabel(
     String name) {
   final n = name.toLowerCase();
@@ -54,14 +52,14 @@ String fileSizeFor(String path) {
     case 'parameters':
     case 'parameter':
       return (
-        label: 'Fill System Parameters',
+        label: 'System Parameters',
         schemaName: 'AssetForm.SystemParameters',
         pageName: 'SystemFunctionalityParameters_1',
       );
     case 'solar':
     case 'solarsystem':
       return (
-        label: 'Fill BOM Solar System',
+        label: 'BOM Solar System',
         schemaName: 'AssetForm',
         pageName: 'ModuleMountingstructure',
       );
@@ -70,7 +68,7 @@ String fileSizeFor(String path) {
     case 'fan':
     case 'fans':
       return (
-        label: 'Fill BOM Luminaries',
+        label: 'BOM Luminaries',
         schemaName: 'AssetForm.LuminariesFan',
         pageName: 'Luminaires_Fans_Page1',
       );
@@ -78,13 +76,13 @@ String fileSizeFor(String path) {
     case 'load':
     case 'loadwiring':
       return (
-        label: 'Fill BOM Load Wiring',
+        label: 'BOM Load Wiring',
         schemaName: 'AssetForm.LoadWiring',
         pageName: 'BOM.LoadWiring',
       );
     case 'rms':
       return (
-        label: 'Fill BOM RMS',
+        label: 'BOM RMS',
         schemaName: 'AssetForm.RMS',
         pageName: 'BOM.RMS',
       );
@@ -93,7 +91,7 @@ String fileSizeFor(String path) {
           .replaceAll('_', ' ')
           .replaceAllMapped(RegExp(r'\b([a-z])'), (m) => m[1]!.toUpperCase());
       return (
-        label: 'Fill $pretty',
+        label: '$pretty',
         schemaName: 'AssetForm',
         pageName: 'ModuleMountingstructure',
       );

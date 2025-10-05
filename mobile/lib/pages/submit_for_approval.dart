@@ -18,11 +18,13 @@ import '../blocs/asset_type/asset_type.dart';
 import '../blocs/cache_asset/cache_asset.dart';
 import '../blocs/cache_completion_report/cache_completion_report.dart';
 import '../blocs/overall_asset_summary/overall_asset_summary.dart';
+import '../blocs/project/project.dart';
 import '../blocs/project_bom/project_bom.dart';
 import '../blocs/selected_project/selected_project.dart';
 import '../blocs/user_type/user_type.dart';
 import '../model/comment/comment.dart';
 import '../model/project_workflow/project_workflow.dart';
+import '../repositories/bom_repo.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
 import '../utils/utils.dart';
@@ -378,29 +380,51 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                                                       final r =
                                                           bomRouteAndLabel(
                                                               entry.name);
-                                                      return DigitButton(
-                                                        mainAxisSize:
-                                                            MainAxisSize.max,
-                                                        label: r.label,
-                                                        onPressed: () {
-                                                          final r =
-                                                              bomRouteAndLabel(
-                                                                  entry.name);
-                                                          context.router.push(
-                                                              DynamicFormsRoute(
-                                                            pageName:
-                                                                r.pageName,
-                                                            schemaName:
-                                                                r.schemaName,
-                                                            projectId:
-                                                                projectId!,
-                                                          ));
-                                                        },
-                                                        type: DigitButtonType
-                                                            .secondary,
-                                                        size: DigitButtonSize
-                                                            .large,
-                                                      );
+                                                      final isar = context
+                                                          .read<ProjectBloc>()
+                                                          .isar;
+                                                      return FutureBuilder<
+                                                              String>(
+                                                          future: BomRepository()
+                                                              .resolveBomActionLabel(
+                                                                  isar: isar,
+                                                                  projectId:
+                                                                      projectId,
+                                                                  schemaKey: r
+                                                                      .schemaName,
+                                                                  isInboxView:
+                                                                      false),
+                                                          builder:
+                                                              (context, snap) {
+                                                            final labelWord =
+                                                                snap.hasData
+                                                                    ? snap.data!
+                                                                    : '...';
+                                                            return DigitButton(
+                                                              mainAxisSize:
+                                                                  MainAxisSize
+                                                                      .max,
+                                                              label:
+                                                                  '$labelWord ${r.label}',
+                                                              onPressed: () {
+                                                                context.router.push(
+                                                                    DynamicFormsRoute(
+                                                                  pageName: r
+                                                                      .pageName,
+                                                                  schemaName: r
+                                                                      .schemaName,
+                                                                  projectId:
+                                                                      projectId!,
+                                                                ));
+                                                              },
+                                                              type:
+                                                                  DigitButtonType
+                                                                      .secondary,
+                                                              size:
+                                                                  DigitButtonSize
+                                                                      .large,
+                                                            );
+                                                          });
                                                     },
                                                   ),
                                                   const SizedBox(

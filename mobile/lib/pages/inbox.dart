@@ -292,13 +292,11 @@ class _InboxPageState extends State<InboxPage> {
         for (final project in projectsList)
           Column(
             children: [
-              // Display each project according to inboxState
               BlocBuilder<InboxTypeBloc, InboxTypeState>(
                 builder: (context, inboxState) {
                   return inboxState.when(
                     submitted: () => InboxReportCard(
                         onPress: () {
-                          print(project.project.id);
                           context.read<SelectedProjectBloc>().add(
                                 SelectedProjectEvent.select(project),
                               );
@@ -314,7 +312,6 @@ class _InboxPageState extends State<InboxPage> {
                       dateAssigned:
                           project.project.startDateTime ?? DateTime.now(),
                       onPress: () {
-                        print(project.project.id);
                         context.read<SelectedProjectBloc>().add(
                               SelectedProjectEvent.select(project),
                             );
@@ -323,7 +320,6 @@ class _InboxPageState extends State<InboxPage> {
                     ),
                     approved: () => InboxReportCard(
                         onPress: () {
-                          print(project.project.id);
                           context.read<SelectedProjectBloc>().add(
                                 SelectedProjectEvent.select(project),
                               );
