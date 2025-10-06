@@ -61,9 +61,10 @@ const getAssetAggregation = async (workflow) => {
     videos: {},
     installationReportDocuments: []
   };
+  const documentAggregation = [];
 
   if (workflow) {
-    for (let i = 0; i < workflow.length; i++) {
+    for (let i = 0; i < Math.min(workflow.length, 2); i++) {
       const row = workflow[i];
       const action = row.action;
 
@@ -73,8 +74,10 @@ const getAssetAggregation = async (workflow) => {
           const fileStoreResponse = await QCService.fetchImageFromFileStore(document.fileStoreId);
           const fileUrl = Digit.Utils.getFileUrl(fileStoreResponse[document.fileStoreId]);
           const fileDetails = await QCService.fetchDocumentDetails(fileUrl);
+          let documentRequired = false;
 
           if (documentType.toUpperCase().includes("IMAGE")) {
+            documentRequired = true;
             const assetType = documentType.split("-")[0].toUpperCase();
             if (assetAggregation.images[assetType]) {
               assetAggregation.images[assetType].push(fileUrl);
@@ -82,6 +85,7 @@ const getAssetAggregation = async (workflow) => {
               assetAggregation.images[assetType] = [fileUrl];
             }
           } else if (documentType.toUpperCase().includes("VIDEO")) {
+            documentRequired = true;
             const assetType = documentType.split("-")[0].toUpperCase();
 
             if (assetAggregation.videos[assetType]) {
@@ -96,6 +100,7 @@ const getAssetAggregation = async (workflow) => {
               }];
             }
           } else if (i === 0 && documentType.toUpperCase() === "INSTALLATION_REPORT") {
+            documentRequired = true;
             assetAggregation.installationReportDocuments = [
               ...assetAggregation.installationReportDocuments,
               {
@@ -104,17 +109,23 @@ const getAssetAggregation = async (workflow) => {
               }
             ];
           } else if (i === 0 && documentType.toUpperCase() === "INSTALLATION_REPORT_BOM") {
+            documentRequired = true;
             assetAggregation.bomCompletionReport = {
               fileUrl,
               ...fileDetails
             };
           }
+
+          if (documentRequired) documentAggregation.push(document);
         }
       }
     }
   }
 
-  return assetAggregation;
+  return {
+    assetAggregation,
+    documentAggregation,
+  };
 }
 
 const fetchFacilityDetails = async (filter, limit, offset) => {
@@ -127,7 +138,7 @@ const fetchFacilityDetails = async (filter, limit, offset) => {
   const additionalDetails = projectData.project.additionalDetails || {};
   const assigneeDetails = projectData.project.additionalDetails.assignedTo || {};
   const auditTrail = generateAuditTrail(projectData.workflow, projectData.transactions);
-  const assetAggregation = await getAssetAggregation(projectData.workflow);
+  const { assetAggregation, documentAggregation } = await getAssetAggregation(projectData.workflow);
 
   return {
     facilityDetails: {
@@ -142,7 +153,8 @@ const fetchFacilityDetails = async (filter, limit, offset) => {
       assigned: assigneeDetails.name,
     },
     auditTrail,
-    assetAggregation
+    assetAggregation,
+    documentAggregation,
   }
 }
 
