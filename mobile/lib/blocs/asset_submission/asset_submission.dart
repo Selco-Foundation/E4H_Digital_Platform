@@ -388,7 +388,7 @@ class AssetSubmissionBloc
         );
       } catch (e) {
         print("Error fetching/uploading BOM PDF: $e");
-        emit(AssetSubmissionState.failure("Failed to attach BOM PDF: $e"));
+        emit(AssetSubmissionState.failure("Failed to attach BOM PDF:"));
         return false;
       }
 
