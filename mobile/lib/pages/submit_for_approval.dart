@@ -465,20 +465,6 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                               return <PlatformFile, String?>{};
                             },
                           ),
-                          // existingFilesSection(
-                          //   context: context,
-                          //   existing: _existingReports,
-                          //   showEditButton: true,
-                          //   onTapImage: (path) => context.router
-                          //       .push(ImageViewerRoute(path: path)),
-                          //   onTapPdf: (path) =>
-                          //       context.router.push(PdfViewerRoute(path: path)),
-                          //   onRemove: (r) {
-                          //     setState(() {
-                          //       _existingReports.remove(r);
-                          //     });
-                          //   },
-                          // ),
                           ExistingFilesOrLoader(
                             existingReports: _existingReports,
                             workflowDocuments:
@@ -684,7 +670,7 @@ class RejectionReasonsList extends StatelessWidget {
 
     final filtered = excludeStandardTypes
         ? comments!.where((c) {
-            final t = c.assetType?.toLowerCase();
+            final t = c.assetType?.toLowerCase().trim();
             return t != 'inverter' && t != 'battery' && t != 'panel';
           }).toList()
         : comments!;
@@ -758,7 +744,7 @@ class RejectionReasonsList extends StatelessWidget {
           ),
         ),
         const SizedBox(height: spacer2),
-        Text(details, style: valueStyle),
+        Text(details ?? "", style: valueStyle),
       ],
     );
   }

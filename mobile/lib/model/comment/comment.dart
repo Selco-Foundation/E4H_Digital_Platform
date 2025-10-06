@@ -1,31 +1,8 @@
-// import 'package:freezed_annotation/freezed_annotation.dart';
-//
-// part 'comment.g.dart';
-//
-// @JsonSerializable()
-// class Comment {
-//   final String? commentId;
-//   final String? commentMessage;
-//   final String? assetType;
-//   final String? transactionId;
-//
-//   Comment({
-//     this.commentId,
-//     this.commentMessage,
-//     this.assetType,
-//     this.transactionId,
-//   });
-//
-//   factory Comment.fromJson(Map<String, dynamic> json) =>
-//       _$CommentFromJson(json);
-//   Map<String, dynamic> toJson() => _$CommentToJson(this);
-// }
-
 import 'dart:convert';
 
 import 'package:isar/isar.dart';
 
-part 'comment.g.dart'; // optional (Isar will embed, codegen not required)
+part 'comment.g.dart';
 
 @Embedded()
 class Comment {
@@ -41,13 +18,19 @@ class Comment {
     this.transactionId,
   });
 
+  /// Try to parse a structured JSON payload like:
+  /// {"reason":"...","comment":"..."}
+  /// Returns a Map<String,dynamic> only if it looks like the structured form.
   Map<String, dynamic>? get _maybeParsedJson {
     final raw = commentMessage;
     if (raw == null || raw.isEmpty) return null;
     try {
       final decoded = jsonDecode(raw);
-      if (decoded is Map && decoded.containsKey('reason')) {
-        return decoded.cast<String, dynamic>();
+      if (decoded is Map) {
+        final map = decoded.cast<String, dynamic>();
+        final hasReason = map.containsKey('reason');
+        final hasComment = map.containsKey('comment');
+        if (hasReason || hasComment) return map; // treat as structured
       }
     } catch (_) {
       // not JSON; ignore
@@ -57,11 +40,15 @@ class Comment {
 
   String? get reason => _maybeParsedJson?['reason']?.toString();
 
+  /// If the message is structured JSON, ALWAYS return the parsed "comment"
+  /// (even when it's an empty string) so the UI shows blank instead of raw JSON.
+  /// If not structured, fall back to the plain commentMessage.
   String get displayComment {
     final parsed = _maybeParsedJson;
     if (parsed != null) {
-      final txt = parsed['comment']?.toString();
-      if (txt != null && txt.isNotEmpty) return txt;
+      final val = parsed['comment'];
+      // Return "" if missing or null, to avoid showing the raw JSON text
+      return (val is String) ? val : '';
     }
     return commentMessage ?? '';
   }
