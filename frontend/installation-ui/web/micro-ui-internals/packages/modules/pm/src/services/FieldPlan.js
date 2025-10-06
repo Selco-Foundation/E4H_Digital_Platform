@@ -31,7 +31,7 @@ export const FieldPlanService = {
       "Content-Type": "application/json"
     }
 
-    if (fieldPlanData.apiOperation === "UPDATE") {
+    if (fieldPlanData?.apiOperation === "UPDATE") {
       endpoint = "/field-planner/v1/field-plans/_update";
     }
 
