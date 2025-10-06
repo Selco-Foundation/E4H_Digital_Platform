@@ -103,7 +103,7 @@ const getAssetAggregation = async (workflow) => {
                 ...fileDetails
               }
             ];
-          } else if (i === 0 && documentType.toUpperCase() === "BOM_COMPLETION_REPORT") {
+          } else if (i === 0 && documentType.toUpperCase() === "INSTALLATION_REPORT_BOM") {
             assetAggregation.bomCompletionReport = {
               fileUrl,
               ...fileDetails
