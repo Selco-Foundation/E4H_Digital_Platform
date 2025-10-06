@@ -12926,7 +12926,7 @@
               {
                 "type": "string",
                 "format": "text",
-                "label": "Measured Value",
+                "label": "Array",
                 "order": 16,
                 "value": "",
                 "hidden": false,
@@ -12944,7 +12944,7 @@
                   {
                     "type": "required",
                     "value": true,
-                    "message": "Measured Value is required"
+                    "message": "Measured Value Array is required"
                   }
                 ],
                 "section": "Measurement with Grid OFF + AJB MCB OFF — Voc (in Volts)",
@@ -13097,7 +13097,7 @@
               {
                 "type": "string",
                 "format": "text",
-                "label": "Measured Value",
+                "label": "Array",
                 "order": 30,
                 "value": "",
                 "hidden": false,
@@ -13115,7 +13115,7 @@
                   {
                     "type": "required",
                     "value": true,
-                    "message": "Measured Value is required"
+                    "message": "Measured Value Array is required"
                   }
                 ],
                 "section": "Measurement with Grid OFF + AJB MCB ON — Vmp (in Volts)",
@@ -13268,7 +13268,7 @@
               {
                 "type": "string",
                 "format": "text",
-                "label": "Measured Value",
+                "label": "Array",
                 "order": 44,
                 "value": "",
                 "hidden": false,
@@ -13286,7 +13286,7 @@
                   {
                     "type": "required",
                     "value": true,
-                    "message": "Measured Value is required"
+                    "message": "Measured Value Array is required"
                   }
                 ],
                 "section": "Measurement with Grid OFF + AJB MCB ON — Imp (in Amperes)",
@@ -15373,14 +15373,12 @@
           {
             "page": "SystemFunctionalityParameters_4",
             "type": "object",
-            "label": "Changeover Switch settings",
+            "label": "Inverter output current at full load (All solar loads turned on continuously for 10 minutes)",
             "order": 4,
             "description": "",
             "actionLabel": "Submit",
             "properties": [
-              [
                 {
-                  "section": "Inverter output current at full load (All solar loads turned on continuously for 10 minutes)",
                   "type": "string",
                   "format": "text",
                   "label": "Inverter output current at full load (Y-Phase & Neutral)",
@@ -15730,7 +15728,6 @@
                   ]
                 }
               ]
-            ]
           }
         ]
       }

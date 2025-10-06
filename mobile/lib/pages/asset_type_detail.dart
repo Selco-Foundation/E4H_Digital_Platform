@@ -40,6 +40,7 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
 
   String? selectedWarranty;
   String? selectedBrandCode;
+  String? selectedBrandName;
 
   final TextEditingController modelController = TextEditingController();
 
@@ -158,7 +159,6 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
                           if (isSupervisor && !isEnabledSupervisor)
                             return;
                           else if (!isEnabledFieldUser) return;
-                          print("selectedWarranty $selectedWarranty");
                           final newDetail = CacheAssetDetail(
                             projectId: _currentProjectId!,
                             assetType: assetTypeTitle,
@@ -217,7 +217,9 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
                                   child: DigitDropdown(
                                     sentenceCaseEnabled: false,
                                     selectedOption: DropdownItem(
-                                      name: selectedWarranty ?? "",
+                                      name: parseWarrantyYears(selectedWarranty)
+                                              ?.toString() ??
+                                          "",
                                       code: selectedWarranty ?? "",
                                     ),
                                     items: assetWarranties
@@ -242,7 +244,7 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
                                 child: DigitDropdown(
                                   sentenceCaseEnabled: false,
                                   selectedOption: DropdownItem(
-                                    name: selectedBrandCode ?? "",
+                                    name: selectedBrandName ?? "",
                                     code: selectedBrandCode ?? "",
                                   ),
                                   items: assetBrands
@@ -254,6 +256,7 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
                                   onSelect: (DropdownItem selected) {
                                     setState(() {
                                       selectedBrandCode = selected.code;
+                                      selectedBrandName = selected.name;
                                     });
                                   },
                                 )),
@@ -268,10 +271,7 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
                                   innerLabel: 'SR45934295',
                                   keyboardType: TextInputType.text,
                                   onChange: (value) {
-                                    setState(() {
-                                      // modelController.text is updated internally;
-                                      // we just need to rebuild for isEnabled.
-                                    });
+                                    setState(() {});
                                   },
                                 ),
                               ),
