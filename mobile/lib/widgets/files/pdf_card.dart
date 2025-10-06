@@ -24,7 +24,7 @@ Widget pdfCard(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                "${truncateTextFromStart(filePath ?? "", maxLength: 32)}",
+                "${truncateTextFromStart(filePath ?? "", maxLength: 28)}",
                 style: textTheme.headingM.copyWith(
                     color: theme.colorTheme.text.primary, fontSize: spacer4),
               ),

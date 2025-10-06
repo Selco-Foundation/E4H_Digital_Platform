@@ -24,7 +24,6 @@ class BomRepository {
 
   BomRepository();
 
-  // -------- Local (Isar) ----------
   Future<void> saveLocal({
     required Isar isar,
     required String projectId,
@@ -102,6 +101,16 @@ class BomRepository {
     }
   }
 
+  Future<void> delete({required Isar isar, required String projectId}) async {
+    await isar.writeTxn(() async {
+      final col = isar.cacheProjectBomValues;
+      final rec = await col.where().projectIdEqualTo(projectId).findAll();
+      for (final r in rec) {
+        await col.delete(r.id);
+      }
+    });
+  }
+
   Future<void> enrichProjectDocs({
     required Isar isar,
     required String projectId,
@@ -137,9 +146,6 @@ class BomRepository {
     });
   }
 
-  // -------- Deep extractor (NEW) ----------
-  /// Deep, shape-agnostic flattener:
-  /// collects every `{ fieldName: <string>, value: <any> }` anywhere in the tree.
   Map<String, dynamic> extractKVFromRawDoc(Map<String, dynamic> raw) {
     final acc = <String, dynamic>{};
 
@@ -170,8 +176,6 @@ class BomRepository {
     return acc;
   }
 
-  // -------- Remote (API): merged create/update (NEW) ----------
-  /// Merge all dirty docs into one payload; use systemCode as "name".
   Future<void> submitMergedForProject({
     required Isar isar,
     required String projectId,
@@ -280,13 +284,6 @@ class BomRepository {
     }
   }
 
-  // ------------------------ New: BOM Sync -------------------------------
-
-  /// Fetch BOM for [projectId] (resolving facilityId internally),
-  /// cache the BOM `data` per (projectId, userType), and
-  /// replace completion reports with BOM `documents`.
-  ///
-  /// Returns (savedBomValues).
   Future<({bool savedBomValues})> syncBomForProject(
       {required String projectId,
       required String userType,
@@ -342,10 +339,6 @@ class BomRepository {
     }
   }
 
-  // inside class BomRepository
-
-  /// Calls /activity/v1/bom/_generate_pdf, passing the bom data stored in Isar for (projectId, userType),
-  /// and returns the bytes (Uint8List). Throws on error.
   Future<Uint8List?> generateBomPdf({
     required Isar isar,
     required String projectId,
@@ -408,10 +401,6 @@ class BomRepository {
     final tempPath = '${tempDir.path}/$filename';
     final file = File(tempPath);
     await file.writeAsBytes(bytes);
-
-    // 2. Use the AssetRepository (or its logic) to upload file
-    // If you want to reuse uploadFile, you could inject or call that method,
-    // or just replicate the same multipart logic here.
 
     // Determine mimeType
     String? mimeType = lookupMimeType(filename);
