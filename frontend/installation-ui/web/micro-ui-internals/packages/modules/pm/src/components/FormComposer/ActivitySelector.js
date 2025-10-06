@@ -7,7 +7,7 @@ const ActivitySelector = ({
   props,
 }) => {
 
-  const { t, name, activityData } = props;
+  const { t, name, activityData, selectedOptions = [] } = props;
   const [activityMenu, setActivityMenu] = useState([]);
   const [selectedActivities, setSelectedActivities] = useState(data[name] || []);
 
@@ -25,8 +25,11 @@ const ActivitySelector = ({
     }
   }, [activityData])
 
-  const handleActivitySelection = (activities) => {
-    setSelectedActivities(activities);
+  const handleActivitySelection = (activities = []) => {
+    const selectedActivityCodes = activities.map((activity) => activity.code);
+    const selectedOptionsExcludedInSelection = selectedOptions.filter((option) => !selectedActivityCodes.includes(option.code));
+    const newSelectedActivities = [...activities, ...selectedOptionsExcludedInSelection];
+    setSelectedActivities(newSelectedActivities.sort((a, b) => a.code?.localeCompare(b.code)));
   }
 
   return (
@@ -43,6 +46,7 @@ const ActivitySelector = ({
         defaultLabel={selectedActivities.length ? `${selectedActivities.length} Selected` : ""}
         selected={selectedActivities}
         addSelectAllCheck={true}
+        frozenData={[...selectedOptions]}
         selectAllLabel={t("PM_ACTION_SELECT_ALL_ACTIVITIES")}
       />
     </div>
