@@ -69,7 +69,7 @@ const SystemParameterReport = ({ file, supportingDocuments }) => {
               target="_blank"
               rel="noopener noreferrer"
               href={supportingDocument.fileUrl}
-              download={"installation-completion-report.pdf"}
+              download={supportingDocument.name || "supporting-doc"}
             >
               <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                 <CustomFileIcon fileName={supportingDocument.name || supportingDocument.fileType} />
