@@ -664,7 +664,9 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                                                             schemaKey: r
                                                                                 .schemaName,
                                                                             isInboxView:
-                                                                                false),
+                                                                                false,
+                                                                            isOverall:
+                                                                                true),
                                                                         builder:
                                                                             (context,
                                                                                 snap) {

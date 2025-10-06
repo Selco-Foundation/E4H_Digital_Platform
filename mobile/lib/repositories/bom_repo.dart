@@ -402,37 +402,6 @@ class BomRepository {
     }
   }
 
-  Future<String> uploadPdfToFileStore2(Uint8List bytes, String filename) async {
-    // Use multipart upload: convert bytes to MultipartFile
-    final MultipartFile mf = await MultipartFile.fromBytes(
-      bytes,
-      filename: filename,
-      contentType: MediaType('application', 'pdf'),
-    );
-    final form = FormData.fromMap({
-      "file": mf,
-      // any extra fields your file store API needs (e.g. projectId, docType, etc)
-    });
-
-    final tenantId = env.envConfig.variables.tenantId;
-    final resp = await _dio.post<Map<String, dynamic>>(
-      "/filestore/v1/upload?tenantId=$tenantId",
-      data: form,
-      options: Options(
-        contentType: "multipart/form-data",
-      ),
-    );
-    if (resp.statusCode != 200 && resp.statusCode != 201) {
-      throw Exception("File store upload failed: ${resp.statusCode}");
-    }
-    final map = resp.data ?? {};
-    final fileStoreId = map['fileStoreId'] as String?;
-    if (fileStoreId == null) {
-      throw Exception("fileStoreId not returned after upload");
-    }
-    return fileStoreId;
-  }
-
   Future<String> uploadPdfToFileStore(Uint8List bytes, String filename) async {
     // 1. Write bytes to a temp file
     final tempDir = Directory.systemTemp;
@@ -539,6 +508,7 @@ class BomRepository {
     required String projectId,
     required String schemaKey,
     required bool isInboxView,
+    bool isOverall = false,
   }) async {
     if (isInboxView) return 'View';
     final exists = await hasBomForSchema(
@@ -546,6 +516,28 @@ class BomRepository {
       projectId: projectId,
       schemaKey: schemaKey,
     );
-    return exists ? 'Edit' : 'View';
+    return exists
+        ? 'Edit'
+        : isOverall
+            ? 'Fill'
+            : 'View';
+  }
+
+  Future<Map<String, dynamic>?> getProjectBomKV({
+    required Isar isar,
+    required String projectId,
+    required String userType,
+  }) async {
+    final entryKey = '$projectId::$userType';
+    final rec = await isar.cacheProjectBomValues
+        .where()
+        .entryKeyEqualTo(entryKey)
+        .findFirst();
+    if (rec == null || rec.dataJson.isEmpty) return null;
+    try {
+      return jsonDecode(rec.dataJson) as Map<String, dynamic>;
+    } catch (_) {
+      return null;
+    }
   }
 }
