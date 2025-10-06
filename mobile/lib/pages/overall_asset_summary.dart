@@ -198,14 +198,6 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                   listener: (context, assetSubmissionState) {
                     assetSubmissionState.whenOrNull(
                       success: () {
-                        // context.showSnackBar(
-                        //   const SnackBar(
-                        //       content:
-                        //           Text("All assets submitted successfully")),
-                        // );
-                        // context.router
-                        //     .popAndPush(const SubmittedSaveSuccessRoute());
-
                         ScaffoldMessenger.of(context).clearSnackBars();
                         context.showSnackBar(
                           const SnackBar(
@@ -213,8 +205,7 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                   Text("All assets submitted successfully")),
                         );
 
-                        // Don’t let nested stacks or timing kill the nav
-                        final router = context.router.root; // <— root stack
+                        final router = context.router.root;
                         WidgetsBinding.instance.addPostFrameCallback((_) {
                           if (!mounted) return;
                           if (router.canPop()) {
@@ -695,6 +686,8 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                                                               ? snap.data!
                                                                               : '...';
                                                                           return DigitButton(
+                                                                            capitalizeLetters:
+                                                                                false,
                                                                             mainAxisSize:
                                                                                 MainAxisSize.max,
                                                                             label:

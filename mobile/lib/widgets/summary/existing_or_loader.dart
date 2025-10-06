@@ -3,11 +3,62 @@ import 'dart:io';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:digit_ui_components/theme/spacers.dart';
 import 'package:flutter/material.dart';
+import 'package:path/path.dart' as p;
 
 import '../../model/document/document.dart';
 import '../../router/app_router.dart';
 import '../../widgets/summary/summary.dart';
 import '../files/pdf_card.dart';
+
+/// Rename PDFs using workflow documentType **only when** the filePath
+/// contains that document's fileStoreId (so we don't mix names by order).
+List<ExistingReport> _applyPdfNamesByFileStoreId(
+  List<ExistingReport> existing,
+  List<Document> docs,
+) {
+  if (existing.isEmpty || docs.isEmpty) return existing;
+
+  // Map fileStoreId -> documentType (both lowercased for easy matching)
+  final byFsId = <String, String>{};
+  for (final d in docs) {
+    final fsid = (d.fileStore ?? '').toLowerCase();
+    final dtype = (d.documentType ?? '').toLowerCase();
+    if (fsid.isNotEmpty && dtype.isNotEmpty) {
+      byFsId[fsid] = dtype; // e.g. 58a28418-... -> installation_report
+    }
+  }
+
+  return existing.map((e) {
+    final isPdf = (e.fileType.toLowerCase() == 'pdf');
+    if (!isPdf) return e; // images/unknown untouched
+
+    final pathLower = e.filePath.toLowerCase();
+    String? matchedDocType;
+
+    // Match by fileStoreId substring in the saved file name/path
+    for (final entry in byFsId.entries) {
+      if (pathLower.contains(entry.key)) {
+        matchedDocType = entry.value; // already lowercased
+        break;
+      }
+    }
+
+    // Only rename when we have a positive match
+    if (matchedDocType != null && matchedDocType.isNotEmpty) {
+      final clean =
+          '${matchedDocType.replaceAll('_', ' ')}.pdf'; // installation_report.pdf or installation_report_bom.pdf
+      return ExistingReport(
+        isarId: e.isarId,
+        filePath: e.filePath,
+        fileName: clean,
+        fileType: e.fileType,
+      );
+    }
+
+    // No match -> keep as-is (prevents wrong swaps)
+    return e;
+  }).toList();
+}
 
 /// Widget to display a list of existing files (images & pdfs).
 /// showEditButton toggles whether remove icons are shown.
@@ -68,6 +119,10 @@ Widget existingFilesSection({
           children: pdfs.asMap().entries.map((entry) {
             final pdf = entry.value;
 
+            final _display = (pdf.fileName.trim().isNotEmpty
+                ? pdf.fileName.trim()
+                : p.basename(pdf.filePath));
+
             return Padding(
               padding: const EdgeInsets.only(bottom: spacer2),
               child: Stack(
@@ -76,10 +131,10 @@ Widget existingFilesSection({
                   GestureDetector(
                     onTap: () => onTapPdf(pdf.filePath),
                     child: pdfCard(
-                      context: context,
-                      filePath: pdf.filePath,
-                      fileSize: fileSizeFor(pdf.filePath),
-                    ),
+                        context: context,
+                        // filePath: pdf.filePath,
+                        fileSize: fileSizeFor(pdf.filePath),
+                        filePath: _display.replaceAll('_', ' ')),
                   ),
                   if (showEditButton == true)
                     cancelIcon(context: context, onPress: () => onRemove(pdf))
@@ -141,9 +196,11 @@ class ExistingFilesOrLoader extends StatelessWidget {
       );
     }
 
+    final displayable = _applyPdfNamesByFileStoreId(
+        existingReports ?? [], workflowDocuments ?? []);
     return existingFilesSection(
       context: context,
-      existing: existingReports ?? [],
+      existing: displayable,
       showEditButton: !readOnly,
       onTapImage: (path) => context.router.push(ImageViewerRoute(path: path)),
       onTapPdf: (path) => context.router.push(PdfViewerRoute(path: path)),
