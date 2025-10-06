@@ -451,12 +451,12 @@ class CompletionReportRepository {
   CompletionReportRepository(this._isar);
 
   Future<void> delete({required String projectId}) async {
-    final col = _isar.cacheCompletionReports;
-    final row = await col.where().projectIdEqualTo(projectId).findFirst();
-    if (row != null) {
-      await _isar.writeTxn(() async {
-        await col.delete(row.id);
-      });
-    }
+    await _isar.writeTxn(() async {
+      final col = _isar.cacheCompletionReports;
+      final reports = await col.where().projectIdEqualTo(projectId).findAll();
+      for (final report in reports) {
+        await col.delete(report.id);
+      }
+    });
   }
 }

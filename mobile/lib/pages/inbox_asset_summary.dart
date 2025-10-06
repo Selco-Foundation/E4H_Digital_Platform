@@ -450,6 +450,8 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
                                                                               ? snap.data!
                                                                               : '...';
                                                                           return DigitButton(
+                                                                            capitalizeLetters:
+                                                                                false,
                                                                             mainAxisSize:
                                                                                 MainAxisSize.max,
                                                                             label:

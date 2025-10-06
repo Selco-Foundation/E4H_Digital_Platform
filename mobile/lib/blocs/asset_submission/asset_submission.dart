@@ -420,12 +420,14 @@ class AssetSubmissionBloc
         documents: [...workflowDocuments, ...completionDocuments],
       );
 
+      // caches to clear
       await _draftRepo.delete(projectId, userType);
       await PrefilledProjectRepository(_isar).delete(
         projectId: projectId,
         userType: userType,
       );
       await CompletionReportRepository(_isar).delete(projectId: projectId);
+      await BomRepository().delete(isar: _isar, projectId: projectId);
       if (!fromDraft) emit(const AssetSubmissionState.success());
       return true;
     } catch (e) {

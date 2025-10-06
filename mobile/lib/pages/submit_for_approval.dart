@@ -401,6 +401,8 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                                                                     ? snap.data!
                                                                     : '...';
                                                             return DigitButton(
+                                                              capitalizeLetters:
+                                                                  false,
                                                               mainAxisSize:
                                                                   MainAxisSize
                                                                       .max,
