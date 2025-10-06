@@ -19,9 +19,7 @@ Widget existingFilesSection({
   required FileTapCallback onTapPdf,
   required RemoveReportCallback onRemove,
 }) {
-  print("existing.length ${existing.length}");
   if (existing.isEmpty) return const SizedBox.shrink();
-  print("existing.fileType ${existing[0].fileType}");
   final images = existing.where((e) => e.fileType == 'image').toList();
   final pdfs = existing
       .where((e) => e.fileType == 'pdf' || e.fileType == 'unknown')
