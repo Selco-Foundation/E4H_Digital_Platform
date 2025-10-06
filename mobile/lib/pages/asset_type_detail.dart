@@ -217,9 +217,13 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
                                   child: DigitDropdown(
                                     sentenceCaseEnabled: false,
                                     selectedOption: DropdownItem(
-                                      name: parseWarrantyYears(selectedWarranty)
-                                              ?.toString() ??
-                                          "",
+                                      name: (selectedWarranty == null ||
+                                              selectedWarranty!.isEmpty)
+                                          ? ''
+                                          : (parseWarrantyYears(
+                                                      selectedWarranty!)
+                                                  ?.toString() ??
+                                              ''),
                                       code: selectedWarranty ?? "",
                                     ),
                                     items: assetWarranties

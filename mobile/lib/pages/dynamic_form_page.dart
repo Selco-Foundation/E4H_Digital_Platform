@@ -87,6 +87,50 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
     });
   }
 
+  // Add inside _DynamicFormsPageState:
+
+  dynamic _coerceForControl(AbstractControl<Object?> control, dynamic v) {
+    if (v == null) return null;
+
+    // Date/time fields
+    if (control is FormControl<DateTime?>) {
+      if (v is DateTime) return v;
+      if (v is String) return DateTime.tryParse(v);
+      return null;
+    }
+
+    // Integers
+    if (control is FormControl<int?>) {
+      if (v is int) return v;
+      if (v is double) return v.toInt();
+      if (v is String) return int.tryParse(v);
+      return null;
+    }
+
+    // Doubles
+    if (control is FormControl<double?>) {
+      if (v is double) return v;
+      if (v is int) return v.toDouble();
+      if (v is String) return double.tryParse(v);
+      return null;
+    }
+
+    // Booleans
+    if (control is FormControl<bool?>) {
+      if (v is bool) return v;
+      if (v is String) {
+        final s = v.toLowerCase().trim();
+        if (s == 'true' || s == '1' || s == 'yes') return true;
+        if (s == 'false' || s == '0' || s == 'no') return false;
+      }
+      if (v is num) return v != 0;
+      return null;
+    }
+
+    // Strings and everything else – pass through as-is
+    return v;
+  }
+
   String? _currentSchemaKey(FormsState state) {
     final requested = widget.schemaName ?? widget.uniqueIdentifier;
     if (requested != null && state.cachedSchemas.containsKey(requested)) {
@@ -390,11 +434,15 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
                 } else {
                   // Apply only available defaults; clear everything else to null
                   // 1) set provided defaults
-                  pageDefaults.forEach((k, v) {
+                  pageDefaults.forEach((k, raw) {
                     if (form.contains(k)) {
-                      form
-                          .control(k)
-                          .updateValue(v, updateParent: true, emitEvent: false);
+                      // form
+                      //     .control(k)
+                      //     .updateValue(v, updateParent: true, emitEvent: false);
+                      final ctrl = form.control(k);
+                      final coerced = _coerceForControl(ctrl, raw);
+                      ctrl.updateValue(coerced,
+                          updateParent: true, emitEvent: false);
                     }
                   });
                   // 2) clear missing keys

@@ -50,6 +50,7 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
   double? _longitude;
   String? _solutionDesignTypeCode;
   late String userType = "";
+  bool _didNavigateAfterSubmit = false;
 
   List<ExistingReport> _existingReports = []; // custom preview & removable
   List<PlatformFile> _pickedFiles = []; // widget previews these
@@ -103,6 +104,7 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
 
   @override
   void dispose() {
+    _didNavigateAfterSubmit = false;
     _locSub?.cancel();
     super.dispose();
   }
@@ -196,18 +198,37 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                   listener: (context, assetSubmissionState) {
                     assetSubmissionState.whenOrNull(
                       success: () {
+                        // context.showSnackBar(
+                        //   const SnackBar(
+                        //       content:
+                        //           Text("All assets submitted successfully")),
+                        // );
+                        // context.router
+                        //     .popAndPush(const SubmittedSaveSuccessRoute());
+
+                        ScaffoldMessenger.of(context).clearSnackBars();
                         context.showSnackBar(
                           const SnackBar(
                               content:
                                   Text("All assets submitted successfully")),
                         );
-                        context.router
-                            .popAndPush(const SubmittedSaveSuccessRoute());
+
+                        // Don’t let nested stacks or timing kill the nav
+                        final router = context.router.root; // <— root stack
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (!mounted) return;
+                          if (router.canPop()) {
+                            router
+                                .popAndPush(const SubmittedSaveSuccessRoute());
+                          } else {
+                            router.push(const SubmittedSaveSuccessRoute());
+                          }
+                        });
                       },
                       failure: (error) {
-                        context.showSnackBar(
-                          SnackBar(content: Text("$error")),
-                        );
+                        ScaffoldMessenger.of(context).clearSnackBars();
+                        context.showSnackBar(SnackBar(content: Text("$error")));
+                        _didNavigateAfterSubmit = false;
                       },
                       loading: () {},
                       progress: (completed, total) {
