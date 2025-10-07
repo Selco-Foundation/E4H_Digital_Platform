@@ -1,12 +1,11 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import useBoundary from "../../hooks/useBoundary";
 import useMDMS from "../../hooks/useMDMS";
 import useProject from "../../hooks/useProject";
 import { useTranslation } from "react-i18next";
-import CustomArrowRight from "../../components/Custom/CustomArrowRight";
 import CustomCloseSvg from "../../components/Custom/CustomCloseSvg";
 import { Button, FormComposerV2, Loader, PopUp, Toast } from "@egovernments/digit-ui-react-components";
-import {Stepper} from "@egovernments/digit-ui-components";
+import { Stepper } from "@egovernments/digit-ui-components";
 import { useDispatch } from "react-redux";
 import { populateResponsePage, populateWorkingFieldPlan, populateWorkingProject } from "../../redux/actions";
 import { useHistory } from "react-router-dom";
@@ -17,6 +16,7 @@ import { ActivityService } from "../../services/Activity";
 import useOrganization from "../../hooks/useOrganization";
 import useOrganizationUser from "../../hooks/useOrganizationUser";
 import useActivityAssignment from "../../hooks/useActivityAssignment";
+import CommonUtils from "../../utilities/CommonUtils";
 
 const CreateFieldPlan = () => {
 
@@ -34,7 +34,7 @@ const CreateFieldPlan = () => {
   const [file, setFile] = useState(null);
   const [invalidDataError, setInvalidDataError] = useState(null);
   const [getFormData, setGetFormData] = useState(null);
-  const [showBackAlert, setShowBackAlert] = useState(false);
+  const [backAlert, setBackAlert] = useState(null);
   const [boundaryData, setBoundaryData] = useState(null);
   const history = useHistory();
   const url = window.location.href;
@@ -149,6 +149,52 @@ const CreateFieldPlan = () => {
     return `${year}-${month}-${day}`;
   };
 
+  const getDefaultActivityAssignments = useCallback(() => {
+    return createdFieldPlan.activities
+      ? createdFieldPlan.activities
+        .map((activity) => ({
+          activity: activity,
+          users: [
+            ...(
+              activityAssignmentData?.activityAssignments?.filter((assignment) => assignment.activityCode === activity.code)?.length
+                ? activityAssignmentData.activityAssignments
+                  .filter((assignment) => assignment.activityCode === activity.code)
+                  .map((assignment) => ({
+                    id: assignment.id,
+                    savedAssignment: assignment,
+                    startDate: { value: formatDate(assignment.startDate), error: "", },
+                    endDate: { value: formatDate(assignment.endDate), error: "", },
+                    poNumber: { value: assignment.pocNumber, error: "", },
+                    organization: {
+                      value: organizationData?.organizations?.filter((organization) => (
+                        organization?.id === organizationUserData?.organizationUsers?.filter((user) => user.uuid === assignment.assignedTo)?.[0]?.organizationId
+                      ))?.[0],
+                      error: "",
+                    },
+                    role: { value: assignment.role, error: "", },
+                    email: {
+                      value: organizationUserData?.organizationUsers?.filter((user) => user.uuid === assignment.assignedTo)?.[0],
+                      error: "",
+                    },
+                    isEmailSent: assignment.isEmailSent,
+                  }))
+                : [
+                  {
+                    startDate: { value: "", error: "", },
+                    endDate: { value: "", error: "", },
+                    poNumber: { value: "", error: "", },
+                    organization: { value: null, error: "", },
+                    role: { value: null, error: "", },
+                    email: { value: null, error: "", },
+                    isEmailSent: false,
+                  }
+                ]
+            )
+          ],
+        }))
+      : null
+  }, [createdFieldPlan, activityAssignmentData, organizationData, organizationUserData])
+
   useEffect(() => {
     if (createdFieldPlan?.id && boundaryData && activityData) {
       const savedActivityCodes = createdFieldPlan.activities.map((activity) => activity.code);
@@ -173,47 +219,7 @@ const CreateFieldPlan = () => {
           activities: activityData.filter((activity) => savedActivityCodes.includes(activity.code)),
         },
         activityDetails: {
-          activityUserAssignment: createdFieldPlan.activities
-            .map((activity) => ({
-              activity: activity,
-              users: [
-                ...(
-                  activityAssignmentData?.activityAssignments?.filter((assignment) => assignment.activityCode === activity.code)?.length
-                    ? activityAssignmentData.activityAssignments
-                      .filter((assignment) => assignment.activityCode === activity.code)
-                      .map((assignment) => ({
-                        id: assignment.id,
-                        savedAssignment: assignment,
-                        startDate: { value: formatDate(assignment.startDate), error: "", },
-                        endDate: { value: formatDate(assignment.endDate), error: "", },
-                        poNumber: { value: assignment.pocNumber, error: "", },
-                        organization: {
-                          value: organizationData?.organizations?.filter((organization) => (
-                            organization?.id === organizationUserData?.organizationUsers?.filter((user) => user.uuid === assignment.assignedTo)?.[0]?.organizationId
-                          ))?.[0],
-                          error: "",
-                        },
-                        role: { value: assignment.role, error: "", },
-                        email: {
-                          value: organizationUserData?.organizationUsers?.filter((user) => user.uuid === assignment.assignedTo)?.[0],
-                          error: "",
-                        },
-                        isEmailSent: assignment.isEmailSent,
-                      }))
-                    : [
-                      {
-                        startDate: { value: "", error: "", },
-                        endDate: { value: "", error: "", },
-                        poNumber: { value: "", error: "", },
-                        organization: { value: null, error: "", },
-                        role: { value: null, error: "", },
-                        email: { value: null, error: "", },
-                        isEmailSent: false,
-                      }
-                    ]
-                )
-              ],
-            })),
+          activityUserAssignment: getDefaultActivityAssignments(),
         }
       }
 
@@ -227,7 +233,7 @@ const CreateFieldPlan = () => {
 
       setPersistedFormData(formData);
     }
-  }, [createdProject, createdFieldPlan, boundaryData, activityData, activityAssignmentData, organizationData, organizationUserData]);
+  }, [createdProject, createdFieldPlan, boundaryData, activityData, getDefaultActivityAssignments]);
 
   const handleFacilityDataDownload = async () => {
 
@@ -871,8 +877,13 @@ const CreateFieldPlan = () => {
   const handleFormSubmit = async (data) => {
     switch (currentKey) {
       case 1:
-        setPersistedFormData((prev) => ({ ...prev, fieldPlanDetails: data }));
-        await upsertFieldPlan(data);
+        const savedFieldPlanDetails = persistedFormData.fieldPlanDetails;
+        if (CommonUtils.isNotEqual(savedFieldPlanDetails, data)) {
+          setPersistedFormData((prev) => ({ ...prev, fieldPlanDetails: data }));
+          await upsertFieldPlan(data);
+        } else {
+          setCurrentKey((prev) => prev + 1);
+        }
         break;
       case 2:
         setPersistedFormData((prev) => ({ ...prev, facilityData: data }));
@@ -912,36 +923,75 @@ const CreateFieldPlan = () => {
   };
 
   const onStepClick = (key) => {
-    if (key >= currentKey) return;
-    setCurrentKey(key + 1);
+    if (key + 1 >= currentKey) return;
+    switch (currentKey) {
+      case 2:
+        setCurrentKey(key + 1);
+        break;
+      case 3:
+        const savedActivityAssignments = getDefaultActivityAssignments();
+        const currentActivityAssignments = getFormData("activityUserAssignment");
+        if (CommonUtils.isNotEqual(savedActivityAssignments, currentActivityAssignments)) {
+          setBackAlert({
+            continueAction: () => {
+              setPersistedFormData((prevState) => ({
+                ...prevState,
+                activityDetails: {
+                  activityUserAssignment: savedActivityAssignments,
+                },
+              }));
+              setCurrentKey(key + 1);
+            }
+          });
+        } else {
+          setCurrentKey(key + 1);
+        }
+    }
   };
 
   const handleBackNavigation = () => {
     switch (currentKey) {
       case 1:
-        setShowBackAlert(true);
+        const savedFieldPlanDetails = persistedFormData.fieldPlanDetails;
+        const currentFieldPlanDetails = {
+          state: getFormData("state"),
+          districts: getFormData("districts"),
+          blocks: getFormData("blocks"),
+          fieldPlanDuration: getFormData("fieldPlanDuration"),
+          healthFacilitiesCount: getFormData("healthFacilitiesCount"),
+          activities: getFormData("activities"),
+        };
+        if (CommonUtils.isNotEqual(savedFieldPlanDetails, currentFieldPlanDetails)) {
+          setBackAlert({
+            continueAction: () => {
+              window.history.back();
+            }
+          });
+        } else {
+          window.history.back();
+        }
         break;
       case 2:
-        setShowBackAlert(true);
-        break;
-      case 3:
-        setShowBackAlert(true);
-    }
-  };
-
-  const handleConfirmBackNavigation = () => {
-    switch (currentKey) {
-      case 1:
-        setShowBackAlert(false);
-        window.history.back();
-        break;
-      case 2:
-        setShowBackAlert(false);
         setCurrentKey((prev) => prev - 1);
         break;
       case 3:
-        setShowBackAlert(false);
-        setCurrentKey((prev) => prev - 1);
+        const savedActivityAssignments = getDefaultActivityAssignments();
+        const currentActivityAssignments = getFormData("activityUserAssignment");
+        if (CommonUtils.isNotEqual(savedActivityAssignments, currentActivityAssignments)) {
+          setBackAlert({
+            continueAction: () => {
+              setPersistedFormData((prevState) => ({
+                ...prevState,
+                activityDetails: {
+                  activityUserAssignment: savedActivityAssignments,
+                },
+              }));
+              setCurrentKey((prev) => prev - 1);
+            }
+          });
+        } else {
+          setCurrentKey((prev) => prev - 1);
+        }
     }
   };
 
@@ -1037,7 +1087,7 @@ const CreateFieldPlan = () => {
           onClose={() => setToast(null)}
         />
       )}
-      {showBackAlert && (
+      {backAlert && (
         <PopUp>
           <div
             style={{
@@ -1071,7 +1121,7 @@ const CreateFieldPlan = () => {
                   padding: "0",
                   borderRadius: "3px",
                 }}
-                onClick={() => setShowBackAlert(false)}
+                onClick={() => setBackAlert(null)}
               >
                 <CustomCloseSvg fill={"transparent"} />
               </button>
@@ -1099,8 +1149,11 @@ const CreateFieldPlan = () => {
               {t("PM_ALERT_LOSE_UNSAVED_DATA")}
             </p>
             <div style={{display: "flex", justifyContent: "space-around"}}>
-              <Button variation={"secondary"} label={t("CORE_COMMON_CANCEL")} onButtonClick={() => setShowBackAlert(false)} />
-              <Button variation={"primary"} label={t("CORE_COMMON_CONTINUE")} onButtonClick={handleConfirmBackNavigation} />
+              <Button variation={"secondary"} label={t("CORE_COMMON_CANCEL")} onButtonClick={() => setBackAlert(null)} />
+              <Button variation={"primary"} label={t("CORE_COMMON_CONTINUE")} onButtonClick={() => {
+                backAlert.continueAction();
+                setBackAlert(null);
+              }} />
             </div>
           </div>
         </PopUp>
