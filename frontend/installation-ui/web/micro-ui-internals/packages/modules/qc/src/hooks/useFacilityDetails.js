@@ -63,7 +63,7 @@ const getAssetAggregation = async (workflow) => {
   };
   const documentAggregation = [];
 
-  if (workflow?.[0]?.action === "SUBMIT_REPORT_B" && Array.isArray(workflow[0].documents)) {
+  if (["SUBMIT_REPORT_B", "APPROVE", "REJECT_AND_ASSIGN_FOR_FIELD_QC", "FLAG_FOR_QC"].includes(workflow?.[0]?.action) && Array.isArray(workflow[0].documents)) {
     for (const document of workflow[0].documents) {
 
       let fileUrl, fileDetails;
