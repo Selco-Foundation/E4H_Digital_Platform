@@ -498,7 +498,8 @@ class BomRepository {
     required String schemaKey,
     required FormOrigin origin,
   }) async {
-    if (origin == FormOrigin.inboxSummary) return 'View';
+    if (origin == FormOrigin.inboxSummary || origin == FormOrigin.submitted)
+      return 'View';
     final exists = await hasBomForSchema(
       isar: isar,
       projectId: projectId,

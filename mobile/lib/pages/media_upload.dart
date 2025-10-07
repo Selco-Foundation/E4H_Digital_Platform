@@ -287,8 +287,10 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
                           allowedExtensions: const [
                             "jpg",
                             'jpeg',
+                            "png",
                             'JPG',
-                            'JPEG'
+                            'JPEG',
+                            'PNG'
                           ],
                           key: ValueKey('images-$_imageKeyCounter'),
                           label: 'Upload Images',

@@ -52,8 +52,8 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
   late String userType = "";
   bool _didNavigateAfterSubmit = false;
 
-  List<ExistingReport> _existingReports = []; // custom preview & removable
-  List<PlatformFile> _pickedFiles = []; // widget previews these
+  List<ExistingReport> _existingReports = [];
+  List<PlatformFile> _pickedFiles = [];
 
   StreamSubscription<LocationState>? _locSub;
 
@@ -215,6 +215,8 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                       newReport: () => true, orElse: () => false);
                   final bool isInboxReport = reportState.maybeWhen(
                       inbox: () => true, orElse: () => false);
+                  final bool isSubmittedReport = reportState.maybeWhen(
+                      submitted: () => true, orElse: () => false);
 
                   return BlocConsumer<AssetSubmissionBloc,
                       AssetSubmissionState>(
@@ -390,6 +392,7 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                                 ),
                                               );
 
+                                          return;
                                           // Proceed with submission
                                           context
                                               .read<AssetSubmissionBloc>()
@@ -709,12 +712,20 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                                                           .isar;
                                                                       return FutureBuilder<
                                                                               String>(
-                                                                          future: BomRepository().resolveBomActionLabel(
-                                                                              isar: isar,
-                                                                              projectId: _currentProjectId!,
-                                                                              schemaKey: r.schemaName,
-                                                                              origin: FormOrigin.overallSummary),
-                                                                          builder: (context, snap) {
+                                                                          future: BomRepository()
+                                                                              .resolveBomActionLabel(
+                                                                            isar:
+                                                                                isar,
+                                                                            projectId:
+                                                                                _currentProjectId!,
+                                                                            schemaKey:
+                                                                                r.schemaName,
+                                                                            origin: isSubmittedReport
+                                                                                ? FormOrigin.submitted
+                                                                                : FormOrigin.overallSummary,
+                                                                          ),
+                                                                          builder:
+                                                                              (context, snap) {
                                                                             final labelWord = snap.hasData
                                                                                 ? snap.data!
                                                                                 : '...';
@@ -727,7 +738,7 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                                                                   pageName: r.pageName,
                                                                                   schemaName: r.schemaName,
                                                                                   projectId: _currentProjectId!,
-                                                                                  origin: FormOrigin.overallSummary,
+                                                                                  origin: isSubmittedReport ? FormOrigin.submitted : FormOrigin.overallSummary,
                                                                                 ));
                                                                               },
                                                                               type: DigitButtonType.secondary,
@@ -754,26 +765,26 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                           ...(isNewReport || isInboxReport
                                               ? [
                                                   FileUploadWidget(
-                                                    allowedExtensions: const [
-                                                      "pdf",
-                                                      "jpg",
-                                                      "jpeg",
-                                                      "png"
-                                                    ],
-                                                    showPreview: true,
-                                                    allowMultiples: true,
-                                                    label: 'Upload',
-                                                    onFilesSelected: (files) {
-                                                      if (files.isEmpty) {
+                                                      allowedExtensions: const [
+                                                        "pdf",
+                                                        "jpg",
+                                                        "jpeg",
+                                                        "png"
+                                                      ],
+                                                      showPreview: true,
+                                                      allowMultiples: true,
+                                                      label: 'Upload',
+                                                      onFilesSelected: (files) {
+                                                        if (files.isEmpty) {
+                                                          return <PlatformFile,
+                                                              String?>{};
+                                                        }
+                                                        _ensureLocationLoaded();
+                                                        _handleUploads(files);
+
                                                         return <PlatformFile,
                                                             String?>{};
-                                                      }
-                                                      _ensureLocationLoaded();
-                                                      _handleUploads(files);
-                                                      return <PlatformFile,
-                                                          String?>{};
-                                                    },
-                                                  ),
+                                                      }),
                                                   ExistingFilesOrLoader(
                                                     existingReports:
                                                         _existingReports,
