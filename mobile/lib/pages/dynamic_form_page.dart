@@ -256,6 +256,7 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
     late final PageRouteInfo targetRoute;
     switch (origin) {
       case FormOrigin.overallSummary:
+      case FormOrigin.submitted:
         targetRoute = OverallAssetSummaryRoute(
             refresh: DateTime.now().millisecondsSinceEpoch);
         break;
@@ -677,9 +678,9 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
                         propertySchema: pageSchema,
                         pageName: widget.pageName,
                         childrens: const [],
-                        // also pass the defaults to JsonForms (in case it uses them for rendering)
                         defaultValues: pageDefaults,
-                        isView: widget.origin == FormOrigin.inboxSummary
+                        isView: (widget.origin == FormOrigin.inboxSummary ||
+                                widget.origin == FormOrigin.submitted)
                             ? true
                             : false,
                       ),

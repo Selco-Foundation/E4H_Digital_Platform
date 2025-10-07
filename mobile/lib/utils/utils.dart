@@ -161,11 +161,7 @@ enum USER_TYPES { SUPERVISOR, FIELD_STAFF }
 
 enum ASSET_TYPES { BATTERY, INVERTER, PANEL }
 
-enum FormOrigin {
-  overallSummary,
-  inboxSummary,
-  submitForApproval,
-}
+enum FormOrigin { overallSummary, inboxSummary, submitForApproval, submitted }
 
 bool isValidUuid(String value) {
   try {
