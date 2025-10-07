@@ -19,6 +19,7 @@ import org.springframework.validation.annotation.Validated;
 public class FieldPlanFacilityRequest {
     @JsonProperty("RequestInfo")
     private @NotNull @Valid RequestInfo requestInfo = null;
+
     @JsonProperty("FieldPlanFacility")
     private @NotNull @Valid FieldPlanFacility fieldPlanFacility;
 }

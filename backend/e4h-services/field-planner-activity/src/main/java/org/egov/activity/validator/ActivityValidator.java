@@ -72,6 +72,32 @@ public class ActivityValidator {
             throw new CustomException(errorMap);
     }
 
+    public void validateUpdateActivityAssignment(ActivityAssignmentBulkRequest request) {
+        Map<String, String> errorMap = new HashMap<>();
+        RequestInfo requestInfo = request.getRequestInfo();
+
+        //Verify if RequestInfo and UserInfo is present
+        validateRequestInfo(requestInfo);
+        //Verify if ActivityAssignment request and mandatory fields are present
+        validateUpdateActivityAssignmentRequest(request);
+
+        if (!errorMap.isEmpty())
+            throw new CustomException(errorMap);
+    }
+
+    public void validateDeleteActivityAssignmentRequest(ActivityAssignmentBulkRequest request) {
+        Map<String, String> errorMap = new HashMap<>();
+        RequestInfo requestInfo = request.getRequestInfo();
+
+        //Verify if RequestInfo and UserInfo is present
+        validateRequestInfo(requestInfo);
+        //Verify if ActivityAssignment request and mandatory fields are present
+        validateUnassignActivityAssignmentRequest(request);
+
+        if (!errorMap.isEmpty())
+            throw new CustomException(errorMap);
+    }
+
     public void validateCreateActivityFacilityRequest(ActivityFacilityBulkRequest request) {
         Map<String, String> errorMap = new HashMap<>();
         RequestInfo requestInfo = request.getRequestInfo();
@@ -98,6 +124,10 @@ public class ActivityValidator {
                 log.error("FieldPlan ID is mandatory in FieldPlans");
                 throw new CustomException("FieldPlan", "Project ID is mandatory");
             }
+            if (StringUtils.isBlank(activityAssignment.getTenantId())) {
+                log.error(TENANT_ID_IS_MANDATORY_IN_ACTIVITY_REQUEST_BODY);
+                errorMap.put("TENANT_ID", "Tenant ID is mandatory");
+            }
             // Get existing project with projectID from project service
             FieldPlan existingFieldPlan = getFieldPlanById(request.getRequestInfo(), activityAssignment.getFieldPlanId(), activityAssignment.getTenantId());
             if (existingFieldPlan == null) {
@@ -111,16 +141,13 @@ public class ActivityValidator {
                 log.error("Activity Assignment is mandatory in Activities");
                 throw new CustomException("Activity", "Activity is mandatory");
             }
-            if (StringUtils.isBlank(activityAssignment.getTenantId())) {
-                log.error(TENANT_ID_IS_MANDATORY_IN_ACTIVITY_REQUEST_BODY);
-                errorMap.put("TENANT_ID", "Tenant ID is mandatory");
-            }
             if (activityAssignment.getActivityId() == null) {
                 log.error(ACTIVITIES_IS_MANDATORY_IN_ACTIVITY_REQUEST_BODY);
                 errorMap.put("ACTIVITIES", "Activity is mandatory");
             }
             // Get existing project with projectID from project service
-            Activity existingActivity = activityRepository.getActivityByCode(activityAssignment.getActivityId());
+            ActivitySearchCriteria criteria = ActivitySearchCriteria.builder().code(List.of(activityAssignment.getActivityId())).build();
+            Activity existingActivity = activityRepository.getActivityObject(criteria);
             if (existingActivity == null) {
                 log.error("Activity code do not exist");
                 throw new CustomException("Activity", "Activity code do not exist");
@@ -134,6 +161,97 @@ public class ActivityValidator {
                     && activityAssignment.getEndDate().compareTo(Instant.ofEpochMilli(activityAssignment.getStartDate()).plus(Duration.ofDays(1)).toEpochMilli()) < 0) {
                 log.error("Start date and end date difference should at least be 1 day.");
                 errorMap.put("INVALID_DATE", "Start date and end date difference should at least be 1 day.");
+            }
+        }
+
+        if (!errorMap.isEmpty())
+            throw new CustomException(errorMap);
+    }
+
+    private void validateUpdateActivityAssignmentRequest(ActivityAssignmentBulkRequest request) {
+        Map<String, String> errorMap = new HashMap<>();
+
+        if (request.getActivityAssignments() == null || request.getActivityAssignments().size() == 0) {
+            log.error("Field Plans list is empty. Field Plans is mandatory");
+            throw new CustomException("FIELDPLAN", "Field Plans are mandatory");
+        }
+
+        for (ActivityAssignment activityAssignment : request.getActivityAssignments()) {
+            if (activityAssignment.getFieldPlanId() == null) {
+                log.error("FieldPlan ID is mandatory in FieldPlans");
+                throw new CustomException("FieldPlan", "Project ID is mandatory");
+            }
+            if (StringUtils.isBlank(activityAssignment.getTenantId())) {
+                log.error(TENANT_ID_IS_MANDATORY_IN_ACTIVITY_REQUEST_BODY);
+                errorMap.put("TENANT_ID", "Tenant ID is mandatory");
+            }
+            // Get existing project with projectID from project service
+            FieldPlan existingFieldPlan = getFieldPlanById(request.getRequestInfo(), activityAssignment.getFieldPlanId(), activityAssignment.getTenantId());
+            if (existingFieldPlan == null) {
+                log.error("FieldPlan ID do not exist");
+                throw new CustomException("FieldPlan", "Project ID do not exist");
+            }
+//             Check if fieldPlan dates are within project dates
+            isActivityAsignmentWithinFieldPlan(existingFieldPlan, activityAssignment, errorMap);
+
+            if (activityAssignment == null) {
+                log.error("Activity Assignment is mandatory in Activities");
+                throw new CustomException("Activity", "Activity is mandatory");
+            }
+            if (activityAssignment.getActivityId() == null) {
+                log.error(ACTIVITIES_IS_MANDATORY_IN_ACTIVITY_REQUEST_BODY);
+                errorMap.put("ACTIVITIES", "Activity is mandatory");
+            }
+            // Get existing project with projectID from project service
+            ActivitySearchCriteria criteria = ActivitySearchCriteria.builder().ids(List.of(activityAssignment.getActivityId())).build();
+            Activity existingActivity = activityRepository.getActivityObject(criteria);
+            if (existingActivity == null) {
+                log.error("Activity code do not exist");
+                throw new CustomException("Activity", "Activity code do not exist");
+            }
+
+            if ((activityAssignment.getStartDate() != null && activityAssignment.getEndDate() != null && activityAssignment.getEndDate() != 0) && (activityAssignment.getStartDate().compareTo(activityAssignment.getEndDate()) > 0)) {
+                log.error(START_DATE_SHOULD_BE_LESS_THAN_END_DATE);
+                errorMap.put("INVALID_DATE_ERROR", START_DATE_SHOULD_BE_LESS_THAN_END_DATE);
+            }
+            if (activityAssignment.getStartDate() != null && activityAssignment.getEndDate() != null && activityAssignment.getEndDate() != 0
+                    && activityAssignment.getEndDate().compareTo(Instant.ofEpochMilli(activityAssignment.getStartDate()).plus(Duration.ofDays(1)).toEpochMilli()) < 0) {
+                log.error("Start date and end date difference should at least be 1 day.");
+                errorMap.put("INVALID_DATE", "Start date and end date difference should at least be 1 day.");
+            }
+        }
+
+        if (!errorMap.isEmpty())
+            throw new CustomException(errorMap);
+    }
+
+    private void validateUnassignActivityAssignmentRequest(ActivityAssignmentBulkRequest request) {
+        Map<String, String> errorMap = new HashMap<>();
+
+        if (request.getActivityAssignments() == null || request.getActivityAssignments().size() == 0) {
+            log.error("Field Plans list is empty. Field Plans is mandatory");
+            throw new CustomException("FIELDPLAN", "Field Plans are mandatory");
+        }
+
+        for (ActivityAssignment activityAssignment : request.getActivityAssignments()) {
+            if (activityAssignment.getFieldPlanId() == null) {
+                log.error("FieldPlan ID is mandatory in FieldPlans");
+                throw new CustomException("FieldPlan", "Project ID is mandatory");
+            }
+            // Get existing project with projectID from project service
+            FieldPlan existingFieldPlan = getFieldPlanById(request.getRequestInfo(), activityAssignment.getFieldPlanId(), activityAssignment.getTenantId());
+            if (existingFieldPlan == null) {
+                log.error("FieldPlan ID do not exist");
+                throw new CustomException("FieldPlan", "Project ID do not exist");
+            }
+
+            if (activityAssignment == null) {
+                log.error("Activity Assignment is mandatory in Activities");
+                throw new CustomException("Activity", "Activity is mandatory");
+            }
+            if (StringUtils.isBlank(activityAssignment.getTenantId())) {
+                log.error(TENANT_ID_IS_MANDATORY_IN_ACTIVITY_REQUEST_BODY);
+                errorMap.put("TENANT_ID", "Tenant ID is mandatory");
             }
         }
 
@@ -322,6 +440,25 @@ public class ActivityValidator {
             throw new CustomException(errorMap);
     }
 
+    /* Validates search FieldPlan request body and parameters*/
+    public void validateSearchAssignActivityRequest(ActivityAssignmentSearchRequest request, Integer limit, Integer offset, String tenantId) {
+        Map<String, String> errorMap = new HashMap<>();
+        RequestInfo requestInfo = request.getRequestInfo();
+
+        //Verify if RequestInfo and UserInfo is present
+        validateRequestInfo(requestInfo);
+        //Verify if search fieldplan request parameters are valid
+        validateSearchFieldPlanRequestParams(limit, offset, tenantId);
+        //Verify if search fieldplan request is valid
+        validateActivityAssignmentSearchRequest(request.getCriteria(), tenantId);
+        //Verify MDMS Data
+        // TODO: Uncomment and fix as per HCM once we get clarity
+        // validateRequestMDMSData(project, tenantId, errorMap);
+
+        if (!errorMap.isEmpty())
+            throw new CustomException(errorMap);
+    }
+
     /* Validates if search Project request parameters are valid */
     private void validateSearchFieldPlanRequestParams(Integer limit, Integer offset, String tenantId) {
         if (limit == null) {
@@ -345,6 +482,15 @@ public class ActivityValidator {
         checkFieldPlansIfEmpty(criteria);
 
         doNullAndEmptyChecks(tenantId, criteria);
+    }
+
+    private void validateActivityAssignmentSearchRequest(ActivityAssignmentSearchCriteria criteria, String tenantId) {
+        if (criteria == null) {
+            log.error("Activity is empty. Activity is mandatory");
+            throw new CustomException("Activity", "Activity are mandatory");
+        }
+
+        doNullAndEmptyChecksActivityAssignment(tenantId, criteria);
     }
 
     private static void checkFieldPlansIfEmpty(ActivityFacilitySearchCriteria activityFacilities) {
@@ -373,6 +519,30 @@ public class ActivityValidator {
         }
 
         if (!activityFacility.getTenantId().equals(tenantId)) {
+            log.error("Tenant Id must be same in URL param as well as project request body");
+            throw new CustomException("MULTIPLE_TENANTS", "Tenant Id must be same in URL param and project request");
+        }
+    }
+
+    private static void doNullAndEmptyChecksActivityAssignment(String tenantId, ActivityAssignmentSearchCriteria criteria) {
+        if (criteria == null) {
+            log.error("fieldPlan is mandatory in FieldPlans");
+            throw new CustomException("FIELDPLAN", "FieldPlan is mandatory");
+        }
+        if (StringUtils.isBlank(criteria.getTenantId())) {
+            log.error(TENANT_ID_IS_MANDATORY_IN_ACTIVITY_REQUEST_BODY);
+            throw new CustomException("TENANT_ID", "Tenant ID is mandatory");
+        }
+        if ((criteria.getIds()==null || criteria.getIds().isEmpty()) && (criteria.getFieldPlanId()==null || criteria.getFieldPlanId().isEmpty())
+                && (criteria.getStatuses()==null || criteria.getStatuses().isEmpty()) && (criteria.getActivityId()==null || criteria.getActivityId().isEmpty())
+                && StringUtils.isBlank(criteria.getAssignedTo())
+                && StringUtils.isBlank(criteria.getAssignedBy()))
+        {
+            log.error("Any one Activity search field is required for FieldPlan Search");
+            throw new CustomException("ACTIVITY_SEARCH_FIELDS", "Any one activity search field is required");
+        }
+
+        if (!criteria.getTenantId().equals(tenantId)) {
             log.error("Tenant Id must be same in URL param as well as project request body");
             throw new CustomException("MULTIPLE_TENANTS", "Tenant Id must be same in URL param and project request");
         }
@@ -413,6 +583,83 @@ public class ActivityValidator {
                 throw new CustomException("INVALID_ACTIVITY_UPDATE", "The activity id " + activityFacility.getId() + " that you are trying to update does not exists for the Activity");
             }
         }
+    }
+
+    /* Validates projects data in update request against projects data fetched from database */
+    public void validateUpdateActivityAssignmentAgainstDB(List<ActivityAssignment> activitiesAssignmentFromRequest, List<ActivityAssignment> activitiesAssignmentFromDB) {
+        if (CollectionUtils.isEmpty(activitiesAssignmentFromDB)) {
+            log.error("The activities Assignment records that you are trying to update does not exists in the system");
+            throw new CustomException("INVALID_ACTIVITY_UPDATE", "The records that you are trying to update does not exists in the system");
+        }
+        Long currentTimestamp = Instant.now().toEpochMilli();
+        // Calculate the timestamp for midnight (12:00 AM) of the next date, plus 24 hours, in UTC
+        Instant nextDateInstantUTC = Instant.ofEpochMilli(currentTimestamp)
+                .plus(Duration.ofDays(1))  // Add 1 day to get the next date
+                .atZone(ZoneOffset.UTC)
+                .toLocalDate()  // Extract the date part
+                .atStartOfDay(ZoneOffset.UTC)  // Set the time to midnight
+                .toInstant()// Convert to Instant
+                .plus(Duration.ofDays(1));  // Add 1 day
+
+        Long nextDateTimestampUTC = nextDateInstantUTC.toEpochMilli();
+        for (ActivityAssignment activityAssignment : activitiesAssignmentFromRequest) {
+            ActivityAssignment activityAsignmentFromDB = activitiesAssignmentFromDB.stream().filter(p -> p.getId().equals(activityAssignment.getId())).findFirst().orElse(null);
+
+            if (activityAsignmentFromDB == null) {
+                log.error("The activity assignment id " + activityAssignment.getId() + " that you are trying to update does not exists for the activity");
+                throw new CustomException("INVALID_ACTIVITY_ASSIGNMENT_UPDATE", "The activity id " + activityAssignment.getId() + " that you are trying to update does not exists for the Activity");
+            }
+
+            validateStartDateAndEndDateAgainstDB(activityAssignment, activityAsignmentFromDB, currentTimestamp, nextDateTimestampUTC);
+        }
+    }
+
+    private void validateStartDateAndEndDateAgainstDB(ActivityAssignment activityAssignment, ActivityAssignment activityAssignmentFromDB, Long currentTimestamp, Long nextDateTimestampUTC) {
+        String errorMessage = "";
+        // Check if the fieldplan start date is not null and whether it's different from the one in the database
+        errorMessage = getErrorMessage(activityAssignment, activityAssignmentFromDB, currentTimestamp, nextDateTimestampUTC, errorMessage);
+        // If there's an error message, log it and throw a CustomException
+        if (!errorMessage.trim().isEmpty()) {
+            log.error(errorMessage);
+            throw new CustomException("INVALID_PROJECT_MODIFY", errorMessage);
+        }
+
+        errorMessage = "";
+        // Check if the project end date is not null and whether it's different from the one in the database
+        if (activityAssignment.getEndDate() != null) {
+            // Check if the project end date is before the current timestamp or within 24 hours from the next date's midnight
+            if (activityAssignment.getEndDate().compareTo(activityAssignmentFromDB.getEndDate()) < 0) {
+                if (activityAssignment.getEndDate().compareTo(currentTimestamp) < 0) {
+                    errorMessage = "The fieldplan end date cannot be updated as it has already ended. The fieldplan end date cannot be decreased to a past date.";
+                } else if (activityAssignment.getEndDate().compareTo(nextDateTimestampUTC) < 0) {
+                    errorMessage = "The fieldplan end date cannot be updated as it should be at least 24 hours in advance from the current time and start after the next day onwards.";
+                }
+            }
+        } else {
+            errorMessage = "The fieldplan end date cannot be updated as it is null.";
+        }
+        // If there's an error message, log it and throw a CustomException
+        if (!errorMessage.trim().isEmpty()) {
+            log.error(errorMessage);
+            throw new CustomException("INVALID_PROJECT_MODIFY", errorMessage);
+        }
+    }
+
+    private static String getErrorMessage(ActivityAssignment activityAssignment, ActivityAssignment activityAssignmentFromDB, Long currentTimestamp, Long nextDateTimestampUTC, String errorMessage) {
+        if (activityAssignment.getStartDate() != null) {
+            // Check if the project start date is different from the one in the database
+            if (activityAssignment.getStartDate().compareTo(activityAssignmentFromDB.getStartDate()) != 0) {
+                // Check if the project start date is before the current timestamp or within 24 hours from the next date's midnight
+                if (activityAssignmentFromDB.getStartDate().compareTo(currentTimestamp) < 0) {
+                    errorMessage = "The fieldplan start date cannot be updated as the fieldplan has already started.";
+                } else if (activityAssignment.getStartDate().compareTo(nextDateTimestampUTC) < 0) {
+                    errorMessage = "The fieldplan start date cannot be updated as it should be at least 24 hours in advance from the current time and start after the next day onwards.";
+                }
+            }
+        } else {
+            errorMessage = "The project start date cannot be updated as it is null.";
+        }
+        return errorMessage;
     }
 
     public Facility getFacilityById(String facilityId) {
