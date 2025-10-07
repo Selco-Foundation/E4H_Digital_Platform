@@ -81,8 +81,8 @@ public class BomService {
         return activityFacilities;
     }
 
-    public Integer countAllFieldPlans(BomSearchRequest request, String tenantId, Long lastChangedSince, Boolean includeDeleted) {
-        return bomRepository.getBillOfMatrialsCount(request, tenantId, lastChangedSince, includeDeleted);
+    public Integer countAllBillOfMaterials(BomSearchRequest request, String tenantId, Long lastChangedSince, Boolean includeDeleted) {
+        return bomRepository.getBillOfMaterialsCount(request, tenantId, lastChangedSince, includeDeleted);
     }
 
     public BomBulkRequest updateBillOfMaterials(BomBulkRequest request) {
