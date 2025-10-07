@@ -7,6 +7,7 @@ import org.egov.activity.config.ActivityConfiguration;
 import org.egov.activity.web.models.ActivityFacility;
 import org.egov.activity.web.models.ActivityFacilitySearchCriteria;
 import org.egov.activity.web.models.ActivityFacilitySearchRequest;
+import org.egov.activity.web.models.ActivitySearchCriteria;
 import org.egov.common.models.core.URLParams;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
@@ -21,7 +22,7 @@ import static org.egov.activity.util.ActivityConstants.DOT;
 @RequiredArgsConstructor
 public class ActivityQueryBuilder {
 
-    private static final String FETCH_ACTIVITY_DATA_NAME = "SELECT act.id, act.name, act.code, act.sequence_order, act.tenant_id FROM activities act where ";
+    private static final String FETCH_ACTIVITY_DATA_NAME = "SELECT act.id, act.name, act.code, act.sequence_order, act.tenant_id FROM activities act ";
 
     private static final String FETCH_ACTIVITY_QUERY = "SELECT fa.id as fa_facilityActivityId, fa.tenant_id as fa_tenantId, fa.facility_id as fa_facilityId, fa.activity_id as fa_activityId, " +
             "fa.field_plan_id as fa_fieldPlanId, fa.status as fa_status, fa.conditions_met as fa_conditionsMet, fa.assigned_user as fa_assignedUser, " +
@@ -116,11 +117,18 @@ public class ActivityQueryBuilder {
         }
     }
 
-    public String getActivityDataList(String activityCode, List<Object> preparedStmtList) {
+    public String getActivityDataList(ActivitySearchCriteria criteria, List<Object> preparedStmtList) {
         StringBuilder queryBuilder = new StringBuilder(FETCH_ACTIVITY_DATA_NAME);
-        if (activityCode != null && !activityCode.isEmpty()) {
-            queryBuilder.append(" act.code =? ");
-            preparedStmtList.add(activityCode);
+        if (!CollectionUtils.isEmpty(criteria.getIds())) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            queryBuilder.append(" act.id IN (").append(createQuery(criteria.getIds())).append(")");
+            preparedStmtList.addAll(criteria.getIds());
+        }
+
+        if (!CollectionUtils.isEmpty(criteria.getCode())) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            queryBuilder.append(" act.code IN (").append(createQuery(criteria.getCode())).append(")");
+            preparedStmtList.addAll(criteria.getCode());
         }
 
         return queryBuilder.toString();

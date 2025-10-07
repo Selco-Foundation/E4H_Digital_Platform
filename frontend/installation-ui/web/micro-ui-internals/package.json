@@ -22,9 +22,11 @@
     "publish:css": "cd packages/css && yarn publish --access public",
     "dev:example": "cd example && yarn start",
     "dev:qc": "cd packages/modules/qc && yarn start",
+    "dev:pm": "cd packages/modules/pm && yarn start",
     "build": "run-p build:**",
     "build:qc": "cd packages/modules/qc && yarn build",
-    "deploy:jenkins": "./scripts/jenkins.sh", 
+    "build:pm": "cd packages/modules/pm && yarn build",
+    "deploy:jenkins": "./scripts/jenkins.sh",
     "clean": "rm -rf node_modules"
   },
   "resolutions": {
@@ -33,7 +35,7 @@
     "**/@babel/traverse": "7.25.9",
     "**/babel-preset-react-app": "10.0.0",
     "**/@jridgewell/gen-mapping": "0.3.5",
-    "**/minimatch": "7.4.6"  
+    "**/minimatch": "7.4.6"
   },
   "devDependencies": {
     "husky": "7.0.4",

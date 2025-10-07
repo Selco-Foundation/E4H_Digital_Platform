@@ -5,7 +5,7 @@ from fastapi import HTTPException
 
 
 def project_facility_validation(
-    df, mdms_client, request_info, facility_client, boundary_data
+    df, mdms_client, request_info, facility_client, boundary_data, schemaName
 ):
     """Main function that orchestrates all facility file validations."""
 
@@ -35,7 +35,7 @@ def project_facility_validation(
     new_rows = new_rows.reset_index()
 
     schema = mdms_client.get_column_definitions_and_row_constraints_with_metadata(
-        request_info, 'data-ingestion.FacilityIngestionSchema'
+        request_info, schemaName
     )
 
     # Use positional index mapping to reference errors in original df
@@ -101,6 +101,13 @@ def validate_columns(df, schema, add_err):
             # Enum validation (case-insensitive)
             if col.get("type") == "enum-yes-no" and str_val.lower() not in {"yes", "no"}:
                 add_err(i, f"{col_name} must be Yes or No")
+
+            # --- Dropdown check (MDMS values) ---
+            mdms_values = col.get("mdms_values")
+            if mdms_values:
+                allowed_values = [v.get("name") for v in mdms_values if v.get("name")]
+                if str_val not in allowed_values:
+                    add_err(i, f"Invalid value in column '{col_name}'")
 
 def validate_unique_ids(df, schema, add_err):
     unique_columns = [c for c in schema["column_list"] if c["type"] == "Unique_Id"]

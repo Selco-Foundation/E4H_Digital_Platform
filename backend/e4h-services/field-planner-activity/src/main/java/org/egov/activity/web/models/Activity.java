@@ -40,6 +40,9 @@ public class Activity {
     @JsonProperty("defaultConditions")
     private Map<String, Object> defaultConditions = null;
 
+    @JsonProperty("requiredRoles")
+    private Map<String, Object> requiredRoles = null;
+
     @JsonProperty("auditDetails")
     @Valid
     private AuditDetails auditDetails = null;
