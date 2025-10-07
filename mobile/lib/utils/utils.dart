@@ -15,6 +15,7 @@ import 'package:uuid/uuid.dart';
 import '../blocs/app_init/app_init.dart';
 import '../data/app_shared_preferences.dart';
 import '../data/nosql/cache_completion_report.dart';
+import '../model/document/document.dart';
 import '../model/project_workflow/project_workflow.dart';
 import '../repositories/app_init_Repo.dart';
 import '../repositories/assetRepo.dart';
@@ -173,6 +174,46 @@ bool isValidUuid(String value) {
   } catch (_) {
     return false;
   }
+}
+
+/// Returns a normalized filename for a PDF if we can infer from workflow docs.
+/// - If the PDF path contains the document's fileStoreId, return:
+///     installation_report_bom.pdf OR installation_report.pdf
+/// - Else if its basename hints "bom", return installation_report_bom.pdf
+/// - Else return null (keep original basename).
+String? normalizedInstallPdfNameFromPath(
+  String path,
+  List<Document> docs,
+) {
+  String normalizeType(String t) {
+    final s = (t).toLowerCase();
+    if (s.contains('installation_report_bom')) return 'installation_report_bom';
+    if (s.contains('installation_report')) return 'installation_report';
+    return s; // generic fallback
+  }
+
+  final pathLower = path.toLowerCase();
+  // Map fileStoreId -> normalizedType
+  final byFsId = <String, String>{};
+  for (final d in docs) {
+    final fsid = (d.fileStore ?? '').toLowerCase();
+    final dtype = (d.documentType ?? '').toLowerCase();
+    if (fsid.isNotEmpty && dtype.isNotEmpty) {
+      byFsId[fsid] = normalizeType(dtype);
+    }
+  }
+
+  for (final entry in byFsId.entries) {
+    if (pathLower.contains(entry.key)) {
+      return '${entry.value}.pdf'; // installation_report*.pdf
+    }
+  }
+
+  // Fallback: filename contains 'bom'
+  final base = p.basename(path).toLowerCase();
+  if (base.contains('bom')) return 'installation_report_bom.pdf';
+
+  return null;
 }
 
 /// A simple in‑memory cache of downloaded files.

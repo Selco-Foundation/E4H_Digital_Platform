@@ -122,14 +122,41 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
     );
 
     if (!mounted) return;
+    // setState(() {
+    //   _existingReports = combined.map((pf) {
+    //     final path = pf.path!;
+    //     print("pf p.basename(path) ${p.basename(path)}");
+    //     return ExistingReport(
+    //       isarId: null,
+    //       filePath: path,
+    //       fileName: p.basename(path),
+    //       fileType: inferFileType(path),
+    //     );
+    //   }).toList();
+    //   _pickedFiles = [];
+    // });
+
     setState(() {
+      final docs = project?.workflow?.documents ?? [];
       _existingReports = combined.map((pf) {
         final path = pf.path!;
+        final type = inferFileType(path);
+        String name = p.basename(path);
+
+        if (type == 'pdf') {
+          final normalized = normalizedInstallPdfNameFromPath(path, docs);
+          if (normalized != null && normalized.isNotEmpty) {
+            // Ensure the normalized tag is present in the stored name
+            name =
+                normalized; // if you prefer, you could do '$normalized__$name'
+          }
+        }
+
         return ExistingReport(
           isarId: null,
           filePath: path,
-          fileName: p.basename(path),
-          fileType: inferFileType(path),
+          fileName: name,
+          fileType: type,
         );
       }).toList();
       _pickedFiles = [];
@@ -332,10 +359,28 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                               index: null,
                             ));
                           }
-                          context.read<AssetSubmissionBloc>().add(
-                                AssetSubmissionEvent.submitAll(
-                                    projectId: projectId, userType: userType),
-                              );
+
+                          final selState =
+                              context.read<SelectedProjectBloc>().state;
+
+                          selState.whenOrNull(selected: (project) {
+                            context.read<ProjectBloc>().add(
+                                  ProjectEvent.addUnSubmitted(
+                                      project, userType),
+                                );
+
+                            context.read<CacheCompletionReportBloc>().add(
+                                  CacheCompletionReportEvent
+                                      .replaceAllForProject(
+                                    projectId: projectId!,
+                                    files: inputs,
+                                  ),
+                                );
+                            context.read<AssetSubmissionBloc>().add(
+                                  AssetSubmissionEvent.submitAll(
+                                      projectId: projectId, userType: userType),
+                                );
+                          });
                         });
                   },
                 );
@@ -428,7 +473,7 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                                                             schemaKey:
                                                                 r.schemaName,
                                                             origin: FormOrigin
-                                                                .overallSummary,
+                                                                .submitForApproval,
                                                           ),
                                                           builder:
                                                               (context, snap) {
