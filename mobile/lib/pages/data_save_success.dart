@@ -89,7 +89,8 @@ class _DataSaveSuccessPageState extends State<DataSaveSuccessPage> {
                             userType: userType,
                           );
                         }
-                        context.router.push(const OverallAssetSummaryRoute());
+                        context.router.push(OverallAssetSummaryRoute(
+                            refresh: DateTime.now().millisecondsSinceEpoch));
                       }
                     }),
               ],

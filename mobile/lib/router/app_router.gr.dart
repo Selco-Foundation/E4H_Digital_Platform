@@ -67,6 +67,7 @@ abstract class _$AppRouter extends RootStackRouter {
           schemaName: args.schemaName,
           uniqueIdentifier: args.uniqueIdentifier,
           projectId: args.projectId,
+          origin: args.origin,
         ),
       );
     },
@@ -99,9 +100,14 @@ abstract class _$AppRouter extends RootStackRouter {
       );
     },
     InboxAssetSummaryRoute.name: (routeData) {
+      final args = routeData.argsAs<InboxAssetSummaryRouteArgs>(
+          orElse: () => const InboxAssetSummaryRouteArgs());
       return AutoRoutePage<dynamic>(
         routeData: routeData,
-        child: const InboxAssetSummaryPage(),
+        child: InboxAssetSummaryPage(
+          key: args.key,
+          refresh: args.refresh,
+        ),
       );
     },
     InboxRoute.name: (routeData) {
@@ -129,9 +135,14 @@ abstract class _$AppRouter extends RootStackRouter {
       );
     },
     OverallAssetSummaryRoute.name: (routeData) {
+      final args = routeData.argsAs<OverallAssetSummaryRouteArgs>(
+          orElse: () => const OverallAssetSummaryRouteArgs());
       return AutoRoutePage<dynamic>(
         routeData: routeData,
-        child: const OverallAssetSummaryPage(),
+        child: OverallAssetSummaryPage(
+          key: args.key,
+          refresh: args.refresh,
+        ),
       );
     },
     PdfViewerRoute.name: (routeData) {
@@ -171,9 +182,14 @@ abstract class _$AppRouter extends RootStackRouter {
       );
     },
     SubmitForApprovalRoute.name: (routeData) {
+      final args = routeData.argsAs<SubmitForApprovalRouteArgs>(
+          orElse: () => const SubmitForApprovalRouteArgs());
       return AutoRoutePage<dynamic>(
         routeData: routeData,
-        child: const SubmitForApprovalPage(),
+        child: SubmitForApprovalPage(
+          key: args.key,
+          refresh: args.refresh,
+        ),
       );
     },
     SubmittedSaveSuccessRoute.name: (routeData) {
@@ -325,6 +341,7 @@ class DynamicFormsRoute extends PageRouteInfo<DynamicFormsRouteArgs> {
     String? schemaName,
     String? uniqueIdentifier,
     required String projectId,
+    required FormOrigin origin,
     List<PageRouteInfo>? children,
   }) : super(
           DynamicFormsRoute.name,
@@ -334,6 +351,7 @@ class DynamicFormsRoute extends PageRouteInfo<DynamicFormsRouteArgs> {
             schemaName: schemaName,
             uniqueIdentifier: uniqueIdentifier,
             projectId: projectId,
+            origin: origin,
           ),
           rawPathParams: {'pageName': pageName},
           initialChildren: children,
@@ -352,6 +370,7 @@ class DynamicFormsRouteArgs {
     this.schemaName,
     this.uniqueIdentifier,
     required this.projectId,
+    required this.origin,
   });
 
   final Key? key;
@@ -364,9 +383,11 @@ class DynamicFormsRouteArgs {
 
   final String projectId;
 
+  final FormOrigin origin;
+
   @override
   String toString() {
-    return 'DynamicFormsRouteArgs{key: $key, pageName: $pageName, schemaName: $schemaName, uniqueIdentifier: $uniqueIdentifier, projectId: $projectId}';
+    return 'DynamicFormsRouteArgs{key: $key, pageName: $pageName, schemaName: $schemaName, uniqueIdentifier: $uniqueIdentifier, projectId: $projectId, origin: $origin}';
   }
 }
 
@@ -452,16 +473,40 @@ class ImageViewerRouteArgs {
 
 /// generated route for
 /// [InboxAssetSummaryPage]
-class InboxAssetSummaryRoute extends PageRouteInfo<void> {
-  const InboxAssetSummaryRoute({List<PageRouteInfo>? children})
-      : super(
+class InboxAssetSummaryRoute extends PageRouteInfo<InboxAssetSummaryRouteArgs> {
+  InboxAssetSummaryRoute({
+    Key? key,
+    int? refresh,
+    List<PageRouteInfo>? children,
+  }) : super(
           InboxAssetSummaryRoute.name,
+          args: InboxAssetSummaryRouteArgs(
+            key: key,
+            refresh: refresh,
+          ),
           initialChildren: children,
         );
 
   static const String name = 'InboxAssetSummaryRoute';
 
-  static const PageInfo<void> page = PageInfo<void>(name);
+  static const PageInfo<InboxAssetSummaryRouteArgs> page =
+      PageInfo<InboxAssetSummaryRouteArgs>(name);
+}
+
+class InboxAssetSummaryRouteArgs {
+  const InboxAssetSummaryRouteArgs({
+    this.key,
+    this.refresh,
+  });
+
+  final Key? key;
+
+  final int? refresh;
+
+  @override
+  String toString() {
+    return 'InboxAssetSummaryRouteArgs{key: $key, refresh: $refresh}';
+  }
 }
 
 /// generated route for
@@ -522,16 +567,41 @@ class MediaUploadRoute extends PageRouteInfo<void> {
 
 /// generated route for
 /// [OverallAssetSummaryPage]
-class OverallAssetSummaryRoute extends PageRouteInfo<void> {
-  const OverallAssetSummaryRoute({List<PageRouteInfo>? children})
-      : super(
+class OverallAssetSummaryRoute
+    extends PageRouteInfo<OverallAssetSummaryRouteArgs> {
+  OverallAssetSummaryRoute({
+    Key? key,
+    int? refresh,
+    List<PageRouteInfo>? children,
+  }) : super(
           OverallAssetSummaryRoute.name,
+          args: OverallAssetSummaryRouteArgs(
+            key: key,
+            refresh: refresh,
+          ),
           initialChildren: children,
         );
 
   static const String name = 'OverallAssetSummaryRoute';
 
-  static const PageInfo<void> page = PageInfo<void>(name);
+  static const PageInfo<OverallAssetSummaryRouteArgs> page =
+      PageInfo<OverallAssetSummaryRouteArgs>(name);
+}
+
+class OverallAssetSummaryRouteArgs {
+  const OverallAssetSummaryRouteArgs({
+    this.key,
+    this.refresh,
+  });
+
+  final Key? key;
+
+  final int? refresh;
+
+  @override
+  String toString() {
+    return 'OverallAssetSummaryRouteArgs{key: $key, refresh: $refresh}';
+  }
 }
 
 /// generated route for
@@ -631,16 +701,40 @@ class SpecificationRoute extends PageRouteInfo<void> {
 
 /// generated route for
 /// [SubmitForApprovalPage]
-class SubmitForApprovalRoute extends PageRouteInfo<void> {
-  const SubmitForApprovalRoute({List<PageRouteInfo>? children})
-      : super(
+class SubmitForApprovalRoute extends PageRouteInfo<SubmitForApprovalRouteArgs> {
+  SubmitForApprovalRoute({
+    Key? key,
+    int? refresh,
+    List<PageRouteInfo>? children,
+  }) : super(
           SubmitForApprovalRoute.name,
+          args: SubmitForApprovalRouteArgs(
+            key: key,
+            refresh: refresh,
+          ),
           initialChildren: children,
         );
 
   static const String name = 'SubmitForApprovalRoute';
 
-  static const PageInfo<void> page = PageInfo<void>(name);
+  static const PageInfo<SubmitForApprovalRouteArgs> page =
+      PageInfo<SubmitForApprovalRouteArgs>(name);
+}
+
+class SubmitForApprovalRouteArgs {
+  const SubmitForApprovalRouteArgs({
+    this.key,
+    this.refresh,
+  });
+
+  final Key? key;
+
+  final int? refresh;
+
+  @override
+  String toString() {
+    return 'SubmitForApprovalRouteArgs{key: $key, refresh: $refresh}';
+  }
 }
 
 /// generated route for
