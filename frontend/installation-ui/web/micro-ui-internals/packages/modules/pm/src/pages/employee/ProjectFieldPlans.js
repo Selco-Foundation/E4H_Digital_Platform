@@ -7,10 +7,12 @@ import { Link, useHistory, useRouteMatch } from "react-router-dom";
 import { populateWorkingProject } from "../../redux/actions";
 import { useDispatch } from "react-redux";
 import IntroModal from "../../components/IntroModal";
+import useFieldPlan from "../../hooks/useFieldPlan";
 
 const ProjectFieldPlans = () => {
 
   const { t } = useTranslation();
+  const tenantId = Digit.ULBService.getStateId();
   const [mobileView, setMobileView] = useState(window.innerWidth <= 640);
   const { path } = useRouteMatch();
   const history = useHistory();
@@ -33,6 +35,11 @@ const ProjectFieldPlans = () => {
 
   const { isLoading: projectDataLoading, data: projectData } = useProject({
     id: [projectId],
+  });
+
+  const { isLoading: fieldPlanDataLoading, data: fieldPlanData } = useFieldPlan({
+    tenantId,
+    projectIds: [projectId],
   });
 
   useEffect(() => {
@@ -58,25 +65,7 @@ const ProjectFieldPlans = () => {
     return `${day} ${month} ${year}`;
   };
 
-  const data = [
-    {
-      id: "1234",
-      fieldPlanName: "Field Plan 1",
-      activities: ["Tag", "Tag", "Tag", "Tag", "Tag", "Tag"],
-      startDate: 1758240000000,
-      endDate: 1758240000000,
-      numberOfHealthFacilities: 1000,
-      status: "Scheduled"
-    },
-    {
-      fieldPlanName: "",
-      activities: [],
-      startDate: "",
-      endDate: "",
-      numberOfHealthFacilities: "",
-      status: ""
-    }
-  ]
+  const placeHolderFieldPlans = [ {}, {} ]
 
   const GetHead = (value) => (
     <div style={{ height: "38px", width: "100%", display: "flex", alignItems: "center" }}>
@@ -94,7 +83,7 @@ const ProjectFieldPlans = () => {
     <div style={{display: "flex", flexWrap: "wrap", gap: "10px", alignItems: "center"}}>
       {activities?.map((activity) => (
         <span
-          key={activity}
+          key={activity.code}
           style={{
             backgroundColor: "#F1FFF8",
             color: "#00703C",
@@ -102,7 +91,7 @@ const ProjectFieldPlans = () => {
             padding: "5px 10px",
           }}
         >
-          {activity}
+          {activity.name}
         </span>
       ))}
     </div>
@@ -118,7 +107,7 @@ const ProjectFieldPlans = () => {
             to={`/${window.contextPath}/employee/pm/project/${projectId}/field-plan/create?fieldPlanId=${row.original["id"]}&key=1`}
             style={{ color: "#C84C0E" }}
           >
-            {row.original["fieldPlanName"]}
+            {row.original["name"]}
           </Link>
         ),
       },
@@ -130,22 +119,22 @@ const ProjectFieldPlans = () => {
       {
         id: "startDate",
         Header: () => GetHead("Start Date"),
-        Cell: ({ row }) => GetCell(row.original["startDate"] ? formatDate(row.original["startDate"]) : "-"),
+        Cell: ({ row }) => GetCell(row.original["startDate"] ? formatDate(row.original["startDate"]) : ""),
       },
       {
         id: "endDate",
         Header: () => GetHead("End Date"),
-        Cell: ({ row }) => GetCell(row.original["endDate"] ? formatDate(row.original["endDate"]) : "-"),
+        Cell: ({ row }) => GetCell(row.original["endDate"] ? formatDate(row.original["endDate"]) : ""),
       },
       {
         id: "numberOfHealthFacilities",
         Header: () => GetHead("No. of Health Facilities"),
-        Cell: ({ row }) => GetCell(row.original["numberOfHealthFacilities"]),
+        Cell: ({ row }) => GetCell(row.original["healthFacilityNumber"]),
       },
       {
         id: "status",
         Header: () => GetHead("Status"),
-        Cell: ({ row }) => GetCell(row.original["status"]),
+        Cell: ({ row }) => GetCell(row.original["status"] ? t(`PM_FIELD_PLAN_STATUS_${row.original["status"].toUpperCase()}`) : ""),
       },
     ],
     []
@@ -174,11 +163,15 @@ const ProjectFieldPlans = () => {
 
   const renderFieldPlanTable = () => {
 
+    if (fieldPlanDataLoading) {
+      return <Loader />;
+    }
+
     return (
       <div style={{ borderRadius: "6px", overflow: "hidden", boxShadow: "0px 0px 4px 0 rgba(0, 0, 0, 0.2)" }}>
         <Table
           t={t}
-          data={data}
+          data={fieldPlanData?.fieldPlans?.length ? fieldPlanData.fieldPlans : placeHolderFieldPlans}
           columns={columns}
           customTableWrapperClassName={"project-details-table"}
           getCellProps={() => {
@@ -193,7 +186,7 @@ const ProjectFieldPlans = () => {
           onNextPage={onNextPage}
           onPrevPage={onPrevPage}
           currentPage={Math.floor(pageOffset / pageSize)}
-          totalRecords={data.length}
+          totalRecords={fieldPlanData?.totalCount || placeHolderFieldPlans.length}
           onPageSizeChange={onPageSizeChange}
           pageSizeLimit={pageSize}
         />

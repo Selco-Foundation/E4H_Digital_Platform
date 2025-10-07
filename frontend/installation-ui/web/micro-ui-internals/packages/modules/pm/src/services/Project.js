@@ -38,7 +38,7 @@ export const ProjectService = {
       "Content-Type": "application/json"
     }
 
-    if (projectData.apiOperation === "UPDATE") {
+    if (projectData?.apiOperation === "UPDATE") {
       endpoint = "/project/v1/_update";
     }
 

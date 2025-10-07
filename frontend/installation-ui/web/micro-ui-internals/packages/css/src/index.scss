@@ -117,6 +117,7 @@
 @import "./pages/employee/reverseactionbar.scss";
 @import "./pages/employee/projectdetailstable.scss";
 @import "./pages/employee/pmprojectstable.scss";
+@import "./pages/employee/activitydetailstable.scss";
 
 .wbh-header-container {
   display: flex !important;
@@ -881,5 +882,11 @@ input[type="number"] {
       font-size: 16px;
       text-decoration: underline;
     }
+  }
+}
+
+.employee-select-wrap {
+  .options-card {
+    margin-top: 0;
   }
 }
