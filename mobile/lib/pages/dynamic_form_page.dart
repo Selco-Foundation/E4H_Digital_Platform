@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:digit_forms_engine/blocs/forms/forms.dart';
 import 'package:digit_forms_engine/json_forms.dart';
+import 'package:digit_forms_engine/models/property_schema/property_schema.dart';
 import 'package:digit_forms_engine/models/schema_object/schema_object.dart';
 import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
@@ -85,11 +86,23 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
     );
     setState(() {
       _projectInitialKV = kv ?? const {};
-      _formSeed++; // force form controls to be recreated with new defaults
+      _formSeed++;
     });
   }
 
-  // Add inside _DynamicFormsPageState:
+  // Turn "bb_current_uom" or "installation_report_bom" into "Bb Current Uom" / "Installation Report Bom"
+  String _prettyLabel(String s) {
+    if (s.trim().isEmpty) return s;
+    final spaced = s.replaceAll(RegExp(r'[_\-]+'), ' ').trim();
+    return spaced.replaceAllMapped(
+        RegExp(r'\b[a-z]'), (m) => m.group(0)!.toUpperCase());
+  }
+
+// Get a user-facing label for a property key on THIS page
+  String _labelForKey(PropertySchema pageSchema, String key) {
+    final raw = pageSchema?.properties?[key]?.label ?? key;
+    return _prettyLabel(raw);
+  }
 
   dynamic _coerceForControl(AbstractControl<Object?> control, dynamic v) {
     if (v == null) return null;
@@ -413,99 +426,6 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
       child: Scaffold(
         body: BlocConsumer<FormsBloc, FormsState>(
           listener: (context, state) async {
-            // if (state is FormsSubmittedState) {
-            //   final isLast = state.schema.pages.keys.last == widget.pageName;
-            //   if (!isLast) return;
-            //
-            //   final formsBloc = context.read<FormsBloc>();
-            //   final projectBloc = context.read<ProjectBloc>();
-            //   final root = context.router.root;
-            //
-            //   // 1) Flat values
-            //   final Map<String, dynamic> flatValues = {};
-            //   state.schema.pages.forEach((pageKey, pageSchema) {
-            //     pageSchema.properties?.forEach((propKey, propSchema) {
-            //       flatValues[propKey] = propSchema.value;
-            //     });
-            //   });
-            //
-            //   final projectId = widget.projectId;
-            //   final schemaKey = widget.schemaName ??
-            //       widget.uniqueIdentifier ??
-            //       state.schema.name;
-            //
-            //   final rawDoc = await SecureStore().getRawSchemaDoc(schemaKey);
-            //   if (rawDoc != null) {
-            //     final withValues = injectValuesIntoRawDoc(
-            //       rawDoc: rawDoc,
-            //       flatValues: flatValues,
-            //     );
-            //     final isar = projectBloc.isar;
-            //     final assignUserUuid =
-            //         await SecureStore().getSelectedIndividual();
-            //
-            //     await BomRepository().saveLocal(
-            //       isar: isar,
-            //       projectId: projectId,
-            //       schemaKey: schemaKey,
-            //       rawDocWithValues: withValues,
-            //       facilityId: null,
-            //       assignUserUuid: assignUserUuid,
-            //       bomName: schemaKey,
-            //     );
-            //
-            //     // Merge just the non-empty page KV into CacheProjectBomValues
-            //     final kvFromThisPage =
-            //         BomRepository().extractKVFromRawDoc(withValues);
-            //     final filtered = Map<String, dynamic>.from(kvFromThisPage)
-            //       ..removeWhere((k, v) => v is String && v.trim().isEmpty);
-            //
-            //     // Load existing KV for this project (all keys)
-            //     final existingAllKV = await BomRepository().getProjectBomKV(
-            //           isar: isar,
-            //           projectId: projectId,
-            //           userType: USER_TYPES.SUPERVISOR.name,
-            //         ) ??
-            //         <String, dynamic>{};
-            //
-            //     bool changed = false;
-            //     filtered.forEach((k, v) {
-            //       if (!existingAllKV.containsKey(k)) {
-            //         changed = true;
-            //         return;
-            //       }
-            //       final prev = existingAllKV[k];
-            //       if (prev is num && v is num) {
-            //         if (prev != v) changed = true;
-            //       } else {
-            //         final prevS = prev?.toString() ?? '';
-            //         final nextS = v?.toString() ?? '';
-            //         if (prevS != nextS) changed = true;
-            //       }
-            //     });
-            //
-            //     await BomRepository().mergeKvForEntryKey(
-            //       isar: isar,
-            //       projectId: projectId,
-            //       userType: USER_TYPES.SUPERVISOR.name,
-            //       kvUpdate: filtered,
-            //     );
-            //
-            //     // Mark as prefilled only if something actually changed
-            //     if (changed) {
-            //       await PrefilledProjectRepository(isar).addOrTouch(
-            //         projectId: widget.projectId,
-            //         userType: _initialUserType, // 'SUPERVISOR'
-            //       );
-            //     }
-            //   }
-            //
-            //   // Clear this schema’s form state so next project doesn’t inherit values
-            //   final key = state.activeSchemaKey ?? state.schema.name;
-            //   formsBloc.add(FormsEvent.clearForm(schemaKey: key));
-            //   if (!context.mounted) return;
-            //   _popUntilThenRefreshOrigin(context, widget.origin);
-            // }
             if (state is FormsSubmittedState) return;
           },
           builder: (context, state) {
@@ -547,40 +467,6 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
                 final propertyKeys =
                     (pageSchema.properties?.keys.toList() ?? const <String>[]);
 
-                // if (_projectInitialKV.isEmpty) {
-                //   // No KV for this project: hard-reset every control on this page to null
-                //   for (final k in propertyKeys) {
-                //     if (form.contains(k)) {
-                //       form.control(k).reset(
-                //           value: null, updateParent: true, emitEvent: false);
-                //     }
-                //   }
-                // } else {
-                //   // Apply only available defaults; clear everything else to null
-                //   // 1) set provided defaults
-                //   pageDefaults.forEach((k, raw) {
-                //     if (form.contains(k)) {
-                //       // form
-                //       //     .control(k)
-                //       //     .updateValue(v, updateParent: true, emitEvent: false);
-                //       final ctrl = form.control(k);
-                //       final coerced = _coerceForControl(ctrl, raw);
-                //       ctrl.updateValue(coerced,
-                //           updateParent: true, emitEvent: false);
-                //     }
-                //   });
-                //   // 2) clear missing keys
-                //   for (final k in propertyKeys) {
-                //     if (!pageDefaults.containsKey(k) && form.contains(k)) {
-                //       form.control(k).reset(
-                //           value: null, updateParent: true, emitEvent: false);
-                //     }
-                //   }
-                // }
-                // Overlay priority:
-                // 1) KV for THIS PAGE (pageDefaults)
-                // 2) existing value already present in the schema (pageSchema.properties?[k]?.value)
-                // 3) otherwise leave null
                 for (final k in propertyKeys) {
                   if (!form.contains(k)) continue;
                   final ctrl = form.control(k);
@@ -602,7 +488,6 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
                 }
                 return form;
               },
-              // -------------------------------------------------------------------
               builder: (context, formGroup, child) => ScrollableContent(
                 enableFixedDigitButton: true,
                 header: const Padding(
@@ -640,18 +525,43 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
                           }
 
                           if (missing.isNotEmpty) {
+                            final first = missing.first;
+                            final label = _labelForKey(pageSchema, first);
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                  content: Text(
-                                      'Form config mismatch: missing ${missing.first}')),
+                              SnackBar(content: Text('$label is required')),
                             );
                             return;
                           }
                           if (invalid.isNotEmpty) {
+                            final first = invalid.first;
+                            final label = _labelForKey(pageSchema, first);
+
+                            // Optional: show specific reason if available
+                            final c = form.control(first);
+                            String? reason;
+                            final errors = c.errors;
+                            if (errors
+                                .containsKey(ValidationMessage.required)) {
+                              reason = 'is required';
+                            } else if (errors
+                                .containsKey(ValidationMessage.pattern)) {
+                              reason = 'has an invalid format';
+                            } else if (errors
+                                .containsKey(ValidationMessage.number)) {
+                              reason = 'must be a number';
+                            } else if (errors
+                                .containsKey(ValidationMessage.min)) {
+                              reason = 'is below the minimum';
+                            } else if (errors
+                                .containsKey(ValidationMessage.max)) {
+                              reason = 'is above the maximum';
+                            }
+
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                  content:
-                                      Text('Please correct: ${invalid.first}')),
+                                  content: Text(reason == null
+                                      ? 'Please correct: $label'
+                                      : '$label $reason')),
                             );
                             return;
                           }
