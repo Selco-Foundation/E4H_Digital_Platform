@@ -791,7 +791,9 @@ const CreateFieldPlan = () => {
         ?.filter((activity) => activity?.code === dataEntry.activity?.code)?.[0]?.roles
         ?.map((role) => role?.code);
 
-      const selectedRoleCodes = dataEntry.users.map((user) => user?.role?.value?.code);
+      const selectedRoleCodes = dataEntry.users
+        .filter((user) => !user?.deleteAssignment)
+        .map((user) => user?.role?.value?.code);
 
       completeRoleCodes?.forEach((code) => {
         if (!selectedRoleCodes.includes(code)) {
