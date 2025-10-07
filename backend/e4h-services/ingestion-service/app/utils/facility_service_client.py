@@ -53,7 +53,7 @@ class FacilityServiceClient:
 
             # Add optional facility_id parameter if provided
             if facility_id:
-                params["facilityid"] = facility_id
+                params["facilityId"] = facility_id
             if boundary_code:
                 params["boundaryCode"] = boundary_code
             if hfr_id:
