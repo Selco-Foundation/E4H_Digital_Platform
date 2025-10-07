@@ -35,7 +35,8 @@ import '../widgets/summary/summary.dart';
 
 @RoutePage()
 class SubmitForApprovalPage extends StatefulWidget {
-  const SubmitForApprovalPage({super.key});
+  const SubmitForApprovalPage({super.key, this.refresh});
+  final int? refresh;
 
   @override
   State<SubmitForApprovalPage> createState() => _SubmitForApprovalPageState();
@@ -61,30 +62,54 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
   @override
   void initState() {
     super.initState();
+    _reload();
+  }
+
+  @override
+  void didUpdateWidget(covariant SubmitForApprovalPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.refresh != oldWidget.refresh) {
+      _reload();
+    }
+  }
+
+  void _reload() {
+    _locSub?.cancel();
+    final locBloc = context.read<LocationBloc>();
+    locBloc.add(const LocationEvent.requestPermission());
+    locBloc.add(const LocationEvent.requestService());
+    _locSub = locBloc.stream.listen((locationState) {
+      if (locationState.latitude != null && locationState.longitude != null) {
+        setState(() {
+          _latitude = locationState.latitude;
+          _longitude = locationState.longitude;
+        });
+      }
+    });
     userType = context.read<UserTypeBloc>().state.maybeWhen(
           supervisor: () => USER_TYPES.SUPERVISOR.name,
           orElse: () => USER_TYPES.FIELD_STAFF.name,
         );
     // Kick off the cache sync
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final selState = context.read<SelectedProjectBloc>().state;
-      selState.whenOrNull(selected: (selProject) {
-        projectId = selProject.project.id;
-        project = selProject;
-        _solutionDesignTypeCode = "RMS_Single_Phase";
-      });
-
-      context
-          .read<CacheAssetBloc>()
-          .add(CacheAssetEvent.start(projectId, userType, project!));
-      context.read<ProjectBomBloc>().add(
-            ProjectBomEvent.syncIfNeeded(
-              projectId: projectId,
-              userType: userType,
-            ),
-          );
-      _loadInitialCompletion();
+    //  WidgetsBinding.instance.addPostFrameCallback((_) {
+    final selState = context.read<SelectedProjectBloc>().state;
+    selState.whenOrNull(selected: (selProject) {
+      projectId = selProject.project.id;
+      project = selProject;
+      _solutionDesignTypeCode = "RMS_Single_Phase";
     });
+
+    context
+        .read<CacheAssetBloc>()
+        .add(CacheAssetEvent.start(projectId, userType, project!));
+    context.read<ProjectBomBloc>().add(
+          ProjectBomEvent.syncIfNeeded(
+            projectId: projectId,
+            userType: userType,
+          ),
+        );
+    _loadInitialCompletion();
+    // });
   }
 
   Future<void> _loadInitialCompletion() async {
@@ -218,6 +243,16 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                 );
               },
             ),
+            BlocListener<SelectedProjectBloc, SelectedProjectState>(
+                listenWhen: (prev, curr) =>
+                    curr.maybeWhen(selected: (_) => true, orElse: () => false),
+                listener: (context, state) {
+                  state.whenOrNull(
+                    selected: (_) {
+                      if (mounted) _reload(); // re-run your data bootstrapping
+                    },
+                  );
+                }),
           ],
           child: ScrollableContent(
             enableFixedDigitButton: true,
@@ -387,13 +422,14 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                                                               String>(
                                                           future: BomRepository()
                                                               .resolveBomActionLabel(
-                                                                  isar: isar,
-                                                                  projectId:
-                                                                      projectId,
-                                                                  schemaKey: r
-                                                                      .schemaName,
-                                                                  isInboxView:
-                                                                      false),
+                                                            isar: isar,
+                                                            projectId:
+                                                                projectId,
+                                                            schemaKey:
+                                                                r.schemaName,
+                                                            origin: FormOrigin
+                                                                .overallSummary,
+                                                          ),
                                                           builder:
                                                               (context, snap) {
                                                             final labelWord =
@@ -417,6 +453,8 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                                                                       .schemaName,
                                                                   projectId:
                                                                       projectId!,
+                                                                  origin: FormOrigin
+                                                                      .submitForApproval,
                                                                 ));
                                                               },
                                                               type:

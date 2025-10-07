@@ -31,6 +31,7 @@ import '../pages/unauthenticated.dart';
 import '../pages/video_player.dart';
 import '../pages/welcome.dart';
 import '../router/routes.dart';
+import '../utils/utils.dart';
 
 export 'package:auto_route/auto_route.dart';
 

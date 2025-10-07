@@ -183,7 +183,9 @@ class _DraftPageState extends State<DraftPage> {
                                       context.read<SelectedProjectBloc>().add(
                                           SelectedProjectEvent.select(project));
                                       context.router.push(
-                                          const OverallAssetSummaryRoute());
+                                          OverallAssetSummaryRoute(
+                                              refresh: DateTime.now()
+                                                  .millisecondsSinceEpoch));
                                     },
                                     title: project.project.name ?? "",
                                     dateAssigned:
