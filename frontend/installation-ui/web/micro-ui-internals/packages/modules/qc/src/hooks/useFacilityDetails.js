@@ -63,12 +63,20 @@ const getAssetAggregation = async (workflow) => {
   };
   const documentAggregation = [];
 
-  if (workflow?.[0]?.action === "SUBMIT_REPORT_B") {
+  if (workflow?.[0]?.action === "SUBMIT_REPORT_B" && Array.isArray(workflow[0].documents)) {
     for (const document of workflow[0].documents) {
+
+      let fileUrl, fileDetails;
+      try {
+        const fileStoreResponse = await QCService.fetchImageFromFileStore(document.fileStoreId);
+        fileUrl = Digit.Utils.getFileUrl(fileStoreResponse[document.fileStoreId]);
+        fileDetails = await QCService.fetchDocumentDetails(fileUrl);
+      } catch (error) {
+        console.error(`Failed to fetch document ${document.fileStoreId}:`, error);
+        continue;
+      }
+
       const documentType = document.documentType;
-      const fileStoreResponse = await QCService.fetchImageFromFileStore(document.fileStoreId);
-      const fileUrl = Digit.Utils.getFileUrl(fileStoreResponse[document.fileStoreId]);
-      const fileDetails = await QCService.fetchDocumentDetails(fileUrl);
       let documentRequired = false;
 
       if (documentType.toUpperCase().includes("IMAGE")) {
