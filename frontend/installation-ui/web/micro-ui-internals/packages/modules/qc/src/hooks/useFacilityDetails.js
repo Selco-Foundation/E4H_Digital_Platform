@@ -63,62 +63,55 @@ const getAssetAggregation = async (workflow) => {
   };
   const documentAggregation = [];
 
-  if (workflow) {
-    for (let i = 0; i < Math.min(workflow.length, 2); i++) {
-      const row = workflow[i];
-      const action = row.action;
+  if (workflow?.[0]?.action === "SUBMIT_REPORT_B") {
+    for (const document of workflow[0].documents) {
+      const documentType = document.documentType;
+      const fileStoreResponse = await QCService.fetchImageFromFileStore(document.fileStoreId);
+      const fileUrl = Digit.Utils.getFileUrl(fileStoreResponse[document.fileStoreId]);
+      const fileDetails = await QCService.fetchDocumentDetails(fileUrl);
+      let documentRequired = false;
 
-      if (action === "SUBMIT_REPORT_A" || action === "SUBMIT_REPORT_B") {
-        for (const document of row.documents) {
-          const documentType = document.documentType;
-          const fileStoreResponse = await QCService.fetchImageFromFileStore(document.fileStoreId);
-          const fileUrl = Digit.Utils.getFileUrl(fileStoreResponse[document.fileStoreId]);
-          const fileDetails = await QCService.fetchDocumentDetails(fileUrl);
-          let documentRequired = false;
-
-          if (documentType.toUpperCase().includes("IMAGE")) {
-            documentRequired = true;
-            const assetType = documentType.split("-")[0].toUpperCase();
-            if (assetAggregation.images[assetType]) {
-              assetAggregation.images[assetType].push(fileUrl);
-            } else {
-              assetAggregation.images[assetType] = [fileUrl];
-            }
-          } else if (documentType.toUpperCase().includes("VIDEO")) {
-            documentRequired = true;
-            const assetType = documentType.split("-")[0].toUpperCase();
-
-            if (assetAggregation.videos[assetType]) {
-              assetAggregation.videos[assetType].push({
-                fileUrl,
-                size: fileDetails.size,
-              });
-            } else {
-              assetAggregation.videos[assetType] = [{
-                fileUrl,
-                size: fileDetails.size
-              }];
-            }
-          } else if (i === 0 && documentType.toUpperCase() === "INSTALLATION_REPORT") {
-            documentRequired = true;
-            assetAggregation.installationReportDocuments = [
-              ...assetAggregation.installationReportDocuments,
-              {
-                fileUrl,
-                ...fileDetails
-              }
-            ];
-          } else if (i === 0 && documentType.toUpperCase() === "INSTALLATION_REPORT_BOM") {
-            documentRequired = true;
-            assetAggregation.bomCompletionReport = {
-              fileUrl,
-              ...fileDetails
-            };
-          }
-
-          if (documentRequired) documentAggregation.push(document);
+      if (documentType.toUpperCase().includes("IMAGE")) {
+        documentRequired = true;
+        const assetType = documentType.split("-")[0].toUpperCase();
+        if (assetAggregation.images[assetType]) {
+          assetAggregation.images[assetType].push(fileUrl);
+        } else {
+          assetAggregation.images[assetType] = [fileUrl];
         }
+      } else if (documentType.toUpperCase().includes("VIDEO")) {
+        documentRequired = true;
+        const assetType = documentType.split("-")[0].toUpperCase();
+
+        if (assetAggregation.videos[assetType]) {
+          assetAggregation.videos[assetType].push({
+            fileUrl,
+            size: fileDetails.size,
+          });
+        } else {
+          assetAggregation.videos[assetType] = [{
+            fileUrl,
+            size: fileDetails.size
+          }];
+        }
+      } else if (documentType.toUpperCase() === "INSTALLATION_REPORT") {
+        documentRequired = true;
+        assetAggregation.installationReportDocuments = [
+          ...assetAggregation.installationReportDocuments,
+          {
+            fileUrl,
+            ...fileDetails
+          }
+        ];
+      } else if (documentType.toUpperCase() === "INSTALLATION_REPORT_BOM") {
+        documentRequired = true;
+        assetAggregation.bomCompletionReport = {
+          fileUrl,
+          ...fileDetails
+        };
       }
+
+      if (documentRequired) documentAggregation.push(document);
     }
   }
 
