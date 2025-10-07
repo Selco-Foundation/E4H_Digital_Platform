@@ -9,6 +9,8 @@ import org.egov.common.http.client.ServiceRequestClient;
 import org.egov.common.models.project.*;
 import org.egov.field_planner.config.FieldPlannerConfiguration;
 import org.egov.field_planner.repository.FieldPlannerRepository;
+import org.egov.field_planner.service.FieldPlannerService;
+import org.egov.field_planner.util.FieldPlannerServiceUtil;
 import org.egov.field_planner.util.MDMSUtils;
 import org.egov.field_planner.web.models.FieldPlan;
 import org.egov.field_planner.web.models.FieldPlanRequest;
@@ -47,13 +49,14 @@ public class FieldPlannerValidator {
 
     @Autowired
     FieldPlannerConfiguration config;
-
+    private final FieldPlannerServiceUtil fieldPlanServiceUtil;
     @Autowired
     @Qualifier("objectMapper")
     ObjectMapper mapper;
 
-    public FieldPlannerValidator(ServiceRequestClient serviceRequestRepository){
+    public FieldPlannerValidator(ServiceRequestClient serviceRequestRepository, FieldPlannerServiceUtil fieldPlanServiceUtil){
         this.serviceRequestRepository = serviceRequestRepository;
+        this.fieldPlanServiceUtil = fieldPlanServiceUtil;
     }
 
     public void validateCreateFieldPlanRequest(FieldPlanRequest request) {
@@ -80,6 +83,11 @@ public class FieldPlannerValidator {
         }
 
         for (FieldPlan fieldPlan : request.getFieldPlans()) {
+            if (fieldPlan == null) {
+                log.error("FieldPlan is mandatory in FieldPlans");
+                throw new CustomException("FieldPlan", "FieldPlan is mandatory");
+            }
+
             if (fieldPlan.getProjectId() == null) {
                 log.error("Project ID is mandatory in FieldPlans");
                 throw new CustomException("FieldPlan", "Project ID is mandatory");
@@ -93,10 +101,6 @@ public class FieldPlannerValidator {
             // Check if fieldPlan dates are within fieldPlan dates
             isFieldPlanWithinProject(existingProject, fieldPlan, errorMap);
 
-            if (fieldPlan == null) {
-                log.error("FieldPlan is mandatory in FieldPlans");
-                throw new CustomException("FieldPlan", "FieldPlan is mandatory");
-            }
             if (StringUtils.isBlank(fieldPlan.getTenantId())) {
                 log.error(TENANT_ID_IS_MANDATORY_IN_FIELDPLAN_REQUEST_BODY);
                 errorMap.put("TENANT_ID", "Tenant ID is mandatory");
@@ -181,9 +185,12 @@ public class FieldPlannerValidator {
                 errorMap.put("INVALID_TENANT", "The tenant: " + fieldPlan.getTenantId() + mdmsNotPresent);
             }
             log.info("Validate stateInfos with MDMS");
-            if (!StringUtils.isBlank(state) && !stateInfoRes.contains(state)) {
-                log.error("The state code: " + state + mdmsNotPresent);
-                errorMap.put("INVALID_STATE_CODE", "The state code: " + state + mdmsNotPresent);
+            if (!StringUtils.isBlank(state)) {
+                String stateExtracted = fieldPlanServiceUtil.extractStateName(state);
+                if (!stateInfoRes.contains(stateExtracted)){
+                    log.error("The state code: " + state + mdmsNotPresent);
+                    errorMap.put("INVALID_STATE_CODE", "The state code: " + state + mdmsNotPresent);
+                }
             }
         }
     }

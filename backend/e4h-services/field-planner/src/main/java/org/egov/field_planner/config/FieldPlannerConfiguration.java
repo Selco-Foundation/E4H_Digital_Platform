@@ -44,6 +44,12 @@ public class FieldPlannerConfiguration {
     @Value("${egov.v2.search.facility.url}")
     private String facilityServiceSearchUrlV2;
 
+    @Value("${egov.fieldplan.activity.host}")
+    private String fieldPlanActivityServiceHost;
+
+    @Value("${egov.fieldplan.activity.search.url}")
+    private String fieldPlanActivitySearchUrl;
+
     @Value("${search.api.limit:100}")
     private String searchApiLimit;
 
@@ -76,12 +82,6 @@ public class FieldPlannerConfiguration {
     @Value("${project.default.limit}")
     private Integer defaultLimit;
 
-    @Value("${project.mdms.module}")
-    private String mdmsModule;
-
-    @Value("${task.mdms.module}")
-    private String taskMdmsModule;
-
     @Value("${egov.location.hierarchy.type}")
     private String locationHierarchyType;
 
@@ -93,12 +93,6 @@ public class FieldPlannerConfiguration {
 
     @Value("${egov.boundary.search.url}")
     private String boundarySearchUrl;
-
-    @Value("${project.task.no.resource.validation.status}")
-    private List<String> noResourceStatuses;
-
-    @Value("${project.attendance.feature.enabled:true}")
-    private Boolean isAttendanceFeatureEnabled;
 
     @Value("${egov.workflow.host}")
     private String wfHost;
@@ -114,15 +108,6 @@ public class FieldPlannerConfiguration {
 
     @Value("${egov.workflow.business.service}")
     private String businessService;
-
-    @Value("${egov.asset.host}")
-    private String assetHost;
-
-    @Value("${egov.asset.search.url}")
-    private String assetSearchUrl;
-
-    @Value("${egov.asset.update.url}")
-    private String assetUpdateUrl;
 
     @Value("${egov.hrms.host}")
     private String hrmsHost;

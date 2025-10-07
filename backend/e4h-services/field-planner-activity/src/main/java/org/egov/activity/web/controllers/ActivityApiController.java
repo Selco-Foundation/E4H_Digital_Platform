@@ -5,9 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.annotations.ApiParam;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotNull;
 import org.egov.common.contract.response.ResponseInfo;
 import org.egov.common.models.core.URLParams;
 import org.egov.common.producer.Producer;
@@ -30,14 +27,7 @@ import java.util.*;
 @Validated
 public class ActivityApiController {
 
-    private final ObjectMapper objectMapper;
-
     private final HttpServletRequest httpServletRequest;
-
-    private final Producer producer;
-
-    private final ActivityConfiguration fieldPlannerConfiguration;
-
     private final ActivityService activityService;
 
     @Autowired
@@ -45,28 +35,25 @@ public class ActivityApiController {
                                  Producer producer,
                                  ActivityConfiguration fieldPlannerConfiguration,
                                  ActivityService activityService) {
-        this.objectMapper = objectMapper;
         this.httpServletRequest = httpServletRequest;
-        this.producer = producer;
-        this.fieldPlannerConfiguration = fieldPlannerConfiguration;
         this.activityService = activityService;
     }
 
-//    @RequestMapping(value = "/_create", method = RequestMethod.POST)
-//    public ResponseEntity<ActivityFacilityResponse> createFieldPlanActivityV1CreatePost(@ApiParam(value = "Capture linkage of Project and facility.", required = true) @Valid @RequestBody ActivityFacilityBulkRequest request) {
-//
-//        List<ActivityFacility> activityFacilities = activityService.createActivityFacility(request);
-//        ActivityFacilityResponse response = ActivityFacilityResponse.builder()
-//                .activityFacilities(activityFacilities)
-//                .responseInfo(ResponseInfoFactory
-//                        .createResponseInfo(request.getRequestInfo(), true))
-//                .build();
-//        return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
-//    }
+    @RequestMapping(value = "/_create", method = RequestMethod.POST)
+    public ResponseEntity<ActivityResponse> createActivity(@ApiParam(value = "Create activity data.", required = true) @Valid @RequestBody ActivityBulkRequest request) {
+
+        List<Activity> activities = activityService.createActivity(request);
+        ActivityResponse response = ActivityResponse.builder()
+                .activities(activities)
+                .responseInfo(ResponseInfoFactory
+                        .createResponseInfo(request.getRequestInfo(), true))
+                .build();
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
+    }
 
     @RequestMapping(value = "/_update", method = RequestMethod.POST)
-    public ResponseEntity<ActivityFacilityResponse> updateFieldPlan(@ApiParam(value = "Details for the updated Project.", required = true) @Valid @RequestBody ActivityFacilityBulkRequest request) {
-        ActivityFacilityBulkRequest enrichedFieldPlanRequest = activityService.updateProject(request);
+    public ResponseEntity<ActivityFacilityResponse> updateActivityAssignment(@ApiParam(value = "Details for the updated Project.", required = true) @Valid @RequestBody ActivityFacilityBulkRequest request) {
+        ActivityFacilityBulkRequest enrichedFieldPlanRequest = activityService.updateActivityFacitlity(request);
 
         ResponseInfo responseInfo = ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), true);
         ActivityFacilityResponse activityFacilityResponse = ActivityFacilityResponse.builder().responseInfo(responseInfo).activityFacilities(enrichedFieldPlanRequest.getActivityFacilities()).build();
@@ -74,7 +61,7 @@ public class ActivityApiController {
     }
 
     @RequestMapping(value = "/_search", method = RequestMethod.POST)
-    public ResponseEntity<ActivityFacilityResponse> searchProject(
+    public ResponseEntity<ActivityFacilityResponse> searchActivityFacility(
             @ApiParam(value = "Details for the fieldPlan.", required = true) @Valid @RequestBody ActivityFacilitySearchRequest request,
             @Valid @ModelAttribute URLParams urlParams
     ) {
@@ -87,15 +74,55 @@ public class ActivityApiController {
                 urlParams.getLastChangedSince()
         );
         ResponseInfo responseInfo = ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), true);
-        Integer count = activityService.countAllFieldPlans(request, urlParams.getTenantId(), urlParams.getLastChangedSince(), urlParams.getIncludeDeleted());
+        Integer count = activityService.countAllFacilityActivities(request, urlParams.getTenantId(), urlParams.getLastChangedSince(), urlParams.getIncludeDeleted());
         ActivityFacilityResponse activityFacilityResponse = ActivityFacilityResponse.builder().responseInfo(responseInfo).activityFacilities(fieldPlans).totalCount(count).build();
         return new ResponseEntity<ActivityFacilityResponse>(activityFacilityResponse, HttpStatus.OK);
     }
 
-    @RequestMapping(value = "/_assign-spoc", method = RequestMethod.POST)
+    @RequestMapping(value = "/_assign-activity", method = RequestMethod.POST)
     public ResponseEntity<ActivityAssignmentResponse> activityAssignmentV1CreatePost(@ApiParam(value = "Capture linkage of Project and facility.", required = true) @Valid @RequestBody ActivityAssignmentBulkRequest request) {
 
         List<ActivityAssignment> activityAssignments = activityService.createActivityAssignment(request);
+        ActivityAssignmentResponse response = ActivityAssignmentResponse.builder()
+                .activityAssignment(activityAssignments)
+                .responseInfo(ResponseInfoFactory
+                        .createResponseInfo(request.getRequestInfo(), true))
+                .build();
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
+    }
+
+    @RequestMapping(value = "/assignment/_update", method = RequestMethod.POST)
+    public ResponseEntity<ActivityAssignmentResponse> updateFieldPlan(@ApiParam(value = "Details for the updated Project.", required = true) @Valid @RequestBody ActivityAssignmentBulkRequest request) {
+        ActivityAssignmentBulkRequest enrichedFieldPlanRequest = activityService.updateActivityAssignment(request);
+
+        ResponseInfo responseInfo = ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), true);
+        ActivityAssignmentResponse activityAssignmentResponse = ActivityAssignmentResponse.builder().responseInfo(responseInfo).activityAssignment(enrichedFieldPlanRequest.getActivityAssignments()).build();
+        return new ResponseEntity<ActivityAssignmentResponse>(activityAssignmentResponse, HttpStatus.OK);
+    }
+
+    @RequestMapping(value = "/assignment/_search", method = RequestMethod.POST)
+    public ResponseEntity<ActivityAssignmentResponse> searchActivityAssignment(
+            @ApiParam(value = "Details for the fieldPlan.", required = true) @Valid @RequestBody ActivityAssignmentSearchRequest request,
+            @Valid @ModelAttribute URLParams urlParams
+    ) {
+        List<ActivityAssignment> activityAssignments = activityService.searchAssignedActivity(
+                request,
+                urlParams.getLimit(),
+                urlParams.getOffset(),
+                urlParams.getTenantId(),
+                urlParams.getIncludeDeleted(),
+                urlParams.getLastChangedSince()
+        );
+        ResponseInfo responseInfo = ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), true);
+        Integer count = activityService.countAllAssignedActivities(request, urlParams.getTenantId(), urlParams.getLastChangedSince(), urlParams.getIncludeDeleted());
+        ActivityAssignmentResponse activityAssignmentResponse = ActivityAssignmentResponse.builder().responseInfo(responseInfo).activityAssignment(activityAssignments).totalCount(count).build();
+        return new ResponseEntity<ActivityAssignmentResponse>(activityAssignmentResponse, HttpStatus.OK);
+    }
+
+    @RequestMapping(value = "/_unassign-activity", method = RequestMethod.POST)
+    public ResponseEntity<ActivityAssignmentResponse> activityAssignmentUnassign(@ApiParam(value = "Capture linkage of Field Plan and facility.", required = true) @Valid @RequestBody ActivityAssignmentBulkRequest request) {
+
+        List<ActivityAssignment> activityAssignments = activityService.unassignActivityAssignment(request);
         ActivityAssignmentResponse response = ActivityAssignmentResponse.builder()
                 .activityAssignment(activityAssignments)
                 .responseInfo(ResponseInfoFactory

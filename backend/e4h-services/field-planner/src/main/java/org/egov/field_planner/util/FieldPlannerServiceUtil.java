@@ -3,6 +3,7 @@ package org.egov.field_planner.util;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.models.AuditDetails;
 import org.egov.common.models.project.Project;
 import org.egov.field_planner.web.models.FieldPlan;
@@ -20,6 +21,7 @@ import java.util.stream.Collectors;
 
 import static java.util.Objects.isNull;
 
+@Slf4j
 @Component
 public class FieldPlannerServiceUtil {
     @Autowired
@@ -32,6 +34,30 @@ public class FieldPlannerServiceUtil {
         else
             return AuditDetails.builder().createdBy(auditDetails.getCreatedBy()).lastModifiedBy(by)
                     .createdTime(auditDetails.getCreatedTime()).lastModifiedTime(time).build();
+    }
+
+    public String extractStateName(String boundary) {
+        if (boundary == null || boundary.trim().isEmpty()) {
+            return null;
+        }
+
+        String[] boundaryParts = boundary.split("_");
+        String stateName = null;
+
+        if (boundaryParts.length >= 2 && "India".equalsIgnoreCase(boundaryParts[0])) {
+            stateName = boundaryParts[1];
+        } else if (boundaryParts.length >= 1) {
+            stateName = boundaryParts[0];
+        }
+
+        // Validate state name is not placeholder/invalid
+        if (stateName != null && !stateName.equalsIgnoreCase("nan") &&
+                !stateName.equalsIgnoreCase("XYZ") && stateName.trim().length() > 0) {
+            return stateName.trim();
+        }
+
+        log.warn("Invalid state name found in boundary: {}, returning null", stateName);
+        return null;
     }
 
 

@@ -14,14 +14,8 @@ import java.util.List;
 @Component
 public class ActivityConfiguration {
 
-    @Value("${egov.product.host}")
-    private String productHost;
-
     @Value("${fieldplan.facility.idgen.id.format}")
     private String fieldPlanFacilityIdFormat;
-
-    @Value("${egov.household.host}")
-    private String householdServiceHost;
 
     @Value("${egov.fieldplan.host}")
     private String fieldPlanServiceHost;
@@ -37,6 +31,15 @@ public class ActivityConfiguration {
 
     @Value("${egov.v2.search.facility.url}")
     private String facilityServiceSearchUrlV2;
+
+    @Value("${egov.pdf.host}")
+    private String pdfServiceHost;
+
+    @Value("${egov.createnosave.pdf.url}")
+    private String pdfCreateNoSaveUrl;
+
+    @Value("${egov.pdf.key}")
+    private String bomKeypdf;
 
     @Value("${search.api.limit:100}")
     private String searchApiLimit;
@@ -55,11 +58,26 @@ public class ActivityConfiguration {
     @Value("${activity.assignment.kafka.create.topic}")
     private String createActivityAssignmentTopic;
 
+    @Value("${activity.assignment.kafka.unassign.topic}")
+    private String unassignActivityAssignmentTopic;
+
     @Value("${activity.facility.kafka.create.topic}")
     private String createActivityFacilityTopic;
 
-    @Value("${activity.kafka.update.topic}")
+    @Value("${activity.kafka.create.topic}")
+    private String createActivityTopic;
+
+    @Value("${activity.facility.kafka.update.topic}")
     private String updateActivityFacilityTopic;
+
+    @Value("${activity.assignment.kafka.update.topic}")
+    private String updateActivityAssignmentTopic;
+
+    @Value("${bom.kafka.create.topic}")
+    private String createBOMTopic;
+
+    @Value("${bom.kafka.update.topic}")
+    private String updateBOMTopic;
 
     @Value("${project.search.max.limit}")
     private Integer maxLimit;
@@ -88,12 +106,6 @@ public class ActivityConfiguration {
     @Value("${egov.boundary.search.url}")
     private String boundarySearchUrl;
 
-    @Value("${project.task.no.resource.validation.status}")
-    private List<String> noResourceStatuses;
-
-    @Value("${project.attendance.feature.enabled:true}")
-    private Boolean isAttendanceFeatureEnabled;
-
     @Value("${egov.workflow.host}")
     private String wfHost;
 
@@ -108,15 +120,6 @@ public class ActivityConfiguration {
 
     @Value("${egov.workflow.business.service}")
     private String businessService;
-
-    @Value("${egov.asset.host}")
-    private String assetHost;
-
-    @Value("${egov.asset.search.url}")
-    private String assetSearchUrl;
-
-    @Value("${egov.asset.update.url}")
-    private String assetUpdateUrl;
 
     @Value("${egov.hrms.host}")
     private String hrmsHost;

@@ -42,7 +42,7 @@ public class ActivityRepository extends GenericRepository<ActivityFacility> {
         this.activityDataRowMapper = activityDataRowMapper;
     }
 
-    public List<ActivityFacility> getActivities(ActivityFacilitySearchRequest request, Integer limit, Integer offset, String tenantId, Boolean includeDeleted, Long lastChangedSince) {
+    public List<ActivityFacility> getActivitiesFacility(ActivityFacilitySearchRequest request, Integer limit, Integer offset, String tenantId, Boolean includeDeleted, Long lastChangedSince) {
         //Fetch FieldPlans based on search criteria
         List<Object> preparedStmtList = new ArrayList<>();
         ActivityFacilitySearchCriteria criteria = request.getCriteria();
@@ -56,9 +56,9 @@ public class ActivityRepository extends GenericRepository<ActivityFacility> {
         return activityFacilities;
     }
 
-    public Activity getActivityByCode(String code) {
+    public Activity getActivityObject(ActivitySearchCriteria criteria) {
         List<Object> preparedStmtList = new ArrayList<>();
-        String query = queryBuilder.getActivityDataList(code, preparedStmtList);
+        String query = queryBuilder.getActivityDataList(criteria, preparedStmtList);
         List<Activity> activities = jdbcTemplate.query(query, activityDataRowMapper, preparedStmtList.toArray());
         log.info("Fetched project status agregation list based on given Parent Ids");
         if (activities !=null && !activities.isEmpty())
