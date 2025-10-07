@@ -337,6 +337,9 @@ class AssetSubmissionBloc
 
       for (final report in completionReports) {
         if (report.filePath.isEmpty) continue;
+        if (((report.fileName ?? '')
+            .toLowerCase()
+            .contains('installation_report_bom'))) continue;
         String mediaId = await getFilestoreUrl(report.filePath);
         print("mediaId $mediaId");
         completionDocuments.add(Document(
