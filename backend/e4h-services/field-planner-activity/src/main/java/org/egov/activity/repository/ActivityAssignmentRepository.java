@@ -48,7 +48,7 @@ public class ActivityAssignmentRepository extends GenericRepository<ActivityAssi
         String query = queryBuilder.getActivityAssignmentSearchQuery(criteria, urlParams, preparedStmtList);
         List<ActivityAssignment> activityAssignments = jdbcTemplate.query(query, activityRowMapper, preparedStmtList.toArray());
 
-        log.info("Fetched project list based on given search criteria");
+        log.info("Fetched activity assignments list based on given search criteria");
         return activityAssignments;
     }
 
@@ -60,7 +60,7 @@ public class ActivityAssignmentRepository extends GenericRepository<ActivityAssi
             return 0;
 
         Integer count = jdbcTemplate.queryForObject(query, preparedStatement.toArray(), Integer.class);
-        log.info("Total FieldPlans count is : " + count);
+        log.info("Total ActivityAssignments count is : " + count);
         return count;
     }
 }

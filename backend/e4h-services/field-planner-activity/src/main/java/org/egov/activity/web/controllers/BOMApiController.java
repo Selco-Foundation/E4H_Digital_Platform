@@ -5,17 +5,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.annotations.ApiParam;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import org.egov.activity.config.ActivityConfiguration;
 import org.egov.activity.service.BomService;
 import org.egov.activity.web.models.*;
 import org.egov.common.contract.response.ResponseInfo;
 import org.egov.common.models.core.URLParams;
-import org.egov.common.models.project.Project;
-import org.egov.common.models.project.ProjectRequest;
-import org.egov.common.models.project.ProjectResponse;
 import org.egov.common.producer.Producer;
 import org.egov.common.utils.ResponseInfoFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,25 +27,10 @@ import java.util.List;
 @Validated
 public class BOMApiController {
 
-    private final ObjectMapper objectMapper;
-
-    private final HttpServletRequest httpServletRequest;
-
-    private final Producer producer;
-
-    private final ActivityConfiguration fieldPlannerConfiguration;
-
     private final BomService bomService;
 
     @Autowired
-    public BOMApiController(ObjectMapper objectMapper, HttpServletRequest httpServletRequest,
-                            Producer producer,
-                            ActivityConfiguration fieldPlannerConfiguration,
-                            BomService bomService) {
-        this.objectMapper = objectMapper;
-        this.httpServletRequest = httpServletRequest;
-        this.producer = producer;
-        this.fieldPlannerConfiguration = fieldPlannerConfiguration;
+    public BOMApiController(BomService bomService) {
         this.bomService = bomService;
     }
 
@@ -89,7 +69,7 @@ public class BOMApiController {
                 urlParams.getLastChangedSince()
         );
         ResponseInfo responseInfo = ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), true);
-        Integer count = bomService.countAllFieldPlans(request, urlParams.getTenantId(), urlParams.getLastChangedSince(), urlParams.getIncludeDeleted());
+        Integer count = bomService.countAllBillOfMaterials(request, urlParams.getTenantId(), urlParams.getLastChangedSince(), urlParams.getIncludeDeleted());
         BomResponse bomResponse = BomResponse.builder().responseInfo(responseInfo).billOfMaterials(billOfMaterials).totalCount(count).build();
         return new ResponseEntity<BomResponse>(bomResponse, HttpStatus.OK);
     }

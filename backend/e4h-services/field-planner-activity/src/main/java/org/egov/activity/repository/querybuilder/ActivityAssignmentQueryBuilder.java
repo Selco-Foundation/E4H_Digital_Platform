@@ -104,7 +104,7 @@ public class ActivityAssignmentQueryBuilder {
 
         if (StringUtils.isNotBlank(activityAssignment.getAssignedTo())) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
-            queryBuilder.append(" as.assigned_to =? ");
+            queryBuilder.append(" aa.assigned_to =? ");
             preparedStmtList.add(activityAssignment.getAssignedTo());
         }
 

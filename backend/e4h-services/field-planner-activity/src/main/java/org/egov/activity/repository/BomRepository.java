@@ -9,7 +9,6 @@ import org.egov.activity.web.models.*;
 import org.egov.common.data.query.builder.SelectQueryBuilder;
 import org.egov.common.data.repository.GenericRepository;
 import org.egov.common.models.core.URLParams;
-import org.egov.common.models.project.Project;
 import org.egov.common.producer.Producer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -72,11 +71,11 @@ public class BomRepository extends GenericRepository<BillOfMaterial> {
             }
         }
 
-        log.info("Fetched project list based on given search criteria");
+        log.info("Fetched BOM list based on given search criteria");
         return billOfMaterials;
     }
 
-    public Integer getBillOfMatrialsCount(BomSearchRequest request, String tenantId, Long lastChangedSince, Boolean includeDeleted) {
+    public Integer getBillOfMaterialsCount(BomSearchRequest request, String tenantId, Long lastChangedSince, Boolean includeDeleted) {
         List<Object> preparedStatement = new ArrayList<>();
         String query = queryBuilder.getSearchCountQueryString(request, tenantId, lastChangedSince, includeDeleted, preparedStatement);
 
@@ -84,7 +83,7 @@ public class BomRepository extends GenericRepository<BillOfMaterial> {
             return 0;
 
         Integer count = jdbcTemplate.queryForObject(query, preparedStatement.toArray(), Integer.class);
-        log.info("Total FieldPlans count is : " + count);
+        log.info("Total BOMs count is : " + count);
         return count;
     }
 
