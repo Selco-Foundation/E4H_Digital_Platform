@@ -22,6 +22,7 @@ const FacilityDetails = ({t}) => {
   const [facilityDetails, setFacilityDetails] = useState({});
   const [auditTrail, setAuditTrail] = useState([]);
   const [aggregatedAssets, setAggregatedAssets] = useState({});
+  const [aggregatedDocuments, setAggregatedDocuments] = useState([]);
   const [updatingWorkflow, setUpdatingWorkflow] = useState(false);
 
   const {
@@ -63,6 +64,7 @@ const FacilityDetails = ({t}) => {
       setAuditTrail(facilityData.auditTrail);
       setFacilityDetails(facilityData.facilityDetails);
       setAggregatedAssets(facilityData.assetAggregation);
+      setAggregatedDocuments(facilityData.documentAggregation);
       dispatch(setSelectedFacility(facilityData.facilityDetails));
     }
   }, [facilityData]);
@@ -145,6 +147,7 @@ const FacilityDetails = ({t}) => {
         <QCActions
           revalidateData={revalidateData}
           setUpdatingWorkflow={setUpdatingWorkflow}
+          aggregatedDocuments={aggregatedDocuments}
         />
       )}
 
