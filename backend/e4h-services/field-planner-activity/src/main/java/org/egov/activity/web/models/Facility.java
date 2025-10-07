@@ -20,6 +20,10 @@ import java.util.Map;
 @NoArgsConstructor
 @Builder
 public class Facility {
+
+    @JsonProperty("id")
+    private String id = null;
+
     @JsonProperty("tenant_id")
     private String tenantId = null;
 

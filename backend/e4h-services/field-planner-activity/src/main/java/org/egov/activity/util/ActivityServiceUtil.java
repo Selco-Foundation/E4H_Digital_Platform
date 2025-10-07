@@ -3,7 +3,9 @@ package org.egov.activity.util;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.egov.activity.web.models.ActivityAssignment;
 import org.egov.activity.web.models.ActivityFacility;
+import org.egov.activity.web.models.BillOfMaterial;
 import org.egov.common.contract.models.AuditDetails;
 import org.egov.common.models.project.Project;
 import org.egov.activity.web.models.FieldPlan;
@@ -51,6 +53,18 @@ public class ActivityServiceUtil {
         JsonNode json = jsonMerge(objectMapper.valueToTree(activityFacilityFromDb.getAdditionalDetails()),
                 objectMapper.valueToTree(activityFacility.getAdditionalDetails()));
         activityFacility.setAdditionalDetails(objectMapper.convertValue(json, Map.class));
+    }
+
+    public void mergeBOMAdditionalDetails(BillOfMaterial billOfMaterial, BillOfMaterial billOfMaterialFromDb) {
+        JsonNode json = jsonMerge(objectMapper.valueToTree(billOfMaterialFromDb.getAdditionalDetails()),
+                objectMapper.valueToTree(billOfMaterial.getAdditionalDetails()));
+        billOfMaterial.setAdditionalDetails(objectMapper.convertValue(json, Map.class));
+    }
+
+    public void mergeActivityAssignmentAdditionalDetails(ActivityAssignment activityAssignment, ActivityAssignment activityAssignmentFromDb) {
+        JsonNode json = jsonMerge(objectMapper.valueToTree(activityAssignmentFromDb.getAdditionalDetails()),
+                objectMapper.valueToTree(activityAssignment.getAdditionalDetails()));
+        activityAssignment.setAdditionalDetails(objectMapper.convertValue(json, Map.class));
     }
 
     /**
