@@ -554,7 +554,8 @@ class InstallationReportCard extends StatelessWidget {
                     context
                         .read<SelectedProjectBloc>()
                         .add(SelectedProjectEvent.select(project!));
-                    context.router.push(const OverallAssetSummaryRoute());
+                    context.router.push(OverallAssetSummaryRoute(
+                        refresh: DateTime.now().millisecondsSinceEpoch));
                   },
                   isDisabled: (fraction * 100).round() >= 98 ? false : true,
                   type: DigitButtonType.secondary,

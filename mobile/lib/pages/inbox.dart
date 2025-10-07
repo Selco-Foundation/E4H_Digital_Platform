@@ -300,7 +300,8 @@ class _InboxPageState extends State<InboxPage> {
                           context.read<SelectedProjectBloc>().add(
                                 SelectedProjectEvent.select(project),
                               );
-                          context.router.push(const InboxAssetSummaryRoute());
+                          context.router.push(InboxAssetSummaryRoute(
+                              refresh: DateTime.now().millisecondsSinceEpoch));
                         },
                         title: project.project.name ?? '---',
                         dateAssigned:
@@ -315,7 +316,8 @@ class _InboxPageState extends State<InboxPage> {
                         context.read<SelectedProjectBloc>().add(
                               SelectedProjectEvent.select(project),
                             );
-                        context.router.push(const SubmitForApprovalRoute());
+                        context.router.push(SubmitForApprovalRoute(
+                            refresh: DateTime.now().millisecondsSinceEpoch));
                       },
                     ),
                     approved: () => InboxReportCard(
@@ -323,7 +325,8 @@ class _InboxPageState extends State<InboxPage> {
                           context.read<SelectedProjectBloc>().add(
                                 SelectedProjectEvent.select(project),
                               );
-                          context.router.push(const InboxAssetSummaryRoute());
+                          context.router.push(InboxAssetSummaryRoute(
+                              refresh: DateTime.now().millisecondsSinceEpoch));
                         },
                         title: project.project.name ?? '---',
                         dateAssigned:

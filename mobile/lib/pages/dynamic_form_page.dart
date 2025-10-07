@@ -28,6 +28,7 @@ class DynamicFormsPage extends StatefulWidget {
   final String? schemaName;
   final String? uniqueIdentifier;
   final String projectId;
+  final FormOrigin origin;
 
   const DynamicFormsPage({
     super.key,
@@ -35,6 +36,7 @@ class DynamicFormsPage extends StatefulWidget {
     this.schemaName,
     this.uniqueIdentifier,
     required this.projectId,
+    required this.origin,
   });
 
   @override
@@ -235,6 +237,40 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
     return lastKey == widget.pageName;
   }
 
+  void _popUntilThenRefreshOrigin(BuildContext context, FormOrigin origin) {
+    final root = context.router.root;
+
+    late final PageRouteInfo targetRoute;
+    switch (origin) {
+      case FormOrigin.overallSummary:
+        targetRoute = OverallAssetSummaryRoute(
+            refresh: DateTime.now().millisecondsSinceEpoch);
+        break;
+      case FormOrigin.inboxSummary:
+        targetRoute = InboxAssetSummaryRoute(
+            refresh: DateTime.now().millisecondsSinceEpoch);
+        break;
+      case FormOrigin.submitForApproval:
+        targetRoute = SubmitForApprovalRoute(
+            refresh: DateTime.now().millisecondsSinceEpoch);
+        break;
+    }
+
+    // 1) Ensure the target is present on top (pop until it if it exists; push if not).
+    root.navigate(
+        targetRoute); // AutoRoute’s navigate: pop-to-existing or push if missing. :contentReference[oaicite:0]{index=0}
+
+    // 2) On next frame, replace that top route with a *fresh* instance so initState runs.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!context.mounted) return;
+      final topName = root.current.name; // current top route’s name
+      final expected = targetRoute.routeName; // generated route name
+      if (topName == expected) {
+        root.replace(targetRoute);
+      }
+    });
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -268,6 +304,91 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
     }
   }
 
+  Future<void> _finalizeAndReturn({
+    required SchemaObject schema,
+    required String schemaKey,
+  }) async {
+    // ✅ capture everything you'll need BEFORE any await
+    final formsBloc = context.read<FormsBloc>();
+    final projectBloc = context.read<ProjectBloc>();
+    final projectId = widget.projectId;
+
+    // 1) Flatten values from the whole schema
+    final Map<String, dynamic> flatValues = {};
+    schema.pages.forEach((_, pageSchema) {
+      pageSchema.properties?.forEach((propKey, propSchema) {
+        flatValues[propKey] = propSchema.value;
+      });
+    });
+
+    // 2) Persist to local (same as your current code)
+    final rawDoc = await SecureStore().getRawSchemaDoc(schemaKey);
+    if (rawDoc != null) {
+      final withValues = injectValuesIntoRawDoc(
+        rawDoc: rawDoc,
+        flatValues: flatValues,
+      );
+
+      final isar = projectBloc.isar;
+      final assignUserUuid = await SecureStore().getSelectedIndividual();
+
+      await BomRepository().saveLocal(
+        isar: isar,
+        projectId: projectId,
+        schemaKey: schemaKey,
+        rawDocWithValues: withValues,
+        facilityId: null,
+        assignUserUuid: assignUserUuid,
+        bomName: schemaKey,
+      );
+
+      // Merge only non-empty fields into KV
+      final kvFromThisPage = BomRepository().extractKVFromRawDoc(withValues);
+      final filtered = Map<String, dynamic>.from(kvFromThisPage)
+        ..removeWhere((k, v) => v is String && v.trim().isEmpty);
+
+      final existingAllKV = await BomRepository().getProjectBomKV(
+            isar: isar,
+            projectId: projectId,
+            userType: USER_TYPES.SUPERVISOR.name,
+          ) ??
+          <String, dynamic>{};
+
+      bool changed = false;
+      filtered.forEach((k, v) {
+        if (!existingAllKV.containsKey(k)) {
+          changed = true;
+          return;
+        }
+        final prev = existingAllKV[k];
+        if (prev is num && v is num) {
+          if (prev != v) changed = true;
+        } else {
+          if ((prev?.toString() ?? '') != (v?.toString() ?? '')) changed = true;
+        }
+      });
+
+      await BomRepository().mergeKvForEntryKey(
+        isar: isar,
+        projectId: projectId,
+        userType: USER_TYPES.SUPERVISOR.name,
+        kvUpdate: filtered,
+      );
+
+      if (changed) {
+        await PrefilledProjectRepository(isar).addOrTouch(
+          projectId: projectId,
+          userType: 'SUPERVISOR',
+        );
+      }
+    }
+
+    // 3) Clear form state and navigate back (fresh)
+    formsBloc.add(FormsEvent.clearForm(schemaKey: schemaKey));
+    if (!context.mounted) return; // safety after async gap
+    _popUntilThenRefreshOrigin(context, widget.origin);
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -292,97 +413,100 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
       child: Scaffold(
         body: BlocConsumer<FormsBloc, FormsState>(
           listener: (context, state) async {
-            if (state is FormsSubmittedState) {
-              final isLast = state.schema.pages.keys.last == widget.pageName;
-              if (!isLast) return;
-
-              // 1) Flat values
-              final Map<String, dynamic> flatValues = {};
-              state.schema.pages.forEach((pageKey, pageSchema) {
-                pageSchema.properties?.forEach((propKey, propSchema) {
-                  flatValues[propKey] = propSchema.value;
-                });
-              });
-
-              final projectId = widget.projectId;
-              final schemaKey = widget.schemaName ??
-                  widget.uniqueIdentifier ??
-                  state.schema.name;
-
-              final rawDoc = await SecureStore().getRawSchemaDoc(schemaKey);
-              if (rawDoc != null) {
-                final withValues = injectValuesIntoRawDoc(
-                  rawDoc: rawDoc,
-                  flatValues: flatValues,
-                );
-                final isar = context.read<ProjectBloc>().isar;
-                final assignUserUuid =
-                    await SecureStore().getSelectedIndividual();
-
-                await BomRepository().saveLocal(
-                  isar: isar,
-                  projectId: projectId,
-                  schemaKey: schemaKey,
-                  rawDocWithValues: withValues,
-                  facilityId: null,
-                  assignUserUuid: assignUserUuid,
-                  bomName: schemaKey,
-                );
-
-                // Merge just the non-empty page KV into CacheProjectBomValues
-                final kvFromThisPage =
-                    BomRepository().extractKVFromRawDoc(withValues);
-                final filtered = Map<String, dynamic>.from(kvFromThisPage)
-                  ..removeWhere((k, v) => v is String && v.trim().isEmpty);
-
-                // Load existing KV for this project (all keys)
-                final existingAllKV = await BomRepository().getProjectBomKV(
-                      isar: isar,
-                      projectId: projectId,
-                      userType: USER_TYPES.SUPERVISOR.name,
-                    ) ??
-                    <String, dynamic>{};
-
-                bool changed = false;
-                filtered.forEach((k, v) {
-                  if (!existingAllKV.containsKey(k)) {
-                    changed = true;
-                    return;
-                  }
-                  final prev = existingAllKV[k];
-                  if (prev is num && v is num) {
-                    if (prev != v) changed = true;
-                  } else {
-                    final prevS = prev?.toString() ?? '';
-                    final nextS = v?.toString() ?? '';
-                    if (prevS != nextS) changed = true;
-                  }
-                });
-
-                await BomRepository().mergeKvForEntryKey(
-                  isar: isar,
-                  projectId: projectId,
-                  userType: USER_TYPES.SUPERVISOR.name,
-                  kvUpdate: filtered,
-                );
-
-                // Mark as prefilled only if something actually changed
-                if (changed) {
-                  await PrefilledProjectRepository(isar).addOrTouch(
-                    projectId: widget.projectId,
-                    userType: _initialUserType, // 'SUPERVISOR'
-                  );
-                }
-              }
-
-              // Clear this schema’s form state so next project doesn’t inherit values
-              final key = state.activeSchemaKey ?? state.schema.name;
-              context
-                  .read<FormsBloc>()
-                  .add(FormsEvent.clearForm(schemaKey: key));
-
-              context.router.popAndPush(const OverallAssetSummaryRoute());
-            }
+            // if (state is FormsSubmittedState) {
+            //   final isLast = state.schema.pages.keys.last == widget.pageName;
+            //   if (!isLast) return;
+            //
+            //   final formsBloc = context.read<FormsBloc>();
+            //   final projectBloc = context.read<ProjectBloc>();
+            //   final root = context.router.root;
+            //
+            //   // 1) Flat values
+            //   final Map<String, dynamic> flatValues = {};
+            //   state.schema.pages.forEach((pageKey, pageSchema) {
+            //     pageSchema.properties?.forEach((propKey, propSchema) {
+            //       flatValues[propKey] = propSchema.value;
+            //     });
+            //   });
+            //
+            //   final projectId = widget.projectId;
+            //   final schemaKey = widget.schemaName ??
+            //       widget.uniqueIdentifier ??
+            //       state.schema.name;
+            //
+            //   final rawDoc = await SecureStore().getRawSchemaDoc(schemaKey);
+            //   if (rawDoc != null) {
+            //     final withValues = injectValuesIntoRawDoc(
+            //       rawDoc: rawDoc,
+            //       flatValues: flatValues,
+            //     );
+            //     final isar = projectBloc.isar;
+            //     final assignUserUuid =
+            //         await SecureStore().getSelectedIndividual();
+            //
+            //     await BomRepository().saveLocal(
+            //       isar: isar,
+            //       projectId: projectId,
+            //       schemaKey: schemaKey,
+            //       rawDocWithValues: withValues,
+            //       facilityId: null,
+            //       assignUserUuid: assignUserUuid,
+            //       bomName: schemaKey,
+            //     );
+            //
+            //     // Merge just the non-empty page KV into CacheProjectBomValues
+            //     final kvFromThisPage =
+            //         BomRepository().extractKVFromRawDoc(withValues);
+            //     final filtered = Map<String, dynamic>.from(kvFromThisPage)
+            //       ..removeWhere((k, v) => v is String && v.trim().isEmpty);
+            //
+            //     // Load existing KV for this project (all keys)
+            //     final existingAllKV = await BomRepository().getProjectBomKV(
+            //           isar: isar,
+            //           projectId: projectId,
+            //           userType: USER_TYPES.SUPERVISOR.name,
+            //         ) ??
+            //         <String, dynamic>{};
+            //
+            //     bool changed = false;
+            //     filtered.forEach((k, v) {
+            //       if (!existingAllKV.containsKey(k)) {
+            //         changed = true;
+            //         return;
+            //       }
+            //       final prev = existingAllKV[k];
+            //       if (prev is num && v is num) {
+            //         if (prev != v) changed = true;
+            //       } else {
+            //         final prevS = prev?.toString() ?? '';
+            //         final nextS = v?.toString() ?? '';
+            //         if (prevS != nextS) changed = true;
+            //       }
+            //     });
+            //
+            //     await BomRepository().mergeKvForEntryKey(
+            //       isar: isar,
+            //       projectId: projectId,
+            //       userType: USER_TYPES.SUPERVISOR.name,
+            //       kvUpdate: filtered,
+            //     );
+            //
+            //     // Mark as prefilled only if something actually changed
+            //     if (changed) {
+            //       await PrefilledProjectRepository(isar).addOrTouch(
+            //         projectId: widget.projectId,
+            //         userType: _initialUserType, // 'SUPERVISOR'
+            //       );
+            //     }
+            //   }
+            //
+            //   // Clear this schema’s form state so next project doesn’t inherit values
+            //   final key = state.activeSchemaKey ?? state.schema.name;
+            //   formsBloc.add(FormsEvent.clearForm(schemaKey: key));
+            //   if (!context.mounted) return;
+            //   _popUntilThenRefreshOrigin(context, widget.origin);
+            // }
+            if (state is FormsSubmittedState) return;
           },
           builder: (context, state) {
             final currentKey = _currentSchemaKey(state);
@@ -423,34 +547,57 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
                 final propertyKeys =
                     (pageSchema.properties?.keys.toList() ?? const <String>[]);
 
-                if (_projectInitialKV.isEmpty) {
-                  // No KV for this project: hard-reset every control on this page to null
-                  for (final k in propertyKeys) {
-                    if (form.contains(k)) {
-                      form.control(k).reset(
-                          value: null, updateParent: true, emitEvent: false);
-                    }
+                // if (_projectInitialKV.isEmpty) {
+                //   // No KV for this project: hard-reset every control on this page to null
+                //   for (final k in propertyKeys) {
+                //     if (form.contains(k)) {
+                //       form.control(k).reset(
+                //           value: null, updateParent: true, emitEvent: false);
+                //     }
+                //   }
+                // } else {
+                //   // Apply only available defaults; clear everything else to null
+                //   // 1) set provided defaults
+                //   pageDefaults.forEach((k, raw) {
+                //     if (form.contains(k)) {
+                //       // form
+                //       //     .control(k)
+                //       //     .updateValue(v, updateParent: true, emitEvent: false);
+                //       final ctrl = form.control(k);
+                //       final coerced = _coerceForControl(ctrl, raw);
+                //       ctrl.updateValue(coerced,
+                //           updateParent: true, emitEvent: false);
+                //     }
+                //   });
+                //   // 2) clear missing keys
+                //   for (final k in propertyKeys) {
+                //     if (!pageDefaults.containsKey(k) && form.contains(k)) {
+                //       form.control(k).reset(
+                //           value: null, updateParent: true, emitEvent: false);
+                //     }
+                //   }
+                // }
+                // Overlay priority:
+                // 1) KV for THIS PAGE (pageDefaults)
+                // 2) existing value already present in the schema (pageSchema.properties?[k]?.value)
+                // 3) otherwise leave null
+                for (final k in propertyKeys) {
+                  if (!form.contains(k)) continue;
+                  final ctrl = form.control(k);
+
+                  if (pageDefaults.containsKey(k)) {
+                    final raw = pageDefaults[k];
+                    final coerced = _coerceForControl(ctrl, raw);
+                    ctrl.updateValue(coerced,
+                        updateParent: true, emitEvent: false);
+                    continue;
                   }
-                } else {
-                  // Apply only available defaults; clear everything else to null
-                  // 1) set provided defaults
-                  pageDefaults.forEach((k, raw) {
-                    if (form.contains(k)) {
-                      // form
-                      //     .control(k)
-                      //     .updateValue(v, updateParent: true, emitEvent: false);
-                      final ctrl = form.control(k);
-                      final coerced = _coerceForControl(ctrl, raw);
-                      ctrl.updateValue(coerced,
-                          updateParent: true, emitEvent: false);
-                    }
-                  });
-                  // 2) clear missing keys
-                  for (final k in propertyKeys) {
-                    if (!pageDefaults.containsKey(k) && form.contains(k)) {
-                      form.control(k).reset(
-                          value: null, updateParent: true, emitEvent: false);
-                    }
+
+                  final existing = pageSchema.properties?[k]?.value;
+                  if (existing != null) {
+                    final coerced = _coerceForControl(ctrl, existing);
+                    ctrl.updateValue(coerced,
+                        updateParent: true, emitEvent: false);
                   }
                 }
                 return form;
@@ -559,14 +706,17 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
                                 pageName: next,
                                 projectId: widget.projectId,
                                 schemaName: currentKey,
+                                origin: widget.origin,
                               ));
                             }
                             return;
                           }
 
-                          context
-                              .read<FormsBloc>()
-                              .add(FormsEvent.submit(schemaKey: currentKey));
+                          // context
+                          //     .read<FormsBloc>()
+                          //     .add(FormsEvent.submit(schemaKey: currentKey));
+                          await _finalizeAndReturn(
+                              schema: schemaObject, schemaKey: currentKey);
                         },
                         type: DigitButtonType.primary,
                         size: DigitButtonSize.large,
@@ -619,6 +769,9 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
                         childrens: const [],
                         // also pass the defaults to JsonForms (in case it uses them for rendering)
                         defaultValues: pageDefaults,
+                        isView: widget.origin == FormOrigin.inboxSummary
+                            ? true
+                            : false,
                       ),
                     ],
                   ),
