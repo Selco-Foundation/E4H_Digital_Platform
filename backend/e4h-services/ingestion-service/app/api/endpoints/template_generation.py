@@ -47,7 +47,7 @@ async def get_facility_ingestion_template_with_data(
         facility_service: FacilityTemplateService = Depends(),
     payload: dict = Body(..., description="Payload object")
 ):
-    request_info = request_info_from_json(payload.get("request_info", {}))
+    request_info = request_info_from_json(payload.get("RequestInfo", {}))
     boundary_data = payload.get("boundary_data", {})
     project_id = payload.get("project_id")
     mdms_client = MDMSClient(mdms_url)
@@ -84,7 +84,7 @@ async def get_facility_ingestion_template_with_data(
                 project_facilities = project_facilities_response.get("ProjectFacilities", [])
                 project_linked_facility_ids = {pf.get("facilityId") for pf in project_facilities if pf.get("facilityId")}
                 logger.info(f"Found {len(project_linked_facility_ids)} facilities linked to project {project_id}")
-                
+
                 # Fetch full facility data for project-linked facilities
                 for pf in project_facilities:
                     facility_id = pf.get("facilityId")
@@ -95,18 +95,28 @@ async def get_facility_ingestion_template_with_data(
                                 project_facilities_data.extend(facility_data.get('facilities', []))
                         except Exception as e:
                             logger.error(f"Error fetching facility {facility_id}: {e}")
-                            
+
             except Exception as e:
                 logger.error(f"Error fetching project facilities: {e}")
                 # Continue without project facility data if there's an error
-        
+
         # Combine boundary facilities with project facilities (avoid duplicates)
+        # Only include project facilities that belong to the current boundary codes
         existing_facility_ids = {f.get('facility_id') for f in all_facilities}
-        for pf_facility in project_facilities_data:
-            if pf_facility.get('facility_id') not in existing_facility_ids:
-                all_facilities.append(pf_facility)
-                logger.info(f"Added project facility {pf_facility.get('facility_id')} to template")
+        valid_boundary_codes = {boundary.code for boundary in boundary_list}
         
+        for pf_facility in project_facilities_data:
+            facility_id = pf_facility.get('facility_id')
+            facility_boundary_code = pf_facility.get('boundary_code') or pf_facility.get('boundaryCode')
+            
+            # Only add if not already present and belongs to current boundary codes
+            if (facility_id not in existing_facility_ids and 
+                facility_boundary_code in valid_boundary_codes):
+                all_facilities.append(pf_facility)
+                logger.info(f"Added project facility {facility_id} to template (boundary: {facility_boundary_code})")
+            elif facility_boundary_code not in valid_boundary_codes:
+                logger.info(f"Skipped project facility {facility_id} - boundary code {facility_boundary_code} not in current boundary list")
+
         logger.info(f"Total facilities in template: {len(all_facilities)} (boundary: {len(existing_facility_ids)}, project: {len(project_facilities_data)})")
 
         # Mark facilities as included in project if they are already linked
@@ -490,5 +500,4 @@ async def get_facility_QR_for_autologin(
         )
     except Exception as e:
         return {"status": "error", "message": str(e)}
-
 

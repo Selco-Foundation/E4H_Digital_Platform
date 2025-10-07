@@ -9,6 +9,9 @@ class User(BaseModel):
     type: Optional[str] = Field(default=None, max_length=50)
     mobile_number: Optional[str] = Field(default=None, max_length=150, alias="mobileNumber")
     email_id: Optional[str] = Field(default=None, max_length=300, alias="emailId")
-    roles: Optional[List[Role]] = []
+    roles: Optional[List[Role]] = None
     tenant_id: Optional[str] = Field(default=None, max_length=256, alias="tenantId")
     uuid: Optional[str] = Field(default=None, max_length=36, alias="uuid")
+    
+    class Config:
+        extra = "allow"  # Allow extra fields in the model
