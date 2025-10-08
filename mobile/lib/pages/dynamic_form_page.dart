@@ -84,6 +84,8 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
       projectId: widget.projectId,
       userType: _initialUserType,
     );
+    print("kv $kv");
+    if (!mounted) return;
     setState(() {
       _projectInitialKV = kv ?? const {};
       _formSeed++;
@@ -294,6 +296,7 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
       Future(() async {
         await _ensureSchemaLoaded();
         await _loadInitialKVForProject();
+        if (!mounted) return;
         setState(() {
           _lastProjectId = widget.projectId;
         });
@@ -311,6 +314,7 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
       }
       Future(() async {
         await _loadInitialKVForProject();
+        if (!mounted) return;
         setState(() {
           _lastProjectId = widget.projectId;
         });
@@ -414,6 +418,7 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
         state.maybeWhen(
           success: (_) async {
             await _loadInitialKVForProject(); // updates _projectInitialKV + bumps _formSeed
+            if (!mounted) return;
             final formsBloc = context.read<FormsBloc>();
             final currentKey = _currentSchemaKey(formsBloc.state);
             if (currentKey != null) {
@@ -468,6 +473,18 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
                 final propertyKeys =
                     (pageSchema.properties?.keys.toList() ?? const <String>[]);
 
+                // If there is no KV for this project, wipe this page clean.
+                if (_projectInitialKV.isEmpty) {
+                  for (final k in propertyKeys) {
+                    if (!form.contains(k)) continue;
+                    final ctrl = form.control(k);
+
+                    ctrl.reset(
+                        value: null, updateParent: true, emitEvent: false);
+                  }
+                  return form;
+                }
+
                 for (final k in propertyKeys) {
                   if (!form.contains(k)) continue;
                   final ctrl = form.control(k);
@@ -478,13 +495,15 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
                     ctrl.updateValue(coerced,
                         updateParent: true, emitEvent: false);
                     continue;
-                  }
-
-                  final existing = pageSchema.properties?[k]?.value;
-                  if (existing != null) {
-                    final coerced = _coerceForControl(ctrl, existing);
-                    ctrl.updateValue(coerced,
-                        updateParent: true, emitEvent: false);
+                  } else {
+                    // final existing = pageSchema.properties?[k]?.value;
+                    // if (existing != null) {
+                    //   final coerced = _coerceForControl(ctrl, existing);
+                    //   ctrl.updateValue(coerced,
+                    //       updateParent: true, emitEvent: false);
+                    // }
+                    ctrl.reset(
+                        value: null, updateParent: true, emitEvent: false);
                   }
                 }
                 return form;
@@ -626,8 +645,26 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
                           // context
                           //     .read<FormsBloc>()
                           //     .add(FormsEvent.submit(schemaKey: currentKey));
+                          final updatedSchema = schemaObject.copyWith(
+                            pages: Map.fromEntries(
+                              schemaObject.pages.entries.map(
+                                (entry) => MapEntry(
+                                  entry.key,
+                                  entry.key == widget.pageName
+                                      ? updatedPage
+                                      : entry.value,
+                                ),
+                              ),
+                            ),
+                          );
+
+                          context.read<FormsBloc>().add(
+                                FormsUpdateEvent(
+                                    schema: updatedSchema,
+                                    schemaKey: currentKey),
+                              );
                           await _finalizeAndReturn(
-                              schema: schemaObject, schemaKey: currentKey);
+                              schema: updatedSchema, schemaKey: currentKey);
                         },
                         type: DigitButtonType.primary,
                         size: DigitButtonSize.large,
