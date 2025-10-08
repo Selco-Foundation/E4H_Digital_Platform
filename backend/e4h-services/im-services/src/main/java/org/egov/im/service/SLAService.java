@@ -1,6 +1,8 @@
 package org.egov.im.service;
 
 import org.apache.kafka.common.protocol.types.Field;
+import org.egov.im.repository.IMPriorityRepository;
+import org.egov.im.web.models.Incident;
 import org.egov.im.web.models.IncidentRequest;
 import org.egov.im.web.models.Priority;
 import org.egov.im.web.models.workflow.ProcessInstance;
@@ -10,9 +12,11 @@ import com.jayway.jsonpath.JsonPath;
 
 import lombok.extern.slf4j.Slf4j;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -23,7 +27,14 @@ import static org.egov.im.util.IMConstants.*;
 @Slf4j
 @Service
 public class SLAService {
-
+    
+    private  final IMPriorityRepository imPriorityRepository;
+    
+    @Autowired
+    public SLAService(IMPriorityRepository imPriorityRepository){
+        this.imPriorityRepository = imPriorityRepository;
+    }
+    
     public long computeTotalSla(String currentState, List<State> states, List<ProcessInstance> processInstances) {
         log.info("SLAService::computeTotalSla called | currentState={}", currentState);
         Map<String, Long> stateToSlaMap = new HashMap<>();
@@ -112,5 +123,12 @@ public class SLAService {
     private String getStringValue(Map<String, Object> map, String key) {
         Object value = map.get(key);
         return value != null ? String.valueOf(value) : null;
+    }
+
+    public Priority getPriorityFromIMPriorityTable(Incident incident) {
+        List<Priority> priorities = new ArrayList<>();
+        priorities.addAll(imPriorityRepository.getPrioritiesByTypeAndSubtype(incident.getTenantId(),incident.getIncidentType(),incident.getIncidentSubType()));
+        priorities.addAll(imPriorityRepository.getPrioritiesBySystemFunctional(incident.getTenantId(),incident.getSystemFunctional()));
+        return imPriorityRepository.getMaxPriority(priorities);
     }
 } 
