@@ -3,6 +3,7 @@ import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:digit_ui_components/widgets/molecules/panel_cards.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:selco/utils/utils.dart';
 
 import '../blocs/inbox_type/inbox_type.dart';
 import '../blocs/project/project.dart';
@@ -69,26 +70,26 @@ class _DataSaveSuccessPageState extends State<DataSaveSuccessPage> {
                     size: DigitButtonSize.large,
                     label: rejectedReport ? 'Back to Landing Page' : 'Next',
                     onPressed: () async {
+                      final selected = context
+                          .read<SelectedProjectBloc>()
+                          .state
+                          .whenOrNull(selected: (s) => s);
+                      final projectId = selected?.project.id;
+                      final userType =
+                          context.read<UserTypeBloc>().state.maybeWhen(
+                                supervisor: () => USER_TYPES.SUPERVISOR.name,
+                                orElse: () => USER_TYPES.FIELD_STAFF.name,
+                              );
+                      if (projectId != null) {
+                        final isar = context.read<ProjectBloc>().isar;
+                        await PrefilledProjectRepository(isar).addOrTouch(
+                          projectId: projectId,
+                          userType: userType,
+                        );
+                      }
                       if (rejectedReport) {
                         context.router.replaceAll([const HomeRoute()]);
                       } else {
-                        final selected = context
-                            .read<SelectedProjectBloc>()
-                            .state
-                            .whenOrNull(selected: (s) => s);
-                        final projectId = selected?.project.id;
-                        final userType =
-                            context.read<UserTypeBloc>().state.maybeWhen(
-                                  supervisor: () => 'SUPERVISOR',
-                                  orElse: () => 'STAFF',
-                                );
-                        if (projectId != null) {
-                          final isar = context.read<ProjectBloc>().isar;
-                          await PrefilledProjectRepository(isar).addOrTouch(
-                            projectId: projectId,
-                            userType: userType,
-                          );
-                        }
                         context.router.push(OverallAssetSummaryRoute(
                             refresh: DateTime.now().millisecondsSinceEpoch));
                       }
