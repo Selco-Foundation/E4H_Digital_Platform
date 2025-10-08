@@ -358,61 +358,63 @@ class AssetSubmissionBloc
       print("document1 $workflowDocuments");
       print("document2 ${workflowDocuments.toString()}");
 
-      String bomFileStoreId;
-      try {
-        // fetch bytes
-        final bomBytes = await BomRepository().generateBomPdf(
-          isar: _isar,
-          projectId: projectId,
-          userType: userType,
-        );
-        // upload to file store as PDF
-        final bomFileName =
-            "bom_${projectId}_${DateTime.now().millisecondsSinceEpoch}.pdf";
-        bomFileStoreId = await BomRepository().uploadPdfToFileStore(
-          bomBytes!,
-          bomFileName,
-        );
-        // determine lat/lon for BOM doc: use first media file if exists
-        String lat = "", lon = "";
-        if (workflowDocuments.isNotEmpty) {
-          lat = workflowDocuments.first.geoLocation?.latitude ?? "";
-          lon = workflowDocuments.first.geoLocation?.longitude ?? "";
+      if (userType == USER_TYPES.SUPERVISOR.name) {
+        String bomFileStoreId;
+        try {
+          // fetch bytes
+          final bomBytes = await BomRepository().generateBomPdf(
+            isar: _isar,
+            projectId: projectId,
+            userType: userType,
+          );
+          // upload to file store as PDF
+          final bomFileName =
+              "bom_${projectId}_${DateTime.now().millisecondsSinceEpoch}.pdf";
+          bomFileStoreId = await BomRepository().uploadPdfToFileStore(
+            bomBytes!,
+            bomFileName,
+          );
+          // determine lat/lon for BOM doc: use first media file if exists
+          String lat = "", lon = "";
+          if (workflowDocuments.isNotEmpty) {
+            lat = workflowDocuments.first.geoLocation?.latitude ?? "";
+            lon = workflowDocuments.first.geoLocation?.longitude ?? "";
+          }
+          // add BOM document
+          workflowDocuments.add(
+            Document(
+              documentType: "INSTALLATION_REPORT_BOM",
+              fileStore: bomFileStoreId,
+              documentUid:
+                  "BOM-${projectId}-${DateTime.now().millisecondsSinceEpoch}",
+              geoLocation: GeoLocation(latitude: lat, longitude: lon),
+            ),
+          );
+        } catch (e) {
+          print("Error fetching/uploading BOM PDF: $e");
+          emit(const AssetSubmissionState.failure("Failed to attach BOM PDF:"));
+          return false;
         }
-        // add BOM document
-        workflowDocuments.add(
-          Document(
-            documentType: "INSTALLATION_REPORT_BOM",
-            fileStore: bomFileStoreId,
-            documentUid:
-                "BOM-${projectId}-${DateTime.now().millisecondsSinceEpoch}",
-            geoLocation: GeoLocation(latitude: lat, longitude: lon),
-          ),
-        );
-      } catch (e) {
-        print("Error fetching/uploading BOM PDF: $e");
-        emit(const AssetSubmissionState.failure("Failed to attach BOM PDF:"));
-        return false;
-      }
 
-      try {
-        final tenantId = envConfig.variables.tenantId;
-        final assignUserUuid = await SecureStore().getSelectedIndividual();
+        try {
+          final tenantId = envConfig.variables.tenantId;
+          final assignUserUuid = await SecureStore().getSelectedIndividual();
 
-        print(
-            '[BOM:submit] isarInstance=${identityHashCode(_isar)} project=$projectId');
+          print(
+              '[BOM:submit] isarInstance=${identityHashCode(_isar)} project=$projectId');
 
-        await BomRepository().submitMergedForProject(
-          isar: _isar,
-          projectId: projectId,
-          tenantId: tenantId,
-          facilityId: facilityId,
-          assignUserUuid: assignUserUuid ?? '',
-        );
-      } catch (e) {
-        print('BOM submission error: $e');
-        emit(AssetSubmissionState.failure("BOM submission error: $e"));
-        return false;
+          await BomRepository().submitMergedForProject(
+            isar: _isar,
+            projectId: projectId,
+            tenantId: tenantId,
+            facilityId: facilityId,
+            assignUserUuid: assignUserUuid ?? '',
+          );
+        } catch (e) {
+          print('BOM submission error: $e');
+          emit(AssetSubmissionState.failure("BOM submission error: $e"));
+          return false;
+        }
       }
 
       await remoteRepo.updateProjectWorkflow(
