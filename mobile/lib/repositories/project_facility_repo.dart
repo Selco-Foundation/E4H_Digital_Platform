@@ -30,7 +30,7 @@ class ProjectFacilityRepository {
         .where()
         .projectIdEqualTo(projectId)
         .findFirst();
-    print("existing ${existing}");
+    print("existing ${existing} $projectId");
     if (existing != null) {
       return existing;
     }
@@ -58,6 +58,9 @@ class ProjectFacilityRepository {
       projectId: projectId,
       facilityId: facilityModel.facilityId,
     );
+
+    print(
+        "newEntry ${newEntry} $projectId faciltiyId ${facilityModel.facilityId}");
 
     await isar.writeTxn(() async {
       await isar.cacheProjectFacilitys.put(newEntry);
