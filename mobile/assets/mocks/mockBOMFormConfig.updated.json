@@ -12710,8 +12710,8 @@
     {
       "id": "42479a72-bd0b-4edb-bc86-6ddb91fe39d1",
       "tenantId": "in",
-      "schemaCode": "SELCO.FormConfigSystemParameters",
-      "uniqueIdentifier": "BOM.SystemParametersUnique",
+      "schemaCode": "SELCO.FormConfigSystemParametersSinglePhase",
+      "uniqueIdentifier": "BOM.SystemParametersUniqueSinglePhase",
       "data": {
         "name": "AssetForm.SystemParameters",
         "order": 1,
@@ -13799,6 +13799,1693 @@
                 "includeInForm": true,
                 "fieldName": "ph1_grid_input_current_uom",
                 "validations": []
+              }
+            ]
+          },
+          {
+            "page": "SystemFunctionalityParameters_2",
+            "type": "object",
+            "label": "PCU/Inverter display & setting (For both 1-Phase & 3-Phase connectivity)",
+            "order": 2,
+            "description": "",
+            "actionLabel": "Submit",
+            "properties": [
+              {
+                "type": "string",
+                "format": "dropdown",
+                "label": "Inverter Priority Settings",
+                "order": 1,
+                "value": "",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "isMultiSelect": false,
+                "fieldName": "disp_inverter_priority",
+                "enums": [
+                  {
+                    "code": "SOLAR_BATTERY_GRID",
+                    "name": "Solar-Battery-Grid"
+                  },
+                  {
+                    "code": "SOLAR_GRID_BATTERY",
+                    "name": "Solar-Grid-Battery"
+                  }
+                ],
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Inverter Priority Settings is required"
+                  }
+                ]
+              },
+              {
+                "type": "string",
+                "format": "dropdown",
+                "label": "Grid Export Feature",
+                "order": 2,
+                "value": "",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "isMultiSelect": false,
+                "fieldName": "disp_grid_export",
+                "enums": [
+                  {
+                    "code": "ENABLED",
+                    "name": "Enabled"
+                  },
+                  {
+                    "code": "DISABLED",
+                    "name": "Disabled"
+                  }
+                ],
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Grid Export Feature is required"
+                  }
+                ],
+                "section": "PCU/Inverter display & setting (For both 1-Phase & 3-Phase connectivity)",
+                "sectionDescription": ""
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "Battery Settings (Ah)",
+                "order": 3,
+                "value": "",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "Enter capacity in Ah",
+                "infoText": "",
+                "readOnly": false,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "fieldName": "disp_battery_settings_ah",
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Battery Settings (Ah) is required"
+                  }
+                ],
+                "section": "PCU/Inverter display & setting (For both 1-Phase & 3-Phase connectivity)",
+                "sectionDescription": ""
+              },
+              {
+                "type": "string",
+                "format": "dropdown",
+                "label": "Battery Type",
+                "order": 4,
+                "value": "",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "isMultiSelect": false,
+                "fieldName": "disp_battery_type",
+                "enums": [
+                  {
+                    "code": "TUBULAR",
+                    "name": "Tubular"
+                  },
+                  {
+                    "code": "VRLA",
+                    "name": "VRLA"
+                  },
+                  {
+                    "code": "LIFEPO4",
+                    "name": "LiFePO4"
+                  }
+                ],
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Battery Type is required"
+                  }
+                ],
+                "section": "PCU/Inverter display & setting (For both 1-Phase & 3-Phase connectivity)",
+                "sectionDescription": ""
+              },
+              {
+                "type": "string",
+                "format": "dropdown",
+                "label": "The load is running on",
+                "order": 5,
+                "value": "",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "isMultiSelect": false,
+                "fieldName": "disp_load_running_on",
+                "enums": [
+                  {
+                    "code": "INVERTER",
+                    "name": "Inverter"
+                  },
+                  {
+                    "code": "GRID",
+                    "name": "Grid"
+                  }
+                ],
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "The load is running on is required"
+                  }
+                ],
+                "section": "PCU/Inverter display & setting (For both 1-Phase & 3-Phase connectivity)",
+                "sectionDescription": ""
+              },
+              {
+                "type": "string",
+                "format": "dropdown",
+                "label": "Changeover switch orientation is",
+                "order": 6,
+                "value": "",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "isMultiSelect": false,
+                "fieldName": "chg_switch_orientation",
+                "enums": [
+                  {
+                    "code": "SOLAR",
+                    "name": "Solar"
+                  },
+                  {
+                    "code": "GRID",
+                    "name": "Grid"
+                  }
+                ],
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Changeover switch orientation is is required"
+                  }
+                ],
+                "section": "Changeover Switch settings",
+                "sectionDescription": ""
+              },
+              {
+                "type": "string",
+                "format": "dropdown",
+                "label": "Change over switch functional for both solar & grid",
+                "order": 7,
+                "value": "",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "isMultiSelect": false,
+                "fieldName": "chg_switch_functional",
+                "enums": [
+                  {
+                    "code": "YES",
+                    "name": "Yes"
+                  },
+                  {
+                    "code": "NO",
+                    "name": "No"
+                  }
+                ],
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Change over switch functional for both solar & grid is required"
+                  }
+                ]
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "Measured Value",
+                "order": 8,
+                "value": "",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "fieldName": "sock_v_pn_mv",
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Measured Value is required"
+                  }
+                ],
+                "section": "Measurements at Sockets (For both 1-Phase & 3-Phase connectivity): Voltage between Phase & Neutral",
+                "sectionDescription": ""
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "UOM",
+                "order": 9,
+                "value": "V",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": true,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "fieldName": "sock_v_pn_uom",
+                "validations": []
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "Measured Value",
+                "order": 10,
+                "value": "",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "fieldName": "sock_v_pe_mv",
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Measured Value is required"
+                  }
+                ],
+                "section": "Measurements at Sockets (For both 1-Phase & 3-Phase connectivity): Voltage between Phase & Earth",
+                "sectionDescription": ""
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "UOM",
+                "order": 11,
+                "value": "V",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": true,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "fieldName": "sock_v_pe_uom",
+                "validations": []
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "Measured Value",
+                "order": 12,
+                "value": "",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "fieldName": "sock_v_en_mv",
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Measured Value is required"
+                  }
+                ],
+                "section": "Measurements at Sockets (For both 1-Phase & 3-Phase connectivity): Voltage between Earth & Neutral",
+                "sectionDescription": ""
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "UOM",
+                "order": 13,
+                "value": "V",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": true,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "fieldName": "sock_v_en_uom",
+                "validations": []
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "Measured Value",
+                "order": 14,
+                "value": "",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "fieldName": "ept_dc_earthing_mv",
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Measured Value is required"
+                  }
+                ],
+                "section": "Earth pit tests (standalone before connecting to system): DC Earthing",
+                "sectionDescription": ""
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "UOM",
+                "order": 15,
+                "value": "Ω",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": true,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "fieldName": "ept_dc_earthing_uom",
+                "validations": []
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "Measured Value",
+                "order": 16,
+                "value": "",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "fieldName": "ept_ac_earthing_mv",
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Measured Value is required"
+                  }
+                ],
+                "section": "Earth pit tests (standalone before connecting to system): AC Earthing",
+                "sectionDescription": ""
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "UOM",
+                "order": 17,
+                "value": "Ω",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": true,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "fieldName": "ept_ac_earthing_uom",
+                "validations": []
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "Measured Value",
+                "order": 18,
+                "value": "",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "fieldName": "ept_lightning_arrester1_mv",
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Measured Value is required"
+                  }
+                ],
+                "section": "Earth pit tests (standalone before connecting to system): Lightning arrester-1",
+                "sectionDescription": ""
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "UOM",
+                "order": 19,
+                "value": "Ω",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": true,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "fieldName": "ept_lightning_arrester1_uom",
+                "validations": []
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "Measured Value",
+                "order": 20,
+                "value": "",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "fieldName": "ept_lightning_arrester2_mv",
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Measured Value is required"
+                  }
+                ],
+                "section": "Earth pit tests (standalone before connecting to system): Lightning arrester-2",
+                "sectionDescription": ""
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "UOM",
+                "order": 21,
+                "value": "Ω",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": true,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "fieldName": "ept_lightning_arrester2_uom",
+                "validations": []
+              },
+              {
+                "type": "string",
+                "format": "dropdown",
+                "label": "Is the orientation on solar system’s basic operational instructions given to the health center POC?",
+                "order": 22,
+                "value": "",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "isMultiSelect": false,
+                "fieldName": "orientation_operational_instructions_status",
+                "enums": [
+                  {
+                    "code": "YES",
+                    "name": "YES"
+                  },
+                  {
+                    "code": "NO",
+                    "name": "NO"
+                  }
+                ],
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Is the orientation on solar system’s basic operational instructions given to the health center POC? is required"
+                  }
+                ],
+                "section": "Orientation Checklist",
+                "sectionDescription": ""
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "Remarks",
+                "order": 23,
+                "value": "",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "fieldName": "orientation_operational_instructions_remarks",
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Remarks is required"
+                  }
+                ]
+              },
+              {
+                "type": "string",
+                "format": "dropdown",
+                "label": "Is the orientation on solar system’s basic routine maintenances given to the health center POC?",
+                "order": 24,
+                "value": "",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "isMultiSelect": false,
+                "fieldName": "orientation_routine_maintenance_status",
+                "enums": [
+                  {
+                    "code": "YES",
+                    "name": "YES"
+                  },
+                  {
+                    "code": "NO",
+                    "name": "NO"
+                  }
+                ],
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Is the orientation on solar system’s basic routine maintenances given to the health center POC? is required"
+                  }
+                ],
+                "section": "Orientation Checklist",
+                "sectionDescription": ""
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "Remarks",
+                "order": 25,
+                "value": "",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "fieldName": "orientation_routine_maintenance_remarks",
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Remarks is required"
+                  }
+                ]
+              },
+              {
+                "type": "string",
+                "format": "dropdown",
+                "label": "Are the stickers containing POCs pasted in the control room?",
+                "order": 26,
+                "value": "",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "isMultiSelect": false,
+                "fieldName": "stickers_pasted_status",
+                "enums": [
+                  {
+                    "code": "YES",
+                    "name": "YES"
+                  },
+                  {
+                    "code": "NO",
+                    "name": "NO"
+                  }
+                ],
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Are the stickers containing POCs pasted in the control room? is required"
+                  }
+                ],
+                "section": "Orientation Checklist",
+                "sectionDescription": ""
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "Remarks",
+                "order": 27,
+                "value": "",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "fieldName": "stickers_pasted_remarks",
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Remarks is required"
+                  }
+                ]
+              },
+              {
+                "type": "string",
+                "format": "dropdown",
+                "label": "Are the Do’s and Don’ts posters with helpline numbers pasted in the control room?",
+                "order": 28,
+                "value": "",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "isMultiSelect": false,
+                "fieldName": "posters_pasted_status",
+                "enums": [
+                  {
+                    "code": "YES",
+                    "name": "YES"
+                  },
+                  {
+                    "code": "NO",
+                    "name": "NO"
+                  }
+                ],
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Are the Do’s and Don’ts posters with helpline numbers pasted in the control room? is required"
+                  }
+                ],
+                "section": "Orientation Checklist",
+                "sectionDescription": ""
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "Remarks",
+                "order": 29,
+                "value": "",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "fieldName": "posters_pasted_remarks",
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Remarks is required"
+                  }
+                ]
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "Additional remarks",
+                "order": 30,
+                "value": "",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "fieldName": "orientation_additional_remarks",
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Additional remarks is required"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "42479a72-bd0b-4edb-bc86-6ddb91fe39d1",
+      "tenantId": "in",
+      "schemaCode": "SELCO.FormConfigSystemParametersThreePhase",
+      "uniqueIdentifier": "BOM.SystemParametersUniqueThreePhase",
+      "data": {
+        "name": "AssetForm.SystemParameters",
+        "order": 1,
+        "summary": false,
+        "version": 1,
+        "disabled": false,
+        "isSelected": true,
+        "project": "SELCO",
+        "pages": [
+          {
+            "page": "SystemFunctionalityParameters_1",
+            "type": "object",
+            "label": "SYSTEM FUNCTIONALITY PARAMETERS",
+            "order": 1,
+            "description": "",
+            "actionLabel": "Next",
+            "properties": [
+              {
+                "type": "string",
+                "format": "date",
+                "label": "Date of recording",
+                "order": 1,
+                "value": "",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "fieldName": "sfp_date",
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Date of recording is required"
+                  }
+                ]
+              },
+              {
+                "type": "string",
+                "format": "dropdown",
+                "label": "Weather Condition at the time of recording",
+                "order": 2,
+                "value": "",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "isMultiSelect": false,
+                "fieldName": "sfp_weather",
+                "enums": [
+                  {
+                    "code": "CLEAR_SKY",
+                    "name": "Clear Sky"
+                  },
+                  {
+                    "code": "PARTIALLY_CLOUDY",
+                    "name": "Partially Cloudy"
+                  },
+                  {
+                    "code": "OVERCAST",
+                    "name": "Overcast"
+                  },
+                  {
+                    "code": "RAINY",
+                    "name": "Rainy"
+                  }
+                ],
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Weather Condition at the time of recording is required"
+                  }
+                ]
+              },
+              {
+                "type": "integer",
+                "format": "text",
+                "label": "Array Size (kWp)",
+                "order": 3,
+                "value": "",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "Enter value in kWp",
+                "infoText": "",
+                "readOnly": false,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "fieldName": "array_size_kwp",
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Array Size (kWp) is required"
+                  }
+                ]
+              },
+              {
+                "type": "integer",
+                "format": "text",
+                "label": "No. of modules",
+                "order": 4,
+                "value": "",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "Enter quantity in Nos",
+                "infoText": "",
+                "readOnly": false,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "fieldName": "array_no_modules",
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "No. of modules is required"
+                  }
+                ]
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "No. of strings",
+                "order": 5,
+                "value": "",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "Enter quantity in Nos",
+                "infoText": "",
+                "readOnly": false,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "fieldName": "array_no_strings",
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "No. of strings is required"
+                  }
+                ]
+              },
+              {
+                "type": "integer",
+                "format": "text",
+                "label": "No. of modules per string",
+                "order": 6,
+                "value": "",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "Enter quantity in Nos",
+                "infoText": "",
+                "readOnly": false,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "fieldName": "array_no_modules_per_string",
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "No. of modules per string is required"
+                  }
+                ]
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "Each module capacity (Wp)",
+                "order": 7,
+                "value": "",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "Enter power in Wp",
+                "infoText": "",
+                "readOnly": false,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "fieldName": "array_each_module_wp",
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Each module capacity (Wp) is required"
+                  }
+                ]
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "Array",
+                "order": 8,
+                "value": "",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "fieldName": "ajb_off_voc_mv_anchor",
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Measured Value Array is required"
+                  }
+                ],
+                "section": "Measurement with Grid OFF + AJB MCB OFF — Voc (in Volts)",
+                "sectionDescription": ""
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "Measured Value - String 1",
+                "order": 9,
+                "value": "",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "fieldName": "ajb_off_voc_string_1",
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Measured Value - String 1 is required"
+                  }
+                ]
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "Measured Value - String 2",
+                "order": 10,
+                "value": "",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "fieldName": "ajb_off_voc_string_2",
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Measured Value - String 2 is required"
+                  }
+                ]
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "Measured Value - String 3",
+                "order": 11,
+                "value": "",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "fieldName": "ajb_off_voc_string_3",
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Measured Value - String 3 is required"
+                  }
+                ]
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "Measured Value - String 4",
+                "order": 12,
+                "value": "",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "fieldName": "ajb_off_voc_string_4",
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Measured Value - String 4 is required"
+                  }
+                ]
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "Measured Value - String 5",
+                "order": 13,
+                "value": "",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "fieldName": "ajb_off_voc_string_5",
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Measured Value - String 5 is required"
+                  }
+                ]
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "UOM",
+                "order": 14,
+                "value": "V",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": true,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "fieldName": "ajb_off_voc_uom",
+                "validations": []
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "Array",
+                "order": 15,
+                "value": "",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "fieldName": "ajb_on_vmp_mv_anchor",
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Measured Value Array is required"
+                  }
+                ],
+                "section": "Measurement with Grid OFF + AJB MCB ON — Vmp (in Volts)",
+                "sectionDescription": ""
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "Measured Value - String 1",
+                "order": 16,
+                "value": "",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "fieldName": "ajb_on_vmp_string_1",
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Measured Value - String 1 is required"
+                  }
+                ]
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "Measured Value - String 2",
+                "order": 17,
+                "value": "",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "fieldName": "ajb_on_vmp_string_2",
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Measured Value - String 2 is required"
+                  }
+                ]
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "Measured Value - String 3",
+                "order": 18,
+                "value": "",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "fieldName": "ajb_on_vmp_string_3",
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Measured Value - String 3 is required"
+                  }
+                ]
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "Measured Value - String 4",
+                "order": 19,
+                "value": "",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "fieldName": "ajb_on_vmp_string_4",
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Measured Value - String 4 is required"
+                  }
+                ]
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "Measured Value - String 5",
+                "order": 20,
+                "value": "",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "fieldName": "ajb_on_vmp_string_5",
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Measured Value - String 5 is required"
+                  }
+                ]
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "UOM",
+                "order": 21,
+                "value": "V",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": true,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "fieldName": "ajb_on_vmp_uom"
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "Array",
+                "order": 22,
+                "value": "",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "fieldName": "ajb_on_imp_mv_anchor",
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Measured Value Array is required"
+                  }
+                ],
+                "section": "Measurement with Grid OFF + AJB MCB ON — Imp (in Amperes)",
+                "sectionDescription": ""
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "Measured Value - String 1",
+                "order": 23,
+                "value": "",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "fieldName": "ajb_on_imp_string_1",
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Measured Value - String 1 is required"
+                  }
+                ]
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "Measured Value - String 2",
+                "order": 24,
+                "value": "",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "fieldName": "ajb_on_imp_string_2",
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Measured Value - String 2 is required"
+                  }
+                ]
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "Measured Value - String 3",
+                "order": 25,
+                "value": "",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "fieldName": "ajb_on_imp_string_3",
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Measured Value - String 3 is required"
+                  }
+                ]
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "Measured Value - String 4",
+                "order": 26,
+                "value": "",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "fieldName": "ajb_on_imp_string_4",
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Measured Value - String 4 is required"
+                  }
+                ]
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "Measured Value - String 5",
+                "order": 27,
+                "value": "",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "fieldName": "ajb_on_imp_string_5",
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Measured Value - String 5 is required"
+                  }
+                ]
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "UOM",
+                "order": 28,
+                "value": "A",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": true,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "fieldName": "ajb_on_imp_uom",
+                "validations": []
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "Measured Value",
+                "order": 29,
+                "value": "",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "fieldName": "bb_voltage_mv",
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Measured Value is required"
+                  }
+                ],
+                "section": "Battery Bank Voltage",
+                "sectionDescription": ""
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "UOM",
+                "order": 30,
+                "value": "V",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": true,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "fieldName": "bb_voltage_uom"
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "Measured Value",
+                "order": 31,
+                "value": "",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "fieldName": "bb_current_mv",
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Measured Value is required"
+                  }
+                ],
+                "section": "Battery Bank Current",
+                "sectionDescription": ""
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "UOM",
+                "order": 32,
+                "value": "A",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": true,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "fieldName": "bb_current_uom"
               }
             ]
           },
