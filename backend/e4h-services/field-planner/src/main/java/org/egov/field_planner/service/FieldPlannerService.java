@@ -426,12 +426,11 @@ public class FieldPlannerService {
                 throw new RuntimeException(e);
             }
         }
-        else{
-            /*
-             * Handle fieldPlan name regeneration if needed (dates changed or activity)
-             */
-            handleFieldPlanNameUpdate(request, fieldPlan, fieldPlanFromDB);
-        }
+
+        /*
+         * Handle fieldPlan name regeneration if needed (dates changed or activity)
+         */
+        handleFieldPlanNameUpdate(request, fieldPlan, fieldPlanFromDB);
 
         /*
          * Check and enrich cascading fieldPlan dates and push the update to the message broker
