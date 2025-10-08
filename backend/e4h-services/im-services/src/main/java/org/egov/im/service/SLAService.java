@@ -1,6 +1,7 @@
 package org.egov.im.service;
 
 import org.apache.kafka.common.protocol.types.Field;
+import org.egov.im.util.BusinessHoursUtil;
 import org.egov.im.web.models.IncidentRequest;
 import org.egov.im.web.models.Priority;
 import org.egov.im.web.models.workflow.ProcessInstance;
@@ -13,6 +14,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -23,6 +27,48 @@ import static org.egov.im.util.IMConstants.*;
 @Slf4j
 @Service
 public class SLAService {
+
+    public long computeTotalSlaRemaining( List<State> states, List<ProcessInstance> processInstances, List<Map<String, Object>> businessHourList) {
+        if (processInstances == null || processInstances.isEmpty()) {
+            return 0;
+        }
+        BusinessHoursUtil businessHoursUtil = new BusinessHoursUtil(businessHourList);
+
+        Map<String, Long> stateToSlaMap = new HashMap<>();
+        for (State state : states) {
+            String key = state.getApplicationStatus();
+            if (key != null && state.getSla() != null) {
+                stateToSlaMap.put(key, state.getSla());
+            }
+        }
+        long remainingTotalSla = 0;
+
+        for (int i = 0; i < processInstances.size(); i++) {
+            ProcessInstance current = processInstances.get(i);
+            String state = current.getState().getApplicationStatus();
+
+            if (PENDINGFORASSIGNMENT.equals(state) || PENDINGATVENDOR.equals(state)
+                    || state.startsWith(PENDING_ASSIGNMENT_PREFIX) || state.startsWith(PENDING_RESOLUTION_PREFIX)) {
+
+                long prevStateTime = current.getAuditDetails().getCreatedTime();
+                ZonedDateTime zonedPrevStateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(prevStateTime), ZoneId.of(ASIA_KOLKATA));
+                ZonedDateTime zonedNextStateTime;
+                if (i + 1 < processInstances.size()) {
+                    long nextStateTime = processInstances.get(i + 1).getAuditDetails().getCreatedTime();
+                    zonedNextStateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(nextStateTime), ZoneId.of(ASIA_KOLKATA));
+                } else {
+                    zonedNextStateTime = ZonedDateTime.now(ZoneId.of(ASIA_KOLKATA));
+                }
+                long currentStateTimeSpent = businessHoursUtil.calculateBusinessDuration(zonedPrevStateTime, zonedNextStateTime);
+                long currentStateDefinedSla = stateToSlaMap.getOrDefault(state, 0L);
+                if(currentStateDefinedSla-currentStateTimeSpent<0){
+                    remainingTotalSla += currentStateDefinedSla-currentStateTimeSpent;
+                }
+            }
+        }
+
+        return remainingTotalSla;
+    }
 
     public long computeTotalSla(String currentState, List<State> states, List<ProcessInstance> processInstances) {
         log.info("SLAService::computeTotalSla called | currentState={}", currentState);

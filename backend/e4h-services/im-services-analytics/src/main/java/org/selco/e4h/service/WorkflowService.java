@@ -8,11 +8,14 @@ import org.egov.common.contract.request.RequestInfo;
 import org.egov.tracer.model.CustomException;
 import org.selco.e4h.config.ConsumerConfiguration;
 import org.selco.e4h.repository.ServiceRequestRepository;
+import org.selco.e4h.util.IMConstants;
 import org.selco.e4h.web.models.workflow.*;
 import org.selco.e4h.web.models.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.CollectionUtils;
 import java.util.*;
+
+import static org.selco.e4h.util.IMConstants.*;
 
 @org.springframework.stereotype.Service
 @Slf4j
@@ -37,6 +40,7 @@ public class WorkflowService {
         this.consumerConfiguration = consumerConfiguration;
         this.repository = repository;
         this.mapper = mapper;
+
     }
 
 
@@ -58,7 +62,22 @@ public class WorkflowService {
             return Collections.emptyList();
         }
 
-        return processInstanceResponse.getProcessInstances();
+        List<ProcessInstance> processInstances =  processInstanceResponse.getProcessInstances();
+
+        // Get latest cycle of the ticket
+        Collections.reverse(processInstances);
+        int lastIndex = -1;
+        for (int i = processInstances.size() - 1; i >= 0; i--) {
+            if (PENDING_FOR_ASSIGNMENT.equals(processInstances.get(i).getState())) {
+                lastIndex = i;
+                break;
+            }
+        }
+        if (lastIndex != -1) {
+            return processInstances.subList(lastIndex, processInstances.size());
+        } else {
+            return processInstances;
+        }
     }
 
 

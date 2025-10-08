@@ -145,12 +145,10 @@ public class WorkflowService {
 
         //get all process instances
         List<ProcessInstance> processInstances = getAllProcessInstances(tenantId,IncidentId, requestInfo);
-        Collections.reverse(processInstances);
-        // Step 3: Use BusinessHoursUtil
-        BusinessHoursUtil util = new BusinessHoursUtil(businessHourList);
-        long businessHoursElapsed = util.calculateBusinessDurationForAllStates(processInstances);
+
+        // Calculate remaining sla and defined total sla
         long definedTotalSla = slaService.computeTotalSla(applicationStatus, this.getStates(), processInstances);
-        long totalSlaRemaining = definedTotalSla - businessHoursElapsed;
+        long totalSlaRemaining = slaService.computeTotalSlaRemaining(this.getStates(), processInstances, businessHourList);
 
         wrapper.getIndexView().setDefinedTotalSla(definedTotalSla);
         processInstance.getState().setTotalSlaRemaining(totalSlaRemaining);
@@ -336,7 +334,22 @@ public class WorkflowService {
             return Collections.emptyList();
         }
 
-        return processInstanceResponse.getProcessInstances();
+        List<ProcessInstance> processInstances =  processInstanceResponse.getProcessInstances();
+
+        // Get latest cycle of the ticket
+        Collections.reverse(processInstances);
+        int lastIndex = -1;
+        for (int i = processInstances.size() - 1; i >= 0; i--) {
+            if (PENDINGFORASSIGNMENT.equals(processInstances.get(i).getState())) {
+                lastIndex = i;
+                break;
+            }
+        }
+        if (lastIndex != -1) {
+            return processInstances.subList(lastIndex, processInstances.size());
+        } else {
+            return processInstances;
+        }
     }
 
 
