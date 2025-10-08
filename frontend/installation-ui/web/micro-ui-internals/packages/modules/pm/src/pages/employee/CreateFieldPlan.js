@@ -17,6 +17,7 @@ import useOrganization from "../../hooks/useOrganization";
 import useOrganizationUser from "../../hooks/useOrganizationUser";
 import useActivityAssignment from "../../hooks/useActivityAssignment";
 import CommonUtils from "../../utilities/CommonUtils";
+import UnsavedDataAlert from "../../components/UnsavedDataAlert";
 
 const CreateFieldPlan = () => {
 
@@ -150,7 +151,7 @@ const CreateFieldPlan = () => {
   };
 
   const getDefaultActivityAssignments = useCallback(() => {
-    return createdFieldPlan.activities
+    return createdFieldPlan?.activities
       ? createdFieldPlan.activities
         .map((activity) => ({
           activity: activity,
@@ -1087,77 +1088,7 @@ const CreateFieldPlan = () => {
           onClose={() => setToast(null)}
         />
       )}
-      {backAlert && (
-        <PopUp>
-          <div
-            style={{
-              backgroundColor: "white",
-              position: "fixed",
-              top: "50%",
-              left: "50%",
-              transform: "translate(-50%, -50%)",
-              width: "400px",
-              maxWidth: "95%",
-              padding: "24px",
-              borderRadius: "5px",
-            }}
-          >
-            <div
-              style={{
-                width: "100%",
-                position: "relative",
-              }}
-            >
-              <button
-                type={"button"}
-                style={{
-                  cursor: "pointer",
-                  position: "absolute",
-                  top: "-15px",
-                  right: "-15px",
-                  backgroundColor: "#D6D5D4",
-                  display: "flex",
-                  alignItems: "center",
-                  padding: "0",
-                  borderRadius: "3px",
-                }}
-                onClick={() => setBackAlert(null)}
-              >
-                <CustomCloseSvg fill={"transparent"} />
-              </button>
-            </div>
-            <h2
-              style={{
-                margin: "0 0 16px 0",
-                fontSize: "20px",
-                fontWeight: "600",
-                color: "#333",
-                textAlign: "center",
-              }}
-            >
-              {t("CORE_COMMON_ALERT")}
-            </h2>
-
-            <p
-              style={{
-                fontSize: "16px",
-                color: "#555",
-                marginBottom: "24px",
-                textAlign: "center",
-              }}
-            >
-              {t("PM_ALERT_LOSE_UNSAVED_DATA")}
-            </p>
-            <div style={{display: "flex", justifyContent: "space-around"}}>
-              <Button variation={"secondary"} label={t("CORE_COMMON_CANCEL")} onButtonClick={() => setBackAlert(null)} />
-              <Button variation={"primary"} label={t("CORE_COMMON_CONTINUE")} onButtonClick={() => {
-                backAlert.continueAction();
-                setBackAlert(null);
-              }} />
-            </div>
-          </div>
-        </PopUp>
-      )}
+      {backAlert && <UnsavedDataAlert t={t} alert={backAlert} setAlert={setBackAlert} />}
     </div>
   )
 }
