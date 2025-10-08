@@ -953,9 +953,14 @@ const CreateFieldPlan = () => {
   const handleBackNavigation = () => {
     switch (currentKey) {
       case 1:
-        const savedFieldPlanDetails = persistedFormData.fieldPlanDetails;
+        const savedFieldPlanDetails = {
+          districts: persistedFormData?.fieldPlanDetails?.districts,
+          blocks: persistedFormData?.fieldPlanDetails?.blocks,
+          fieldPlanDuration: persistedFormData?.fieldPlanDetails?.fieldPlanDuration,
+          healthFacilitiesCount: persistedFormData?.fieldPlanDetails?.healthFacilitiesCount,
+          activities: persistedFormData?.fieldPlanDetails?.activities,
+        };
         const currentFieldPlanDetails = {
-          state: getFormData("state"),
           districts: getFormData("districts"),
           blocks: getFormData("blocks"),
           fieldPlanDuration: getFormData("fieldPlanDuration"),
