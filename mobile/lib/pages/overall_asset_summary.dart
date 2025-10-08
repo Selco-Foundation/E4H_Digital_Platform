@@ -391,8 +391,6 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                                   files: inputs,
                                                 ),
                                               );
-
-                                          return;
                                           // Proceed with submission
                                           context
                                               .read<AssetSubmissionBloc>()

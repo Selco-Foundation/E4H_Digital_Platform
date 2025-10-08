@@ -15,6 +15,7 @@
       "uniqueIdentifier": "",
       "data": {
         "solutionDesignTypeCode": "RMS_Single_Phase",
+        "file_name": "",
         "bomForms": [
           {
             "name": "RMS_Single_Phase_BOM_Solar"
