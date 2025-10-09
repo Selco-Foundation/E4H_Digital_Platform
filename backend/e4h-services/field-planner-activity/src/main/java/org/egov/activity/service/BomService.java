@@ -8,6 +8,7 @@ import org.egov.activity.repository.BomRepository;
 import org.egov.activity.service.enrichment.BomEnrichment;
 import org.egov.activity.util.ActivityServiceUtil;
 import org.egov.activity.util.MDMSUtils;
+import org.egov.activity.util.StartupRunner;
 import org.egov.activity.validator.BomValidator;
 import org.egov.activity.web.models.*;
 import org.egov.common.contract.request.RequestInfo;
@@ -38,20 +39,23 @@ public class BomService {
 
     private ServiceRequestRepository serviceRequest;
 
+    private final StartupRunner startupRunner;
+
     @Qualifier("objectMapper")
     private final ObjectMapper mapper;
 
     @Autowired
     public BomService(
             BomRepository bomRepository, BomEnrichment bomEnrichment, ActivityConfiguration activityConfiguration, BomValidator bomValidator, ServiceRequestRepository serviceRequest,
-            Producer producer, MDMSUtils mdmsUtils, ActivityServiceUtil activityServiceUtil, @Qualifier("objectMapper") ObjectMapper mapper) {
+            Producer producer, MDMSUtils mdmsUtils, ActivityServiceUtil activityServiceUtil, StartupRunner startupRunner, @Qualifier("objectMapper") ObjectMapper mapper) {
             this.producer = producer;
             this.activityConfiguration = activityConfiguration;
             this.bomRepository = bomRepository;
             this.bomEnrichment = bomEnrichment;
             this.mdmsUtils = mdmsUtils;
             this.activityServiceUtil = activityServiceUtil;
-            this.mapper = mapper;
+        this.startupRunner = startupRunner;
+        this.mapper = mapper;
             this.bomValidator = bomValidator;
             this.serviceRequest = serviceRequest;
     }
@@ -117,7 +121,11 @@ public class BomService {
     }
 
     public byte[] generateBOMPdf(GenerateBOMPdfRequest request, String tenantId){
-        return getBOMPdfFile(activityConfiguration.getBomKeypdf(), tenantId, request);
+        String bomType = request.getSolutionDesignCode();
+        if(bomType==null)
+            throw new CustomException("BOM_PDF", "Design Type is required");
+        String pdfKey = startupRunner.getConfigMap().get(bomType);
+        return getBOMPdfFile(pdfKey, tenantId, request);
     }
 
     private BomSearchRequest getSearchBOMRequest(List<BillOfMaterial> billOfMaterials, RequestInfo requestInfo) {

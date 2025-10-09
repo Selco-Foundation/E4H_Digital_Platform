@@ -38,8 +38,20 @@ public class ActivityConfiguration {
     @Value("${egov.createnosave.pdf.url}")
     private String pdfCreateNoSaveUrl;
 
-    @Value("${egov.pdf.key}")
-    private String bomKeypdf;
+    @Value("${egov.off.grid.single.phase.key}")
+    private String bomACOffGridSinglePhase;
+
+    @Value("${egov.off.grid.three.phase.key}")
+    private String bomACOffGridSThreePhase;
+
+    @Value("${egov.hybrid.single.phase.key}")
+    private String bomHybridSinglePhase;
+
+    @Value("${egov.hybrid.three.phase.key}")
+    private String bomHybridThreePhase;
+
+    @Value("${egov.dc.system.key}")
+    private String bomDCSystem;
 
     @Value("${search.api.limit:100}")
     private String searchApiLimit;
