@@ -14476,6 +14476,7 @@
                 "fieldName": "ept_lightning_arrester2_uom",
                 "validations": []
               },
+
               {
                 "type": "string",
                 "format": "dropdown",
@@ -33147,6 +33148,283 @@
                   { "code": "LIFEPO4", "name": "LiFePO4" }
                 ],
                 "fieldName": "dc_battery_type"
+              },
+              {
+                "type": "string",
+                "format": "dropdown",
+                "label": "Is the orientation on solar system’s basic operational instructions given to the health center POC?",
+                "order": 22,
+                "value": "",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "isMultiSelect": false,
+                "fieldName": "orientation_operational_instructions_status",
+                "enums": [
+                  {
+                    "code": "YES",
+                    "name": "YES"
+                  },
+                  {
+                    "code": "NO",
+                    "name": "NO"
+                  }
+                ],
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Is the orientation on solar system’s basic operational instructions given to the health center POC? is required"
+                  }
+                ],
+                "section": "Orientation Checklist",
+                "sectionDescription": ""
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "Remarks",
+                "order": 23,
+                "value": "",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "fieldName": "orientation_operational_instructions_remarks",
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Remarks is required"
+                  }
+                ]
+              },
+              {
+                "type": "string",
+                "format": "dropdown",
+                "label": "Is the orientation on solar system’s basic routine maintenances given to the health center POC?",
+                "order": 24,
+                "value": "",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "isMultiSelect": false,
+                "fieldName": "orientation_routine_maintenance_status",
+                "enums": [
+                  {
+                    "code": "YES",
+                    "name": "YES"
+                  },
+                  {
+                    "code": "NO",
+                    "name": "NO"
+                  }
+                ],
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Is the orientation on solar system’s basic routine maintenances given to the health center POC? is required"
+                  }
+                ],
+                "section": "Orientation Checklist",
+                "sectionDescription": ""
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "Remarks",
+                "order": 25,
+                "value": "",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "fieldName": "orientation_routine_maintenance_remarks",
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Remarks is required"
+                  }
+                ]
+              },
+              {
+                "type": "string",
+                "format": "dropdown",
+                "label": "Are the stickers containing POCs pasted in the control room?",
+                "order": 26,
+                "value": "",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "isMultiSelect": false,
+                "fieldName": "stickers_pasted_status",
+                "enums": [
+                  {
+                    "code": "YES",
+                    "name": "YES"
+                  },
+                  {
+                    "code": "NO",
+                    "name": "NO"
+                  }
+                ],
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Are the stickers containing POCs pasted in the control room? is required"
+                  }
+                ],
+                "section": "Orientation Checklist",
+                "sectionDescription": ""
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "Remarks",
+                "order": 27,
+                "value": "",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "fieldName": "stickers_pasted_remarks",
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Remarks is required"
+                  }
+                ]
+              },
+              {
+                "type": "string",
+                "format": "dropdown",
+                "label": "Are the Do’s and Don’ts posters with helpline numbers pasted in the control room?",
+                "order": 28,
+                "value": "",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "isMultiSelect": false,
+                "fieldName": "posters_pasted_status",
+                "enums": [
+                  {
+                    "code": "YES",
+                    "name": "YES"
+                  },
+                  {
+                    "code": "NO",
+                    "name": "NO"
+                  }
+                ],
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Are the Do’s and Don’ts posters with helpline numbers pasted in the control room? is required"
+                  }
+                ],
+                "section": "Orientation Checklist",
+                "sectionDescription": ""
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "Remarks",
+                "order": 29,
+                "value": "",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "fieldName": "posters_pasted_remarks",
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Remarks is required"
+                  }
+                ]
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "Additional remarks",
+                "order": 30,
+                "value": "",
+                "hidden": false,
+                "tooltip": "",
+                "helpText": "",
+                "infoText": "",
+                "readOnly": false,
+                "deleteFlag": false,
+                "innerLabel": "",
+                "systemDate": false,
+                "errorMessage": "",
+                "includeInForm": true,
+                "fieldName": "orientation_additional_remarks",
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Additional remarks is required"
+                  }
+                ]
               }
             ]
           }
