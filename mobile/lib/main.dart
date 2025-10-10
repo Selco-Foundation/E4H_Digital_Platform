@@ -123,7 +123,7 @@ class _MainAppState extends State<MainApp> {
             BlocProvider(
                 create: (context) => CacheCompletionReportBloc(widget.isar)),
             BlocProvider(create: (context) => ProjectBomBloc(widget.isar)),
-            BlocProvider(create: (context) => RejectionBloc()),
+            BlocProvider(create: (context) => RejectionBloc(widget.isar)),
           ],
           child: BlocBuilder<AppInitialization, InitState>(
             builder: (context, state) => state.maybeWhen(

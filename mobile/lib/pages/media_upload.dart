@@ -18,6 +18,7 @@ import '../blocs/asset_type/asset_type.dart';
 import '../blocs/cache_asset_count/cache_asset_count.dart';
 import '../blocs/cache_media_upload/cache_media_upload.dart';
 import '../blocs/selected_project/selected_project.dart';
+import '../blocs/user_type/user_type.dart';
 import '../data/nosql/cache_asset_count.dart';
 import '../data/nosql/cache_media_upload.dart';
 import '../router/app_router.dart';
@@ -45,6 +46,7 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
   double? _latitude;
   double? _longitude;
   StreamSubscription<LocationState>? _locSub;
+  String userType = "";
 
   // ─── cache for downloaded files ───
   final Map<String, File> _fileCache = {};
@@ -66,6 +68,11 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
         });
       }
     });
+
+    userType = context.read<UserTypeBloc>().state.maybeWhen(
+          supervisor: () => USER_TYPES.SUPERVISOR.name,
+          orElse: () => USER_TYPES.FIELD_STAFF.name,
+        );
 
     // 2) grab projectId & dispatch initial load:
     assetType = context.read<AssetTypeBloc>().state.when(
@@ -233,6 +240,7 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
                       assetType: assetType.toLowerCase(),
                       itemNumber: file.name,
                       itemType: 'image',
+                      userType: userType,
                       filePath: copied,
                       longitude: _longitude.toString(),
                       latitude: _latitude.toString(),
@@ -249,6 +257,7 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
                       itemNumber: file.name,
                       itemType: 'video',
                       filePath: copied,
+                      userType: userType,
                       longitude: _longitude.toString(),
                       latitude: _latitude.toString(),
                     );

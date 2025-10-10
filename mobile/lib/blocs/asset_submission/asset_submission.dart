@@ -3,11 +3,11 @@ import 'dart:async';
 import 'package:bloc/bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:isar/isar.dart';
+import 'package:selco/repositories/project_workflow.dart';
 
 import '../../data/nosql/cache_add_new_asset.dart';
 import '../../data/nosql/cache_asset_detail.dart';
 import '../../data/nosql/cache_completion_report.dart';
-import '../../data/nosql/cache_media_upload.dart';
 import '../../data/nosql/cache_specification.dart';
 import '../../data/nosql/cache_sync_record.dart';
 import '../../data/nosql/cache_unsubmitted_project.dart';
@@ -297,37 +297,46 @@ class AssetSubmissionBloc
       final remoteRepo = ProjectRemoteRepository();
       final workflowDocuments = <Document>[];
 
-      for (final type in types) {
-        final mediaEntries = await _isar.cacheMediaUploads
-            .where()
-            .projectIdEqualTo(projectId)
-            .filter()
-            .assetTypeEqualTo(type)
-            .findAll();
+      // for (final type in types) {
+      //   final mediaEntries = await _isar.cacheMediaUploads
+      //       .where()
+      //       .projectIdEqualTo(projectId)
+      //       .filter()
+      //       .assetTypeEqualTo(type)
+      //       .findAll();
+      //
+      //   print("[$type] found ${mediaEntries.length} cached media uploads");
+      //   for (var m in mediaEntries) {
+      //     print(
+      //         "    media id=${m.id} filePath='${m.filePath}' itemType='${m.itemType}' media id=${m.id} projectId='${m.projectId}'");
+      //   }
+      //
+      //   for (final m in mediaEntries) {
+      //     if (m.filePath.isEmpty) continue;
+      //     String mediaId = await getFilestoreUrl(m.filePath);
+      //     print("mediaId $mediaId");
+      //     workflowDocuments.add(Document(
+      //       documentType: "${m.assetType}-${m.itemType}",
+      //       fileStore: mediaId,
+      //       documentUid:
+      //           "DOC-${m.assetType}-${m.itemType}-${DateTime.now().toUtc().millisecondsSinceEpoch}",
+      //       geoLocation: GeoLocation(
+      //         latitude: m.latitude,
+      //         longitude: m.longitude,
+      //       ),
+      //     ));
+      //   }
+      //   print("documents $workflowDocuments");
+      // }
 
-        print("[$type] found ${mediaEntries.length} cached media uploads");
-        for (var m in mediaEntries) {
-          print(
-              "    media id=${m.id} filePath='${m.filePath}' itemType='${m.itemType}' media id=${m.id} projectId='${m.projectId}'");
-        }
+      final workflowDocumentFromCache =
+          await ProjectWorkflowRepository().collectWorkflowMediaDocs(
+        isar: _isar,
+        projectId: projectId,
+        types: types,
+      );
 
-        for (final m in mediaEntries) {
-          if (m.filePath.isEmpty) continue;
-          String mediaId = await getFilestoreUrl(m.filePath);
-          print("mediaId $mediaId");
-          workflowDocuments.add(Document(
-            documentType: "${m.assetType}-${m.itemType}",
-            fileStore: mediaId,
-            documentUid:
-                "DOC-${m.assetType}-${m.itemType}-${DateTime.now().toUtc().millisecondsSinceEpoch}",
-            geoLocation: GeoLocation(
-              latitude: m.latitude,
-              longitude: m.longitude,
-            ),
-          ));
-        }
-        print("documents $workflowDocuments");
-      }
+      workflowDocuments.addAll(workflowDocumentFromCache);
 
       final completionReports = await _isar.cacheCompletionReports
           .where()
