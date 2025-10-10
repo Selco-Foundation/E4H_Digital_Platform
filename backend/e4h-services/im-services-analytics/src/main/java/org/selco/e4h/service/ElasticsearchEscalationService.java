@@ -81,13 +81,16 @@ public class ElasticsearchEscalationService {
         long currentTime = System.currentTimeMillis();
         
         for (EscalationTicket ticket : tickets) {
-            // Build update action metadata (without _op_type)
-            Map<String, Object> updateAction = new HashMap<>();
-            updateAction.put("_index", INDEX_NAME);
-            updateAction.put("_id", ticket.getId());
+            // Build update action metadata
+            Map<String, Object> actionMetadata = new HashMap<>();
+            actionMetadata.put("_index", INDEX_NAME);
+            actionMetadata.put("_id", ticket.getId());
+            
+            Map<String, Object> action = new HashMap<>();
+            action.put("update", actionMetadata);
             
             // Add action line
-            bulkRequest.append("{\"update\":").append(convertToJson(updateAction)).append("}\n");
+            bulkRequest.append(convertToJson(action)).append("\n");
             
             // Build script for updating escalations array
             Map<String, Object> script = new HashMap<>();
@@ -112,7 +115,9 @@ public class ElasticsearchEscalationService {
             bulkRequest.append(convertToJson(doc)).append("\n");
         }
         
-        return bulkRequest.toString();
+        String requestBody = bulkRequest.toString();
+        log.debug("Bulk update request body:\n{}", requestBody);
+        return requestBody;
     }
     
     /**
