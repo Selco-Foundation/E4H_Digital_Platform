@@ -26,7 +26,7 @@ public class ElasticsearchEscalationService {
     private final ConsumerConfiguration consumerConfiguration;
     
     private static final String BULK_ENDPOINT = "_bulk";
-    private static final String INDEX_NAME = "computed-sla-im-services";
+    private static final String INDEX_NAME = "computed-sla-im-services-write";
 
     @Autowired
     private UpdateUtils indexerUtils;
@@ -81,19 +81,21 @@ public class ElasticsearchEscalationService {
         long currentTime = System.currentTimeMillis();
         
         for (EscalationTicket ticket : tickets) {
-            // Build update action
+            // Build update action metadata (without _op_type)
             Map<String, Object> updateAction = new HashMap<>();
             updateAction.put("_index", INDEX_NAME);
             updateAction.put("_id", ticket.getId());
-            updateAction.put("_op_type", "update");
             
             // Add action line
             bulkRequest.append("{\"update\":").append(convertToJson(updateAction)).append("}\n");
             
             // Build script for updating escalations array
             Map<String, Object> script = new HashMap<>();
-            script.put("source", "if (ctx._source.escalations == null) { ctx._source.escalations = [] } " +
-                               "ctx._source.escalations.add(params.escalation)");
+            script.put("source", 
+                "if (ctx._source.Data == null) { ctx._source.Data = [:] } " +
+                "if (ctx._source.Data.incident == null) { ctx._source.Data.incident = [:] } " +
+                "if (ctx._source.Data.incident.escalations == null) { ctx._source.Data.incident.escalations = [] } " +
+                "ctx._source.Data.incident.escalations.add(params.escalation)");
             
             Map<String, Object> params = new HashMap<>();
             Map<String, Object> escalation = new HashMap<>();
