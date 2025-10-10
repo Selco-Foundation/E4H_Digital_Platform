@@ -145,9 +145,7 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
         if (type == 'pdf') {
           final normalized = normalizedInstallPdfNameFromPath(path, docs);
           if (normalized != null && normalized.isNotEmpty) {
-            // Ensure the normalized tag is present in the stored name
-            name =
-                normalized; // if you prefer, you could do '$normalized__$name'
+            name = normalized;
           }
         }
 
@@ -179,7 +177,6 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
   Future<bool> _ensureLocationLoaded(
       {Duration timeout = const Duration(seconds: 10)}) async {
     final locBloc = context.read<LocationBloc>();
-    // If already have coords, return immediately
     if (locBloc.state.latitude != null && locBloc.state.longitude != null) {
       return true;
     }
@@ -187,7 +184,6 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
       final state = await locBloc.stream
           .firstWhere((s) => s.latitude != null && s.longitude != null)
           .timeout(timeout);
-      // local vars already updated in listener above, but set again to be safe
       setState(() {
         _latitude = state.latitude;
         _longitude = state.longitude;
