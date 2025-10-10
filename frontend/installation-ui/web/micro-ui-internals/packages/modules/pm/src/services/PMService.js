@@ -115,7 +115,7 @@ export const PMService = {
     }
   },
 
-  downloadFieldPlanFacilityDataTemplate: async (fieldPlanId, boundaryData, t) => {
+  downloadFieldPlanFacilityDataTemplate: async (projectId, fieldPlanId, boundaryData, t) => {
 
     const formatDistricts = (districts, blocks) => {
       const formattedDistricts = [];
@@ -161,7 +161,8 @@ export const PMService = {
 
     return await IngestionService.downloadFieldPlanFacilityDataTemplate({
       boundary_data: formattedBoundaryData,
-      field_plan_id: fieldPlanId,
+      fieldplan_id: fieldPlanId,
+      project_id: projectId,
     });
   },
 
@@ -186,6 +187,7 @@ export const PMService = {
     try {
       const validationRequest = new FormData();
       validationRequest.append("facility_file", file);
+      validationRequest.append("fieldplan_id", fieldPlanId);
       const validationResponse = await IngestionService.validateFieldPlanFacilityData(validationRequest);
 
       validatedFile = extractBlobFile(validationResponse);
