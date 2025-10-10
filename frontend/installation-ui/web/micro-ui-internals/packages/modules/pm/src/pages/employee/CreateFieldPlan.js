@@ -59,11 +59,15 @@ const CreateFieldPlan = () => {
     enabled: true,
   });
 
-  const { data: projectData } = useProject({
+  const { isLoading: projectDataLoading, data: projectData } = useProject({
     id: [projectId],
   });
 
-  const { data: fieldPlanData, revalidate: invalidateFieldPlanData } = useFieldPlan({
+  const {
+    isLoading: fieldPlanDataLoading,
+    data: fieldPlanData,
+    revalidate: invalidateFieldPlanData
+  } = useFieldPlan({
     tenantId,
     ids: [fieldPlanId],
   });
@@ -74,7 +78,11 @@ const CreateFieldPlan = () => {
     organizationIds,
   });
 
-  const { data: activityAssignmentData, revalidate: invalidateActivityAssignmentData } = useActivityAssignment({
+  const {
+    isLoading: activityAssignmentDataLoading,
+    data: activityAssignmentData,
+    revalidate: invalidateActivityAssignmentData
+  } = useActivityAssignment({
     fieldPlanIds: [fieldPlanId],
   })
 
@@ -251,7 +259,7 @@ const CreateFieldPlan = () => {
         districts: boundaryData.districts.filter((district) => createdFieldPlan.geographyDetails.districts.includes(district.code)),
         blocks: boundaryData.blocks.filter((block) => createdFieldPlan.geographyDetails.blocks.includes(block.code)),
       }
-      await PMService.downloadFieldPlanFacilityDataTemplate(createdFieldPlan.id, geographyDetails, t);
+      await PMService.downloadFieldPlanFacilityDataTemplate(createdProject.id, createdFieldPlan.id, geographyDetails, t);
 
       setToast({
         label: t("PM_TOAST_FACILITY_TEMPLATE_DOWNLOAD_SUCCESS"),
@@ -1008,6 +1016,10 @@ const CreateFieldPlan = () => {
       case 3:
         return persistedFormData.activityDetails;
     }
+  }
+
+  if (projectDataLoading || fieldPlanDataLoading || activityAssignmentDataLoading) {
+    return <Loader />;
   }
 
   return (
