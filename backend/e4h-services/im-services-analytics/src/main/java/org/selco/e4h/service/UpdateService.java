@@ -181,7 +181,7 @@ public class UpdateService {
 			Map<String, Object> finalPayload = new HashMap<>();
 			finalPayload.put("Data", dataMap);
 
-			String indexUrl = config.getEsHostUrl() + "/computed-sla-im-services/_doc/" + documentId;
+			String indexUrl = config.getEsHostUrl() + "/computed-sla-im-services-write/_doc/" + documentId;
 			HttpEntity<Map<String, Object>> entity = new HttpEntity<>(finalPayload, buildHeaders());
 
 			restTemplate.put(indexUrl, entity);
