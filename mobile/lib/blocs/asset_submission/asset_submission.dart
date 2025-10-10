@@ -287,7 +287,8 @@ class AssetSubmissionBloc
           print(
               "assetModel audit ${assetModel.auditDetails?.toJson() ?? '— none —'}");
           print("assetModel $assetModel");
-          await repo.createOrUpdateAsset(asset: assetModel, isar: _isar);
+          await repo.createOrUpdateAsset(
+              asset: assetModel, isar: _isar, facilityId: facilityId);
         }
       }
 
