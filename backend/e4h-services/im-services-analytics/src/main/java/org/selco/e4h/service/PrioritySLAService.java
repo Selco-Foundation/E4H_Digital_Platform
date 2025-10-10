@@ -90,7 +90,6 @@ public class PrioritySLAService {
 
         //get process instances
         List<ProcessInstance> processInstances = workflowService.getAllProcessInstances(tenantId,IncidentId, requestInfo);
-        Collections.reverse(processInstances);
 
         if (tenantId.contains(".")) tenantId = tenantId.split("\\.")[0];
         String state = (String) ((Map<String, Object>) currentProcessInstance.get(STATE)).get("applicationStatus");
@@ -98,7 +97,6 @@ public class PrioritySLAService {
         long lastModifiedTime = Long.parseLong(auditDetails.get("lastModifiedTime").toString());
         long now = Instant.now().toEpochMilli();
 
-        long businessElapsedFromCreated = calculateBusinessDurationForAllStates(processInstances, bh);
         long businessElapsedFromModified = calculateBusinessMillis(lastModifiedTime, now, bh);
 
 
@@ -139,7 +137,7 @@ public class PrioritySLAService {
         Duration totalSla = computeTotalSla(tenantId, priority, state, slaMap, processInstances);
         long definedTotalSla = totalSla.toMillis();
 
-        long totalSlaRemaining = definedTotalSla - businessElapsedFromCreated;
+        long totalSlaRemaining = computeTotalSlaRemaining(tenantId,priority,processInstances,slaMap,bh);
         long slaRemaining = stateSla - businessElapsedFromModified;
 
         Object incidentIdObj = incident.get("incidentId");
@@ -284,29 +282,7 @@ public class PrioritySLAService {
         return total;
     }
 
-    public long calculateBusinessDurationForAllStates(List<ProcessInstance> processInstances, BusinessHours businessHours) {
-        if (processInstances == null || processInstances.isEmpty()) {
-            return 0;
-        }
-        long totalBusinessDuration = 0;
 
-        for (int i = 0; i < processInstances.size(); i++) {
-            ProcessInstance current = processInstances.get(i);
-            String state = current.getState().getApplicationStatus();
-
-            if (PENDING_RESOLUTION.equals(state) || PENDING_FOR_ASSIGNMENT.equals(state)
-                    || state.startsWith(PENDING_ASSIGNMENT_PREFIX) || state.startsWith(PENDING_RESOLUTION_PREFIX)) {
-
-                long prevStateTime = current.getAuditDetails().getCreatedTime();
-                long nextStateTime = (i + 1) < processInstances.size() ? processInstances.get(i + 1).getAuditDetails().getCreatedTime()
-                        : Instant.now().toEpochMilli();
-
-                totalBusinessDuration += calculateBusinessMillis(prevStateTime,nextStateTime, businessHours);
-            }
-        }
-
-        return totalBusinessDuration;
-    }
 
     public record TenantServiceStateKey(String tenantId, String businessService, String state) {}
 
@@ -336,6 +312,48 @@ public class PrioritySLAService {
             log.error("Failed to load SLA durations from database", e);
             return Collections.emptyMap();
         }
+    }
+
+
+    public long computeTotalSlaRemaining( String tenantId, String priority, List<ProcessInstance> processInstances, Map<TenantServiceStateKey, Duration> slaMap, BusinessHours businessHours) {
+        if (processInstances == null || processInstances.isEmpty()) {
+            return 0;
+        }
+        String businessService = INCIDENT_UNDERSCORE + capitalize(priority);
+        Duration total = Duration.ZERO;
+
+
+        long remainingTotalSla = 0;
+
+        for (int i = 0; i < processInstances.size(); i++) {
+            ProcessInstance current = processInstances.get(i);
+            String state = current.getState().getApplicationStatus();
+
+            if (PENDING_RESOLUTION.equals(state) || PENDING_FOR_ASSIGNMENT.equals(state)
+                    || state.startsWith(PENDING_ASSIGNMENT_PREFIX) || state.startsWith(PENDING_RESOLUTION_PREFIX)) {
+
+                long prevStateTime = current.getAuditDetails().getCreatedTime();
+                long nextStateTime = (i + 1) < processInstances.size() ? processInstances.get(i + 1).getAuditDetails().getCreatedTime()
+                        : Instant.now().toEpochMilli();
+
+                remainingTotalSla += calculateBusinessMillis(prevStateTime,nextStateTime, businessHours);
+                long currentStateTimeSpent = calculateBusinessMillis(prevStateTime, nextStateTime, businessHours);
+                long currentStateDefinedSla = getDurationFromMap(slaMap, tenantId, businessService, state).toMillis();
+                if((i+1) >= processInstances.size() || currentStateDefinedSla-currentStateTimeSpent<0){
+                    remainingTotalSla += currentStateDefinedSla-currentStateTimeSpent;
+                }
+            }
+        }
+        String currentState = processInstances.getLast().getState().getState();
+        if (currentState.equals(PENDING_FOR_ASSIGNMENT)) {
+            remainingTotalSla += getDurationFromMap(slaMap, tenantId, businessService, PENDING_RESOLUTION).toMillis();
+        } else if (currentState.startsWith(PENDING_ASSIGNMENT_PREFIX)) {
+            String suffix = currentState.replace(PENDING_ASSIGNMENT_PREFIX, "");
+            String resolutionState = PENDING_RESOLUTION_PREFIX + suffix;
+            remainingTotalSla += getDurationFromMap(slaMap, tenantId, businessService, resolutionState).toMillis();
+        }
+
+        return remainingTotalSla;
     }
 
     private Duration computeTotalSla(String tenantId, String priority, String currentState, Map<TenantServiceStateKey, Duration> slaMap, List<ProcessInstance> processInstances) {

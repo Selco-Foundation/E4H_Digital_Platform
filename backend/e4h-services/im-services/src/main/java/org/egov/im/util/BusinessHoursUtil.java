@@ -60,36 +60,6 @@ public class BusinessHoursUtil {
 
         return duration;
     }
-
-    public long calculateBusinessDurationForAllStates(List<ProcessInstance> processInstances) {
-        if (processInstances == null || processInstances.isEmpty()) {
-            return 0;
-        }
-        long totalBusinessDuration = 0;
-
-        for (int i = 0; i < processInstances.size(); i++) {
-            ProcessInstance current = processInstances.get(i);
-            String state = current.getState().getApplicationStatus();
-
-            if (PENDINGFORASSIGNMENT.equals(state) || PENDINGATVENDOR.equals(state)
-                    || state.startsWith(PENDING_ASSIGNMENT_PREFIX) || state.startsWith(PENDING_RESOLUTION_PREFIX)) {
-
-                long prevStateTime = current.getAuditDetails().getCreatedTime();
-                ZonedDateTime zonedPrevStateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(prevStateTime), ZoneId.of(ASIA_KOLKATA));
-                ZonedDateTime zonedNextStateTime;
-                if (i + 1 < processInstances.size()) {
-                    long nextStateTime = processInstances.get(i + 1).getAuditDetails().getCreatedTime();
-                    zonedNextStateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(nextStateTime), ZoneId.of(ASIA_KOLKATA));
-                } else {
-                    zonedNextStateTime = ZonedDateTime.now(ZoneId.of(ASIA_KOLKATA));
-                }
-                totalBusinessDuration += calculateBusinessDuration(zonedPrevStateTime, zonedNextStateTime);
-            }
-        }
-
-        return totalBusinessDuration;
-    }
-
     // Utility class to represent a pair
     public static class Pair<F, S> {
         private final F first;
