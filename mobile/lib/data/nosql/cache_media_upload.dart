@@ -12,6 +12,9 @@ class CacheMediaUpload {
   @Index()
   late String assetType;
 
+  @Index()
+  late String userType;
+
   late String itemNumber;
   late String itemType;
   late String filePath;
@@ -28,5 +31,6 @@ class CacheMediaUpload {
     required this.filePath,
     required this.latitude,
     required this.longitude,
+    required this.userType,
   });
 }

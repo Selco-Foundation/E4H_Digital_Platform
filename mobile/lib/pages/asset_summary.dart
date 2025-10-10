@@ -449,7 +449,6 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
       orElse: () => <Mdms<Brand>>[],
     );
 
-    // Facility details
     final countValue = summary.countEntry?.count.toString() ?? '—';
     final warrantyStart = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
     final warrantyDuration = summary.detailEntry?.warranty ?? '—';
@@ -683,9 +682,7 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
   }
 }
 
-/// Renders either a network‐cached filestore image or a local file.
 Widget assetImageCard({required String filePath}) {
-  print("$fileStoreFileUrl$filePath");
   return isValidUuid(filePath)
       ? CachedImage("$fileStoreFileUrl$filePath", width: 100, height: 100)
       : Image.file(
@@ -696,7 +693,6 @@ Widget assetImageCard({required String filePath}) {
         );
 }
 
-/// Simple “Edit” button used throughout.
 Widget editButton({
   required BuildContext context,
   required VoidCallback onTap,
