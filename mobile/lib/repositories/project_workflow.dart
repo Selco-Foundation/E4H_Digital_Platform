@@ -36,8 +36,8 @@ class ProjectWorkflowRepository {
           fileStore: mediaId,
           documentUid:
               "DOC-${m.assetType}-${m.itemType}-${DateTime.now().toUtc().millisecondsSinceEpoch}",
-          geoLocation:
-              GeoLocation(latitude: m.latitude, longitude: m.longitude),
+          geoLocation: GeoLocation(
+              latitude: m.latitude ?? "", longitude: m.longitude ?? ""),
         ));
       }
       print("documents - out $out");
