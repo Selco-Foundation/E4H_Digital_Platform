@@ -13,6 +13,7 @@ import '../data/nosql/cache_media_upload.dart';
 import '../data/nosql/cache_specification.dart';
 import '../data/remote_client.dart';
 import '../model/asset/asset.dart';
+import '../model/document/document.dart';
 import '../model/entities/project_facility.dart';
 import '../model/project_workflow/project_workflow.dart';
 import '../model/transaction/transaction.dart';
@@ -415,6 +416,7 @@ class AssetRepository {
 
             await isar.cacheMediaUploads.put(
               CacheMediaUpload(
+                userType: userType,
                 projectId: projectId,
                 assetType: assetTypeFromDoc,
                 itemNumber: '',
@@ -437,23 +439,28 @@ class AssetRepository {
   Future<void> submitRejection({
     required String projectId,
     String action = "REJECT",
+    List<Document>? documents,
     required List<Transaction> transactions,
   }) async {
     final payload = {
       'projectId': projectId,
       'workflow': {'action': action},
       'transactions': transactions.toList(),
+      if (documents != null) ...{
+        'documents': documents.map((d) => d.toJsonForWorkflow()).toList()
+      }
     };
 
     print("payload ${jsonEncode(payload)}");
 
     try {
-      final resp = await _dio.post(
-        '/project/v1/project/workflow/update',
-        data: payload,
-      );
-      if (resp.statusCode != 200 && resp.statusCode != 201) {
-        throw Exception('Reject responded ${resp.statusCode}');
+      final resp = await _dio.post('/project/v1/project/workflow/update',
+          data: payload,
+          options: Options(contentType: Headers.jsonContentType));
+      if (resp.statusCode != 200 &&
+          resp.statusCode != 201 &&
+          resp.statusCode != 204) {
+        throw Exception('Rejection Failed with ${resp.statusCode}');
       }
     } on DioError catch (dioErr) {
       final msg = dioErr.response?.data?.toString() ?? dioErr.message;

@@ -2,27 +2,44 @@ import 'dart:convert';
 
 import 'package:bloc/bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:isar/isar.dart';
 
+import '../../model/document/document.dart';
 import '../../model/transaction/transaction.dart';
 import '../../repositories/assetRepo.dart';
+import '../../repositories/project_workflow.dart';
 
 part 'asset_rejection.freezed.dart';
 
 class RejectionBloc extends Bloc<RejectionEvent, RejectionState> {
+  final Isar _isar;
   final AssetRepository _repo;
 
-  RejectionBloc({AssetRepository? repo})
-      : _repo = repo ?? AssetRepository(),
+  RejectionBloc(this._isar)
+      : _repo = AssetRepository(),
         super(const RejectionState.initial()) {
     on<_SubmitRejection>(_onSubmitRejection);
   }
 
   Future<void> _onSubmitRejection(
     _SubmitRejection event,
+    // String projectId,
+    // String userType,
+    // List<String> types,
     Emitter<RejectionState> emit,
   ) async {
     emit(const RejectionState.loading());
     try {
+      const types = ['inverter', 'battery', 'panel'];
+      final workflowDocuments = <Document>[];
+      final workflowDocumentFromCache =
+          await ProjectWorkflowRepository().collectWorkflowMediaDocs(
+        isar: _isar,
+        projectId: event.projectId,
+        types: types,
+      );
+
+      workflowDocuments.addAll(workflowDocumentFromCache);
       print("event.transaction ${jsonEncode(event.transactions)}");
       await _repo.submitRejection(
         projectId: event.projectId,
