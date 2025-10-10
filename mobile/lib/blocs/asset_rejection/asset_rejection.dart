@@ -7,6 +7,7 @@ import 'package:isar/isar.dart';
 import '../../model/document/document.dart';
 import '../../model/transaction/transaction.dart';
 import '../../repositories/assetRepo.dart';
+import '../../repositories/project_repo.dart';
 import '../../repositories/project_workflow.dart';
 
 part 'asset_rejection.freezed.dart';
@@ -42,8 +43,14 @@ class RejectionBloc extends Bloc<RejectionEvent, RejectionState> {
       workflowDocuments.addAll(workflowDocumentFromCache);
       print("event.transaction ${jsonEncode(event.transactions)}");
       await _repo.submitRejection(
+          projectId: event.projectId,
+          transactions: event.transactions,
+          documents: workflowDocuments);
+      await UnsubmittedProjectRepository(_isar)
+          .delete(event.projectId, event.userType);
+      await PrefilledProjectRepository(_isar).delete(
         projectId: event.projectId,
-        transactions: event.transactions,
+        userType: event.userType,
       );
       emit(const RejectionState.success());
     } catch (e) {
@@ -56,6 +63,7 @@ class RejectionBloc extends Bloc<RejectionEvent, RejectionState> {
 class RejectionEvent with _$RejectionEvent {
   const factory RejectionEvent.submitRejection({
     required String projectId,
+    required String userType,
     required List<Transaction> transactions,
   }) = _SubmitRejection;
 }
