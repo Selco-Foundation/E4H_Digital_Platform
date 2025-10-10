@@ -251,7 +251,7 @@ const CreateFieldPlan = () => {
         districts: boundaryData.districts.filter((district) => createdFieldPlan.geographyDetails.districts.includes(district.code)),
         blocks: boundaryData.blocks.filter((block) => createdFieldPlan.geographyDetails.blocks.includes(block.code)),
       }
-      await PMService.downloadFieldPlanFacilityDataTemplate(createdFieldPlan.id, geographyDetails, t);
+      await PMService.downloadFieldPlanFacilityDataTemplate(createdProject.id, createdFieldPlan.id, geographyDetails, t);
 
       setToast({
         label: t("PM_TOAST_FACILITY_TEMPLATE_DOWNLOAD_SUCCESS"),
