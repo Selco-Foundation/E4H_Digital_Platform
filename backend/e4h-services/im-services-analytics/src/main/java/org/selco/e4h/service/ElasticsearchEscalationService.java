@@ -4,7 +4,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.selco.e4h.config.ConsumerConfiguration;
 import org.selco.e4h.util.ElasticSearchClient;
+import org.selco.e4h.util.UpdateUtils;
 import org.selco.e4h.web.models.EscalationTicket;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -25,6 +27,9 @@ public class ElasticsearchEscalationService {
     
     private static final String BULK_ENDPOINT = "_bulk";
     private static final String INDEX_NAME = "computed-sla-im-services";
+
+    @Autowired
+    private UpdateUtils indexerUtils;
     
     /**
      * Update escalations for tickets using Elasticsearch bulk API
@@ -44,7 +49,8 @@ public class ElasticsearchEscalationService {
             // Send bulk request to Elasticsearch
             String url = getBaseUrl() + "/" + BULK_ENDPOINT;
             HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_NDJSON);
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.add("Authorization", indexerUtils.getESEncodedCredentials());
             
             HttpEntity<String> entity = new HttpEntity<>(bulkRequest, headers);
             
@@ -153,77 +159,5 @@ public class ElasticsearchEscalationService {
      */
     private String getBaseUrl() {
         return consumerConfiguration.getEsHostName() + ":" + consumerConfiguration.getEsPortNo();
-    }
-    
-    /**
-     * Update escalation for a single ticket
-     */
-    public void updateEscalationForTicket(String ticketId, String escalationRecipientId) {
-        try {
-            log.info("Updating escalation for ticket: {} with escalation ID: {}", ticketId, escalationRecipientId);
-            
-            // Build single update request
-            String updateRequest = buildSingleUpdateRequest(ticketId, escalationRecipientId);
-            
-            // Send update request to Elasticsearch
-            String url = getBaseUrl() + "/" + BULK_ENDPOINT;
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_NDJSON);
-            
-            HttpEntity<String> entity = new HttpEntity<>(updateRequest, headers);
-            
-            ResponseEntity<Map> response = restTemplate.exchange(
-                url,
-                HttpMethod.POST,
-                entity,
-                Map.class
-            );
-            
-            if (response.getStatusCode().is2xxSuccessful()) {
-                log.info("Successfully updated escalation for ticket: {}", ticketId);
-            } else {
-                log.error("Failed to update escalation for ticket: {}. Status: {}", ticketId, response.getStatusCode());
-            }
-            
-        } catch (Exception e) {
-            log.error("Error updating escalation for ticket: {}", ticketId, e);
-        }
-    }
-    
-    /**
-     * Build single update request for Elasticsearch
-     */
-    private String buildSingleUpdateRequest(String ticketId, String escalationRecipientId) {
-        StringBuilder updateRequest = new StringBuilder();
-        long currentTime = System.currentTimeMillis();
-        
-        // Build update action
-        Map<String, Object> updateAction = new HashMap<>();
-        updateAction.put("_index", INDEX_NAME);
-        updateAction.put("_id", ticketId);
-        updateAction.put("_op_type", "update");
-        
-        // Add action line
-        updateRequest.append("{\"update\":").append(convertToJson(updateAction)).append("}\n");
-        
-        // Build script for updating escalations array
-        Map<String, Object> script = new HashMap<>();
-        script.put("source", "if (ctx._source.escalations == null) { ctx._source.escalations = [] } " +
-                           "ctx._source.escalations.add(params.escalation)");
-        
-        Map<String, Object> params = new HashMap<>();
-        Map<String, Object> escalation = new HashMap<>();
-        escalation.put("escalationId", escalationRecipientId);
-        escalation.put("escalationTime", currentTime);
-        params.put("escalation", escalation);
-        script.put("params", params);
-        
-        Map<String, Object> doc = new HashMap<>();
-        doc.put("script", script);
-        
-        // Add document line
-        updateRequest.append(convertToJson(doc)).append("\n");
-        
-        return updateRequest.toString();
     }
 }
