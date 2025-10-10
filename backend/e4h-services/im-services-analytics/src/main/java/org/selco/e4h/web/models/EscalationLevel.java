@@ -6,7 +6,8 @@ import lombok.*;
 
 /**
  * Model representing an escalation level configuration
- * Based on LLD schema: Incident.EscalationLevel
+ * Based on LLD V2 schema: Incident.EscalationLevel
+ * Supports both percentage and number-based breach calculation strategies
  */
 @Getter
 @Setter
@@ -24,6 +25,12 @@ public class EscalationLevel {
     
     @JsonProperty("breachThresholdInHours")
     private Integer breachThresholdInHours;
+    
+    @JsonProperty("breachThresholdInPercentage")
+    private Integer breachThresholdInPercentage;
+    
+    @JsonProperty("breachCalculationStrategy")
+    private String breachCalculationStrategy;
     
     @JsonProperty("active")
     private Boolean active;

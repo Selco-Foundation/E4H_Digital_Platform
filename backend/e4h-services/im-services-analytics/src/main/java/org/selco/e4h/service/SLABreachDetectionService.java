@@ -2,8 +2,10 @@ package org.selco.e4h.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.egov.common.contract.request.RequestInfo;
 import org.selco.e4h.util.ElasticSearchClient;
 import org.selco.e4h.web.models.EscalationInfo;
+import org.selco.e4h.web.models.EscalationLevel;
 import org.selco.e4h.web.models.EscalationTicket;
 import org.springframework.stereotype.Service;
 
@@ -23,34 +25,46 @@ import java.util.Map;
 public class SLABreachDetectionService {
     
     private final ElasticSearchClient elasticSearchClient;
+    private final EscalationMasterDataService escalationMasterDataService;
+    
+    // Cache for escalation level configurations from MDMS
+    private Map<String, EscalationLevel> escalationLevelCache = new HashMap<>();
+    private long lastEscalationLevelCacheRefresh = 0;
+    private static final long ESCALATION_LEVEL_CACHE_INTERVAL = 3600000; // 1 hour
 
     /**
      * Find tickets in SLA breach for a specific tenant, workflow states, and escalation level
      * that don't already have the specified escalation recipient ID
+     * Updated to support MDMS-driven breach threshold calculation (percentage or number strategy)
      */
-    public List<EscalationTicket> findSLABreachTickets(String tenantId, List<String> workflowStates, String escalationRecipientId, String escalationLevel) {
+    public List<EscalationTicket> findSLABreachTickets(String tenantId, List<String> workflowStates, 
+                                                       String escalationRecipientId, String escalationLevel,
+                                                       RequestInfo requestInfo) {
         try {
             log.info("Finding SLA breach tickets for tenant: {}, workflow states: {}, escalation level: {}, excluding escalation: {}", 
                 tenantId, workflowStates, escalationLevel, escalationRecipientId);
             
-            // Build Elasticsearch query for SLA breach tickets with escalation level threshold
-            Map<String, Object> query = buildSLABreachQueryWithLevel(tenantId, workflowStates, escalationRecipientId, escalationLevel);
+            // Build Elasticsearch query for SLA breach tickets with escalation level threshold from MDMS
+            Map<String, Object> query = buildSLABreachQueryWithLevel(tenantId, workflowStates, 
+                escalationRecipientId, escalationLevel, requestInfo);
             
             // Execute query using ElasticsearchClient
             List<EscalationTicket> breachTickets = elasticSearchClient.searchTickets(query);
             
-            log.info("Found {} tickets in SLA breach for tenant: {} with escalation level: {}", breachTickets.size(), tenantId, escalationLevel);
+            log.info("Found {} tickets in SLA breach for tenant: {} with escalation level: {}", 
+                breachTickets.size(), tenantId, escalationLevel);
             return breachTickets;
             
         } catch (Exception e) {
-            log.error("Error finding SLA breach tickets for tenant: {} with escalation level: {}", tenantId, escalationLevel, e);
-            // Fallback to the old method if query fails
-            return findSLABreachTicketsFallback(tenantId, workflowStates, escalationRecipientId, escalationLevel);
+            log.error("Error finding SLA breach tickets for tenant: {} with escalation level: {}", 
+                tenantId, escalationLevel, e);
+            // Fallback to empty list if query fails
+            return new ArrayList<>();
         }
     }
     
     /**
-     * Fallback method to find SLA breach tickets (original implementation)
+     * Fallback method to find SLA breach tickets (kept for error recovery)
      */
     private List<EscalationTicket> findSLABreachTicketsFallback(String tenantId, List<String> workflowStates, String escalationRecipientId, String escalationLevel) {
         try {
@@ -149,27 +163,33 @@ public class SLABreachDetectionService {
     
     /**
      * Find tickets in SLA breach for country level (all tenants) with escalation level
+     * Updated to support MDMS-driven breach threshold calculation
      */
-    public List<EscalationTicket> findSLABreachTicketsForCountry(List<String> workflowStates, String escalationRecipientId, String escalationLevel) {
+    public List<EscalationTicket> findSLABreachTicketsForCountry(List<String> workflowStates, 
+                                                                 String escalationRecipientId, 
+                                                                 String escalationLevel,
+                                                                 RequestInfo requestInfo) {
         try {
             log.info("Finding SLA breach tickets for country level, workflow states: {}, escalation level: {}, excluding escalation: {}", 
                 workflowStates, escalationLevel, escalationRecipientId);
             
-            // Build Elasticsearch query for SLA breach tickets with escalation level threshold
-            Map<String, Object> query = buildSLABreachQueryWithLevelForCountry(workflowStates, escalationRecipientId, escalationLevel);
+            // Build Elasticsearch query for SLA breach tickets with escalation level threshold from MDMS
+            Map<String, Object> query = buildSLABreachQueryWithLevelForCountry(workflowStates, 
+                escalationRecipientId, escalationLevel, requestInfo);
             
             // Execute query using ElasticsearchClient
             List<EscalationTicket> breachTickets = elasticSearchClient.searchTickets(query);
             
-            log.info("Found {} tickets in SLA breach for country level with escalation level: {}", breachTickets.size(), escalationLevel);
+            log.info("Found {} tickets in SLA breach for country level with escalation level: {}", 
+                breachTickets.size(), escalationLevel);
             return breachTickets;
             
         } catch (Exception e) {
             log.error("Error finding SLA breach tickets for country level with escalation level: {}", escalationLevel, e);
-            // Fallback to the old method if query fails
-            return findSLABreachTicketsForCountry(workflowStates, escalationRecipientId);
+            return new ArrayList<>();
         }
     }
+    
     
     /**
      * Convert Elasticsearch ticket data to EscalationTicket model
@@ -905,10 +925,12 @@ public class SLABreachDetectionService {
     }
 
     /**
-     * Build Elasticsearch query for SLA breach tickets with escalation level threshold
+     * Build Elasticsearch query for SLA breach tickets with escalation level threshold from MDMS
+     * Supports both "percentage" and "number" breach calculation strategies per LLD V2
      */
-
-    private Map<String, Object> buildSLABreachQueryWithLevel(String tenantId, List<String> workflowStates, String escalationRecipientId, String escalationLevel) {
+    private Map<String, Object> buildSLABreachQueryWithLevel(String tenantId, List<String> workflowStates, 
+                                                             String escalationRecipientId, String escalationLevel,
+                                                             RequestInfo requestInfo) {
         Map<String, Object> query = new HashMap<>();
         Map<String, Object> bool = new HashMap<>();
         List<Map<String, Object>> must = new ArrayList<>();
@@ -927,19 +949,36 @@ public class SLABreachDetectionService {
         statusFilter.put("terms", statusTerms);
         must.add(statusFilter);
 
-        // Filter by SLA breach based on escalation level threshold
-        // Determine threshold based on escalation level
-        double thresholdHours = getBreachThresholdHours(escalationLevel);
-        long thresholdMs = (long) (thresholdHours * 60 * 60 * 1000); // Convert to milliseconds
-
-        // Check slaRemaining <= threshold
-        Map<String, Object> slaRemainingRange = new HashMap<>();
-        Map<String, Object> slaRemainingRangeQuery = new HashMap<>();
-        slaRemainingRangeQuery.put("lte", thresholdMs);
-        slaRemainingRange.put("Data.slaRemaining", slaRemainingRangeQuery);
-        Map<String, Object> slaRemainingFilter = new HashMap<>();
-        slaRemainingFilter.put("range", slaRemainingRange);
-        must.add(slaRemainingFilter);
+        // Filter by SLA breach based on escalation level configuration from MDMS
+        EscalationLevel escalationLevelConfig = getEscalationLevelConfig(escalationLevel, requestInfo);
+        
+        if (escalationLevelConfig != null) {
+            // Build SLA filter based on calculation strategy
+            Map<String, Object> slaFilter = buildSLAFilter(escalationLevel, escalationLevelConfig);
+            if (slaFilter != null) {
+                must.add(slaFilter);
+            }
+        } else {
+            // Fallback to hardcoded thresholds if MDMS fetch fails
+            log.warn("EscalationLevel config not found for {}, using fallback thresholds", escalationLevel);
+            double thresholdHours = getBreachThresholdHoursFallback(escalationLevel);
+            long thresholdMs = (long) (thresholdHours * 60 * 60 * 1000);
+            
+            Map<String, Object> slaRemainingRange = new HashMap<>();
+            Map<String, Object> slaRemainingRangeQuery = new HashMap<>();
+            
+            if ("LEVEL_ZERO".equals(escalationLevel)) {
+                slaRemainingRangeQuery.put("lte", thresholdMs);
+                slaRemainingRangeQuery.put("gt", 0);
+            } else {
+                slaRemainingRangeQuery.put("lte", thresholdMs);
+            }
+            
+            slaRemainingRange.put("Data.slaRemaining", slaRemainingRangeQuery);
+            Map<String, Object> slaRemainingFilter = new HashMap<>();
+            slaRemainingFilter.put("range", slaRemainingRange);
+            must.add(slaRemainingFilter);
+        }
 
         // Exclude tickets already escalated to this recipient AND level
         List<Map<String, Object>> mustNot = new ArrayList<>();
@@ -975,19 +1014,148 @@ public class SLABreachDetectionService {
         bool.put("must_not", mustNot);
         query.put("bool", bool);
 
-        log.debug("SLA breach query for tenant {} with escalation level {} (threshold: {} hours): {}", 
-            tenantId, escalationLevel, thresholdHours, query);
+        log.debug("SLA breach query for tenant {} with escalation level {}: {}", 
+            tenantId, escalationLevel, query);
         return query;
     }
 
     /**
-     * Get breach threshold in hours based on escalation level
+     * Refresh escalation level cache from MDMS if needed
      */
-    private double getBreachThresholdHours(String escalationLevel) {
-        if ("LEVEL_ONE".equals(escalationLevel)) {
-            return 0.0; // Escalation happens when SLA is completed (0 hours)
+    private synchronized void refreshEscalationLevelCacheIfNeeded(RequestInfo requestInfo) {
+        long currentTime = System.currentTimeMillis();
+        
+        if (escalationLevelCache.isEmpty() || 
+            (currentTime - lastEscalationLevelCacheRefresh) > ESCALATION_LEVEL_CACHE_INTERVAL) {
+            try {
+                log.info("Refreshing escalation level cache from MDMS");
+                List<EscalationLevel> levels = escalationMasterDataService.fetchEscalationLevels(requestInfo);
+                
+                escalationLevelCache.clear();
+                for (EscalationLevel level : levels) {
+                    if (level.getActive() != null && level.getActive()) {
+                        escalationLevelCache.put(level.getEscalationLevel(), level);
+                        log.debug("Cached escalation level: {} with strategy: {}, threshold: {} hours / {}%",
+                            level.getEscalationLevel(), 
+                            level.getBreachCalculationStrategy(),
+                            level.getBreachThresholdInHours(),
+                            level.getBreachThresholdInPercentage());
+                    }
+                }
+                
+                lastEscalationLevelCacheRefresh = currentTime;
+                log.info("Successfully refreshed escalation level cache with {} entries", escalationLevelCache.size());
+                
+            } catch (Exception e) {
+                log.error("Error refreshing escalation level cache from MDMS", e);
+            }
+        }
+    }
+    
+    /**
+     * Get escalation level configuration from cache
+     */
+    private EscalationLevel getEscalationLevelConfig(String escalationLevel, RequestInfo requestInfo) {
+        refreshEscalationLevelCacheIfNeeded(requestInfo);
+        return escalationLevelCache.get(escalationLevel);
+    }
+    
+    /**
+     * Build SLA filter based on escalation level configuration
+     * Supports both "percentage" and "number" strategies from LLD V2
+     */
+    private Map<String, Object> buildSLAFilter(String escalationLevel, EscalationLevel config) {
+        String strategy = config.getBreachCalculationStrategy();
+        
+        if ("percentage".equalsIgnoreCase(strategy)) {
+            return buildPercentageBasedSLAFilter(escalationLevel, config);
+        } else if ("number".equalsIgnoreCase(strategy)) {
+            return buildNumberBasedSLAFilter(escalationLevel, config);
+        } else {
+            log.warn("Unknown breach calculation strategy: {} for level: {}", strategy, escalationLevel);
+            return buildNumberBasedSLAFilter(escalationLevel, config);
+        }
+    }
+    
+    /**
+     * Build percentage-based SLA filter (for LEVEL_ZERO with 70% threshold)
+     * Triggers when SLA has elapsed 70% (30% remaining)
+     */
+    private Map<String, Object> buildPercentageBasedSLAFilter(String escalationLevel, EscalationLevel config) {
+        Integer percentage = config.getBreachThresholdInPercentage();
+        
+        if (percentage == null || percentage <= 0) {
+            log.warn("Invalid percentage threshold for {}: {}, using 70% default", escalationLevel, percentage);
+            percentage = 70;
+        }
+        
+        // For percentage-based: we need to check slaRemaining/totalSla ratio
+        // If 70% threshold: trigger when (slaRemaining/totalSla) <= 0.30 (30% remaining)
+        // This requires a script query in Elasticsearch
+        
+        Map<String, Object> scriptFilter = new HashMap<>();
+        Map<String, Object> script = new HashMap<>();
+        
+        double remainingPercentageThreshold = (100.0 - percentage) / 100.0; // 30% = 0.30
+        
+        // Script to calculate: (slaRemaining / totalSlaRemaining) <= 0.30
+        String scriptSource = String.format(
+            "doc['Data.slaRemaining'].size() > 0 && doc['Data.totalSlaRemaining'].size() > 0 && " +
+            "doc['Data.slaRemaining'].value > 0 && " +
+            "((double)doc['Data.slaRemaining'].value / (double)doc['Data.totalSlaRemaining'].value) <= %.2f",
+            remainingPercentageThreshold
+        );
+        
+        script.put("source", scriptSource);
+        script.put("lang", "painless");
+        scriptFilter.put("script", script);
+        
+        Map<String, Object> filter = new HashMap<>();
+        filter.put("script", scriptFilter);
+        
+        log.debug("Built percentage-based SLA filter for {}: {}% elapsed ({}% remaining)", 
+            escalationLevel, percentage, (100 - percentage));
+        
+        return filter;
+    }
+    
+    /**
+     * Build number-based SLA filter (for LEVEL_ONE and LEVEL_TWO with hour thresholds)
+     */
+    private Map<String, Object> buildNumberBasedSLAFilter(String escalationLevel, EscalationLevel config) {
+        Integer thresholdHours = config.getBreachThresholdInHours();
+        
+        if (thresholdHours == null) {
+            log.warn("Null threshold hours for {}, using default", escalationLevel);
+            thresholdHours = 0;
+        }
+        
+        long thresholdMs = (long) (thresholdHours * 60 * 60 * 1000); // Convert to milliseconds
+        
+        Map<String, Object> slaRemainingRange = new HashMap<>();
+        Map<String, Object> slaRemainingRangeQuery = new HashMap<>();
+        slaRemainingRangeQuery.put("lte", thresholdMs);
+        slaRemainingRange.put("Data.slaRemaining", slaRemainingRangeQuery);
+        
+        Map<String, Object> filter = new HashMap<>();
+        filter.put("range", slaRemainingRange);
+        
+        log.debug("Built number-based SLA filter for {}: {} hours ({}ms)", 
+            escalationLevel, thresholdHours, thresholdMs);
+        
+        return filter;
+    }
+    
+    /**
+     * Fallback method: Get breach threshold in hours (used if MDMS fetch fails)
+     */
+    private double getBreachThresholdHoursFallback(String escalationLevel) {
+        if ("LEVEL_ZERO".equals(escalationLevel)) {
+            return 16.0; // Tickets nearing breach (< 2 business days remaining)
+        } else if ("LEVEL_ONE".equals(escalationLevel)) {
+            return 0.0; // Tickets recently breached (SLA just completed)
         } else if ("LEVEL_TWO".equals(escalationLevel)) {
-            return -16.0; // Escalation happens when 16 hours overdue (-16 hours)
+            return -16.0; // Tickets heavily breached (> 2 business days overdue)
         } else {
             // Default to LEVEL_ONE threshold
             log.warn("Unknown escalation level: {}, using LEVEL_ONE threshold (0 hours)", escalationLevel);
@@ -997,8 +1165,12 @@ public class SLABreachDetectionService {
     
     /**
      * Build Elasticsearch query for SLA breach tickets with escalation level threshold (country level)
+     * Updated to support MDMS-driven thresholds
      */
-    private Map<String, Object> buildSLABreachQueryWithLevelForCountry(List<String> workflowStates, String escalationRecipientId, String escalationLevel) {
+    private Map<String, Object> buildSLABreachQueryWithLevelForCountry(List<String> workflowStates, 
+                                                                       String escalationRecipientId, 
+                                                                       String escalationLevel,
+                                                                       RequestInfo requestInfo) {
         Map<String, Object> query = new HashMap<>();
         Map<String, Object> bool = new HashMap<>();
         List<Map<String, Object>> must = new ArrayList<>();
@@ -1010,19 +1182,30 @@ public class SLABreachDetectionService {
         statusFilter.put("terms", statusTerms);
         must.add(statusFilter);
         
-        // Filter by SLA breach based on escalation level threshold
-        // Determine threshold based on escalation level
-        double thresholdHours = getBreachThresholdHours(escalationLevel);
-        long thresholdMs = (long) (thresholdHours * 60 * 60 * 1000); // Convert to milliseconds
+        // Filter by SLA breach based on escalation level configuration from MDMS
+        EscalationLevel escalationLevelConfig = getEscalationLevelConfig(escalationLevel, requestInfo);
         
-        // Check slaRemaining <= threshold
-        Map<String, Object> slaRemainingRange = new HashMap<>();
-        Map<String, Object> slaRemainingRangeQuery = new HashMap<>();
-        slaRemainingRangeQuery.put("lte", thresholdMs);
-        slaRemainingRange.put("Data.slaRemaining", slaRemainingRangeQuery);
-        Map<String, Object> slaRemainingFilter = new HashMap<>();
-        slaRemainingFilter.put("range", slaRemainingRange);
-        must.add(slaRemainingFilter);
+        if (escalationLevelConfig != null) {
+            // Build SLA filter based on calculation strategy
+            Map<String, Object> slaFilter = buildSLAFilter(escalationLevel, escalationLevelConfig);
+            if (slaFilter != null) {
+                must.add(slaFilter);
+            }
+        } else {
+            // Fallback to hardcoded thresholds if MDMS fetch fails
+            log.warn("EscalationLevel config not found for {} (country level), using fallback thresholds", escalationLevel);
+            double thresholdHours = getBreachThresholdHoursFallback(escalationLevel);
+            long thresholdMs = (long) (thresholdHours * 60 * 60 * 1000);
+            
+            Map<String, Object> slaRemainingRange = new HashMap<>();
+            Map<String, Object> slaRemainingRangeQuery = new HashMap<>();
+            slaRemainingRangeQuery.put("lte", thresholdMs);
+            slaRemainingRange.put("Data.slaRemaining", slaRemainingRangeQuery);
+            
+            Map<String, Object> slaRemainingFilter = new HashMap<>();
+            slaRemainingFilter.put("range", slaRemainingRange);
+            must.add(slaRemainingFilter);
+        }
         
         // Exclude tickets already escalated to this recipient AND level
         List<Map<String, Object>> mustNot = new ArrayList<>();
@@ -1058,8 +1241,8 @@ public class SLABreachDetectionService {
         bool.put("must_not", mustNot);
         query.put("bool", bool);
         
-        log.debug("SLA breach query for country level with escalation level {} (threshold: {} hours): {}", 
-            escalationLevel, thresholdHours, query);
+        log.debug("SLA breach query for country level with escalation level {}: {}", 
+            escalationLevel, query);
         return query;
     }
     

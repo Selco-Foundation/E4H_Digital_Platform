@@ -81,7 +81,20 @@ public class EscalationMasterDataService {
             JSONArray escalationRecipients = mdmsData.get(INCIDENT_MODULE).get(ESCALATION_RECIPIENT_MASTER);
             if (escalationRecipients != null && !escalationRecipients.isEmpty()) {
                 try {
-                    return objectMapper.convertValue(escalationRecipients, new TypeReference<List<EscalationRecipient>>() {});
+                    List<EscalationRecipient> recipients = objectMapper.convertValue(escalationRecipients, new TypeReference<List<EscalationRecipient>>() {});
+                    
+                    // Sort by ID to ensure correct processing order (1-7, not 7-1)
+                    recipients.sort((a, b) -> {
+                        if (a.getId() == null && b.getId() == null) return 0;
+                        if (a.getId() == null) return 1;
+                        if (b.getId() == null) return -1;
+                        return a.getId().compareTo(b.getId());
+                    });
+                    
+                    log.info("Fetched {} escalation recipients, sorted by ID: {}", 
+                        recipients.size(), recipients.stream().map(EscalationRecipient::getId).toList());
+                    
+                    return recipients;
                 } catch (Exception conversionError) {
                     log.error("Error converting escalation recipients JSONArray to List<EscalationRecipient>", conversionError);
                     log.debug("Escalation recipients JSONArray content: {}", escalationRecipients);
@@ -149,4 +162,5 @@ public class EscalationMasterDataService {
             return new ArrayList<>();
         }
     }
+    
 }

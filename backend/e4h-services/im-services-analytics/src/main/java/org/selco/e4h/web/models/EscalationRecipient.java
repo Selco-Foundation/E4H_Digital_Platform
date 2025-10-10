@@ -20,13 +20,17 @@ public class EscalationRecipient {
     
     @JsonProperty("id")
     private Integer id;
-    
-    @JsonProperty("escalationLevel")
-    private String escalationLevel;
-    
-    @JsonProperty("recipientRoles")
-    private List<RecipientRole> recipientRoles;
-    
+
     @JsonProperty("active")
     private Boolean active;
+
+    // V2 fields (role-centric)
+    @JsonProperty("recipientRole")
+    private String recipientRole;
+
+    @JsonProperty("boundaryLevel")
+    private String boundaryLevel; // "state" or "country"
+
+    @JsonProperty("escalations")
+    private List<EscalationRoleEscalationItem> escalations;
 }
