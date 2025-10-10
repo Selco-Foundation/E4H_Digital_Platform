@@ -1613,10 +1613,10 @@
     react-query "3.6.1"
     react-router-dom "5.3.0"
 
-"@egovernments/digit-ui-module-core@1.8.51":
-  version "1.8.51"
-  resolved "https://registry.yarnpkg.com/@egovernments/digit-ui-module-core/-/digit-ui-module-core-1.8.51.tgz#15c1b7b8286d32643fa5f99134432320758e3c5c"
-  integrity sha512-xIaLJyNVEUlmkwIbp2F7CtDmdxYR78jBUhLTfCf6aMkzaT+OsiZaZGq5lPawU07YGVi7LyB4hnZaBJvRULG+DA==
+"@egovernments/digit-ui-module-core@1.8.52":
+  version "1.8.52"
+  resolved "https://registry.yarnpkg.com/@egovernments/digit-ui-module-core/-/digit-ui-module-core-1.8.52.tgz#5ea662d19b61e0f35161e34a6f39a4db52269f8f"
+  integrity sha512-8/NF2GSiqUJWtk569z5fHqo/n5CIBZjC0lEkDsTxu2svWFzKmdK59BXUFXW2lxKz55GJODl2scX7Xcg0stxY8A==
   dependencies:
     "@egovernments/digit-ui-components" "0.2.0"
     "@egovernments/digit-ui-react-components" "1.8.24"
