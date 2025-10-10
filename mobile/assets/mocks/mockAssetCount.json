@@ -14,7 +14,7 @@
       "schemaCode": "asset.AssetCount",
       "uniqueIdentifier": "PANEL",
       "data": {
-        "max": 20,
+        "max": 2,
         "min": 1,
         "active": true,
         "asset_type_code": "PANEL"
@@ -33,7 +33,7 @@
       "schemaCode": "asset.AssetCount",
       "uniqueIdentifier": "BATTERY",
       "data": {
-        "max": 25,
+        "max": 2,
         "min": 1,
         "active": true,
         "asset_type_code": "BATTERY"
@@ -52,7 +52,7 @@
       "schemaCode": "asset.AssetCount",
       "uniqueIdentifier": "INVERTER",
       "data": {
-        "max": 5,
+        "max": 1,
         "min": 1,
         "active": true,
         "asset_type_code": "INVERTER"

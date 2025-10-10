@@ -249,7 +249,6 @@ class BomRepository {
 
     print("response.data ${response.data}");
 
-    // 8) Mark clean (persist id for all if update)
     await isar.writeTxn(() async {
       for (final d in dirty) {
         if (isUpdate) d.serverBomId = firstId;
@@ -361,6 +360,7 @@ class BomRepository {
       // 2. Build request body
       final tenantId = env.envConfig.variables.tenantId;
       final body = {
+        "system": "DC",
         "bom": bomData,
       };
 

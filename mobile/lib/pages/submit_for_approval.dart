@@ -24,10 +24,10 @@ import '../blocs/selected_project/selected_project.dart';
 import '../blocs/user_type/user_type.dart';
 import '../model/comment/comment.dart';
 import '../model/project_workflow/project_workflow.dart';
-import '../repositories/bom_repo.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
 import '../utils/utils.dart';
+import '../widgets/button/bom_buttons.dart';
 import '../widgets/button/footer_button.dart';
 import '../widgets/header/back_navigation_help_header.dart';
 import '../widgets/summary/existing_or_loader.dart';
@@ -52,6 +52,19 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
   bool rejection2 = false;
   bool rejection3 = false;
   String? _solutionDesignTypeCode;
+
+  bool _initialized = false;
+  late List<dynamic> _entries; // your `matching?.data.bomForms`
+  late Future<List<({String label, String schemaName, String pageName})>>
+      _bomButtonsFuture;
+  late Future<
+      List<
+          ({
+            String action,
+            String label,
+            String schemaName,
+            String pageName
+          })>> _buttonsWithActionsFuture;
 
   // for completion report upload
   List<PlatformFile> _pickedFiles = [];
@@ -96,7 +109,7 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
     selState.whenOrNull(selected: (selProject) {
       projectId = selProject.project.id;
       project = selProject;
-      _solutionDesignTypeCode = "RMS_Single_Phase";
+      _solutionDesignTypeCode = "DC";
     });
 
     context
@@ -122,20 +135,6 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
     );
 
     if (!mounted) return;
-    // setState(() {
-    //   _existingReports = combined.map((pf) {
-    //     final path = pf.path!;
-    //     print("pf p.basename(path) ${p.basename(path)}");
-    //     return ExistingReport(
-    //       isarId: null,
-    //       filePath: path,
-    //       fileName: p.basename(path),
-    //       fileType: inferFileType(path),
-    //     );
-    //   }).toList();
-    //   _pickedFiles = [];
-    // });
-
     setState(() {
       final docs = project?.workflow?.documents ?? [];
       _existingReports = combined.map((pf) {
@@ -424,113 +423,12 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                                     solutionDesign,
                                     solutionDesignBom,
                                   ) {
-                                    return Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.stretch,
-                                      children: [
-                                        Builder(
-                                          builder: (_) {
-                                            final matches =
-                                                solutionDesignBom.where(
-                                              (e) =>
-                                                  e.data
-                                                      .solutionDesignTypeCode ==
-                                                  _solutionDesignTypeCode,
-                                            );
-
-                                            final matching = matches.isNotEmpty
-                                                ? matches.first
-                                                : null;
-                                            final entries =
-                                                matching?.data.bomForms ??
-                                                    const [];
-
-                                            if (entries.isEmpty) {
-                                              return const SizedBox.shrink();
-                                            }
-
-                                            return Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.stretch,
-                                              children: [
-                                                for (final entry
-                                                    in entries) ...[
-                                                  FutureBuilder(
-                                                    future: bomRouteAndLabel(
-                                                        entry.name),
-                                                    builder: (_, snapshot) {
-                                                      if (snapshot
-                                                              .connectionState ==
-                                                          ConnectionState
-                                                              .waiting) {
-                                                        return const SizedBox
-                                                            .shrink();
-                                                      }
-                                                      if (!snapshot.hasData) {
-                                                        return const SizedBox
-                                                            .shrink();
-                                                      }
-                                                      final r = snapshot.data!;
-                                                      final isar = context
-                                                          .read<ProjectBloc>()
-                                                          .isar;
-                                                      return FutureBuilder<
-                                                              String>(
-                                                          future: BomRepository()
-                                                              .resolveBomActionLabel(
-                                                            isar: isar,
-                                                            projectId:
-                                                                projectId,
-                                                            schemaKey:
-                                                                r.schemaName,
-                                                            origin: FormOrigin
-                                                                .submitForApproval,
-                                                          ),
-                                                          builder:
-                                                              (context, snap) {
-                                                            final labelWord =
-                                                                snap.hasData
-                                                                    ? snap.data!
-                                                                    : '...';
-                                                            return DigitButton(
-                                                              capitalizeLetters:
-                                                                  false,
-                                                              mainAxisSize:
-                                                                  MainAxisSize
-                                                                      .max,
-                                                              label:
-                                                                  '$labelWord ${r.label}',
-                                                              onPressed: () {
-                                                                context.router.push(
-                                                                    DynamicFormsRoute(
-                                                                  pageName: r
-                                                                      .pageName,
-                                                                  schemaName: r
-                                                                      .schemaName,
-                                                                  projectId:
-                                                                      projectId!,
-                                                                  origin: FormOrigin
-                                                                      .submitForApproval,
-                                                                ));
-                                                              },
-                                                              type:
-                                                                  DigitButtonType
-                                                                      .secondary,
-                                                              size:
-                                                                  DigitButtonSize
-                                                                      .large,
-                                                            );
-                                                          });
-                                                    },
-                                                  ),
-                                                  const SizedBox(
-                                                      height: spacer4),
-                                                ],
-                                              ],
-                                            );
-                                          },
-                                        ),
-                                      ],
+                                    return BomButtonsSection(
+                                      solutionDesignBom: solutionDesignBom,
+                                      solutionDesignTypeCode:
+                                          _solutionDesignTypeCode!,
+                                      projectId: projectId!,
+                                      origin: FormOrigin.submitForApproval,
                                     );
                                   },
                                 );

@@ -9,26 +9,8 @@
   },
   "mdms": [
     {
-      "id": "271d09ea-a049-4d91-a0ef-13bc8db298a6",
-      "tenantId": "pg",
-      "schemaCode": "asset.System",
-      "uniqueIdentifier": "DC.DC",
-      "data": {
-        "code": "DC",
-        "name": "DC",
-        "active": true
-      },
-      "isActive": true,
-      "auditDetails": {
-        "createdBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
-        "lastModifiedBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
-        "createdTime": 1748705921801,
-        "lastModifiedTime": 1748705921801
-      }
-    },
-    {
       "id": "f331c9f8-68ee-4392-a39f-c1854b14ad07",
-      "tenantId": "pg",
+      "tenantId": "in",
       "schemaCode": "asset.System",
       "uniqueIdentifier": "AC_OFF_GRID.AC Off Grid",
       "data": {
@@ -42,6 +24,24 @@
         "lastModifiedBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
         "createdTime": 1748705679246,
         "lastModifiedTime": 1748705679246
+      }
+    },
+    {
+      "id": "271d09ea-a049-4d91-a0ef-13bc8db298a6",
+      "tenantId": "in",
+      "schemaCode": "asset.System",
+      "uniqueIdentifier": "DC.DC",
+      "data": {
+        "code": "DC",
+        "name": "DC",
+        "active": true
+      },
+      "isActive": true,
+      "auditDetails": {
+        "createdBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "lastModifiedBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "createdTime": 1748705921801,
+        "lastModifiedTime": 1748705921801
       }
     }
   ]

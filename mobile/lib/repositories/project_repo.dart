@@ -32,7 +32,6 @@ class ProjectRemoteRepository {
       String searchPath = "project/v2/_search";
 
       if (envConfig.variables.envType == EnvType.dev) {
-        print("EnvType.dev got here");
         // return _loadLocalProjects();
       }
 
