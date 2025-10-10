@@ -100,6 +100,7 @@ class AssetRepository {
   Future<Asset> createOrUpdateAsset({
     required Asset asset,
     required Isar isar,
+    required facilityId,
   }) async {
     // Determine create vs update
     final isCreate = asset.assetId == null || asset.assetId!.isEmpty;
@@ -141,26 +142,52 @@ class AssetRepository {
       print("updatedAsset $updatedAsset");
       print("updated AssetId ${updatedAsset.assetId}");
 
-      // Persist the returned assetId back into Isar
-      if (updatedAsset.assetId != null && updatedAsset.assetId!.isNotEmpty) {
-        await isar.writeTxn(() async {
-          final existing = await isar.cacheAddNewAssets
-              .where()
-              .assetTypeEqualTo(asset.assetTypeID!.toLowerCase())
-              .filter()
-              .serialNumberEqualTo(asset.serialNumber!)
-              .findFirst();
-          print("existing $existing");
-          if (existing != null) {
-            existing.assetId = updatedAsset.assetId;
-            await isar.cacheAddNewAssets.put(existing);
-          }
-        });
+      if ((updatedAsset.assetId ?? '').isNotEmpty) {
+        await _writeBackAssetIdToCache(isar: isar, asset: updatedAsset);
       }
 
       return updatedAsset;
     } on DioError catch (e) {
-      // Bubble up a parsed error
+      final code = _errorCodeFromDio(e);
+      final isDuplicate = code == 'ERR_ASSET_DUPLICATE_VALIDATION';
+
+      print("Starting Duplicate Fetch and resending");
+      if (isCreate && isDuplicate) {
+        final remote = await _fetchAssetBySerial(
+          facilityId: facilityId,
+          serialNumber: asset.serialNumber ?? '',
+        );
+
+        final remoteAssetId =
+            (remote?['assetId'] ?? remote?['assetID'] ?? '').toString();
+
+        if (remoteAssetId.isNotEmpty) {
+          await _writeBackAssetIdToCache(
+            isar: isar,
+            asset: asset.copyWith(assetId: remoteAssetId),
+          );
+
+          final retryAssetMap = Map<String, dynamic>.from(asset.toJson());
+          retryAssetMap['assetId'] = remoteAssetId;
+          final updatePayload = {
+            'assetDetail': {
+              'Asset': retryAssetMap,
+            },
+          };
+
+          final updateResp = await _dio.post(
+            '/asset-registry/v1/asset/_update?assetID=$remoteAssetId',
+            data: updatePayload,
+          );
+          if (updateResp.statusCode == 200 || updateResp.statusCode == 201) {
+            final m = updateResp.data as Map<String, dynamic>;
+            final aj = m['asset'] ?? m['Asset'];
+            final updated =
+                Asset.fromJson(Map<String, dynamic>.from(aj as Map));
+            return updated;
+          }
+        }
+      }
       print(e.message);
       throw DioErrorParser.parse(e);
     }
@@ -432,5 +459,84 @@ class AssetRepository {
       final msg = dioErr.response?.data?.toString() ?? dioErr.message;
       throw DioErrorParser.parse(dioErr);
     }
+  }
+
+  // Add this helper to AssetRepository
+  Future<Map<String, dynamic>?> _fetchAssetBySerial({
+    required String facilityId,
+    required String serialNumber,
+  }) async {
+    final resp = await _dio.post(
+      '/asset-registry/v1/asset/_search?tenantId=${envConfig.variables.tenantId}',
+      data: {
+        'criteria': {
+          'tenantId': envConfig.variables.tenantId,
+          'facilityID': facilityId,
+          'serialNumber': serialNumber,
+        }
+      },
+    );
+
+    if (resp.statusCode == 200 || resp.statusCode == 201) {
+      final data = resp.data;
+      if (data is List) {
+        return data.cast<Map<String, dynamic>?>().firstWhere(
+              (m) => (m?['serialNumber'] ?? '') == serialNumber,
+              orElse: () => null,
+            );
+      }
+      // if (data is Map && data['assets'] is List) {
+      //   final list = (data['assets'] as List).cast<Map<String, dynamic>>();
+      //   return list.firstWhere(
+      //     (m) => (m['serialNumber'] ?? '') == serialNumber,
+      //     orElse: () => null,
+      //   );
+      // }
+    }
+    return null;
+  }
+
+// Optional: robust error-code extractor
+  String? _errorCodeFromDio(DioException e) {
+    try {
+      final data = e.response?.data;
+      if (data is Map &&
+          data['Errors'] is List &&
+          (data['Errors'] as List).isNotEmpty) {
+        final first = (data['Errors'] as List).first;
+        if (first is Map && first['code'] is String)
+          return first['code'] as String;
+      }
+      if (data is List &&
+          data.isNotEmpty &&
+          data.first is Map &&
+          (data.first as Map)['code'] is String) {
+        return (data.first as Map)['code'] as String;
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  Future<void> _writeBackAssetIdToCache({
+    required Isar isar,
+    required Asset asset,
+  }) async {
+    final typeKey = (asset.assetTypeID ?? '').toLowerCase();
+    final serial = asset.serialNumber ?? '';
+    if (typeKey.isEmpty || serial.isEmpty || (asset.assetId ?? '').isEmpty)
+      return;
+
+    await isar.writeTxn(() async {
+      final existing = await isar.cacheAddNewAssets
+          .where()
+          .assetTypeEqualTo(typeKey)
+          .filter()
+          .serialNumberEqualTo(serial)
+          .findFirst();
+      if (existing != null) {
+        existing.assetId = asset.assetId;
+        await isar.cacheAddNewAssets.put(existing);
+      }
+    });
   }
 }
