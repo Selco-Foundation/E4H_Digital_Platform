@@ -344,6 +344,14 @@ public class PrioritySLAService {
                 }
             }
         }
+        String currentState = processInstances.getLast().getState().getState();
+        if (currentState.equals(PENDING_FOR_ASSIGNMENT)) {
+            remainingTotalSla += getDurationFromMap(slaMap, tenantId, businessService, PENDING_RESOLUTION).toMillis();
+        } else if (currentState.startsWith(PENDING_ASSIGNMENT_PREFIX)) {
+            String suffix = currentState.replace(PENDING_ASSIGNMENT_PREFIX, "");
+            String resolutionState = PENDING_RESOLUTION_PREFIX + suffix;
+            remainingTotalSla += getDurationFromMap(slaMap, tenantId, businessService, resolutionState).toMillis();
+        }
 
         return remainingTotalSla;
     }

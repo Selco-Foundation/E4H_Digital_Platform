@@ -148,7 +148,7 @@ public class WorkflowService {
 
         // Calculate remaining sla and defined total sla
         long definedTotalSla = slaService.computeTotalSla(applicationStatus, this.getStates(), processInstances);
-        long totalSlaRemaining = slaService.computeTotalSlaRemaining(this.getStates(), processInstances, businessHourList);
+        long totalSlaRemaining = slaService.computeTotalSlaRemaining(this.getStates(), processInstances, businessHourList,processInstance);
 
         wrapper.getIndexView().setDefinedTotalSla(definedTotalSla);
         processInstance.getState().setTotalSlaRemaining(totalSlaRemaining);
@@ -340,7 +340,7 @@ public class WorkflowService {
         Collections.reverse(processInstances);
         int lastIndex = -1;
         for (int i = processInstances.size() - 1; i >= 0; i--) {
-            if (PENDINGFORASSIGNMENT.equals(processInstances.get(i).getState())) {
+            if (PENDINGFORASSIGNMENT.equals(processInstances.get(i).getState().getState())) {
                 lastIndex = i;
                 break;
             }

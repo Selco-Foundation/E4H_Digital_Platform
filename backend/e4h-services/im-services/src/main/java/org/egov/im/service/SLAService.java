@@ -28,7 +28,7 @@ import static org.egov.im.util.IMConstants.*;
 @Service
 public class SLAService {
 
-    public long computeTotalSlaRemaining( List<State> states, List<ProcessInstance> processInstances, List<Map<String, Object>> businessHourList) {
+    public long computeTotalSlaRemaining( List<State> states, List<ProcessInstance> processInstances, List<Map<String, Object>> businessHourList, ProcessInstance currentProcessInstance) {
         if (processInstances == null || processInstances.isEmpty()) {
             return 0;
         }
@@ -40,6 +40,9 @@ public class SLAService {
             if (key != null && state.getSla() != null) {
                 stateToSlaMap.put(key, state.getSla());
             }
+        }
+        if(processInstances.isEmpty() || !processInstances.get(processInstances.size() - 1).getState().getState().equals(currentProcessInstance.getState().getState())){
+            processInstances.add(currentProcessInstance);
         }
         long remainingTotalSla = 0;
 
@@ -61,10 +64,21 @@ public class SLAService {
                 }
                 long currentStateTimeSpent = businessHoursUtil.calculateBusinessDuration(zonedPrevStateTime, zonedNextStateTime);
                 long currentStateDefinedSla = stateToSlaMap.getOrDefault(state, 0L);
-                if(currentStateDefinedSla-currentStateTimeSpent<0){
+                if(i + 1 >= processInstances.size() || currentStateDefinedSla-currentStateTimeSpent<0){
                     remainingTotalSla += currentStateDefinedSla-currentStateTimeSpent;
                 }
             }
+        }
+        String currentState = currentProcessInstance.getState().getState();
+        if (PENDINGFORASSIGNMENT.equals(currentState)) {
+            remainingTotalSla += stateToSlaMap.getOrDefault(PENDINGATVENDOR, 0L);
+            log.debug("Computed SLA for combined state={} totalSla={}", currentState, remainingTotalSla);
+        } else if (currentState.startsWith(PENDING_ASSIGNMENT_PREFIX)) {
+            String suffix = currentState.replace(PENDING_ASSIGNMENT_PREFIX, "");
+            String resolutionState = PENDING_RESOLUTION_PREFIX + suffix;
+            remainingTotalSla += stateToSlaMap.getOrDefault(resolutionState, 0L);
+            log.debug("Computed SLA for assignment workflow | currentState={} resolutionState={} totalSla={}",
+                    currentState, resolutionState, remainingTotalSla);
         }
 
         return remainingTotalSla;

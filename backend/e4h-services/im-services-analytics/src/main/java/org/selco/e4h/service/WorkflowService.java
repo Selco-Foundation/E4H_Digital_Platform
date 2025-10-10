@@ -68,7 +68,7 @@ public class WorkflowService {
         Collections.reverse(processInstances);
         int lastIndex = -1;
         for (int i = processInstances.size() - 1; i >= 0; i--) {
-            if (PENDING_FOR_ASSIGNMENT.equals(processInstances.get(i).getState())) {
+            if (PENDING_FOR_ASSIGNMENT.equals(processInstances.get(i).getState().getState())) {
                 lastIndex = i;
                 break;
             }
