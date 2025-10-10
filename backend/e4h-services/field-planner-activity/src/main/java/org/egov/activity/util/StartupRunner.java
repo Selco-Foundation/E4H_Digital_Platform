@@ -21,11 +21,11 @@ public class StartupRunner implements CommandLineRunner {
     @Override
     public void run(String... args) throws Exception {
         System.out.println("➡ Application démarrée !");
-        configMap.put("AC_OFF_GRID_RMS_SINGLE_PHASE", activityConfiguration.getBomACOffGridSinglePhase());
-        configMap.put("AC_OFF_GRID_RMS_THREE_PHASE", activityConfiguration.getBomACOffGridSThreePhase());
+        configMap.put("AC_OFF_GRID", activityConfiguration.getBomACOffGridSinglePhase());
+        configMap.put("AC_OFF_GRID_THREE_PHASE", activityConfiguration.getBomACOffGridSThreePhase());
         configMap.put("HYBRID_RMS_SINGLE_PHASE", activityConfiguration.getBomHybridSinglePhase());
         configMap.put("HYBRID_RMS_SINGLE_PHASE", activityConfiguration.getBomHybridThreePhase());
-        configMap.put("DC_SYSTEM", activityConfiguration.getBomDCSystem());
+        configMap.put("DC", activityConfiguration.getBomDCSystem());
     }
 
     public Map<String, String> getConfigMap() {

@@ -121,9 +121,9 @@ public class BomService {
     }
 
     public byte[] generateBOMPdf(GenerateBOMPdfRequest request, String tenantId){
-        String bomType = request.getSolutionDesignCode();
+        String bomType = request.getSystem();
         if(bomType==null)
-            throw new CustomException("BOM_PDF", "Design Type is required");
+            throw new CustomException("BOM_PDF", "System Type is required");
         String pdfKey = startupRunner.getConfigMap().get(bomType);
         return getBOMPdfFile(pdfKey, tenantId, request);
     }

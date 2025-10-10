@@ -5,7 +5,7 @@ import com.jayway.jsonpath.JsonPath;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.egov.activity.config.ActivityConfiguration;
-import org.egov.activity.repository.ActivityRepository;
+import org.egov.activity.repository.ActivityFacilityRepository;
 import org.egov.activity.service.ServiceRequestRepository;
 import org.egov.activity.util.MDMSUtils;
 import org.egov.activity.web.models.*;
@@ -31,7 +31,7 @@ import static org.egov.activity.util.ActivityConstants.*;
 public class BomValidator {
 
     @Autowired
-    ActivityRepository activityRepository;
+    ActivityFacilityRepository activityFacilityRepository;
 
     @Autowired
     private final ServiceRequestClient serviceRequestRepository;

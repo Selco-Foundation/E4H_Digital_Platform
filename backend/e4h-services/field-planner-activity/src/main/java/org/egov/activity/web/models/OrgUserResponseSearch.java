@@ -7,23 +7,23 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.egov.common.contract.request.RequestInfo;
+import org.egov.common.contract.response.ResponseInfo;
 import org.springframework.validation.annotation.Validated;
 
-import java.util.Map;
+import java.util.List;
 
 @Validated
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class GenerateBOMPdfRequest {
-    @JsonProperty("RequestInfo")
-    private @NotNull @Valid RequestInfo requestInfo = null;
+public class OrgUserResponseSearch {
+    @JsonProperty("ResponseInfo")
+    private @NotNull @Valid ResponseInfo responseInfo = null;
 
-    @JsonProperty("system")
-    private String system = null;
+    @JsonProperty("OrgUsers")
+    private @NotNull @Valid List<OrgUserEnriched> orgUsers = null;
 
-    @JsonProperty("bom")
-    private Map<String, Object> bomData = null;
+    @JsonProperty("TotalCount")
+    private Integer totalCount = 0;
 }

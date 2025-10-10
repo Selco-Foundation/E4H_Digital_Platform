@@ -65,7 +65,7 @@ public class ActivityApiController {
             @ApiParam(value = "Details for the fieldPlan.", required = true) @Valid @RequestBody ActivityFacilitySearchRequest request,
             @Valid @ModelAttribute URLParams urlParams
     ) {
-        List<ActivityFacility> fieldPlans = activityService.searchActivity(
+        List<ActivityFacility> fieldPlans = activityService.searchActivityFacility(
                 request,
                 urlParams.getLimit(),
                 urlParams.getOffset(),

@@ -23,6 +23,9 @@ public class ActivityConfiguration {
     @Value("${egov.search.fieldplan.url}")
     private String fieldPlanServiceSearchUrl;
 
+    @Value("${egov.search.fieldplan.facility.url}")
+    private String fieldPlanFacilityServiceSearchUrl;
+
     @Value("${egov.facility.host}")
     private String facilityServiceHost;
 
@@ -138,4 +141,10 @@ public class ActivityConfiguration {
 
     @Value("${egov.hrms.search.url}")
     private String hrmsSearchUrl;
+
+    @Value("${http://localhost:8991}")
+    private String orgUserHost;
+
+    @Value("${egov.vendor.user.search.url}")
+    private String orgUserSearchUrl;
 }
