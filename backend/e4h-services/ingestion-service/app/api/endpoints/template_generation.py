@@ -222,6 +222,7 @@ async def get_facility_ingestion_template_with_data(
     request_info = request_info_from_json(payload.get("request_info", {}))
     boundary_data = payload.get("boundary_data", {})
     fieldplan_id = payload.get("fieldplan_id")
+    project_id = payload.get("project_id")
     mdms_client = MDMSClient(mdms_url)
     try:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -235,16 +236,24 @@ async def get_facility_ingestion_template_with_data(
             cleanup_temp_file(output_file_path)
             raise HTTPException(status_code=502, detail=f"External service error: {str(e)}")
 
+        # Get all project-linked facilities
+        project_client = ProjectServiceClient(project_service_url)
+        project_facilities_response = project_client.search_project_facility(request_info, project_id)
+        project_facilities = project_facilities_response.get("ProjectFacilities", [])
+        project_linked_facility_ids = {pf.get("facilityId") for pf in project_facilities if pf.get("facilityId")}
+        logger.info(f"Found {len(project_linked_facility_ids)} facilities currently linked to project {project_id}")
+
         all_facilities = []
-        if facility_service_url:
+        if facility_service_url and project_linked_facility_ids:
             facility_client = FacilityServiceClient(facility_service_url)
             for boundary in boundary_list:
-                try:
-                    results = facility_client.search_facility(tenant_id='in', boundary_code=boundary.code)
-                    facilities = results.get('facilities', [])
-                    all_facilities.extend(facilities)
-                except Exception as e:
-                    print(f"Error fetching boundary facilities: {e}")
+                for facilityId in project_linked_facility_ids:
+                    try:
+                        results = facility_client.search_facility(facility_id=facilityId, tenant_id='in', boundary_code=boundary.code)
+                        facilities = results.get('facilities', [])
+                        all_facilities.extend(facilities)
+                    except Exception as e:
+                        print(f"Error fetching boundary facilities: {e}")
 
         # Fetch fieldplan-linked facilities if fieldplan_id is provided
         fieldplan_linked_facility_ids = set()
