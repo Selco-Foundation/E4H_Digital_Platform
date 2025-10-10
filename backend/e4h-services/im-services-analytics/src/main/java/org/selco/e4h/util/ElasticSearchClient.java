@@ -1,5 +1,6 @@
 package org.selco.e4h.util;
 
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.selco.e4h.service.UpdateService;
@@ -37,7 +38,8 @@ public class ElasticSearchClient {
     private String INDEX_NAME;
     private static final String INDEX_NAME_PHC = "phc-master-list-new-2";
 
-    private void init() {
+    @PostConstruct
+    public void init() {
         this.INDEX_NAME = computedSlaImServicesIndex;
     }
 
