@@ -525,9 +525,7 @@ class AppInitRepo {
     // Try secure store first if you want (optional). Skipped here on purpose.
 
     if (envConfig.variables.envType == EnvType.dev) {
-      // <-- THIS is the fix: return *raw maps*, not Mdms<T>
-      print("It's getting here");
-      return _loadLocalMdmsRaw('assets/mocks/mockBOMFormConfig.updated.json');
+      return _loadLocalMdmsRaw('assets/mocks/mockBOMFormConfig.updated.2.json');
     }
 
     // PROD call
