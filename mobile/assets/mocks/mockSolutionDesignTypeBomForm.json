@@ -19,19 +19,19 @@
         "file_name": "",
         "bomForms": [
           {
-            "name": "RMS_Single_Phase_BOM_Solar"
+            "name": "RMS_ACC_OFF_GRID_BOM_solar"
           },
           {
-            "name": "RMS_Single_Phase_BOM_luminaries"
+            "name": "RMS_ACC_OFF_GRID_BOM_luminaries"
           },
           {
-            "name": "RMS_Single_Phase_BOM_rms"
+            "name": "RMS_ACC_OFF_GRID_BOM_rms"
           },
           {
-            "name": "RMS_Single_Phase_BOM_wiring"
+            "name": "RMS_ACC_OFF_GRID_BOM_wiring"
           },
           {
-            "name": "RMS_Single_Phase_BOM_system"
+            "name": "RMS_ACC_OFF_GRID_SINGLE_PHASE_BOM_system"
           }
         ]
       },
@@ -50,23 +50,23 @@
       "uniqueIdentifier": "",
       "data": {
         "solutionDesignTypeCode": "RMS_Single_Phase",
-        "systemCode": "AC_OFF_GRID",
+        "systemCode": "AC_OFF_GRID_THREE_PHASE",
         "file_name": "",
         "bomForms": [
           {
-            "name": "RMS_Single_Phase_BOM_Solar"
+            "name": "RMS_ACC_OFF_GRID_BOM_solar"
           },
           {
-            "name": "RMS_Single_Phase_BOM_luminaries"
+            "name": "RMS_ACC_OFF_GRID_BOM_luminaries"
           },
           {
-            "name": "RMS_Single_Phase_BOM_rms"
+            "name": "RMS_ACC_OFF_GRID_BOM_rms"
           },
           {
-            "name": "RMS_Single_Phase_BOM_wiring"
+            "name": "RMS_ACC_OFF_GRID_BOM_wiring"
           },
           {
-            "name": "RMS_Single_Phase_BOM_system"
+            "name": "RMS_ACC_OFF_GRID_THREE_PHASE_BOM_system"
           }
         ]
       },
@@ -85,20 +85,20 @@
       "uniqueIdentifier": "",
       "data": {
         "solutionDesignTypeCode": "RMS_Single_Phase",
-        "systemCode": "AC_OFF_GRID",
+        "systemCode": "HYBRID_RMS_SINGLE_PHASE",
         "file_name": "",
         "bomForms": [
           {
-            "name": "RMS_Single_Phase_BOM_Solar"
+            "name": "HYBRID_RMS_SINGLE_PHASE_BOM_Solar"
           },
           {
-            "name": "RMS_Single_Phase_BOM_luminaries"
+            "name": "RMS_ACC_OFF_GRID_BOM_luminaries"
           },
           {
-            "name": "RMS_Single_Phase_BOM_rms"
+            "name": "RMS_ACC_OFF_GRID_BOM_rms"
           },
           {
-            "name": "RMS_Single_Phase_BOM_wiring"
+            "name": "RMS_ACC_OFF_GRID_BOM_wiring"
           },
           {
             "name": "RMS_Single_Phase_BOM_system"
