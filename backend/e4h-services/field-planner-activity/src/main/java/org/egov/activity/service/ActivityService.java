@@ -3,6 +3,7 @@ package org.egov.activity.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.egov.activity.repository.ActivityAssignmentRepository;
 import org.egov.activity.util.ActivityServiceUtil;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.common.producer.Producer;
@@ -18,7 +19,6 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 
 @Service
@@ -26,6 +26,8 @@ import java.util.Objects;
 public class ActivityService {
 
     private final ActivityRepository activityRepository;
+
+    private final ActivityAssignmentRepository activityAssignmentRepository;
 
     private final Producer producer;
 
@@ -43,7 +45,7 @@ public class ActivityService {
     @Autowired
     public ActivityService(
             ActivityRepository activityRepository, ActivityEnrichment activityEnrichment, ActivityConfiguration activityConfiguration, ActivityValidator activityValidator,
-            Producer producer, MDMSUtils mdmsUtils, ActivityServiceUtil activityServiceUtil, @Qualifier("objectMapper") ObjectMapper mapper) {
+            Producer producer, MDMSUtils mdmsUtils, ActivityServiceUtil activityServiceUtil, @Qualifier("objectMapper") ObjectMapper mapper, ActivityAssignmentRepository activityAssignmentRepository) {
             this.producer = producer;
             this.activityConfiguration = activityConfiguration;
             this.activityRepository = activityRepository;
@@ -52,6 +54,24 @@ public class ActivityService {
             this.activityServiceUtil = activityServiceUtil;
             this.mapper = mapper;
             this.activityValidator = activityValidator;
+            this.activityAssignmentRepository = activityAssignmentRepository;
+    }
+
+    public List<Activity> createActivity(ActivityBulkRequest request) {
+        log.info("received request to create bulk activity bulk");
+        List<Activity> activities = request.getActivities();
+        try {
+            for (Activity activity : activities) {
+                log.info("processing {} valid entities", activity);
+                activityEnrichment.enrichActivityRequestOnCreate(activity, request.getRequestInfo());
+            }
+            producer.push(activityConfiguration.getCreateActivityTopic(), request);
+            log.info("successfully created activity");
+        } catch (Exception exception) {
+            log.error("error occurred while creating activity: {}", ExceptionUtils.getStackTrace(exception));
+        }
+
+        return activities;
     }
 
     public List<ActivityFacility> createActivityFacility(ActivityFacilityBulkRequest request) {
@@ -67,7 +87,7 @@ public class ActivityService {
             producer.push(activityConfiguration.getCreateActivityFacilityTopic(), request);
             log.info("successfully created activity facility");
         } catch (Exception exception) {
-            log.error("error occurred while creating project facility: {}", ExceptionUtils.getStackTrace(exception));
+            log.error("error occurred while creating Activity facility: {}", ExceptionUtils.getStackTrace(exception));
         }
 
         return activityFacilities;
@@ -86,6 +106,25 @@ public class ActivityService {
             log.info("successfully created project facility");
             producer.push(activityConfiguration.getCreateActivityAssignmentTopic(), request);
         } catch (Exception exception) {
+            log.error("error occurred while creating Activity Assignment: {}", ExceptionUtils.getStackTrace(exception));
+        }
+
+        return activityAssignments;
+    }
+
+    public List<ActivityAssignment> unassignActivityAssignment(ActivityAssignmentBulkRequest request) {
+        log.info("received request to unassign bulk Activity facility");
+
+        activityValidator.validateDeleteActivityAssignmentRequest(request);
+        List<ActivityAssignment> activityAssignments = request.getActivityAssignments();
+        try {
+            for (ActivityAssignment activityAssignment : activityAssignments) {
+                log.info("processing {} valid entities", activityAssignment);
+                activityEnrichment.enrichFieldPlanRequestOnDelete(activityAssignment, request.getRequestInfo());
+            }
+            log.info("successfully unassign fieldplan activities");
+            producer.push(activityConfiguration.getUnassignActivityAssignmentTopic(), request);
+        } catch (Exception exception) {
             log.error("error occurred while creating project facility: {}", ExceptionUtils.getStackTrace(exception));
         }
 
@@ -94,15 +133,29 @@ public class ActivityService {
 
     public List<ActivityFacility> searchActivity(ActivityFacilitySearchRequest request, Integer limit, Integer offset, String tenantId, Boolean includeDeleted, Long lastChangedSince) {
         activityValidator.validateSearchActivityRequest(request, limit, offset, tenantId);
-        List<ActivityFacility> activityFacilities = activityRepository.getActivities(request, limit, offset, tenantId, includeDeleted, lastChangedSince);
+        List<ActivityFacility> activityFacilities = activityRepository.getActivitiesFacility(request, limit, offset, tenantId, includeDeleted, lastChangedSince);
         return activityFacilities;
     }
 
-    public Integer countAllFieldPlans(ActivityFacilitySearchRequest request, String tenantId, Long lastChangedSince, Boolean includeDeleted) {
+    public List<ActivityAssignment> searchAssignedActivity(ActivityAssignmentSearchRequest request, Integer limit, Integer offset, String tenantId, Boolean includeDeleted, Long lastChangedSince) {
+        activityValidator.validateSearchAssignActivityRequest(request, limit, offset, tenantId);
+        List<ActivityAssignment> activityFacilities = activityAssignmentRepository.getActivitiesAssignment(request, limit, offset, tenantId, includeDeleted, lastChangedSince);
+        for (ActivityAssignment activityAssignment : activityFacilities) {
+            log.info("processing get activity code", activityAssignment);
+            activityEnrichment.enrichActivityOnSearch(activityAssignment);
+        }
+        return activityFacilities;
+    }
+
+    public Integer countAllFacilityActivities(ActivityFacilitySearchRequest request, String tenantId, Long lastChangedSince, Boolean includeDeleted) {
         return activityRepository.getActivitiesCount(request, tenantId, lastChangedSince, includeDeleted);
     }
 
-    public ActivityFacilityBulkRequest updateProject(ActivityFacilityBulkRequest request) {
+    public Integer countAllAssignedActivities(ActivityAssignmentSearchRequest request, String tenantId, Long lastChangedSince, Boolean includeDeleted) {
+        return activityAssignmentRepository.getActivitiesCount(request, tenantId, lastChangedSince, includeDeleted);
+    }
+
+    public ActivityFacilityBulkRequest updateActivityFacitlity(ActivityFacilityBulkRequest request) {
         /*
          * Validate the update activity request
          */
@@ -113,7 +166,7 @@ public class ActivityService {
          * Search for fieldplan based on fieldplan IDs provided in the request
          */
         List<ActivityFacility> activityFacilityListFromDB = searchActivity(
-                getSearchActivityRequest(request.getActivityFacilities(), request.getRequestInfo()),
+                getSearchActivityFacilityRequest(request.getActivityFacilities(), request.getRequestInfo()),
                 activityConfiguration.getMaxLimit(), activityConfiguration.getDefaultOffset(),
                 request.getActivityFacilities().get(0).getTenantId(), false, null);
         log.info("Fetched activities for update request");
@@ -127,13 +180,44 @@ public class ActivityService {
          * Process each project in the update request
          */
         for (ActivityFacility activityFacility : request.getActivityFacilities()) {
-            processFieldPlanUpdate(request, activityFacility, activityFacilityListFromDB);
+            processActivityFacilityUpdate(request, activityFacility, activityFacilityListFromDB);
         }
 
         return request;
     }
 
-    private ActivityFacilitySearchRequest getSearchActivityRequest(List<ActivityFacility> activityFacilities, RequestInfo requestInfo) {
+    public ActivityAssignmentBulkRequest updateActivityAssignment(ActivityAssignmentBulkRequest request) {
+        /*
+         * Validate the update activity request
+         */
+        activityValidator.validateUpdateActivityAssignment(request);
+        log.info("Update activity assignment request validated");
+
+        /*
+         * Search for fieldplan based on fieldplan IDs provided in the request
+         */
+        List<ActivityAssignment> activityAssignmentListFromDB = searchAssignedActivity(
+                getSearchActivityAssignmentRequest(request.getActivityAssignments(), request.getRequestInfo()),
+                activityConfiguration.getMaxLimit(), activityConfiguration.getDefaultOffset(),
+                request.getActivityAssignments().get(0).getTenantId(), false, null);
+        log.info("Fetched activities for update request");
+
+        /*
+         * Validate the update fieldplan request against the fieldplans fetched from the database
+         */
+        activityValidator.validateUpdateActivityAssignmentAgainstDB(request.getActivityAssignments(), activityAssignmentListFromDB);
+
+        /*
+         * Process each project in the update request
+         */
+        for (ActivityAssignment activityAssignment : request.getActivityAssignments()) {
+            processActivityAssignmentUpdate(request, activityAssignment, activityAssignmentListFromDB);
+        }
+
+        return request;
+    }
+
+    private ActivityFacilitySearchRequest getSearchActivityFacilityRequest(List<ActivityFacility> activityFacilities, RequestInfo requestInfo) {
         List<String> activityFacilityIds = activityFacilities.stream().map(ActivityFacility::getId).toList();
         ActivityFacilitySearchCriteria criteria = ActivityFacilitySearchCriteria.builder().ids(activityFacilityIds).tenantId(activityFacilities.get(0).getTenantId()).build();
         return ActivityFacilitySearchRequest.builder()
@@ -142,7 +226,16 @@ public class ActivityService {
                 .build();
     }
 
-    private void processFieldPlanUpdate(ActivityFacilityBulkRequest request, ActivityFacility activityFacility, List<ActivityFacility> activityFacilityListFromDB) {
+    private ActivityAssignmentSearchRequest getSearchActivityAssignmentRequest(List<ActivityAssignment> activityAssignments, RequestInfo requestInfo) {
+        List<String> activityAssignmentIds = activityAssignments.stream().map(ActivityAssignment::getId).toList();
+        ActivityAssignmentSearchCriteria criteria = ActivityAssignmentSearchCriteria.builder().ids(activityAssignmentIds).tenantId(activityAssignments.get(0).getTenantId()).build();
+        return ActivityAssignmentSearchRequest.builder()
+                .requestInfo(requestInfo)
+                .criteria(criteria)
+                .build();
+    }
+
+    private void processActivityFacilityUpdate(ActivityFacilityBulkRequest request, ActivityFacility activityFacility, List<ActivityFacility> activityFacilityListFromDB) {
         /*
          * Convert activity facility ID to string for comparison
          */
@@ -159,19 +252,42 @@ public class ActivityService {
              */
             activityServiceUtil.mergeAdditionalDetails(activityFacility, activityFacilityFromDB);
 
-            handleUpdateFieldPlan(request, activityFacility, activityFacilityFromDB);
+            handleUpdateActivityFacility(request, activityFacility, activityFacilityFromDB);
 
         }
     }
 
-    private void handleUpdateFieldPlan(ActivityFacilityBulkRequest request, ActivityFacility activityFacility, ActivityFacility activityFacilityFromDB) {
+    private void processActivityAssignmentUpdate(ActivityAssignmentBulkRequest request, ActivityAssignment activityAssignment, List<ActivityAssignment> activityAssignmentListFromDB) {
+        /*
+         * Convert activity facility ID to string for comparison
+         */
+        String activityFacilityId = String.valueOf(activityAssignment.getId());
+
+        /*
+         * Find the activity from the database that matches the current project ID
+         */
+        ActivityAssignment activityAssignmentFromDB = findActivityAssignmentById(activityFacilityId, activityAssignmentListFromDB);
+
+        if (activityAssignmentFromDB != null) {
+            /*
+             * Merge additional details of the project from the request and project from DB
+             */
+            activityServiceUtil.mergeActivityAssignmentAdditionalDetails(activityAssignment, activityAssignmentFromDB);
+
+            handleUpdateActivityAssignment(request, activityAssignment, activityAssignmentFromDB);
+
+        }
+    }
+
+    private void handleUpdateActivityFacility(ActivityFacilityBulkRequest request, ActivityFacility activityFacility, ActivityFacility activityFacilityFromDB) {
 
         /*
          * Ensure that no other properties are being updated besides the start and end dates
          */
-        Activity existingActivity = activityRepository.getActivityByCode(activityFacility.getActivityId());
+        ActivitySearchCriteria criteria = ActivitySearchCriteria.builder().ids(List.of(activityFacility.getActivityId())).build();
+        Activity existingActivity = activityRepository.getActivityObject(criteria);
         activityFacility.setActivityId(existingActivity.getId());
-        if (!isValidCascadingUpdate(activityFacilityFromDB, activityFacility)) {
+        if (!isValidCascadingUpdateActivityFacility(activityFacilityFromDB, activityFacility)) {
             throw new CustomException(
                     "ACTIVITY_CASCADE_UPDATE_ERROR",
                     "Can only update Activity facility dates, geographyDetails and additional details if cascade FieldPlan date update true"
@@ -181,7 +297,7 @@ public class ActivityService {
         /*
          * Update lastModifiedTime and lastModifiedBy for the activity
          */
-        activityEnrichment.enrichFieldPlanRequestOnUpdate(activityFacility, activityFacilityFromDB, request.getRequestInfo());
+        activityEnrichment.enrichActivityFacilityRequestOnUpdate(activityFacility, activityFacilityFromDB, request.getRequestInfo());
 
         /*
          * Check and enrich cascading project dates and push the update to the message broker
@@ -189,12 +305,44 @@ public class ActivityService {
         producer.push(activityConfiguration.getUpdateActivityFacilityTopic(), request);
     }
 
-    private boolean isValidCascadingUpdate(ActivityFacility activityFacilityFromDB, ActivityFacility activityFacility) {
+    private void handleUpdateActivityAssignment(ActivityAssignmentBulkRequest request, ActivityAssignment activityAssignment, ActivityAssignment activityAssignmentFromDB) {
+
+        /*
+         * Ensure that no other properties are being updated besides the start and end dates
+         */
+        if (!isValidCascadingUpdateActivityAssignment(activityAssignmentFromDB, activityAssignment)) {
+            throw new CustomException(
+                    "ACTIVITY_CASCADE_UPDATE_ERROR",
+                    "Can only update Activity facility dates, geographyDetails and additional details if cascade FieldPlan date update true"
+            );
+        }
+
+        /*
+         * Update lastModifiedTime and lastModifiedBy for the activity
+         */
+        activityEnrichment.enrichActivityAssignmentRequestOnUpdate(activityAssignment, activityAssignmentFromDB, request.getRequestInfo());
+
+        /*
+         * Check and enrich cascading project dates and push the update to the message broker
+         */
+        producer.push(activityConfiguration.getUpdateActivityAssignmentTopic(), request);
+    }
+
+    private boolean isValidCascadingUpdateActivityFacility(ActivityFacility activityFacilityFromDB, ActivityFacility activityFacility) {
         // Check if only allowed fields are being updated
         return Objects.equals(activityFacilityFromDB.getId(), activityFacility.getId()) &&
                 Objects.equals(activityFacilityFromDB.getTenantId(), activityFacility.getTenantId()) &&
                 Objects.equals(activityFacilityFromDB.getActivityId(), activityFacility.getActivityId()) &&
                 Objects.equals(activityFacilityFromDB.getFacilityId(), activityFacility.getFacilityId());
+        // Note: We allow assignedUser, status, conditionsMet, additionalDetails to be different
+    }
+
+    private boolean isValidCascadingUpdateActivityAssignment(ActivityAssignment activityAssignmentFromDB, ActivityAssignment activityAssignment) {
+        // Check if only allowed fields are being updated
+        return Objects.equals(activityAssignmentFromDB.getId(), activityAssignment.getId()) &&
+                Objects.equals(activityAssignmentFromDB.getTenantId(), activityAssignment.getTenantId()) &&
+                Objects.equals(activityAssignmentFromDB.getActivityId(), activityAssignment.getActivityId()) &&
+                Objects.equals(activityAssignmentFromDB.getFieldPlanId(), activityAssignment.getFieldPlanId());
         // Note: We allow assignedUser, status, conditionsMet, additionalDetails to be different
     }
 
@@ -204,6 +352,16 @@ public class ActivityService {
          */
         return activityFacilityListFromDB.stream()
                 .filter(p -> activityFacilityId.equals(String.valueOf(p.getId())))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private ActivityAssignment findActivityAssignmentById(String activityAssignmentId, List<ActivityAssignment> activityAssignmentListFromDB) {
+        /*
+         * Find and return the activity with the matching ID from the list of activity fetched from the database
+         */
+        return activityAssignmentListFromDB.stream()
+                .filter(p -> activityAssignmentId.equals(String.valueOf(p.getId())))
                 .findFirst()
                 .orElse(null);
     }

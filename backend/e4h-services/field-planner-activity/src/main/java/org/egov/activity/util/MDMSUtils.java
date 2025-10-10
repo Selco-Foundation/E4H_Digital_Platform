@@ -27,12 +27,13 @@ import static org.egov.activity.util.ActivityConstants.*;
 public class MDMSUtils {
 
     public static final String FILTER_CODE = "$.*.code";
+    public static final String FILTER_NAME = "$.*.name";
     public static final String FILTER_ACTIVE_TRUE = "$.[?(@.active==true)]";
     private final ServiceRequestClient serviceRequestRepository;
     private final ActivityConfiguration config;
 
-    public Object mDMSCall(ActivityRequest request, String tenantId) {
-        RequestInfo requestInfo = request.getRequestInfo();
+    public Object mDMSCall(RequestInfo request, String tenantId) {
+        RequestInfo requestInfo = request;
         MdmsCriteriaReq mdmsCriteriaReq = getMDMSRequest(requestInfo, tenantId);
         Object result = null;
         try {
@@ -49,11 +50,13 @@ public class MDMSUtils {
         ModuleDetail activitiesMDMSModuleDetail = getActivitiesModuleRequestData();
         ModuleDetail stateInfoModuleDetail = getStateModuleRequestData();
         ModuleDetail tenantModuleDetail = getTenantModuleRequestData();
+        ModuleDetail bOMModuleDetail = getBOMModuleRequestData();
 
         List<ModuleDetail> moduleDetails = new LinkedList<>();
         moduleDetails.add(activitiesMDMSModuleDetail);
         moduleDetails.add(stateInfoModuleDetail);
         moduleDetails.add(tenantModuleDetail);
+        moduleDetails.add(bOMModuleDetail);
 
         MdmsCriteria mdmsCriteria = MdmsCriteria.builder().moduleDetails(moduleDetails).tenantId(tenantId)
                 .build();
@@ -103,6 +106,20 @@ public class MDMSUtils {
 
         ModuleDetail tenantModuleDetail = ModuleDetail.builder().masterDetails(tenantMasterDetails)
                 .moduleName(MDMS_TENANT_MODULE_NAME).build();
+
+        return tenantModuleDetail;
+    }
+
+    private ModuleDetail getBOMModuleRequestData() {
+        List<MasterDetail> tenantMasterDetails = new ArrayList<>();
+
+        MasterDetail tenantMasterDetail = MasterDetail.builder().name(BOM_FORM)
+                .filter(FILTER_NAME).build();
+
+        tenantMasterDetails.add(tenantMasterDetail);
+
+        ModuleDetail tenantModuleDetail = ModuleDetail.builder().masterDetails(tenantMasterDetails)
+                .moduleName(MDMS_COMMON_MASTERS_MODULE_NAME).build();
 
         return tenantModuleDetail;
     }

@@ -23,4 +23,7 @@ public class ActivityAssignmentResponse {
 
     @JsonProperty("ActivityAssignment")
     private @NotNull @Valid List<ActivityAssignment> activityAssignment = null;
+
+    @JsonProperty("TotalCount")
+    private Integer totalCount = 0;
 }

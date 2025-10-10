@@ -150,13 +150,14 @@ export const QCService = {
     };
   },
 
-  updateProjectWorkflow : async (projectId, action, comments, workflowComment) => {
+  updateProjectWorkflow : async (projectId, action, comments, workflowComment, documents = []) => {
     const endpoint = "/project/v1/project/workflow/update";
     const queryObj = {
       projectId: projectId,
       workflow: {
         action: action,
-        comment: workflowComment
+        comment: workflowComment,
+        documents: documents
       },
       transactions: [
         {

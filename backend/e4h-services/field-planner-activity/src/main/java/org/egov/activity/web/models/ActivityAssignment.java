@@ -30,7 +30,10 @@ public class ActivityAssignment {
     @JsonProperty("fieldPlanId")
     private String fieldPlanId = null;
 
-    @JsonProperty("isdeleted")
+    @JsonProperty("pocNumber")
+    private String pocNumber = null;
+
+    @JsonProperty("isDeleted")
     private Boolean isDeleted;
 
     @JsonProperty("id")
@@ -39,8 +42,14 @@ public class ActivityAssignment {
     @JsonProperty("tenantId")
     protected String tenantId;
 
+    @JsonProperty("role")
+    protected Map<String, Object> role;
+
     @JsonProperty("activityId")
     protected String activityId;
+
+    @JsonProperty("activityCode")
+    protected String activityCode;
 
     @JsonProperty("startDate")
     private Long startDate = null;
@@ -59,6 +68,9 @@ public class ActivityAssignment {
 
     @JsonProperty("auditDetails")
     protected @Valid AuditDetails auditDetails;
+
+    @JsonProperty("isEmailSent")
+    private Boolean isEmailSent;
 
     private static Boolean $default$hasErrors() {
         return Boolean.FALSE;
