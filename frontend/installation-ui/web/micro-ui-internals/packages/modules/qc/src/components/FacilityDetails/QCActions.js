@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { clearRejectionReasons } from "../../redux/actions";
 import { QCService } from "../../services/QC";
 
-const QCActions = ({ revalidateData, setUpdatingWorkflow }) => {
+const QCActions = ({ revalidateData, setUpdatingWorkflow, aggregatedDocuments }) => {
 
   const dispatch = useDispatch();
   const rejectionReasons = useSelector((state) => state.qc.rejectionReasons);
@@ -15,7 +15,8 @@ const QCActions = ({ revalidateData, setUpdatingWorkflow }) => {
     try {
       const response = await QCService.updateProjectWorkflow(
         selectedFacility?.projectId, "APPROVE",
-        [], "Approved by Installation Reviewer"
+        [], "Approved by Installation Reviewer",
+        aggregatedDocuments
       );
 
       if (response) {
@@ -61,7 +62,8 @@ const QCActions = ({ revalidateData, setUpdatingWorkflow }) => {
     try {
       const response = await QCService.updateProjectWorkflow(
         selectedFacility?.projectId, "REJECT_AND_ASSIGN_FOR_FIELD_QC",
-        comments, "Rejected by Installation Reviewer"
+        comments, "Rejected by Installation Reviewer",
+        aggregatedDocuments
       );
 
       if (response) {
@@ -83,7 +85,8 @@ const QCActions = ({ revalidateData, setUpdatingWorkflow }) => {
     try {
       const response = await QCService.updateProjectWorkflow(
         selectedFacility?.projectId, "FLAG_FOR_QC",
-        comments, "Flagged for QC by Installation Reviewer"
+        comments, "Flagged for QC by Installation Reviewer",
+        aggregatedDocuments
       );
 
       if (response) {
