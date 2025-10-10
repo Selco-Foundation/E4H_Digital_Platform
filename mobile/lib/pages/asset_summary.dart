@@ -411,9 +411,9 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
                             Navigator.of(ctx).pop();
                             context.read<RejectionBloc>().add(
                                   RejectionEvent.submitRejection(
-                                    projectId: selected.project.id.trim(),
-                                    transactions: transactions,
-                                  ),
+                                      projectId: selected.project.id.trim(),
+                                      transactions: transactions,
+                                      userType: userType),
                                 );
                           },
                         ),
