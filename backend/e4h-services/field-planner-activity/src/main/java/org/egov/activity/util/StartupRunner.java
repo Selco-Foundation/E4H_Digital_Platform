@@ -24,7 +24,7 @@ public class StartupRunner implements CommandLineRunner {
         configMap.put("AC_OFF_GRID", activityConfiguration.getBomACOffGridSinglePhase());
         configMap.put("AC_OFF_GRID_THREE_PHASE", activityConfiguration.getBomACOffGridSThreePhase());
         configMap.put("HYBRID_RMS_SINGLE_PHASE", activityConfiguration.getBomHybridSinglePhase());
-        configMap.put("HYBRID_RMS_SINGLE_PHASE", activityConfiguration.getBomHybridThreePhase());
+        configMap.put("HYBRID_RMS_THREE_PHASE", activityConfiguration.getBomHybridThreePhase());
         configMap.put("DC", activityConfiguration.getBomDCSystem());
     }
 
