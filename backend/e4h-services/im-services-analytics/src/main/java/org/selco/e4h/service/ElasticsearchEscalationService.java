@@ -90,7 +90,9 @@ public class ElasticsearchEscalationService {
             action.put("update", actionMetadata);
             
             // Add action line
-            bulkRequest.append(convertToJson(action)).append("\n");
+            String actionLine = convertToJson(action);
+            log.debug("Action line for ticket {}: {}", ticket.getId(), actionLine);
+            bulkRequest.append(actionLine).append("\n");
             
             // Build script for updating escalations array
             Map<String, Object> script = new HashMap<>();

@@ -156,8 +156,9 @@ public class ElasticSearchClient {
         List<Map<String, Object>> rawHits = (List<Map<String, Object>>) hits.get("hits");
         for (Map<String, Object> hit : rawHits) {
             try {
+                String documentId = (String) hit.get("_id");
                 Map<String, Object> source = (Map<String, Object>) hit.get("_source");
-                org.selco.e4h.web.models.EscalationTicket ticket = convertToEscalationTicket(source);
+                EscalationTicket ticket = convertToEscalationTicket(source, documentId);
                 if (ticket != null) {
                     tickets.add(ticket);
                 }
@@ -173,7 +174,7 @@ public class ElasticSearchClient {
     /**
      * Convert Elasticsearch source document to EscalationTicket object
      */
-    private EscalationTicket convertToEscalationTicket(Map<String, Object> source) {
+    private EscalationTicket convertToEscalationTicket(Map<String, Object> source, String documentId) {
         try {
             log.debug("Converting Elasticsearch source: {}", source.keySet());
             
@@ -234,7 +235,7 @@ public class ElasticSearchClient {
             boolean isSolarSystemWorking = "FUNCTIONAL".equals(data.get("systemFunctional"));
             
             EscalationTicket ticket = EscalationTicket.builder()
-                    .id((String) source.get("_id"))  // _id is in the root source object
+                    .id(documentId)  // Use document ID from hit metadata
                     .incidentId((String) incident.get("incidentId"))
                     .tenantId((String) data.get("tenantId"))  // tenantId is in Data, not incident
                     .applicationStatus((String) incident.get("applicationStatus"))
