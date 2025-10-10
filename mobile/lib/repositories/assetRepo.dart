@@ -435,7 +435,6 @@ class AssetRepository {
     }
   }
 
-  /// Submit “reject” with reasons
   Future<void> submitRejection({
     required String projectId,
     String action = "REJECT",
@@ -444,11 +443,13 @@ class AssetRepository {
   }) async {
     final payload = {
       'projectId': projectId,
-      'workflow': {'action': action},
-      'transactions': transactions.toList(),
-      if (documents != null) ...{
-        'documents': documents.map((d) => d.toJsonForWorkflow()).toList()
-      }
+      'workflow': {
+        'action': action,
+        if (documents != null) ...{
+          'documents': documents.map((d) => d.toJsonForWorkflow()).toList()
+        }
+      },
+      'transactions': transactions.toList()
     };
 
     print("payload ${jsonEncode(payload)}");
