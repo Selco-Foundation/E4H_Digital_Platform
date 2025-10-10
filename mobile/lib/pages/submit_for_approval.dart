@@ -455,11 +455,22 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                                               children: [
                                                 for (final entry
                                                     in entries) ...[
-                                                  Builder(
-                                                    builder: (_) {
-                                                      final r =
-                                                          bomRouteAndLabel(
-                                                              entry.name);
+                                                  FutureBuilder(
+                                                    future: bomRouteAndLabel(
+                                                        entry.name),
+                                                    builder: (_, snapshot) {
+                                                      if (snapshot
+                                                              .connectionState ==
+                                                          ConnectionState
+                                                              .waiting) {
+                                                        return const SizedBox
+                                                            .shrink();
+                                                      }
+                                                      if (!snapshot.hasData) {
+                                                        return const SizedBox
+                                                            .shrink();
+                                                      }
+                                                      final r = snapshot.data!;
                                                       final isar = context
                                                           .read<ProjectBloc>()
                                                           .isar;
