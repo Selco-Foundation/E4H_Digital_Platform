@@ -58,11 +58,15 @@ const CreateFieldPlan = () => {
     enabled: true,
   });
 
-  const { data: projectData } = useProject({
+  const { isLoading: projectDataLoading, data: projectData } = useProject({
     id: [projectId],
   });
 
-  const { data: fieldPlanData, revalidate: invalidateFieldPlanData } = useFieldPlan({
+  const {
+    isLoading: fieldPlanDataLoading,
+    data: fieldPlanData,
+    revalidate: invalidateFieldPlanData
+  } = useFieldPlan({
     tenantId,
     ids: [fieldPlanId],
   });
@@ -73,7 +77,11 @@ const CreateFieldPlan = () => {
     organizationIds,
   });
 
-  const { data: activityAssignmentData, revalidate: invalidateActivityAssignmentData } = useActivityAssignment({
+  const {
+    isLoading: activityAssignmentDataLoading,
+    data: activityAssignmentData,
+    revalidate: invalidateActivityAssignmentData
+  } = useActivityAssignment({
     fieldPlanIds: [fieldPlanId],
   })
 
@@ -950,6 +958,10 @@ const CreateFieldPlan = () => {
       case 3:
         return persistedFormData.activityDetails;
     }
+  }
+
+  if (projectDataLoading || fieldPlanDataLoading || activityAssignmentDataLoading) {
+    return <Loader />;
   }
 
   return (
