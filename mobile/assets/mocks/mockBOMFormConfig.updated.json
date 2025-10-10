@@ -11,10 +11,10 @@
     {
       "id": "42479a72-bd0b-4edb-bc86-6ddb91fe39c6",
       "tenantId": "in",
-      "schemaCode": "SELCO.FormConfig",
+      "schemaCode": "SELCO.FormConfig.RMS_Single_Phase_BOM_Solar",
       "uniqueIdentifier": "BOM.SolarSystem",
       "data": {
-        "name": "AssetForm",
+        "name": "AssetForm.RMS_Single_Phase_BOM_Solar",
         "order": 1,
         "summary": false,
         "version": 1,
@@ -4267,10 +4267,10 @@
     {
       "id": "42479a72-bd0b-4edb-bc86-6ddb91fe39c7",
       "tenantId": "in",
-      "schemaCode": "SELCO.FormConfigLuminaries",
+      "schemaCode": "SELCO.FormConfigLuminaries.RMS_Single_Phase_BOM_luminaries",
       "uniqueIdentifier": "BOM.LuminariesFan",
       "data": {
-        "name": "AssetForm.LuminariesFan",
+        "name": "AssetForm.LuminariesFan.RMS_Single_Phase_BOM_luminaries",
         "order": 1,
         "summary": false,
         "version": 1,
@@ -5340,10 +5340,10 @@
     {
       "id": "42479a72-bd0b-4edb-bc86-6ddb91fe39c8",
       "tenantId": "in",
-      "schemaCode": "SELCO.FormConfigRMS",
+      "schemaCode": "SELCO.FormConfigRMS.RMS_Single_Phase_BOM_rms",
       "uniqueIdentifier": "BOM.RMSUnique",
       "data": {
-        "name": "AssetForm.RMS",
+        "name": "AssetForm.RMS.RMS_Single_Phase_BOM_rms",
         "order": 1,
         "summary": false,
         "version": 1,
@@ -5914,10 +5914,10 @@
     {
       "id": "42479a72-bd0b-4edb-bc86-6ddb91fe39c9",
       "tenantId": "in",
-      "schemaCode": "SELCO.FormConfigLoadWiring",
+      "schemaCode": "SELCO.FormConfig.RMS_Single_Phase_BOM_wiring",
       "uniqueIdentifier": "BOM.LoadWiringUnique",
       "data": {
-        "name": "AssetForm.LoadWiring",
+        "name": "AssetForm.RMS_Single_Phase_BOM_wiring",
         "order": 1,
         "summary": false,
         "version": 1,
@@ -12799,10 +12799,10 @@
     {
       "id": "42479a72-bd0b-4edb-bc86-6ddb91fe39d1",
       "tenantId": "in",
-      "schemaCode": "SELCO.FormConfigSystemParametersSinglePhase",
+      "schemaCode": "SELCO.FormConfig.SystemParametersSinglePhase.RMS_Single_Phase_BOM_system",
       "uniqueIdentifier": "BOM.SystemParametersUniqueSinglePhase",
       "data": {
-        "name": "AssetForm.SystemParameters",
+        "name": "AssetForm.SystemParameters.RMS_Single_Phase_BOM_system",
         "order": 1,
         "summary": false,
         "version": 1,

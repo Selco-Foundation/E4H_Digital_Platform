@@ -48,18 +48,11 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
   final _repo = AppInitRepo();
   bool _loadedOnce = false;
 
-  /// Track when we switched projects so we can clear & rebuild
   String? _lastProjectId;
-
-  /// Initial KV (flat map: fieldName -> value) pulled from CacheProjectBomValues
   Map<String, dynamic> _projectInitialKV = const {};
-
-  /// Change this to force ReactiveFormBuilder to rebuild controls with new defaults
   int _formSeed = 0;
-
   static const String _initialUserType = 'SUPERVISOR';
 
-  /// Keep only keys that exist on a given page (by fieldName)
   Map<String, dynamic> _subsetForPage(
     SchemaObject schema,
     String pageName,
@@ -84,7 +77,6 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
       projectId: widget.projectId,
       userType: _initialUserType,
     );
-    print("kv $kv");
     if (!mounted) return;
     setState(() {
       _projectInitialKV = kv ?? const {};
@@ -92,7 +84,6 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
     });
   }
 
-  // Turn "bb_current_uom" or "installation_report_bom" into "Bb Current Uom" / "Installation Report Bom"
   String _prettyLabel(String s) {
     if (s.trim().isEmpty) return s;
     final spaced = s.replaceAll(RegExp(r'[_\-]+'), ' ').trim();
@@ -100,7 +91,6 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
         RegExp(r'\b[a-z]'), (m) => m.group(0)!.toUpperCase());
   }
 
-// Get a user-facing label for a property key on THIS page
   String _labelForKey(PropertySchema pageSchema, String key) {
     final raw = pageSchema?.properties?[key]?.label ?? key;
     return _prettyLabel(raw);
@@ -109,14 +99,12 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
   dynamic _coerceForControl(AbstractControl<Object?> control, dynamic v) {
     if (v == null) return null;
 
-    // Date/time fields
     if (control is FormControl<DateTime?>) {
       if (v is DateTime) return v;
       if (v is String) return DateTime.tryParse(v);
       return null;
     }
 
-    // Integers
     if (control is FormControl<int?>) {
       if (v is int) return v;
       if (v is double) return v.toInt();
@@ -124,7 +112,6 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
       return null;
     }
 
-    // Doubles
     if (control is FormControl<double?>) {
       if (v is double) return v;
       if (v is int) return v.toDouble();
@@ -132,7 +119,6 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
       return null;
     }
 
-    // Booleans
     if (control is FormControl<bool?>) {
       if (v is bool) return v;
       if (v is String) {
@@ -144,7 +130,6 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
       return null;
     }
 
-    // Strings and everything else – pass through as-is
     return v;
   }
 
@@ -272,15 +257,12 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
         break;
     }
 
-    // 1) Ensure the target is present on top (pop until it if it exists; push if not).
-    root.navigate(
-        targetRoute); // AutoRoute’s navigate: pop-to-existing or push if missing. :contentReference[oaicite:0]{index=0}
+    root.navigate(targetRoute);
 
-    // 2) On next frame, replace that top route with a *fresh* instance so initState runs.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!context.mounted) return;
-      final topName = root.current.name; // current top route’s name
-      final expected = targetRoute.routeName; // generated route name
+      final topName = root.current.name;
+      final expected = targetRoute.routeName;
       if (topName == expected) {
         root.replace(targetRoute);
       }
@@ -290,7 +272,6 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // First time: load schema, then load initial KV for this project
     if (!_loadedOnce) {
       _loadedOnce = true;
       Future(() async {
@@ -304,12 +285,10 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
       return;
     }
 
-    // If project changed: clear current schema and reload KV
     if (_lastProjectId != widget.projectId) {
       final formsBloc = context.read<FormsBloc>();
       final currentKey = _currentSchemaKey(formsBloc.state);
       if (currentKey != null) {
-        // Clear any values associated with the previous project/schema
         formsBloc.add(FormsEvent.clearForm(schemaKey: currentKey));
       }
       Future(() async {
@@ -326,12 +305,10 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
     required SchemaObject schema,
     required String schemaKey,
   }) async {
-    // ✅ capture everything you'll need BEFORE any await
     final formsBloc = context.read<FormsBloc>();
     final projectBloc = context.read<ProjectBloc>();
     final projectId = widget.projectId;
 
-    // 1) Flatten values from the whole schema
     final Map<String, dynamic> flatValues = {};
     schema.pages.forEach((_, pageSchema) {
       pageSchema.properties?.forEach((propKey, propSchema) {
@@ -339,7 +316,6 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
       });
     });
 
-    // 2) Persist to local (same as your current code)
     final rawDoc = await SecureStore().getRawSchemaDoc(schemaKey);
     if (rawDoc != null) {
       final withValues = injectValuesIntoRawDoc(
@@ -360,7 +336,6 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
         bomName: schemaKey,
       );
 
-      // Merge only non-empty fields into KV
       final kvFromThisPage = BomRepository().extractKVFromRawDoc(withValues);
       final filtered = Map<String, dynamic>.from(kvFromThisPage)
         ..removeWhere((k, v) => v is String && v.trim().isEmpty);
@@ -396,12 +371,11 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
       if (changed) {
         await PrefilledProjectRepository(isar).addOrTouch(
           projectId: projectId,
-          userType: 'SUPERVISOR',
+          userType: USER_TYPES.SUPERVISOR.name,
         );
       }
     }
 
-    // 3) Clear form state and navigate back (fresh)
     formsBloc.add(FormsEvent.clearForm(schemaKey: schemaKey));
     if (!context.mounted) return; // safety after async gap
     _popUntilThenRefreshOrigin(context, widget.origin);
@@ -410,21 +384,17 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-
-    // If BOM sync completes and writes CacheProjectBomValues,
-    // refresh our local KV and rebuild the controls so defaults apply.
     return BlocListener<ProjectBomBloc, ProjectBomState>(
       listener: (context, state) async {
         state.maybeWhen(
           success: (_) async {
-            await _loadInitialKVForProject(); // updates _projectInitialKV + bumps _formSeed
+            await _loadInitialKVForProject();
             if (!mounted) return;
             final formsBloc = context.read<FormsBloc>();
             final currentKey = _currentSchemaKey(formsBloc.state);
             if (currentKey != null) {
               formsBloc.add(FormsEvent.clearForm(schemaKey: currentKey));
             }
-            // setState already done in _loadInitialKVForProject
           },
           orElse: () {},
         );
@@ -452,7 +422,6 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
             final pageIndex =
                 schemaObject.pages.keys.toList().indexOf(widget.pageName);
 
-            // Defaults only for controls on this page (flat map)
             final pageDefaults = _subsetForPage(
               schemaObject,
               widget.pageName,
@@ -460,12 +429,9 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
             );
 
             return ReactiveFormBuilder(
-              // Force rebuild of controls when defaults change:
               key: ValueKey(
                   '${widget.projectId}::$currentKey::$pageIndex::$_formSeed'),
-              // ---- CRITICAL PART: build controls, then enforce defaults/nulls ----
               form: () {
-                // Build controls without defaults first
                 final controls = JsonForms.getFormControls(pageSchema,
                     defaultValues: const {});
                 final form = fb.group(controls);
@@ -473,7 +439,6 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
                 final propertyKeys =
                     (pageSchema.properties?.keys.toList() ?? const <String>[]);
 
-                // If there is no KV for this project, wipe this page clean.
                 if (_projectInitialKV.isEmpty) {
                   for (final k in propertyKeys) {
                     if (!form.contains(k)) continue;
@@ -496,12 +461,6 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
                         updateParent: true, emitEvent: false);
                     continue;
                   } else {
-                    // final existing = pageSchema.properties?[k]?.value;
-                    // if (existing != null) {
-                    //   final coerced = _coerceForControl(ctrl, existing);
-                    //   ctrl.updateValue(coerced,
-                    //       updateParent: true, emitEvent: false);
-                    // }
                     ctrl.reset(
                         value: null, updateParent: true, emitEvent: false);
                   }
@@ -556,7 +515,6 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
                             final first = invalid.first;
                             final label = _labelForKey(pageSchema, first);
 
-                            // Optional: show specific reason if available
                             final c = form.control(first);
                             String? reason;
                             final errors = c.errors;
@@ -641,10 +599,6 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
                             }
                             return;
                           }
-
-                          // context
-                          //     .read<FormsBloc>()
-                          //     .add(FormsEvent.submit(schemaKey: currentKey));
                           final updatedSchema = schemaObject.copyWith(
                             pages: Map.fromEntries(
                               schemaObject.pages.entries.map(
