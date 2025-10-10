@@ -83,6 +83,9 @@ public class Configuration {
     @Value("${egov.idgen.organisation.number.name}")
     private String orgNumberName;
 
+    @Value("${org.user.kafka.create.topic}")
+    private String createOrgUserTopic;
+
     @Value("${egov.idgen.organisation.number.format}")
     private String orgNumberFormat;
 

@@ -42,20 +42,13 @@ public class FieldPlanFacility {
             min = 2,
             max = 1000
     ) String tenantId;
-    @JsonProperty("source")
-    protected String source;
-    @JsonProperty("rowVersion")
-    protected Integer rowVersion;
-    @JsonProperty("applicationId")
-    protected String applicationId;
-    @JsonProperty("hasErrors")
-    protected Boolean hasErrors = Boolean.FALSE;
     @JsonProperty("additionalFields")
     protected @Valid AdditionalFields additionalFields;
     @JsonProperty("auditDetails")
     protected @Valid AuditDetails auditDetails;
+    @JsonProperty("rowVersion")
+    protected Integer rowVersion;
+    @JsonProperty("hasErrors")
+    protected Boolean hasErrors;
 
-    private static Boolean $default$hasErrors() {
-        return Boolean.FALSE;
-    }
 }
