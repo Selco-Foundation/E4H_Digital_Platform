@@ -448,12 +448,27 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
                                                               children: [
                                                                 for (final entry
                                                                     in entries) ...[
-                                                                  Builder(
-                                                                    builder:
-                                                                        (_) {
+                                                                  FutureBuilder(
+                                                                    future: bomRouteAndLabel(
+                                                                        entry
+                                                                            .name),
+                                                                    builder: (_,
+                                                                        snapshot) {
+                                                                      if (snapshot
+                                                                              .connectionState ==
+                                                                          ConnectionState
+                                                                              .waiting) {
+                                                                        return const SizedBox
+                                                                            .shrink();
+                                                                      }
+                                                                      if (!snapshot
+                                                                          .hasData) {
+                                                                        return const SizedBox
+                                                                            .shrink();
+                                                                      }
                                                                       final r =
-                                                                          bomRouteAndLabel(
-                                                                              entry.name);
+                                                                          snapshot
+                                                                              .data!;
                                                                       final isar = context
                                                                           .read<
                                                                               ProjectBloc>()

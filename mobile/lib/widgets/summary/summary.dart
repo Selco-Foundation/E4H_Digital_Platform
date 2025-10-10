@@ -2,6 +2,9 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
+import '../../model/appconfig/mdmsRequest.dart';
+import '../../repositories/app_init_Repo.dart';
+
 typedef FileTapCallback = void Function(String path);
 typedef RemoveReportCallback = void Function(ExistingReport report);
 
@@ -102,7 +105,7 @@ String fileSizeFor(String path) {
   }
 }
 
-({String label, String schemaName, String pageName}) bomRouteAndLabel(
+({String label, String schemaName, String pageName}) bomRouteAndLabel2(
     String name) {
   final n = name.toLowerCase();
 
@@ -160,4 +163,138 @@ String fileSizeFor(String path) {
         pageName: 'ModuleMountingstructure',
       );
   }
+}
+
+/// Resolves a BOM button purely from server MDMS, with NO hard-coded fallbacks.
+/// - Searches SELCO.FormConfig by `schemaCode` and `data.name` using the provided `name`.
+/// - Picks the best match (exact > endsWith > contains), case-insensitive.
+/// - Returns (label, schemaName, pageName, schemaCode, uniqueIdentifier).
+/// - Throws if not found or if required fields are missing.
+Future<
+    ({
+      String label,
+      String schemaName,
+      String pageName,
+      String schemaCode,
+      String uniqueIdentifier,
+    })> bomRouteAndLabel(String name) async {
+  final r = AppInitRepo();
+  final nameLower = name.toLowerCase();
+
+  // 1) Load SELCO.FormConfig docs (raw)
+  final rawDocs = await r.searchFormConfigsRaw(const MdmsRequestModel(
+    mdmsCriteria: MdmsCriteriaModel(
+      tenantId: 'in',
+      moduleDetails: [
+        MdmsModuleDetailsModel(
+          moduleName: 'SELCO',
+          masterDetails: [MdmsMasterDetailsModel('FormConfig')],
+        ),
+      ],
+    ),
+  ));
+  if (rawDocs == null || rawDocs.isEmpty) {
+    throw StateError('No SELCO.FormConfig documents available.');
+  }
+
+  // 2) Score candidates by how well they match `name` without assuming any prefix
+  int scoreOf(Map e) {
+    String s(Object? v) => (v ?? '').toString();
+    final schemaCode = s(e['schemaCode']).toLowerCase();
+    final dataName = s(e['data']?['name']).toLowerCase();
+
+    // exact match
+    if (schemaCode == nameLower || dataName == nameLower) return 100;
+
+    // endsWith "<name>" (e.g., "...RMS_Single_Phase_BOM_Solar")
+    if (schemaCode.endsWith(nameLower) || dataName.endsWith(nameLower))
+      return 80;
+
+    // contains "<name>"
+    if (schemaCode.contains(nameLower) || dataName.contains(nameLower))
+      return 60;
+
+    return 0;
+  }
+
+  final candidates = rawDocs.whereType<Map>().toList();
+  candidates.sort((a, b) => scoreOf(b).compareTo(scoreOf(a)));
+  final best = candidates.isNotEmpty && scoreOf(candidates.first) > 0
+      ? Map<String, dynamic>.from(candidates.first)
+      : null;
+
+  if (best == null) {
+    throw StateError('No FormConfig matches for "$name".');
+  }
+
+  // 3) Extract schemaName & pageName strictly from the chosen doc
+  String _str(Object? v) => (v ?? '').toString();
+
+  final data = best['data'];
+  if (data is! Map) {
+    throw StateError('FormConfig[$name]: missing data block.');
+  }
+
+  final schemaName = _str(data['name']).trim();
+  if (schemaName.isEmpty) {
+    throw StateError('FormConfig[$name]: data.name is empty.');
+  }
+
+  final pages = data['pages'];
+  if (pages is! List || pages.isEmpty || pages.first is! Map) {
+    throw StateError('FormConfig[$name]: pages[0] is missing.');
+  }
+  final pageName = _str((pages.first as Map)['page']).trim();
+  if (pageName.isEmpty) {
+    throw StateError('FormConfig[$name]: pages[0].page is empty.');
+  }
+
+  final schemaCode = _str(best['schemaCode']).trim();
+  final uniqueIdentifier = _str(best['uniqueIdentifier']).trim();
+
+  // 4) Build a human label from the token (you can tweak this mapping freely)
+  String labelFromName(String n) {
+    final lower = n.toLowerCase();
+    final afterBom = RegExp(r'_bom_([a-z0-9]+)$').firstMatch(lower)?.group(1);
+    final alreadyPrefixed =
+        RegExp(r'\bbom[_\-\s]([a-z0-9]+)\b').firstMatch(lower)?.group(1);
+    final token =
+        (afterBom ?? alreadyPrefixed ?? lower.split('_').last).toLowerCase();
+
+    switch (token) {
+      case 'solar':
+      case 'solarsystem':
+        return 'BOM Solar System';
+      case 'rms':
+        return 'BOM RMS';
+      case 'wiring':
+      case 'load':
+      case 'loadwiring':
+        return 'BOM Load Wiring';
+      case 'luminaries':
+      case 'luminary':
+      case 'fan':
+      case 'fans':
+        return 'BOM Luminaries';
+      case 'system':
+      case 'parameters':
+      case 'parameter':
+        return 'System Parameters';
+      default:
+        // Title-case the original, purely cosmetic
+        return n
+            .replaceAll(RegExp(r'[_\-]+'), ' ')
+            .replaceAllMapped(RegExp(r'\b[a-z]'), (m) => m[0]!.toUpperCase());
+    }
+  }
+
+  final label = labelFromName(name);
+
+  return (
+    label: label,
+    schemaName: schemaName,
+    pageName: pageName,
+    schemaCode: schemaCode,
+    uniqueIdentifier: uniqueIdentifier,
+  );
 }
