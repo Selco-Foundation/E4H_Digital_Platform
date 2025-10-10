@@ -5,10 +5,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.egov.activity.repository.ActivityAssignmentRepository;
 import org.egov.activity.util.ActivityServiceUtil;
+import org.egov.activity.util.BoundaryUtil;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.common.producer.Producer;
 import org.egov.activity.config.ActivityConfiguration;
-import org.egov.activity.repository.ActivityRepository;
+import org.egov.activity.repository.ActivityFacilityRepository;
 import org.egov.activity.service.enrichment.ActivityEnrichment;
 import org.egov.activity.util.MDMSUtils;
 import org.egov.activity.validator.ActivityValidator;
@@ -18,14 +19,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 @Service
 @Slf4j
 public class ActivityService {
 
-    private final ActivityRepository activityRepository;
+    private final ActivityFacilityRepository activityFacilityRepository;
 
     private final ActivityAssignmentRepository activityAssignmentRepository;
 
@@ -39,22 +42,25 @@ public class ActivityService {
     private final ActivityConfiguration activityConfiguration;
     private final MDMSUtils mdmsUtils;
 
+    private BoundaryUtil boundaryUtil;
+
     @Qualifier("objectMapper")
     private final ObjectMapper mapper;
 
     @Autowired
     public ActivityService(
-            ActivityRepository activityRepository, ActivityEnrichment activityEnrichment, ActivityConfiguration activityConfiguration, ActivityValidator activityValidator,
-            Producer producer, MDMSUtils mdmsUtils, ActivityServiceUtil activityServiceUtil, @Qualifier("objectMapper") ObjectMapper mapper, ActivityAssignmentRepository activityAssignmentRepository) {
+            ActivityFacilityRepository activityFacilityRepository, ActivityEnrichment activityEnrichment, ActivityConfiguration activityConfiguration, ActivityValidator activityValidator,
+            Producer producer, MDMSUtils mdmsUtils, ActivityServiceUtil activityServiceUtil, @Qualifier("objectMapper") ObjectMapper mapper, ActivityAssignmentRepository activityAssignmentRepository, BoundaryUtil boundaryUtil) {
             this.producer = producer;
             this.activityConfiguration = activityConfiguration;
-            this.activityRepository = activityRepository;
+            this.activityFacilityRepository = activityFacilityRepository;
             this.activityEnrichment = activityEnrichment;
             this.mdmsUtils = mdmsUtils;
             this.activityServiceUtil = activityServiceUtil;
             this.mapper = mapper;
             this.activityValidator = activityValidator;
             this.activityAssignmentRepository = activityAssignmentRepository;
+            this.boundaryUtil = boundaryUtil;
     }
 
     public List<Activity> createActivity(ActivityBulkRequest request) {
@@ -131,10 +137,42 @@ public class ActivityService {
         return activityAssignments;
     }
 
-    public List<ActivityFacility> searchActivity(ActivityFacilitySearchRequest request, Integer limit, Integer offset, String tenantId, Boolean includeDeleted, Long lastChangedSince) {
+    public List<ActivityFacility> searchActivityFacility(ActivityFacilitySearchRequest request, Integer limit, Integer offset, String tenantId, Boolean includeDeleted, Long lastChangedSince) {
         activityValidator.validateSearchActivityRequest(request, limit, offset, tenantId);
-        List<ActivityFacility> activityFacilities = activityRepository.getActivitiesFacility(request, limit, offset, tenantId, includeDeleted, lastChangedSince);
-        return activityFacilities;
+        List<ActivityFacility> activityFacilities = activityFacilityRepository.getActivitiesFacility(request, limit, offset, tenantId, includeDeleted, lastChangedSince);
+//        Map<String, Boundary> listBlock = boundaryUtil.getBoundaryByCode();
+//        log.debug("🌍 Loaded {} boundaries for enrichment", listBlock.size());
+//        for (ActivityFacility activityFacility : activityFacilities) {
+//            log.info("processing get activity code", activityFacility);
+//            activityEnrichment.enrichActivityFacilityOnSearch(request, activityFacility);
+//
+//            Object additionalDetails = activityFacility.getFacility().getAdditionalDetails();
+//            String boundaryCode = activityFacility.getFacility().getBoundaryCode();
+//            log.trace("🔎 Processing projectId={} with boundaryCode={}", activityFacility.getFacility().getId(), boundaryCode);
+//
+//            if (boundaryCode != null) {
+//                Boundary boundary = listBlock.get(boundaryCode);
+//
+//                if (boundary != null) {
+//                    log.debug("✨ Enriching projectId={} with state={} and district={}", activityFacility.getId(), boundary.getState(), boundary.getDistrict());
+//
+//                    Object enrichedAdditionalDetails = mergeListIntoAdditionalDetails(additionalDetails, "state", boundary.getState());
+//                    activityFacility.getFacility().setAdditionalDetails((Map<String, Object>) enrichedAdditionalDetails);
+//
+//                    additionalDetails = activityFacility.getFacility().getAdditionalDetails();
+//                    enrichedAdditionalDetails = mergeListIntoAdditionalDetails(additionalDetails, "district", boundary.getDistrict());
+//                    activityFacility.getFacility().setAdditionalDetails((Map<String, Object>) enrichedAdditionalDetails);
+//                } else {
+//                    log.warn("⚠️ No boundary found for code={} in projectId={}", boundaryCode, activityFacility.getId());
+//                }
+//            }
+//        }
+
+            return activityFacilities;
+    }
+
+    public List<FacilityStatusAgregation> getStatusFacilityAssignmentsAgregation(String fieldPlanId) {
+        return activityFacilityRepository.getStatusFacilitiesAgregation(fieldPlanId);
     }
 
     public List<ActivityAssignment> searchAssignedActivity(ActivityAssignmentSearchRequest request, Integer limit, Integer offset, String tenantId, Boolean includeDeleted, Long lastChangedSince) {
@@ -142,13 +180,13 @@ public class ActivityService {
         List<ActivityAssignment> activityFacilities = activityAssignmentRepository.getActivitiesAssignment(request, limit, offset, tenantId, includeDeleted, lastChangedSince);
         for (ActivityAssignment activityAssignment : activityFacilities) {
             log.info("processing get activity code", activityAssignment);
-            activityEnrichment.enrichActivityOnSearch(activityAssignment);
+            activityEnrichment.enrichActivityAssignmentOnSearch(request, activityAssignment);
         }
         return activityFacilities;
     }
 
     public Integer countAllFacilityActivities(ActivityFacilitySearchRequest request, String tenantId, Long lastChangedSince, Boolean includeDeleted) {
-        return activityRepository.getActivitiesCount(request, tenantId, lastChangedSince, includeDeleted);
+        return activityFacilityRepository.getActivitiesFacilityCount(request, tenantId, lastChangedSince, includeDeleted);
     }
 
     public Integer countAllAssignedActivities(ActivityAssignmentSearchRequest request, String tenantId, Long lastChangedSince, Boolean includeDeleted) {
@@ -165,7 +203,7 @@ public class ActivityService {
         /*
          * Search for fieldplan based on fieldplan IDs provided in the request
          */
-        List<ActivityFacility> activityFacilityListFromDB = searchActivity(
+        List<ActivityFacility> activityFacilityListFromDB = searchActivityFacility(
                 getSearchActivityFacilityRequest(request.getActivityFacilities(), request.getRequestInfo()),
                 activityConfiguration.getMaxLimit(), activityConfiguration.getDefaultOffset(),
                 request.getActivityFacilities().get(0).getTenantId(), false, null);
@@ -285,7 +323,7 @@ public class ActivityService {
          * Ensure that no other properties are being updated besides the start and end dates
          */
         ActivitySearchCriteria criteria = ActivitySearchCriteria.builder().ids(List.of(activityFacility.getActivityId())).build();
-        Activity existingActivity = activityRepository.getActivityObject(criteria);
+        Activity existingActivity = activityFacilityRepository.getActivityObject(criteria);
         activityFacility.setActivityId(existingActivity.getId());
         if (!isValidCascadingUpdateActivityFacility(activityFacilityFromDB, activityFacility)) {
             throw new CustomException(
@@ -364,6 +402,18 @@ public class ActivityService {
                 .filter(p -> activityAssignmentId.equals(String.valueOf(p.getId())))
                 .findFirst()
                 .orElse(null);
+    }
+
+    private Object mergeListIntoAdditionalDetails(Object additionalDetails, String key, Object value) {
+        if (additionalDetails instanceof Map) {
+            ((Map<String, Object>) additionalDetails).put(key, value);
+            return additionalDetails;
+        } else {
+            // default to HashMap if null or unknown type
+            Map<String, Object> map = new HashMap<>();
+            map.put(key, value);
+            return map;
+        }
     }
 
 

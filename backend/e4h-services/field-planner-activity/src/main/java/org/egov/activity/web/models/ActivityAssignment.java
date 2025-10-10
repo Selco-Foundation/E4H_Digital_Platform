@@ -30,6 +30,9 @@ public class ActivityAssignment {
     @JsonProperty("fieldPlanId")
     private String fieldPlanId = null;
 
+    @JsonProperty("fieldPlan")
+    private FieldPlan fieldPlan = null;
+
     @JsonProperty("pocNumber")
     private String pocNumber = null;
 
@@ -47,6 +50,9 @@ public class ActivityAssignment {
 
     @JsonProperty("activityId")
     protected String activityId;
+
+    @JsonProperty("activityName")
+    protected String activityName;
 
     @JsonProperty("activityCode")
     protected String activityCode;
