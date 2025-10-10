@@ -24,7 +24,6 @@ public class EscalationRecipient {
     @JsonProperty("active")
     private Boolean active;
 
-    // V2 fields (role-centric)
     @JsonProperty("recipientRole")
     private String recipientRole;
 

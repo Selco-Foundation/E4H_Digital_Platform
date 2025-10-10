@@ -14,6 +14,9 @@ import lombok.*;
 @Builder
 public class EscalationStatus {
     
+    @JsonProperty("id")
+    private String id; // Unique ID for indexing (format: escalationId_tenantId_recipientRole_escalationTime)
+    
     @JsonProperty("escalationType")
     private String escalationType; // "daily" / "weekly"
     

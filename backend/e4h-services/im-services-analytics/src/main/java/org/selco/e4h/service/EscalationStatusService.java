@@ -23,12 +23,16 @@ public class EscalationStatusService {
      */
     public void publishSuccessStatus(String escalationType, String escalationId, String tenantId, String recipientRole) {
         try {
+            long escalationTime = System.currentTimeMillis();
+            String uniqueId = generateUniqueId(escalationId, tenantId, recipientRole, escalationTime);
+            
             EscalationStatus status = EscalationStatus.builder()
+                .id(uniqueId)
                 .escalationType(escalationType)
                 .escalationId(escalationId)
                 .tenantId(tenantId)
                 .recipientRole(recipientRole)
-                .escalationTime(System.currentTimeMillis())
+                .escalationTime(escalationTime)
                 .status("SUCCESS")
                 .message(null)
                 .build();
@@ -48,12 +52,16 @@ public class EscalationStatusService {
      */
     public void publishFailureStatus(String escalationType, String escalationId, String tenantId, String recipientRole, String errorMessage) {
         try {
+            long escalationTime = System.currentTimeMillis();
+            String uniqueId = generateUniqueId(escalationId, tenantId, recipientRole, escalationTime);
+            
             EscalationStatus status = EscalationStatus.builder()
+                .id(uniqueId)
                 .escalationType(escalationType)
                 .escalationId(escalationId)
                 .tenantId(tenantId)
                 .recipientRole(recipientRole)
-                .escalationTime(System.currentTimeMillis())
+                .escalationTime(escalationTime)
                 .status("FAILED")
                 .message(errorMessage)
                 .build();
@@ -73,12 +81,16 @@ public class EscalationStatusService {
      */
     public void publishGeneralFailureStatus(String escalationType, String errorMessage) {
         try {
+            long escalationTime = System.currentTimeMillis();
+            String uniqueId = generateUniqueId("GENERAL", "in", "SYSTEM", escalationTime);
+            
             EscalationStatus status = EscalationStatus.builder()
+                .id(uniqueId)
                 .escalationType(escalationType)
                 .escalationId(null)
                 .tenantId("in")
                 .recipientRole(null)
-                .escalationTime(System.currentTimeMillis())
+                .escalationTime(escalationTime)
                 .status("FAILED")
                 .message(errorMessage)
                 .build();
@@ -90,5 +102,17 @@ public class EscalationStatusService {
         } catch (Exception e) {
             log.error("Error publishing general FAILED status for escalation type: {}", escalationType, e);
         }
+    }
+    
+    /**
+     * Generate unique ID for escalation status
+     * Format: escalationId_tenantId_recipientRole_escalationTime
+     */
+    private String generateUniqueId(String escalationId, String tenantId, String recipientRole, long escalationTime) {
+        return String.format("%s_%s_%s_%d", 
+            escalationId != null ? escalationId : "null",
+            tenantId != null ? tenantId : "null",
+            recipientRole != null ? recipientRole : "null",
+            escalationTime);
     }
 }
