@@ -57,7 +57,7 @@ class _SelectAssetTypePageState extends State<SelectAssetTypePage> {
     );
     final mdmsAssetTypes = initState.maybeWhen<List<Mdms<AssetType>>>(
       initialized: (_, __, ___, ____, _____, ______, solutionDesign, _______) =>
-          ___, // see positions
+          ___,
       orElse: () => [],
     );
 

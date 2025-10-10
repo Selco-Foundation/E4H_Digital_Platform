@@ -10,8 +10,8 @@
   "mdms": [
     {
       "id": "b3d30247-8af0-460c-bd63-6cff2b179fce",
-      "tenantId": "pg",
-      "schemaCode": "asset.AssetType2",
+      "tenantId": "in",
+      "schemaCode": "asset-registry.AssetTypeSchema",
       "uniqueIdentifier": "PANEL.Panel",
       "data": {
         "code": "PANEL",
@@ -27,9 +27,25 @@
             ]
           },
           {
+            "key": "total_capacity",
+            "name": "total capacity",
+            "system": "DC",
+            "options": [
+              "550", "250"
+            ]
+          },
+          {
             "key": "total_capacity_uom",
             "name": "total capacity unit",
             "system": "AC_OFF_GRID",
+            "options": [
+              "Wp"
+            ]
+          },
+          {
+            "key": "total_capacity_uom",
+            "name": "total capacity unit",
+            "system": "DC",
             "options": [
               "Wp"
             ]
@@ -47,9 +63,25 @@
             ]
           },
           {
+            "key": "capacity",
+            "name": "capacity",
+            "system": "DC",
+            "options": [
+              "550", "555", "560", "565", "570", "575", "580", "585", "590", "595", "600", "125"
+            ]
+          },
+          {
             "key": "capacity_uom",
             "name": "capacity unit",
             "system": "AC_OFF_GRID",
+            "options": [
+              "Wp"
+            ]
+          },
+          {
+            "key": "capacity_uom",
+            "name": "capacity unit",
+            "system": "DC",
             "options": [
               "Wp"
             ]
@@ -66,8 +98,8 @@
     },
     {
       "id": "7ddeec37-f8e5-40f4-9930-ae6aa09a1c4a",
-      "tenantId": "pg",
-      "schemaCode": "asset.AssetType2",
+      "tenantId": "in",
+      "schemaCode": "asset-registry.AssetTypeSchema",
       "uniqueIdentifier": "INVERTER.Inverter",
       "data": {
         "code": "INVERTER",
@@ -83,11 +115,27 @@
             ]
           },
           {
+            "key": "total_capacity",
+            "name": "total capacity",
+            "system": "DC",
+            "options": [
+              "20"
+            ]
+          },
+          {
             "key": "total_capacity_uom",
             "name": "total capacity unit",
             "system": "AC_OFF_GRID",
             "options": [
               "kVA"
+            ]
+          },
+          {
+            "key": "total_capacity_uom",
+            "name": "total capacity unit",
+            "system": "DC",
+            "options": [
+              "A"
             ]
           },
           {
@@ -104,11 +152,27 @@
             ]
           },
           {
+            "key": "capacity",
+            "name": "capacity",
+            "system": "DC",
+            "options": [
+              "12", "24"
+            ]
+          },
+          {
             "key": "capacity_uom",
             "name": "capacity unit",
             "system": "AC_OFF_GRID",
             "options": [
               "kVA"
+            ]
+          },
+          {
+            "key": "capacity_uom",
+            "name": "capacity unit",
+            "system": "DC",
+            "options": [
+              "V"
             ]
           },
           {
@@ -120,7 +184,23 @@
             ]
           },
           {
+            "system":"DC",
+            "key":"voltage_uom",
+            "name":"voltage unit",
+            "options" : [
+              "V"
+            ]
+          },
+          {
             "system":"AC_OFF_GRID",
+            "key":"current_uom",
+            "name":"current unit",
+            "options" : [
+              "A"
+            ]
+          },
+          {
+            "system":"DC",
             "key":"current_uom",
             "name":"current unit",
             "options" : [
@@ -139,7 +219,7 @@
     },
     {
       "id": "80def8ba-1910-48b1-b4f7-774d91ca951a",
-      "tenantId": "pg",
+      "tenantId": "in",
       "schemaCode": "asset.AssetType2",
       "uniqueIdentifier": "BATTERY.Battery",
       "data": {
@@ -164,9 +244,26 @@
             ]
           },
           {
+            "key": "total_capacity",
+            "name": "total capacity",
+            "system": "DC",
+            "options": [
+              "1.8",
+              "3.6"
+            ]
+          },
+          {
             "key": "total_capacity_uom",
             "name": "total capacity unit",
             "system": "AC_OFF_GRID",
+            "options": [
+              "kWh"
+            ]
+          },
+          {
+            "key": "total_capacity_uom",
+            "name": "total capacity unit",
+            "system": "DC",
             "options": [
               "kWh"
             ]
@@ -184,9 +281,29 @@
             ]
           },
           {
+            "key": "capacity",
+            "name": "capacity",
+            "system": "DC",
+            "options": [
+              "125",
+              "150",
+              "180",
+              "200",
+              "220"
+            ]
+          },
+          {
             "key": "capacity_uom",
             "name": "capacity unit",
             "system": "AC_OFF_GRID",
+            "options": [
+              "Ah"
+            ]
+          },
+          {
+            "key": "capacity_uom",
+            "name": "capacity unit",
+            "system": "DC",
             "options": [
               "Ah"
             ]
@@ -202,7 +319,27 @@
             ]
           },
           {
+            "system":"DC",
+            "key":"voltage",
+            "name":"voltage",
+            "options" :[
+              "12",
+              "12.8",
+              "24",
+              "48",
+              "51.2"
+            ]
+          },
+          {
             "system":"AC_OFF_GRID",
+            "key":"voltage_uom",
+            "name":"voltage unit",
+            "options" : [
+              "Volts"
+            ]
+          },
+          {
+            "system":"DC",
             "key":"voltage_uom",
             "name":"voltage unit",
             "options" : [

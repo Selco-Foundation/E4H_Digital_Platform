@@ -164,17 +164,14 @@ class WorkflowFlexConverter implements JsonConverter<Workflow?, Object?> {
   Workflow? fromJson(Object? json) {
     if (json == null) return null;
 
-    print("json first");
     // Case 1: {} (empty map) → treat as no workflow
     if (json is Map) {
-      print("json is map");
       if (json.isEmpty) return null;
       return Workflow.fromJson(Map<String, dynamic>.from(json));
     }
 
     // Case 2: [ {…}, … ] → take the FIRST element
     if (json is List && json.isNotEmpty) {
-      print("json is List && json.isNotEmpty");
       final first = json.first;
       if (first is Map<String, dynamic>) {
         return Workflow.fromJson(first);

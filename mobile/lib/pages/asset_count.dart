@@ -8,6 +8,7 @@ import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:selco/utils/utils.dart';
 
 import '../blocs/app_init/app_init.dart';
 import '../blocs/cache_asset_count/cache_asset_count.dart';
@@ -61,15 +62,18 @@ class _AssetCountPageState extends State<AssetCountPage> {
           if (!mounted) return;
           setState(() {
             _inverterCount = entries
-                    .firstWhereOrNull((e) => e.assetType == 'inverter')
+                    .firstWhereOrNull((e) =>
+                        e.assetType == ASSET_TYPES.INVERTER.name.toLowerCase())
                     ?.count ??
                 0;
             _batteryCount = entries
-                    .firstWhereOrNull((e) => e.assetType == 'battery')
+                    .firstWhereOrNull((e) =>
+                        e.assetType == ASSET_TYPES.BATTERY.name.toLowerCase())
                     ?.count ??
                 0;
             _panelCount = entries
-                    .firstWhereOrNull((e) => e.assetType == 'panel')
+                    .firstWhereOrNull((e) =>
+                        e.assetType == ASSET_TYPES.PANEL.name.toLowerCase())
                     ?.count ??
                 0;
           });
@@ -111,14 +115,16 @@ class _AssetCountPageState extends State<AssetCountPage> {
             initialized:
                 (_, list, __, ___, ____, _____, solutionDesign, ______) {
               // set min/max for each from list
-              final inv = list.firstWhere(
-                  (e) => e.data.assetTypeCode.toUpperCase() == 'INVERTER');
+              final inv = list.firstWhere((e) =>
+                  e.data.assetTypeCode.toUpperCase() ==
+                  ASSET_TYPES.INVERTER.name);
               inverterData = inv.data;
-              final bat = list.firstWhere(
-                  (e) => e.data.assetTypeCode.toUpperCase() == 'BATTERY');
+              final bat = list.firstWhere((e) =>
+                  e.data.assetTypeCode.toUpperCase() ==
+                  ASSET_TYPES.BATTERY.name);
               batteryData = bat.data;
-              final pnl = list.firstWhere(
-                  (e) => e.data.assetTypeCode.toUpperCase() == 'PANEL');
+              final pnl = list.firstWhere((e) =>
+                  e.data.assetTypeCode.toUpperCase() == ASSET_TYPES.PANEL.name);
               panelData = pnl.data;
             },
             orElse: () {},

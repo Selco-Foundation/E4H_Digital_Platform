@@ -14,17 +14,16 @@ import '../blocs/asset_type/asset_type.dart';
 import '../blocs/cache_asset/cache_asset.dart';
 import '../blocs/inbox_type/inbox_type.dart';
 import '../blocs/overall_asset_summary/overall_asset_summary.dart';
-import '../blocs/project/project.dart';
 import '../blocs/project_bom/project_bom.dart';
 import '../blocs/report_type/report_type.dart';
 import '../blocs/selected_project/selected_project.dart';
 import '../blocs/user_type/user_type.dart';
 import '../model/project_workflow/project_workflow.dart';
-import '../repositories/bom_repo.dart';
 import '../repositories/project_repo.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
 import '../utils/utils.dart';
+import '../widgets/button/bom_buttons.dart';
 import '../widgets/cards/element_asset_summary.dart';
 import '../widgets/header/back_navigation_help_header.dart';
 import '../widgets/summary/existing_or_loader.dart';
@@ -68,7 +67,7 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
         );
     context.read<SelectedProjectBloc>().state.whenOrNull(selected: (proj) {
       _currentProjectId = proj.project.id;
-      _solutionDesignTypeCode = "RMS_Single_Phase";
+      _solutionDesignTypeCode = "DC";
       workflow = proj;
       context
           .read<CacheAssetBloc>()
@@ -409,108 +408,15 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
                                                     solutionDesign,
                                                     solutionDesignBom,
                                                   ) {
-                                                    return Column(
-                                                      crossAxisAlignment:
-                                                          CrossAxisAlignment
-                                                              .stretch,
-                                                      children: [
-                                                        Builder(
-                                                          builder: (_) {
-                                                            final matches =
-                                                                solutionDesignBom
-                                                                    .where(
-                                                              (e) =>
-                                                                  e.data
-                                                                      .solutionDesignTypeCode ==
-                                                                  _solutionDesignTypeCode,
-                                                            );
-
-                                                            final matching =
-                                                                matches.isNotEmpty
-                                                                    ? matches
-                                                                        .first
-                                                                    : null;
-                                                            final entries = matching
-                                                                    ?.data
-                                                                    .bomForms ??
-                                                                const [];
-
-                                                            if (entries
-                                                                .isEmpty) {
-                                                              return const SizedBox
-                                                                  .shrink();
-                                                            }
-
-                                                            return Column(
-                                                              crossAxisAlignment:
-                                                                  CrossAxisAlignment
-                                                                      .stretch,
-                                                              children: [
-                                                                for (final entry
-                                                                    in entries) ...[
-                                                                  FutureBuilder(
-                                                                    future: bomRouteAndLabel(
-                                                                        entry
-                                                                            .name),
-                                                                    builder: (_,
-                                                                        snapshot) {
-                                                                      if (snapshot
-                                                                              .connectionState ==
-                                                                          ConnectionState
-                                                                              .waiting) {
-                                                                        return const SizedBox
-                                                                            .shrink();
-                                                                      }
-                                                                      if (!snapshot
-                                                                          .hasData) {
-                                                                        return const SizedBox
-                                                                            .shrink();
-                                                                      }
-                                                                      final r =
-                                                                          snapshot
-                                                                              .data!;
-                                                                      final isar = context
-                                                                          .read<
-                                                                              ProjectBloc>()
-                                                                          .isar;
-                                                                      return FutureBuilder<
-                                                                              String>(
-                                                                          future: BomRepository().resolveBomActionLabel(
-                                                                              isar: isar,
-                                                                              projectId: _currentProjectId!,
-                                                                              schemaKey: r.schemaName,
-                                                                              origin: FormOrigin.inboxSummary),
-                                                                          builder: (context, snap) {
-                                                                            final labelWord = snap.hasData
-                                                                                ? snap.data!
-                                                                                : '...';
-                                                                            return DigitButton(
-                                                                              capitalizeLetters: false,
-                                                                              mainAxisSize: MainAxisSize.max,
-                                                                              label: '$labelWord ${r.label}',
-                                                                              onPressed: () {
-                                                                                context.router.push(DynamicFormsRoute(
-                                                                                  pageName: r.pageName,
-                                                                                  schemaName: r.schemaName,
-                                                                                  projectId: _currentProjectId!,
-                                                                                  origin: FormOrigin.inboxSummary,
-                                                                                ));
-                                                                              },
-                                                                              type: DigitButtonType.secondary,
-                                                                              size: DigitButtonSize.large,
-                                                                            );
-                                                                          });
-                                                                    },
-                                                                  ),
-                                                                  const SizedBox(
-                                                                      height:
-                                                                          spacer4),
-                                                                ],
-                                                              ],
-                                                            );
-                                                          },
-                                                        ),
-                                                      ],
+                                                    return BomButtonsSection(
+                                                      solutionDesignBom:
+                                                          solutionDesignBom,
+                                                      solutionDesignTypeCode:
+                                                          _solutionDesignTypeCode!,
+                                                      projectId:
+                                                          _currentProjectId!,
+                                                      origin: FormOrigin
+                                                          .submitForApproval,
                                                     );
                                                   },
                                                 );
