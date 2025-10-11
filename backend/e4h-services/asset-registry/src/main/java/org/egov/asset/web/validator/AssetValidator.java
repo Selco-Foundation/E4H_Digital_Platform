@@ -106,7 +106,7 @@ public class AssetValidator {
         if (inverterDetails.getChargeControllerVoltage() == null) {
             errorMaps.put(ErrorConstants.ASSET_INVERTER_CHARGE_CONTROLLER_VOLTAGE_REQUIRED_CODE,
                     ErrorConstants.ASSET_INVERTER_CHARGE_CONTROLLER_VOLTAGE_REQUIRED_MSG);
-        } else if (inverterDetails.getChargeControllerVoltage() != 12.0) {
+        } else if (!VALID_CHARGE_CONTROLLER_VOLTAGES.contains(inverterDetails.getChargeControllerVoltage())) {
             errorMaps.put(ErrorConstants.ASSET_INVERTER_CHARGE_CONTROLLER_VOLTAGE_VALUE_CODE,
                     ErrorConstants.ASSET_INVERTER_CHARGE_CONTROLLER_VOLTAGE_VALUE_MSG);
         }
