@@ -262,8 +262,13 @@ public class AssetValidator {
         // System-specific validations
         if (SYSTEM_DC.equals(systemType) || SYSTEM_AC_OFF_GRID.equals(systemType)) {
             // Both DC and AC Off Grid systems require panel capacity
-            if (panelDetails.getPanelCapacity() == null)
+            // Validate Panel Capacity for DC system
+            if (panelDetails.getPanelCapacity() == null) {
                 errorMap.put(ErrorConstants.ASSET_PANEL_CAPACITY_REQUIRED_CODE, ErrorConstants.ASSET_PANEL_CAPACITY_REQUIRED_MSG);
+            } else if (!VALID_PANEL_CAPACITIES.contains(panelDetails.getPanelCapacity())) {
+                errorMap.put(ErrorConstants.ASSET_PANEL_CAPACITY_INVALID_VALUE_CODE,
+                        ErrorConstants.ASSET_PANEL_CAPACITY_INVALID_VALUE_MSG);
+            }
 
             if (panelDetails.getCapacityUnit() == null)
                 errorMap.put(ErrorConstants.ASSET_PANEL_CAPACITY_UNIT_REQUIRED_CODE, ErrorConstants.ASSET_PANEL_CAPACITY_UNIT_REQUIRED_MSG);
