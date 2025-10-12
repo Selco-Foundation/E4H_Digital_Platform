@@ -297,38 +297,6 @@ class AssetSubmissionBloc
       final remoteRepo = ProjectRemoteRepository();
       final workflowDocuments = <Document>[];
 
-      // for (final type in types) {
-      //   final mediaEntries = await _isar.cacheMediaUploads
-      //       .where()
-      //       .projectIdEqualTo(projectId)
-      //       .filter()
-      //       .assetTypeEqualTo(type)
-      //       .findAll();
-      //
-      //   print("[$type] found ${mediaEntries.length} cached media uploads");
-      //   for (var m in mediaEntries) {
-      //     print(
-      //         "    media id=${m.id} filePath='${m.filePath}' itemType='${m.itemType}' media id=${m.id} projectId='${m.projectId}'");
-      //   }
-      //
-      //   for (final m in mediaEntries) {
-      //     if (m.filePath.isEmpty) continue;
-      //     String mediaId = await getFilestoreUrl(m.filePath);
-      //     print("mediaId $mediaId");
-      //     workflowDocuments.add(Document(
-      //       documentType: "${m.assetType}-${m.itemType}",
-      //       fileStore: mediaId,
-      //       documentUid:
-      //           "DOC-${m.assetType}-${m.itemType}-${DateTime.now().toUtc().millisecondsSinceEpoch}",
-      //       geoLocation: GeoLocation(
-      //         latitude: m.latitude,
-      //         longitude: m.longitude,
-      //       ),
-      //     ));
-      //   }
-      //   print("documents $workflowDocuments");
-      // }
-
       final workflowDocumentFromCache =
           await ProjectWorkflowRepository().collectWorkflowMediaDocs(
         isar: _isar,
@@ -437,6 +405,7 @@ class AssetSubmissionBloc
 
       // caches to clear
       await _draftRepo.delete(projectId, userType);
+      await _draftRepo.deleteAddNewAsset(projectId);
       await PrefilledProjectRepository(_isar).delete(
         projectId: projectId,
         userType: userType,

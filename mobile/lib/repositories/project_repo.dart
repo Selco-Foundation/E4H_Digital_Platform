@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
 import 'package:isar/isar.dart';
+import 'package:selco/data/nosql/cache_add_new_asset.dart';
 import 'package:selco/data/nosql/cache_completion_report.dart';
 import 'package:selco/data/nosql/cache_unsubmitted_project.dart';
 
@@ -377,6 +378,16 @@ class UnsubmittedProjectRepository {
           .filter()
           .userTypeEqualTo(userType)
           .findAll();
+      for (final e in toDelete) {
+        await col.delete(e.id);
+      }
+    });
+  }
+
+  Future<void> deleteAddNewAsset(String projectId) async {
+    final col = _isar.cacheAddNewAssets;
+    await _isar.writeTxn(() async {
+      final toDelete = await col.where().projectIdEqualTo(projectId).findAll();
       for (final e in toDelete) {
         await col.delete(e.id);
       }
