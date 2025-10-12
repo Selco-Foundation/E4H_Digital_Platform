@@ -67,7 +67,7 @@ public class ErrorConstants {
     public static final String ASSET_INVERTER_CHARGE_CONTROLLER_VOLTAGE_REQUIRED_MSG = "Charge Controller Voltage is required for DC system";
 
     public static final String ASSET_INVERTER_CHARGE_CONTROLLER_VOLTAGE_VALUE_CODE = "ERR_INVERTER_CHARGE_CONTROLLER_VOLTAGE_VALUE";
-    public static final String ASSET_INVERTER_CHARGE_CONTROLLER_VOLTAGE_VALUE_MSG = "Charge Controller Voltage must be 12 for DC system";
+    public static final String ASSET_INVERTER_CHARGE_CONTROLLER_VOLTAGE_VALUE_MSG = "Charge Controller Voltage must be one of the valid value for DC system";
 
     public static final String ASSET_INVERTER_CURRENT_UNIT_CODE = "ERR_INVERTER_CURRENT_UNIT";
     public static final String ASSET_INVERTER_CURRENT_UNIT_MSG = "Current Unit must be 'A' for DC system";
