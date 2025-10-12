@@ -109,7 +109,7 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
     selState.whenOrNull(selected: (selProject) {
       projectId = selProject.project.id;
       project = selProject;
-      _solutionDesignTypeCode = "DC";
+      // _solutionDesignTypeCode = "DC";
     });
 
     context
@@ -419,12 +419,28 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                                     solutionDesign,
                                     solutionDesignBom,
                                   ) {
-                                    return BomButtonsSection(
-                                      solutionDesignBom: solutionDesignBom,
-                                      solutionDesignTypeCode:
-                                          _solutionDesignTypeCode!,
-                                      projectId: projectId!,
-                                      origin: FormOrigin.submitForApproval,
+                                    return Column(
+                                      children: [
+                                        BomSystemSelector(
+                                          onChanged: (code) {
+                                            setState(() =>
+                                                _solutionDesignTypeCode = code);
+                                          },
+                                        ),
+                                        if (_solutionDesignTypeCode != null)
+                                          BomButtonsSection(
+                                            key: PageStorageKey(
+                                                'bom-buttons-${projectId!}'),
+                                            solutionDesignBom:
+                                                solutionDesignBom, // you already have this
+                                            systemCode:
+                                                _solutionDesignTypeCode!, // selected code (e.g., "DC")
+                                            projectId:
+                                                projectId!, // your var in this screen
+                                            origin: FormOrigin
+                                                .submitForApproval, // keep your origin logic
+                                          ),
+                                      ],
                                     );
                                   },
                                 );

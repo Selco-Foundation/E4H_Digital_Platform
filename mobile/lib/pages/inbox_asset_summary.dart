@@ -408,15 +408,30 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
                                                     solutionDesign,
                                                     solutionDesignBom,
                                                   ) {
-                                                    return BomButtonsSection(
-                                                      solutionDesignBom:
-                                                          solutionDesignBom,
-                                                      solutionDesignTypeCode:
-                                                          _solutionDesignTypeCode!,
-                                                      projectId:
-                                                          _currentProjectId!,
-                                                      origin: FormOrigin
-                                                          .submitForApproval,
+                                                    return Column(
+                                                      children: [
+                                                        BomSystemSelector(
+                                                          onChanged: (code) {
+                                                            setState(() =>
+                                                                _solutionDesignTypeCode =
+                                                                    code);
+                                                          },
+                                                        ),
+                                                        if (_solutionDesignTypeCode !=
+                                                            null)
+                                                          BomButtonsSection(
+                                                            key: PageStorageKey(
+                                                                'bom-buttons-${_currentProjectId!}'),
+                                                            solutionDesignBom:
+                                                                solutionDesignBom,
+                                                            systemCode:
+                                                                _solutionDesignTypeCode!,
+                                                            projectId:
+                                                                _currentProjectId!,
+                                                            origin: FormOrigin
+                                                                .inboxSummary,
+                                                          ),
+                                                      ],
                                                     );
                                                   },
                                                 );
