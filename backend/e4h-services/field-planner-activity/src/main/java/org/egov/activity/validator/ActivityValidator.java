@@ -694,7 +694,7 @@ public class ActivityValidator {
     }
 
     public FieldPlanFacilityBulkResponse getFieldPlanFacilityById(RequestInfo request, String fieldPlanId, String tenantId) {
-        FieldPlanFacilitySearch fieldPlanFacility = FieldPlanFacilitySearch.builder().id(List.of(fieldPlanId)).build();
+        FieldPlanFacilitySearch fieldPlanFacility = FieldPlanFacilitySearch.builder().field_plan_id(List.of(fieldPlanId)).build();
         FieldPlanFacilitySearchRequest fieldPlanRequest = FieldPlanFacilitySearchRequest.builder().requestInfo(request).criteria(fieldPlanFacility).build();
         String url = config.getFieldPlanServiceHost() + config.getFieldPlanFacilityServiceSearchUrl()+ "?tenantId="+tenantId+"&offset=0&limit=100";
         Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), fieldPlanRequest, Map.class);
@@ -709,7 +709,7 @@ public class ActivityValidator {
         String userId = activityFacility.getAssignedUser();
 
         String url = config.getHrmsHost() + config.getHrmsSearchUrl()+ "?tenantId=in&uuids="+userId;
-        Object response = serviceRequest.fetchResult(new StringBuilder(url), request);
+        Object response = serviceRequest.fetchResultMap(new StringBuilder(url), request);
 
         EmployeeResponse employeeResponse = mapper.convertValue(response, EmployeeResponse.class);
         if (employeeResponse == null || employeeResponse.getEmployees() == null || employeeResponse.getEmployees().isEmpty()) {

@@ -140,33 +140,32 @@ public class ActivityService {
     public List<ActivityFacility> searchActivityFacility(ActivityFacilitySearchRequest request, Integer limit, Integer offset, String tenantId, Boolean includeDeleted, Long lastChangedSince) {
         activityValidator.validateSearchActivityRequest(request, limit, offset, tenantId);
         List<ActivityFacility> activityFacilities = activityFacilityRepository.getActivitiesFacility(request, limit, offset, tenantId, includeDeleted, lastChangedSince);
-//        Map<String, Boundary> listBlock = boundaryUtil.getBoundaryByCode();
-//        log.debug("🌍 Loaded {} boundaries for enrichment", listBlock.size());
-//        for (ActivityFacility activityFacility : activityFacilities) {
-//            log.info("processing get activity code", activityFacility);
-//            activityEnrichment.enrichActivityFacilityOnSearch(request, activityFacility);
-//
-//            Object additionalDetails = activityFacility.getFacility().getAdditionalDetails();
-//            String boundaryCode = activityFacility.getFacility().getBoundaryCode();
-//            log.trace("🔎 Processing projectId={} with boundaryCode={}", activityFacility.getFacility().getId(), boundaryCode);
-//
-//            if (boundaryCode != null) {
-//                Boundary boundary = listBlock.get(boundaryCode);
-//
-//                if (boundary != null) {
-//                    log.debug("✨ Enriching projectId={} with state={} and district={}", activityFacility.getId(), boundary.getState(), boundary.getDistrict());
-//
-//                    Object enrichedAdditionalDetails = mergeListIntoAdditionalDetails(additionalDetails, "state", boundary.getState());
-//                    activityFacility.getFacility().setAdditionalDetails((Map<String, Object>) enrichedAdditionalDetails);
-//
-//                    additionalDetails = activityFacility.getFacility().getAdditionalDetails();
-//                    enrichedAdditionalDetails = mergeListIntoAdditionalDetails(additionalDetails, "district", boundary.getDistrict());
-//                    activityFacility.getFacility().setAdditionalDetails((Map<String, Object>) enrichedAdditionalDetails);
-//                } else {
-//                    log.warn("⚠️ No boundary found for code={} in projectId={}", boundaryCode, activityFacility.getId());
-//                }
-//            }
-//        }
+        Map<String, Boundary> listBlock = boundaryUtil.getBoundaryByCode();
+        log.debug("🌍 Loaded {} boundaries for enrichment", listBlock.size());
+        for (ActivityFacility activityFacility : activityFacilities) {
+            log.info("processing get activity code", activityFacility);
+            activityEnrichment.enrichActivityFacilityOnSearch(request, activityFacility);
+
+            Object additionalDetails = activityFacility.getFacility().getAdditionalDetails();
+            String boundaryCode = activityFacility.getFacility().getBoundaryCode();
+            log.trace("🔎 Processing projectId={} with boundaryCode={}", activityFacility.getFacility().getId(), boundaryCode);
+
+            if (boundaryCode != null) {
+                Boundary boundary = listBlock.get(boundaryCode);
+                if (boundary != null) {
+                    log.debug("✨ Enriching projectId={} with state={} and district={}", activityFacility.getId(), boundary.getState(), boundary.getDistrict());
+
+                    Object enrichedAdditionalDetails = mergeListIntoAdditionalDetails(additionalDetails, "state", boundary.getState());
+                    activityFacility.getFacility().setAdditionalDetails((Map<String, Object>) enrichedAdditionalDetails);
+
+                    additionalDetails = activityFacility.getFacility().getAdditionalDetails();
+                    enrichedAdditionalDetails = mergeListIntoAdditionalDetails(additionalDetails, "district", boundary.getDistrict());
+                    activityFacility.getFacility().setAdditionalDetails((Map<String, Object>) enrichedAdditionalDetails);
+                } else {
+                    log.warn("⚠️ No boundary found for code={} in projectId={}", boundaryCode, activityFacility.getId());
+                }
+            }
+        }
 
             return activityFacilities;
     }
@@ -181,6 +180,11 @@ public class ActivityService {
         for (ActivityAssignment activityAssignment : activityFacilities) {
             log.info("processing get activity code", activityAssignment);
             activityEnrichment.enrichActivityAssignmentOnSearch(request, activityAssignment);
+            List<FacilityStatusAgregation> statusAgregations = getStatusFacilityAssignmentsAgregation(activityAssignment.getFieldPlanId());
+            if (statusAgregations != null) {
+                Object enrichedAdditionalDetails = mergeListIntoAdditionalDetails(activityAssignment.getAdditionalDetails(), "statusAgregation", statusAgregations);
+                activityAssignment.setAdditionalDetails((Map<String, Object>) enrichedAdditionalDetails);
+            }
         }
         return activityFacilities;
     }
