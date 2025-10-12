@@ -10,20 +10,14 @@ import lombok.NoArgsConstructor;
 import org.egov.common.contract.request.RequestInfo;
 import org.springframework.validation.annotation.Validated;
 
-import java.util.Map;
-
 @Validated
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class GenerateBOMPdfRequest {
+public class FieldPlanFacilitySearchRequest {
     @JsonProperty("RequestInfo")
     private @NotNull @Valid RequestInfo requestInfo = null;
-
-    @JsonProperty("system")
-    private String system = null;
-
-    @JsonProperty("bom")
-    private Map<String, Object> bomData = null;
+    @JsonProperty("FieldPlanFacility")
+    private @NotNull @Valid FieldPlanFacilitySearch criteria;
 }

@@ -24,8 +24,14 @@ public class ActivityFacility {
     @JsonProperty("facilityId")
     private String facilityId = null;
 
+    @JsonProperty("facility")
+    private Facility facility = null;
+
     @JsonProperty("assignedUser")
     private String assignedUser = null;
+
+    @JsonProperty("assignedEmployeeUser")
+    private User assignedEmployeeUser = null;
 
     @JsonProperty("fieldPlanId")
     private String fieldPlanId = null;
