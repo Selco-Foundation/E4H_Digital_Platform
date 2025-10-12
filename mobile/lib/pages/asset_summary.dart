@@ -235,10 +235,6 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
                     showSuffixIcon: false,
                     text: context.translate(i18.common.coreCommonNext),
                     onPress: () {
-                      // final proj = selectedProject!;
-                      // context.read<ProjectBloc>().add(
-                      //       ProjectEvent.addUnSubmitted(proj, userType),
-                      //     ); todo to be removed after testing since logic moved to overrall submit
                       context.router.push(const DataSaveSuccessRoute());
                     },
                   ),
