@@ -22,6 +22,7 @@ SolutionDesignTypeBom _$SolutionDesignTypeBomFromJson(
 /// @nodoc
 mixin _$SolutionDesignTypeBom {
   String get solutionDesignTypeCode => throw _privateConstructorUsedError;
+  String get systemCode => throw _privateConstructorUsedError;
   List<BomEntry> get bomForms => throw _privateConstructorUsedError;
 
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -36,7 +37,10 @@ abstract class $SolutionDesignTypeBomCopyWith<$Res> {
           $Res Function(SolutionDesignTypeBom) then) =
       _$SolutionDesignTypeBomCopyWithImpl<$Res, SolutionDesignTypeBom>;
   @useResult
-  $Res call({String solutionDesignTypeCode, List<BomEntry> bomForms});
+  $Res call(
+      {String solutionDesignTypeCode,
+      String systemCode,
+      List<BomEntry> bomForms});
 }
 
 /// @nodoc
@@ -54,12 +58,17 @@ class _$SolutionDesignTypeBomCopyWithImpl<$Res,
   @override
   $Res call({
     Object? solutionDesignTypeCode = null,
+    Object? systemCode = null,
     Object? bomForms = null,
   }) {
     return _then(_value.copyWith(
       solutionDesignTypeCode: null == solutionDesignTypeCode
           ? _value.solutionDesignTypeCode
           : solutionDesignTypeCode // ignore: cast_nullable_to_non_nullable
+              as String,
+      systemCode: null == systemCode
+          ? _value.systemCode
+          : systemCode // ignore: cast_nullable_to_non_nullable
               as String,
       bomForms: null == bomForms
           ? _value.bomForms
@@ -78,7 +87,10 @@ abstract class _$$SolutionDesignTypeBomImplCopyWith<$Res>
       __$$SolutionDesignTypeBomImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({String solutionDesignTypeCode, List<BomEntry> bomForms});
+  $Res call(
+      {String solutionDesignTypeCode,
+      String systemCode,
+      List<BomEntry> bomForms});
 }
 
 /// @nodoc
@@ -94,12 +106,17 @@ class __$$SolutionDesignTypeBomImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? solutionDesignTypeCode = null,
+    Object? systemCode = null,
     Object? bomForms = null,
   }) {
     return _then(_$SolutionDesignTypeBomImpl(
       solutionDesignTypeCode: null == solutionDesignTypeCode
           ? _value.solutionDesignTypeCode
           : solutionDesignTypeCode // ignore: cast_nullable_to_non_nullable
+              as String,
+      systemCode: null == systemCode
+          ? _value.systemCode
+          : systemCode // ignore: cast_nullable_to_non_nullable
               as String,
       bomForms: null == bomForms
           ? _value._bomForms
@@ -114,6 +131,7 @@ class __$$SolutionDesignTypeBomImplCopyWithImpl<$Res>
 class _$SolutionDesignTypeBomImpl implements _SolutionDesignTypeBom {
   const _$SolutionDesignTypeBomImpl(
       {required this.solutionDesignTypeCode,
+      required this.systemCode,
       required final List<BomEntry> bomForms})
       : _bomForms = bomForms;
 
@@ -122,6 +140,8 @@ class _$SolutionDesignTypeBomImpl implements _SolutionDesignTypeBom {
 
   @override
   final String solutionDesignTypeCode;
+  @override
+  final String systemCode;
   final List<BomEntry> _bomForms;
   @override
   List<BomEntry> get bomForms {
@@ -132,7 +152,7 @@ class _$SolutionDesignTypeBomImpl implements _SolutionDesignTypeBom {
 
   @override
   String toString() {
-    return 'SolutionDesignTypeBom(solutionDesignTypeCode: $solutionDesignTypeCode, bomForms: $bomForms)';
+    return 'SolutionDesignTypeBom(solutionDesignTypeCode: $solutionDesignTypeCode, systemCode: $systemCode, bomForms: $bomForms)';
   }
 
   @override
@@ -142,13 +162,15 @@ class _$SolutionDesignTypeBomImpl implements _SolutionDesignTypeBom {
             other is _$SolutionDesignTypeBomImpl &&
             (identical(other.solutionDesignTypeCode, solutionDesignTypeCode) ||
                 other.solutionDesignTypeCode == solutionDesignTypeCode) &&
+            (identical(other.systemCode, systemCode) ||
+                other.systemCode == systemCode) &&
             const DeepCollectionEquality().equals(other._bomForms, _bomForms));
   }
 
   @JsonKey(ignore: true)
   @override
   int get hashCode => Object.hash(runtimeType, solutionDesignTypeCode,
-      const DeepCollectionEquality().hash(_bomForms));
+      systemCode, const DeepCollectionEquality().hash(_bomForms));
 
   @JsonKey(ignore: true)
   @override
@@ -168,6 +190,7 @@ class _$SolutionDesignTypeBomImpl implements _SolutionDesignTypeBom {
 abstract class _SolutionDesignTypeBom implements SolutionDesignTypeBom {
   const factory _SolutionDesignTypeBom(
       {required final String solutionDesignTypeCode,
+      required final String systemCode,
       required final List<BomEntry> bomForms}) = _$SolutionDesignTypeBomImpl;
 
   factory _SolutionDesignTypeBom.fromJson(Map<String, dynamic> json) =
@@ -175,6 +198,8 @@ abstract class _SolutionDesignTypeBom implements SolutionDesignTypeBom {
 
   @override
   String get solutionDesignTypeCode;
+  @override
+  String get systemCode;
   @override
   List<BomEntry> get bomForms;
   @override

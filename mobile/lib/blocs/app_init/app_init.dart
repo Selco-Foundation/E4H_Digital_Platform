@@ -14,6 +14,7 @@ import '../../model/solution_design_type/solution_design_type.dart';
 import '../../model/system/system.dart';
 import '../../model/warranty/warranty.dart';
 import '../../repositories/app_init_Repo.dart';
+import '../../utils/envConfig.dart' as env;
 import '../../utils/utils.dart';
 
 part 'app_init.freezed.dart';
@@ -28,6 +29,7 @@ class AppInitialization extends Bloc<InitEvent, InitState> {
       _AppLaunchEvent event, Emitter<InitState> emit) async {
     //initialize repo for fetching appConfig
     final appInitRepo = AppInitRepo();
+    final envConfigs = env.EnvironmentConfiguration.instance;
     try {
       final appConfig =
           await appInitRepo.searchAppConfiguration(const MdmsRequestModel(
@@ -52,44 +54,42 @@ class AppInitialization extends Bloc<InitEvent, InitState> {
         ),
       ));
 
-      final assetCount =
-          await appInitRepo.searchAssetCount(const MdmsRequestModel(
-              mdmsCriteria: MdmsCriteriaModel(
-        tenantId: 'in',
+      final assetCount = await appInitRepo.searchAssetCount(MdmsRequestModel(
+          mdmsCriteria: MdmsCriteriaModel(
+        tenantId: env.envConfig.variables.tenantId,
         schemaCode: "asset.AssetCount",
         moduleDetails: [],
       )));
       final assetCountList = assetCount ?? [];
 
-      final assetType =
-          await appInitRepo.searchAssetType(const MdmsRequestModel(
-              mdmsCriteria: MdmsCriteriaModel(
-        tenantId: 'pg',
+      final assetType = await appInitRepo.searchAssetType(MdmsRequestModel(
+          mdmsCriteria: MdmsCriteriaModel(
+        tenantId: env.envConfig.variables.tenantId,
         schemaCode: "asset.AssetType2",
         moduleDetails: [],
       )));
       final assetTypeList = assetType ?? [];
 
-      final system = await appInitRepo.searchSystem(const MdmsRequestModel(
+      final system = await appInitRepo.searchSystem(MdmsRequestModel(
           mdmsCriteria: MdmsCriteriaModel(
-        tenantId: 'pg',
-        schemaCode: "asset.System",
+        tenantId: env.envConfig.variables.tenantId,
+        schemaCode: "asset-registry.SystemSchema",
         moduleDetails: [],
       )));
       final systemList = system ?? [];
 
-      final warranty = await appInitRepo.searchWarranty(const MdmsRequestModel(
+      final warranty = await appInitRepo.searchWarranty(MdmsRequestModel(
           mdmsCriteria: MdmsCriteriaModel(
-        tenantId: 'pg',
+        tenantId: env.envConfig.variables.tenantId,
         schemaCode: "asset.WarrantyDuration",
         moduleDetails: [],
       )));
       final warrantyList = warranty ?? [];
 
-      final brand = await appInitRepo.searchBrand(const MdmsRequestModel(
+      final brand = await appInitRepo.searchBrand(MdmsRequestModel(
           mdmsCriteria: MdmsCriteriaModel(
-        tenantId: 'pg',
-        schemaCode: "asset.Brand",
+        tenantId: env.envConfig.variables.tenantId,
+        schemaCode: "asset-registry.BrandSchema",
         moduleDetails: [],
       )));
       final brandList = brand ?? [];
@@ -97,8 +97,8 @@ class AppInitialization extends Bloc<InitEvent, InitState> {
       final solutionDesign =
           await appInitRepo.searchSolutionDesign(MdmsRequestModel(
               mdmsCriteria: MdmsCriteriaModel(
-        tenantId: envConfig.variables.tenantId,
-        schemaCode: "asset.SolutionDesignType",
+        tenantId: env.envConfig.variables.tenantId,
+        schemaCode: "facility.SolarSolutionDesignType",
         moduleDetails: [],
       )));
       final solutionDesignList = solutionDesign ?? [];
@@ -106,7 +106,7 @@ class AppInitialization extends Bloc<InitEvent, InitState> {
       final solutionDesignBom =
           await appInitRepo.searchSolutionDesignTypeBom(MdmsRequestModel(
               mdmsCriteria: MdmsCriteriaModel(
-        tenantId: envConfig.variables.tenantId,
+        tenantId: env.envConfig.variables.tenantId,
         schemaCode: "asset.SolutionDesignTypeBom",
         moduleDetails: [],
       )));
@@ -116,7 +116,7 @@ class AppInitialization extends Bloc<InitEvent, InitState> {
       final formsDocs = await appInitRepo.searchFormConfigsRaw(
         MdmsRequestModel(
           mdmsCriteria: MdmsCriteriaModel(
-            tenantId: envConfig.variables.tenantId,
+            tenantId: env.envConfig.variables.tenantId,
             moduleDetails: [
               const MdmsModuleDetailsModel(
                 moduleName: 'SELCO',

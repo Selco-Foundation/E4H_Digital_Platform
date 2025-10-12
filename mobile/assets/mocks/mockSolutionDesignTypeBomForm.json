@@ -14,7 +14,7 @@
       "schemaCode": "common-masters.SolutionDesignTypeBOMForms",
       "uniqueIdentifier": "",
       "data": {
-        "solutionDesignTypeCode": "RMS_Single_Phase",
+        "solutionDesignTypeCode": "AC_OFF_GRID",
         "systemCode": "AC_OFF_GRID",
         "file_name": "",
         "bomForms": [
@@ -49,7 +49,7 @@
       "schemaCode": "common-masters.SolutionDesignTypeBOMForms",
       "uniqueIdentifier": "",
       "data": {
-        "solutionDesignTypeCode": "RMS_Three_Phase",
+        "solutionDesignTypeCode": "AC_OFF_GRID_THREE_PHASE",
         "systemCode": "AC_OFF_GRID_THREE_PHASE",
         "file_name": "",
         "bomForms": [
@@ -84,7 +84,7 @@
       "schemaCode": "common-masters.SolutionDesignTypeBOMForms",
       "uniqueIdentifier": "",
       "data": {
-        "solutionDesignTypeCode": "RMS_Hybrid_Single_Phase",
+        "solutionDesignTypeCode": "HYBRID_RMS_SINGLE_PHASE",
         "systemCode": "HYBRID_RMS_SINGLE_PHASE",
         "file_name": "",
         "bomForms": [
@@ -119,7 +119,7 @@
       "schemaCode": "common-masters.SolutionDesignTypeBOMForms",
       "uniqueIdentifier": "",
       "data": {
-        "solutionDesignTypeCode": "RMS_Hybrid_Three_Phase",
+        "solutionDesignTypeCode": "HYBRID_RMS_THREE_PHASE",
         "systemCode": "HYBRID_RMS_THREE_PHASE",
         "file_name": "",
         "bomForms": [

@@ -11,7 +11,7 @@
     {
       "id": "fcb06252-3fab-4415-8e12-a98f9818e5a1",
       "tenantId": "in",
-      "schemaCode": "asset.SolutionDesignType",
+      "schemaCode": "facility.SolarSolutionDesignType",
       "uniqueIdentifier": "SC_NO_LR_FRIDGE_NO_CCP",
       "data": {
         "active": true,
