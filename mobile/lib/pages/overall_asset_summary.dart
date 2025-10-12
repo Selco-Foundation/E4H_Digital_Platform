@@ -94,7 +94,7 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
     selState.whenOrNull(selected: (project) {
       _currentProjectId = project.project.id;
       projectWorkflow = project;
-      _solutionDesignTypeCode = "DC";
+      // _solutionDesignTypeCode = "DC";
       context
           .read<CacheAssetBloc>()
           .add(CacheAssetEvent.start(project.project.id, userType, project));
@@ -659,15 +659,33 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                                     solutionDesign,
                                                     solutionDesignBom,
                                                   ) {
-                                                    return BomButtonsSection(
-                                                      solutionDesignBom:
-                                                          solutionDesignBom,
-                                                      solutionDesignTypeCode:
-                                                          _solutionDesignTypeCode!,
-                                                      projectId:
-                                                          _currentProjectId!,
-                                                      origin: FormOrigin
-                                                          .overallSummary,
+                                                    return Column(
+                                                      children: [
+                                                        BomSystemSelector(
+                                                          onChanged: (code) {
+                                                            setState(() =>
+                                                                _solutionDesignTypeCode =
+                                                                    code);
+                                                          },
+                                                        ),
+                                                        if (_solutionDesignTypeCode !=
+                                                            null)
+                                                          BomButtonsSection(
+                                                            key: PageStorageKey(
+                                                                'bom-buttons-${_currentProjectId!}'),
+                                                            solutionDesignBom:
+                                                                solutionDesignBom, // you already have this
+                                                            systemCode:
+                                                                _solutionDesignTypeCode!, // selected code (e.g., "DC")
+                                                            projectId:
+                                                                _currentProjectId!, // your var in this screen
+                                                            origin: isSubmittedReport
+                                                                ? FormOrigin
+                                                                    .submitted
+                                                                : FormOrigin
+                                                                    .overallSummary, // keep your origin logic
+                                                          ),
+                                                      ],
                                                     );
                                                   },
                                                 );

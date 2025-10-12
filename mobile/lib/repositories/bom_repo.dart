@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -10,6 +11,7 @@ import 'package:mime/mime.dart';
 import '../data/nosql/cache_bom_doc.dart';
 import '../data/nosql/cache_project_bom_values.dart';
 import '../data/remote_client.dart';
+import '../data/secure_storage/secureStore.dart';
 import '../model/entities/project_facility.dart';
 import '../repositories/project_facility_repo.dart';
 import '../utils/envConfig.dart' as env;
@@ -357,10 +359,13 @@ class BomRepository {
       final Map<String, dynamic> bomData =
           jsonDecode(rec.dataJson) as Map<String, dynamic>;
 
+      final saved = await SecureStore().storage.read(key: 'bom_system_code');
+      final system = (saved != null && saved.isNotEmpty) ? saved : 'DC';
+
       // 2. Build request body
       final tenantId = env.envConfig.variables.tenantId;
       final body = {
-        "system": "DC",
+        "system": system,
         "bom": bomData,
       };
 
@@ -498,8 +503,9 @@ class BomRepository {
     required String schemaKey,
     required FormOrigin origin,
   }) async {
-    if (origin == FormOrigin.inboxSummary || origin == FormOrigin.submitted)
+    if (origin == FormOrigin.inboxSummary || origin == FormOrigin.submitted) {
       return 'View';
+    }
     final exists = await hasBomForSchema(
       isar: isar,
       projectId: projectId,
@@ -529,5 +535,54 @@ class BomRepository {
     } catch (_) {
       return null;
     }
+  }
+
+  /// Watch a single schemaKey for this project; fires AFTER commit whenever
+  /// cacheBomDocs row(s) for (projectId, schemaKey) change.
+  Stream<void> watchBomForSchema({
+    required Isar isar,
+    required String projectId,
+    required String schemaKey,
+  }) {
+    final q = isar.cacheBomDocs
+        .where()
+        .projectIdEqualToAnySchemaKey(projectId)
+        .filter()
+        .schemaKeyEqualTo(schemaKey);
+    // Only tick on actual changes; we don't need an initial tick.
+    return q.watchLazy(fireImmediately: false);
+  }
+
+  /// Watch multiple schemaKeys for this project; emits a void event whenever
+  /// ANY of the keys changes. Lightweight and scoped.
+  Stream<void> watchBomForSchemas({
+    required Isar isar,
+    required String projectId,
+    required List<String> schemaKeys,
+  }) {
+    final controller = StreamController<void>.broadcast();
+    final subs = <StreamSubscription<void>>[];
+
+    void addSub(String key) {
+      final sub = watchBomForSchema(
+        isar: isar,
+        projectId: projectId,
+        schemaKey: key,
+      ).listen((_) {
+        if (!controller.isClosed) controller.add(null);
+      });
+      subs.add(sub);
+    }
+
+    for (final key in schemaKeys.toSet()) {
+      addSub(key);
+    }
+
+    controller.onCancel = () {
+      for (final s in subs) {
+        s.cancel();
+      }
+    };
+    return controller.stream;
   }
 }

@@ -525,7 +525,7 @@ class AppInitRepo {
     // Try secure store first if you want (optional). Skipped here on purpose.
 
     if (envConfig.variables.envType == EnvType.dev) {
-      return _loadLocalMdmsRaw('assets/mocks/mockBOMFormConfig.updated.2.json');
+      return _loadLocalMdmsRaw('assets/mocks/mockBOMFormConfig.updated.3.json');
     }
 
     // PROD call

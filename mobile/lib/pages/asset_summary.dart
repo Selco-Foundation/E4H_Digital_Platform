@@ -625,8 +625,12 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
               'Brand',
               'Model No.'
             ]),
-            ValueColumn(
-                values: [warrantyStart, warrantyDuration, brand, model]),
+            ValueColumn(values: [
+              warrantyStart,
+              parseWarrantyYears(warrantyDuration!)?.toString() ?? '',
+              brand,
+              model
+            ]),
           ]),
         ]),
         ...assetCards,
