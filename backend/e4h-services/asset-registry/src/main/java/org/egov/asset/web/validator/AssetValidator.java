@@ -299,7 +299,7 @@ public class AssetValidator {
         log.info("AssetValidator::ValidatingWarranty");
 
         // Skip validation if warranty duration is 0
-        if (asset.getWarrantyDuration() == 0) {
+        if (asset.getWarrantyDuration() == null || asset.getWarrantyDuration() == 0) {
             return;
         }
 
