@@ -297,6 +297,12 @@ public class AssetValidator {
 
     private void validateWarranty(Asset asset, Map<String, String> errorMap, Object mdmsWarrantyDurationData) {
         log.info("AssetValidator::ValidatingWarranty");
+
+        // Skip validation if warranty duration is 0
+        if (asset.getWarrantyDuration() == null || asset.getWarrantyDuration() == 0) {
+            return;
+        }
+
         if (mdmsWarrantyDurationData == null || !(mdmsWarrantyDurationData instanceof List) || ((List<?>) mdmsWarrantyDurationData).isEmpty()) {
 //            errorMap.put(ErrorConstants.ASSET_WARRANTY_DURATION_MDMS_DATA_CODE, ErrorConstants.ASSET_WARRANTY_DURATION_MDMS_DATA_MSG);
             return;
