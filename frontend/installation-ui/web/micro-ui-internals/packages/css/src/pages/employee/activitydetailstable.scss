@@ -6,6 +6,7 @@
   border: 1px solid #e0e0e0;
   box-shadow: 1px 1px 4px 0px rgba(0,0,0,0.2);
   width: 100%;
+  background-color: #FAFAFA;
 
   .employee-select-wrap{
     margin-bottom: 0;
@@ -23,18 +24,22 @@
     border-collapse: collapse;
     font-family: Roboto;
     font-size: 14px;
-    background-color: white;
+    background-color: transparent;
     margin-inline: 15px;
 
     thead {
       th {
-        background-color: #EEEEEE;
         color: #0B4B66;
         font-weight: 600;
         text-align: left;
         padding: 16px 18px;
         font-size: 16px;
         line-height: 18px;
+        background-color: transparent;
+
+        &:first-child {
+          min-width: 190px;
+        }
 
         &:last-child {
           text-align: center;
@@ -42,7 +47,7 @@
           min-width: 80px;
           position: sticky;
           right: 0;
-          background-color: #EEEEEE;
+          background-color: #FAFAFA;
           z-index: 11;
         }
       }
@@ -55,6 +60,7 @@
         color: #666666;
         font-size: 14px;
         line-height: 1.4;
+        background-color: transparent;
 
         &:last-child {
           text-align: center;
@@ -62,22 +68,8 @@
           min-width: 80px;
           position: sticky;
           right: 0;
-          background-color: white;
+          background-color: #FAFAFA;
           z-index: 10;
-        }
-      }
-
-      tr {
-        &:nth-child(even) {
-          background-color: #f8f9fa;
-        }
-
-        &:nth-child(odd) {
-          background-color: white;
-        }
-
-        &:hover {
-          background-color: #f0f7ff;
         }
       }
     }
