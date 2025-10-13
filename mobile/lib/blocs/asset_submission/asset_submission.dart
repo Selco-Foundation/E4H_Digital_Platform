@@ -172,8 +172,8 @@ class AssetSubmissionBloc
           return false;
         }
 
-        final documents = <Document>[];
         for (final saved in assets) {
+          final documents = <Document>[];
           if (saved.photoPath.isNotEmpty) {
             String photoId = await getFilestoreUrl(saved.photoPath);
             print("photoId $photoId");
@@ -270,12 +270,11 @@ class AssetSubmissionBloc
             serialNumber: saved.serialNumber,
             brandID: detail.brand,
             assetDetails: assetDetails,
-            warrantyStartDate: userType == USER_TYPES.SUPERVISOR.name
-                ? startIso
-                : "", // : null,
+            warrantyStartDate:
+                userType == USER_TYPES.SUPERVISOR.name ? startIso : "",
             warrantyDuration: userType == USER_TYPES.SUPERVISOR.name
                 ? parseWarrantyYears(detail.warranty)
-                : 1, //null,
+                : 0,
             warrantyEndDate:
                 userType == USER_TYPES.SUPERVISOR.name ? endIso : "",
             modelNumber: detail.model,
@@ -287,6 +286,8 @@ class AssetSubmissionBloc
           print(
               "assetModel audit ${assetModel.auditDetails?.toJson() ?? '— none —'}");
           print("assetModel $assetModel");
+          print("assetModel.warrantyDuration ${assetModel.warrantyDuration}");
+          print("facilityId $facilityId");
           await repo.createOrUpdateAsset(
               asset: assetModel, isar: _isar, facilityId: facilityId);
         }

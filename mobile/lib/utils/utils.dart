@@ -112,7 +112,7 @@ int parseWarrantyMonths(String s) {
 }
 
 int parseWarrantyYears(String? s) {
-  if (s == null || s.isEmpty || s.length < 1) return 1;
+  if (s == null || s.isEmpty || s.length < 1) return 0;
   final regex = RegExp(r'^P(?:(\d+)Y)?(?:(\d+)M)?');
   final match = regex.firstMatch(s);
   if (match != null) {
@@ -121,7 +121,7 @@ int parseWarrantyYears(String? s) {
     final totalMonths = years * 12 + months;
     return (totalMonths + 11) ~/ 12; // ceiling division
   }
-  return 1;
+  return 0;
 }
 
 enum WORKFLOW_STATUS_FIELD_STAFF {
