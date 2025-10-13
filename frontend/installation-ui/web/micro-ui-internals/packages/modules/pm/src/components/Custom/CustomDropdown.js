@@ -47,15 +47,11 @@ const CustomDropdown = ({
   }, [isOpen]);
 
   useEffect(() => {
-    setDisplayValue(selected?.[optionKey] || "");
-  }, [selected?.[optionKey]]);
-
-  useEffect(() => {
     if (!isOpen) {
       setSearchValue("");
-      setDisplayValue(selected?.[optionKey] || "");
     }
-  }, [isOpen]);
+    setDisplayValue(selected?.[optionKey] || "");
+  }, [selected, optionKey, isOpen]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
