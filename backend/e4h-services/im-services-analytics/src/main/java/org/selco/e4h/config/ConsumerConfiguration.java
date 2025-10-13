@@ -68,6 +68,9 @@ public class ConsumerConfiguration {
     @Value("${egov.filestore.host}")
     private String fileStoreHost;
 
+    @Value("${egov.filestore.baseUrl}")
+    private String fileStoreBaseUrl;
+
     @Value("${egov.filestore.upload.endpoint}")
     private String fileStoreUploadEndpoint;
 

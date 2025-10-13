@@ -577,7 +577,7 @@ public class DynamicEmailTemplateService {
      * Generate download URL using actual file store ID
      */
     private String generateDownloadUrl(String fileStoreId, String tenantId) {
-        return consumerConfiguration.getFileStoreHost()+consumerConfiguration.getFileStoreDownloadEndpoint()+ "?tenantId=" + tenantId + "&fileStoreId=" + fileStoreId;
+        return consumerConfiguration.getFileStoreBaseUrl()+consumerConfiguration.getFileStoreDownloadEndpoint()+ "?tenantId=" + tenantId + "&fileStoreId=" + fileStoreId;
     }
     
     /**
