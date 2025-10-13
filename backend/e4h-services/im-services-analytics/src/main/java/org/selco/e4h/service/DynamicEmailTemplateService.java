@@ -117,21 +117,40 @@ public class DynamicEmailTemplateService {
      */
     private String loadLogoAsBase64(String logoFileName) {
         try {
+            log.info("Loading logo file: {}", logoFileName);
             ClassPathResource logoResource = new ClassPathResource("templates/" + logoFileName);
+            
+            if (!logoResource.exists()) {
+                log.error("Logo file does not exist: templates/{}", logoFileName);
+                return getPlaceholderLogo();
+            }
+            
             byte[] logoBytes = logoResource.getInputStream().readAllBytes();
+            log.info("Successfully loaded logo: {} ({} bytes)", logoFileName, logoBytes.length);
+            
             String base64Logo = Base64.getEncoder().encodeToString(logoBytes);
             
             // Determine MIME type based on file extension
             String mimeType = logoFileName.toLowerCase().endsWith(".png") ? "image/png" : "image/jpeg";
             
             // Return data URI
-            return "data:" + mimeType + ";base64," + base64Logo;
+            String dataUri = "data:" + mimeType + ";base64," + base64Logo;
+            log.debug("Generated data URI for {}: {} characters", logoFileName, dataUri.length());
+            
+            return dataUri;
             
         } catch (Exception e) {
             log.error("Failed to load logo: {}", logoFileName, e);
-            // Return placeholder if logo loading fails
-            return "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
+            return getPlaceholderLogo();
         }
+    }
+    
+    /**
+     * Get placeholder logo when real logo fails to load
+     */
+    private String getPlaceholderLogo() {
+        log.warn("Using placeholder logo due to loading failure");
+        return "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
     }
     
     /**
@@ -558,9 +577,7 @@ public class DynamicEmailTemplateService {
      * Generate download URL using actual file store ID
      */
     private String generateDownloadUrl(String fileStoreId, String tenantId) {
-        // Use the actual file store service URL format from your curl example
-        // Format: {fileStoreDownloadEndpoint}?tenantId={tenantId}&fileStoreId={fileStoreId}
-        return  consumerConfiguration.getFileStoreDownloadEndpoint()+ "?tenantId=" + tenantId + "&fileStoreId=" + fileStoreId;
+        return consumerConfiguration.getFileStoreHost()+consumerConfiguration.getFileStoreDownloadEndpoint()+ "?tenantId=" + tenantId + "&fileStoreId=" + fileStoreId;
     }
     
     /**
