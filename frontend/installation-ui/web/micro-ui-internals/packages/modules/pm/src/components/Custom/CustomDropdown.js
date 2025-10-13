@@ -16,7 +16,7 @@ const CustomDropdown = ({
   const [isOpen, setIsOpen] = useState(false);
   const [position, setPosition] = useState(null);
   const [searchValue, setSearchValue] = useState("");
-  const [displayValue, setDisplayValue] = useState(selected?.[optionKey] || "");
+  const [displayValue, setDisplayValue] = useState("");
   const triggerRef = useRef(null);
   const dropdownRef = useRef(null);
   const inputRef = useRef(null);
@@ -47,6 +47,10 @@ const CustomDropdown = ({
   }, [isOpen]);
 
   useEffect(() => {
+    setDisplayValue(selected?.[optionKey] || "");
+  }, [selected?.[optionKey]]);
+
+  useEffect(() => {
     const handleClickOutside = (event) => {
       if (
         dropdownRef.current &&
@@ -67,7 +71,6 @@ const CustomDropdown = ({
   const handleSelect = (item) => {
     select(item);
     setIsOpen(false);
-    setDisplayValue(item[optionKey]);
     setSearchValue("");
   };
 
