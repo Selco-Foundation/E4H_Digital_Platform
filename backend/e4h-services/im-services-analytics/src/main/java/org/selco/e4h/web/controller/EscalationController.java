@@ -20,15 +20,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Base64;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.TimeZone;
+import java.util.*;
 import java.text.SimpleDateFormat;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.selco.e4h.config.ConsumerConfiguration;
@@ -466,58 +458,44 @@ public class EscalationController {
     
     /**
      * Send email via Kafka with CSV attachments
-     * Unified method for all roles
      */
     private void sendEmailViaKafka(User user, String subject, String body,
                                   List<String> csvFileStoreIds, List<String> csvFileNames, String tenantId) {
         try {
-            // Prepare email attachments from CSV files
-            List<Map<String, String>> attachments = new ArrayList<>();
+            // Prepare file store attachments as Map<fileStoreId, fileName>
+            Map<String, String> fileStoreIdMap = new HashMap<>();
             
             for (int i = 0; i < csvFileStoreIds.size(); i++) {
                 String fileStoreId = csvFileStoreIds.get(i);
                 String fileName = i < csvFileNames.size() ? csvFileNames.get(i) : "escalation_" + i + ".csv";
                 
-                try {
-                    // Download CSV from file store using existing method
-                    byte[] csvBytes = downloadFileFromStorage(tenantId, fileStoreId);
-                    
-                    if (csvBytes != null && csvBytes.length > 0) {
-                        // Convert to Base64
-                        String base64Content = Base64.getEncoder().encodeToString(csvBytes);
-                        
-                        // Create attachment
-                        Map<String, String> attachment = new HashMap<>();
-                        attachment.put("fileName", fileName);
-                        attachment.put("fileContent", base64Content);
-                        attachment.put("mimeType", "text/csv");
-                        
-                        attachments.add(attachment);
-                        
-                        log.debug("Added CSV attachment: {} (fileStoreId: {})", fileName, fileStoreId);
-                    }
-                    
-                } catch (Exception e) {
-                    log.error("Error downloading/encoding CSV file: {} (fileStoreId: {})", fileName, fileStoreId, e);
-                }
+                fileStoreIdMap.put(fileStoreId, fileName);
+                log.debug("Added CSV attachment mapping: fileStoreId={} -> fileName={}", fileStoreId, fileName);
             }
             
-            // Create Kafka email request
+            // Create Email object following egov-notification-mail contract
+            Map<String, Object> email = new HashMap<>();
+            email.put("emailTo", new HashSet<>(Arrays.asList(user.getEmailId())));  // Set<String>
+            email.put("subject", subject);
+            email.put("body", body);
+            email.put("isHTML", true);
+            email.put("tenantId", tenantId);
+            
+            if (!fileStoreIdMap.isEmpty()) {
+                email.put("fileStoreId", fileStoreIdMap);  // Map<String, String>
+            }
+            
+            // Create EmailRequest wrapper with RequestInfo
             Map<String, Object> emailRequest = new HashMap<>();
-            emailRequest.put("email", user.getEmailId());
-            emailRequest.put("subject", subject);
-            emailRequest.put("body", body);
-            emailRequest.put("isHTML", true);
-            
-            if (!attachments.isEmpty()) {
-                emailRequest.put("attachments", attachments);
-            }
+            emailRequest.put("requestInfo", new HashMap<>());  // Empty RequestInfo is acceptable
+            emailRequest.put("email", email);
             
             // Publish to Kafka
             String topic = consumerConfiguration.getNotificationEmailTopic();
             kafkaTemplate.send(topic, emailRequest);
             
-            log.debug("Published email to Kafka topic: {} for user: {}", topic, user.getEmailId());
+            log.info("Published email to Kafka topic: {} for user: {} with {} attachments", 
+                topic, user.getEmailId(), fileStoreIdMap.size());
             
         } catch (Exception e) {
             log.error("Error sending email via Kafka for user: {}", user.getEmailId(), e);
