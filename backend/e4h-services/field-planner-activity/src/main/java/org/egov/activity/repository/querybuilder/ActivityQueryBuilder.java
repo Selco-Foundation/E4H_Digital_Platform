@@ -4,7 +4,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.egov.activity.config.ActivityConfiguration;
-import org.egov.activity.web.models.ActivityFacility;
 import org.egov.activity.web.models.ActivityFacilitySearchCriteria;
 import org.egov.activity.web.models.ActivityFacilitySearchRequest;
 import org.egov.activity.web.models.ActivitySearchCriteria;
@@ -30,6 +29,9 @@ public class ActivityQueryBuilder {
             "fa.last_modified_time as fa_lastModifiedTime " +
             " " +
             "from facility_activities fa ";
+
+    private static final String STATUS_COUNT_QUERY = "SELECT status, COUNT(*) AS occurrences " +
+            "FROM facility_activities fa where prj.status is not null ";
     private static final String ACTIVITY_COUNT_QUERY = "SELECT COUNT(*) FROM facility_activities fa ";
 
     private final String paginationWrapper = "SELECT * FROM " +
@@ -92,10 +94,10 @@ public class ActivityQueryBuilder {
             preparedStmtList.addAll(activityFacility.getIds());
         }
 
-        if (!CollectionUtils.isEmpty(activityFacility.getFacilityId())) {
+        if (!CollectionUtils.isEmpty(activityFacility.getFieldPlanId())) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
-            queryBuilder.append(" fa.facility_id IN (").append(createQuery(activityFacility.getFacilityId())).append(")");
-            preparedStmtList.addAll(activityFacility.getFacilityId());
+            queryBuilder.append(" fa.field_plan_id IN (").append(createQuery(activityFacility.getFieldPlanId())).append(")");
+            preparedStmtList.addAll(activityFacility.getFieldPlanId());
         }
 
         if (!CollectionUtils.isEmpty(activityFacility.getActivityId())) {
@@ -160,6 +162,17 @@ public class ActivityQueryBuilder {
         preparedStmtList.add(limit + offset);
 
         return finalQuery;
+    }
+
+    public String getStatusFacilitiesOccurence(String fieldPlanId, List<Object> preparedStmtList) {
+        StringBuilder queryBuilder = new StringBuilder(STATUS_COUNT_QUERY);
+        if (fieldPlanId != null && !fieldPlanId.isEmpty()) {
+            queryBuilder.append(" AND fa.field_plan_id =? ");
+            preparedStmtList.add(fieldPlanId);
+        }
+        queryBuilder.append("GROUP BY status ORDER BY occurrences DESC;");
+
+        return queryBuilder.toString();
     }
 
     /* Returns query to get total projects count based on project search params */
