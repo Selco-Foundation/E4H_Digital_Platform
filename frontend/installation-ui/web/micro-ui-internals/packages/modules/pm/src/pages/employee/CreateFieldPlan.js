@@ -168,6 +168,7 @@ const CreateFieldPlan = () => {
               activityAssignmentData?.activityAssignments?.filter((assignment) => assignment.activityCode === activity.code)?.length
                 ? activityAssignmentData.activityAssignments
                   .filter((assignment) => assignment.activityCode === activity.code)
+                  .sort((a, b) => a.auditDetails.createdTime - b.auditDetails.createdTime)
                   .map((assignment) => ({
                     id: assignment.id,
                     savedAssignment: assignment,
