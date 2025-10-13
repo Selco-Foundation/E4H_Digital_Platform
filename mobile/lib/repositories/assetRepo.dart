@@ -180,6 +180,7 @@ class AssetRepository {
             '/asset-registry/v1/asset/_update?assetID=$remoteAssetId',
             data: updatePayload,
           );
+          print('Request payload: ${jsonEncode(payload)}');
           if (updateResp.statusCode == 200 || updateResp.statusCode == 201) {
             final m = updateResp.data as Map<String, dynamic>;
             final aj = m['asset'] ?? m['Asset'];
@@ -189,7 +190,7 @@ class AssetRepository {
           }
         }
       }
-      print(e.message);
+      print("error message in duplicate ${e.message}");
       throw DioErrorParser.parse(e);
     }
   }
