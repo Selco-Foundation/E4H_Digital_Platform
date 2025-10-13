@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import FormattedDateInput from "../Custom/FormattedDateInput";
-import { Dropdown, SubmitBar, Table, TextInput } from "@egovernments/digit-ui-react-components";
+import { SubmitBar, Table } from "@egovernments/digit-ui-react-components";
+import { MobileNumber } from "@egovernments/digit-ui-react-components";
 import { CheckCircleOutline } from "@egovernments/digit-ui-svg-components";
 import CustomCloseSvg from "../Custom/CustomCloseSvg";
 import OrganizationUserDropdown from "./OrganizationUserDropdown";
@@ -129,7 +130,8 @@ const ActivityDetails = ({
           width: "fit-content",
           height: "fit-content",
           padding: "0px 20px",
-          border: "none"
+          border: "none",
+          backgroundColor: "transparent",
         }}
         onClick={() => addUserEntry(activity)}
       >
@@ -204,11 +206,12 @@ const ActivityDetails = ({
         borderBottom: isLast ? "none" : "1px solid #EEEEEE",
       }}
     >
-      <TextInput
+      <MobileNumber
         value={fieldValue.value}
-        onChange={(e) => handleUserDataChange(activity, index, fieldName, e.target.value)}
+        onChange={(value) => handleUserDataChange(activity, index, fieldName, value)}
+        hideSpan={true}
         style={{
-          minWidth: "190px",
+          minWidth: "170px",
         }}
       />
       <span
@@ -305,6 +308,7 @@ const ActivityDetails = ({
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
+          backgroundColor: "transparent",
         }}
       >
         {isSent ? (
