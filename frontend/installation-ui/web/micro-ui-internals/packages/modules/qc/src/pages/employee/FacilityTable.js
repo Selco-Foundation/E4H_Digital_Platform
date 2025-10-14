@@ -138,7 +138,7 @@ const FacilityTable = ({ t }) => {
     });
   };
 
-  const GetCell = (value) => <span className="cell-text">{value}</span>;
+  const GetCell = (value) => <span className="cell-text" style={{ color: "#000000" }}>{value}</span>;
 
   const mainCheckboxChange = () => {
     const prevMainCheck = mainCheck;
@@ -297,12 +297,16 @@ const FacilityTable = ({ t }) => {
         backgroundColor: "white",
         padding: "15px 0px 0px 0px",
       }}>
-        <div style={{
-          margin: "0px 20px",
-          overflow: "auto",
-        }}>
+        <div
+          className={"health-facility-table-wrapper"}
+          style={{
+            margin: "0px 20px",
+            overflow: "auto",
+          }}
+        >
           <Table
             t={t}
+            customTableWrapperClassName={"health-facility-table"}
             data={fetchedData}
             columns={columns}
             getCellProps={() => {
