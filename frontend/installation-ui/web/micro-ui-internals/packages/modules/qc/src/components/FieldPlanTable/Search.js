@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 
 const SearchCentre = ({ queryFilter, onSearch, onClear }) => {
   const { t } = useTranslation();
-  const [textToSearch, setTextToSearch] = useState(queryFilter.Project.name || "");
+  const [textToSearch, setTextToSearch] = useState(queryFilter.name || "");
 
   const handleSearch = () => {
     onSearch(textToSearch)
@@ -43,7 +43,7 @@ const SearchCentre = ({ queryFilter, onSearch, onClear }) => {
               <span
                 onClick={handleClear}
                 className="clear-search"
-                style={{ color: "#7a2829", marginLeft: "15px", marginTop: "10px" }}
+                style={{ color: "#C84C0E", marginLeft: "15px", marginTop: "10px" }}
               >
                 {t("CORE_COMMON_CLEAR_SEARCH")}
               </span>

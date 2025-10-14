@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from "react-query";
 import { QCService } from "../services/QC";
+import {ActivityService} from "../services/Activity";
 
 const formatDate = (timestamp) => {
   const date = new Date(timestamp);
@@ -20,55 +21,57 @@ const formatProjectFacilityInfo = (projectFacilityInfo) => {
 }
 
 const formatFieldPlans = (projects) => {
-
   return projects?.map((row) => {
 
-    const totalProjectFacilities = row?.project?.additionalDetails?.countProjectFacilities || 0;
-    const projectFacilityInfo = formatProjectFacilityInfo(row?.project?.additionalDetails);
+    const totalProjectFacilities = row?.additionalDetails?.countFieldPlanFacilities || 0;
+    const projectFacilityInfo = formatProjectFacilityInfo(row?.additionalDetails);
     const completionRate = totalProjectFacilities !== 0 ? (Math.ceil(projectFacilityInfo["APPROVED_BY_QC_SPOC"]/totalProjectFacilities * 100) || 0) : 0;
 
     return {
-      id: row?.project?.id,
-      name: row?.project?.name || row?.project?.projectNumber,
-      projectType: "Installation",
+      id: row?.id,
+      name: row?.fieldPlan?.name,
+      activityType: row?.activityName,
+      activityCode: row?.activityCode,
       facilitiesCount: totalProjectFacilities,
-      startDate: formatDate(row?.project?.startDate),
-      endDate: formatDate(row?.project?.endDate),
+      startDate: formatDate(row?.startDate),
+      endDate: formatDate(row?.endDate),
       completionRate: completionRate,
       status: row?.status,
-      transactions: row?.transactions,
-      address: row?.project?.address,
+      stateBoundaryCode: row?.fieldPlan?.geographyDetails?.state,
       projectFacilityInfo
     };
   })
 }
 
 const fetchFieldPlans = async (filter, limit, offset) => {
-  const fieldPlansResponse = await QCService.fetchProjects(filter, limit, offset);
+  const fieldPlansResponse = await ActivityService.fetchActivityAssignments(filter, limit, offset);
 
   return {
-    fieldPlans: formatFieldPlans(fieldPlansResponse?.Project),
-    totalCount: fieldPlansResponse?.totalCount
+    fieldPlans: formatFieldPlans(fieldPlansResponse?.ActivityAssignment),
+    totalCount: fieldPlansResponse?.TotalCount
   }
 }
 
 const useFieldPlan = (queryFilter, pageSize, pageOffset) => {
 
-  const { projectTypeId, name, id } = queryFilter?.Project;
+  const { tenantId, name, id } = queryFilter;
+
   const filter = {
-    Project: {}
+    ActivityAssignment : {
+      tenantId: Digit.ULBService.getCurrentTenantId(),
+    }
   };
 
-  if (projectTypeId) {
-    filter.Project.projectTypeId = projectTypeId;
+  if (tenantId) {
+    filter.ActivityAssignment.tenantId = tenantId;
   }
 
   if (name) {
-    filter.Project.name = name;
+    filter.ActivityAssignment.name = name;
   }
 
-  if (id && id.length > 0) {
-    filter.Project.id = id;
+  if (id?.length) {
+    filter.ActivityAssignment.ids = id;
   }
 
   const limit = pageSize || 10;
