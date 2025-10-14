@@ -645,21 +645,23 @@ public class DynamicEmailTemplateService {
      * Generate role-based email subject
      */
     public String generateRoleBasedEmailSubject(String recipientRole, String tenantId, String asOfDate) {
+        String stateName = getStateDisplayName(tenantId);
+        
         switch (recipientRole) {
             case "STATE_POC":
-                return String.format("Daily SLA Escalation — State POC — %s — %s", tenantId, asOfDate);
+                return String.format("Daily SLA Escalation — State POC — %s — %s", stateName, asOfDate);
             
             case "CENTRAL_POC":
-                return String.format("Central POC – Daily Escalation Email – %s – %s", tenantId, asOfDate);
+                return String.format("Central POC – Daily Escalation Email – %s – %s", stateName, asOfDate);
             
             case "CENTRAL_ONM_PROJECT_MANAGER":
-                return String.format("Central OnM Project – Daily Escalation Email – %s – %s", tenantId, asOfDate);
+                return String.format("Central OnM Project – Daily Escalation Email – %s – %s", stateName, asOfDate);
             
             case "CENTRAL_OPERATIONS_LEAD":
-                return String.format("Daily SLA Escalation – %s – %s", tenantId, asOfDate);
+                return String.format("Daily SLA Escalation – %s – %s", stateName, asOfDate);
             
             default:
-                return String.format("Daily SLA Escalation Email – %s – %s", tenantId, asOfDate);
+                return String.format("Daily SLA Escalation Email – %s – %s", stateName, asOfDate);
         }
     }
     

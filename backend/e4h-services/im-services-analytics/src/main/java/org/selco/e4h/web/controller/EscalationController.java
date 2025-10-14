@@ -58,9 +58,7 @@ public class EscalationController {
             
             // Fetch master data
             List<EscalationRecipient> escalationRecipients = masterDataService.fetchEscalationRecipients(requestInfo);
-//            List<String> activeTenantIds = masterDataService.fetchActiveTenantIds(requestInfo);
-            List<String> activeTenantIds = new ArrayList<>();
-            activeTenantIds.add("pg");
+            List<String> activeTenantIds = masterDataService.fetchActiveTenantIds(requestInfo);
             if (escalationRecipients.isEmpty()) {
                 log.warn("No escalation recipients found in MDMS");
                 escalationStatusService.publishGeneralFailureStatus("daily", "No escalation recipients found in MDMS");
@@ -502,37 +500,7 @@ public class EscalationController {
             throw new RuntimeException("Failed to send email via Kafka", e);
         }
     }
-    
-    
-    /**
-     * Download file from StorageUtil and convert to byte array
-     */
-    private byte[] downloadFileFromStorage(String tenantId, String fileStoreId) {
-        try {
-            // Use tenantId 'in' for escalation files
-            Resource resource = storageUtil.getFile(tenantId, fileStoreId);
-            
-            if (resource != null && resource.exists()) {
-                try (InputStream inputStream = resource.getInputStream();
-                     ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
-                    
-                    byte[] buffer = new byte[4096];
-                    int bytesRead;
-                    while ((bytesRead = inputStream.read(buffer)) != -1) {
-                        outputStream.write(buffer, 0, bytesRead);
-                    }
-                    
-                    return outputStream.toByteArray();
-                }
-            }
-        } catch (Exception e) {
-            log.error("Error downloading file with ID: {}", fileStoreId, e);
-        }
-        
-        return null;
-    }
-    
-    
+
     /**
      * Upload CSV file to FileStore using StorageUtil
      */
