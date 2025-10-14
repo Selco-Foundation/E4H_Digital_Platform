@@ -51,9 +51,24 @@ public class SLABreachDetectionService {
             // Execute query using ElasticsearchClient
             List<EscalationTicket> breachTickets = elasticSearchClient.searchTickets(query);
             
-            log.info("Found {} tickets in SLA breach for tenant: {} with escalation level: {}", 
-                breachTickets.size(), tenantId, escalationLevel);
-            return breachTickets;
+            // Filter out tickets that are already escalated to this recipient and level
+            List<EscalationTicket> filteredTickets = new ArrayList<>();
+            int alreadyEscalatedCount = 0;
+            
+            for (EscalationTicket ticket : breachTickets) {
+                if (isAlreadyEscalated(ticket, escalationRecipientId, escalationLevel)) {
+                    alreadyEscalatedCount++;
+                    log.debug("Skipping ticket {} - already escalated to {} at level {}", 
+                        ticket.getIncidentId(), escalationRecipientId, escalationLevel);
+                } else {
+                    filteredTickets.add(ticket);
+                }
+            }
+            
+            log.info("Found {} tickets in SLA breach for tenant: {} with escalation level: {} ({} already escalated, {} new)", 
+                breachTickets.size(), tenantId, escalationLevel, alreadyEscalatedCount, filteredTickets.size());
+            
+            return filteredTickets;
             
         } catch (Exception e) {
             log.error("Error finding SLA breach tickets for tenant: {} with escalation level: {}", 
@@ -374,20 +389,56 @@ public class SLABreachDetectionService {
     
     /**
      * Parse a list of escalation data into EscalationInfo objects
+     * Enhanced to deduplicate and handle Elasticsearch array data properly
      */
-    @SuppressWarnings("unchecked")
     private List<EscalationInfo> parseEscalationList(List<Map<String, Object>> escalationsData) {
-        List<EscalationInfo> escalations = new ArrayList<>();
+        // Use a map to deduplicate escalations by (escalationId, escalationLevel, escalationTime) combination
+        Map<String, EscalationInfo> uniqueEscalations = new HashMap<>();
+        
         for (Map<String, Object> escalationData : escalationsData) {
-            EscalationInfo escalation = EscalationInfo.builder()
-                .escalationId((String) escalationData.get("escalationId"))
-                .escalationTime(getLongValue(escalationData, "escalationTime"))
-                .escalationLevel((String) escalationData.get("escalationLevel"))
-                .recipientRole((String) escalationData.get("recipientRole"))
-                .build();
-            escalations.add(escalation);
+            try {
+                String escalationId = (String) escalationData.get("escalationId");
+                String escalationLevel = (String) escalationData.get("escalationLevel");
+                Long escalationTime = getLongValue(escalationData, "escalationTime");
+                String recipientRole = (String) escalationData.get("recipientRole");
+                
+                // Skip invalid escalation data
+                if (escalationId == null || escalationLevel == null || escalationTime == null) {
+                    log.warn("Skipping invalid escalation data: {}", escalationData);
+                    continue;
+                }
+                
+                // Create unique key for deduplication
+                String uniqueKey = escalationId + "_" + escalationLevel + "_" + escalationTime;
+                
+                // Only keep if we haven't seen this exact escalation before
+                if (!uniqueEscalations.containsKey(uniqueKey)) {
+                    EscalationInfo escalation = EscalationInfo.builder()
+                        .escalationId(escalationId)
+                        .escalationTime(escalationTime)
+                        .escalationLevel(escalationLevel)
+                        .recipientRole(recipientRole)
+                        .build();
+                    uniqueEscalations.put(uniqueKey, escalation);
+                }
+                
+            } catch (Exception e) {
+                log.warn("Error parsing escalation data: {}", escalationData, e);
+            }
         }
-        return escalations;
+        
+        List<EscalationInfo> result = new ArrayList<>(uniqueEscalations.values());
+        
+        // Sort by escalation time to maintain chronological order
+        result.sort((a, b) -> {
+            if (a.getEscalationTime() == null && b.getEscalationTime() == null) return 0;
+            if (a.getEscalationTime() == null) return 1;
+            if (b.getEscalationTime() == null) return -1;
+            return Long.compare(a.getEscalationTime(), b.getEscalationTime());
+        });
+        
+        log.debug("Parsed {} unique escalations from {} raw entries", result.size(), escalationsData.size());
+        return result;
     }
     
     /**
@@ -405,43 +456,70 @@ public class SLABreachDetectionService {
     /**
      * Check if ticket is already escalated to the specified recipient and escalation level
      * Supports escalation level progression (LEVEL_ONE → LEVEL_TWO)
+     * Fixed to handle duplicate escalation entries and prevent multiple escalations
      */
     private boolean isAlreadyEscalated(EscalationTicket ticket, String escalationRecipientId, String escalationLevel) {
         if (ticket.getEscalationInfo() == null || ticket.getEscalationInfo().isEmpty()) {
             return false;
         }
         
-        // Check if already escalated to the same recipient AND same level
-        boolean alreadyEscalatedToSameLevel = ticket.getEscalationInfo().stream()
-            .anyMatch(escalation -> 
-                escalationRecipientId.equals(escalation.getEscalationId()) && 
-                escalationLevel.equals(escalation.getEscalationLevel())
-            );
+        // Create a map to deduplicate escalations by (escalationId, escalationLevel) combination
+        // Keep only the most recent escalation time for each unique combination
+        Map<String, Long> uniqueEscalations = new HashMap<>();
         
-        if (alreadyEscalatedToSameLevel) {
+        for (EscalationInfo escalation : ticket.getEscalationInfo()) {
+            if (escalation.getEscalationId() != null && escalation.getEscalationLevel() != null) {
+                String key = escalation.getEscalationId() + "_" + escalation.getEscalationLevel();
+                Long currentTime = escalation.getEscalationTime();
+                
+                // Keep the most recent escalation time for this combination
+                if (currentTime != null && (uniqueEscalations.get(key) == null || currentTime > uniqueEscalations.get(key))) {
+                    uniqueEscalations.put(key, currentTime);
+                }
+            }
+        }
+        
+        // Check if already escalated to the same recipient AND same level
+        String checkKey = escalationRecipientId + "_" + escalationLevel;
+        if (uniqueEscalations.containsKey(checkKey)) {
+            log.debug("Ticket {} already escalated to recipient {} at level {} at time {}", 
+                ticket.getIncidentId(), escalationRecipientId, escalationLevel, uniqueEscalations.get(checkKey));
             return true; // Already escalated to this level
         }
         
         // For LEVEL_TWO escalations, check if we can escalate from LEVEL_ONE
         if ("LEVEL_TWO".equals(escalationLevel)) {
-            // Check if already escalated to LEVEL_ONE and enough time has passed
-            boolean escalatedToLevelOne = ticket.getEscalationInfo().stream()
-                .anyMatch(escalation -> 
-                    escalationRecipientId.equals(escalation.getEscalationId()) && 
-                    "LEVEL_ONE".equals(escalation.getEscalationLevel())
-                );
-            
-            if (escalatedToLevelOne) {
-                // Check if enough time has passed (2 business days = 16 hours)
+            String levelOneKey = escalationRecipientId + "_LEVEL_ONE";
+            if (uniqueEscalations.containsKey(levelOneKey)) {
+                Long levelOneEscalationTime = uniqueEscalations.get(levelOneKey);
                 long currentTime = System.currentTimeMillis();
-                boolean enoughTimePassed = ticket.getEscalationInfo().stream()
-                    .anyMatch(escalation -> 
-                        escalationRecipientId.equals(escalation.getEscalationId()) && 
-                        "LEVEL_ONE".equals(escalation.getEscalationLevel()) &&
-                        (currentTime - escalation.getEscalationTime()) >= (16 * 60 * 60 * 1000) // 16 hours
-                    );
                 
-                return !enoughTimePassed; // Allow escalation if enough time has passed
+                // Check if enough time has passed (2 business days = 16 hours)
+                boolean enoughTimePassed = (currentTime - levelOneEscalationTime) >= (16 * 60 * 60 * 1000);
+                
+                if (!enoughTimePassed) {
+                    log.debug("Ticket {} cannot be escalated to LEVEL_TWO yet. LEVEL_ONE escalation was {} ms ago (need 16 hours)", 
+                        ticket.getIncidentId(), (currentTime - levelOneEscalationTime));
+                    return true; // Don't allow escalation yet
+                }
+            }
+        }
+        
+        // For LEVEL_ONE escalations, check if recently escalated to LEVEL_ZERO
+        if ("LEVEL_ONE".equals(escalationLevel)) {
+            String levelZeroKey = escalationRecipientId + "_LEVEL_ZERO";
+            if (uniqueEscalations.containsKey(levelZeroKey)) {
+                Long levelZeroEscalationTime = uniqueEscalations.get(levelZeroKey);
+                long currentTime = System.currentTimeMillis();
+                
+                // Check if enough time has passed (minimum 1 hour between levels)
+                boolean enoughTimePassed = (currentTime - levelZeroEscalationTime) >= (60 * 60 * 1000); // 1 hour
+                
+                if (!enoughTimePassed) {
+                    log.debug("Ticket {} cannot be escalated to LEVEL_ONE yet. LEVEL_ZERO escalation was {} ms ago (need 1 hour)", 
+                        ticket.getIncidentId(), (currentTime - levelZeroEscalationTime));
+                    return true; // Don't allow escalation yet
+                }
             }
         }
         
