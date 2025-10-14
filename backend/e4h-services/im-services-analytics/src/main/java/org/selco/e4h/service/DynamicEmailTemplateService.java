@@ -275,7 +275,7 @@ public class DynamicEmailTemplateService {
             String downloadUrl = generateDownloadUrl(fileStoreId, tenantId);
             section.append("  <tr>\n");
             section.append("    <td align=\"center\">\n");
-            section.append("      <a class=\"btn btn-block\" href=\"").append(downloadUrl).append("\" target=\"_blank\" rel=\"noopener\">Download Ticket Details</a>\n");
+            section.append("      <a href=\"").append(downloadUrl).append("\" target=\"_blank\" rel=\"noopener\" style=\"display:inline-block;background:#FFFFFF;color:#f08400;border:1.5px solid #f07400;border-radius:12px;padding:12px 18px;font:600 14px/20px Arial,Helvetica,sans-serif;text-decoration:none;\">Download Ticket Details</a>\n");
             section.append("    </td>\n");
             section.append("  </tr>\n");
         } else {
@@ -446,19 +446,19 @@ public class DynamicEmailTemplateService {
         switch (workflowState) {
             case "OUT_OF_WARRANTY":
             case "PENDING_ASSIGNMENT_OUT_OF_WARRANTY":
-                return "Out of Warranty – Pending State POC";
+                return "Out of Warranty - Pending State POC";
             
             case "PENDINGFORASSIGNMENT":
                 // Different display based on role
                 if ("CENTRAL_POC".equals(recipientRole) && "LEVEL_TWO".equals(escalationLevel)) {
-                    return "CRM – Pending Assignment";
+                    return "CRM - Pending Assignment";
                 }
                 return "Pending Assignment";
             
             case "PENDING_ASSIGNMENT_SPARE_PART_NEEDED":
                 // Different display based on role
                 if ("CENTRAL_POC".equals(recipientRole)) {
-                    return "CRM – Spare Part Change";
+                    return "CRM - Spare Part Change";
                 } else if ("STATE_POC".equals(recipientRole)) {
                     return "Spare Part Change - Pending With CRM";
                 }
@@ -467,7 +467,7 @@ public class DynamicEmailTemplateService {
             case "PENDING_RESOLUTION_SPARE_PART_NEEDED":
                 // Different display based on role
                 if ("CENTRAL_POC".equals(recipientRole)) {
-                    return "CRM – Spare Part Change";
+                    return "CRM - Spare Part Change";
                 } else if ("STATE_POC".equals(recipientRole)) {
                     return "Spare Part Change - Pending with Vendor";
                 }
@@ -475,13 +475,13 @@ public class DynamicEmailTemplateService {
             
             case "PENDINGRESOLUTION":
                 if ("CENTRAL_POC".equals(recipientRole)) {
-                    return "Vendor – Within Warranty";
+                    return "Vendor - Within Warranty";
                 }
                 return "Pending Resolution";
             
             case "PENDING_RESOLUTION_OUT_OF_WARRANTY":
                 if ("CENTRAL_POC".equals(recipientRole)) {
-                    return "Vendor – Out of Warranty";
+                    return "Vendor - Out of Warranty";
                 }
                 return "Out of Warranty - Pending with Vendor";
             
