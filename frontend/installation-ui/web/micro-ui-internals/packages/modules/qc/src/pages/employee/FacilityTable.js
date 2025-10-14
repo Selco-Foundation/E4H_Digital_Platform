@@ -20,7 +20,7 @@ const FacilityTable = ({ t }) => {
   const history = useHistory();
   const location = useLocation();
   const url = window.location.href;
-  const fieldPlanId = url.split("field-plan/")[1].split("/")[0];
+  const activityAssignmentId = url.split("field-plan/")[1].split("/")[0];
   const queryParams = new URLSearchParams(window.location.search);
   const [updatingWorkflow, setUpdatingWorkflow] = useState(false);
 
@@ -34,8 +34,8 @@ const FacilityTable = ({ t }) => {
     }
   })() || {
     project : {
-      projectTypeId: "Facility",
-      parent: fieldPlanId,
+      fieldPlanId: [""],
+      activityCode: [""]
     },
     facilityFilter: {
       district: [],
@@ -60,10 +60,7 @@ const FacilityTable = ({ t }) => {
     data: fieldPlanData,
     revalidate: revalidateFieldPlans,
   } = useFieldPlan({
-    Project : {
-      projectTypeId: "FieldPlan",
-      id: [fieldPlanId]
-    }
+    id: [activityAssignmentId]
   });
 
   const {
@@ -110,6 +107,14 @@ const FacilityTable = ({ t }) => {
     if (fieldPlanData) {
       setFieldPlan(fieldPlanData.fieldPlans[0]);
       dispatch(setSelectedFieldPlan(fieldPlanData.fieldPlans[0]));
+      setProjectQueryFilter((prevState) => ({
+        ...prevState,
+        project: {
+          ...prevState.project,
+          fieldPlanId: [fieldPlanData.fieldPlans[0].fieldPlan.id],
+          activityCode: [fieldPlanData.fieldPlans[0].activityCode],
+        }
+      }))
     }
   }, [fieldPlanData])
 
@@ -200,7 +205,7 @@ const FacilityTable = ({ t }) => {
           <div>
             <span className="link" onClick={() => dispatch(setSelectedFacility(row.original))}>
               <Link
-                to={`/${window.contextPath}/employee/qc/field-plan/${fieldPlanId}/facilities/${row.original["id"]}--${encodeURIComponent(row.original["facilityId"])}`}
+                to={`/${window.contextPath}/employee/qc/field-plan/${activityAssignmentId}/facilities/${row.original["id"]}--${encodeURIComponent(row.original["facilityId"])}`}
                 style={{ color: "#C84C0E" }}
               >
                 {row.original["facilityName"]}
@@ -343,7 +348,7 @@ const FacilityTable = ({ t }) => {
         </div>
       )}
       <div style={{fontSize: "40px", fontWeight: "bold", fontFamily: "Roboto Condensed", marginBottom: "20px", color: "#0B0C0C"}}>
-        Installation | {fieldPlan?.name}
+        {fieldPlan?.activityType} | {fieldPlan?.name}
       </div>
       <InfoCard t={t} selectedFieldPlan={fieldPlan} />
       <div style={{ width: "100%", display: "flex", gap: "15px" }}>

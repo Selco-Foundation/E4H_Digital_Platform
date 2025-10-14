@@ -30,6 +30,7 @@ const formatFieldPlans = (projects) => {
     return {
       id: row?.id,
       name: row?.fieldPlan?.name,
+      fieldPlan: row?.fieldPlan,
       activityType: row?.activityName,
       activityCode: row?.activityCode,
       facilitiesCount: totalProjectFacilities,

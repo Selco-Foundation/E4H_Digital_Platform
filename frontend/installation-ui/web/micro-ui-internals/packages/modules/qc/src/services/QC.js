@@ -28,29 +28,6 @@ export const QCService = {
     });
   },
 
-  fetchFacilities : async (queryFilter) => {
-    const endpoint = "/project/facility/v1/_search";
-    const params = {
-      tenantId : "in",
-      offset : 0,
-      limit : 100,
-      includeDeleted : false
-    }
-    const headers = {
-      "Content-Type" : "application/json"
-    }
-
-    return await Request({
-      url : endpoint,
-      data : queryFilter,
-      method : "POST",
-      userService : true,
-      auth : true,
-      params : params,
-      headers : headers,
-    });
-  },
-
   fetchInboxData: async (queryFilter) => {
     const endpoint = "/inbox/v2/project/_search";
     const headers = {
