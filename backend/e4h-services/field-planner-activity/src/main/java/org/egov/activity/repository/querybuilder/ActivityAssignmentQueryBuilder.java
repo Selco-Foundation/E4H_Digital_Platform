@@ -16,6 +16,7 @@ import java.util.Collection;
 import java.util.List;
 
 import static org.egov.activity.util.ActivityConstants.DOT;
+import static org.egov.activity.util.ActivityConstants.PROJECT_MANAGER;
 
 @Component
 @Slf4j
@@ -62,14 +63,23 @@ public class ActivityAssignmentQueryBuilder {
         }
     }
 
-    public String getActivityAssignmentSearchQuery(ActivityAssignmentSearchCriteria criteria, URLParams urlParams, List<Object> preparedStmtList) {
+    public String getActivityAssignmentSearchQuery(ActivityAssignmentSearchRequest request, URLParams urlParams, List<Object> preparedStmtList) {
         //This uses a ternary operator to choose between FIELDPLANS_COUNT_QUERY or FETCH_FIELDPLAN_QUERY based on the value of isCountQuery.
-        String query = criteria.isCountQuery() ? ACTIVITY_COUNT_QUERY : FETCH_ACTIVITY_QUERY;
+        String query = request.getCriteria().isCountQuery() ? ACTIVITY_COUNT_QUERY : FETCH_ACTIVITY_QUERY;
         StringBuilder queryBuilder = new StringBuilder(query);
+        ActivityAssignmentSearchCriteria criteria = request.getCriteria();
+
+        // Get user info
+        var userInfo = request.getRequestInfo().getUserInfo();
+        String userUuid = userInfo.getUuid();
+        boolean isProjectManager = false;
+        if (userInfo.getRoles() != null) {
+            isProjectManager = userInfo.getRoles().stream().anyMatch(role -> PROJECT_MANAGER.equalsIgnoreCase(role.getCode()));
+        }
 
         addClause(criteria.getTenantId(), preparedStmtList, queryBuilder);
 
-        extracted(urlParams.getLastChangedSince(), preparedStmtList, criteria, queryBuilder);
+        extracted(urlParams.getLastChangedSince(), preparedStmtList, criteria, queryBuilder, userUuid, isProjectManager);
 
         //Add clause if includeDeleted is true in request parameter
         addIsDeletedCondition(preparedStmtList, queryBuilder, urlParams.getIncludeDeleted());
@@ -82,7 +92,7 @@ public class ActivityAssignmentQueryBuilder {
         return addPaginationWrapper(queryBuilder.toString(), preparedStmtList, urlParams.getLimit(), urlParams.getOffset());
     }
 
-    private void extracted(Long lastChangedSince, List<Object> preparedStmtList, ActivityAssignmentSearchCriteria activityAssignment, StringBuilder queryBuilder) {
+    private void extracted(Long lastChangedSince, List<Object> preparedStmtList, ActivityAssignmentSearchCriteria activityAssignment, StringBuilder queryBuilder, String userUuid, boolean isProjectManager) {
 
         if (!CollectionUtils.isEmpty(activityAssignment.getIds())) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
@@ -102,6 +112,12 @@ public class ActivityAssignmentQueryBuilder {
             preparedStmtList.addAll(activityAssignment.getActivityId());
         }
 
+        if (!CollectionUtils.isEmpty(activityAssignment.getRoles())) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            queryBuilder.append(" aa.role ->> 'code' IN (").append(createQuery(activityAssignment.getRoles())).append(")");
+            preparedStmtList.addAll(activityAssignment.getRoles());
+        }
+
         if (StringUtils.isNotBlank(activityAssignment.getAssignedTo())) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
             queryBuilder.append(" aa.assigned_to =? ");
@@ -112,6 +128,13 @@ public class ActivityAssignmentQueryBuilder {
             addClauseIfRequired(preparedStmtList, queryBuilder);
             queryBuilder.append(" ( aa.last_modified_time >= ? )");
             preparedStmtList.add(lastChangedSince);
+        }
+
+        // Check if not project manager role
+        if (!isProjectManager && StringUtils.isNotBlank(userUuid)) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            queryBuilder.append(" aa.assigned_to = ? ");
+            preparedStmtList.add(userUuid);
         }
     }
 
@@ -148,7 +171,7 @@ public class ActivityAssignmentQueryBuilder {
         ActivityAssignmentSearchCriteria criteria = request.getCriteria();
         criteria.setCountQuery(true);
         URLParams urlParams = URLParams.builder().tenantId(tenantId).includeDeleted(includeDeleted).lastChangedSince(lastChangedSince).build();
-        return getActivityAssignmentSearchQuery(criteria, urlParams, preparedStatement);
+        return getActivityAssignmentSearchQuery(request, urlParams, preparedStatement);
     }
 
     private String createQuery(Collection<String> ids) {

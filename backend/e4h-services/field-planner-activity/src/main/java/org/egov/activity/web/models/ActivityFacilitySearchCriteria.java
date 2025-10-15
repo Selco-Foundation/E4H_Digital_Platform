@@ -27,6 +27,9 @@ public class ActivityFacilitySearchCriteria {
     @JsonProperty("fieldPlanIds")
     private @Valid List<String> fieldPlanId = null;
 
+    @JsonProperty("facilityIds")
+    private @Valid List<String> facilityId = null;
+
     @JsonProperty("activityIds")
     private @Valid List<String> activityId = null;
 

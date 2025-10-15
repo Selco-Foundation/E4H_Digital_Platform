@@ -24,7 +24,7 @@ public class ServiceRequestRepository {
         this.restTemplate = restTemplate;
     }
 
-    public Object fetchResult(StringBuilder uri, Object request) {
+    public Object fetchResultBOMBytes(StringBuilder uri, Object request) {
         mapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
         Object response = null;
         try {
@@ -39,7 +39,7 @@ public class ServiceRequestRepository {
         return response;
     }
 
-    public Object fetchResultMap(StringBuilder uri, Object request) {
+    public Object fetchResult(StringBuilder uri, Object request) {
         mapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
         Object response = null;
         try {

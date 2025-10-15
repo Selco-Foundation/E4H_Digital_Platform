@@ -11,7 +11,6 @@ import org.egov.common.contract.request.RequestInfo;
 import org.egov.common.http.client.ServiceRequestClient;
 import org.egov.activity.config.ActivityConfiguration;
 import org.egov.activity.util.MDMSUtils;
-import org.egov.common.models.project.ProjectStaffBulkRequest;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -709,7 +708,7 @@ public class ActivityValidator {
         String userId = activityFacility.getAssignedUser();
 
         String url = config.getHrmsHost() + config.getHrmsSearchUrl()+ "?tenantId=in&uuids="+userId;
-        Object response = serviceRequest.fetchResultMap(new StringBuilder(url), request);
+        Object response = serviceRequest.fetchResult(new StringBuilder(url), request);
 
         EmployeeResponse employeeResponse = mapper.convertValue(response, EmployeeResponse.class);
         if (employeeResponse == null || employeeResponse.getEmployees() == null || employeeResponse.getEmployees().isEmpty()) {

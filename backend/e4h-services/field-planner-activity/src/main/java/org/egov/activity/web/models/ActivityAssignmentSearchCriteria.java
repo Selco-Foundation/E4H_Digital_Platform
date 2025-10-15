@@ -33,6 +33,9 @@ public class ActivityAssignmentSearchCriteria {
     @JsonProperty("statuses")
     private @Valid List<String> statuses = null;
 
+    @JsonProperty("roles")
+    private @Valid List<String> roles = null;
+
     @JsonProperty("assignedTo")
     private String assignedTo = null;
 

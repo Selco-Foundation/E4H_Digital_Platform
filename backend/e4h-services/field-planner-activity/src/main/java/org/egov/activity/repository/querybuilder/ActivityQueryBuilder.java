@@ -106,6 +106,12 @@ public class ActivityQueryBuilder {
             preparedStmtList.addAll(activityFacility.getActivityId());
         }
 
+        if (!CollectionUtils.isEmpty(activityFacility.getFacilityId())) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            queryBuilder.append(" fa.facility_id IN (").append(createQuery(activityFacility.getFacilityId())).append(")");
+            preparedStmtList.addAll(activityFacility.getFacilityId());
+        }
+
         if (StringUtils.isNotBlank(activityFacility.getAssignedUserId())) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
             queryBuilder.append(" fa.assigned_user =? ");
