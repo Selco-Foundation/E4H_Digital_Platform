@@ -203,7 +203,7 @@ public class BomService {
     public byte[] getBOMPdfFile(String key, String tenantId, GenerateBOMPdfRequest request) {
 
         String url = activityConfiguration.getPdfServiceHost() + activityConfiguration.getPdfCreateNoSaveUrl()+ "?key="+key+"&tenantId="+tenantId;
-        Object response = serviceRequest.fetchResult(new StringBuilder(url), request);
+        Object response = serviceRequest.fetchResultBOMBytes(new StringBuilder(url), request);
 
         byte[] pdfDoc = mapper.convertValue(response, byte[].class);
         if(pdfDoc == null){
