@@ -441,7 +441,7 @@ public class DynamicEmailTemplateService {
         } else if ("STATE_POC".equals(recipientRole)) {
             // State POC specific messages
             if ("LEVEL_ZERO".equals(level)) {
-                return "Kindly take immediate action on these tickets to prevent escalation to Central POC (L1) or Central OnM stage (L2).";
+                return "Kindly go to <a href=\"" + sauraEmitraUrl + "\" target=\"_blank\" rel=\"noopener\" style=\"color: #f08400; text-decoration: underline;\">Saura eMitra</a> and take immediate action on these tickets before they escalate to the L1 (Central POC) stage.";
             } else if ("LEVEL_ONE".equals(level)) {
                 return "Kindly take immediate action on these tickets to prevent escalation to Central OnM stage (L2).";
             } else {
