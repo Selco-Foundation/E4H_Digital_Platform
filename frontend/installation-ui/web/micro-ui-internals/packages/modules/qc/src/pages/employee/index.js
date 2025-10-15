@@ -31,7 +31,7 @@ const QCApp = () => {
     },
     facilityDetails: {
       content: navigator.selectedFacility?.facilityName,
-      internalLink: match.url + `/field-plan/${navigator.selectedFieldPlan?.id}/facilities/${navigator.selectedFacility?.id}--${encodeURIComponent(navigator.selectedFacility?.facilityId)}`,
+      internalLink: match.url + `/field-plan/${navigator.selectedFieldPlan?.id}/facilities/${navigator.selectedFacility?.id}`,
       show: true,
     },
   };

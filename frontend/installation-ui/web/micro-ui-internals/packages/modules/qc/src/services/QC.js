@@ -44,32 +44,6 @@ export const QCService = {
     });
   },
 
-  fetchAssets : async (facilityID) => {
-    const endpoint = "/asset-registry/v1/asset/_search";
-    const queryObj = {
-      "criteria": {
-        "tenantId": "in",
-        "facilityID": facilityID
-      }
-    };
-    const params = {
-      tenantId : "in",
-    }
-    const headers = {
-      "Content-Type" : "application/json"
-    }
-
-    return await Request({
-      url : endpoint,
-      data : queryObj,
-      method : "POST",
-      userService : true,
-      auth : true,
-      params : params,
-      headers : headers,
-    });
-  },
-
   fetchImageFromFileStore : async (fileStoreId) => {
     const endpoint = "/filestore/v1/files/url";
     const params = {

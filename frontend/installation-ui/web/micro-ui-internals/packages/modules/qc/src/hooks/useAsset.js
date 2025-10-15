@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from "react-query";
 import { QCService } from "../services/QC";
+import { AssetService } from "../services/Asset";
 
 const getAssetName = (assetTypeID) => {
   switch(assetTypeID) {
@@ -106,18 +107,24 @@ const formatData = async (data) => {
   return dataMap.values().toArray();
 }
 
-const fetchFacilityDetails = async (facilityId) => {
-  const facilityDetailsResponse = await QCService.fetchAssets(facilityId);
+const fetchFacilityDetails = async (filter) => {
+  const facilityDetailsResponse = await AssetService.fetchAssets(filter);
   return await formatData(facilityDetailsResponse);
 }
 
 const useAsset = (facilityId) => {
 
-  const facility = facilityId;
+  const filter = {
+    criteria: {
+      tenantId: Digit.ULBService.getCurrentTenantId(),
+      facilityID: facilityId
+    }
+  }
+
   const queryClient = useQueryClient();
   const { isLoading, isError, error, data } = useQuery(
-    ["ASSET", facility],
-    () => fetchFacilityDetails(facility)
+    ["ASSET", filter],
+    () => fetchFacilityDetails(filter)
   );
 
   return {

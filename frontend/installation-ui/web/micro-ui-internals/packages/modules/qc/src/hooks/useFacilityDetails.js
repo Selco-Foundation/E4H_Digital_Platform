@@ -1,5 +1,6 @@
 import {useQuery, useQueryClient} from "react-query";
 import { QCService } from "../services/QC";
+import { ActivityService } from "../services/Activity";
 
 const generateAuditTrail = (workflow, transactions) => {
   const auditTrail = [];
@@ -134,26 +135,23 @@ const getAssetAggregation = async (workflow) => {
 
 const fetchFacilityDetails = async (filter, limit, offset) => {
 
-  const projectsResponse = await QCService.fetchProjects(filter, limit, offset);
-  const projectData = projectsResponse?.Project?.[0];
+  const activityFacilitiesResponse = await ActivityService.fetchActivityFacilities(filter, limit, offset);
+  const activityFacilityData = activityFacilitiesResponse?.facility?.[0];
 
-  const facility = projectData.project.additionalDetails.facility || {};
-  const address = projectData.project.address || {};
-  const additionalDetails = projectData.project.additionalDetails || {};
-  const assigneeDetails = projectData.project.additionalDetails.assignedTo || {};
-  const auditTrail = generateAuditTrail(projectData.workflow, projectData.transactions);
-  const { assetAggregation, documentAggregation } = await getAssetAggregation(projectData.workflow);
+  const facility = activityFacilityData?.activityFacility?.facility || {};
+  const assigneeDetails = activityFacilityData?.activityFacility?.assignedEmployeeUser || {};
+  const auditTrail = generateAuditTrail(activityFacilityData.workflow, activityFacilityData.transactions);
+  const { assetAggregation, documentAggregation } = await getAssetAggregation(activityFacilityData.workflow);
 
   return {
     facilityDetails: {
-      id: projectData.project.id,
-      facilityName: facility.facility_name || projectData.project.name,
-      facilityId: facility.facility_id,
+      id: activityFacilityData?.activityFacility?.id,
+      facilityName: activityFacilityData?.activityFacility?.facility?.facility_name,
+      facilityId: activityFacilityData?.activityFacility?.facilityId,
       facilityType: facility.facility_type,
-      status: projectData.project.additionalDetails.status,
-      projectId: projectData.project.id,
-      block: address.boundary,
-      district: additionalDetails.district,
+      status: activityFacilityData?.activityFacility?.status,
+      block: activityFacilityData?.activityFacility?.facility?.boundaryCode,
+      district: activityFacilityData?.activityFacility?.facility?.additionalDetails?.district,
       assigned: assigneeDetails.name,
     },
     auditTrail,
@@ -162,12 +160,12 @@ const fetchFacilityDetails = async (filter, limit, offset) => {
   }
 }
 
-const useFacilityDetails = (facilityProjectId) => {
+const useFacilityDetails = (facilityAssignmentId) => {
 
   const filter = {
-    Project: {
-      projectTypeId: "Facility",
-      id: [facilityProjectId],
+    ActivityFacility: {
+      tenantId: Digit.ULBService.getCurrentTenantId(),
+      ids: [facilityAssignmentId],
     }
   }
 

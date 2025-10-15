@@ -199,7 +199,7 @@ const FacilityTable = ({ t }) => {
           <div>
             <span className="link" onClick={() => dispatch(setSelectedFacility(row.original))}>
               <Link
-                to={`/${window.contextPath}/employee/qc/field-plan/${activityAssignmentId}/facilities/${row.original["id"]}--${encodeURIComponent(row.original["facilityId"])}`}
+                to={`/${window.contextPath}/employee/qc/field-plan/${activityAssignmentId}/facilities/${row.original["id"]}`}
                 style={{ color: "#C84C0E" }}
               >
                 {row.original["facilityName"]}

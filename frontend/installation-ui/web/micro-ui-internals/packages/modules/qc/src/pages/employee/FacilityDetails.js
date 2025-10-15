@@ -15,10 +15,9 @@ const FacilityDetails = ({t}) => {
   const [assets, setAssets] = useState([]);
   const dispatch = useDispatch();
   const url = window.location.href;
-  const fieldPlanId = url.split("field-plan/")[1].split("/")[0];
-  const facilityIdentifier = url.split("facilities/")[1].split("/")[0].split("?")[0];
-  const facilityProjectId = facilityIdentifier.split("--")[0];
-  const facilityId = decodeURIComponent(facilityIdentifier.split("--")[1]);
+  const activityAssignmentId = url.split("field-plan/")[1].split("/")[0];
+  const facilityAssignmentId = url.split("facilities/")[1].split("/")[0].split("?")[0];
+  const [facilityId, setFacilityId] = useState("");
   const [facilityDetails, setFacilityDetails] = useState({});
   const [auditTrail, setAuditTrail] = useState([]);
   const [aggregatedAssets, setAggregatedAssets] = useState({});
@@ -31,10 +30,7 @@ const FacilityDetails = ({t}) => {
     data: fieldPlanData,
     revalidate: revalidateFieldPlans
   } = useFieldPlan({
-    Project : {
-      projectTypeId: "FieldPlan",
-      id: [fieldPlanId]
-    }
+    id: [activityAssignmentId]
   });
 
   const {
@@ -43,7 +39,7 @@ const FacilityDetails = ({t}) => {
     data: facilityData,
     revalidate: revalidateFacilityDetails,
     revalidateFacilities
-  } = useFacilityDetails(facilityProjectId);
+  } = useFacilityDetails(facilityAssignmentId);
 
   const { isLoading, data: assetData } = useAsset(facilityId);
 
@@ -61,6 +57,7 @@ const FacilityDetails = ({t}) => {
 
   useEffect(() => {
     if (facilityData) {
+      setFacilityId(facilityData.facilityId);
       setAuditTrail(facilityData.auditTrail);
       setFacilityDetails(facilityData.facilityDetails);
       setAggregatedAssets(facilityData.assetAggregation);
@@ -95,7 +92,7 @@ const FacilityDetails = ({t}) => {
             alignItems: "center",
             height: "100%",
             width: "100%",
-            zIndex: 5,
+            zIndex: 10000000,
             backgroundColor: "gray",
             opacity: 0.5,
             position: "fixed",
