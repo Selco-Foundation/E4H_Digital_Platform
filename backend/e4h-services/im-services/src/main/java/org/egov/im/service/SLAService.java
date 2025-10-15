@@ -2,6 +2,7 @@ package org.egov.im.service;
 
 import org.apache.kafka.common.protocol.types.Field;
 import org.egov.im.repository.IMPriorityRepository;
+import org.egov.im.web.models.IMPrioritySearchCriteria;
 import org.egov.im.web.models.Incident;
 import org.egov.im.web.models.IncidentRequest;
 import org.egov.im.web.models.Priority;
@@ -126,9 +127,13 @@ public class SLAService {
     }
 
     public Priority getPriorityFromIMPriorityTable(Incident incident) {
-        List<Priority> priorities = new ArrayList<>();
-        priorities.addAll(imPriorityRepository.getPrioritiesByTypeAndSubtype(incident.getTenantId(),incident.getIncidentType(),incident.getIncidentSubType()));
-        priorities.addAll(imPriorityRepository.getPrioritiesBySystemFunctional(incident.getTenantId(),incident.getSystemFunctional()));
-        return imPriorityRepository.getMaxPriority(priorities);
+        String stateTenantId = incident.getTenantId().split("\\.")[0];
+        IMPrioritySearchCriteria criteria = IMPrioritySearchCriteria.builder()
+                .tenantId(stateTenantId)
+                .incidentType(incident.getIncidentType())
+                .incidentSubType(incident.getIncidentSubType())
+                .systemFunctional(incident.getSystemFunctional())
+                .build();
+        return imPriorityRepository.getPriority(criteria);
     }
 } 

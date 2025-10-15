@@ -1,32 +1,29 @@
 package org.egov.im.repository.rowmapper;
 
-import org.egov.im.web.models.PrioritySearchCriteria;
+import org.egov.im.web.models.IMPrioritySearchCriteria;
 import org.springframework.stereotype.Repository;
-import org.springframework.util.StringUtils;
-
 import java.util.List;
 
 @Repository
 public class IMPriorityQueryBuilder {
 
     private static final String BASE_QUERY =
-            "SELECT priority" +
-                    "FROM {schema}.im_services_priority ";
+            "SELECT priority FROM im_services_priority WHERE tenantId = ? ";
 
-
-    public String getSearchQuery(PrioritySearchCriteria criteria, List<Object> preparedStmtList, String queryType) {
+    public String getSearchQuery(IMPrioritySearchCriteria criteria, List<Object> preparedStmtList) {
         StringBuilder query = new StringBuilder(BASE_QUERY);
-        query.append(" WHERE tenantId = ? "); // tenantId is always required
 
-        if ("typeAndSubtype".equals(queryType)) {
-            if (!StringUtils.isEmpty(criteria.getIncidentType()) && !StringUtils.isEmpty(criteria.getIncidentSubType())) {
-                query.append(" AND incidentType = ? AND incidentSubType = ? ");
-            }
-        } else if ("systemFunctional".equals(queryType)) {
-            if (!StringUtils.isEmpty(criteria.getSystemFunctional())) {
-                query.append(" AND systemFunctional = ? ");
-            }
-        }
+        preparedStmtList.add(criteria.getTenantId());
+
+        query.append(" AND (incidentType = ? OR incidentType IS NULL) ");
+        preparedStmtList.add(criteria.getIncidentType());
+
+        query.append(" AND (incidentSubType = ? OR incidentSubType IS NULL) ");
+        preparedStmtList.add(criteria.getIncidentSubType());
+
+        query.append(" AND (systemFunctional = ? OR systemFunctional IS NULL) ");
+        preparedStmtList.add(criteria.getSystemFunctional());
+
         return query.toString();
     }
 }
