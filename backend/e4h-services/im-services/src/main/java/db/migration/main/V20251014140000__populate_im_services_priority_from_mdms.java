@@ -20,7 +20,6 @@ public class V20251014140000__populate_im_services_priority_from_mdms extends Ba
     private static final String HOST_URL = System.getenv("EGOV_MDMS_HOST");
 
     private static final String MDMS_URL =  HOST_URL + "/egov-mdms-service/v1/_search";
-    private static final String AUTH_TOKEN = "7febd0ac-f7a4-4f53-bddf-49a72e25f600";
 
     private static final List<String> TENANT_IDS = Arrays.asList("mz", "sk", "ml", "mn", "nl", "as", "gj", "or", "mh", "pg");
 
@@ -93,7 +92,7 @@ public class V20251014140000__populate_im_services_priority_from_mdms extends Ba
     private JsonNode fetchServiceDefs(String tenantId) {
         try {
             Map<String, Object> requestBody = Map.of(
-                    "RequestInfo", Map.of("authToken", AUTH_TOKEN),
+                    "RequestInfo", Map.of("authToken", ""),
                     "MdmsCriteria", Map.of(
                             "tenantId", tenantId,
                             "moduleDetails", List.of(
