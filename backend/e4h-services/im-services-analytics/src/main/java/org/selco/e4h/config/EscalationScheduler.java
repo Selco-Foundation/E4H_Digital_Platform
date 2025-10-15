@@ -27,7 +27,7 @@ public class EscalationScheduler {
      * Default: Monday to Friday at 6:00 PM (18:00)
      * Based on LLD: Cronjob 1 calls /im-services-analytics/v1/escalation-emails/daily
      */
-    @Scheduled(cron = "${escalation.daily.cron.expression:0 0 18 * * MON-FRI}")
+    @Scheduled(cron = "${escalation.daily.cron.expression:0 0 18 * * MON-FRI}", zone = "Asia/Kolkata")
     public void processDailyEscalationsScheduled() {
         try {
             log.info("Starting scheduled daily SLA escalation processing");
@@ -55,7 +55,7 @@ public class EscalationScheduler {
      * Default: Monday at 9:00 AM (09:00)
      * Based on LLD: Cronjob 2 calls /im-services-analytics/v1/escalation-emails/weekly
      */
-    @Scheduled(cron = "${escalation.weekly.cron.expression:0 0 9 * * MON}")
+    @Scheduled(cron = "${escalation.weekly.cron.expression:0 0 9 * * MON}", zone = "Asia/Kolkata")
     public void processWeeklyEscalationsScheduled() {
         try {
             log.info("Starting scheduled weekly SLA escalation processing");

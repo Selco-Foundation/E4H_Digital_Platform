@@ -52,21 +52,35 @@ public class SLABreachDetectionService {
             List<EscalationTicket> breachTickets = elasticSearchClient.searchTickets(query);
             
             // Filter out tickets that are already escalated to this recipient and level
+            // Also apply additional filtering for LEVEL_TWO (aged tickets only)
             List<EscalationTicket> filteredTickets = new ArrayList<>();
             int alreadyEscalatedCount = 0;
+            int agedFilterCount = 0;
+            long currentTime = System.currentTimeMillis();
             
             for (EscalationTicket ticket : breachTickets) {
                 if (isAlreadyEscalated(ticket, escalationRecipientId, escalationLevel)) {
                     alreadyEscalatedCount++;
                     log.debug("Skipping ticket {} - already escalated to {} at level {}", 
                         ticket.getIncidentId(), escalationRecipientId, escalationLevel);
+                } else if ("LEVEL_TWO".equals(escalationLevel)) {
+                    // For LEVEL_TWO, only include tickets breached for more than 2 business days (16 hours)
+                    if (isTicketAgedBeyondBreach(ticket, currentTime, 16.0)) {
+                        filteredTickets.add(ticket);
+                        log.debug("Ticket {} included in LEVEL_TWO escalation - breached for more than 16 hours", 
+                            ticket.getIncidentId());
+                    } else {
+                        agedFilterCount++;
+                        log.debug("Skipping ticket {} - not aged enough for LEVEL_TWO escalation", 
+                            ticket.getIncidentId());
+                    }
                 } else {
                     filteredTickets.add(ticket);
                 }
             }
             
-            log.info("Found {} tickets in SLA breach for tenant: {} with escalation level: {} ({} already escalated, {} new)", 
-                breachTickets.size(), tenantId, escalationLevel, alreadyEscalatedCount, filteredTickets.size());
+            log.info("Found {} tickets in SLA breach for tenant: {} with escalation level: {} ({} already escalated, {} aged filter, {} new)", 
+                breachTickets.size(), tenantId, escalationLevel, alreadyEscalatedCount, agedFilterCount, filteredTickets.size());
             
             return filteredTickets;
             
@@ -413,12 +427,12 @@ public class SLABreachDetectionService {
                 
                 // Only keep if we haven't seen this exact escalation before
                 if (!uniqueEscalations.containsKey(uniqueKey)) {
-                    EscalationInfo escalation = EscalationInfo.builder()
+            EscalationInfo escalation = EscalationInfo.builder()
                         .escalationId(escalationId)
                         .escalationTime(escalationTime)
                         .escalationLevel(escalationLevel)
                         .recipientRole(recipientRole)
-                        .build();
+                .build();
                     uniqueEscalations.put(uniqueKey, escalation);
                 }
                 
@@ -956,6 +970,7 @@ public class SLABreachDetectionService {
     
     /**
      * Check if ticket is in SLA breach based on escalation level threshold
+     * Enhanced to support breach age tracking for aged ticket identification
      */
     private boolean isInSLABreach(EscalationTicket ticket, long currentTime) {
         // If SLA breach time is set and current time is past the breach time
@@ -996,6 +1011,56 @@ public class SLABreachDetectionService {
                         ticket.getIncidentId(), totalSlaRemainingHours, totalSlaRemainingValue);
                     return true;
                 }
+            }
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Check if ticket has been breached for more than specified hours (for aged ticket identification)
+     * Used for L2 escalation requirements (tickets breached for more than 2 business days)
+     */
+    public boolean isTicketAgedBeyondBreach(EscalationTicket ticket, long currentTime, double maxBreachHours) {
+        if (ticket.getAdditionalDetails() == null) {
+            return false;
+        }
+        
+        // Check if ticket is currently in breach
+        if (!isInSLABreach(ticket, currentTime)) {
+            return false;
+        }
+        
+        // Calculate how long the ticket has been breached
+        Object slaRemaining = ticket.getAdditionalDetails().get("slaRemaining");
+        if (slaRemaining instanceof Number) {
+            double slaRemainingValue = ((Number) slaRemaining).doubleValue();
+            double slaRemainingHours = slaRemainingValue / (1000.0 * 60.0 * 60.0);
+            
+            // If slaRemaining is negative, calculate breach duration
+            if (slaRemainingHours < 0) {
+                double breachDurationHours = Math.abs(slaRemainingHours);
+                
+                log.debug("Ticket {} breach duration: {} hours, threshold: {} hours", 
+                    ticket.getIncidentId(), breachDurationHours, maxBreachHours);
+                
+                return breachDurationHours > maxBreachHours;
+            }
+        }
+        
+        // Also check totalSlaRemaining for overall breach age
+        Object totalSlaRemaining = ticket.getAdditionalDetails().get("totalSlaRemaining");
+        if (totalSlaRemaining instanceof Number) {
+            double totalSlaRemainingValue = ((Number) totalSlaRemaining).doubleValue();
+            double totalSlaRemainingHours = totalSlaRemainingValue / (1000.0 * 60.0 * 60.0);
+            
+            if (totalSlaRemainingHours < 0) {
+                double breachDurationHours = Math.abs(totalSlaRemainingHours);
+                
+                log.debug("Ticket {} total breach duration: {} hours, threshold: {} hours", 
+                    ticket.getIncidentId(), breachDurationHours, maxBreachHours);
+                
+                return breachDurationHours > maxBreachHours;
             }
         }
         
@@ -1229,11 +1294,13 @@ public class SLABreachDetectionService {
      */
     private double getBreachThresholdHoursFallback(String escalationLevel) {
         if ("LEVEL_ZERO".equals(escalationLevel)) {
-            return 16.0; // Tickets nearing breach (< 2 business days remaining)
+            // LEVEL_ZERO uses percentage-based calculation (70% threshold) in MDMS
+            // This fallback is only used if MDMS is unavailable
+            return 0.0; // Fallback to immediate breach detection if MDMS unavailable
         } else if ("LEVEL_ONE".equals(escalationLevel)) {
-            return 0.0; // Tickets recently breached (SLA just completed)
+            return 0.0; // Tickets recently breached (SLA just completed) - immediate escalation
         } else if ("LEVEL_TWO".equals(escalationLevel)) {
-            return -16.0; // Tickets heavily breached (> 2 business days overdue)
+            return -16.0; // Tickets heavily breached (> 2 business days = 16 hours overdue) - L2 escalation
         } else {
             // Default to LEVEL_ONE threshold
             log.warn("Unknown escalation level: {}, using LEVEL_ONE threshold (0 hours)", escalationLevel);

@@ -5,7 +5,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.request.RequestInfo;
 import org.selco.e4h.config.ConsumerConfiguration;
 import org.selco.e4h.web.models.EscalationTicket;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 
@@ -198,51 +197,66 @@ public class DynamicEmailTemplateService {
     }
     
     
-    /**
-     * Generate role-based escalation sections dynamically
-     * Creates HTML sections based on which escalation levels have data
-     */
-    private String generateRoleBasedEscalationSections(Map<String, List<EscalationTicket>> ticketsByLevel,
-                                                      String recipientRole, String tenantId,
-                                                      RequestInfo requestInfo) {
-        return generateRoleBasedEscalationSections(ticketsByLevel, recipientRole, tenantId, requestInfo, null);
-    }
-    
     private String generateRoleBasedEscalationSections(Map<String, List<EscalationTicket>> ticketsByLevel,
                                                       String recipientRole, String tenantId,
                                                       RequestInfo requestInfo, Map<String, String> fileStoreIdsByLevel) {
         StringBuilder sections = new StringBuilder();
         
-        // Sort levels (L0 -> L1 -> L2)
-        List<String> sortedLevels = ticketsByLevel.keySet().stream()
-            .sorted((a, b) -> getLevelOrder(a) - getLevelOrder(b))
-            .collect(Collectors.toList());
-        
-        for (String level : sortedLevels) {
-            List<EscalationTicket> tickets = ticketsByLevel.get(level);
-            if (tickets == null) {
-                tickets = new ArrayList<>(); // Empty list for zero count display
+        // Special handling for CENTRAL_POC: Combine LEVEL_ZERO and LEVEL_ONE into L1 section
+        if ("CENTRAL_POC".equals(recipientRole)) {
+            // Combine LEVEL_ZERO and LEVEL_ONE tickets for L1 section
+            List<EscalationTicket> l1Tickets = new ArrayList<>();
+            if (ticketsByLevel.get("LEVEL_ZERO") != null) {
+                l1Tickets.addAll(ticketsByLevel.get("LEVEL_ZERO"));
+            }
+            if (ticketsByLevel.get("LEVEL_ONE") != null) {
+                l1Tickets.addAll(ticketsByLevel.get("LEVEL_ONE"));
             }
             
-            // Generate section for this level
-            String fileStoreId = fileStoreIdsByLevel != null ? fileStoreIdsByLevel.get(level) : null;
-            String section = generateEscalationSection(level, tickets, recipientRole, tenantId, requestInfo, fileStoreId);
-            if (section != null && !section.isEmpty()) {
-                sections.append(section);
-                sections.append("<div class=\"sp-20\"></div>\n"); // Spacing between sections
+            // Generate L1 section with combined tickets
+            String l1FileStoreId = fileStoreIdsByLevel != null ? fileStoreIdsByLevel.get("LEVEL_ONE") : null;
+            String l1Section = generateEscalationSection("LEVEL_ONE", l1Tickets, recipientRole, tenantId, requestInfo, l1FileStoreId);
+            if (l1Section != null && !l1Section.isEmpty()) {
+                sections.append(l1Section);
+                sections.append("<div class=\"sp-20\"></div>\n");
+            }
+            
+            // Generate L2 section if exists
+            if (ticketsByLevel.containsKey("LEVEL_TWO")) {
+                List<EscalationTicket> l2Tickets = ticketsByLevel.get("LEVEL_TWO");
+                if (l2Tickets == null) {
+                    l2Tickets = new ArrayList<>();
+                }
+                String l2FileStoreId = fileStoreIdsByLevel != null ? fileStoreIdsByLevel.get("LEVEL_TWO") : null;
+                String l2Section = generateEscalationSection("LEVEL_TWO", l2Tickets, recipientRole, tenantId, requestInfo, l2FileStoreId);
+                if (l2Section != null && !l2Section.isEmpty()) {
+                    sections.append(l2Section);
+                    sections.append("<div class=\"sp-20\"></div>\n");
+                }
+            }
+        } else {
+            // Default behavior for other roles
+            List<String> sortedLevels = ticketsByLevel.keySet().stream()
+                .sorted((a, b) -> getLevelOrder(a) - getLevelOrder(b))
+                .collect(Collectors.toList());
+            
+            for (String level : sortedLevels) {
+                List<EscalationTicket> tickets = ticketsByLevel.get(level);
+                if (tickets == null) {
+                    tickets = new ArrayList<>(); // Empty list for zero count display
+                }
+                
+                // Generate section for this level
+                String fileStoreId = fileStoreIdsByLevel != null ? fileStoreIdsByLevel.get(level) : null;
+                String section = generateEscalationSection(level, tickets, recipientRole, tenantId, requestInfo, fileStoreId);
+                if (section != null && !section.isEmpty()) {
+                    sections.append(section);
+                    sections.append("<div class=\"sp-20\"></div>\n"); // Spacing between sections
+                }
             }
         }
         
         return sections.toString();
-    }
-    
-    /**
-     * Generate HTML section for a specific escalation level
-     */
-    private String generateEscalationSection(String level, List<EscalationTicket> tickets,
-                                           String recipientRole, String tenantId,
-                                           RequestInfo requestInfo) {
-        return generateEscalationSection(level, tickets, recipientRole, tenantId, requestInfo, null);
     }
     
     /**
@@ -255,6 +269,12 @@ public class DynamicEmailTemplateService {
         
         // Determine section title and subtext based on level and role
         String sectionTitle = getSectionTitle(level, recipientRole);
+        
+        // Skip sections with null titles (e.g., CENTRAL_POC LEVEL_ZERO)
+        if (sectionTitle == null) {
+            return "";
+        }
+        
         String sectionSubtext = getSectionSubtext(level, recipientRole);
         String callToAction = getCallToAction(level, recipientRole, tenantId);
         
@@ -351,6 +371,10 @@ public class DynamicEmailTemplateService {
      */
     private String getSectionTitle(String level, String recipientRole) {
         if ("LEVEL_ZERO".equals(level)) {
+            // For CENTRAL_POC, don't show "My Tickets" section
+            if ("CENTRAL_POC".equals(recipientRole)) {
+                return null; // This will skip the section
+            }
             return "My Tickets";
         } else if ("LEVEL_ONE".equals(level)) {
             return "L1 Escalation";
@@ -372,6 +396,9 @@ public class DynamicEmailTemplateService {
             }
             return "Number of tickets that have breached their SLA:";
         } else if ("LEVEL_TWO".equals(level)) {
+            if ("CENTRAL_ONM_PROJECT_MANAGER".equals(recipientRole)) {
+                return "Number of tickets that have breached their SLA and aged more than 2 business days:";
+            }
             return "Number of tickets that have breached their SLA:";
         }
         return "Number of tickets requiring attention:";
@@ -392,7 +419,7 @@ public class DynamicEmailTemplateService {
                 baseMessage = "Kindly coordinate with the respective state POC to mitigate further escalation.";
             }
         } else if ("CENTRAL_ONM_PROJECT_MANAGER".equals(recipientRole)) {
-            // Central O&M Project Manager specific messages
+            // Central OnM Project Manager specific messages
             if ("LEVEL_TWO".equals(level)) {
                 return "Kindly coordinate with state CRM team at the earliest to mitigate further escalation.";
             } else {
@@ -401,11 +428,20 @@ public class DynamicEmailTemplateService {
         } else if ("CENTRAL_POC".equals(recipientRole)) {
             // Central POC specific messages
             if ("LEVEL_ONE".equals(level)) {
-                return "Kindly take immediate action to prevent escalation to L2 stage (Central O&M Project Manager or Central Ops Lead).";
+                return "Kindly take immediate action to prevent escalation to L2 stage (Central OnM Project Manager or Central Ops Lead).";
             } else if ("LEVEL_TWO".equals(level)) {
                 return "Kindly take immediate action to ensure these tickets are resolved before they appear in the weekly report shared with the leadership team.";
             } else {
                 baseMessage = "Kindly take immediate action on these tickets.";
+            }
+        } else if ("STATE_POC".equals(recipientRole)) {
+            // State POC specific messages
+            if ("LEVEL_ZERO".equals(level)) {
+                return "Kindly take immediate action on these tickets to prevent escalation to Central POC (L1) or Central OnM stage (L2).";
+            } else if ("LEVEL_ONE".equals(level)) {
+                return "Kindly take immediate action on these tickets to prevent escalation to Central OnM stage (L2).";
+            } else {
+                baseMessage = "Kindly coordinate with the respective teams to resolve these tickets promptly.";
             }
         } else if ("LEVEL_TWO".equals(level)) {
             baseMessage = "Kindly take immediate action to ensure these tickets are resolved before they appear in the weekly report shared with the leadership team.";
@@ -414,12 +450,12 @@ public class DynamicEmailTemplateService {
             return "Kindly take immediate action to prevent escalation to L2 stage (Central O&M Project Manager or Central Ops Lead).";
         } else if ("LEVEL_ZERO".equals(level)) {
             // Special message for State POC (LEVEL_ZERO) - standalone message with only "Saura eMitra" as link
-            return "Kindly go to <a href=\"" + sauraEmitraUrl + "\" target=\"_blank\" rel=\"noopener\">Saura eMitra</a> and take immediate action on these tickets before they escalate to the L1 (Central POC) stage";
+            return "Kindly go to <a href=\"" + sauraEmitraUrl + "\" target=\"_blank\" rel=\"noopener\" style=\"color: #f08400; text-decoration: underline;\">Saura eMitra</a> and take immediate action on these tickets before they escalate to the L1 (Central POC) stage";
         } else {
             baseMessage = "Kindly take immediate action on these tickets.";
         }
         
-        return baseMessage + " Kindly go to <a href=\"" + sauraEmitraUrl + "\" target=\"_blank\" rel=\"noopener\">Saura eMitra</a> and take immediate action on these tickets before they escalate to the L1 (Central POC) stage";
+        return baseMessage + " Kindly go to <a href=\"" + sauraEmitraUrl + "\" target=\"_blank\" rel=\"noopener\" style=\"color: #f08400; text-decoration: underline;\">Saura eMitra</a> and take immediate action on these tickets before they escalate to the L1 (Central POC) stage";
     }
     
     /**
@@ -446,6 +482,9 @@ public class DynamicEmailTemplateService {
         switch (workflowState) {
             case "OUT_OF_WARRANTY":
             case "PENDING_ASSIGNMENT_OUT_OF_WARRANTY":
+                return "Out of Warranty - Pending State POC";
+            
+            case "OUT_OF_WARRANTY_PENDING_STATE_POC":
                 return "Out of Warranty - Pending State POC";
             
             case "PENDINGFORASSIGNMENT":
