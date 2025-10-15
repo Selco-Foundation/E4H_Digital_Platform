@@ -60,6 +60,7 @@ const useFieldPlan = (queryFilter, pageSize, pageOffset) => {
   const filter = {
     ActivityAssignment : {
       tenantId: Digit.ULBService.getCurrentTenantId(),
+      roles: ["INSTALLATION_REVIEWER"],
     }
   };
 

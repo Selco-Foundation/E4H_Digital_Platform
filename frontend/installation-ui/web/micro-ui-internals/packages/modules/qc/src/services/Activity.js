@@ -24,7 +24,7 @@ export const ActivityService = {
     });
   },
 
-  fetchFacilityAssignments: async (queryFilter, limit = 10, offset = 0) => {
+  fetchActivityFacilities: async (queryFilter, limit = 10, offset = 0) => {
     const endpoint = "/activity/v1/activities/_search";
     const headers = {
       "Content-Type": "application/json"

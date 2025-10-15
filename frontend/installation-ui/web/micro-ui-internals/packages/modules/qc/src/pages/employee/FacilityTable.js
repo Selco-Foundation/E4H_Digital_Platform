@@ -91,13 +91,7 @@ const FacilityTable = ({ t }) => {
 
   useEffect(() => {
     if (facilityData) {
-      const refactoredDataCopy = facilityData?.facilities.map((row) => ({
-        ...row,
-        projectName: fieldPlan?.name,
-        status: row?.status,
-      }));
-
-      setData(refactoredDataCopy);
+      setData(facilityData.facilities);
       setSelectedFacilities([]);
       setMainCheck(false);
     }
@@ -340,7 +334,7 @@ const FacilityTable = ({ t }) => {
             alignItems: "center",
             height: "100%",
             width: "100%",
-            zIndex: 5,
+            zIndex: 10000000,
             backgroundColor: "gray",
             opacity: 0.5,
             position: "fixed",

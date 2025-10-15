@@ -50,20 +50,20 @@ const fetchInboxData = async (filter, limit, offset) => {
 
 const formatFacilities = (facilities) => {
   return facilities?.map((row) => ({
-      id: row?.id,
-      facilityName: row?.facility?.facility_name,
-      facilityId: row?.facilityId,
-      status: row?.status,
-      block: row?.facility?.boundaryCode,
-      district: row?.facility?.additionalDetails?.district,
-      assigned: row?.assignedUser,
+      id: row?.activityFacility?.id,
+      facilityName: row?.activityFacility?.facility?.facility_name,
+      facilityId: row?.activityFacility?.facilityId,
+      status: row?.activityFacility?.status,
+      block: row?.activityFacility?.facility?.boundaryCode,
+      district: row?.activityFacility?.facility?.additionalDetails?.district,
+      assigned: row?.activityFacility?.assignedEmployeeUser?.name,
   }));
 }
 
 const fetchFacilities = async (filter, limit, offset) => {
-  const facilitiesResponse = await ActivityService.fetchFacilityAssignments(filter, limit, offset);
+  const facilitiesResponse = await ActivityService.fetchActivityFacilities(filter, limit, offset);
   return {
-    facilities: formatFacilities(facilitiesResponse.ActivityFacility),
+    facilities: formatFacilities(facilitiesResponse.facility),
     totalCount: facilitiesResponse.TotalCount,
   }
 }
