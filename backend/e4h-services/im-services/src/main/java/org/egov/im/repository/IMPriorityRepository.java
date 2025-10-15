@@ -34,7 +34,7 @@ public class IMPriorityRepository {
         String query = queryBuilder.getSearchQuery(criteria, preparedStmtList);
         log.info("Executing IMPriority Query: {} | Params: {}", query, preparedStmtList);
         List<Priority> priorityList = jdbcTemplate.query(query, rowMapper, preparedStmtList.toArray());
-        return  getMaxPriority(priorityList);
+        return priorityList.isEmpty() ? Priority.MEDIUM : getMaxPriority(priorityList);
     }
 
     public Priority getMaxPriority(List<Priority> priorities) {
