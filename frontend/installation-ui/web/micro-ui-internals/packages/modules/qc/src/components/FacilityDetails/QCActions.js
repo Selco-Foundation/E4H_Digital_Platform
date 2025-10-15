@@ -1,7 +1,7 @@
 import React from 'react';
 import { useDispatch, useSelector } from "react-redux";
 import { clearRejectionReasons } from "../../redux/actions";
-import { QCService } from "../../services/QC";
+import { ActivityService } from "../../services/Activity";
 
 const QCActions = ({ revalidateData, setUpdatingWorkflow, aggregatedDocuments }) => {
 
@@ -13,8 +13,8 @@ const QCActions = ({ revalidateData, setUpdatingWorkflow, aggregatedDocuments })
     setUpdatingWorkflow(true);
 
     try {
-      const response = await QCService.updateProjectWorkflow(
-        selectedFacility?.projectId, "APPROVE",
+      const response = await ActivityService.updateActivityFacilityWorkflow(
+        selectedFacility?.id, "APPROVE",
         [], "Approved by Installation Reviewer",
         aggregatedDocuments
       );
@@ -60,8 +60,8 @@ const QCActions = ({ revalidateData, setUpdatingWorkflow, aggregatedDocuments })
     const comments = formatRejectionReasons(rejectionReasons);
 
     try {
-      const response = await QCService.updateProjectWorkflow(
-        selectedFacility?.projectId, "REJECT_AND_ASSIGN_FOR_FIELD_QC",
+      const response = await ActivityService.updateActivityFacilityWorkflow(
+        selectedFacility?.id, "REJECT_AND_ASSIGN_FOR_FIELD_QC",
         comments, "Rejected by Installation Reviewer",
         aggregatedDocuments
       );
@@ -83,8 +83,8 @@ const QCActions = ({ revalidateData, setUpdatingWorkflow, aggregatedDocuments })
     const comments = formatRejectionReasons(rejectionReasons);
 
     try {
-      const response = await QCService.updateProjectWorkflow(
-        selectedFacility?.projectId, "FLAG_FOR_QC",
+      const response = await ActivityService.updateActivityFacilityWorkflow(
+        selectedFacility?.id, "FLAG_FOR_QC",
         comments, "Flagged for QC by Installation Reviewer",
         aggregatedDocuments
       );

@@ -46,4 +46,33 @@ export const ActivityService = {
     });
   },
 
+  updateActivityFacilityWorkflow : async (activityFacilityId, action, comments, workflowComment, documents = []) => {
+    const endpoint = "/activity/v1/activities/workflow/update";
+    const queryObj = {
+      activityFacilityId: activityFacilityId,
+      workflow: {
+        action: action,
+        comment: workflowComment,
+        documents: documents
+      },
+      transactions: [
+        {
+          comments: [...comments]
+        }
+      ]
+    }
+    const headers = {
+      "Content-Type" : "application/json"
+    }
+
+    return await Request({
+      url : endpoint,
+      data : queryObj,
+      method : "POST",
+      userService : true,
+      auth : true,
+      headers : headers,
+    });
+  },
+
 }

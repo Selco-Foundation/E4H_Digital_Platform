@@ -101,35 +101,6 @@ export const QCService = {
     };
   },
 
-  updateProjectWorkflow : async (projectId, action, comments, workflowComment, documents = []) => {
-    const endpoint = "/project/v1/project/workflow/update";
-    const queryObj = {
-      projectId: projectId,
-      workflow: {
-        action: action,
-        comment: workflowComment,
-        documents: documents
-      },
-      transactions: [
-        {
-          comments: [...comments]
-        }
-      ]
-    }
-    const headers = {
-      "Content-Type" : "application/json"
-    }
-
-    return await Request({
-      url : endpoint,
-      data : queryObj,
-      method : "POST",
-      userService : true,
-      auth : true,
-      headers : headers,
-    });
-  },
-
   bulkApproveProjects: async (filters, mainCheck, projectIds) => {
     const endpoint = "/project/v1/project/bulk/workflow/update";
 
