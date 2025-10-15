@@ -3,7 +3,7 @@ package org.egov.im.repository;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.im.repository.rowmapper.IMPriorityRowMapper;
 import org.egov.im.repository.rowmapper.IMPriorityQueryBuilder;
-import org.egov.im.web.models.PrioritySearchCriteria;
+import org.egov.im.web.models.IMPrioritySearchCriteria;
 import org.egov.im.web.models.Priority;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -20,7 +20,7 @@ public class IMPriorityRepository {
     private final IMPriorityQueryBuilder queryBuilder;
     private final IMPriorityRowMapper rowMapper;
 
-    // Constructor-based dependency injection
+    @Autowired
     public IMPriorityRepository(JdbcTemplate jdbcTemplate,
                                 IMPriorityQueryBuilder queryBuilder,
                                 IMPriorityRowMapper rowMapper) {
@@ -28,42 +28,15 @@ public class IMPriorityRepository {
         this.queryBuilder = queryBuilder;
         this.rowMapper = rowMapper;
     }
-    /**
-     * Fetch priorities based on (incidentType + incidentSubType) for a tenant
-     */
-    public List<Priority> getPrioritiesByTypeAndSubtype(String tenantId, String incidentType, String incidentSubType) {
-        if (tenantId == null || incidentType == null || incidentSubType == null) return new ArrayList<>();
 
+    public Priority getPriority(IMPrioritySearchCriteria criteria) {
         List<Object> preparedStmtList = new ArrayList<>();
-        preparedStmtList.add(tenantId); // always first
-
-        PrioritySearchCriteria criteria = new PrioritySearchCriteria();
-        criteria.setIncidentType(incidentType);
-        criteria.setIncidentSubType(incidentSubType);
-
-        String query = queryBuilder.getSearchQuery(criteria, preparedStmtList, "typeAndSubtype");
-        return jdbcTemplate.query(query, rowMapper, preparedStmtList.toArray());
+        String query = queryBuilder.getSearchQuery(criteria, preparedStmtList);
+        log.info("Executing IMPriority Query: {} | Params: {}", query, preparedStmtList);
+        List<Priority> priorityList = jdbcTemplate.query(query, rowMapper, preparedStmtList.toArray());
+        return  getMaxPriority(priorityList);
     }
 
-    /**
-     * Fetch priorities based on systemFunctional for a tenant
-     */
-    public List<Priority> getPrioritiesBySystemFunctional(String tenantId, String systemFunctional) {
-        if (tenantId == null || systemFunctional == null) return new ArrayList<>();
-
-        List<Object> preparedStmtList = new ArrayList<>();
-        preparedStmtList.add(tenantId); // always first
-
-        PrioritySearchCriteria criteria = new PrioritySearchCriteria();
-        criteria.setSystemFunctional(systemFunctional);
-
-        String query = queryBuilder.getSearchQuery(criteria, preparedStmtList, "systemFunctional");
-        return jdbcTemplate.query(query, rowMapper, preparedStmtList.toArray());
-    }
-
-    /**
-     * Utility to get max priority from a list
-     */
     public Priority getMaxPriority(List<Priority> priorities) {
         return priorities.stream()
                 .max((p1, p2) -> Integer.compare(getPriorityRank(p1), getPriorityRank(p2)))

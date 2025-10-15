@@ -2,10 +2,12 @@ package org.egov.im.repository.rowmapper;
 
 import org.egov.im.web.models.Priority;
 import org.springframework.jdbc.core.RowMapper;
+import org.springframework.stereotype.Repository;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
+@Repository
 public class IMPriorityRowMapper implements RowMapper<Priority> {
 
     @Override
