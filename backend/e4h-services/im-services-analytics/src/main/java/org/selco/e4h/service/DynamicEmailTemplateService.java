@@ -213,25 +213,26 @@ public class DynamicEmailTemplateService {
                 l1Tickets.addAll(ticketsByLevel.get("LEVEL_ONE"));
             }
             
-            // Generate L1 section with combined tickets
-            String l1FileStoreId = fileStoreIdsByLevel != null ? fileStoreIdsByLevel.get("LEVEL_ONE") : null;
-            String l1Section = generateEscalationSection("LEVEL_ONE", l1Tickets, recipientRole, tenantId, requestInfo, l1FileStoreId);
-            if (l1Section != null && !l1Section.isEmpty()) {
-                sections.append(l1Section);
-                sections.append("<div class=\"sp-20\"></div>\n");
+            // Generate L1 section with combined tickets (only if tickets exist)
+            if (!l1Tickets.isEmpty()) {
+                String l1FileStoreId = fileStoreIdsByLevel != null ? fileStoreIdsByLevel.get("LEVEL_ONE") : null;
+                String l1Section = generateEscalationSection("LEVEL_ONE", l1Tickets, recipientRole, tenantId, requestInfo, l1FileStoreId);
+                if (l1Section != null && !l1Section.isEmpty()) {
+                    sections.append(l1Section);
+                    sections.append("<div class=\"sp-20\"></div>\n");
+                }
             }
             
-            // Generate L2 section if exists
+            // Generate L2 section if exists and has tickets
             if (ticketsByLevel.containsKey("LEVEL_TWO")) {
                 List<EscalationTicket> l2Tickets = ticketsByLevel.get("LEVEL_TWO");
-                if (l2Tickets == null) {
-                    l2Tickets = new ArrayList<>();
-                }
-                String l2FileStoreId = fileStoreIdsByLevel != null ? fileStoreIdsByLevel.get("LEVEL_TWO") : null;
-                String l2Section = generateEscalationSection("LEVEL_TWO", l2Tickets, recipientRole, tenantId, requestInfo, l2FileStoreId);
-                if (l2Section != null && !l2Section.isEmpty()) {
-                    sections.append(l2Section);
-                    sections.append("<div class=\"sp-20\"></div>\n");
+                if (l2Tickets != null && !l2Tickets.isEmpty()) {
+                    String l2FileStoreId = fileStoreIdsByLevel != null ? fileStoreIdsByLevel.get("LEVEL_TWO") : null;
+                    String l2Section = generateEscalationSection("LEVEL_TWO", l2Tickets, recipientRole, tenantId, requestInfo, l2FileStoreId);
+                    if (l2Section != null && !l2Section.isEmpty()) {
+                        sections.append(l2Section);
+                        sections.append("<div class=\"sp-20\"></div>\n");
+                    }
                 }
             }
         } else {
@@ -242,16 +243,14 @@ public class DynamicEmailTemplateService {
             
             for (String level : sortedLevels) {
                 List<EscalationTicket> tickets = ticketsByLevel.get(level);
-                if (tickets == null) {
-                    tickets = new ArrayList<>(); // Empty list for zero count display
-                }
-                
-                // Generate section for this level
-                String fileStoreId = fileStoreIdsByLevel != null ? fileStoreIdsByLevel.get(level) : null;
-                String section = generateEscalationSection(level, tickets, recipientRole, tenantId, requestInfo, fileStoreId);
-                if (section != null && !section.isEmpty()) {
-                    sections.append(section);
-                    sections.append("<div class=\"sp-20\"></div>\n"); // Spacing between sections
+                if (tickets != null && !tickets.isEmpty()) {
+                    // Generate section for this level (only if tickets exist)
+                    String fileStoreId = fileStoreIdsByLevel != null ? fileStoreIdsByLevel.get(level) : null;
+                    String section = generateEscalationSection(level, tickets, recipientRole, tenantId, requestInfo, fileStoreId);
+                    if (section != null && !section.isEmpty()) {
+                        sections.append(section);
+                        sections.append("<div class=\"sp-20\"></div>\n"); // Spacing between sections
+                    }
                 }
             }
         }
@@ -272,6 +271,11 @@ public class DynamicEmailTemplateService {
         
         // Skip sections with null titles (e.g., CENTRAL_POC LEVEL_ZERO)
         if (sectionTitle == null) {
+            return "";
+        }
+        
+        // Skip sections with no tickets (empty ticket list)
+        if (tickets == null || tickets.isEmpty()) {
             return "";
         }
         
