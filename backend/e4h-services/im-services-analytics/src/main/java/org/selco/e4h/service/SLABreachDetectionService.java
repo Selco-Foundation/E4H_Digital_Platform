@@ -51,36 +51,32 @@ public class SLABreachDetectionService {
             // Execute query using ElasticsearchClient
             List<EscalationTicket> breachTickets = elasticSearchClient.searchTickets(query);
             
-            // Filter out tickets that are already escalated to this recipient and level
-            // Also apply additional filtering for LEVEL_TWO (aged tickets only)
+            // The Elasticsearch query already filters for SLA breach and escalation exclusions
+            // Only apply post-filtering for special cases like LEVEL_TWO aged tickets
             List<EscalationTicket> filteredTickets = new ArrayList<>();
-            int alreadyEscalatedCount = 0;
-            int agedFilterCount = 0;
+            int additionalFilterCount = 0;
             long currentTime = System.currentTimeMillis();
             
             for (EscalationTicket ticket : breachTickets) {
-                if (isAlreadyEscalated(ticket, escalationRecipientId, escalationLevel)) {
-                    alreadyEscalatedCount++;
-                    log.debug("Skipping ticket {} - already escalated to {} at level {}", 
-                        ticket.getIncidentId(), escalationRecipientId, escalationLevel);
-                } else if ("LEVEL_TWO".equals(escalationLevel)) {
-                    // For LEVEL_TWO, only include tickets breached for more than 2 business days (16 hours)
+                // For LEVEL_TWO, apply additional age filtering (16+ hours breached)
+                if ("LEVEL_TWO".equals(escalationLevel)) {
                     if (isTicketAgedBeyondBreach(ticket, currentTime, 16.0)) {
                         filteredTickets.add(ticket);
                         log.debug("Ticket {} included in LEVEL_TWO escalation - breached for more than 16 hours", 
                             ticket.getIncidentId());
                     } else {
-                        agedFilterCount++;
+                        additionalFilterCount++;
                         log.debug("Skipping ticket {} - not aged enough for LEVEL_TWO escalation", 
                             ticket.getIncidentId());
                     }
                 } else {
+                    // For LEVEL_ZERO and LEVEL_ONE, use tickets as returned by Elasticsearch
                     filteredTickets.add(ticket);
                 }
             }
             
-            log.info("Found {} tickets in SLA breach for tenant: {} with escalation level: {} ({} already escalated, {} aged filter, {} new)", 
-                breachTickets.size(), tenantId, escalationLevel, alreadyEscalatedCount, agedFilterCount, filteredTickets.size());
+            log.info("Found {} tickets in SLA breach for tenant: {} with escalation level: {} ({} additional filters, {} final)", 
+                breachTickets.size(), tenantId, escalationLevel, additionalFilterCount, filteredTickets.size());
             
             return filteredTickets;
             
@@ -92,56 +88,6 @@ public class SLABreachDetectionService {
         }
     }
     
-    /**
-     * Fallback method to find SLA breach tickets (kept for error recovery)
-     */
-    private List<EscalationTicket> findSLABreachTicketsFallback(String tenantId, List<String> workflowStates, String escalationRecipientId, String escalationLevel) {
-        try {
-            log.info("Using fallback method to find SLA breach tickets for tenant: {}", tenantId);
-            
-            // Fetch tickets from Elasticsearch
-            List<Map<String, Object>> tickets = elasticSearchClient.fetchRequiredTickets(0, 10000, false);
-            
-            List<EscalationTicket> breachTickets = new ArrayList<>();
-            long currentTime = System.currentTimeMillis();
-            
-            for (Map<String, Object> ticket : tickets) {
-                try {
-                    EscalationTicket escalationTicket = convertToEscalationTicket(ticket);
-                    
-                    // Check if ticket belongs to the specified tenant
-                    if (!tenantId.equals(escalationTicket.getTenantId())) {
-                        continue;
-                    }
-                    
-                    // Check if ticket is in the specified workflow states
-                    if (!workflowStates.contains(escalationTicket.getApplicationStatus())) {
-                        continue;
-                    }
-                    
-                    // Check if ticket is already escalated to this recipient and level
-                    if (isAlreadyEscalated(escalationTicket, escalationRecipientId, escalationLevel)) {
-                        continue;
-                    }
-                    
-                    // Check if ticket is in SLA breach
-                    if (isInSLABreach(escalationTicket, currentTime)) {
-                        breachTickets.add(escalationTicket);
-                    }
-                    
-                } catch (Exception e) {
-                    log.warn("Error processing ticket: {}", ticket.get("id"), e);
-                }
-            }
-            
-            log.info("Found {} tickets in SLA breach for tenant: {} (fallback method)", breachTickets.size(), tenantId);
-            return breachTickets;
-            
-        } catch (Exception e) {
-            log.error("Error in fallback method for finding SLA breach tickets for tenant: {}", tenantId, e);
-            return new ArrayList<>();
-        }
-    }
     
     /**
      * Find tickets in SLA breach for country level (all tenants)
@@ -467,78 +413,6 @@ public class SLABreachDetectionService {
             .anyMatch(escalation -> escalationRecipientId.equals(escalation.getEscalationId()));
     }
     
-    /**
-     * Check if ticket is already escalated to the specified recipient and escalation level
-     * Supports escalation level progression (LEVEL_ONE → LEVEL_TWO)
-     * Fixed to handle duplicate escalation entries and prevent multiple escalations
-     */
-    private boolean isAlreadyEscalated(EscalationTicket ticket, String escalationRecipientId, String escalationLevel) {
-        if (ticket.getEscalationInfo() == null || ticket.getEscalationInfo().isEmpty()) {
-            return false;
-        }
-        
-        // Create a map to deduplicate escalations by (escalationId, escalationLevel) combination
-        // Keep only the most recent escalation time for each unique combination
-        Map<String, Long> uniqueEscalations = new HashMap<>();
-        
-        for (EscalationInfo escalation : ticket.getEscalationInfo()) {
-            if (escalation.getEscalationId() != null && escalation.getEscalationLevel() != null) {
-                String key = escalation.getEscalationId() + "_" + escalation.getEscalationLevel();
-                Long currentTime = escalation.getEscalationTime();
-                
-                // Keep the most recent escalation time for this combination
-                if (currentTime != null && (uniqueEscalations.get(key) == null || currentTime > uniqueEscalations.get(key))) {
-                    uniqueEscalations.put(key, currentTime);
-                }
-            }
-        }
-        
-        // Check if already escalated to the same recipient AND same level
-        String checkKey = escalationRecipientId + "_" + escalationLevel;
-        if (uniqueEscalations.containsKey(checkKey)) {
-            log.debug("Ticket {} already escalated to recipient {} at level {} at time {}", 
-                ticket.getIncidentId(), escalationRecipientId, escalationLevel, uniqueEscalations.get(checkKey));
-            return true; // Already escalated to this level
-        }
-        
-        // For LEVEL_TWO escalations, check if we can escalate from LEVEL_ONE
-        if ("LEVEL_TWO".equals(escalationLevel)) {
-            String levelOneKey = escalationRecipientId + "_LEVEL_ONE";
-            if (uniqueEscalations.containsKey(levelOneKey)) {
-                Long levelOneEscalationTime = uniqueEscalations.get(levelOneKey);
-                long currentTime = System.currentTimeMillis();
-                
-                // Check if enough time has passed (2 business days = 16 hours)
-                boolean enoughTimePassed = (currentTime - levelOneEscalationTime) >= (16 * 60 * 60 * 1000);
-                
-                if (!enoughTimePassed) {
-                    log.debug("Ticket {} cannot be escalated to LEVEL_TWO yet. LEVEL_ONE escalation was {} ms ago (need 16 hours)", 
-                        ticket.getIncidentId(), (currentTime - levelOneEscalationTime));
-                    return true; // Don't allow escalation yet
-                }
-            }
-        }
-        
-        // For LEVEL_ONE escalations, check if recently escalated to LEVEL_ZERO
-        if ("LEVEL_ONE".equals(escalationLevel)) {
-            String levelZeroKey = escalationRecipientId + "_LEVEL_ZERO";
-            if (uniqueEscalations.containsKey(levelZeroKey)) {
-                Long levelZeroEscalationTime = uniqueEscalations.get(levelZeroKey);
-                long currentTime = System.currentTimeMillis();
-                
-                // Check if enough time has passed (minimum 1 hour between levels)
-                boolean enoughTimePassed = (currentTime - levelZeroEscalationTime) >= (60 * 60 * 1000); // 1 hour
-                
-                if (!enoughTimePassed) {
-                    log.debug("Ticket {} cannot be escalated to LEVEL_ONE yet. LEVEL_ZERO escalation was {} ms ago (need 1 hour)", 
-                        ticket.getIncidentId(), (currentTime - levelZeroEscalationTime));
-                    return true; // Don't allow escalation yet
-                }
-            }
-        }
-        
-        return false; // Allow escalation
-    }
 
     /**
      * Find tickets that were previously escalated (last week) but are now resolved/closed
@@ -1095,32 +969,20 @@ public class SLABreachDetectionService {
         // Filter by SLA breach based on escalation level configuration from MDMS
         EscalationLevel escalationLevelConfig = getEscalationLevelConfig(escalationLevel, requestInfo);
         
-        if (escalationLevelConfig != null) {
-            // Build SLA filter based on calculation strategy
+        if (escalationLevelConfig == null) {
+            log.error("EscalationLevel config not found for {} - MDMS configuration is required", escalationLevel);
+            throw new RuntimeException("EscalationLevel configuration not found for " + escalationLevel + ". Please ensure MDMS is properly configured.");
+        }
+        
+        // Build SLA filter based on calculation strategy from MDMS
             Map<String, Object> slaFilter = buildSLAFilter(escalationLevel, escalationLevelConfig);
             if (slaFilter != null) {
                 must.add(slaFilter);
-            }
-        } else {
-            // Fallback to hardcoded thresholds if MDMS fetch fails
-            log.warn("EscalationLevel config not found for {}, using fallback thresholds", escalationLevel);
-            double thresholdHours = getBreachThresholdHoursFallback(escalationLevel);
-            long thresholdMs = (long) (thresholdHours * 60 * 60 * 1000);
-            
-            Map<String, Object> slaRemainingRange = new HashMap<>();
-            Map<String, Object> slaRemainingRangeQuery = new HashMap<>();
-            
-            if ("LEVEL_ZERO".equals(escalationLevel)) {
-                slaRemainingRangeQuery.put("lte", thresholdMs);
-                slaRemainingRangeQuery.put("gt", 0);
-            } else {
-                slaRemainingRangeQuery.put("lte", thresholdMs);
-            }
-            
-            slaRemainingRange.put("Data.slaRemaining", slaRemainingRangeQuery);
-            Map<String, Object> slaRemainingFilter = new HashMap<>();
-            slaRemainingFilter.put("range", slaRemainingRange);
-            must.add(slaRemainingFilter);
+            log.debug("Added SLA filter for {} using strategy: {} with threshold: {} hours / {}%", 
+                escalationLevel, 
+                escalationLevelConfig.getBreachCalculationStrategy(),
+                escalationLevelConfig.getBreachThresholdInHours(),
+                escalationLevelConfig.getBreachThresholdInPercentage());
         }
 
         // Exclude tickets already escalated to this recipient AND level
@@ -1289,24 +1151,7 @@ public class SLABreachDetectionService {
         return filter;
     }
     
-    /**
-     * Fallback method: Get breach threshold in hours (used if MDMS fetch fails)
-     */
-    private double getBreachThresholdHoursFallback(String escalationLevel) {
-        if ("LEVEL_ZERO".equals(escalationLevel)) {
-            // LEVEL_ZERO uses percentage-based calculation (70% threshold) in MDMS
-            // This fallback is only used if MDMS is unavailable
-            return 0.0; // Fallback to immediate breach detection if MDMS unavailable
-        } else if ("LEVEL_ONE".equals(escalationLevel)) {
-            return 0.0; // Tickets recently breached (SLA just completed) - immediate escalation
-        } else if ("LEVEL_TWO".equals(escalationLevel)) {
-            return -16.0; // Tickets heavily breached (> 2 business days = 16 hours overdue) - L2 escalation
-        } else {
-            // Default to LEVEL_ONE threshold
-            log.warn("Unknown escalation level: {}, using LEVEL_ONE threshold (0 hours)", escalationLevel);
-            return 0.0;
-        }
-    }
+    
     
     /**
      * Build Elasticsearch query for SLA breach tickets with escalation level threshold (country level)
@@ -1330,26 +1175,20 @@ public class SLABreachDetectionService {
         // Filter by SLA breach based on escalation level configuration from MDMS
         EscalationLevel escalationLevelConfig = getEscalationLevelConfig(escalationLevel, requestInfo);
         
-        if (escalationLevelConfig != null) {
-            // Build SLA filter based on calculation strategy
+        if (escalationLevelConfig == null) {
+            log.error("EscalationLevel config not found for {} (country level) - MDMS configuration is required", escalationLevel);
+            throw new RuntimeException("EscalationLevel configuration not found for " + escalationLevel + ". Please ensure MDMS is properly configured.");
+        }
+        
+        // Build SLA filter based on calculation strategy from MDMS
             Map<String, Object> slaFilter = buildSLAFilter(escalationLevel, escalationLevelConfig);
             if (slaFilter != null) {
                 must.add(slaFilter);
-            }
-        } else {
-            // Fallback to hardcoded thresholds if MDMS fetch fails
-            log.warn("EscalationLevel config not found for {} (country level), using fallback thresholds", escalationLevel);
-            double thresholdHours = getBreachThresholdHoursFallback(escalationLevel);
-            long thresholdMs = (long) (thresholdHours * 60 * 60 * 1000);
-            
-            Map<String, Object> slaRemainingRange = new HashMap<>();
-            Map<String, Object> slaRemainingRangeQuery = new HashMap<>();
-            slaRemainingRangeQuery.put("lte", thresholdMs);
-            slaRemainingRange.put("Data.slaRemaining", slaRemainingRangeQuery);
-            
-            Map<String, Object> slaRemainingFilter = new HashMap<>();
-            slaRemainingFilter.put("range", slaRemainingRange);
-            must.add(slaRemainingFilter);
+            log.debug("Added SLA filter for {} (country level) using strategy: {} with threshold: {} hours / {}%", 
+                escalationLevel, 
+                escalationLevelConfig.getBreachCalculationStrategy(),
+                escalationLevelConfig.getBreachThresholdInHours(),
+                escalationLevelConfig.getBreachThresholdInPercentage());
         }
         
         // Exclude tickets already escalated to this recipient AND level
