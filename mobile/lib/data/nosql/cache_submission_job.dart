@@ -1,0 +1,23 @@
+import 'package:isar/isar.dart';
+
+part 'cache_submission_job.g.dart';
+
+@Collection()
+class CacheSubmissionJob {
+  Id id = Isar.autoIncrement;
+
+  @Index(unique: true)
+  late String projectId;
+
+  /// 'queued' | 'running' | 'success' | 'failed'
+  late String status;
+
+  String? error;
+  DateTime updatedAt = DateTime.now();
+
+  CacheSubmissionJob({
+    required this.projectId,
+    required this.status,
+    this.error,
+  });
+}
