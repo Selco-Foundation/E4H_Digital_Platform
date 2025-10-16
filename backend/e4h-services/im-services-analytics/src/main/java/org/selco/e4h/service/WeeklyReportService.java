@@ -374,14 +374,20 @@ public class WeeklyReportService {
      * Format state list for display
      */
     private String formatStateList(String tenantId, Set<String> states) {
+        log.info("formatStateList called with tenantId: {}, states: {}", tenantId, states);
+        
         if (states == null || states.isEmpty()) {
             // If no states with data, show the state name for the tenant
-            return commonUtility.getStateDisplayName(tenantId);
+            String stateName = commonUtility.getStateDisplayName(tenantId);
+            log.info("No states with data, returning state name: {}", stateName);
+            return stateName;
         }
         
-        return states.stream()
+        String result = states.stream()
             .map(commonUtility::getStateDisplayName)
             .collect(Collectors.joining(", "));
+        log.info("States with data, returning: {}", result);
+        return result;
     }
     
 }

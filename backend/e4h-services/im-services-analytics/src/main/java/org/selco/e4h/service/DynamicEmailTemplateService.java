@@ -182,26 +182,22 @@ public class DynamicEmailTemplateService {
                 sections.append("<div class=\"sp-20\"></div>\n");
             }
             
-            // Generate L2 section if exists (always show, even with 0 tickets)
-            if (ticketsByLevel.containsKey("LEVEL_TWO")) {
-                List<EscalationTicket> l2Tickets = ticketsByLevel.get("LEVEL_TWO");
-                if (l2Tickets == null) {
-                    l2Tickets = new ArrayList<>();
-                }
-                String l2FileStoreId = fileStoreIdsByLevel != null ? fileStoreIdsByLevel.get("LEVEL_TWO") : null;
-                String l2Section = generateEscalationSection("LEVEL_TWO", l2Tickets, recipientRole, tenantId, requestInfo, l2FileStoreId);
-                if (l2Section != null && !l2Section.isEmpty()) {
-                    sections.append(l2Section);
-                    sections.append("<div class=\"sp-20\"></div>\n");
-                }
+            // Always generate L2 section for CENTRAL_POC (even with 0 tickets)
+            List<EscalationTicket> l2Tickets = ticketsByLevel.get("LEVEL_TWO");
+            if (l2Tickets == null) {
+                l2Tickets = new ArrayList<>();
+            }
+            String l2FileStoreId = fileStoreIdsByLevel != null ? fileStoreIdsByLevel.get("LEVEL_TWO") : null;
+            String l2Section = generateEscalationSection("LEVEL_TWO", l2Tickets, recipientRole, tenantId, requestInfo, l2FileStoreId);
+            if (l2Section != null && !l2Section.isEmpty()) {
+                sections.append(l2Section);
+                sections.append("<div class=\"sp-20\"></div>\n");
             }
         } else {
-            // Default behavior for other roles
-            List<String> sortedLevels = ticketsByLevel.keySet().stream()
-                .sorted((a, b) -> getLevelOrder(a) - getLevelOrder(b))
-                .collect(Collectors.toList());
+            // Default behavior for other roles - always show expected sections
+            List<String> expectedLevels = getExpectedLevelsForRole(recipientRole);
             
-            for (String level : sortedLevels) {
+            for (String level : expectedLevels) {
                 List<EscalationTicket> tickets = ticketsByLevel.get(level);
                 if (tickets == null) {
                     tickets = new ArrayList<>();
@@ -230,9 +226,9 @@ public class DynamicEmailTemplateService {
         // Determine section title and subtext based on level and role
         String sectionTitle = getSectionTitle(level, recipientRole);
         
-        // Skip sections with null titles (e.g., CENTRAL_POC LEVEL_ZERO)
+        // Always show sections, even if title would be null
         if (sectionTitle == null) {
-            return "";
+            sectionTitle = getDefaultSectionTitle(level, recipientRole);
         }
         
         // Handle empty tickets by showing sections with count 0
@@ -383,6 +379,51 @@ public class DynamicEmailTemplateService {
             return "L2 Escalation";
         }
         return level + " Escalation";
+    }
+    
+    /**
+     * Get default section title when the original title would be null
+     */
+    private String getDefaultSectionTitle(String level, String recipientRole) {
+        if ("LEVEL_ZERO".equals(level)) {
+            return "My Tickets";
+        } else if ("LEVEL_ONE".equals(level)) {
+            return "L1 Escalation";
+        } else if ("LEVEL_TWO".equals(level)) {
+            return "L2 Escalation";
+        }
+        return level + " Escalation";
+    }
+    
+    /**
+     * Get expected escalation levels for each role
+     */
+    private List<String> getExpectedLevelsForRole(String recipientRole) {
+        List<String> expectedLevels = new ArrayList<>();
+        
+        switch (recipientRole) {
+            case "STATE_POC":
+                expectedLevels.add("LEVEL_ZERO"); // My Tickets
+                expectedLevels.add("LEVEL_ONE");  // L1 Escalation
+                break;
+            case "LEAD":
+            case "PROJECT_MANAGER":
+                expectedLevels.add("LEVEL_TWO");  // L2 Escalation
+                break;
+            case "CENTRAL_POC":
+                // Handled separately in the special case above
+                expectedLevels.add("LEVEL_ONE");  // L1 Escalation
+                expectedLevels.add("LEVEL_TWO");  // L2 Escalation
+                break;
+            default:
+                // Fallback - show all levels
+                expectedLevels.add("LEVEL_ZERO");
+                expectedLevels.add("LEVEL_ONE");
+                expectedLevels.add("LEVEL_TWO");
+                break;
+        }
+        
+        return expectedLevels;
     }
     
     /**

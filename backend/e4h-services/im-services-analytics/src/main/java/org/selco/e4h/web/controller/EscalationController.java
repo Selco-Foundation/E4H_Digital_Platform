@@ -216,11 +216,14 @@ public class EscalationController {
             Map<String, WeeklyReportData> reportDataByTenant = new HashMap<>();
             Map<String, String> csvFileStoreIds = new HashMap<>();
             
+            log.info("Processing tenant IDs for weekly report: {}", relevantTenantIds);
+            
             for (String tenantId : relevantTenantIds) {
                 try {
                     // Generate weekly report data for this tenant
                     WeeklyReportData reportData = weeklyReportService.generateWeeklyReportData(tenantId, requestInfo);
                     reportDataByTenant.put(tenantId, reportData);
+                    log.info("Added report data for tenant {} with stateList: '{}'", tenantId, reportData.getStateList());
                     
                     // Generate CSV for download only if there's data
                     String csvContent = generateWeeklyReportCsv(reportData, tenantId);
@@ -264,7 +267,9 @@ public class EscalationController {
             log.info("Sending consolidated weekly report email to: {} for {} tenants", emailId, reportDataByTenant.size());
             
             // Create a consolidated report data structure
+            log.info("Creating consolidated report data from {} tenant reports", reportDataByTenant.size());
             WeeklyReportData consolidatedData = createConsolidatedReportData(reportDataByTenant);
+            log.info("Final consolidated stateList: '{}'", consolidatedData.getStateList());
             
             // Get user info for email - try to get actual user name
             User user = getUserByEmailId(requestInfo, emailId);
@@ -355,10 +360,24 @@ public class EscalationController {
         ArrowData funcArrow = calculateArrow(funcStartPct, funcEndPct, true);
         ArrowData nonFuncArrow = calculateArrow(nonFuncStartPct, nonFuncEndPct, false);
         
-        // Create consolidated state list
-        String consolidatedStateList = consolidatedStateData.keySet().stream()
-            .map(commonUtility::getStateDisplayName)
-            .collect(Collectors.joining(", "));
+        // Create consolidated state list - use tenant IDs if no state data
+        String consolidatedStateList;
+        log.info("Creating consolidated state list. consolidatedStateData size: {}, reportDataByTenant keys: {}", 
+            consolidatedStateData.size(), reportDataByTenant.keySet());
+        
+        if (consolidatedStateData.isEmpty()) {
+            // If no state data, use tenant IDs from the reports
+            consolidatedStateList = reportDataByTenant.keySet().stream()
+                .map(commonUtility::getStateDisplayName)
+                .collect(Collectors.joining(", "));
+            log.info("Using tenant IDs for state list: {}", consolidatedStateList);
+        } else {
+            // Use state data keys if available
+            consolidatedStateList = consolidatedStateData.keySet().stream()
+                .map(commonUtility::getStateDisplayName)
+                .collect(Collectors.joining(", "));
+            log.info("Using state data keys for state list: {}", consolidatedStateList);
+        }
         
         // Create FunctionalMetrics objects
         FunctionalMetrics startMetrics = FunctionalMetrics.builder()
@@ -392,6 +411,8 @@ public class EscalationController {
             .stateList(consolidatedStateList)
             .todayFormatted(firstReport.getTodayFormatted())
             .build();
+        
+        log.info("Final consolidated report stateList: '{}'", consolidatedStateList);
     }
     
     /**

@@ -162,7 +162,9 @@ public class WeeklyReportEmailService {
         variables.put("STATE_ROWS", generateStateRows(reportData.getStateData()));
         
         // State list
-        variables.put("STATE_LIST", reportData.getStateList());
+        String stateListValue = reportData.getStateList();
+        variables.put("STATE_LIST", stateListValue);
+        log.info("STATE_LIST value: '{}', length: {}", stateListValue, stateListValue != null ? stateListValue.length() : "null");
         
         // Load and embed logos as base64 data URIs
         variables.put("SELCO_LOGO", commonUtility.loadLogoAsBase64("selcofoundation.png"));
@@ -264,7 +266,11 @@ public class WeeklyReportEmailService {
         
         for (Map.Entry<String, String> entry : variables.entrySet()) {
             String placeholder = "${" + entry.getKey() + "}";
-            result = result.replace(placeholder, entry.getValue());
+            String value = entry.getValue() != null ? entry.getValue() : "";
+            if ("STATE_LIST".equals(entry.getKey())) {
+                log.info("Replacing STATE_LIST placeholder with value: '{}'", value);
+            }
+            result = result.replace(placeholder, value);
         }
         
         return result;
