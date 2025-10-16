@@ -27,6 +27,9 @@ import java.util.*;
 import java.text.SimpleDateFormat;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.selco.e4h.config.ConsumerConfiguration;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.selco.e4h.repository.querybuilder.WeeklyReportQueryBuilder;
+import org.selco.e4h.util.ElasticSearchClient;
 
 /**
  * Controller for SLA escalation processing
@@ -47,6 +50,9 @@ public class EscalationController {
     private final DynamicEmailTemplateService dynamicEmailTemplateService;
     private final WeeklyReportService weeklyReportService;
     private final WeeklyReportEmailService weeklyReportEmailService;
+    private final WeeklyReportQueryBuilder weeklyReportQueryBuilder;
+    private final JdbcTemplate jdbcTemplate;
+    private final ElasticSearchClient elasticSearchClient;
     private final KafkaTemplate<String, Object> kafkaTemplate;
     private final ConsumerConfiguration consumerConfiguration;
     private final CommonUtility commonUtility;
@@ -85,7 +91,7 @@ public class EscalationController {
             
             log.info("Completed daily SLA escalation processing");
             return ResponseEntity.ok("Daily SLA escalation processing completed successfully");
-
+            
         } catch (Exception e) {
             log.error("Error during daily SLA escalation processing", e);
             escalationStatusService.publishGeneralFailureStatus("daily", e.getMessage());
@@ -183,7 +189,7 @@ public class EscalationController {
                 
                 try {
                     processWeeklyReportForEmail(requestInfo, emailId, recipientsForEmail, activeTenantIds);
-                } catch (Exception e) {
+        } catch (Exception e) {
                     log.error("Error processing weekly report for email: {}", emailId, e);
                 }
             }
@@ -251,14 +257,28 @@ public class EscalationController {
             // Create a consolidated report data structure
             WeeklyReportData consolidatedData = createConsolidatedReportData(reportDataByTenant);
             
-            // Get user info for email
-            User user = new User();
-            user.setEmailId(emailId);
-            user.setName("Weekly Report Recipient"); // Default name
+            // Get user info for email - try to get actual user name
+            User user = getUserByEmailId(requestInfo, emailId);
+            if (user == null) {
+                user = new User();
+                user.setEmailId(emailId);
+                user.setName("Weekly Report Recipient"); // Fallback name
+            }
+            
+            // Generate download URL for the first available CSV file
+            String downloadUrl = "#";
+            if (!csvFileStoreIds.isEmpty()) {
+                String firstFileStoreId = csvFileStoreIds.values().iterator().next();
+                downloadUrl = commonUtility.generateDownloadUrl(
+                    firstFileStoreId, "in", 
+                    consumerConfiguration.getFileStoreBaseUrl(),
+                    consumerConfiguration.getFileStoreDownloadEndpoint()
+                );
+            }
             
             // Generate email HTML using the weekly report email service
             String emailBody = weeklyReportEmailService.generateWeeklyReportEmailHTML(
-                consolidatedData, user.getName(), "consolidated", requestInfo, "#");
+                consolidatedData, user.getName(), "consolidated", requestInfo, downloadUrl);
             
             // Generate email subject
             String emailSubject = weeklyReportEmailService.generateWeeklyReportEmailSubject(
@@ -268,7 +288,7 @@ public class EscalationController {
             sendEmailViaKafka(user, emailSubject, emailBody, new ArrayList<>(), new ArrayList<>(), "in");
             
             log.info("Successfully sent consolidated weekly report email to: {}", emailId);
-            
+
         } catch (Exception e) {
             log.error("Error sending consolidated weekly report email to: {}", emailId, e);
             throw e;
@@ -726,6 +746,47 @@ public class EscalationController {
         }
     }
     
+    /**
+     * Get user by email ID from user service
+     */
+    private User getUserByEmailId(RequestInfo requestInfo, String emailId) {
+        try {
+            // Search for users with this email ID across all active tenants
+            List<String> activeTenantIds = masterDataService.fetchActiveTenantIds(requestInfo);
+            
+            for (String tenantId : activeTenantIds) {
+                // Search for users with any role in this tenant
+                List<String> allRoles = Arrays.asList("CENTRAL_POC", "STATE_POC", "VENDOR", "ADMIN");
+                List<User> users = userService.searchUsersByRoleAndTenant(requestInfo, tenantId, allRoles);
+                
+                for (User user : users) {
+                    if (emailId.equals(user.getEmailId())) {
+                        log.info("Found user: {} for email: {}", user.getName(), emailId);
+                        return user;
+                    }
+                }
+            }
+            
+            // Also check country-level tenant
+            List<String> allRoles = Arrays.asList("CENTRAL_POC", "STATE_POC", "VENDOR", "ADMIN");
+            List<User> countryUsers = userService.searchUsersByRoleInCountry(requestInfo, allRoles);
+            
+            for (User user : countryUsers) {
+                if (emailId.equals(user.getEmailId())) {
+                    log.info("Found country-level user: {} for email: {}", user.getName(), emailId);
+                    return user;
+                }
+            }
+            
+            log.warn("No user found for email: {}", emailId);
+            return null;
+            
+        } catch (Exception e) {
+            log.error("Error fetching user by email ID: {}", emailId, e);
+            return null;
+        }
+    }
+    
     
     /**
      * Send email via Kafka with CSV attachments
@@ -775,43 +836,80 @@ public class EscalationController {
     }
 
     /**
-     * Generate weekly report CSV content
+     * Generate weekly report CSV content using Elasticsearch computed-sla-im-services-write index
      */
     private String generateWeeklyReportCsv(WeeklyReportData reportData, String tenantId) {
         try {
             StringBuilder csv = new StringBuilder();
             
-            // CSV Header
-            csv.append("Facility ID,District,Block,PHC Type,Comments,System Status,Application Status,Age in Days,State\n");
+            // CSV Header - Health Facility focused
+            csv.append("Facility Code,Facility Name,Facility Type,District,Block,System Status,Ticket ID,Comments,Application Status,Age in Days,State\n");
             
-            // This would need to be implemented to fetch actual ticket data
-            // For now, we'll create a placeholder CSV with summary data
-            csv.append("SUMMARY,ALL,ALL,ALL,Weekly Report Summary,");
-            if (reportData.getWeekEndMetrics() != null) {
-                int endTotal = reportData.getWeekEndMetrics().getFunctionalCount() + reportData.getWeekEndMetrics().getNonFunctionalCount();
-                double funcEndPct = endTotal > 0 ? (reportData.getWeekEndMetrics().getFunctionalCount() * 100.0 / endTotal) : 0;
-                double nonFuncEndPct = endTotal > 0 ? (reportData.getWeekEndMetrics().getNonFunctionalCount() * 100.0 / endTotal) : 0;
-                csv.append("Functional: ").append(reportData.getWeekEndMetrics().getFunctionalCount()).append(" (").append(String.format("%.1f", funcEndPct)).append("%),");
-                csv.append("Non-Functional: ").append(reportData.getWeekEndMetrics().getNonFunctionalCount()).append(" (").append(String.format("%.1f", nonFuncEndPct)).append("%),");
-            } else {
-                csv.append("Functional: 0 (0.0%),");
-                csv.append("Non-Functional: 0 (0.0%),");
-            }
-            csv.append("N/A,");
-            csv.append(tenantId).append("\n");
+            // Query Elasticsearch computed-sla-im-services-write index for all tickets
+            List<Map<String, Object>> tickets = elasticSearchClient.fetchRequiredTickets(0, 10000, false);
             
-            csv.append("AGE_BUCKETS,ALL,ALL,ALL,Age Bucket Summary,");
-            if (reportData.getTotalAgeBuckets() != null) {
-                csv.append("< 1 Week: ").append(reportData.getTotalAgeBuckets().getTotalLt1Wk()).append(",");
-                csv.append("< 1 Month: ").append(reportData.getTotalAgeBuckets().getTotalLt1Mo()).append(",");
-                csv.append("< 3 Month: ").append(reportData.getTotalAgeBuckets().getTotalLt3Mo()).append(",");
-            } else {
-                csv.append("< 1 Week: 0,");
-                csv.append("< 1 Month: 0,");
-                csv.append("< 3 Month: 0,");
+            try {
+                for (Map<String, Object> ticket : tickets) {
+                    Map<String, Object> data = (Map<String, Object>) ticket.get("Data");
+                    if (data != null) {
+                        // Filter by tenant
+                        String ticketTenantId = (String) data.get("tenantid");
+                        if (!tenantId.equals(ticketTenantId)) {
+                            continue;
+                        }
+                        csv.append(escapeCsvField(getStringValue(data, "tenantid"))).append(",");
+                        csv.append(escapeCsvField(getStringValue(data, "tenantid"))).append(",");
+                        csv.append(escapeCsvField(getStringValue(data, "phctype"))).append(",");
+                        csv.append(escapeCsvField(getStringValue(data, "district"))).append(",");
+                        csv.append(escapeCsvField(getStringValue(data, "block"))).append(",");
+                        csv.append(escapeCsvField(getStringValue(data, "systemfunctional"))).append(",");
+                        csv.append(escapeCsvField(getStringValue(data, "incidentid"))).append(",");
+                        csv.append(escapeCsvField(getStringValue(data, "comments"))).append(",");
+                        
+                        // Get application status from nested structure
+                        Map<String, Object> currentProcessInstance = (Map<String, Object>) data.get("currentProcessInstance");
+                        String applicationStatus = "N/A";
+                        if (currentProcessInstance != null) {
+                            Map<String, Object> state = (Map<String, Object>) currentProcessInstance.get("state");
+                            if (state != null) {
+                                applicationStatus = getStringValue(state, "applicationStatus");
+                            }
+                        }
+                        csv.append(escapeCsvField(applicationStatus)).append(",");
+                        
+                        // Calculate age in days
+                        Long filedDate = (Long) data.get("fileddate");
+                        String ageInDays = "";
+                        if (filedDate != null) {
+                            long ageInMillis = System.currentTimeMillis() - filedDate;
+                            long ageInDaysLong = ageInMillis / (1000 * 60 * 60 * 24);
+                            ageInDays = String.valueOf(ageInDaysLong);
+                        }
+                        csv.append(ageInDays).append(",");
+                        csv.append(escapeCsvField(commonUtility.getStateDisplayName(tenantId))).append("\n");
+                    }
+                }
+                
+                log.info("Generated CSV with {} tickets from Elasticsearch for tenant: {}", tickets.size(), tenantId);
+                
+            } catch (Exception e) {
+                log.error("Error processing Elasticsearch data for CSV generation for tenant: {}", tenantId, e);
+                // Fallback to summary data
+                csv.append("SUMMARY,Weekly Report Summary,ALL,ALL,ALL,");
+                if (reportData.getWeekEndMetrics() != null) {
+                    int endTotal = reportData.getWeekEndMetrics().getFunctionalCount() + reportData.getWeekEndMetrics().getNonFunctionalCount();
+                    double funcEndPct = endTotal > 0 ? (reportData.getWeekEndMetrics().getFunctionalCount() * 100.0 / endTotal) : 0;
+                    csv.append("Functional: ").append(reportData.getWeekEndMetrics().getFunctionalCount()).append(" (").append(String.format("%.1f", funcEndPct)).append("%),");
+                    csv.append("N/A,");
+                    csv.append("Summary data,");
+                    csv.append("N/A,");
+                    csv.append("N/A,");
+                    csv.append(tenantId).append("\n");
+                } else {
+                    csv.append("No data available,N/A,Summary data,N/A,N/A,");
+                    csv.append(tenantId).append("\n");
+                }
             }
-            csv.append("N/A,");
-            csv.append(tenantId).append("\n");
             
             return csv.toString();
             
@@ -819,6 +917,26 @@ public class EscalationController {
             log.error("Error generating weekly report CSV", e);
             return "Error generating CSV content";
         }
+    }
+    
+    
+    /**
+     * Helper method to safely get string value from map
+     */
+    private String getStringValue(Map<String, Object> map, String key) {
+        Object value = map.get(key);
+        return value != null ? value.toString() : "";
+    }
+    
+    /**
+     * Helper method to escape CSV fields
+     */
+    private String escapeCsvField(String field) {
+        if (field == null) return "";
+        if (field.contains(",") || field.contains("\"") || field.contains("\n")) {
+            return "\"" + field.replace("\"", "\"\"") + "\"";
+        }
+        return field;
     }
     
     /**
@@ -936,7 +1054,7 @@ public class EscalationController {
             }
         };
     }
-
+    
     /**
      * Health check endpoint
      */

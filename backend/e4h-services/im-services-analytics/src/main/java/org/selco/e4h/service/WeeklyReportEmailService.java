@@ -62,7 +62,7 @@ public class WeeklyReportEmailService {
      * Generate weekly report email subject
      */
     public String generateWeeklyReportEmailSubject(String recipientName, WeeklyReportData reportData) {
-        return String.format("Weekly Report - %s - %s", reportData.getDateRange(), DATE_FORMAT.format(new Date()));
+        return String.format("Weekly Report %s", reportData.getDateRange());
     }
     
     /**

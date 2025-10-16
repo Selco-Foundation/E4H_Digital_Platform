@@ -146,45 +146,64 @@ public class WeeklyReportQueryBuilder {
     }
     
     /**
-     * Get all open tickets for CSV generation from HF index
-     * Returns both functional and non-functional open tickets with HF details
+     * Get all health facilities with their functional status for CSV generation
+     * Starts from HF index and determines functional/non-functional status based on open tickets
      * Uses state filters for proper categorization
      */
-    public String getAllOpenTicketsQuery(String tenantId, List<Object> params) {
+    public String getAllHealthFacilitiesQuery(String tenantId, List<Object> params) {
         StringBuilder query = new StringBuilder();
         
         query.append("SELECT ");
-        query.append("    i.id, ");
-        query.append("    i.incidentid, ");
-        query.append("    i.tenantid, ");
-        query.append("    i.district, ");
-        query.append("    i.block, ");
-        query.append("    i.phctype, ");
-        query.append("    i.comments, ");
-        query.append("    i.systemfunctional, ");
-        query.append("    i.applicationstatus, ");
-        query.append("    i.fileddate, ");
-        query.append("    EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - TO_TIMESTAMP(i.fileddate/1000))) / 86400 AS age_in_days, ");
-        query.append("    hf.name AS facility_name, ");
+        query.append("    hf.id AS facility_id, ");
         query.append("    hf.code AS facility_code, ");
+        query.append("    hf.name AS facility_name, ");
         query.append("    hf.type AS facility_type, ");
-        query.append("    hf.phcType AS facility_phc_type ");
-        query.append("FROM public.eg_incident_v2 i ");
-        query.append("LEFT JOIN public.eg_hf_master hf ON i.tenantid = hf.tenantid ");
-        query.append("WHERE i.applicationstatus IN ( ");
-        query.append("    'PENDINGFORASSIGNMENT', ");
-        query.append("    'PENDING_ASSIGNMENT_SPARE_PART_NEEDED', ");
-        query.append("    'PENDING_ASSIGNMENT_OUT_OF_WARRANTY', ");
-        query.append("    'PENDING_RESOLUTION_SPARE_PART_NEEDED', ");
-        query.append("    'PENDING_RESOLUTION_OUT_OF_WARRANTY', ");
-        query.append("    'PENDINGRESOLUTION' ");
-        query.append(") ");
-        query.append("AND i.tenantid = ? ");
-        query.append("ORDER BY i.fileddate DESC ");
+        query.append("    hf.phcType AS facility_phc_type, ");
+        query.append("    hf.district, ");
+        query.append("    hf.block, ");
+        query.append("    hf.tenantid, ");
+        query.append("    CASE ");
+        query.append("        WHEN latest_ticket.systemfunctional = 'NON_FUNCTIONAL' THEN 'NON_FUNCTIONAL' ");
+        query.append("        WHEN latest_ticket.systemfunctional IS NULL THEN 'FUNCTIONAL' ");
+        query.append("        ELSE 'FUNCTIONAL' ");
+        query.append("    END AS system_status, ");
+        query.append("    latest_ticket.incidentid, ");
+        query.append("    latest_ticket.comments, ");
+        query.append("    latest_ticket.applicationstatus, ");
+        query.append("    latest_ticket.fileddate, ");
+        query.append("    CASE ");
+        query.append("        WHEN latest_ticket.fileddate IS NOT NULL THEN ");
+        query.append("            EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - TO_TIMESTAMP(latest_ticket.fileddate/1000))) / 86400 ");
+        query.append("        ELSE NULL ");
+        query.append("    END AS age_in_days ");
+        query.append("FROM public.eg_hf_master hf ");
+        query.append("LEFT JOIN ( ");
+        query.append("    SELECT DISTINCT ON (tenantid) ");
+        query.append("        tenantid, ");
+        query.append("        incidentid, ");
+        query.append("        systemfunctional, ");
+        query.append("        comments, ");
+        query.append("        applicationstatus, ");
+        query.append("        fileddate ");
+        query.append("    FROM public.eg_incident_v2 ");
+        query.append("    WHERE applicationstatus IN ( ");
+        query.append("        'PENDINGFORASSIGNMENT', ");
+        query.append("        'PENDING_ASSIGNMENT_SPARE_PART_NEEDED', ");
+        query.append("        'PENDING_ASSIGNMENT_OUT_OF_WARRANTY', ");
+        query.append("        'PENDING_RESOLUTION_SPARE_PART_NEEDED', ");
+        query.append("        'PENDING_RESOLUTION_OUT_OF_WARRANTY', ");
+        query.append("        'PENDINGRESOLUTION' ");
+        query.append("    ) ");
+        query.append("    AND tenantid = ? ");
+        query.append("    ORDER BY tenantid, fileddate DESC ");
+        query.append(") latest_ticket ON hf.tenantid = latest_ticket.tenantid ");
+        query.append("WHERE hf.tenantid = ? ");
+        query.append("ORDER BY hf.name ");
         
         params.add(tenantId);
+        params.add(tenantId);
         
-        log.debug("All open tickets with HF details query: {}", query.toString());
+        log.debug("All health facilities with status query: {}", query.toString());
         return query.toString();
     }
 }

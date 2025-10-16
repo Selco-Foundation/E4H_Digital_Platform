@@ -3,13 +3,12 @@ package org.selco.e4h.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.request.RequestInfo;
-import org.selco.e4h.repository.querybuilder.WeeklyReportQueryBuilder;
 import org.selco.e4h.web.models.WeeklyReportData;
 import org.selco.e4h.web.models.FunctionalMetrics;
 import org.selco.e4h.web.models.AgeBucketData;
 import org.selco.e4h.web.models.ArrowData;
 import org.selco.e4h.util.CommonUtility;
-import org.springframework.jdbc.core.JdbcTemplate;
+import org.selco.e4h.util.ElasticSearchClient;
 import org.springframework.stereotype.Service;
 
 import java.text.SimpleDateFormat;
@@ -25,8 +24,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class WeeklyReportService {
     
-    private final WeeklyReportQueryBuilder queryBuilder;
-    private final JdbcTemplate jdbcTemplate;
+    private final ElasticSearchClient elasticSearchClient;
     private final CommonUtility commonUtility;
     
     private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("dd MMM yyyy");
@@ -118,22 +116,36 @@ public class WeeklyReportService {
     }
     
     /**
-     * Get functional/non-functional metrics for a specific date
+     * Get functional/non-functional metrics for a specific date using Elasticsearch
      */
     private FunctionalMetrics getFunctionalMetrics(String tenantId, Date date) {
         try {
-            List<Object> params = new ArrayList<>();
-            String query = queryBuilder.getFunctionalMetricsQuery(tenantId, date, params);
-            
-            List<Map<String, Object>> results = jdbcTemplate.queryForList(query, params.toArray());
+            // Query Elasticsearch for tickets as of the specified date
+            List<Map<String, Object>> tickets = elasticSearchClient.fetchRequiredTickets(0, 10000, false);
             
             int functionalCount = 0;
             int nonFunctionalCount = 0;
             
-            if (!results.isEmpty()) {
-                Map<String, Object> row = results.get(0);
-                functionalCount = ((Number) row.getOrDefault("functional_count", 0)).intValue();
-                nonFunctionalCount = ((Number) row.getOrDefault("non_functional_count", 0)).intValue();
+            for (Map<String, Object> ticket : tickets) {
+                Map<String, Object> data = (Map<String, Object>) ticket.get("Data");
+                if (data != null) {
+                    // Filter by tenant
+                    String ticketTenantId = (String) data.get("tenantid");
+                    if (!tenantId.equals(ticketTenantId)) {
+                        continue;
+                    }
+                    
+                    // Filter by date (tickets filed before or on the specified date)
+                    Long filedDate = (Long) data.get("fileddate");
+                    if (filedDate != null && filedDate <= date.getTime()) {
+                        String systemFunctional = (String) data.get("systemfunctional");
+                        if ("NON_FUNCTIONAL".equals(systemFunctional)) {
+                            nonFunctionalCount++;
+                        } else {
+                            functionalCount++;
+                        }
+                    }
+                }
             }
             
             log.debug("Functional metrics for {} on {}: Functional={}, Non-Functional={}", 
@@ -145,13 +157,14 @@ public class WeeklyReportService {
                 .build();
                 
         } catch (Exception e) {
-            log.error("Error getting functional metrics for tenant: {} on date: {}", tenantId, date, e);
+            log.error("Error getting functional metrics from Elasticsearch for tenant: {} on date: {}", tenantId, date, e);
             return FunctionalMetrics.builder()
                 .functionalCount(0)
                 .nonFunctionalCount(0)
                 .build();
         }
     }
+    
     
     /**
      * Get age bucket data for non-functional systems
@@ -163,29 +176,44 @@ public class WeeklyReportService {
      */
     private AgeBucketData getAgeBucketData(String tenantId) {
         try {
-            List<Object> params = new ArrayList<>();
-            String query = queryBuilder.getAgeBucketDataQuery(tenantId, params);
-            
-            List<Map<String, Object>> results = jdbcTemplate.queryForList(query, params.toArray());
+            // Query Elasticsearch for all open tickets
+            List<Map<String, Object>> tickets = elasticSearchClient.fetchRequiredTickets(0, 10000, false);
             
             int totalLt1Wk = 0;
             int totalLt1Mo = 0;
             int totalLt3Mo = 0;
             
-            for (Map<String, Object> row : results) {
-                int ageInDays = ((Number) row.getOrDefault("age_in_days", 0)).intValue();
-                int count = ((Number) row.getOrDefault("count", 0)).intValue();
-                
-                // Age bucket logic as per Slack clarification:
-                // 1 Week: 8 ≤ age in days ≤ 30
-                // 1 Month: 31 ≤ age in days ≤ 90
-                // 3 Month: age in days > 90
-                if (ageInDays >= 8 && ageInDays <= 30) {
-                    totalLt1Wk += count;
-                } else if (ageInDays >= 31 && ageInDays <= 90) {
-                    totalLt1Mo += count;
-                } else if (ageInDays > 90) {
-                    totalLt3Mo += count;
+            for (Map<String, Object> ticket : tickets) {
+                Map<String, Object> data = (Map<String, Object>) ticket.get("Data");
+                if (data != null) {
+                    // Filter by tenant
+                    String ticketTenantId = (String) data.get("tenantid");
+                    if (!tenantId.equals(ticketTenantId)) {
+                        continue;
+                    }
+                    
+                    // Only count non-functional tickets
+                    String systemFunctional = (String) data.get("systemfunctional");
+                    if ("NON_FUNCTIONAL".equals(systemFunctional)) {
+                        // Calculate age in days
+                        Long filedDate = (Long) data.get("fileddate");
+                        if (filedDate != null) {
+                            long ageInMillis = System.currentTimeMillis() - filedDate;
+                            int ageInDays = (int) (ageInMillis / (1000 * 60 * 60 * 24));
+                            
+                            // Age bucket logic as per Slack clarification:
+                            // 1 Week: 8 ≤ age in days ≤ 30
+                            // 1 Month: 31 ≤ age in days ≤ 90
+                            // 3 Month: age in days > 90
+                            if (ageInDays >= 8 && ageInDays <= 30) {
+                                totalLt1Wk++;
+                            } else if (ageInDays >= 31 && ageInDays <= 90) {
+                                totalLt1Mo++;
+                            } else if (ageInDays > 90) {
+                                totalLt3Mo++;
+                            }
+                        }
+                    }
                 }
             }
             
@@ -199,7 +227,7 @@ public class WeeklyReportService {
                 .build();
                 
         } catch (Exception e) {
-            log.error("Error getting age bucket data for tenant: {}", tenantId, e);
+            log.error("Error getting age bucket data from Elasticsearch for tenant: {}", tenantId, e);
             return AgeBucketData.builder()
                 .totalLt1Wk(0)
                 .totalLt1Mo(0)
@@ -209,37 +237,51 @@ public class WeeklyReportService {
     }
     
     /**
-     * Get state-wise age bucket data
+     * Get state-wise age bucket data using Elasticsearch
      */
     private Map<String, WeeklyReportData.StateAgeBucketData> getStateWiseAgeBucketData(String tenantId) {
         try {
-            List<Object> params = new ArrayList<>();
-            String query = queryBuilder.getStateWiseAgeBucketDataQuery(tenantId, params);
-            
-            List<Map<String, Object>> results = jdbcTemplate.queryForList(query, params.toArray());
+            // Query Elasticsearch for all open tickets
+            List<Map<String, Object>> tickets = elasticSearchClient.fetchRequiredTickets(0, 10000, false);
             
             Map<String, WeeklyReportData.StateAgeBucketData> stateData = new LinkedHashMap<>();
             
-            for (Map<String, Object> row : results) {
-                String stateName = (String) row.getOrDefault("tenantid", "Unknown");
-                int ageInDays = ((Number) row.getOrDefault("age_in_days", 0)).intValue();
-                int count = ((Number) row.getOrDefault("count", 0)).intValue();
-                
-                WeeklyReportData.StateAgeBucketData stateBucket = stateData.computeIfAbsent(stateName, 
-                    k -> WeeklyReportData.StateAgeBucketData.builder()
-                        .stateName(commonUtility.getStateDisplayName(k))
-                        .lt1Wk(0)
-                        .lt1Mo(0)
-                        .lt3Mo(0)
-                        .build());
-                
-                // Age bucket logic
-                if (ageInDays >= 8 && ageInDays <= 30) {
-                    stateBucket.setLt1Wk(stateBucket.getLt1Wk() + count);
-                } else if (ageInDays >= 31 && ageInDays <= 90) {
-                    stateBucket.setLt1Mo(stateBucket.getLt1Mo() + count);
-                } else if (ageInDays > 90) {
-                    stateBucket.setLt3Mo(stateBucket.getLt3Mo() + count);
+            for (Map<String, Object> ticket : tickets) {
+                Map<String, Object> data = (Map<String, Object>) ticket.get("Data");
+                if (data != null) {
+                    // Filter by tenant
+                    String ticketTenantId = (String) data.get("tenantid");
+                    if (!tenantId.equals(ticketTenantId)) {
+                        continue;
+                    }
+                    
+                    // Only count non-functional tickets
+                    String systemFunctional = (String) data.get("systemfunctional");
+                    if ("NON_FUNCTIONAL".equals(systemFunctional)) {
+                        // Calculate age in days
+                        Long filedDate = (Long) data.get("fileddate");
+                        if (filedDate != null) {
+                            long ageInMillis = System.currentTimeMillis() - filedDate;
+                            int ageInDays = (int) (ageInMillis / (1000 * 60 * 60 * 24));
+                            
+                            WeeklyReportData.StateAgeBucketData stateBucket = stateData.computeIfAbsent(ticketTenantId, 
+                                k -> WeeklyReportData.StateAgeBucketData.builder()
+                                    .stateName(commonUtility.getStateDisplayName(k))
+                                    .lt1Wk(0)
+                                    .lt1Mo(0)
+                                    .lt3Mo(0)
+                                    .build());
+                            
+                            // Age bucket logic
+                            if (ageInDays >= 8 && ageInDays <= 30) {
+                                stateBucket.setLt1Wk(stateBucket.getLt1Wk() + 1);
+                            } else if (ageInDays >= 31 && ageInDays <= 90) {
+                                stateBucket.setLt1Mo(stateBucket.getLt1Mo() + 1);
+                            } else if (ageInDays > 90) {
+                                stateBucket.setLt3Mo(stateBucket.getLt3Mo() + 1);
+                            }
+                        }
+                    }
                 }
             }
             
@@ -247,7 +289,7 @@ public class WeeklyReportService {
             return stateData;
             
         } catch (Exception e) {
-            log.error("Error getting state-wise age bucket data for tenant: {}", tenantId, e);
+            log.error("Error getting state-wise age bucket data from Elasticsearch for tenant: {}", tenantId, e);
             return new HashMap<>();
         }
     }
