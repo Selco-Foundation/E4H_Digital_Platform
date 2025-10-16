@@ -107,6 +107,7 @@ const FacilityTable = ({ t }) => {
           ...prevState.project,
           fieldPlanId: [fieldPlanData.fieldPlans[0].fieldPlan.id],
           activityCode: [fieldPlanData.fieldPlans[0].activityCode],
+          activityId: [fieldPlanData.fieldPlans[0].activityId],
         }
       }))
     }

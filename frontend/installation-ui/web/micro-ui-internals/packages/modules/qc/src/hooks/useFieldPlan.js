@@ -32,6 +32,7 @@ const formatFieldPlans = (projects) => {
       name: row?.fieldPlan?.name,
       fieldPlan: row?.fieldPlan,
       activityType: row?.activityName,
+      activityId: row?.activityId,
       activityCode: row?.activityCode,
       facilitiesCount: totalProjectFacilities,
       startDate: formatDate(row?.startDate),

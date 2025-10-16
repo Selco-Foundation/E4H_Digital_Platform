@@ -101,52 +101,6 @@ export const QCService = {
     };
   },
 
-  bulkApproveProjects: async (filters, mainCheck, projectIds) => {
-    const endpoint = "/project/v1/project/bulk/workflow/update";
-
-    const queryObj = {
-      workflow: {
-        action: "APPROVE",
-        comments: "Approved by QC"
-      }
-    }
-
-    queryObj.isAllSelected = mainCheck;
-
-    if (mainCheck) {
-      const currentFilters = {
-        projectSearch: {
-          parent: filters.project.parent
-        }
-      }
-
-      if (filters.facilitySearch.name) {
-        currentFilters.projectSearch.name = filters.facilitySearch.name;
-      }
-
-      if (filters.facilityFilterQuery.boundary?.length > 0) {
-        currentFilters.projectSearch.boundaryCode = filters.facilityFilterQuery.boundary?.join(",");
-      }
-
-      if (filters.facilityFilterQuery.status?.length > 0) {
-        currentFilters.status = filters.facilityFilterQuery.status;
-      }
-
-      queryObj.filters = currentFilters;
-
-    } else {
-      queryObj.projectIDs = projectIds;
-    }
-
-    return CustomRequest({
-      url : endpoint,
-      data : queryObj,
-      method : "POST",
-      userService : true,
-      auth : true,
-    });
-  },
-
   fetchBoundaryRelations : async (codes, boundaryType) => {
     const endpoint = "/boundary-service/boundary-relationships/_search";
     const params = {
