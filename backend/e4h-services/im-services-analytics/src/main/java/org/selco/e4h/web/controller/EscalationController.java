@@ -225,10 +225,14 @@ public class EscalationController {
                     // Generate CSV for download
                     String csvContent = generateWeeklyReportCsv(reportData, tenantId);
                     String csvFileName = generateCsvFileName(tenantId);
+                    log.info("Generated CSV content length: {} for tenant: {}", csvContent.length(), tenantId);
+                    
                     String csvFileStoreId = uploadCsvToFileStore(csvContent, csvFileName, tenantId, requestInfo);
+                    log.info("CSV upload result for tenant {}: {}", tenantId, csvFileStoreId);
                     
                     if (csvFileStoreId != null) {
                         csvFileStoreIds.put(tenantId, csvFileStoreId);
+                        log.info("Added CSV fileStoreId {} for tenant {}", csvFileStoreId, tenantId);
                     }
                     
                 } catch (Exception e) {
@@ -840,6 +844,7 @@ public class EscalationController {
      */
     private String generateWeeklyReportCsv(WeeklyReportData reportData, String tenantId) {
         try {
+            log.info("Generating CSV for tenant: {}", tenantId);
             StringBuilder csv = new StringBuilder();
             
             // CSV Header - Health Facility focused
@@ -847,6 +852,7 @@ public class EscalationController {
             
             // Query Elasticsearch computed-sla-im-services-write index for all tickets
             List<Map<String, Object>> tickets = elasticSearchClient.fetchRequiredTickets(0, 10000, false);
+            log.info("Fetched {} tickets from Elasticsearch for CSV generation", tickets.size());
             
             try {
                 for (Map<String, Object> ticket : tickets) {

@@ -235,9 +235,9 @@ public class DynamicEmailTemplateService {
             return "";
         }
         
-        // Skip sections with no tickets (empty ticket list)
-        if (tickets == null || tickets.isEmpty()) {
-            return "";
+        // Handle empty tickets by showing sections with count 0
+        if (tickets == null) {
+            tickets = new ArrayList<>();
         }
         
         String sectionSubtext = getSectionSubtext(level, recipientRole);
@@ -296,12 +296,30 @@ public class DynamicEmailTemplateService {
                 Collectors.counting()
             ));
         
-        // Get display names for workflow states
+        // If no tickets, show common workflow states with count 0
+        if (stateCounts.isEmpty()) {
+            List<String> commonWorkflowStates = getCommonWorkflowStates(level, recipientRole);
+            for (String workflowState : commonWorkflowStates) {
+                String displayName = commonUtility.formatWorkflowStateForDisplay(workflowState, level, recipientRole);
+                
+                rows.append("  <tr>\n");
+                rows.append("    <td>\n");
+                rows.append("      <table role=\"presentation\" width=\"100%\">\n");
+                rows.append("        <tr>\n");
+                rows.append("          <td class=\"row label\" style=\"width:70%;\">").append(displayName).append("</td>\n");
+                rows.append("          <td class=\"row right\" style=\"width:30%;\"><span class=\"badge\">0</span></td>\n");
+                rows.append("        </tr>\n");
+                rows.append("      </table>\n");
+                rows.append("    </td>\n");
+                rows.append("  </tr>\n");
+            }
+        } else {
+            // Get display names for workflow states with actual counts
         for (Map.Entry<String, Long> entry : stateCounts.entrySet()) {
             String workflowState = entry.getKey();
             Long count = entry.getValue();
             
-            String displayName = commonUtility.formatWorkflowStateForDisplay(workflowState, level, recipientRole);
+                String displayName = commonUtility.formatWorkflowStateForDisplay(workflowState, level, recipientRole);
             
             rows.append("  <tr>\n");
             rows.append("    <td>\n");
@@ -314,22 +332,39 @@ public class DynamicEmailTemplateService {
             rows.append("    </td>\n");
             rows.append("  </tr>\n");
         }
-        
-        // If no tickets, show zero for common states
-        if (stateCounts.isEmpty()) {
-            rows.append("  <tr>\n");
-            rows.append("    <td>\n");
-            rows.append("      <table role=\"presentation\" width=\"100%\">\n");
-            rows.append("        <tr>\n");
-            rows.append("          <td class=\"row label\" style=\"width:70%;\">No tickets requiring attention</td>\n");
-            rows.append("          <td class=\"row right\" style=\"width:30%;\"><span class=\"badge\">0</span></td>\n");
-            rows.append("        </tr>\n");
-            rows.append("      </table>\n");
-            rows.append("    </td>\n");
-            rows.append("  </tr>\n");
         }
         
         return rows.toString();
+    }
+    
+    /**
+     * Get common workflow states for each escalation level when no tickets are found
+     */
+    private List<String> getCommonWorkflowStates(String level, String recipientRole) {
+        List<String> commonStates = new ArrayList<>();
+        
+        // Common workflow states that are typically monitored
+        switch (level) {
+            case "LEVEL_ZERO":
+                commonStates.add("PENDINGFORASSIGNMENT");
+                break;
+            case "LEVEL_ONE":
+                commonStates.add("PENDINGFORASSIGNMENT");
+                commonStates.add("PENDING_ASSIGNMENT_SPARE_PART_NEEDED");
+                break;
+            case "LEVEL_TWO":
+                commonStates.add("PENDINGFORASSIGNMENT");
+                commonStates.add("PENDING_ASSIGNMENT_SPARE_PART_NEEDED");
+                commonStates.add("PENDINGRESOLUTION");
+                commonStates.add("PENDING_RESOLUTION_SPARE_PART_NEEDED");
+                break;
+            default:
+                // Fallback to common states
+                commonStates.add("PENDINGFORASSIGNMENT");
+                commonStates.add("PENDINGRESOLUTION");
+        }
+        
+        return commonStates;
     }
     
     /**

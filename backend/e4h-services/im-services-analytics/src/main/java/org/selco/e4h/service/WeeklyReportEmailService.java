@@ -158,54 +158,8 @@ public class WeeklyReportEmailService {
             variables.put("TOTAL_LT3MO", "0");
         }
         
-        // State-wise data (limit to 3 states for template)
-        Map<String, WeeklyReportData.StateAgeBucketData> stateData = reportData.getStateData();
-        List<String> stateKeys = new ArrayList<>(stateData.keySet());
-        
-        // State 1
-        if (stateKeys.size() > 0) {
-            String state1Key = stateKeys.get(0);
-            WeeklyReportData.StateAgeBucketData state1 = stateData.get(state1Key);
-            variables.put("STATE_1", state1.getStateName());
-            variables.put("S1_LT1WK", String.valueOf(state1.getLt1Wk()));
-            variables.put("S1_LT1MO", String.valueOf(state1.getLt1Mo()));
-            variables.put("S1_LT3MO", String.valueOf(state1.getLt3Mo()));
-        } else {
-            variables.put("STATE_1", "");
-            variables.put("S1_LT1WK", "0");
-            variables.put("S1_LT1MO", "0");
-            variables.put("S1_LT3MO", "0");
-        }
-        
-        // State 2
-        if (stateKeys.size() > 1) {
-            String state2Key = stateKeys.get(1);
-            WeeklyReportData.StateAgeBucketData state2 = stateData.get(state2Key);
-            variables.put("STATE_2", state2.getStateName());
-            variables.put("S2_LT1WK", String.valueOf(state2.getLt1Wk()));
-            variables.put("S2_LT1MO", String.valueOf(state2.getLt1Mo()));
-            variables.put("S2_LT3MO", String.valueOf(state2.getLt3Mo()));
-        } else {
-            variables.put("STATE_2", "");
-            variables.put("S2_LT1WK", "0");
-            variables.put("S2_LT1MO", "0");
-            variables.put("S2_LT3MO", "0");
-        }
-        
-        // State 3
-        if (stateKeys.size() > 2) {
-            String state3Key = stateKeys.get(2);
-            WeeklyReportData.StateAgeBucketData state3 = stateData.get(state3Key);
-            variables.put("STATE_3", state3.getStateName());
-            variables.put("S3_LT1WK", String.valueOf(state3.getLt1Wk()));
-            variables.put("S3_LT1MO", String.valueOf(state3.getLt1Mo()));
-            variables.put("S3_LT3MO", String.valueOf(state3.getLt3Mo()));
-        } else {
-            variables.put("STATE_3", "");
-            variables.put("S3_LT1WK", "0");
-            variables.put("S3_LT1MO", "0");
-            variables.put("S3_LT3MO", "0");
-        }
+        // Generate state rows dynamically
+        variables.put("STATE_ROWS", generateStateRows(reportData.getStateData()));
         
         // State list
         variables.put("STATE_LIST", reportData.getStateList());
@@ -215,10 +169,35 @@ public class WeeklyReportEmailService {
         variables.put("SAURA_LOGO", commonUtility.loadLogoAsBase64("SauraEmitra.png"));
         
         // URLs
-        variables.put("DOWNLOAD_URL", downloadUrl != null ? downloadUrl : "#");
+        variables.put("DOWNLOAD_URL", downloadUrl != null && !downloadUrl.equals("#") ? downloadUrl : "#");
         variables.put("DASHBOARD_URL", commonUtility.generateStateDashboardUrl(tenantId));
         
         return variables;
+    }
+    
+    /**
+     * Generate state rows HTML dynamically - show all states including those with zeros
+     */
+    private String generateStateRows(Map<String, WeeklyReportData.StateAgeBucketData> stateData) {
+        if (stateData == null || stateData.isEmpty()) {
+            return "";
+        }
+        
+        StringBuilder stateRows = new StringBuilder();
+        
+        for (Map.Entry<String, WeeklyReportData.StateAgeBucketData> entry : stateData.entrySet()) {
+            WeeklyReportData.StateAgeBucketData state = entry.getValue();
+            
+            // Show all states, even with zeros - provides complete visibility
+            stateRows.append("<tr>\n");
+            stateRows.append("  <td class=\"state\">").append(commonUtility.escapeHtml(state.getStateName())).append("</td>\n");
+            stateRows.append("  <td align=\"center\"><span class=\"plain\">").append(state.getLt1Wk()).append("</span></td>\n");
+            stateRows.append("  <td align=\"center\"><span class=\"plain\">").append(state.getLt1Mo()).append("</span></td>\n");
+            stateRows.append("  <td align=\"center\"><span class=\"plain\">").append(state.getLt3Mo()).append("</span></td>\n");
+            stateRows.append("</tr>\n");
+        }
+        
+        return stateRows.toString();
     }
     
     

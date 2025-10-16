@@ -59,7 +59,7 @@ public class WeeklyReportService {
             cal.setTime(weekEnd);
             int year = cal.get(Calendar.YEAR);
             
-            String dateRange = String.format("%s – %s %d", 
+            String dateRange = String.format("%s - %s %d", 
                 DATE_RANGE_FORMAT.format(weekStart), 
                 DATE_RANGE_FORMAT.format(weekEnd), 
                 year);

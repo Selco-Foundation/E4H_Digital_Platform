@@ -18,7 +18,7 @@
       --ink:#1f2937;
       --muted:#6b7280;
       --border:#e5e7eb;
-      --bg:#f3f4f6;
+      --bg:#ffffff;
       --card:#ffffff;
       --purple:#6b21a8;       /* CTA background (hex for compatibility) */
       /* status colors */
@@ -147,7 +147,7 @@
             <!-- Body -->
             <tr>
               <td class="inner">
-                <p class="p" style="margin-top:0;">Dear ${NAME},<br>
+                <p class="p" style="margin-top:0;">Dear All,<br>
                   Please find below the weekly report for the week of <strong>${DATE_RANGE}</strong>.
                 </p>
 
@@ -214,24 +214,7 @@
                     </tr>
 
                     <!-- State rows with plain black chips -->
-                    <tr>
-                      <td class="state">${STATE_1}</td>
-                      <td align="center"><span class="plain">${S1_LT1WK}</span></td>
-                      <td align="center"><span class="plain">${S1_LT1MO}</span></td>
-                      <td align="center"><span class="plain">${S1_LT3MO}</span></td>
-                    </tr>
-                    <tr>
-                      <td class="state">${STATE_2}</td>
-                      <td align="center"><span class="plain">${S2_LT1WK}</span></td>
-                      <td align="center"><span class="plain">${S2_LT1MO}</span></td>
-                      <td align="center"><span class="plain">${S2_LT3MO}</span></td>
-                    </tr>
-                    <tr>
-                      <td class="state">${STATE_3}</td>
-                      <td align="center"><span class="plain">${S3_LT1WK}</span></td>
-                      <td align="center"><span class="plain">${S3_LT1MO}</span></td>
-                      <td align="center"><span class="plain">${S3_LT3MO}</span></td>
-                    </tr>
+                    ${STATE_ROWS}
                   </tbody>
                 </table>
 
