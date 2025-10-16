@@ -222,17 +222,22 @@ public class EscalationController {
                     WeeklyReportData reportData = weeklyReportService.generateWeeklyReportData(tenantId, requestInfo);
                     reportDataByTenant.put(tenantId, reportData);
                     
-                    // Generate CSV for download
+                    // Generate CSV for download only if there's data
                     String csvContent = generateWeeklyReportCsv(reportData, tenantId);
                     String csvFileName = generateCsvFileName(tenantId);
                     log.info("Generated CSV content length: {} for tenant: {}", csvContent.length(), tenantId);
                     
-                    String csvFileStoreId = uploadCsvToFileStore(csvContent, csvFileName, tenantId, requestInfo);
-                    log.info("CSV upload result for tenant {}: {}", tenantId, csvFileStoreId);
-                    
-                    if (csvFileStoreId != null) {
-                        csvFileStoreIds.put(tenantId, csvFileStoreId);
-                        log.info("Added CSV fileStoreId {} for tenant {}", csvFileStoreId, tenantId);
+                    // Only upload CSV if it has actual data (more than just header)
+                    if (csvContent.length() > 200) { // Header is about 150 chars, so 200+ means there's data
+                        String csvFileStoreId = uploadCsvToFileStore(csvContent, csvFileName, tenantId, requestInfo);
+                        log.info("CSV upload result for tenant {}: {}", tenantId, csvFileStoreId);
+                        
+                        if (csvFileStoreId != null) {
+                            csvFileStoreIds.put(tenantId, csvFileStoreId);
+                            log.info("Added CSV fileStoreId {} for tenant {}", csvFileStoreId, tenantId);
+                        }
+                    } else {
+                        log.info("Skipping CSV upload for tenant {} - no data to include", tenantId);
                     }
                     
                 } catch (Exception e) {

@@ -168,8 +168,10 @@ public class WeeklyReportEmailService {
         variables.put("SELCO_LOGO", commonUtility.loadLogoAsBase64("selcofoundation.png"));
         variables.put("SAURA_LOGO", commonUtility.loadLogoAsBase64("SauraEmitra.png"));
         
-        // URLs
-        variables.put("DOWNLOAD_URL", downloadUrl != null && !downloadUrl.equals("#") ? downloadUrl : "#");
+        // URLs - only show download button if there's data
+        boolean hasData = hasAnyData(reportData);
+        log.info("Download URL for weekly report: {}, hasData: {}", downloadUrl, hasData);
+        variables.put("DOWNLOAD_URL", (hasData && downloadUrl != null && !downloadUrl.equals("#")) ? downloadUrl : "#");
         variables.put("DASHBOARD_URL", commonUtility.generateStateDashboardUrl(tenantId));
         
         return variables;
@@ -198,6 +200,47 @@ public class WeeklyReportEmailService {
         }
         
         return stateRows.toString();
+    }
+    
+    /**
+     * Check if the report has any non-zero data
+     */
+    private boolean hasAnyData(WeeklyReportData reportData) {
+        // Check week start metrics
+        if (reportData.getWeekStartMetrics() != null) {
+            if (reportData.getWeekStartMetrics().getFunctionalCount() > 0 || 
+                reportData.getWeekStartMetrics().getNonFunctionalCount() > 0) {
+                return true;
+            }
+        }
+        
+        // Check week end metrics
+        if (reportData.getWeekEndMetrics() != null) {
+            if (reportData.getWeekEndMetrics().getFunctionalCount() > 0 || 
+                reportData.getWeekEndMetrics().getNonFunctionalCount() > 0) {
+                return true;
+            }
+        }
+        
+        // Check age bucket totals
+        if (reportData.getTotalAgeBuckets() != null) {
+            if (reportData.getTotalAgeBuckets().getTotalLt1Wk() > 0 || 
+                reportData.getTotalAgeBuckets().getTotalLt1Mo() > 0 || 
+                reportData.getTotalAgeBuckets().getTotalLt3Mo() > 0) {
+                return true;
+            }
+        }
+        
+        // Check state data
+        if (reportData.getStateData() != null) {
+            for (WeeklyReportData.StateAgeBucketData state : reportData.getStateData().values()) {
+                if (state.getLt1Wk() > 0 || state.getLt1Mo() > 0 || state.getLt3Mo() > 0) {
+                    return true;
+                }
+            }
+        }
+        
+        return false;
     }
     
     

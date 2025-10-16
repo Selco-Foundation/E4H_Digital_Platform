@@ -50,11 +50,11 @@
     /* Section titles */
     .section-title{ font-size:15px; font-weight:700; color:var(--ink); text-align:center; margin:12px 0; }
 
-    /* Metrics (2x2 grid) */
-    .metrics{ border:1px solid var(--border); border-radius:16px; padding:16px; background:#ffffff; }
-    .metric-head th{ font-size:13px; color:#1f2937; font-weight:700; padding:8px; text-align:center; }
-    .rowhead{ font-size:13px; color:#1f2937; font-weight:700; padding:8px; white-space:nowrap; }
-    .metric-cell{ padding:8px; text-align:center; }
+     /* Metrics (2x2 grid) */
+     .metrics{ border:1px solid var(--border); border-radius:16px; padding:16px; background:#ffffff; }
+     .metric-head th{ font-size:13px; color:#1f2937; font-weight:700; padding:8px; text-align:center; border-bottom:1px solid var(--border); }
+     .rowhead{ font-size:13px; color:#1f2937; font-weight:700; padding:8px; white-space:nowrap; border-bottom:1px solid var(--border); }
+     .metric-cell{ padding:8px; text-align:center; border-bottom:1px solid var(--border); }
     .pct{ font-size:15px; font-weight:700; color:var(--ink); line-height:1.2; }
     .count{ font-size:12px; color:var(--muted); }
     .arrow{ font-size:16px; line-height:1; padding-left:6px; display:inline-block; }
@@ -63,8 +63,8 @@
 
     /* Details table */
     .states{ width:100%; }
-    .states th{ font-size:12px; color:var(--muted); text-align:center; padding:8px; border-bottom:1px solid var(--border); }
-    .states td{ font-size:13px; padding:12px 8px; border-bottom:1px solid var(--border); vertical-align:middle; }
+    .states th{ font-size:12px; color:var(--muted); text-align:center; padding:8px; }
+    .states td{ font-size:13px; padding:12px 8px; vertical-align:middle; }
     .state{ font-weight:600; color:var(--ink); }
 
     /* Pills (TOTAL row only) */
@@ -134,7 +134,7 @@
                       <img class="logo" src="${SELCO_LOGO}" alt="SELCO Foundation" width="96">
                     </td>
                     <td class="stack" align="center" style="width:50%;">
-                      <h1 class="title">Weekly Report ${DATE_RANGE}</h1>
+                      <h1 class="title">Weekly Report</h1>
                     </td>
                     <td class="stack" align="right" style="width:25%;">
                       <img class="logo" src="${SAURA_LOGO}" alt="Saura eMitra" width="96" style="display:inline-block;">
@@ -239,7 +239,7 @@
                 </table>
 
                 <p class="p" style="text-align:center; margin-top:12px;">
-                  <a href="${DASHBOARD_URL}" target="_blank" style="color:var(--brand); font-weight:600; text-decoration:underline;">Visit E4H Dashboard</a>
+                  <a href="${DASHBOARD_URL}" target="_blank" style="color:var(--orange); font-weight:600; text-decoration:underline;">Visit E4H Dashboard</a>
                 </p>
 
                 <p class="p" style="font-size:12px; color:var(--muted); text-align:center;">
