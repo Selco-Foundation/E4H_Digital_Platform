@@ -45,7 +45,7 @@ public class ActivityFacilityRepository extends GenericRepository<ActivityFacili
     }
 
     public List<ActivityFacility> getActivitiesFacility(ActivityFacilitySearchRequest request, Integer limit, Integer offset, String tenantId, Boolean includeDeleted, Long lastChangedSince) {
-        //Fetch FieldPlans based on search criteria
+        //Fetch Facility based on search criteria
         List<Object> preparedStmtList = new ArrayList<>();
         ActivityFacilitySearchCriteria criteria = request.getCriteria();
         criteria.setCountQuery(false);

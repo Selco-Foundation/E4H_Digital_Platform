@@ -230,7 +230,7 @@ public class ActivityService {
         List<ActivityAssignment> activityFacilities = activityAssignmentRepository.getActivitiesAssignment(request, limit, offset, tenantId, includeDeleted, lastChangedSince);
         for (ActivityAssignment activityAssignment : activityFacilities) {
             log.info("processing get activity code", activityAssignment);
-            activityEnrichment.enrichActivityAssignmentOnSearch(request, activityAssignment);
+            activityEnrichment.enrichActivityAssignmentOnSearch(request.getRequestInfo(), activityAssignment);
             List<FacilityStatusAgregation> statusAgregations = getStatusFacilityAssignmentsAgregation(activityAssignment.getFieldPlanId());
             if (statusAgregations != null) {
                 Object enrichedAdditionalDetails = mergeListIntoAdditionalDetails(activityAssignment.getAdditionalDetails(), "statusAgregation", statusAgregations);

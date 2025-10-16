@@ -199,12 +199,12 @@ public class ActivityApiController {
     public ResponseEntity<FacilityStatusResponse> updateProjectWorkflow(
             @Valid @RequestBody FacilityWorkflowRequest request) throws Exception {
 
-        FacilityStatusWrapper updatedProject = activityService.updateFacilityWorkflow(request);
+        FacilityStatusWrapper updatedActivityFacility = activityService.updateFacilityWorkflow(request);
 
         ResponseInfo responseInfo = ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), true);
         return ResponseEntity.ok(FacilityStatusResponse.builder()
                 .responseInfo(responseInfo)
-                .facility(List.of(updatedProject))
+                .facility(List.of(updatedActivityFacility))
                 .build());
     }
 

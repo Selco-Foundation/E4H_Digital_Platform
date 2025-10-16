@@ -42,6 +42,9 @@ public class ActivityAssignmentSearchCriteria {
     @JsonProperty("assignedBy")
     private String assignedBy = null;
 
+    @JsonProperty("fieldPlanCode")
+    private @Valid String fieldPlanCode = null;
+
     private String tenantId;
 
     private boolean isActive;

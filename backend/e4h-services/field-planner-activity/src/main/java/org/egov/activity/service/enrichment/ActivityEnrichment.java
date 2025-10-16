@@ -76,7 +76,7 @@ public class ActivityEnrichment {
         activityFacility.setAuditDetails(auditDetails);
     }
 
-    public void enrichActivityAssignmentOnSearch(ActivityAssignmentSearchRequest request, ActivityAssignment activityAssignment) {
+    public void enrichActivityAssignmentOnSearch(RequestInfo requestInfo, ActivityAssignment activityAssignment) {
         ActivitySearchCriteria criteria = ActivitySearchCriteria.builder().ids(List.of(activityAssignment.getActivityId())).build();
         Activity existingActivity = activityFacilityRepository.getActivityObject(criteria);
         if(existingActivity !=null) {
@@ -85,12 +85,12 @@ public class ActivityEnrichment {
         }
 
         if (activityAssignment.getFieldPlanId() != null && !activityAssignment.getFieldPlanId().isEmpty()) {
-            FieldPlan existingFieldPlan = activityValidator.getFieldPlanById(request.getRequestInfo(), activityAssignment.getFieldPlanId(), activityAssignment.getTenantId());
+            FieldPlan existingFieldPlan = activityValidator.getFieldPlanById(requestInfo, activityAssignment.getFieldPlanId(), activityAssignment.getTenantId());
             if (existingFieldPlan != null) {
                 activityAssignment.setFieldPlan(existingFieldPlan);
             }
 
-            FieldPlanFacilityBulkResponse fieldPlanFacilityList = activityValidator.getFieldPlanFacilityById(request.getRequestInfo(), activityAssignment.getFieldPlanId(), activityAssignment.getTenantId());
+            FieldPlanFacilityBulkResponse fieldPlanFacilityList = activityValidator.getFieldPlanFacilityById(requestInfo, activityAssignment.getFieldPlanId(), activityAssignment.getTenantId());
             if (fieldPlanFacilityList != null) {
                 Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(activityAssignment.getAdditionalDetails(), "countFieldPlanFacilities", fieldPlanFacilityList.getTotalCount());
                 activityAssignment.setAdditionalDetails((Map<String, Object>) enrichedAdditionalDetails);
