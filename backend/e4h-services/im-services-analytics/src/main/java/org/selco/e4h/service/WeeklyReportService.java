@@ -102,7 +102,7 @@ public class WeeklyReportService {
                 .nonFunctionalArrow(nonFuncArrow)
                 .totalAgeBuckets(ageBucketData)
                 .stateData(stateData)
-                .stateList(formatStateList(stateData.keySet()))
+                .stateList(formatStateList(tenantId, stateData.keySet()))
                 .todayFormatted(todayFormatted)
                 .build();
             
@@ -373,9 +373,10 @@ public class WeeklyReportService {
     /**
      * Format state list for display
      */
-    private String formatStateList(Set<String> states) {
+    private String formatStateList(String tenantId, Set<String> states) {
         if (states == null || states.isEmpty()) {
-            return "All States";
+            // If no states with data, show the state name for the tenant
+            return commonUtility.getStateDisplayName(tenantId);
         }
         
         return states.stream()

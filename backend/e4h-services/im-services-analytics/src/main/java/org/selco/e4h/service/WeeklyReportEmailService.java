@@ -171,7 +171,19 @@ public class WeeklyReportEmailService {
         // URLs - only show download button if there's data
         boolean hasData = hasAnyData(reportData);
         log.info("Download URL for weekly report: {}, hasData: {}", downloadUrl, hasData);
-        variables.put("DOWNLOAD_URL", (hasData && downloadUrl != null && !downloadUrl.equals("#")) ? downloadUrl : "#");
+        
+        // Generate download button HTML conditionally
+        String downloadButtonHtml = "";
+        if (hasData && downloadUrl != null && !downloadUrl.equals("#")) {
+            downloadButtonHtml = "<table role=\"presentation\" class=\"cta-outer\" cellspacing=\"0\" cellpadding=\"0\" border=\"0\" width=\"100%\" style=\"margin-top:18px;\">" +
+                "<tr><td align=\"center\">" +
+                "<table role=\"presentation\" class=\"cta-inner\" cellspacing=\"0\" cellpadding=\"0\" border=\"0\">" +
+                "<tr><td class=\"cta-cell\" align=\"center\">" +
+                "<a class=\"cta-link\" href=\"" + downloadUrl + "\" target=\"_blank\">Download HF's Open Ticket Details</a>" +
+                "</td></tr></table></td></tr></table>";
+        }
+        
+        variables.put("DOWNLOAD_BUTTON", downloadButtonHtml);
         variables.put("DASHBOARD_URL", commonUtility.generateStateDashboardUrl(tenantId));
         
         return variables;
