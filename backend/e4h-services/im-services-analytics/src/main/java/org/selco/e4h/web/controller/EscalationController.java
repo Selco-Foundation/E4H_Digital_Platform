@@ -216,14 +216,11 @@ public class EscalationController {
             Map<String, WeeklyReportData> reportDataByTenant = new HashMap<>();
             Map<String, String> csvFileStoreIds = new HashMap<>();
             
-            log.info("Processing tenant IDs for weekly report: {}", relevantTenantIds);
-            
             for (String tenantId : relevantTenantIds) {
                 try {
                     // Generate weekly report data for this tenant
                     WeeklyReportData reportData = weeklyReportService.generateWeeklyReportData(tenantId, requestInfo);
                     reportDataByTenant.put(tenantId, reportData);
-                    log.info("Added report data for tenant {} with stateList: '{}'", tenantId, reportData.getStateList());
                     
                     // Generate CSV for download only if there's data
                     String csvContent = generateWeeklyReportCsv(reportData, tenantId);
@@ -267,9 +264,7 @@ public class EscalationController {
             log.info("Sending consolidated weekly report email to: {} for {} tenants", emailId, reportDataByTenant.size());
             
             // Create a consolidated report data structure
-            log.info("Creating consolidated report data from {} tenant reports", reportDataByTenant.size());
             WeeklyReportData consolidatedData = createConsolidatedReportData(reportDataByTenant);
-            log.info("Final consolidated stateList: '{}'", consolidatedData.getStateList());
             
             // Get user info for email - try to get actual user name
             User user = getUserByEmailId(requestInfo, emailId);

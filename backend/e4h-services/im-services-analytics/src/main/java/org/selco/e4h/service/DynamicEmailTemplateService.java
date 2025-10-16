@@ -260,14 +260,8 @@ public class DynamicEmailTemplateService {
             section.append("      <a href=\"").append(downloadUrl).append("\" target=\"_blank\" rel=\"noopener\" style=\"display:inline-block;background:#FFFFFF;color:#f08400;border:1.5px solid #f07400;border-radius:12px;padding:12px 18px;font:600 14px/20px Arial,Helvetica,sans-serif;text-decoration:none;\">Download Ticket Details</a>\n");
             section.append("    </td>\n");
             section.append("  </tr>\n");
-        } else {
-            // Show message if no file available or no tickets
-            section.append("  <tr>\n");
-            section.append("    <td align=\"center\">\n");
-            section.append("      <p class=\"text small muted\">CSV file available as email attachment</p>\n");
-            section.append("    </td>\n");
-            section.append("  </tr>\n");
         }
+        // No message shown when there are no tickets or no file available
         
         section.append("  <tr><td class=\"sp-12\"></td></tr>\n");
         section.append("  <tr>\n");
@@ -406,9 +400,9 @@ public class DynamicEmailTemplateService {
                 expectedLevels.add("LEVEL_ZERO"); // My Tickets
                 expectedLevels.add("LEVEL_ONE");  // L1 Escalation
                 break;
-            case "LEAD":
-            case "PROJECT_MANAGER":
-                expectedLevels.add("LEVEL_TWO");  // L2 Escalation
+            case "CENTRAL_OPERATIONS_LEAD":
+            case "CENTRAL_ONM_PROJECT_MANAGER":
+                expectedLevels.add("LEVEL_TWO");  // L2 Escalation only
                 break;
             case "CENTRAL_POC":
                 // Handled separately in the special case above
@@ -509,12 +503,7 @@ public class DynamicEmailTemplateService {
         if ("LEVEL_TWO".equals(level)) return 2;
         return 99;
     }
-    
-    
-    
-    
-    
-    
+
     /**
      * Replace template variables with actual values
      */
