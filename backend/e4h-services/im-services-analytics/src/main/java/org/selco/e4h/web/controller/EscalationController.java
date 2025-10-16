@@ -27,8 +27,6 @@ import java.util.*;
 import java.text.SimpleDateFormat;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.selco.e4h.config.ConsumerConfiguration;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.selco.e4h.repository.querybuilder.WeeklyReportQueryBuilder;
 import org.selco.e4h.util.ElasticSearchClient;
 
 /**
@@ -50,8 +48,6 @@ public class EscalationController {
     private final DynamicEmailTemplateService dynamicEmailTemplateService;
     private final WeeklyReportService weeklyReportService;
     private final WeeklyReportEmailService weeklyReportEmailService;
-    private final WeeklyReportQueryBuilder weeklyReportQueryBuilder;
-    private final JdbcTemplate jdbcTemplate;
     private final ElasticSearchClient elasticSearchClient;
     private final KafkaTemplate<String, Object> kafkaTemplate;
     private final ConsumerConfiguration consumerConfiguration;

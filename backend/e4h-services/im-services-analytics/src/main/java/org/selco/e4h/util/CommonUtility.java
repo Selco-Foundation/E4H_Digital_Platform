@@ -35,7 +35,7 @@ public class CommonUtility {
             case "pg": return "Karnataka";
             case "sk": return "Sikkim";
             case "mz": return "Mizoram";
-            case "od": return "Odisha";
+            case "or": return "Odisha";
             case "as": return "Assam";
             case "mn": return "Manipur";
             case "nl": return "Nagaland";
@@ -118,7 +118,7 @@ public class CommonUtility {
                 return "https://saura-emitra.selcofoundation.org/sikkim";
             case "mz":
                 return "https://saura-emitra.selcofoundation.org/mizoram";
-            case "od":
+            case "or":
                 return "https://saura-emitra.selcofoundation.org/odisha";
             case "as":
                 return "https://saura-emitra.selcofoundation.org/assam";
@@ -236,15 +236,5 @@ public class CommonUtility {
                     .map(word -> word.substring(0, 1).toUpperCase() + word.substring(1).toLowerCase())
                     .collect(java.util.stream.Collectors.joining(" "));
         }
-    }
-
-    /**
-     * Get numeric order for escalation level sorting
-     */
-    public int getLevelOrder(String level) {
-        if ("LEVEL_ZERO".equals(level)) return 0;
-        if ("LEVEL_ONE".equals(level)) return 1;
-        if ("LEVEL_TWO".equals(level)) return 2;
-        return 99;
     }
 }

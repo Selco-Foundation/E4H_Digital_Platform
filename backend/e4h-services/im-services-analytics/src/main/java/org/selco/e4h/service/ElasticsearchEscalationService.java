@@ -3,7 +3,6 @@ package org.selco.e4h.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.selco.e4h.config.ConsumerConfiguration;
-import org.selco.e4h.util.ElasticSearchClient;
 import org.selco.e4h.util.UpdateUtils;
 import org.selco.e4h.web.models.EscalationTicket;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,7 +21,6 @@ import java.util.*;
 public class ElasticsearchEscalationService {
     
     private final RestTemplate restTemplate;
-    private final ElasticSearchClient elasticSearchClient;
     private final ConsumerConfiguration consumerConfiguration;
     
     private static final String BULK_ENDPOINT = "_bulk";

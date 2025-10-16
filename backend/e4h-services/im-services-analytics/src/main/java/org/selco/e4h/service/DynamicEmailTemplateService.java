@@ -493,16 +493,6 @@ public class DynamicEmailTemplateService {
         
         return baseMessage + " Kindly go to <a href=\"" + sauraEmitraUrl + "\" target=\"_blank\" rel=\"noopener\" style=\"color: #f08400; text-decoration: underline;\">Saura eMitra</a> and take immediate action on these tickets before they escalate to the L1 (Central POC) stage";
     }
-    
-    /**
-     * Get numeric order for escalation level sorting
-     */
-    private int getLevelOrder(String level) {
-        if ("LEVEL_ZERO".equals(level)) return 0;
-        if ("LEVEL_ONE".equals(level)) return 1;
-        if ("LEVEL_TWO".equals(level)) return 2;
-        return 99;
-    }
 
     /**
      * Replace template variables with actual values

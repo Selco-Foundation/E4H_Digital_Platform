@@ -7,7 +7,6 @@ import org.selco.e4h.web.models.EscalationInfo;
 import org.selco.e4h.web.models.EscalationTicket;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
-import org.selco.e4h.util.IMConstants;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
