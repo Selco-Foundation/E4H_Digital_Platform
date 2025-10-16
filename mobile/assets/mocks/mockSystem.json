@@ -30,6 +30,60 @@
       "id": "271d09ea-a049-4d91-a0ef-13bc8db298a6",
       "tenantId": "in",
       "schemaCode": "asset.System",
+      "uniqueIdentifier": "AC_OFF_GRID_THREE_PHASE.AC_OFF_GRID",
+      "data": {
+        "code": "AC_OFF_GRID_THREE_PHASE",
+        "name": "AC Off Grid Three Phase",
+        "active": true
+      },
+      "isActive": true,
+      "auditDetails": {
+        "createdBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "lastModifiedBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "createdTime": 1748705921801,
+        "lastModifiedTime": 1748705921801
+      }
+    },
+    {
+      "id": "271d09ea-a049-4d91-a0ef-13bc8db298a6",
+      "tenantId": "in",
+      "schemaCode": "asset.System",
+      "uniqueIdentifier": "HYBRID_SINGLE_PHASE.HYBRID_SINGLE_PHASE",
+      "data": {
+        "code": "HYBRID_SINGLE_PHASE",
+        "name": "Hybrid Single Phase",
+        "active": true
+      },
+      "isActive": true,
+      "auditDetails": {
+        "createdBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "lastModifiedBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "createdTime": 1748705921801,
+        "lastModifiedTime": 1748705921801
+      }
+    },
+    {
+      "id": "271d09ea-a049-4d91-a0ef-13bc8db298a6",
+      "tenantId": "in",
+      "schemaCode": "asset.System",
+      "uniqueIdentifier": "HYBRID_THREE_PHASE.HYBRID_THREE_PHASE",
+      "data": {
+        "code": "HYBRID_THREE_PHASE",
+        "name": "Hybrid Three Phase",
+        "active": true
+      },
+      "isActive": true,
+      "auditDetails": {
+        "createdBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "lastModifiedBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "createdTime": 1748705921801,
+        "lastModifiedTime": 1748705921801
+      }
+    },
+    {
+      "id": "271d09ea-a049-4d91-a0ef-13bc8db298a6",
+      "tenantId": "in",
+      "schemaCode": "asset.System",
       "uniqueIdentifier": "DC.DC",
       "data": {
         "code": "DC",

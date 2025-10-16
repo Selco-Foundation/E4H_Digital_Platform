@@ -24,9 +24,6 @@ class RejectionBloc extends Bloc<RejectionEvent, RejectionState> {
 
   Future<void> _onSubmitRejection(
     _SubmitRejection event,
-    // String projectId,
-    // String userType,
-    // List<String> types,
     Emitter<RejectionState> emit,
   ) async {
     emit(const RejectionState.loading());

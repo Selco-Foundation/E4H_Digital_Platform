@@ -16,6 +16,8 @@ import '../data/nosql/cache_asset_count.dart';
 import '../data/nosql/cache_specification.dart';
 import '../model/asset_type/asset_type.dart';
 import '../model/mdms/mdms.dart';
+import '../model/project_workflow/project_workflow.dart';
+import '../model/solution_design_type/solution_design_type.dart';
 import '../model/system/system.dart';
 import '../router/app_router.dart';
 import '../utils/i18_key_constants.dart' as i18;
@@ -35,21 +37,22 @@ class SelectAssetTypePage extends StatefulWidget {
 
 class _SelectAssetTypePageState extends State<SelectAssetTypePage> {
   String? _currentProjectId;
+  ProjectWorkflow? project;
   String selectedAssetType = "";
 
   @override
   void initState() {
     super.initState();
-    _currentProjectId = context
-        .read<SelectedProjectBloc>()
-        .state
-        .whenOrNull(selected: (project) => project.project.id);
+    _currentProjectId =
+        context.read<SelectedProjectBloc>().state.whenOrNull(selected: (wf) {
+      project = wf;
+      return wf.project.id;
+    });
   }
 
   void _saveCacheSpecification() {
     final initState = context.read<AppInitialization>().state;
 
-    // 1) pull out system list and mdms asset types
     final systemList = initState.maybeWhen<List<Mdms<System>>>(
       initialized: (_, __, ___, system, ____, _____, solutionDesign, ______) =>
           system,
@@ -61,13 +64,36 @@ class _SelectAssetTypePageState extends State<SelectAssetTypePage> {
       orElse: () => [],
     );
 
-    final systemCode = systemList.lastOrNull?.data.code ?? '';
+    final solutionDesignList =
+        initState.maybeWhen<List<Mdms<SolutionDesignType>>>(
+      initialized: (_, __, ___, ____, _____, ______, solutionDesign, _______) =>
+          solutionDesign,
+      orElse: () => const [],
+    );
 
-    // 2) find the model for our currently selected assetType
+    final selectedSolutionDesignCode = project?.project.additionalDetails
+        ?.facility?.facilityDetails?.solar_solution_design_type;
+
+    print("selectedSolutionDesignCode $selectedSolutionDesignCode");
+
+    final matchedSystemCode = solutionDesignList
+        .map((m) => m.data)
+        .firstWhereOrNull((sd) => sd.code == selectedSolutionDesignCode)
+        ?.systemCode;
+
+    print("matchedSystemCode $matchedSystemCode");
+
+    final systemCode = matchedSystemCode ?? systemList.lastOrNull?.data.code;
+    final systemName = systemList
+        .map((m) => m.data)
+        .firstWhereOrNull((sd) => sd.code == systemCode)
+        ?.name;
+    print("systemCode $systemCode");
+    print("systemName $systemName");
+
     final assetTypeModel = mdmsAssetTypes.map((m) => m.data).firstWhereOrNull(
         (t) => t.code.toLowerCase() == selectedAssetType.toLowerCase());
 
-    // 3) pull out the two formFields
     final capField = assetTypeModel?.formFields.firstWhereOrNull(
       (f) => f.key == 'total_capacity' && f.system == systemCode,
     );
@@ -75,18 +101,15 @@ class _SelectAssetTypePageState extends State<SelectAssetTypePage> {
       (f) => f.key == 'total_capacity_uom' && f.system == systemCode,
     );
 
-    // 4) read the first option (or default)
     final rawCapacity = capField?.options?.firstOrNull ?? '0';
     final rawCapacityUom = uomField?.options?.firstOrNull ?? '';
 
-    // 5) parse to double
     final parsedCapacity = double.tryParse(rawCapacity) ?? 0.0;
 
-    // 6) build your cache & fire both blocs
     final newSpec = CacheSpecification(
       projectId: _currentProjectId!,
       assetType: selectedAssetType.toLowerCase(),
-      system: systemCode,
+      system: systemCode!,
       totalCapacity: parsedCapacity,
       totalCapacityUnit: rawCapacityUom,
     );
@@ -96,7 +119,7 @@ class _SelectAssetTypePageState extends State<SelectAssetTypePage> {
         .add(CacheSpecificationEvent.add(newSpec));
 
     context.read<SpecificationBloc>().add(SpecificationEvent.save(
-          systemName: systemList.last.data.name,
+          systemName: systemName!,
           totalCapacity: parsedCapacity,
           totalCapacityUom: rawCapacityUom,
         ));

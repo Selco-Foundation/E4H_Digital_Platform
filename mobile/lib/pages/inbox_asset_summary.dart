@@ -14,12 +14,16 @@ import '../blocs/asset_type/asset_type.dart';
 import '../blocs/cache_asset/cache_asset.dart';
 import '../blocs/inbox_type/inbox_type.dart';
 import '../blocs/overall_asset_summary/overall_asset_summary.dart';
+import '../blocs/project/project.dart';
 import '../blocs/project_bom/project_bom.dart';
 import '../blocs/report_type/report_type.dart';
 import '../blocs/selected_project/selected_project.dart';
 import '../blocs/user_type/user_type.dart';
+import '../model/mdms/mdms.dart';
 import '../model/project_workflow/project_workflow.dart';
+import '../model/solution_design_type/solution_design_type.dart';
 import '../repositories/project_repo.dart';
+import '../repositories/project_workflow.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
 import '../utils/utils.dart';
@@ -42,7 +46,7 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
   late String userType = "";
   String? _currentProjectId;
   ProjectWorkflow? workflow;
-  String? _solutionDesignTypeCode;
+  String? _system;
   List<ExistingReport> _existingReports = [];
 
   @override
@@ -67,11 +71,11 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
         );
     context.read<SelectedProjectBloc>().state.whenOrNull(selected: (proj) {
       _currentProjectId = proj.project.id;
-      _solutionDesignTypeCode = "DC";
       workflow = proj;
       context
           .read<CacheAssetBloc>()
           .add(CacheAssetEvent.start(proj.project.id, userType, proj));
+      _loadProjectSystem();
       _loadInitialCompletion();
     });
     // });
@@ -146,6 +150,32 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
         );
       }).toList();
     });
+  }
+
+  Future<void> _loadProjectSystem() async {
+    if (_currentProjectId == null) return;
+
+    final isar = context.read<ProjectBloc>().isar;
+
+    final initState = context.read<AppInitialization>().state;
+    final solutionDesignList =
+        initState.maybeWhen<List<Mdms<SolutionDesignType>>>(
+      initialized: (_, __, ___, ____, _____, ______, solutionDesign, _______) =>
+          solutionDesign,
+      orElse: () => const [],
+    );
+
+    final facilityCode = workflow?.project.additionalDetails?.facility
+        ?.facilityDetails?.solar_solution_design_type;
+
+    final sys = await ProjectWorkflowRepository().getProjectSystem(
+        isar: isar,
+        projectId: _currentProjectId!,
+        solutionDesignList: solutionDesignList,
+        facilitySolutionDesignCode: facilityCode);
+
+    if (!mounted) return;
+    setState(() => _system = sys);
   }
 
   @override
@@ -410,22 +440,21 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
                                                   ) {
                                                     return Column(
                                                       children: [
-                                                        BomSystemSelector(
-                                                          onChanged: (code) {
-                                                            setState(() =>
-                                                                _solutionDesignTypeCode =
-                                                                    code);
-                                                          },
-                                                        ),
-                                                        if (_solutionDesignTypeCode !=
-                                                            null)
+                                                        // BomSystemSelector(
+                                                        //   onChanged: (code) {
+                                                        //     setState(() =>
+                                                        //         _system =
+                                                        //             code);
+                                                        //   },
+                                                        // ),
+                                                        if (_system != null)
                                                           BomButtonsSection(
                                                             key: PageStorageKey(
                                                                 'bom-buttons-${_currentProjectId!}'),
                                                             solutionDesignBom:
                                                                 solutionDesignBom,
                                                             systemCode:
-                                                                _solutionDesignTypeCode!,
+                                                                _system!,
                                                             projectId:
                                                                 _currentProjectId!,
                                                             origin: FormOrigin

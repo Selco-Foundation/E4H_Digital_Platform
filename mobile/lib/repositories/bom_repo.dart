@@ -10,8 +10,8 @@ import 'package:mime/mime.dart';
 
 import '../data/nosql/cache_bom_doc.dart';
 import '../data/nosql/cache_project_bom_values.dart';
+import '../data/nosql/cache_specification.dart';
 import '../data/remote_client.dart';
-import '../data/secure_storage/secureStore.dart';
 import '../model/entities/project_facility.dart';
 import '../repositories/project_facility_repo.dart';
 import '../utils/envConfig.dart' as env;
@@ -359,10 +359,16 @@ class BomRepository {
       final Map<String, dynamic> bomData =
           jsonDecode(rec.dataJson) as Map<String, dynamic>;
 
-      final saved = await SecureStore().storage.read(key: 'bom_system_code');
-      final system = (saved != null && saved.isNotEmpty) ? saved : 'DC';
+      final spec = await isar.cacheSpecifications
+          .where()
+          .projectIdEqualTo(projectId)
+          .findFirst();
 
-      // 2. Build request body
+      final saved = spec?.system.trim();
+      print("saved $saved");
+      final system =
+          (saved != null && saved.isNotEmpty) ? saved : SYSTEM_TYPE.DC.name;
+      print("system $system");
       final tenantId = env.envConfig.variables.tenantId;
       final body = {
         "system": system,

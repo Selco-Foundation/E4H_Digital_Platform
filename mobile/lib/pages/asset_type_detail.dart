@@ -1,3 +1,4 @@
+import 'package:collection/collection.dart';
 import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
@@ -99,6 +100,12 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
         )));
   }
 
+  String _brandNameFor(String? code) {
+    if (code == null || code.isEmpty) return '';
+    final b = assetBrands.firstWhereOrNull((x) => x.code == code);
+    return b?.name ?? '';
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -112,6 +119,7 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
             if (entry != null) {
               setState(() {
                 selectedBrandCode = entry.brand;
+                selectedBrandName = _brandNameFor(selectedBrandCode);
                 selectedWarranty = entry.warranty;
                 modelController.text = entry.model ?? '';
               });
