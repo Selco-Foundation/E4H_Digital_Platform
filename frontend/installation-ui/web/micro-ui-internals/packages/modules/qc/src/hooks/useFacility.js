@@ -96,15 +96,15 @@ const useFacility = (projectQueryFilter, pageSize, pageOffset) => {
   }
 
   if (facilityFilterQuery?.boundary) {
-    filter.moduleSearchCriteria.boundary = facilityFilterQuery.boundary;
+    filter.ActivityFacility.boundaryCodes = facilityFilterQuery.boundary;
   }
 
   if (facilityFilterQuery?.status) {
-    filter.moduleSearchCriteria.status = facilityFilterQuery.status;
+    filter.ActivityFacility.statuses = facilityFilterQuery.status;
   }
 
   if (facilitySearchQuery?.name) {
-    filter.moduleSearchCriteria.name = facilitySearchQuery.name;
+    filter.ActivityFacility.facilityName = facilitySearchQuery.name;
   }
 
   const limit = pageSize || 10;

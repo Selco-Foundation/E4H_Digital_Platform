@@ -69,7 +69,7 @@ const useFieldPlan = (queryFilter, pageSize, pageOffset) => {
   }
 
   if (name) {
-    filter.ActivityAssignment.name = name;
+    filter.ActivityAssignment.fieldPlanCode = name;
   }
 
   if (id?.length) {

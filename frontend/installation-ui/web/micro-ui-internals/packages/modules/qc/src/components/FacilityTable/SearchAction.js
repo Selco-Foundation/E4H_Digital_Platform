@@ -11,7 +11,7 @@ const SearchActionCentre = ({ t, projectQueryFilter, mainCheckBox, selectedFacil
   const handleSearch = (name) => {
     const facilitySearchQuery = {};
     if (name) {
-      facilitySearchQuery.name = [name];
+      facilitySearchQuery.name = name;
     }
 
     onSearch({
