@@ -411,8 +411,7 @@ public class EscalationController {
             .stateList(consolidatedStateList)
             .todayFormatted(firstReport.getTodayFormatted())
             .build();
-        
-        log.info("Final consolidated report stateList: '{}'", consolidatedStateList);
+
     }
     
     /**
