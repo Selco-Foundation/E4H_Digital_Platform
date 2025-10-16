@@ -1,6 +1,9 @@
 package org.egov.im.service;
 
 import org.apache.kafka.common.protocol.types.Field;
+import org.egov.im.repository.IMPriorityRepository;
+import org.egov.im.web.models.IMPrioritySearchCriteria;
+import org.egov.im.web.models.Incident;
 import org.egov.im.util.BusinessHoursUtil;
 import org.egov.im.web.models.IncidentRequest;
 import org.egov.im.web.models.Priority;
@@ -11,12 +14,14 @@ import com.jayway.jsonpath.JsonPath;
 
 import lombok.extern.slf4j.Slf4j;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,6 +32,14 @@ import static org.egov.im.util.IMConstants.*;
 @Slf4j
 @Service
 public class SLAService {
+
+    private  final IMPriorityRepository imPriorityRepository;
+
+    @Autowired
+    public SLAService(IMPriorityRepository imPriorityRepository){
+        this.imPriorityRepository = imPriorityRepository;
+    }
+
 
     public long computeTotalSlaRemaining( List<State> states, List<ProcessInstance> processInstances, List<Map<String, Object>> businessHourList, ProcessInstance currentProcessInstance) {
         if (processInstances == null || processInstances.isEmpty()) {
@@ -172,4 +185,15 @@ public class SLAService {
         Object value = map.get(key);
         return value != null ? String.valueOf(value) : null;
     }
-} 
+
+    public Priority getPriorityFromIMPriorityTable(Incident incident) {
+        String stateTenantId = incident.getTenantId().split("\\.")[0];
+        IMPrioritySearchCriteria criteria = IMPrioritySearchCriteria.builder()
+                .tenantId(stateTenantId)
+                .incidentType(incident.getIncidentType())
+                .incidentSubType(incident.getIncidentSubType())
+                .systemFunctional(incident.getSystemFunctional())
+                .build();
+        return imPriorityRepository.getPriority(criteria);
+    }
+}
