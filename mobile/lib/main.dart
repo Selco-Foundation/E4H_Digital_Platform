@@ -11,7 +11,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:isar/isar.dart';
 import 'package:location/location.dart';
-import 'package:selco/blocs/project_bom/project_bom.dart';
+import 'package:workmanager/workmanager.dart';
 
 import 'blocs/app_init/app_init.dart';
 import 'blocs/asset_rejection/asset_rejection.dart';
@@ -32,6 +32,7 @@ import 'blocs/localization/app_localization.dart';
 import 'blocs/localization/localization.dart';
 import 'blocs/overall_asset_summary/overall_asset_summary.dart';
 import 'blocs/project/project.dart';
+import 'blocs/project_bom/project_bom.dart';
 import 'blocs/user_type/user_type.dart';
 import 'data/app_shared_preferences.dart';
 import 'data/nosql/localization.dart';
@@ -65,7 +66,8 @@ void main() async {
     // Mark app as launched for the first time
     await AppSharedPreferences().appLaunchedFirstTime();
   }
-
+  await Workmanager()
+      .initialize(assetSubmissionCallbackDispatcher, isInDebugMode: false);
   // Run the main app widget
   runApp(MainApp(
     isar: _isar,
@@ -117,13 +119,16 @@ class _MainAppState extends State<MainApp> {
             BlocProvider(create: (context) => AssetSummaryBloc(widget.isar)),
             BlocProvider(
                 create: (context) => OverallAssetSummaryBloc(widget.isar)),
-            BlocProvider(create: (context) => AssetSubmissionBloc(widget.isar)),
+            BlocProvider(
+                lazy: false,
+                create: (context) => AssetSubmissionBloc(widget.isar)),
             BlocProvider(create: (context) => CacheSyncRecordBloc(widget.isar)),
             BlocProvider(create: (context) => CacheAssetBloc(widget.isar)),
             BlocProvider(
                 create: (context) => CacheCompletionReportBloc(widget.isar)),
             BlocProvider(create: (context) => ProjectBomBloc(widget.isar)),
-            BlocProvider(create: (context) => RejectionBloc(widget.isar)),
+            BlocProvider(
+                lazy: false, create: (context) => RejectionBloc(widget.isar)),
           ],
           child: BlocBuilder<AppInitialization, InitState>(
             builder: (context, state) => state.maybeWhen(

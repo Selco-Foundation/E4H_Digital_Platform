@@ -23,7 +23,10 @@ import '../blocs/project_bom/project_bom.dart';
 import '../blocs/selected_project/selected_project.dart';
 import '../blocs/user_type/user_type.dart';
 import '../model/comment/comment.dart';
+import '../model/mdms/mdms.dart';
 import '../model/project_workflow/project_workflow.dart';
+import '../model/solution_design_type/solution_design_type.dart';
+import '../repositories/project_workflow.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
 import '../utils/utils.dart';
@@ -51,10 +54,10 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
   bool rejection1 = false;
   bool rejection2 = false;
   bool rejection3 = false;
-  String? _solutionDesignTypeCode;
+  String? _system;
 
   bool _initialized = false;
-  late List<dynamic> _entries; // your `matching?.data.bomForms`
+  late List<dynamic> _entries;
   late Future<List<({String label, String schemaName, String pageName})>>
       _bomButtonsFuture;
   late Future<
@@ -121,6 +124,7 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
             userType: userType,
           ),
         );
+    _loadProjectSystem();
     _loadInitialCompletion();
     // });
   }
@@ -192,6 +196,32 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
     } catch (_) {
       return false;
     }
+  }
+
+  Future<void> _loadProjectSystem() async {
+    if (projectId.isEmpty) return;
+
+    final isar = context.read<ProjectBloc>().isar;
+
+    final initState = context.read<AppInitialization>().state;
+    final solutionDesignList =
+        initState.maybeWhen<List<Mdms<SolutionDesignType>>>(
+      initialized: (_, __, ___, ____, _____, ______, solutionDesign, _______) =>
+          solutionDesign,
+      orElse: () => const [],
+    );
+
+    final facilityCode = project?.project.additionalDetails?.facility
+        ?.facilityDetails?.solar_solution_design_type;
+
+    final sys = await ProjectWorkflowRepository().getProjectSystem(
+        isar: isar,
+        projectId: projectId,
+        solutionDesignList: solutionDesignList,
+        facilitySolutionDesignCode: facilityCode);
+
+    if (!mounted) return;
+    setState(() => _system = sys);
   }
 
   @override
@@ -421,24 +451,21 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                                   ) {
                                     return Column(
                                       children: [
-                                        BomSystemSelector(
-                                          onChanged: (code) {
-                                            setState(() =>
-                                                _solutionDesignTypeCode = code);
-                                          },
-                                        ),
-                                        if (_solutionDesignTypeCode != null)
+                                        // BomSystemSelector(
+                                        //   onChanged: (code) {
+                                        //     setState(() => _system = code);
+                                        //   },
+                                        // ),
+                                        if (_system != null)
                                           BomButtonsSection(
                                             key: PageStorageKey(
-                                                'bom-buttons-${projectId!}'),
+                                                'bom-buttons-$projectId'),
                                             solutionDesignBom:
-                                                solutionDesignBom, // you already have this
-                                            systemCode:
-                                                _solutionDesignTypeCode!, // selected code (e.g., "DC")
-                                            projectId:
-                                                projectId!, // your var in this screen
-                                            origin: FormOrigin
-                                                .submitForApproval, // keep your origin logic
+                                                solutionDesignBom,
+                                            systemCode: _system!,
+                                            projectId: projectId,
+                                            origin:
+                                                FormOrigin.submitForApproval,
                                           ),
                                       ],
                                     );
@@ -624,7 +651,11 @@ class RejectedEditAssetSummary extends StatelessWidget {
       Stack(alignment: Alignment.center, children: [
         Align(
             alignment: Alignment.centerLeft,
-            child: Text('${assetType}s', style: textTheme.headingS)),
+            child: Text(
+                assetType != ASSET_TYPES.BATTERY.name
+                    ? '${assetType}s'
+                    : 'Batteries',
+                style: textTheme.headingS)),
         Center(child: Text('$count', style: textTheme.bodyL)),
       ]),
       if (has) RejectionReasonsList(comments: comments),

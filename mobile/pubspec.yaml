@@ -54,6 +54,7 @@ dependencies:
   internet_connection_checker_plus: ^2.7.2
   digit_scanner: ^1.0.6+3
   digit_forms_engine: ^0.0.6-dev
+  workmanager: ^0.7.0
 
 dependency_overrides:
   camera_android_camerax: ^0.5.0

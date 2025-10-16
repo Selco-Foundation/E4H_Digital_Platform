@@ -17,7 +17,7 @@
         "active": true,
         "code": "SC_NO_LR_FRIDGE_NO_CCP",
         "name": "SC - without labour room + Refrigerator & without cold chain point",
-        "url": "d9d2a1ef-e917-4a31-8f6f-81055d689bef",
+        "url": "0114b303-5c68-49fc-9904-4ee212bd8f24",
         "system_code": "AC_OFF_GRID"
       },
       "isActive": true,
@@ -37,8 +37,8 @@
         "active": true,
         "code": "SC_LR_FRIDGE_NO_CCP",
         "name": "SC - with labour room + Refrigerator & without cold chain point",
-        "url": "d9d2a1ef-e917-4a31-8f6f-81055d689bef",
-        "system_code": "AC_OFF_GRID"
+        "url": "0114b303-5c68-49fc-9904-4ee212bd8f24",
+        "system_code": "DC"
       },
       "isActive": true,
       "auditDetails": {
@@ -57,8 +57,8 @@
         "active": true,
         "code": "SC_LR_WITH_CCP",
         "name": "SC - with Labour room with cold chain point",
-        "url": "d9d2a1ef-e917-4a31-8f6f-81055d689bef",
-        "system_code": "AC_OFF_GRID"
+        "url": "0114b303-5c68-49fc-9904-4ee212bd8f24",
+        "system_code": "AC_OFF_GRID_THREE_PHASE"
       },
       "isActive": true,
       "auditDetails": {
@@ -77,8 +77,8 @@
         "active": true,
         "code": "PHC_NO_DELIVERY_NO_CCP",
         "name": "PHC Without Delivery Without Cold Chain",
-        "url": "d9d2a1ef-e917-4a31-8f6f-81055d689bef",
-        "system_code": "AC_OFF_GRID"
+        "url": "0114b303-5c68-49fc-9904-4ee212bd8f24",
+        "system_code": "HYBRID_SINGLE_PHASE"
       },
       "isActive": true,
       "auditDetails": {
@@ -97,8 +97,8 @@
         "active": true,
         "code": "PHC_DELIVERY_NO_CCP",
         "name": "PHC With Delivery Without Cold Chain",
-        "url": "d9d2a1ef-e917-4a31-8f6f-81055d689bef",
-        "system_code": "AC_OFF_GRID"
+        "url": "0114b303-5c68-49fc-9904-4ee212bd8f24",
+        "system_code": "HYBRID_THREE_PHASE"
       },
       "isActive": true,
       "auditDetails": {
@@ -117,7 +117,7 @@
         "active": true,
         "code": "PHC_NO_DELIVERY_WITH_CCP",
         "name": "PHC Without Delivery With Cold Chain",
-        "url": "d9d2a1ef-e917-4a31-8f6f-81055d689bef",
+        "url": "0114b303-5c68-49fc-9904-4ee212bd8f24",
         "system_code": "AC_OFF_GRID"
       },
       "isActive": true,
@@ -137,7 +137,7 @@
         "active": true,
         "code": "PHC_DELIVERY_WITH_CCP",
         "name": "PHC With Delivery With Cold Chain",
-        "url": "d9d2a1ef-e917-4a31-8f6f-81055d689bef",
+        "url": "0114b303-5c68-49fc-9904-4ee212bd8f24",
         "system_code": "AC_OFF_GRID"
       },
       "isActive": true,
@@ -157,7 +157,7 @@
         "active": true,
         "code": "PHC_DELIVERY_CCP_DENTAL",
         "name": "PHC With Delivery With Cold Chain and Dental Unit",
-        "url": "d9d2a1ef-e917-4a31-8f6f-81055d689bef",
+        "url": "0114b303-5c68-49fc-9904-4ee212bd8f24",
         "system_code": "AC_OFF_GRID"
       },
       "isActive": true,
@@ -177,7 +177,7 @@
         "active": true,
         "code": "PHC_LAB_CCP_OR_LR",
         "name": "PHC with Lab + Cold Chain (or) Lab + Labour Room",
-        "url": "d9d2a1ef-e917-4a31-8f6f-81055d689bef",
+        "url": "0114b303-5c68-49fc-9904-4ee212bd8f24",
         "system_code": "AC_OFF_GRID"
       },
       "isActive": true,
@@ -197,7 +197,7 @@
         "active": true,
         "code": "PHC_DELIVERY_CCP_HYBRID",
         "name": "PHC With Delivery With Cold Chain - Hybrid System",
-        "url": "d9d2a1ef-e917-4a31-8f6f-81055d689bef",
+        "url": "0114b303-5c68-49fc-9904-4ee212bd8f24",
         "system_code": "AC_OFF_GRID"
       },
       "isActive": true,
@@ -217,8 +217,28 @@
         "active": true,
         "code": "SC_NO_LR_NO_CCP",
         "name": "SC - without labour room & without cold chain point",
-        "url": "d9d2a1ef-e917-4a31-8f6f-81055d689bef",
+        "url": "0114b303-5c68-49fc-9904-4ee212bd8f24",
         "system_code": "AC_OFF_GRID"
+      },
+      "isActive": true,
+      "auditDetails": {
+        "createdBy": "0ab7b240-5092-4759-83a6-75f396a35a9b",
+        "lastModifiedBy": "0ab7b240-5092-4759-83a6-75f396a35a9b",
+        "createdTime": 1746790085338,
+        "lastModifiedTime": 1746790085338
+      }
+    },
+    {
+      "id": "fcb06252-3fab-4415-8e12-a98f9818e511",
+      "tenantId": "in",
+      "schemaCode": "asset.SolutionDesignType",
+      "uniqueIdentifier": "SUB_CENTER_STAFF_QUARTERS",
+      "data": {
+        "active": true,
+        "code": "SUB_CENTER_STAFF_QUARTERS",
+        "name": "Sub center + Staff Quaters",
+        "url": "0114b303-5c68-49fc-9904-4ee212bd8f24",
+        "system_code": "DC"
       },
       "isActive": true,
       "auditDetails": {

@@ -22,7 +22,10 @@ import '../blocs/project_bom/project_bom.dart';
 import '../blocs/report_type/report_type.dart';
 import '../blocs/selected_project/selected_project.dart';
 import '../blocs/user_type/user_type.dart';
+import '../model/mdms/mdms.dart';
 import '../model/project_workflow/project_workflow.dart';
+import '../model/solution_design_type/solution_design_type.dart';
+import '../repositories/project_workflow.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
 import '../utils/i18_key_constants.dart' as i18;
@@ -48,7 +51,7 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
   ProjectWorkflow? projectWorkflow;
   double? _latitude;
   double? _longitude;
-  String? _solutionDesignTypeCode;
+  String? _system;
   late String userType = "";
   bool _didNavigateAfterSubmit = false;
 
@@ -99,17 +102,17 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
           .read<CacheAssetBloc>()
           .add(CacheAssetEvent.start(project.project.id, userType, project));
 
+      context.read<OverallAssetSummaryBloc>().add(
+            OverallAssetSummaryEvent.loadCounts(projectId: project.project.id),
+          );
       context.read<ProjectBomBloc>().add(
             ProjectBomEvent.syncIfNeeded(
               projectId: _currentProjectId!,
               userType: userType,
             ),
           );
-
+      _loadProjectSystem();
       _loadInitialCompletion();
-      context.read<OverallAssetSummaryBloc>().add(
-            OverallAssetSummaryEvent.loadCounts(projectId: project.project.id),
-          );
     });
     //});
   }
@@ -173,6 +176,32 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
     });
   }
 
+  Future<void> _loadProjectSystem() async {
+    if (_currentProjectId == null) return;
+
+    final isar = context.read<ProjectBloc>().isar;
+
+    final initState = context.read<AppInitialization>().state;
+    final solutionDesignList =
+        initState.maybeWhen<List<Mdms<SolutionDesignType>>>(
+      initialized: (_, __, ___, ____, _____, ______, solutionDesign, _______) =>
+          solutionDesign,
+      orElse: () => const [],
+    );
+
+    final facilityCode = projectWorkflow?.project.additionalDetails?.facility
+        ?.facilityDetails?.solar_solution_design_type;
+
+    final sys = await ProjectWorkflowRepository().getProjectSystem(
+        isar: isar,
+        projectId: _currentProjectId!,
+        solutionDesignList: solutionDesignList,
+        facilitySolutionDesignCode: facilityCode);
+
+    if (!mounted) return;
+    setState(() => _system = sys);
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -183,10 +212,10 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
         state.maybeWhen(
           loading: () {},
           success: (savedBomValues) async {
-            await _loadInitialCompletion();
             context.read<OverallAssetSummaryBloc>().add(
                 OverallAssetSummaryEvent.loadCounts(
                     projectId: _currentProjectId!));
+            await _loadInitialCompletion();
           },
           failure: (msg) {
             context.showSnackBar(
@@ -661,22 +690,20 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                                   ) {
                                                     return Column(
                                                       children: [
-                                                        BomSystemSelector(
-                                                          onChanged: (code) {
-                                                            setState(() =>
-                                                                _solutionDesignTypeCode =
-                                                                    code);
-                                                          },
-                                                        ),
-                                                        if (_solutionDesignTypeCode !=
-                                                            null)
+                                                        // BomSystemSelector(
+                                                        //   onChanged: (code) {
+                                                        //     setState(() =>
+                                                        //         _system = code);
+                                                        //   },
+                                                        // ),
+                                                        if (_system != null)
                                                           BomButtonsSection(
                                                             key: PageStorageKey(
                                                                 'bom-buttons-${_currentProjectId!}'),
                                                             solutionDesignBom:
                                                                 solutionDesignBom, // you already have this
                                                             systemCode:
-                                                                _solutionDesignTypeCode!, // selected code (e.g., "DC")
+                                                                _system!, // selected code (e.g., "DC")
                                                             projectId:
                                                                 _currentProjectId!, // your var in this screen
                                                             origin: isSubmittedReport

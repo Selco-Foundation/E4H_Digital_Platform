@@ -282,7 +282,6 @@ class _BomButtonsSectionState extends State<BomButtonsSection>
   @override
   bool get wantKeepAlive => true;
 
-  // keep last good entries/models so UI doesn’t vanish on refresh
   List<dynamic> _entries = const [];
   List<_BtnModel> _models = const [];
   bool _loading = false;
@@ -294,7 +293,7 @@ class _BomButtonsSectionState extends State<BomButtonsSection>
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (_models.isEmpty && !_loading) {
-      _refreshModels(); // first load
+      _refreshModels();
     }
   }
 
@@ -338,7 +337,7 @@ class _BomButtonsSectionState extends State<BomButtonsSection>
     )
         .listen((_) {
       if (!mounted) return;
-      _refreshModels(); // a relevant (projectId, schemaKey) row changed → update labels
+      _refreshModels();
     });
   }
 
@@ -346,7 +345,6 @@ class _BomButtonsSectionState extends State<BomButtonsSection>
     _loading = true;
     _lastSig = '${widget.projectId}|${widget.origin}|${widget.systemCode}';
 
-    // 1) derive BOM forms for the current *system* code (sync)
     final matches = widget.solutionDesignBom.where(
       (e) => e.data.systemCode == widget.systemCode,
     );
@@ -356,17 +354,15 @@ class _BomButtonsSectionState extends State<BomButtonsSection>
     if (!mounted) return;
     setState(() {
       _entries = newEntries;
-      // IMPORTANT: do not clear _models here; keep last good UI
     });
 
     if (_entries.isEmpty) {
       _loading = false;
-      if (mounted) setState(() {}); // show empty once
+      if (mounted) setState(() {});
       _restartBomWatcherForSchemas(const []);
       return;
     }
 
-    // 2) resolve models in background
     final isar = context.read<ProjectBloc>().isar;
     try {
       final results = <_BtnModel>[];
@@ -386,10 +382,8 @@ class _BomButtonsSectionState extends State<BomButtonsSection>
         ));
       }
       if (!mounted) return;
-      // <-- START PRECISE WATCHER ONLY FOR CURRENT SCHEMAS
       final schemaKeys = results.map((e) => e.schemaName).toList();
       _restartBomWatcherForSchemas(schemaKeys);
-      // <-- END PRECISE WATCHER
       setState(() => _models = results);
     } finally {
       _loading = false;
@@ -401,12 +395,10 @@ class _BomButtonsSectionState extends State<BomButtonsSection>
   Widget build(BuildContext context) {
     super.build(context);
 
-    // If we never had any data and there’s also no entries, render nothing.
     if (_entries.isEmpty && _models.isEmpty) {
       return const SizedBox.shrink();
     }
 
-    // Show last good models even while loading new ones (prevents flicker)
     final visible = _models;
 
     return Column(
@@ -434,8 +426,7 @@ class _BomButtonsSectionState extends State<BomButtonsSection>
           ),
           const SizedBox(height: spacer4),
         ],
-        if (_loading && visible.isNotEmpty)
-          const SizedBox.shrink(), // optional: add a tiny “updating…” hint
+        if (_loading && visible.isNotEmpty) const SizedBox.shrink(),
       ],
     );
   }

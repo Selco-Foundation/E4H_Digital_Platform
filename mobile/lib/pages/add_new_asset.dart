@@ -24,6 +24,7 @@ import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:recase/recase.dart';
+import 'package:selco/model/project_workflow/project_workflow.dart';
 
 import '../blocs/app_init/app_init.dart';
 import '../blocs/asset_type/asset_type.dart';
@@ -85,6 +86,7 @@ class AddNewAssetPage extends StatefulWidget {
 
 class _AddNewAssetPageState extends State<AddNewAssetPage> {
   String? _currentProjectId;
+  ProjectWorkflow? projectWorkflow;
   final List<AssetModel> _assets = [AssetModel(serialNumber: '')];
   String currentAssetType = "";
   late List<String> assetCapacity = [];
@@ -121,6 +123,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
 
       context.read<SelectedProjectBloc>().state.whenOrNull(selected: (proj) {
         _currentProjectId = proj.project.id;
+        projectWorkflow = proj;
         context
             .read<CacheAssetCountBloc>()
             .add(CacheAssetCountEvent.get(proj.project.id, currentAssetType));
@@ -139,7 +142,26 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                       at.code.toUpperCase() == currentAssetType.toUpperCase())
                   .toList();
 
-              final systemCode = system.lastOrNull?.data.code;
+              final selectedSolutionDesignCode = projectWorkflow
+                  ?.project
+                  .additionalDetails
+                  ?.facility
+                  ?.facilityDetails
+                  ?.solar_solution_design_type;
+
+              print("selectedSolutionDesignCode $selectedSolutionDesignCode");
+
+              final matchedSystemCode = solutionDesign
+                  .map((m) => m.data)
+                  .firstWhereOrNull(
+                      (sd) => sd.code == selectedSolutionDesignCode)
+                  ?.systemCode;
+
+              print("matchedSystemCode $matchedSystemCode");
+
+              final systemCode =
+                  matchedSystemCode ?? system.firstOrNull?.data.code;
+
               selectedAssetType = assetTypeList.firstWhereOrNull((asset) =>
                   asset.code.toUpperCase() == currentAssetType.toUpperCase());
 
