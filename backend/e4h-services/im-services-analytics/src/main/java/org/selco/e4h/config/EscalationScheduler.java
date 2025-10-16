@@ -20,7 +20,6 @@ import java.util.UUID;
 public class EscalationScheduler {
     
     private final EscalationController escalationController;
-    private final ConsumerConfiguration consumerConfiguration;
     
     /**
      * Scheduled method to process SLA escalations daily at end of workday
@@ -77,7 +76,7 @@ public class EscalationScheduler {
             log.error("Error during scheduled weekly SLA escalation processing", e);
         }
     }
-    
+
     /**
      * Create RequestInfo for scheduled job execution
      */

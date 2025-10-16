@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.request.RequestInfo;
 import org.selco.e4h.config.ConsumerConfiguration;
+import org.selco.e4h.util.CommonUtility;
 import org.selco.e4h.web.models.EscalationTicket;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
@@ -14,7 +15,6 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.TimeZone;
-import java.util.Base64;
 
 /**
  * Service to generate dynamic email templates with role-based sections
@@ -30,6 +30,7 @@ public class DynamicEmailTemplateService {
     private static final String TEMPLATE_PATH = "templates/role_based_escalation_email.html";
 
     private final ConsumerConfiguration consumerConfiguration;
+    private final CommonUtility commonUtility;
     
     static {
         // Set timezone to IST for date formatting
@@ -111,46 +112,6 @@ public class DynamicEmailTemplateService {
         }
     }
     
-    /**
-     * Load logo image and encode as base64 data URI
-     */
-    private String loadLogoAsBase64(String logoFileName) {
-        try {
-            log.info("Loading logo file: {}", logoFileName);
-            ClassPathResource logoResource = new ClassPathResource("templates/" + logoFileName);
-            
-            if (!logoResource.exists()) {
-                log.error("Logo file does not exist: templates/{}", logoFileName);
-                return getPlaceholderLogo();
-            }
-            
-            byte[] logoBytes = logoResource.getInputStream().readAllBytes();
-            log.info("Successfully loaded logo: {} ({} bytes)", logoFileName, logoBytes.length);
-            
-            String base64Logo = Base64.getEncoder().encodeToString(logoBytes);
-            
-            // Determine MIME type based on file extension
-            String mimeType = logoFileName.toLowerCase().endsWith(".png") ? "image/png" : "image/jpeg";
-            
-            // Return data URI
-            String dataUri = "data:" + mimeType + ";base64," + base64Logo;
-            log.debug("Generated data URI for {}: {} characters", logoFileName, dataUri.length());
-            
-            return dataUri;
-            
-        } catch (Exception e) {
-            log.error("Failed to load logo: {}", logoFileName, e);
-            return getPlaceholderLogo();
-        }
-    }
-    
-    /**
-     * Get placeholder logo when real logo fails to load
-     */
-    private String getPlaceholderLogo() {
-        log.warn("Using placeholder logo due to loading failure");
-        return "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
-    }
     
     /**
      * Prepare role-based template variables with dynamic sections
@@ -172,8 +133,8 @@ public class DynamicEmailTemplateService {
         Map<String, String> variables = new HashMap<>();
         
         // Basic variables
-        variables.put("NAME", escapeHtml(recipientName));
-        variables.put("STATE_NAME", escapeHtml(getStateDisplayName(tenantId)));
+        variables.put("NAME", commonUtility.escapeHtml(recipientName));
+        variables.put("STATE_NAME", commonUtility.escapeHtml(commonUtility.getStateDisplayName(tenantId)));
         variables.put("AS_OF_DATE", DATE_FORMAT.format(new Date()));
         variables.put("BOUNDARY_LEVEL", boundaryLevel);
         
@@ -182,8 +143,8 @@ public class DynamicEmailTemplateService {
         variables.put("TOTAL_TICKETS", String.valueOf(totalTickets));
         
         // Load and embed logos as base64 data URIs
-        variables.put("SELCO_LOGO", loadLogoAsBase64("selcofoundation.png"));
-        variables.put("SAURA_LOGO", loadLogoAsBase64("SauraEmitra.png"));
+        variables.put("SELCO_LOGO", commonUtility.loadLogoAsBase64("selcofoundation.png"));
+        variables.put("SAURA_LOGO", commonUtility.loadLogoAsBase64("SauraEmitra.png"));
         
         // Generate dynamic escalation sections based on role and available levels
         String escalationSections = generateRoleBasedEscalationSections(
@@ -191,7 +152,7 @@ public class DynamicEmailTemplateService {
         variables.put("ESCALATION_SECTIONS", escalationSections);
         
         // Generate state-specific dashboard URL
-        variables.put("DASHBOARD_URL", generateStateDashboardUrl(tenantId));
+        variables.put("DASHBOARD_URL", commonUtility.generateStateDashboardUrl(tenantId));
         
         return variables;
     }
@@ -296,7 +257,8 @@ public class DynamicEmailTemplateService {
         
         // Download button - only show if file store ID is available
         if (fileStoreId != null && !fileStoreId.isEmpty()) {
-            String downloadUrl = generateDownloadUrl(fileStoreId, tenantId);
+            String downloadUrl = commonUtility.generateDownloadUrl(fileStoreId, tenantId, 
+                consumerConfiguration.getFileStoreBaseUrl(), consumerConfiguration.getFileStoreDownloadEndpoint());
             section.append("  <tr>\n");
             section.append("    <td align=\"center\">\n");
             section.append("      <a href=\"").append(downloadUrl).append("\" target=\"_blank\" rel=\"noopener\" style=\"display:inline-block;background:#FFFFFF;color:#f08400;border:1.5px solid #f07400;border-radius:12px;padding:12px 18px;font:600 14px/20px Arial,Helvetica,sans-serif;text-decoration:none;\">Download Ticket Details</a>\n");
@@ -339,7 +301,7 @@ public class DynamicEmailTemplateService {
             String workflowState = entry.getKey();
             Long count = entry.getValue();
             
-            String displayName = formatWorkflowStateForDisplay(workflowState, level, recipientRole);
+            String displayName = commonUtility.formatWorkflowStateForDisplay(workflowState, level, recipientRole);
             
             rows.append("  <tr>\n");
             rows.append("    <td>\n");
@@ -412,7 +374,7 @@ public class DynamicEmailTemplateService {
      * Get call to action text based on escalation level and role
      */
     private String getCallToAction(String level, String recipientRole, String tenantId) {
-        String sauraEmitraUrl = generateSauraEmitraUrl(tenantId);
+        String sauraEmitraUrl = commonUtility.generateSauraEmitraUrl(tenantId);
         String baseMessage = "";
         
         if ("CENTRAL_OPERATIONS_LEAD".equals(recipientRole)) {
@@ -473,155 +435,9 @@ public class DynamicEmailTemplateService {
     }
     
     
-    /**
-     * Format workflow state for display based on role and escalation level
-     * Direct formatting without MDMS - simpler and more maintainable
-     */
-    private String formatWorkflowStateForDisplay(String workflowState, String escalationLevel, String recipientRole) {
-        if (workflowState == null) {
-            return "Unknown";
-        }
-        
-        // Role-specific formatting rules
-        switch (workflowState) {
-            case "OUT_OF_WARRANTY":
-            case "PENDING_ASSIGNMENT_OUT_OF_WARRANTY":
-                return "Out of Warranty - Pending State POC";
-            
-            case "OUT_OF_WARRANTY_PENDING_STATE_POC":
-                return "Out of Warranty - Pending State POC";
-            
-            case "PENDINGFORASSIGNMENT":
-                // Different display based on role
-                if ("CENTRAL_POC".equals(recipientRole) && "LEVEL_TWO".equals(escalationLevel)) {
-                    return "CRM - Pending Assignment";
-                }
-                return "Pending Assignment";
-            
-            case "PENDING_ASSIGNMENT_SPARE_PART_NEEDED":
-                // Different display based on role
-                if ("CENTRAL_POC".equals(recipientRole)) {
-                    return "CRM - Spare Part Change";
-                } else if ("STATE_POC".equals(recipientRole)) {
-                    return "Spare Part Change - Pending With CRM";
-                }
-                return "Spare Part Change";
-            
-            case "PENDING_RESOLUTION_SPARE_PART_NEEDED":
-                // Different display based on role
-                if ("CENTRAL_POC".equals(recipientRole)) {
-                    return "CRM - Spare Part Change";
-                } else if ("STATE_POC".equals(recipientRole)) {
-                    return "Spare Part Change - Pending with Vendor";
-                }
-                return "Spare Part Change - Pending with Vendor";
-            
-            case "PENDINGRESOLUTION":
-                if ("CENTRAL_POC".equals(recipientRole)) {
-                    return "Vendor - Within Warranty";
-                }
-                return "Pending Resolution";
-            
-            case "PENDING_RESOLUTION_OUT_OF_WARRANTY":
-                if ("CENTRAL_POC".equals(recipientRole)) {
-                    return "Vendor - Out of Warranty";
-                }
-                return "Out of Warranty - Pending with Vendor";
-            
-            default:
-                // Generic formatting: Convert PENDING_ASSIGNMENT to "Pending Assignment"
-                return Arrays.stream(workflowState.split("_"))
-                    .map(word -> word.substring(0, 1).toUpperCase() + word.substring(1).toLowerCase())
-                    .collect(Collectors.joining(" "));
-        }
-    }
     
     
-    /**
-     * Get proper state display name from tenant ID
-     */
-    private String getStateDisplayName(String tenantId) {
-        if (tenantId == null || tenantId.isEmpty()) {
-            return "All States";
-        }
-        
-        switch (tenantId.toLowerCase()) {
-            case "pg":
-                return "Karnataka";
-            case "sk":
-                return "Sikkim";
-            case "mz":
-                return "Mizoram";
-            case "od":
-                return "Odisha";
-            case "as":
-                return "Assam";
-            case "mn":
-                return "Manipur";
-            case "nl":
-                return "Nagaland";
-            case "gj":
-                return "Gujarat";
-            case "mh":
-                return "Maharashtra";
-            case "ml":
-                return "Meghalaya";
-            case "in":
-                return "India";
-            default:
-                // If tenant ID doesn't match known states, return as-is
-                return tenantId.toUpperCase();
-        }
-    }
     
-    /**
-     * Generate state-specific dashboard URL
-     */
-    private String generateStateDashboardUrl(String tenantId) {
-        // Use the E4H Kibana dashboard URL
-        return "https://e4h-dev.selcofoundation.org/kibana/";
-    }
-    
-    /**
-     * Generate Saura eMitra URL for specific state
-     */
-    private String generateSauraEmitraUrl(String tenantId) {
-        if (tenantId == null || "in".equals(tenantId)) {
-            return "https://saura-emitra.selcofoundation.org/digit-ui";
-        }
-        
-        switch (tenantId.toLowerCase()) {
-            case "pg":
-                return "https://saura-emitra.selcofoundation.org/digit-ui"; // Karnataka
-            case "sk":
-                return "https://saura-emitra.selcofoundation.org/sikkim";
-            case "mz":
-                return "https://saura-emitra.selcofoundation.org/mizoram";
-            case "od":
-                return "https://saura-emitra.selcofoundation.org/odisha";
-            case "as":
-                return "https://saura-emitra.selcofoundation.org/assam";
-            case "mn":
-                return "https://saura-emitra.selcofoundation.org/manipur";
-            case "nl":
-                return "https://saura-emitra.selcofoundation.org/nagaland";
-            case "gj":
-                return "https://saura-emitra.selcofoundation.org/gujarat";
-            case "mh":
-                return "https://saura-emitra.selcofoundation.org/maharashtra";
-            case "ml":
-                return "https://saura-emitra.selcofoundation.org/meghalaya";
-            default:
-                return "https://saura-emitra.selcofoundation.org/digit-ui";
-        }
-    }
-    
-    /**
-     * Generate download URL using actual file store ID
-     */
-    private String generateDownloadUrl(String fileStoreId, String tenantId) {
-        return consumerConfiguration.getFileStoreBaseUrl()+consumerConfiguration.getFileStoreDownloadEndpoint()+ "?tenantId=" + tenantId + "&fileStoreId=" + fileStoreId;
-    }
     
     /**
      * Replace template variables with actual values
@@ -637,20 +453,6 @@ public class DynamicEmailTemplateService {
         return result;
     }
     
-    /**
-     * Escape HTML special characters
-     */
-    private String escapeHtml(String text) {
-        if (text == null) {
-            return "";
-        }
-        
-        return text.replace("&", "&amp;")
-                  .replace("<", "&lt;")
-                  .replace(">", "&gt;")
-                  .replace("\"", "&quot;")
-                  .replace("'", "&#39;");
-    }
     
     /**
      * Generate fallback email if template loading fails
@@ -661,7 +463,7 @@ public class DynamicEmailTemplateService {
         
         html.append("<!DOCTYPE html><html><head><title>Escalation Alert</title></head><body>");
         html.append("<h1>SLA Escalation Alert</h1>");
-        html.append("<p>Dear ").append(escapeHtml(recipientName)).append(",</p>");
+        html.append("<p>Dear ").append(commonUtility.escapeHtml(recipientName)).append(",</p>");
         html.append("<p>This is an automated escalation alert for tickets that have breached their SLA.</p>");
         
         int totalTickets = ticketsByLevel.values().stream().mapToInt(List::size).sum();
@@ -688,7 +490,7 @@ public class DynamicEmailTemplateService {
      * Generate role-based email subject
      */
     public String generateRoleBasedEmailSubject(String recipientRole, String tenantId, String asOfDate) {
-        String stateName = getStateDisplayName(tenantId);
+        String stateName = commonUtility.getStateDisplayName(tenantId);
         
         switch (recipientRole) {
             case "STATE_POC":

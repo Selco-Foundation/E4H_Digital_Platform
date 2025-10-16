@@ -1,14 +1,18 @@
 package org.selco.e4h.web.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.request.RequestInfo;
 import org.selco.e4h.service.*;
 import org.selco.e4h.util.StorageUtil;
+import org.selco.e4h.util.CommonUtility;
+import org.selco.e4h.web.models.FunctionalMetrics;
+import org.selco.e4h.web.models.AgeBucketData;
+import org.selco.e4h.web.models.ArrowData;
 import org.selco.e4h.web.models.*;
 import org.selco.e4h.web.models.ProcessingContext;
 import org.selco.e4h.web.models.storage.StorageResponse;
+import java.util.stream.Collectors;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpStatus;
@@ -17,7 +21,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
@@ -42,8 +45,11 @@ public class EscalationController {
     private final ElasticsearchEscalationService elasticsearchEscalationService;
     private final EscalationStatusService escalationStatusService;
     private final DynamicEmailTemplateService dynamicEmailTemplateService;
+    private final WeeklyReportService weeklyReportService;
+    private final WeeklyReportEmailService weeklyReportEmailService;
     private final KafkaTemplate<String, Object> kafkaTemplate;
     private final ConsumerConfiguration consumerConfiguration;
+    private final CommonUtility commonUtility;
     
     /**
      * Daily escalation endpoint
@@ -79,7 +85,7 @@ public class EscalationController {
             
             log.info("Completed daily SLA escalation processing");
             return ResponseEntity.ok("Daily SLA escalation processing completed successfully");
-            
+
         } catch (Exception e) {
             log.error("Error during daily SLA escalation processing", e);
             escalationStatusService.publishGeneralFailureStatus("daily", e.getMessage());
@@ -90,9 +96,12 @@ public class EscalationController {
     
     /**
      * Weekly escalation endpoint
+     * Uses Incident.EscalationRecipient MDMS to get users per state
+     * Sends one email per email ID containing all states
+     * Runs every Monday at 9:00 AM IST
      */
     @PostMapping("/weekly")
-    public void sendWeeklyEscalationEmail(@RequestBody EscalationEmailRequest request) {
+    public ResponseEntity<String> sendWeeklyEscalationEmail(@RequestBody EscalationEmailRequest request) {
         try {
             log.info("Starting weekly SLA escalation processing");
             
@@ -105,30 +114,294 @@ public class EscalationController {
             if (escalationRecipients.isEmpty()) {
                 log.warn("No escalation recipients found in MDMS");
                 escalationStatusService.publishGeneralFailureStatus("weekly", "No escalation recipients found in MDMS");
-                ResponseEntity.ok("No escalation recipients found");
-                return;
+                return ResponseEntity.ok("No escalation recipients found");
             }
             
             log.info("Found {} escalation recipients and {} active tenants", escalationRecipients.size(), activeTenantIds.size());
             
-            // Process each escalation recipient in priority order
-            for (EscalationRecipient escalationRecipient : escalationRecipients) {
-                if (escalationRecipient.getActive() == null || !escalationRecipient.getActive()) {
-                    log.info("Skipping inactive escalation recipient: {}", escalationRecipient.getId());
+            // Process weekly reports using Incident.EscalationRecipient MDMS
+            processWeeklyReportsWithEscalationRecipients(requestInfo, escalationRecipients, activeTenantIds);
+            
+            log.info("Completed weekly DRE system report processing");
+            return ResponseEntity.ok("Weekly DRE system report processing completed successfully");
+
+        } catch (Exception e) {
+            log.error("Error during weekly DRE system report processing", e);
+            escalationStatusService.publishGeneralFailureStatus("weekly", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Weekly DRE system report processing failed: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Process weekly reports using Incident.EscalationRecipient MDMS
+     * Sends one email per email ID containing all states
+     */
+    private void processWeeklyReportsWithEscalationRecipients(RequestInfo requestInfo, 
+                                                           List<EscalationRecipient> escalationRecipients, 
+                                                           List<String> activeTenantIds) {
+        try {
+            log.info("Processing weekly reports with {} escalation recipients for {} active tenants", 
+                escalationRecipients.size(), activeTenantIds.size());
+            
+            // Group escalation recipients by email ID to send one email per recipient
+            Map<String, List<EscalationRecipient>> recipientsByEmail = new HashMap<>();
+            
+            for (EscalationRecipient recipient : escalationRecipients) {
+                if (recipient.getActive() == null || !recipient.getActive()) {
+                    log.info("Skipping inactive escalation recipient: {}", recipient.getId());
                     continue;
                 }
                 
-                processEscalationRecipient(requestInfo, escalationRecipient, activeTenantIds, "weekly");
+                // Get users for this recipient based on boundary level
+                List<String> roleCodes = Arrays.asList(recipient.getRecipientRole());
+                List<User> users = new ArrayList<>();
+                
+                if ("state".equals(recipient.getBoundaryLevel())) {
+                    // For state-level recipients, get users from all active tenants
+                    for (String tenantId : activeTenantIds) {
+                        users.addAll(userService.searchUsersByRoleAndTenant(requestInfo, tenantId, roleCodes));
+                    }
+                } else if ("country".equals(recipient.getBoundaryLevel())) {
+                    // For country-level recipients, get users from 'in' tenant
+                    users = userService.searchUsersByRoleInCountry(requestInfo, roleCodes);
+                }
+                
+                for (User user : users) {
+                    if (user.getEmailId() != null && !user.getEmailId().trim().isEmpty()) {
+                        recipientsByEmail.computeIfAbsent(user.getEmailId(), k -> new ArrayList<>()).add(recipient);
+                    }
+                }
             }
             
-            log.info("Completed weekly SLA escalation processing");
-            ResponseEntity.ok("Weekly SLA escalation processing completed successfully");
-
+            log.info("Found {} unique email addresses for weekly reports", recipientsByEmail.size());
+            
+            // Process each unique email address
+            for (Map.Entry<String, List<EscalationRecipient>> entry : recipientsByEmail.entrySet()) {
+                String emailId = entry.getKey();
+                List<EscalationRecipient> recipientsForEmail = entry.getValue();
+                
+                try {
+                    processWeeklyReportForEmail(requestInfo, emailId, recipientsForEmail, activeTenantIds);
+                } catch (Exception e) {
+                    log.error("Error processing weekly report for email: {}", emailId, e);
+                }
+            }
+            
         } catch (Exception e) {
-            log.error("Error during weekly SLA escalation processing", e);
-            escalationStatusService.publishGeneralFailureStatus("weekly", e.getMessage());
-            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Weekly SLA escalation processing failed: " + e.getMessage());
+            log.error("Error processing weekly reports with escalation recipients", e);
+            throw e;
+        }
+    }
+    
+    /**
+     * Process weekly report for a single email ID containing all states
+     */
+    private void processWeeklyReportForEmail(RequestInfo requestInfo, String emailId, 
+                                          List<EscalationRecipient> recipients, 
+                                          List<String> activeTenantIds) {
+        try {
+            log.info("Processing weekly report for email: {} with {} recipients", emailId, recipients.size());
+            
+            // For weekly reports, use all active tenant IDs to generate consolidated report
+            Set<String> relevantTenantIds = new HashSet<>(activeTenantIds);
+            
+            // Generate consolidated weekly report data for all relevant tenants
+            Map<String, WeeklyReportData> reportDataByTenant = new HashMap<>();
+            Map<String, String> csvFileStoreIds = new HashMap<>();
+            
+            for (String tenantId : relevantTenantIds) {
+                try {
+                    // Generate weekly report data for this tenant
+                    WeeklyReportData reportData = weeklyReportService.generateWeeklyReportData(tenantId, requestInfo);
+                    reportDataByTenant.put(tenantId, reportData);
+                    
+                    // Generate CSV for download
+                    String csvContent = generateWeeklyReportCsv(reportData, tenantId);
+                    String csvFileName = generateCsvFileName(tenantId);
+                    String csvFileStoreId = uploadCsvToFileStore(csvContent, csvFileName, tenantId, requestInfo);
+                    
+                    if (csvFileStoreId != null) {
+                        csvFileStoreIds.put(tenantId, csvFileStoreId);
+                    }
+                    
+                } catch (Exception e) {
+                    log.error("Error generating weekly report data for tenant: {}", tenantId, e);
+                }
+            }
+            
+            // Send consolidated email with all states
+            sendConsolidatedWeeklyReportEmail(requestInfo, emailId, reportDataByTenant, csvFileStoreIds);
+            
+        } catch (Exception e) {
+            log.error("Error processing weekly report for email: {}", emailId, e);
+            throw e;
+        }
+    }
+    
+    /**
+     * Send consolidated weekly report email with all states
+     */
+    private void sendConsolidatedWeeklyReportEmail(RequestInfo requestInfo, String emailId, 
+                                                 Map<String, WeeklyReportData> reportDataByTenant,
+                                                 Map<String, String> csvFileStoreIds) {
+        try {
+            log.info("Sending consolidated weekly report email to: {} for {} tenants", emailId, reportDataByTenant.size());
+            
+            // Create a consolidated report data structure
+            WeeklyReportData consolidatedData = createConsolidatedReportData(reportDataByTenant);
+            
+            // Get user info for email
+            User user = new User();
+            user.setEmailId(emailId);
+            user.setName("Weekly Report Recipient"); // Default name
+            
+            // Generate email HTML using the weekly report email service
+            String emailBody = weeklyReportEmailService.generateWeeklyReportEmailHTML(
+                consolidatedData, user.getName(), "consolidated", requestInfo, "#");
+            
+            // Generate email subject
+            String emailSubject = weeklyReportEmailService.generateWeeklyReportEmailSubject(
+                user.getName(), consolidatedData);
+            
+            // Send email via Kafka
+            sendEmailViaKafka(user, emailSubject, emailBody, new ArrayList<>(), new ArrayList<>(), "in");
+            
+            log.info("Successfully sent consolidated weekly report email to: {}", emailId);
+            
+        } catch (Exception e) {
+            log.error("Error sending consolidated weekly report email to: {}", emailId, e);
+            throw e;
+        }
+    }
+    
+    /**
+     * Create consolidated report data from multiple tenant reports
+     */
+    private WeeklyReportData createConsolidatedReportData(Map<String, WeeklyReportData> reportDataByTenant) {
+        if (reportDataByTenant.isEmpty()) {
+            return WeeklyReportData.builder().build();
+        }
+        
+        // Use the first report as base and aggregate data
+        WeeklyReportData firstReport = reportDataByTenant.values().iterator().next();
+        
+        int totalFuncStart = 0, totalNonFuncStart = 0;
+        int totalFuncEnd = 0, totalNonFuncEnd = 0;
+        int totalLt1Wk = 0, totalLt1Mo = 0, totalLt3Mo = 0;
+        
+        Map<String, WeeklyReportData.StateAgeBucketData> consolidatedStateData = new HashMap<>();
+        
+        for (WeeklyReportData reportData : reportDataByTenant.values()) {
+            if (reportData.getWeekStartMetrics() != null) {
+                totalFuncStart += reportData.getWeekStartMetrics().getFunctionalCount();
+                totalNonFuncStart += reportData.getWeekStartMetrics().getNonFunctionalCount();
+            }
+            if (reportData.getWeekEndMetrics() != null) {
+                totalFuncEnd += reportData.getWeekEndMetrics().getFunctionalCount();
+                totalNonFuncEnd += reportData.getWeekEndMetrics().getNonFunctionalCount();
+            }
+            if (reportData.getTotalAgeBuckets() != null) {
+                totalLt1Wk += reportData.getTotalAgeBuckets().getTotalLt1Wk();
+                totalLt1Mo += reportData.getTotalAgeBuckets().getTotalLt1Mo();
+                totalLt3Mo += reportData.getTotalAgeBuckets().getTotalLt3Mo();
+            }
+            
+            // Merge state data
+            if (reportData.getStateData() != null) {
+                consolidatedStateData.putAll(reportData.getStateData());
+            }
+        }
+        
+        // Calculate percentages
+        int totalStart = totalFuncStart + totalNonFuncStart;
+        int totalEnd = totalFuncEnd + totalNonFuncEnd;
+        
+        double funcStartPct = totalStart > 0 ? (totalFuncStart * 100.0 / totalStart) : 0;
+        double nonFuncStartPct = totalStart > 0 ? (totalNonFuncStart * 100.0 / totalStart) : 0;
+        double funcEndPct = totalEnd > 0 ? (totalFuncEnd * 100.0 / totalEnd) : 0;
+        double nonFuncEndPct = totalEnd > 0 ? (totalNonFuncEnd * 100.0 / totalEnd) : 0;
+        
+        // Calculate arrows
+        ArrowData funcArrow = calculateArrow(funcStartPct, funcEndPct, true);
+        ArrowData nonFuncArrow = calculateArrow(nonFuncStartPct, nonFuncEndPct, false);
+        
+        // Create consolidated state list
+        String consolidatedStateList = consolidatedStateData.keySet().stream()
+            .map(commonUtility::getStateDisplayName)
+            .collect(Collectors.joining(", "));
+        
+        // Create FunctionalMetrics objects
+        FunctionalMetrics startMetrics = FunctionalMetrics.builder()
+            .functionalCount(totalFuncStart)
+            .nonFunctionalCount(totalNonFuncStart)
+            .build();
+
+        FunctionalMetrics endMetrics = FunctionalMetrics.builder()
+            .functionalCount(totalFuncEnd)
+            .nonFunctionalCount(totalNonFuncEnd)
+            .build();
+
+        // Create AgeBucketData object
+        AgeBucketData totalAgeBuckets = AgeBucketData.builder()
+            .totalLt1Wk(totalLt1Wk)
+            .totalLt1Mo(totalLt1Mo)
+            .totalLt3Mo(totalLt3Mo)
+            .build();
+
+        return WeeklyReportData.builder()
+            .tenantId("consolidated")
+            .dateRange(firstReport.getDateRange())
+            .weekStartDate(firstReport.getWeekStartDate())
+            .weekEndDate(firstReport.getWeekEndDate())
+            .weekStartMetrics(startMetrics)
+            .weekEndMetrics(endMetrics)
+            .functionalArrow(funcArrow)
+            .nonFunctionalArrow(nonFuncArrow)
+            .totalAgeBuckets(totalAgeBuckets)
+            .stateData(consolidatedStateData)
+            .stateList(consolidatedStateList)
+            .todayFormatted(firstReport.getTodayFormatted())
+            .build();
+    }
+    
+    /**
+     * Calculate arrow direction and class for percentage changes
+     */
+    private ArrowData calculateArrow(double startPct, double endPct, boolean isFunctional) {
+        double change = endPct - startPct;
+        
+        if (Math.abs(change) < 0.1) {
+            return ArrowData.builder()
+                .arrow("")
+                .arrowClass("")
+                .build();
+        }
+        
+        if (isFunctional) {
+            if (change > 0) {
+                return ArrowData.builder()
+                    .arrow("↑")
+                    .arrowClass("up")
+                    .build();
+            } else {
+                return ArrowData.builder()
+                    .arrow("↓")
+                    .arrowClass("down")
+                    .build();
+            }
+        } else {
+            if (change > 0) {
+                return ArrowData.builder()
+                    .arrow("↑")
+                    .arrowClass("down")
+                    .build();
+            } else {
+                return ArrowData.builder()
+                    .arrow("↓")
+                    .arrowClass("up")
+                    .build();
+            }
         }
     }
     
@@ -502,7 +775,65 @@ public class EscalationController {
     }
 
     /**
-     * Upload CSV file to FileStore using StorageUtil
+     * Generate weekly report CSV content
+     */
+    private String generateWeeklyReportCsv(WeeklyReportData reportData, String tenantId) {
+        try {
+            StringBuilder csv = new StringBuilder();
+            
+            // CSV Header
+            csv.append("Facility ID,District,Block,PHC Type,Comments,System Status,Application Status,Age in Days,State\n");
+            
+            // This would need to be implemented to fetch actual ticket data
+            // For now, we'll create a placeholder CSV with summary data
+            csv.append("SUMMARY,ALL,ALL,ALL,Weekly Report Summary,");
+            if (reportData.getWeekEndMetrics() != null) {
+                int endTotal = reportData.getWeekEndMetrics().getFunctionalCount() + reportData.getWeekEndMetrics().getNonFunctionalCount();
+                double funcEndPct = endTotal > 0 ? (reportData.getWeekEndMetrics().getFunctionalCount() * 100.0 / endTotal) : 0;
+                double nonFuncEndPct = endTotal > 0 ? (reportData.getWeekEndMetrics().getNonFunctionalCount() * 100.0 / endTotal) : 0;
+                csv.append("Functional: ").append(reportData.getWeekEndMetrics().getFunctionalCount()).append(" (").append(String.format("%.1f", funcEndPct)).append("%),");
+                csv.append("Non-Functional: ").append(reportData.getWeekEndMetrics().getNonFunctionalCount()).append(" (").append(String.format("%.1f", nonFuncEndPct)).append("%),");
+            } else {
+                csv.append("Functional: 0 (0.0%),");
+                csv.append("Non-Functional: 0 (0.0%),");
+            }
+            csv.append("N/A,");
+            csv.append(tenantId).append("\n");
+            
+            csv.append("AGE_BUCKETS,ALL,ALL,ALL,Age Bucket Summary,");
+            if (reportData.getTotalAgeBuckets() != null) {
+                csv.append("< 1 Week: ").append(reportData.getTotalAgeBuckets().getTotalLt1Wk()).append(",");
+                csv.append("< 1 Month: ").append(reportData.getTotalAgeBuckets().getTotalLt1Mo()).append(",");
+                csv.append("< 3 Month: ").append(reportData.getTotalAgeBuckets().getTotalLt3Mo()).append(",");
+            } else {
+                csv.append("< 1 Week: 0,");
+                csv.append("< 1 Month: 0,");
+                csv.append("< 3 Month: 0,");
+            }
+            csv.append("N/A,");
+            csv.append(tenantId).append("\n");
+            
+            return csv.toString();
+            
+        } catch (Exception e) {
+            log.error("Error generating weekly report CSV", e);
+            return "Error generating CSV content";
+        }
+    }
+    
+    /**
+     * Generate CSV filename for weekly report
+     */
+    private String generateCsvFileName(String tenantId) {
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd_HHmmss");
+        dateFormat.setTimeZone(TimeZone.getTimeZone("Asia/Kolkata"));
+        String timestamp = dateFormat.format(new Date());
+        
+        return String.format("weekly_report_%s_%s.csv", tenantId, timestamp);
+    }
+    
+    /**
+     * Upload CSV file to FileStore
      */
     private String uploadCsvToFileStore(String csvContent, String fileName, String tenantId, RequestInfo requestInfo) {
         try {
@@ -516,7 +847,7 @@ public class EscalationController {
                     .tenantId(tenantId)
                     .module("Incident")
                     .tag("escalation-csv")
-                    .requestInfo(convertRequestInfoToJson(requestInfo))
+                    .requestInfo(commonUtility.convertRequestInfoToJson(requestInfo))
                     .build();
             
             // Upload to FileStore using existing StorageUtil
@@ -605,72 +936,7 @@ public class EscalationController {
             }
         };
     }
-    
-    /**
-     * Combine weekly ticket lists with overlap handling
-      */
-    private List<EscalationTicket> combineWeeklyTicketLists(List<EscalationTicket> previouslyEscalatedTickets, 
-                                                           List<EscalationTicket> currentlyInBreachTickets) {
-        // Create a map to avoid duplicates based on incident ID
-        Map<String, EscalationTicket> combinedTickets = new HashMap<>();
-        
-        // Add previously escalated tickets first
-        for (EscalationTicket ticket : previouslyEscalatedTickets) {
-            combinedTickets.put(ticket.getIncidentId(), ticket);
-        }
-        
-        // Add currently in breach tickets (will overwrite if same incident ID)
-        for (EscalationTicket ticket : currentlyInBreachTickets) {
-            combinedTickets.put(ticket.getIncidentId(), ticket);
-        }
-        
-        List<EscalationTicket> result = new ArrayList<>(combinedTickets.values());
-        log.info("Combined weekly tickets: {} previously escalated + {} currently in breach = {} unique tickets", 
-                previouslyEscalatedTickets.size(), currentlyInBreachTickets.size(), result.size());
-        
-        return result;
-    }
-    
-    /**
-     * Get last week's start date (Monday)
-     */
-    private Date getLastWeekStart() {
-        Calendar cal = Calendar.getInstance();
-        cal.setTime(new Date());
-        
-        // Go back to last Monday
-        int dayOfWeek = cal.get(Calendar.DAY_OF_WEEK);
-        int daysToSubtract = (dayOfWeek == Calendar.SUNDAY) ? 7 : dayOfWeek - Calendar.MONDAY;
-        cal.add(Calendar.DAY_OF_MONTH, -daysToSubtract - 7); // Go back one more week
-        
-        // Set to start of day
-        cal.set(Calendar.HOUR_OF_DAY, 0);
-        cal.set(Calendar.MINUTE, 0);
-        cal.set(Calendar.SECOND, 0);
-        cal.set(Calendar.MILLISECOND, 0);
-        
-        return cal.getTime();
-    }
-    
-    /**
-     * Get last week's end date (Sunday)
-     */
-    private Date getLastWeekEnd() {
-        Calendar cal = Calendar.getInstance();
-        cal.setTime(getLastWeekStart());
-        
-        // Add 6 days to get to Sunday
-        cal.add(Calendar.DAY_OF_MONTH, 6);
-        
-        // Set to end of day
-        cal.set(Calendar.HOUR_OF_DAY, 23);
-        cal.set(Calendar.MINUTE, 59);
-        cal.set(Calendar.SECOND, 59);
-        cal.set(Calendar.MILLISECOND, 999);
-        
-        return cal.getTime();
-    }
-    
+
     /**
      * Health check endpoint
      */
@@ -679,32 +945,4 @@ public class EscalationController {
         return ResponseEntity.ok("Escalation service is running");
     }
     
-    /**
-     * Convert RequestInfo object to JSON string for filestore service
-     */
-    private String convertRequestInfoToJson(RequestInfo requestInfo) {
-        try {
-            // Configure ObjectMapper to handle potential serialization issues
-            ObjectMapper mapper = new ObjectMapper();
-            mapper.configure(com.fasterxml.jackson.databind.SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
-            mapper.configure(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-            
-            return mapper.writeValueAsString(requestInfo);
-        } catch (Exception e) {
-            log.warn("Failed to serialize RequestInfo to JSON, using default: {}", e.getMessage());
-            // Return a default RequestInfo JSON if serialization fails
-            return createDefaultRequestInfoJson();
-        }
-    }
-    
-    /**
-     * Create a default RequestInfo JSON string
-     */
-    private String createDefaultRequestInfoJson() {
-        return "{\"apiId\":\"im-services-analytics\",\"ver\":\"1.0\",\"ts\":" + System.currentTimeMillis() + 
-               ",\"action\":\"_create\",\"did\":\"1\",\"key\":\"\",\"msgId\":\"20170310130900|en_IN\"," +
-               "\"requesterId\":\"\",\"authToken\":\"\",\"userInfo\":{\"id\":1,\"uuid\":\"system\"," +
-               "\"type\":\"SYSTEM\",\"tenantId\":\"in\",\"roles\":[{\"name\":\"System\",\"code\":\"SYSTEM\"," +
-               "\"tenantId\":\"in\"}]}}";
-    }
 }
