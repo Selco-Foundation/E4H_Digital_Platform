@@ -134,10 +134,10 @@ public class ActivityQueryBuilder {
             preparedStmtList.add("%" + activityFacility.getFacilityName().toLowerCase() + "%");
         }
 
-        if (StringUtils.isNotBlank(activityFacility.getBoundaryCode())) {
+        if (!CollectionUtils.isEmpty(activityFacility.getBoundaryCodes())) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
-            queryBuilder.append(" fac.boundary_code =? ");
-            preparedStmtList.add(activityFacility.getBoundaryCode());
+            queryBuilder.append(" fac.boundary_code IN (").append(createQuery(activityFacility.getBoundaryCodes())).append(")");
+            preparedStmtList.addAll(activityFacility.getBoundaryCodes());
         }
 
         if (lastChangedSince != null && lastChangedSince != 0) {

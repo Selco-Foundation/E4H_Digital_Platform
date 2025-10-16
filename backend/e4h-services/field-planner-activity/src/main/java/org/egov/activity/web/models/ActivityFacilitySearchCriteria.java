@@ -45,8 +45,8 @@ public class ActivityFacilitySearchCriteria {
     @JsonProperty("facilityName")
     private @Valid String facilityName = null;
 
-    @JsonProperty("boundaryCode")
-    private @Valid String boundaryCode = null;
+    @JsonProperty("boundaryCodes")
+    private @Valid List<String> boundaryCodes = null;
 
     private String tenantId;
 
