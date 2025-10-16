@@ -512,7 +512,9 @@ public class ActivityValidator {
         if ((activityFacility.getIds()==null || activityFacility.getIds().isEmpty()) && (activityFacility.getFieldPlanId()==null || activityFacility.getFieldPlanId().isEmpty())
                 && (activityFacility.getStatuses()==null || activityFacility.getStatuses().isEmpty()) && (activityFacility.getActivityId()==null || activityFacility.getActivityId().isEmpty())
                 && StringUtils.isBlank(activityFacility.getAssignedToMe())
-                && StringUtils.isBlank(activityFacility.getAssignedUserId()))
+                && StringUtils.isBlank(activityFacility.getAssignedUserId())
+                && StringUtils.isBlank(activityFacility.getBoundaryCode())
+                && StringUtils.isBlank(activityFacility.getFacilityName()))
         {
             log.error("Any one Activity search field is required for FieldPlan Search");
             throw new CustomException("ACTIVITY_SEARCH_FIELDS", "Any one activity search field is required");
@@ -536,6 +538,7 @@ public class ActivityValidator {
         if ((criteria.getIds()==null || criteria.getIds().isEmpty()) && (criteria.getFieldPlanId()==null || criteria.getFieldPlanId().isEmpty())
                 && (criteria.getStatuses()==null || criteria.getStatuses().isEmpty()) && (criteria.getActivityId()==null || criteria.getActivityId().isEmpty())
                 && StringUtils.isBlank(criteria.getAssignedTo()) && StringUtils.isBlank(criteria.getTenantId())
+                && StringUtils.isBlank(criteria.getFieldPlanCode())
                 && StringUtils.isBlank(criteria.getAssignedBy()))
         {
             log.error("Any one Activity search field is required for FieldPlan Search");

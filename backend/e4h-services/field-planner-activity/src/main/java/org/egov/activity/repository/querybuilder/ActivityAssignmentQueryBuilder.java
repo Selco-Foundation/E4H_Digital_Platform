@@ -4,10 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.egov.activity.config.ActivityConfiguration;
-import org.egov.activity.web.models.ActivityAssignmentSearchCriteria;
-import org.egov.activity.web.models.ActivityAssignmentSearchRequest;
-import org.egov.activity.web.models.ActivityFacilitySearchCriteria;
-import org.egov.activity.web.models.ActivityFacilitySearchRequest;
+import org.egov.activity.web.models.*;
 import org.egov.common.models.core.URLParams;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
@@ -23,13 +20,16 @@ import static org.egov.activity.util.ActivityConstants.PROJECT_MANAGER;
 @RequiredArgsConstructor
 public class ActivityAssignmentQueryBuilder {
 
-    private static final String FETCH_ACTIVITY_QUERY = "SELECT aa.id as aa_activityAssignmentId, aa.tenant_id as aa_tenantId, aa.activity_id as aa_activityId, aa.poc_number as aa_pocNumber, " +
-            "aa.field_plan_id as aa_fieldPlanId, aa.status as aa_status, aa.assigned_to as aa_assignedTo, aa.assigned_by as aa_assignedBy, aa.emailsent as aa_emailSent, aa.isdeleted as aa_isdeleted,  " +
-            "aa.additional_details as aa_additionalDetails, aa.start_date as aa_startDate, aa.end_date as aa_endDate, aa.role as aa_role, aa.created_time as aa_createdTime, " +
-            "aa.last_modified_time as aa_lastModifiedTime " +
-            " " +
-            "from activity_assignments aa ";
-    private static final String ACTIVITY_COUNT_QUERY = "SELECT COUNT(*) FROM activity_assignments aa ";
+    private static final String FETCH_ACTIVITY_FIELD_PLAN = "SELECT aa.id AS aa_activityAssignmentId, aa.tenant_id AS aa_tenantId, aa.field_plan_id AS aa_fieldPlanId, aa.activity_id AS aa_activityId, " +
+            "aa.assigned_to AS aa_assignedTo, aa.assigned_by AS aa_assignedBy, aa.status AS aa_status, " +
+            "aa.created_time AS aa_createdTime, aa.last_modified_time AS aa_lastModifiedTime, aa.additional_details AS aa_additionalDetails, aa.start_date AS aa_startDate, aa.end_date AS aa_endDate, " +
+            "aa.role AS aa_role, aa.emailsent AS aa_emailSent, aa.isdeleted AS aa_isdeleted, aa.poc_number AS aa_pocNumber, fp.id AS field_plan_id_fp, fp.tenant_id AS fp_tenant_id, fp.name AS fp_name, fp.project_id AS fp_project_id, " +
+            "fp.health_facility_number AS fp_health_facility_number, fp.geography_scope AS fp_geography_scope, fp.selected_activities AS fp_selected_activities, fp.created_by AS fp_created_by, " +
+            "fp.status AS fp_status, fp.isdeleted AS fp_isdeleted, fp.last_modified_by AS fp_last_modified_by, fp.created_time AS fp_created_time, " +
+            "fp.last_modified_time AS fp_last_modified_time, fp.additional_details AS fp_additional_details, fp.start_date AS fp_start_date, fp.end_date AS fp_end_date " +
+            "FROM public.activity_assignments AS aa LEFT JOIN public.field_plans AS fp ON aa.field_plan_id = fp.id";
+
+    private static final String ACTIVITY_FIELD_PLAN_COUNT_QUERY = "SELECT COUNT(*) FROM public.activity_assignments aa LEFT JOIN field_plans fp ON aa.field_plan_id = fp.id ";
 
     private final String paginationWrapper = "SELECT * FROM " +
             "(SELECT *, DENSE_RANK() OVER (ORDER BY aa_lastModifiedTime DESC , aa_activityAssignmentId) offset_ FROM " +
@@ -65,7 +65,7 @@ public class ActivityAssignmentQueryBuilder {
 
     public String getActivityAssignmentSearchQuery(ActivityAssignmentSearchRequest request, URLParams urlParams, List<Object> preparedStmtList) {
         //This uses a ternary operator to choose between FIELDPLANS_COUNT_QUERY or FETCH_FIELDPLAN_QUERY based on the value of isCountQuery.
-        String query = request.getCriteria().isCountQuery() ? ACTIVITY_COUNT_QUERY : FETCH_ACTIVITY_QUERY;
+        String query = request.getCriteria().isCountQuery() ? ACTIVITY_FIELD_PLAN_COUNT_QUERY : FETCH_ACTIVITY_FIELD_PLAN;
         StringBuilder queryBuilder = new StringBuilder(query);
         ActivityAssignmentSearchCriteria criteria = request.getCriteria();
 
@@ -135,6 +135,13 @@ public class ActivityAssignmentQueryBuilder {
             addClauseIfRequired(preparedStmtList, queryBuilder);
             queryBuilder.append(" aa.assigned_to = ? ");
             preparedStmtList.add(userUuid);
+        }
+
+        // Check if fp name is provided
+        if (StringUtils.isNotBlank(activityAssignment.getFieldPlanCode())) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            queryBuilder.append(" LOWER(fp.name) LIKE ? ");
+            preparedStmtList.add("%" + activityAssignment.getFieldPlanCode().toLowerCase() + "%");
         }
     }
 
