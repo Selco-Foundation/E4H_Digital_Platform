@@ -513,7 +513,7 @@ public class ActivityValidator {
                 && (activityFacility.getStatuses()==null || activityFacility.getStatuses().isEmpty()) && (activityFacility.getActivityId()==null || activityFacility.getActivityId().isEmpty())
                 && StringUtils.isBlank(activityFacility.getAssignedToMe())
                 && StringUtils.isBlank(activityFacility.getAssignedUserId())
-                && StringUtils.isBlank(activityFacility.getBoundaryCode())
+                && (activityFacility.getBoundaryCodes()==null || activityFacility.getBoundaryCodes().isEmpty())
                 && StringUtils.isBlank(activityFacility.getFacilityName()))
         {
             log.error("Any one Activity search field is required for FieldPlan Search");

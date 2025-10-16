@@ -413,10 +413,12 @@ public class ActivityService {
 
         if (facilityBulkApproveRequest.getIsAllSelected()) {
             // Case 1: Search all activityFacilitiesList using filters
-            ActivityFacilitySearchCriteria searchCriteria = ActivityFacilitySearchCriteria.builder()
-                    .ids(facilityBulkApproveRequest.getFilters().getSearchCriteria().getIds())
-                    .tenantId(activityConfiguration.getTenantId())
-                    .build();
+            if(facilityBulkApproveRequest.getFilters() == null){
+                throw new CustomException("INVALID_REQUEST", "Filters are required when isAllSelected is true");
+            }
+
+            ActivityFacilitySearchCriteria searchCriteria = facilityBulkApproveRequest.getFilters().getSearchCriteria();
+            searchCriteria.setTenantId(activityConfiguration.getTenantId());
 
             ActivityFacilitySearchRequest searchRequest = ActivityFacilitySearchRequest.builder()
                     .criteria(searchCriteria)
@@ -426,8 +428,6 @@ public class ActivityService {
             List<ActivityFacility> activityFacilities = searchActivityFacility(searchRequest, activityConfiguration.getMaxLimit(), activityConfiguration.getDefaultOffset(),
                     activityConfiguration.getTenantId(), false, null);
             totalActivityFacilities = countAllFacilityActivities(searchRequest, activityConfiguration.getTenantId(), null, null);
-//            List<Project> allProjects = searchProject(projectSearchRequest, urlParams, workflowStatuses, null);
-//            totalActivityFacilities = countAllProjects(projectSearchRequest, urlParams, workflowStatuses);
 
             // only those activity facilities whose status is SUBMITTED_BY_SUPERVISOR
             List<ActivityFacility> activityFacilitiesList = activityFacilities.stream().filter(this::hasSubmittedBySupervisorStatus).toList();

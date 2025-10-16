@@ -15,9 +15,6 @@ import java.util.List;
 @Builder
 public class FacilityBulkFilter {
 
-    @JsonProperty("status")
-    private List<String> status;
-
     @JsonProperty("searchCriteria")
     private ActivityFacilitySearchCriteria searchCriteria;
 }
