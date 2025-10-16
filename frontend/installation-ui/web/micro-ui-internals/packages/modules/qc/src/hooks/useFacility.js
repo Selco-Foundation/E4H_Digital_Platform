@@ -1,52 +1,5 @@
 import { useQuery, useQueryClient } from "react-query";
-import { QCService } from "../services/QC";
 import { ActivityService } from "../services/Activity";
-
-const fetchInboxData = async (filter, limit, offset) => {
-
-  const requestData = {
-    inbox: {
-      tenantId: "in",
-      processSearchCriteria: {
-        businessService: [
-          "Project"
-        ],
-        moduleName: "Project",
-        tenantId: "in"
-      },
-      moduleSearchCriteria: {
-        ...filter.project,
-        ...filter.moduleSearchCriteria,
-        sortOrder: "ASC"
-      },
-      limit: limit,
-      offset: offset,
-    }
-  }
-
-  const projectsResponse = await QCService.fetchInboxData(requestData);
-
-  return {
-    facilities: projectsResponse?.items?.map((row) => {
-      const facility = row.project.additionalDetails.facility || {};
-      const address = row.project.address || {};
-      const additionalDetails = row.project.additionalDetails || {};
-      const assigneeDetails = row.project.additionalDetails.assignedTo || {};
-
-      return {
-        id: row.project.id,
-        facilityName: facility.name || row.project.name,
-        facilityId: facility.facility_id,
-        status: row.project.additionalDetails.status,
-        projectId: row.project.id,
-        block: address.boundary,
-        district: additionalDetails.district,
-        assigned: assigneeDetails.name,
-      }
-    }),
-    totalCount: projectsResponse?.totalCount || 0,
-  }
-}
 
 const formatFacilities = (facilities) => {
   return facilities?.map((row) => ({

@@ -1,53 +1,12 @@
 import { Request } from "@egovernments/digit-ui-libraries";
 import axios from "axios";
-import { CustomRequest } from "../components/CustomRequest";
 
 export const QCService = {
-
-  fetchProjects : async (queryFilter, limit, offset) => {
-    const endpoint = "/project/v2/_search";
-    const params = {
-      tenantId : "in",
-      offset,
-      limit,
-      includeAncestors : false,
-      includeDescendants : false
-    }
-    const headers = {
-      "Content-Type" : "application/json"
-    }
-
-    return await Request({
-      url : endpoint,
-      data : queryFilter,
-      userService : true,
-      method : "POST",
-      auth : true,
-      params : params,
-      headers : headers,
-    });
-  },
-
-  fetchInboxData: async (queryFilter) => {
-    const endpoint = "/inbox/v2/project/_search";
-    const headers = {
-      "Content-Type" : "application/json"
-    }
-
-    return await Request({
-      url : endpoint,
-      data : queryFilter,
-      method : "POST",
-      userService : true,
-      auth : true,
-      headers : headers,
-    });
-  },
 
   fetchImageFromFileStore : async (fileStoreId) => {
     const endpoint = "/filestore/v1/files/url";
     const params = {
-      tenantId : "in",
+      tenantId : Digit.ULBService.getCurrentTenantId(),
       fileStoreIds : fileStoreId
     }
 

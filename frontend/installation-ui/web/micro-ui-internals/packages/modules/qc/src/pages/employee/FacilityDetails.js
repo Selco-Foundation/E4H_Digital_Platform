@@ -142,6 +142,7 @@ const FacilityDetails = ({t}) => {
 
       {facilityDetails?.status && facilityDetails?.status.toUpperCase() === "SUBMITTED_BY_SUPERVISOR" && (
         <QCActions
+          t={t}
           revalidateData={revalidateData}
           setUpdatingWorkflow={setUpdatingWorkflow}
           aggregatedDocuments={aggregatedDocuments}

@@ -279,7 +279,7 @@ const FacilityTable = ({ t }) => {
 
     if (fetchedData.length === 0) {
       return (
-        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%" }}>
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "70%" }}>
           <div style={{ fontSize: "20px", fontWeight: "bold" }}>
             {t("CS_NO_FACILITIES_FOUND")}
           </div>

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { TextInput, SubmitBar, LinkLabel, TickMark, DownloadIcon, SearchIconSvg, SearchIcon, Toast } from "@egovernments/digit-ui-react-components";
 import { DoneAll } from "@egovernments/digit-ui-svg-components";
 import { ActivityService } from "../../services/Activity";
@@ -21,6 +21,14 @@ const SearchActionCentre = ({ t, projectQueryFilter, mainCheckBox, selectedFacil
       facilitySearchQuery
     })
   }
+
+  useEffect(()=>{
+    if(toast){
+      setTimeout(()=>{
+        setToast(null);
+      },2500)
+    }
+  },[toast])
 
   const handleClear = () => {
     setTextToSearch("");
