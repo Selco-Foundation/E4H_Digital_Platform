@@ -1,0 +1,1 @@
+ALTER TABLE asset ADD COLUMN activity_facility_id VARCHAR;

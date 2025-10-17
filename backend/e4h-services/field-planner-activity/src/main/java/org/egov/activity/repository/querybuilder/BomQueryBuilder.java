@@ -23,7 +23,7 @@ import static org.egov.activity.util.ActivityConstants.DOT;
 public class BomQueryBuilder {
 
     private static final String FETCH_BOM_QUERY = "SELECT bom.id as bom_bomId, bom.tenant_id as bom_tenantId, bom.facility_id as bom_facilityId, " +
-            "bom.name as bom_name, bom.data as bom_data, bom.is_active as bom_isActive, bom.assign_user as bom_assignedUser, " +
+            "bom.name as bom_name, bom.data as bom_data, bom.is_active as bom_isActive, bom.assign_user as bom_assignedUser, bom.activity_facility_id as bom_activityFacilityId, " +
             "bom.additional_details as bom_additionalDetails, bom.created_time as bom_createdTime, " +
             "bom.last_modified_time as bom_lastModifiedTime " +
             " " +
@@ -94,6 +94,12 @@ public class BomQueryBuilder {
             addClauseIfRequired(preparedStmtList, queryBuilder);
             queryBuilder.append(" bom.facility_id IN (").append(createQuery(criteria.getFacilityId())).append(")");
             preparedStmtList.addAll(criteria.getFacilityId());
+        }
+
+        if (!CollectionUtils.isEmpty(criteria.getActivityFacilityId())) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            queryBuilder.append(" bom.activity_facility_id IN (").append(createQuery(criteria.getActivityFacilityId())).append(")");
+            preparedStmtList.addAll(criteria.getActivityFacilityId());
         }
 
         if (!CollectionUtils.isEmpty(criteria.getName())) {
