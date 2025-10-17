@@ -22,6 +22,7 @@ public class AssetRowMapper {
         asset.setTenantId(rs.getString("tenant_id"));
         asset.setSystem(rs.getString("system"));
         asset.setFacilityID(rs.getString("facility_id"));
+        asset.setActivityFacilityID(rs.getString("activity_facility_id"));
         asset.setAssetTypeID(rs.getString("asset_type_id"));
         asset.setSerialNumber(rs.getString("serial_number"));
         asset.setModelNumber(rs.getString("model_number"));

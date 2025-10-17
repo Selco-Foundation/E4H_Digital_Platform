@@ -119,6 +119,11 @@ public class AssetService {
             params.add(asset.getFacilityID());
         }
 
+        if (asset.getActivityFacilityID() != null && !asset.getActivityFacilityID().isBlank()) {
+            query.append(" AND activity_facility_id = ?");
+            params.add(asset.getActivityFacilityID());
+        }
+
         if (asset.getSerialNumber() != null && !asset.getSerialNumber().isBlank()) {
             query.append(" AND serial_number = ?");
             params.add(asset.getSerialNumber());

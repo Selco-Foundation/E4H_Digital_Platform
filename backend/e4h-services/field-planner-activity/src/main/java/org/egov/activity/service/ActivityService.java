@@ -311,9 +311,9 @@ public class ActivityService {
         // Step 7: After successful workflow transition, if action is APPROVED_BY_QC_SPOC
         if ("APPROVE".equalsIgnoreCase(request.getWorkflow().getAction())) {
             // once facility is fetched we need to fetch assets for that facility
-            String facilityId = existingActivityFacitlity.getFacilityId();
-            if (facilityId != null) {
-                updateAssetsForFacility(existingActivityFacitlity, request.getRequestInfo(), facilityId);
+            String activityFacilityId = existingActivityFacitlity.getId();
+            if (activityFacilityId != null) {
+                updateAssetsForFacility(existingActivityFacitlity, request.getRequestInfo(), activityFacilityId);
             }
         }
 
@@ -352,7 +352,7 @@ public class ActivityService {
 
     private void updateAssetsForFacility(ActivityFacility activityFacility, RequestInfo requestInfo, String facilityId) throws CustomException {
         AssetSearchCriteria assetSearchCriteria = AssetSearchCriteria.builder()
-                .facilityID(facilityId)
+                .activityFacilityID(facilityId)
                 .tenantId(activityFacility.getTenantId())
                 .build();
 
