@@ -1,21 +1,6 @@
-import { Request } from "@egovernments/digit-ui-libraries";
 import axios from "axios";
 
 export const QCService = {
-
-  fetchImageFromFileStore : async (fileStoreId) => {
-    const endpoint = "/filestore/v1/files/url";
-    const params = {
-      tenantId : Digit.ULBService.getCurrentTenantId(),
-      fileStoreIds : fileStoreId
-    }
-
-    return await Request({
-      url : endpoint,
-      method : "GET",
-      params : params,
-    })
-  },
 
   fetchDocumentDetails : async (fileUrl) => {
     const response = await axios.get(fileUrl);
@@ -59,29 +44,5 @@ export const QCService = {
       size: humanReadable,
     };
   },
-
-  fetchBoundaryRelations : async (codes, boundaryType) => {
-    const endpoint = "/boundary-service/boundary-relationships/_search";
-    const params = {
-      tenantId : "in",
-      includeChildren : true,
-      includeParents : false,
-      hierarchyType: "SELCO",
-      boundaryType,
-      codes
-    }
-    const headers = {
-      "Content-Type" : "application/json"
-    }
-
-    return await Request({
-      url : endpoint,
-      userService : true,
-      method : "POST",
-      auth : true,
-      params : params,
-      headers : headers,
-    });
-  }
 
 }

@@ -1,6 +1,7 @@
 import {useQuery, useQueryClient} from "react-query";
 import { QCService } from "../services/QC";
 import { ActivityService } from "../services/Activity";
+import { FilestoreService } from "../services/Filestore";
 
 const generateAuditTrail = (workflow, transactions) => {
   const auditTrail = [];
@@ -72,7 +73,7 @@ const getAssetAggregation = async (workflow) => {
 
       let fileUrl, fileDetails;
       try {
-        const fileStoreResponse = await QCService.fetchImageFromFileStore(document.fileStoreId);
+        const fileStoreResponse = await FilestoreService.fetchDocumentFromFilestore(document.fileStoreId);
         fileUrl = Digit.Utils.getFileUrl(fileStoreResponse[document.fileStoreId]);
         fileDetails = await QCService.fetchDocumentDetails(fileUrl);
       } catch (error) {

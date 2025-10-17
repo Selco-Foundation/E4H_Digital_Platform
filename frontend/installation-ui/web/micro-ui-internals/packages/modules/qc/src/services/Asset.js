@@ -1,6 +1,4 @@
 import { Request } from "@egovernments/digit-ui-libraries";
-import axios from "axios";
-import { CustomRequest } from "../components/CustomRequest";
 
 export const AssetService = {
 
