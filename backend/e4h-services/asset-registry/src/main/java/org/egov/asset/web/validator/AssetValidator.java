@@ -66,7 +66,7 @@ public class AssetValidator {
         validateSystem(asset, errorMap, mdmsData.get(AssetConstants.SYSTEM_CODE));
         validateAssetDetails(asset, errorMap);
         validateFacilityId(asset, errorMap);
-        validateActivityFacilityId(request, errorMap);
+//        validateActivityFacilityId(request, errorMap);
     }
 
     private void validateAssetDetails(Asset asset, Map<String, String> errorMap) {
@@ -88,9 +88,10 @@ public class AssetValidator {
 
         if (SYSTEM_DC.equals(systemType)) {
             validateDCSystem(inverterDetails, errorMaps);
-        }
-        if (SYSTEM_AC_OFF_GRID.equals(systemType)) {
+        } else if (SYSTEM_AC_OFF_GRID.equals(systemType)) {
             validateACOffGridSystem(inverterDetails, errorMaps);
+        } else {
+            errorMaps.put(ErrorConstants.ASSET_SYSTEM_TYPE_INVALID_CODE, ErrorConstants.ASSET_SYSTEM_TYPE_INVALID_MSG);
         }
     }
 
@@ -107,7 +108,7 @@ public class AssetValidator {
         if (inverterDetails.getChargeControllerVoltage() == null) {
             errorMaps.put(ErrorConstants.ASSET_INVERTER_CHARGE_CONTROLLER_VOLTAGE_REQUIRED_CODE,
                     ErrorConstants.ASSET_INVERTER_CHARGE_CONTROLLER_VOLTAGE_REQUIRED_MSG);
-        } else if (!VALID_CHARGE_CONTROLLER_VOLTAGES.contains(inverterDetails.getChargeControllerVoltage())) {
+        } else if (inverterDetails.getChargeControllerVoltage() != 12.0) {
             errorMaps.put(ErrorConstants.ASSET_INVERTER_CHARGE_CONTROLLER_VOLTAGE_VALUE_CODE,
                     ErrorConstants.ASSET_INVERTER_CHARGE_CONTROLLER_VOLTAGE_VALUE_MSG);
         }
@@ -167,9 +168,10 @@ public class AssetValidator {
 
         if (SYSTEM_DC.equals(systemType)) {
             validateDCSystemBattery(batteryDetails, errorMap);
-        }
-        if (SYSTEM_AC_OFF_GRID.equals(systemType)) {
+        } else if (SYSTEM_AC_OFF_GRID.equals(systemType)) {
             validateACOffGridSystemBattery(batteryDetails, errorMap);
+        } else {
+            errorMap.put(ErrorConstants.ASSET_SYSTEM_TYPE_INVALID_CODE, ErrorConstants.ASSET_SYSTEM_TYPE_INVALID_MSG);
         }
     }
 
@@ -262,13 +264,8 @@ public class AssetValidator {
         // System-specific validations
         if (SYSTEM_DC.equals(systemType) || SYSTEM_AC_OFF_GRID.equals(systemType)) {
             // Both DC and AC Off Grid systems require panel capacity
-            // Validate Panel Capacity for DC system
-            if (panelDetails.getPanelCapacity() == null) {
+            if (panelDetails.getPanelCapacity() == null)
                 errorMap.put(ErrorConstants.ASSET_PANEL_CAPACITY_REQUIRED_CODE, ErrorConstants.ASSET_PANEL_CAPACITY_REQUIRED_MSG);
-            } else if (!VALID_PANEL_CAPACITIES.contains(panelDetails.getPanelCapacity())) {
-                errorMap.put(ErrorConstants.ASSET_PANEL_CAPACITY_INVALID_VALUE_CODE,
-                        ErrorConstants.ASSET_PANEL_CAPACITY_INVALID_VALUE_MSG);
-            }
 
             if (panelDetails.getCapacityUnit() == null)
                 errorMap.put(ErrorConstants.ASSET_PANEL_CAPACITY_UNIT_REQUIRED_CODE, ErrorConstants.ASSET_PANEL_CAPACITY_UNIT_REQUIRED_MSG);
@@ -297,12 +294,6 @@ public class AssetValidator {
 
     private void validateWarranty(Asset asset, Map<String, String> errorMap, Object mdmsWarrantyDurationData) {
         log.info("AssetValidator::ValidatingWarranty");
-
-        // Skip validation if warranty duration is 0
-        if (asset.getWarrantyDuration() == null || asset.getWarrantyDuration() == 0) {
-            return;
-        }
-
         if (mdmsWarrantyDurationData == null || !(mdmsWarrantyDurationData instanceof List) || ((List<?>) mdmsWarrantyDurationData).isEmpty()) {
 //            errorMap.put(ErrorConstants.ASSET_WARRANTY_DURATION_MDMS_DATA_CODE, ErrorConstants.ASSET_WARRANTY_DURATION_MDMS_DATA_MSG);
             return;
@@ -398,7 +389,7 @@ public class AssetValidator {
 
     private void validateActivityFacilityId(AssetCreateRequest request, Map<String,String> errorMap){
         Asset asset = request.getAssetDetail().getAsset();
-        log.info("Validating activity facility for assetId={} facilityId={}", asset.getAssetId(), asset.getActivityFacilityID());
+        log.debug("Validating activity facility for assetId={} facilityId={}", asset.getAssetId(), asset.getActivityFacilityID());
         List<Object> activityList = facilityUtil.getActivityFacilityById(request.getRequestInfo(), asset.getFacilityID(), asset.getTenantId());
         if(activityList.isEmpty())
             errorMap.put(ErrorConstants.ASSET_ACTIVITY_FACILITY_ID_VALIDATION_CODE, ErrorConstants.ASSET_ACTIVITY_FACILITY_ID_VALIDATION_MSG);
