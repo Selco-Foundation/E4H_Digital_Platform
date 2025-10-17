@@ -42,13 +42,6 @@ public class PrioritySLAService {
         int from = 0;
         boolean hasMore = true;
         RequestInfo requestInfo = request.getRequestInfo();
-        Map<String, Map<String, JSONArray>> serviceDefMdms = mdmsUtil.fetchMdmsData(
-                request.getRequestInfo(), request.getTenantId(),
-                IMConstants.INCIDENT,
-                Collections.singletonList(IMConstants.SERVICE_DEF));
-
-        Map<String, String> incidentTypeToPriority = getIncidentKeyToPriorityMapping(serviceDefMdms);
-
         Map<String, Map<String, JSONArray>> bhMdmsData = mdmsUtil.fetchMdmsData(
                 request.getRequestInfo(), request.getTenantId(),
                 IMConstants.MODULE_NAME_COMMON_MASTERS,
@@ -66,7 +59,7 @@ public class PrioritySLAService {
 
             for (Map<String, Object> ticket : tickets) {
                 try {
-                    updateTicket(ticket, slaMap, bh, transform, incidentTypeToPriority, requestInfo);
+                    updateTicket(ticket, slaMap, bh, transform , requestInfo);
                 } catch (Exception e) {
                     log.error("Error processing ticket: {}", ticket, e);
                 }
@@ -79,7 +72,7 @@ public class PrioritySLAService {
 
 
     private void updateTicket(Map<String, Object> ticket, Map<TenantServiceStateKey, Duration> slaMap,
-                              BusinessHours bh, boolean transform, Map<String, String> incidentPriorityMap ,RequestInfo requestInfo) {
+                              BusinessHours bh, boolean transform, RequestInfo requestInfo) {
         Map<String, Object> data = (Map<String, Object>) ticket.get("Data");
         Map<String, Object> auditDetails = (Map<String, Object>) data.get("auditDetails");
         Map<String, Object> incident = (Map<String, Object>) data.get("incident");
@@ -101,40 +94,21 @@ public class PrioritySLAService {
         long businessElapsedFromCreated = calculateBusinessDurationForAllStates(processInstances, bh);
         long businessElapsedFromModified = calculateBusinessMillis(lastModifiedTime, now, bh);
 
-
-        String incidentType = (String) incident.get("incidentType");
-        String incidentSubType = (String) incident.get("incidentSubType");
-        String key = buildIncidentKey(incidentType, incidentSubType);
-
-        String existingBusinessService =null;
-        if(incidentPriorityMap.containsKey(key)) {
-             existingBusinessService = INCIDENT_UNDERSCORE + incidentPriorityMap.get(key);
-        }
-        else{
-             existingBusinessService = "Incident_Medium";
+        String businessService;
+        String priority;
+        Object bsObj = currentProcessInstance.get("businessService");
+        if(bsObj instanceof String bs && bs.contains("_")) {
+            businessService = bs;
+            priority = bs.split("_", 2)[1];
+        } else {
+            businessService = "Incident_Medium";
+            priority = "Medium";
         }
 
-        TenantServiceStateKey stateKey = new TenantServiceStateKey(tenantId, existingBusinessService, state);
+
+        TenantServiceStateKey stateKey = new TenantServiceStateKey(tenantId, businessService, state);
         Duration stateSlaDuration = slaMap.getOrDefault(stateKey, Duration.ZERO);
         long stateSla = stateSlaDuration.toMillis();
-
-
-
-        String priority;
-        boolean needsOverride = existingBusinessService == null || !existingBusinessService.contains("_");
-        String updatedBusinessService = null;
-
-        if (needsOverride && incidentPriorityMap.containsKey(key)) {
-            priority = incidentPriorityMap.get(key);
-            updatedBusinessService = INCIDENT_UNDERSCORE + capitalize(priority);
-            currentProcessInstance.put(BUSINESS_SERVICE, updatedBusinessService);  // update ES doc in memory
-        } else if (existingBusinessService != null && existingBusinessService.contains("_")) {
-            priority = existingBusinessService.split("_")[1];
-        } else {
-            priority = "Medium";
-            updatedBusinessService = "Incident_Medium";
-            currentProcessInstance.put(BUSINESS_SERVICE, updatedBusinessService);
-        }
 
         Duration totalSla = computeTotalSla(tenantId, priority, state, slaMap, processInstances);
         long definedTotalSla = totalSla.toMillis();
@@ -161,7 +135,7 @@ public class PrioritySLAService {
                     slaRemaining,
                     totalSlaRemaining,
                     stateSla,
-                    updatedBusinessService,
+                    businessService,
                     isAClosedTicket,
                     definedTotalSla
             );

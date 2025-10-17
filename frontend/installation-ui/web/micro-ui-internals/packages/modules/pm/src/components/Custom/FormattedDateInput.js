@@ -36,6 +36,7 @@ const FormattedDateInput = ({
         justifyContent: "space-between",
         cursor: disabled ? "default" : "pointer",
         opacity: disabled ? 0.5 : 1,
+        backgroundColor: "transparent",
         ...style,
       }}
     >
