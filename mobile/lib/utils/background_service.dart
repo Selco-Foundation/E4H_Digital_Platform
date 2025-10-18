@@ -16,6 +16,7 @@ import '../model/asset/asset.dart';
 import '../model/audit_details/audit_details.dart';
 import '../model/document/document.dart';
 import '../model/entities/project_facility.dart';
+import '../model/transaction/transaction.dart';
 import '../repositories/app_init_Repo.dart'; // envConfig
 import '../repositories/assetRepo.dart';
 import '../repositories/bom_repo.dart';
@@ -25,15 +26,22 @@ import '../repositories/project_workflow.dart';
 import '../utils/utils.dart';
 import 'constants.dart'; // Constants().isar
 
-// ===== Events / Commands =====
+// project submisison
 const String kMethodSubmit = 'submit_project';
 const String kEvtProgress = 'submission_progress';
 const String kEvtError = 'submission_error';
 const String kEvtDone = 'submission_done';
 const String kCmdStop = 'stopService';
 
+// project rejection
+const String kMethodReject = 'reject_project';
+const String kEvtRejectDone = 'rejection_done';
+const String kEvtRejectError = 'rejection_error';
+
 // Handshake so UI knows the service is ready
 const String kEvtReady = 'bg_ready';
+
+const String kCmdForeground = 'bring_to_foreground';
 
 // ===== Android notification channel =====
 const String _svcChannelId = 'asset_submission_channel';
@@ -45,6 +53,8 @@ final FlutterLocalNotificationsPlugin _fln = FlutterLocalNotificationsPlugin();
 // Hold UI-side subscriptions so they never get GC'd
 StreamSubscription? _uiErrSub;
 StreamSubscription? _uiDoneSub;
+StreamSubscription? _uiRejErrSub;
+StreamSubscription? _uiRejDoneSub;
 
 /// Call this from main.dart before runApp()
 Future<void> setupBackgroundService() async {
@@ -117,6 +127,26 @@ Future<void> setupBackgroundService() async {
     await writeJobStatus(isar: uiIsar, projectId: pid, status: 'success');
   });
 
+  _uiRejErrSub?.cancel();
+  _uiRejErrSub = uiService.on(kEvtRejectError).listen((data) async {
+    final pid = data?['projectId'] as String?;
+    final msg = data?['message']?.toString();
+    debugPrint('[UI] kEvtRejectError received: pid=$pid msg=$msg');
+    if (pid == null) return;
+    final uiIsar = await Constants().isar;
+    await writeJobStatus(
+        isar: uiIsar, projectId: pid, status: 'failed', error: msg);
+  });
+
+  _uiRejDoneSub?.cancel();
+  _uiRejDoneSub = uiService.on(kEvtRejectDone).listen((data) async {
+    final pid = data?['projectId'] as String?;
+    debugPrint('[UI] kEvtRejectDone received: pid=$pid');
+    if (pid == null) return;
+    final uiIsar = await Constants().isar;
+    await writeJobStatus(isar: uiIsar, projectId: pid, status: 'success');
+  });
+
   debugPrint('[UI] setupBackgroundService complete: BG listeners bound');
 }
 
@@ -129,7 +159,6 @@ class BackgroundServiceController {
     _isar = isar;
   }
 
-  /// Enqueue one project; waits for BG “ready” so the submit isn’t dropped.
   Future<void> enqueueSubmission({
     required String projectId,
     required String userType,
@@ -140,6 +169,9 @@ class BackgroundServiceController {
     // Is the service already running? If yes, just invoke immediately.
     if (await service.isRunning()) {
       debugPrint('[UI] service already running -> invoke directly');
+
+      service.invoke(kCmdForeground, {'content': 'Preparing…'});
+
       service.invoke(kMethodSubmit, {
         'projectId': projectId,
         'userType': userType,
@@ -166,6 +198,54 @@ class BackgroundServiceController {
       'projectId': projectId,
       'userType': userType,
       'fromDraft': fromDraft,
+    });
+  }
+
+  /// Enqueue a rejection job; waits for BG “ready” so the invoke isn't dropped.
+  Future<void> enqueueRejection({
+    required String projectId,
+    required String userType,
+    required List<Map<String, dynamic>> transactions, // serialize in BLoC
+  }) async {
+    final service = FlutterBackgroundService();
+
+    // If the service is already running, bring it to foreground and invoke immediately.
+    if (await service.isRunning()) {
+      debugPrint('[UI] service already running -> invoke REJECTION directly');
+
+      // Make sure the notification is visible again.
+      service.invoke(kCmdForeground, {'content': 'Preparing rejection…'});
+
+      service.invoke(kMethodReject, <String, dynamic>{
+        'projectId': projectId,
+        'userType': userType,
+        'transactions': transactions,
+      });
+      return;
+    }
+
+    // Otherwise start it, then wait for kEvtReady (emitted from onStart)
+    final readyStream = service.on(kEvtReady);
+    await service.startService();
+    final running = await service.isRunning();
+    debugPrint('[UI] service.startService() -> running=$running');
+
+    try {
+      await readyStream.first.timeout(const Duration(seconds: 5));
+      debugPrint('[UI] kEvtReady received. Submitting REJECTION job...');
+    } catch (_) {
+      debugPrint('[UI] kEvtReady timeout; proceeding after 300ms fallback');
+      await Future.delayed(const Duration(milliseconds: 300));
+    }
+
+    // Ensure the foreground notification is shown for the new job
+    service.invoke(kCmdForeground, {'content': 'Preparing rejection…'});
+
+    // Now invoke the job
+    service.invoke(kMethodReject, <String, dynamic>{
+      'projectId': projectId,
+      'userType': userType,
+      'transactions': transactions,
     });
   }
 
@@ -261,6 +341,43 @@ void onStart(ServiceInstance service) async {
     }
   });
 
+  // === Rejection job ===
+  service.on(kMethodReject).listen((payload) async {
+    final projectId = payload?['projectId'] as String?;
+    final userType = payload?['userType'] as String?;
+    final txList = (payload?['transactions'] as List?)?.cast<Map>() ?? const [];
+    if (projectId == null || userType == null) return;
+
+    try {
+      // optional: reflect a “running” status in the same job table
+      await writeJobStatus(isar: isar, projectId: projectId, status: 'running');
+
+      await _performRejectionForProject(
+        isar: isar,
+        projectId: projectId,
+        userType: userType,
+        transactions: txList.map((m) => Map<String, dynamic>.from(m)).toList(),
+      );
+
+      // success -> notify UI
+      service.invoke(kEvtRejectDone, {'projectId': projectId});
+    } catch (e, st) {
+      debugPrint('[BG][REJECT] ERROR: $e\n$st');
+
+      await writeJobStatus(
+        isar: isar,
+        projectId: projectId!,
+        status: 'failed',
+        error: _pretty(e),
+      );
+
+      service.invoke(kEvtRejectError, {
+        'projectId': projectId,
+        'message': _pretty(e),
+      });
+    }
+  });
+
   // Stop command from UI (safe point to tear down)
   service.on(kCmdStop).listen((_) async {
     debugPrint('[BG] stop requested');
@@ -268,6 +385,16 @@ void onStart(ServiceInstance service) async {
       service.setAsBackgroundService();
     }
     await service.stopSelf(); // stopping foreground removes notification
+  });
+
+  service.on(kCmdForeground).listen((data) async {
+    if (service is AndroidServiceInstance) {
+      service.setAsForegroundService();
+      await service.setForegroundNotificationInfo(
+        title: 'Submitting assets',
+        content: (data?['content'] as String?) ?? 'Working…',
+      );
+    }
   });
 
   // Tell UI we're ready to receive jobs (prevents race)
@@ -552,6 +679,45 @@ Future<void> _performSubmissionForProject({
     return;
   } catch (e) {
     // rethrow;
+    throw PlainError(_pretty(e));
+  }
+}
+
+Future<void> _performRejectionForProject({
+  required Isar isar,
+  required String projectId,
+  required String userType,
+  required List<Map<String, dynamic>> transactions,
+}) async {
+  try {
+    const types = ['inverter', 'battery', 'panel'];
+    final workflowDocuments = <Document>[];
+
+    final fromCache =
+        await ProjectWorkflowRepository().collectWorkflowMediaDocs(
+      isar: isar,
+      projectId: projectId,
+      types: types,
+    );
+    workflowDocuments.addAll(fromCache);
+
+    // submit rejection (transactions already serialized)
+    await AssetRepository().submitRejection(
+      projectId: projectId,
+      transactions: transactions
+          .map((m) =>
+              Transaction.fromJson(m)) // if your Transaction has fromJson
+          .toList(),
+      documents: workflowDocuments,
+    );
+
+    // Clear same caches as your foreground version
+    await UnsubmittedProjectRepository(isar).delete(projectId, userType);
+    await PrefilledProjectRepository(isar)
+        .delete(projectId: projectId, userType: userType);
+    await CompletionReportRepository(isar).delete(projectId: projectId);
+    await BomRepository().delete(isar: isar, projectId: projectId);
+  } catch (e) {
     throw PlainError(_pretty(e));
   }
 }

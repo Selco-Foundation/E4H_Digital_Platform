@@ -17,43 +17,53 @@ final _privateConstructorUsedError = UnsupportedError(
 /// @nodoc
 mixin _$RejectionEvent {
   String get projectId => throw _privateConstructorUsedError;
-  String get userType => throw _privateConstructorUsedError;
-  List<Transaction> get transactions => throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function(
-            String projectId, String userType, List<Transaction> transactions)
+            String projectId, String userType, List<dynamic> transactions)
         submitRejection,
+    required TResult Function(String projectId) bgRejectDone,
+    required TResult Function(String projectId, String? message) bgRejectError,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(
-            String projectId, String userType, List<Transaction> transactions)?
+            String projectId, String userType, List<dynamic> transactions)?
         submitRejection,
+    TResult? Function(String projectId)? bgRejectDone,
+    TResult? Function(String projectId, String? message)? bgRejectError,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(
-            String projectId, String userType, List<Transaction> transactions)?
+            String projectId, String userType, List<dynamic> transactions)?
         submitRejection,
+    TResult Function(String projectId)? bgRejectDone,
+    TResult Function(String projectId, String? message)? bgRejectError,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
     required TResult Function(_SubmitRejection value) submitRejection,
+    required TResult Function(_BgRejectDone value) bgRejectDone,
+    required TResult Function(_BgRejectError value) bgRejectError,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_SubmitRejection value)? submitRejection,
+    TResult? Function(_BgRejectDone value)? bgRejectDone,
+    TResult? Function(_BgRejectError value)? bgRejectError,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_SubmitRejection value)? submitRejection,
+    TResult Function(_BgRejectDone value)? bgRejectDone,
+    TResult Function(_BgRejectError value)? bgRejectError,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -69,8 +79,7 @@ abstract class $RejectionEventCopyWith<$Res> {
           RejectionEvent value, $Res Function(RejectionEvent) then) =
       _$RejectionEventCopyWithImpl<$Res, RejectionEvent>;
   @useResult
-  $Res call(
-      {String projectId, String userType, List<Transaction> transactions});
+  $Res call({String projectId});
 }
 
 /// @nodoc
@@ -87,22 +96,12 @@ class _$RejectionEventCopyWithImpl<$Res, $Val extends RejectionEvent>
   @override
   $Res call({
     Object? projectId = null,
-    Object? userType = null,
-    Object? transactions = null,
   }) {
     return _then(_value.copyWith(
       projectId: null == projectId
           ? _value.projectId
           : projectId // ignore: cast_nullable_to_non_nullable
               as String,
-      userType: null == userType
-          ? _value.userType
-          : userType // ignore: cast_nullable_to_non_nullable
-              as String,
-      transactions: null == transactions
-          ? _value.transactions
-          : transactions // ignore: cast_nullable_to_non_nullable
-              as List<Transaction>,
     ) as $Val);
   }
 }
@@ -115,8 +114,7 @@ abstract class _$$SubmitRejectionImplCopyWith<$Res>
       __$$SubmitRejectionImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call(
-      {String projectId, String userType, List<Transaction> transactions});
+  $Res call({String projectId, String userType, List<dynamic> transactions});
 }
 
 /// @nodoc
@@ -146,7 +144,7 @@ class __$$SubmitRejectionImplCopyWithImpl<$Res>
       transactions: null == transactions
           ? _value._transactions
           : transactions // ignore: cast_nullable_to_non_nullable
-              as List<Transaction>,
+              as List<dynamic>,
     ));
   }
 }
@@ -157,16 +155,16 @@ class _$SubmitRejectionImpl implements _SubmitRejection {
   const _$SubmitRejectionImpl(
       {required this.projectId,
       required this.userType,
-      required final List<Transaction> transactions})
+      required final List<dynamic> transactions})
       : _transactions = transactions;
 
   @override
   final String projectId;
   @override
   final String userType;
-  final List<Transaction> _transactions;
+  final List<dynamic> _transactions;
   @override
-  List<Transaction> get transactions {
+  List<dynamic> get transactions {
     if (_transactions is EqualUnmodifiableListView) return _transactions;
     // ignore: implicit_dynamic_type
     return EqualUnmodifiableListView(_transactions);
@@ -205,8 +203,10 @@ class _$SubmitRejectionImpl implements _SubmitRejection {
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function(
-            String projectId, String userType, List<Transaction> transactions)
+            String projectId, String userType, List<dynamic> transactions)
         submitRejection,
+    required TResult Function(String projectId) bgRejectDone,
+    required TResult Function(String projectId, String? message) bgRejectError,
   }) {
     return submitRejection(projectId, userType, transactions);
   }
@@ -215,8 +215,10 @@ class _$SubmitRejectionImpl implements _SubmitRejection {
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(
-            String projectId, String userType, List<Transaction> transactions)?
+            String projectId, String userType, List<dynamic> transactions)?
         submitRejection,
+    TResult? Function(String projectId)? bgRejectDone,
+    TResult? Function(String projectId, String? message)? bgRejectError,
   }) {
     return submitRejection?.call(projectId, userType, transactions);
   }
@@ -225,8 +227,10 @@ class _$SubmitRejectionImpl implements _SubmitRejection {
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(
-            String projectId, String userType, List<Transaction> transactions)?
+            String projectId, String userType, List<dynamic> transactions)?
         submitRejection,
+    TResult Function(String projectId)? bgRejectDone,
+    TResult Function(String projectId, String? message)? bgRejectError,
     required TResult orElse(),
   }) {
     if (submitRejection != null) {
@@ -239,6 +243,8 @@ class _$SubmitRejectionImpl implements _SubmitRejection {
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
     required TResult Function(_SubmitRejection value) submitRejection,
+    required TResult Function(_BgRejectDone value) bgRejectDone,
+    required TResult Function(_BgRejectError value) bgRejectError,
   }) {
     return submitRejection(this);
   }
@@ -247,6 +253,8 @@ class _$SubmitRejectionImpl implements _SubmitRejection {
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_SubmitRejection value)? submitRejection,
+    TResult? Function(_BgRejectDone value)? bgRejectDone,
+    TResult? Function(_BgRejectError value)? bgRejectError,
   }) {
     return submitRejection?.call(this);
   }
@@ -255,6 +263,8 @@ class _$SubmitRejectionImpl implements _SubmitRejection {
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_SubmitRejection value)? submitRejection,
+    TResult Function(_BgRejectDone value)? bgRejectDone,
+    TResult Function(_BgRejectError value)? bgRejectError,
     required TResult orElse(),
   }) {
     if (submitRejection != null) {
@@ -268,17 +278,327 @@ abstract class _SubmitRejection implements RejectionEvent {
   const factory _SubmitRejection(
       {required final String projectId,
       required final String userType,
-      required final List<Transaction> transactions}) = _$SubmitRejectionImpl;
+      required final List<dynamic> transactions}) = _$SubmitRejectionImpl;
+
+  @override
+  String get projectId;
+  String get userType;
+  List<dynamic> get transactions;
+  @override
+  @JsonKey(ignore: true)
+  _$$SubmitRejectionImplCopyWith<_$SubmitRejectionImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class _$$BgRejectDoneImplCopyWith<$Res>
+    implements $RejectionEventCopyWith<$Res> {
+  factory _$$BgRejectDoneImplCopyWith(
+          _$BgRejectDoneImpl value, $Res Function(_$BgRejectDoneImpl) then) =
+      __$$BgRejectDoneImplCopyWithImpl<$Res>;
+  @override
+  @useResult
+  $Res call({String projectId});
+}
+
+/// @nodoc
+class __$$BgRejectDoneImplCopyWithImpl<$Res>
+    extends _$RejectionEventCopyWithImpl<$Res, _$BgRejectDoneImpl>
+    implements _$$BgRejectDoneImplCopyWith<$Res> {
+  __$$BgRejectDoneImplCopyWithImpl(
+      _$BgRejectDoneImpl _value, $Res Function(_$BgRejectDoneImpl) _then)
+      : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? projectId = null,
+  }) {
+    return _then(_$BgRejectDoneImpl(
+      projectId: null == projectId
+          ? _value.projectId
+          : projectId // ignore: cast_nullable_to_non_nullable
+              as String,
+    ));
+  }
+}
+
+/// @nodoc
+
+class _$BgRejectDoneImpl implements _BgRejectDone {
+  const _$BgRejectDoneImpl({required this.projectId});
+
+  @override
+  final String projectId;
+
+  @override
+  String toString() {
+    return 'RejectionEvent.bgRejectDone(projectId: $projectId)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$BgRejectDoneImpl &&
+            (identical(other.projectId, projectId) ||
+                other.projectId == projectId));
+  }
+
+  @override
+  int get hashCode => Object.hash(runtimeType, projectId);
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$BgRejectDoneImplCopyWith<_$BgRejectDoneImpl> get copyWith =>
+      __$$BgRejectDoneImplCopyWithImpl<_$BgRejectDoneImpl>(this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function(
+            String projectId, String userType, List<dynamic> transactions)
+        submitRejection,
+    required TResult Function(String projectId) bgRejectDone,
+    required TResult Function(String projectId, String? message) bgRejectError,
+  }) {
+    return bgRejectDone(projectId);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function(
+            String projectId, String userType, List<dynamic> transactions)?
+        submitRejection,
+    TResult? Function(String projectId)? bgRejectDone,
+    TResult? Function(String projectId, String? message)? bgRejectError,
+  }) {
+    return bgRejectDone?.call(projectId);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function(
+            String projectId, String userType, List<dynamic> transactions)?
+        submitRejection,
+    TResult Function(String projectId)? bgRejectDone,
+    TResult Function(String projectId, String? message)? bgRejectError,
+    required TResult orElse(),
+  }) {
+    if (bgRejectDone != null) {
+      return bgRejectDone(projectId);
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(_SubmitRejection value) submitRejection,
+    required TResult Function(_BgRejectDone value) bgRejectDone,
+    required TResult Function(_BgRejectError value) bgRejectError,
+  }) {
+    return bgRejectDone(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(_SubmitRejection value)? submitRejection,
+    TResult? Function(_BgRejectDone value)? bgRejectDone,
+    TResult? Function(_BgRejectError value)? bgRejectError,
+  }) {
+    return bgRejectDone?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(_SubmitRejection value)? submitRejection,
+    TResult Function(_BgRejectDone value)? bgRejectDone,
+    TResult Function(_BgRejectError value)? bgRejectError,
+    required TResult orElse(),
+  }) {
+    if (bgRejectDone != null) {
+      return bgRejectDone(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class _BgRejectDone implements RejectionEvent {
+  const factory _BgRejectDone({required final String projectId}) =
+      _$BgRejectDoneImpl;
 
   @override
   String get projectId;
   @override
-  String get userType;
+  @JsonKey(ignore: true)
+  _$$BgRejectDoneImplCopyWith<_$BgRejectDoneImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class _$$BgRejectErrorImplCopyWith<$Res>
+    implements $RejectionEventCopyWith<$Res> {
+  factory _$$BgRejectErrorImplCopyWith(
+          _$BgRejectErrorImpl value, $Res Function(_$BgRejectErrorImpl) then) =
+      __$$BgRejectErrorImplCopyWithImpl<$Res>;
   @override
-  List<Transaction> get transactions;
+  @useResult
+  $Res call({String projectId, String? message});
+}
+
+/// @nodoc
+class __$$BgRejectErrorImplCopyWithImpl<$Res>
+    extends _$RejectionEventCopyWithImpl<$Res, _$BgRejectErrorImpl>
+    implements _$$BgRejectErrorImplCopyWith<$Res> {
+  __$$BgRejectErrorImplCopyWithImpl(
+      _$BgRejectErrorImpl _value, $Res Function(_$BgRejectErrorImpl) _then)
+      : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? projectId = null,
+    Object? message = freezed,
+  }) {
+    return _then(_$BgRejectErrorImpl(
+      projectId: null == projectId
+          ? _value.projectId
+          : projectId // ignore: cast_nullable_to_non_nullable
+              as String,
+      message: freezed == message
+          ? _value.message
+          : message // ignore: cast_nullable_to_non_nullable
+              as String?,
+    ));
+  }
+}
+
+/// @nodoc
+
+class _$BgRejectErrorImpl implements _BgRejectError {
+  const _$BgRejectErrorImpl({required this.projectId, this.message});
+
+  @override
+  final String projectId;
+  @override
+  final String? message;
+
+  @override
+  String toString() {
+    return 'RejectionEvent.bgRejectError(projectId: $projectId, message: $message)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$BgRejectErrorImpl &&
+            (identical(other.projectId, projectId) ||
+                other.projectId == projectId) &&
+            (identical(other.message, message) || other.message == message));
+  }
+
+  @override
+  int get hashCode => Object.hash(runtimeType, projectId, message);
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$BgRejectErrorImplCopyWith<_$BgRejectErrorImpl> get copyWith =>
+      __$$BgRejectErrorImplCopyWithImpl<_$BgRejectErrorImpl>(this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function(
+            String projectId, String userType, List<dynamic> transactions)
+        submitRejection,
+    required TResult Function(String projectId) bgRejectDone,
+    required TResult Function(String projectId, String? message) bgRejectError,
+  }) {
+    return bgRejectError(projectId, message);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function(
+            String projectId, String userType, List<dynamic> transactions)?
+        submitRejection,
+    TResult? Function(String projectId)? bgRejectDone,
+    TResult? Function(String projectId, String? message)? bgRejectError,
+  }) {
+    return bgRejectError?.call(projectId, message);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function(
+            String projectId, String userType, List<dynamic> transactions)?
+        submitRejection,
+    TResult Function(String projectId)? bgRejectDone,
+    TResult Function(String projectId, String? message)? bgRejectError,
+    required TResult orElse(),
+  }) {
+    if (bgRejectError != null) {
+      return bgRejectError(projectId, message);
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(_SubmitRejection value) submitRejection,
+    required TResult Function(_BgRejectDone value) bgRejectDone,
+    required TResult Function(_BgRejectError value) bgRejectError,
+  }) {
+    return bgRejectError(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(_SubmitRejection value)? submitRejection,
+    TResult? Function(_BgRejectDone value)? bgRejectDone,
+    TResult? Function(_BgRejectError value)? bgRejectError,
+  }) {
+    return bgRejectError?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(_SubmitRejection value)? submitRejection,
+    TResult Function(_BgRejectDone value)? bgRejectDone,
+    TResult Function(_BgRejectError value)? bgRejectError,
+    required TResult orElse(),
+  }) {
+    if (bgRejectError != null) {
+      return bgRejectError(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class _BgRejectError implements RejectionEvent {
+  const factory _BgRejectError(
+      {required final String projectId,
+      final String? message}) = _$BgRejectErrorImpl;
+
+  @override
+  String get projectId;
+  String? get message;
   @override
   @JsonKey(ignore: true)
-  _$$SubmitRejectionImplCopyWith<_$SubmitRejectionImpl> get copyWith =>
+  _$$BgRejectErrorImplCopyWith<_$BgRejectErrorImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
 
@@ -289,7 +609,7 @@ mixin _$RejectionState {
     required TResult Function() initial,
     required TResult Function() loading,
     required TResult Function() success,
-    required TResult Function(String message) failure,
+    required TResult Function(String errorMessage) failure,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -297,7 +617,7 @@ mixin _$RejectionState {
     TResult? Function()? initial,
     TResult? Function()? loading,
     TResult? Function()? success,
-    TResult? Function(String message)? failure,
+    TResult? Function(String errorMessage)? failure,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -305,7 +625,7 @@ mixin _$RejectionState {
     TResult Function()? initial,
     TResult Function()? loading,
     TResult Function()? success,
-    TResult Function(String message)? failure,
+    TResult Function(String errorMessage)? failure,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -395,7 +715,7 @@ class _$InitialImpl implements _Initial {
     required TResult Function() initial,
     required TResult Function() loading,
     required TResult Function() success,
-    required TResult Function(String message) failure,
+    required TResult Function(String errorMessage) failure,
   }) {
     return initial();
   }
@@ -406,7 +726,7 @@ class _$InitialImpl implements _Initial {
     TResult? Function()? initial,
     TResult? Function()? loading,
     TResult? Function()? success,
-    TResult? Function(String message)? failure,
+    TResult? Function(String errorMessage)? failure,
   }) {
     return initial?.call();
   }
@@ -417,7 +737,7 @@ class _$InitialImpl implements _Initial {
     TResult Function()? initial,
     TResult Function()? loading,
     TResult Function()? success,
-    TResult Function(String message)? failure,
+    TResult Function(String errorMessage)? failure,
     required TResult orElse(),
   }) {
     if (initial != null) {
@@ -509,7 +829,7 @@ class _$LoadingImpl implements _Loading {
     required TResult Function() initial,
     required TResult Function() loading,
     required TResult Function() success,
-    required TResult Function(String message) failure,
+    required TResult Function(String errorMessage) failure,
   }) {
     return loading();
   }
@@ -520,7 +840,7 @@ class _$LoadingImpl implements _Loading {
     TResult? Function()? initial,
     TResult? Function()? loading,
     TResult? Function()? success,
-    TResult? Function(String message)? failure,
+    TResult? Function(String errorMessage)? failure,
   }) {
     return loading?.call();
   }
@@ -531,7 +851,7 @@ class _$LoadingImpl implements _Loading {
     TResult Function()? initial,
     TResult Function()? loading,
     TResult Function()? success,
-    TResult Function(String message)? failure,
+    TResult Function(String errorMessage)? failure,
     required TResult orElse(),
   }) {
     if (loading != null) {
@@ -623,7 +943,7 @@ class _$SuccessImpl implements _Success {
     required TResult Function() initial,
     required TResult Function() loading,
     required TResult Function() success,
-    required TResult Function(String message) failure,
+    required TResult Function(String errorMessage) failure,
   }) {
     return success();
   }
@@ -634,7 +954,7 @@ class _$SuccessImpl implements _Success {
     TResult? Function()? initial,
     TResult? Function()? loading,
     TResult? Function()? success,
-    TResult? Function(String message)? failure,
+    TResult? Function(String errorMessage)? failure,
   }) {
     return success?.call();
   }
@@ -645,7 +965,7 @@ class _$SuccessImpl implements _Success {
     TResult Function()? initial,
     TResult Function()? loading,
     TResult Function()? success,
-    TResult Function(String message)? failure,
+    TResult Function(String errorMessage)? failure,
     required TResult orElse(),
   }) {
     if (success != null) {
@@ -702,7 +1022,7 @@ abstract class _$$FailureImplCopyWith<$Res> {
           _$FailureImpl value, $Res Function(_$FailureImpl) then) =
       __$$FailureImplCopyWithImpl<$Res>;
   @useResult
-  $Res call({String message});
+  $Res call({String errorMessage});
 }
 
 /// @nodoc
@@ -716,12 +1036,12 @@ class __$$FailureImplCopyWithImpl<$Res>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? message = null,
+    Object? errorMessage = null,
   }) {
     return _then(_$FailureImpl(
-      null == message
-          ? _value.message
-          : message // ignore: cast_nullable_to_non_nullable
+      null == errorMessage
+          ? _value.errorMessage
+          : errorMessage // ignore: cast_nullable_to_non_nullable
               as String,
     ));
   }
@@ -730,14 +1050,14 @@ class __$$FailureImplCopyWithImpl<$Res>
 /// @nodoc
 
 class _$FailureImpl implements _Failure {
-  const _$FailureImpl(this.message);
+  const _$FailureImpl(this.errorMessage);
 
   @override
-  final String message;
+  final String errorMessage;
 
   @override
   String toString() {
-    return 'RejectionState.failure(message: $message)';
+    return 'RejectionState.failure(errorMessage: $errorMessage)';
   }
 
   @override
@@ -745,11 +1065,12 @@ class _$FailureImpl implements _Failure {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _$FailureImpl &&
-            (identical(other.message, message) || other.message == message));
+            (identical(other.errorMessage, errorMessage) ||
+                other.errorMessage == errorMessage));
   }
 
   @override
-  int get hashCode => Object.hash(runtimeType, message);
+  int get hashCode => Object.hash(runtimeType, errorMessage);
 
   @JsonKey(ignore: true)
   @override
@@ -763,9 +1084,9 @@ class _$FailureImpl implements _Failure {
     required TResult Function() initial,
     required TResult Function() loading,
     required TResult Function() success,
-    required TResult Function(String message) failure,
+    required TResult Function(String errorMessage) failure,
   }) {
-    return failure(message);
+    return failure(errorMessage);
   }
 
   @override
@@ -774,9 +1095,9 @@ class _$FailureImpl implements _Failure {
     TResult? Function()? initial,
     TResult? Function()? loading,
     TResult? Function()? success,
-    TResult? Function(String message)? failure,
+    TResult? Function(String errorMessage)? failure,
   }) {
-    return failure?.call(message);
+    return failure?.call(errorMessage);
   }
 
   @override
@@ -785,11 +1106,11 @@ class _$FailureImpl implements _Failure {
     TResult Function()? initial,
     TResult Function()? loading,
     TResult Function()? success,
-    TResult Function(String message)? failure,
+    TResult Function(String errorMessage)? failure,
     required TResult orElse(),
   }) {
     if (failure != null) {
-      return failure(message);
+      return failure(errorMessage);
     }
     return orElse();
   }
@@ -833,9 +1154,9 @@ class _$FailureImpl implements _Failure {
 }
 
 abstract class _Failure implements RejectionState {
-  const factory _Failure(final String message) = _$FailureImpl;
+  const factory _Failure(final String errorMessage) = _$FailureImpl;
 
-  String get message;
+  String get errorMessage;
   @JsonKey(ignore: true)
   _$$FailureImplCopyWith<_$FailureImpl> get copyWith =>
       throw _privateConstructorUsedError;
