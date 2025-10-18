@@ -16,23 +16,28 @@ final _privateConstructorUsedError = UnsupportedError(
 
 /// @nodoc
 mixin _$AssetSubmissionEvent {
-  String get userType => throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function(String projectId, String userType) submitAll,
     required TResult Function(String userType) submitAllDrafts,
+    required TResult Function(String projectId, String? message) svcError,
+    required TResult Function(String projectId) svcDone,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(String projectId, String userType)? submitAll,
     TResult? Function(String userType)? submitAllDrafts,
+    TResult? Function(String projectId, String? message)? svcError,
+    TResult? Function(String projectId)? svcDone,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(String projectId, String userType)? submitAll,
     TResult Function(String userType)? submitAllDrafts,
+    TResult Function(String projectId, String? message)? svcError,
+    TResult Function(String projectId)? svcDone,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -40,24 +45,26 @@ mixin _$AssetSubmissionEvent {
   TResult map<TResult extends Object?>({
     required TResult Function(_SubmitAll value) submitAll,
     required TResult Function(_SubmitAllDrafts value) submitAllDrafts,
+    required TResult Function(_SvcError value) svcError,
+    required TResult Function(_SvcDone value) svcDone,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_SubmitAll value)? submitAll,
     TResult? Function(_SubmitAllDrafts value)? submitAllDrafts,
+    TResult? Function(_SvcError value)? svcError,
+    TResult? Function(_SvcDone value)? svcDone,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_SubmitAll value)? submitAll,
     TResult Function(_SubmitAllDrafts value)? submitAllDrafts,
+    TResult Function(_SvcError value)? svcError,
+    TResult Function(_SvcDone value)? svcDone,
     required TResult orElse(),
   }) =>
-      throw _privateConstructorUsedError;
-
-  @JsonKey(ignore: true)
-  $AssetSubmissionEventCopyWith<AssetSubmissionEvent> get copyWith =>
       throw _privateConstructorUsedError;
 }
 
@@ -66,8 +73,6 @@ abstract class $AssetSubmissionEventCopyWith<$Res> {
   factory $AssetSubmissionEventCopyWith(AssetSubmissionEvent value,
           $Res Function(AssetSubmissionEvent) then) =
       _$AssetSubmissionEventCopyWithImpl<$Res, AssetSubmissionEvent>;
-  @useResult
-  $Res call({String userType});
 }
 
 /// @nodoc
@@ -80,28 +85,13 @@ class _$AssetSubmissionEventCopyWithImpl<$Res,
   final $Val _value;
   // ignore: unused_field
   final $Res Function($Val) _then;
-
-  @pragma('vm:prefer-inline')
-  @override
-  $Res call({
-    Object? userType = null,
-  }) {
-    return _then(_value.copyWith(
-      userType: null == userType
-          ? _value.userType
-          : userType // ignore: cast_nullable_to_non_nullable
-              as String,
-    ) as $Val);
-  }
 }
 
 /// @nodoc
-abstract class _$$SubmitAllImplCopyWith<$Res>
-    implements $AssetSubmissionEventCopyWith<$Res> {
+abstract class _$$SubmitAllImplCopyWith<$Res> {
   factory _$$SubmitAllImplCopyWith(
           _$SubmitAllImpl value, $Res Function(_$SubmitAllImpl) then) =
       __$$SubmitAllImplCopyWithImpl<$Res>;
-  @override
   @useResult
   $Res call({String projectId, String userType});
 }
@@ -173,6 +163,8 @@ class _$SubmitAllImpl implements _SubmitAll {
   TResult when<TResult extends Object?>({
     required TResult Function(String projectId, String userType) submitAll,
     required TResult Function(String userType) submitAllDrafts,
+    required TResult Function(String projectId, String? message) svcError,
+    required TResult Function(String projectId) svcDone,
   }) {
     return submitAll(projectId, userType);
   }
@@ -182,6 +174,8 @@ class _$SubmitAllImpl implements _SubmitAll {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(String projectId, String userType)? submitAll,
     TResult? Function(String userType)? submitAllDrafts,
+    TResult? Function(String projectId, String? message)? svcError,
+    TResult? Function(String projectId)? svcDone,
   }) {
     return submitAll?.call(projectId, userType);
   }
@@ -191,6 +185,8 @@ class _$SubmitAllImpl implements _SubmitAll {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(String projectId, String userType)? submitAll,
     TResult Function(String userType)? submitAllDrafts,
+    TResult Function(String projectId, String? message)? svcError,
+    TResult Function(String projectId)? svcDone,
     required TResult orElse(),
   }) {
     if (submitAll != null) {
@@ -204,6 +200,8 @@ class _$SubmitAllImpl implements _SubmitAll {
   TResult map<TResult extends Object?>({
     required TResult Function(_SubmitAll value) submitAll,
     required TResult Function(_SubmitAllDrafts value) submitAllDrafts,
+    required TResult Function(_SvcError value) svcError,
+    required TResult Function(_SvcDone value) svcDone,
   }) {
     return submitAll(this);
   }
@@ -213,6 +211,8 @@ class _$SubmitAllImpl implements _SubmitAll {
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_SubmitAll value)? submitAll,
     TResult? Function(_SubmitAllDrafts value)? submitAllDrafts,
+    TResult? Function(_SvcError value)? svcError,
+    TResult? Function(_SvcDone value)? svcDone,
   }) {
     return submitAll?.call(this);
   }
@@ -222,6 +222,8 @@ class _$SubmitAllImpl implements _SubmitAll {
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_SubmitAll value)? submitAll,
     TResult Function(_SubmitAllDrafts value)? submitAllDrafts,
+    TResult Function(_SvcError value)? svcError,
+    TResult Function(_SvcDone value)? svcDone,
     required TResult orElse(),
   }) {
     if (submitAll != null) {
@@ -237,21 +239,17 @@ abstract class _SubmitAll implements AssetSubmissionEvent {
       required final String userType}) = _$SubmitAllImpl;
 
   String get projectId;
-  @override
   String get userType;
-  @override
   @JsonKey(ignore: true)
   _$$SubmitAllImplCopyWith<_$SubmitAllImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
 
 /// @nodoc
-abstract class _$$SubmitAllDraftsImplCopyWith<$Res>
-    implements $AssetSubmissionEventCopyWith<$Res> {
+abstract class _$$SubmitAllDraftsImplCopyWith<$Res> {
   factory _$$SubmitAllDraftsImplCopyWith(_$SubmitAllDraftsImpl value,
           $Res Function(_$SubmitAllDraftsImpl) then) =
       __$$SubmitAllDraftsImplCopyWithImpl<$Res>;
-  @override
   @useResult
   $Res call({String userType});
 }
@@ -315,6 +313,8 @@ class _$SubmitAllDraftsImpl implements _SubmitAllDrafts {
   TResult when<TResult extends Object?>({
     required TResult Function(String projectId, String userType) submitAll,
     required TResult Function(String userType) submitAllDrafts,
+    required TResult Function(String projectId, String? message) svcError,
+    required TResult Function(String projectId) svcDone,
   }) {
     return submitAllDrafts(userType);
   }
@@ -324,6 +324,8 @@ class _$SubmitAllDraftsImpl implements _SubmitAllDrafts {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(String projectId, String userType)? submitAll,
     TResult? Function(String userType)? submitAllDrafts,
+    TResult? Function(String projectId, String? message)? svcError,
+    TResult? Function(String projectId)? svcDone,
   }) {
     return submitAllDrafts?.call(userType);
   }
@@ -333,6 +335,8 @@ class _$SubmitAllDraftsImpl implements _SubmitAllDrafts {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(String projectId, String userType)? submitAll,
     TResult Function(String userType)? submitAllDrafts,
+    TResult Function(String projectId, String? message)? svcError,
+    TResult Function(String projectId)? svcDone,
     required TResult orElse(),
   }) {
     if (submitAllDrafts != null) {
@@ -346,6 +350,8 @@ class _$SubmitAllDraftsImpl implements _SubmitAllDrafts {
   TResult map<TResult extends Object?>({
     required TResult Function(_SubmitAll value) submitAll,
     required TResult Function(_SubmitAllDrafts value) submitAllDrafts,
+    required TResult Function(_SvcError value) svcError,
+    required TResult Function(_SvcDone value) svcDone,
   }) {
     return submitAllDrafts(this);
   }
@@ -355,6 +361,8 @@ class _$SubmitAllDraftsImpl implements _SubmitAllDrafts {
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_SubmitAll value)? submitAll,
     TResult? Function(_SubmitAllDrafts value)? submitAllDrafts,
+    TResult? Function(_SvcError value)? svcError,
+    TResult? Function(_SvcDone value)? svcDone,
   }) {
     return submitAllDrafts?.call(this);
   }
@@ -364,6 +372,8 @@ class _$SubmitAllDraftsImpl implements _SubmitAllDrafts {
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_SubmitAll value)? submitAll,
     TResult Function(_SubmitAllDrafts value)? submitAllDrafts,
+    TResult Function(_SvcError value)? svcError,
+    TResult Function(_SvcDone value)? svcDone,
     required TResult orElse(),
   }) {
     if (submitAllDrafts != null) {
@@ -377,11 +387,312 @@ abstract class _SubmitAllDrafts implements AssetSubmissionEvent {
   const factory _SubmitAllDrafts({required final String userType}) =
       _$SubmitAllDraftsImpl;
 
-  @override
   String get userType;
-  @override
   @JsonKey(ignore: true)
   _$$SubmitAllDraftsImplCopyWith<_$SubmitAllDraftsImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class _$$SvcErrorImplCopyWith<$Res> {
+  factory _$$SvcErrorImplCopyWith(
+          _$SvcErrorImpl value, $Res Function(_$SvcErrorImpl) then) =
+      __$$SvcErrorImplCopyWithImpl<$Res>;
+  @useResult
+  $Res call({String projectId, String? message});
+}
+
+/// @nodoc
+class __$$SvcErrorImplCopyWithImpl<$Res>
+    extends _$AssetSubmissionEventCopyWithImpl<$Res, _$SvcErrorImpl>
+    implements _$$SvcErrorImplCopyWith<$Res> {
+  __$$SvcErrorImplCopyWithImpl(
+      _$SvcErrorImpl _value, $Res Function(_$SvcErrorImpl) _then)
+      : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? projectId = null,
+    Object? message = freezed,
+  }) {
+    return _then(_$SvcErrorImpl(
+      projectId: null == projectId
+          ? _value.projectId
+          : projectId // ignore: cast_nullable_to_non_nullable
+              as String,
+      message: freezed == message
+          ? _value.message
+          : message // ignore: cast_nullable_to_non_nullable
+              as String?,
+    ));
+  }
+}
+
+/// @nodoc
+
+class _$SvcErrorImpl implements _SvcError {
+  const _$SvcErrorImpl({required this.projectId, this.message});
+
+  @override
+  final String projectId;
+  @override
+  final String? message;
+
+  @override
+  String toString() {
+    return 'AssetSubmissionEvent.svcError(projectId: $projectId, message: $message)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$SvcErrorImpl &&
+            (identical(other.projectId, projectId) ||
+                other.projectId == projectId) &&
+            (identical(other.message, message) || other.message == message));
+  }
+
+  @override
+  int get hashCode => Object.hash(runtimeType, projectId, message);
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$SvcErrorImplCopyWith<_$SvcErrorImpl> get copyWith =>
+      __$$SvcErrorImplCopyWithImpl<_$SvcErrorImpl>(this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function(String projectId, String userType) submitAll,
+    required TResult Function(String userType) submitAllDrafts,
+    required TResult Function(String projectId, String? message) svcError,
+    required TResult Function(String projectId) svcDone,
+  }) {
+    return svcError(projectId, message);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function(String projectId, String userType)? submitAll,
+    TResult? Function(String userType)? submitAllDrafts,
+    TResult? Function(String projectId, String? message)? svcError,
+    TResult? Function(String projectId)? svcDone,
+  }) {
+    return svcError?.call(projectId, message);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function(String projectId, String userType)? submitAll,
+    TResult Function(String userType)? submitAllDrafts,
+    TResult Function(String projectId, String? message)? svcError,
+    TResult Function(String projectId)? svcDone,
+    required TResult orElse(),
+  }) {
+    if (svcError != null) {
+      return svcError(projectId, message);
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(_SubmitAll value) submitAll,
+    required TResult Function(_SubmitAllDrafts value) submitAllDrafts,
+    required TResult Function(_SvcError value) svcError,
+    required TResult Function(_SvcDone value) svcDone,
+  }) {
+    return svcError(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(_SubmitAll value)? submitAll,
+    TResult? Function(_SubmitAllDrafts value)? submitAllDrafts,
+    TResult? Function(_SvcError value)? svcError,
+    TResult? Function(_SvcDone value)? svcDone,
+  }) {
+    return svcError?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(_SubmitAll value)? submitAll,
+    TResult Function(_SubmitAllDrafts value)? submitAllDrafts,
+    TResult Function(_SvcError value)? svcError,
+    TResult Function(_SvcDone value)? svcDone,
+    required TResult orElse(),
+  }) {
+    if (svcError != null) {
+      return svcError(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class _SvcError implements AssetSubmissionEvent {
+  const factory _SvcError(
+      {required final String projectId,
+      final String? message}) = _$SvcErrorImpl;
+
+  String get projectId;
+  String? get message;
+  @JsonKey(ignore: true)
+  _$$SvcErrorImplCopyWith<_$SvcErrorImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class _$$SvcDoneImplCopyWith<$Res> {
+  factory _$$SvcDoneImplCopyWith(
+          _$SvcDoneImpl value, $Res Function(_$SvcDoneImpl) then) =
+      __$$SvcDoneImplCopyWithImpl<$Res>;
+  @useResult
+  $Res call({String projectId});
+}
+
+/// @nodoc
+class __$$SvcDoneImplCopyWithImpl<$Res>
+    extends _$AssetSubmissionEventCopyWithImpl<$Res, _$SvcDoneImpl>
+    implements _$$SvcDoneImplCopyWith<$Res> {
+  __$$SvcDoneImplCopyWithImpl(
+      _$SvcDoneImpl _value, $Res Function(_$SvcDoneImpl) _then)
+      : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? projectId = null,
+  }) {
+    return _then(_$SvcDoneImpl(
+      projectId: null == projectId
+          ? _value.projectId
+          : projectId // ignore: cast_nullable_to_non_nullable
+              as String,
+    ));
+  }
+}
+
+/// @nodoc
+
+class _$SvcDoneImpl implements _SvcDone {
+  const _$SvcDoneImpl({required this.projectId});
+
+  @override
+  final String projectId;
+
+  @override
+  String toString() {
+    return 'AssetSubmissionEvent.svcDone(projectId: $projectId)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$SvcDoneImpl &&
+            (identical(other.projectId, projectId) ||
+                other.projectId == projectId));
+  }
+
+  @override
+  int get hashCode => Object.hash(runtimeType, projectId);
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$SvcDoneImplCopyWith<_$SvcDoneImpl> get copyWith =>
+      __$$SvcDoneImplCopyWithImpl<_$SvcDoneImpl>(this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function(String projectId, String userType) submitAll,
+    required TResult Function(String userType) submitAllDrafts,
+    required TResult Function(String projectId, String? message) svcError,
+    required TResult Function(String projectId) svcDone,
+  }) {
+    return svcDone(projectId);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function(String projectId, String userType)? submitAll,
+    TResult? Function(String userType)? submitAllDrafts,
+    TResult? Function(String projectId, String? message)? svcError,
+    TResult? Function(String projectId)? svcDone,
+  }) {
+    return svcDone?.call(projectId);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function(String projectId, String userType)? submitAll,
+    TResult Function(String userType)? submitAllDrafts,
+    TResult Function(String projectId, String? message)? svcError,
+    TResult Function(String projectId)? svcDone,
+    required TResult orElse(),
+  }) {
+    if (svcDone != null) {
+      return svcDone(projectId);
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(_SubmitAll value) submitAll,
+    required TResult Function(_SubmitAllDrafts value) submitAllDrafts,
+    required TResult Function(_SvcError value) svcError,
+    required TResult Function(_SvcDone value) svcDone,
+  }) {
+    return svcDone(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(_SubmitAll value)? submitAll,
+    TResult? Function(_SubmitAllDrafts value)? submitAllDrafts,
+    TResult? Function(_SvcError value)? svcError,
+    TResult? Function(_SvcDone value)? svcDone,
+  }) {
+    return svcDone?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(_SubmitAll value)? submitAll,
+    TResult Function(_SubmitAllDrafts value)? submitAllDrafts,
+    TResult Function(_SvcError value)? svcError,
+    TResult Function(_SvcDone value)? svcDone,
+    required TResult orElse(),
+  }) {
+    if (svcDone != null) {
+      return svcDone(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class _SvcDone implements AssetSubmissionEvent {
+  const factory _SvcDone({required final String projectId}) = _$SvcDoneImpl;
+
+  String get projectId;
+  @JsonKey(ignore: true)
+  _$$SvcDoneImplCopyWith<_$SvcDoneImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
 

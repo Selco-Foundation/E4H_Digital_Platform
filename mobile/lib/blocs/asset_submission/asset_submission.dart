@@ -1,421 +1,71 @@
 import 'dart:async';
 
 import 'package:bloc/bloc.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:isar/isar.dart';
-import 'package:workmanager/workmanager.dart';
 
-import '../../data/nosql/cache_add_new_asset.dart';
-import '../../data/nosql/cache_asset_detail.dart';
-import '../../data/nosql/cache_completion_report.dart';
-import '../../data/nosql/cache_specification.dart';
 import '../../data/nosql/cache_submission_job.dart';
 import '../../data/nosql/cache_sync_record.dart';
 import '../../data/nosql/cache_unsubmitted_project.dart';
-import '../../data/secure_storage/secureStore.dart';
-import '../../model/asset/asset.dart';
-import '../../model/audit_details/audit_details.dart';
-import '../../model/document/document.dart';
-import '../../model/entities/project_facility.dart';
-import '../../model/project_workflow/project_workflow.dart';
-import '../../repositories/app_init_Repo.dart';
-import '../../repositories/assetRepo.dart';
-import '../../repositories/bom_repo.dart';
-import '../../repositories/project_facility_repo.dart';
 import '../../repositories/project_repo.dart';
-import '../../repositories/project_workflow.dart';
-import '../../utils/constants.dart';
-import '../../utils/utils.dart';
+import '../../utils/background_service.dart';
 
 part 'asset_submission.freezed.dart';
 
-const _kAssetSubmitTaskName = 'asset_submission_job';
 StreamSubscription? _jobSub;
-StreamSubscription<void>? _bulkJobsSub;
-
-Future<void> _writeJobStatus({
-  required Isar isar,
-  required String projectId,
-  required String status, // 'queued' | 'running' | 'success' | 'failed'
-  String? error,
-}) async {
-  await isar.writeTxn(() async {
-    final row = await isar.cacheSubmissionJobs
-        .where()
-        .projectIdEqualTo(projectId)
-        .findFirst();
-    if (row == null) {
-      await isar.cacheSubmissionJobs.put(CacheSubmissionJob(
-        projectId: projectId,
-        status: status,
-        error: error,
-      ));
-    } else {
-      row
-        ..status = status
-        ..error = error
-        ..updatedAt = DateTime.now();
-      await isar.cacheSubmissionJobs.put(row);
-    }
-  });
-}
-
-Future<bool> _fail(Isar isar, String projectId, String message,
-    [Object? e]) async {
-  await _writeJobStatus(
-    isar: isar,
-    projectId: projectId,
-    status: 'failed',
-    error: e == null ? message : '$message: $e',
-  );
-  // return false;
-  return true;
-}
-
-@pragma('vm:entry-point')
-void assetSubmissionCallbackDispatcher() {
-  Workmanager().executeTask((task, inputData) async {
-    final _isar = await Constants().isar;
-    WidgetsFlutterBinding.ensureInitialized();
-    await envConfig.initialize();
-    final secureStore = SecureStore();
-    if (task != _kAssetSubmitTaskName) return Future.value(true);
-
-    final projectId = (inputData?['projectId'] as String?) ?? '';
-    final userType = (inputData?['userType'] as String?) ?? '';
-    final fromDraft = (inputData?['fromDraft'] as bool?) ?? false;
-    if (projectId.isEmpty || userType.isEmpty) return Future.value(false);
-
-    await _writeJobStatus(projectId: projectId, status: 'running', isar: _isar);
-
-    try {
-      final facilityId = (await ProjectFacilityRepository().search(
-        ProjectFacilitySearchModel(projectId: [projectId]),
-        _isar,
-      ))
-          .facilityId;
-
-      final repo = AssetRepository();
-      const types = ['inverter', 'battery', 'panel'];
-
-      for (final type in types) {
-        final assets = await _isar.cacheAddNewAssets
-            .where()
-            .projectIdEqualTo(projectId)
-            .filter()
-            .assetTypeEqualTo(type)
-            .findAll();
-
-        if (assets.isEmpty) {
-          return _fail(
-              _isar, projectId, "No cached assets found for type $type");
-        }
-
-        print("[$type] found ${assets.length} cached assets");
-        for (var a in assets) {
-          print("    serial=${a.serialNumber} photoPath='${a.photoPath}'");
-        }
-
-        final spec = await _isar.cacheSpecifications
-            .where()
-            .projectIdEqualTo(projectId)
-            .filter()
-            .assetTypeEqualTo(type)
-            .findFirst();
-        final detail = await _isar.cacheAssetDetails
-            .where()
-            .projectIdEqualTo(projectId)
-            .filter()
-            .assetTypeEqualTo(type)
-            .findFirst();
-        if (spec == null || detail == null) {
-          return _fail(_isar, projectId,
-              "Missing specification or detail for type $type.");
-        }
-
-        for (final saved in assets) {
-          final documents = <Document>[];
-          if (saved.photoPath.isNotEmpty) {
-            String photoId = await getFilestoreUrl(saved.photoPath);
-            print("photoId $photoId");
-            documents.add(Document(
-              documentType: saved.documentType,
-              fileStore: photoId,
-              documentUid: "DOC-ASSET-${saved.serialNumber}",
-              additionalDetailsJson: null,
-              geoLocation: GeoLocation(
-                latitude: saved.latitude,
-                longitude: saved.longitude,
-                //additionalDetails: null,
-              ),
-            ));
-          }
-
-          final now = DateTime.now().toUtc();
-          final startIso = now.toIso8601String();
-          final years = userType == USER_TYPES.FIELD_STAFF.name
-              ? 0
-              : parseWarrantyYears(detail.warranty!);
-          final endIso = userType == USER_TYPES.FIELD_STAFF.name
-              ? ""
-              : now.add(Duration(days: 365 * years)).toIso8601String();
-
-          // 1) Build AssetDetails with every field explicitly
-
-          print("projectId $projectId");
-          print("type $type");
-          print("spec ${spec.totalCapacity}");
-          print("spec ${spec.totalCapacityUnit}");
-          print("spec $spec");
-
-          print(
-              "ASSET_TYPES.INVERTER.name.toLowerCase() ${ASSET_TYPES.INVERTER.name.toLowerCase()}");
-          print("capacityUnit ${saved.capacityUnit}");
-          if (type == ASSET_TYPES.BATTERY.name.toLowerCase()) {
-            print("saved.batteryCapacity! ${saved.batteryCapacity!}");
-            print("saved.batteryVoltage! ${saved.batteryVoltage!}");
-            print("saved.batteryType ${saved.batteryType}");
-          }
-          if (type == ASSET_TYPES.INVERTER.name.toLowerCase()) {
-            print("saved.inverterCapacity! ${saved.inverterCapacity}");
-            print("saved.inverterCapacityUnit ${saved.inverterCapacityUnit}");
-          }
-
-          final assetDetails = AssetDetails(
-            totalCapacity: spec.totalCapacity,
-            totalCapacityUnit: spec.totalCapacityUnit,
-            totalCapacityUOM: spec.totalCapacityUnit,
-            currentUnit:
-                type == ASSET_TYPES.INVERTER.name.toLowerCase() ? '1' : null,
-            capacityUnit: (type == ASSET_TYPES.BATTERY.name.toLowerCase() ||
-                    type == ASSET_TYPES.PANEL.name.toLowerCase())
-                ? saved.capacityUnit
-                : null,
-            panelCapacity: type == ASSET_TYPES.PANEL.name.toLowerCase()
-                ? double.parse(saved.panelCapacity!)
-                : null,
-            batteryCapacity: type == ASSET_TYPES.BATTERY.name.toLowerCase()
-                ? double.parse(saved.batteryCapacity!)
-                : null,
-            batteryVoltage: type == ASSET_TYPES.BATTERY.name.toLowerCase()
-                ? double.parse(saved.batteryVoltage!)
-                : null,
-            batteryType: type == ASSET_TYPES.BATTERY.name.toLowerCase()
-                ? saved.batteryType
-                : null,
-            voltageUnit: (type == ASSET_TYPES.BATTERY.name.toLowerCase() ||
-                    type == ASSET_TYPES.INVERTER.name.toLowerCase())
-                ? saved.voltageUnit
-                : null,
-            inverterCapacity: type == ASSET_TYPES.INVERTER.name.toLowerCase()
-                ? double.parse(saved.inverterCapacity!)
-                : null,
-            inverterCapacityUnit:
-                type == ASSET_TYPES.INVERTER.name.toLowerCase()
-                    ? saved.inverterCapacityUnit
-                    : null,
-          );
-
-          print("assetDetails $assetDetails");
-
-          final userId = await SecureStore().getSelectedIndividual();
-          final audit = AuditDetails(lastModifiedBy: userId, lastModified: now);
-
-          // 2) Build the Asset itself
-          final assetModel = Asset(
-            assetId: saved.assetId,
-            tenantId: envConfig.variables.tenantId,
-            facilityID: facilityId,
-            assetTypeID: type.toUpperCase(),
-            system: spec.system,
-            serialNumber: saved.serialNumber,
-            brandID: detail.brand,
-            assetDetails: assetDetails,
-            warrantyStartDate:
-                userType == USER_TYPES.SUPERVISOR.name ? startIso : "",
-            warrantyDuration: userType == USER_TYPES.SUPERVISOR.name
-                ? parseWarrantyYears(detail.warranty)
-                : 0,
-            warrantyEndDate:
-                userType == USER_TYPES.SUPERVISOR.name ? endIso : "",
-            modelNumber: detail.model,
-            wfStatus: "CREATED",
-            isActive: true,
-            documents: documents,
-            auditDetails: (saved.assetId?.isNotEmpty ?? false) ? audit : null,
-          );
-          print(
-              "assetModel audit ${assetModel.auditDetails?.toJson() ?? '— none —'}");
-          print("assetModel $assetModel");
-          print("assetModel.warrantyDuration ${assetModel.warrantyDuration}");
-          print("facilityId $facilityId");
-          await repo.createOrUpdateAsset(
-              asset: assetModel, isar: _isar, facilityId: facilityId);
-        }
-      }
-
-      print("about starting completion reports");
-
-      final remoteRepo = ProjectRemoteRepository();
-      final workflowDocuments = <Document>[];
-
-      final workflowDocumentFromCache =
-          await ProjectWorkflowRepository().collectWorkflowMediaDocs(
-        isar: _isar,
-        projectId: projectId,
-        types: types,
-      );
-
-      workflowDocuments.addAll(workflowDocumentFromCache);
-
-      final completionReports = await _isar.cacheCompletionReports
-          .where()
-          .projectIdEqualTo(projectId)
-          .findAll();
-
-      final completionDocuments = <Document>[];
-
-      for (final report in completionReports) {
-        if (report.filePath.isEmpty) continue;
-        if (((report.fileName ?? '')
-            .toLowerCase()
-            .contains('installation_report_bom'))) continue;
-        String mediaId = await getFilestoreUrl(report.filePath);
-        print("mediaId $mediaId");
-        completionDocuments.add(Document(
-          documentType: "INSTALLATION_REPORT",
-          fileStore: mediaId,
-          documentUid: "INSTALLATION-REPORT-${report.fileType}-$mediaId",
-          geoLocation: GeoLocation(
-            latitude: report.latitude,
-            longitude: report.longitude,
-          ),
-        ));
-      }
-      print("completionDocuments ${completionDocuments.toString()}");
-
-      print("projectId $projectId");
-      print("document1 $workflowDocuments");
-      print("document2 ${workflowDocuments.toString()}");
-
-      if (userType == USER_TYPES.SUPERVISOR.name) {
-        String bomFileStoreId;
-        try {
-          // fetch bytes
-          final bomBytes = await BomRepository().generateBomPdf(
-            isar: _isar,
-            projectId: projectId,
-            userType: userType,
-          );
-          // upload to file store as PDF
-          final bomFileName =
-              "bom_${projectId}_${DateTime.now().millisecondsSinceEpoch}.pdf";
-          bomFileStoreId = await BomRepository().uploadPdfToFileStore(
-            bomBytes!,
-            bomFileName,
-          );
-          // determine lat/lon for BOM doc: use first media file if exists
-          String lat = "", lon = "";
-          if (workflowDocuments.isNotEmpty) {
-            lat = workflowDocuments.first.geoLocation?.latitude ?? "";
-            lon = workflowDocuments.first.geoLocation?.longitude ?? "";
-          }
-          // add BOM document
-          workflowDocuments.add(
-            Document(
-              documentType: "INSTALLATION_REPORT_BOM",
-              fileStore: bomFileStoreId,
-              documentUid:
-                  "BOM-${projectId}-${DateTime.now().millisecondsSinceEpoch}",
-              geoLocation: GeoLocation(latitude: lat, longitude: lon),
-            ),
-          );
-        } catch (e) {
-          print("Error fetching/uploading BOM PDF: $e");
-          return _fail(_isar, projectId, "Failed to attach BOM PDF:");
-        }
-
-        try {
-          final tenantId = envConfig.variables.tenantId;
-          final assignUserUuid = await SecureStore().getSelectedIndividual();
-
-          print(
-              '[BOM:submit] isarInstance=${identityHashCode(_isar)} project=$projectId');
-
-          await BomRepository().submitMergedForProject(
-            isar: _isar,
-            projectId: projectId,
-            tenantId: tenantId,
-            facilityId: facilityId,
-            assignUserUuid: assignUserUuid ?? '',
-          );
-        } catch (e) {
-          print('BOM submission error: $e');
-          return _fail(_isar, projectId, "BOM submission error");
-        }
-      }
-
-      await remoteRepo.updateProjectWorkflow(
-        projectId: projectId,
-        action: userType == USER_TYPES.FIELD_STAFF.name
-            ? WORKFLOW_ACTIONS.SUBMIT_REPORT_A.name
-            : WORKFLOW_ACTIONS.SUBMIT_REPORT_B.name,
-        documents: [...workflowDocuments, ...completionDocuments],
-      );
-
-      final draftRepo = UnsubmittedProjectRepository(_isar);
-
-      // caches to clear
-      await draftRepo.delete(projectId, userType);
-      await draftRepo.deleteAddNewAsset(projectId);
-      await PrefilledProjectRepository(_isar).delete(
-        projectId: projectId,
-        userType: userType,
-      );
-      await CompletionReportRepository(_isar).delete(projectId: projectId);
-      await BomRepository().delete(isar: _isar, projectId: projectId);
-      if (!fromDraft) {
-        await _writeJobStatus(
-            isar: _isar, projectId: projectId, status: 'success');
-      }
-      return Future.value(true);
-    } catch (e) {
-      print("e ${e.toString()}");
-      String? errorMessage = e.toString();
-      // "We are facing an issues please try again";
-      // if ((e.toString() == "Exception: No network connection") ||
-      //     (e.toString() == "Exception: No internet access")) {
-      //   errorMessage =
-      //       "For some Reason you have bad internet connectivity, we have saved your data, please try to sync the data later";
-      // }
-      return _fail(_isar, projectId, errorMessage);
-    }
-  });
-}
+StreamSubscription? _bulkJobsSub;
+StreamSubscription? _svcErrSub;
+StreamSubscription? _svcDoneSub;
 
 class AssetSubmissionBloc
     extends Bloc<AssetSubmissionEvent, AssetSubmissionState> {
   final Isar _isar;
   final UnsubmittedProjectRepository _draftRepo;
 
+  // Track currently active single submit
+  String? _activeSingleProjectId;
+
   AssetSubmissionBloc(this._isar)
       : _draftRepo = UnsubmittedProjectRepository(_isar),
         super(const AssetSubmissionState.initial()) {
     on<_SubmitAll>(_onSubmitAll);
     on<_SubmitAllDrafts>(_onSubmitAllDrafts);
-  }
 
-  Future<void> _onSubmitAll(
-    _SubmitAll event,
-    Emitter<AssetSubmissionState> emit,
-  ) =>
-      _handleSubmit(
-        projectId: event.projectId,
-        userType: event.userType,
-        emit: emit,
-        fromDraft: false,
+    on<AssetSubmissionEvent>((event, emit) async {
+      await event.maybeMap(
+        svcError: (e) async =>
+            await _handleSvcError(e.projectId, e.message, emit),
+        svcDone: (e) async => await _handleSvcDone(e.projectId, emit),
+        orElse: () async {},
       );
+    });
+
+    final svc = FlutterBackgroundService();
+
+    _svcErrSub?.cancel();
+    _svcErrSub = svc.on(kEvtError).listen((data) {
+      final pid = data?['projectId'] as String?;
+      final msg = data?['message']?.toString();
+      // DEBUG
+      // ignore: avoid_print
+      print('[BLoC] kEvtError stream received pid=$pid msg=$msg');
+      if (pid != null) {
+        add(AssetSubmissionEvent.svcError(projectId: pid, message: msg));
+      }
+    });
+
+    _svcDoneSub?.cancel();
+    _svcDoneSub = svc.on(kEvtDone).listen((data) {
+      final pid = data?['projectId'] as String?;
+      // DEBUG
+      // ignore: avoid_print
+      print('[BLoC] kEvtDone stream received pid=$pid');
+      if (pid != null) {
+        add(AssetSubmissionEvent.svcDone(projectId: pid));
+      }
+    });
+  }
 
   Future<void> upsertSyncRecord(String userType) async {
     final now = DateTime.now().toUtc();
@@ -436,117 +86,111 @@ class AssetSubmissionBloc
     });
   }
 
+  @override
+  Future<void> close() {
+    _bulkJobsSub?.cancel();
+    _jobSub?.cancel();
+    _svcErrSub?.cancel();
+    _svcDoneSub?.cancel();
+    return super.close();
+  }
+
+  // ================================================
+  // Submit all drafts (batch)
+  // ================================================
   Future<void> _onSubmitAllDrafts(
     _SubmitAllDrafts event,
     Emitter<AssetSubmissionState> emit,
   ) async {
     emit(const AssetSubmissionState.loading());
-    // save last sync date as now
     await upsertSyncRecord(event.userType);
+
+    // Load all local, unsubmitted projects for this userType
     final localEntries = await _isar.cacheUnsubmittedProjects
         .where()
         .filter()
         .userTypeEqualTo(event.userType)
         .findAll();
 
-    final localWorkflows = localEntries
-        .map((e) => ProjectWorkflow(project: e.project, status: e.status))
-        .toList();
-
-    if (localWorkflows.isEmpty) {
+    final projectIds = localEntries.map((e) => e.project.id).toList();
+    if (projectIds.isEmpty) {
       emit(const AssetSubmissionState.failure("No drafts to sync."));
       return;
     }
 
-    // final total = localWorkflows.length;
-    // int completed = 0;
-    //
-    // for (final draft in localWorkflows) {
-    //   emit(AssetSubmissionState.progress(
-    //     completed: completed * 2 + 1,
-    //     total: total * 2,
-    //   ));
-    //
-    //   final success = await _handleSubmit(
-    //     projectId: draft.project.id,
-    //     userType: event.userType,
-    //     emit: emit,
-    //     fromDraft: true,
-    //   );
-    //
-    //   if (!success) return;
-    //
-    //   completed++;
-    //   emit(AssetSubmissionState.progress(
-    //     completed: completed * 2,
-    //     total: total * 2,
-    //   ));
-    // }
-    //
-    // emit(const AssetSubmissionState.success());
-
-    // collect projectIds we’re submitting
-    final projectIds = localWorkflows.map((w) => w.project.id).toList();
-    final total = projectIds.length;
-
-    // 1) Fire-and-forget queueing (don’t await long jobs)
-    int queued = 0;
+    // Mark all as queued and enqueue immediately
     for (final pid in projectIds) {
-      emit(AssetSubmissionState.progress(completed: queued, total: total));
-      // _handleSubmit will mark status=queued and schedule the Workmanager task.
-      // We do not await the final result here.
-      // ignore: unawaited_futures
-      _handleSubmit(
+      await _writeJobStatusUI(projectId: pid, status: 'queued');
+      await BackgroundServiceController.I.enqueueSubmission(
         projectId: pid,
         userType: event.userType,
-        emit: emit,
         fromDraft: true,
       );
-      queued++;
     }
 
-    // 2) Non-blocking watcher: observe cacheSubmissionJobs and emit when all done
-    // Cancel old bulk watcher if any
+    // Batch watcher: compute progress + final state
     await _bulkJobsSub?.cancel();
-
     _bulkJobsSub = _isar.cacheSubmissionJobs.watchLazy().listen((_) async {
-      // Recompute statuses for our submitted set
-      int done = 0;
-      bool anyFailed = false;
-
-      // If your Isar has a `.anyOf` helper, use that; otherwise, loop.
-      for (final pid in projectIds) {
-        final row = await _isar.cacheSubmissionJobs
-            .where()
-            .projectIdEqualTo(pid)
-            .findFirst();
-
-        if (row == null) continue;
-
-        if (row.status == 'success' || row.status == 'failed') {
-          done++;
-          if (row.status == 'failed') anyFailed = true;
-        }
-      }
-
-      // Emit progress as background jobs complete
-      emit(AssetSubmissionState.progress(completed: done, total: total));
-
-      if (done >= total) {
-        // All finished: emit final state then stop watching
-        if (anyFailed) {
-          emit(const AssetSubmissionState.failure("Some submissions failed."));
-        } else {
-          emit(const AssetSubmissionState.success());
-        }
-        await _bulkJobsSub?.cancel();
-        _bulkJobsSub = null;
-      }
+      await _emitBulkProgress(projectIds: projectIds, emit: emit);
     });
 
-    // Note: we do NOT emit success here; success will be emitted by the watcher
-    // when all jobs reach a terminal state.
+    // Initial “0 of N”
+    if (!emit.isDone) {
+      emit(AssetSubmissionState.progress(
+          completed: 0, total: projectIds.length));
+    }
   }
+
+  Future<void> _emitBulkProgress({
+    required List<String> projectIds,
+    required Emitter<AssetSubmissionState> emit,
+  }) async {
+    final jobs = await _isar.cacheSubmissionJobs
+        .where()
+        .anyOf(projectIds, (q, pid) => q.projectIdEqualTo(pid))
+        .findAll();
+
+    final total = projectIds.length;
+    final successes = jobs.where((j) => j.status == 'success').length;
+    final anyFailed = jobs.any((j) => j.status == 'failed');
+    final anyRunningOrQueued =
+        jobs.any((j) => j.status == 'running' || j.status == 'queued');
+
+    if (!emit.isDone) {
+      emit(AssetSubmissionState.progress(completed: successes, total: total));
+    }
+
+    if (!anyRunningOrQueued) {
+      await BackgroundServiceController.I.stopNow(); // clear notif
+
+      if (anyFailed) {
+        if (!emit.isDone) {
+          emit(const AssetSubmissionState.failure('Some submissions failed.'));
+        }
+      } else {
+        if (!emit.isDone) {
+          emit(const AssetSubmissionState.success());
+        }
+      }
+
+      await _bulkJobsSub?.cancel();
+      _bulkJobsSub = null;
+    }
+  }
+
+  // ================================================
+  // Single submit
+  // ================================================
+  Future<void> _onSubmitAll(
+    _SubmitAll event,
+    Emitter<AssetSubmissionState> emit,
+  ) =>
+      _handleSubmit(
+        projectId: event.projectId,
+        userType: event.userType,
+        emit: emit,
+        fromDraft: false,
+      );
 
   Future<bool> _handleSubmit({
     required String projectId,
@@ -554,368 +198,148 @@ class AssetSubmissionBloc
     required Emitter<AssetSubmissionState> emit,
     required bool fromDraft,
   }) async {
+    print("loading now now");
     emit(const AssetSubmissionState.loading());
-    await _writeJobStatus(projectId: projectId, status: 'queued', isar: _isar);
+    _activeSingleProjectId = fromDraft ? null : projectId;
 
-    final id =
-        'asset-submit-${projectId}-${DateTime.now().millisecondsSinceEpoch}';
-    await Workmanager().registerOneOffTask(
-      id,
-      _kAssetSubmitTaskName,
-      inputData: {
-        'projectId': projectId,
-        'userType': userType,
-        'fromDraft': fromDraft,
-      },
-      constraints: Constraints(networkType: NetworkType.connected),
+    await _writeJobStatusUI(projectId: projectId, status: 'queued');
+
+    await BackgroundServiceController.I.enqueueSubmission(
+      projectId: projectId,
+      userType: userType,
+      fromDraft: fromDraft,
     );
 
-    _jobSub?.cancel();
-    _jobSub = _isar.cacheSubmissionJobs
-        .where()
-        .projectIdEqualTo(projectId)
-        .watch(fireImmediately: true)
-        .listen((rows) {
-      if (rows.isEmpty) return;
-      final job = rows.first;
-      switch (job.status) {
-        case 'running':
-          // optional: keep showing loading
-          break;
-        case 'success':
-          emit(const AssetSubmissionState.success());
-          _jobSub?.cancel();
-          break;
-        case 'failed':
-          emit(AssetSubmissionState.failure(job.error ?? 'Submission failed'));
-          _jobSub?.cancel();
-          break;
-        default:
-          // queued -> no-op
-          break;
-      }
-    });
+    // Keep the per-project watcher as before (for redundancy)
+    if (!fromDraft) {
+      await _jobSub?.cancel();
+      _jobSub = _isar.cacheSubmissionJobs
+          .where()
+          .projectIdEqualTo(projectId)
+          .watch(fireImmediately: true)
+          .listen((rows) async {
+        if (rows.isEmpty) return;
+        final job = rows.first;
+
+        switch (job.status) {
+          case 'running':
+            // already in loading
+            break;
+
+          case 'success':
+            if (!emit.isDone) emit(const AssetSubmissionState.success());
+            _activeSingleProjectId = null;
+            await _jobSub?.cancel();
+            _jobSub = null;
+            await BackgroundServiceController.I.stopNow();
+            break;
+
+          case 'failed':
+            if (!emit.isDone) {
+              emit(AssetSubmissionState.failure(job.error ?? 'Failed.'));
+            }
+            _activeSingleProjectId = null;
+            await _jobSub?.cancel();
+            _jobSub = null;
+            await BackgroundServiceController.I.stopNow();
+            break;
+
+          case 'queued':
+          default:
+            break;
+        }
+      });
+    }
+
     return true;
   }
 
-  @override
-  Future<void> close() {
-    _bulkJobsSub?.cancel();
-    _jobSub?.cancel();
-    return super.close();
+  Future<void> _handleSvcError(
+    String projectId,
+    String? message,
+    Emitter<AssetSubmissionState> emit,
+  ) async {
+    // Mirror to Isar so watchers fire
+    await _writeJobStatusUI(
+      projectId: projectId,
+      status: 'failed',
+      error: message,
+    );
+
+    // If the active single matches, emit immediately (single submit)
+    if (_activeSingleProjectId != null && _activeSingleProjectId == projectId) {
+      // ignore: avoid_print
+      print('[BLoC] _handleSvcError -> single emit failure');
+      emit(AssetSubmissionState.failure(message ?? 'Failed.'));
+      _activeSingleProjectId = null;
+      await BackgroundServiceController.I.stopNow();
+      return;
+    }
+
+    // NEW: also emit failure for batch runs so the dialog closes immediately
+    // ignore: avoid_print
+    print('[BLoC] _handleSvcError -> batch emit failure');
+    if (!emit.isDone) {
+      emit(AssetSubmissionState.failure(message ?? 'Failed.'));
+    }
+    await BackgroundServiceController.I.stopNow();
+    // Batch watcher will still run and settle things afterward; this just updates UI promptly.
   }
 
-  Future<bool> _handleSubmit2({
+  Future<void> _handleSvcDone(
+    String projectId,
+    Emitter<AssetSubmissionState> emit,
+  ) async {
+    // Mirror to Isar so watchers fire
+    await _writeJobStatusUI(
+      projectId: projectId,
+      status: 'success',
+    );
+
+    if (_activeSingleProjectId != null && _activeSingleProjectId == projectId) {
+      // ignore: avoid_print
+      print('[BLoC] _handleSvcDone -> single emit success');
+      emit(const AssetSubmissionState.success());
+      _activeSingleProjectId = null;
+      await BackgroundServiceController.I.stopNow();
+      return;
+    }
+
+    // For batch, let the watcher compute progress/finish; no immediate success emit here.
+    // ignore: avoid_print
+    print('[BLoC] _handleSvcDone -> batch (no immediate emit)');
+  }
+
+  // ================================================
+  // helpers
+  // ================================================
+  Future<void> _writeJobStatusUI({
     required String projectId,
-    required String userType,
-    required Emitter<AssetSubmissionState> emit,
-    required bool fromDraft,
+    required String status,
+    String? error,
   }) async {
-    emit(const AssetSubmissionState.loading());
-    try {
-      final facilityId = (await ProjectFacilityRepository().search(
-        ProjectFacilitySearchModel(projectId: [projectId]),
-        _isar,
-      ))
-          .facilityId;
-
-      final repo = AssetRepository();
-      const types = ['inverter', 'battery', 'panel'];
-
-      for (final type in types) {
-        final assets = await _isar.cacheAddNewAssets
-            .where()
-            .projectIdEqualTo(projectId)
-            .filter()
-            .assetTypeEqualTo(type)
-            .findAll();
-
-        if (assets.isEmpty) {
-          emit(AssetSubmissionState.failure(
-              "No cached assets found for type $type."));
-          return false;
-        }
-
-        print("[$type] found ${assets.length} cached assets");
-        for (var a in assets) {
-          print("    serial=${a.serialNumber} photoPath='${a.photoPath}'");
-        }
-
-        final spec = await _isar.cacheSpecifications
-            .where()
-            .projectIdEqualTo(projectId)
-            .filter()
-            .assetTypeEqualTo(type)
-            .findFirst();
-        final detail = await _isar.cacheAssetDetails
-            .where()
-            .projectIdEqualTo(projectId)
-            .filter()
-            .assetTypeEqualTo(type)
-            .findFirst();
-        if (spec == null || detail == null) {
-          emit(AssetSubmissionState.failure(
-              "Missing specification or detail for type $type."));
-          return false;
-        }
-
-        for (final saved in assets) {
-          final documents = <Document>[];
-          if (saved.photoPath.isNotEmpty) {
-            String photoId = await getFilestoreUrl(saved.photoPath);
-            print("photoId $photoId");
-            documents.add(Document(
-              documentType: saved.documentType,
-              fileStore: photoId,
-              documentUid: "DOC-ASSET-${saved.serialNumber}",
-              additionalDetailsJson: null,
-              geoLocation: GeoLocation(
-                latitude: saved.latitude,
-                longitude: saved.longitude,
-                //additionalDetails: null,
-              ),
-            ));
-          }
-
-          final now = DateTime.now().toUtc();
-          final startIso = now.toIso8601String();
-          final years = userType == USER_TYPES.FIELD_STAFF.name
-              ? 0
-              : parseWarrantyYears(detail.warranty!);
-          final endIso = userType == USER_TYPES.FIELD_STAFF.name
-              ? ""
-              : now.add(Duration(days: 365 * years)).toIso8601String();
-
-          // 1) Build AssetDetails with every field explicitly
-
-          print("projectId $projectId");
-          print("type $type");
-          print("spec ${spec.totalCapacity}");
-          print("spec ${spec.totalCapacityUnit}");
-          print("spec $spec");
-
-          print(
-              "ASSET_TYPES.INVERTER.name.toLowerCase() ${ASSET_TYPES.INVERTER.name.toLowerCase()}");
-          print("capacityUnit ${saved.capacityUnit}");
-          if (type == ASSET_TYPES.BATTERY.name.toLowerCase()) {
-            print("saved.batteryCapacity! ${saved.batteryCapacity!}");
-            print("saved.batteryVoltage! ${saved.batteryVoltage!}");
-            print("saved.batteryType ${saved.batteryType}");
-          }
-          if (type == ASSET_TYPES.INVERTER.name.toLowerCase()) {
-            print("saved.inverterCapacity! ${saved.inverterCapacity}");
-            print("saved.inverterCapacityUnit ${saved.inverterCapacityUnit}");
-          }
-
-          final assetDetails = AssetDetails(
-            totalCapacity: spec.totalCapacity,
-            totalCapacityUnit: spec.totalCapacityUnit,
-            totalCapacityUOM: spec.totalCapacityUnit,
-            currentUnit:
-                type == ASSET_TYPES.INVERTER.name.toLowerCase() ? '1' : null,
-            capacityUnit: (type == ASSET_TYPES.BATTERY.name.toLowerCase() ||
-                    type == ASSET_TYPES.PANEL.name.toLowerCase())
-                ? saved.capacityUnit
-                : null,
-            panelCapacity: type == ASSET_TYPES.PANEL.name.toLowerCase()
-                ? double.parse(saved.panelCapacity!)
-                : null,
-            batteryCapacity: type == ASSET_TYPES.BATTERY.name.toLowerCase()
-                ? double.parse(saved.batteryCapacity!)
-                : null,
-            batteryVoltage: type == ASSET_TYPES.BATTERY.name.toLowerCase()
-                ? double.parse(saved.batteryVoltage!)
-                : null,
-            batteryType: type == ASSET_TYPES.BATTERY.name.toLowerCase()
-                ? saved.batteryType
-                : null,
-            voltageUnit: (type == ASSET_TYPES.BATTERY.name.toLowerCase() ||
-                    type == ASSET_TYPES.INVERTER.name.toLowerCase())
-                ? saved.voltageUnit
-                : null,
-            inverterCapacity: type == ASSET_TYPES.INVERTER.name.toLowerCase()
-                ? double.parse(saved.inverterCapacity!)
-                : null,
-            inverterCapacityUnit:
-                type == ASSET_TYPES.INVERTER.name.toLowerCase()
-                    ? saved.inverterCapacityUnit
-                    : null,
-          );
-
-          print("assetDetails $assetDetails");
-
-          final userId = await SecureStore().getSelectedIndividual();
-          final audit = AuditDetails(lastModifiedBy: userId, lastModified: now);
-
-          // 2) Build the Asset itself
-          final assetModel = Asset(
-            assetId: saved.assetId,
-            tenantId: envConfig.variables.tenantId,
-            facilityID: facilityId,
-            assetTypeID: type.toUpperCase(),
-            system: spec.system,
-            serialNumber: saved.serialNumber,
-            brandID: detail.brand,
-            assetDetails: assetDetails,
-            warrantyStartDate:
-                userType == USER_TYPES.SUPERVISOR.name ? startIso : "",
-            warrantyDuration: userType == USER_TYPES.SUPERVISOR.name
-                ? parseWarrantyYears(detail.warranty)
-                : 0,
-            warrantyEndDate:
-                userType == USER_TYPES.SUPERVISOR.name ? endIso : "",
-            modelNumber: detail.model,
-            wfStatus: "CREATED",
-            isActive: true,
-            documents: documents,
-            auditDetails: (saved.assetId?.isNotEmpty ?? false) ? audit : null,
-          );
-          print(
-              "assetModel audit ${assetModel.auditDetails?.toJson() ?? '— none —'}");
-          print("assetModel $assetModel");
-          print("assetModel.warrantyDuration ${assetModel.warrantyDuration}");
-          print("facilityId $facilityId");
-          await repo.createOrUpdateAsset(
-              asset: assetModel, isar: _isar, facilityId: facilityId);
-        }
-      }
-
-      print("about starting completion reports");
-
-      final remoteRepo = ProjectRemoteRepository();
-      final workflowDocuments = <Document>[];
-
-      final workflowDocumentFromCache =
-          await ProjectWorkflowRepository().collectWorkflowMediaDocs(
-        isar: _isar,
-        projectId: projectId,
-        types: types,
-      );
-
-      workflowDocuments.addAll(workflowDocumentFromCache);
-
-      final completionReports = await _isar.cacheCompletionReports
+    await _isar.writeTxn(() async {
+      final existing = await _isar.cacheSubmissionJobs
           .where()
           .projectIdEqualTo(projectId)
-          .findAll();
+          .findFirst();
 
-      final completionDocuments = <Document>[];
-
-      for (final report in completionReports) {
-        if (report.filePath.isEmpty) continue;
-        if (((report.fileName ?? '')
-            .toLowerCase()
-            .contains('installation_report_bom'))) continue;
-        String mediaId = await getFilestoreUrl(report.filePath);
-        print("mediaId $mediaId");
-        completionDocuments.add(Document(
-          documentType: "INSTALLATION_REPORT",
-          fileStore: mediaId,
-          documentUid: "INSTALLATION-REPORT-${report.fileType}-$mediaId",
-          geoLocation: GeoLocation(
-            latitude: report.latitude,
-            longitude: report.longitude,
-          ),
-        ));
+      if (existing == null) {
+        await _isar.cacheSubmissionJobs.put(
+          CacheSubmissionJob(
+              projectId: projectId, status: status, error: error),
+        );
+      } else {
+        existing
+          ..status = status
+          ..error = error;
+        await _isar.cacheSubmissionJobs.put(existing);
       }
-      print("completionDocuments ${completionDocuments.toString()}");
-
-      print("projectId $projectId");
-      print("document1 $workflowDocuments");
-      print("document2 ${workflowDocuments.toString()}");
-
-      if (userType == USER_TYPES.SUPERVISOR.name) {
-        String bomFileStoreId;
-        try {
-          // fetch bytes
-          final bomBytes = await BomRepository().generateBomPdf(
-            isar: _isar,
-            projectId: projectId,
-            userType: userType,
-          );
-          // upload to file store as PDF
-          final bomFileName =
-              "bom_${projectId}_${DateTime.now().millisecondsSinceEpoch}.pdf";
-          bomFileStoreId = await BomRepository().uploadPdfToFileStore(
-            bomBytes!,
-            bomFileName,
-          );
-          // determine lat/lon for BOM doc: use first media file if exists
-          String lat = "", lon = "";
-          if (workflowDocuments.isNotEmpty) {
-            lat = workflowDocuments.first.geoLocation?.latitude ?? "";
-            lon = workflowDocuments.first.geoLocation?.longitude ?? "";
-          }
-          // add BOM document
-          workflowDocuments.add(
-            Document(
-              documentType: "INSTALLATION_REPORT_BOM",
-              fileStore: bomFileStoreId,
-              documentUid:
-                  "BOM-${projectId}-${DateTime.now().millisecondsSinceEpoch}",
-              geoLocation: GeoLocation(latitude: lat, longitude: lon),
-            ),
-          );
-        } catch (e) {
-          print("Error fetching/uploading BOM PDF: $e");
-          emit(const AssetSubmissionState.failure("Failed to attach BOM PDF:"));
-          return false;
-        }
-
-        try {
-          final tenantId = envConfig.variables.tenantId;
-          final assignUserUuid = await SecureStore().getSelectedIndividual();
-
-          print(
-              '[BOM:submit] isarInstance=${identityHashCode(_isar)} project=$projectId');
-
-          await BomRepository().submitMergedForProject(
-            isar: _isar,
-            projectId: projectId,
-            tenantId: tenantId,
-            facilityId: facilityId,
-            assignUserUuid: assignUserUuid ?? '',
-          );
-        } catch (e) {
-          print('BOM submission error: $e');
-          emit(const AssetSubmissionState.failure("BOM submission error"));
-          return false;
-        }
-      }
-
-      await remoteRepo.updateProjectWorkflow(
-        projectId: projectId,
-        action: userType == USER_TYPES.FIELD_STAFF.name
-            ? WORKFLOW_ACTIONS.SUBMIT_REPORT_A.name
-            : WORKFLOW_ACTIONS.SUBMIT_REPORT_B.name,
-        documents: [...workflowDocuments, ...completionDocuments],
-      );
-
-      // caches to clear
-      await _draftRepo.delete(projectId, userType);
-      await _draftRepo.deleteAddNewAsset(projectId);
-      await PrefilledProjectRepository(_isar).delete(
-        projectId: projectId,
-        userType: userType,
-      );
-      await CompletionReportRepository(_isar).delete(projectId: projectId);
-      await BomRepository().delete(isar: _isar, projectId: projectId);
-      if (!fromDraft) emit(const AssetSubmissionState.success());
-      return true;
-    } catch (e) {
-      print("e ${e.toString()}");
-      String? errorMessage = e.toString();
-      // "We are facing an issues please try again";
-      // if ((e.toString() == "Exception: No network connection") ||
-      //     (e.toString() == "Exception: No internet access")) {
-      //   errorMessage =
-      //       "For some Reason you have bad internet connectivity, we have saved your data, please try to sync the data later";
-      // }
-      emit(AssetSubmissionState.failure("$errorMessage"));
-      return false;
-    }
+    });
   }
 }
+
+// ======================= Freezed unions =========================
 
 @freezed
 class AssetSubmissionEvent with _$AssetSubmissionEvent {
@@ -927,6 +351,16 @@ class AssetSubmissionEvent with _$AssetSubmissionEvent {
   const factory AssetSubmissionEvent.submitAllDrafts({
     required String userType,
   }) = _SubmitAllDrafts;
+
+  // Bridge events from background service
+  const factory AssetSubmissionEvent.svcError({
+    required String projectId,
+    String? message,
+  }) = _SvcError;
+
+  const factory AssetSubmissionEvent.svcDone({
+    required String projectId,
+  }) = _SvcDone;
 }
 
 @freezed

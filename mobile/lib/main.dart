@@ -11,7 +11,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:isar/isar.dart';
 import 'package:location/location.dart';
-import 'package:workmanager/workmanager.dart';
 
 import 'blocs/app_init/app_init.dart';
 import 'blocs/asset_rejection/asset_rejection.dart';
@@ -40,6 +39,7 @@ import 'data/remote_client.dart';
 import 'model/data_model.init.dart';
 import 'repositories/app_init_Repo.dart';
 import 'router/app_router.dart';
+import 'utils/background_service.dart';
 import 'utils/constants.dart';
 
 late Isar _isar;
@@ -55,6 +55,8 @@ void main() async {
   _dio = DioClient().dio;
   _isar = await Constants().isar;
 
+  await setupBackgroundService();
+
   // Initialize shared preferences
   await AppSharedPreferences().init();
 
@@ -66,8 +68,6 @@ void main() async {
     // Mark app as launched for the first time
     await AppSharedPreferences().appLaunchedFirstTime();
   }
-  await Workmanager()
-      .initialize(assetSubmissionCallbackDispatcher, isInDebugMode: false);
   // Run the main app widget
   runApp(MainApp(
     isar: _isar,
@@ -127,8 +127,7 @@ class _MainAppState extends State<MainApp> {
             BlocProvider(
                 create: (context) => CacheCompletionReportBloc(widget.isar)),
             BlocProvider(create: (context) => ProjectBomBloc(widget.isar)),
-            BlocProvider(
-                lazy: false, create: (context) => RejectionBloc(widget.isar)),
+            BlocProvider(create: (context) => RejectionBloc(widget.isar)),
           ],
           child: BlocBuilder<AppInitialization, InitState>(
             builder: (context, state) => state.maybeWhen(

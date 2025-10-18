@@ -12,7 +12,6 @@ import 'package:path/path.dart' as p;
 
 import '../blocs/app_init/app_init.dart';
 import '../blocs/asset_submission/asset_submission.dart';
-import '../blocs/asset_summary/asset_summary.dart';
 import '../blocs/asset_type/asset_type.dart';
 import '../blocs/cache_asset/cache_asset.dart';
 import '../blocs/cache_completion_report/cache_completion_report.dart';
@@ -349,8 +348,10 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                   loading: () => () {},
                                   progress: (_, __) => () {},
                                   orElse: () => () async {
+                                    print("It got here actually!");
                                     if (isDisabled) return;
-
+                                    print(
+                                        "It got here actually _ensureLocationLoaded!");
                                     // ensure we have a lat/lng before saving completion reports
                                     await _ensureLocationLoaded();
 
@@ -358,79 +359,84 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                         .read<SelectedProjectBloc>()
                                         .state;
                                     selState.whenOrNull(selected: (project) {
+                                      print("It got here actually selState");
                                       context.read<ProjectBloc>().add(
                                             ProjectEvent.addUnSubmitted(
                                                 project, resolvedUserType),
                                           );
 
-                                      final summaryState = context
-                                          .read<AssetSummaryBloc>()
-                                          .state;
+                                      // final summaryState = context
+                                      //     .read<AssetSummaryBloc>()
+                                      //     .state;
 
-                                      summaryState.whenOrNull(
-                                        loaded: (summary) async {
-                                          // Build inputs from existing (kept) + newly picked
-                                          final lat =
-                                              _latitude?.toString() ?? '';
-                                          final lng =
-                                              _longitude?.toString() ?? '';
+                                      // summaryState.whenOrNull(
+                                      //  loaded: (summary) async {
+                                      // Build inputs from existing (kept) + newly picked
+                                      print("It got here actually loaded");
+                                      final lat = _latitude?.toString() ?? '';
+                                      final lng = _longitude?.toString() ?? '';
 
-                                          final keptExisting = _existingReports
-                                              .map((e) => CompletionFileInput(
-                                                    projectId:
-                                                        _currentProjectId!,
-                                                    filePath: e.filePath,
-                                                    fileType: e.fileType,
-                                                    fileName: e.fileName,
-                                                    latitude: lat,
-                                                    longitude: lng,
-                                                    index: null,
-                                                  ));
+                                      final keptExisting = _existingReports
+                                          .map((e) => CompletionFileInput(
+                                                projectId: _currentProjectId!,
+                                                filePath: e.filePath,
+                                                fileType: e.fileType,
+                                                fileName: e.fileName,
+                                                latitude: lat,
+                                                longitude: lng,
+                                                index: null,
+                                              ));
 
-                                          final pickedInputs = _pickedFiles
-                                              .where((pf) =>
-                                                  pf.path != null &&
-                                                  pf.path!.isNotEmpty)
-                                              .map((pf) => CompletionFileInput(
-                                                    projectId:
-                                                        _currentProjectId!,
-                                                    filePath: pf.path!,
-                                                    fileType:
-                                                        inferFileType(pf.path!),
-                                                    fileName: pf.name.isNotEmpty
-                                                        ? pf.name
-                                                        : p.basename(pf.path!),
-                                                    latitude: lat,
-                                                    longitude: lng,
-                                                    index: null,
-                                                  ));
+                                      print(
+                                          "It got here actually loaded pickedInputs");
 
-                                          final inputs = [
-                                            ...keptExisting,
-                                            ...pickedInputs
-                                          ].toList();
+                                      final pickedInputs = _pickedFiles
+                                          .where((pf) =>
+                                              pf.path != null &&
+                                              pf.path!.isNotEmpty)
+                                          .map((pf) => CompletionFileInput(
+                                                projectId: _currentProjectId!,
+                                                filePath: pf.path!,
+                                                fileType:
+                                                    inferFileType(pf.path!),
+                                                fileName: pf.name.isNotEmpty
+                                                    ? pf.name
+                                                    : p.basename(pf.path!),
+                                                latitude: lat,
+                                                longitude: lng,
+                                                index: null,
+                                              ));
 
-                                          // Atomically clear then add
-                                          context
-                                              .read<CacheCompletionReportBloc>()
-                                              .add(
-                                                CacheCompletionReportEvent
-                                                    .replaceAllForProject(
-                                                  projectId: _currentProjectId!,
-                                                  files: inputs,
-                                                ),
-                                              );
-                                          // Proceed with submission
-                                          context
-                                              .read<AssetSubmissionBloc>()
-                                              .add(
-                                                AssetSubmissionEvent.submitAll(
-                                                  projectId: project.project.id,
-                                                  userType: resolvedUserType,
-                                                ),
-                                              );
-                                        },
-                                      );
+                                      final inputs = [
+                                        ...keptExisting,
+                                        ...pickedInputs
+                                      ].toList();
+
+                                      print(
+                                          "It got here actually loaded inputs");
+
+                                      // Atomically clear then add
+                                      context
+                                          .read<CacheCompletionReportBloc>()
+                                          .add(
+                                            CacheCompletionReportEvent
+                                                .replaceAllForProject(
+                                              projectId: _currentProjectId!,
+                                              files: inputs,
+                                            ),
+                                          );
+                                      // Proceed with submission
+
+                                      print(
+                                          "It got here actually loaded before submisison");
+                                      context.read<AssetSubmissionBloc>().add(
+                                            AssetSubmissionEvent.submitAll(
+                                              projectId: project.project.id,
+                                              userType: resolvedUserType,
+                                            ),
+                                          );
+                                      // },
+                                      // );
                                     });
                                   },
                                 ),
