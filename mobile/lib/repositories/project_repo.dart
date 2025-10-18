@@ -4,12 +4,12 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
 import 'package:isar/isar.dart';
-import 'package:selco/data/nosql/cache_add_new_asset.dart';
-import 'package:selco/data/nosql/cache_completion_report.dart';
-import 'package:selco/data/nosql/cache_unsubmitted_project.dart';
 
+import '../data/nosql/cache_add_new_asset.dart';
+import '../data/nosql/cache_completion_report.dart';
 import '../data/nosql/cache_prefilled_project.dart';
 import '../data/nosql/cache_project_workflow.dart';
+import '../data/nosql/cache_unsubmitted_project.dart';
 import '../data/remote_client.dart';
 import '../model/document/document.dart';
 import '../model/project_workflow/project_workflow.dart';
@@ -33,7 +33,7 @@ class ProjectRemoteRepository {
       String searchPath = "project/v2/_search";
 
       if (envConfig.variables.envType == EnvType.dev) {
-        // return _loadLocalProjects();
+        return _loadLocalProjects();
       }
 
       response = await dio.post(
