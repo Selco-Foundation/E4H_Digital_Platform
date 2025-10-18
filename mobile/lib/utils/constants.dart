@@ -83,4 +83,5 @@ class RequestInfoData {
   static const did = "1";
   static const key = "1";
   static String? authToken;
+  static String msgId = "${DateTime.now().millisecondsSinceEpoch}|en_IN";
 }

@@ -10,6 +10,7 @@ class CacheSubmissionJob {
   late String projectId;
 
   /// 'queued' | 'running' | 'success' | 'failed'
+  @Index()
   late String status;
 
   String? error;
