@@ -22,13 +22,17 @@ public class AssetConstants {
     public static final Set<Double> VALID_DC_BATTERY_CAPACITIES = new HashSet<>(
             Arrays.asList(125.0, 150.0, 180.0, 200.0, 220.0));
     public static final Set<Double> VALID_DC_BATTERY_VOLTAGES = new HashSet<>(
-            Arrays.asList(12.0, 48.0, 51.2));
+            Arrays.asList(12.0, 48.0, 51.2, 12.8, 24.0));
     public static final Set<Double> VALID_AC_BATTERY_VOLTAGES = new HashSet<>(
             Arrays.asList(12.0, 12.8, 24.0));
+    public static final Set<Double> VALID_CHARGE_CONTROLLER_VOLTAGES = new HashSet<>(
+            Arrays.asList(12.0, 24.0));
     public static final Set<Double> VALID_TOTAL_CAPACITIES = new HashSet<>(
             Arrays.asList(1.8, 3.6, 4.8, 9.6, 14.4, 17.2, 24.0, 21.6, 19.2));
     public static final Set<Double> VALID_INVERTER_CAPACITIES = new HashSet<>(
             Arrays.asList(1.0, 3.0, 5.0, 6.0, 7.5, 10.0));
+    public static final Set<Double> VALID_DC_PANEL_CAPACITIES = new HashSet<>(
+            Arrays.asList(550.0, 555.0, 560.0, 565.0, 570.0, 575.0, 580.0, 585.0, 590.0, 595.0, 600.0, 125.0));
     public static final Set<String> VALID_BATTERY_TYPES = new HashSet<>(
             Arrays.asList("Lithium", "Lead Acid"));
 

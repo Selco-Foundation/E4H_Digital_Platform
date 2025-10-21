@@ -12,6 +12,8 @@ import CustomCloseSvg from "../../components/Custom/CustomCloseSvg";
 import { PMService } from "../../services/PMService";
 import { useDispatch } from "react-redux";
 import { populateResponsePage, populateWorkingProject } from "../../redux/actions";
+import CommonUtils from "../../utilities/CommonUtils";
+import UnsavedDataAlert from "../../components/UnsavedDataAlert";
 
 const CreateProject = () => {
 
@@ -30,7 +32,7 @@ const CreateProject = () => {
   const [file, setFile] = useState(null);
   const [invalidDataError, setInvalidDataError] = useState(null);
   const [getFormData, setGetFormData] = useState(null);
-  const [showBackAlert, setShowBackAlert] = useState(false);
+  const [backAlert, setBackAlert] = useState(null);
   const dispatch = useDispatch();
 
   useEffect(() => {
@@ -394,6 +396,8 @@ const CreateProject = () => {
       case 2:
         setDefaultFormData(persistedFormData.geographyDetails);
         break;
+      case 3:
+        setDefaultFormData(null);
     }
   }, [persistedFormData, currentKey]);
 
@@ -519,8 +523,28 @@ const CreateProject = () => {
   }
 
   const onStepClick = (key) => {
-    if (key >= currentKey) return;
-    setCurrentKey(key + 1);
+    if (key + 1 >= currentKey) return;
+    switch (currentKey) {
+      case 2:
+        const geographyDetails = {
+          state: getFormData("state"),
+          districts: getFormData("districts"),
+          blocks: getFormData("blocks"),
+        }
+        setPersistedFormData(prev => ({...prev, geographyDetails : geographyDetails}));
+        setCurrentKey(key + 1);
+        break;
+      case 3:
+        if (file) {
+          setBackAlert({
+            continueAction: () => {
+              setCurrentKey(key + 1);
+            }
+          });
+        } else {
+          setCurrentKey(key + 1);
+        }
+    }
   }
 
   const handleCompleteProjectCreation = async () => {
@@ -564,9 +588,26 @@ const CreateProject = () => {
         setCurrentKey(prev => prev + 1);
         break;
       case 2:
-        const newProjectFormData = {...persistedFormData, geographyDetails: data};
-        setPersistedFormData(newProjectFormData);
-        await upsertProject(newProjectFormData);
+        const savedData = {
+          projectDetails: {
+            projectType: projectTypeData?.filter((projectType) => projectType?.name === createdProject?.projectType)?.[0],
+            justificationCode: createdProject?.additionalDetails?.justificationCode,
+            projectDuration: {
+              startDate: formatDate(createdProject?.startDate),
+              endDate: formatDate(createdProject?.endDate),
+            }
+          },
+          geographyDetails: createdProject?.additionalDetails?.geographyDetails,
+        }
+        const currentFormData = {
+          projectDetails: persistedFormData.projectDetails,
+          geographyDetails: data,
+        }
+        if (CommonUtils.isNotEqual(savedData, currentFormData)) {
+          await upsertProject(currentFormData);
+        } else {
+          setCurrentKey(prev => prev + 1);
+        }
         break;
       case 3:
         await handleCompleteProjectCreation();
@@ -576,7 +617,34 @@ const CreateProject = () => {
   const handleBackNavigation = () => {
     switch (currentKey) {
       case 1:
-        setShowBackAlert(true);
+        const savedData = {
+          projectDetails: {
+            projectType: projectTypeData?.filter((projectType) => projectType?.name === createdProject?.projectType)?.[0],
+            justificationCode: createdProject?.additionalDetails?.justificationCode,
+            projectDuration: {
+              startDate: formatDate(createdProject?.startDate),
+              endDate: formatDate(createdProject?.endDate),
+            }
+          },
+          geographyDetails: createdProject?.additionalDetails?.geographyDetails,
+        }
+        const currentFormData = {
+          projectDetails: {
+            projectType: getFormData("projectType"),
+            justificationCode: getFormData("justificationCode"),
+            projectDuration: getFormData("projectDuration"),
+          },
+          geographyDetails: persistedFormData.geographyDetails,
+        }
+        if (CommonUtils.isNotEqual(savedData, currentFormData)) {
+          setBackAlert({
+            continueAction: () => {
+              window.history.back();
+            }
+          });
+        } else {
+          window.history.back();
+        }
         break;
       case 2:
         const geographyDetails = {
@@ -589,22 +657,14 @@ const CreateProject = () => {
         break;
       case 3:
         if (file) {
-          setShowBackAlert(true);
+          setBackAlert({
+            continueAction: () => {
+              setCurrentKey(prev => prev - 1);
+            }
+          });
         } else {
           setCurrentKey(prev => prev - 1);
         }
-    }
-  }
-
-  const handleConfirmBackNavigation = () => {
-    switch (currentKey) {
-      case 1:
-        setShowBackAlert(false);
-        window.history.back();
-        break;
-      case 3:
-         setShowBackAlert(false);
-         setCurrentKey(prev => prev - 1);
     }
   }
 
@@ -682,7 +742,7 @@ const CreateProject = () => {
         noBreakLine={true}
         cardStyle={{padding: "20px"}}
         actionClassName={"reverse-actionbar"}
-        submitIcon={<CustomArrowRight />}
+        // submitIcon={<CustomArrowRight />}
       />
       {toast && (
         <Toast
@@ -697,74 +757,7 @@ const CreateProject = () => {
           onClose={() => setToast(null)}
         />
       )}
-      {showBackAlert && (
-        <PopUp>
-          <div
-            style={{
-              backgroundColor: "white",
-              position: "fixed",
-              top: "50%",
-              left: "50%",
-              transform: "translate(-50%, -50%)",
-              width: "400px",
-              maxWidth: "95%",
-              padding: "24px",
-              borderRadius: "5px",
-            }}
-          >
-            <div
-              style={{
-                width: "100%",
-                position: "relative",
-              }}
-            >
-              <button
-                type={"button"}
-                style={{
-                  cursor: "pointer",
-                  position: "absolute",
-                  top: "-15px",
-                  right: "-15px",
-                  backgroundColor: "#D6D5D4",
-                  display: "flex",
-                  alignItems: "center",
-                  padding: "0",
-                  borderRadius: "3px",
-                }}
-                onClick={() => setShowBackAlert(false)}
-              >
-                <CustomCloseSvg fill={"transparent"} />
-              </button>
-            </div>
-            <h2
-              style={{
-                margin: "0 0 16px 0",
-                fontSize: "20px",
-                fontWeight: "600",
-                color: "#333",
-                textAlign: "center",
-              }}
-            >
-              {t("CORE_COMMON_ALERT")}
-            </h2>
-
-            <p
-              style={{
-                fontSize: "16px",
-                color: "#555",
-                marginBottom: "24px",
-                textAlign: "center",
-              }}
-            >
-              {t("PM_ALERT_LOSE_UNSAVED_DATA")}
-            </p>
-            <div style={{display: "flex", justifyContent: "space-around"}}>
-              <Button variation={"secondary"} label={t("CORE_COMMON_CANCEL")} onButtonClick={() => setShowBackAlert(false)} />
-              <Button variation={"primary"} label={t("CORE_COMMON_CONTINUE")} onButtonClick={handleConfirmBackNavigation} />
-            </div>
-          </div>
-        </PopUp>
-      )}
+      {backAlert && <UnsavedDataAlert t={t} alert={backAlert} setAlert={setBackAlert} />}
     </div>
   )
 

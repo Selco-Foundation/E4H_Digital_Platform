@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import FormattedDateInput from "../Custom/FormattedDateInput";
-import { Dropdown, SubmitBar, Table, TextInput } from "@egovernments/digit-ui-react-components";
+import { SubmitBar, Table } from "@egovernments/digit-ui-react-components";
+import { MobileNumber } from "@egovernments/digit-ui-react-components";
 import { CheckCircleOutline } from "@egovernments/digit-ui-svg-components";
 import CustomCloseSvg from "../Custom/CustomCloseSvg";
 import OrganizationUserDropdown from "./OrganizationUserDropdown";
@@ -129,7 +130,8 @@ const ActivityDetails = ({
           width: "fit-content",
           height: "fit-content",
           padding: "0px 20px",
-          border: "none"
+          border: "none",
+          backgroundColor: "transparent",
         }}
         onClick={() => addUserEntry(activity)}
       >
@@ -196,55 +198,35 @@ const ActivityDetails = ({
     </div>
   )
 
-  const UserTextInput = (activity, index, fieldName, fieldValue, isLast) => {
-
-    const [textEntered, setTextEntered] = useState(fieldValue.value);
-    const inputRef = useRef(null);
-
-    useEffect(() => {
-
-      if (textEntered === fieldValue.value) return;
-
-      const handler = setTimeout(() => {
-        handleUserDataChange(activity, index, fieldName, textEntered)
-      }, 1500);
-
-      return () => {
-        clearTimeout(handler);
-      };
-    }, [textEntered]);
-
-    return (
-      <div
-        key={index}
+  const UserTextInput = (activity, index, fieldName, fieldValue, isLast) => (
+    <div
+      key={index}
+      style={{
+        padding: "21px 20px 6px 20px",
+        borderBottom: isLast ? "none" : "1px solid #EEEEEE",
+      }}
+    >
+      <MobileNumber
+        value={fieldValue.value}
+        onChange={(value) => handleUserDataChange(activity, index, fieldName, value)}
+        hideSpan={true}
         style={{
-          padding: "21px 20px 6px 20px",
-          borderBottom: isLast ? "none" : "1px solid #EEEEEE",
+          minWidth: "170px",
+        }}
+      />
+      <span
+        style={{
+          fontSize: "14px",
+          color: "rgba(212, 53, 28)",
+          height: "14px",
+          marginTop: "1px",
+          display: "block"
         }}
       >
-        <TextInput
-          value={textEntered}
-          type={"number"}
-          inputRef={inputRef}
-          onChange={(e) => setTextEntered(e.target.value)}
-          style={{
-            minWidth: "190px",
-          }}
-        />
-        <span
-          style={{
-            fontSize: "14px",
-            color: "rgba(212, 53, 28)",
-            height: "14px",
-            marginTop: "1px",
-            display: "block"
-          }}
-        >
         {fieldValue.error}
       </span>
-      </div>
-    )
-  }
+    </div>
+  )
 
   const UserDropDownInput = (options, optionKey = "name", activity, index, fieldName, fieldValue, isLast) => (
     <div
@@ -326,6 +308,7 @@ const ActivityDetails = ({
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
+          backgroundColor: "transparent",
         }}
       >
         {isSent ? (
@@ -453,7 +436,7 @@ const ActivityDetails = ({
         ),
       },
     ],
-    [activityAssignmentData, organizationOptions, activityData, fieldPlanStartDate, fieldPlanEndDate]
+    [organizationOptions, activityData, fieldPlanStartDate, fieldPlanEndDate]
   );
 
   return (
