@@ -90,6 +90,7 @@ class AppInitRepo {
       );
     }
 
+    print("Something is wrong here bro why get here at all?");
     final client = DioClient().dio;
     final headers = <String, String>{
       "Access-Control-Allow-Origin": "*",

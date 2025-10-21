@@ -19,32 +19,38 @@ mixin _$InitEvent {
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function() onLaunch,
+    required TResult Function() fetchMdms,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? onLaunch,
+    TResult? Function()? fetchMdms,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? onLaunch,
+    TResult Function()? fetchMdms,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
     required TResult Function(_AppLaunchEvent value) onLaunch,
+    required TResult Function(_FetchMdmsEvent value) fetchMdms,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_AppLaunchEvent value)? onLaunch,
+    TResult? Function(_FetchMdmsEvent value)? fetchMdms,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_AppLaunchEvent value)? onLaunch,
+    TResult Function(_FetchMdmsEvent value)? fetchMdms,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -106,6 +112,7 @@ class _$AppLaunchEventImpl implements _AppLaunchEvent {
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function() onLaunch,
+    required TResult Function() fetchMdms,
   }) {
     return onLaunch();
   }
@@ -114,6 +121,7 @@ class _$AppLaunchEventImpl implements _AppLaunchEvent {
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? onLaunch,
+    TResult? Function()? fetchMdms,
   }) {
     return onLaunch?.call();
   }
@@ -122,6 +130,7 @@ class _$AppLaunchEventImpl implements _AppLaunchEvent {
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? onLaunch,
+    TResult Function()? fetchMdms,
     required TResult orElse(),
   }) {
     if (onLaunch != null) {
@@ -134,6 +143,7 @@ class _$AppLaunchEventImpl implements _AppLaunchEvent {
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
     required TResult Function(_AppLaunchEvent value) onLaunch,
+    required TResult Function(_FetchMdmsEvent value) fetchMdms,
   }) {
     return onLaunch(this);
   }
@@ -142,6 +152,7 @@ class _$AppLaunchEventImpl implements _AppLaunchEvent {
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_AppLaunchEvent value)? onLaunch,
+    TResult? Function(_FetchMdmsEvent value)? fetchMdms,
   }) {
     return onLaunch?.call(this);
   }
@@ -150,6 +161,7 @@ class _$AppLaunchEventImpl implements _AppLaunchEvent {
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_AppLaunchEvent value)? onLaunch,
+    TResult Function(_FetchMdmsEvent value)? fetchMdms,
     required TResult orElse(),
   }) {
     if (onLaunch != null) {
@@ -164,10 +176,114 @@ abstract class _AppLaunchEvent implements InitEvent {
 }
 
 /// @nodoc
+abstract class _$$FetchMdmsEventImplCopyWith<$Res> {
+  factory _$$FetchMdmsEventImplCopyWith(_$FetchMdmsEventImpl value,
+          $Res Function(_$FetchMdmsEventImpl) then) =
+      __$$FetchMdmsEventImplCopyWithImpl<$Res>;
+}
+
+/// @nodoc
+class __$$FetchMdmsEventImplCopyWithImpl<$Res>
+    extends _$InitEventCopyWithImpl<$Res, _$FetchMdmsEventImpl>
+    implements _$$FetchMdmsEventImplCopyWith<$Res> {
+  __$$FetchMdmsEventImplCopyWithImpl(
+      _$FetchMdmsEventImpl _value, $Res Function(_$FetchMdmsEventImpl) _then)
+      : super(_value, _then);
+}
+
+/// @nodoc
+
+class _$FetchMdmsEventImpl implements _FetchMdmsEvent {
+  const _$FetchMdmsEventImpl();
+
+  @override
+  String toString() {
+    return 'InitEvent.fetchMdms()';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType && other is _$FetchMdmsEventImpl);
+  }
+
+  @override
+  int get hashCode => runtimeType.hashCode;
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function() onLaunch,
+    required TResult Function() fetchMdms,
+  }) {
+    return fetchMdms();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function()? onLaunch,
+    TResult? Function()? fetchMdms,
+  }) {
+    return fetchMdms?.call();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function()? onLaunch,
+    TResult Function()? fetchMdms,
+    required TResult orElse(),
+  }) {
+    if (fetchMdms != null) {
+      return fetchMdms();
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(_AppLaunchEvent value) onLaunch,
+    required TResult Function(_FetchMdmsEvent value) fetchMdms,
+  }) {
+    return fetchMdms(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(_AppLaunchEvent value)? onLaunch,
+    TResult? Function(_FetchMdmsEvent value)? fetchMdms,
+  }) {
+    return fetchMdms?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(_AppLaunchEvent value)? onLaunch,
+    TResult Function(_FetchMdmsEvent value)? fetchMdms,
+    required TResult orElse(),
+  }) {
+    if (fetchMdms != null) {
+      return fetchMdms(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class _FetchMdmsEvent implements InitEvent {
+  const factory _FetchMdmsEvent() = _$FetchMdmsEventImpl;
+}
+
+/// @nodoc
 mixin _$InitState {
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function() uninitialized,
+    required TResult Function(MdmsResponseModel appConfig) defaulted,
+    required TResult Function(MdmsResponseModel appConfig) loadingMdms,
     required TResult Function(
             MdmsResponseModel appConfig,
             List<Mdms<AssetCount>> assetCount,
@@ -178,11 +294,14 @@ mixin _$InitState {
             List<Mdms<SolutionDesignType>> solutionDesign,
             List<Mdms<SolutionDesignTypeBom>> solutionDesignBom)
         initialized,
+    required TResult Function(String message) error,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? uninitialized,
+    TResult? Function(MdmsResponseModel appConfig)? defaulted,
+    TResult? Function(MdmsResponseModel appConfig)? loadingMdms,
     TResult? Function(
             MdmsResponseModel appConfig,
             List<Mdms<AssetCount>> assetCount,
@@ -193,11 +312,14 @@ mixin _$InitState {
             List<Mdms<SolutionDesignType>> solutionDesign,
             List<Mdms<SolutionDesignTypeBom>> solutionDesignBom)?
         initialized,
+    TResult? Function(String message)? error,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? uninitialized,
+    TResult Function(MdmsResponseModel appConfig)? defaulted,
+    TResult Function(MdmsResponseModel appConfig)? loadingMdms,
     TResult Function(
             MdmsResponseModel appConfig,
             List<Mdms<AssetCount>> assetCount,
@@ -208,25 +330,35 @@ mixin _$InitState {
             List<Mdms<SolutionDesignType>> solutionDesign,
             List<Mdms<SolutionDesignTypeBom>> solutionDesignBom)?
         initialized,
+    TResult Function(String message)? error,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
     required TResult Function(_Uninitialized value) uninitialized,
+    required TResult Function(Defaulted value) defaulted,
+    required TResult Function(LoadingMdms value) loadingMdms,
     required TResult Function(Initialized value) initialized,
+    required TResult Function(Error value) error,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_Uninitialized value)? uninitialized,
+    TResult? Function(Defaulted value)? defaulted,
+    TResult? Function(LoadingMdms value)? loadingMdms,
     TResult? Function(Initialized value)? initialized,
+    TResult? Function(Error value)? error,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_Uninitialized value)? uninitialized,
+    TResult Function(Defaulted value)? defaulted,
+    TResult Function(LoadingMdms value)? loadingMdms,
     TResult Function(Initialized value)? initialized,
+    TResult Function(Error value)? error,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -288,6 +420,8 @@ class _$UninitializedImpl extends _Uninitialized {
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function() uninitialized,
+    required TResult Function(MdmsResponseModel appConfig) defaulted,
+    required TResult Function(MdmsResponseModel appConfig) loadingMdms,
     required TResult Function(
             MdmsResponseModel appConfig,
             List<Mdms<AssetCount>> assetCount,
@@ -298,6 +432,7 @@ class _$UninitializedImpl extends _Uninitialized {
             List<Mdms<SolutionDesignType>> solutionDesign,
             List<Mdms<SolutionDesignTypeBom>> solutionDesignBom)
         initialized,
+    required TResult Function(String message) error,
   }) {
     return uninitialized();
   }
@@ -306,6 +441,8 @@ class _$UninitializedImpl extends _Uninitialized {
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? uninitialized,
+    TResult? Function(MdmsResponseModel appConfig)? defaulted,
+    TResult? Function(MdmsResponseModel appConfig)? loadingMdms,
     TResult? Function(
             MdmsResponseModel appConfig,
             List<Mdms<AssetCount>> assetCount,
@@ -316,6 +453,7 @@ class _$UninitializedImpl extends _Uninitialized {
             List<Mdms<SolutionDesignType>> solutionDesign,
             List<Mdms<SolutionDesignTypeBom>> solutionDesignBom)?
         initialized,
+    TResult? Function(String message)? error,
   }) {
     return uninitialized?.call();
   }
@@ -324,6 +462,8 @@ class _$UninitializedImpl extends _Uninitialized {
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? uninitialized,
+    TResult Function(MdmsResponseModel appConfig)? defaulted,
+    TResult Function(MdmsResponseModel appConfig)? loadingMdms,
     TResult Function(
             MdmsResponseModel appConfig,
             List<Mdms<AssetCount>> assetCount,
@@ -334,6 +474,7 @@ class _$UninitializedImpl extends _Uninitialized {
             List<Mdms<SolutionDesignType>> solutionDesign,
             List<Mdms<SolutionDesignTypeBom>> solutionDesignBom)?
         initialized,
+    TResult Function(String message)? error,
     required TResult orElse(),
   }) {
     if (uninitialized != null) {
@@ -346,7 +487,10 @@ class _$UninitializedImpl extends _Uninitialized {
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
     required TResult Function(_Uninitialized value) uninitialized,
+    required TResult Function(Defaulted value) defaulted,
+    required TResult Function(LoadingMdms value) loadingMdms,
     required TResult Function(Initialized value) initialized,
+    required TResult Function(Error value) error,
   }) {
     return uninitialized(this);
   }
@@ -355,7 +499,10 @@ class _$UninitializedImpl extends _Uninitialized {
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_Uninitialized value)? uninitialized,
+    TResult? Function(Defaulted value)? defaulted,
+    TResult? Function(LoadingMdms value)? loadingMdms,
     TResult? Function(Initialized value)? initialized,
+    TResult? Function(Error value)? error,
   }) {
     return uninitialized?.call(this);
   }
@@ -364,7 +511,10 @@ class _$UninitializedImpl extends _Uninitialized {
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_Uninitialized value)? uninitialized,
+    TResult Function(Defaulted value)? defaulted,
+    TResult Function(LoadingMdms value)? loadingMdms,
     TResult Function(Initialized value)? initialized,
+    TResult Function(Error value)? error,
     required TResult orElse(),
   }) {
     if (uninitialized != null) {
@@ -377,6 +527,388 @@ class _$UninitializedImpl extends _Uninitialized {
 abstract class _Uninitialized extends InitState {
   const factory _Uninitialized() = _$UninitializedImpl;
   const _Uninitialized._() : super._();
+}
+
+/// @nodoc
+abstract class _$$DefaultedImplCopyWith<$Res> {
+  factory _$$DefaultedImplCopyWith(
+          _$DefaultedImpl value, $Res Function(_$DefaultedImpl) then) =
+      __$$DefaultedImplCopyWithImpl<$Res>;
+  @useResult
+  $Res call({MdmsResponseModel appConfig});
+
+  $MdmsResponseModelCopyWith<$Res> get appConfig;
+}
+
+/// @nodoc
+class __$$DefaultedImplCopyWithImpl<$Res>
+    extends _$InitStateCopyWithImpl<$Res, _$DefaultedImpl>
+    implements _$$DefaultedImplCopyWith<$Res> {
+  __$$DefaultedImplCopyWithImpl(
+      _$DefaultedImpl _value, $Res Function(_$DefaultedImpl) _then)
+      : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? appConfig = null,
+  }) {
+    return _then(_$DefaultedImpl(
+      appConfig: null == appConfig
+          ? _value.appConfig
+          : appConfig // ignore: cast_nullable_to_non_nullable
+              as MdmsResponseModel,
+    ));
+  }
+
+  @override
+  @pragma('vm:prefer-inline')
+  $MdmsResponseModelCopyWith<$Res> get appConfig {
+    return $MdmsResponseModelCopyWith<$Res>(_value.appConfig, (value) {
+      return _then(_value.copyWith(appConfig: value));
+    });
+  }
+}
+
+/// @nodoc
+
+class _$DefaultedImpl extends Defaulted {
+  const _$DefaultedImpl({required this.appConfig}) : super._();
+
+  @override
+  final MdmsResponseModel appConfig;
+
+  @override
+  String toString() {
+    return 'InitState.defaulted(appConfig: $appConfig)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$DefaultedImpl &&
+            (identical(other.appConfig, appConfig) ||
+                other.appConfig == appConfig));
+  }
+
+  @override
+  int get hashCode => Object.hash(runtimeType, appConfig);
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$DefaultedImplCopyWith<_$DefaultedImpl> get copyWith =>
+      __$$DefaultedImplCopyWithImpl<_$DefaultedImpl>(this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function() uninitialized,
+    required TResult Function(MdmsResponseModel appConfig) defaulted,
+    required TResult Function(MdmsResponseModel appConfig) loadingMdms,
+    required TResult Function(
+            MdmsResponseModel appConfig,
+            List<Mdms<AssetCount>> assetCount,
+            List<Mdms<AssetType>> assetType,
+            List<Mdms<System>> system,
+            List<Mdms<Warranty>> warranty,
+            List<Mdms<Brand>> brand,
+            List<Mdms<SolutionDesignType>> solutionDesign,
+            List<Mdms<SolutionDesignTypeBom>> solutionDesignBom)
+        initialized,
+    required TResult Function(String message) error,
+  }) {
+    return defaulted(appConfig);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function()? uninitialized,
+    TResult? Function(MdmsResponseModel appConfig)? defaulted,
+    TResult? Function(MdmsResponseModel appConfig)? loadingMdms,
+    TResult? Function(
+            MdmsResponseModel appConfig,
+            List<Mdms<AssetCount>> assetCount,
+            List<Mdms<AssetType>> assetType,
+            List<Mdms<System>> system,
+            List<Mdms<Warranty>> warranty,
+            List<Mdms<Brand>> brand,
+            List<Mdms<SolutionDesignType>> solutionDesign,
+            List<Mdms<SolutionDesignTypeBom>> solutionDesignBom)?
+        initialized,
+    TResult? Function(String message)? error,
+  }) {
+    return defaulted?.call(appConfig);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function()? uninitialized,
+    TResult Function(MdmsResponseModel appConfig)? defaulted,
+    TResult Function(MdmsResponseModel appConfig)? loadingMdms,
+    TResult Function(
+            MdmsResponseModel appConfig,
+            List<Mdms<AssetCount>> assetCount,
+            List<Mdms<AssetType>> assetType,
+            List<Mdms<System>> system,
+            List<Mdms<Warranty>> warranty,
+            List<Mdms<Brand>> brand,
+            List<Mdms<SolutionDesignType>> solutionDesign,
+            List<Mdms<SolutionDesignTypeBom>> solutionDesignBom)?
+        initialized,
+    TResult Function(String message)? error,
+    required TResult orElse(),
+  }) {
+    if (defaulted != null) {
+      return defaulted(appConfig);
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(_Uninitialized value) uninitialized,
+    required TResult Function(Defaulted value) defaulted,
+    required TResult Function(LoadingMdms value) loadingMdms,
+    required TResult Function(Initialized value) initialized,
+    required TResult Function(Error value) error,
+  }) {
+    return defaulted(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(_Uninitialized value)? uninitialized,
+    TResult? Function(Defaulted value)? defaulted,
+    TResult? Function(LoadingMdms value)? loadingMdms,
+    TResult? Function(Initialized value)? initialized,
+    TResult? Function(Error value)? error,
+  }) {
+    return defaulted?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(_Uninitialized value)? uninitialized,
+    TResult Function(Defaulted value)? defaulted,
+    TResult Function(LoadingMdms value)? loadingMdms,
+    TResult Function(Initialized value)? initialized,
+    TResult Function(Error value)? error,
+    required TResult orElse(),
+  }) {
+    if (defaulted != null) {
+      return defaulted(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class Defaulted extends InitState {
+  const factory Defaulted({required final MdmsResponseModel appConfig}) =
+      _$DefaultedImpl;
+  const Defaulted._() : super._();
+
+  MdmsResponseModel get appConfig;
+  @JsonKey(ignore: true)
+  _$$DefaultedImplCopyWith<_$DefaultedImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class _$$LoadingMdmsImplCopyWith<$Res> {
+  factory _$$LoadingMdmsImplCopyWith(
+          _$LoadingMdmsImpl value, $Res Function(_$LoadingMdmsImpl) then) =
+      __$$LoadingMdmsImplCopyWithImpl<$Res>;
+  @useResult
+  $Res call({MdmsResponseModel appConfig});
+
+  $MdmsResponseModelCopyWith<$Res> get appConfig;
+}
+
+/// @nodoc
+class __$$LoadingMdmsImplCopyWithImpl<$Res>
+    extends _$InitStateCopyWithImpl<$Res, _$LoadingMdmsImpl>
+    implements _$$LoadingMdmsImplCopyWith<$Res> {
+  __$$LoadingMdmsImplCopyWithImpl(
+      _$LoadingMdmsImpl _value, $Res Function(_$LoadingMdmsImpl) _then)
+      : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? appConfig = null,
+  }) {
+    return _then(_$LoadingMdmsImpl(
+      appConfig: null == appConfig
+          ? _value.appConfig
+          : appConfig // ignore: cast_nullable_to_non_nullable
+              as MdmsResponseModel,
+    ));
+  }
+
+  @override
+  @pragma('vm:prefer-inline')
+  $MdmsResponseModelCopyWith<$Res> get appConfig {
+    return $MdmsResponseModelCopyWith<$Res>(_value.appConfig, (value) {
+      return _then(_value.copyWith(appConfig: value));
+    });
+  }
+}
+
+/// @nodoc
+
+class _$LoadingMdmsImpl extends LoadingMdms {
+  const _$LoadingMdmsImpl({required this.appConfig}) : super._();
+
+  @override
+  final MdmsResponseModel appConfig;
+
+  @override
+  String toString() {
+    return 'InitState.loadingMdms(appConfig: $appConfig)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$LoadingMdmsImpl &&
+            (identical(other.appConfig, appConfig) ||
+                other.appConfig == appConfig));
+  }
+
+  @override
+  int get hashCode => Object.hash(runtimeType, appConfig);
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$LoadingMdmsImplCopyWith<_$LoadingMdmsImpl> get copyWith =>
+      __$$LoadingMdmsImplCopyWithImpl<_$LoadingMdmsImpl>(this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function() uninitialized,
+    required TResult Function(MdmsResponseModel appConfig) defaulted,
+    required TResult Function(MdmsResponseModel appConfig) loadingMdms,
+    required TResult Function(
+            MdmsResponseModel appConfig,
+            List<Mdms<AssetCount>> assetCount,
+            List<Mdms<AssetType>> assetType,
+            List<Mdms<System>> system,
+            List<Mdms<Warranty>> warranty,
+            List<Mdms<Brand>> brand,
+            List<Mdms<SolutionDesignType>> solutionDesign,
+            List<Mdms<SolutionDesignTypeBom>> solutionDesignBom)
+        initialized,
+    required TResult Function(String message) error,
+  }) {
+    return loadingMdms(appConfig);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function()? uninitialized,
+    TResult? Function(MdmsResponseModel appConfig)? defaulted,
+    TResult? Function(MdmsResponseModel appConfig)? loadingMdms,
+    TResult? Function(
+            MdmsResponseModel appConfig,
+            List<Mdms<AssetCount>> assetCount,
+            List<Mdms<AssetType>> assetType,
+            List<Mdms<System>> system,
+            List<Mdms<Warranty>> warranty,
+            List<Mdms<Brand>> brand,
+            List<Mdms<SolutionDesignType>> solutionDesign,
+            List<Mdms<SolutionDesignTypeBom>> solutionDesignBom)?
+        initialized,
+    TResult? Function(String message)? error,
+  }) {
+    return loadingMdms?.call(appConfig);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function()? uninitialized,
+    TResult Function(MdmsResponseModel appConfig)? defaulted,
+    TResult Function(MdmsResponseModel appConfig)? loadingMdms,
+    TResult Function(
+            MdmsResponseModel appConfig,
+            List<Mdms<AssetCount>> assetCount,
+            List<Mdms<AssetType>> assetType,
+            List<Mdms<System>> system,
+            List<Mdms<Warranty>> warranty,
+            List<Mdms<Brand>> brand,
+            List<Mdms<SolutionDesignType>> solutionDesign,
+            List<Mdms<SolutionDesignTypeBom>> solutionDesignBom)?
+        initialized,
+    TResult Function(String message)? error,
+    required TResult orElse(),
+  }) {
+    if (loadingMdms != null) {
+      return loadingMdms(appConfig);
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(_Uninitialized value) uninitialized,
+    required TResult Function(Defaulted value) defaulted,
+    required TResult Function(LoadingMdms value) loadingMdms,
+    required TResult Function(Initialized value) initialized,
+    required TResult Function(Error value) error,
+  }) {
+    return loadingMdms(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(_Uninitialized value)? uninitialized,
+    TResult? Function(Defaulted value)? defaulted,
+    TResult? Function(LoadingMdms value)? loadingMdms,
+    TResult? Function(Initialized value)? initialized,
+    TResult? Function(Error value)? error,
+  }) {
+    return loadingMdms?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(_Uninitialized value)? uninitialized,
+    TResult Function(Defaulted value)? defaulted,
+    TResult Function(LoadingMdms value)? loadingMdms,
+    TResult Function(Initialized value)? initialized,
+    TResult Function(Error value)? error,
+    required TResult orElse(),
+  }) {
+    if (loadingMdms != null) {
+      return loadingMdms(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class LoadingMdms extends InitState {
+  const factory LoadingMdms({required final MdmsResponseModel appConfig}) =
+      _$LoadingMdmsImpl;
+  const LoadingMdms._() : super._();
+
+  MdmsResponseModel get appConfig;
+  @JsonKey(ignore: true)
+  _$$LoadingMdmsImplCopyWith<_$LoadingMdmsImpl> get copyWith =>
+      throw _privateConstructorUsedError;
 }
 
 /// @nodoc
@@ -590,6 +1122,8 @@ class _$InitializedImpl extends Initialized {
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function() uninitialized,
+    required TResult Function(MdmsResponseModel appConfig) defaulted,
+    required TResult Function(MdmsResponseModel appConfig) loadingMdms,
     required TResult Function(
             MdmsResponseModel appConfig,
             List<Mdms<AssetCount>> assetCount,
@@ -600,6 +1134,7 @@ class _$InitializedImpl extends Initialized {
             List<Mdms<SolutionDesignType>> solutionDesign,
             List<Mdms<SolutionDesignTypeBom>> solutionDesignBom)
         initialized,
+    required TResult Function(String message) error,
   }) {
     return initialized(appConfig, assetCount, assetType, system, warranty,
         brand, solutionDesign, solutionDesignBom);
@@ -609,6 +1144,8 @@ class _$InitializedImpl extends Initialized {
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? uninitialized,
+    TResult? Function(MdmsResponseModel appConfig)? defaulted,
+    TResult? Function(MdmsResponseModel appConfig)? loadingMdms,
     TResult? Function(
             MdmsResponseModel appConfig,
             List<Mdms<AssetCount>> assetCount,
@@ -619,6 +1156,7 @@ class _$InitializedImpl extends Initialized {
             List<Mdms<SolutionDesignType>> solutionDesign,
             List<Mdms<SolutionDesignTypeBom>> solutionDesignBom)?
         initialized,
+    TResult? Function(String message)? error,
   }) {
     return initialized?.call(appConfig, assetCount, assetType, system, warranty,
         brand, solutionDesign, solutionDesignBom);
@@ -628,6 +1166,8 @@ class _$InitializedImpl extends Initialized {
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? uninitialized,
+    TResult Function(MdmsResponseModel appConfig)? defaulted,
+    TResult Function(MdmsResponseModel appConfig)? loadingMdms,
     TResult Function(
             MdmsResponseModel appConfig,
             List<Mdms<AssetCount>> assetCount,
@@ -638,6 +1178,7 @@ class _$InitializedImpl extends Initialized {
             List<Mdms<SolutionDesignType>> solutionDesign,
             List<Mdms<SolutionDesignTypeBom>> solutionDesignBom)?
         initialized,
+    TResult Function(String message)? error,
     required TResult orElse(),
   }) {
     if (initialized != null) {
@@ -651,7 +1192,10 @@ class _$InitializedImpl extends Initialized {
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
     required TResult Function(_Uninitialized value) uninitialized,
+    required TResult Function(Defaulted value) defaulted,
+    required TResult Function(LoadingMdms value) loadingMdms,
     required TResult Function(Initialized value) initialized,
+    required TResult Function(Error value) error,
   }) {
     return initialized(this);
   }
@@ -660,7 +1204,10 @@ class _$InitializedImpl extends Initialized {
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(_Uninitialized value)? uninitialized,
+    TResult? Function(Defaulted value)? defaulted,
+    TResult? Function(LoadingMdms value)? loadingMdms,
     TResult? Function(Initialized value)? initialized,
+    TResult? Function(Error value)? error,
   }) {
     return initialized?.call(this);
   }
@@ -669,7 +1216,10 @@ class _$InitializedImpl extends Initialized {
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
     TResult Function(_Uninitialized value)? uninitialized,
+    TResult Function(Defaulted value)? defaulted,
+    TResult Function(LoadingMdms value)? loadingMdms,
     TResult Function(Initialized value)? initialized,
+    TResult Function(Error value)? error,
     required TResult orElse(),
   }) {
     if (initialized != null) {
@@ -702,5 +1252,184 @@ abstract class Initialized extends InitState {
   List<Mdms<SolutionDesignTypeBom>> get solutionDesignBom;
   @JsonKey(ignore: true)
   _$$InitializedImplCopyWith<_$InitializedImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class _$$ErrorImplCopyWith<$Res> {
+  factory _$$ErrorImplCopyWith(
+          _$ErrorImpl value, $Res Function(_$ErrorImpl) then) =
+      __$$ErrorImplCopyWithImpl<$Res>;
+  @useResult
+  $Res call({String message});
+}
+
+/// @nodoc
+class __$$ErrorImplCopyWithImpl<$Res>
+    extends _$InitStateCopyWithImpl<$Res, _$ErrorImpl>
+    implements _$$ErrorImplCopyWith<$Res> {
+  __$$ErrorImplCopyWithImpl(
+      _$ErrorImpl _value, $Res Function(_$ErrorImpl) _then)
+      : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? message = null,
+  }) {
+    return _then(_$ErrorImpl(
+      null == message
+          ? _value.message
+          : message // ignore: cast_nullable_to_non_nullable
+              as String,
+    ));
+  }
+}
+
+/// @nodoc
+
+class _$ErrorImpl extends Error {
+  const _$ErrorImpl(this.message) : super._();
+
+  @override
+  final String message;
+
+  @override
+  String toString() {
+    return 'InitState.error(message: $message)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$ErrorImpl &&
+            (identical(other.message, message) || other.message == message));
+  }
+
+  @override
+  int get hashCode => Object.hash(runtimeType, message);
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$ErrorImplCopyWith<_$ErrorImpl> get copyWith =>
+      __$$ErrorImplCopyWithImpl<_$ErrorImpl>(this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function() uninitialized,
+    required TResult Function(MdmsResponseModel appConfig) defaulted,
+    required TResult Function(MdmsResponseModel appConfig) loadingMdms,
+    required TResult Function(
+            MdmsResponseModel appConfig,
+            List<Mdms<AssetCount>> assetCount,
+            List<Mdms<AssetType>> assetType,
+            List<Mdms<System>> system,
+            List<Mdms<Warranty>> warranty,
+            List<Mdms<Brand>> brand,
+            List<Mdms<SolutionDesignType>> solutionDesign,
+            List<Mdms<SolutionDesignTypeBom>> solutionDesignBom)
+        initialized,
+    required TResult Function(String message) error,
+  }) {
+    return error(message);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function()? uninitialized,
+    TResult? Function(MdmsResponseModel appConfig)? defaulted,
+    TResult? Function(MdmsResponseModel appConfig)? loadingMdms,
+    TResult? Function(
+            MdmsResponseModel appConfig,
+            List<Mdms<AssetCount>> assetCount,
+            List<Mdms<AssetType>> assetType,
+            List<Mdms<System>> system,
+            List<Mdms<Warranty>> warranty,
+            List<Mdms<Brand>> brand,
+            List<Mdms<SolutionDesignType>> solutionDesign,
+            List<Mdms<SolutionDesignTypeBom>> solutionDesignBom)?
+        initialized,
+    TResult? Function(String message)? error,
+  }) {
+    return error?.call(message);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function()? uninitialized,
+    TResult Function(MdmsResponseModel appConfig)? defaulted,
+    TResult Function(MdmsResponseModel appConfig)? loadingMdms,
+    TResult Function(
+            MdmsResponseModel appConfig,
+            List<Mdms<AssetCount>> assetCount,
+            List<Mdms<AssetType>> assetType,
+            List<Mdms<System>> system,
+            List<Mdms<Warranty>> warranty,
+            List<Mdms<Brand>> brand,
+            List<Mdms<SolutionDesignType>> solutionDesign,
+            List<Mdms<SolutionDesignTypeBom>> solutionDesignBom)?
+        initialized,
+    TResult Function(String message)? error,
+    required TResult orElse(),
+  }) {
+    if (error != null) {
+      return error(message);
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(_Uninitialized value) uninitialized,
+    required TResult Function(Defaulted value) defaulted,
+    required TResult Function(LoadingMdms value) loadingMdms,
+    required TResult Function(Initialized value) initialized,
+    required TResult Function(Error value) error,
+  }) {
+    return error(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(_Uninitialized value)? uninitialized,
+    TResult? Function(Defaulted value)? defaulted,
+    TResult? Function(LoadingMdms value)? loadingMdms,
+    TResult? Function(Initialized value)? initialized,
+    TResult? Function(Error value)? error,
+  }) {
+    return error?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(_Uninitialized value)? uninitialized,
+    TResult Function(Defaulted value)? defaulted,
+    TResult Function(LoadingMdms value)? loadingMdms,
+    TResult Function(Initialized value)? initialized,
+    TResult Function(Error value)? error,
+    required TResult orElse(),
+  }) {
+    if (error != null) {
+      return error(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class Error extends InitState {
+  const factory Error(final String message) = _$ErrorImpl;
+  const Error._() : super._();
+
+  String get message;
+  @JsonKey(ignore: true)
+  _$$ErrorImplCopyWith<_$ErrorImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
