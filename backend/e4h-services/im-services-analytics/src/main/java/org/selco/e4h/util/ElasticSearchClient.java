@@ -286,8 +286,8 @@ public class ElasticSearchClient {
                     .ticketNumber((String) incident.get("incidentId"))
                     .district((String) data.get("district"))  // district is in Data, not incident
                     .block((String) data.get("block"))        // block is in Data, not incident
-                    .healthFacilityName((String) data.get("phcType"))  // phcType is in Data
-                    .healthFacilityType((String) data.get("phcSubType")) // phcSubType might be in Data
+                    .healthFacilityName((String) data.get("tenantId_localized"))  // tenantId_localized is the health facility name
+                    .healthFacilityType((String) incident.get("phcSubType")) // phcSubType is in incident for health facility type
                     .isSolarSystemWorking(isSolarSystemWorking)
                     .issueType((String) incident.get("incidentType"))
                     .issueSubType((String) incident.get("incidentSubType"))
