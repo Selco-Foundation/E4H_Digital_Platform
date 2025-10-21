@@ -186,7 +186,6 @@ public class CommonUtility {
         
         // Role-specific formatting rules
         switch (workflowState) {
-            case "OUT_OF_WARRANTY":
             case "PENDING_ASSIGNMENT_OUT_OF_WARRANTY":
                 return "Out of Warranty - Pending State POC";
             
@@ -194,15 +193,15 @@ public class CommonUtility {
                 return "Out of Warranty - Pending State POC";
             
             case "PENDINGFORASSIGNMENT":
-                // Different display based on role
-                if ("CENTRAL_POC".equals(recipientRole) && "LEVEL_TWO".equals(escalationLevel)) {
+                // Different display based on role and escalation level
+                if ("LEVEL_TWO".equals(escalationLevel)) {
                     return "CRM - Pending Assignment";
                 }
                 return "Pending Assignment";
             
             case "PENDING_ASSIGNMENT_SPARE_PART_NEEDED":
-                // Different display based on role
-                if ("CENTRAL_POC".equals(recipientRole)) {
+                // Different display based on role and escalation level
+                if ("LEVEL_TWO".equals(escalationLevel)) {
                     return "CRM - Spare Part Change";
                 } else if ("STATE_POC".equals(recipientRole)) {
                     return "Spare Part Change - Pending With CRM";
@@ -210,22 +209,22 @@ public class CommonUtility {
                 return "Spare Part Change";
             
             case "PENDING_RESOLUTION_SPARE_PART_NEEDED":
-                // Different display based on role
-                if ("CENTRAL_POC".equals(recipientRole)) {
-                    return "CRM - Spare Part Change";
+                // Different display based on role and escalation level
+                if ("LEVEL_TWO".equals(escalationLevel)) {
+                    return "Vendor - Spare Part Change";
                 } else if ("STATE_POC".equals(recipientRole)) {
                     return "Spare Part Change - Pending with Vendor";
                 }
                 return "Spare Part Change - Pending with Vendor";
             
             case "PENDINGRESOLUTION":
-                if ("CENTRAL_POC".equals(recipientRole)) {
+                if ("LEVEL_TWO".equals(escalationLevel)) {
                     return "Vendor - Within Warranty";
                 }
                 return "Pending Resolution";
             
             case "PENDING_RESOLUTION_OUT_OF_WARRANTY":
-                if ("CENTRAL_POC".equals(recipientRole)) {
+                if ("LEVEL_TWO".equals(escalationLevel)) {
                     return "Vendor - Out of Warranty";
                 }
                 return "Out of Warranty - Pending with Vendor";
