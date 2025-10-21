@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+  <meta charset="utf-8">
+  <meta name="x-apple-disable-message-reformatting">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <title>Weekly Report</title>
+  <!--[if mso]>
+  <xml>
+    <o:OfficeDocumentSettings><o:AllowPNG/><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings>
+  </xml>
+  <![endif]-->
+  <style>
+    :root{
+      color-scheme: light only;
+      --brand:#f97316;        /* accent (link) */
+      --ink:#1f2937;
+      --muted:#6b7280;
+      --border:#e5e7eb;
+      --bg:#ffffff;
+      --card:#ffffff;
+      --purple:#6b21a8;       /* CTA background (hex for compatibility) */
+      /* status colors */
+      --green:#16a34a;
+      --red:#dc2626;
+      --amber:#facc15;
+      --orange:#fb923c;
+    }
+
+    /* Resets */
+    body,table,td,a{ font-family:Arial,Helvetica,sans-serif; }
+    img{ border:0; outline:none; line-height:100%; display:block; }
+    table{ border-collapse:collapse !important; }
+    a{ text-decoration:none; }
+
+    /* Layout */
+    body{ margin:0; padding:0; background:var(--bg); }
+    .wrapper{ width:100%; background:var(--bg); padding:24px 0; }
+    .container{ width:100%; max-width:640px; margin:0 auto; }
+    .card{ background:var(--card); border:2px solid var(--border); border-radius:16px; }
+    .inner{ padding:24px; }
+    .p{ font-size:14px; line-height:20px; color:var(--ink); margin:12px 0; }
+
+    /* Header */
+    .header{ padding:16px 24px; border-bottom:1px solid var(--border); }
+    .title{ font-size:20px; font-weight:800; color:var(--ink); text-align:center; margin:0; }
+    .logo{ width:100%; max-width:96px; height:auto; border-radius:12px; }
+
+    /* Section titles */
+    .section-title{ font-size:15px; font-weight:700; color:var(--ink); text-align:center; margin:12px 0; }
+
+     /* Metrics (2x2 grid) */
+     .metrics{ border:1px solid var(--border); border-radius:16px; padding:16px; background:#ffffff; }
+     .metric-head th{ font-size:13px; color:#1f2937; font-weight:700; padding:8px; text-align:center; border-bottom:1px solid var(--border); }
+     .rowhead{ font-size:13px; color:#1f2937; font-weight:700; padding:8px; white-space:nowrap; border-bottom:1px solid var(--border); }
+     .metric-cell{ padding:8px; text-align:center; border-bottom:1px solid var(--border); }
+    .pct{ font-size:15px; font-weight:700; color:var(--ink); line-height:1.2; }
+    .count{ font-size:12px; color:var(--muted); }
+    .arrow{ font-size:16px; line-height:1; padding-left:6px; display:inline-block; }
+    .arrow.up{ color:var(--green); }
+    .arrow.down{ color:var(--red); }
+
+    /* Details table */
+    .states{ width:100%; }
+    .states th{ font-size:12px; color:var(--muted); text-align:center; padding:8px; }
+    .states td{ font-size:13px; padding:12px 8px; vertical-align:middle; }
+    .state{ font-weight:600; color:var(--ink); }
+
+    /* Pills (TOTAL row only) */
+    .pill{
+      min-width:120px;
+      display:inline-block;
+      text-align:center;
+      padding:10px 16px;
+      border-radius:14px;
+      font-weight:400;   /* non-bold */
+      color:#000000;     /* black text */
+    }
+    .wk{ background:var(--amber); }  /* Yellow */
+    .mo{ background:var(--orange); } /* Orange */
+    .qtr{ background:var(--red); }   /* Red */
+
+    /* Plain chips for STATE rows (black text, neutral) */
+    .plain{
+      display:inline-block;
+      padding:8px 12px;
+      font-weight:600;
+      color:var(--ink);
+      border:1px solid var(--border);
+      border-radius:12px;
+      background:#ffffff;
+      min-width:120px;
+      text-align:center;
+    }
+
+    /* CTAs */
+    .cta-outer{ width:100%; }
+    .cta-inner{ width:100%; max-width:520px; }
+    .cta-cell{ border-radius:30px; background:var(--purple); }
+    .cta-link{ display:block; padding:16px 24px; font-size:16px; font-weight:700; line-height:16px; color:#ffffff; text-align:center; }
+
+    /* Responsive */
+    @media screen and (max-width:600px){
+      .inner{ padding:18px !important; }
+      .stack{ display:block !important; width:100% !important; }
+      .title{ font-size:18px !important; }
+      .logo{ max-width:72px !important; border-radius:10px !important; }
+
+      .metric-head th,.rowhead{ font-size:12px !important; text-align:center !important; }
+      .pct{ font-size:14px !important; }
+      .metric-cell,.rowhead,.states th,.states td{ padding:10px 6px !important; }
+
+      .states th,.states td{ font-size:12px !important; }
+      .plain,.pill{ min-width:auto; width:100%; }
+
+      /* Make CTA truly full-width on mobile */
+      .cta-inner{ max-width:none !important; }
+    }
+  </style>
+</head>
+<body>
+  <center class="wrapper">
+    <table role="presentation" class="container" cellspacing="0" cellpadding="0" border="0">
+      <tr>
+        <td class="card">
+          <table role="presentation" width="100%">
+            <!-- Header -->
+            <tr>
+              <td class="header">
+                <table role="presentation" width="100%">
+                  <tr>
+                    <td class="stack" align="left" style="width:25%;">
+                      <img class="logo" src="${SELCO_LOGO}" alt="SELCO Foundation" width="96">
+                    </td>
+                    <td class="stack" align="center" style="width:50%;">
+                      <h1 class="title">Weekly Report</h1>
+                    </td>
+                    <td class="stack" align="right" style="width:25%;">
+                      <img class="logo" src="${SAURA_LOGO}" alt="Saura eMitra" width="96" style="display:inline-block;">
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+            <!-- Body -->
+            <tr>
+              <td class="inner">
+                <p class="p" style="margin-top:0;">Dear All,<br>
+                  Please find below the weekly report for the week of <strong>${DATE_RANGE}</strong>.
+                </p>
+
+                <!-- Metrics: 2x2 grid -->
+                <div class="metrics" style="margin:16px 0;">
+                  <div class="section-title" style="margin-top:0;">Change during Reporting Period</div>
+                  <table role="presentation" width="100%" style="border-collapse:collapse;">
+                    <thead class="metric-head">
+                      <tr>
+                        <th class="rowhead" style="text-align:left;">&nbsp;</th>
+                        <th align="center" style="border-bottom:1px solid var(--border);">Functional DRE System</th>
+                        <th align="center" style="border-bottom:1px solid var(--border);">Non-Functional DRE System</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <!-- Row 1: Week Start -->
+                      <tr>
+                        <td class="rowhead" style="text-align:left; border-bottom:1px solid var(--border);">${WEEK_START_DATE}</td>
+                        <td class="metric-cell" align="center" style="border-bottom:1px solid var(--border);">
+                          <div class="pct">${FUNC_START_PCT}% <span class="count">(${FUNC_START_COUNT})</span></div>
+                        </td>
+                        <td class="metric-cell" align="center" style="border-bottom:1px solid var(--border);">
+                          <div class="pct">${NONFUNC_START_PCT}% <span class="count">(${NONFUNC_START_COUNT})</span></div>
+                        </td>
+                      </tr>
+                      <!-- Row 2: Week End -->
+                      <tr>
+                        <td class="rowhead" style="text-align:left; border-bottom:1px solid var(--border);">${WEEK_END_DATE}</td>
+                        <td class="metric-cell" align="center" style="border-bottom:1px solid var(--border);">
+                          <div class="pct">
+                            ${FUNC_END_PCT}% <span class="count">(${FUNC_END_COUNT})</span>
+                            <span class="arrow ${FUNC_ARROW_CLASS}">${FUNC_ARROW}</span>
+                          </div>
+                        </td>
+                        <td class="metric-cell" align="center" style="border-bottom:1px solid var(--border);">
+                          <div class="pct">
+                            ${NONFUNC_END_PCT}% <span class="count">(${NONFUNC_END_COUNT})</span>
+                            <span class="arrow ${NONFUNC_ARROW_CLASS}">${NONFUNC_ARROW}</span>
+                          </div>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <!-- Details Table -->
+                <p class="section-title">Details of HF's with Non-Functional DRE System (as of ${TODAY_DDMMMYYYY})</p>
+                <table class="states" role="presentation" cellspacing="0" cellpadding="0" border="0">
+                  <thead>
+                    <tr>
+                      <th style="text-align:left; border-bottom:1px solid var(--border);"></th>
+                      <th>&lt; 1 Week</th>
+                      <th>&lt; 1 Month</th>
+                      <th>&lt; 3 Month</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <!-- Total row FIRST with colored pills / non-bold black text -->
+                    <tr>
+                      <td class="state">Total HF's</td>
+                      <td align="center"><span class="pill wk">${TOTAL_LT1WK}</span></td>
+                      <td align="center"><span class="pill mo">${TOTAL_LT1MO}</span></td>
+                      <td align="center"><span class="pill qtr">${TOTAL_LT3MO}</span></td>
+                    </tr>
+
+                    <!-- State rows with plain black chips -->
+                    ${STATE_ROWS}
+                  </tbody>
+                </table>
+
+                <!-- State coverage -->
+                <p class="p" style="font-size:15px; font-weight:700; text-align:center; margin-top:20px;">
+                  All States include ${STATE_LIST}
+                </p>
+
+                <!-- CTAs - Only show download button if there's data -->
+                ${DOWNLOAD_BUTTON}
+
+                <p class="p" style="text-align:center; margin-top:12px;">
+                  <a href="${DASHBOARD_URL}" target="_blank" style="color:#fb923c; font-weight:600; text-decoration:underline;">Visit E4H Dashboard</a>
+                </p>
+
+                <p class="p" style="font-size:12px; color:var(--muted); text-align:center;">
+                  This is a system-generated weekly summary from Saura eMitra. For detailed ticket views, please use the links above.
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </center>
+</body>
+</html>
