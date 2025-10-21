@@ -571,6 +571,47 @@ public class EscalationController {
             }
         }
 
+        // Special handling for CENTRAL_POC: Create combined CSV for L1 section (LEVEL_ZERO + LEVEL_ONE)
+        if ("CENTRAL_POC".equals(recipientRole.getRole())) {
+            // Combine LEVEL_ZERO and LEVEL_ONE tickets for L1 section
+            List<EscalationTicket> l1Tickets = new ArrayList<>();
+            if (ticketsByLevel.get("LEVEL_ZERO") != null) {
+                l1Tickets.addAll(ticketsByLevel.get("LEVEL_ZERO"));
+            }
+            if (ticketsByLevel.get("LEVEL_ONE") != null) {
+                l1Tickets.addAll(ticketsByLevel.get("LEVEL_ONE"));
+            }
+            
+            // Generate combined CSV for L1 section
+            if (!l1Tickets.isEmpty()) {
+                String l1CsvContent = csvGenerationService.generateEscalationCsv(l1Tickets);
+                String l1CsvFileName = csvGenerationService.generateCsvFileName("daily", "LEVEL_ONE", tenantId);
+                String l1CsvFileStoreId = uploadCsvToFileStore(l1CsvContent, l1CsvFileName, tenantId, requestInfo);
+                
+                if (l1CsvFileStoreId != null) {
+                    // Clear existing file store IDs and add only the combined L1 and L2 files
+                    csvFileStoreIds.clear();
+                    csvFileNames.clear();
+                    
+                    // Add L1 combined file
+                    csvFileStoreIds.add(l1CsvFileStoreId);
+                    csvFileNames.add(l1CsvFileName);
+                    
+                    // Add L2 file if it exists
+                    if (ticketsByLevel.get("LEVEL_TWO") != null && !ticketsByLevel.get("LEVEL_TWO").isEmpty()) {
+                        String l2CsvContent = csvGenerationService.generateEscalationCsv(ticketsByLevel.get("LEVEL_TWO"));
+                        String l2CsvFileName = csvGenerationService.generateCsvFileName("daily", "LEVEL_TWO", tenantId);
+                        String l2CsvFileStoreId = uploadCsvToFileStore(l2CsvContent, l2CsvFileName, tenantId, requestInfo);
+                        
+                        if (l2CsvFileStoreId != null) {
+                            csvFileStoreIds.add(l2CsvFileStoreId);
+                            csvFileNames.add(l2CsvFileName);
+                        }
+                    }
+                }
+            }
+        }
+
         // Always send email (even with zero counts) - use new role-based email generation
         sendRoleBasedEscalationEmail(requestInfo, users, ticketsByLevel, recipientRole.getRole(),
             recipientRole.getBoundaryLevel(), csvFileStoreIds, csvFileNames, escalationType, tenantId);
@@ -642,6 +683,47 @@ public class EscalationController {
                 elasticsearchEscalationService.updateEscalationsForTickets(tickets, escalationId, item.getEscalationLevel());
                 
                 log.info("Found {} tickets for country escalation level: {}", tickets.size(), item.getEscalationLevel());
+            }
+        }
+
+        // Special handling for CENTRAL_POC: Create combined CSV for L1 section (LEVEL_ZERO + LEVEL_ONE)
+        if ("CENTRAL_POC".equals(recipientRole.getRole())) {
+            // Combine LEVEL_ZERO and LEVEL_ONE tickets for L1 section
+            List<EscalationTicket> l1Tickets = new ArrayList<>();
+            if (ticketsByLevel.get("LEVEL_ZERO") != null) {
+                l1Tickets.addAll(ticketsByLevel.get("LEVEL_ZERO"));
+            }
+            if (ticketsByLevel.get("LEVEL_ONE") != null) {
+                l1Tickets.addAll(ticketsByLevel.get("LEVEL_ONE"));
+            }
+            
+            // Generate combined CSV for L1 section
+            if (!l1Tickets.isEmpty()) {
+                String l1CsvContent = csvGenerationService.generateEscalationCsv(l1Tickets);
+                String l1CsvFileName = csvGenerationService.generateCsvFileName("daily", "LEVEL_ONE", "in");
+                String l1CsvFileStoreId = uploadCsvToFileStore(l1CsvContent, l1CsvFileName, "in", requestInfo);
+                
+                if (l1CsvFileStoreId != null) {
+                    // Clear existing file store IDs and add only the combined L1 and L2 files
+                    csvFileStoreIds.clear();
+                    csvFileNames.clear();
+                    
+                    // Add L1 combined file
+                    csvFileStoreIds.add(l1CsvFileStoreId);
+                    csvFileNames.add(l1CsvFileName);
+                    
+                    // Add L2 file if it exists
+                    if (ticketsByLevel.get("LEVEL_TWO") != null && !ticketsByLevel.get("LEVEL_TWO").isEmpty()) {
+                        String l2CsvContent = csvGenerationService.generateEscalationCsv(ticketsByLevel.get("LEVEL_TWO"));
+                        String l2CsvFileName = csvGenerationService.generateCsvFileName("daily", "LEVEL_TWO", "in");
+                        String l2CsvFileStoreId = uploadCsvToFileStore(l2CsvContent, l2CsvFileName, "in", requestInfo);
+                        
+                        if (l2CsvFileStoreId != null) {
+                            csvFileStoreIds.add(l2CsvFileStoreId);
+                            csvFileNames.add(l2CsvFileName);
+                        }
+                    }
+                }
             }
         }
 
@@ -809,22 +891,11 @@ public class EscalationController {
     
     
     /**
-     * Send email via Kafka with CSV attachments
+     * Send email via Kafka without CSV attachments (download buttons are used instead)
      */
-    private void sendEmailViaKafka(User user, String subject, String body,
+    private void sendEmailViaKafka(User user, String subject, String body, 
                                   List<String> csvFileStoreIds, List<String> csvFileNames, String tenantId) {
         try {
-            // Prepare file store attachments as Map<fileStoreId, fileName>
-            Map<String, String> fileStoreIdMap = new HashMap<>();
-            
-            for (int i = 0; i < csvFileStoreIds.size(); i++) {
-                String fileStoreId = csvFileStoreIds.get(i);
-                String fileName = i < csvFileNames.size() ? csvFileNames.get(i) : "escalation_" + i + ".csv";
-                
-                fileStoreIdMap.put(fileStoreId, fileName);
-                log.debug("Added CSV attachment mapping: fileStoreId={} -> fileName={}", fileStoreId, fileName);
-            }
-            
             // Create Email object following egov-notification-mail contract
             Map<String, Object> email = new HashMap<>();
             email.put("emailTo", new HashSet<>(Arrays.asList(user.getEmailId())));  // Set<String>
@@ -833,9 +904,8 @@ public class EscalationController {
             email.put("isHTML", true);
             email.put("tenantId", tenantId);
             
-            if (!fileStoreIdMap.isEmpty()) {
-                email.put("fileStoreId", fileStoreIdMap);  // Map<String, String>
-            }
+            // Note: CSV files are not attached as email attachments anymore
+            // Download functionality is provided via download buttons in the email template
             
             // Create EmailRequest wrapper with RequestInfo
             Map<String, Object> emailRequest = new HashMap<>();
@@ -846,8 +916,8 @@ public class EscalationController {
             String topic = consumerConfiguration.getNotificationEmailTopic();
             kafkaTemplate.send(topic, emailRequest);
             
-            log.info("Published email to Kafka topic: {} for user: {} with {} attachments", 
-                topic, user.getEmailId(), fileStoreIdMap.size());
+            log.info("Published email to Kafka topic: {} for user: {} (no attachments - download buttons used instead)", 
+                topic, user.getEmailId());
             
         } catch (Exception e) {
             log.error("Error sending email via Kafka for user: {}", user.getEmailId(), e);

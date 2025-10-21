@@ -287,27 +287,61 @@ public class DynamicEmailTemplateService {
     
     /**
      * Get common workflow states for each escalation level when no tickets are found
+     * Role-specific workflow states based on escalation matrix
      */
     private List<String> getCommonWorkflowStates(String level, String recipientRole) {
         List<String> commonStates = new ArrayList<>();
         
-        // Common workflow states that are typically monitored
-        switch (level) {
-            case "LEVEL_ZERO":
-                commonStates.add("PENDINGFORASSIGNMENT");
+        // Role-specific workflow states based on escalation matrix
+        switch (recipientRole) {
+            case "CENTRAL_OPERATIONS_LEAD":
+                // Central Operations Lead should only see "Out of Warranty - Pending with State Manager"
+                if ("LEVEL_TWO".equals(level)) {
+                    commonStates.add("PENDING_ASSIGNMENT_OUT_OF_WARRANTY");
+                }
                 break;
-            case "LEVEL_ONE":
-                commonStates.add("PENDINGFORASSIGNMENT");
-                commonStates.add("PENDING_ASSIGNMENT_SPARE_PART_NEEDED");
+                
+            case "CENTRAL_ONM_PROJECT_MANAGER":
+                // Central OnM Project Manager should only see spare part change states
+                if ("LEVEL_TWO".equals(level)) {
+                    commonStates.add("PENDINGFORASSIGNMENT");
+                    commonStates.add("PENDING_ASSIGNMENT_SPARE_PART_NEEDED");
+                }
                 break;
-            case "LEVEL_TWO":
-                commonStates.add("PENDINGFORASSIGNMENT");
-                commonStates.add("PENDING_ASSIGNMENT_SPARE_PART_NEEDED");
-                commonStates.add("PENDINGRESOLUTION");
-                commonStates.add("PENDING_RESOLUTION_SPARE_PART_NEEDED");
+                
+            case "STATE_POC":
+                // State POC sees all workflow states
+                if ("LEVEL_ZERO".equals(level)) {
+                    commonStates.add("PENDINGFORASSIGNMENT");
+                    commonStates.add("PENDING_ASSIGNMENT_SPARE_PART_NEEDED");
+                    commonStates.add("PENDING_ASSIGNMENT_OUT_OF_WARRANTY");
+                } else if ("LEVEL_ONE".equals(level)) {
+                    commonStates.add("PENDINGFORASSIGNMENT");
+                    commonStates.add("PENDINGRESOLUTION");
+                    commonStates.add("PENDING_ASSIGNMENT_SPARE_PART_NEEDED");
+                    commonStates.add("PENDING_RESOLUTION_SPARE_PART_NEEDED");
+                    commonStates.add("PENDING_RESOLUTION_OUT_OF_WARRANTY");
+                }
                 break;
+                
+            case "CENTRAL_POC":
+                // Central POC sees resolution and out of warranty states
+                if ("LEVEL_ZERO".equals(level)) {
+                    commonStates.add("PENDINGRESOLUTION");
+                    commonStates.add("PENDING_RESOLUTION_SPARE_PART_NEEDED");
+                    commonStates.add("PENDING_ASSIGNMENT_OUT_OF_WARRANTY");
+                    commonStates.add("PENDING_RESOLUTION_OUT_OF_WARRANTY");
+                } else if ("LEVEL_ONE".equals(level)) {
+                    commonStates.add("PENDING_ASSIGNMENT_OUT_OF_WARRANTY");
+                } else if ("LEVEL_TWO".equals(level)) {
+                    commonStates.add("PENDINGRESOLUTION");
+                    commonStates.add("PENDING_RESOLUTION_SPARE_PART_NEEDED");
+                    commonStates.add("PENDING_RESOLUTION_OUT_OF_WARRANTY");
+                }
+                break;
+                
             default:
-                // Fallback to common states
+                // Fallback to generic states
                 commonStates.add("PENDINGFORASSIGNMENT");
                 commonStates.add("PENDINGRESOLUTION");
         }
