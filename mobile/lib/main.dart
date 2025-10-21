@@ -11,6 +11,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:isar/isar.dart';
 import 'package:location/location.dart';
+import 'package:selco/model/appconfig/mdmsResponse.dart';
 
 import 'blocs/app_init/app_init.dart';
 import 'blocs/asset_rejection/asset_rejection.dart';
@@ -130,74 +131,86 @@ class _MainAppState extends State<MainApp> {
             BlocProvider(create: (context) => RejectionBloc(widget.isar)),
           ],
           child: BlocBuilder<AppInitialization, InitState>(
-            builder: (context, state) => state.maybeWhen(
-                orElse: () =>
-                    const Scaffold(body: Center(child: Text('loading...'))),
-                initialized: (appConfig, assetCount, assetType, system,
-                    warranty, brand, solutionDesign, solutionDesignBom) {
-                  final initialModuleList =
-                      appConfig.appConfig!.appConfig?[0].backendInterface;
-                  final languages =
-                      appConfig.appConfig!.appConfig?[0].languages;
-                  var firstLanguage;
-                  firstLanguage = languages?.last.value;
+            builder: (context, state) {
+              Widget buildShell(MdmsResponseModel appConfig) {
+                final initialModuleList =
+                    appConfig.appConfig!.appConfig?[0].backendInterface;
+                final languages = appConfig.appConfig!.appConfig?[0].languages;
+                var firstLanguage;
+                firstLanguage = languages?.last.value;
 
-                  // Get the selected locale from shared preferences, or fallback to the default firstLanguage
-                  return BlocProvider(
-                      create: (context) => LocalizationBloc(widget.isar)
-                        ..add(LocalizationEvent.onSelect(
-                            locale: firstLanguage,
-                            moduleList: initialModuleList)),
-                      child: BlocBuilder<LocalizationBloc, LocalizationState>(
-                          builder: (context, state) {
-                        final selectedLocale =
-                            AppSharedPreferences().getSelectedLocale ??
-                                firstLanguage;
+                // Get the selected locale from shared preferences, or fallback to the default firstLanguage
+                return BlocProvider(
+                    create: (context) => LocalizationBloc(widget.isar)
+                      ..add(LocalizationEvent.onSelect(
+                          locale: firstLanguage,
+                          moduleList: initialModuleList)),
+                    child: BlocBuilder<LocalizationBloc, LocalizationState>(
+                        builder: (context, state) {
+                      final selectedLocale =
+                          AppSharedPreferences().getSelectedLocale ??
+                              firstLanguage;
 
-                        return MaterialApp.router(
-                          scaffoldMessengerKey: scaffoldMessengerKey,
-                          theme: DigitTheme.instance.mobileTheme,
-                          routerDelegate: _approuter.delegate(),
-                          routeInformationParser:
-                              _approuter.defaultRouteParser(),
-                          // Define supported locales based on available languages
-                          supportedLocales: languages != null
-                              ? languages.map((e) {
-                                  final results = e.value.split('_');
+                      return MaterialApp.router(
+                        scaffoldMessengerKey: scaffoldMessengerKey,
+                        theme: DigitTheme.instance.mobileTheme,
+                        routerDelegate: _approuter.delegate(),
+                        routeInformationParser: _approuter.defaultRouteParser(),
+                        // Define supported locales based on available languages
+                        supportedLocales: languages != null
+                            ? languages.map((e) {
+                                final results = e.value.split('_');
 
-                                  return results.isNotEmpty
-                                      ? Locale(results.first, results.last)
-                                      : firstLanguage;
-                                })
-                              : [firstLanguage],
-                          // Define localizations delegates
-                          localizationsDelegates: [
-                            AppLocalizations.getDelegate(
-                                appConfig.appConfig!, widget.isar),
-                            GlobalWidgetsLocalizations.delegate,
-                            GlobalCupertinoLocalizations.delegate,
-                            GlobalMaterialLocalizations.delegate,
-                            scanner_localization.ScannerLocalization
-                                .getDelegate(
-                                    getLocalizationString(
-                                        widget.isar, selectedLocale),
-                                    languages!),
-                            forms_localization.FormLocalization.getDelegate(
+                                return results.isNotEmpty
+                                    ? Locale(results.first, results.last)
+                                    : firstLanguage;
+                              })
+                            : [firstLanguage],
+                        // Define localizations delegates
+                        localizationsDelegates: [
+                          AppLocalizations.getDelegate(
+                              appConfig.appConfig!, widget.isar),
+                          GlobalWidgetsLocalizations.delegate,
+                          GlobalCupertinoLocalizations.delegate,
+                          GlobalMaterialLocalizations.delegate,
+                          scanner_localization.ScannerLocalization.getDelegate(
                               getLocalizationString(
                                   widget.isar, selectedLocale),
-                              languages!, // the same languages list you already have
-                            ),
-                          ],
-                          // Set the locale for the app
-                          locale: languages != null
-                              ? Locale(
-                                  selectedLocale!.split("_").first,
-                                  selectedLocale.split("_").last,
-                                )
-                              : firstLanguage,
-                        );
-                      }));
-                }),
+                              languages!),
+                          forms_localization.FormLocalization.getDelegate(
+                            getLocalizationString(widget.isar, selectedLocale),
+                            languages!, // the same languages list you already have
+                          ),
+                        ],
+                        // Set the locale for the app
+                        locale: languages != null
+                            ? Locale(
+                                selectedLocale!.split("_").first,
+                                selectedLocale.split("_").last,
+                              )
+                            : firstLanguage,
+                      );
+                    }));
+              }
+
+              return state.maybeWhen(
+                orElse: () =>
+                    const Scaffold(body: Center(child: Text('loading...'))),
+                loadingMdms: (appConfig) => buildShell(appConfig),
+                defaulted: (appConfig) => buildShell(appConfig),
+                initialized: (
+                  appConfig,
+                  assetCount,
+                  assetType,
+                  system,
+                  warranty,
+                  brand,
+                  solutionDesign,
+                  solutionDesignBom,
+                ) =>
+                    buildShell(appConfig),
+              );
+            },
           )),
     );
   }
