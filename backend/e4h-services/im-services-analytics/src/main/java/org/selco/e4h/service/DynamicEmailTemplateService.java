@@ -36,38 +36,7 @@ public class DynamicEmailTemplateService {
         // Set timezone to IST for date formatting
         DATE_FORMAT.setTimeZone(TimeZone.getTimeZone("Asia/Kolkata"));
     }
-    
-    /**
-     * Generate role-based dynamic email HTML with multiple escalation levels
-     * Automatically detects role based on which escalation levels have data
-     */
-    public String generateRoleBasedEscalationEmailHTML(Map<String, List<EscalationTicket>> ticketsByLevel, 
-                                                      String recipientName, String recipientRole, 
-                                                      String boundaryLevel, String tenantId, 
-                                                      RequestInfo requestInfo) {
-        try {
-            log.info("Generating role-based escalation email for role: {}, levels: {}, recipient: {}", 
-                recipientRole, ticketsByLevel.keySet(), recipientName);
-            
-            // Load base template
-            String template = loadTemplate();
-            
-            // Prepare template variables
-            Map<String, String> templateVariables = prepareRoleBasedTemplateVariables(
-                ticketsByLevel, recipientName, recipientRole, boundaryLevel, tenantId, requestInfo);
-            
-            // Replace template variables
-            String html = replaceTemplateVariables(template, templateVariables);
-            
-            log.info("Successfully generated role-based escalation email HTML for role: {}", recipientRole);
-            return html;
-            
-        } catch (Exception e) {
-            log.error("Error generating role-based escalation email HTML", e);
-            return generateFallbackEmail(ticketsByLevel, recipientName, boundaryLevel);
-        }
-    }
-    
+
     /**
      * Generate role-based dynamic email HTML with file store IDs for download functionality
      */
@@ -111,18 +80,7 @@ public class DynamicEmailTemplateService {
             throw e;
         }
     }
-    
-    
-    /**
-     * Prepare role-based template variables with dynamic sections
-     */
-    private Map<String, String> prepareRoleBasedTemplateVariables(Map<String, List<EscalationTicket>> ticketsByLevel, 
-                                                                 String recipientName, String recipientRole,
-                                                                 String boundaryLevel, String tenantId,
-                                                                 RequestInfo requestInfo) {
-        return prepareRoleBasedTemplateVariables(ticketsByLevel, recipientName, recipientRole, boundaryLevel, tenantId, requestInfo, null);
-    }
-    
+
     /**
      * Prepare role-based template variables with dynamic sections and file store IDs
      */

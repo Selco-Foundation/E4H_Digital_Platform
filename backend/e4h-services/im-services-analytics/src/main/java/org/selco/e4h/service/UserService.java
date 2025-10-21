@@ -85,11 +85,5 @@ public class UserService {
     public List<User> searchUsersByRoleInCountry(RequestInfo requestInfo, List<String> roleCodes) {
         return searchUsersByRoleAndTenant(requestInfo, "in", roleCodes);
     }
-    
-    /**
-     * Search users by single role and tenant ID (convenience method)
-     */
-    public List<User> searchUsersByRoleAndTenant(RequestInfo requestInfo, String role, String tenantId) {
-        return searchUsersByRoleAndTenant(requestInfo, tenantId, List.of(role));
-    }
+
 }

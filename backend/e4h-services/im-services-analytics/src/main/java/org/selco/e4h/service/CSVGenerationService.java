@@ -74,14 +74,6 @@ public class CSVGenerationService {
     }
     
     /**
-     * Generate CSV filename for weekly summary
-     */
-    public String generateWeeklySummaryCsvFileName(String tenantId) {
-        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
-        return String.format("weekly_summary_%s_%s.csv", tenantId, timestamp);
-    }
-    
-    /**
      * Escape CSV values to handle commas, quotes, and newlines
      */
     private String escapeCsvValue(String value) {
@@ -113,108 +105,5 @@ public class CSVGenerationService {
             log.warn("Error formatting date: {}", timestamp, e);
             return String.valueOf(timestamp);
         }
-    }
-    
-    /**
-     * Generate CSV content for weekly summary (with both parts)
-     */
-    public String generateWeeklySummaryCsv(List<EscalationTicket> previouslyEscalatedTickets, 
-                                         List<EscalationTicket> currentlyInBreachTickets) {
-        try {
-            log.info("Generating weekly summary CSV for {} previously escalated + {} currently in breach tickets", 
-                    previouslyEscalatedTickets.size(), currentlyInBreachTickets.size());
-            
-            StringBuilder csvContent = new StringBuilder();
-            
-            // Part 1: Previously Escalated Tickets Now Resolved
-            csvContent.append("PREVIOUS WEEK ESCALATIONS - CURRENT STATUS\n");
-            csvContent.append("=========================================\n");
-            csvContent.append("Ticket Number,District,Block,Health Facility Name,Health Facility Type,");
-            csvContent.append("Issue Type,Issue Sub-Type,Priority,Mapped Vendor,Ticket Filed Date,");
-            csvContent.append("SLA Breach,Current Status,Comments\n");
-            
-            for (EscalationTicket ticket : previouslyEscalatedTickets) {
-                csvContent.append(escapeCsvValue(ticket.getTicketNumber())).append(",");
-                csvContent.append(escapeCsvValue(ticket.getDistrict())).append(",");
-                csvContent.append(escapeCsvValue(ticket.getBlock())).append(",");
-                csvContent.append(escapeCsvValue(ticket.getHealthFacilityName())).append(",");
-                csvContent.append(escapeCsvValue(ticket.getHealthFacilityType())).append(",");
-                csvContent.append(escapeCsvValue(ticket.getIssueType())).append(",");
-                csvContent.append(escapeCsvValue(ticket.getIssueSubType())).append(",");
-                csvContent.append(escapeCsvValue(ticket.getPriority())).append(",");
-                csvContent.append(escapeCsvValue(ticket.getMappedVendor())).append(",");
-                csvContent.append(escapeCsvValue(formatDate(ticket.getTicketFiledDate()))).append(",");
-                csvContent.append(escapeCsvValue(ticket.getSlaBreachDetails())).append(",");
-                csvContent.append(escapeCsvValue(ticket.getCurrentTicketStatus())).append(",");
-                csvContent.append(escapeCsvValue(ticket.getComments())).append("\n");
-            }
-            
-            csvContent.append("\n\n");
-            
-            // Part 2: Currently in Breach Tickets (escalated more than one week ago)
-            csvContent.append("CURRENTLY IN BREACH - ESCALATED MORE THAN ONE WEEK AGO\n");
-            csvContent.append("=====================================================\n");
-            csvContent.append("Ticket Number,District,Block,Health Facility Name,Health Facility Type,");
-            csvContent.append("Issue Type,Issue Sub-Type,Priority,Mapped Vendor,Ticket Filed Date,");
-            csvContent.append("SLA Breach,Current Status,Comments,Breach Duration (Weeks)\n");
-            
-            for (EscalationTicket ticket : currentlyInBreachTickets) {
-                csvContent.append(escapeCsvValue(ticket.getTicketNumber())).append(",");
-                csvContent.append(escapeCsvValue(ticket.getDistrict())).append(",");
-                csvContent.append(escapeCsvValue(ticket.getBlock())).append(",");
-                csvContent.append(escapeCsvValue(ticket.getHealthFacilityName())).append(",");
-                csvContent.append(escapeCsvValue(ticket.getHealthFacilityType())).append(",");
-                csvContent.append(escapeCsvValue(ticket.getIssueType())).append(",");
-                csvContent.append(escapeCsvValue(ticket.getIssueSubType())).append(",");
-                csvContent.append(escapeCsvValue(ticket.getPriority())).append(",");
-                csvContent.append(escapeCsvValue(ticket.getMappedVendor())).append(",");
-                csvContent.append(escapeCsvValue(formatDate(ticket.getTicketFiledDate()))).append(",");
-                csvContent.append(escapeCsvValue(ticket.getSlaBreachDetails())).append(",");
-                csvContent.append(escapeCsvValue(ticket.getCurrentTicketStatus())).append(",");
-                csvContent.append(escapeCsvValue(ticket.getComments())).append(",");
-                csvContent.append(escapeCsvValue(calculateBreachDurationInWeeksForCSV(ticket))).append("\n");
-            }
-            
-            csvContent.append("\n\nSUMMARY\n");
-            csvContent.append("=======\n");
-            csvContent.append("Previously Escalated Tickets (Last Week): ").append(previouslyEscalatedTickets.size()).append("\n");
-            csvContent.append("Currently in Breach Tickets: ").append(currentlyInBreachTickets.size()).append("\n");
-            csvContent.append("Total Unique Tickets: ").append(previouslyEscalatedTickets.size() + currentlyInBreachTickets.size()).append("\n");
-            
-            log.info("Successfully generated weekly summary CSV with {} previously escalated + {} currently in breach tickets", 
-                    previouslyEscalatedTickets.size(), currentlyInBreachTickets.size());
-            return csvContent.toString();
-            
-        } catch (Exception e) {
-            log.error("Error generating weekly summary CSV", e);
-            return "Ticket Number,District,Block,Health Facility Name,Health Facility Type," +
-                    "Issue Type,Issue Sub-Type,Priority,Mapped Vendor,Ticket Filed Date,SLA Breach,Status,Comments\n";
-        }
-    }
-    
-    /**
-     * Generate CSV content for weekly summary (legacy method for backward compatibility)
-     */
-    public String generateWeeklySummaryCsv(List<EscalationTicket> tickets) {
-        // For backward compatibility, create empty list for currently in breach
-        return generateWeeklySummaryCsv(tickets, new ArrayList<>());
-    }
-    
-    /**
-     * Calculate breach duration in weeks (CSV version)
-     */
-    private String calculateBreachDurationInWeeksForCSV(EscalationTicket ticket) {
-        try {
-            if (ticket.getSlaBreachTime() != null) {
-                long currentTime = System.currentTimeMillis();
-                long breachTime = ticket.getSlaBreachTime();
-                long durationInMs = currentTime - breachTime;
-                long weeks = durationInMs / (7 * 24 * 60 * 60 * 1000L);
-                return weeks + " weeks";
-            }
-        } catch (Exception e) {
-            log.warn("Error calculating breach duration for ticket: {}", ticket.getIncidentId(), e);
-        }
-        return "Unknown";
     }
 }
