@@ -312,7 +312,6 @@ public class PrioritySLAService {
                 long nextStateTime = (i + 1) < processInstances.size() ? processInstances.get(i + 1).getAuditDetails().getCreatedTime()
                         : Instant.now().toEpochMilli();
 
-                remainingTotalSla += calculateBusinessMillis(prevStateTime,nextStateTime, businessHours);
                 long currentStateTimeSpent = calculateBusinessMillis(prevStateTime, nextStateTime, businessHours);
                 long currentStateDefinedSla = getDurationFromMap(slaMap, tenantId, businessService, state).toMillis();
                 if((i+1) >= processInstances.size() || currentStateDefinedSla-currentStateTimeSpent<0){
