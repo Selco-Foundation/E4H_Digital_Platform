@@ -35,7 +35,6 @@ public class ElasticSearchClient {
     private String phcIndex;
 
     private static final String SEARCH_PATH = "_search";
-    private static final String INDEX_NAME = "computed-sla-im-services-write";
     private static final String OLD_INDEX_NAME = "im-services";
     private String INDEX_NAME;
     private static final String INDEX_NAME_PHC = "phc-master-list-new-2";
