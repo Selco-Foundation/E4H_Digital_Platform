@@ -25390,7 +25390,7 @@
                     "message": "Measured Value Array is required"
                   }
                 ],
-                "section": "Measurement with Grid OFF + AJB MCB OFF — Voc (in Volts)",
+                "section": "Measurement with Module MCB OFF — Voc (in Volts)",
                 "sectionDescription": ""
               },
               {
@@ -25561,7 +25561,7 @@
                     "message": "Measured Value Array is required"
                   }
                 ],
-                "section": "Measurement with Grid OFF + AJB MCB ON — Vmp (in Volts)",
+                "section": "Measurement with Module MCB ON — Vmp (in Volts)",
                 "sectionDescription": ""
               },
               {
@@ -25731,7 +25731,7 @@
                     "message": "Measured Value Array is required"
                   }
                 ],
-                "section": "Measurement with Grid OFF + AJB MCB ON — Imp (in Amperes)",
+                "section": "Measurement with Module MCB ON — Imp (in Amperes)",
                 "sectionDescription": ""
               },
               {
@@ -26458,7 +26458,7 @@
           {
             "page": "SystemFunctionalityParameters_2",
             "type": "object",
-            "label": "PCU/Inverter display & setting (For both 1-Phase & 3-Phase connectivity)",
+            "label": "PCU/Inverter Configuration setting (For both 1-Phase & 3-Phase connectivity)",
             "order": 2,
             "description": "",
             "actionLabel": "Submit",
@@ -26534,7 +26534,7 @@
                     "message": "Grid Export Feature is required"
                   }
                 ],
-                "section": "PCU/Inverter display & setting (For both 1-Phase & 3-Phase connectivity)",
+                "section": "PCU/Inverter Configuration setting (For both 1-Phase & 3-Phase connectivity)",
                 "sectionDescription": ""
               },
               {
@@ -26561,7 +26561,7 @@
                     "message": "Battery Settings (Ah) is required"
                   }
                 ],
-                "section": "PCU/Inverter display & setting (For both 1-Phase & 3-Phase connectivity)",
+                "section": "PCU/Inverter Configuration setting (For both 1-Phase & 3-Phase connectivity)",
                 "sectionDescription": ""
               },
               {
@@ -26603,7 +26603,7 @@
                     "message": "Battery Type is required"
                   }
                 ],
-                "section": "PCU/Inverter display & setting (For both 1-Phase & 3-Phase connectivity)",
+                "section": "PCU/Inverter Configuration setting (For both 1-Phase & 3-Phase connectivity)",
                 "sectionDescription": ""
               },
               {
@@ -26641,7 +26641,7 @@
                     "message": "The load is running on is required"
                   }
                 ],
-                "section": "PCU/Inverter display & setting (For both 1-Phase & 3-Phase connectivity)",
+                "section": "PCU/Inverter display (For both 1-Phase & 3-Phase connectivity)",
                 "sectionDescription": ""
               },
               {
@@ -27397,7 +27397,7 @@
                     "message": "Measured Value is required"
                   }
                 ],
-                "section": "Earth pit tests (standalone before connecting to system): DC Earthing",
+                "section": "Earth pit resistance tests: DC Earthing",
                 "sectionDescription": ""
               },
               {
@@ -27443,7 +27443,7 @@
                     "message": "Measured Value is required"
                   }
                 ],
-                "section": "Earth pit tests (standalone before connecting to system): AC Earthing",
+                "section": "Earth pit resistance tests: AC Earthing",
                 "sectionDescription": ""
               },
               {
@@ -27489,7 +27489,7 @@
                     "message": "Measured Value is required"
                   }
                 ],
-                "section": "Earth pit tests (standalone before connecting to system): Lightning arrester-1",
+                "section": "Earth pit resistance tests: Lightning arrester-1",
                 "sectionDescription": ""
               },
               {
@@ -27535,7 +27535,7 @@
                     "message": "Measured Value is required"
                   }
                 ],
-                "section": "Earth pit tests (standalone before connecting to system): Lightning arrester-2",
+                "section": "Earth pit resistance tests: Lightning arrester-2",
                 "sectionDescription": ""
               },
               {
@@ -28648,7 +28648,7 @@
                     "message": "Measured Value Array is required"
                   }
                 ],
-                "section": "Measurement with Grid OFF + AJB MCB OFF — Voc (in Volts)",
+                "section": "Measurement with Module MCB OFF — Voc (in Volts)",
                 "sectionDescription": ""
               },
               {
@@ -28819,7 +28819,7 @@
                     "message": "Measured Value Array is required"
                   }
                 ],
-                "section": "Measurement with Grid OFF + AJB MCB ON — Vmp (in Volts)",
+                "section": "Measurement with Module MCB ON — Vmp (in Volts)",
                 "sectionDescription": ""
               },
               {
@@ -28989,7 +28989,7 @@
                     "message": "Measured Value Array is required"
                   }
                 ],
-                "section": "Measurement with Grid OFF + AJB MCB ON — Imp (in Amperes)",
+                "section": "Measurement with Module MCB ON — Imp (in Amperes)",
                 "sectionDescription": ""
               },
               {
@@ -31338,7 +31338,7 @@
                     "message": "Measured Value is required"
                   }
                 ],
-                "section": "Earth pit tests (standalone before connecting to system): DC Earthing",
+                "section": "Earth pit resistance tests: DC Earthing",
                 "sectionDescription": ""
               },
               {
@@ -31384,7 +31384,7 @@
                     "message": "Measured Value is required"
                   }
                 ],
-                "section": "Earth pit tests (standalone before connecting to system): AC Earthing",
+                "section": "Earth pit resistance tests: AC Earthing",
                 "sectionDescription": ""
               },
               {
@@ -31430,7 +31430,7 @@
                     "message": "Measured Value is required"
                   }
                 ],
-                "section": "Earth pit tests (standalone before connecting to system): Lightning arrester-1",
+                "section": "Earth pit resistance tests: Lightning arrester-1",
                 "sectionDescription": ""
               },
               {
@@ -31476,7 +31476,7 @@
                     "message": "Measured Value is required"
                   }
                 ],
-                "section": "Earth pit tests (standalone before connecting to system): Lightning arrester-2",
+                "section": "Earth pit resistance tests: Lightning arrester-2",
                 "sectionDescription": ""
               },
               {
@@ -40579,7 +40579,7 @@
                 "fieldName": "dc_array_each_module_capacity_wp"
               },
               {
-                "section": "Array Parameters (CCU Input Side) — Measurement with Panel MCB ON (wait 20 s) — Vmp (in Volts)",
+                "section": "Array Parameters (CCU Input Side) — Measurement with Panel MCB OFF",
                 "type": "string",
                 "format": "text",
                 "label": "Measured Value (String 1)",
@@ -40589,7 +40589,7 @@
                 "readOnly": false,
                 "deleteFlag": false,
                 "includeInForm": true,
-                "fieldName": "dc_on_vmp_rn_string1_mv",
+                "fieldName": "dc_off_vmp_rn_string1_mv",
                 "validations": [
                   {
                     "type": "required",
@@ -40608,7 +40608,7 @@
                 "readOnly": true,
                 "deleteFlag": false,
                 "includeInForm": true,
-                "fieldName": "dc_on_vmp_rn_string1_uom"
+                "fieldName": "dc_off_vmp_rn_string1_uom"
               },
               {
                 "type": "string",
@@ -40620,7 +40620,7 @@
                 "readOnly": false,
                 "deleteFlag": false,
                 "includeInForm": true,
-                "fieldName": "dc_on_vmp_rn_string2_mv",
+                "fieldName": "dc_off_vmp_rn_string2_mv",
                 "validations": [
                   {
                     "type": "required",
@@ -40639,7 +40639,7 @@
                 "readOnly": true,
                 "deleteFlag": false,
                 "includeInForm": true,
-                "fieldName": "dc_on_vmp_rn_string2_uom"
+                "fieldName": "dc_off_vmp_rn_string2_uom"
               },
               {
                 "type": "string",
@@ -40651,7 +40651,7 @@
                 "readOnly": false,
                 "deleteFlag": false,
                 "includeInForm": true,
-                "fieldName": "dc_on_vmp_rn_array_mv",
+                "fieldName": "dc_off_vmp_rn_array_mv",
                 "validations": [
                   {
                     "type": "required",
@@ -40670,6 +40670,100 @@
                 "readOnly": true,
                 "deleteFlag": false,
                 "includeInForm": true,
+                "fieldName": "dc_off_vmp_rn_array_uom"
+              },
+              {
+                "section": "Array Parameters (CCU Input Side) — Measurement with Panel MCB ON (wait 20 s) — Vmp (in Volts)",
+                "type": "string",
+                "format": "text",
+                "label": "Measured Value (String 1)",
+                "value": "",
+                "order": 15,
+                "hidden": false,
+                "readOnly": false,
+                "deleteFlag": false,
+                "includeInForm": true,
+                "fieldName": "dc_on_vmp_rn_string1_mv",
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Measured Value is required"
+                  }
+                ]
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "UOM",
+                "value": "V",
+                "order": 16,
+                "hidden": false,
+                "readOnly": true,
+                "deleteFlag": false,
+                "includeInForm": true,
+                "fieldName": "dc_on_vmp_rn_string1_uom"
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "Measured Value (String 2)",
+                "value": "",
+                "order": 17,
+                "hidden": false,
+                "readOnly": false,
+                "deleteFlag": false,
+                "includeInForm": true,
+                "fieldName": "dc_on_vmp_rn_string2_mv",
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Measured Value is required"
+                  }
+                ]
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "UOM",
+                "value": "V",
+                "order": 18,
+                "hidden": false,
+                "readOnly": true,
+                "deleteFlag": false,
+                "includeInForm": true,
+                "fieldName": "dc_on_vmp_rn_string2_uom"
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "Measured Value (Array)",
+                "value": "",
+                "order": 19,
+                "hidden": false,
+                "readOnly": false,
+                "deleteFlag": false,
+                "includeInForm": true,
+                "fieldName": "dc_on_vmp_rn_array_mv",
+                "validations": [
+                  {
+                    "type": "required",
+                    "value": true,
+                    "message": "Measured Value is required"
+                  }
+                ]
+              },
+              {
+                "type": "string",
+                "format": "text",
+                "label": "UOM",
+                "value": "V",
+                "order": 20,
+                "hidden": false,
+                "readOnly": true,
+                "deleteFlag": false,
+                "includeInForm": true,
                 "fieldName": "dc_on_vmp_rn_array_uom"
               },
               {
@@ -40678,7 +40772,7 @@
                 "format": "text",
                 "label": "Measured Value (String 1)",
                 "value": "",
-                "order": 15,
+                "order": 21,
                 "hidden": false,
                 "readOnly": false,
                 "deleteFlag": false,
@@ -40697,7 +40791,7 @@
                 "format": "text",
                 "label": "UOM",
                 "value": "A",
-                "order": 16,
+                "order": 22,
                 "hidden": false,
                 "readOnly": true,
                 "deleteFlag": false,
@@ -40709,7 +40803,7 @@
                 "format": "text",
                 "label": "Measured Value (String 2)",
                 "value": "",
-                "order": 17,
+                "order": 23,
                 "hidden": false,
                 "readOnly": false,
                 "deleteFlag": false,
@@ -40728,7 +40822,7 @@
                 "format": "text",
                 "label": "UOM",
                 "value": "A",
-                "order": 18,
+                "order": 24,
                 "hidden": false,
                 "readOnly": true,
                 "deleteFlag": false,
@@ -40740,7 +40834,7 @@
                 "format": "text",
                 "label": "Measured Value (Array)",
                 "value": "",
-                "order": 19,
+                "order": 25,
                 "hidden": false,
                 "readOnly": false,
                 "deleteFlag": false,
@@ -40759,7 +40853,7 @@
                 "format": "text",
                 "label": "UOM",
                 "value": "A",
-                "order": 20,
+                "order": 26,
                 "hidden": false,
                 "readOnly": true,
                 "deleteFlag": false,
@@ -40772,7 +40866,7 @@
                 "format": "text",
                 "label": "Measured Value — Battery Bank Voltage",
                 "value": "",
-                "order": 21,
+                "order": 27,
                 "hidden": false,
                 "readOnly": false,
                 "deleteFlag": false,
@@ -40791,7 +40885,7 @@
                 "format": "text",
                 "label": "UOM",
                 "value": "V",
-                "order": 22,
+                "order": 28,
                 "hidden": false,
                 "readOnly": true,
                 "deleteFlag": false,
@@ -40803,7 +40897,7 @@
                 "format": "text",
                 "label": "Measured Value — Battery Bank Current",
                 "value": "",
-                "order": 23,
+                "order": 29,
                 "hidden": false,
                 "readOnly": false,
                 "deleteFlag": false,
@@ -40822,7 +40916,7 @@
                 "format": "text",
                 "label": "UOM",
                 "value": "A",
-                "order": 24,
+                "order": 30,
                 "hidden": false,
                 "readOnly": true,
                 "deleteFlag": false,
@@ -40835,7 +40929,7 @@
                 "format": "text",
                 "label": "Measured Value — Load voltage/CCU output voltage",
                 "value": "",
-                "order": 25,
+                "order": 31,
                 "hidden": false,
                 "readOnly": false,
                 "deleteFlag": false,
@@ -40854,7 +40948,7 @@
                 "format": "text",
                 "label": "UOM",
                 "value": "V",
-                "order": 26,
+                "order": 32,
                 "hidden": false,
                 "readOnly": true,
                 "deleteFlag": false,
@@ -40866,7 +40960,7 @@
                 "format": "text",
                 "label": "Measured Value — CCU output current at full load (All solar loads turned on for 5 minutes)",
                 "value": "",
-                "order": 27,
+                "order": 33,
                 "hidden": false,
                 "readOnly": false,
                 "deleteFlag": false,
@@ -40885,7 +40979,7 @@
                 "format": "text",
                 "label": "UOM",
                 "value": "A",
-                "order": 28,
+                "order": 34,
                 "hidden": false,
                 "readOnly": true,
                 "deleteFlag": false,
@@ -40898,7 +40992,7 @@
                 "format": "text",
                 "label": "Load-disconnect Voltage — Set Value",
                 "value": "",
-                "order": 29,
+                "order": 35,
                 "hidden": false,
                 "readOnly": false,
                 "deleteFlag": false,
@@ -40910,7 +41004,7 @@
                 "format": "text",
                 "label": "UOM",
                 "value": "V",
-                "order": 30,
+                "order": 36,
                 "hidden": false,
                 "readOnly": true,
                 "deleteFlag": false,
@@ -40922,7 +41016,7 @@
                 "format": "text",
                 "label": "Load-Reconnect Voltage — Set Value",
                 "value": "",
-                "order": 31,
+                "order": 37,
                 "hidden": false,
                 "readOnly": false,
                 "deleteFlag": false,
@@ -40934,7 +41028,7 @@
                 "format": "text",
                 "label": "UOM",
                 "value": "V",
-                "order": 32,
+                "order": 38,
                 "hidden": false,
                 "readOnly": true,
                 "deleteFlag": false,
@@ -40947,7 +41041,7 @@
                 "format": "dropdown",
                 "label": "Battery Type (tick one)",
                 "value": "",
-                "order": 33,
+                "order": 39,
                 "hidden": false,
                 "readOnly": false,
                 "deleteFlag": false,
@@ -40973,7 +41067,7 @@
                 "type": "string",
                 "format": "dropdown",
                 "label": "Is the orientation on solar system’s basic operational instructions given to the health center POC?",
-                "order": 34,
+                "order": 40,
                 "value": "",
                 "hidden": false,
                 "tooltip": "",
@@ -41011,7 +41105,7 @@
                 "type": "string",
                 "format": "text",
                 "label": "Remarks",
-                "order": 35,
+                "order": 41,
                 "value": "",
                 "hidden": false,
                 "tooltip": "",
@@ -41036,7 +41130,7 @@
                 "type": "string",
                 "format": "dropdown",
                 "label": "Is the orientation on solar system’s basic routine maintenances given to the health center POC?",
-                "order": 36,
+                "order": 42,
                 "value": "",
                 "hidden": false,
                 "tooltip": "",
@@ -41074,7 +41168,7 @@
                 "type": "string",
                 "format": "text",
                 "label": "Remarks",
-                "order": 37,
+                "order": 43,
                 "value": "",
                 "hidden": false,
                 "tooltip": "",
@@ -41099,7 +41193,7 @@
                 "type": "string",
                 "format": "dropdown",
                 "label": "Are the stickers containing POCs pasted in the control room?",
-                "order": 38,
+                "order": 44,
                 "value": "",
                 "hidden": false,
                 "tooltip": "",
@@ -41137,7 +41231,7 @@
                 "type": "string",
                 "format": "text",
                 "label": "Remarks",
-                "order": 39,
+                "order": 45,
                 "value": "",
                 "hidden": false,
                 "tooltip": "",
@@ -41162,7 +41256,7 @@
                 "type": "string",
                 "format": "dropdown",
                 "label": "Are the Do’s and Don’ts posters with helpline numbers pasted in the control room?",
-                "order": 40,
+                "order": 46,
                 "value": "",
                 "hidden": false,
                 "tooltip": "",
@@ -41200,7 +41294,7 @@
                 "type": "string",
                 "format": "text",
                 "label": "Remarks",
-                "order": 41,
+                "order": 47,
                 "value": "",
                 "hidden": false,
                 "tooltip": "",
@@ -41225,7 +41319,7 @@
                 "type": "string",
                 "format": "text",
                 "label": "Additional remarks",
-                "order": 42,
+                "order": 48,
                 "value": "",
                 "hidden": false,
                 "tooltip": "",
