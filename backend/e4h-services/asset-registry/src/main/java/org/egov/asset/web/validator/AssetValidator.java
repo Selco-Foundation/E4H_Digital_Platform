@@ -88,10 +88,9 @@ public class AssetValidator {
 
         if (SYSTEM_DC.equals(systemType)) {
             validateDCSystem(inverterDetails, errorMaps);
-        } else if (SYSTEM_AC_OFF_GRID.equals(systemType)) {
+        }
+        if (SYSTEM_AC_OFF_GRID.equals(systemType)) {
             validateACOffGridSystem(inverterDetails, errorMaps);
-        } else {
-            errorMaps.put(ErrorConstants.ASSET_SYSTEM_TYPE_INVALID_CODE, ErrorConstants.ASSET_SYSTEM_TYPE_INVALID_MSG);
         }
     }
 
@@ -168,10 +167,9 @@ public class AssetValidator {
 
         if (SYSTEM_DC.equals(systemType)) {
             validateDCSystemBattery(batteryDetails, errorMap);
-        } else if (SYSTEM_AC_OFF_GRID.equals(systemType)) {
+        }
+        if (SYSTEM_AC_OFF_GRID.equals(systemType)) {
             validateACOffGridSystemBattery(batteryDetails, errorMap);
-        } else {
-            errorMap.put(ErrorConstants.ASSET_SYSTEM_TYPE_INVALID_CODE, ErrorConstants.ASSET_SYSTEM_TYPE_INVALID_MSG);
         }
     }
 
