@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.egov.activity.config.ActivityConfiguration;
 import org.egov.activity.repository.ActivityFacilityRepository;
+import org.egov.activity.service.ActivityService;
 import org.egov.activity.service.ServiceRequestRepository;
 import org.egov.activity.util.MDMSUtils;
 import org.egov.activity.web.models.*;
@@ -37,6 +38,7 @@ public class BomValidator {
     private final ServiceRequestClient serviceRequestRepository;
 
     private ServiceRequestRepository serviceRequest;
+    private ActivityService activityService;
 
     private final ActivityConfiguration activityConfiguration;
 
@@ -55,10 +57,11 @@ public class BomValidator {
     @Qualifier("objectMapper")
     ObjectMapper mapper;
 
-    public BomValidator(ServiceRequestClient serviceRequestRepository, ActivityConfiguration activityConfiguration, ServiceRequestRepository serviceRequest){
+    public BomValidator(ServiceRequestClient serviceRequestRepository, ActivityConfiguration activityConfiguration, ServiceRequestRepository serviceRequest, ActivityService activityService){
         this.serviceRequestRepository = serviceRequestRepository;
         this.activityConfiguration = activityConfiguration;
         this.serviceRequest = serviceRequest;
+        this.activityService = activityService;
     }
 
     public void validateCreateBomRequest(BomBulkRequest request) {
@@ -100,16 +103,27 @@ public class BomValidator {
                 throw new CustomException("BOM_ASSIGN_USER", "Assign User is mandatory");
             }
 
-            if (billOfMaterial.getFacilityId() == null) {
-                log.error("Facility ID is mandatory in FieldPlans");
-                throw new CustomException("Activity_FACILITY", "Facility ID is mandatory");
+//            if (billOfMaterial.getFacilityId() == null) {
+//                log.error("Facility ID is mandatory in FieldPlans");
+//                throw new CustomException("Activity_FACILITY", "Facility ID is mandatory");
+//            }
+//
+//            // Get existing facility with facilityId from facility service
+//            Facility existingfacility = getFacilityById(billOfMaterial.getFacilityId());
+//            if (existingfacility == null) {
+//                log.error("Facility ID do not exist");
+//                throw new CustomException("Activity_ERROR", "Facility ID do not exist");
+//            }
+
+            if (billOfMaterial.getActivityFacilityId() == null) {
+                log.error("Activity Facility ID is mandatory in FieldPlans");
+                throw new CustomException("Activity_FACILITY", "Activity Facility ID is mandatory");
             }
 
-            // Get existing facility with facilityId from facility service
-            Facility existingfacility = getFacilityById(billOfMaterial.getFacilityId());
-            if (existingfacility == null) {
-                log.error("Facility ID do not exist");
-                throw new CustomException("Activity_ERROR", "Facility ID do not exist");
+            // 1. Fetch the existing facility
+            List<ActivityFacility> activityFacilities = getActivityFacilityById(request.getRequestInfo(), billOfMaterial);
+            if (activityFacilities == null || activityFacilities.isEmpty()) {
+                throw new CustomException("ACTIVITY_FACILITY_NOT_FOUND", "Activity Facility not found with ID: " + billOfMaterial.getActivityFacilityId());
             }
 
             if (StringUtils.isBlank(billOfMaterial.getTenantId())) {
@@ -310,5 +324,23 @@ public class BomValidator {
             return facilityList.getFacilities().get(0);
         }
         return null;
+    }
+
+    public List<ActivityFacility> getActivityFacilityById(RequestInfo requestInfo, BillOfMaterial billOfMaterial){
+        ActivityFacilitySearchCriteria searchCriteria = ActivityFacilitySearchCriteria.builder()
+                .ids(List.of(billOfMaterial.getActivityFacilityId()))
+                .tenantId(activityConfiguration.getTenantId())
+                .build();
+
+        ActivityFacilitySearchRequest searchRequest = ActivityFacilitySearchRequest.builder()
+                .criteria(searchCriteria)
+                .requestInfo(requestInfo)
+                .build();
+
+        List<ActivityFacility> activityFacilities = activityService.searchActivityFacility(searchRequest, activityConfiguration.getMaxLimit(), activityConfiguration.getDefaultOffset(),
+                activityConfiguration.getTenantId(), false, null);
+
+        return activityFacilities;
+
     }
 }
