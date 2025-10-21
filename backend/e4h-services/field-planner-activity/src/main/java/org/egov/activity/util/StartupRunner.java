@@ -1,5 +1,6 @@
 package org.egov.activity.util;
 
+import lombok.extern.slf4j.Slf4j;
 import org.egov.activity.config.ActivityConfiguration;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
@@ -9,6 +10,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Component
+@Slf4j
 public class StartupRunner implements CommandLineRunner {
 
     private final ActivityConfiguration activityConfiguration;
@@ -20,7 +22,7 @@ public class StartupRunner implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        System.out.println("➡ Application démarrée !");
+        log.info("Application started - BOM configuration loaded");
         configMap.put("AC_OFF_GRID", activityConfiguration.getBomACOffGridSinglePhase());
         configMap.put("AC_OFF_GRID_THREE_PHASE", activityConfiguration.getBomACOffGridSThreePhase());
         configMap.put("HYBRID_RMS_SINGLE_PHASE", activityConfiguration.getBomHybridSinglePhase());
