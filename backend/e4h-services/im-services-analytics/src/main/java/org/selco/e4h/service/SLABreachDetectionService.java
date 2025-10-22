@@ -4,14 +4,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.request.RequestInfo;
 import org.selco.e4h.util.ElasticSearchClient;
-import org.selco.e4h.web.models.EscalationInfo;
 import org.selco.e4h.web.models.EscalationLevel;
 import org.selco.e4h.web.models.EscalationTicket;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -193,7 +190,7 @@ public class SLABreachDetectionService {
                 log.debug("Ticket {} breach duration: {} hours, threshold: {} hours", 
                     ticket.getIncidentId(), breachDurationHours, maxBreachHours);
                 
-                return breachDurationHours > maxBreachHours;
+                return breachDurationHours >= maxBreachHours;
             }
         }
         
@@ -209,7 +206,7 @@ public class SLABreachDetectionService {
                 log.debug("Ticket {} total breach duration: {} hours, threshold: {} hours", 
                     ticket.getIncidentId(), breachDurationHours, maxBreachHours);
                 
-                return breachDurationHours > maxBreachHours;
+                return breachDurationHours >= maxBreachHours;
             }
         }
         
@@ -230,7 +227,7 @@ public class SLABreachDetectionService {
         // Filter by tenant
         Map<String, Object> tenantFilter = new HashMap<>();
         Map<String, Object> tenantWildcard = new HashMap<>();
-        tenantWildcard.put("Data.incident.tenantId.keyword", tenantId + "*");
+        tenantWildcard.put("Data.tenantId.keyword", tenantId + "*");
         tenantFilter.put("wildcard", tenantWildcard);
         must.add(tenantFilter);
 
@@ -352,8 +349,14 @@ public class SLABreachDetectionService {
         } else if ("number".equalsIgnoreCase(strategy)) {
             return buildNumberBasedSLAFilter(escalationLevel, config);
         } else {
-            log.warn("Unknown breach calculation strategy: {} for level: {}", strategy, escalationLevel);
-            return buildNumberBasedSLAFilter(escalationLevel, config);
+            // Default strategy based on escalation level
+            if ("LEVEL_ZERO".equals(escalationLevel)) {
+                log.warn("Unknown strategy for LEVEL_ZERO: {}, using percentage-based (70% threshold)", strategy);
+                return buildPercentageBasedSLAFilter(escalationLevel, config);
+            } else {
+                log.warn("Unknown strategy for {}: {}, using number-based (0% threshold)", escalationLevel, strategy);
+                return buildNumberBasedSLAFilter(escalationLevel, config);
+            }
         }
     }
     
