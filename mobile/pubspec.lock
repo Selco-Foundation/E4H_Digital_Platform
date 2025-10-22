@@ -486,10 +486,10 @@ packages:
     dependency: "direct main"
     description:
       name: digit_forms_engine
-      sha256: c52c38bb88792e5ddbec947ef9104b30ae52212b950b7ac72e9dcf1afa28a7fd
+      sha256: "5f1f0a98b67892423f83d4e757d68a087d08f68a7300722f3345b81f158b0145"
       url: "https://pub.dev"
     source: hosted
-    version: "0.0.6-dev"
+    version: "0.0.9-dev"
   digit_formula_parser:
     dependency: transitive
     description:
@@ -502,10 +502,10 @@ packages:
     dependency: "direct main"
     description:
       name: digit_scanner
-      sha256: ce162604bb91505444208c7fd853bcd89bf353ea25e907860ce28f2da4adf9b4
+      sha256: "8140d06998b796743f959c9c29b6e5715315435da1847f9d33c5fc9b836ce290"
       url: "https://pub.dev"
     source: hosted
-    version: "1.0.6+3"
+    version: "1.0.6+4"
   digit_ui_components:
     dependency: "direct main"
     description:

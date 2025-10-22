@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:ui' show DartPluginRegistrant;
 
 import 'package:flutter/material.dart';
@@ -50,13 +51,23 @@ const int _svcNotifId = 728331;
 
 final FlutterLocalNotificationsPlugin _fln = FlutterLocalNotificationsPlugin();
 
-// Hold UI-side subscriptions so they never get GC'd
 StreamSubscription? _uiErrSub;
 StreamSubscription? _uiDoneSub;
 StreamSubscription? _uiRejErrSub;
 StreamSubscription? _uiRejDoneSub;
 
-/// Call this from main.dart before runApp()
+Future<void> ensureAndroidNotificationPermission() async {
+  if (!Platform.isAndroid) return;
+
+  final androidPlugin = _fln.resolvePlatformSpecificImplementation<
+      AndroidFlutterLocalNotificationsPlugin>();
+
+  final granted = await androidPlugin?.areNotificationsEnabled() ?? true;
+  if (!granted) {
+    await androidPlugin?.requestNotificationsPermission();
+  }
+}
+
 Future<void> setupBackgroundService() async {
   WidgetsFlutterBinding.ensureInitialized();
   await envConfig.initialize(); // UI isolate init
@@ -170,6 +181,7 @@ class BackgroundServiceController {
     if (await service.isRunning()) {
       debugPrint('[UI] service already running -> invoke directly');
 
+      await ensureAndroidNotificationPermission();
       service.invoke(kCmdForeground, {'content': 'Preparing…'});
 
       service.invoke(kMethodSubmit, {
@@ -214,6 +226,7 @@ class BackgroundServiceController {
       debugPrint('[UI] service already running -> invoke REJECTION directly');
 
       // Make sure the notification is visible again.
+      await ensureAndroidNotificationPermission();
       service.invoke(kCmdForeground, {'content': 'Preparing rejection…'});
 
       service.invoke(kMethodReject, <String, dynamic>{
