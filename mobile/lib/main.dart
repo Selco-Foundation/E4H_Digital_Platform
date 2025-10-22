@@ -11,7 +11,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:isar/isar.dart';
 import 'package:location/location.dart';
-import 'package:selco/model/appconfig/mdmsResponse.dart';
 
 import 'blocs/app_init/app_init.dart';
 import 'blocs/asset_rejection/asset_rejection.dart';
@@ -37,6 +36,7 @@ import 'blocs/user_type/user_type.dart';
 import 'data/app_shared_preferences.dart';
 import 'data/nosql/localization.dart';
 import 'data/remote_client.dart';
+import 'model/appconfig/mdmsResponse.dart';
 import 'model/data_model.init.dart';
 import 'repositories/app_init_Repo.dart';
 import 'router/app_router.dart';
@@ -57,6 +57,7 @@ void main() async {
   _isar = await Constants().isar;
 
   await setupBackgroundService();
+  await ensureAndroidNotificationPermission();
 
   // Initialize shared preferences
   await AppSharedPreferences().init();
