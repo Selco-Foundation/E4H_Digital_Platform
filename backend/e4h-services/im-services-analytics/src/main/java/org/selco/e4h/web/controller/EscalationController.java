@@ -209,39 +209,28 @@ public class EscalationController {
                 continue;
             }
             
-            // Get users for this recipient based on boundary level
             List<String> roleCodes = Arrays.asList(recipient.getRecipientRole());
-            List<User> users = new ArrayList<>();
             
             if ("state".equals(recipient.getBoundaryLevel())) {
-                // For state-level recipients, get users from all active tenants
+                // For state-level recipients, check each tenant individually and track tenant ID
                 for (String tenantId : activeTenantIds) {
-                    users.addAll(userService.searchUsersByRoleAndTenant(requestInfo, tenantId, roleCodes));
+                    List<User> tenantUsers = userService.searchUsersByRoleAndTenant(requestInfo, tenantId, roleCodes);
+                    for (User user : tenantUsers) {
+                        if (emailId.equals(user.getEmailId())) {
+                            relevantTenantIds.add(tenantId);
+                            break; // Found user in this tenant, no need to check other users in same tenant
+                        }
+                    }
                 }
             } else if ("country".equals(recipient.getBoundaryLevel())) {
                 // For country-level recipients, get users from 'in' tenant
-                users = userService.searchUsersByRoleInCountry(requestInfo, roleCodes);
-            }
-            
-            // Check if this email ID has users in any tenant for this role
-            for (User user : users) {
-                if (emailId.equals(user.getEmailId())) {
-                    if ("state".equals(recipient.getBoundaryLevel())) {
-                        // Add the specific tenant where this user has the role
-                        for (String tenantId : activeTenantIds) {
-                            List<User> tenantUsers = userService.searchUsersByRoleAndTenant(requestInfo, tenantId, roleCodes);
-                            for (User tenantUser : tenantUsers) {
-                                if (emailId.equals(tenantUser.getEmailId())) {
-                                    relevantTenantIds.add(tenantId);
-                                    break;
-                                }
-                            }
-                        }
-                    } else if ("country".equals(recipient.getBoundaryLevel())) {
+                List<User> users = userService.searchUsersByRoleInCountry(requestInfo, roleCodes);
+                for (User user : users) {
+                    if (emailId.equals(user.getEmailId())) {
                         // For country-level roles, include all active tenants
                         relevantTenantIds.addAll(activeTenantIds);
+                        break; // Found user, no need to check other users
                     }
-                    break;
                 }
             }
         }
