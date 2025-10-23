@@ -311,7 +311,6 @@ public class ElasticSearchClient {
     /**
      * Parse escalations from ticket data
      */
-    @SuppressWarnings("unchecked")
     private List<EscalationInfo> parseEscalations(Map<String, Object> data) {
         // First try to find escalations in the incident object
         Map<String, Object> incident = (Map<String, Object>) data.get("incident");
@@ -335,7 +334,6 @@ public class ElasticSearchClient {
     /**
      * Parse a list of escalation data into EscalationInfo objects
      */
-    @SuppressWarnings("unchecked")
     private List<EscalationInfo> parseEscalationList(List<Map<String, Object>> escalationsData) {
         List<EscalationInfo> escalations = new ArrayList<>();
         for (Map<String, Object> escalationData : escalationsData) {
