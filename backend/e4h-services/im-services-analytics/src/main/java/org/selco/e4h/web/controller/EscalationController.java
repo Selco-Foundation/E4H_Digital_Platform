@@ -615,8 +615,14 @@ public class EscalationController {
         }
 
         // Always send email (even with zero counts) - use new role-based email generation
+        // Pass MDMS workflow states to template for correct filtering
+        Map<String, List<String>> workflowStatesByLevel = new HashMap<>();
+        for (EscalationRoleEscalationItem item : items) {
+            workflowStatesByLevel.put(item.getEscalationLevel(), item.getWorkflowStates());
+        }
+        
         sendRoleBasedEscalationEmail(requestInfo, users, ticketsByLevel, recipientRole.getRole(),
-            recipientRole.getBoundaryLevel(), csvFileStoreIds, csvFileNames, escalationType, tenantId);
+            recipientRole.getBoundaryLevel(), csvFileStoreIds, csvFileNames, escalationType, tenantId, workflowStatesByLevel);
 
         escalationStatusService.publishSuccessStatus(escalationType, escalationId, tenantId, recipientRoleName);
         log.info("Completed state level escalation (V2) for tenant: {} and role: {} with {} levels", 
@@ -730,8 +736,14 @@ public class EscalationController {
         }
 
         // Always send email (even with zero counts) - use new role-based email generation
+        // Pass MDMS workflow states to template for correct filtering
+        Map<String, List<String>> workflowStatesByLevel = new HashMap<>();
+        for (EscalationRoleEscalationItem item : items) {
+            workflowStatesByLevel.put(item.getEscalationLevel(), item.getWorkflowStates());
+        }
+        
         sendRoleBasedEscalationEmail(requestInfo, users, ticketsByLevel, recipientRole.getRole(),
-            recipientRole.getBoundaryLevel(), csvFileStoreIds, csvFileNames, escalationType, "in");
+            recipientRole.getBoundaryLevel(), csvFileStoreIds, csvFileNames, escalationType, "in", workflowStatesByLevel);
 
         escalationStatusService.publishSuccessStatus(escalationType, escalationId, "in", recipientRoleName);
         log.info("Completed country level escalation (V2) for role: {} with {} levels", 
@@ -779,7 +791,8 @@ public class EscalationController {
                                              Map<String, List<EscalationTicket>> ticketsByLevel,
                                              String recipientRole, String boundaryLevel,
                                              List<String> csvFileStoreIds, List<String> csvFileNames,
-                                             String escalationType, String tenantId) {
+                                             String escalationType, String tenantId, 
+                                             Map<String, List<String>> workflowStatesByLevel) {
         try {
             log.info("Sending role-based escalation email to {} users for role: {}, levels: {}", 
                 users.size(), recipientRole, ticketsByLevel.keySet());
@@ -811,7 +824,8 @@ public class EscalationController {
                 boundaryLevel, 
                 tenantId,
                 requestInfo,
-                fileStoreIdsByLevel
+                fileStoreIdsByLevel,
+                workflowStatesByLevel
             );
             
             // Generate role-based email subject (uses formatted date)
