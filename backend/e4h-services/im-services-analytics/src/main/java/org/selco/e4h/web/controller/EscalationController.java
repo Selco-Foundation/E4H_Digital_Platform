@@ -594,24 +594,33 @@ public class EscalationController {
                     requestInfo
             );
 
+            // Always process escalation level, even with zero counts
+            List<EscalationTicket> filteredTickets = new ArrayList<>();
             if (tickets != null && !tickets.isEmpty()) {
-                ticketsByLevel.put(item.getEscalationLevel(), tickets);
-                
-                // Generate CSV for this level
-                String csvContent = csvGenerationService.generateEscalationCsv(tickets);
-                String csvFileName = csvGenerationService.generateCsvFileName("daily", item.getEscalationLevel(), tenantId);
-                String csvFileStoreId = uploadCsvToFileStore(csvContent, csvFileName, tenantId, requestInfo);
-                
-                if (csvFileStoreId != null) {
-                    csvFileStoreIds.add(csvFileStoreId);
-                    csvFileNames.add(csvFileName);
-                }
-
-                // Update Elasticsearch for this level
-                elasticsearchEscalationService.updateEscalationsForTickets(tickets, escalationId, item.getEscalationLevel());
-                
-                log.info("Found {} tickets for escalation level: {}", tickets.size(), item.getEscalationLevel());
+                // Filter tickets by MDMS workflow states to match email template logic
+                filteredTickets = filterTicketsByWorkflowStates(tickets, item.getWorkflowStates());
             }
+            
+            // Always add to ticketsByLevel (even if empty) for consistent email generation
+            ticketsByLevel.put(item.getEscalationLevel(), filteredTickets);
+            
+            // Always generate CSV (with headers only if no tickets)
+            String csvContent = csvGenerationService.generateEscalationCsv(filteredTickets);
+            String csvFileName = csvGenerationService.generateCsvFileName("daily", item.getEscalationLevel(), tenantId);
+            String csvFileStoreId = uploadCsvToFileStore(csvContent, csvFileName, tenantId, requestInfo);
+            
+            if (csvFileStoreId != null) {
+                csvFileStoreIds.add(csvFileStoreId);
+                csvFileNames.add(csvFileName);
+            }
+
+            // Update Elasticsearch for this level (only if there are tickets)
+            if (!filteredTickets.isEmpty()) {
+                elasticsearchEscalationService.updateEscalationsForTickets(filteredTickets, escalationId, item.getEscalationLevel());
+            }
+            
+            log.info("Processed escalation level: {} with {} tickets (filtered from {} total)", 
+                item.getEscalationLevel(), filteredTickets.size(), tickets != null ? tickets.size() : 0);
         }
 
         // Always send email (even with zero counts) - use new role-based email generation
@@ -674,24 +683,33 @@ public class EscalationController {
                     requestInfo
             );
 
+            // Always process escalation level, even with zero counts
+            List<EscalationTicket> filteredTickets = new ArrayList<>();
             if (tickets != null && !tickets.isEmpty()) {
-                ticketsByLevel.put(item.getEscalationLevel(), tickets);
-                
-                // Generate CSV for this level
-                String csvContent = csvGenerationService.generateEscalationCsv(tickets);
-                String csvFileName = csvGenerationService.generateCsvFileName("daily", item.getEscalationLevel(), "in");
-                String csvFileStoreId = uploadCsvToFileStore(csvContent, csvFileName, tenantId, requestInfo);
-                
-                if (csvFileStoreId != null) {
-                    csvFileStoreIds.add(csvFileStoreId);
-                    csvFileNames.add(csvFileName);
-                }
-
-                // Update Elasticsearch for this level
-                elasticsearchEscalationService.updateEscalationsForTickets(tickets, escalationId, item.getEscalationLevel());
-                
-                log.info("Found {} tickets for country escalation level: {}", tickets.size(), item.getEscalationLevel());
+                // Filter tickets by MDMS workflow states to match email template logic
+                filteredTickets = filterTicketsByWorkflowStates(tickets, item.getWorkflowStates());
             }
+            
+            // Always add to ticketsByLevel (even if empty) for consistent email generation
+            ticketsByLevel.put(item.getEscalationLevel(), filteredTickets);
+            
+            // Always generate CSV (with headers only if no tickets)
+            String csvContent = csvGenerationService.generateEscalationCsv(filteredTickets);
+            String csvFileName = csvGenerationService.generateCsvFileName("daily", item.getEscalationLevel(), "in");
+            String csvFileStoreId = uploadCsvToFileStore(csvContent, csvFileName, tenantId, requestInfo);
+            
+            if (csvFileStoreId != null) {
+                csvFileStoreIds.add(csvFileStoreId);
+                csvFileNames.add(csvFileName);
+            }
+
+            // Update Elasticsearch for this level (only if there are tickets)
+            if (!filteredTickets.isEmpty()) {
+                elasticsearchEscalationService.updateEscalationsForTickets(filteredTickets, escalationId, item.getEscalationLevel());
+            }
+            
+            log.info("Processed country escalation level: {} with {} tickets (filtered from {} total)", 
+                item.getEscalationLevel(), filteredTickets.size(), tickets != null ? tickets.size() : 0);
         }
 
         // Special handling for CENTRAL_POC: Create combined CSV for L1 section (LEVEL_ZERO + LEVEL_ONE)
@@ -780,6 +798,22 @@ public class EscalationController {
         }
         
         return null;
+    }
+    
+    /**
+     * Filter tickets by MDMS workflow states to ensure consistency between email template and CSV
+     */
+    private List<EscalationTicket> filterTicketsByWorkflowStates(List<EscalationTicket> tickets, List<String> mdmsWorkflowStates) {
+        if (mdmsWorkflowStates == null || mdmsWorkflowStates.isEmpty()) {
+            return tickets;
+        }
+        
+        return tickets.stream()
+            .filter(ticket -> {
+                String ticketStatus = ticket.getApplicationStatus();
+                return ticketStatus != null && mdmsWorkflowStates.contains(ticketStatus);
+            })
+            .collect(Collectors.toList());
     }
     
     /**
