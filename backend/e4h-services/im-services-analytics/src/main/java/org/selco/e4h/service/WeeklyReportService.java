@@ -7,6 +7,7 @@ import org.selco.e4h.web.models.WeeklyReportData;
 import org.selco.e4h.web.models.FunctionalMetrics;
 import org.selco.e4h.web.models.AgeBucketData;
 import org.selco.e4h.web.models.ArrowData;
+import org.selco.e4h.web.models.TicketData;
 import org.selco.e4h.util.CommonUtility;
 import org.selco.e4h.util.ElasticSearchClient;
 import org.springframework.stereotype.Service;
@@ -38,6 +39,38 @@ public class WeeklyReportService {
         DATE_RANGE_FORMAT.setTimeZone(istTimeZone);
         TODAY_FORMAT.setTimeZone(istTimeZone);
     }
+    
+    /**
+     * Utility method to filter tickets by tenant and process them
+     */
+    private List<Map<String, Object>> filterTicketsByTenant(List<Map<String, Object>> tickets, String tenantId) {
+        return tickets.stream()
+            .filter(ticket -> {
+                Map<String, Object> data = (Map<String, Object>) ticket.get("Data");
+                if (data == null) return false;
+                
+                String ticketTenantId = (String) data.get("tenantId");
+                return tenantId.equals(ticketTenantId);
+            })
+            .collect(Collectors.toList());
+    }
+    
+    /**
+     * Utility method to extract common ticket data fields
+     */
+    private TicketData extractTicketData(Map<String, Object> ticket) {
+        Map<String, Object> data = (Map<String, Object>) ticket.get("Data");
+        if (data == null) return null;
+        
+        return TicketData.builder()
+            .tenantId((String) data.get("tenantId"))
+            .filedDate((Long) data.get("filedDate"))
+            .systemFunctional((String) data.get("systemFunctional"))
+            .state((String) data.get("state"))
+            .data(data)
+            .build();
+    }
+    
     
     /**
      * Generate weekly report data for a specific tenant
@@ -123,27 +156,22 @@ public class WeeklyReportService {
             // Query Elasticsearch for tickets as of the specified date
             List<Map<String, Object>> tickets = elasticSearchClient.fetchRequiredTickets(0, 10000, false);
             
+            // Filter tickets by tenant
+            List<Map<String, Object>> filteredTickets = filterTicketsByTenant(tickets, tenantId);
+            
             int functionalCount = 0;
             int nonFunctionalCount = 0;
             
-            for (Map<String, Object> ticket : tickets) {
-                Map<String, Object> data = (Map<String, Object>) ticket.get("Data");
-                if (data != null) {
-                    // Filter by tenant
-                    String ticketTenantId = (String) data.get("tenantId");
-                    if (!tenantId.equals(ticketTenantId)) {
-                        continue;
-                    }
-                    
-                    // Filter by date (tickets filed before or on the specified date)
-                    Long filedDate = (Long) data.get("filedDate");
-                    if (filedDate != null && filedDate <= date.getTime()) {
-                        String systemFunctional = (String) data.get("systemFunctional");
-                        if ("NON_FUNCTIONAL".equals(systemFunctional)) {
-                            nonFunctionalCount++;
-                        } else {
-                            functionalCount++;
-                        }
+            for (Map<String, Object> ticket : filteredTickets) {
+                TicketData ticketData = extractTicketData(ticket);
+                if (ticketData == null) continue;
+                
+                // Filter by date (tickets filed before or on the specified date)
+                if (ticketData.getFiledDate() != null && ticketData.getFiledDate() <= date.getTime()) {
+                    if ("NON_FUNCTIONAL".equals(ticketData.getSystemFunctional())) {
+                        nonFunctionalCount++;
+                    } else {
+                        functionalCount++;
                     }
                 }
             }
@@ -183,35 +211,30 @@ public class WeeklyReportService {
             int totalLt1Mo = 0;
             int totalLt3Mo = 0;
             
-            for (Map<String, Object> ticket : tickets) {
-                Map<String, Object> data = (Map<String, Object>) ticket.get("Data");
-                if (data != null) {
-                    // Filter by tenant
-                    String ticketTenantId = (String) data.get("tenantId");
-                    if (!tenantId.equals(ticketTenantId)) {
-                        continue;
-                    }
-                    
-                    // Only count non-functional tickets
-                    String systemFunctional = (String) data.get("systemFunctional");
-                    if ("NON_FUNCTIONAL".equals(systemFunctional)) {
-                        // Calculate age in days
-                        Long filedDate = (Long) data.get("filedDate");
-                        if (filedDate != null) {
-                            long ageInMillis = System.currentTimeMillis() - filedDate;
-                            int ageInDays = (int) (ageInMillis / (1000 * 60 * 60 * 24));
-                            
-                            // Age bucket logic as per Slack clarification:
-                            // 1 Week: 8 ≤ age in days ≤ 30
-                            // 1 Month: 31 ≤ age in days ≤ 90
-                            // 3 Month: age in days > 90
-                            if (ageInDays >= 8 && ageInDays <= 30) {
-                                totalLt1Wk++;
-                            } else if (ageInDays >= 31 && ageInDays <= 90) {
-                                totalLt1Mo++;
-                            } else if (ageInDays > 90) {
-                                totalLt3Mo++;
-                            }
+            // Filter tickets by tenant
+            List<Map<String, Object>> filteredTickets = filterTicketsByTenant(tickets, tenantId);
+            
+            for (Map<String, Object> ticket : filteredTickets) {
+                TicketData ticketData = extractTicketData(ticket);
+                if (ticketData == null) continue;
+                
+                // Only count non-functional tickets
+                if ("NON_FUNCTIONAL".equals(ticketData.getSystemFunctional())) {
+                    // Calculate age in days
+                    if (ticketData.getFiledDate() != null) {
+                        long ageInMillis = System.currentTimeMillis() - ticketData.getFiledDate();
+                        int ageInDays = (int) (ageInMillis / (1000 * 60 * 60 * 24));
+                        
+                        // Age bucket logic as per Slack clarification:
+                        // 1 Week: 8 ≤ age in days ≤ 30
+                        // 1 Month: 31 ≤ age in days ≤ 90
+                        // 3 Month: age in days > 90
+                        if (ageInDays >= 8 && ageInDays <= 30) {
+                            totalLt1Wk++;
+                        } else if (ageInDays >= 31 && ageInDays <= 90) {
+                            totalLt1Mo++;
+                        } else if (ageInDays > 90) {
+                            totalLt3Mo++;
                         }
                     }
                 }
@@ -246,40 +269,35 @@ public class WeeklyReportService {
             
             Map<String, WeeklyReportData.StateAgeBucketData> stateData = new LinkedHashMap<>();
             
-            for (Map<String, Object> ticket : tickets) {
-                Map<String, Object> data = (Map<String, Object>) ticket.get("Data");
-                if (data != null) {
-                    // Filter by tenant
-                    String ticketTenantId = (String) data.get("tenantId");
-                    if (!tenantId.equals(ticketTenantId)) {
-                        continue;
-                    }
-                    
-                    // Only count non-functional tickets
-                    String systemFunctional = (String) data.get("systemFunctional");
-                    if ("NON_FUNCTIONAL".equals(systemFunctional)) {
-                        // Calculate age in days
-                        Long filedDate = (Long) data.get("filedDate");
-                        if (filedDate != null) {
-                            long ageInMillis = System.currentTimeMillis() - filedDate;
-                            int ageInDays = (int) (ageInMillis / (1000 * 60 * 60 * 24));
-                            
-                            WeeklyReportData.StateAgeBucketData stateBucket = stateData.computeIfAbsent(ticketTenantId, 
-                                k -> WeeklyReportData.StateAgeBucketData.builder()
-                                    .stateName(commonUtility.getStateDisplayName(k))
-                                    .lt1Wk(0)
-                                    .lt1Mo(0)
-                                    .lt3Mo(0)
-                                    .build());
-                            
-                            // Age bucket logic
-                            if (ageInDays >= 8 && ageInDays <= 30) {
-                                stateBucket.setLt1Wk(stateBucket.getLt1Wk() + 1);
-                            } else if (ageInDays >= 31 && ageInDays <= 90) {
-                                stateBucket.setLt1Mo(stateBucket.getLt1Mo() + 1);
-                            } else if (ageInDays > 90) {
-                                stateBucket.setLt3Mo(stateBucket.getLt3Mo() + 1);
-                            }
+            // Filter tickets by tenant
+            List<Map<String, Object>> filteredTickets = filterTicketsByTenant(tickets, tenantId);
+            
+            for (Map<String, Object> ticket : filteredTickets) {
+                TicketData ticketData = extractTicketData(ticket);
+                if (ticketData == null) continue;
+                
+                // Only count non-functional tickets
+                if ("NON_FUNCTIONAL".equals(ticketData.getSystemFunctional())) {
+                    // Calculate age in days
+                    if (ticketData.getFiledDate() != null) {
+                        long ageInMillis = System.currentTimeMillis() - ticketData.getFiledDate();
+                        int ageInDays = (int) (ageInMillis / (1000 * 60 * 60 * 24));
+                        
+                        WeeklyReportData.StateAgeBucketData stateBucket = stateData.computeIfAbsent(ticketData.getTenantId(), 
+                            k -> WeeklyReportData.StateAgeBucketData.builder()
+                                .stateName(commonUtility.getStateDisplayName(k))
+                                .lt1Wk(0)
+                                .lt1Mo(0)
+                                .lt3Mo(0)
+                                .build());
+                        
+                        // Age bucket logic
+                        if (ageInDays >= 8 && ageInDays <= 30) {
+                            stateBucket.setLt1Wk(stateBucket.getLt1Wk() + 1);
+                        } else if (ageInDays >= 31 && ageInDays <= 90) {
+                            stateBucket.setLt1Mo(stateBucket.getLt1Mo() + 1);
+                        } else if (ageInDays > 90) {
+                            stateBucket.setLt3Mo(stateBucket.getLt3Mo() + 1);
                         }
                     }
                 }
