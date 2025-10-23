@@ -340,7 +340,7 @@ class BomRepository {
     }
   }
 
-  Future<Uint8List?> generateBomPdf({
+  Future<Uint8List?> generateBomPdf2({
     required Isar isar,
     required String projectId,
     required String userType,
@@ -403,6 +403,72 @@ class BomRepository {
       throw Exception("Unexpected PDF response type: ${data.runtimeType}");
     } catch (e) {
       print("error $e");
+    }
+  }
+
+  Future<String> generateBomPdf({
+    required Isar isar,
+    required String projectId,
+    required String userType,
+  }) async {
+    try {
+      final entryKey = '$projectId::$userType';
+      print("entryKey $entryKey");
+      final rec = await isar.cacheProjectBomValues
+          .where()
+          .entryKeyEqualTo(entryKey)
+          .findFirst();
+      print("entryKey $entryKey");
+      if (rec == null) {
+        throw Exception("No BOM values found for project");
+      }
+      final Map<String, dynamic> bomData =
+          jsonDecode(rec.dataJson) as Map<String, dynamic>;
+
+      final spec = await isar.cacheSpecifications
+          .where()
+          .projectIdEqualTo(projectId)
+          .findFirst();
+
+      final saved = spec?.system.trim();
+      print("saved $saved");
+      final system =
+          (saved != null && saved.isNotEmpty) ? saved : SYSTEM_TYPE.DC.name;
+      print("system $system");
+      final tenantId = env.envConfig.variables.tenantId;
+      final body = {
+        "system": system,
+        "bom": bomData,
+      };
+
+      final path = "activity/v1/bom/_save_pdf?tenantId=$tenantId";
+
+      final response = await _dio.post(path, data: body);
+
+      print("response.type ${response.headers}");
+      print("response.status ${response.statusCode}");
+
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        throw Exception("Generate BOM PDF failed: ${response.statusCode}");
+      }
+
+      String? filestoreId;
+      final data = response.data;
+      if (data is Map<String, dynamic>) {
+        filestoreId = data["filestoreId"] as String?;
+      } else if (data is String && data.trim().isNotEmpty) {
+        final parsed = jsonDecode(data) as Map<String, dynamic>;
+        filestoreId = parsed["filestoreId"] as String?;
+      }
+
+      if (filestoreId == null || filestoreId.isEmpty) {
+        throw Exception("filestoreId missing in response");
+      }
+
+      return filestoreId;
+    } catch (e) {
+      print("error $e");
+      throw Exception("Failed to generate BOM PDF filestoreId");
     }
   }
 
