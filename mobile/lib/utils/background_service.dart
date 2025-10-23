@@ -25,7 +25,7 @@ import '../repositories/project_facility_repo.dart';
 import '../repositories/project_repo.dart';
 import '../repositories/project_workflow.dart';
 import '../utils/utils.dart';
-import 'constants.dart'; // Constants().isar
+import 'constants.dart';
 
 // project submisison
 const String kMethodSubmit = 'submit_project';
@@ -73,7 +73,6 @@ Future<void> setupBackgroundService() async {
   await envConfig.initialize(); // UI isolate init
   final isar = await Constants().isar;
 
-  // Notifications
   const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
   const iosInit = DarwinInitializationSettings();
   await _fln.initialize(const InitializationSettings(
@@ -91,10 +90,8 @@ Future<void> setupBackgroundService() async {
           AndroidFlutterLocalNotificationsPlugin>()
       ?.createNotificationChannel(androidChannel);
 
-  // Controller DB handle (UI isolate)
   await BackgroundServiceController.I.init(isar: isar);
 
-  // Configure background service with the top-level entrypoint
   await FlutterBackgroundService().configure(
     androidConfiguration: AndroidConfiguration(
       onStart: onStart,
@@ -111,7 +108,6 @@ Future<void> setupBackgroundService() async {
     ),
   );
 
-  // --- UI ISOLATE: mirror BG events into Isar here (belt + suspenders) ---
   final uiService = FlutterBackgroundService();
 
   _uiErrSub?.cancel();
@@ -177,7 +173,6 @@ class BackgroundServiceController {
   }) async {
     final service = FlutterBackgroundService();
 
-    // Is the service already running? If yes, just invoke immediately.
     if (await service.isRunning()) {
       debugPrint('[UI] service already running -> invoke directly');
 
@@ -192,7 +187,6 @@ class BackgroundServiceController {
       return;
     }
 
-    // Otherwise start it, then wait for kEvtReady (emitted from onStart)
     final readyStream = service.on(kEvtReady);
     await service.startService();
     final running = await service.isRunning();
@@ -213,7 +207,6 @@ class BackgroundServiceController {
     });
   }
 
-  /// Enqueue a rejection job; waits for BG “ready” so the invoke isn't dropped.
   Future<void> enqueueRejection({
     required String projectId,
     required String userType,
@@ -251,10 +244,8 @@ class BackgroundServiceController {
       await Future.delayed(const Duration(milliseconds: 300));
     }
 
-    // Ensure the foreground notification is shown for the new job
     service.invoke(kCmdForeground, {'content': 'Preparing rejection…'});
 
-    // Now invoke the job
     service.invoke(kMethodReject, <String, dynamic>{
       'projectId': projectId,
       'userType': userType,
@@ -262,7 +253,6 @@ class BackgroundServiceController {
     });
   }
 
-  /// UI-side explicit stop (removes the notification). Keep stop on UI side.
   Future<void> stopNow() async {
     final service = FlutterBackgroundService();
     if (await service.isRunning()) {
@@ -271,8 +261,6 @@ class BackgroundServiceController {
     }
   }
 }
-
-// ---------- Entry points (must be top-level & annotated) ----------
 
 String _pretty(Object? e) {
   final s = e?.toString() ?? 'Failed.';
@@ -289,13 +277,10 @@ bool _onIosBackground(ServiceInstance service) {
 void onStart(ServiceInstance service) async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Required so MethodChannel plugins (path_provider, secure storage, etc.) work here.
   DartPluginRegistrant.ensureInitialized();
 
-  // Init env in THIS isolate (singletons don’t cross isolates)
   await envConfig.initialize();
 
-  // Open Isar in this isolate via your source-of-truth
   final isar = await Constants().isar;
   debugPrint('[BG] onStart ready. isar#${identityHashCode(isar)}');
 
@@ -307,7 +292,6 @@ void onStart(ServiceInstance service) async {
     );
   }
 
-  // Receive submit jobs
   service.on(kMethodSubmit).listen((payload) async {
     debugPrint('[BG] submit received: $payload');
 
@@ -354,7 +338,6 @@ void onStart(ServiceInstance service) async {
     }
   });
 
-  // === Rejection job ===
   service.on(kMethodReject).listen((payload) async {
     final projectId = payload?['projectId'] as String?;
     final userType = payload?['userType'] as String?;
@@ -391,7 +374,6 @@ void onStart(ServiceInstance service) async {
     }
   });
 
-  // Stop command from UI (safe point to tear down)
   service.on(kCmdStop).listen((_) async {
     debugPrint('[BG] stop requested');
     if (service is AndroidServiceInstance) {
@@ -410,13 +392,9 @@ void onStart(ServiceInstance service) async {
     }
   });
 
-  // Tell UI we're ready to receive jobs (prevents race)
   service.invoke(kEvtReady);
 }
 
-// ---------- Shared helpers ----------
-
-/// Upsert CacheSubmissionJob row for [projectId] with [status].
 Future<void> writeJobStatus({
   required Isar isar,
   required String projectId,
@@ -445,14 +423,12 @@ Future<void> writeJobStatus({
   });
 }
 
-// === Your full per-project upload logic (throw on failure) ===
 Future<void> _performSubmissionForProject({
   required Isar isar,
   required String projectId,
   required String userType,
 }) async {
   try {
-    // Facility
     final facilityId = (await ProjectFacilityRepository().search(
       ProjectFacilitySearchModel(projectId: [projectId]),
       isar,
@@ -579,10 +555,7 @@ Future<void> _performSubmissionForProject({
         );
 
         await repo.createOrUpdateAsset(
-          asset: assetModel,
-          isar: isar,
-          facilityId: facilityId,
-        );
+            asset: assetModel, isar: isar, facilityId: facilityId);
       }
     }
 
@@ -627,16 +600,11 @@ Future<void> _performSubmissionForProject({
 
     if (userType == USER_TYPES.SUPERVISOR.name) {
       try {
-        final bomBytes = await BomRepository().generateBomPdf(
+        final bomFileStoreId = await BomRepository().generateBomPdf(
           isar: isar,
           projectId: projectId,
           userType: userType,
         );
-
-        final bomFileName =
-            "bom_${projectId}_${DateTime.now().millisecondsSinceEpoch}.pdf";
-        final bomFileStoreId =
-            await BomRepository().uploadPdfToFileStore(bomBytes!, bomFileName);
 
         String lat = "", lon = "";
         if (workflowDocuments.isNotEmpty) {
@@ -649,7 +617,7 @@ Future<void> _performSubmissionForProject({
             documentType: "INSTALLATION_REPORT_BOM",
             fileStore: bomFileStoreId,
             documentUid:
-                "BOM-${projectId}-${DateTime.now().millisecondsSinceEpoch}",
+                "BOM-$projectId-${DateTime.now().millisecondsSinceEpoch}",
             geoLocation: GeoLocation(latitude: lat, longitude: lon),
           ),
         );
@@ -691,7 +659,6 @@ Future<void> _performSubmissionForProject({
 
     return;
   } catch (e) {
-    // rethrow;
     throw PlainError(_pretty(e));
   }
 }
@@ -714,17 +681,12 @@ Future<void> _performRejectionForProject({
     );
     workflowDocuments.addAll(fromCache);
 
-    // submit rejection (transactions already serialized)
     await AssetRepository().submitRejection(
       projectId: projectId,
-      transactions: transactions
-          .map((m) =>
-              Transaction.fromJson(m)) // if your Transaction has fromJson
-          .toList(),
+      transactions: transactions.map((m) => Transaction.fromJson(m)).toList(),
       documents: workflowDocuments,
     );
 
-    // Clear same caches as your foreground version
     await UnsubmittedProjectRepository(isar).delete(projectId, userType);
     await PrefilledProjectRepository(isar)
         .delete(projectId: projectId, userType: userType);
@@ -739,5 +701,5 @@ class PlainError implements Exception {
   final String message;
   PlainError(this.message);
   @override
-  String toString() => message; // no "Exception: " prefix
+  String toString() => message;
 }

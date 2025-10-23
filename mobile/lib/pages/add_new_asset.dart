@@ -591,7 +591,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                         builder: (ctx) => BlocProvider.value(
                           value: context.read<DigitScannerBloc>(),
                           child: const DigitScannerPage(
-                            quantity: 1,
+                            quantity: 10,
                             isGS1code: false,
                           ),
                         ),
@@ -625,7 +625,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                         builder: (ctx) => BlocProvider.value(
                           value: context.read<DigitScannerBloc>(),
                           child: const DigitScannerPage(
-                            quantity: 1,
+                            quantity: 10,
                             isGS1code: false,
                           ),
                         ),
