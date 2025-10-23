@@ -76,7 +76,7 @@ public class IMRowMapper implements ResultSetExtractor<List<Incident>> {
                         .district(District)
                         .block(Block)
                         .phcType(PhcType)
-                        .phcsubtype(PhcSubType)
+                        .phcSubType(PhcSubType)
                         .applicationStatus(applicationStatus)
                         .tenantId(tenantId)
                         .accountId(accountId)
