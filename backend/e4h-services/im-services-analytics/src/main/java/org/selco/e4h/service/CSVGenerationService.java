@@ -19,10 +19,10 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CSVGenerationService {
     
-    private static final String CSV_HEADER = "Ticket Number,District,Block,Health Facility Name,Health Facility Type," +
-            "Is Solar System Working,Issue Type,Issue Sub-Type,Priority,Mapped Vendor,Current Ticket Status," +
-            "SLA Compliance for Current Status,Defined SLA Duration for Current Status,SLA Compliance for Overall Ticket," +
-            "Defined Overall SLA Duration,Comments,Ticket Filed Date\n";
+    private static final String CSV_HEADER = "**Ticket Number**,**District**,**Block**,**Health Facility Name**,**Health Facility Type**," +
+            "**Is Solar System Working**,**Issue Type**,**Issue Sub-Type**,**Priority**,**Mapped Vendor**,**Current Ticket Status**," +
+            "**SLA Compliance for Current Status**,**Defined SLA Duration for Current Status**,**SLA Compliance for Overall Ticket**," +
+            "**Defined Overall SLA Duration**,**Comments**,**Ticket Filed Date**\n";
     
     /**
      * Generate CSV content for escalation tickets

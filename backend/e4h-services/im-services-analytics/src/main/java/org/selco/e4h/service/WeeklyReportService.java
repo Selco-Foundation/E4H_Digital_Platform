@@ -130,15 +130,15 @@ public class WeeklyReportService {
                 Map<String, Object> data = (Map<String, Object>) ticket.get("Data");
                 if (data != null) {
                     // Filter by tenant
-                    String ticketTenantId = (String) data.get("tenantid");
+                    String ticketTenantId = (String) data.get("tenantId");
                     if (!tenantId.equals(ticketTenantId)) {
                         continue;
                     }
                     
                     // Filter by date (tickets filed before or on the specified date)
-                    Long filedDate = (Long) data.get("fileddate");
+                    Long filedDate = (Long) data.get("filedDate");
                     if (filedDate != null && filedDate <= date.getTime()) {
-                        String systemFunctional = (String) data.get("systemfunctional");
+                        String systemFunctional = (String) data.get("systemFunctional");
                         if ("NON_FUNCTIONAL".equals(systemFunctional)) {
                             nonFunctionalCount++;
                         } else {
@@ -187,16 +187,16 @@ public class WeeklyReportService {
                 Map<String, Object> data = (Map<String, Object>) ticket.get("Data");
                 if (data != null) {
                     // Filter by tenant
-                    String ticketTenantId = (String) data.get("tenantid");
+                    String ticketTenantId = (String) data.get("tenantId");
                     if (!tenantId.equals(ticketTenantId)) {
                         continue;
                     }
                     
                     // Only count non-functional tickets
-                    String systemFunctional = (String) data.get("systemfunctional");
+                    String systemFunctional = (String) data.get("systemFunctional");
                     if ("NON_FUNCTIONAL".equals(systemFunctional)) {
                         // Calculate age in days
-                        Long filedDate = (Long) data.get("fileddate");
+                        Long filedDate = (Long) data.get("filedDate");
                         if (filedDate != null) {
                             long ageInMillis = System.currentTimeMillis() - filedDate;
                             int ageInDays = (int) (ageInMillis / (1000 * 60 * 60 * 24));
@@ -250,16 +250,16 @@ public class WeeklyReportService {
                 Map<String, Object> data = (Map<String, Object>) ticket.get("Data");
                 if (data != null) {
                     // Filter by tenant
-                    String ticketTenantId = (String) data.get("tenantid");
+                    String ticketTenantId = (String) data.get("tenantId");
                     if (!tenantId.equals(ticketTenantId)) {
                         continue;
                     }
                     
                     // Only count non-functional tickets
-                    String systemFunctional = (String) data.get("systemfunctional");
+                    String systemFunctional = (String) data.get("systemFunctional");
                     if ("NON_FUNCTIONAL".equals(systemFunctional)) {
                         // Calculate age in days
-                        Long filedDate = (Long) data.get("fileddate");
+                        Long filedDate = (Long) data.get("filedDate");
                         if (filedDate != null) {
                             long ageInMillis = System.currentTimeMillis() - filedDate;
                             int ageInDays = (int) (ageInMillis / (1000 * 60 * 60 * 24));
