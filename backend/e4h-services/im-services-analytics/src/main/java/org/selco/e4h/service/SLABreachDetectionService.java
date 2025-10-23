@@ -28,6 +28,35 @@ public class SLABreachDetectionService {
     private Map<String, EscalationLevel> escalationLevelCache = new HashMap<>();
     private long lastEscalationLevelCacheRefresh = 0;
     private static final long ESCALATION_LEVEL_CACHE_INTERVAL = 3600000; // 1 hour
+    
+    /**
+     * Utility method to build escalation exclusion filters
+     */
+    private List<Map<String, Object>> buildEscalationExclusionFilters(String escalationRecipientId, String escalationLevel) {
+        List<Map<String, Object>> mustNot = new ArrayList<>();
+        if (escalationRecipientId != null) {
+            // Use simple term queries instead of nested query to avoid mapping issues
+            // This approach works with regular object fields (not nested)
+            
+            // Exclude tickets with same escalationId
+            Map<String, Object> escalationIdFilter = new HashMap<>();
+            Map<String, Object> escalationIdTerm = new HashMap<>();
+            escalationIdTerm.put("Data.incident.escalations.escalationId.keyword", escalationRecipientId);
+            escalationIdFilter.put("term", escalationIdTerm);
+            mustNot.add(escalationIdFilter);
+            
+            // Exclude tickets with same escalationLevel
+            Map<String, Object> escalationLevelFilter = new HashMap<>();
+            Map<String, Object> escalationLevelTerm = new HashMap<>();
+            escalationLevelTerm.put("Data.incident.escalations.escalationLevel.keyword", escalationLevel);
+            escalationLevelFilter.put("term", escalationLevelTerm);
+            mustNot.add(escalationLevelFilter);
+            
+            log.debug("Added escalation exclusion filters for recipientId: {} and level: {}", 
+                escalationRecipientId, escalationLevel);
+        }
+        return mustNot;
+    }
 
     /**
      * Find tickets in SLA breach for a specific tenant, workflow states, and escalation level
@@ -258,34 +287,7 @@ public class SLABreachDetectionService {
         }
 
         // Exclude tickets already escalated to this recipient AND level
-        List<Map<String, Object>> mustNot = new ArrayList<>();
-        if (escalationRecipientId != null) {
-            Map<String, Object> escalationFilter = new HashMap<>();
-            Map<String, Object> escalationNested = new HashMap<>();
-            Map<String, Object> escalationQuery = new HashMap<>();
-            Map<String, Object> escalationBool = new HashMap<>();
-            List<Map<String, Object>> escalationMust = new ArrayList<>();
-            
-            // Check for same escalationId AND escalationLevel
-            Map<String, Object> escalationIdTerm = new HashMap<>();
-            escalationIdTerm.put("Data.incident.escalations.escalationId.keyword", escalationRecipientId);
-            Map<String, Object> termFilter = new HashMap<>();
-            termFilter.put("term", escalationIdTerm);
-            escalationMust.add(termFilter);
-            
-            Map<String, Object> escalationLevelTerm = new HashMap<>();
-            escalationLevelTerm.put("Data.incident.escalations.escalationLevel.keyword", escalationLevel);
-            Map<String, Object> levelFilter = new HashMap<>();
-            levelFilter.put("term", escalationLevelTerm);
-            escalationMust.add(levelFilter);
-            
-            escalationBool.put("must", escalationMust);
-            escalationQuery.put("bool", escalationBool);
-            escalationNested.put("query", escalationQuery);
-            escalationNested.put("path", "Data.incident.escalations");
-            escalationFilter.put("nested", escalationNested);
-            mustNot.add(escalationFilter);
-        }
+        List<Map<String, Object>> mustNot = buildEscalationExclusionFilters(escalationRecipientId, escalationLevel);
 
         bool.put("must", must);
         bool.put("must_not", mustNot);
@@ -470,34 +472,7 @@ public class SLABreachDetectionService {
         }
         
         // Exclude tickets already escalated to this recipient AND level
-        List<Map<String, Object>> mustNot = new ArrayList<>();
-        if (escalationRecipientId != null) {
-            Map<String, Object> escalationFilter = new HashMap<>();
-            Map<String, Object> escalationNested = new HashMap<>();
-            Map<String, Object> escalationQuery = new HashMap<>();
-            Map<String, Object> escalationBool = new HashMap<>();
-            List<Map<String, Object>> escalationMust = new ArrayList<>();
-            
-            // Check for same escalationId AND escalationLevel
-            Map<String, Object> escalationIdTerm = new HashMap<>();
-            escalationIdTerm.put("Data.incident.escalations.escalationId.keyword", escalationRecipientId);
-            Map<String, Object> termFilter = new HashMap<>();
-            termFilter.put("term", escalationIdTerm);
-            escalationMust.add(termFilter);
-            
-            Map<String, Object> escalationLevelTerm = new HashMap<>();
-            escalationLevelTerm.put("Data.incident.escalations.escalationLevel.keyword", escalationLevel);
-            Map<String, Object> levelFilter = new HashMap<>();
-            levelFilter.put("term", escalationLevelTerm);
-            escalationMust.add(levelFilter);
-            
-            escalationBool.put("must", escalationMust);
-            escalationQuery.put("bool", escalationBool);
-            escalationNested.put("query", escalationQuery);
-            escalationNested.put("path", "Data.incident.escalations");
-            escalationFilter.put("nested", escalationNested);
-            mustNot.add(escalationFilter);
-        }
+        List<Map<String, Object>> mustNot = buildEscalationExclusionFilters(escalationRecipientId, escalationLevel);
 
         bool.put("must", must);
         bool.put("must_not", mustNot);

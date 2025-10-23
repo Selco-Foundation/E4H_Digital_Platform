@@ -249,8 +249,8 @@ public class ElasticSearchClient {
             // Extract vendor information
             String mappedVendorName = extractVendorName(data);
 
-            // Extract priority from incident
-            String priority = (String) incident.get("priority");
+            // Extract priority from business service (since priority field doesn't exist in index)
+            String priority = extractPriorityFromBusinessService(data);
 
             // Extract comments from incident
             String comments = (String) incident.get("comments");
@@ -259,9 +259,9 @@ public class ElasticSearchClient {
             boolean slaComplianceCurrentStatus = slaRemaining != null && getLongValue(slaRemaining) > 0;
             boolean slaComplianceOverallTicket = totalSlaRemaining != null && getLongValue(totalSlaRemaining) > 0;
 
-            // Format SLA durations
-            String definedSlaDurationCurrentStatus = formatSlaDuration(stateSla);
-            String definedOverallSlaDuration = formatSlaDuration(totalSlaRemaining);
+            String definedSlaDurationCurrentStatus = stateSla != null ? stateSla.toString() : "Not Defined";
+            Object definedTotalSla = data.get("definedTotalSla");
+            String definedOverallSlaDuration = definedTotalSla != null ? definedTotalSla.toString() : "Not Defined";
 
             // Determine if solar system is working based on system functional status
             boolean isSolarSystemWorking = "FUNCTIONAL".equals(data.get("systemFunctional"));
@@ -397,26 +397,29 @@ public class ElasticSearchClient {
     }
 
     /**
-     * Format SLA duration in milliseconds to human readable format
+     * Extract priority from business service name
+     * Business service format: "Incident_High", "Incident_Low", "Incident_Medium"
+     * Priority is the part after the underscore
      */
-    private String formatSlaDuration(Object slaDuration) {
-        if (slaDuration == null) {
-            return "Not Defined";
-        }
-
-        Long durationMs = getLongValue(slaDuration);
-        if (durationMs == null || durationMs <= 0) {
-            return "Not Defined";
-        }
-
-        // Convert to hours and minutes
-        long hours = durationMs / (1000 * 60 * 60);
-        long minutes = (durationMs % (1000 * 60 * 60)) / (1000 * 60);
-
-        if (hours > 0) {
-            return hours + "h " + minutes + "m";
-        } else {
-            return minutes + "m";
+    private String extractPriorityFromBusinessService(Map<String, Object> data) {
+        try {
+            Map<String, Object> currentProcessInstance = (Map<String, Object>) data.get("currentProcessInstance");
+            if (currentProcessInstance == null) {
+                return "Medium"; // Default fallback
+            }
+            
+            Object businessServiceObj = currentProcessInstance.get("businessService");
+            if (businessServiceObj instanceof String businessService && businessService.contains("_")) {
+                String[] parts = businessService.split("_", 2);
+                if (parts.length > 1) {
+                    return parts[1]; // Return part after underscore (High, Low, Medium)
+                }
+            }
+            
+            return "Medium"; // Default fallback
+        } catch (Exception e) {
+            log.warn("Error extracting priority from business service: {}", e.getMessage());
+            return "Medium"; // Default fallback
         }
     }
 
