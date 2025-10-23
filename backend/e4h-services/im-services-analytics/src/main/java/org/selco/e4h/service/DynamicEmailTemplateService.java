@@ -181,8 +181,8 @@ public class DynamicEmailTemplateService {
         
         section.append("  <tr><td class=\"sp-16\"></td></tr>\n");
         
-        // Download button - only show if file store ID is available AND there are tickets
-        if (fileStoreId != null && !fileStoreId.isEmpty() && tickets != null && !tickets.isEmpty()) {
+        // Download button - always show if file store ID is available (even for zero counts)
+        if (fileStoreId != null && !fileStoreId.isEmpty()) {
             String downloadUrl = commonUtility.generateDownloadUrl(fileStoreId, tenantId, 
                 consumerConfiguration.getFileStoreBaseUrl(), consumerConfiguration.getFileStoreDownloadEndpoint());
             section.append("  <tr>\n");
@@ -191,7 +191,7 @@ public class DynamicEmailTemplateService {
             section.append("    </td>\n");
             section.append("  </tr>\n");
         }
-        // No message shown when there are no tickets or no file available
+        // Download button always shown when CSV file is available (headers only for zero counts)
         
         section.append("  <tr><td class=\"sp-12\"></td></tr>\n");
         section.append("  <tr>\n");
