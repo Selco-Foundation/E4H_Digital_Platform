@@ -1,15 +1,13 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useDispatch } from "react-redux";
-import {
-  Dropdown,
-  MultiUploadWrapper,
-} from "@selco/digit-ui-react-components";
+import { Button, Dropdown, MultiUploadWrapper, PopUp } from "@selco/digit-ui-react-components";
 import { useRouteMatch, useHistory } from "react-router-dom";
 import { useQueryClient } from "react-query";
 import { FormComposer } from "../../../components/FormComposer";
 import { createComplaint } from "../../../redux/actions/index";
 import { Link } from "react-router-dom";
+import { InboxGeneral } from "@egovernments/digit-ui-libraries/src/services/elements/InboxService";
 
 export const CreateComplaint = ({ parentUrl }) => {
   const { t } = useTranslation();
@@ -40,16 +38,17 @@ export const CreateComplaint = ({ parentUrl }) => {
   const [submitted, setSubmitted] = useState(false);
   const tenantId = window.Digit.SessionStorage.get("Employee.tenantId");
   const [tenant, setTenant] = useState(window.Digit.SessionStorage.get("Employee.tenantId"));
-  const [complaintType, setComplaintType] = useState(JSON?.parse(sessionStorage.getItem("complaintType")) || {});
+  const [complaintType, setComplaintType] = useState({});
   const [subTypeMenu, setSubTypeMenu] = useState([]);
   const [phcSubTypeMenu, setPhcSubTypeMenu] = useState([]);
   const [disbaled, setDisable] = useState(true);
   const [disbaledUpload, setDisableUpload] = useState(true);
   const [phcMenuNew, setPhcMenu] = useState([]);
-  const [subType, setSubType] = useState(JSON?.parse(sessionStorage.getItem("subType")) || {});
+  const [subType, setSubType] = useState({});
   const [systemFunctionality, setSystemFunctionality] = useState();
   const [systemFunctionalityMenu, setSystemFunctionalityMenu] = useState([]);
   const [dataState, setDataState] = useState({ newArr: [], mappedArray: [] });
+  const [duplicateTicketIds, setDuplicateTicketIds] = useState([]);
   let sortedSubMenu = [];
   if (subTypeMenu !== null) {
     sortedSubMenu = subTypeMenu.sort((a, b) => a.name.localeCompare(b.name));
@@ -202,19 +201,67 @@ export const CreateComplaint = ({ parentUrl }) => {
       setSubmitValve(false);
     }
   }, [complaintType, subType, systemFunctionality, healthcentre, healthCareType, district, block, isImageUploading, isVideoUploading]);
+
+  useEffect(() => {
+    const handleDuplicateCheck = async () => {
+      if (district?.name && block?.name && healthcentre?.code && complaintType?.key && subType?.key) {
+        try {
+          const data = await Digit.InboxGeneral.Search({
+            inbox: {
+              tenantId,
+              processSearchCriteria: {
+                businessService: ["Incident"],
+                moduleName: "Incident",
+                status: [
+                  "PENDINGFORASSIGNMENT",
+                  "PENDINGRESOLUTION",
+                  "PENDING_ASSIGNMENT_SPARE_PART_NEEDED",
+                  "PENDING_ASSIGNMENT_OUT_OF_WARRANTY",
+                  "PENDING_RESOLUTION_SPARE_PART_NEEDED",
+                  "PENDING_RESOLUTION_OUT_OF_WARRANTY"
+                ],
+                tenantId,
+              },
+              moduleSearchCriteria: {
+                district: [district.name],
+                block: [block.name],
+                phcType: [healthcentre.code],
+                incidentType: [complaintType.key],
+                incidentSubType: [subType?.key],
+                tenantId,
+                sortOrder: "DESC"
+              },
+              limit: 100,
+              offset: 0
+            }
+          });
+
+          if (data?.items?.length) {
+            setDuplicateTicketIds(data?.items?.map(item => ({
+              ticketId: item?.businessObject?.incident?.incidentId,
+              ticketTenantId: item?.businessObject?.incident?.tenantId,
+            })));
+          }
+        } catch (error) {
+          console.error("Error fetching duplicate tickets:", error);
+        }
+      }
+    }
+
+    handleDuplicateCheck();
+  }, [district, block, healthcentre, complaintType, subType]);
+
   async function selectedType(value) {
     setDisableUpload(false);
     if (value.key !== complaintType.key) {
       if (value.key === "Others") {
         setSubType({ name: "" });
         setComplaintType(value);
-        sessionStorage.setItem("complaintType", JSON.stringify(value));
         setSubTypeMenu([{ key: "Others", name: t("SERVICEDEFS.OTHERS") }]);
         ticketSubTypeRef?.current?.validate();
       } else {
         setSubType({ name: "" });
         setComplaintType(value);
-        sessionStorage.setItem("complaintType", JSON.stringify(value));
         setSubTypeMenu(await serviceDefinitions.getSubMenu(tenantId, value, t));
         ticketSubTypeRef?.current?.validate();
       }
@@ -243,7 +290,6 @@ export const CreateComplaint = ({ parentUrl }) => {
   };
 
   function selectedSubType(value) {
-    sessionStorage.setItem("subType", JSON.stringify(value));
     setSubType(value);
   }
 
@@ -687,6 +733,89 @@ export const CreateComplaint = ({ parentUrl }) => {
       {errors.map((error, index) => (
         <div key={index}>{error}</div>
       ))} */}
+      {duplicateTicketIds?.length > 0 && (
+        <PopUp>
+          <div
+            style={{
+              backgroundColor: "white",
+              position: "fixed",
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+              width: "400px",
+              maxWidth: "95%",
+              padding: "24px",
+              borderRadius: "5px",
+            }}
+          >
+            <h2
+              style={{
+                margin: "0 0 16px 0",
+                fontSize: "20px",
+                fontWeight: "600",
+                color: "#333",
+                textAlign: "center",
+              }}
+            >
+              {t("IM_ALERT_POTENTIAL_DUPLICATES")}
+            </h2>
+
+            <div style={{ marginBottom: "24px" }}>
+              <p
+                style={{
+                  fontSize: "16px",
+                  textAlign: "center",
+                  marginBottom: "5px",
+                }}
+              >
+                {t("IM_ALERT_POTENTIAL_DUPLICATES_DESC")}
+              </p>
+              <p
+                style={{
+                  fontSize: "16px",
+                  textAlign: "center",
+                  marginBottom: "5px",
+                }}
+              >
+                <span>
+                  {t("IM_ALERT_POTENTIAL_DUPLICATES_EXISTING")}
+                  {": "}
+                </span>
+                {duplicateTicketIds.map(({ ticketId, ticketTenantId }, index, array) => (
+                  <span key={index}>
+                    <Link
+                      to={`/${window.contextPath}/employee/im/complaint/details/${ticketId}/${ticketTenantId}`}
+                      target={"_blank"}
+                      style={{ color: "#7a2829", textDecoration: "underline" }}
+                    >
+                      {ticketId}
+                    </Link>
+                    {index < array.length - 1 ? ", " : ""}
+                  </span>
+                ))}
+              </p>
+              <p
+                style={{
+                  fontSize: "16px",
+                  textAlign: "center",
+                }}
+              >
+                {t("IM_ALERT_POTENTIAL_DUPLICATES_ACTION_DESC")}
+              </p>
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "space-around" }}>
+              <Button variation={"primary"} style={{ width: "150px" }} label={t("TL_COMMON_YES")} onButtonClick={() => setDuplicateTicketIds([])} />
+              <Button
+                variation={"secondary"}
+                style={{ width: "150px" }}
+                label={t("TL_COMMON_NO")}
+                onButtonClick={() => history.push(`/${window.contextPath}/employee/im/inbox`)}
+              />
+            </div>
+          </div>
+        </PopUp>
+      )}
     </div>
   );
 };
