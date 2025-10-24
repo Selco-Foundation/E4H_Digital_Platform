@@ -18,9 +18,6 @@ class Comment {
     this.transactionId,
   });
 
-  /// Try to parse a structured JSON payload like:
-  /// {"reason":"...","comment":"..."}
-  /// Returns a Map<String,dynamic> only if it looks like the structured form.
   Map<String, dynamic>? get _maybeParsedJson {
     final raw = commentMessage;
     if (raw == null || raw.isEmpty) return null;
@@ -30,24 +27,18 @@ class Comment {
         final map = decoded.cast<String, dynamic>();
         final hasReason = map.containsKey('reason');
         final hasComment = map.containsKey('comment');
-        if (hasReason || hasComment) return map; // treat as structured
+        if (hasReason || hasComment) return map;
       }
-    } catch (_) {
-      // not JSON; ignore
-    }
+    } catch (_) {}
     return null;
   }
 
   String? get reason => _maybeParsedJson?['reason']?.toString();
 
-  /// If the message is structured JSON, ALWAYS return the parsed "comment"
-  /// (even when it's an empty string) so the UI shows blank instead of raw JSON.
-  /// If not structured, fall back to the plain commentMessage.
   String get displayComment {
     final parsed = _maybeParsedJson;
     if (parsed != null) {
       final val = parsed['comment'];
-      // Return "" if missing or null, to avoid showing the raw JSON text
       return (val is String) ? val : '';
     }
     return commentMessage ?? '';
