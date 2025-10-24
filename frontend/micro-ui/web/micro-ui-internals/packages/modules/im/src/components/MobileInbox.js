@@ -13,19 +13,33 @@ const GetSlaCell = (value) => {
 
 const MobileInbox = ({ data, onFilterChange, onSearch, isLoading, searchParams }) => {
   const { t } = useTranslation();
-  console.log("datadatadata",data)
-  const localizedData = data?.combinedRes?.map(({ tenantId,phcType, incidentType, incidentId, incidentSubType, sla, status, taskOwner }) => ({
-    [t("CS_COMMON_TICKET_NO")]: 
-    incidentId && (typeof incidentId === "string" || typeof incidentId === "number") ? (
-      <Link to={`/${window.contextPath}/employee/im/complaint/details/${incidentId}/${tenantId}`} style={{ color: "#7a2829" }}>
-        {incidentId}
-      </Link>
-    ) : (
-      incidentId?.toString() ? (
-        <Link to={`/${window.contextPath}/employee/im/complaint/details/${incidentId.toString()}/${tenantId}`} style={{ color: "#7a2829" }}>
-          {incidentId.toString()}
+  const localizedData = data?.combinedRes?.map(({ tenantId,phcType, incidentType, incidentId, incidentSubType, sla, status, taskOwner, potentialDuplicate }) => ({
+    [t("CS_COMMON_TICKET_NO")]:
+    (
+      <div>
+        <Link to={`/${window.contextPath}/employee/im/complaint/details/${incidentId}/${tenantId}`} style={{ color: "#7a2829" }}>
+          {incidentId}
         </Link>
-      ) : ""
+        {potentialDuplicate && (
+          <div style={{ marginTop: "5px" }}>
+            <span
+              style={{
+                border: "1px solid #B91900",
+                borderRadius: "10px",
+                backgroundColor: "#FFF5F4",
+                color: "#B91900",
+                width: "fit-content",
+                padding: "5px 10px",
+                display: "inline-block",
+                fontSize: "12px",
+                fontWeight: "bold",
+              }}
+            >
+              {t("CS_INFO_POTENTIAL_DUPLICATE")}
+            </span>
+          </div>
+        )}
+      </div>
     ),
     [t("CS_TICKET_TYPE")]: t(`SERVICEDEFS.${incidentType.toUpperCase()}`),
     [t("CS_TICKET_SUB_TYPE")]: t(`SERVICEDEFS.${incidentSubType.toUpperCase()}`),
@@ -33,7 +47,8 @@ const MobileInbox = ({ data, onFilterChange, onSearch, isLoading, searchParams }
     [t("CS_COMPLAINT_PHC_TYPE")]:t(`TENANT_TENANTS_${tenantId.toUpperCase().replace(".","_")}`),
     [t("WF_INBOX_HEADER_CURRENT_OWNER")]: taskOwner,
     [t("WF_INBOX_HEADER_SLA_DAYS_REMAINING")]: sla,
-    [t("TenantID")]:tenantId
+    [t("TenantID")]:tenantId,
+    incidentId,
     // status,
   }));
 
