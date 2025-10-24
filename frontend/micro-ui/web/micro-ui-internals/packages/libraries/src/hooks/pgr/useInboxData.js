@@ -138,6 +138,7 @@ const combineResponses = (items, currentUserUuid, currentTenant, stateTenantId, 
       taskOwner: assignee?.name || "-",
       sla: `${slaValue}`,
       tenantId: incident.tenantId,
+      potentialDuplicate: currentUserRoles.includes("COMPLAINT_ASSESSOR") && !!incident.isPotentialDuplicate,
     };
   });
 };
