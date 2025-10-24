@@ -25,11 +25,11 @@ const MobileInbox = ({ data, onFilterChange, onSearch, isLoading, searchParams }
             <span
               style={{
                 border: "1px solid #B91900",
-                borderRadius: "10px",
+                borderRadius: "6px",
                 backgroundColor: "#FFF5F4",
                 color: "#B91900",
                 width: "fit-content",
-                padding: "5px 10px",
+                padding: "2px 6px",
                 display: "inline-block",
                 fontSize: "12px",
                 fontWeight: "bold",
