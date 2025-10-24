@@ -85,7 +85,7 @@
       "uniqueIdentifier": "",
       "data": {
         "solutionDesignTypeCode": "HYBRID_RMS_SINGLE_PHASE",
-        "systemCode": "HYBRID_RMS_SINGLE_PHASE",
+        "systemCode": "HYBRID_SINGLE_PHASE",
         "file_name": "",
         "bomForms": [
           {
@@ -120,7 +120,7 @@
       "uniqueIdentifier": "",
       "data": {
         "solutionDesignTypeCode": "HYBRID_RMS_THREE_PHASE",
-        "systemCode": "HYBRID_RMS_THREE_PHASE",
+        "systemCode": "HYBRID_THREE_PHASE",
         "file_name": "",
         "bomForms": [
           {
