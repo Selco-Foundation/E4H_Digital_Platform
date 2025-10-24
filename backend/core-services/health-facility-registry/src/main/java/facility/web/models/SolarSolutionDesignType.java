@@ -11,5 +11,6 @@ public enum SolarSolutionDesignType {
     PHC_DELIVERY_CCP_DENTAL,
     PHC_LAB_CCP_OR_LR,
     PHC_DELIVERY_CCP_HYBRID,
-    SC_NO_LR_NO_CCP
+    SC_NO_LR_NO_CCP,
+    SUB_CENTER_STAFF_QUARTERS
 }
