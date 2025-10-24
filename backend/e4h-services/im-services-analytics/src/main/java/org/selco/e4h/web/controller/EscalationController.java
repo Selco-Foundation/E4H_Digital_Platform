@@ -197,7 +197,50 @@ public class EscalationController {
     }
     
     /**
-     * Process weekly report for a single email ID containing all states
+     * Get relevant tenant IDs for a specific email ID based on their roles
+     */
+    private Set<String> getRelevantTenantIdsForEmail(RequestInfo requestInfo, String emailId, 
+                                                    List<EscalationRecipient> recipients, 
+                                                    List<String> activeTenantIds) {
+        Set<String> relevantTenantIds = new HashSet<>();
+        
+        for (EscalationRecipient recipient : recipients) {
+            if (recipient.getActive() == null || !recipient.getActive()) {
+                continue;
+            }
+            
+            List<String> roleCodes = Arrays.asList(recipient.getRecipientRole());
+            
+            if ("state".equals(recipient.getBoundaryLevel())) {
+                // For state-level recipients, check each tenant individually and track tenant ID
+                for (String tenantId : activeTenantIds) {
+                    List<User> tenantUsers = userService.searchUsersByRoleAndTenant(requestInfo, tenantId, roleCodes);
+                    for (User user : tenantUsers) {
+                        if (emailId.equals(user.getEmailId())) {
+                            relevantTenantIds.add(tenantId);
+                            break; // Found user in this tenant, no need to check other users in same tenant
+                        }
+                    }
+                }
+            } else if ("country".equals(recipient.getBoundaryLevel())) {
+                // For country-level recipients, get users from 'in' tenant
+                List<User> users = userService.searchUsersByRoleInCountry(requestInfo, roleCodes);
+                for (User user : users) {
+                    if (emailId.equals(user.getEmailId())) {
+                        // For country-level roles, include all active tenants
+                        relevantTenantIds.addAll(activeTenantIds);
+                        break; // Found user, no need to check other users
+                    }
+                }
+            }
+        }
+        
+        log.info("Relevant tenant IDs for email {}: {}", emailId, relevantTenantIds);
+        return relevantTenantIds;
+    }
+    
+    /**
+     * Process weekly report for a single email ID containing only relevant states
      */
     private void processWeeklyReportForEmail(RequestInfo requestInfo, String emailId, 
                                           List<EscalationRecipient> recipients, 
@@ -205,8 +248,8 @@ public class EscalationController {
         try {
             log.info("Processing weekly report for email: {} with {} recipients", emailId, recipients.size());
             
-            // For weekly reports, use all active tenant IDs to generate consolidated report
-            Set<String> relevantTenantIds = new HashSet<>(activeTenantIds);
+            // For weekly reports, only include tenant IDs where the user has roles
+            Set<String> relevantTenantIds = getRelevantTenantIdsForEmail(requestInfo, emailId, recipients, activeTenantIds);
             
             // Generate consolidated weekly report data for all relevant tenants
             Map<String, WeeklyReportData> reportDataByTenant = new HashMap<>();
@@ -571,50 +614,15 @@ public class EscalationController {
             }
         }
 
-        // Special handling for CENTRAL_POC: Create combined CSV for L1 section (LEVEL_ZERO + LEVEL_ONE)
-        if ("CENTRAL_POC".equals(recipientRole.getRole())) {
-            // Combine LEVEL_ZERO and LEVEL_ONE tickets for L1 section
-            List<EscalationTicket> l1Tickets = new ArrayList<>();
-            if (ticketsByLevel.get("LEVEL_ZERO") != null) {
-                l1Tickets.addAll(ticketsByLevel.get("LEVEL_ZERO"));
-            }
-            if (ticketsByLevel.get("LEVEL_ONE") != null) {
-                l1Tickets.addAll(ticketsByLevel.get("LEVEL_ONE"));
-            }
-            
-            // Generate combined CSV for L1 section
-            if (!l1Tickets.isEmpty()) {
-                String l1CsvContent = csvGenerationService.generateEscalationCsv(l1Tickets);
-                String l1CsvFileName = csvGenerationService.generateCsvFileName("daily", "LEVEL_ONE", tenantId);
-                String l1CsvFileStoreId = uploadCsvToFileStore(l1CsvContent, l1CsvFileName, tenantId, requestInfo);
-                
-                if (l1CsvFileStoreId != null) {
-                    // Clear existing file store IDs and add only the combined L1 and L2 files
-                    csvFileStoreIds.clear();
-                    csvFileNames.clear();
-                    
-                    // Add L1 combined file
-                    csvFileStoreIds.add(l1CsvFileStoreId);
-                    csvFileNames.add(l1CsvFileName);
-                    
-                    // Add L2 file if it exists
-                    if (ticketsByLevel.get("LEVEL_TWO") != null && !ticketsByLevel.get("LEVEL_TWO").isEmpty()) {
-                        String l2CsvContent = csvGenerationService.generateEscalationCsv(ticketsByLevel.get("LEVEL_TWO"));
-                        String l2CsvFileName = csvGenerationService.generateCsvFileName("daily", "LEVEL_TWO", tenantId);
-                        String l2CsvFileStoreId = uploadCsvToFileStore(l2CsvContent, l2CsvFileName, tenantId, requestInfo);
-                        
-                        if (l2CsvFileStoreId != null) {
-                            csvFileStoreIds.add(l2CsvFileStoreId);
-                            csvFileNames.add(l2CsvFileName);
-                        }
-                    }
-                }
-            }
-        }
-
         // Always send email (even with zero counts) - use new role-based email generation
+        // Pass MDMS workflow states to template for correct filtering
+        Map<String, List<String>> workflowStatesByLevel = new HashMap<>();
+        for (EscalationRoleEscalationItem item : items) {
+            workflowStatesByLevel.put(item.getEscalationLevel(), item.getWorkflowStates());
+        }
+        
         sendRoleBasedEscalationEmail(requestInfo, users, ticketsByLevel, recipientRole.getRole(),
-            recipientRole.getBoundaryLevel(), csvFileStoreIds, csvFileNames, escalationType, tenantId);
+            recipientRole.getBoundaryLevel(), csvFileStoreIds, csvFileNames, escalationType, tenantId, workflowStatesByLevel);
 
         escalationStatusService.publishSuccessStatus(escalationType, escalationId, tenantId, recipientRoleName);
         log.info("Completed state level escalation (V2) for tenant: {} and role: {} with {} levels", 
@@ -728,8 +736,14 @@ public class EscalationController {
         }
 
         // Always send email (even with zero counts) - use new role-based email generation
+        // Pass MDMS workflow states to template for correct filtering
+        Map<String, List<String>> workflowStatesByLevel = new HashMap<>();
+        for (EscalationRoleEscalationItem item : items) {
+            workflowStatesByLevel.put(item.getEscalationLevel(), item.getWorkflowStates());
+        }
+        
         sendRoleBasedEscalationEmail(requestInfo, users, ticketsByLevel, recipientRole.getRole(),
-            recipientRole.getBoundaryLevel(), csvFileStoreIds, csvFileNames, escalationType, "in");
+            recipientRole.getBoundaryLevel(), csvFileStoreIds, csvFileNames, escalationType, "in", workflowStatesByLevel);
 
         escalationStatusService.publishSuccessStatus(escalationType, escalationId, "in", recipientRoleName);
         log.info("Completed country level escalation (V2) for role: {} with {} levels", 
@@ -777,7 +791,8 @@ public class EscalationController {
                                              Map<String, List<EscalationTicket>> ticketsByLevel,
                                              String recipientRole, String boundaryLevel,
                                              List<String> csvFileStoreIds, List<String> csvFileNames,
-                                             String escalationType, String tenantId) {
+                                             String escalationType, String tenantId, 
+                                             Map<String, List<String>> workflowStatesByLevel) {
         try {
             log.info("Sending role-based escalation email to {} users for role: {}, levels: {}", 
                 users.size(), recipientRole, ticketsByLevel.keySet());
@@ -809,7 +824,8 @@ public class EscalationController {
                 boundaryLevel, 
                 tenantId,
                 requestInfo,
-                fileStoreIdsByLevel
+                fileStoreIdsByLevel,
+                workflowStatesByLevel
             );
             
             // Generate role-based email subject (uses formatted date)

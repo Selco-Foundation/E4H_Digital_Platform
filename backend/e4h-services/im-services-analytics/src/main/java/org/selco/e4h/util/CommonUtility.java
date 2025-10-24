@@ -195,52 +195,32 @@ public class CommonUtility {
         switch (workflowState) {
             case "PENDING_ASSIGNMENT_OUT_OF_WARRANTY":
                 return "Out of Warranty - Pending State POC";
-            
-            case "OUT_OF_WARRANTY_PENDING_STATE_POC":
-                return "Out of Warranty - Pending State POC";
-            
+
             case "PENDINGFORASSIGNMENT":
                 // Different display based on role and escalation level
-                if ("LEVEL_TWO".equals(escalationLevel)) {
-                    return "CRM - Pending Assignment";
+                if ("CENTRAL_ONM_PROJECT_MANAGER".equals(recipientRole)) {
+                    return "Pending Assignment";
                 }
-                return "Pending Assignment";
-            
+                return "CRM - Pending Assignment";
+
             case "PENDING_ASSIGNMENT_SPARE_PART_NEEDED":
-                // Different display based on role and escalation level
-                if ("LEVEL_TWO".equals(escalationLevel)) {
-                    return "CRM - Spare Part Change";
-                } else if ("STATE_POC".equals(recipientRole)) {
+                if ("CENTRAL_ONM_PROJECT_MANAGER".equals(recipientRole)) {
                     return "Spare Part Change - Pending With CRM";
                 }
-                return "Spare Part Change";
-            
+                return "CRM - Spare Part Change";
+
             case "PENDING_RESOLUTION_SPARE_PART_NEEDED":
-                // Different display based on role and escalation level
-                if ("LEVEL_TWO".equals(escalationLevel)) {
-                    return "Vendor - Spare Part Change";
-                } else if ("STATE_POC".equals(recipientRole)) {
-                    return "Spare Part Change - Pending with Vendor";
-                }
-                return "Spare Part Change - Pending with Vendor";
-            
+                return "Vendor - Spare Part Change";
+
             case "PENDINGRESOLUTION":
-                if ("LEVEL_TWO".equals(escalationLevel)) {
-                    return "Vendor - Within Warranty";
-                }
-                return "Pending Resolution";
-            
+                return "Vendor - Within Warranty";
+
             case "PENDING_RESOLUTION_OUT_OF_WARRANTY":
-                if ("LEVEL_TWO".equals(escalationLevel)) {
-                    return "Vendor - Out of Warranty";
-                }
-                return "Out of Warranty - Pending with Vendor";
-            
+                return "Vendor - Out of Warranty";
+
             default:
-                // Generic formatting: Convert PENDING_ASSIGNMENT to "Pending Assignment"
-                return java.util.Arrays.stream(workflowState.split("_"))
-                    .map(word -> word.substring(0, 1).toUpperCase() + word.substring(1).toLowerCase())
-                    .collect(java.util.stream.Collectors.joining(" "));
+                // Don't show workflow states that are not configured in MDMS
+                return null;
         }
     }
 }
