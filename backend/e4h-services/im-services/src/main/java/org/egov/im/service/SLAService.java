@@ -42,9 +42,6 @@ public class SLAService {
 
 
     public long computeTotalSlaRemaining( List<State> states, List<ProcessInstance> processInstances, List<Map<String, Object>> businessHourList, ProcessInstance currentProcessInstance) {
-        if (processInstances == null || processInstances.isEmpty()) {
-            return 0;
-        }
         BusinessHoursUtil businessHoursUtil = new BusinessHoursUtil(businessHourList);
 
         Map<String, Long> stateToSlaMap = new HashMap<>();
