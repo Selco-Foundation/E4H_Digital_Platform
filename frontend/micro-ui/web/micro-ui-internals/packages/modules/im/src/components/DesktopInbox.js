@@ -68,7 +68,25 @@ const DesktopInbox = ({
                   {row.original["incidentId"]}
                 </Link>
               </span>
-             
+              {row.original["potentialDuplicate"] && (
+                <div style={{ marginTop: "5px" }}>
+                  <span
+                    style={{
+                      border: "1px solid #B91900",
+                      borderRadius: "10px",
+                      backgroundColor: "#FFF5F4",
+                      color: "#B91900",
+                      width: "fit-content",
+                      padding: "5px 10px",
+                      display: "inline-block",
+                      fontSize: "12px",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    {t("CS_INFO_POTENTIAL_DUPLICATE")}
+                  </span>
+                </div>
+              )}
             </div>
           );
         },
