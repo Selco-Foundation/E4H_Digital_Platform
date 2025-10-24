@@ -3,6 +3,7 @@ package org.selco.e4h.util;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.request.RequestInfo;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 
@@ -16,6 +17,12 @@ import java.util.Base64;
 public class CommonUtility {
 
     private static final ObjectMapper objectMapper = new ObjectMapper();
+    
+    @Value("${kibana.dashboard.url}")
+    private String kibanaDashboardUrl;
+    
+    @Value("${saura.emitra.base.url}")
+    private String sauraEmitraBaseUrl;
     
     static {
         // Configure ObjectMapper to handle potential serialization issues
@@ -108,32 +115,32 @@ public class CommonUtility {
      */
     public String generateSauraEmitraUrl(String tenantId) {
         if (tenantId == null || "in".equals(tenantId)) {
-            return "https://saura-emitra.selcofoundation.org/digit-ui";
+            return sauraEmitraBaseUrl + "/digit-ui";
         }
-        
+
         switch (tenantId.toLowerCase()) {
             case "pg":
-                return "https://saura-emitra.selcofoundation.org/digit-ui"; // Karnataka
+                return sauraEmitraBaseUrl + "/digit-ui"; // Karnataka
             case "sk":
-                return "https://saura-emitra.selcofoundation.org/sikkim";
+                return sauraEmitraBaseUrl + "/sikkim";
             case "mz":
-                return "https://saura-emitra.selcofoundation.org/mizoram";
+                return sauraEmitraBaseUrl + "/mizoram";
             case "or":
-                return "https://saura-emitra.selcofoundation.org/odisha";
+                return sauraEmitraBaseUrl + "/odisha";
             case "as":
-                return "https://saura-emitra.selcofoundation.org/assam";
+                return sauraEmitraBaseUrl + "/assam";
             case "mn":
-                return "https://saura-emitra.selcofoundation.org/manipur";
+                return sauraEmitraBaseUrl + "/manipur";
             case "nl":
-                return "https://saura-emitra.selcofoundation.org/nagaland";
+                return sauraEmitraBaseUrl + "/nagaland";
             case "gj":
-                return "https://saura-emitra.selcofoundation.org/gujarat";
+                return sauraEmitraBaseUrl + "/gujarat";
             case "mh":
-                return "https://saura-emitra.selcofoundation.org/maharashtra";
+                return sauraEmitraBaseUrl + "/maharashtra";
             case "ml":
-                return "https://saura-emitra.selcofoundation.org/meghalaya";
+                return sauraEmitraBaseUrl + "/meghalaya";
             default:
-                return "https://saura-emitra.selcofoundation.org/digit-ui";
+                return sauraEmitraBaseUrl + "/digit-ui";
         }
     }
 
@@ -141,8 +148,8 @@ public class CommonUtility {
      * Generate state-specific dashboard URL
      */
     public String generateStateDashboardUrl(String tenantId) {
-        // Use the E4H Kibana dashboard URL
-        return "https://e4h-dev.selcofoundation.org/kibana/";
+        // Use the configured Kibana dashboard URL from application properties
+        return kibanaDashboardUrl;
     }
 
     /**
@@ -188,52 +195,32 @@ public class CommonUtility {
         switch (workflowState) {
             case "PENDING_ASSIGNMENT_OUT_OF_WARRANTY":
                 return "Out of Warranty - Pending State POC";
-            
-            case "OUT_OF_WARRANTY_PENDING_STATE_POC":
-                return "Out of Warranty - Pending State POC";
-            
+
             case "PENDINGFORASSIGNMENT":
                 // Different display based on role and escalation level
-                if ("LEVEL_TWO".equals(escalationLevel)) {
-                    return "CRM - Pending Assignment";
+                if ("CENTRAL_ONM_PROJECT_MANAGER".equals(recipientRole)) {
+                    return "Pending Assignment";
                 }
-                return "Pending Assignment";
-            
+                return "CRM - Pending Assignment";
+
             case "PENDING_ASSIGNMENT_SPARE_PART_NEEDED":
-                // Different display based on role and escalation level
-                if ("LEVEL_TWO".equals(escalationLevel)) {
-                    return "CRM - Spare Part Change";
-                } else if ("STATE_POC".equals(recipientRole)) {
+                if ("CENTRAL_ONM_PROJECT_MANAGER".equals(recipientRole)) {
                     return "Spare Part Change - Pending With CRM";
                 }
-                return "Spare Part Change";
-            
+                return "CRM - Spare Part Change";
+
             case "PENDING_RESOLUTION_SPARE_PART_NEEDED":
-                // Different display based on role and escalation level
-                if ("LEVEL_TWO".equals(escalationLevel)) {
-                    return "Vendor - Spare Part Change";
-                } else if ("STATE_POC".equals(recipientRole)) {
-                    return "Spare Part Change - Pending with Vendor";
-                }
-                return "Spare Part Change - Pending with Vendor";
-            
+                return "Vendor - Spare Part Change";
+
             case "PENDINGRESOLUTION":
-                if ("LEVEL_TWO".equals(escalationLevel)) {
-                    return "Vendor - Within Warranty";
-                }
-                return "Pending Resolution";
-            
+                return "Vendor - Within Warranty";
+
             case "PENDING_RESOLUTION_OUT_OF_WARRANTY":
-                if ("LEVEL_TWO".equals(escalationLevel)) {
-                    return "Vendor - Out of Warranty";
-                }
-                return "Out of Warranty - Pending with Vendor";
-            
+                return "Vendor - Out of Warranty";
+
             default:
-                // Generic formatting: Convert PENDING_ASSIGNMENT to "Pending Assignment"
-                return java.util.Arrays.stream(workflowState.split("_"))
-                    .map(word -> word.substring(0, 1).toUpperCase() + word.substring(1).toLowerCase())
-                    .collect(java.util.stream.Collectors.joining(" "));
+                // Don't show workflow states that are not configured in MDMS
+                return null;
         }
     }
 }

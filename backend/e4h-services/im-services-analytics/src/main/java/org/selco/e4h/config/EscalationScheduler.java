@@ -23,10 +23,10 @@ public class EscalationScheduler {
     
     /**
      * Scheduled method to process SLA escalations daily at end of workday
-     * Default: Monday to Friday at 6:00 PM (18:00)
+     * Default: Monday to Saturday at 6:00 PM (18:00)
      * Based on LLD: Cronjob 1 calls /im-services-analytics/v1/escalation-emails/daily
      */
-    @Scheduled(cron = "${escalation.daily.cron.expression:0 0 18 * * MON-FRI}", zone = "Asia/Kolkata")
+    @Scheduled(cron = "${escalation.daily.cron.expression:0 0 18 * * MON-SAT}", zone = "Asia/Kolkata")
     public void processDailyEscalationsScheduled() {
         try {
             log.info("Starting scheduled daily SLA escalation processing");

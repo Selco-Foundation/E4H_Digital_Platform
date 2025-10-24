@@ -43,7 +43,8 @@ public class DynamicEmailTemplateService {
     public String generateRoleBasedEscalationEmailHTML(Map<String, List<EscalationTicket>> ticketsByLevel, 
                                                       String recipientName, String recipientRole, 
                                                       String boundaryLevel, String tenantId, 
-                                                      RequestInfo requestInfo, Map<String, String> fileStoreIdsByLevel) {
+                                                      RequestInfo requestInfo, Map<String, String> fileStoreIdsByLevel,
+                                                      Map<String, List<String>> workflowStatesByLevel) {
         try {
             log.info("Generating role-based escalation email for role: {}, levels: {}, recipient: {} with file store IDs", 
                 recipientRole, ticketsByLevel.keySet(), recipientName);
@@ -51,9 +52,9 @@ public class DynamicEmailTemplateService {
             // Load base template
             String template = loadTemplate();
             
-            // Prepare template variables with file store IDs
+            // Prepare template variables with file store IDs and MDMS workflow states
             Map<String, String> templateVariables = prepareRoleBasedTemplateVariables(
-                ticketsByLevel, recipientName, recipientRole, boundaryLevel, tenantId, requestInfo, fileStoreIdsByLevel);
+                ticketsByLevel, recipientName, recipientRole, boundaryLevel, tenantId, requestInfo, fileStoreIdsByLevel, workflowStatesByLevel);
             
             // Replace template variables
             String html = replaceTemplateVariables(template, templateVariables);
@@ -87,7 +88,8 @@ public class DynamicEmailTemplateService {
     private Map<String, String> prepareRoleBasedTemplateVariables(Map<String, List<EscalationTicket>> ticketsByLevel, 
                                                                  String recipientName, String recipientRole,
                                                                  String boundaryLevel, String tenantId,
-                                                                 RequestInfo requestInfo, Map<String, String> fileStoreIdsByLevel) {
+                                                                 RequestInfo requestInfo, Map<String, String> fileStoreIdsByLevel,
+                                                                 Map<String, List<String>> workflowStatesByLevel) {
         Map<String, String> variables = new HashMap<>();
         
         // Basic variables
@@ -104,9 +106,9 @@ public class DynamicEmailTemplateService {
         variables.put("SELCO_LOGO", commonUtility.loadLogoAsBase64("selcofoundation.png"));
         variables.put("SAURA_LOGO", commonUtility.loadLogoAsBase64("SauraEmitra.png"));
         
-        // Generate dynamic escalation sections based on role and available levels
+        // Generate dynamic escalation sections based on role and available levels with MDMS workflow states
         String escalationSections = generateRoleBasedEscalationSections(
-            ticketsByLevel, recipientRole, tenantId, requestInfo, fileStoreIdsByLevel);
+            ticketsByLevel, recipientRole, tenantId, requestInfo, fileStoreIdsByLevel, workflowStatesByLevel);
         variables.put("ESCALATION_SECTIONS", escalationSections);
         
         // Generate state-specific dashboard URL
@@ -118,55 +120,25 @@ public class DynamicEmailTemplateService {
     
     private String generateRoleBasedEscalationSections(Map<String, List<EscalationTicket>> ticketsByLevel,
                                                       String recipientRole, String tenantId,
-                                                      RequestInfo requestInfo, Map<String, String> fileStoreIdsByLevel) {
+                                                      RequestInfo requestInfo, Map<String, String> fileStoreIdsByLevel,
+                                                      Map<String, List<String>> workflowStatesByLevel) {
         StringBuilder sections = new StringBuilder();
         
-        // Special handling for CENTRAL_POC: Combine LEVEL_ZERO and LEVEL_ONE into L1 section
-        if ("CENTRAL_POC".equals(recipientRole)) {
-            // Combine LEVEL_ZERO and LEVEL_ONE tickets for L1 section
-            List<EscalationTicket> l1Tickets = new ArrayList<>();
-            if (ticketsByLevel.get("LEVEL_ZERO") != null) {
-                l1Tickets.addAll(ticketsByLevel.get("LEVEL_ZERO"));
+        // Generate sections for all escalation levels
+        List<String> expectedLevels = getExpectedLevelsForRole(recipientRole);
+        
+        for (String level : expectedLevels) {
+            List<EscalationTicket> tickets = ticketsByLevel.get(level);
+            if (tickets == null) {
+                tickets = new ArrayList<>();
             }
-            if (ticketsByLevel.get("LEVEL_ONE") != null) {
-                l1Tickets.addAll(ticketsByLevel.get("LEVEL_ONE"));
-            }
-            
-            // Generate L1 section with combined tickets (always show, even with 0 tickets)
-            String l1FileStoreId = fileStoreIdsByLevel != null ? fileStoreIdsByLevel.get("LEVEL_ONE") : null;
-            String l1Section = generateEscalationSection("LEVEL_ONE", l1Tickets, recipientRole, tenantId, requestInfo, l1FileStoreId);
-            if (l1Section != null && !l1Section.isEmpty()) {
-                sections.append(l1Section);
-                sections.append("<div class=\"sp-20\"></div>\n");
-            }
-            
-            // Always generate L2 section for CENTRAL_POC (even with 0 tickets)
-            List<EscalationTicket> l2Tickets = ticketsByLevel.get("LEVEL_TWO");
-            if (l2Tickets == null) {
-                l2Tickets = new ArrayList<>();
-            }
-            String l2FileStoreId = fileStoreIdsByLevel != null ? fileStoreIdsByLevel.get("LEVEL_TWO") : null;
-            String l2Section = generateEscalationSection("LEVEL_TWO", l2Tickets, recipientRole, tenantId, requestInfo, l2FileStoreId);
-            if (l2Section != null && !l2Section.isEmpty()) {
-                sections.append(l2Section);
-                sections.append("<div class=\"sp-20\"></div>\n");
-            }
-        } else {
-            // Default behavior for other roles - always show expected sections
-            List<String> expectedLevels = getExpectedLevelsForRole(recipientRole);
-            
-            for (String level : expectedLevels) {
-                List<EscalationTicket> tickets = ticketsByLevel.get(level);
-                if (tickets == null) {
-                    tickets = new ArrayList<>();
-                }
-                // Generate section for this level (always show, even with 0 tickets)
-                String fileStoreId = fileStoreIdsByLevel != null ? fileStoreIdsByLevel.get(level) : null;
-                String section = generateEscalationSection(level, tickets, recipientRole, tenantId, requestInfo, fileStoreId);
-                if (section != null && !section.isEmpty()) {
-                    sections.append(section);
-                    sections.append("<div class=\"sp-20\"></div>\n"); // Spacing between sections
-                }
+            // Generate section for this level (always show, even with 0 tickets)
+            String fileStoreId = fileStoreIdsByLevel != null ? fileStoreIdsByLevel.get(level) : null;
+            List<String> mdmsWorkflowStates = workflowStatesByLevel != null ? workflowStatesByLevel.get(level) : null;
+            String section = generateEscalationSection(level, tickets, recipientRole, tenantId, requestInfo, fileStoreId, mdmsWorkflowStates);
+            if (section != null && !section.isEmpty()) {
+                sections.append(section);
+                sections.append("<div class=\"sp-20\"></div>\n"); // Spacing between sections
             }
         }
         
@@ -178,7 +150,7 @@ public class DynamicEmailTemplateService {
      */
     private String generateEscalationSection(String level, List<EscalationTicket> tickets,
                                            String recipientRole, String tenantId,
-                                           RequestInfo requestInfo, String fileStoreId) {
+                                           RequestInfo requestInfo, String fileStoreId, List<String> mdmsWorkflowStates) {
         StringBuilder section = new StringBuilder();
         
         // Determine section title and subtext based on level and role
@@ -203,8 +175,8 @@ public class DynamicEmailTemplateService {
         section.append("  <tr><td class=\"center small\">").append(sectionSubtext).append("</td></tr>\n");
         section.append("  <tr><td class=\"sp-12\"></td></tr>\n");
         
-        // Generate ticket rows based on workflow states
-        String ticketRows = generateTicketRows(level, tickets, recipientRole, requestInfo);
+        // Generate ticket rows based on workflow states from MDMS
+        String ticketRows = generateTicketRows(level, tickets, recipientRole, requestInfo, mdmsWorkflowStates);
         section.append(ticketRows);
         
         section.append("  <tr><td class=\"sp-16\"></td></tr>\n");
@@ -229,12 +201,12 @@ public class DynamicEmailTemplateService {
         
         return section.toString();
     }
-    
+
     /**
      * Generate ticket rows grouped by workflow state
      */
     private String generateTicketRows(String level, List<EscalationTicket> tickets,
-                                     String recipientRole, RequestInfo requestInfo) {
+                                     String recipientRole, RequestInfo requestInfo, List<String> mdmsWorkflowStates) {
         StringBuilder rows = new StringBuilder();
         
         // Group tickets by workflow state
@@ -244,42 +216,28 @@ public class DynamicEmailTemplateService {
                 Collectors.counting()
             ));
         
-        // If no tickets, show common workflow states with count 0
-        if (stateCounts.isEmpty()) {
-            List<String> commonWorkflowStates = getCommonWorkflowStates(level, recipientRole);
-            for (String workflowState : commonWorkflowStates) {
-                String displayName = commonUtility.formatWorkflowStateForDisplay(workflowState, level, recipientRole);
+        // Use MDMS workflow states if provided, otherwise fall back to hardcoded values
+        List<String> workflowStatesToShow = mdmsWorkflowStates != null ? mdmsWorkflowStates : getCommonWorkflowStates(level, recipientRole);
+        
+        // Always show all configured workflow states, with actual counts or 0
+        for (String workflowState : workflowStatesToShow) {
+            String displayName = commonUtility.formatWorkflowStateForDisplay(workflowState, level, recipientRole);
+            
+            if (displayName != null) {
+                // Get actual count for this workflow state, or 0 if not present
+                Long count = stateCounts.getOrDefault(workflowState, 0L);
                 
                 rows.append("  <tr>\n");
                 rows.append("    <td>\n");
                 rows.append("      <table role=\"presentation\" width=\"100%\">\n");
                 rows.append("        <tr>\n");
                 rows.append("          <td class=\"row label\" style=\"width:70%;\">").append(displayName).append("</td>\n");
-                rows.append("          <td class=\"row right\" style=\"width:30%;\"><span class=\"badge\">0</span></td>\n");
+                rows.append("          <td class=\"row right\" style=\"width:30%;\"><span class=\"badge\">").append(count).append("</span></td>\n");
                 rows.append("        </tr>\n");
                 rows.append("      </table>\n");
                 rows.append("    </td>\n");
                 rows.append("  </tr>\n");
             }
-        } else {
-            // Get display names for workflow states with actual counts
-        for (Map.Entry<String, Long> entry : stateCounts.entrySet()) {
-            String workflowState = entry.getKey();
-            Long count = entry.getValue();
-            
-                String displayName = commonUtility.formatWorkflowStateForDisplay(workflowState, level, recipientRole);
-            
-            rows.append("  <tr>\n");
-            rows.append("    <td>\n");
-            rows.append("      <table role=\"presentation\" width=\"100%\">\n");
-            rows.append("        <tr>\n");
-            rows.append("          <td class=\"row label\" style=\"width:70%;\">").append(displayName).append("</td>\n");
-            rows.append("          <td class=\"row right\" style=\"width:30%;\"><span class=\"badge\">").append(count).append("</span></td>\n");
-            rows.append("        </tr>\n");
-            rows.append("      </table>\n");
-            rows.append("    </td>\n");
-            rows.append("  </tr>\n");
-        }
         }
         
         return rows.toString();
@@ -326,12 +284,7 @@ public class DynamicEmailTemplateService {
                 
             case "CENTRAL_POC":
                 // Central POC sees resolution and out of warranty states
-                if ("LEVEL_ZERO".equals(level)) {
-                    commonStates.add("PENDINGRESOLUTION");
-                    commonStates.add("PENDING_RESOLUTION_SPARE_PART_NEEDED");
-                    commonStates.add("PENDING_ASSIGNMENT_OUT_OF_WARRANTY");
-                    commonStates.add("PENDING_RESOLUTION_OUT_OF_WARRANTY");
-                } else if ("LEVEL_ONE".equals(level)) {
+                if ("LEVEL_ONE".equals(level)) {
                     commonStates.add("PENDING_ASSIGNMENT_OUT_OF_WARRANTY");
                 } else if ("LEVEL_TWO".equals(level)) {
                     commonStates.add("PENDINGRESOLUTION");
@@ -339,11 +292,6 @@ public class DynamicEmailTemplateService {
                     commonStates.add("PENDING_RESOLUTION_OUT_OF_WARRANTY");
                 }
                 break;
-                
-            default:
-                // Fallback to generic states
-                commonStates.add("PENDINGFORASSIGNMENT");
-                commonStates.add("PENDINGRESOLUTION");
         }
         
         return commonStates;
@@ -354,10 +302,6 @@ public class DynamicEmailTemplateService {
      */
     private String getSectionTitle(String level, String recipientRole) {
         if ("LEVEL_ZERO".equals(level)) {
-            // For CENTRAL_POC, don't show "My Tickets" section
-            if ("CENTRAL_POC".equals(recipientRole)) {
-                return null; // This will skip the section
-            }
             return "My Tickets";
         } else if ("LEVEL_ONE".equals(level)) {
             return "L1 Escalation";
@@ -397,15 +341,8 @@ public class DynamicEmailTemplateService {
                 expectedLevels.add("LEVEL_TWO");  // L2 Escalation only
                 break;
             case "CENTRAL_POC":
-                // Handled separately in the special case above
                 expectedLevels.add("LEVEL_ONE");  // L1 Escalation
                 expectedLevels.add("LEVEL_TWO");  // L2 Escalation
-                break;
-            default:
-                // Fallback - show all levels
-                expectedLevels.add("LEVEL_ZERO");
-                expectedLevels.add("LEVEL_ONE");
-                expectedLevels.add("LEVEL_TWO");
                 break;
         }
         
