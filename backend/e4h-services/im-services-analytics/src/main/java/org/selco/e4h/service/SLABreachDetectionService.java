@@ -253,11 +253,11 @@ public class SLABreachDetectionService {
         Map<String, Object> bool = new HashMap<>();
         List<Map<String, Object>> must = new ArrayList<>();
 
-        // Filter by tenant
+        // Filter by tenant - use prefix match to include state and all its sub-tenants
         Map<String, Object> tenantFilter = new HashMap<>();
-        Map<String, Object> tenantWildcard = new HashMap<>();
-        tenantWildcard.put("Data.tenantId.keyword", tenantId + "*");
-        tenantFilter.put("wildcard", tenantWildcard);
+        Map<String, Object> tenantPrefix = new HashMap<>();
+        tenantPrefix.put("Data.tenantId.keyword", tenantId);
+        tenantFilter.put("prefix", tenantPrefix);
         must.add(tenantFilter);
 
         // Filter by workflow states
