@@ -734,8 +734,7 @@ export const CreateComplaint = ({ parentUrl }) => {
             height: "100%",
             width: "100%",
             zIndex: 10000005,
-            backgroundColor: "gray",
-            opacity: 0.5,
+            backgroundColor: "rgba(128, 128, 128, 0.5)",
             position: "fixed",
             top: 0,
             left: 0,
@@ -827,9 +826,14 @@ export const CreateComplaint = ({ parentUrl }) => {
             </div>
 
             <div style={{ display: "flex", justifyContent: "space-around" }}>
-              <Button variation={"primary"} style={{ width: "150px" }} label={t("TL_COMMON_YES")} onButtonClick={() => setDuplicateTicketIds([])} />
               <Button
                 variation={"secondary"}
+                style={{ width: "150px" }}
+                label={t("TL_COMMON_YES")}
+                onButtonClick={() => setDuplicateTicketIds([])}
+              />
+              <Button
+                variation={"primary"}
                 style={{ width: "150px" }}
                 label={t("TL_COMMON_NO")}
                 onButtonClick={() => history.push(`/${window.contextPath}/employee/im/inbox`)}
