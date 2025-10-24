@@ -1,13 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useDispatch } from "react-redux";
-import { Button, Dropdown, MultiUploadWrapper, PopUp } from "@selco/digit-ui-react-components";
+import { Button, Dropdown, Loader, MultiUploadWrapper, PopUp } from "@selco/digit-ui-react-components";
 import { useRouteMatch, useHistory } from "react-router-dom";
 import { useQueryClient } from "react-query";
 import { FormComposer } from "../../../components/FormComposer";
 import { createComplaint } from "../../../redux/actions/index";
 import { Link } from "react-router-dom";
-import { InboxGeneral } from "@egovernments/digit-ui-libraries/src/services/elements/InboxService";
 
 export const CreateComplaint = ({ parentUrl }) => {
   const { t } = useTranslation();
@@ -49,6 +48,7 @@ export const CreateComplaint = ({ parentUrl }) => {
   const [systemFunctionalityMenu, setSystemFunctionalityMenu] = useState([]);
   const [dataState, setDataState] = useState({ newArr: [], mappedArray: [] });
   const [duplicateTicketIds, setDuplicateTicketIds] = useState([]);
+  const [blockUI, setBlockUI] = useState(false);
   let sortedSubMenu = [];
   if (subTypeMenu !== null) {
     sortedSubMenu = subTypeMenu.sort((a, b) => a.name.localeCompare(b.name));
@@ -205,6 +205,7 @@ export const CreateComplaint = ({ parentUrl }) => {
   useEffect(() => {
     const handleDuplicateCheck = async () => {
       if (district?.name && block?.name && healthcentre?.code && complaintType?.key && subType?.key) {
+        setBlockUI(true);
         try {
           const data = await Digit.InboxGeneral.Search({
             inbox: {
@@ -244,6 +245,8 @@ export const CreateComplaint = ({ parentUrl }) => {
           }
         } catch (error) {
           console.error("Error fetching duplicate tickets:", error);
+        } finally {
+          setBlockUI(false);
         }
       }
     }
@@ -722,6 +725,25 @@ export const CreateComplaint = ({ parentUrl }) => {
           }
         `}
       </style>
+      {blockUI && (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            height: "100%",
+            width: "100%",
+            zIndex: 10000005,
+            backgroundColor: "gray",
+            opacity: 0.5,
+            position: "fixed",
+            top: 0,
+            left: 0,
+          }}
+        >
+          <Loader />
+        </div>
+      )}
       <div style={{ color: "#9e1b32", marginBottom: "10px", textAlign: "right", marginRight: "0px" }}>
         <div style={{ marginRight: "15px" }}>
           <Link to={`/${window.contextPath}/employee`}>{t("CS_COMMON_BACK")}</Link>
