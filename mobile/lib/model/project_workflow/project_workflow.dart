@@ -71,7 +71,6 @@ class ProjectModelConverter
       }
     }
 
-    // ---- additionalDetails (manual, exact shape per your payload) ----
     if (m['additionalDetails'] is Map) {
       final ad = Map<String, dynamic>.from(m['additionalDetails'] as Map);
 
@@ -151,7 +150,6 @@ class ProjectModelConverter
 
   @override
   Map<String, dynamic> toJson(ProjectModel model) {
-    // If you need to send back to server later, mapper is fine:
     ProjectModelMapper.ensureInitialized();
     return model.toMap();
   }

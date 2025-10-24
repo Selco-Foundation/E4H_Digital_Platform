@@ -4,16 +4,13 @@ import 'package:isar/isar.dart';
 
 import '../document/document.dart';
 
-part 'workflow.g.dart'; // optional
+part 'workflow.g.dart';
 
 @Embedded()
 class Workflow {
-  /// Embedded documents
   @Embedded()
   List<Document>? documents;
 
-  /// We also keep rawJson for any additional top-level fields the server may return.
-  /// This is persisted as JSON string to avoid Map types in embedded classes.
   String? rawJson;
 
   Workflow({this.documents, this.rawJson});

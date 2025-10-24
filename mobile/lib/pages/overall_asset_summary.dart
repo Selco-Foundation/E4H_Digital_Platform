@@ -696,27 +696,21 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                                   ) {
                                                     return Column(
                                                       children: [
-                                                        // BomSystemSelector(
-                                                        //   onChanged: (code) {
-                                                        //     setState(() =>
-                                                        //         _system = code);
-                                                        //   },
-                                                        // ),
                                                         if (_system != null)
                                                           BomButtonsSection(
                                                             key: PageStorageKey(
                                                                 'bom-buttons-${_currentProjectId!}'),
                                                             solutionDesignBom:
-                                                                solutionDesignBom, // you already have this
+                                                                solutionDesignBom,
                                                             systemCode:
-                                                                _system!, // selected code (e.g., "DC")
+                                                                _system!,
                                                             projectId:
-                                                                _currentProjectId!, // your var in this screen
+                                                                _currentProjectId!,
                                                             origin: isSubmittedReport
                                                                 ? FormOrigin
                                                                     .submitted
                                                                 : FormOrigin
-                                                                    .overallSummary, // keep your origin logic
+                                                                    .overallSummary,
                                                           ),
                                                       ],
                                                     );
