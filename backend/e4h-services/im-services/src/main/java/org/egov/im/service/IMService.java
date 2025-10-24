@@ -10,7 +10,6 @@ import org.egov.im.util.IMUtils;
 import org.egov.im.util.MDMSUtils;
 import org.egov.im.validator.ServiceRequestValidator;
 import org.egov.im.web.models.*;
-import org.egov.im.web.controllers.*;
 import org.egov.im.web.models.workflow.ProcessInstance;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.CollectionUtils;
@@ -73,6 +72,29 @@ public class IMService {
         Object mdmsData = mdmsUtils.mDMSCall(request);
         validator.validateCreate(request, mdmsData);
         enrichmentService.enrichCreateRequest(request);
+        RequestSearchCriteria searchCriteria = RequestSearchCriteria.builder()
+                .tenantId(request.getIncident().getTenantId())
+                .district(request.getIncident().getDistrict())
+                .block(request.getIncident().getBlock())
+                .applicationStatus(Set.of(
+                        "PENDINGFORASSIGNMENT",
+                        "PENDINGRESOLUTION",
+                        "PENDING_ASSIGNMENT_SPARE_PART_NEEDED",
+                        "PENDING_ASSIGNMENT_OUT_OF_WARRANTY",
+                        "PENDING_RESOLUTION_SPARE_PART_NEEDED",
+                        "PENDING_RESOLUTION_OUT_OF_WARRANTY"
+                ))
+                .incidentType(new HashSet<>(Collections.singletonList(request.getIncident().getIncidentType())))
+                .incidentSubType(new HashSet<>(Collections.singletonList(request.getIncident().getIncidentSubType())))
+                .phcType(new HashSet<>(Collections.singletonList(request.getIncident().getPhcType())))
+                .phcSubType(new HashSet<>(Collections.singletonList(request.getIncident().getPhcSubType())))
+                .build();
+        List<IncidentWrapper> incidentWrappers = search(request.getRequestInfo(), searchCriteria);
+        if (incidentWrappers!=null && !incidentWrappers.isEmpty())
+            request.getIncident().setPotentialDuplicate(true);
+        else
+            request.getIncident().setPotentialDuplicate(false);
+
         String startingStatus = request.getIncident().getApplicationStatus();
         IncidentRequestWrapper wrapper = IncidentRequestWrapper.builder()
                 .incidentRequest(request)

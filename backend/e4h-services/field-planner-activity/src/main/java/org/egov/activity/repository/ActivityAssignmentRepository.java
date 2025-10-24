@@ -45,7 +45,7 @@ public class ActivityAssignmentRepository extends GenericRepository<ActivityAssi
         criteria.setCountQuery(false);
         URLParams urlParams = URLParams.builder().limit(limit).offset(offset).tenantId(tenantId).includeDeleted(includeDeleted).lastChangedSince(lastChangedSince).build();
 
-        String query = queryBuilder.getActivityAssignmentSearchQuery(criteria, urlParams, preparedStmtList);
+        String query = queryBuilder.getActivityAssignmentSearchQuery(request, urlParams, preparedStmtList);
         List<ActivityAssignment> activityAssignments = jdbcTemplate.query(query, activityRowMapper, preparedStmtList.toArray());
 
         log.info("Fetched activity assignments list based on given search criteria");

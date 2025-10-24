@@ -8,6 +8,7 @@ import org.egov.activity.repository.BomRepository;
 import org.egov.activity.service.enrichment.BomEnrichment;
 import org.egov.activity.util.ActivityServiceUtil;
 import org.egov.activity.util.MDMSUtils;
+import org.egov.activity.util.StartupRunner;
 import org.egov.activity.validator.BomValidator;
 import org.egov.activity.web.models.*;
 import org.egov.common.contract.request.RequestInfo;
@@ -18,6 +19,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 @Service
@@ -38,20 +40,23 @@ public class BomService {
 
     private ServiceRequestRepository serviceRequest;
 
+    private final StartupRunner startupRunner;
+
     @Qualifier("objectMapper")
     private final ObjectMapper mapper;
 
     @Autowired
     public BomService(
             BomRepository bomRepository, BomEnrichment bomEnrichment, ActivityConfiguration activityConfiguration, BomValidator bomValidator, ServiceRequestRepository serviceRequest,
-            Producer producer, MDMSUtils mdmsUtils, ActivityServiceUtil activityServiceUtil, @Qualifier("objectMapper") ObjectMapper mapper) {
+            Producer producer, MDMSUtils mdmsUtils, ActivityServiceUtil activityServiceUtil, StartupRunner startupRunner, @Qualifier("objectMapper") ObjectMapper mapper) {
             this.producer = producer;
             this.activityConfiguration = activityConfiguration;
             this.bomRepository = bomRepository;
             this.bomEnrichment = bomEnrichment;
             this.mdmsUtils = mdmsUtils;
             this.activityServiceUtil = activityServiceUtil;
-            this.mapper = mapper;
+        this.startupRunner = startupRunner;
+        this.mapper = mapper;
             this.bomValidator = bomValidator;
             this.serviceRequest = serviceRequest;
     }
@@ -117,7 +122,25 @@ public class BomService {
     }
 
     public byte[] generateBOMPdf(GenerateBOMPdfRequest request, String tenantId){
-        return getBOMPdfFile(activityConfiguration.getBomKeypdf(), tenantId, request);
+        String bomType = request.getSystem();
+        if(bomType==null)
+            throw new CustomException("BOM_PDF", "System Type is required");
+        String pdfKey = startupRunner.getConfigMap().get(bomType);
+        if (pdfKey == null) {
+            throw new CustomException("BOM_PDF", "Unknown System Type: " + bomType);
+        }
+        return getBOMPdfFile(pdfKey, tenantId, request);
+    }
+
+    public String generateAndSaveBOMPdfToFilestore(GenerateBOMPdfRequest request, String tenantId){
+        String bomType = request.getSystem();
+        if(bomType==null)
+            throw new CustomException("BOM_PDF", "System Type is required");
+        String pdfKey = startupRunner.getConfigMap().get(bomType);
+        if (pdfKey == null) {
+            throw new CustomException("BOM_PDF", "Unknown System Type: " + bomType);
+        }
+        return uploadBOMPdfFilestore(pdfKey, tenantId, request);
     }
 
     private BomSearchRequest getSearchBOMRequest(List<BillOfMaterial> billOfMaterials, RequestInfo requestInfo) {
@@ -195,7 +218,7 @@ public class BomService {
     public byte[] getBOMPdfFile(String key, String tenantId, GenerateBOMPdfRequest request) {
 
         String url = activityConfiguration.getPdfServiceHost() + activityConfiguration.getPdfCreateNoSaveUrl()+ "?key="+key+"&tenantId="+tenantId;
-        Object response = serviceRequest.fetchResult(new StringBuilder(url), request);
+        Object response = serviceRequest.fetchResultBOMBytes(new StringBuilder(url), request);
 
         byte[] pdfDoc = mapper.convertValue(response, byte[].class);
         if(pdfDoc == null){
@@ -205,6 +228,25 @@ public class BomService {
             );
         }
         return pdfDoc;
+    }
+
+    public String uploadBOMPdfFilestore(String key, String tenantId, GenerateBOMPdfRequest request) {
+
+        String url = activityConfiguration.getPdfServiceHost() + activityConfiguration.getPdfCreateSaveFilestore()+ "?key="+key+"&tenantId="+tenantId;
+        Object response = serviceRequest.fetchResult(new StringBuilder(url), request);
+
+        Map<String, Object> pdfDoc = mapper.convertValue(response, Map.class);
+        if(pdfDoc == null){
+            throw new CustomException(
+                    "ERROR_PDF_GENERATION",
+                    "Error occured while generating PDF"
+            );
+        }
+        List<String> filestoreIds = (List<String>) pdfDoc.get("filestoreIds");
+        if (filestoreIds == null || filestoreIds.isEmpty()) {
+            throw new CustomException("ERROR_PDF_GENERATION", "No filestoreId returned");
+        }
+        return filestoreIds.get(0);
     }
 
 
