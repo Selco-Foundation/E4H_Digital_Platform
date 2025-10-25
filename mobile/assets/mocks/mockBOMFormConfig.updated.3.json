@@ -26567,7 +26567,7 @@
               {
                 "type": "string",
                 "format": "dropdown",
-                "label": "Battery Type",
+                "label": "Battery Settings",
                 "order": 4,
                 "value": "",
                 "hidden": false,
@@ -26641,7 +26641,7 @@
                     "message": "The load is running on is required"
                   }
                 ],
-                "section": "PCU/Inverter display (For both 1-Phase & 3-Phase connectivity)",
+                "section": "PCU/Inverter Configuration setting (For both 1-Phase & 3-Phase connectivity)",
                 "sectionDescription": ""
               },
               {
@@ -26681,7 +26681,9 @@
                     "code": "OFF",
                     "name": "OFF"
                   }
-                ]
+                ],
+                "section": "PCU/Inverter Display (For both 1-Phase & 3-Phase connectivity)",
+                "sectionDescription": ""
               },
               {
                 "type": "string",
@@ -26716,10 +26718,12 @@
                     "code": "WARNING",
                     "name": "Warning Messages"
                   }
-                ]
+                ],
+                "section": "PCU/Inverter Display (For both 1-Phase & 3-Phase connectivity)",
+                "sectionDescription": ""
               },
               {
-                "section": "Array-PCU Isolator",
+                "section": "Isolator & Breaker functionality check: Array-PCU Isolator",
                 "type": "string",
                 "format": "text",
                 "label": "Voltage in ON position (Volts):",
@@ -26756,7 +26760,7 @@
                 "fieldName": "array_pcu_isolator_off_v"
               },
               {
-                "section": "Battery-PCU Isolator",
+                "section": "Isolator & Breaker functionality check: Battery-PCU Isolator",
                 "type": "string",
                 "format": "text",
                 "label": "Voltage in ON position (Volts):",
@@ -26793,7 +26797,7 @@
                 "fieldName": "battery_pcu_isolator_off_v"
               },
               {
-                "section": "Grid-PCU Isolator",
+                "section": "Isolator & Breaker functionality check: Grid-PCU Isolator",
                 "type": "string",
                 "format": "text",
                 "label": "Voltage in ON position (Volts):",
@@ -26830,7 +26834,7 @@
                 "fieldName": "grid_pcu_isolator_off_v"
               },
               {
-                "section": "PCU-COS-1 Isolator",
+                "section": "Isolator & Breaker functionality check: PCU-COS-1 Isolator",
                 "type": "string",
                 "format": "text",
                 "label": "Voltage in ON position (Volts):",
@@ -26867,7 +26871,7 @@
                 "fieldName": "pcu_cos1_isolator_off_v"
               },
               {
-                "section": "RCCB (Load ACDB) - R",
+                "section": "Isolator & Breaker functionality check: RCCB (Load ACDB) - R",
                 "type": "string",
                 "format": "text",
                 "label": "Voltage in ON position (Volts):",
@@ -26904,7 +26908,7 @@
                 "fieldName": "rccb_load_acdb_r_off_v"
               },
               {
-                "section": "RCCB (Load ACDB) - Y",
+                "section": "Isolator & Breaker functionality check: RCCB (Load ACDB) - Y",
                 "type": "string",
                 "format": "text",
                 "label": "Voltage in ON position (Volts):",
@@ -26941,7 +26945,7 @@
                 "fieldName": "rccb_load_acdb_y_off_v"
               },
               {
-                "section": "RCCB (Load ACDB) - B",
+                "section": "Isolator & Breaker functionality check: RCCB (Load ACDB) - B",
                 "type": "string",
                 "format": "text",
                 "label": "Voltage in ON position (Volts):",
@@ -26978,7 +26982,7 @@
                 "fieldName": "rccb_load_acdb_b_off_v"
               },
               {
-                "section": "Isolator (Load ACDB) - R",
+                "section": "Isolator & Breaker functionality check: Isolator (Load ACDB) - R",
                 "type": "string",
                 "format": "text",
                 "label": "Voltage in ON position (Volts):",
@@ -27015,7 +27019,7 @@
                 "fieldName": "isolator_load_acdb_r_off_v"
               },
               {
-                "section": "Isolator (Load ACDB) - Y",
+                "section": "Isolator & Breaker functionality check: Isolator (Load ACDB) - Y",
                 "type": "string",
                 "format": "text",
                 "label": "Voltage in ON position (Volts):",
@@ -27052,7 +27056,7 @@
                 "fieldName": "isolator_load_acdb_y_off_v"
               },
               {
-                "section": "Isolator (Load ACDB) - B",
+                "section": "Isolator & Breaker functionality check: Isolator (Load ACDB) - B",
                 "type": "string",
                 "format": "text",
                 "label": "Voltage in ON position (Volts):",
@@ -27089,7 +27093,7 @@
                 "fieldName": "isolator_load_acdb_b_off_v"
               },
               {
-                "section": "Main MCB (Load ACDB)",
+                "section": "Isolator & Breaker functionality check: Main MCB (Load ACDB)",
                 "type": "string",
                 "format": "text",
                 "label": "Voltage in ON position (Volts):",
@@ -29489,13 +29493,12 @@
           {
             "page": "SystemFunctionalityParameters_2",
             "type": "object",
-            "label": "3-Phase System - PCU/Inverter parameters (Grid OFF): Load voltage/Inverter output voltage (R-Phase & Neutral)",
+            "label": "3-Phase System - PCU/Inverter parameters Grid OFF: Load voltage/Inverter output voltage (R & Neutral)",
             "order": 2,
             "description": "",
             "actionLabel": "Next",
             "properties": [
               {
-                "section": "3-Phase System - PCU/Inverter parameters Grid OFF: Load voltage/Inverter output voltage (R & Neutral)",
                 "type": "string",
                 "format": "text",
                 "label": "Measured Value",
@@ -30399,7 +30402,7 @@
           {
             "page": "SystemFunctionalityParameters_3",
             "type": "object",
-            "label": "PCU/Inverter display & setting (For both 1-Phase & 3-Phase connectivity)",
+            "label": "PCU/Inverter Configuration setting (For both 1-Phase & 3-Phase connectivity)",
             "order": 3,
             "description": "",
             "actionLabel": "Submit",
@@ -30475,7 +30478,7 @@
                     "message": "Grid Export Feature is required"
                   }
                 ],
-                "section": "PCU/Inverter display & setting (For both 1-Phase & 3-Phase connectivity)",
+                "section": "PCU/Inverter Configuration setting (For both 1-Phase & 3-Phase connectivity)",
                 "sectionDescription": ""
               },
               {
@@ -30502,13 +30505,13 @@
                     "message": "Battery Settings (Ah) is required"
                   }
                 ],
-                "section": "PCU/Inverter display & setting (For both 1-Phase & 3-Phase connectivity)",
+                "section": "PCU/Inverter Configuration setting (For both 1-Phase & 3-Phase connectivity)",
                 "sectionDescription": ""
               },
               {
                 "type": "string",
                 "format": "dropdown",
-                "label": "Battery Type",
+                "label": "Battery Settings",
                 "order": 4,
                 "value": "",
                 "hidden": false,
@@ -30544,7 +30547,7 @@
                     "message": "Battery Type is required"
                   }
                 ],
-                "section": "PCU/Inverter display & setting (For both 1-Phase & 3-Phase connectivity)",
+                "section": "PCU/Inverter Configuration setting (For both 1-Phase & 3-Phase connectivity)",
                 "sectionDescription": ""
               },
               {
@@ -30582,7 +30585,7 @@
                     "message": "The load is running on is required"
                   }
                 ],
-                "section": "PCU/Inverter display & setting (For both 1-Phase & 3-Phase connectivity)",
+                "section": "PCU/Inverter Configuration setting (For both 1-Phase & 3-Phase connectivity)",
                 "sectionDescription": ""
               },
               {
@@ -30622,7 +30625,9 @@
                     "code": "OFF",
                     "name": "OFF"
                   }
-                ]
+                ],
+                "section": "PCU/Inverter Display (For both 1-Phase & 3-Phase connectivity)",
+                "sectionDescription": ""
               },
               {
                 "type": "string",
@@ -30657,10 +30662,12 @@
                     "code": "WARNING",
                     "name": "Warning Messages"
                   }
-                ]
+                ],
+                "section": "PCU/Inverter Display (For both 1-Phase & 3-Phase connectivity)",
+                "sectionDescription": ""
               },
               {
-                "section": "Array-PCU Isolator",
+                "section": "Isolator & Breaker functionality check: Array-PCU Isolator",
                 "type": "string",
                 "format": "text",
                 "label": "Voltage in ON position (Volts):",
@@ -30697,7 +30704,7 @@
                 "fieldName": "array_pcu_isolator_off_v"
               },
               {
-                "section": "Battery-PCU Isolator",
+                "section": "Isolator & Breaker functionality check: Battery-PCU Isolator",
                 "type": "string",
                 "format": "text",
                 "label": "Voltage in ON position (Volts):",
@@ -30734,7 +30741,7 @@
                 "fieldName": "battery_pcu_isolator_off_v"
               },
               {
-                "section": "Grid-PCU Isolator",
+                "section": "Isolator & Breaker functionality check: Grid-PCU Isolator",
                 "type": "string",
                 "format": "text",
                 "label": "Voltage in ON position (Volts):",
@@ -30771,7 +30778,7 @@
                 "fieldName": "grid_pcu_isolator_off_v"
               },
               {
-                "section": "PCU-COS-1 Isolator",
+                "section": "Isolator & Breaker functionality check: PCU-COS-1 Isolator",
                 "type": "string",
                 "format": "text",
                 "label": "Voltage in ON position (Volts):",
@@ -30808,7 +30815,7 @@
                 "fieldName": "pcu_cos1_isolator_off_v"
               },
               {
-                "section": "RCCB (Load ACDB) - R",
+                "section": "Isolator & Breaker functionality check: RCCB (Load ACDB) - R",
                 "type": "string",
                 "format": "text",
                 "label": "Voltage in ON position (Volts):",
@@ -30845,7 +30852,7 @@
                 "fieldName": "rccb_load_acdb_r_off_v"
               },
               {
-                "section": "RCCB (Load ACDB) - Y",
+                "section": "Isolator & Breaker functionality check: RCCB (Load ACDB) - Y",
                 "type": "string",
                 "format": "text",
                 "label": "Voltage in ON position (Volts):",
@@ -30882,7 +30889,7 @@
                 "fieldName": "rccb_load_acdb_y_off_v"
               },
               {
-                "section": "RCCB (Load ACDB) - B",
+                "section": "Isolator & Breaker functionality check: RCCB (Load ACDB) - B",
                 "type": "string",
                 "format": "text",
                 "label": "Voltage in ON position (Volts):",
@@ -30919,7 +30926,7 @@
                 "fieldName": "rccb_load_acdb_b_off_v"
               },
               {
-                "section": "Isolator (Load ACDB) - R",
+                "section": "Isolator & Breaker functionality check: Isolator (Load ACDB) - R",
                 "type": "string",
                 "format": "text",
                 "label": "Voltage in ON position (Volts):",
@@ -30956,7 +30963,7 @@
                 "fieldName": "isolator_load_acdb_r_off_v"
               },
               {
-                "section": "Isolator (Load ACDB) - Y",
+                "section": "Isolator & Breaker functionality check: Isolator (Load ACDB) - Y",
                 "type": "string",
                 "format": "text",
                 "label": "Voltage in ON position (Volts):",
@@ -30993,7 +31000,7 @@
                 "fieldName": "isolator_load_acdb_y_off_v"
               },
               {
-                "section": "Isolator (Load ACDB) - B",
+                "section": "Isolator & Breaker functionality check: Isolator (Load ACDB) - B",
                 "type": "string",
                 "format": "text",
                 "label": "Voltage in ON position (Volts):",
@@ -31030,7 +31037,7 @@
                 "fieldName": "isolator_load_acdb_b_off_v"
               },
               {
-                "section": "Main MCB (Load ACDB)",
+                "section": "Isolator & Breaker functionality check: Main MCB (Load ACDB)",
                 "type": "string",
                 "format": "text",
                 "label": "Voltage in ON position (Volts):",
