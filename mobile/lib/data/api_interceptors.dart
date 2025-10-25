@@ -11,6 +11,7 @@ import 'secure_storage/secureStore.dart';
 
 class AuthTokenInterceptor extends Interceptor {
   final _lock = Lock();
+  static const _maxRetries = 5;
 
   @override
   Future<dynamic> onRequest(
@@ -57,23 +58,41 @@ class AuthTokenInterceptor extends Interceptor {
             orElse: () => const MapEntry('', ''),
           ).value : (d is Map<String, dynamic> ? d['RequestInfo'] : null)}');
     }
-    // return super.onRequest(options, handler);
     return handler.next(options);
   }
 
   @override
   void onError(DioError err, ErrorInterceptorHandler handler) async {
-    if (err.response?.statusCode == 401) {
+    if (err.response?.statusCode != 401) {
+      return handler.next(err);
+    }
+
+    final attempts = (err.requestOptions.extra['retryAttempts'] as int?) ?? 0;
+    if (attempts >= _maxRetries) {
+      return handler.next(err);
+    }
+
+    try {
+      // Ensure only one refresh happens at a time
       await _lock.synchronized(() async {
         final authRepo = AuthRepository();
         await authRepo.refreshToken();
       });
-      // After refresh, retry the request
-      final dio = DioClient().dio;
-      final newResponse = await dio.fetch(err.requestOptions);
-      return handler.resolve(newResponse);
-    } else {
+    } catch (e) {
       return handler.next(err);
+    }
+
+    try {
+      final dio = DioClient().dio;
+
+      final RequestOptions ro = err.requestOptions;
+      ro.extra = Map<String, dynamic>.from(ro.extra)
+        ..update('retryAttempts', (v) => (v as int) + 1, ifAbsent: () => 1);
+
+      final newResponse = await dio.fetch(ro);
+      return handler.resolve(newResponse);
+    } on DioError catch (e) {
+      return handler.next(e);
     }
   }
 }
