@@ -346,9 +346,9 @@ public class WorkflowService {
             }
         }
         if (lastIndex != -1) {
-            return processInstances.subList(lastIndex, processInstances.size());
+            return new ArrayList<>(processInstances.subList(lastIndex, processInstances.size()));
         } else {
-            return processInstances;
+            return new ArrayList<>(processInstances);
         }
     }
 
