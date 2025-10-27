@@ -331,7 +331,7 @@ public class WorkflowService {
             throw new CustomException("PARSING ERROR", "Failed to parse response of workflow processInstance search");
         }
         if (processInstanceResponse == null || CollectionUtils.isEmpty(processInstanceResponse.getProcessInstances())) {
-            return Collections.emptyList();
+            return new ArrayList<>();
         }
 
         List<ProcessInstance> processInstances =  processInstanceResponse.getProcessInstances();
@@ -346,9 +346,9 @@ public class WorkflowService {
             }
         }
         if (lastIndex != -1) {
-            return processInstances.subList(lastIndex, processInstances.size());
+            return new ArrayList<>(processInstances.subList(lastIndex, processInstances.size()));
         } else {
-            return processInstances;
+            return new ArrayList<>(processInstances);
         }
     }
 
