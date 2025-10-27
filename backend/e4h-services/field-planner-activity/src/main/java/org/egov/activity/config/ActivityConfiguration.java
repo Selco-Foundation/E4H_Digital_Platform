@@ -62,6 +62,9 @@ public class ActivityConfiguration {
     @Value("${search.api.limit:100}")
     private String searchApiLimit;
 
+    @Value("${global.tenant.id}")
+    private String tenantId;
+
     @Value("${egov.mdms.host}")
     private String mdmsHost;
     @Value("${egov.mdms.search.endpoint}")
@@ -150,4 +153,19 @@ public class ActivityConfiguration {
 
     @Value("${egov.vendor.user.search.url}")
     private String orgUserSearchUrl;
+
+    @Value("${facility.management.transaction.kafka.create.topic}")
+    private String transactionPersistTopic;
+
+    @Value("${facility.management.comment.kafka.create.topic}")
+    private String commentPersistTopic;
+
+    @Value("${egov.asset.host}")
+    private String assetHost;
+
+    @Value("${egov.asset.search.url}")
+    private String assetSearchUrl;
+
+    @Value("${egov.asset.update.url}")
+    private String assetUpdateUrl;
 }

@@ -22,7 +22,7 @@ import static org.egov.common.utils.CommonUtils.enrichForCreate;
 
 @Service
 @Slf4j
-@RequiredArgsConstructor
+//@RequiredArgsConstructor
 public class ActivityEnrichment {
 
     public static final String START_DATE = "startDate";
@@ -36,7 +36,11 @@ public class ActivityEnrichment {
     @Autowired
     ActivityFacilityRepository activityFacilityRepository;
 
-    ActivityService activityService;
+    public ActivityEnrichment(ActivityServiceUtil fieldPlanServiceUtil, ActivityValidator activityValidator, ObjectMapper objectMapper){
+        this.fieldPlanServiceUtil = fieldPlanServiceUtil;
+        this.activityValidator = activityValidator;
+        this.objectMapper = objectMapper;
+    }
 
     /* Enrich Project on Create Request */
     public void enrichActivityAssignmentOnCreate(ActivityAssignment activityAssignment, RequestInfo requestInfo) {
@@ -72,7 +76,7 @@ public class ActivityEnrichment {
         activityFacility.setAuditDetails(auditDetails);
     }
 
-    public void enrichActivityAssignmentOnSearch(ActivityAssignmentSearchRequest request, ActivityAssignment activityAssignment) {
+    public void enrichActivityAssignmentOnSearch(RequestInfo requestInfo, ActivityAssignment activityAssignment) {
         ActivitySearchCriteria criteria = ActivitySearchCriteria.builder().ids(List.of(activityAssignment.getActivityId())).build();
         Activity existingActivity = activityFacilityRepository.getActivityObject(criteria);
         if(existingActivity !=null) {
@@ -80,24 +84,18 @@ public class ActivityEnrichment {
             activityAssignment.setActivityName(existingActivity.getName());
         }
 
-//        if (activityAssignment.getFieldPlanId() != null && !activityAssignment.getFieldPlanId().isEmpty()) {
-//            FieldPlan existingFieldPlan = activityValidator.getFieldPlanById(request.getRequestInfo(), activityAssignment.getFieldPlanId(), activityAssignment.getTenantId());
-//            if (existingFieldPlan != null) {
-//                activityAssignment.setFieldPlan(existingFieldPlan);
-//            }
-//
-//            FieldPlanFacilityBulkResponse fieldPlanFacilityList = activityValidator.getFieldPlanFacilityById(request.getRequestInfo(), activityAssignment.getFieldPlanId(), activityAssignment.getTenantId());
-//            if (fieldPlanFacilityList != null) {
-//                Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(activityAssignment.getAdditionalDetails(), "countFieldPlanFacilities", fieldPlanFacilityList.getTotalCount());
-//                activityAssignment.setAdditionalDetails((Map<String, Object>) enrichedAdditionalDetails);
-//            }
-//
-//            List<FacilityStatusAgregation> statusAgregations = activityService.getStatusFacilityAssignmentsAgregation(activityAssignment.getFieldPlanId());
-//            if (statusAgregations != null) {
-//                Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(activityAssignment.getAdditionalDetails(), "statusAgregation", statusAgregations);
-//                activityAssignment.setAdditionalDetails((Map<String, Object>) enrichedAdditionalDetails);
-//            }
-//        }
+        if (activityAssignment.getFieldPlanId() != null && !activityAssignment.getFieldPlanId().isEmpty()) {
+            FieldPlan existingFieldPlan = activityValidator.getFieldPlanById(requestInfo, activityAssignment.getFieldPlanId(), activityAssignment.getTenantId());
+            if (existingFieldPlan != null) {
+                activityAssignment.setFieldPlan(existingFieldPlan);
+            }
+
+            FieldPlanFacilityBulkResponse fieldPlanFacilityList = activityValidator.getFieldPlanFacilityById(requestInfo, activityAssignment.getFieldPlanId(), activityAssignment.getTenantId());
+            if (fieldPlanFacilityList != null) {
+                Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(activityAssignment.getAdditionalDetails(), "countFieldPlanFacilities", fieldPlanFacilityList.getTotalCount());
+                activityAssignment.setAdditionalDetails((Map<String, Object>) enrichedAdditionalDetails);
+            }
+        }
     }
 
     public void enrichActivityFacilityOnSearch(ActivityFacilitySearchRequest request, ActivityFacility activityFacility) {
@@ -109,12 +107,12 @@ public class ActivityEnrichment {
         }
 
         // Get Full assigned user Infos from HRMS
-//        if(activityFacility.getAssignedUser() !=null && !activityFacility.getAssignedUser().isEmpty()){
-//            Employee employee =  activityValidator.getUserById(request, activityFacility);
-//            if(employee !=null){
-//                activityFacility.setAssignedEmployeeUser(employee.getUser());
-//            }
-//        }
+        if(activityFacility.getAssignedUser() !=null && !activityFacility.getAssignedUser().isEmpty()){
+            Employee employee =  activityValidator.getUserById(request, activityFacility);
+            if(employee !=null){
+                activityFacility.setAssignedEmployeeUser(employee.getUser());
+            }
+        }
     }
 
     public void enrichActivityRequestOnCreate(Activity activity, RequestInfo requestInfo) {

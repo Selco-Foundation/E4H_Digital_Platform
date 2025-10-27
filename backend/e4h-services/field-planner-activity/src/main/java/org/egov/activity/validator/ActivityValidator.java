@@ -11,7 +11,6 @@ import org.egov.common.contract.request.RequestInfo;
 import org.egov.common.http.client.ServiceRequestClient;
 import org.egov.activity.config.ActivityConfiguration;
 import org.egov.activity.util.MDMSUtils;
-import org.egov.common.models.project.ProjectStaffBulkRequest;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -513,7 +512,9 @@ public class ActivityValidator {
         if ((activityFacility.getIds()==null || activityFacility.getIds().isEmpty()) && (activityFacility.getFieldPlanId()==null || activityFacility.getFieldPlanId().isEmpty())
                 && (activityFacility.getStatuses()==null || activityFacility.getStatuses().isEmpty()) && (activityFacility.getActivityId()==null || activityFacility.getActivityId().isEmpty())
                 && StringUtils.isBlank(activityFacility.getAssignedToMe())
-                && StringUtils.isBlank(activityFacility.getAssignedUserId()))
+                && StringUtils.isBlank(activityFacility.getAssignedUserId())
+                && (activityFacility.getBoundaryCodes()==null || activityFacility.getBoundaryCodes().isEmpty())
+                && StringUtils.isBlank(activityFacility.getFacilityName()))
         {
             log.error("Any one Activity search field is required for FieldPlan Search");
             throw new CustomException("ACTIVITY_SEARCH_FIELDS", "Any one activity search field is required");
@@ -537,6 +538,7 @@ public class ActivityValidator {
         if ((criteria.getIds()==null || criteria.getIds().isEmpty()) && (criteria.getFieldPlanId()==null || criteria.getFieldPlanId().isEmpty())
                 && (criteria.getStatuses()==null || criteria.getStatuses().isEmpty()) && (criteria.getActivityId()==null || criteria.getActivityId().isEmpty())
                 && StringUtils.isBlank(criteria.getAssignedTo()) && StringUtils.isBlank(criteria.getTenantId())
+                && StringUtils.isBlank(criteria.getFieldPlanCode())
                 && StringUtils.isBlank(criteria.getAssignedBy()))
         {
             log.error("Any one Activity search field is required for FieldPlan Search");
@@ -694,7 +696,7 @@ public class ActivityValidator {
     }
 
     public FieldPlanFacilityBulkResponse getFieldPlanFacilityById(RequestInfo request, String fieldPlanId, String tenantId) {
-        FieldPlanFacilitySearch fieldPlanFacility = FieldPlanFacilitySearch.builder().id(List.of(fieldPlanId)).build();
+        FieldPlanFacilitySearch fieldPlanFacility = FieldPlanFacilitySearch.builder().field_plan_id(List.of(fieldPlanId)).build();
         FieldPlanFacilitySearchRequest fieldPlanRequest = FieldPlanFacilitySearchRequest.builder().requestInfo(request).criteria(fieldPlanFacility).build();
         String url = config.getFieldPlanServiceHost() + config.getFieldPlanFacilityServiceSearchUrl()+ "?tenantId="+tenantId+"&offset=0&limit=100";
         Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), fieldPlanRequest, Map.class);

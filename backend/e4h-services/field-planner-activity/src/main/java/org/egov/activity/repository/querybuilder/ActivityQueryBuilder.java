@@ -26,13 +26,16 @@ public class ActivityQueryBuilder {
     private static final String FETCH_ACTIVITY_QUERY = "SELECT fa.id as fa_facilityActivityId, fa.tenant_id as fa_tenantId, fa.facility_id as fa_facilityId, fa.activity_id as fa_activityId, " +
             "fa.field_plan_id as fa_fieldPlanId, fa.status as fa_status, fa.conditions_met as fa_conditionsMet, fa.assigned_user as fa_assignedUser, " +
             "fa.additional_details as fa_additionalDetails, fa.scheduled_at as fa_scheduledAt, fa.activated_at as fa_activatedAt, fa.completed_at as fa_completedAt, fa.created_time as fa_createdTime, " +
-            "fa.last_modified_time as fa_lastModifiedTime " +
+            "fa.last_modified_time as fa_lastModifiedTime, fac.id AS facilityId, fac.tenant_id AS fac_tenantId, fac.facility_category AS fac_facilityCategory, fac.facility_type AS fac_facilityType, " +
+            "fac.facility_subtype AS fac_facilitySubtype, fac.facility_name AS fac_facilityName, fac.facility_ownership AS fac_facilityOwnership, fac.facility_region AS fac_facilityRegion, " +
+            "fac.addressid, fac.facility_details AS fac_facilityDetails, fac.wf_status AS fac_status, fac.is_active AS fac_isActive, fac.additional_details AS fac_additionalDetails, fac.created_by AS fac_createdBy, " +
+            "fac.created_at, fac.updated_by, fac.updated_at, fac.boundary_code AS fac_boundaryCode" +
             " " +
-            "from facility_activities fa ";
+            "from facility_activities fa LEFT JOIN public.facility AS fac ON fa.facility_id = fac.id";
 
     private static final String STATUS_COUNT_QUERY = "SELECT status, COUNT(*) AS occurrences " +
-            "FROM facility_activities fa where prj.status is not null ";
-    private static final String ACTIVITY_COUNT_QUERY = "SELECT COUNT(*) FROM facility_activities fa ";
+            "FROM facility_activities fa where fa.status is not null ";
+    private static final String ACTIVITY_COUNT_QUERY = "SELECT COUNT(*) FROM facility_activities fa LEFT JOIN public.facility AS fac ON fa.facility_id = fac.id";
 
     private final String paginationWrapper = "SELECT * FROM " +
             "(SELECT *, DENSE_RANK() OVER (ORDER BY fa_lastModifiedTime DESC , fa_facilityactivityid) offset_ FROM " +
@@ -106,10 +109,35 @@ public class ActivityQueryBuilder {
             preparedStmtList.addAll(activityFacility.getActivityId());
         }
 
+        if (!CollectionUtils.isEmpty(activityFacility.getFacilityId())) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            queryBuilder.append(" fa.facility_id IN (").append(createQuery(activityFacility.getFacilityId())).append(")");
+            preparedStmtList.addAll(activityFacility.getFacilityId());
+        }
+
+        if (!CollectionUtils.isEmpty(activityFacility.getStatuses())) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            queryBuilder.append(" fa.status IN (").append(createQuery(activityFacility.getStatuses())).append(")");
+            preparedStmtList.addAll(activityFacility.getStatuses());
+        }
+
         if (StringUtils.isNotBlank(activityFacility.getAssignedUserId())) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
             queryBuilder.append(" fa.assigned_user =? ");
             preparedStmtList.add(activityFacility.getAssignedUserId());
+        }
+
+        // Check if facility name is provided
+        if (StringUtils.isNotBlank(activityFacility.getFacilityName())) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            queryBuilder.append(" LOWER(fac.facility_name) LIKE ? ");
+            preparedStmtList.add("%" + activityFacility.getFacilityName().toLowerCase() + "%");
+        }
+
+        if (!CollectionUtils.isEmpty(activityFacility.getBoundaryCodes())) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            queryBuilder.append(" fac.boundary_code IN (").append(createQuery(activityFacility.getBoundaryCodes())).append(")");
+            preparedStmtList.addAll(activityFacility.getBoundaryCodes());
         }
 
         if (lastChangedSince != null && lastChangedSince != 0) {
