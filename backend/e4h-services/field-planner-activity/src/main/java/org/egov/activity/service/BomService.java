@@ -19,6 +19,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 @Service
@@ -125,7 +126,21 @@ public class BomService {
         if(bomType==null)
             throw new CustomException("BOM_PDF", "System Type is required");
         String pdfKey = startupRunner.getConfigMap().get(bomType);
+        if (pdfKey == null) {
+            throw new CustomException("BOM_PDF", "Unknown System Type: " + bomType);
+        }
         return getBOMPdfFile(pdfKey, tenantId, request);
+    }
+
+    public String generateAndSaveBOMPdfToFilestore(GenerateBOMPdfRequest request, String tenantId){
+        String bomType = request.getSystem();
+        if(bomType==null)
+            throw new CustomException("BOM_PDF", "System Type is required");
+        String pdfKey = startupRunner.getConfigMap().get(bomType);
+        if (pdfKey == null) {
+            throw new CustomException("BOM_PDF", "Unknown System Type: " + bomType);
+        }
+        return uploadBOMPdfFilestore(pdfKey, tenantId, request);
     }
 
     private BomSearchRequest getSearchBOMRequest(List<BillOfMaterial> billOfMaterials, RequestInfo requestInfo) {
@@ -213,6 +228,25 @@ public class BomService {
             );
         }
         return pdfDoc;
+    }
+
+    public String uploadBOMPdfFilestore(String key, String tenantId, GenerateBOMPdfRequest request) {
+
+        String url = activityConfiguration.getPdfServiceHost() + activityConfiguration.getPdfCreateSaveFilestore()+ "?key="+key+"&tenantId="+tenantId;
+        Object response = serviceRequest.fetchResult(new StringBuilder(url), request);
+
+        Map<String, Object> pdfDoc = mapper.convertValue(response, Map.class);
+        if(pdfDoc == null){
+            throw new CustomException(
+                    "ERROR_PDF_GENERATION",
+                    "Error occured while generating PDF"
+            );
+        }
+        List<String> filestoreIds = (List<String>) pdfDoc.get("filestoreIds");
+        if (filestoreIds == null || filestoreIds.isEmpty()) {
+            throw new CustomException("ERROR_PDF_GENERATION", "No filestoreId returned");
+        }
+        return filestoreIds.get(0);
     }
 
 

@@ -31,7 +31,6 @@ public class ActivityEnrichment {
     private final ActivityServiceUtil fieldPlanServiceUtil;
     private final ActivityValidator activityValidator;
 
-    @Autowired
     private final ObjectMapper objectMapper;
 
     @Autowired

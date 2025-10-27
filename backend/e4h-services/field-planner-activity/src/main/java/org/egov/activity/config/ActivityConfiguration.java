@@ -41,6 +41,9 @@ public class ActivityConfiguration {
     @Value("${egov.createnosave.pdf.url}")
     private String pdfCreateNoSaveUrl;
 
+    @Value("${egov.createandsave.pdf.url}")
+    private String pdfCreateSaveFilestore;
+
     @Value("${egov.off.grid.single.phase.key}")
     private String bomACOffGridSinglePhase;
 
@@ -142,7 +145,7 @@ public class ActivityConfiguration {
     @Value("${egov.hrms.search.url}")
     private String hrmsSearchUrl;
 
-    @Value("${http://localhost:8991}")
+    @Value("${egov.vendor.user.host}")
     private String orgUserHost;
 
     @Value("${egov.vendor.user.search.url}")
