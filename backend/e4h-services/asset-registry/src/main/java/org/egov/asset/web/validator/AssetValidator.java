@@ -66,7 +66,7 @@ public class AssetValidator {
         validateSystem(asset, errorMap, mdmsData.get(AssetConstants.SYSTEM_CODE));
         validateAssetDetails(asset, errorMap);
         validateFacilityId(asset, errorMap);
-//        validateActivityFacilityId(request, errorMap);
+        validateActivityFacilityId(request, errorMap);
     }
 
     private void validateAssetDetails(Asset asset, Map<String, String> errorMap) {
@@ -398,7 +398,7 @@ public class AssetValidator {
 
     private void validateActivityFacilityId(AssetCreateRequest request, Map<String,String> errorMap){
         Asset asset = request.getAssetDetail().getAsset();
-        log.debug("Validating activity facility for assetId={} facilityId={}", asset.getAssetId(), asset.getActivityFacilityID());
+        log.info("Validating activity facility for assetId={} facilityId={}", asset.getAssetId(), asset.getActivityFacilityID());
         List<Object> activityList = facilityUtil.getActivityFacilityById(request.getRequestInfo(), asset.getFacilityID(), asset.getTenantId());
         if(activityList.isEmpty())
             errorMap.put(ErrorConstants.ASSET_ACTIVITY_FACILITY_ID_VALIDATION_CODE, ErrorConstants.ASSET_ACTIVITY_FACILITY_ID_VALIDATION_MSG);
