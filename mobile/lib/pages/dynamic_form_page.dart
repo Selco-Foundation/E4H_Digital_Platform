@@ -444,8 +444,8 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
                     if (!form.contains(k)) continue;
                     final ctrl = form.control(k);
 
-                    // ctrl.reset(
-                    //     value: null, updateParent: true, emitEvent: false);
+                    ctrl.reset(
+                        value: null, updateParent: true, emitEvent: false);
                   }
                   return form;
                 }
@@ -461,8 +461,8 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
                         updateParent: true, emitEvent: false);
                     continue;
                   } else {
-                    // ctrl.reset(
-                    //     value: null, updateParent: true, emitEvent: false);
+                    ctrl.reset(
+                        value: null, updateParent: true, emitEvent: false);
                   }
                 }
                 return form;
