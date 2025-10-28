@@ -3,30 +3,40 @@ package org.egov.activity.util;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import org.egov.activity.web.models.ActivityAssignment;
-import org.egov.activity.web.models.ActivityFacility;
-import org.egov.activity.web.models.BillOfMaterial;
+import lombok.extern.slf4j.Slf4j;
+import org.egov.activity.config.ActivityConfiguration;
+import org.egov.activity.validator.ActivityValidator;
+import org.egov.activity.web.models.*;
 import org.egov.common.contract.models.AuditDetails;
 import org.egov.common.models.project.Project;
-import org.egov.activity.web.models.FieldPlan;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static java.util.Objects.isNull;
 
 @Component
+@Slf4j
 public class ActivityServiceUtil {
     @Autowired
     private ObjectMapper objectMapper;
+
+    private ActivityConfiguration activityConfiguration;
+    private final KafkaTemplate<String, Object> kafkaTemplate;
+    private final ActivityValidator activityValidator;
+
+    public ActivityServiceUtil(ActivityConfiguration activityConfiguration, KafkaTemplate<String, Object> kafkaTemplate, ActivityValidator activityValidator) {
+        this.activityConfiguration = activityConfiguration;
+        this.kafkaTemplate = kafkaTemplate;
+        this.activityValidator = activityValidator;
+    }
 
     public AuditDetails getAuditDetails(String by, AuditDetails auditDetails, Boolean isCreate) {
         Long time = System.currentTimeMillis();
@@ -120,5 +130,53 @@ public class ActivityServiceUtil {
 
         // Format as YYYY-YY
         return String.format("%d-%02d", startYear, endYear % 100);
+    }
+
+    public List<String> getEmailIdsList(ActivityAssignmentBulkRequest request){
+        List<String> listEmail = null;
+        List<User> listUsers = null;
+        List<ActivityAssignment> activityAssignments = request.getActivityAssignments();
+        for (ActivityAssignment activityAssignment : activityAssignments) {
+            log.info("processing {} valid entities", activityAssignment);
+            if(activityAssignment.getAssignedTo() !=null && !activityAssignment.getAssignedTo().isEmpty()){
+                Employee employee =  activityValidator.getUserById(request, activityAssignment.getAssignedTo());
+                if(employee !=null){
+                    listUsers.add(employee.getUser());
+                }
+            }
+        }
+        listEmail = listUsers.stream().map(User::getEmailId).collect(Collectors.toList());
+        return listEmail;
+    }
+
+    public void sendEmailViaKafka(List<String> emailIds, String subject, String body, String tenantId) {
+        try {
+            // Create Email object following egov-notification-mail contract
+            Map<String, Object> email = new HashMap<>();
+            email.put("emailTo", new HashSet<>(emailIds));  // Set<String>
+            email.put("subject", subject);
+            email.put("body", body);
+            email.put("isHTML", true);
+            email.put("tenantId", tenantId);
+
+            // Note: CSV files are not attached as email attachments anymore
+            // Download functionality is provided via download buttons in the email template
+
+            // Create EmailRequest wrapper with RequestInfo
+            Map<String, Object> emailRequest = new HashMap<>();
+            emailRequest.put("requestInfo", new HashMap<>());  // Empty RequestInfo is acceptable
+            emailRequest.put("email", email);
+
+            // Publish to Kafka
+            String topic = activityConfiguration.getNotificationEmailTopic();
+            kafkaTemplate.send(topic, emailRequest);
+
+            log.info("Published email to Kafka topic: {} for user: {} (no attachments - download buttons used instead)",
+                    topic, emailIds);
+
+        } catch (Exception e) {
+            log.error("Error sending email via Kafka for user: {}", emailIds, e);
+            throw new RuntimeException("Failed to send email via Kafka", e);
+        }
     }
 }
