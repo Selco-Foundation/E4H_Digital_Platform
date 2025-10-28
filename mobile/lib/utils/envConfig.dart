@@ -49,9 +49,9 @@ class Variables {
   final DotEnv _dotEnv;
   final bool useFallbackValues;
 
-  static const _connectTimeoutValue = 6000;
-  static const _receiveTimeoutValue = 6000;
-  static const _sendTimeoutValue = 6000;
+  static const _connectTimeoutValue = 1200000;
+  static const _receiveTimeoutValue = 1200000;
+  static const _sendTimeoutValue = 1200000;
   static const _retryTimeIntervalValue = 5;
   static const _syncDownRetryCountValue = 3;
 
