@@ -3,6 +3,7 @@ package org.egov.activity.repository;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.activity.repository.querybuilder.ActivityQueryBuilder;
 import org.egov.activity.repository.rowmapper.ActivityDataRowMapper;
+import org.egov.activity.repository.rowmapper.FacilityStatusRowMapper;
 import org.egov.activity.web.models.*;
 import org.egov.common.data.query.builder.SelectQueryBuilder;
 import org.egov.common.data.repository.GenericRepository;
@@ -21,29 +22,30 @@ import java.util.Optional;
 
 @Repository
 @Slf4j
-public class ActivityRepository extends GenericRepository<ActivityFacility> {
+public class ActivityFacilityRepository extends GenericRepository<ActivityFacility> {
 
     private final ActivityQueryBuilder queryBuilder;
     private final JdbcTemplate jdbcTemplate;
     private final ActivityRowMapper activityRowMapper;
-
     private final ActivityDataRowMapper activityDataRowMapper;
+    private final FacilityStatusRowMapper facilityStatusRowMapper;
 
     @Autowired
-    public ActivityRepository(Producer producer, NamedParameterJdbcTemplate namedParameterJdbcTemplate,
-                              RedisTemplate<String, Object> redisTemplate, ActivityRowMapper activityRowMapper,
-                              SelectQueryBuilder selectQueryBuilder, ActivityRowMapper fieldPlanFacilityRowMapper,
-                              JdbcTemplate jdbcTemplate, ActivityQueryBuilder queryBuilder, ActivityDataRowMapper activityDataRowMapper) {
+    public ActivityFacilityRepository(Producer producer, NamedParameterJdbcTemplate namedParameterJdbcTemplate,
+                                      RedisTemplate<String, Object> redisTemplate, ActivityRowMapper activityRowMapper,
+                                      SelectQueryBuilder selectQueryBuilder, ActivityRowMapper fieldPlanFacilityRowMapper,
+                                      JdbcTemplate jdbcTemplate, ActivityQueryBuilder queryBuilder, ActivityDataRowMapper activityDataRowMapper, FacilityStatusRowMapper facilityStatusRowMapper) {
         super(producer, namedParameterJdbcTemplate, redisTemplate, selectQueryBuilder,
                 fieldPlanFacilityRowMapper, Optional.of("facility_activities"));
         this.queryBuilder = queryBuilder;
         this.jdbcTemplate = jdbcTemplate;
         this.activityRowMapper = activityRowMapper;
         this.activityDataRowMapper = activityDataRowMapper;
+        this.facilityStatusRowMapper = facilityStatusRowMapper;
     }
 
     public List<ActivityFacility> getActivitiesFacility(ActivityFacilitySearchRequest request, Integer limit, Integer offset, String tenantId, Boolean includeDeleted, Long lastChangedSince) {
-        //Fetch FieldPlans based on search criteria
+        //Fetch Facility based on search criteria
         List<Object> preparedStmtList = new ArrayList<>();
         ActivityFacilitySearchCriteria criteria = request.getCriteria();
         criteria.setCountQuery(false);
@@ -66,7 +68,7 @@ public class ActivityRepository extends GenericRepository<ActivityFacility> {
         return null;
     }
 
-    public Integer getActivitiesCount(ActivityFacilitySearchRequest request, String tenantId, Long lastChangedSince, Boolean includeDeleted) {
+    public Integer getActivitiesFacilityCount(ActivityFacilitySearchRequest request, String tenantId, Long lastChangedSince, Boolean includeDeleted) {
         List<Object> preparedStatement = new ArrayList<>();
         String query = queryBuilder.getSearchCountQueryString(request, tenantId, lastChangedSince, includeDeleted, preparedStatement);
 
@@ -76,5 +78,13 @@ public class ActivityRepository extends GenericRepository<ActivityFacility> {
         Integer count = jdbcTemplate.queryForObject(query, preparedStatement.toArray(), Integer.class);
         log.info("Total FieldPlans count is : " + count);
         return count;
+    }
+
+    public List<FacilityStatusAgregation> getStatusFacilitiesAgregation(String fieldPlanId) {
+        List<Object> preparedStmtList = new ArrayList<>();
+        String query = queryBuilder.getStatusFacilitiesOccurence(fieldPlanId, preparedStmtList);
+        List<FacilityStatusAgregation> statusAgregations = jdbcTemplate.query(query, facilityStatusRowMapper, preparedStmtList.toArray());
+        log.info("Fetched facility status agregation list based on given Parent Ids");
+        return statusAgregations;
     }
 }

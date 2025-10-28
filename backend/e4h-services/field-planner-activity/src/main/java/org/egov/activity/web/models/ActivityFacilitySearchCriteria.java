@@ -24,6 +24,9 @@ public class ActivityFacilitySearchCriteria {
     @JsonProperty("ids")
     private @Valid List<String> ids = null;
 
+    @JsonProperty("fieldPlanIds")
+    private @Valid List<String> fieldPlanId = null;
+
     @JsonProperty("facilityIds")
     private @Valid List<String> facilityId = null;
 
@@ -38,6 +41,12 @@ public class ActivityFacilitySearchCriteria {
 
     @JsonProperty("assignedUserId")
     private String assignedUserId = null;
+
+    @JsonProperty("facilityName")
+    private @Valid String facilityName = null;
+
+    @JsonProperty("boundaryCodes")
+    private @Valid List<String> boundaryCodes = null;
 
     private String tenantId;
 

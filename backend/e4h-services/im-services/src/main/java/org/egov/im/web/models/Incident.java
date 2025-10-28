@@ -11,9 +11,6 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.Builder;
 
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 
 /**
@@ -95,7 +92,7 @@ public class Incident   {
     	
     	@SafeHtml
     	@JsonProperty("phcSubType")
-    	private String phcsubtype = null;
+    	private String phcSubType = null;
     	
     	@SafeHtml
     	@JsonProperty("comments")
@@ -107,6 +104,10 @@ public class Incident   {
         @SafeHtml
         @JsonProperty("systemFunctional")
         private String systemFunctional = null;
+
+        @SafeHtml
+        @JsonProperty("isPotentialDuplicate")
+        private boolean isPotentialDuplicate;
 
         @JsonProperty("filedDate")
         private Long filedDate = null;

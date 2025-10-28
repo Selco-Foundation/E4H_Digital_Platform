@@ -23,6 +23,9 @@ public class ActivityConfiguration {
     @Value("${egov.search.fieldplan.url}")
     private String fieldPlanServiceSearchUrl;
 
+    @Value("${egov.search.fieldplan.facility.url}")
+    private String fieldPlanFacilityServiceSearchUrl;
+
     @Value("${egov.facility.host}")
     private String facilityServiceHost;
 
@@ -38,11 +41,29 @@ public class ActivityConfiguration {
     @Value("${egov.createnosave.pdf.url}")
     private String pdfCreateNoSaveUrl;
 
-    @Value("${egov.pdf.key}")
-    private String bomKeypdf;
+    @Value("${egov.createandsave.pdf.url}")
+    private String pdfCreateSaveFilestore;
+
+    @Value("${egov.off.grid.single.phase.key}")
+    private String bomACOffGridSinglePhase;
+
+    @Value("${egov.off.grid.three.phase.key}")
+    private String bomACOffGridSThreePhase;
+
+    @Value("${egov.hybrid.single.phase.key}")
+    private String bomHybridSinglePhase;
+
+    @Value("${egov.hybrid.three.phase.key}")
+    private String bomHybridThreePhase;
+
+    @Value("${egov.dc.system.key}")
+    private String bomDCSystem;
 
     @Value("${search.api.limit:100}")
     private String searchApiLimit;
+
+    @Value("${global.tenant.id}")
+    private String tenantId;
 
     @Value("${egov.mdms.host}")
     private String mdmsHost;
@@ -126,4 +147,25 @@ public class ActivityConfiguration {
 
     @Value("${egov.hrms.search.url}")
     private String hrmsSearchUrl;
+
+    @Value("${egov.vendor.user.host}")
+    private String orgUserHost;
+
+    @Value("${egov.vendor.user.search.url}")
+    private String orgUserSearchUrl;
+
+    @Value("${facility.management.transaction.kafka.create.topic}")
+    private String transactionPersistTopic;
+
+    @Value("${facility.management.comment.kafka.create.topic}")
+    private String commentPersistTopic;
+
+    @Value("${egov.asset.host}")
+    private String assetHost;
+
+    @Value("${egov.asset.search.url}")
+    private String assetSearchUrl;
+
+    @Value("${egov.asset.update.url}")
+    private String assetUpdateUrl;
 }

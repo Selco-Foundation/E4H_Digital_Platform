@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jayway.jsonpath.JsonPath;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.egov.activity.repository.ActivityRepository;
+import org.egov.activity.repository.ActivityFacilityRepository;
 import org.egov.activity.service.ServiceRequestRepository;
 import org.egov.activity.web.models.*;
 import org.egov.common.contract.request.RequestInfo;
@@ -29,7 +29,7 @@ import static org.egov.activity.util.ActivityConstants.*;
 public class ActivityValidator {
 
     @Autowired
-    ActivityRepository activityRepository;
+    ActivityFacilityRepository activityFacilityRepository;
 
     @Autowired
     private final ServiceRequestClient serviceRequestRepository;
@@ -147,7 +147,7 @@ public class ActivityValidator {
             }
             // Get existing project with projectID from project service
             ActivitySearchCriteria criteria = ActivitySearchCriteria.builder().code(List.of(activityAssignment.getActivityId())).build();
-            Activity existingActivity = activityRepository.getActivityObject(criteria);
+            Activity existingActivity = activityFacilityRepository.getActivityObject(criteria);
             if (existingActivity == null) {
                 log.error("Activity code do not exist");
                 throw new CustomException("Activity", "Activity code do not exist");
@@ -204,7 +204,7 @@ public class ActivityValidator {
             }
             // Get existing project with projectID from project service
             ActivitySearchCriteria criteria = ActivitySearchCriteria.builder().ids(List.of(activityAssignment.getActivityId())).build();
-            Activity existingActivity = activityRepository.getActivityObject(criteria);
+            Activity existingActivity = activityFacilityRepository.getActivityObject(criteria);
             if (existingActivity == null) {
                 log.error("Activity code do not exist");
                 throw new CustomException("Activity", "Activity code do not exist");
@@ -509,10 +509,12 @@ public class ActivityValidator {
             log.error(TENANT_ID_IS_MANDATORY_IN_ACTIVITY_REQUEST_BODY);
             throw new CustomException("TENANT_ID", "Tenant ID is mandatory");
         }
-        if ((activityFacility.getIds()==null || activityFacility.getIds().isEmpty()) && (activityFacility.getFacilityId()==null || activityFacility.getFacilityId().isEmpty())
+        if ((activityFacility.getIds()==null || activityFacility.getIds().isEmpty()) && (activityFacility.getFieldPlanId()==null || activityFacility.getFieldPlanId().isEmpty())
                 && (activityFacility.getStatuses()==null || activityFacility.getStatuses().isEmpty()) && (activityFacility.getActivityId()==null || activityFacility.getActivityId().isEmpty())
                 && StringUtils.isBlank(activityFacility.getAssignedToMe())
-                && StringUtils.isBlank(activityFacility.getAssignedUserId()))
+                && StringUtils.isBlank(activityFacility.getAssignedUserId())
+                && (activityFacility.getBoundaryCodes()==null || activityFacility.getBoundaryCodes().isEmpty())
+                && StringUtils.isBlank(activityFacility.getFacilityName()))
         {
             log.error("Any one Activity search field is required for FieldPlan Search");
             throw new CustomException("ACTIVITY_SEARCH_FIELDS", "Any one activity search field is required");
@@ -535,7 +537,8 @@ public class ActivityValidator {
         }
         if ((criteria.getIds()==null || criteria.getIds().isEmpty()) && (criteria.getFieldPlanId()==null || criteria.getFieldPlanId().isEmpty())
                 && (criteria.getStatuses()==null || criteria.getStatuses().isEmpty()) && (criteria.getActivityId()==null || criteria.getActivityId().isEmpty())
-                && StringUtils.isBlank(criteria.getAssignedTo())
+                && StringUtils.isBlank(criteria.getAssignedTo()) && StringUtils.isBlank(criteria.getTenantId())
+                && StringUtils.isBlank(criteria.getFieldPlanCode())
                 && StringUtils.isBlank(criteria.getAssignedBy()))
         {
             log.error("Any one Activity search field is required for FieldPlan Search");
@@ -672,5 +675,48 @@ public class ActivityValidator {
             return facilityList.getFacilities().get(0);
         }
         return null;
+    }
+
+    public OrgUserEnriched getUserOrgById(ActivityFacilitySearchRequest request, ActivityFacility activityFacility) {
+        String userId = activityFacility.getAssignedUser();
+        List<String> userIds = new ArrayList<>();
+        userIds.add(userId);
+        OrgUserSearchCriteria criteria = OrgUserSearchCriteria.builder().userId(userIds).build();
+        OrgUserSearchRequest searchRequest = OrgUserSearchRequest.builder().requestInfo(request.getRequestInfo()).criteria(criteria).build();
+        String url = activityConfiguration.getOrgUserHost() + activityConfiguration.getOrgUserSearchUrl()+ "?tenantId="+activityFacility.getTenantId()+"&offset=0&limit=100";
+        Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), searchRequest, Map.class);
+
+        OrgUserResponseSearch orgUserResponse = mapper.convertValue(response, OrgUserResponseSearch.class);
+        if (orgUserResponse != null && orgUserResponse.getOrgUsers() != null && !orgUserResponse.getOrgUsers().isEmpty()) {
+//            throw new CustomException("USER_NOT_FOUND", "User not found with ID: " + userId);
+            return orgUserResponse.getOrgUsers().get(0);
+        }
+
+        return null;
+    }
+
+    public FieldPlanFacilityBulkResponse getFieldPlanFacilityById(RequestInfo request, String fieldPlanId, String tenantId) {
+        FieldPlanFacilitySearch fieldPlanFacility = FieldPlanFacilitySearch.builder().field_plan_id(List.of(fieldPlanId)).build();
+        FieldPlanFacilitySearchRequest fieldPlanRequest = FieldPlanFacilitySearchRequest.builder().requestInfo(request).criteria(fieldPlanFacility).build();
+        String url = config.getFieldPlanServiceHost() + config.getFieldPlanFacilityServiceSearchUrl()+ "?tenantId="+tenantId+"&offset=0&limit=100";
+        Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), fieldPlanRequest, Map.class);
+        FieldPlanFacilityBulkResponse fieldPlanResponse = mapper.convertValue(response, FieldPlanFacilityBulkResponse.class);
+        if(fieldPlanResponse != null && fieldPlanResponse.getFieldPlanFacilities() !=null && fieldPlanResponse.getFieldPlanFacilities().size() > 0){
+            return fieldPlanResponse;
+        }
+        return null;
+    }
+
+    public Employee getUserById(ActivityFacilitySearchRequest request, ActivityFacility activityFacility) {
+        String userId = activityFacility.getAssignedUser();
+
+        String url = config.getHrmsHost() + config.getHrmsSearchUrl()+ "?tenantId=in&uuids="+userId;
+        Object response = serviceRequest.fetchResult(new StringBuilder(url), request);
+
+        EmployeeResponse employeeResponse = mapper.convertValue(response, EmployeeResponse.class);
+        if (employeeResponse == null || employeeResponse.getEmployees() == null || employeeResponse.getEmployees().isEmpty()) {
+            throw new CustomException("EMPLOYEE_NOT_FOUND", "Employee not found with ID: " + userId);
+        }
+        return employeeResponse.getEmployees().get(0);
     }
 }

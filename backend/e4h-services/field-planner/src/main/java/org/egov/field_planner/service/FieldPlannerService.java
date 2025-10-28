@@ -209,9 +209,9 @@ public class FieldPlannerService {
                     Instant.ofEpochMilli(fieldPlan.getEndDate()),
                     ZoneId.systemDefault()
             );
-            int startYear = endDate.getYear();
+            int endYear = endDate.getYear();
 
-            baseName = String.format("%s-%s-%s", stateCode, concatenatedActivityCode, startYear);
+            baseName = String.format("%s-%s-%s", stateCode, concatenatedActivityCode, endYear);
 //
 //            for (Object map : activitiesRes) {
 //                LinkedHashMap<String, Object> activity = (LinkedHashMap<String, Object>) map;
@@ -231,11 +231,42 @@ public class FieldPlannerService {
     }
 
     /**
+     * Checks if any data that affects field plan name generation has changed
+     * Name is affected by: endDate, activity, address.boundary (state)
+     */
+    private boolean hasNameAffectingDataChanged(FieldPlan fieldPlan, FieldPlan fieldPlanFromDB) {
+        // Check if end date changed
+        if (!Objects.equals(fieldPlan.getEndDate(), fieldPlanFromDB.getEndDate())) {
+            log.info("End date changed for field plan: {} - name regeneration needed", fieldPlan.getId());
+            return true;
+        }
+
+        // Check if activity details changed
+        List<Map<String, Object>> currentActivities = fieldPlan.getActivities() != null ? fieldPlan.getActivities() : null;
+        List<Map<String, Object>> existingActivities = fieldPlanFromDB.getActivities() != null ? fieldPlanFromDB.getActivities() : null;
+        if (!Objects.equals(currentActivities, existingActivities)) {
+            log.info("Activity list changed for field plan: {} - name regeneration needed", fieldPlan.getId());
+            return true;
+        }
+
+        log.info("No name-affecting data changed for field plan: {}", fieldPlan.getId());
+        return false;
+    }
+
+    /**
      * Handles fieldPlan name regeneration during updates
      * Compares the new base name with existing name and updates if different
      */
     private void handleFieldPlanNameUpdate(FieldPlanRequest request, FieldPlan fieldPlan, FieldPlan fieldPlanFromDB) {
         try {
+
+            // Check if name-affecting data has changed
+            if (!hasNameAffectingDataChanged(fieldPlan, fieldPlanFromDB)) {
+                log.info("No name-affecting data changed for field plan: {}, keeping existing name: {}",
+                        fieldPlan.getId(), fieldPlanFromDB.getName());
+                return;
+            }
+
             String newBaseName = getStateActivitiesYearFormat(request, fieldPlan.getTenantId(), fieldPlan);
 //            String baseName = "KA-MT_HO-2024";
             if(newBaseName == null){
@@ -395,12 +426,11 @@ public class FieldPlannerService {
                 throw new RuntimeException(e);
             }
         }
-        else{
-            /*
-             * Handle fieldPlan name regeneration if needed (dates changed or activity)
-             */
-            handleFieldPlanNameUpdate(request, fieldPlan, fieldPlanFromDB);
-        }
+
+        /*
+         * Handle fieldPlan name regeneration if needed (dates changed or activity)
+         */
+        handleFieldPlanNameUpdate(request, fieldPlan, fieldPlanFromDB);
 
         /*
          * Check and enrich cascading fieldPlan dates and push the update to the message broker
@@ -460,6 +490,7 @@ public class FieldPlannerService {
                 .orElse(null);
     }
 
+    // Check if INSTALLATION_REVIEWER and INSTALLATION_SPOC is assigned and if at least one facility is linked to the fieldplan
     private void validateFieldPlanSubmission(FieldPlanRequest request, FieldPlan fieldPlan) throws Exception {
         if (fieldPlan == null) {
             log.error("Field Plan is mandatory");

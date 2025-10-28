@@ -33,9 +33,16 @@ public class RequestSearchCriteria {
     @JsonProperty("phcType")
     private Set<String> phcType;
 
+    @JsonProperty("phcSubType")
+    private Set<String> phcSubType;
+
     @SafeHtml
     @JsonProperty("mobileNumber")
     private String mobileNumber;
+
+    @SafeHtml
+    @JsonProperty("systemFunctional")
+    private String systemFunctional;
 
     @SafeHtml
     @JsonProperty("incidentId")
@@ -43,6 +50,15 @@ public class RequestSearchCriteria {
 
     @JsonProperty("incidentType")
     private Set<String> incidentType;
+
+    @JsonProperty("incidentSubType")
+    private Set<String> incidentSubType;
+
+    @JsonProperty("district")
+    private String district;
+
+    @JsonProperty("block")
+    private String block;
     
     @JsonProperty("sortBy")
     private SortBy sortBy;

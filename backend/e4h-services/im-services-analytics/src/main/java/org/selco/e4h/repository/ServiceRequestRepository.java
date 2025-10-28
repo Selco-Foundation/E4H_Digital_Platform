@@ -7,12 +7,18 @@ import lombok.extern.slf4j.Slf4j;
 
 import org.egov.tracer.model.ServiceCallException;
 
+import org.selco.e4h.web.models.ProcessingContext;
+import org.selco.e4h.web.models.storage.StorageResponse;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.Resource;
 import org.springframework.http.*;
 import org.springframework.stereotype.Repository;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.util.UriComponentsBuilder;
 
 
 import java.io.IOException;
@@ -41,5 +47,81 @@ public class ServiceRequestRepository {
         return response;
     }
 
+
+    public StorageResponse uploadFiles(List<MultipartFile> files,
+                                       ProcessingContext context,
+                                       String url) throws IOException {
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+
+        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+
+        for (MultipartFile file : files) {
+            try (var inputStream = file.getInputStream()) {
+                ByteArrayResource fileResource = new ByteArrayResource(inputStream.readAllBytes()) {
+                    @Override
+                    public String getFilename() {
+                        return file.getOriginalFilename();
+                    }
+                };
+                body.add("file", fileResource);
+            }
+        }
+        body.add("tenantId", context.getTenantId());
+        body.add("module", context.getModule());
+        body.add("tag", context.getTag());
+        
+        // Convert RequestInfo object to JSON string if it's not already a string
+        String requestInfoJson = context.getRequestInfo();
+        if (requestInfoJson == null || requestInfoJson.trim().isEmpty()) {
+            // Create a default RequestInfo if none provided
+            requestInfoJson = createDefaultRequestInfoJson();
+        }
+        body.add("requestInfo", requestInfoJson);
+        HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+        try {
+            ResponseEntity<StorageResponse> responseEntity =
+                    restTemplate.exchange(url, HttpMethod.POST, requestEntity, StorageResponse.class);
+            if (responseEntity.getStatusCode() != HttpStatus.CREATED) {
+                throw new ServiceCallException(String.format("File upload failed with status: %s",
+                        responseEntity.getStatusCode()));
+            }
+            return responseEntity.getBody();
+        } catch (HttpClientErrorException e) {
+            log.error("File upload failed: {}", e.getResponseBodyAsString());
+            throw new ServiceCallException(e.getResponseBodyAsString());
+        } catch (Exception e) {
+            log.error("Unexpected error during file upload: ", e);
+            throw new ServiceCallException("File upload failed: " + e.getMessage());
+        }
+    }
+
+    public ResponseEntity<Resource> fetchFile(String baseUrl, String tenantId, String fileStoreId) {
+        String url = UriComponentsBuilder.fromHttpUrl(baseUrl + "/id")
+                .queryParam("tenantId", tenantId)
+                .queryParam("fileStoreId", fileStoreId)
+                .toUriString();
+
+        log.info("fetching file from {} ", url);
+
+        return restTemplate.exchange(
+                url,
+                HttpMethod.GET,
+                null,
+                Resource.class
+        );
+    }
+    
+    /**
+     * Create a default RequestInfo JSON string
+     */
+    private String createDefaultRequestInfoJson() {
+        return "{\"apiId\":\"im-services-analytics\",\"ver\":\"1.0\",\"ts\":" + System.currentTimeMillis() + 
+               ",\"action\":\"_create\",\"did\":\"1\",\"key\":\"\",\"msgId\":\"20170310130900|en_IN\"," +
+               "\"requesterId\":\"\",\"authToken\":\"\",\"userInfo\":{\"id\":1,\"uuid\":\"system\"," +
+               "\"type\":\"SYSTEM\",\"tenantId\":\"in\",\"roles\":[{\"name\":\"System\",\"code\":\"SYSTEM\"," +
+               "\"tenantId\":\"in\"}]}}";
+    }
 
 }

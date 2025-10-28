@@ -1,12 +1,10 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import useBoundary from "../../hooks/useBoundary";
 import useMDMS from "../../hooks/useMDMS";
 import useProject from "../../hooks/useProject";
 import { useTranslation } from "react-i18next";
-import CustomArrowRight from "../../components/Custom/CustomArrowRight";
-import CustomCloseSvg from "../../components/Custom/CustomCloseSvg";
 import { Button, FormComposerV2, Loader, PopUp, Toast } from "@egovernments/digit-ui-react-components";
-import {Stepper} from "@egovernments/digit-ui-components";
+import { Stepper } from "@egovernments/digit-ui-components";
 import { useDispatch } from "react-redux";
 import { populateResponsePage, populateWorkingFieldPlan, populateWorkingProject } from "../../redux/actions";
 import { useHistory } from "react-router-dom";
@@ -17,6 +15,8 @@ import { ActivityService } from "../../services/Activity";
 import useOrganization from "../../hooks/useOrganization";
 import useOrganizationUser from "../../hooks/useOrganizationUser";
 import useActivityAssignment from "../../hooks/useActivityAssignment";
+import CommonUtils from "../../utilities/CommonUtils";
+import UnsavedDataAlert from "../../components/UnsavedDataAlert";
 
 const CreateFieldPlan = () => {
 
@@ -34,7 +34,7 @@ const CreateFieldPlan = () => {
   const [file, setFile] = useState(null);
   const [invalidDataError, setInvalidDataError] = useState(null);
   const [getFormData, setGetFormData] = useState(null);
-  const [showBackAlert, setShowBackAlert] = useState(false);
+  const [backAlert, setBackAlert] = useState(null);
   const [boundaryData, setBoundaryData] = useState(null);
   const history = useHistory();
   const url = window.location.href;
@@ -58,11 +58,15 @@ const CreateFieldPlan = () => {
     enabled: true,
   });
 
-  const { data: projectData } = useProject({
+  const { isLoading: projectDataLoading, data: projectData } = useProject({
     id: [projectId],
   });
 
-  const { data: fieldPlanData, revalidate: invalidateFieldPlanData } = useFieldPlan({
+  const {
+    isLoading: fieldPlanDataLoading,
+    data: fieldPlanData,
+    revalidate: invalidateFieldPlanData
+  } = useFieldPlan({
     tenantId,
     ids: [fieldPlanId],
   });
@@ -73,7 +77,11 @@ const CreateFieldPlan = () => {
     organizationIds,
   });
 
-  const { data: activityAssignmentData, revalidate: invalidateActivityAssignmentData } = useActivityAssignment({
+  const {
+    isLoading: activityAssignmentDataLoading,
+    data: activityAssignmentData,
+    revalidate: invalidateActivityAssignmentData
+  } = useActivityAssignment({
     fieldPlanIds: [fieldPlanId],
   })
 
@@ -116,7 +124,7 @@ const CreateFieldPlan = () => {
   }, [createdFieldPlan?.id, currentKey])
 
   useEffect(()=>{
-    if(toast){
+    if (toast) {
       setTimeout(()=>{
         setToast(null);
       },2500)
@@ -149,6 +157,53 @@ const CreateFieldPlan = () => {
     return `${year}-${month}-${day}`;
   };
 
+  const getDefaultActivityAssignments = useCallback(() => {
+    return createdFieldPlan?.activities
+      ? createdFieldPlan.activities
+        .map((activity) => ({
+          activity: activity,
+          users: [
+            ...(
+              activityAssignmentData?.activityAssignments?.filter((assignment) => assignment.activityCode === activity.code)?.length
+                ? activityAssignmentData.activityAssignments
+                  .filter((assignment) => assignment.activityCode === activity.code)
+                  .sort((a, b) => a.auditDetails.createdTime - b.auditDetails.createdTime)
+                  .map((assignment) => ({
+                    id: assignment.id,
+                    savedAssignment: assignment,
+                    startDate: { value: formatDate(assignment.startDate), error: "", },
+                    endDate: { value: formatDate(assignment.endDate), error: "", },
+                    poNumber: { value: assignment.pocNumber, error: "", },
+                    organization: {
+                      value: organizationData?.organizations?.filter((organization) => (
+                        organization?.id === organizationUserData?.organizationUsers?.filter((user) => user.uuid === assignment.assignedTo)?.[0]?.organizationId
+                      ))?.[0],
+                      error: "",
+                    },
+                    role: { value: assignment.role, error: "", },
+                    email: {
+                      value: organizationUserData?.organizationUsers?.filter((user) => user.uuid === assignment.assignedTo)?.[0],
+                      error: "",
+                    },
+                    isEmailSent: assignment.isEmailSent,
+                  }))
+                : [
+                  {
+                    startDate: { value: "", error: "", },
+                    endDate: { value: "", error: "", },
+                    poNumber: { value: "", error: "", },
+                    organization: { value: null, error: "", },
+                    role: { value: null, error: "", },
+                    email: { value: null, error: "", },
+                    isEmailSent: false,
+                  }
+                ]
+            )
+          ],
+        }))
+      : null
+  }, [createdFieldPlan, activityAssignmentData, organizationData, organizationUserData])
+
   useEffect(() => {
     if (createdFieldPlan?.id && boundaryData && activityData) {
       const savedActivityCodes = createdFieldPlan.activities.map((activity) => activity.code);
@@ -173,47 +228,7 @@ const CreateFieldPlan = () => {
           activities: activityData.filter((activity) => savedActivityCodes.includes(activity.code)),
         },
         activityDetails: {
-          activityUserAssignment: createdFieldPlan.activities
-            .map((activity) => ({
-              activity: activity,
-              users: [
-                ...(
-                  activityAssignmentData?.activityAssignments?.filter((assignment) => assignment.activityCode === activity.code)?.length
-                    ? activityAssignmentData.activityAssignments
-                      .filter((assignment) => assignment.activityCode === activity.code)
-                      .map((assignment) => ({
-                        id: assignment.id,
-                        savedAssignment: assignment,
-                        startDate: { value: formatDate(assignment.startDate), error: "", },
-                        endDate: { value: formatDate(assignment.endDate), error: "", },
-                        poNumber: { value: assignment.pocNumber, error: "", },
-                        organization: {
-                          value: organizationData?.organizations?.filter((organization) => (
-                            organization?.id === organizationUserData?.organizationUsers?.filter((user) => user.uuid === assignment.assignedTo)?.[0]?.organizationId
-                          ))?.[0],
-                          error: "",
-                        },
-                        role: { value: assignment.role, error: "", },
-                        email: {
-                          value: organizationUserData?.organizationUsers?.filter((user) => user.uuid === assignment.assignedTo)?.[0],
-                          error: "",
-                        },
-                        isEmailSent: assignment.isEmailSent,
-                      }))
-                    : [
-                      {
-                        startDate: { value: "", error: "", },
-                        endDate: { value: "", error: "", },
-                        poNumber: { value: "", error: "", },
-                        organization: { value: null, error: "", },
-                        role: { value: null, error: "", },
-                        email: { value: null, error: "", },
-                        isEmailSent: false,
-                      }
-                    ]
-                )
-              ],
-            })),
+          activityUserAssignment: getDefaultActivityAssignments(),
         }
       }
 
@@ -227,7 +242,7 @@ const CreateFieldPlan = () => {
 
       setPersistedFormData(formData);
     }
-  }, [createdProject, createdFieldPlan, boundaryData, activityData, activityAssignmentData, organizationData, organizationUserData]);
+  }, [createdProject, createdFieldPlan, boundaryData, activityData, getDefaultActivityAssignments]);
 
   const handleFacilityDataDownload = async () => {
 
@@ -244,7 +259,7 @@ const CreateFieldPlan = () => {
         districts: boundaryData.districts.filter((district) => createdFieldPlan.geographyDetails.districts.includes(district.code)),
         blocks: boundaryData.blocks.filter((block) => createdFieldPlan.geographyDetails.blocks.includes(block.code)),
       }
-      await PMService.downloadFieldPlanFacilityDataTemplate(createdFieldPlan.id, geographyDetails, t);
+      await PMService.downloadFieldPlanFacilityDataTemplate(createdProject.id, createdFieldPlan.id, geographyDetails, t);
 
       setToast({
         label: t("PM_TOAST_FACILITY_TEMPLATE_DOWNLOAD_SUCCESS"),
@@ -323,6 +338,7 @@ const CreateFieldPlan = () => {
 
   const validateActivityData = (activityData) => {
     let faultyData = false;
+    let emptyData = true;
 
     const validatedData = activityData.map((dataEntry) => ({
       ...dataEntry,
@@ -330,21 +346,34 @@ const CreateFieldPlan = () => {
         const newUserEntry = {}
 
         if (Object.keys(userEntry).every((key) => (["id", "isEmailSent", "deleteAssignment", "savedAssignment"].includes(key) || !userEntry[key].value))) {
-          return userEntry;
+          Object.keys(userEntry).forEach((key) => {
+            if (["id", "isEmailSent", "deleteAssignment", "savedAssignment"].includes(key)) {
+              newUserEntry[key] =  userEntry[key];
+            } else {
+              newUserEntry[key] =  {
+                ...userEntry[key],
+                error: ""
+              };
+            }
+          })
+          return newUserEntry;
         }
 
+        emptyData = false;
         Object.keys(userEntry).forEach((key) => {
           if (["id", "isEmailSent", "deleteAssignment", "savedAssignment"].includes(key)) {
             newUserEntry[key] =  userEntry[key];
-          }
-          else if (!userEntry[key].value) {
+          } else if (!userEntry[key].value) {
             faultyData = true;
             newUserEntry[key] = {
               ...userEntry[key],
               error: t("CORE_COMMON_REQUIRED")
             };
           } else {
-            newUserEntry[key] =  userEntry[key];
+            newUserEntry[key] =  {
+              ...userEntry[key],
+              error: ""
+            };
           }
         })
 
@@ -354,6 +383,7 @@ const CreateFieldPlan = () => {
 
     return {
       faultyData,
+      emptyData,
       validatedData,
     }
   }
@@ -422,9 +452,21 @@ const CreateFieldPlan = () => {
 
   const handleActivityDataSave = async (activityData) => {
 
-    const { faultyData, validatedData } = validateActivityData(activityData);
+    const { faultyData, emptyData, validatedData } = validateActivityData(activityData);
 
     if (faultyData) {
+      setPersistedFormData((prevState) => ({
+        ...prevState,
+        activityDetails: {
+          activityUserAssignment: validatedData,
+        },
+      }));
+
+    } else if (emptyData) {
+      setToast({
+        key: "error",
+        label: t("PM_TOAST_ACTIVITY_DETAILS_EMPTY_SAVE_WARNING"),
+      })
       setPersistedFormData((prevState) => ({
         ...prevState,
         activityDetails: {
@@ -574,6 +616,7 @@ const CreateFieldPlan = () => {
             customProps: {
               name: "activities",
               selectedOptions: (createdFieldPlan?.id && createdFieldPlan?.status !== "DRAFT") ? activityData?.filter((activity) => createdFieldPlan.activities.map((activity) => activity.code).includes(activity?.code)) : [],
+              description: "PM_CREATE_FIELD_PLAN_LABEL_ACTIVITIES_DESC",
               t,
               activityData,
             },
@@ -791,7 +834,9 @@ const CreateFieldPlan = () => {
         ?.filter((activity) => activity?.code === dataEntry.activity?.code)?.[0]?.roles
         ?.map((role) => role?.code);
 
-      const selectedRoleCodes = dataEntry.users.map((user) => user?.role?.value?.code);
+      const selectedRoleCodes = dataEntry.users
+        .filter((user) => !user?.deleteAssignment)
+        .map((user) => user?.role?.value?.code);
 
       completeRoleCodes?.forEach((code) => {
         if (!selectedRoleCodes.includes(code)) {
@@ -869,8 +914,13 @@ const CreateFieldPlan = () => {
   const handleFormSubmit = async (data) => {
     switch (currentKey) {
       case 1:
-        setPersistedFormData((prev) => ({ ...prev, fieldPlanDetails: data }));
-        await upsertFieldPlan(data);
+        const savedFieldPlanDetails = persistedFormData.fieldPlanDetails;
+        if (CommonUtils.isNotEqual(savedFieldPlanDetails, data)) {
+          setPersistedFormData((prev) => ({ ...prev, fieldPlanDetails: data }));
+          await upsertFieldPlan(data);
+        } else {
+          setCurrentKey((prev) => prev + 1);
+        }
         break;
       case 2:
         setPersistedFormData((prev) => ({ ...prev, facilityData: data }));
@@ -910,36 +960,80 @@ const CreateFieldPlan = () => {
   };
 
   const onStepClick = (key) => {
-    if (key >= currentKey) return;
-    setCurrentKey(key + 1);
+    if (key + 1 >= currentKey) return;
+    switch (currentKey) {
+      case 2:
+        setCurrentKey(key + 1);
+        break;
+      case 3:
+        const savedActivityAssignments = getDefaultActivityAssignments();
+        const currentActivityAssignments = getFormData("activityUserAssignment");
+        if (CommonUtils.isNotEqual(savedActivityAssignments, currentActivityAssignments)) {
+          setBackAlert({
+            continueAction: () => {
+              setPersistedFormData((prevState) => ({
+                ...prevState,
+                activityDetails: {
+                  activityUserAssignment: savedActivityAssignments,
+                },
+              }));
+              setCurrentKey(key + 1);
+            }
+          });
+        } else {
+          setCurrentKey(key + 1);
+        }
+    }
   };
 
   const handleBackNavigation = () => {
     switch (currentKey) {
       case 1:
-        setShowBackAlert(true);
+        const savedFieldPlanDetails = {
+          districts: persistedFormData?.fieldPlanDetails?.districts,
+          blocks: persistedFormData?.fieldPlanDetails?.blocks,
+          fieldPlanDuration: persistedFormData?.fieldPlanDetails?.fieldPlanDuration,
+          healthFacilitiesCount: persistedFormData?.fieldPlanDetails?.healthFacilitiesCount,
+          activities: persistedFormData?.fieldPlanDetails?.activities,
+        };
+        const currentFieldPlanDetails = {
+          districts: getFormData("districts"),
+          blocks: getFormData("blocks"),
+          fieldPlanDuration: getFormData("fieldPlanDuration"),
+          healthFacilitiesCount: getFormData("healthFacilitiesCount"),
+          activities: getFormData("activities"),
+        };
+        if (CommonUtils.isNotEqual(savedFieldPlanDetails, currentFieldPlanDetails)) {
+          setBackAlert({
+            continueAction: () => {
+              window.history.back();
+            }
+          });
+        } else {
+          window.history.back();
+        }
         break;
       case 2:
-        setShowBackAlert(true);
-        break;
-      case 3:
-        setShowBackAlert(true);
-    }
-  };
-
-  const handleConfirmBackNavigation = () => {
-    switch (currentKey) {
-      case 1:
-        setShowBackAlert(false);
-        window.history.back();
-        break;
-      case 2:
-        setShowBackAlert(false);
         setCurrentKey((prev) => prev - 1);
         break;
       case 3:
-        setShowBackAlert(false);
-        setCurrentKey((prev) => prev - 1);
+        const savedActivityAssignments = getDefaultActivityAssignments();
+        const currentActivityAssignments = getFormData("activityUserAssignment");
+        if (CommonUtils.isNotEqual(savedActivityAssignments, currentActivityAssignments)) {
+          setBackAlert({
+            continueAction: () => {
+              setPersistedFormData((prevState) => ({
+                ...prevState,
+                activityDetails: {
+                  activityUserAssignment: savedActivityAssignments,
+                },
+              }));
+              setCurrentKey((prev) => prev - 1);
+            }
+          });
+        } else {
+          setCurrentKey((prev) => prev - 1);
+        }
     }
   };
 
@@ -950,6 +1044,10 @@ const CreateFieldPlan = () => {
       case 3:
         return persistedFormData.activityDetails;
     }
+  }
+
+  if (projectDataLoading || fieldPlanDataLoading || activityAssignmentDataLoading) {
+    return <Loader />;
   }
 
   return (
@@ -1035,74 +1133,7 @@ const CreateFieldPlan = () => {
           onClose={() => setToast(null)}
         />
       )}
-      {showBackAlert && (
-        <PopUp>
-          <div
-            style={{
-              backgroundColor: "white",
-              position: "fixed",
-              top: "50%",
-              left: "50%",
-              transform: "translate(-50%, -50%)",
-              width: "400px",
-              maxWidth: "95%",
-              padding: "24px",
-              borderRadius: "5px",
-            }}
-          >
-            <div
-              style={{
-                width: "100%",
-                position: "relative",
-              }}
-            >
-              <button
-                type={"button"}
-                style={{
-                  cursor: "pointer",
-                  position: "absolute",
-                  top: "-15px",
-                  right: "-15px",
-                  backgroundColor: "#D6D5D4",
-                  display: "flex",
-                  alignItems: "center",
-                  padding: "0",
-                  borderRadius: "3px",
-                }}
-                onClick={() => setShowBackAlert(false)}
-              >
-                <CustomCloseSvg fill={"transparent"} />
-              </button>
-            </div>
-            <h2
-              style={{
-                margin: "0 0 16px 0",
-                fontSize: "20px",
-                fontWeight: "600",
-                color: "#333",
-                textAlign: "center",
-              }}
-            >
-              {t("CORE_COMMON_ALERT")}
-            </h2>
-
-            <p
-              style={{
-                fontSize: "16px",
-                color: "#555",
-                marginBottom: "24px",
-                textAlign: "center",
-              }}
-            >
-              {t("PM_ALERT_LOSE_UNSAVED_DATA")}
-            </p>
-            <div style={{display: "flex", justifyContent: "space-around"}}>
-              <Button variation={"secondary"} label={t("CORE_COMMON_CANCEL")} onButtonClick={() => setShowBackAlert(false)} />
-              <Button variation={"primary"} label={t("CORE_COMMON_CONTINUE")} onButtonClick={handleConfirmBackNavigation} />
-            </div>
-          </div>
-        </PopUp>
-      )}
+      {backAlert && <UnsavedDataAlert t={t} alert={backAlert} setAlert={setBackAlert} />}
     </div>
   )
 }

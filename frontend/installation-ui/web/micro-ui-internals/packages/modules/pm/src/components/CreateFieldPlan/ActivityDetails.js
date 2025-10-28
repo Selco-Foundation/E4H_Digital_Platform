@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import FormattedDateInput from "../Custom/FormattedDateInput";
-import { Dropdown, SubmitBar, Table, TextInput } from "@egovernments/digit-ui-react-components";
+import { SubmitBar, Table } from "@egovernments/digit-ui-react-components";
+import { MobileNumber } from "@egovernments/digit-ui-react-components";
 import { CheckCircleOutline } from "@egovernments/digit-ui-svg-components";
 import CustomCloseSvg from "../Custom/CustomCloseSvg";
 import OrganizationUserDropdown from "./OrganizationUserDropdown";
@@ -51,11 +52,37 @@ const ActivityDetails = ({
   const removeUserEntry = (activity, index) => {
     setActivityAssignmentData((prevState) => prevState?.map((dataEntry) => {
       if (dataEntry.activity.code !== activity.code) return dataEntry;
+
+      const modifiedUsers = dataEntry.users.reduce(
+        (acc, userEntry, i) => {
+          if (i === index) {
+            if (userEntry.id) {
+              acc.push({ ...userEntry, deleteAssignment: true });
+            }
+          } else {
+            acc.push(userEntry);
+          }
+          return acc;
+        }, []
+      );
+
+      if (modifiedUsers.filter((userEntry) => !userEntry.deleteAssignment).length === 0) {
+        modifiedUsers.push(
+          {
+            startDate: { value: "", error: "", },
+            endDate: { value: "", error: "", },
+            poNumber: { value: "", error: "", },
+            organization: { value: null, error: "", },
+            role: { value: null, error: "", },
+            email: { value: null, error: "", },
+            isEmailSent: false,
+          }
+        );
+      }
+
       return {
         ...dataEntry,
-        users: dataEntry.users
-          .filter((userEntry, i) => !!userEntry.id || i !== index)
-          .map((userEntry, i) => (userEntry.id && i === index) ? { ...userEntry, deleteAssignment: true } : userEntry),
+        users: modifiedUsers,
       }
     }))
   }
@@ -129,7 +156,8 @@ const ActivityDetails = ({
           width: "fit-content",
           height: "fit-content",
           padding: "0px 20px",
-          border: "none"
+          border: "none",
+          backgroundColor: "transparent",
         }}
         onClick={() => addUserEntry(activity)}
       >
@@ -196,55 +224,35 @@ const ActivityDetails = ({
     </div>
   )
 
-  const UserTextInput = (activity, index, fieldName, fieldValue, isLast) => {
-
-    const [textEntered, setTextEntered] = useState(fieldValue.value);
-    const inputRef = useRef(null);
-
-    useEffect(() => {
-
-      if (textEntered === fieldValue.value) return;
-
-      const handler = setTimeout(() => {
-        handleUserDataChange(activity, index, fieldName, textEntered)
-      }, 1500);
-
-      return () => {
-        clearTimeout(handler);
-      };
-    }, [textEntered]);
-
-    return (
-      <div
-        key={index}
+  const UserTextInput = (activity, index, fieldName, fieldValue, isLast) => (
+    <div
+      key={index}
+      style={{
+        padding: "21px 20px 6px 20px",
+        borderBottom: isLast ? "none" : "1px solid #EEEEEE",
+      }}
+    >
+      <MobileNumber
+        value={fieldValue.value}
+        onChange={(value) => handleUserDataChange(activity, index, fieldName, value)}
+        hideSpan={true}
         style={{
-          padding: "21px 20px 6px 20px",
-          borderBottom: isLast ? "none" : "1px solid #EEEEEE",
+          minWidth: "170px",
+        }}
+      />
+      <span
+        style={{
+          fontSize: "14px",
+          color: "rgba(212, 53, 28)",
+          height: "14px",
+          marginTop: "1px",
+          display: "block"
         }}
       >
-        <TextInput
-          value={textEntered}
-          type={"number"}
-          inputRef={inputRef}
-          onChange={(e) => setTextEntered(e.target.value)}
-          style={{
-            minWidth: "190px",
-          }}
-        />
-        <span
-          style={{
-            fontSize: "14px",
-            color: "rgba(212, 53, 28)",
-            height: "14px",
-            marginTop: "1px",
-            display: "block"
-          }}
-        >
         {fieldValue.error}
       </span>
-      </div>
-    )
-  }
+    </div>
+  )
 
   const UserDropDownInput = (options, optionKey = "name", activity, index, fieldName, fieldValue, isLast) => (
     <div
@@ -326,6 +334,7 @@ const ActivityDetails = ({
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
+          backgroundColor: "transparent",
         }}
       >
         {isSent ? (
@@ -447,13 +456,13 @@ const ActivityDetails = ({
             if (userEntry.deleteAssignment) return;
             return UserEmailSentCheck(
               userEntry.isEmailSent, row.original["activity"], i, usersArray.length - 1 === i,
-              usersArray.filter((userEntry) => !userEntry.deleteAssignment).length === 1
+              !userEntry?.id && usersArray.filter((userEntry) => !userEntry.deleteAssignment).length === 1
             );
           })
         ),
       },
     ],
-    [activityAssignmentData, organizationOptions, activityData, fieldPlanStartDate, fieldPlanEndDate]
+    [organizationOptions, activityData, fieldPlanStartDate, fieldPlanEndDate]
   );
 
   return (

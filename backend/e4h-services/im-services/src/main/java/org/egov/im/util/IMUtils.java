@@ -76,7 +76,7 @@ public class IMUtils {
 
     public void updateBusinessService(IncidentRequestWrapper wrapper, Object mdmsData) {
         if(wrapper.getProcessInstance().getBusinessService().equals("Incident")) {
-            Priority priority = slaService.getPriorityFromMDMS(wrapper.getIncidentRequest(), mdmsData);
+            Priority priority = slaService.getPriorityFromIMPriorityTable(wrapper.getIncidentRequest().getIncident());
             String businessService = "Incident_" + priority.toFormattedString();
             wrapper.getProcessInstance().setBusinessService(businessService);
         }

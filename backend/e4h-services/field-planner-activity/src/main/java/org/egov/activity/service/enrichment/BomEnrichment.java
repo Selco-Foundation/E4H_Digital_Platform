@@ -3,7 +3,7 @@ package org.egov.activity.service.enrichment;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.activity.config.ActivityConfiguration;
-import org.egov.activity.repository.ActivityRepository;
+import org.egov.activity.repository.ActivityFacilityRepository;
 import org.egov.activity.util.ActivityServiceUtil;
 import org.egov.activity.web.models.BillOfMaterial;
 import org.egov.activity.web.models.Document;
@@ -25,7 +25,7 @@ public class BomEnrichment {
     public static final String FOR_BOM = " for BOM ";
 
     @Autowired
-    ActivityRepository activityRepository;
+    ActivityFacilityRepository activityFacilityRepository;
 
     private final IdGenService idGenService;
 

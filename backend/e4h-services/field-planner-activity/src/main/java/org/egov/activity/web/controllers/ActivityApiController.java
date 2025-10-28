@@ -2,6 +2,7 @@ package org.egov.activity.web.controllers;
 
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.swagger.annotations.ApiParam;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -20,6 +21,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 
 @Controller
@@ -29,14 +31,16 @@ public class ActivityApiController {
 
     private final HttpServletRequest httpServletRequest;
     private final ActivityService activityService;
+    private final FacilityWorkflowService facilityWorkflowService;
 
     @Autowired
     public ActivityApiController(ObjectMapper objectMapper, HttpServletRequest httpServletRequest,
                                  Producer producer,
                                  ActivityConfiguration fieldPlannerConfiguration,
-                                 ActivityService activityService) {
+                                 ActivityService activityService, FacilityWorkflowService facilityWorkflowService) {
         this.httpServletRequest = httpServletRequest;
         this.activityService = activityService;
+        this.facilityWorkflowService = facilityWorkflowService;
     }
 
     @RequestMapping(value = "/_create", method = RequestMethod.POST)
@@ -61,11 +65,11 @@ public class ActivityApiController {
     }
 
     @RequestMapping(value = "/_search", method = RequestMethod.POST)
-    public ResponseEntity<ActivityFacilityResponse> searchActivityFacility(
+    public ResponseEntity<FacilityStatusResponse> searchActivityFacility(
             @ApiParam(value = "Details for the fieldPlan.", required = true) @Valid @RequestBody ActivityFacilitySearchRequest request,
             @Valid @ModelAttribute URLParams urlParams
     ) {
-        List<ActivityFacility> fieldPlans = activityService.searchActivity(
+        List<ActivityFacility> activityFacilityList = activityService.searchActivityFacility(
                 request,
                 urlParams.getLimit(),
                 urlParams.getOffset(),
@@ -73,10 +77,58 @@ public class ActivityApiController {
                 urlParams.getIncludeDeleted(),
                 urlParams.getLastChangedSince()
         );
-        ResponseInfo responseInfo = ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), true);
         Integer count = activityService.countAllFacilityActivities(request, urlParams.getTenantId(), urlParams.getLastChangedSince(), urlParams.getIncludeDeleted());
-        ActivityFacilityResponse activityFacilityResponse = ActivityFacilityResponse.builder().responseInfo(responseInfo).activityFacilities(fieldPlans).totalCount(count).build();
-        return new ResponseEntity<ActivityFacilityResponse>(activityFacilityResponse, HttpStatus.OK);
+        // Fetch all transactions by activityFacilityIds
+        List<String> activityFacilityIds = activityFacilityList.stream().map(ActivityFacility::getId).toList();
+        List<Transaction> allTransactions = activityService.getTransactionsForActivityFacility(activityFacilityIds);
+
+        // Fetch all comments by transactionIds
+        List<String> txnIds = allTransactions.stream().map(Transaction::getTransactionId).toList();
+        List<Comment> allComments = activityService.getCommentsForTransaction(txnIds);
+
+        // Group transactions by activityFacilityId
+        Map<String, List<Transaction>> txnsByActivityFacilityId = allTransactions.stream()
+                .collect(Collectors.groupingBy(Transaction::getActivityFacilityId));
+
+        // Group comments by transactionId
+        Map<String, List<Comment>> commentsByTxnId = allComments.stream()
+                .collect(Collectors.groupingBy(Comment::getTransactionId));
+
+        ObjectMapper mapper = new ObjectMapper();
+        List<FacilityStatusWrapper> projectStatusWrappers = new ArrayList<>();
+        for (ActivityFacility activityFacility : activityFacilityList) {
+            String status = null;
+            if (activityFacility != null && activityFacility.getStatus()!=null) {
+                status = activityFacility.getStatus();
+            }
+
+            List<Transaction> txns = txnsByActivityFacilityId.getOrDefault(activityFacility.getId(), Collections.emptyList());
+            for (Transaction txn : txns) {
+                txn.setComments(commentsByTxnId.getOrDefault(txn.getTransactionId(), Collections.emptyList()));
+            }
+
+            List<ProcessInstance> processInstances = facilityWorkflowService.getProcessInstanceById(
+                    activityFacility.getId(),
+                    activityFacility.getTenantId(),
+                    request.getRequestInfo()
+            );
+            FacilityStatusWrapper wrapper = FacilityStatusWrapper.builder()
+                    .activityFacility(activityFacility)
+                    .status(status)
+                    .transactions(txns)
+                    .processInstances(processInstances)
+                    .build();
+            projectStatusWrappers.add(wrapper);
+        }
+
+        ResponseInfo responseInfo = ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), true);
+        FacilityStatusResponse projectResponse = FacilityStatusResponse.builder()
+                .responseInfo(responseInfo)
+                .facility(projectStatusWrappers)
+                .totalCount(count)
+                .build();
+
+        return ResponseEntity.ok(projectResponse);
     }
 
     @RequestMapping(value = "/_assign-activity", method = RequestMethod.POST)
@@ -141,5 +193,49 @@ public class ActivityApiController {
                         .createResponseInfo(request.getRequestInfo(), true))
                 .build();
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
+    }
+
+    @PostMapping("/workflow/update")
+    public ResponseEntity<FacilityStatusResponse> updateProjectWorkflow(
+            @Valid @RequestBody FacilityWorkflowRequest request) throws Exception {
+
+        FacilityStatusWrapper updatedActivityFacility = activityService.updateFacilityWorkflow(request);
+
+        ResponseInfo responseInfo = ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), true);
+        return ResponseEntity.ok(FacilityStatusResponse.builder()
+                .responseInfo(responseInfo)
+                .facility(List.of(updatedActivityFacility))
+                .build());
+    }
+
+    @PostMapping("/bulk/workflow/update")
+    public ResponseEntity<BulkFacilityUpdateResponse> updateBulkProjectWorkflow(
+            @ApiParam(value = "Bulk project workflow activity Facility request", required = true)
+            @Valid @RequestBody FacilityBulkApproveRequest projectBulkApproveRequest) throws Exception {
+
+        Map<String, Object> result = activityService.updateBulkActivityFacilityWorkflow(projectBulkApproveRequest);
+        List<String> failedActivityFacilityIDs = result.get("failedActivityFacilityIDs") instanceof List<?> list ?
+                list.stream().map(String::valueOf).collect(Collectors.toList()) : Collections.emptyList();
+        List<String> succeededActivityFacilityIDs = result.get("succeededActivityFacilityIDs") instanceof List<?> list ?
+                list.stream().map(String::valueOf).collect(Collectors.toList()) : Collections.emptyList();
+        int totalActivityFacilities = result.get("totalActivityFacilities") instanceof Integer count ? count : 0;
+
+        ResponseInfo responseInfo = ResponseInfoFactory.createResponseInfo(projectBulkApproveRequest.getRequestInfo(), true);
+
+        BulkFacilityUpdateResponse response = BulkFacilityUpdateResponse.builder()
+                .responseInfo(responseInfo)
+                .failedProjectIDs(failedActivityFacilityIDs)
+                .succeededProjectIDs(succeededActivityFacilityIDs)
+                .build();
+        if (failedActivityFacilityIDs.isEmpty()) {
+            // All succeeded
+            return ResponseEntity.status(HttpStatus.OK).body(response);
+        } else if (failedActivityFacilityIDs.size() == totalActivityFacilities) {
+            // All failed
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+        } else {
+            // Partial success/fail
+            return ResponseEntity.status(HttpStatus.MULTI_STATUS).body(response);
+        }
     }
 }
