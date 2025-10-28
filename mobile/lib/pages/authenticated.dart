@@ -7,7 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../blocs/asset_type/asset_type.dart';
 import '../blocs/inbox_type/inbox_type.dart';
 import '../blocs/report_type/report_type.dart';
-import '../blocs/selected_project/selected_project.dart';
+import '../blocs/selected_activity_facility/selected_activity_facility.dart';
 import '../blocs/specification/specification.dart';
 import '../blocs/userbloc.dart';
 import '../widgets/navigation/drawer.dart';
@@ -25,7 +25,7 @@ class AuthenticatedScreenWrapper extends StatelessWidget {
             BlocProvider(create: (context) => SpecificationBloc()),
             BlocProvider(create: (context) => ReportTypeBloc()),
             BlocProvider(create: (context) => InboxTypeBloc()),
-            BlocProvider(create: (context) => SelectedProjectBloc()),
+            BlocProvider(create: (context) => SelectedActivityFacilityBloc()),
             BlocProvider(
                 create: (context) =>
                     DigitScannerBloc(const DigitScannerState())),

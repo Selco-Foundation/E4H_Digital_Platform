@@ -17,7 +17,7 @@ import 'package:recase/recase.dart';
 import '../blocs/asset_type/asset_type.dart';
 import '../blocs/cache_asset_count/cache_asset_count.dart';
 import '../blocs/cache_media_upload/cache_media_upload.dart';
-import '../blocs/selected_project/selected_project.dart';
+import '../blocs/selected_activity_facility/selected_activity_facility.dart';
 import '../blocs/user_type/user_type.dart';
 import '../data/nosql/cache_asset_count.dart';
 import '../data/nosql/cache_media_upload.dart';
@@ -38,7 +38,7 @@ class MediaUploadPage extends StatefulWidget {
 }
 
 class _MediaUploadPageState extends State<MediaUploadPage> {
-  String? _currentProjectId;
+  String? _currentActivityFacilityId;
   int _imageKeyCounter = 0;
   int _videoKeyCounter = 0;
   List<PlatformFile> _selectedImages = [];
@@ -81,20 +81,21 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
           battery: () => 'battery',
           panel: () => 'panel',
         );
-    context.read<SelectedProjectBloc>().state.whenOrNull(selected: (proj) {
-      _currentProjectId = proj.project.id;
+    context.read<SelectedActivityFacilityBloc>().state.whenOrNull(
+        selected: (proj) {
+      _currentActivityFacilityId = proj.activityFacility.id;
       // update progress
       context
           .read<CacheAssetCountBloc>()
           .add(CacheAssetCountEvent.update(CacheAssetCount(
-            projectId: proj.project.id,
+            activityFacilityId: proj.activityFacility.id,
             assetType: assetType,
             progress: 6,
           )));
 
       // fetch any previously cached media for this project/type
       context.read<CacheMediaUploadBloc>().add(
-            CacheMediaUploadEvent.get(proj.project.id, assetType),
+            CacheMediaUploadEvent.get(proj.activityFacility.id, assetType),
           );
     });
   }
@@ -216,10 +217,10 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
                 showSuffixIcon: false,
                 text: i18.common.coreCommonNext,
                 onPress: () async {
-                  if (_currentProjectId == null) return;
+                  if (_currentActivityFacilityId == null) return;
                   context.read<CacheMediaUploadBloc>().add(
                         CacheMediaUploadEvent.deleteAll(
-                          _currentProjectId!,
+                          _currentActivityFacilityId!,
                           assetType.toLowerCase(),
                         ),
                       );
@@ -236,7 +237,7 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
                   for (final file in _selectedImages) {
                     final copied = await copyFileToLocalDir(File(file.path!));
                     final entry = CacheMediaUpload(
-                      projectId: _currentProjectId!,
+                      activityFacilityId: _currentActivityFacilityId!,
                       assetType: assetType.toLowerCase(),
                       itemNumber: file.name,
                       itemType: 'image',
@@ -252,7 +253,7 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
                   for (final file in _selectedVideos) {
                     final copied = await copyFileToLocalDir(File(file.path!));
                     final entry = CacheMediaUpload(
-                      projectId: _currentProjectId!,
+                      activityFacilityId: _currentActivityFacilityId!,
                       assetType: assetType.toLowerCase(),
                       itemNumber: file.name,
                       itemType: 'video',

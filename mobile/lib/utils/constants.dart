@@ -1,22 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:isar/isar.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:selco/data/nosql/cache_project_bom_values.dart';
+import 'package:selco/data/nosql/cache_activity_facility_bom_values.dart';
 import 'package:selco/data/nosql/cache_submission_job.dart';
 
+import '../data/nosql/cache_activity_facility_asset.dart';
+import '../data/nosql/cache_activity_facility_workflow.dart';
 import '../data/nosql/cache_add_new_asset.dart';
 import '../data/nosql/cache_asset_count.dart';
 import '../data/nosql/cache_asset_detail.dart';
 import '../data/nosql/cache_bom_doc.dart';
 import '../data/nosql/cache_completion_report.dart';
 import '../data/nosql/cache_media_upload.dart';
-import '../data/nosql/cache_prefilled_project.dart';
-import '../data/nosql/cache_project_asset.dart';
-import '../data/nosql/cache_project_facility.dart';
-import '../data/nosql/cache_project_workflow.dart';
+import '../data/nosql/cache_prefilled_activity_facility.dart';
 import '../data/nosql/cache_specification.dart';
 import '../data/nosql/cache_sync_record.dart';
-import '../data/nosql/cache_unsubmitted_project.dart';
+import '../data/nosql/cache_unsubmitted_activity_facility.dart';
 import '../data/nosql/localization.dart';
 
 final scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
@@ -48,20 +47,19 @@ class Constants {
       return await Isar.open(
         [
           LocalizationWrapperSchema,
-          CacheProjectAssetSchema, // todo to be removed, no longer used, as there's now cache for project per assets
+          CacheActivityFacilityAssetSchema, // todo to be removed, no longer used, as there's now cache for project per assets
           CacheAssetCountSchema,
           CacheSpecificationSchema,
           CacheAssetDetailSchema,
           CacheAddNewAssetSchema,
           CacheMediaUploadSchema,
-          CacheProjectFacilitySchema,
-          CacheProjectWorkflowSchema,
-          CacheUnsubmittedProjectSchema,
+          CacheActivityFacilityWorkflowSchema,
+          CacheUnsubmittedActivityFacilitySchema,
           CacheSyncRecordSchema,
           CacheCompletionReportSchema,
           CacheBomDocSchema,
-          CachePrefilledProjectSchema,
-          CacheProjectBomValuesSchema,
+          CachePrefilledActivityFacilitySchema,
+          CacheActivityFacilityBomValuesSchema,
           CacheSubmissionJobSchema,
         ],
         name: 'E4H',

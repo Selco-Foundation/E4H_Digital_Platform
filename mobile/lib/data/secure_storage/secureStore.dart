@@ -225,40 +225,4 @@ class SecureStore {
     final d = jsonDecode(s);
     return d is Map<String, dynamic> ? d : null;
   }
-
-  Future<void> deleteRawSchemaDoc(String schemaKey) async {
-    await storage.delete(key: _kRawSchema(schemaKey));
-  }
-
-  // Project doc (RAW + values injected) — POST this to server
-  Future<void> setProjectFormDoc(
-      String projectId, String schemaKey, Map<String, dynamic> doc) async {
-    await storage.write(
-        key: _kProjDoc(projectId, schemaKey), value: jsonEncode(doc));
-  }
-
-  Future<Map<String, dynamic>?> getProjectFormDoc(
-      String projectId, String schemaKey) async {
-    final s = await storage.read(key: _kProjDoc(projectId, schemaKey));
-    if (s == null || s.isEmpty) return null;
-    final d = jsonDecode(s);
-    return d is Map<String, dynamic> ? d : null;
-  }
-
-  Future<void> deleteProjectFormDoc(String projectId, String schemaKey) async {
-    await storage.delete(key: _kProjDoc(projectId, schemaKey));
-  }
-
-  // BOM id (for server update)
-  Future<void> setBomId(String projectId, String schemaKey, String id) async {
-    await storage.write(key: _kBomId(projectId, schemaKey), value: id);
-  }
-
-  Future<String?> getBomId(String projectId, String schemaKey) async {
-    return storage.read(key: _kBomId(projectId, schemaKey));
-  }
-
-  Future<void> deleteBomId(String projectId, String schemaKey) async {
-    await storage.delete(key: _kBomId(projectId, schemaKey));
-  }
 }

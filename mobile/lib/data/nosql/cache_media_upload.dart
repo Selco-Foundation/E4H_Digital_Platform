@@ -7,7 +7,7 @@ class CacheMediaUpload {
   Id id = Isar.autoIncrement;
 
   @Index()
-  late String projectId;
+  late String activityFacilityId;
 
   @Index()
   late String assetType;
@@ -24,7 +24,7 @@ class CacheMediaUpload {
   DateTime? updatedAt;
 
   CacheMediaUpload({
-    required this.projectId,
+    required this.activityFacilityId,
     required this.assetType,
     required this.itemNumber,
     required this.itemType,

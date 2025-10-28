@@ -1,5 +1,3 @@
-// lib/blocs/specification/specification_bloc.dart
-
 import 'package:bloc/bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
@@ -27,7 +25,6 @@ class SpecificationBloc extends Bloc<SpecificationEvent, SpecificationState> {
     SpecificationLoad event,
     Emitter<SpecificationState> emit,
   ) async {
-    // simply re-emit current state so UI can react
     emit(state);
   }
 }
@@ -35,10 +32,8 @@ class SpecificationBloc extends Bloc<SpecificationEvent, SpecificationState> {
 /// --- STATES ---
 @freezed
 class SpecificationState with _$SpecificationState {
-  /// initial: nothing saved yet
   const factory SpecificationState.initial() = SpecificationInitial;
 
-  /// once saved, holds the three fields
   const factory SpecificationState.loaded({
     required String systemName,
     required double totalCapacity,
@@ -49,13 +44,10 @@ class SpecificationState with _$SpecificationState {
 /// --- EVENTS ---
 @freezed
 class SpecificationEvent with _$SpecificationEvent {
-  /// fire this to save new values
   const factory SpecificationEvent.save({
     required String systemName,
     required double totalCapacity,
     required String totalCapacityUom,
   }) = SpecificationSave;
-
-  /// optional: ask the bloc to re-emit whatever it already has
   const factory SpecificationEvent.load() = SpecificationLoad;
 }

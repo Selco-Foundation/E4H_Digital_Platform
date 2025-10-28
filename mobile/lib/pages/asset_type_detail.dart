@@ -9,7 +9,7 @@ import '../blocs/app_init/app_init.dart';
 import '../blocs/asset_type/asset_type.dart';
 import '../blocs/cache_asset_count/cache_asset_count.dart';
 import '../blocs/cache_asset_detail/cache_asset_detail.dart';
-import '../blocs/selected_project/selected_project.dart';
+import '../blocs/selected_activity_facility/selected_activity_facility.dart';
 import '../blocs/user_type/user_type.dart';
 import '../data/nosql/cache_asset_count.dart';
 import '../data/nosql/cache_asset_detail.dart';
@@ -74,12 +74,13 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
           return assetType;
         });
 
-    final selState = context.read<SelectedProjectBloc>().state;
+    final selState = context.read<SelectedActivityFacilityBloc>().state;
     selState.whenOrNull(selected: (project) {
-      _currentProjectId = project.project.id;
-      _updateProgress(project.project.id, assetTypeTitle);
+      _currentProjectId = project.activityFacility.id;
+      _updateProgress(project.activityFacility.id, assetTypeTitle);
       context.read<CacheAssetDetailBloc>().add(
-            CacheAssetDetailEvent.get(project.project.id, assetTypeTitle),
+            CacheAssetDetailEvent.get(
+                project.activityFacility.id, assetTypeTitle),
           );
     });
   }
@@ -94,7 +95,7 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
     context
         .read<CacheAssetCountBloc>()
         .add(CacheAssetCountEvent.update(CacheAssetCount(
-          projectId: projectId,
+          activityFacilityId: projectId,
           assetType: assetType,
           progress: 4,
         )));
@@ -168,7 +169,7 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
                             return;
                           else if (!isEnabledFieldUser) return;
                           final newDetail = CacheAssetDetail(
-                            projectId: _currentProjectId!,
+                            activityFacilityId: _currentProjectId!,
                             assetType: assetTypeTitle,
                             warranty: isSupervisor ? selectedWarranty : null,
                             brand: selectedBrandCode!,

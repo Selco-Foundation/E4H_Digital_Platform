@@ -27,7 +27,7 @@ class CacheAddNewAssetBloc
     try {
       final entries = await isar.cacheAddNewAssets
           .where()
-          .projectIdEqualTo(event.projectId)
+          .activityFacilityIdEqualTo(event.projectId)
           .filter()
           .assetTypeEqualTo(event.assetType)
           .findAll();
@@ -51,7 +51,7 @@ class CacheAddNewAssetBloc
         // If you want to ensure only one record per projectId+assetType:
         final existing = await isar.cacheAddNewAssets
             .where()
-            .projectIdEqualTo(event.entry.projectId)
+            .activityFacilityIdEqualTo(event.entry.activityFacilityId)
             .filter()
             .assetTypeEqualTo(event.entry.assetType)
             .serialNumberEqualTo(event.entry.serialNumber)
@@ -84,7 +84,7 @@ class CacheAddNewAssetBloc
       await isar.writeTxn(() async {
         final existing = await isar.cacheAddNewAssets
             .where()
-            .projectIdEqualTo(event.entry.projectId)
+            .activityFacilityIdEqualTo(event.entry.activityFacilityId)
             .filter()
             .assetTypeEqualTo(event.entry.assetType)
             .serialNumberEqualTo(event.entry.serialNumber)
@@ -115,7 +115,7 @@ class CacheAddNewAssetBloc
 
       final updatedEntry = await isar.cacheAddNewAssets
           .where()
-          .projectIdEqualTo(event.entry.projectId)
+          .activityFacilityIdEqualTo(event.entry.activityFacilityId)
           .filter()
           .assetTypeEqualTo(event.entry.assetType)
           .serialNumberEqualTo(event.entry.serialNumber)
@@ -152,7 +152,7 @@ class CacheAddNewAssetBloc
       await isar.writeTxn(() async {
         final q = isar.cacheAddNewAssets
             .where()
-            .projectIdEqualTo(event.projectId)
+            .activityFacilityIdEqualTo(event.projectId)
             .filter()
             .assetTypeEqualTo(event.assetType);
         final all = await q.findAll();

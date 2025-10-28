@@ -9,14 +9,14 @@ import '../blocs/app_init/app_init.dart';
 import '../blocs/asset_type/asset_type.dart';
 import '../blocs/cache_asset_count/cache_asset_count.dart';
 import '../blocs/cache_specification/cache_specification.dart';
-import '../blocs/selected_project/selected_project.dart';
+import '../blocs/selected_activity_facility/selected_activity_facility.dart';
 import '../blocs/specification/specification.dart';
 import '../blocs/user_type/user_type.dart';
 import '../data/nosql/cache_asset_count.dart';
 import '../data/nosql/cache_specification.dart';
+import '../model/activity_facility_workflow/activity_facility_workflow.dart';
 import '../model/asset_type/asset_type.dart';
 import '../model/mdms/mdms.dart';
-import '../model/project_workflow/project_workflow.dart';
 import '../model/solution_design_type/solution_design_type.dart';
 import '../model/system/system.dart';
 import '../router/app_router.dart';
@@ -37,16 +37,18 @@ class SelectAssetTypePage extends StatefulWidget {
 
 class _SelectAssetTypePageState extends State<SelectAssetTypePage> {
   String? _currentProjectId;
-  ProjectWorkflow? project;
+  ActivityFacilityWorkflow? project;
   String selectedAssetType = "";
 
   @override
   void initState() {
     super.initState();
-    _currentProjectId =
-        context.read<SelectedProjectBloc>().state.whenOrNull(selected: (wf) {
+    _currentProjectId = context
+        .read<SelectedActivityFacilityBloc>()
+        .state
+        .whenOrNull(selected: (wf) {
       project = wf;
-      return wf.project.id;
+      return wf.activityFacility.id;
     });
   }
 
@@ -71,8 +73,8 @@ class _SelectAssetTypePageState extends State<SelectAssetTypePage> {
       orElse: () => const [],
     );
 
-    final selectedSolutionDesignCode = project?.project.additionalDetails
-        ?.facility?.facilityDetails?.solar_solution_design_type;
+    final selectedSolutionDesignCode = project?.activityFacility.facility
+        ?.facilityDetails?.solar_solution_design_type;
 
     print("selectedSolutionDesignCode $selectedSolutionDesignCode");
 
@@ -107,7 +109,7 @@ class _SelectAssetTypePageState extends State<SelectAssetTypePage> {
     final parsedCapacity = double.tryParse(rawCapacity) ?? 0.0;
 
     final newSpec = CacheSpecification(
-      projectId: _currentProjectId!,
+      activityFacilityId: _currentProjectId!,
       assetType: selectedAssetType.toLowerCase(),
       system: systemCode!,
       totalCapacity: parsedCapacity,
@@ -134,7 +136,7 @@ class _SelectAssetTypePageState extends State<SelectAssetTypePage> {
     return state.maybeWhen(
       loaded: (entries) => entries.firstWhereOrNull(
         (e) =>
-            e.projectId == projectId &&
+            e.activityFacilityId == projectId &&
             e.assetType.toLowerCase() == assetType.toLowerCase(),
       ),
       orElse: () => null,

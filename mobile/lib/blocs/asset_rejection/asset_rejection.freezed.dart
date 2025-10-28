@@ -16,32 +16,34 @@ final _privateConstructorUsedError = UnsupportedError(
 
 /// @nodoc
 mixin _$RejectionEvent {
-  String get projectId => throw _privateConstructorUsedError;
+  String get activityFacilityId => throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(
-            String projectId, String userType, List<dynamic> transactions)
+    required TResult Function(String activityFacilityId, String userType,
+            List<dynamic> transactions)
         submitRejection,
-    required TResult Function(String projectId) bgRejectDone,
-    required TResult Function(String projectId, String? message) bgRejectError,
+    required TResult Function(String activityFacilityId) bgRejectDone,
+    required TResult Function(String activityFacilityId, String? message)
+        bgRejectError,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(
-            String projectId, String userType, List<dynamic> transactions)?
+    TResult? Function(String activityFacilityId, String userType,
+            List<dynamic> transactions)?
         submitRejection,
-    TResult? Function(String projectId)? bgRejectDone,
-    TResult? Function(String projectId, String? message)? bgRejectError,
+    TResult? Function(String activityFacilityId)? bgRejectDone,
+    TResult? Function(String activityFacilityId, String? message)?
+        bgRejectError,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(
-            String projectId, String userType, List<dynamic> transactions)?
+    TResult Function(String activityFacilityId, String userType,
+            List<dynamic> transactions)?
         submitRejection,
-    TResult Function(String projectId)? bgRejectDone,
-    TResult Function(String projectId, String? message)? bgRejectError,
+    TResult Function(String activityFacilityId)? bgRejectDone,
+    TResult Function(String activityFacilityId, String? message)? bgRejectError,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -79,7 +81,7 @@ abstract class $RejectionEventCopyWith<$Res> {
           RejectionEvent value, $Res Function(RejectionEvent) then) =
       _$RejectionEventCopyWithImpl<$Res, RejectionEvent>;
   @useResult
-  $Res call({String projectId});
+  $Res call({String activityFacilityId});
 }
 
 /// @nodoc
@@ -95,12 +97,12 @@ class _$RejectionEventCopyWithImpl<$Res, $Val extends RejectionEvent>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? projectId = null,
+    Object? activityFacilityId = null,
   }) {
     return _then(_value.copyWith(
-      projectId: null == projectId
-          ? _value.projectId
-          : projectId // ignore: cast_nullable_to_non_nullable
+      activityFacilityId: null == activityFacilityId
+          ? _value.activityFacilityId
+          : activityFacilityId // ignore: cast_nullable_to_non_nullable
               as String,
     ) as $Val);
   }
@@ -114,7 +116,8 @@ abstract class _$$SubmitRejectionImplCopyWith<$Res>
       __$$SubmitRejectionImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({String projectId, String userType, List<dynamic> transactions});
+  $Res call(
+      {String activityFacilityId, String userType, List<dynamic> transactions});
 }
 
 /// @nodoc
@@ -128,14 +131,14 @@ class __$$SubmitRejectionImplCopyWithImpl<$Res>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? projectId = null,
+    Object? activityFacilityId = null,
     Object? userType = null,
     Object? transactions = null,
   }) {
     return _then(_$SubmitRejectionImpl(
-      projectId: null == projectId
-          ? _value.projectId
-          : projectId // ignore: cast_nullable_to_non_nullable
+      activityFacilityId: null == activityFacilityId
+          ? _value.activityFacilityId
+          : activityFacilityId // ignore: cast_nullable_to_non_nullable
               as String,
       userType: null == userType
           ? _value.userType
@@ -153,13 +156,13 @@ class __$$SubmitRejectionImplCopyWithImpl<$Res>
 
 class _$SubmitRejectionImpl implements _SubmitRejection {
   const _$SubmitRejectionImpl(
-      {required this.projectId,
+      {required this.activityFacilityId,
       required this.userType,
       required final List<dynamic> transactions})
       : _transactions = transactions;
 
   @override
-  final String projectId;
+  final String activityFacilityId;
   @override
   final String userType;
   final List<dynamic> _transactions;
@@ -172,7 +175,7 @@ class _$SubmitRejectionImpl implements _SubmitRejection {
 
   @override
   String toString() {
-    return 'RejectionEvent.submitRejection(projectId: $projectId, userType: $userType, transactions: $transactions)';
+    return 'RejectionEvent.submitRejection(activityFacilityId: $activityFacilityId, userType: $userType, transactions: $transactions)';
   }
 
   @override
@@ -180,8 +183,8 @@ class _$SubmitRejectionImpl implements _SubmitRejection {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _$SubmitRejectionImpl &&
-            (identical(other.projectId, projectId) ||
-                other.projectId == projectId) &&
+            (identical(other.activityFacilityId, activityFacilityId) ||
+                other.activityFacilityId == activityFacilityId) &&
             (identical(other.userType, userType) ||
                 other.userType == userType) &&
             const DeepCollectionEquality()
@@ -189,7 +192,7 @@ class _$SubmitRejectionImpl implements _SubmitRejection {
   }
 
   @override
-  int get hashCode => Object.hash(runtimeType, projectId, userType,
+  int get hashCode => Object.hash(runtimeType, activityFacilityId, userType,
       const DeepCollectionEquality().hash(_transactions));
 
   @JsonKey(ignore: true)
@@ -202,39 +205,41 @@ class _$SubmitRejectionImpl implements _SubmitRejection {
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(
-            String projectId, String userType, List<dynamic> transactions)
+    required TResult Function(String activityFacilityId, String userType,
+            List<dynamic> transactions)
         submitRejection,
-    required TResult Function(String projectId) bgRejectDone,
-    required TResult Function(String projectId, String? message) bgRejectError,
+    required TResult Function(String activityFacilityId) bgRejectDone,
+    required TResult Function(String activityFacilityId, String? message)
+        bgRejectError,
   }) {
-    return submitRejection(projectId, userType, transactions);
+    return submitRejection(activityFacilityId, userType, transactions);
   }
 
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(
-            String projectId, String userType, List<dynamic> transactions)?
+    TResult? Function(String activityFacilityId, String userType,
+            List<dynamic> transactions)?
         submitRejection,
-    TResult? Function(String projectId)? bgRejectDone,
-    TResult? Function(String projectId, String? message)? bgRejectError,
+    TResult? Function(String activityFacilityId)? bgRejectDone,
+    TResult? Function(String activityFacilityId, String? message)?
+        bgRejectError,
   }) {
-    return submitRejection?.call(projectId, userType, transactions);
+    return submitRejection?.call(activityFacilityId, userType, transactions);
   }
 
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(
-            String projectId, String userType, List<dynamic> transactions)?
+    TResult Function(String activityFacilityId, String userType,
+            List<dynamic> transactions)?
         submitRejection,
-    TResult Function(String projectId)? bgRejectDone,
-    TResult Function(String projectId, String? message)? bgRejectError,
+    TResult Function(String activityFacilityId)? bgRejectDone,
+    TResult Function(String activityFacilityId, String? message)? bgRejectError,
     required TResult orElse(),
   }) {
     if (submitRejection != null) {
-      return submitRejection(projectId, userType, transactions);
+      return submitRejection(activityFacilityId, userType, transactions);
     }
     return orElse();
   }
@@ -276,12 +281,12 @@ class _$SubmitRejectionImpl implements _SubmitRejection {
 
 abstract class _SubmitRejection implements RejectionEvent {
   const factory _SubmitRejection(
-      {required final String projectId,
+      {required final String activityFacilityId,
       required final String userType,
       required final List<dynamic> transactions}) = _$SubmitRejectionImpl;
 
   @override
-  String get projectId;
+  String get activityFacilityId;
   String get userType;
   List<dynamic> get transactions;
   @override
@@ -298,7 +303,7 @@ abstract class _$$BgRejectDoneImplCopyWith<$Res>
       __$$BgRejectDoneImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({String projectId});
+  $Res call({String activityFacilityId});
 }
 
 /// @nodoc
@@ -312,12 +317,12 @@ class __$$BgRejectDoneImplCopyWithImpl<$Res>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? projectId = null,
+    Object? activityFacilityId = null,
   }) {
     return _then(_$BgRejectDoneImpl(
-      projectId: null == projectId
-          ? _value.projectId
-          : projectId // ignore: cast_nullable_to_non_nullable
+      activityFacilityId: null == activityFacilityId
+          ? _value.activityFacilityId
+          : activityFacilityId // ignore: cast_nullable_to_non_nullable
               as String,
     ));
   }
@@ -326,14 +331,14 @@ class __$$BgRejectDoneImplCopyWithImpl<$Res>
 /// @nodoc
 
 class _$BgRejectDoneImpl implements _BgRejectDone {
-  const _$BgRejectDoneImpl({required this.projectId});
+  const _$BgRejectDoneImpl({required this.activityFacilityId});
 
   @override
-  final String projectId;
+  final String activityFacilityId;
 
   @override
   String toString() {
-    return 'RejectionEvent.bgRejectDone(projectId: $projectId)';
+    return 'RejectionEvent.bgRejectDone(activityFacilityId: $activityFacilityId)';
   }
 
   @override
@@ -341,12 +346,12 @@ class _$BgRejectDoneImpl implements _BgRejectDone {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _$BgRejectDoneImpl &&
-            (identical(other.projectId, projectId) ||
-                other.projectId == projectId));
+            (identical(other.activityFacilityId, activityFacilityId) ||
+                other.activityFacilityId == activityFacilityId));
   }
 
   @override
-  int get hashCode => Object.hash(runtimeType, projectId);
+  int get hashCode => Object.hash(runtimeType, activityFacilityId);
 
   @JsonKey(ignore: true)
   @override
@@ -357,39 +362,41 @@ class _$BgRejectDoneImpl implements _BgRejectDone {
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(
-            String projectId, String userType, List<dynamic> transactions)
+    required TResult Function(String activityFacilityId, String userType,
+            List<dynamic> transactions)
         submitRejection,
-    required TResult Function(String projectId) bgRejectDone,
-    required TResult Function(String projectId, String? message) bgRejectError,
+    required TResult Function(String activityFacilityId) bgRejectDone,
+    required TResult Function(String activityFacilityId, String? message)
+        bgRejectError,
   }) {
-    return bgRejectDone(projectId);
+    return bgRejectDone(activityFacilityId);
   }
 
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(
-            String projectId, String userType, List<dynamic> transactions)?
+    TResult? Function(String activityFacilityId, String userType,
+            List<dynamic> transactions)?
         submitRejection,
-    TResult? Function(String projectId)? bgRejectDone,
-    TResult? Function(String projectId, String? message)? bgRejectError,
+    TResult? Function(String activityFacilityId)? bgRejectDone,
+    TResult? Function(String activityFacilityId, String? message)?
+        bgRejectError,
   }) {
-    return bgRejectDone?.call(projectId);
+    return bgRejectDone?.call(activityFacilityId);
   }
 
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(
-            String projectId, String userType, List<dynamic> transactions)?
+    TResult Function(String activityFacilityId, String userType,
+            List<dynamic> transactions)?
         submitRejection,
-    TResult Function(String projectId)? bgRejectDone,
-    TResult Function(String projectId, String? message)? bgRejectError,
+    TResult Function(String activityFacilityId)? bgRejectDone,
+    TResult Function(String activityFacilityId, String? message)? bgRejectError,
     required TResult orElse(),
   }) {
     if (bgRejectDone != null) {
-      return bgRejectDone(projectId);
+      return bgRejectDone(activityFacilityId);
     }
     return orElse();
   }
@@ -430,11 +437,11 @@ class _$BgRejectDoneImpl implements _BgRejectDone {
 }
 
 abstract class _BgRejectDone implements RejectionEvent {
-  const factory _BgRejectDone({required final String projectId}) =
+  const factory _BgRejectDone({required final String activityFacilityId}) =
       _$BgRejectDoneImpl;
 
   @override
-  String get projectId;
+  String get activityFacilityId;
   @override
   @JsonKey(ignore: true)
   _$$BgRejectDoneImplCopyWith<_$BgRejectDoneImpl> get copyWith =>
@@ -449,7 +456,7 @@ abstract class _$$BgRejectErrorImplCopyWith<$Res>
       __$$BgRejectErrorImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({String projectId, String? message});
+  $Res call({String activityFacilityId, String? message});
 }
 
 /// @nodoc
@@ -463,13 +470,13 @@ class __$$BgRejectErrorImplCopyWithImpl<$Res>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? projectId = null,
+    Object? activityFacilityId = null,
     Object? message = freezed,
   }) {
     return _then(_$BgRejectErrorImpl(
-      projectId: null == projectId
-          ? _value.projectId
-          : projectId // ignore: cast_nullable_to_non_nullable
+      activityFacilityId: null == activityFacilityId
+          ? _value.activityFacilityId
+          : activityFacilityId // ignore: cast_nullable_to_non_nullable
               as String,
       message: freezed == message
           ? _value.message
@@ -482,16 +489,16 @@ class __$$BgRejectErrorImplCopyWithImpl<$Res>
 /// @nodoc
 
 class _$BgRejectErrorImpl implements _BgRejectError {
-  const _$BgRejectErrorImpl({required this.projectId, this.message});
+  const _$BgRejectErrorImpl({required this.activityFacilityId, this.message});
 
   @override
-  final String projectId;
+  final String activityFacilityId;
   @override
   final String? message;
 
   @override
   String toString() {
-    return 'RejectionEvent.bgRejectError(projectId: $projectId, message: $message)';
+    return 'RejectionEvent.bgRejectError(activityFacilityId: $activityFacilityId, message: $message)';
   }
 
   @override
@@ -499,13 +506,13 @@ class _$BgRejectErrorImpl implements _BgRejectError {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _$BgRejectErrorImpl &&
-            (identical(other.projectId, projectId) ||
-                other.projectId == projectId) &&
+            (identical(other.activityFacilityId, activityFacilityId) ||
+                other.activityFacilityId == activityFacilityId) &&
             (identical(other.message, message) || other.message == message));
   }
 
   @override
-  int get hashCode => Object.hash(runtimeType, projectId, message);
+  int get hashCode => Object.hash(runtimeType, activityFacilityId, message);
 
   @JsonKey(ignore: true)
   @override
@@ -516,39 +523,41 @@ class _$BgRejectErrorImpl implements _BgRejectError {
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(
-            String projectId, String userType, List<dynamic> transactions)
+    required TResult Function(String activityFacilityId, String userType,
+            List<dynamic> transactions)
         submitRejection,
-    required TResult Function(String projectId) bgRejectDone,
-    required TResult Function(String projectId, String? message) bgRejectError,
+    required TResult Function(String activityFacilityId) bgRejectDone,
+    required TResult Function(String activityFacilityId, String? message)
+        bgRejectError,
   }) {
-    return bgRejectError(projectId, message);
+    return bgRejectError(activityFacilityId, message);
   }
 
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(
-            String projectId, String userType, List<dynamic> transactions)?
+    TResult? Function(String activityFacilityId, String userType,
+            List<dynamic> transactions)?
         submitRejection,
-    TResult? Function(String projectId)? bgRejectDone,
-    TResult? Function(String projectId, String? message)? bgRejectError,
+    TResult? Function(String activityFacilityId)? bgRejectDone,
+    TResult? Function(String activityFacilityId, String? message)?
+        bgRejectError,
   }) {
-    return bgRejectError?.call(projectId, message);
+    return bgRejectError?.call(activityFacilityId, message);
   }
 
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(
-            String projectId, String userType, List<dynamic> transactions)?
+    TResult Function(String activityFacilityId, String userType,
+            List<dynamic> transactions)?
         submitRejection,
-    TResult Function(String projectId)? bgRejectDone,
-    TResult Function(String projectId, String? message)? bgRejectError,
+    TResult Function(String activityFacilityId)? bgRejectDone,
+    TResult Function(String activityFacilityId, String? message)? bgRejectError,
     required TResult orElse(),
   }) {
     if (bgRejectError != null) {
-      return bgRejectError(projectId, message);
+      return bgRejectError(activityFacilityId, message);
     }
     return orElse();
   }
@@ -590,11 +599,11 @@ class _$BgRejectErrorImpl implements _BgRejectError {
 
 abstract class _BgRejectError implements RejectionEvent {
   const factory _BgRejectError(
-      {required final String projectId,
+      {required final String activityFacilityId,
       final String? message}) = _$BgRejectErrorImpl;
 
   @override
-  String get projectId;
+  String get activityFacilityId;
   String? get message;
   @override
   @JsonKey(ignore: true)

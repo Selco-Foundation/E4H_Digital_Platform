@@ -7,7 +7,7 @@ class CacheCompletionReport {
   Id id = Isar.autoIncrement;
 
   @Index()
-  late String projectId;
+  late String activityFacilityId;
 
   @Index(unique: true, replace: true)
   late String entryId;
@@ -28,7 +28,7 @@ class CacheCompletionReport {
   DateTime? updatedAt;
 
   CacheCompletionReport({
-    required this.projectId,
+    required this.activityFacilityId,
     required this.filePath,
     required this.entryId,
     required this.latitude,

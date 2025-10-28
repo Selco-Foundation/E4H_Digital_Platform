@@ -2,7 +2,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:isar/isar.dart';
 
-import '../../model/project_workflow/project_workflow.dart';
+import '../../model/activity_facility_workflow/activity_facility_workflow.dart';
 import '../../repositories/assetRepo.dart';
 
 part 'cache_asset.freezed.dart';
@@ -25,8 +25,8 @@ class CacheAssetBloc extends Bloc<CacheAssetEvent, CacheAssetState> {
     emit(const CacheAssetState.loading());
     try {
       await _repo.syncRemoteToLocal(
-          project: event.project,
-          projectId: event.projectId,
+          activityFacility: event.project,
+          activityFacilityId: event.projectId,
           isar: isar,
           userType: event.userType);
       emit(const CacheAssetState.success());
@@ -42,7 +42,8 @@ class CacheAssetBloc extends Bloc<CacheAssetEvent, CacheAssetState> {
 class CacheAssetEvent with _$CacheAssetEvent {
   /// Start a full “remote → local” sync for [projectId]
   const factory CacheAssetEvent.start(
-      String projectId, String userType, ProjectWorkflow project) = _StartSync;
+          String projectId, String userType, ActivityFacilityWorkflow project) =
+      _StartSync;
 }
 
 /// STATES

@@ -19,7 +19,7 @@ class CacheAssetCountBloc
     on<CacheAssetCountEventDelete>(_deleteCacheAssetCount);
   }
 
-  /// Fetch a single assetType’s entry for [projectId]
+  /// Fetch a single assetType’s entry for [activityFacilityId]
   Future<void> _getCacheAssetCount(
     CacheAssetCountEventGet event,
     Emitter<CacheAssetCountState> emit,
@@ -28,7 +28,7 @@ class CacheAssetCountBloc
     try {
       final entries = await isar.cacheAssetCounts
           .where()
-          .projectIdEqualTo(event.projectId)
+          .activityFacilityIdEqualTo(event.projectId)
           .filter()
           .assetTypeEqualTo(event.assetType)
           .findAll();
@@ -43,7 +43,7 @@ class CacheAssetCountBloc
     }
   }
 
-  /// NEW: Fetch *all* asset‐type entries for [projectId] in one shot
+  /// NEW: Fetch *all* asset‐type entries for [activityFacilityId] in one shot
   Future<void> _getAllCacheAssetCounts(
     CacheAssetCountEventGetAll event,
     Emitter<CacheAssetCountState> emit,
@@ -52,7 +52,7 @@ class CacheAssetCountBloc
     try {
       final entries = await isar.cacheAssetCounts
           .where()
-          .projectIdEqualTo(event.projectId)
+          .activityFacilityIdEqualTo(event.projectId)
           .findAll(); // no assetType filter
 
       if (entries.isEmpty) {
@@ -73,7 +73,7 @@ class CacheAssetCountBloc
       await isar.writeTxn(() async {
         final existing = await isar.cacheAssetCounts
             .where()
-            .projectIdEqualTo(event.entry.projectId)
+            .activityFacilityIdEqualTo(event.entry.activityFacilityId)
             .filter()
             .assetTypeEqualTo(event.entry.assetType)
             .findFirst();
@@ -100,7 +100,7 @@ class CacheAssetCountBloc
       await isar.writeTxn(() async {
         final existing = await isar.cacheAssetCounts
             .where()
-            .projectIdEqualTo(event.entry.projectId)
+            .activityFacilityIdEqualTo(event.entry.activityFacilityId)
             .filter()
             .assetTypeEqualTo(event.entry.assetType)
             .findFirst();
@@ -111,7 +111,7 @@ class CacheAssetCountBloc
           await isar.cacheAssetCounts.put(existing);
         } else {
           final newEntry = CacheAssetCount(
-            projectId: event.entry.projectId,
+            activityFacilityId: event.entry.activityFacilityId,
             assetType: event.entry.assetType,
             progress: event.entry.progress,
             count: 0,
@@ -122,7 +122,7 @@ class CacheAssetCountBloc
 
       final updatedEntry = await isar.cacheAssetCounts
           .where()
-          .projectIdEqualTo(event.entry.projectId)
+          .activityFacilityIdEqualTo(event.entry.activityFacilityId)
           .filter()
           .assetTypeEqualTo(event.entry.assetType)
           .findFirst();

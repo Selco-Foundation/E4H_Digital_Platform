@@ -1,78 +1,3 @@
-// import 'dart:convert';
-//
-// import 'package:bloc/bloc.dart';
-// import 'package:freezed_annotation/freezed_annotation.dart';
-// import 'package:isar/isar.dart';
-//
-// import '../../model/document/document.dart';
-// import '../../model/transaction/transaction.dart';
-// import '../../repositories/assetRepo.dart';
-// import '../../repositories/project_repo.dart';
-// import '../../repositories/project_workflow.dart';
-//
-// part 'asset_rejection.freezed.dart';
-//
-// class RejectionBloc extends Bloc<RejectionEvent, RejectionState> {
-//   final Isar _isar;
-//   final AssetRepository _repo;
-//
-//   RejectionBloc(this._isar)
-//       : _repo = AssetRepository(),
-//         super(const RejectionState.initial()) {
-//     on<_SubmitRejection>(_onSubmitRejection);
-//   }
-//
-//   Future<void> _onSubmitRejection(
-//     _SubmitRejection event,
-//     Emitter<RejectionState> emit,
-//   ) async {
-//     emit(const RejectionState.loading());
-//     try {
-//       const types = ['inverter', 'battery', 'panel'];
-//       final workflowDocuments = <Document>[];
-//       final workflowDocumentFromCache =
-//           await ProjectWorkflowRepository().collectWorkflowMediaDocs(
-//         isar: _isar,
-//         projectId: event.projectId,
-//         types: types,
-//       );
-//
-//       workflowDocuments.addAll(workflowDocumentFromCache);
-//       print("event.transaction ${jsonEncode(event.transactions)}");
-//       await _repo.submitRejection(
-//           projectId: event.projectId,
-//           transactions: event.transactions,
-//           documents: workflowDocuments);
-//       await UnsubmittedProjectRepository(_isar)
-//           .delete(event.projectId, event.userType);
-//       await PrefilledProjectRepository(_isar).delete(
-//         projectId: event.projectId,
-//         userType: event.userType,
-//       );
-//       emit(const RejectionState.success());
-//     } catch (e) {
-//       emit(RejectionState.failure(e.toString()));
-//     }
-//   }
-// }
-//
-// @freezed
-// class RejectionEvent with _$RejectionEvent {
-//   const factory RejectionEvent.submitRejection({
-//     required String projectId,
-//     required String userType,
-//     required List<Transaction> transactions,
-//   }) = _SubmitRejection;
-// }
-//
-// @freezed
-// class RejectionState with _$RejectionState {
-//   const factory RejectionState.initial() = _Initial;
-//   const factory RejectionState.loading() = _Loading;
-//   const factory RejectionState.success() = _Success;
-//   const factory RejectionState.failure(String message) = _Failure;
-// }
-
 import 'dart:async';
 
 import 'package:bloc/bloc.dart';
@@ -104,18 +29,19 @@ class RejectionBloc extends Bloc<RejectionEvent, RejectionState> {
 
     _rejDoneSub?.cancel();
     _rejDoneSub = svc.on(kEvtRejectDone).listen((data) {
-      final pid = data?['projectId'] as String?;
-      if (pid != null) {
-        add(RejectionEvent.bgRejectDone(projectId: pid));
+      final aFid = data?['activityFacilityId'] as String?;
+      if (aFid != null) {
+        add(RejectionEvent.bgRejectDone(activityFacilityId: aFid));
       }
     });
 
     _rejErrSub?.cancel();
     _rejErrSub = svc.on(kEvtRejectError).listen((data) {
-      final pid = data?['projectId'] as String?;
+      final aFid = data?['activityFacilityId'] as String?;
       final msg = data?['message']?.toString();
-      if (pid != null) {
-        add(RejectionEvent.bgRejectError(projectId: pid, message: msg));
+      if (aFid != null) {
+        add(RejectionEvent.bgRejectError(
+            activityFacilityId: aFid, message: msg));
       }
     });
   }
@@ -154,12 +80,12 @@ class RejectionBloc extends Bloc<RejectionEvent, RejectionState> {
 
       // (Optional) reflect a 'queued' status locally so any watchers can show progress
       await _writeJobStatusUI(
-        projectId: event.projectId,
+        activityFacilityId: event.activityFacilityId,
         status: 'queued',
       );
 
       await BackgroundServiceController.I.enqueueRejection(
-        projectId: event.projectId,
+        activityFacilityId: event.activityFacilityId,
         userType: event.userType,
         transactions: txMaps,
       );
@@ -178,7 +104,8 @@ class RejectionBloc extends Bloc<RejectionEvent, RejectionState> {
     Emitter<RejectionState> emit,
   ) async {
     // Mirror to Isar so any UI watchers (if you have) will advance
-    await _writeJobStatusUI(projectId: event.projectId, status: 'success');
+    await _writeJobStatusUI(
+        activityFacilityId: event.activityFacilityId, status: 'success');
     emit(const RejectionState.success());
   }
 
@@ -190,7 +117,7 @@ class RejectionBloc extends Bloc<RejectionEvent, RejectionState> {
     Emitter<RejectionState> emit,
   ) async {
     await _writeJobStatusUI(
-      projectId: event.projectId,
+      activityFacilityId: event.activityFacilityId,
       status: 'failed',
       error: event.message,
     );
@@ -199,19 +126,21 @@ class RejectionBloc extends Bloc<RejectionEvent, RejectionState> {
 
   // ---- Small helper to touch the same CacheSubmissionJob Isar used elsewhere ----
   Future<void> _writeJobStatusUI({
-    required String projectId,
+    required String activityFacilityId,
     required String status,
     String? error,
   }) async {
     await _isar.writeTxn(() async {
       final existing = await _isar.cacheSubmissionJobs
           .where()
-          .projectIdEqualTo(projectId)
+          .activityFacilityIdEqualTo(activityFacilityId)
           .findFirst();
 
       if (existing == null) {
         await _isar.cacheSubmissionJobs.put(CacheSubmissionJob(
-            projectId: projectId, status: status, error: error));
+            activityFacilityId: activityFacilityId,
+            status: status,
+            error: error));
       } else {
         existing
           ..status = status
@@ -228,19 +157,19 @@ class RejectionEvent with _$RejectionEvent {
   /// Kick off a background rejection job.
   /// `transactions` can be List<Map<String,dynamic>> or objects with toJson()/toMap().
   const factory RejectionEvent.submitRejection({
-    required String projectId,
+    required String activityFacilityId,
     required String userType,
     required List<dynamic> transactions,
   }) = _SubmitRejection;
 
   /// Emitted internally when BG signals success
   const factory RejectionEvent.bgRejectDone({
-    required String projectId,
+    required String activityFacilityId,
   }) = _BgRejectDone;
 
   /// Emitted internally when BG signals error
   const factory RejectionEvent.bgRejectError({
-    required String projectId,
+    required String activityFacilityId,
     String? message,
   }) = _BgRejectError;
 }

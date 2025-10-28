@@ -21,7 +21,6 @@ part 'app_init.freezed.dart';
 
 class AppInitialization extends Bloc<InitEvent, InitState> {
   AppInitialization() : super(const InitState.uninitialized()) {
-    // on<_AppLaunchEvent>(doInitialization);
     on<_AppLaunchEvent>(_onAppLaunch);
     on<_FetchMdmsEvent>(_onFetchMdms);
   }
@@ -38,8 +37,6 @@ class AppInitialization extends Bloc<InitEvent, InitState> {
     try {
       final appConfig = await appInitRepo.searchAppConfiguration(
         const MdmsRequestModel(
-          //send the request in MdmsRequestModel format
-          //take the response in ResponseModel format
           mdmsCriteria: MdmsCriteriaModel(
             tenantId: 'in',
             moduleDetails: [
@@ -91,8 +88,6 @@ class AppInitialization extends Bloc<InitEvent, InitState> {
       )));
       final assetCountList = assetCount ?? [];
 
-      print("assetCountList $assetCountList");
-
       final assetType = await appInitRepo.searchAssetType(MdmsRequestModel(
           mdmsCriteria: MdmsCriteriaModel(
         tenantId: env.envConfig.variables.tenantId,
@@ -100,7 +95,6 @@ class AppInitialization extends Bloc<InitEvent, InitState> {
         moduleDetails: [],
       )));
       final assetTypeList = assetType ?? [];
-      print("assetTypeList $assetTypeList");
 
       final system = await appInitRepo.searchSystem(MdmsRequestModel(
           mdmsCriteria: MdmsCriteriaModel(
@@ -109,7 +103,6 @@ class AppInitialization extends Bloc<InitEvent, InitState> {
         moduleDetails: [],
       )));
       final systemList = system ?? [];
-      print("systemList $systemList ");
 
       final warranty = await appInitRepo.searchWarranty(MdmsRequestModel(
           mdmsCriteria: MdmsCriteriaModel(
@@ -118,7 +111,6 @@ class AppInitialization extends Bloc<InitEvent, InitState> {
         moduleDetails: [],
       )));
       final warrantyList = warranty ?? [];
-      print("warrantyList $warrantyList ");
 
       final brand = await appInitRepo.searchBrand(MdmsRequestModel(
           mdmsCriteria: MdmsCriteriaModel(
@@ -127,7 +119,6 @@ class AppInitialization extends Bloc<InitEvent, InitState> {
         moduleDetails: [],
       )));
       final brandList = brand ?? [];
-      print("brandList $brandList ");
 
       final solutionDesign =
           await appInitRepo.searchSolutionDesign(MdmsRequestModel(
@@ -137,7 +128,6 @@ class AppInitialization extends Bloc<InitEvent, InitState> {
         moduleDetails: [],
       )));
       final solutionDesignList = solutionDesign ?? [];
-      print("solutionDesignList $solutionDesignList ");
 
       final solutionDesignBom =
           await appInitRepo.searchSolutionDesignTypeBom(MdmsRequestModel(
@@ -147,7 +137,6 @@ class AppInitialization extends Bloc<InitEvent, InitState> {
         moduleDetails: [],
       )));
       final solutionDesignBomList = solutionDesignBom ?? [];
-      print("solutionDesignBomList $solutionDesignBomList ");
 
       // ---- Fetch FormConfig docs (raw) ----
       final formsDocs = await appInitRepo.searchFormConfigsRaw(
@@ -204,8 +193,6 @@ class AppInitialization extends Bloc<InitEvent, InitState> {
     try {
       final appConfig = await appInitRepo.searchAppConfiguration(
         const MdmsRequestModel(
-          //send the request in MdmsRequestModel format
-          //take the response in ResponseModel format
           mdmsCriteria: MdmsCriteriaModel(
             tenantId: 'in',
             moduleDetails: [
@@ -325,33 +312,6 @@ class AppInitialization extends Bloc<InitEvent, InitState> {
     } catch (err) {
       rethrow;
     }
-  }
-
-  Future<void> storeSchema(dynamic mdmsDoc) async {
-    final appInitRepo = AppInitRepo();
-
-    if (mdmsDoc is! Map<String, dynamic>) return;
-
-    final data = (mdmsDoc['data'] is Map)
-        ? Map<String, dynamic>.from(mdmsDoc['data'] as Map)
-        : <String, dynamic>{};
-
-    if (data.isEmpty) return;
-
-    // carry uniqueIdentifier if present
-    final uniqueId = mdmsDoc['uniqueIdentifier']?.toString();
-    if (uniqueId != null && uniqueId.isNotEmpty) {
-      data['uniqueIdentifier'] = uniqueId;
-    }
-
-    // ensure name & version for upsert
-    data['name'] ??= (data['formName'] ??
-        mdmsDoc['schemaCode'] ??
-        uniqueId ??
-        'Form_${mdmsDoc['id'] ?? DateTime.now().millisecondsSinceEpoch}');
-    data['version'] ??= (data['version'] ?? 1);
-
-    await appInitRepo.upsertTransformedSchema(data);
   }
 }
 

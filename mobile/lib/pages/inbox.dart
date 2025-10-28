@@ -10,12 +10,12 @@ import 'package:digit_ui_components/widgets/molecules/show_pop_up.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../blocs/activity_facility/activity_facility.dart';
 import '../blocs/inbox_type/inbox_type.dart';
-import '../blocs/project/project.dart';
 import '../blocs/report_type/report_type.dart';
-import '../blocs/selected_project/selected_project.dart';
+import '../blocs/selected_activity_facility/selected_activity_facility.dart';
 import '../blocs/user_type/user_type.dart';
-import '../model/project_workflow/project_workflow.dart';
+import '../model/activity_facility_workflow/activity_facility_workflow.dart';
 import '../router/app_router.dart';
 import '../utils/utils.dart';
 import '../widgets/cards/inbox_report_card.dart';
@@ -97,22 +97,22 @@ class _InboxPageState extends State<InboxPage> {
 
     // Choose search vs sort vs basic fetch && Dispatch fetch + loading state
     if (_searchQuery.isNotEmpty) {
-      context.read<ProjectBloc>().add(
-            ProjectEvent.fetchProjectsBySearch(
+      context.read<ActivityFacilityBloc>().add(
+            ActivityFacilityEvent.fetchActivityFacilityBySearch(
               query: _searchQuery,
               workflowStatuses: workflowStatuses,
             ),
           );
     } else if (_sortDirection != null) {
-      context.read<ProjectBloc>().add(
-            ProjectEvent.fetchProjectsSorted(
+      context.read<ActivityFacilityBloc>().add(
+            ActivityFacilityEvent.fetchActivityFacilitySorted(
               workflowStatuses: workflowStatuses,
               sortDirection: _sortDirection!,
             ),
           );
     } else {
-      context.read<ProjectBloc>().add(
-            ProjectEvent.fetchProjectsByWorkflow(
+      context.read<ActivityFacilityBloc>().add(
+            ActivityFacilityEvent.fetchActivityFacilityByWorkflow(
                 workflowStatuses: workflowStatuses),
           );
     }
@@ -247,7 +247,7 @@ class _InboxPageState extends State<InboxPage> {
                     const SizedBox(height: spacer4),
 
                     // ── PROJECT LIST ─────────────────────────────────────────────────
-                    BlocBuilder<ProjectBloc, ProjectState>(
+                    BlocBuilder<ActivityFacilityBloc, ActivityFacilityState>(
                       builder: (context, projectState) {
                         return projectState.maybeWhen(
                           initial: () => _loadingIndicator(),
@@ -281,7 +281,7 @@ class _InboxPageState extends State<InboxPage> {
       );
 
   Widget _buildList(
-      List<ProjectWorkflow> projectsList, UserTypeState userState) {
+      List<ActivityFacilityWorkflow> projectsList, UserTypeState userState) {
     if (projectsList.isEmpty) {
       return const Center(
         child: Text('No Projects to display'),
@@ -297,24 +297,27 @@ class _InboxPageState extends State<InboxPage> {
                   return inboxState.when(
                     submitted: () => InboxReportCard(
                         onPress: () {
-                          context.read<SelectedProjectBloc>().add(
-                                SelectedProjectEvent.select(project),
+                          context.read<SelectedActivityFacilityBloc>().add(
+                                SelectedActivityFacilityEvent.select(project),
                               );
                           context.router.push(InboxAssetSummaryRoute(
                               refresh: DateTime.now().millisecondsSinceEpoch));
                         },
-                        title: project.project.name ?? '---',
-                        dateAssigned:
-                            project.project.startDateTime ?? DateTime.now(),
+                        title:
+                            project.activityFacility.facility?.facilityName ??
+                                '---',
+                        dateAssigned: project.activityFacility.scheduledAt ??
+                            DateTime.now(),
                         status: project.status ?? '---'),
                     rejected: () => InboxReportRejectedCard(
-                      title: project.project.name ?? '---',
+                      title: project.activityFacility.facility?.facilityName ??
+                          '---',
                       status: project.status ?? '---',
-                      dateAssigned:
-                          project.project.startDateTime ?? DateTime.now(),
+                      dateAssigned: project.activityFacility.scheduledAt ??
+                          DateTime.now(),
                       onPress: () {
-                        context.read<SelectedProjectBloc>().add(
-                              SelectedProjectEvent.select(project),
+                        context.read<SelectedActivityFacilityBloc>().add(
+                              SelectedActivityFacilityEvent.select(project),
                             );
                         context.router.push(SubmitForApprovalRoute(
                             refresh: DateTime.now().millisecondsSinceEpoch));
@@ -322,15 +325,17 @@ class _InboxPageState extends State<InboxPage> {
                     ),
                     approved: () => InboxReportCard(
                         onPress: () {
-                          context.read<SelectedProjectBloc>().add(
-                                SelectedProjectEvent.select(project),
+                          context.read<SelectedActivityFacilityBloc>().add(
+                                SelectedActivityFacilityEvent.select(project),
                               );
                           context.router.push(InboxAssetSummaryRoute(
                               refresh: DateTime.now().millisecondsSinceEpoch));
                         },
-                        title: project.project.name ?? '---',
-                        dateAssigned:
-                            project.project.startDateTime ?? DateTime.now(),
+                        title:
+                            project.activityFacility.facility?.facilityName ??
+                                '---',
+                        dateAssigned: project.activityFacility.scheduledAt ??
+                            DateTime.now(),
                         status: project.status ?? '---'),
                   );
                 },

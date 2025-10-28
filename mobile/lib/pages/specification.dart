@@ -10,7 +10,7 @@ import 'package:selco/blocs/specification/specification.dart';
 
 import '../blocs/asset_type/asset_type.dart';
 import '../blocs/cache_asset_count/cache_asset_count.dart';
-import '../blocs/selected_project/selected_project.dart';
+import '../blocs/selected_activity_facility/selected_activity_facility.dart';
 import '../data/nosql/cache_asset_count.dart';
 import '../router/app_router.dart';
 import '../utils/i18_key_constants.dart' as i18;
@@ -42,9 +42,9 @@ class _SpecificationPageState extends State<SpecificationPage> {
           panel: () => 'panel',
         );
 
-    final selState = context.read<SelectedProjectBloc>().state;
+    final selState = context.read<SelectedActivityFacilityBloc>().state;
     selState.whenOrNull(selected: (project) {
-      _updateProgress(project.project.id, assetType);
+      _updateProgress(project.activityFacility.id, assetType);
     });
   }
 
@@ -52,7 +52,7 @@ class _SpecificationPageState extends State<SpecificationPage> {
     context
         .read<CacheAssetCountBloc>()
         .add(CacheAssetCountEvent.update(CacheAssetCount(
-          projectId: projectId,
+          activityFacilityId: projectId,
           assetType: assetType,
           progress: 3,
         )));

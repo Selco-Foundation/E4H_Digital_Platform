@@ -7,7 +7,7 @@ class CacheSubmissionJob {
   Id id = Isar.autoIncrement;
 
   @Index(unique: true)
-  late String projectId;
+  late String activityFacilityId;
 
   /// 'queued' | 'running' | 'success' | 'failed'
   @Index()
@@ -17,7 +17,7 @@ class CacheSubmissionJob {
   DateTime updatedAt = DateTime.now();
 
   CacheSubmissionJob({
-    required this.projectId,
+    required this.activityFacilityId,
     required this.status,
     this.error,
   });

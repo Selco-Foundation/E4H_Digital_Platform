@@ -26,7 +26,7 @@ class CacheAssetDetailBloc
     try {
       final entries = await isar.cacheAssetDetails
           .where()
-          .projectIdEqualTo(event.projectId)
+          .activityFacilityIdEqualTo(event.projectId)
           .filter()
           .assetTypeEqualTo(event.assetType)
           .findAll();
@@ -49,7 +49,7 @@ class CacheAssetDetailBloc
       await isar.writeTxn(() async {
         final existing = await isar.cacheAssetDetails
             .where()
-            .projectIdEqualTo(event.entry.projectId)
+            .activityFacilityIdEqualTo(event.entry.activityFacilityId)
             .filter()
             .assetTypeEqualTo(event.entry.assetType)
             .findFirst();
@@ -79,7 +79,7 @@ class CacheAssetDetailBloc
       await isar.writeTxn(() async {
         final existing = await isar.cacheAssetDetails
             .where()
-            .projectIdEqualTo(event.entry.projectId)
+            .activityFacilityIdEqualTo(event.entry.activityFacilityId)
             .filter()
             .assetTypeEqualTo(event.entry.assetType)
             .findFirst();
@@ -105,7 +105,7 @@ class CacheAssetDetailBloc
       // Emit the newly updated/added entry
       final updatedEntry = await isar.cacheAssetDetails
           .where()
-          .projectIdEqualTo(event.entry.projectId)
+          .activityFacilityIdEqualTo(event.entry.activityFacilityId)
           .filter()
           .assetTypeEqualTo(event.entry.assetType)
           .findFirst();

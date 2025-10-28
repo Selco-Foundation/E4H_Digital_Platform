@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'cache_unsubmitted_project.dart';
+part of 'cache_unsubmitted_activity_facility.dart';
 
 // **************************************************************************
 // IsarCollectionGenerator
@@ -9,30 +9,30 @@ part of 'cache_unsubmitted_project.dart';
 // coverage:ignore-file
 // ignore_for_file: duplicate_ignore, non_constant_identifier_names, constant_identifier_names, invalid_use_of_protected_member, unnecessary_cast, prefer_const_constructors, lines_longer_than_80_chars, require_trailing_commas, inference_failure_on_function_invocation, unnecessary_parenthesis, unnecessary_raw_strings, unnecessary_null_checks, join_return_with_assignment, prefer_final_locals, avoid_js_rounded_ints, avoid_positional_boolean_parameters, always_specify_types
 
-extension GetCacheUnsubmittedProjectCollection on Isar {
-  IsarCollection<CacheUnsubmittedProject> get cacheUnsubmittedProjects =>
-      this.collection();
+extension GetCacheUnsubmittedActivityFacilityCollection on Isar {
+  IsarCollection<CacheUnsubmittedActivityFacility>
+      get cacheUnsubmittedActivityFacilitys => this.collection();
 }
 
-const CacheUnsubmittedProjectSchema = CollectionSchema(
-  name: r'CacheUnsubmittedProject',
-  id: 8695999801000265418,
+const CacheUnsubmittedActivityFacilitySchema = CollectionSchema(
+  name: r'CacheUnsubmittedActivityFacility',
+  id: -7528482081408684407,
   properties: {
-    r'createdAt': PropertySchema(
+    r'activityFacility': PropertySchema(
       id: 0,
+      name: r'activityFacility',
+      type: IsarType.object,
+      target: r'ActivityFacility',
+    ),
+    r'activityFacilityId': PropertySchema(
+      id: 1,
+      name: r'activityFacilityId',
+      type: IsarType.string,
+    ),
+    r'createdAt': PropertySchema(
+      id: 2,
       name: r'createdAt',
       type: IsarType.dateTime,
-    ),
-    r'project': PropertySchema(
-      id: 1,
-      name: r'project',
-      type: IsarType.object,
-      target: r'ProjectModel',
-    ),
-    r'projectId': PropertySchema(
-      id: 2,
-      name: r'projectId',
-      type: IsarType.string,
     ),
     r'status': PropertySchema(
       id: 3,
@@ -50,20 +50,20 @@ const CacheUnsubmittedProjectSchema = CollectionSchema(
       type: IsarType.string,
     )
   },
-  estimateSize: _cacheUnsubmittedProjectEstimateSize,
-  serialize: _cacheUnsubmittedProjectSerialize,
-  deserialize: _cacheUnsubmittedProjectDeserialize,
-  deserializeProp: _cacheUnsubmittedProjectDeserializeProp,
+  estimateSize: _cacheUnsubmittedActivityFacilityEstimateSize,
+  serialize: _cacheUnsubmittedActivityFacilitySerialize,
+  deserialize: _cacheUnsubmittedActivityFacilityDeserialize,
+  deserializeProp: _cacheUnsubmittedActivityFacilityDeserializeProp,
   idName: r'id',
   indexes: {
-    r'projectId': IndexSchema(
-      id: 3305656282123791113,
-      name: r'projectId',
+    r'activityFacilityId': IndexSchema(
+      id: -3740981522167357561,
+      name: r'activityFacilityId',
       unique: false,
       replace: false,
       properties: [
         IndexPropertySchema(
-          name: r'projectId',
+          name: r'activityFacilityId',
           type: IndexType.hash,
           caseSensitive: true,
         )
@@ -85,77 +85,76 @@ const CacheUnsubmittedProjectSchema = CollectionSchema(
   },
   links: {},
   embeddedSchemas: {
-    r'ProjectModel': ProjectModelSchema,
+    r'ActivityFacility': ActivityFacilitySchema,
     r'AddressModel': AddressModelSchema,
-    r'AdditionalDetails': AdditionalDetailsSchema,
     r'Facility': FacilitySchema,
     r'FacilityAddress': FacilityAddressSchema,
     r'FacilityDetails': FacilityDetailsSchema
   },
-  getId: _cacheUnsubmittedProjectGetId,
-  getLinks: _cacheUnsubmittedProjectGetLinks,
-  attach: _cacheUnsubmittedProjectAttach,
+  getId: _cacheUnsubmittedActivityFacilityGetId,
+  getLinks: _cacheUnsubmittedActivityFacilityGetLinks,
+  attach: _cacheUnsubmittedActivityFacilityAttach,
   version: '3.1.0+1',
 );
 
-int _cacheUnsubmittedProjectEstimateSize(
-  CacheUnsubmittedProject object,
+int _cacheUnsubmittedActivityFacilityEstimateSize(
+  CacheUnsubmittedActivityFacility object,
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
 ) {
   var bytesCount = offsets.last;
   bytesCount += 3 +
-      ProjectModelSchema.estimateSize(
-          object.project, allOffsets[ProjectModel]!, allOffsets);
-  bytesCount += 3 + object.projectId.length * 3;
+      ActivityFacilitySchema.estimateSize(
+          object.activityFacility, allOffsets[ActivityFacility]!, allOffsets);
+  bytesCount += 3 + object.activityFacilityId.length * 3;
   bytesCount += 3 + object.status.length * 3;
   bytesCount += 3 + object.userType.length * 3;
   return bytesCount;
 }
 
-void _cacheUnsubmittedProjectSerialize(
-  CacheUnsubmittedProject object,
+void _cacheUnsubmittedActivityFacilitySerialize(
+  CacheUnsubmittedActivityFacility object,
   IsarWriter writer,
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
 ) {
-  writer.writeDateTime(offsets[0], object.createdAt);
-  writer.writeObject<ProjectModel>(
-    offsets[1],
+  writer.writeObject<ActivityFacility>(
+    offsets[0],
     allOffsets,
-    ProjectModelSchema.serialize,
-    object.project,
+    ActivityFacilitySchema.serialize,
+    object.activityFacility,
   );
-  writer.writeString(offsets[2], object.projectId);
+  writer.writeString(offsets[1], object.activityFacilityId);
+  writer.writeDateTime(offsets[2], object.createdAt);
   writer.writeString(offsets[3], object.status);
   writer.writeDateTime(offsets[4], object.updatedAt);
   writer.writeString(offsets[5], object.userType);
 }
 
-CacheUnsubmittedProject _cacheUnsubmittedProjectDeserialize(
+CacheUnsubmittedActivityFacility _cacheUnsubmittedActivityFacilityDeserialize(
   Id id,
   IsarReader reader,
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
 ) {
-  final object = CacheUnsubmittedProject(
-    project: reader.readObjectOrNull<ProjectModel>(
-          offsets[1],
-          ProjectModelSchema.deserialize,
+  final object = CacheUnsubmittedActivityFacility(
+    activityFacility: reader.readObjectOrNull<ActivityFacility>(
+          offsets[0],
+          ActivityFacilitySchema.deserialize,
           allOffsets,
         ) ??
-        ProjectModel(),
-    projectId: reader.readString(offsets[2]),
+        ActivityFacility(),
+    activityFacilityId: reader.readString(offsets[1]),
     status: reader.readString(offsets[3]),
     userType: reader.readString(offsets[5]),
   );
-  object.createdAt = reader.readDateTime(offsets[0]);
+  object.createdAt = reader.readDateTime(offsets[2]);
   object.id = id;
   object.updatedAt = reader.readDateTimeOrNull(offsets[4]);
   return object;
 }
 
-P _cacheUnsubmittedProjectDeserializeProp<P>(
+P _cacheUnsubmittedActivityFacilityDeserializeProp<P>(
   IsarReader reader,
   int propertyId,
   int offset,
@@ -163,16 +162,16 @@ P _cacheUnsubmittedProjectDeserializeProp<P>(
 ) {
   switch (propertyId) {
     case 0:
-      return (reader.readDateTime(offset)) as P;
-    case 1:
-      return (reader.readObjectOrNull<ProjectModel>(
+      return (reader.readObjectOrNull<ActivityFacility>(
             offset,
-            ProjectModelSchema.deserialize,
+            ActivityFacilitySchema.deserialize,
             allOffsets,
           ) ??
-          ProjectModel()) as P;
-    case 2:
+          ActivityFacility()) as P;
+    case 1:
       return (reader.readString(offset)) as P;
+    case 2:
+      return (reader.readDateTime(offset)) as P;
     case 3:
       return (reader.readString(offset)) as P;
     case 4:
@@ -184,34 +183,39 @@ P _cacheUnsubmittedProjectDeserializeProp<P>(
   }
 }
 
-Id _cacheUnsubmittedProjectGetId(CacheUnsubmittedProject object) {
+Id _cacheUnsubmittedActivityFacilityGetId(
+    CacheUnsubmittedActivityFacility object) {
   return object.id;
 }
 
-List<IsarLinkBase<dynamic>> _cacheUnsubmittedProjectGetLinks(
-    CacheUnsubmittedProject object) {
+List<IsarLinkBase<dynamic>> _cacheUnsubmittedActivityFacilityGetLinks(
+    CacheUnsubmittedActivityFacility object) {
   return [];
 }
 
-void _cacheUnsubmittedProjectAttach(
-    IsarCollection<dynamic> col, Id id, CacheUnsubmittedProject object) {
+void _cacheUnsubmittedActivityFacilityAttach(IsarCollection<dynamic> col, Id id,
+    CacheUnsubmittedActivityFacility object) {
   object.id = id;
 }
 
-extension CacheUnsubmittedProjectQueryWhereSort
-    on QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject, QWhere> {
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject, QAfterWhere>
-      anyId() {
+extension CacheUnsubmittedActivityFacilityQueryWhereSort on QueryBuilder<
+    CacheUnsubmittedActivityFacility,
+    CacheUnsubmittedActivityFacility,
+    QWhere> {
+  QueryBuilder<CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility, QAfterWhere> anyId() {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(const IdWhereClause.any());
     });
   }
 }
 
-extension CacheUnsubmittedProjectQueryWhere on QueryBuilder<
-    CacheUnsubmittedProject, CacheUnsubmittedProject, QWhereClause> {
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject,
-      QAfterWhereClause> idEqualTo(Id id) {
+extension CacheUnsubmittedActivityFacilityQueryWhere on QueryBuilder<
+    CacheUnsubmittedActivityFacility,
+    CacheUnsubmittedActivityFacility,
+    QWhereClause> {
+  QueryBuilder<CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility, QAfterWhereClause> idEqualTo(Id id) {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(IdWhereClause.between(
         lower: id,
@@ -220,8 +224,8 @@ extension CacheUnsubmittedProjectQueryWhere on QueryBuilder<
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject,
-      QAfterWhereClause> idNotEqualTo(Id id) {
+  QueryBuilder<CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility, QAfterWhereClause> idNotEqualTo(Id id) {
     return QueryBuilder.apply(this, (query) {
       if (query.whereSort == Sort.asc) {
         return query
@@ -243,7 +247,9 @@ extension CacheUnsubmittedProjectQueryWhere on QueryBuilder<
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject,
+  QueryBuilder<
+      CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility,
       QAfterWhereClause> idGreaterThan(Id id, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(
@@ -252,7 +258,9 @@ extension CacheUnsubmittedProjectQueryWhere on QueryBuilder<
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject,
+  QueryBuilder<
+      CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility,
       QAfterWhereClause> idLessThan(Id id, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(
@@ -261,8 +269,8 @@ extension CacheUnsubmittedProjectQueryWhere on QueryBuilder<
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject,
-      QAfterWhereClause> idBetween(
+  QueryBuilder<CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility, QAfterWhereClause> idBetween(
     Id lowerId,
     Id upperId, {
     bool includeLower = true,
@@ -278,52 +286,57 @@ extension CacheUnsubmittedProjectQueryWhere on QueryBuilder<
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject,
-      QAfterWhereClause> projectIdEqualTo(String projectId) {
+  QueryBuilder<
+      CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility,
+      QAfterWhereClause> activityFacilityIdEqualTo(String activityFacilityId) {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(IndexWhereClause.equalTo(
-        indexName: r'projectId',
-        value: [projectId],
+        indexName: r'activityFacilityId',
+        value: [activityFacilityId],
       ));
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject,
-      QAfterWhereClause> projectIdNotEqualTo(String projectId) {
+  QueryBuilder<CacheUnsubmittedActivityFacility,
+          CacheUnsubmittedActivityFacility, QAfterWhereClause>
+      activityFacilityIdNotEqualTo(String activityFacilityId) {
     return QueryBuilder.apply(this, (query) {
       if (query.whereSort == Sort.asc) {
         return query
             .addWhereClause(IndexWhereClause.between(
-              indexName: r'projectId',
+              indexName: r'activityFacilityId',
               lower: [],
-              upper: [projectId],
+              upper: [activityFacilityId],
               includeUpper: false,
             ))
             .addWhereClause(IndexWhereClause.between(
-              indexName: r'projectId',
-              lower: [projectId],
+              indexName: r'activityFacilityId',
+              lower: [activityFacilityId],
               includeLower: false,
               upper: [],
             ));
       } else {
         return query
             .addWhereClause(IndexWhereClause.between(
-              indexName: r'projectId',
-              lower: [projectId],
+              indexName: r'activityFacilityId',
+              lower: [activityFacilityId],
               includeLower: false,
               upper: [],
             ))
             .addWhereClause(IndexWhereClause.between(
-              indexName: r'projectId',
+              indexName: r'activityFacilityId',
               lower: [],
-              upper: [projectId],
+              upper: [activityFacilityId],
               includeUpper: false,
             ));
       }
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject,
+  QueryBuilder<
+      CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility,
       QAfterWhereClause> statusEqualTo(String status) {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(IndexWhereClause.equalTo(
@@ -333,7 +346,9 @@ extension CacheUnsubmittedProjectQueryWhere on QueryBuilder<
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject,
+  QueryBuilder<
+      CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility,
       QAfterWhereClause> statusNotEqualTo(String status) {
     return QueryBuilder.apply(this, (query) {
       if (query.whereSort == Sort.asc) {
@@ -369,9 +384,167 @@ extension CacheUnsubmittedProjectQueryWhere on QueryBuilder<
   }
 }
 
-extension CacheUnsubmittedProjectQueryFilter on QueryBuilder<
-    CacheUnsubmittedProject, CacheUnsubmittedProject, QFilterCondition> {
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject,
+extension CacheUnsubmittedActivityFacilityQueryFilter on QueryBuilder<
+    CacheUnsubmittedActivityFacility,
+    CacheUnsubmittedActivityFacility,
+    QFilterCondition> {
+  QueryBuilder<
+      CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility,
+      QAfterFilterCondition> activityFacilityIdEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'activityFacilityId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<
+      CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility,
+      QAfterFilterCondition> activityFacilityIdGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'activityFacilityId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<
+      CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility,
+      QAfterFilterCondition> activityFacilityIdLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'activityFacilityId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<
+      CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility,
+      QAfterFilterCondition> activityFacilityIdBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'activityFacilityId',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<
+      CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility,
+      QAfterFilterCondition> activityFacilityIdStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'activityFacilityId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<
+      CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility,
+      QAfterFilterCondition> activityFacilityIdEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'activityFacilityId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheUnsubmittedActivityFacility,
+          CacheUnsubmittedActivityFacility, QAfterFilterCondition>
+      activityFacilityIdContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'activityFacilityId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheUnsubmittedActivityFacility,
+          CacheUnsubmittedActivityFacility, QAfterFilterCondition>
+      activityFacilityIdMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'activityFacilityId',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<
+      CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility,
+      QAfterFilterCondition> activityFacilityIdIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'activityFacilityId',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<
+      CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility,
+      QAfterFilterCondition> activityFacilityIdIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'activityFacilityId',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<
+      CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility,
       QAfterFilterCondition> createdAtEqualTo(DateTime value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
@@ -381,7 +554,9 @@ extension CacheUnsubmittedProjectQueryFilter on QueryBuilder<
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject,
+  QueryBuilder<
+      CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility,
       QAfterFilterCondition> createdAtGreaterThan(
     DateTime value, {
     bool include = false,
@@ -395,7 +570,9 @@ extension CacheUnsubmittedProjectQueryFilter on QueryBuilder<
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject,
+  QueryBuilder<
+      CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility,
       QAfterFilterCondition> createdAtLessThan(
     DateTime value, {
     bool include = false,
@@ -409,8 +586,8 @@ extension CacheUnsubmittedProjectQueryFilter on QueryBuilder<
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject,
-      QAfterFilterCondition> createdAtBetween(
+  QueryBuilder<CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility, QAfterFilterCondition> createdAtBetween(
     DateTime lower,
     DateTime upper, {
     bool includeLower = true,
@@ -427,7 +604,9 @@ extension CacheUnsubmittedProjectQueryFilter on QueryBuilder<
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject,
+  QueryBuilder<
+      CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility,
       QAfterFilterCondition> idEqualTo(Id value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
@@ -437,8 +616,8 @@ extension CacheUnsubmittedProjectQueryFilter on QueryBuilder<
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject,
-      QAfterFilterCondition> idGreaterThan(
+  QueryBuilder<CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility, QAfterFilterCondition> idGreaterThan(
     Id value, {
     bool include = false,
   }) {
@@ -451,8 +630,8 @@ extension CacheUnsubmittedProjectQueryFilter on QueryBuilder<
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject,
-      QAfterFilterCondition> idLessThan(
+  QueryBuilder<CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility, QAfterFilterCondition> idLessThan(
     Id value, {
     bool include = false,
   }) {
@@ -465,8 +644,8 @@ extension CacheUnsubmittedProjectQueryFilter on QueryBuilder<
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject,
-      QAfterFilterCondition> idBetween(
+  QueryBuilder<CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility, QAfterFilterCondition> idBetween(
     Id lower,
     Id upper, {
     bool includeLower = true,
@@ -483,146 +662,8 @@ extension CacheUnsubmittedProjectQueryFilter on QueryBuilder<
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject,
-      QAfterFilterCondition> projectIdEqualTo(
-    String value, {
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'projectId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject,
-      QAfterFilterCondition> projectIdGreaterThan(
-    String value, {
-    bool include = false,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'projectId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject,
-      QAfterFilterCondition> projectIdLessThan(
-    String value, {
-    bool include = false,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'projectId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject,
-      QAfterFilterCondition> projectIdBetween(
-    String lower,
-    String upper, {
-    bool includeLower = true,
-    bool includeUpper = true,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'projectId',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject,
-      QAfterFilterCondition> projectIdStartsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.startsWith(
-        property: r'projectId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject,
-      QAfterFilterCondition> projectIdEndsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.endsWith(
-        property: r'projectId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject,
-          QAfterFilterCondition>
-      projectIdContains(String value, {bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.contains(
-        property: r'projectId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject,
-          QAfterFilterCondition>
-      projectIdMatches(String pattern, {bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.matches(
-        property: r'projectId',
-        wildcard: pattern,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject,
-      QAfterFilterCondition> projectIdIsEmpty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'projectId',
-        value: '',
-      ));
-    });
-  }
-
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject,
-      QAfterFilterCondition> projectIdIsNotEmpty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        property: r'projectId',
-        value: '',
-      ));
-    });
-  }
-
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject,
-      QAfterFilterCondition> statusEqualTo(
+  QueryBuilder<CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility, QAfterFilterCondition> statusEqualTo(
     String value, {
     bool caseSensitive = true,
   }) {
@@ -635,7 +676,9 @@ extension CacheUnsubmittedProjectQueryFilter on QueryBuilder<
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject,
+  QueryBuilder<
+      CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility,
       QAfterFilterCondition> statusGreaterThan(
     String value, {
     bool include = false,
@@ -651,8 +694,8 @@ extension CacheUnsubmittedProjectQueryFilter on QueryBuilder<
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject,
-      QAfterFilterCondition> statusLessThan(
+  QueryBuilder<CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility, QAfterFilterCondition> statusLessThan(
     String value, {
     bool include = false,
     bool caseSensitive = true,
@@ -667,8 +710,8 @@ extension CacheUnsubmittedProjectQueryFilter on QueryBuilder<
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject,
-      QAfterFilterCondition> statusBetween(
+  QueryBuilder<CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility, QAfterFilterCondition> statusBetween(
     String lower,
     String upper, {
     bool includeLower = true,
@@ -687,8 +730,8 @@ extension CacheUnsubmittedProjectQueryFilter on QueryBuilder<
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject,
-      QAfterFilterCondition> statusStartsWith(
+  QueryBuilder<CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility, QAfterFilterCondition> statusStartsWith(
     String value, {
     bool caseSensitive = true,
   }) {
@@ -701,8 +744,8 @@ extension CacheUnsubmittedProjectQueryFilter on QueryBuilder<
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject,
-      QAfterFilterCondition> statusEndsWith(
+  QueryBuilder<CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility, QAfterFilterCondition> statusEndsWith(
     String value, {
     bool caseSensitive = true,
   }) {
@@ -715,8 +758,8 @@ extension CacheUnsubmittedProjectQueryFilter on QueryBuilder<
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject,
-          QAfterFilterCondition>
+  QueryBuilder<CacheUnsubmittedActivityFacility,
+          CacheUnsubmittedActivityFacility, QAfterFilterCondition>
       statusContains(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.contains(
@@ -727,8 +770,8 @@ extension CacheUnsubmittedProjectQueryFilter on QueryBuilder<
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject,
-          QAfterFilterCondition>
+  QueryBuilder<CacheUnsubmittedActivityFacility,
+          CacheUnsubmittedActivityFacility, QAfterFilterCondition>
       statusMatches(String pattern, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.matches(
@@ -739,8 +782,8 @@ extension CacheUnsubmittedProjectQueryFilter on QueryBuilder<
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject,
-      QAfterFilterCondition> statusIsEmpty() {
+  QueryBuilder<CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility, QAfterFilterCondition> statusIsEmpty() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
         property: r'status',
@@ -749,7 +792,9 @@ extension CacheUnsubmittedProjectQueryFilter on QueryBuilder<
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject,
+  QueryBuilder<
+      CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility,
       QAfterFilterCondition> statusIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.greaterThan(
@@ -759,7 +804,9 @@ extension CacheUnsubmittedProjectQueryFilter on QueryBuilder<
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject,
+  QueryBuilder<
+      CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility,
       QAfterFilterCondition> updatedAtIsNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(const FilterCondition.isNull(
@@ -768,7 +815,9 @@ extension CacheUnsubmittedProjectQueryFilter on QueryBuilder<
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject,
+  QueryBuilder<
+      CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility,
       QAfterFilterCondition> updatedAtIsNotNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(const FilterCondition.isNotNull(
@@ -777,7 +826,9 @@ extension CacheUnsubmittedProjectQueryFilter on QueryBuilder<
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject,
+  QueryBuilder<
+      CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility,
       QAfterFilterCondition> updatedAtEqualTo(DateTime? value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
@@ -787,7 +838,9 @@ extension CacheUnsubmittedProjectQueryFilter on QueryBuilder<
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject,
+  QueryBuilder<
+      CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility,
       QAfterFilterCondition> updatedAtGreaterThan(
     DateTime? value, {
     bool include = false,
@@ -801,7 +854,9 @@ extension CacheUnsubmittedProjectQueryFilter on QueryBuilder<
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject,
+  QueryBuilder<
+      CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility,
       QAfterFilterCondition> updatedAtLessThan(
     DateTime? value, {
     bool include = false,
@@ -815,8 +870,8 @@ extension CacheUnsubmittedProjectQueryFilter on QueryBuilder<
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject,
-      QAfterFilterCondition> updatedAtBetween(
+  QueryBuilder<CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility, QAfterFilterCondition> updatedAtBetween(
     DateTime? lower,
     DateTime? upper, {
     bool includeLower = true,
@@ -833,8 +888,8 @@ extension CacheUnsubmittedProjectQueryFilter on QueryBuilder<
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject,
-      QAfterFilterCondition> userTypeEqualTo(
+  QueryBuilder<CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility, QAfterFilterCondition> userTypeEqualTo(
     String value, {
     bool caseSensitive = true,
   }) {
@@ -847,7 +902,9 @@ extension CacheUnsubmittedProjectQueryFilter on QueryBuilder<
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject,
+  QueryBuilder<
+      CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility,
       QAfterFilterCondition> userTypeGreaterThan(
     String value, {
     bool include = false,
@@ -863,8 +920,8 @@ extension CacheUnsubmittedProjectQueryFilter on QueryBuilder<
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject,
-      QAfterFilterCondition> userTypeLessThan(
+  QueryBuilder<CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility, QAfterFilterCondition> userTypeLessThan(
     String value, {
     bool include = false,
     bool caseSensitive = true,
@@ -879,8 +936,8 @@ extension CacheUnsubmittedProjectQueryFilter on QueryBuilder<
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject,
-      QAfterFilterCondition> userTypeBetween(
+  QueryBuilder<CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility, QAfterFilterCondition> userTypeBetween(
     String lower,
     String upper, {
     bool includeLower = true,
@@ -899,7 +956,9 @@ extension CacheUnsubmittedProjectQueryFilter on QueryBuilder<
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject,
+  QueryBuilder<
+      CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility,
       QAfterFilterCondition> userTypeStartsWith(
     String value, {
     bool caseSensitive = true,
@@ -913,8 +972,8 @@ extension CacheUnsubmittedProjectQueryFilter on QueryBuilder<
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject,
-      QAfterFilterCondition> userTypeEndsWith(
+  QueryBuilder<CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility, QAfterFilterCondition> userTypeEndsWith(
     String value, {
     bool caseSensitive = true,
   }) {
@@ -927,8 +986,8 @@ extension CacheUnsubmittedProjectQueryFilter on QueryBuilder<
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject,
-          QAfterFilterCondition>
+  QueryBuilder<CacheUnsubmittedActivityFacility,
+          CacheUnsubmittedActivityFacility, QAfterFilterCondition>
       userTypeContains(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.contains(
@@ -939,8 +998,8 @@ extension CacheUnsubmittedProjectQueryFilter on QueryBuilder<
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject,
-          QAfterFilterCondition>
+  QueryBuilder<CacheUnsubmittedActivityFacility,
+          CacheUnsubmittedActivityFacility, QAfterFilterCondition>
       userTypeMatches(String pattern, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.matches(
@@ -951,7 +1010,9 @@ extension CacheUnsubmittedProjectQueryFilter on QueryBuilder<
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject,
+  QueryBuilder<
+      CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility,
       QAfterFilterCondition> userTypeIsEmpty() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
@@ -961,7 +1022,9 @@ extension CacheUnsubmittedProjectQueryFilter on QueryBuilder<
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject,
+  QueryBuilder<
+      CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility,
       QAfterFilterCondition> userTypeIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.greaterThan(
@@ -972,261 +1035,291 @@ extension CacheUnsubmittedProjectQueryFilter on QueryBuilder<
   }
 }
 
-extension CacheUnsubmittedProjectQueryObject on QueryBuilder<
-    CacheUnsubmittedProject, CacheUnsubmittedProject, QFilterCondition> {
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject,
-      QAfterFilterCondition> project(FilterQuery<ProjectModel> q) {
+extension CacheUnsubmittedActivityFacilityQueryObject on QueryBuilder<
+    CacheUnsubmittedActivityFacility,
+    CacheUnsubmittedActivityFacility,
+    QFilterCondition> {
+  QueryBuilder<
+      CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility,
+      QAfterFilterCondition> activityFacility(FilterQuery<ActivityFacility> q) {
     return QueryBuilder.apply(this, (query) {
-      return query.object(q, r'project');
+      return query.object(q, r'activityFacility');
     });
   }
 }
 
-extension CacheUnsubmittedProjectQueryLinks on QueryBuilder<
-    CacheUnsubmittedProject, CacheUnsubmittedProject, QFilterCondition> {}
+extension CacheUnsubmittedActivityFacilityQueryLinks on QueryBuilder<
+    CacheUnsubmittedActivityFacility,
+    CacheUnsubmittedActivityFacility,
+    QFilterCondition> {}
 
-extension CacheUnsubmittedProjectQuerySortBy
-    on QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject, QSortBy> {
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject, QAfterSortBy>
-      sortByCreatedAt() {
+extension CacheUnsubmittedActivityFacilityQuerySortBy on QueryBuilder<
+    CacheUnsubmittedActivityFacility,
+    CacheUnsubmittedActivityFacility,
+    QSortBy> {
+  QueryBuilder<
+      CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility,
+      QAfterSortBy> sortByActivityFacilityId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'activityFacilityId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<
+      CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility,
+      QAfterSortBy> sortByActivityFacilityIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'activityFacilityId', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility, QAfterSortBy> sortByCreatedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'createdAt', Sort.asc);
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject, QAfterSortBy>
-      sortByCreatedAtDesc() {
+  QueryBuilder<CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility, QAfterSortBy> sortByCreatedAtDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'createdAt', Sort.desc);
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject, QAfterSortBy>
-      sortByProjectId() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'projectId', Sort.asc);
-    });
-  }
-
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject, QAfterSortBy>
-      sortByProjectIdDesc() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'projectId', Sort.desc);
-    });
-  }
-
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject, QAfterSortBy>
-      sortByStatus() {
+  QueryBuilder<CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility, QAfterSortBy> sortByStatus() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'status', Sort.asc);
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject, QAfterSortBy>
-      sortByStatusDesc() {
+  QueryBuilder<CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility, QAfterSortBy> sortByStatusDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'status', Sort.desc);
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject, QAfterSortBy>
-      sortByUpdatedAt() {
+  QueryBuilder<CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility, QAfterSortBy> sortByUpdatedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'updatedAt', Sort.asc);
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject, QAfterSortBy>
-      sortByUpdatedAtDesc() {
+  QueryBuilder<CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility, QAfterSortBy> sortByUpdatedAtDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'updatedAt', Sort.desc);
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject, QAfterSortBy>
-      sortByUserType() {
+  QueryBuilder<CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility, QAfterSortBy> sortByUserType() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'userType', Sort.asc);
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject, QAfterSortBy>
-      sortByUserTypeDesc() {
+  QueryBuilder<CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility, QAfterSortBy> sortByUserTypeDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'userType', Sort.desc);
     });
   }
 }
 
-extension CacheUnsubmittedProjectQuerySortThenBy on QueryBuilder<
-    CacheUnsubmittedProject, CacheUnsubmittedProject, QSortThenBy> {
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject, QAfterSortBy>
-      thenByCreatedAt() {
+extension CacheUnsubmittedActivityFacilityQuerySortThenBy on QueryBuilder<
+    CacheUnsubmittedActivityFacility,
+    CacheUnsubmittedActivityFacility,
+    QSortThenBy> {
+  QueryBuilder<
+      CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility,
+      QAfterSortBy> thenByActivityFacilityId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'activityFacilityId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<
+      CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility,
+      QAfterSortBy> thenByActivityFacilityIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'activityFacilityId', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility, QAfterSortBy> thenByCreatedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'createdAt', Sort.asc);
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject, QAfterSortBy>
-      thenByCreatedAtDesc() {
+  QueryBuilder<CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility, QAfterSortBy> thenByCreatedAtDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'createdAt', Sort.desc);
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject, QAfterSortBy>
-      thenById() {
+  QueryBuilder<CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility, QAfterSortBy> thenById() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'id', Sort.asc);
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject, QAfterSortBy>
-      thenByIdDesc() {
+  QueryBuilder<CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility, QAfterSortBy> thenByIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'id', Sort.desc);
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject, QAfterSortBy>
-      thenByProjectId() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'projectId', Sort.asc);
-    });
-  }
-
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject, QAfterSortBy>
-      thenByProjectIdDesc() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'projectId', Sort.desc);
-    });
-  }
-
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject, QAfterSortBy>
-      thenByStatus() {
+  QueryBuilder<CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility, QAfterSortBy> thenByStatus() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'status', Sort.asc);
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject, QAfterSortBy>
-      thenByStatusDesc() {
+  QueryBuilder<CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility, QAfterSortBy> thenByStatusDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'status', Sort.desc);
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject, QAfterSortBy>
-      thenByUpdatedAt() {
+  QueryBuilder<CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility, QAfterSortBy> thenByUpdatedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'updatedAt', Sort.asc);
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject, QAfterSortBy>
-      thenByUpdatedAtDesc() {
+  QueryBuilder<CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility, QAfterSortBy> thenByUpdatedAtDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'updatedAt', Sort.desc);
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject, QAfterSortBy>
-      thenByUserType() {
+  QueryBuilder<CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility, QAfterSortBy> thenByUserType() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'userType', Sort.asc);
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject, QAfterSortBy>
-      thenByUserTypeDesc() {
+  QueryBuilder<CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility, QAfterSortBy> thenByUserTypeDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'userType', Sort.desc);
     });
   }
 }
 
-extension CacheUnsubmittedProjectQueryWhereDistinct on QueryBuilder<
-    CacheUnsubmittedProject, CacheUnsubmittedProject, QDistinct> {
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject, QDistinct>
-      distinctByCreatedAt() {
+extension CacheUnsubmittedActivityFacilityQueryWhereDistinct on QueryBuilder<
+    CacheUnsubmittedActivityFacility,
+    CacheUnsubmittedActivityFacility,
+    QDistinct> {
+  QueryBuilder<
+      CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility,
+      QDistinct> distinctByActivityFacilityId({bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'activityFacilityId',
+          caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility, QDistinct> distinctByCreatedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'createdAt');
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject, QDistinct>
-      distinctByProjectId({bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(r'projectId', caseSensitive: caseSensitive);
-    });
-  }
-
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject, QDistinct>
-      distinctByStatus({bool caseSensitive = true}) {
+  QueryBuilder<
+      CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility,
+      QDistinct> distinctByStatus({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'status', caseSensitive: caseSensitive);
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject, QDistinct>
-      distinctByUpdatedAt() {
+  QueryBuilder<CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility, QDistinct> distinctByUpdatedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'updatedAt');
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, CacheUnsubmittedProject, QDistinct>
-      distinctByUserType({bool caseSensitive = true}) {
+  QueryBuilder<
+      CacheUnsubmittedActivityFacility,
+      CacheUnsubmittedActivityFacility,
+      QDistinct> distinctByUserType({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'userType', caseSensitive: caseSensitive);
     });
   }
 }
 
-extension CacheUnsubmittedProjectQueryProperty on QueryBuilder<
-    CacheUnsubmittedProject, CacheUnsubmittedProject, QQueryProperty> {
-  QueryBuilder<CacheUnsubmittedProject, int, QQueryOperations> idProperty() {
+extension CacheUnsubmittedActivityFacilityQueryProperty on QueryBuilder<
+    CacheUnsubmittedActivityFacility,
+    CacheUnsubmittedActivityFacility,
+    QQueryProperty> {
+  QueryBuilder<CacheUnsubmittedActivityFacility, int, QQueryOperations>
+      idProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'id');
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, DateTime, QQueryOperations>
+  QueryBuilder<CacheUnsubmittedActivityFacility, ActivityFacility,
+      QQueryOperations> activityFacilityProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'activityFacility');
+    });
+  }
+
+  QueryBuilder<CacheUnsubmittedActivityFacility, String, QQueryOperations>
+      activityFacilityIdProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'activityFacilityId');
+    });
+  }
+
+  QueryBuilder<CacheUnsubmittedActivityFacility, DateTime, QQueryOperations>
       createdAtProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'createdAt');
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, ProjectModel, QQueryOperations>
-      projectProperty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addPropertyName(r'project');
-    });
-  }
-
-  QueryBuilder<CacheUnsubmittedProject, String, QQueryOperations>
-      projectIdProperty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addPropertyName(r'projectId');
-    });
-  }
-
-  QueryBuilder<CacheUnsubmittedProject, String, QQueryOperations>
+  QueryBuilder<CacheUnsubmittedActivityFacility, String, QQueryOperations>
       statusProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'status');
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, DateTime?, QQueryOperations>
+  QueryBuilder<CacheUnsubmittedActivityFacility, DateTime?, QQueryOperations>
       updatedAtProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'updatedAt');
     });
   }
 
-  QueryBuilder<CacheUnsubmittedProject, String, QQueryOperations>
+  QueryBuilder<CacheUnsubmittedActivityFacility, String, QQueryOperations>
       userTypeProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'userType');
