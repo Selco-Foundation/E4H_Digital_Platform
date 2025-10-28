@@ -76,7 +76,7 @@ const DateRangeInput = ({
         onChange={(e) =>
           handleDateChange("startDate", e.target.value)
         }
-        style={mobileView && {marginBottom: "0"}}
+        style={mobileView ? {marginBottom: "0"} : {}}
         disabled={disableStartDate}
       />
       <FormattedDateInput
