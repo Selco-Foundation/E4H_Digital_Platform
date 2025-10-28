@@ -33,7 +33,7 @@ class ActivityFacilityRemoteRepository {
       String searchPath = "activity/v1/activities/_search";
 
       if (envConfig.variables.envType == EnvType.dev) {
-        // return _loadLocalProjects();
+        return _loadLocalActivityFacility();
       }
 
       response = await dio.post(
@@ -138,7 +138,7 @@ class ActivityFacilityRemoteRepository {
     }
   }
 
-  Future<List<ActivityFacilityWorkflow>> _loadLocalActivityFacilityId() async {
+  Future<List<ActivityFacilityWorkflow>> _loadLocalActivityFacility() async {
     try {
       final jsonString = await rootBundle.loadString(
           'assets/mocks/mockRejectedProject.json'); // Testing rejected Facilities
