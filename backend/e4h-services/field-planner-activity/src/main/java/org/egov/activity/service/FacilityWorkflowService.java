@@ -5,6 +5,7 @@ import org.egov.activity.config.ActivityConfiguration;
 import org.egov.activity.web.models.*;
 import org.egov.common.contract.models.RequestInfoWrapper;
 import org.egov.common.contract.request.RequestInfo;
+import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
@@ -49,6 +50,9 @@ public class FacilityWorkflowService {
         Object response = repository.fetchResult(new StringBuilder(url), wfRequest);
 
         ProcessInstanceResponse wfResponse = mapper.convertValue(response, ProcessInstanceResponse.class);
+        if (wfResponse == null || wfResponse.getProcessInstances() == null || wfResponse.getProcessInstances().isEmpty()) {
+            throw new CustomException("WORKFLOW_ERROR", "Empty response from workflow transition");
+        }
         return wfResponse.getProcessInstances().get(0);
     }
 

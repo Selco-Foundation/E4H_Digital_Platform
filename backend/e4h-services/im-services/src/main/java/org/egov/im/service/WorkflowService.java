@@ -97,7 +97,7 @@ public class WorkflowService {
      * */
     public ProcessInstance updateWorkflowStatus(IncidentRequestWrapper wrapper, Object mdmsData) {
         IncidentRequest incidentRequest = wrapper.getIncidentRequest();
-        Priority priority = slaService.getPriorityFromMDMS(incidentRequest, mdmsData);
+        Priority priority = slaService.getPriorityFromIMPriorityTable(incidentRequest.getIncident());
         ProcessInstance processInstance = getProcessInstanceForIM(incidentRequest, priority);
         log.info("Updating workflow status for incident: {}, tenant: {}",
                 incidentRequest.getIncident().getIncidentId(), incidentRequest.getIncident().getTenantId());

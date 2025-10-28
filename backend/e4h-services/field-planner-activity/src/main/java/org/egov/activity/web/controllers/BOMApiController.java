@@ -19,7 +19,9 @@ import org.springframework.stereotype.Controller;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 
 @Controller
@@ -90,5 +92,18 @@ public class BOMApiController {
         headers.setContentLength(pdfBytes.length);
 
         return new ResponseEntity<>(pdfBytes, headers, HttpStatus.OK);
+    }
+
+    @RequestMapping(value = "/_save_pdf", method = RequestMethod.POST)
+    public ResponseEntity<Map<String, String>> createAndSavePDF(
+            @ApiParam(value = "Generate pdf file for BOM", required = true) @Valid @RequestBody GenerateBOMPdfRequest request,
+            @NotNull @ApiParam(value = "Unique id for a tenant.", required = true) @Valid @RequestParam(value = "tenantId", required = true) String tenantId
+    ) {
+        String filestoreId = bomService.generateAndSaveBOMPdfToFilestore(request, tenantId);
+
+        Map<String, String> response = new HashMap<>();
+        response.put("filestoreId", filestoreId);
+
+        return new ResponseEntity<>(response, HttpStatus.OK);
     }
 }
