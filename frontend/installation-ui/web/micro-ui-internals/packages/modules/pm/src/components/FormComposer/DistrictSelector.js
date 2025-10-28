@@ -55,6 +55,7 @@ const DistrictSelector = ({
       <MultiSelectDropdown
         options={districtMenu}
         optionsKey={"name"}
+        isSearchable={true}
         onSelect={() => {
           // Triggering state update here causes render issues since dropdown within is remains open
         }}

@@ -36,6 +36,7 @@ const ActivitySelector = ({
     <div className={"employee-select-wrap"}>
       <MultiSelectDropdown
         options={activityMenu}
+        isSearchable={true}
         optionsKey={"name"}
         onSelect={() => {
           // Triggering state update here causes render issues since dropdown within is remains open
