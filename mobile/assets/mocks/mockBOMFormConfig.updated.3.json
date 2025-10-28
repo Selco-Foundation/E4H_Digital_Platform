@@ -32448,8 +32448,7 @@
                     "value": true,
                     "message": "Make is required"
                   }
-                ],
-                "section": "Module Mounting structure (MMS)"
+                ]
               },
               {
                 "type": "string",
