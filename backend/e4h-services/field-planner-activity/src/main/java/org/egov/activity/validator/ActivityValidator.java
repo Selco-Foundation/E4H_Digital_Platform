@@ -707,8 +707,7 @@ public class ActivityValidator {
         return null;
     }
 
-    public Employee getUserById(ActivityFacilitySearchRequest request, ActivityFacility activityFacility) {
-        String userId = activityFacility.getAssignedUser();
+    public Employee getUserById(Object request, String userId) {
 
         String url = config.getHrmsHost() + config.getHrmsSearchUrl()+ "?tenantId=in&uuids="+userId;
         Object response = serviceRequest.fetchResult(new StringBuilder(url), request);
