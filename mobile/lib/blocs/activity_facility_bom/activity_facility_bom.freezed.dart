@@ -3,7 +3,7 @@
 // ignore_for_file: type=lint
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
-part of 'project_bom.dart';
+part of 'activity_facility_bom.dart';
 
 // **************************************************************************
 // FreezedGenerator
@@ -15,32 +15,44 @@ final _privateConstructorUsedError = UnsupportedError(
     'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models');
 
 /// @nodoc
-mixin _$ProjectBomEvent {
-  String get projectId => throw _privateConstructorUsedError;
+mixin _$ActivityFacilityBomEvent {
+  String get activityFacilityId => throw _privateConstructorUsedError;
   String get userType => throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(String projectId, String userType) syncIfNeeded,
-    required TResult Function(String projectId, String userType) forceSync,
-    required TResult Function(String projectId, String userType,
+    required TResult Function(
+            String activityFacilityId, String facilityId, String userType)
+        syncIfNeeded,
+    required TResult Function(
+            String activityFacilityId, String facilityId, String userType)
+        forceSync,
+    required TResult Function(String activityFacilityId, String userType,
             List<Document> workflowDocuments, String docType)
         downloadWorkflowDocument,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(String projectId, String userType)? syncIfNeeded,
-    TResult? Function(String projectId, String userType)? forceSync,
-    TResult? Function(String projectId, String userType,
+    TResult? Function(
+            String activityFacilityId, String facilityId, String userType)?
+        syncIfNeeded,
+    TResult? Function(
+            String activityFacilityId, String facilityId, String userType)?
+        forceSync,
+    TResult? Function(String activityFacilityId, String userType,
             List<Document> workflowDocuments, String docType)?
         downloadWorkflowDocument,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(String projectId, String userType)? syncIfNeeded,
-    TResult Function(String projectId, String userType)? forceSync,
-    TResult Function(String projectId, String userType,
+    TResult Function(
+            String activityFacilityId, String facilityId, String userType)?
+        syncIfNeeded,
+    TResult Function(
+            String activityFacilityId, String facilityId, String userType)?
+        forceSync,
+    TResult Function(String activityFacilityId, String userType,
             List<Document> workflowDocuments, String docType)?
         downloadWorkflowDocument,
     required TResult orElse(),
@@ -72,23 +84,24 @@ mixin _$ProjectBomEvent {
       throw _privateConstructorUsedError;
 
   @JsonKey(ignore: true)
-  $ProjectBomEventCopyWith<ProjectBomEvent> get copyWith =>
+  $ActivityFacilityBomEventCopyWith<ActivityFacilityBomEvent> get copyWith =>
       throw _privateConstructorUsedError;
 }
 
 /// @nodoc
-abstract class $ProjectBomEventCopyWith<$Res> {
-  factory $ProjectBomEventCopyWith(
-          ProjectBomEvent value, $Res Function(ProjectBomEvent) then) =
-      _$ProjectBomEventCopyWithImpl<$Res, ProjectBomEvent>;
+abstract class $ActivityFacilityBomEventCopyWith<$Res> {
+  factory $ActivityFacilityBomEventCopyWith(ActivityFacilityBomEvent value,
+          $Res Function(ActivityFacilityBomEvent) then) =
+      _$ActivityFacilityBomEventCopyWithImpl<$Res, ActivityFacilityBomEvent>;
   @useResult
-  $Res call({String projectId, String userType});
+  $Res call({String activityFacilityId, String userType});
 }
 
 /// @nodoc
-class _$ProjectBomEventCopyWithImpl<$Res, $Val extends ProjectBomEvent>
-    implements $ProjectBomEventCopyWith<$Res> {
-  _$ProjectBomEventCopyWithImpl(this._value, this._then);
+class _$ActivityFacilityBomEventCopyWithImpl<$Res,
+        $Val extends ActivityFacilityBomEvent>
+    implements $ActivityFacilityBomEventCopyWith<$Res> {
+  _$ActivityFacilityBomEventCopyWithImpl(this._value, this._then);
 
   // ignore: unused_field
   final $Val _value;
@@ -98,13 +111,13 @@ class _$ProjectBomEventCopyWithImpl<$Res, $Val extends ProjectBomEvent>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? projectId = null,
+    Object? activityFacilityId = null,
     Object? userType = null,
   }) {
     return _then(_value.copyWith(
-      projectId: null == projectId
-          ? _value.projectId
-          : projectId // ignore: cast_nullable_to_non_nullable
+      activityFacilityId: null == activityFacilityId
+          ? _value.activityFacilityId
+          : activityFacilityId // ignore: cast_nullable_to_non_nullable
               as String,
       userType: null == userType
           ? _value.userType
@@ -116,18 +129,18 @@ class _$ProjectBomEventCopyWithImpl<$Res, $Val extends ProjectBomEvent>
 
 /// @nodoc
 abstract class _$$SyncIfNeededImplCopyWith<$Res>
-    implements $ProjectBomEventCopyWith<$Res> {
+    implements $ActivityFacilityBomEventCopyWith<$Res> {
   factory _$$SyncIfNeededImplCopyWith(
           _$SyncIfNeededImpl value, $Res Function(_$SyncIfNeededImpl) then) =
       __$$SyncIfNeededImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({String projectId, String userType});
+  $Res call({String activityFacilityId, String facilityId, String userType});
 }
 
 /// @nodoc
 class __$$SyncIfNeededImplCopyWithImpl<$Res>
-    extends _$ProjectBomEventCopyWithImpl<$Res, _$SyncIfNeededImpl>
+    extends _$ActivityFacilityBomEventCopyWithImpl<$Res, _$SyncIfNeededImpl>
     implements _$$SyncIfNeededImplCopyWith<$Res> {
   __$$SyncIfNeededImplCopyWithImpl(
       _$SyncIfNeededImpl _value, $Res Function(_$SyncIfNeededImpl) _then)
@@ -136,13 +149,18 @@ class __$$SyncIfNeededImplCopyWithImpl<$Res>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? projectId = null,
+    Object? activityFacilityId = null,
+    Object? facilityId = null,
     Object? userType = null,
   }) {
     return _then(_$SyncIfNeededImpl(
-      projectId: null == projectId
-          ? _value.projectId
-          : projectId // ignore: cast_nullable_to_non_nullable
+      activityFacilityId: null == activityFacilityId
+          ? _value.activityFacilityId
+          : activityFacilityId // ignore: cast_nullable_to_non_nullable
+              as String,
+      facilityId: null == facilityId
+          ? _value.facilityId
+          : facilityId // ignore: cast_nullable_to_non_nullable
               as String,
       userType: null == userType
           ? _value.userType
@@ -155,16 +173,21 @@ class __$$SyncIfNeededImplCopyWithImpl<$Res>
 /// @nodoc
 
 class _$SyncIfNeededImpl implements _SyncIfNeeded {
-  const _$SyncIfNeededImpl({required this.projectId, required this.userType});
+  const _$SyncIfNeededImpl(
+      {required this.activityFacilityId,
+      required this.facilityId,
+      required this.userType});
 
   @override
-  final String projectId;
+  final String activityFacilityId;
+  @override
+  final String facilityId;
   @override
   final String userType;
 
   @override
   String toString() {
-    return 'ProjectBomEvent.syncIfNeeded(projectId: $projectId, userType: $userType)';
+    return 'ActivityFacilityBomEvent.syncIfNeeded(activityFacilityId: $activityFacilityId, facilityId: $facilityId, userType: $userType)';
   }
 
   @override
@@ -172,14 +195,17 @@ class _$SyncIfNeededImpl implements _SyncIfNeeded {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _$SyncIfNeededImpl &&
-            (identical(other.projectId, projectId) ||
-                other.projectId == projectId) &&
+            (identical(other.activityFacilityId, activityFacilityId) ||
+                other.activityFacilityId == activityFacilityId) &&
+            (identical(other.facilityId, facilityId) ||
+                other.facilityId == facilityId) &&
             (identical(other.userType, userType) ||
                 other.userType == userType));
   }
 
   @override
-  int get hashCode => Object.hash(runtimeType, projectId, userType);
+  int get hashCode =>
+      Object.hash(runtimeType, activityFacilityId, facilityId, userType);
 
   @JsonKey(ignore: true)
   @override
@@ -190,39 +216,51 @@ class _$SyncIfNeededImpl implements _SyncIfNeeded {
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(String projectId, String userType) syncIfNeeded,
-    required TResult Function(String projectId, String userType) forceSync,
-    required TResult Function(String projectId, String userType,
+    required TResult Function(
+            String activityFacilityId, String facilityId, String userType)
+        syncIfNeeded,
+    required TResult Function(
+            String activityFacilityId, String facilityId, String userType)
+        forceSync,
+    required TResult Function(String activityFacilityId, String userType,
             List<Document> workflowDocuments, String docType)
         downloadWorkflowDocument,
   }) {
-    return syncIfNeeded(projectId, userType);
+    return syncIfNeeded(activityFacilityId, facilityId, userType);
   }
 
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(String projectId, String userType)? syncIfNeeded,
-    TResult? Function(String projectId, String userType)? forceSync,
-    TResult? Function(String projectId, String userType,
+    TResult? Function(
+            String activityFacilityId, String facilityId, String userType)?
+        syncIfNeeded,
+    TResult? Function(
+            String activityFacilityId, String facilityId, String userType)?
+        forceSync,
+    TResult? Function(String activityFacilityId, String userType,
             List<Document> workflowDocuments, String docType)?
         downloadWorkflowDocument,
   }) {
-    return syncIfNeeded?.call(projectId, userType);
+    return syncIfNeeded?.call(activityFacilityId, facilityId, userType);
   }
 
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(String projectId, String userType)? syncIfNeeded,
-    TResult Function(String projectId, String userType)? forceSync,
-    TResult Function(String projectId, String userType,
+    TResult Function(
+            String activityFacilityId, String facilityId, String userType)?
+        syncIfNeeded,
+    TResult Function(
+            String activityFacilityId, String facilityId, String userType)?
+        forceSync,
+    TResult Function(String activityFacilityId, String userType,
             List<Document> workflowDocuments, String docType)?
         downloadWorkflowDocument,
     required TResult orElse(),
   }) {
     if (syncIfNeeded != null) {
-      return syncIfNeeded(projectId, userType);
+      return syncIfNeeded(activityFacilityId, facilityId, userType);
     }
     return orElse();
   }
@@ -264,13 +302,15 @@ class _$SyncIfNeededImpl implements _SyncIfNeeded {
   }
 }
 
-abstract class _SyncIfNeeded implements ProjectBomEvent {
+abstract class _SyncIfNeeded implements ActivityFacilityBomEvent {
   const factory _SyncIfNeeded(
-      {required final String projectId,
+      {required final String activityFacilityId,
+      required final String facilityId,
       required final String userType}) = _$SyncIfNeededImpl;
 
   @override
-  String get projectId;
+  String get activityFacilityId;
+  String get facilityId;
   @override
   String get userType;
   @override
@@ -281,18 +321,18 @@ abstract class _SyncIfNeeded implements ProjectBomEvent {
 
 /// @nodoc
 abstract class _$$ForceSyncImplCopyWith<$Res>
-    implements $ProjectBomEventCopyWith<$Res> {
+    implements $ActivityFacilityBomEventCopyWith<$Res> {
   factory _$$ForceSyncImplCopyWith(
           _$ForceSyncImpl value, $Res Function(_$ForceSyncImpl) then) =
       __$$ForceSyncImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({String projectId, String userType});
+  $Res call({String activityFacilityId, String facilityId, String userType});
 }
 
 /// @nodoc
 class __$$ForceSyncImplCopyWithImpl<$Res>
-    extends _$ProjectBomEventCopyWithImpl<$Res, _$ForceSyncImpl>
+    extends _$ActivityFacilityBomEventCopyWithImpl<$Res, _$ForceSyncImpl>
     implements _$$ForceSyncImplCopyWith<$Res> {
   __$$ForceSyncImplCopyWithImpl(
       _$ForceSyncImpl _value, $Res Function(_$ForceSyncImpl) _then)
@@ -301,13 +341,18 @@ class __$$ForceSyncImplCopyWithImpl<$Res>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? projectId = null,
+    Object? activityFacilityId = null,
+    Object? facilityId = null,
     Object? userType = null,
   }) {
     return _then(_$ForceSyncImpl(
-      projectId: null == projectId
-          ? _value.projectId
-          : projectId // ignore: cast_nullable_to_non_nullable
+      activityFacilityId: null == activityFacilityId
+          ? _value.activityFacilityId
+          : activityFacilityId // ignore: cast_nullable_to_non_nullable
+              as String,
+      facilityId: null == facilityId
+          ? _value.facilityId
+          : facilityId // ignore: cast_nullable_to_non_nullable
               as String,
       userType: null == userType
           ? _value.userType
@@ -320,16 +365,21 @@ class __$$ForceSyncImplCopyWithImpl<$Res>
 /// @nodoc
 
 class _$ForceSyncImpl implements _ForceSync {
-  const _$ForceSyncImpl({required this.projectId, required this.userType});
+  const _$ForceSyncImpl(
+      {required this.activityFacilityId,
+      required this.facilityId,
+      required this.userType});
 
   @override
-  final String projectId;
+  final String activityFacilityId;
+  @override
+  final String facilityId;
   @override
   final String userType;
 
   @override
   String toString() {
-    return 'ProjectBomEvent.forceSync(projectId: $projectId, userType: $userType)';
+    return 'ActivityFacilityBomEvent.forceSync(activityFacilityId: $activityFacilityId, facilityId: $facilityId, userType: $userType)';
   }
 
   @override
@@ -337,14 +387,17 @@ class _$ForceSyncImpl implements _ForceSync {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _$ForceSyncImpl &&
-            (identical(other.projectId, projectId) ||
-                other.projectId == projectId) &&
+            (identical(other.activityFacilityId, activityFacilityId) ||
+                other.activityFacilityId == activityFacilityId) &&
+            (identical(other.facilityId, facilityId) ||
+                other.facilityId == facilityId) &&
             (identical(other.userType, userType) ||
                 other.userType == userType));
   }
 
   @override
-  int get hashCode => Object.hash(runtimeType, projectId, userType);
+  int get hashCode =>
+      Object.hash(runtimeType, activityFacilityId, facilityId, userType);
 
   @JsonKey(ignore: true)
   @override
@@ -355,39 +408,51 @@ class _$ForceSyncImpl implements _ForceSync {
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(String projectId, String userType) syncIfNeeded,
-    required TResult Function(String projectId, String userType) forceSync,
-    required TResult Function(String projectId, String userType,
+    required TResult Function(
+            String activityFacilityId, String facilityId, String userType)
+        syncIfNeeded,
+    required TResult Function(
+            String activityFacilityId, String facilityId, String userType)
+        forceSync,
+    required TResult Function(String activityFacilityId, String userType,
             List<Document> workflowDocuments, String docType)
         downloadWorkflowDocument,
   }) {
-    return forceSync(projectId, userType);
+    return forceSync(activityFacilityId, facilityId, userType);
   }
 
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(String projectId, String userType)? syncIfNeeded,
-    TResult? Function(String projectId, String userType)? forceSync,
-    TResult? Function(String projectId, String userType,
+    TResult? Function(
+            String activityFacilityId, String facilityId, String userType)?
+        syncIfNeeded,
+    TResult? Function(
+            String activityFacilityId, String facilityId, String userType)?
+        forceSync,
+    TResult? Function(String activityFacilityId, String userType,
             List<Document> workflowDocuments, String docType)?
         downloadWorkflowDocument,
   }) {
-    return forceSync?.call(projectId, userType);
+    return forceSync?.call(activityFacilityId, facilityId, userType);
   }
 
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(String projectId, String userType)? syncIfNeeded,
-    TResult Function(String projectId, String userType)? forceSync,
-    TResult Function(String projectId, String userType,
+    TResult Function(
+            String activityFacilityId, String facilityId, String userType)?
+        syncIfNeeded,
+    TResult Function(
+            String activityFacilityId, String facilityId, String userType)?
+        forceSync,
+    TResult Function(String activityFacilityId, String userType,
             List<Document> workflowDocuments, String docType)?
         downloadWorkflowDocument,
     required TResult orElse(),
   }) {
     if (forceSync != null) {
-      return forceSync(projectId, userType);
+      return forceSync(activityFacilityId, facilityId, userType);
     }
     return orElse();
   }
@@ -429,13 +494,15 @@ class _$ForceSyncImpl implements _ForceSync {
   }
 }
 
-abstract class _ForceSync implements ProjectBomEvent {
+abstract class _ForceSync implements ActivityFacilityBomEvent {
   const factory _ForceSync(
-      {required final String projectId,
+      {required final String activityFacilityId,
+      required final String facilityId,
       required final String userType}) = _$ForceSyncImpl;
 
   @override
-  String get projectId;
+  String get activityFacilityId;
+  String get facilityId;
   @override
   String get userType;
   @override
@@ -446,7 +513,7 @@ abstract class _ForceSync implements ProjectBomEvent {
 
 /// @nodoc
 abstract class _$$DownloadWorkflowDocumentImplCopyWith<$Res>
-    implements $ProjectBomEventCopyWith<$Res> {
+    implements $ActivityFacilityBomEventCopyWith<$Res> {
   factory _$$DownloadWorkflowDocumentImplCopyWith(
           _$DownloadWorkflowDocumentImpl value,
           $Res Function(_$DownloadWorkflowDocumentImpl) then) =
@@ -454,7 +521,7 @@ abstract class _$$DownloadWorkflowDocumentImplCopyWith<$Res>
   @override
   @useResult
   $Res call(
-      {String projectId,
+      {String activityFacilityId,
       String userType,
       List<Document> workflowDocuments,
       String docType});
@@ -462,7 +529,8 @@ abstract class _$$DownloadWorkflowDocumentImplCopyWith<$Res>
 
 /// @nodoc
 class __$$DownloadWorkflowDocumentImplCopyWithImpl<$Res>
-    extends _$ProjectBomEventCopyWithImpl<$Res, _$DownloadWorkflowDocumentImpl>
+    extends _$ActivityFacilityBomEventCopyWithImpl<$Res,
+        _$DownloadWorkflowDocumentImpl>
     implements _$$DownloadWorkflowDocumentImplCopyWith<$Res> {
   __$$DownloadWorkflowDocumentImplCopyWithImpl(
       _$DownloadWorkflowDocumentImpl _value,
@@ -472,15 +540,15 @@ class __$$DownloadWorkflowDocumentImplCopyWithImpl<$Res>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? projectId = null,
+    Object? activityFacilityId = null,
     Object? userType = null,
     Object? workflowDocuments = null,
     Object? docType = null,
   }) {
     return _then(_$DownloadWorkflowDocumentImpl(
-      projectId: null == projectId
-          ? _value.projectId
-          : projectId // ignore: cast_nullable_to_non_nullable
+      activityFacilityId: null == activityFacilityId
+          ? _value.activityFacilityId
+          : activityFacilityId // ignore: cast_nullable_to_non_nullable
               as String,
       userType: null == userType
           ? _value.userType
@@ -502,14 +570,14 @@ class __$$DownloadWorkflowDocumentImplCopyWithImpl<$Res>
 
 class _$DownloadWorkflowDocumentImpl implements _DownloadWorkflowDocument {
   const _$DownloadWorkflowDocumentImpl(
-      {required this.projectId,
+      {required this.activityFacilityId,
       required this.userType,
       required final List<Document> workflowDocuments,
       required this.docType})
       : _workflowDocuments = workflowDocuments;
 
   @override
-  final String projectId;
+  final String activityFacilityId;
   @override
   final String userType;
   final List<Document> _workflowDocuments;
@@ -526,7 +594,7 @@ class _$DownloadWorkflowDocumentImpl implements _DownloadWorkflowDocument {
 
   @override
   String toString() {
-    return 'ProjectBomEvent.downloadWorkflowDocument(projectId: $projectId, userType: $userType, workflowDocuments: $workflowDocuments, docType: $docType)';
+    return 'ActivityFacilityBomEvent.downloadWorkflowDocument(activityFacilityId: $activityFacilityId, userType: $userType, workflowDocuments: $workflowDocuments, docType: $docType)';
   }
 
   @override
@@ -534,8 +602,8 @@ class _$DownloadWorkflowDocumentImpl implements _DownloadWorkflowDocument {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _$DownloadWorkflowDocumentImpl &&
-            (identical(other.projectId, projectId) ||
-                other.projectId == projectId) &&
+            (identical(other.activityFacilityId, activityFacilityId) ||
+                other.activityFacilityId == activityFacilityId) &&
             (identical(other.userType, userType) ||
                 other.userType == userType) &&
             const DeepCollectionEquality()
@@ -544,7 +612,7 @@ class _$DownloadWorkflowDocumentImpl implements _DownloadWorkflowDocument {
   }
 
   @override
-  int get hashCode => Object.hash(runtimeType, projectId, userType,
+  int get hashCode => Object.hash(runtimeType, activityFacilityId, userType,
       const DeepCollectionEquality().hash(_workflowDocuments), docType);
 
   @JsonKey(ignore: true)
@@ -557,42 +625,54 @@ class _$DownloadWorkflowDocumentImpl implements _DownloadWorkflowDocument {
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(String projectId, String userType) syncIfNeeded,
-    required TResult Function(String projectId, String userType) forceSync,
-    required TResult Function(String projectId, String userType,
+    required TResult Function(
+            String activityFacilityId, String facilityId, String userType)
+        syncIfNeeded,
+    required TResult Function(
+            String activityFacilityId, String facilityId, String userType)
+        forceSync,
+    required TResult Function(String activityFacilityId, String userType,
             List<Document> workflowDocuments, String docType)
         downloadWorkflowDocument,
   }) {
     return downloadWorkflowDocument(
-        projectId, userType, workflowDocuments, docType);
+        activityFacilityId, userType, workflowDocuments, docType);
   }
 
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(String projectId, String userType)? syncIfNeeded,
-    TResult? Function(String projectId, String userType)? forceSync,
-    TResult? Function(String projectId, String userType,
+    TResult? Function(
+            String activityFacilityId, String facilityId, String userType)?
+        syncIfNeeded,
+    TResult? Function(
+            String activityFacilityId, String facilityId, String userType)?
+        forceSync,
+    TResult? Function(String activityFacilityId, String userType,
             List<Document> workflowDocuments, String docType)?
         downloadWorkflowDocument,
   }) {
     return downloadWorkflowDocument?.call(
-        projectId, userType, workflowDocuments, docType);
+        activityFacilityId, userType, workflowDocuments, docType);
   }
 
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(String projectId, String userType)? syncIfNeeded,
-    TResult Function(String projectId, String userType)? forceSync,
-    TResult Function(String projectId, String userType,
+    TResult Function(
+            String activityFacilityId, String facilityId, String userType)?
+        syncIfNeeded,
+    TResult Function(
+            String activityFacilityId, String facilityId, String userType)?
+        forceSync,
+    TResult Function(String activityFacilityId, String userType,
             List<Document> workflowDocuments, String docType)?
         downloadWorkflowDocument,
     required TResult orElse(),
   }) {
     if (downloadWorkflowDocument != null) {
       return downloadWorkflowDocument(
-          projectId, userType, workflowDocuments, docType);
+          activityFacilityId, userType, workflowDocuments, docType);
     }
     return orElse();
   }
@@ -634,15 +714,15 @@ class _$DownloadWorkflowDocumentImpl implements _DownloadWorkflowDocument {
   }
 }
 
-abstract class _DownloadWorkflowDocument implements ProjectBomEvent {
+abstract class _DownloadWorkflowDocument implements ActivityFacilityBomEvent {
   const factory _DownloadWorkflowDocument(
-      {required final String projectId,
+      {required final String activityFacilityId,
       required final String userType,
       required final List<Document> workflowDocuments,
       required final String docType}) = _$DownloadWorkflowDocumentImpl;
 
   @override
-  String get projectId;
+  String get activityFacilityId;
   @override
   String get userType;
   List<Document> get workflowDocuments;
@@ -654,7 +734,7 @@ abstract class _DownloadWorkflowDocument implements ProjectBomEvent {
 }
 
 /// @nodoc
-mixin _$ProjectBomState {
+mixin _$ActivityFacilityBomState {
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
@@ -729,16 +809,17 @@ mixin _$ProjectBomState {
 }
 
 /// @nodoc
-abstract class $ProjectBomStateCopyWith<$Res> {
-  factory $ProjectBomStateCopyWith(
-          ProjectBomState value, $Res Function(ProjectBomState) then) =
-      _$ProjectBomStateCopyWithImpl<$Res, ProjectBomState>;
+abstract class $ActivityFacilityBomStateCopyWith<$Res> {
+  factory $ActivityFacilityBomStateCopyWith(ActivityFacilityBomState value,
+          $Res Function(ActivityFacilityBomState) then) =
+      _$ActivityFacilityBomStateCopyWithImpl<$Res, ActivityFacilityBomState>;
 }
 
 /// @nodoc
-class _$ProjectBomStateCopyWithImpl<$Res, $Val extends ProjectBomState>
-    implements $ProjectBomStateCopyWith<$Res> {
-  _$ProjectBomStateCopyWithImpl(this._value, this._then);
+class _$ActivityFacilityBomStateCopyWithImpl<$Res,
+        $Val extends ActivityFacilityBomState>
+    implements $ActivityFacilityBomStateCopyWith<$Res> {
+  _$ActivityFacilityBomStateCopyWithImpl(this._value, this._then);
 
   // ignore: unused_field
   final $Val _value;
@@ -755,7 +836,7 @@ abstract class _$$InitialImplCopyWith<$Res> {
 
 /// @nodoc
 class __$$InitialImplCopyWithImpl<$Res>
-    extends _$ProjectBomStateCopyWithImpl<$Res, _$InitialImpl>
+    extends _$ActivityFacilityBomStateCopyWithImpl<$Res, _$InitialImpl>
     implements _$$InitialImplCopyWith<$Res> {
   __$$InitialImplCopyWithImpl(
       _$InitialImpl _value, $Res Function(_$InitialImpl) _then)
@@ -769,7 +850,7 @@ class _$InitialImpl implements _Initial {
 
   @override
   String toString() {
-    return 'ProjectBomState.initial()';
+    return 'ActivityFacilityBomState.initial()';
   }
 
   @override
@@ -877,7 +958,7 @@ class _$InitialImpl implements _Initial {
   }
 }
 
-abstract class _Initial implements ProjectBomState {
+abstract class _Initial implements ActivityFacilityBomState {
   const factory _Initial() = _$InitialImpl;
 }
 
@@ -890,7 +971,7 @@ abstract class _$$LoadingImplCopyWith<$Res> {
 
 /// @nodoc
 class __$$LoadingImplCopyWithImpl<$Res>
-    extends _$ProjectBomStateCopyWithImpl<$Res, _$LoadingImpl>
+    extends _$ActivityFacilityBomStateCopyWithImpl<$Res, _$LoadingImpl>
     implements _$$LoadingImplCopyWith<$Res> {
   __$$LoadingImplCopyWithImpl(
       _$LoadingImpl _value, $Res Function(_$LoadingImpl) _then)
@@ -904,7 +985,7 @@ class _$LoadingImpl implements _Loading {
 
   @override
   String toString() {
-    return 'ProjectBomState.loading()';
+    return 'ActivityFacilityBomState.loading()';
   }
 
   @override
@@ -1012,7 +1093,7 @@ class _$LoadingImpl implements _Loading {
   }
 }
 
-abstract class _Loading implements ProjectBomState {
+abstract class _Loading implements ActivityFacilityBomState {
   const factory _Loading() = _$LoadingImpl;
 }
 
@@ -1027,7 +1108,7 @@ abstract class _$$SuccessImplCopyWith<$Res> {
 
 /// @nodoc
 class __$$SuccessImplCopyWithImpl<$Res>
-    extends _$ProjectBomStateCopyWithImpl<$Res, _$SuccessImpl>
+    extends _$ActivityFacilityBomStateCopyWithImpl<$Res, _$SuccessImpl>
     implements _$$SuccessImplCopyWith<$Res> {
   __$$SuccessImplCopyWithImpl(
       _$SuccessImpl _value, $Res Function(_$SuccessImpl) _then)
@@ -1057,7 +1138,7 @@ class _$SuccessImpl implements _Success {
 
   @override
   String toString() {
-    return 'ProjectBomState.success(savedBomValues: $savedBomValues)';
+    return 'ActivityFacilityBomState.success(savedBomValues: $savedBomValues)';
   }
 
   @override
@@ -1174,7 +1255,7 @@ class _$SuccessImpl implements _Success {
   }
 }
 
-abstract class _Success implements ProjectBomState {
+abstract class _Success implements ActivityFacilityBomState {
   const factory _Success({required final bool savedBomValues}) = _$SuccessImpl;
 
   bool get savedBomValues;
@@ -1194,7 +1275,7 @@ abstract class _$$FailureImplCopyWith<$Res> {
 
 /// @nodoc
 class __$$FailureImplCopyWithImpl<$Res>
-    extends _$ProjectBomStateCopyWithImpl<$Res, _$FailureImpl>
+    extends _$ActivityFacilityBomStateCopyWithImpl<$Res, _$FailureImpl>
     implements _$$FailureImplCopyWith<$Res> {
   __$$FailureImplCopyWithImpl(
       _$FailureImpl _value, $Res Function(_$FailureImpl) _then)
@@ -1224,7 +1305,7 @@ class _$FailureImpl implements _Failure {
 
   @override
   String toString() {
-    return 'ProjectBomState.failure(message: $message)';
+    return 'ActivityFacilityBomState.failure(message: $message)';
   }
 
   @override
@@ -1340,7 +1421,7 @@ class _$FailureImpl implements _Failure {
   }
 }
 
-abstract class _Failure implements ProjectBomState {
+abstract class _Failure implements ActivityFacilityBomState {
   const factory _Failure(final String message) = _$FailureImpl;
 
   String get message;
@@ -1359,7 +1440,8 @@ abstract class _$$DocDownloadInProgressImplCopyWith<$Res> {
 
 /// @nodoc
 class __$$DocDownloadInProgressImplCopyWithImpl<$Res>
-    extends _$ProjectBomStateCopyWithImpl<$Res, _$DocDownloadInProgressImpl>
+    extends _$ActivityFacilityBomStateCopyWithImpl<$Res,
+        _$DocDownloadInProgressImpl>
     implements _$$DocDownloadInProgressImplCopyWith<$Res> {
   __$$DocDownloadInProgressImplCopyWithImpl(_$DocDownloadInProgressImpl _value,
       $Res Function(_$DocDownloadInProgressImpl) _then)
@@ -1373,7 +1455,7 @@ class _$DocDownloadInProgressImpl implements _DocDownloadInProgress {
 
   @override
   String toString() {
-    return 'ProjectBomState.documentDownloadInProgress()';
+    return 'ActivityFacilityBomState.documentDownloadInProgress()';
   }
 
   @override
@@ -1482,7 +1564,7 @@ class _$DocDownloadInProgressImpl implements _DocDownloadInProgress {
   }
 }
 
-abstract class _DocDownloadInProgress implements ProjectBomState {
+abstract class _DocDownloadInProgress implements ActivityFacilityBomState {
   const factory _DocDownloadInProgress() = _$DocDownloadInProgressImpl;
 }
 
@@ -1497,7 +1579,8 @@ abstract class _$$DocDownloadSuccessImplCopyWith<$Res> {
 
 /// @nodoc
 class __$$DocDownloadSuccessImplCopyWithImpl<$Res>
-    extends _$ProjectBomStateCopyWithImpl<$Res, _$DocDownloadSuccessImpl>
+    extends _$ActivityFacilityBomStateCopyWithImpl<$Res,
+        _$DocDownloadSuccessImpl>
     implements _$$DocDownloadSuccessImplCopyWith<$Res> {
   __$$DocDownloadSuccessImplCopyWithImpl(_$DocDownloadSuccessImpl _value,
       $Res Function(_$DocDownloadSuccessImpl) _then)
@@ -1527,7 +1610,7 @@ class _$DocDownloadSuccessImpl implements _DocDownloadSuccess {
 
   @override
   String toString() {
-    return 'ProjectBomState.documentDownloadSuccess(file: $file)';
+    return 'ActivityFacilityBomState.documentDownloadSuccess(file: $file)';
   }
 
   @override
@@ -1644,7 +1727,7 @@ class _$DocDownloadSuccessImpl implements _DocDownloadSuccess {
   }
 }
 
-abstract class _DocDownloadSuccess implements ProjectBomState {
+abstract class _DocDownloadSuccess implements ActivityFacilityBomState {
   const factory _DocDownloadSuccess(final File file) = _$DocDownloadSuccessImpl;
 
   File get file;
@@ -1664,7 +1747,8 @@ abstract class _$$DocDownloadFailureImplCopyWith<$Res> {
 
 /// @nodoc
 class __$$DocDownloadFailureImplCopyWithImpl<$Res>
-    extends _$ProjectBomStateCopyWithImpl<$Res, _$DocDownloadFailureImpl>
+    extends _$ActivityFacilityBomStateCopyWithImpl<$Res,
+        _$DocDownloadFailureImpl>
     implements _$$DocDownloadFailureImplCopyWith<$Res> {
   __$$DocDownloadFailureImplCopyWithImpl(_$DocDownloadFailureImpl _value,
       $Res Function(_$DocDownloadFailureImpl) _then)
@@ -1694,7 +1778,7 @@ class _$DocDownloadFailureImpl implements _DocDownloadFailure {
 
   @override
   String toString() {
-    return 'ProjectBomState.documentDownloadFailure(error: $error)';
+    return 'ActivityFacilityBomState.documentDownloadFailure(error: $error)';
   }
 
   @override
@@ -1811,7 +1895,7 @@ class _$DocDownloadFailureImpl implements _DocDownloadFailure {
   }
 }
 
-abstract class _DocDownloadFailure implements ProjectBomState {
+abstract class _DocDownloadFailure implements ActivityFacilityBomState {
   const factory _DocDownloadFailure(final String error) =
       _$DocDownloadFailureImpl;
 

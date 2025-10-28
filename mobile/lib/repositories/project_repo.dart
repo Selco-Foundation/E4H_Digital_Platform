@@ -5,32 +5,32 @@ import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
 import 'package:isar/isar.dart';
 
+import '../data/nosql/cache_activity_facility_workflow.dart';
 import '../data/nosql/cache_add_new_asset.dart';
 import '../data/nosql/cache_completion_report.dart';
-import '../data/nosql/cache_prefilled_project.dart';
-import '../data/nosql/cache_project_workflow.dart';
-import '../data/nosql/cache_unsubmitted_project.dart';
+import '../data/nosql/cache_prefilled_activity_facility.dart';
+import '../data/nosql/cache_unsubmitted_activity_facility.dart';
 import '../data/remote_client.dart';
+import '../model/activity_facility/activity_facility.dart';
+import '../model/activity_facility_workflow/activity_facility_workflow.dart';
 import '../model/document/document.dart';
-import '../model/project_workflow/project_workflow.dart';
-import '../model/projects/project.dart';
 import '../utils/envConfig.dart';
 import '../utils/utils.dart';
 
-class ProjectRemoteRepository {
-  ProjectRemoteRepository();
+class ActivityFacilityRemoteRepository {
+  ActivityFacilityRemoteRepository();
 
   final dio = DioClient().dio;
 
-  FutureOr<List<ProjectWorkflow>> searchByWorkflow(
-      {required ProjectSearchModel body,
+  FutureOr<List<ActivityFacilityWorkflow>> searchByWorkflow(
+      {required ActivityFacilitySearchModel body,
       required List<String> workflowStatuses,
       int limit = 100,
       offset = 0,
       sortDirection = 'ASC'}) async {
     try {
       Response response;
-      String searchPath = "project/v2/_search";
+      String searchPath = "activity/v1/activities/_search";
 
       if (envConfig.variables.envType == EnvType.dev) {
         // return _loadLocalProjects();
@@ -47,32 +47,33 @@ class ProjectRemoteRepository {
           'sort_direction': sortDirection
         },
         data: {
-          'Project': body.toMap(),
-          'workflowStatus': workflowStatuses,
+          'ActivityFacility': body.toMap(),
+          'statuses': workflowStatuses,
         },
       );
 
-      final responseMap = response.data['Project'];
+      final responseMap = response.data['facility'];
 
-      List<ProjectWorkflow> projectsList = [];
-      for (final project in responseMap) {
-        projectsList.add(ProjectWorkflow.fromJson(project));
+      List<ActivityFacilityWorkflow> activityFacilityList = [];
+      for (final activityFacility in responseMap) {
+        activityFacilityList
+            .add(ActivityFacilityWorkflow.fromJson(activityFacility));
       }
-      return projectsList;
+      return activityFacilityList;
     } catch (err) {
       rethrow;
     }
   }
 
   FutureOr<int> searchByWorkflowCount({
-    required ProjectSearchModel body,
+    required ActivityFacilitySearchModel body,
     required List<String> workflowStatuses,
     int limit = 0,
     offset = 0,
   }) async {
     try {
       Response response;
-      String searchPath = "project/v2/_search";
+      String searchPath = "activity/v1/activities/_search";
 
       if (envConfig.variables.envType == EnvType.dev) {
         // return _loadLocalProjects();
@@ -88,8 +89,8 @@ class ProjectRemoteRepository {
           'includeAncestors': false
         },
         data: {
-          'Project': body.toMap(),
-          'workflowStatus': workflowStatuses,
+          'ActivityFacility': body.toMap(),
+          'statuses': workflowStatuses,
         },
       );
 
@@ -100,16 +101,16 @@ class ProjectRemoteRepository {
     }
   }
 
-  Future<void> updateProjectWorkflow({
-    required String projectId,
+  Future<void> updateActivityFacilityWorkflow({
+    required String activityFacilityId,
     required String action,
     // required Map<String, dynamic> additionalDetails,
     List<Document>? documents,
   }) async {
-    final url = 'project/v1/project/workflow/update';
+    final url = 'activity/v1/activities/workflow/update';
 
     final body = <String, dynamic>{
-      'projectId': projectId,
+      'activityFacilityId': activityFacilityId,
       'workflow': {
         'action': action,
         // 'additionalDetails': additionalDetails,
@@ -137,32 +138,33 @@ class ProjectRemoteRepository {
     }
   }
 
-  Future<List<ProjectWorkflow>> _loadLocalProjects() async {
+  Future<List<ActivityFacilityWorkflow>> _loadLocalActivityFacilityId() async {
     try {
       final jsonString = await rootBundle.loadString(
           'assets/mocks/mockRejectedProject.json'); // Testing rejected Facilities
       final jsonResponse = json.decode(jsonString);
-      final responseMap = jsonResponse['Project'];
+      final responseMap = jsonResponse['facility'];
 
-      List<ProjectWorkflow> projectsList = [];
-      for (final project in responseMap) {
-        projectsList.add(ProjectWorkflow.fromJson(project));
+      List<ActivityFacilityWorkflow> activityFacilityList = [];
+      for (final activityFacility in responseMap) {
+        activityFacilityList
+            .add(ActivityFacilityWorkflow.fromJson(activityFacility));
       }
 
-      return projectsList;
+      return activityFacilityList;
     } catch (e) {
       throw Exception('Failed to load mock projects: $e');
     }
   }
 }
 
-class ProjectRepository {
+class ActivityFacilityRepository {
   final Isar _isar;
-  final ProjectRemoteRepository _remote;
+  final ActivityFacilityRemoteRepository _remote;
 
-  ProjectRepository(this._isar) : _remote = ProjectRemoteRepository();
+  ActivityFacilityRepository(this._isar)
+      : _remote = ActivityFacilityRemoteRepository();
 
-// Map statuses to user types we care about for exclusion
   Set<String> _resolveUserTypes(List<String> statuses) {
     final up = statuses.map((s) => s.toUpperCase()).toSet();
     final types = <String>{};
@@ -171,35 +173,33 @@ class ProjectRepository {
     return types;
   }
 
-  // Load excluded IDs for this userTypes from cacheUnsubmittedProjects
   Future<Set<String>> _excludedIdsFor(Set<String> userTypes) async {
     if (userTypes.isEmpty) return <String>{};
 
-    final col = _isar.cacheUnsubmittedProjects;
+    final col = _isar.cacheUnsubmittedActivityFacilitys;
     final excluded = <String>{};
-
-    // If your collection is indexed for userId/userType, .where() + .filter() is fine.
-    // If your model field is named differently, adjust the equality checks below.
     for (final t in userTypes) {
       final matches = await col.where().filter().userTypeEqualTo(t).findAll();
 
-      excluded.addAll(matches.map((e) => e.projectId));
+      excluded.addAll(matches.map((e) => e.activityFacilityId));
     }
     return excluded;
   }
 
   // Convenience to apply the exclusion set to any list
-  List<ProjectWorkflow> _applyExclusion(
-    List<ProjectWorkflow> list,
+  List<ActivityFacilityWorkflow> _applyExclusion(
+    List<ActivityFacilityWorkflow> list,
     Set<String> excludedIds,
   ) {
     if (excludedIds.isEmpty) return list;
-    return list.where((wf) => !excludedIds.contains(wf.project.id)).toList();
+    return list
+        .where((wf) => !excludedIds.contains(wf.activityFacility.id))
+        .toList();
   }
 
   /// Remote-first fetch with cache fallback
-  Future<List<ProjectWorkflow>> fetchByWorkflow(
-      {required ProjectSearchModel body,
+  Future<List<ActivityFacilityWorkflow>> fetchByWorkflow(
+      {required ActivityFacilitySearchModel body,
       required List<String> workflowStatuses,
       sortDirection = 'ASC'}) async {
     final userTypes = _resolveUserTypes(workflowStatuses);
@@ -227,13 +227,11 @@ class ProjectRepository {
     return _applyExclusion(cachedList, excludedIds);
   }
 
-  /// 1) Delete all cached entries matching any given status
-  /// 2) Insert fresh entries
   Future<void> _replaceCache(
     List<String> statuses,
-    List<ProjectWorkflow> newList,
+    List<ActivityFacilityWorkflow> newList,
   ) async {
-    final col = _isar.cacheProjectWorkflows;
+    final col = _isar.cacheActivityFacilityWorkflows;
     await _isar.writeTxn(() async {
       // DELETE step
       for (final status in statuses) {
@@ -244,10 +242,10 @@ class ProjectRepository {
       }
       // INSERT fresh
       for (final wf in newList) {
-        await col.put(CacheProjectWorkflow(
-          projectId: wf.project.id,
+        await col.put(CacheActivityFacilityWorkflow(
+          activityFacilityId: wf.activityFacility.id,
           status: wf.status ?? '',
-          project: wf.project,
+          activityFacility: wf.activityFacility,
           transactions: wf.transactions,
           workflow: wf.workflow,
         ));
@@ -255,19 +253,18 @@ class ProjectRepository {
     });
   }
 
-  /// Read cache entries matching any of the statuses
-  Future<List<ProjectWorkflow>> readCache(
+  Future<List<ActivityFacilityWorkflow>> readCache(
     List<String> statuses,
   ) async {
-    final col = _isar.cacheProjectWorkflows;
-    final List<CacheProjectWorkflow> all = [];
+    final col = _isar.cacheActivityFacilityWorkflows;
+    final List<CacheActivityFacilityWorkflow> all = [];
     for (final status in statuses) {
       final matches = await col.where().statusEqualTo(status).findAll();
       all.addAll(matches);
     }
     return all
-        .map((c) => ProjectWorkflow(
-              project: c.project,
+        .map((c) => ActivityFacilityWorkflow(
+              activityFacility: c.activityFacility,
               status: c.status,
               transactions: c.transactions,
               workflow: c.workflow,
@@ -276,19 +273,19 @@ class ProjectRepository {
   }
 
   Future<String?> getSolutionDesignTypeFromCache(
-      Isar isar, String projectId) async {
-    print("projectId $projectId");
+      Isar isar, String activityFacilityId) async {
+    print("activityFacilityId $activityFacilityId");
 
-    final row = await isar.cacheProjectWorkflows
+    final row = await isar.cacheActivityFacilityWorkflows
         .where()
-        .projectIdEqualTo(projectId)
+        .activityFacilityIdEqualTo(activityFacilityId)
         .findFirst();
     print("got here -----");
     if (row == null) return null;
 
     try {
-      print("row.project. ${row.project}");
-      final sys = row.project.additionalDetails?.facility?.facilityDetails
+      print("row.activityFacilityId. ${row.activityFacility}");
+      final sys = row.activityFacility.facility?.facilityDetails
           ?.solar_solution_design_type
           ?.toString();
       print("sys $sys");
@@ -298,83 +295,73 @@ class ProjectRepository {
   }
 }
 
-class UnsubmittedProjectRepository {
+class UnsubmittedActivityFacilityRepository {
   final Isar _isar;
-  final ProjectRemoteRepository _remote;
+  final ActivityFacilityRemoteRepository _remote;
 
-  UnsubmittedProjectRepository(this._isar)
-      : _remote = ProjectRemoteRepository();
+  UnsubmittedActivityFacilityRepository(this._isar)
+      : _remote = ActivityFacilityRemoteRepository();
 
-  Future<List<ProjectWorkflow>> fetchByWorkflowIncludeCache({
+  Future<List<ActivityFacilityWorkflow>> fetchByWorkflowIncludeCache({
     required String userType,
     required List<String> workflowStatuses,
-    required ProjectSearchModel body,
+    required ActivityFacilitySearchModel body,
   }) async {
-    // 1) remote fetch
-    List<ProjectWorkflow> remoteList;
+    List<ActivityFacilityWorkflow> remoteList;
     try {
       remoteList = await _remote.searchByWorkflow(
         body: body,
         workflowStatuses: workflowStatuses,
       );
     } catch (_) {
-      remoteList = <ProjectWorkflow>[];
+      remoteList = <ActivityFacilityWorkflow>[];
     }
-
-    // 2) load local cache for this userType
-    final col = _isar.cacheUnsubmittedProjects;
+    final col = _isar.cacheUnsubmittedActivityFacilitys;
     final localEntries =
         await col.where().filter().userTypeEqualTo(userType).findAll();
-
-    // 3) convert to domain objects
     final localWorkflows = localEntries
-        .map((e) => ProjectWorkflow(project: e.project, status: e.status))
+        .map((e) => ActivityFacilityWorkflow(
+            activityFacility: e.activityFacility, status: e.status))
         .toList();
-
-    // 4) build a set of cached IDs for quick membership test
-    final cachedIds = localEntries.map((e) => e.project.id).toSet();
-
-    // 5) pick only those remote entries not in cache
+    final cachedIds = localEntries.map((e) => e.activityFacility.id).toSet();
     final remoteOnly =
-        remoteList.where((r) => !cachedIds.contains(r.project.id));
-
-    // 6) return all cached first, then any remote-only
+        remoteList.where((r) => !cachedIds.contains(r.activityFacility.id));
     return [
       ...localWorkflows,
       ...remoteOnly,
     ];
   }
 
-  Future<CacheUnsubmittedProject> addOrGet(
-    ProjectWorkflow wf,
+  Future<CacheUnsubmittedActivityFacility> addOrGet(
+    ActivityFacilityWorkflow wf,
     String userType,
   ) async {
-    final col = _isar.cacheUnsubmittedProjects;
-    final projectId = wf.project.id;
+    final col = _isar.cacheUnsubmittedActivityFacilitys;
+    final activityFacilityId = wf.activityFacility.id;
     final existing = await col
         .where()
-        .projectIdEqualTo(projectId)
+        .activityFacilityIdEqualTo(activityFacilityId)
         .filter()
         .userTypeEqualTo(userType)
         .findFirst();
     if (existing != null) return existing;
 
-    final entry = CacheUnsubmittedProject(
-      projectId: projectId,
+    final entry = CacheUnsubmittedActivityFacility(
+      activityFacilityId: activityFacilityId,
       status: wf.status ?? '',
-      project: wf.project,
+      activityFacility: wf.activityFacility,
       userType: userType,
     );
     await _isar.writeTxn(() => col.put(entry));
     return entry;
   }
 
-  Future<void> delete(String projectId, String userType) async {
-    final col = _isar.cacheUnsubmittedProjects;
+  Future<void> delete(String activityFacilityId, String userType) async {
+    final col = _isar.cacheUnsubmittedActivityFacilitys;
     await _isar.writeTxn(() async {
       final toDelete = await col
           .where()
-          .projectIdEqualTo(projectId)
+          .activityFacilityIdEqualTo(activityFacilityId)
           .filter()
           .userTypeEqualTo(userType)
           .findAll();
@@ -384,10 +371,13 @@ class UnsubmittedProjectRepository {
     });
   }
 
-  Future<void> deleteAddNewAsset(String projectId) async {
+  Future<void> deleteAddNewAsset(String activityFacilityId) async {
     final col = _isar.cacheAddNewAssets;
     await _isar.writeTxn(() async {
-      final toDelete = await col.where().projectIdEqualTo(projectId).findAll();
+      final toDelete = await col
+          .where()
+          .activityFacilityIdEqualTo(activityFacilityId)
+          .findAll();
       for (final e in toDelete) {
         await col.delete(e.id);
       }
@@ -395,19 +385,18 @@ class UnsubmittedProjectRepository {
   }
 }
 
-class PrefilledProjectRepository {
+class PrefilledActivityFacilityRepository {
   final Isar _isar;
-  PrefilledProjectRepository(this._isar);
+  PrefilledActivityFacilityRepository(this._isar);
 
-  /// Upsert (projectId,userType). Touches `updatedAt` if present; otherwise inserts.
-  Future<CachePrefilledProject> addOrTouch({
-    required String projectId,
+  Future<CachePrefilledActivityFacility> addOrTouch({
+    required String activityFacilityId,
     required String userType,
   }) async {
-    final col = _isar.cachePrefilledProjects;
+    final col = _isar.cachePrefilledActivityFacilitys;
     final existing = await col
         .where()
-        .projectIdUserTypeEqualTo(projectId, userType)
+        .activityFacilityIdUserTypeEqualTo(activityFacilityId, userType)
         .findFirst();
 
     final now = DateTime.now();
@@ -417,10 +406,10 @@ class PrefilledProjectRepository {
         await col.put(existing);
         return existing;
       } else {
-        final row =
-            CachePrefilledProject(projectId: projectId, userType: userType)
-              ..createdAt = now
-              ..updatedAt = now;
+        final row = CachePrefilledActivityFacility(
+            activityFacilityId: activityFacilityId, userType: userType)
+          ..createdAt = now
+          ..updatedAt = now;
         await col.put(row);
         return row;
       }
@@ -428,25 +417,25 @@ class PrefilledProjectRepository {
   }
 
   Future<bool> exists({
-    required String projectId,
+    required String activityFacilityId,
     required String userType,
   }) async {
-    final col = _isar.cachePrefilledProjects;
+    final col = _isar.cachePrefilledActivityFacilitys;
     final row = await col
         .where()
-        .projectIdUserTypeEqualTo(projectId, userType)
+        .activityFacilityIdUserTypeEqualTo(activityFacilityId, userType)
         .findFirst();
     return row != null;
   }
 
   Future<void> delete({
-    required String projectId,
+    required String activityFacilityId,
     required String userType,
   }) async {
-    final col = _isar.cachePrefilledProjects;
+    final col = _isar.cachePrefilledActivityFacilitys;
     final row = await col
         .where()
-        .projectIdUserTypeEqualTo(projectId, userType)
+        .activityFacilityIdUserTypeEqualTo(activityFacilityId, userType)
         .findFirst();
     if (row != null) {
       await _isar.writeTxn(() async {
@@ -463,7 +452,8 @@ class CompletionReportRepository {
   Future<void> delete({required String projectId}) async {
     await _isar.writeTxn(() async {
       final col = _isar.cacheCompletionReports;
-      final reports = await col.where().projectIdEqualTo(projectId).findAll();
+      final reports =
+          await col.where().activityFacilityIdEqualTo(projectId).findAll();
       for (final report in reports) {
         await col.delete(report.id);
       }

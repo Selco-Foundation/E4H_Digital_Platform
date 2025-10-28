@@ -5,9 +5,9 @@ import 'package:digit_ui_components/widgets/molecules/show_pop_up.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../blocs/activity_facility/activity_facility.dart';
 import '../blocs/asset_submission/asset_submission.dart';
-import '../blocs/project/project.dart';
-import '../blocs/selected_project/selected_project.dart';
+import '../blocs/selected_activity_facility/selected_activity_facility.dart';
 import '../blocs/user_type/user_type.dart';
 import '../router/app_router.dart';
 import '../utils/utils.dart';
@@ -36,8 +36,8 @@ class _DraftPageState extends State<DraftPage> {
             supervisor: () => USER_TYPES.SUPERVISOR.name,
             orElse: () => USER_TYPES.FIELD_STAFF.name,
           );
-      context.read<ProjectBloc>().add(
-            ProjectEvent.loadUnSubmitted(
+      context.read<ActivityFacilityBloc>().add(
+            ActivityFacilityEvent.loadUnSubmitted(
               [
                 userType == USER_TYPES.FIELD_STAFF.name
                     ? WORKFLOW_STATUS_FIELD_STAFF.SUBMITTED_BY_FIELD_STAFF.name
@@ -104,8 +104,8 @@ class _DraftPageState extends State<DraftPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('All drafts successfully synced!')),
         );
-        context.read<ProjectBloc>().add(
-              ProjectEvent.loadUnSubmitted(
+        context.read<ActivityFacilityBloc>().add(
+              ActivityFacilityEvent.loadUnSubmitted(
                 [
                   userType == USER_TYPES.FIELD_STAFF.name
                       ? WORKFLOW_STATUS_FIELD_STAFF
@@ -160,7 +160,7 @@ class _DraftPageState extends State<DraftPage> {
                     ),
                   ),
                   const SizedBox(height: spacer4),
-                  BlocBuilder<ProjectBloc, ProjectState>(
+                  BlocBuilder<ActivityFacilityBloc, ActivityFacilityState>(
                     builder: (context, state) {
                       return state.maybeWhen(
                         unSubmittedLoaded: (drafts) {
@@ -180,16 +180,20 @@ class _DraftPageState extends State<DraftPage> {
                                 children: [
                                   InboxReportCard(
                                     onPress: () {
-                                      context.read<SelectedProjectBloc>().add(
-                                          SelectedProjectEvent.select(project));
+                                      context
+                                          .read<SelectedActivityFacilityBloc>()
+                                          .add(SelectedActivityFacilityEvent
+                                              .select(project));
                                       context.router.push(
                                           OverallAssetSummaryRoute(
                                               refresh: DateTime.now()
                                                   .millisecondsSinceEpoch));
                                     },
-                                    title: project.project.name ?? "",
+                                    title: project.activityFacility.facility
+                                            ?.facilityName ??
+                                        "",
                                     dateAssigned:
-                                        project.project.startDateTime ??
+                                        project.activityFacility.scheduledAt ??
                                             DateTime.now(),
                                     status: project.status ?? '---',
                                   ),

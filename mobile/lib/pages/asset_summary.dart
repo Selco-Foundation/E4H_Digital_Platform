@@ -13,20 +13,20 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:recase/recase.dart';
 
+import '../blocs/activity_facility/activity_facility.dart';
 import '../blocs/app_init/app_init.dart';
 import '../blocs/asset_rejection/asset_rejection.dart';
 import '../blocs/asset_summary/asset_summary.dart';
 import '../blocs/asset_type/asset_type.dart';
 import '../blocs/inbox_type/inbox_type.dart';
-import '../blocs/project/project.dart';
 import '../blocs/report_type/report_type.dart';
-import '../blocs/selected_project/selected_project.dart';
+import '../blocs/selected_activity_facility/selected_activity_facility.dart';
 import '../blocs/user_type/user_type.dart';
+import '../model/activity_facility_workflow/activity_facility_workflow.dart';
 import '../model/asset_summary/asset_summary.dart';
 import '../model/brand/brand.dart';
 import '../model/comment/comment.dart';
 import '../model/mdms/mdms.dart';
-import '../model/project_workflow/project_workflow.dart';
 import '../model/system/system.dart';
 import '../model/transaction/transaction.dart';
 import '../router/app_router.dart';
@@ -38,7 +38,6 @@ import '../widgets/files/video_card.dart';
 import '../widgets/header/back_navigation_help_header.dart';
 import '../widgets/images/cached_image.dart';
 
-/// Simple holder for one reason + its accompanying text controller.
 class _ReasonEntry {
   String? selectedCode;
   final TextEditingController controller = TextEditingController();
@@ -53,11 +52,11 @@ class AssetSummaryPage extends StatefulWidget {
 }
 
 class _AssetSummaryPageState extends State<AssetSummaryPage> {
-  String projectName = "";
+  String activityFacilityName = "";
   String status = "";
   String assetType = "";
   String userType = "";
-  ProjectWorkflow? selectedProject;
+  ActivityFacilityWorkflow? selectedActivityFacility;
 
   /// Holds all the dynamic reason rows in the popup.
   final List<_ReasonEntry> _reasons = [];
@@ -78,22 +77,23 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
             orElse: () => USER_TYPES.FIELD_STAFF.name,
           );
 
-      final sel = context.read<SelectedProjectBloc>().state;
+      final sel = context.read<SelectedActivityFacilityBloc>().state;
       sel.whenOrNull(selected: (proj) {
-        selectedProject = proj;
-        projectName = proj.project.name ?? '---';
+        selectedActivityFacility = proj;
+        activityFacilityName =
+            proj.activityFacility.facility?.facilityName ?? '---';
         status = proj.status ?? '---';
 
         context.read<AssetSummaryBloc>().add(
               AssetSummaryEvent.load(
-                projectId: proj.project.id,
+                activityFacilityId: proj.activityFacility.id,
                 assetType: assetType,
               ),
             );
 
-        context.read<ProjectBloc>().add(
-              ProjectEvent.checkIfInCache(
-                projectId: proj.project.id,
+        context.read<ActivityFacilityBloc>().add(
+              ActivityFacilityEvent.checkIfInCache(
+                activityFacilityId: proj.activityFacility.id,
                 userType: userType,
               ),
             );
@@ -202,7 +202,7 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
 
   /// Builds the footer area, switching between “Send Back” and “Next”
   Widget _buildFooter() {
-    return BlocBuilder<ProjectBloc, ProjectState>(
+    return BlocBuilder<ActivityFacilityBloc, ActivityFacilityState>(
       builder: (context, projectState) {
         return BlocBuilder<ReportTypeBloc, ReportTypeState>(
           builder: (context, reportState) {
@@ -365,7 +365,7 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
                           size: DigitButtonSize.large,
                           mainAxisSize: MainAxisSize.min,
                           onPressed: () async {
-                            final selected = selectedProject;
+                            final selected = selectedActivityFacility;
                             if (selected == null) return;
 
                             final reasons = _reasons
@@ -380,7 +380,8 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
 
                             final transactions = [
                               Transaction(
-                                projectId: selected.project.id,
+                                activityFacilityId:
+                                    selected.activityFacility.id,
                                 comments: reasons.map((e) {
                                   // Always produce JSON object, even if reason is empty.
                                   final message = jsonEncode({
@@ -398,7 +399,7 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
 
                             print(
                                 "Submitting transactions: ${jsonEncode(transactions.map((t) => {
-                                      'projectId': t.projectId,
+                                      'projectId': t.activityFacilityId,
                                       'comments': t.comments
                                           ?.map((c) => c.toJson())
                                           .toList(),
@@ -407,7 +408,8 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
                             Navigator.of(ctx).pop();
                             context.read<RejectionBloc>().add(
                                   RejectionEvent.submitRejection(
-                                      projectId: selected.project.id.trim(),
+                                      activityFacilityId:
+                                          selected.activityFacility.id.trim(),
                                       transactions: transactions,
                                       userType: userType),
                                 );
@@ -567,7 +569,7 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
             Expanded(
               flex: 1,
               child: ValueColumn(values: [
-                truncateText(projectName, maxLength: 18),
+                truncateText(activityFacilityName, maxLength: 18),
                 context.translate(status),
               ]),
             ),

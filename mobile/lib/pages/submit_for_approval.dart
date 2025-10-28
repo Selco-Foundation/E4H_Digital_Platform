@@ -12,21 +12,21 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart' as p;
 import 'package:recase/recase.dart';
 
+import '../blocs/activity_facility/activity_facility.dart';
+import '../blocs/activity_facility_bom/activity_facility_bom.dart';
 import '../blocs/app_init/app_init.dart';
 import '../blocs/asset_submission/asset_submission.dart';
 import '../blocs/asset_type/asset_type.dart';
 import '../blocs/cache_asset/cache_asset.dart';
 import '../blocs/cache_completion_report/cache_completion_report.dart';
 import '../blocs/overall_asset_summary/overall_asset_summary.dart';
-import '../blocs/project/project.dart';
-import '../blocs/project_bom/project_bom.dart';
-import '../blocs/selected_project/selected_project.dart';
+import '../blocs/selected_activity_facility/selected_activity_facility.dart';
 import '../blocs/user_type/user_type.dart';
+import '../model/activity_facility_workflow/activity_facility_workflow.dart';
 import '../model/comment/comment.dart';
 import '../model/mdms/mdms.dart';
-import '../model/project_workflow/project_workflow.dart';
 import '../model/solution_design_type/solution_design_type.dart';
-import '../repositories/project_workflow.dart';
+import '../repositories/activity_facility_workflow.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
 import '../utils/utils.dart';
@@ -47,8 +47,8 @@ class SubmitForApprovalPage extends StatefulWidget {
 
 class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
   late String userType = "";
-  late String projectId = "";
-  ProjectWorkflow? project;
+  late String activityFacilityId = "";
+  ActivityFacilityWorkflow? project;
   double? _latitude;
   double? _longitude;
   bool rejection1 = false;
@@ -108,25 +108,25 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
         );
     // Kick off the cache sync
     //  WidgetsBinding.instance.addPostFrameCallback((_) {
-    final selState = context.read<SelectedProjectBloc>().state;
+    final selState = context.read<SelectedActivityFacilityBloc>().state;
     selState.whenOrNull(selected: (selProject) {
-      projectId = selProject.project.id;
+      activityFacilityId = selProject.activityFacility.id;
       project = selProject;
-      // _solutionDesignTypeCode = "DC";
-    });
 
-    context
-        .read<CacheAssetBloc>()
-        .add(CacheAssetEvent.start(projectId, userType, project!));
-    context.read<ProjectBomBloc>().add(
-          ProjectBomEvent.syncIfNeeded(
-            projectId: projectId,
-            userType: userType,
-          ),
-        );
-    _loadProjectSystem();
-    _loadInitialCompletion();
-    // });
+      context
+          .read<CacheAssetBloc>()
+          .add(CacheAssetEvent.start(activityFacilityId, userType, project!));
+      context.read<ActivityFacilityBomBloc>().add(
+            ActivityFacilityBomEvent.syncIfNeeded(
+              activityFacilityId: activityFacilityId,
+              facilityId:
+                  selProject.activityFacility.facility?.facilityId ?? "",
+              userType: userType,
+            ),
+          );
+      _loadProjectSystem();
+      _loadInitialCompletion();
+    });
   }
 
   Future<void> _loadInitialCompletion() async {
@@ -134,8 +134,8 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
 
     final combined = await loadInitialCompletion(
       isar: isar,
-      projectId: projectId,
-      projectWorkflow: project!,
+      projectId: activityFacilityId,
+      activityFacilityWorkflow: project!,
     );
 
     if (!mounted) return;
@@ -199,9 +199,9 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
   }
 
   Future<void> _loadProjectSystem() async {
-    if (projectId.isEmpty) return;
+    if (activityFacilityId.isEmpty) return;
 
-    final isar = context.read<ProjectBloc>().isar;
+    final isar = context.read<ActivityFacilityBloc>().isar;
 
     final initState = context.read<AppInitialization>().state;
     final solutionDesignList =
@@ -211,14 +211,15 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
       orElse: () => const [],
     );
 
-    final facilityCode = project?.project.additionalDetails?.facility
-        ?.facilityDetails?.solar_solution_design_type;
+    final facilityCode = project?.activityFacility.facility?.facilityDetails
+        ?.solar_solution_design_type;
 
-    final sys = await ProjectWorkflowRepository().getProjectSystem(
-        isar: isar,
-        projectId: projectId,
-        solutionDesignList: solutionDesignList,
-        facilitySolutionDesignCode: facilityCode);
+    final sys = await ActivityFacilityWorkflowRepository()
+        .getActivityFacilitySystem(
+            isar: isar,
+            activityFacilityId: activityFacilityId,
+            solutionDesignList: solutionDesignList,
+            facilitySolutionDesignCode: facilityCode);
 
     if (!mounted) return;
     setState(() => _system = sys);
@@ -232,7 +233,7 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
     final allChecked = rejection1 && rejection2 && rejection3;
     final isSupervisor = userType == USER_TYPES.SUPERVISOR.name;
 
-    return BlocListener<ProjectBomBloc, ProjectBomState>(
+    return BlocListener<ActivityFacilityBomBloc, ActivityFacilityBomState>(
       listener: (context, state) {
         state.maybeWhen(
           loading: () {},
@@ -255,13 +256,13 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                   success: () {
                     context.read<OverallAssetSummaryBloc>().add(
                           OverallAssetSummaryEvent.loadCounts(
-                              projectId: projectId),
+                              activityFacilityId: activityFacilityId),
                         );
                   },
                   failure: (error) {
                     context.read<OverallAssetSummaryBloc>().add(
                           OverallAssetSummaryEvent.loadCounts(
-                              projectId: projectId),
+                              activityFacilityId: activityFacilityId),
                         );
                     context.showSnackBar(
                       SnackBar(content: Text("Sync failed: $error")),
@@ -295,7 +296,8 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                 );
               },
             ),
-            BlocListener<SelectedProjectBloc, SelectedProjectState>(
+            BlocListener<SelectedActivityFacilityBloc,
+                    SelectedActivityFacilityState>(
                 listenWhen: (prev, curr) =>
                     curr.maybeWhen(selected: (_) => true, orElse: () => false),
                 listener: (context, state) {
@@ -313,7 +315,8 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
               showBackNavigation: true,
               showHelp: false,
             ),
-            footer: BlocBuilder<SelectedProjectBloc, SelectedProjectState>(
+            footer: BlocBuilder<SelectedActivityFacilityBloc,
+                SelectedActivityFacilityState>(
               builder: (context, selProjectState) {
                 return BlocBuilder<AssetSubmissionBloc, AssetSubmissionState>(
                   builder: (context, submissionState) {
@@ -363,7 +366,7 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                           final inputs = <CompletionFileInput>[];
                           for (final e in _existingReports) {
                             inputs.add(CompletionFileInput(
-                              projectId: projectId,
+                              projectId: activityFacilityId,
                               filePath: e.filePath,
                               fileType: e.fileType,
                               fileName: e.fileName,
@@ -375,7 +378,7 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                           for (final pf in _pickedFiles) {
                             if (pf.path == null) continue;
                             inputs.add(CompletionFileInput(
-                              projectId: projectId,
+                              projectId: activityFacilityId,
                               filePath: pf.path!,
                               fileType: inferFileType(pf.path!),
                               fileName: pf.name,
@@ -385,25 +388,27 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                             ));
                           }
 
-                          final selState =
-                              context.read<SelectedProjectBloc>().state;
+                          final selState = context
+                              .read<SelectedActivityFacilityBloc>()
+                              .state;
 
                           selState.whenOrNull(selected: (project) {
-                            context.read<ProjectBloc>().add(
-                                  ProjectEvent.addUnSubmitted(
+                            context.read<ActivityFacilityBloc>().add(
+                                  ActivityFacilityEvent.addUnSubmitted(
                                       project, userType),
                                 );
 
                             context.read<CacheCompletionReportBloc>().add(
                                   CacheCompletionReportEvent
                                       .replaceAllForProject(
-                                    projectId: projectId!,
+                                    projectId: activityFacilityId!,
                                     files: inputs,
                                   ),
                                 );
                             context.read<AssetSubmissionBloc>().add(
                                   AssetSubmissionEvent.submitAll(
-                                      projectId: projectId, userType: userType),
+                                      activityFacilityId: activityFacilityId,
+                                      userType: userType),
                                 );
                           });
                         });
@@ -459,11 +464,11 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                                         if (_system != null)
                                           BomButtonsSection(
                                             key: PageStorageKey(
-                                                'bom-buttons-$projectId'),
+                                                'bom-buttons-$activityFacilityId'),
                                             solutionDesignBom:
                                                 solutionDesignBom,
                                             systemCode: _system!,
-                                            projectId: projectId,
+                                            projectId: activityFacilityId,
                                             origin:
                                                 FormOrigin.submitForApproval,
                                           ),
@@ -511,7 +516,7 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                           ),
                           RejectionReasonsList(
                             comments: context
-                                    .read<SelectedProjectBloc>()
+                                    .read<SelectedActivityFacilityBloc>()
                                     .state
                                     .whenOrNull(
                                       selected: (wf) => wf.transactions
@@ -578,7 +583,7 @@ class RejectedEditAssetSummary extends StatelessWidget {
 
     // 1) Grab the ProjectWorkflow to extract comments
     final workflow = context
-        .watch<SelectedProjectBloc>()
+        .watch<SelectedActivityFacilityBloc>()
         .state
         .whenOrNull(selected: (wf) => wf);
 

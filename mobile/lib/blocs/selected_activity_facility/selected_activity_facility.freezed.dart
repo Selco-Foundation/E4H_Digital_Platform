@@ -3,7 +3,7 @@
 // ignore_for_file: type=lint
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
-part of 'selected_project.dart';
+part of 'selected_activity_facility.dart';
 
 // **************************************************************************
 // FreezedGenerator
@@ -15,59 +15,61 @@ final _privateConstructorUsedError = UnsupportedError(
     'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models');
 
 /// @nodoc
-mixin _$SelectedProjectEvent {
+mixin _$SelectedActivityFacilityEvent {
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(ProjectWorkflow project) select,
+    required TResult Function(ActivityFacilityWorkflow activityFacility) select,
     required TResult Function() deselect,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(ProjectWorkflow project)? select,
+    TResult? Function(ActivityFacilityWorkflow activityFacility)? select,
     TResult? Function()? deselect,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(ProjectWorkflow project)? select,
+    TResult Function(ActivityFacilityWorkflow activityFacility)? select,
     TResult Function()? deselect,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(ProjectSelected value) select,
-    required TResult Function(ProjectDeselected value) deselect,
+    required TResult Function(ActivityFacilitySelected value) select,
+    required TResult Function(ActivityFacilityDeselected value) deselect,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(ProjectSelected value)? select,
-    TResult? Function(ProjectDeselected value)? deselect,
+    TResult? Function(ActivityFacilitySelected value)? select,
+    TResult? Function(ActivityFacilityDeselected value)? deselect,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(ProjectSelected value)? select,
-    TResult Function(ProjectDeselected value)? deselect,
+    TResult Function(ActivityFacilitySelected value)? select,
+    TResult Function(ActivityFacilityDeselected value)? deselect,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
 }
 
 /// @nodoc
-abstract class $SelectedProjectEventCopyWith<$Res> {
-  factory $SelectedProjectEventCopyWith(SelectedProjectEvent value,
-          $Res Function(SelectedProjectEvent) then) =
-      _$SelectedProjectEventCopyWithImpl<$Res, SelectedProjectEvent>;
+abstract class $SelectedActivityFacilityEventCopyWith<$Res> {
+  factory $SelectedActivityFacilityEventCopyWith(
+          SelectedActivityFacilityEvent value,
+          $Res Function(SelectedActivityFacilityEvent) then) =
+      _$SelectedActivityFacilityEventCopyWithImpl<$Res,
+          SelectedActivityFacilityEvent>;
 }
 
 /// @nodoc
-class _$SelectedProjectEventCopyWithImpl<$Res,
-        $Val extends SelectedProjectEvent>
-    implements $SelectedProjectEventCopyWith<$Res> {
-  _$SelectedProjectEventCopyWithImpl(this._value, this._then);
+class _$SelectedActivityFacilityEventCopyWithImpl<$Res,
+        $Val extends SelectedActivityFacilityEvent>
+    implements $SelectedActivityFacilityEventCopyWith<$Res> {
+  _$SelectedActivityFacilityEventCopyWithImpl(this._value, this._then);
 
   // ignore: unused_field
   final $Val _value;
@@ -76,104 +78,109 @@ class _$SelectedProjectEventCopyWithImpl<$Res,
 }
 
 /// @nodoc
-abstract class _$$ProjectSelectedImplCopyWith<$Res> {
-  factory _$$ProjectSelectedImplCopyWith(_$ProjectSelectedImpl value,
-          $Res Function(_$ProjectSelectedImpl) then) =
-      __$$ProjectSelectedImplCopyWithImpl<$Res>;
+abstract class _$$ActivityFacilitySelectedImplCopyWith<$Res> {
+  factory _$$ActivityFacilitySelectedImplCopyWith(
+          _$ActivityFacilitySelectedImpl value,
+          $Res Function(_$ActivityFacilitySelectedImpl) then) =
+      __$$ActivityFacilitySelectedImplCopyWithImpl<$Res>;
   @useResult
-  $Res call({ProjectWorkflow project});
+  $Res call({ActivityFacilityWorkflow activityFacility});
 
-  $ProjectWorkflowCopyWith<$Res> get project;
+  $ActivityFacilityWorkflowCopyWith<$Res> get activityFacility;
 }
 
 /// @nodoc
-class __$$ProjectSelectedImplCopyWithImpl<$Res>
-    extends _$SelectedProjectEventCopyWithImpl<$Res, _$ProjectSelectedImpl>
-    implements _$$ProjectSelectedImplCopyWith<$Res> {
-  __$$ProjectSelectedImplCopyWithImpl(
-      _$ProjectSelectedImpl _value, $Res Function(_$ProjectSelectedImpl) _then)
+class __$$ActivityFacilitySelectedImplCopyWithImpl<$Res>
+    extends _$SelectedActivityFacilityEventCopyWithImpl<$Res,
+        _$ActivityFacilitySelectedImpl>
+    implements _$$ActivityFacilitySelectedImplCopyWith<$Res> {
+  __$$ActivityFacilitySelectedImplCopyWithImpl(
+      _$ActivityFacilitySelectedImpl _value,
+      $Res Function(_$ActivityFacilitySelectedImpl) _then)
       : super(_value, _then);
 
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? project = null,
+    Object? activityFacility = null,
   }) {
-    return _then(_$ProjectSelectedImpl(
-      null == project
-          ? _value.project
-          : project // ignore: cast_nullable_to_non_nullable
-              as ProjectWorkflow,
+    return _then(_$ActivityFacilitySelectedImpl(
+      null == activityFacility
+          ? _value.activityFacility
+          : activityFacility // ignore: cast_nullable_to_non_nullable
+              as ActivityFacilityWorkflow,
     ));
   }
 
   @override
   @pragma('vm:prefer-inline')
-  $ProjectWorkflowCopyWith<$Res> get project {
-    return $ProjectWorkflowCopyWith<$Res>(_value.project, (value) {
-      return _then(_value.copyWith(project: value));
+  $ActivityFacilityWorkflowCopyWith<$Res> get activityFacility {
+    return $ActivityFacilityWorkflowCopyWith<$Res>(_value.activityFacility,
+        (value) {
+      return _then(_value.copyWith(activityFacility: value));
     });
   }
 }
 
 /// @nodoc
 
-class _$ProjectSelectedImpl implements ProjectSelected {
-  const _$ProjectSelectedImpl(this.project);
+class _$ActivityFacilitySelectedImpl implements ActivityFacilitySelected {
+  const _$ActivityFacilitySelectedImpl(this.activityFacility);
 
   @override
-  final ProjectWorkflow project;
+  final ActivityFacilityWorkflow activityFacility;
 
   @override
   String toString() {
-    return 'SelectedProjectEvent.select(project: $project)';
+    return 'SelectedActivityFacilityEvent.select(activityFacility: $activityFacility)';
   }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$ProjectSelectedImpl &&
-            (identical(other.project, project) || other.project == project));
+            other is _$ActivityFacilitySelectedImpl &&
+            (identical(other.activityFacility, activityFacility) ||
+                other.activityFacility == activityFacility));
   }
 
   @override
-  int get hashCode => Object.hash(runtimeType, project);
+  int get hashCode => Object.hash(runtimeType, activityFacility);
 
   @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
-  _$$ProjectSelectedImplCopyWith<_$ProjectSelectedImpl> get copyWith =>
-      __$$ProjectSelectedImplCopyWithImpl<_$ProjectSelectedImpl>(
-          this, _$identity);
+  _$$ActivityFacilitySelectedImplCopyWith<_$ActivityFacilitySelectedImpl>
+      get copyWith => __$$ActivityFacilitySelectedImplCopyWithImpl<
+          _$ActivityFacilitySelectedImpl>(this, _$identity);
 
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(ProjectWorkflow project) select,
+    required TResult Function(ActivityFacilityWorkflow activityFacility) select,
     required TResult Function() deselect,
   }) {
-    return select(project);
+    return select(activityFacility);
   }
 
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(ProjectWorkflow project)? select,
+    TResult? Function(ActivityFacilityWorkflow activityFacility)? select,
     TResult? Function()? deselect,
   }) {
-    return select?.call(project);
+    return select?.call(activityFacility);
   }
 
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(ProjectWorkflow project)? select,
+    TResult Function(ActivityFacilityWorkflow activityFacility)? select,
     TResult Function()? deselect,
     required TResult orElse(),
   }) {
     if (select != null) {
-      return select(project);
+      return select(activityFacility);
     }
     return orElse();
   }
@@ -181,8 +188,8 @@ class _$ProjectSelectedImpl implements ProjectSelected {
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(ProjectSelected value) select,
-    required TResult Function(ProjectDeselected value) deselect,
+    required TResult Function(ActivityFacilitySelected value) select,
+    required TResult Function(ActivityFacilityDeselected value) deselect,
   }) {
     return select(this);
   }
@@ -190,8 +197,8 @@ class _$ProjectSelectedImpl implements ProjectSelected {
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(ProjectSelected value)? select,
-    TResult? Function(ProjectDeselected value)? deselect,
+    TResult? Function(ActivityFacilitySelected value)? select,
+    TResult? Function(ActivityFacilityDeselected value)? deselect,
   }) {
     return select?.call(this);
   }
@@ -199,8 +206,8 @@ class _$ProjectSelectedImpl implements ProjectSelected {
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(ProjectSelected value)? select,
-    TResult Function(ProjectDeselected value)? deselect,
+    TResult Function(ActivityFacilitySelected value)? select,
+    TResult Function(ActivityFacilityDeselected value)? deselect,
     required TResult orElse(),
   }) {
     if (select != null) {
@@ -210,46 +217,52 @@ class _$ProjectSelectedImpl implements ProjectSelected {
   }
 }
 
-abstract class ProjectSelected implements SelectedProjectEvent {
-  const factory ProjectSelected(final ProjectWorkflow project) =
-      _$ProjectSelectedImpl;
+abstract class ActivityFacilitySelected
+    implements SelectedActivityFacilityEvent {
+  const factory ActivityFacilitySelected(
+          final ActivityFacilityWorkflow activityFacility) =
+      _$ActivityFacilitySelectedImpl;
 
-  ProjectWorkflow get project;
+  ActivityFacilityWorkflow get activityFacility;
   @JsonKey(ignore: true)
-  _$$ProjectSelectedImplCopyWith<_$ProjectSelectedImpl> get copyWith =>
-      throw _privateConstructorUsedError;
+  _$$ActivityFacilitySelectedImplCopyWith<_$ActivityFacilitySelectedImpl>
+      get copyWith => throw _privateConstructorUsedError;
 }
 
 /// @nodoc
-abstract class _$$ProjectDeselectedImplCopyWith<$Res> {
-  factory _$$ProjectDeselectedImplCopyWith(_$ProjectDeselectedImpl value,
-          $Res Function(_$ProjectDeselectedImpl) then) =
-      __$$ProjectDeselectedImplCopyWithImpl<$Res>;
+abstract class _$$ActivityFacilityDeselectedImplCopyWith<$Res> {
+  factory _$$ActivityFacilityDeselectedImplCopyWith(
+          _$ActivityFacilityDeselectedImpl value,
+          $Res Function(_$ActivityFacilityDeselectedImpl) then) =
+      __$$ActivityFacilityDeselectedImplCopyWithImpl<$Res>;
 }
 
 /// @nodoc
-class __$$ProjectDeselectedImplCopyWithImpl<$Res>
-    extends _$SelectedProjectEventCopyWithImpl<$Res, _$ProjectDeselectedImpl>
-    implements _$$ProjectDeselectedImplCopyWith<$Res> {
-  __$$ProjectDeselectedImplCopyWithImpl(_$ProjectDeselectedImpl _value,
-      $Res Function(_$ProjectDeselectedImpl) _then)
+class __$$ActivityFacilityDeselectedImplCopyWithImpl<$Res>
+    extends _$SelectedActivityFacilityEventCopyWithImpl<$Res,
+        _$ActivityFacilityDeselectedImpl>
+    implements _$$ActivityFacilityDeselectedImplCopyWith<$Res> {
+  __$$ActivityFacilityDeselectedImplCopyWithImpl(
+      _$ActivityFacilityDeselectedImpl _value,
+      $Res Function(_$ActivityFacilityDeselectedImpl) _then)
       : super(_value, _then);
 }
 
 /// @nodoc
 
-class _$ProjectDeselectedImpl implements ProjectDeselected {
-  const _$ProjectDeselectedImpl();
+class _$ActivityFacilityDeselectedImpl implements ActivityFacilityDeselected {
+  const _$ActivityFacilityDeselectedImpl();
 
   @override
   String toString() {
-    return 'SelectedProjectEvent.deselect()';
+    return 'SelectedActivityFacilityEvent.deselect()';
   }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
-        (other.runtimeType == runtimeType && other is _$ProjectDeselectedImpl);
+        (other.runtimeType == runtimeType &&
+            other is _$ActivityFacilityDeselectedImpl);
   }
 
   @override
@@ -258,7 +271,7 @@ class _$ProjectDeselectedImpl implements ProjectDeselected {
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(ProjectWorkflow project) select,
+    required TResult Function(ActivityFacilityWorkflow activityFacility) select,
     required TResult Function() deselect,
   }) {
     return deselect();
@@ -267,7 +280,7 @@ class _$ProjectDeselectedImpl implements ProjectDeselected {
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(ProjectWorkflow project)? select,
+    TResult? Function(ActivityFacilityWorkflow activityFacility)? select,
     TResult? Function()? deselect,
   }) {
     return deselect?.call();
@@ -276,7 +289,7 @@ class _$ProjectDeselectedImpl implements ProjectDeselected {
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(ProjectWorkflow project)? select,
+    TResult Function(ActivityFacilityWorkflow activityFacility)? select,
     TResult Function()? deselect,
     required TResult orElse(),
   }) {
@@ -289,8 +302,8 @@ class _$ProjectDeselectedImpl implements ProjectDeselected {
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(ProjectSelected value) select,
-    required TResult Function(ProjectDeselected value) deselect,
+    required TResult Function(ActivityFacilitySelected value) select,
+    required TResult Function(ActivityFacilityDeselected value) deselect,
   }) {
     return deselect(this);
   }
@@ -298,8 +311,8 @@ class _$ProjectDeselectedImpl implements ProjectDeselected {
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(ProjectSelected value)? select,
-    TResult? Function(ProjectDeselected value)? deselect,
+    TResult? Function(ActivityFacilitySelected value)? select,
+    TResult? Function(ActivityFacilityDeselected value)? deselect,
   }) {
     return deselect?.call(this);
   }
@@ -307,8 +320,8 @@ class _$ProjectDeselectedImpl implements ProjectDeselected {
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(ProjectSelected value)? select,
-    TResult Function(ProjectDeselected value)? deselect,
+    TResult Function(ActivityFacilitySelected value)? select,
+    TResult Function(ActivityFacilityDeselected value)? deselect,
     required TResult orElse(),
   }) {
     if (deselect != null) {
@@ -318,28 +331,30 @@ class _$ProjectDeselectedImpl implements ProjectDeselected {
   }
 }
 
-abstract class ProjectDeselected implements SelectedProjectEvent {
-  const factory ProjectDeselected() = _$ProjectDeselectedImpl;
+abstract class ActivityFacilityDeselected
+    implements SelectedActivityFacilityEvent {
+  const factory ActivityFacilityDeselected() = _$ActivityFacilityDeselectedImpl;
 }
 
 /// @nodoc
-mixin _$SelectedProjectState {
+mixin _$SelectedActivityFacilityState {
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
-    required TResult Function(ProjectWorkflow project) selected,
+    required TResult Function(ActivityFacilityWorkflow activityFacility)
+        selected,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
-    TResult? Function(ProjectWorkflow project)? selected,
+    TResult? Function(ActivityFacilityWorkflow activityFacility)? selected,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
-    TResult Function(ProjectWorkflow project)? selected,
+    TResult Function(ActivityFacilityWorkflow activityFacility)? selected,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -365,17 +380,19 @@ mixin _$SelectedProjectState {
 }
 
 /// @nodoc
-abstract class $SelectedProjectStateCopyWith<$Res> {
-  factory $SelectedProjectStateCopyWith(SelectedProjectState value,
-          $Res Function(SelectedProjectState) then) =
-      _$SelectedProjectStateCopyWithImpl<$Res, SelectedProjectState>;
+abstract class $SelectedActivityFacilityStateCopyWith<$Res> {
+  factory $SelectedActivityFacilityStateCopyWith(
+          SelectedActivityFacilityState value,
+          $Res Function(SelectedActivityFacilityState) then) =
+      _$SelectedActivityFacilityStateCopyWithImpl<$Res,
+          SelectedActivityFacilityState>;
 }
 
 /// @nodoc
-class _$SelectedProjectStateCopyWithImpl<$Res,
-        $Val extends SelectedProjectState>
-    implements $SelectedProjectStateCopyWith<$Res> {
-  _$SelectedProjectStateCopyWithImpl(this._value, this._then);
+class _$SelectedActivityFacilityStateCopyWithImpl<$Res,
+        $Val extends SelectedActivityFacilityState>
+    implements $SelectedActivityFacilityStateCopyWith<$Res> {
+  _$SelectedActivityFacilityStateCopyWithImpl(this._value, this._then);
 
   // ignore: unused_field
   final $Val _value;
@@ -392,7 +409,7 @@ abstract class _$$InitialImplCopyWith<$Res> {
 
 /// @nodoc
 class __$$InitialImplCopyWithImpl<$Res>
-    extends _$SelectedProjectStateCopyWithImpl<$Res, _$InitialImpl>
+    extends _$SelectedActivityFacilityStateCopyWithImpl<$Res, _$InitialImpl>
     implements _$$InitialImplCopyWith<$Res> {
   __$$InitialImplCopyWithImpl(
       _$InitialImpl _value, $Res Function(_$InitialImpl) _then)
@@ -406,7 +423,7 @@ class _$InitialImpl implements _Initial {
 
   @override
   String toString() {
-    return 'SelectedProjectState.initial()';
+    return 'SelectedActivityFacilityState.initial()';
   }
 
   @override
@@ -422,7 +439,8 @@ class _$InitialImpl implements _Initial {
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
-    required TResult Function(ProjectWorkflow project) selected,
+    required TResult Function(ActivityFacilityWorkflow activityFacility)
+        selected,
   }) {
     return initial();
   }
@@ -431,7 +449,7 @@ class _$InitialImpl implements _Initial {
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
-    TResult? Function(ProjectWorkflow project)? selected,
+    TResult? Function(ActivityFacilityWorkflow activityFacility)? selected,
   }) {
     return initial?.call();
   }
@@ -440,7 +458,7 @@ class _$InitialImpl implements _Initial {
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
-    TResult Function(ProjectWorkflow project)? selected,
+    TResult Function(ActivityFacilityWorkflow activityFacility)? selected,
     required TResult orElse(),
   }) {
     if (initial != null) {
@@ -481,7 +499,7 @@ class _$InitialImpl implements _Initial {
   }
 }
 
-abstract class _Initial implements SelectedProjectState {
+abstract class _Initial implements SelectedActivityFacilityState {
   const factory _Initial() = _$InitialImpl;
 }
 
@@ -491,14 +509,14 @@ abstract class _$$SelectedImplCopyWith<$Res> {
           _$SelectedImpl value, $Res Function(_$SelectedImpl) then) =
       __$$SelectedImplCopyWithImpl<$Res>;
   @useResult
-  $Res call({ProjectWorkflow project});
+  $Res call({ActivityFacilityWorkflow activityFacility});
 
-  $ProjectWorkflowCopyWith<$Res> get project;
+  $ActivityFacilityWorkflowCopyWith<$Res> get activityFacility;
 }
 
 /// @nodoc
 class __$$SelectedImplCopyWithImpl<$Res>
-    extends _$SelectedProjectStateCopyWithImpl<$Res, _$SelectedImpl>
+    extends _$SelectedActivityFacilityStateCopyWithImpl<$Res, _$SelectedImpl>
     implements _$$SelectedImplCopyWith<$Res> {
   __$$SelectedImplCopyWithImpl(
       _$SelectedImpl _value, $Res Function(_$SelectedImpl) _then)
@@ -507,21 +525,22 @@ class __$$SelectedImplCopyWithImpl<$Res>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? project = null,
+    Object? activityFacility = null,
   }) {
     return _then(_$SelectedImpl(
-      null == project
-          ? _value.project
-          : project // ignore: cast_nullable_to_non_nullable
-              as ProjectWorkflow,
+      null == activityFacility
+          ? _value.activityFacility
+          : activityFacility // ignore: cast_nullable_to_non_nullable
+              as ActivityFacilityWorkflow,
     ));
   }
 
   @override
   @pragma('vm:prefer-inline')
-  $ProjectWorkflowCopyWith<$Res> get project {
-    return $ProjectWorkflowCopyWith<$Res>(_value.project, (value) {
-      return _then(_value.copyWith(project: value));
+  $ActivityFacilityWorkflowCopyWith<$Res> get activityFacility {
+    return $ActivityFacilityWorkflowCopyWith<$Res>(_value.activityFacility,
+        (value) {
+      return _then(_value.copyWith(activityFacility: value));
     });
   }
 }
@@ -529,14 +548,14 @@ class __$$SelectedImplCopyWithImpl<$Res>
 /// @nodoc
 
 class _$SelectedImpl implements _Selected {
-  const _$SelectedImpl(this.project);
+  const _$SelectedImpl(this.activityFacility);
 
   @override
-  final ProjectWorkflow project;
+  final ActivityFacilityWorkflow activityFacility;
 
   @override
   String toString() {
-    return 'SelectedProjectState.selected(project: $project)';
+    return 'SelectedActivityFacilityState.selected(activityFacility: $activityFacility)';
   }
 
   @override
@@ -544,11 +563,12 @@ class _$SelectedImpl implements _Selected {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _$SelectedImpl &&
-            (identical(other.project, project) || other.project == project));
+            (identical(other.activityFacility, activityFacility) ||
+                other.activityFacility == activityFacility));
   }
 
   @override
-  int get hashCode => Object.hash(runtimeType, project);
+  int get hashCode => Object.hash(runtimeType, activityFacility);
 
   @JsonKey(ignore: true)
   @override
@@ -560,29 +580,30 @@ class _$SelectedImpl implements _Selected {
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
-    required TResult Function(ProjectWorkflow project) selected,
+    required TResult Function(ActivityFacilityWorkflow activityFacility)
+        selected,
   }) {
-    return selected(project);
+    return selected(activityFacility);
   }
 
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
-    TResult? Function(ProjectWorkflow project)? selected,
+    TResult? Function(ActivityFacilityWorkflow activityFacility)? selected,
   }) {
-    return selected?.call(project);
+    return selected?.call(activityFacility);
   }
 
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
-    TResult Function(ProjectWorkflow project)? selected,
+    TResult Function(ActivityFacilityWorkflow activityFacility)? selected,
     required TResult orElse(),
   }) {
     if (selected != null) {
-      return selected(project);
+      return selected(activityFacility);
     }
     return orElse();
   }
@@ -619,10 +640,11 @@ class _$SelectedImpl implements _Selected {
   }
 }
 
-abstract class _Selected implements SelectedProjectState {
-  const factory _Selected(final ProjectWorkflow project) = _$SelectedImpl;
+abstract class _Selected implements SelectedActivityFacilityState {
+  const factory _Selected(final ActivityFacilityWorkflow activityFacility) =
+      _$SelectedImpl;
 
-  ProjectWorkflow get project;
+  ActivityFacilityWorkflow get activityFacility;
   @JsonKey(ignore: true)
   _$$SelectedImplCopyWith<_$SelectedImpl> get copyWith =>
       throw _privateConstructorUsedError;

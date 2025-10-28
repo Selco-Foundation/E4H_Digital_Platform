@@ -27,7 +27,7 @@ class CacheSpecificationBloc
     try {
       final entries = await isar.cacheSpecifications
           .where()
-          .projectIdEqualTo(event.projectId)
+          .activityFacilityIdEqualTo(event.projectId)
           .filter()
           .assetTypeEqualTo(event.assetType)
           .findAll();
@@ -51,7 +51,7 @@ class CacheSpecificationBloc
         // Check if an entry already exists for this projectId + assetType + system
         final existing = await isar.cacheSpecifications
             .where()
-            .projectIdEqualTo(event.entry.projectId)
+            .activityFacilityIdEqualTo(event.entry.activityFacilityId)
             .filter()
             .assetTypeEqualTo(event.entry.assetType)
             .and()
@@ -83,7 +83,7 @@ class CacheSpecificationBloc
       await isar.writeTxn(() async {
         final existing = await isar.cacheSpecifications
             .where()
-            .projectIdEqualTo(event.entry.projectId)
+            .activityFacilityIdEqualTo(event.entry.activityFacilityId)
             .filter()
             .assetTypeEqualTo(event.entry.assetType)
             .and()
@@ -96,13 +96,6 @@ class CacheSpecificationBloc
           existing.updatedAt = DateTime.now();
           await isar.cacheSpecifications.put(existing);
         } else {
-          // final newEntry = CacheSpecification(
-          //   projectId: event.entry.projectId,
-          //   assetType: event.entry.assetType,
-          //   system: event.entry.system,
-          //   totalCapacity: event.entry.totalCapacity,
-          //   totalCapacityUnit: event.entry.totalCapacityUnit,
-          // );
           await isar.cacheSpecifications.put(event.entry);
         }
       });
@@ -110,7 +103,7 @@ class CacheSpecificationBloc
       // Emit the newly updated/added entry
       final updatedEntry = await isar.cacheSpecifications
           .where()
-          .projectIdEqualTo(event.entry.projectId)
+          .activityFacilityIdEqualTo(event.entry.activityFacilityId)
           .filter()
           .assetTypeEqualTo(event.entry.assetType)
           .and()

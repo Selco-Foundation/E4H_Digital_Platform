@@ -5,10 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:selco/utils/utils.dart';
 
+import '../blocs/activity_facility/activity_facility.dart';
 import '../blocs/inbox_type/inbox_type.dart';
-import '../blocs/project/project.dart';
 import '../blocs/report_type/report_type.dart';
-import '../blocs/selected_project/selected_project.dart';
+import '../blocs/selected_activity_facility/selected_activity_facility.dart';
 import '../blocs/user_type/user_type.dart';
 import '../repositories/project_repo.dart';
 import '../router/app_router.dart';
@@ -71,19 +71,20 @@ class _DataSaveSuccessPageState extends State<DataSaveSuccessPage> {
                     label: rejectedReport ? 'Back to Landing Page' : 'Next',
                     onPressed: () async {
                       final selected = context
-                          .read<SelectedProjectBloc>()
+                          .read<SelectedActivityFacilityBloc>()
                           .state
                           .whenOrNull(selected: (s) => s);
-                      final projectId = selected?.project.id;
+                      final projectId = selected?.activityFacility.id;
                       final userType =
                           context.read<UserTypeBloc>().state.maybeWhen(
                                 supervisor: () => USER_TYPES.SUPERVISOR.name,
                                 orElse: () => USER_TYPES.FIELD_STAFF.name,
                               );
                       if (projectId != null) {
-                        final isar = context.read<ProjectBloc>().isar;
-                        await PrefilledProjectRepository(isar).addOrTouch(
-                          projectId: projectId,
+                        final isar = context.read<ActivityFacilityBloc>().isar;
+                        await PrefilledActivityFacilityRepository(isar)
+                            .addOrTouch(
+                          activityFacilityId: projectId,
                           userType: userType,
                         );
                       }

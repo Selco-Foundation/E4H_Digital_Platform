@@ -28,7 +28,7 @@ class CacheMediaUploadBloc
     try {
       final entries = await isar.cacheMediaUploads
           .where()
-          .projectIdEqualTo(event.projectId)
+          .activityFacilityIdEqualTo(event.projectId)
           .filter()
           .assetTypeEqualTo(event.assetType)
           .findAll();
@@ -52,7 +52,7 @@ class CacheMediaUploadBloc
         // Check if an entry already exists for this projectId + assetType + itemNumber + itemType
         final existing = await isar.cacheMediaUploads
             .where()
-            .projectIdEqualTo(event.entry.projectId)
+            .activityFacilityIdEqualTo(event.entry.activityFacilityId)
             .filter()
             .assetTypeEqualTo(event.entry.assetType)
             .and()
@@ -84,7 +84,7 @@ class CacheMediaUploadBloc
       await isar.writeTxn(() async {
         final existing = await isar.cacheMediaUploads
             .where()
-            .projectIdEqualTo(event.entry.projectId)
+            .activityFacilityIdEqualTo(event.entry.activityFacilityId)
             .filter()
             .assetTypeEqualTo(event.entry.assetType)
             .and()
@@ -100,22 +100,13 @@ class CacheMediaUploadBloc
           existing.updatedAt = DateTime.now();
           await isar.cacheMediaUploads.put(existing);
         } else {
-          // final newEntry = CacheMediaUpload(
-          //   projectId: event.entry.projectId,
-          //   assetType: event.entry.assetType,
-          //   itemNumber: event.entry.itemNumber,
-          //   itemType: event.entry.itemType,
-          //   filePath: event.entry.filePath,
-          //   latitude: event.entry.latitude,
-          //   longitude: event.entry.longitude,
-          // );
           await isar.cacheMediaUploads.put(event.entry);
         }
       });
 
       final updatedEntry = await isar.cacheMediaUploads
           .where()
-          .projectIdEqualTo(event.entry.projectId)
+          .activityFacilityIdEqualTo(event.entry.activityFacilityId)
           .filter()
           .assetTypeEqualTo(event.entry.assetType)
           .and()
@@ -155,7 +146,7 @@ class CacheMediaUploadBloc
       await isar.writeTxn(() async {
         final q = isar.cacheMediaUploads
             .where()
-            .projectIdEqualTo(event.projectId)
+            .activityFacilityIdEqualTo(event.projectId)
             .filter()
             .assetTypeEqualTo(event.assetType);
         final all = await q.findAll();

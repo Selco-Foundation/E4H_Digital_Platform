@@ -14,7 +14,7 @@ class CacheBomDoc {
       composite: [CompositeIndex('schemaKey')],
       unique: true,
       caseSensitive: false)
-  late String projectId;
+  late String activityFacilityId;
   late String schemaKey;
   String? serverBomId;
   late String dataJson;

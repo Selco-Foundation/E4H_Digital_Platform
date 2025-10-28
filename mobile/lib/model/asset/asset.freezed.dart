@@ -485,6 +485,8 @@ mixin _$Asset {
   String? get assetId => throw _privateConstructorUsedError;
   @JsonKey(name: 'tenantId', fromJson: _anyToString)
   String? get tenantId => throw _privateConstructorUsedError;
+  @JsonKey(name: 'activityFacilityId', fromJson: _anyToString)
+  String? get activityFacilityID => throw _privateConstructorUsedError;
   @JsonKey(name: 'facilityID', fromJson: _anyToString)
   String? get facilityID => throw _privateConstructorUsedError;
   @JsonKey(name: 'system', fromJson: _anyToString)
@@ -522,6 +524,8 @@ abstract class $AssetCopyWith<$Res> {
   $Res call(
       {@JsonKey(name: 'assetId', fromJson: _anyToString) String? assetId,
       @JsonKey(name: 'tenantId', fromJson: _anyToString) String? tenantId,
+      @JsonKey(name: 'activityFacilityId', fromJson: _anyToString)
+      String? activityFacilityID,
       @JsonKey(name: 'facilityID', fromJson: _anyToString) String? facilityID,
       @JsonKey(name: 'system', fromJson: _anyToString) String? system,
       @JsonKey(name: 'serialNumber', fromJson: _anyToString)
@@ -559,6 +563,7 @@ class _$AssetCopyWithImpl<$Res, $Val extends Asset>
   $Res call({
     Object? assetId = freezed,
     Object? tenantId = freezed,
+    Object? activityFacilityID = freezed,
     Object? facilityID = freezed,
     Object? system = freezed,
     Object? serialNumber = freezed,
@@ -582,6 +587,10 @@ class _$AssetCopyWithImpl<$Res, $Val extends Asset>
       tenantId: freezed == tenantId
           ? _value.tenantId
           : tenantId // ignore: cast_nullable_to_non_nullable
+              as String?,
+      activityFacilityID: freezed == activityFacilityID
+          ? _value.activityFacilityID
+          : activityFacilityID // ignore: cast_nullable_to_non_nullable
               as String?,
       facilityID: freezed == facilityID
           ? _value.facilityID
@@ -677,6 +686,8 @@ abstract class _$$AssetImplCopyWith<$Res> implements $AssetCopyWith<$Res> {
   $Res call(
       {@JsonKey(name: 'assetId', fromJson: _anyToString) String? assetId,
       @JsonKey(name: 'tenantId', fromJson: _anyToString) String? tenantId,
+      @JsonKey(name: 'activityFacilityId', fromJson: _anyToString)
+      String? activityFacilityID,
       @JsonKey(name: 'facilityID', fromJson: _anyToString) String? facilityID,
       @JsonKey(name: 'system', fromJson: _anyToString) String? system,
       @JsonKey(name: 'serialNumber', fromJson: _anyToString)
@@ -714,6 +725,7 @@ class __$$AssetImplCopyWithImpl<$Res>
   $Res call({
     Object? assetId = freezed,
     Object? tenantId = freezed,
+    Object? activityFacilityID = freezed,
     Object? facilityID = freezed,
     Object? system = freezed,
     Object? serialNumber = freezed,
@@ -737,6 +749,10 @@ class __$$AssetImplCopyWithImpl<$Res>
       tenantId: freezed == tenantId
           ? _value.tenantId
           : tenantId // ignore: cast_nullable_to_non_nullable
+              as String?,
+      activityFacilityID: freezed == activityFacilityID
+          ? _value.activityFacilityID
+          : activityFacilityID // ignore: cast_nullable_to_non_nullable
               as String?,
       facilityID: freezed == facilityID
           ? _value.facilityID
@@ -804,6 +820,8 @@ class _$AssetImpl implements _Asset {
   const _$AssetImpl(
       {@JsonKey(name: 'assetId', fromJson: _anyToString) this.assetId,
       @JsonKey(name: 'tenantId', fromJson: _anyToString) this.tenantId,
+      @JsonKey(name: 'activityFacilityId', fromJson: _anyToString)
+      this.activityFacilityID,
       @JsonKey(name: 'facilityID', fromJson: _anyToString) this.facilityID,
       @JsonKey(name: 'system', fromJson: _anyToString) this.system,
       @JsonKey(name: 'serialNumber', fromJson: _anyToString) this.serialNumber,
@@ -831,6 +849,9 @@ class _$AssetImpl implements _Asset {
   @override
   @JsonKey(name: 'tenantId', fromJson: _anyToString)
   final String? tenantId;
+  @override
+  @JsonKey(name: 'activityFacilityId', fromJson: _anyToString)
+  final String? activityFacilityID;
   @override
   @JsonKey(name: 'facilityID', fromJson: _anyToString)
   final String? facilityID;
@@ -879,7 +900,7 @@ class _$AssetImpl implements _Asset {
 
   @override
   String toString() {
-    return 'Asset(assetId: $assetId, tenantId: $tenantId, facilityID: $facilityID, system: $system, serialNumber: $serialNumber, assetTypeID: $assetTypeID, assetDetails: $assetDetails, brandID: $brandID, modelNumber: $modelNumber, warrantyStartDate: $warrantyStartDate, warrantyDuration: $warrantyDuration, warrantyEndDate: $warrantyEndDate, wfStatus: $wfStatus, isActive: $isActive, documents: $documents, auditDetails: $auditDetails)';
+    return 'Asset(assetId: $assetId, tenantId: $tenantId, activityFacilityID: $activityFacilityID, facilityID: $facilityID, system: $system, serialNumber: $serialNumber, assetTypeID: $assetTypeID, assetDetails: $assetDetails, brandID: $brandID, modelNumber: $modelNumber, warrantyStartDate: $warrantyStartDate, warrantyDuration: $warrantyDuration, warrantyEndDate: $warrantyEndDate, wfStatus: $wfStatus, isActive: $isActive, documents: $documents, auditDetails: $auditDetails)';
   }
 
   @override
@@ -890,6 +911,8 @@ class _$AssetImpl implements _Asset {
             (identical(other.assetId, assetId) || other.assetId == assetId) &&
             (identical(other.tenantId, tenantId) ||
                 other.tenantId == tenantId) &&
+            (identical(other.activityFacilityID, activityFacilityID) ||
+                other.activityFacilityID == activityFacilityID) &&
             (identical(other.facilityID, facilityID) ||
                 other.facilityID == facilityID) &&
             (identical(other.system, system) || other.system == system) &&
@@ -924,6 +947,7 @@ class _$AssetImpl implements _Asset {
       runtimeType,
       assetId,
       tenantId,
+      activityFacilityID,
       facilityID,
       system,
       serialNumber,
@@ -957,6 +981,8 @@ abstract class _Asset implements Asset {
   const factory _Asset(
       {@JsonKey(name: 'assetId', fromJson: _anyToString) final String? assetId,
       @JsonKey(name: 'tenantId', fromJson: _anyToString) final String? tenantId,
+      @JsonKey(name: 'activityFacilityId', fromJson: _anyToString)
+      final String? activityFacilityID,
       @JsonKey(name: 'facilityID', fromJson: _anyToString)
       final String? facilityID,
       @JsonKey(name: 'system', fromJson: _anyToString) final String? system,
@@ -986,6 +1012,9 @@ abstract class _Asset implements Asset {
   @override
   @JsonKey(name: 'tenantId', fromJson: _anyToString)
   String? get tenantId;
+  @override
+  @JsonKey(name: 'activityFacilityId', fromJson: _anyToString)
+  String? get activityFacilityID;
   @override
   @JsonKey(name: 'facilityID', fromJson: _anyToString)
   String? get facilityID;

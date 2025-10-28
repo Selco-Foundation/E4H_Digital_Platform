@@ -12,8 +12,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:reactive_forms/reactive_forms.dart';
 
-import '../blocs/project/project.dart';
-import '../blocs/project_bom/project_bom.dart';
+import '../blocs/activity_facility/activity_facility.dart';
+import '../blocs/activity_facility_bom/activity_facility_bom.dart';
 import '../data/secure_storage/secureStore.dart';
 import '../model/appconfig/mdmsRequest.dart';
 import '../repositories/app_init_Repo.dart';
@@ -71,7 +71,7 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
   }
 
   Future<void> _loadInitialKVForProject() async {
-    final isar = context.read<ProjectBloc>().isar;
+    final isar = context.read<ActivityFacilityBloc>().isar;
     final kv = await BomRepository().getProjectBomKV(
       isar: isar,
       projectId: widget.projectId,
@@ -306,7 +306,7 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
     required String schemaKey,
   }) async {
     final formsBloc = context.read<FormsBloc>();
-    final projectBloc = context.read<ProjectBloc>();
+    final projectBloc = context.read<ActivityFacilityBloc>();
     final projectId = widget.projectId;
 
     final Map<String, dynamic> flatValues = {};
@@ -328,7 +328,7 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
 
       await BomRepository().saveLocal(
         isar: isar,
-        projectId: projectId,
+        activityFacilityId: projectId,
         schemaKey: schemaKey,
         rawDocWithValues: withValues,
         facilityId: null,
@@ -369,8 +369,8 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
       );
 
       if (changed) {
-        await PrefilledProjectRepository(isar).addOrTouch(
-          projectId: projectId,
+        await PrefilledActivityFacilityRepository(isar).addOrTouch(
+          activityFacilityId: projectId,
           userType: USER_TYPES.SUPERVISOR.name,
         );
       }
@@ -384,7 +384,7 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return BlocListener<ProjectBomBloc, ProjectBomState>(
+    return BlocListener<ActivityFacilityBomBloc, ActivityFacilityBomState>(
       listener: (context, state) async {
         state.maybeWhen(
           success: (_) async {

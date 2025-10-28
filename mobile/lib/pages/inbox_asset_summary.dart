@@ -9,21 +9,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart' as p;
 
+import '../blocs/activity_facility/activity_facility.dart';
+import '../blocs/activity_facility_bom/activity_facility_bom.dart';
 import '../blocs/app_init/app_init.dart';
 import '../blocs/asset_type/asset_type.dart';
 import '../blocs/cache_asset/cache_asset.dart';
 import '../blocs/inbox_type/inbox_type.dart';
 import '../blocs/overall_asset_summary/overall_asset_summary.dart';
-import '../blocs/project/project.dart';
-import '../blocs/project_bom/project_bom.dart';
 import '../blocs/report_type/report_type.dart';
-import '../blocs/selected_project/selected_project.dart';
+import '../blocs/selected_activity_facility/selected_activity_facility.dart';
 import '../blocs/user_type/user_type.dart';
+import '../model/activity_facility_workflow/activity_facility_workflow.dart';
 import '../model/mdms/mdms.dart';
-import '../model/project_workflow/project_workflow.dart';
 import '../model/solution_design_type/solution_design_type.dart';
+import '../repositories/activity_facility_workflow.dart';
 import '../repositories/project_repo.dart';
-import '../repositories/project_workflow.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
 import '../utils/utils.dart';
@@ -45,7 +45,7 @@ class InboxAssetSummaryPage extends StatefulWidget {
 class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
   late String userType = "";
   String? _currentProjectId;
-  ProjectWorkflow? workflow;
+  ActivityFacilityWorkflow? workflow;
   String? _system;
   List<ExistingReport> _existingReports = [];
 
@@ -69,12 +69,13 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
           supervisor: () => USER_TYPES.SUPERVISOR.name,
           orElse: () => USER_TYPES.FIELD_STAFF.name,
         );
-    context.read<SelectedProjectBloc>().state.whenOrNull(selected: (proj) {
-      _currentProjectId = proj.project.id;
+    context.read<SelectedActivityFacilityBloc>().state.whenOrNull(
+        selected: (proj) {
+      _currentProjectId = proj.activityFacility.id;
       workflow = proj;
       context
           .read<CacheAssetBloc>()
-          .add(CacheAssetEvent.start(proj.project.id, userType, proj));
+          .add(CacheAssetEvent.start(proj.activityFacility.id, userType, proj));
       _loadProjectSystem();
       _loadInitialCompletion();
     });
@@ -84,8 +85,8 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
   Future<void> _sendBackReport(BuildContext popupCtx) async {
     Navigator.of(popupCtx).pop();
 
-    final projectId = _currentProjectId;
-    if (projectId == null) {
+    final activityFacilityId = _currentProjectId;
+    if (activityFacilityId == null) {
       context.showSnackBar(
         const SnackBar(content: Text("No project selected")),
       );
@@ -103,9 +104,9 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
     );
 
     try {
-      final repo = ProjectRemoteRepository();
-      await repo.updateProjectWorkflow(
-        projectId: projectId,
+      final repo = ActivityFacilityRemoteRepository();
+      await repo.updateActivityFacilityWorkflow(
+        activityFacilityId: activityFacilityId,
         action: userType == USER_TYPES.SUPERVISOR.name
             ? WORKFLOW_ACTIONS.SUBMIT_REPORT_B.name
             : WORKFLOW_ACTIONS.SUBMIT_REPORT_A.name,
@@ -135,7 +136,7 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
     final combined = await loadInitialCompletion(
       isar: isar,
       projectId: _currentProjectId!,
-      projectWorkflow: workflow!,
+      activityFacilityWorkflow: workflow!,
     );
 
     if (!mounted) return;
@@ -155,7 +156,7 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
   Future<void> _loadProjectSystem() async {
     if (_currentProjectId == null) return;
 
-    final isar = context.read<ProjectBloc>().isar;
+    final isar = context.read<ActivityFacilityBloc>().isar;
 
     final initState = context.read<AppInitialization>().state;
     final solutionDesignList =
@@ -165,14 +166,15 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
       orElse: () => const [],
     );
 
-    final facilityCode = workflow?.project.additionalDetails?.facility
-        ?.facilityDetails?.solar_solution_design_type;
+    final facilityCode = workflow?.activityFacility.facility?.facilityDetails
+        ?.solar_solution_design_type;
 
-    final sys = await ProjectWorkflowRepository().getProjectSystem(
-        isar: isar,
-        projectId: _currentProjectId!,
-        solutionDesignList: solutionDesignList,
-        facilitySolutionDesignCode: facilityCode);
+    final sys = await ActivityFacilityWorkflowRepository()
+        .getActivityFacilitySystem(
+            isar: isar,
+            activityFacilityId: _currentProjectId!,
+            solutionDesignList: solutionDesignList,
+            facilitySolutionDesignCode: facilityCode);
 
     if (!mounted) return;
     setState(() => _system = sys);
@@ -183,7 +185,8 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
     final theme = Theme.of(context);
     final textTheme = theme.digitTextTheme(context);
 
-    return BlocListener<SelectedProjectBloc, SelectedProjectState>(
+    return BlocListener<SelectedActivityFacilityBloc,
+        SelectedActivityFacilityState>(
       listenWhen: (prev, curr) =>
           curr.maybeWhen(selected: (_) => true, orElse: () => false),
       listener: (context, state) {
@@ -199,12 +202,13 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
             cacheState.whenOrNull(
               success: () {
                 final pid = context
-                    .read<SelectedProjectBloc>()
+                    .read<SelectedActivityFacilityBloc>()
                     .state
-                    .whenOrNull(selected: (p) => p.project.id);
+                    .whenOrNull(selected: (p) => p.activityFacility.id);
                 if (pid != null) {
                   context.read<OverallAssetSummaryBloc>().add(
-                        OverallAssetSummaryEvent.loadCounts(projectId: pid),
+                        OverallAssetSummaryEvent.loadCounts(
+                            activityFacilityId: pid),
                       );
                 }
               },
@@ -247,7 +251,8 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
                   orElse: () {},
                 );
 
-                return BlocListener<ProjectBomBloc, ProjectBomState>(
+                return BlocListener<ActivityFacilityBomBloc,
+                    ActivityFacilityBomState>(
                   listener: (context, projectBomState) {},
                   child: BlocBuilder<InboxTypeBloc, InboxTypeState>(
                     builder: (context, inboxState) {

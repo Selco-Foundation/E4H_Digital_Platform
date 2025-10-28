@@ -1,26 +1,26 @@
 import 'package:isar/isar.dart';
 
+import '../../model/activity_facility/activity_facility.dart';
 import '../../model/comment/comment.dart';
 import '../../model/document/document.dart';
 import '../../model/entities/address.dart';
-import '../../model/projects/project.dart';
 import '../../model/transaction/transaction.dart';
 import '../../model/workflow/workflow.dart';
 
-part 'cache_project_workflow.g.dart';
+part 'cache_activity_facility_workflow.g.dart';
 
 @Collection()
-class CacheProjectWorkflow {
+class CacheActivityFacilityWorkflow {
   Id id = Isar.autoIncrement;
 
   @Index()
-  late String projectId;
+  late String activityFacilityId;
 
   @Index()
   late String status;
 
   @Embedded()
-  late ProjectModel project;
+  late ActivityFacility activityFacility;
 
   @Embedded()
   Workflow? workflow;
@@ -31,10 +31,10 @@ class CacheProjectWorkflow {
   DateTime createdAt = DateTime.now();
   DateTime? updatedAt;
 
-  CacheProjectWorkflow({
+  CacheActivityFacilityWorkflow({
     required this.status,
-    required this.project,
-    required this.projectId,
+    required this.activityFacility,
+    required this.activityFacilityId,
     this.workflow,
     this.transactions,
   });

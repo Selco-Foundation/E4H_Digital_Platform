@@ -49,6 +49,8 @@ class Asset with _$Asset {
   const factory Asset({
     @JsonKey(name: 'assetId', fromJson: _anyToString) String? assetId,
     @JsonKey(name: 'tenantId', fromJson: _anyToString) String? tenantId,
+    @JsonKey(name: 'activityFacilityId', fromJson: _anyToString)
+    String? activityFacilityID,
     @JsonKey(name: 'facilityID', fromJson: _anyToString) String? facilityID,
     @JsonKey(name: 'system', fromJson: _anyToString) String? system,
     @JsonKey(name: 'serialNumber', fromJson: _anyToString) String? serialNumber,

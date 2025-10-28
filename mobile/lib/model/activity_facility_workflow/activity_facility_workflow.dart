@@ -5,7 +5,6 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 import '../../model/workflow/workflow.dart';
 import '../activity_facility/activity_facility.dart';
 import '../entities/address.dart';
-import '../projects/project.dart';
 import '../transaction/transaction.dart';
 
 part 'activity_facility_workflow.freezed.dart';
@@ -48,9 +47,15 @@ class ActivityFacilityConverter
       fieldPlanId: m['fieldPlanId']?.toString(),
       facilityId: m['facilityId']?.toString(), // present on wrapper sometimes
       status: m['status']?.toString(),
-      scheduledAt: (m['scheduledAt'] is int) ? m['scheduledAt'] as int : null,
-      activatedAt: (m['activatedAt'] is int) ? m['activatedAt'] as int : null,
-      completedAt: (m['completedAt'] is int) ? m['completedAt'] as int : null,
+      scheduledAt: (m['scheduledAt'] is int)
+          ? DateTime.fromMillisecondsSinceEpoch(m['scheduledAt'] as int)
+          : null,
+      activatedAt: (m['activatedAt'] is int)
+          ? DateTime.fromMillisecondsSinceEpoch(m['activatedAt'] as int)
+          : null,
+      completedAt: (m['completedAt'] is int)
+          ? DateTime.fromMillisecondsSinceEpoch(m['completedAt'] as int)
+          : null,
       // audit, assigned fields (optional)
       assignedUser: m['assignedUser']?.toString(),
       assignedEmployeeUser: m['assignedEmployeeUser']?.toString(),

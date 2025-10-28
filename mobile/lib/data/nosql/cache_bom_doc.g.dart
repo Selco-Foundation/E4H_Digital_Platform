@@ -17,35 +17,35 @@ const CacheBomDocSchema = CollectionSchema(
   name: r'CacheBomDoc',
   id: -3643283558535085398,
   properties: {
-    r'assignUserUuid': PropertySchema(
+    r'activityFacilityId': PropertySchema(
       id: 0,
+      name: r'activityFacilityId',
+      type: IsarType.string,
+    ),
+    r'assignUserUuid': PropertySchema(
+      id: 1,
       name: r'assignUserUuid',
       type: IsarType.string,
     ),
     r'bomName': PropertySchema(
-      id: 1,
+      id: 2,
       name: r'bomName',
       type: IsarType.string,
     ),
     r'dataJson': PropertySchema(
-      id: 2,
+      id: 3,
       name: r'dataJson',
       type: IsarType.string,
     ),
     r'facilityId': PropertySchema(
-      id: 3,
+      id: 4,
       name: r'facilityId',
       type: IsarType.string,
     ),
     r'isDirty': PropertySchema(
-      id: 4,
+      id: 5,
       name: r'isDirty',
       type: IsarType.bool,
-    ),
-    r'projectId': PropertySchema(
-      id: 5,
-      name: r'projectId',
-      type: IsarType.string,
     ),
     r'schemaKey': PropertySchema(
       id: 6,
@@ -74,14 +74,14 @@ const CacheBomDocSchema = CollectionSchema(
   deserializeProp: _cacheBomDocDeserializeProp,
   idName: r'id',
   indexes: {
-    r'projectId_schemaKey': IndexSchema(
-      id: -8384682765972658953,
-      name: r'projectId_schemaKey',
+    r'activityFacilityId_schemaKey': IndexSchema(
+      id: -7518070926873010527,
+      name: r'activityFacilityId_schemaKey',
       unique: true,
       replace: false,
       properties: [
         IndexPropertySchema(
-          name: r'projectId',
+          name: r'activityFacilityId',
           type: IndexType.hash,
           caseSensitive: false,
         ),
@@ -133,6 +133,7 @@ int _cacheBomDocEstimateSize(
   Map<Type, List<int>> allOffsets,
 ) {
   var bytesCount = offsets.last;
+  bytesCount += 3 + object.activityFacilityId.length * 3;
   {
     final value = object.assignUserUuid;
     if (value != null) {
@@ -152,7 +153,6 @@ int _cacheBomDocEstimateSize(
       bytesCount += 3 + value.length * 3;
     }
   }
-  bytesCount += 3 + object.projectId.length * 3;
   bytesCount += 3 + object.schemaKey.length * 3;
   {
     final value = object.serverBomId;
@@ -170,12 +170,12 @@ void _cacheBomDocSerialize(
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
 ) {
-  writer.writeString(offsets[0], object.assignUserUuid);
-  writer.writeString(offsets[1], object.bomName);
-  writer.writeString(offsets[2], object.dataJson);
-  writer.writeString(offsets[3], object.facilityId);
-  writer.writeBool(offsets[4], object.isDirty);
-  writer.writeString(offsets[5], object.projectId);
+  writer.writeString(offsets[0], object.activityFacilityId);
+  writer.writeString(offsets[1], object.assignUserUuid);
+  writer.writeString(offsets[2], object.bomName);
+  writer.writeString(offsets[3], object.dataJson);
+  writer.writeString(offsets[4], object.facilityId);
+  writer.writeBool(offsets[5], object.isDirty);
   writer.writeString(offsets[6], object.schemaKey);
   writer.writeString(offsets[7], object.serverBomId);
   writer.writeString(offsets[8], object.tenantId);
@@ -189,13 +189,13 @@ CacheBomDoc _cacheBomDocDeserialize(
   Map<Type, List<int>> allOffsets,
 ) {
   final object = CacheBomDoc();
-  object.assignUserUuid = reader.readStringOrNull(offsets[0]);
-  object.bomName = reader.readStringOrNull(offsets[1]);
-  object.dataJson = reader.readString(offsets[2]);
-  object.facilityId = reader.readStringOrNull(offsets[3]);
+  object.activityFacilityId = reader.readString(offsets[0]);
+  object.assignUserUuid = reader.readStringOrNull(offsets[1]);
+  object.bomName = reader.readStringOrNull(offsets[2]);
+  object.dataJson = reader.readString(offsets[3]);
+  object.facilityId = reader.readStringOrNull(offsets[4]);
   object.id = id;
-  object.isDirty = reader.readBool(offsets[4]);
-  object.projectId = reader.readString(offsets[5]);
+  object.isDirty = reader.readBool(offsets[5]);
   object.schemaKey = reader.readString(offsets[6]);
   object.serverBomId = reader.readStringOrNull(offsets[7]);
   object.tenantId = reader.readString(offsets[8]);
@@ -211,17 +211,17 @@ P _cacheBomDocDeserializeProp<P>(
 ) {
   switch (propertyId) {
     case 0:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 1:
       return (reader.readStringOrNull(offset)) as P;
     case 2:
-      return (reader.readString(offset)) as P;
-    case 3:
       return (reader.readStringOrNull(offset)) as P;
-    case 4:
-      return (reader.readBool(offset)) as P;
-    case 5:
+    case 3:
       return (reader.readString(offset)) as P;
+    case 4:
+      return (reader.readStringOrNull(offset)) as P;
+    case 5:
+      return (reader.readBool(offset)) as P;
     case 6:
       return (reader.readString(offset)) as P;
     case 7:
@@ -249,90 +249,100 @@ void _cacheBomDocAttach(
 }
 
 extension CacheBomDocByIndex on IsarCollection<CacheBomDoc> {
-  Future<CacheBomDoc?> getByProjectIdSchemaKey(
-      String projectId, String schemaKey) {
-    return getByIndex(r'projectId_schemaKey', [projectId, schemaKey]);
+  Future<CacheBomDoc?> getByActivityFacilityIdSchemaKey(
+      String activityFacilityId, String schemaKey) {
+    return getByIndex(
+        r'activityFacilityId_schemaKey', [activityFacilityId, schemaKey]);
   }
 
-  CacheBomDoc? getByProjectIdSchemaKeySync(String projectId, String schemaKey) {
-    return getByIndexSync(r'projectId_schemaKey', [projectId, schemaKey]);
+  CacheBomDoc? getByActivityFacilityIdSchemaKeySync(
+      String activityFacilityId, String schemaKey) {
+    return getByIndexSync(
+        r'activityFacilityId_schemaKey', [activityFacilityId, schemaKey]);
   }
 
-  Future<bool> deleteByProjectIdSchemaKey(String projectId, String schemaKey) {
-    return deleteByIndex(r'projectId_schemaKey', [projectId, schemaKey]);
+  Future<bool> deleteByActivityFacilityIdSchemaKey(
+      String activityFacilityId, String schemaKey) {
+    return deleteByIndex(
+        r'activityFacilityId_schemaKey', [activityFacilityId, schemaKey]);
   }
 
-  bool deleteByProjectIdSchemaKeySync(String projectId, String schemaKey) {
-    return deleteByIndexSync(r'projectId_schemaKey', [projectId, schemaKey]);
+  bool deleteByActivityFacilityIdSchemaKeySync(
+      String activityFacilityId, String schemaKey) {
+    return deleteByIndexSync(
+        r'activityFacilityId_schemaKey', [activityFacilityId, schemaKey]);
   }
 
-  Future<List<CacheBomDoc?>> getAllByProjectIdSchemaKey(
-      List<String> projectIdValues, List<String> schemaKeyValues) {
-    final len = projectIdValues.length;
+  Future<List<CacheBomDoc?>> getAllByActivityFacilityIdSchemaKey(
+      List<String> activityFacilityIdValues, List<String> schemaKeyValues) {
+    final len = activityFacilityIdValues.length;
     assert(schemaKeyValues.length == len,
         'All index values must have the same length');
     final values = <List<dynamic>>[];
     for (var i = 0; i < len; i++) {
-      values.add([projectIdValues[i], schemaKeyValues[i]]);
+      values.add([activityFacilityIdValues[i], schemaKeyValues[i]]);
     }
 
-    return getAllByIndex(r'projectId_schemaKey', values);
+    return getAllByIndex(r'activityFacilityId_schemaKey', values);
   }
 
-  List<CacheBomDoc?> getAllByProjectIdSchemaKeySync(
-      List<String> projectIdValues, List<String> schemaKeyValues) {
-    final len = projectIdValues.length;
+  List<CacheBomDoc?> getAllByActivityFacilityIdSchemaKeySync(
+      List<String> activityFacilityIdValues, List<String> schemaKeyValues) {
+    final len = activityFacilityIdValues.length;
     assert(schemaKeyValues.length == len,
         'All index values must have the same length');
     final values = <List<dynamic>>[];
     for (var i = 0; i < len; i++) {
-      values.add([projectIdValues[i], schemaKeyValues[i]]);
+      values.add([activityFacilityIdValues[i], schemaKeyValues[i]]);
     }
 
-    return getAllByIndexSync(r'projectId_schemaKey', values);
+    return getAllByIndexSync(r'activityFacilityId_schemaKey', values);
   }
 
-  Future<int> deleteAllByProjectIdSchemaKey(
-      List<String> projectIdValues, List<String> schemaKeyValues) {
-    final len = projectIdValues.length;
+  Future<int> deleteAllByActivityFacilityIdSchemaKey(
+      List<String> activityFacilityIdValues, List<String> schemaKeyValues) {
+    final len = activityFacilityIdValues.length;
     assert(schemaKeyValues.length == len,
         'All index values must have the same length');
     final values = <List<dynamic>>[];
     for (var i = 0; i < len; i++) {
-      values.add([projectIdValues[i], schemaKeyValues[i]]);
+      values.add([activityFacilityIdValues[i], schemaKeyValues[i]]);
     }
 
-    return deleteAllByIndex(r'projectId_schemaKey', values);
+    return deleteAllByIndex(r'activityFacilityId_schemaKey', values);
   }
 
-  int deleteAllByProjectIdSchemaKeySync(
-      List<String> projectIdValues, List<String> schemaKeyValues) {
-    final len = projectIdValues.length;
+  int deleteAllByActivityFacilityIdSchemaKeySync(
+      List<String> activityFacilityIdValues, List<String> schemaKeyValues) {
+    final len = activityFacilityIdValues.length;
     assert(schemaKeyValues.length == len,
         'All index values must have the same length');
     final values = <List<dynamic>>[];
     for (var i = 0; i < len; i++) {
-      values.add([projectIdValues[i], schemaKeyValues[i]]);
+      values.add([activityFacilityIdValues[i], schemaKeyValues[i]]);
     }
 
-    return deleteAllByIndexSync(r'projectId_schemaKey', values);
+    return deleteAllByIndexSync(r'activityFacilityId_schemaKey', values);
   }
 
-  Future<Id> putByProjectIdSchemaKey(CacheBomDoc object) {
-    return putByIndex(r'projectId_schemaKey', object);
+  Future<Id> putByActivityFacilityIdSchemaKey(CacheBomDoc object) {
+    return putByIndex(r'activityFacilityId_schemaKey', object);
   }
 
-  Id putByProjectIdSchemaKeySync(CacheBomDoc object, {bool saveLinks = true}) {
-    return putByIndexSync(r'projectId_schemaKey', object, saveLinks: saveLinks);
-  }
-
-  Future<List<Id>> putAllByProjectIdSchemaKey(List<CacheBomDoc> objects) {
-    return putAllByIndex(r'projectId_schemaKey', objects);
-  }
-
-  List<Id> putAllByProjectIdSchemaKeySync(List<CacheBomDoc> objects,
+  Id putByActivityFacilityIdSchemaKeySync(CacheBomDoc object,
       {bool saveLinks = true}) {
-    return putAllByIndexSync(r'projectId_schemaKey', objects,
+    return putByIndexSync(r'activityFacilityId_schemaKey', object,
+        saveLinks: saveLinks);
+  }
+
+  Future<List<Id>> putAllByActivityFacilityIdSchemaKey(
+      List<CacheBomDoc> objects) {
+    return putAllByIndex(r'activityFacilityId_schemaKey', objects);
+  }
+
+  List<Id> putAllByActivityFacilityIdSchemaKeySync(List<CacheBomDoc> objects,
+      {bool saveLinks = true}) {
+    return putAllByIndexSync(r'activityFacilityId_schemaKey', objects,
         saveLinks: saveLinks);
   }
 }
@@ -431,44 +441,44 @@ extension CacheBomDocQueryWhere
   }
 
   QueryBuilder<CacheBomDoc, CacheBomDoc, QAfterWhereClause>
-      projectIdEqualToAnySchemaKey(String projectId) {
+      activityFacilityIdEqualToAnySchemaKey(String activityFacilityId) {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(IndexWhereClause.equalTo(
-        indexName: r'projectId_schemaKey',
-        value: [projectId],
+        indexName: r'activityFacilityId_schemaKey',
+        value: [activityFacilityId],
       ));
     });
   }
 
   QueryBuilder<CacheBomDoc, CacheBomDoc, QAfterWhereClause>
-      projectIdNotEqualToAnySchemaKey(String projectId) {
+      activityFacilityIdNotEqualToAnySchemaKey(String activityFacilityId) {
     return QueryBuilder.apply(this, (query) {
       if (query.whereSort == Sort.asc) {
         return query
             .addWhereClause(IndexWhereClause.between(
-              indexName: r'projectId_schemaKey',
+              indexName: r'activityFacilityId_schemaKey',
               lower: [],
-              upper: [projectId],
+              upper: [activityFacilityId],
               includeUpper: false,
             ))
             .addWhereClause(IndexWhereClause.between(
-              indexName: r'projectId_schemaKey',
-              lower: [projectId],
+              indexName: r'activityFacilityId_schemaKey',
+              lower: [activityFacilityId],
               includeLower: false,
               upper: [],
             ));
       } else {
         return query
             .addWhereClause(IndexWhereClause.between(
-              indexName: r'projectId_schemaKey',
-              lower: [projectId],
+              indexName: r'activityFacilityId_schemaKey',
+              lower: [activityFacilityId],
               includeLower: false,
               upper: [],
             ))
             .addWhereClause(IndexWhereClause.between(
-              indexName: r'projectId_schemaKey',
+              indexName: r'activityFacilityId_schemaKey',
               lower: [],
-              upper: [projectId],
+              upper: [activityFacilityId],
               includeUpper: false,
             ));
       }
@@ -476,44 +486,46 @@ extension CacheBomDocQueryWhere
   }
 
   QueryBuilder<CacheBomDoc, CacheBomDoc, QAfterWhereClause>
-      projectIdSchemaKeyEqualTo(String projectId, String schemaKey) {
+      activityFacilityIdSchemaKeyEqualTo(
+          String activityFacilityId, String schemaKey) {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(IndexWhereClause.equalTo(
-        indexName: r'projectId_schemaKey',
-        value: [projectId, schemaKey],
+        indexName: r'activityFacilityId_schemaKey',
+        value: [activityFacilityId, schemaKey],
       ));
     });
   }
 
   QueryBuilder<CacheBomDoc, CacheBomDoc, QAfterWhereClause>
-      projectIdEqualToSchemaKeyNotEqualTo(String projectId, String schemaKey) {
+      activityFacilityIdEqualToSchemaKeyNotEqualTo(
+          String activityFacilityId, String schemaKey) {
     return QueryBuilder.apply(this, (query) {
       if (query.whereSort == Sort.asc) {
         return query
             .addWhereClause(IndexWhereClause.between(
-              indexName: r'projectId_schemaKey',
-              lower: [projectId],
-              upper: [projectId, schemaKey],
+              indexName: r'activityFacilityId_schemaKey',
+              lower: [activityFacilityId],
+              upper: [activityFacilityId, schemaKey],
               includeUpper: false,
             ))
             .addWhereClause(IndexWhereClause.between(
-              indexName: r'projectId_schemaKey',
-              lower: [projectId, schemaKey],
+              indexName: r'activityFacilityId_schemaKey',
+              lower: [activityFacilityId, schemaKey],
               includeLower: false,
-              upper: [projectId],
+              upper: [activityFacilityId],
             ));
       } else {
         return query
             .addWhereClause(IndexWhereClause.between(
-              indexName: r'projectId_schemaKey',
-              lower: [projectId, schemaKey],
+              indexName: r'activityFacilityId_schemaKey',
+              lower: [activityFacilityId, schemaKey],
               includeLower: false,
-              upper: [projectId],
+              upper: [activityFacilityId],
             ))
             .addWhereClause(IndexWhereClause.between(
-              indexName: r'projectId_schemaKey',
-              lower: [projectId],
-              upper: [projectId, schemaKey],
+              indexName: r'activityFacilityId_schemaKey',
+              lower: [activityFacilityId],
+              upper: [activityFacilityId, schemaKey],
               includeUpper: false,
             ));
       }
@@ -659,6 +671,142 @@ extension CacheBomDocQueryWhere
 
 extension CacheBomDocQueryFilter
     on QueryBuilder<CacheBomDoc, CacheBomDoc, QFilterCondition> {
+  QueryBuilder<CacheBomDoc, CacheBomDoc, QAfterFilterCondition>
+      activityFacilityIdEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'activityFacilityId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheBomDoc, CacheBomDoc, QAfterFilterCondition>
+      activityFacilityIdGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'activityFacilityId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheBomDoc, CacheBomDoc, QAfterFilterCondition>
+      activityFacilityIdLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'activityFacilityId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheBomDoc, CacheBomDoc, QAfterFilterCondition>
+      activityFacilityIdBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'activityFacilityId',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheBomDoc, CacheBomDoc, QAfterFilterCondition>
+      activityFacilityIdStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'activityFacilityId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheBomDoc, CacheBomDoc, QAfterFilterCondition>
+      activityFacilityIdEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'activityFacilityId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheBomDoc, CacheBomDoc, QAfterFilterCondition>
+      activityFacilityIdContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'activityFacilityId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheBomDoc, CacheBomDoc, QAfterFilterCondition>
+      activityFacilityIdMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'activityFacilityId',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheBomDoc, CacheBomDoc, QAfterFilterCondition>
+      activityFacilityIdIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'activityFacilityId',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheBomDoc, CacheBomDoc, QAfterFilterCondition>
+      activityFacilityIdIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'activityFacilityId',
+        value: '',
+      ));
+    });
+  }
+
   QueryBuilder<CacheBomDoc, CacheBomDoc, QAfterFilterCondition>
       assignUserUuidIsNull() {
     return QueryBuilder.apply(this, (query) {
@@ -1318,142 +1466,6 @@ extension CacheBomDocQueryFilter
   }
 
   QueryBuilder<CacheBomDoc, CacheBomDoc, QAfterFilterCondition>
-      projectIdEqualTo(
-    String value, {
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'projectId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<CacheBomDoc, CacheBomDoc, QAfterFilterCondition>
-      projectIdGreaterThan(
-    String value, {
-    bool include = false,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'projectId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<CacheBomDoc, CacheBomDoc, QAfterFilterCondition>
-      projectIdLessThan(
-    String value, {
-    bool include = false,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'projectId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<CacheBomDoc, CacheBomDoc, QAfterFilterCondition>
-      projectIdBetween(
-    String lower,
-    String upper, {
-    bool includeLower = true,
-    bool includeUpper = true,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'projectId',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<CacheBomDoc, CacheBomDoc, QAfterFilterCondition>
-      projectIdStartsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.startsWith(
-        property: r'projectId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<CacheBomDoc, CacheBomDoc, QAfterFilterCondition>
-      projectIdEndsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.endsWith(
-        property: r'projectId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<CacheBomDoc, CacheBomDoc, QAfterFilterCondition>
-      projectIdContains(String value, {bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.contains(
-        property: r'projectId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<CacheBomDoc, CacheBomDoc, QAfterFilterCondition>
-      projectIdMatches(String pattern, {bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.matches(
-        property: r'projectId',
-        wildcard: pattern,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<CacheBomDoc, CacheBomDoc, QAfterFilterCondition>
-      projectIdIsEmpty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'projectId',
-        value: '',
-      ));
-    });
-  }
-
-  QueryBuilder<CacheBomDoc, CacheBomDoc, QAfterFilterCondition>
-      projectIdIsNotEmpty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        property: r'projectId',
-        value: '',
-      ));
-    });
-  }
-
-  QueryBuilder<CacheBomDoc, CacheBomDoc, QAfterFilterCondition>
       schemaKeyEqualTo(
     String value, {
     bool caseSensitive = true,
@@ -1943,6 +1955,20 @@ extension CacheBomDocQueryLinks
 
 extension CacheBomDocQuerySortBy
     on QueryBuilder<CacheBomDoc, CacheBomDoc, QSortBy> {
+  QueryBuilder<CacheBomDoc, CacheBomDoc, QAfterSortBy>
+      sortByActivityFacilityId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'activityFacilityId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheBomDoc, CacheBomDoc, QAfterSortBy>
+      sortByActivityFacilityIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'activityFacilityId', Sort.desc);
+    });
+  }
+
   QueryBuilder<CacheBomDoc, CacheBomDoc, QAfterSortBy> sortByAssignUserUuid() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'assignUserUuid', Sort.asc);
@@ -2004,18 +2030,6 @@ extension CacheBomDocQuerySortBy
     });
   }
 
-  QueryBuilder<CacheBomDoc, CacheBomDoc, QAfterSortBy> sortByProjectId() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'projectId', Sort.asc);
-    });
-  }
-
-  QueryBuilder<CacheBomDoc, CacheBomDoc, QAfterSortBy> sortByProjectIdDesc() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'projectId', Sort.desc);
-    });
-  }
-
   QueryBuilder<CacheBomDoc, CacheBomDoc, QAfterSortBy> sortBySchemaKey() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'schemaKey', Sort.asc);
@@ -2067,6 +2081,20 @@ extension CacheBomDocQuerySortBy
 
 extension CacheBomDocQuerySortThenBy
     on QueryBuilder<CacheBomDoc, CacheBomDoc, QSortThenBy> {
+  QueryBuilder<CacheBomDoc, CacheBomDoc, QAfterSortBy>
+      thenByActivityFacilityId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'activityFacilityId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheBomDoc, CacheBomDoc, QAfterSortBy>
+      thenByActivityFacilityIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'activityFacilityId', Sort.desc);
+    });
+  }
+
   QueryBuilder<CacheBomDoc, CacheBomDoc, QAfterSortBy> thenByAssignUserUuid() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'assignUserUuid', Sort.asc);
@@ -2140,18 +2168,6 @@ extension CacheBomDocQuerySortThenBy
     });
   }
 
-  QueryBuilder<CacheBomDoc, CacheBomDoc, QAfterSortBy> thenByProjectId() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'projectId', Sort.asc);
-    });
-  }
-
-  QueryBuilder<CacheBomDoc, CacheBomDoc, QAfterSortBy> thenByProjectIdDesc() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'projectId', Sort.desc);
-    });
-  }
-
   QueryBuilder<CacheBomDoc, CacheBomDoc, QAfterSortBy> thenBySchemaKey() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'schemaKey', Sort.asc);
@@ -2203,6 +2219,14 @@ extension CacheBomDocQuerySortThenBy
 
 extension CacheBomDocQueryWhereDistinct
     on QueryBuilder<CacheBomDoc, CacheBomDoc, QDistinct> {
+  QueryBuilder<CacheBomDoc, CacheBomDoc, QDistinct>
+      distinctByActivityFacilityId({bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'activityFacilityId',
+          caseSensitive: caseSensitive);
+    });
+  }
+
   QueryBuilder<CacheBomDoc, CacheBomDoc, QDistinct> distinctByAssignUserUuid(
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
@@ -2235,13 +2259,6 @@ extension CacheBomDocQueryWhereDistinct
   QueryBuilder<CacheBomDoc, CacheBomDoc, QDistinct> distinctByIsDirty() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'isDirty');
-    });
-  }
-
-  QueryBuilder<CacheBomDoc, CacheBomDoc, QDistinct> distinctByProjectId(
-      {bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(r'projectId', caseSensitive: caseSensitive);
     });
   }
 
@@ -2281,6 +2298,13 @@ extension CacheBomDocQueryProperty
     });
   }
 
+  QueryBuilder<CacheBomDoc, String, QQueryOperations>
+      activityFacilityIdProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'activityFacilityId');
+    });
+  }
+
   QueryBuilder<CacheBomDoc, String?, QQueryOperations>
       assignUserUuidProperty() {
     return QueryBuilder.apply(this, (query) {
@@ -2309,12 +2333,6 @@ extension CacheBomDocQueryProperty
   QueryBuilder<CacheBomDoc, bool, QQueryOperations> isDirtyProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'isDirty');
-    });
-  }
-
-  QueryBuilder<CacheBomDoc, String, QQueryOperations> projectIdProperty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addPropertyName(r'projectId');
     });
   }
 

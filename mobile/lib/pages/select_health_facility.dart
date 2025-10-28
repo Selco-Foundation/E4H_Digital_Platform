@@ -12,15 +12,15 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:selco/utils/extensions.dart';
 
+import '../blocs/activity_facility/activity_facility.dart';
 import '../blocs/app_init/app_init.dart';
+import '../blocs/cache_activity_facility_asset/cache_activity_facility_asset.dart';
 import '../blocs/cache_asset_count/cache_asset_count.dart';
-import '../blocs/cache_project_asset/cache_project_asset.dart';
-import '../blocs/project/project.dart';
-import '../blocs/selected_project/selected_project.dart';
+import '../blocs/selected_activity_facility/selected_activity_facility.dart';
 import '../blocs/user_type/user_type.dart';
-import '../data/nosql/cache_project_asset.dart';
+import '../data/nosql/cache_activity_facility_asset.dart';
+import '../model/activity_facility_workflow/activity_facility_workflow.dart';
 import '../model/mdms/mdms.dart';
-import '../model/project_workflow/project_workflow.dart';
 import '../model/solution_design_type/solution_design_type.dart';
 import '../router/app_router.dart';
 import '../utils/utils.dart';
@@ -61,34 +61,35 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
     ];
 
     if (_searchQuery.isNotEmpty) {
-      context.read<ProjectBloc>().add(
-            ProjectEvent.fetchProjectsBySearch(
+      context.read<ActivityFacilityBloc>().add(
+            ActivityFacilityEvent.fetchActivityFacilityBySearch(
               query: _searchQuery,
               workflowStatuses: statuses,
             ),
           );
     } else if (_sortDirection != null) {
-      context.read<ProjectBloc>().add(
-            ProjectEvent.fetchProjectsSorted(
+      context.read<ActivityFacilityBloc>().add(
+            ActivityFacilityEvent.fetchActivityFacilitySorted(
               workflowStatuses: statuses,
               sortDirection: _sortDirection!,
             ),
           );
     } else {
-      context.read<ProjectBloc>().add(
-            ProjectEvent.fetchProjectsByWorkflow(workflowStatuses: statuses),
+      context.read<ActivityFacilityBloc>().add(
+            ActivityFacilityEvent.fetchActivityFacilityByWorkflow(
+                workflowStatuses: statuses),
           );
     }
   }
 
-  void _handleProjectTap(ProjectWorkflow project) {
-    context.read<CacheProjectAssetBloc>().add(
-          CacheProjectAssetEvent.add(
-              CacheProjectAsset(projectId: project.project.id)),
+  void _handleProjectTap(ActivityFacilityWorkflow project) {
+    context.read<CacheActivityFacilityAssetBloc>().add(
+          CacheActivityFacilityAssetEvent.add(CacheActivityFacilityAsset(
+              activityFacilityId: project.activityFacility.id)),
         );
     context
-        .read<SelectedProjectBloc>()
-        .add(SelectedProjectEvent.select(project));
+        .read<SelectedActivityFacilityBloc>()
+        .add(SelectedActivityFacilityEvent.select(project));
     context.router.push(const AssetCountRoute());
   }
 
@@ -123,7 +124,7 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
             loaded: (list) {
               bool changed = false;
               for (final e in list) {
-                final pid = e.projectId;
+                final pid = e.activityFacilityId;
                 final type = (e.assetType ?? '').toLowerCase().trim();
                 final p = (e.progress ?? 0);
                 if (pid.isEmpty || type.isEmpty) continue;
@@ -155,7 +156,7 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
                   child: _buildSearchAndSortControls(textTheme, theme),
                 ),
                 const SizedBox(height: spacer2),
-                BlocBuilder<ProjectBloc, ProjectState>(
+                BlocBuilder<ActivityFacilityBloc, ActivityFacilityState>(
                   builder: (context, state) {
                     return state.maybeWhen(
                       initial: () => _loadingIndicator(),
@@ -168,9 +169,9 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
                             'battery',
                             'panel'
                           ]) {
-                            context
-                                .read<CacheAssetCountBloc>()
-                                .add(CacheAssetCountEvent.get(p.project.id, t));
+                            context.read<CacheAssetCountBloc>().add(
+                                CacheAssetCountEvent.get(
+                                    p.activityFacility.id, t));
                           }
                         }
                         return Column(
@@ -188,9 +189,9 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
                             'battery',
                             'panel'
                           ]) {
-                            context
-                                .read<CacheAssetCountBloc>()
-                                .add(CacheAssetCountEvent.get(p.project.id, t));
+                            context.read<CacheAssetCountBloc>().add(
+                                CacheAssetCountEvent.get(
+                                    p.activityFacility.id, t));
                           }
                         }
                         return _buildProjectList(searchList);
@@ -261,7 +262,7 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
   }
 
   /// Extracted helper to render a vertical list of cards
-  Widget _buildProjectList(List<ProjectWorkflow> projects) {
+  Widget _buildProjectList(List<ActivityFacilityWorkflow> projects) {
     if (projects.isEmpty) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: spacer4),
@@ -277,16 +278,17 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
           for (final project in projects) ...[
             InstallationReportCard(
               onPress: () => _handleProjectTap(project),
-              project: project,
-              projectId: project.project.id,
-              title: project.project.name ?? '—',
-              dateAssigned: project.project.startDateTime ?? DateTime.now(),
+              activityFacility: project,
+              projectId: project.activityFacility.id,
+              title: project.activityFacility.facility?.facilityName ?? '—',
+              dateAssigned:
+                  project.activityFacility.scheduledAt ?? DateTime.now(),
               status: project.status ?? '—',
-              systemDesignCode: project.project.additionalDetails?.facility
+              systemDesignCode: project.activityFacility.facility
                       ?.facilityDetails?.solar_solution_design_type ??
                   '',
-              fraction:
-                  _fractionForProject(project.project.id), // <<< progress here
+              fraction: _fractionForProject(
+                  project.activityFacility.id), // <<< progress here
             ),
             const SizedBox(height: spacer5),
           ],
@@ -345,8 +347,8 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
                               .ASSIGNED_TO_FIELD_STAFF.name,
                         ),
                       ];
-                      context.read<ProjectBloc>().add(
-                            ProjectEvent.fetchProjectsSorted(
+                      context.read<ActivityFacilityBloc>().add(
+                            ActivityFacilityEvent.fetchActivityFacilitySorted(
                               workflowStatuses: statuses,
                               sortDirection: _sortDirection!,
                             ),
@@ -368,7 +370,7 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
 }
 
 class InstallationReportCard extends StatelessWidget {
-  final ProjectWorkflow? project;
+  final ActivityFacilityWorkflow? activityFacility;
   final String? projectId;
   final String? title;
   final String? status;
@@ -381,7 +383,7 @@ class InstallationReportCard extends StatelessWidget {
 
   const InstallationReportCard({
     super.key,
-    this.project,
+    this.activityFacility,
     this.projectId,
     this.title,
     this.status,
@@ -551,9 +553,9 @@ class InstallationReportCard extends StatelessWidget {
                   mainAxisSize: MainAxisSize.max,
                   label: 'Submit For Approval',
                   onPressed: () {
-                    context
-                        .read<SelectedProjectBloc>()
-                        .add(SelectedProjectEvent.select(project!));
+                    context.read<SelectedActivityFacilityBloc>().add(
+                        SelectedActivityFacilityEvent.select(
+                            activityFacility!));
                     context.router.push(OverallAssetSummaryRoute(
                         refresh: DateTime.now().millisecondsSinceEpoch));
                   },

@@ -18,25 +18,25 @@ final _privateConstructorUsedError = UnsupportedError(
 mixin _$CacheAssetEvent {
   String get projectId => throw _privateConstructorUsedError;
   String get userType => throw _privateConstructorUsedError;
-  ProjectWorkflow get project => throw _privateConstructorUsedError;
+  ActivityFacilityWorkflow get project => throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function(
-            String projectId, String userType, ProjectWorkflow project)
+            String projectId, String userType, ActivityFacilityWorkflow project)
         start,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(
-            String projectId, String userType, ProjectWorkflow project)?
+    TResult? Function(String projectId, String userType,
+            ActivityFacilityWorkflow project)?
         start,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(
-            String projectId, String userType, ProjectWorkflow project)?
+    TResult Function(String projectId, String userType,
+            ActivityFacilityWorkflow project)?
         start,
     required TResult orElse(),
   }) =>
@@ -69,9 +69,10 @@ abstract class $CacheAssetEventCopyWith<$Res> {
           CacheAssetEvent value, $Res Function(CacheAssetEvent) then) =
       _$CacheAssetEventCopyWithImpl<$Res, CacheAssetEvent>;
   @useResult
-  $Res call({String projectId, String userType, ProjectWorkflow project});
+  $Res call(
+      {String projectId, String userType, ActivityFacilityWorkflow project});
 
-  $ProjectWorkflowCopyWith<$Res> get project;
+  $ActivityFacilityWorkflowCopyWith<$Res> get project;
 }
 
 /// @nodoc
@@ -103,14 +104,14 @@ class _$CacheAssetEventCopyWithImpl<$Res, $Val extends CacheAssetEvent>
       project: null == project
           ? _value.project
           : project // ignore: cast_nullable_to_non_nullable
-              as ProjectWorkflow,
+              as ActivityFacilityWorkflow,
     ) as $Val);
   }
 
   @override
   @pragma('vm:prefer-inline')
-  $ProjectWorkflowCopyWith<$Res> get project {
-    return $ProjectWorkflowCopyWith<$Res>(_value.project, (value) {
+  $ActivityFacilityWorkflowCopyWith<$Res> get project {
+    return $ActivityFacilityWorkflowCopyWith<$Res>(_value.project, (value) {
       return _then(_value.copyWith(project: value) as $Val);
     });
   }
@@ -124,10 +125,11 @@ abstract class _$$StartSyncImplCopyWith<$Res>
       __$$StartSyncImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({String projectId, String userType, ProjectWorkflow project});
+  $Res call(
+      {String projectId, String userType, ActivityFacilityWorkflow project});
 
   @override
-  $ProjectWorkflowCopyWith<$Res> get project;
+  $ActivityFacilityWorkflowCopyWith<$Res> get project;
 }
 
 /// @nodoc
@@ -157,7 +159,7 @@ class __$$StartSyncImplCopyWithImpl<$Res>
       null == project
           ? _value.project
           : project // ignore: cast_nullable_to_non_nullable
-              as ProjectWorkflow,
+              as ActivityFacilityWorkflow,
     ));
   }
 }
@@ -172,7 +174,7 @@ class _$StartSyncImpl implements _StartSync {
   @override
   final String userType;
   @override
-  final ProjectWorkflow project;
+  final ActivityFacilityWorkflow project;
 
   @override
   String toString() {
@@ -204,7 +206,7 @@ class _$StartSyncImpl implements _StartSync {
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function(
-            String projectId, String userType, ProjectWorkflow project)
+            String projectId, String userType, ActivityFacilityWorkflow project)
         start,
   }) {
     return start(projectId, userType, project);
@@ -213,8 +215,8 @@ class _$StartSyncImpl implements _StartSync {
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(
-            String projectId, String userType, ProjectWorkflow project)?
+    TResult? Function(String projectId, String userType,
+            ActivityFacilityWorkflow project)?
         start,
   }) {
     return start?.call(projectId, userType, project);
@@ -223,8 +225,8 @@ class _$StartSyncImpl implements _StartSync {
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(
-            String projectId, String userType, ProjectWorkflow project)?
+    TResult Function(String projectId, String userType,
+            ActivityFacilityWorkflow project)?
         start,
     required TResult orElse(),
   }) {
@@ -265,14 +267,14 @@ class _$StartSyncImpl implements _StartSync {
 
 abstract class _StartSync implements CacheAssetEvent {
   const factory _StartSync(final String projectId, final String userType,
-      final ProjectWorkflow project) = _$StartSyncImpl;
+      final ActivityFacilityWorkflow project) = _$StartSyncImpl;
 
   @override
   String get projectId;
   @override
   String get userType;
   @override
-  ProjectWorkflow get project;
+  ActivityFacilityWorkflow get project;
   @override
   @JsonKey(ignore: true)
   _$$StartSyncImplCopyWith<_$StartSyncImpl> get copyWith =>

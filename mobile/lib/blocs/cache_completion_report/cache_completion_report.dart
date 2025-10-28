@@ -1,108 +1,3 @@
-// import 'package:flutter_bloc/flutter_bloc.dart';
-// import 'package:freezed_annotation/freezed_annotation.dart';
-// import 'package:isar/isar.dart';
-//
-// import '../../data/nosql/cache_completion_report.dart';
-//
-// part 'cache_completion_report.freezed.dart';
-//
-// @freezed
-// class CacheCompletionReportEvent with _$CacheCompletionReportEvent {
-//   const factory CacheCompletionReportEvent.get(String projectId) = _Get;
-//   const factory CacheCompletionReportEvent.addOrUpdate(
-//       CacheCompletionReport report) = _AddOrUpdate;
-//   const factory CacheCompletionReportEvent.delete(int id) = _Delete;
-// }
-//
-// @freezed
-// class CacheCompletionReportState with _$CacheCompletionReportState {
-//   const factory CacheCompletionReportState.initial() = _Initial;
-//   const factory CacheCompletionReportState.loading() = _Loading;
-//   const factory CacheCompletionReportState.loaded(
-//       CacheCompletionReport report) = _Loaded;
-//   const factory CacheCompletionReportState.addedOrUpdated(
-//       CacheCompletionReport report) = _AddedOrUpdated;
-//   const factory CacheCompletionReportState.deleted() = _Deleted;
-//   const factory CacheCompletionReportState.notFound() = _NotFound;
-//   const factory CacheCompletionReportState.error(String message) = _Error;
-// }
-//
-// class CacheCompletionReportBloc
-//     extends Bloc<CacheCompletionReportEvent, CacheCompletionReportState> {
-//   final Isar isar;
-//
-//   CacheCompletionReportBloc(this.isar)
-//       : super(const CacheCompletionReportState.initial()) {
-//     on<_Get>(_getReport);
-//     on<_AddOrUpdate>(_addOrUpdateReport);
-//     on<_Delete>(_deleteReport);
-//   }
-//
-//   Future<void> _getReport(
-//     _Get event,
-//     Emitter<CacheCompletionReportState> emit,
-//   ) async {
-//     emit(const CacheCompletionReportState.loading());
-//     try {
-//       final report = await isar.cacheCompletionReports
-//           .where()
-//           .projectIdEqualTo(event.projectId)
-//           .findFirst();
-//
-//       if (report == null) {
-//         emit(const CacheCompletionReportState.notFound());
-//       } else {
-//         emit(CacheCompletionReportState.loaded(report));
-//       }
-//     } catch (e) {
-//       emit(CacheCompletionReportState.error(e.toString()));
-//     }
-//   }
-//
-//   Future<void> _addOrUpdateReport(
-//     _AddOrUpdate event,
-//     Emitter<CacheCompletionReportState> emit,
-//   ) async {
-//     try {
-//       await isar.writeTxn(() async {
-//         final existing = await isar.cacheCompletionReports
-//             .where()
-//             .projectIdEqualTo(event.report.projectId)
-//             .findFirst();
-//
-//         if (existing != null) {
-//           existing.filePath = event.report.filePath;
-//           existing.latitude = event.report.latitude;
-//           existing.longitude = event.report.longitude;
-//           existing.updatedAt = DateTime.now();
-//           await isar.cacheCompletionReports.put(existing);
-//           emit(CacheCompletionReportState.addedOrUpdated(existing));
-//         } else {
-//           await isar.cacheCompletionReports.put(event.report);
-//           emit(CacheCompletionReportState.addedOrUpdated(event.report));
-//         }
-//       });
-//     } catch (e) {
-//       emit(CacheCompletionReportState.error(e.toString()));
-//     }
-//   }
-//
-//   Future<void> _deleteReport(
-//     _Delete event,
-//     Emitter<CacheCompletionReportState> emit,
-//   ) async {
-//     try {
-//       await isar.writeTxn(() async {
-//         await isar.cacheCompletionReports.delete(event.id);
-//       });
-//       emit(const CacheCompletionReportState.deleted());
-//     } catch (e) {
-//       emit(CacheCompletionReportState.error(e.toString()));
-//     }
-//   }
-// }
-
-// lib/blocs/cache_completion_report/cache_completion_report.dart
 import 'dart:async';
 
 import 'package:bloc/bloc.dart';
@@ -226,7 +121,7 @@ class CacheCompletionReportBloc
   Future<void> _emitLoadedForProject(String projectId, Emitter emit) async {
     final list = await isar.cacheCompletionReports
         .where()
-        .projectIdEqualTo(projectId)
+        .activityFacilityIdEqualTo(projectId)
         .sortByCreatedAt()
         .findAll();
 
@@ -279,7 +174,7 @@ class CacheCompletionReportBloc
         } else {
           await isar.cacheCompletionReports.put(
             CacheCompletionReport(
-              projectId: event.projectId,
+              activityFacilityId: event.projectId,
               filePath: event.filePath,
               entryId: entryId,
               fileName: event.fileName!.isEmpty
@@ -337,7 +232,7 @@ class CacheCompletionReportBloc
             } else {
               await isar.cacheCompletionReports.put(
                 CacheCompletionReport(
-                  projectId: f.projectId,
+                  activityFacilityId: f.projectId,
                   filePath: f.filePath,
                   entryId: entryId,
                   fileName:
@@ -368,7 +263,7 @@ class CacheCompletionReportBloc
   ) async {
     try {
       final rec = await isar.cacheCompletionReports.get(event.id);
-      final projectId = rec?.projectId;
+      final projectId = rec?.activityFacilityId;
 
       await isar.writeTxn(() async {
         await isar.cacheCompletionReports.delete(event.id);
@@ -420,7 +315,7 @@ class CacheCompletionReportBloc
             .where()
             .entryIdEqualTo(eid)
             .findFirst();
-        if (rec != null) affected.add(rec.projectId);
+        if (rec != null) affected.add(rec.activityFacilityId);
       }
 
       await isar.writeTxn(() async {
@@ -450,7 +345,7 @@ class CacheCompletionReportBloc
     try {
       final all = await isar.cacheCompletionReports
           .where()
-          .projectIdEqualTo(event.projectId)
+          .activityFacilityIdEqualTo(event.projectId)
           .findAll();
 
       await isar.writeTxn(() async {
@@ -476,7 +371,7 @@ class CacheCompletionReportBloc
         // 1) delete everything for this project
         final existing = await isar.cacheCompletionReports
             .where()
-            .projectIdEqualTo(pid)
+            .activityFacilityIdEqualTo(pid)
             .findAll();
         for (final r in existing) {
           await isar.cacheCompletionReports.delete(r.id);
@@ -487,7 +382,7 @@ class CacheCompletionReportBloc
           final entryId = _entryIdOf(f.projectId, f.filePath);
           await isar.cacheCompletionReports.put(
             CacheCompletionReport(
-              projectId: f.projectId,
+              activityFacilityId: f.projectId,
               filePath: f.filePath,
               entryId: entryId,
               fileName:

@@ -1,13 +1,13 @@
 import 'package:isar/isar.dart';
 
-part 'cache_project_bom_values.g.dart';
+part 'cache_activity_facility_bom_values.g.dart';
 
 @collection
-class CacheProjectBomValues {
+class CacheActivityFacilityBomValues {
   Id id = Isar.autoIncrement;
 
   @Index(caseSensitive: false)
-  late String projectId;
+  late String activityFacilityId;
 
   @Index(caseSensitive: false)
   late String userType;
