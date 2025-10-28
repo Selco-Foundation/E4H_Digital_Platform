@@ -52,11 +52,27 @@ const ActivityDetails = ({
   const removeUserEntry = (activity, index) => {
     setActivityAssignmentData((prevState) => prevState?.map((dataEntry) => {
       if (dataEntry.activity.code !== activity.code) return dataEntry;
+      const modifiedUsers = dataEntry.users
+        .filter((userEntry, i) => !!userEntry.id || i !== index)
+        .map((userEntry, i) => (userEntry.id && i === index) ? { ...userEntry, deleteAssignment: true } : userEntry);
+
+      if (modifiedUsers.filter((userEntry) => !userEntry.deleteAssignment).length === 0) {
+        modifiedUsers.push(
+          {
+            startDate: { value: "", error: "", },
+            endDate: { value: "", error: "", },
+            poNumber: { value: "", error: "", },
+            organization: { value: null, error: "", },
+            role: { value: null, error: "", },
+            email: { value: null, error: "", },
+            isEmailSent: false,
+          }
+        );
+      }
+
       return {
         ...dataEntry,
-        users: dataEntry.users
-          .filter((userEntry, i) => !!userEntry.id || i !== index)
-          .map((userEntry, i) => (userEntry.id && i === index) ? { ...userEntry, deleteAssignment: true } : userEntry),
+        users: modifiedUsers,
       }
     }))
   }
@@ -430,7 +446,7 @@ const ActivityDetails = ({
             if (userEntry.deleteAssignment) return;
             return UserEmailSentCheck(
               userEntry.isEmailSent, row.original["activity"], i, usersArray.length - 1 === i,
-              usersArray.filter((userEntry) => !userEntry.deleteAssignment).length === 1
+              !userEntry?.id && usersArray.filter((userEntry) => !userEntry.deleteAssignment).length === 1
             );
           })
         ),
