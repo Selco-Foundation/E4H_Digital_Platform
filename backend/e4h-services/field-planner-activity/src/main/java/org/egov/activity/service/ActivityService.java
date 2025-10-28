@@ -113,7 +113,9 @@ public class ActivityService {
                 log.info("processing {} valid entities", activityAssignment);
                 activityEnrichment.enrichActivityAssignmentOnCreate(activityAssignment, request.getRequestInfo());
             }
-            log.info("successfully created project facility");
+            log.info("successfully created Activity Assignment");
+            List<String> emaildIds = activityServiceUtil.getEmailIdsList(request);
+            activityServiceUtil.sendEmailViaKafka(emaildIds, "", "", "in");
             producer.push(activityConfiguration.getCreateActivityAssignmentTopic(), request);
         } catch (Exception exception) {
             log.error("error occurred while creating Activity Assignment: {}", ExceptionUtils.getStackTrace(exception));

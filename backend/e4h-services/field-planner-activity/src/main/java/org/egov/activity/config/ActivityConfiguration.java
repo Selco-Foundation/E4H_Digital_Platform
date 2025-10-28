@@ -44,6 +44,9 @@ public class ActivityConfiguration {
     @Value("${egov.createandsave.pdf.url}")
     private String pdfCreateSaveFilestore;
 
+    @Value("${egov.kafka.notification.email.topic}")
+    private String notificationEmailTopic;
+
     @Value("${egov.off.grid.single.phase.key}")
     private String bomACOffGridSinglePhase;
 
