@@ -3,7 +3,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:isar/isar.dart';
 
 import '../../data/nosql/cache_sync_record.dart';
-import '../../data/nosql/cache_unsubmitted_project.dart';
+import '../../data/nosql/cache_unsubmitted_activity_facility.dart';
 
 part 'cache_sync_record.freezed.dart';
 
@@ -28,7 +28,7 @@ class CacheSyncRecordBloc
           await colRecord.where().userTypeEqualTo(event.userType).findFirst();
 
       // 2) count drafts for this userType
-      final drafts = await _isar.cacheUnsubmittedProjects
+      final drafts = await _isar.cacheUnsubmittedActivityFacilitys
           .where()
           .filter()
           .userTypeEqualTo(event.userType)

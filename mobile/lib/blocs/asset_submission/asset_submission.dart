@@ -7,7 +7,7 @@ import 'package:isar/isar.dart';
 
 import '../../data/nosql/cache_submission_job.dart';
 import '../../data/nosql/cache_sync_record.dart';
-import '../../data/nosql/cache_unsubmitted_project.dart';
+import '../../data/nosql/cache_unsubmitted_activity_facility.dart';
 import '../../repositories/project_repo.dart';
 import '../../utils/background_service.dart';
 
@@ -21,17 +21,17 @@ StreamSubscription? _svcDoneSub;
 class AssetSubmissionBloc
     extends Bloc<AssetSubmissionEvent, AssetSubmissionState> {
   final Isar _isar;
-  final UnsubmittedProjectRepository _draftRepo;
+  final UnsubmittedActivityFacilityRepository _draftRepo;
 
   // ----- Single vs Batch tracking -----
   bool _isBatchMode = false;
   List<String> _batchIds = const [];
 
   // Track currently active single submit
-  String? _activeSingleProjectId;
+  String? _activeSingleActivityFacilityId;
 
   AssetSubmissionBloc(this._isar)
-      : _draftRepo = UnsubmittedProjectRepository(_isar),
+      : _draftRepo = UnsubmittedActivityFacilityRepository(_isar),
         super(const AssetSubmissionState.initial()) {
     on<_SubmitAll>(_onSubmitAll);
     on<_SubmitAllDrafts>(_onSubmitAllDrafts);
@@ -39,8 +39,8 @@ class AssetSubmissionBloc
     on<AssetSubmissionEvent>((event, emit) async {
       await event.maybeMap(
         svcError: (e) async =>
-            await _handleSvcError(e.projectId, e.message, emit),
-        svcDone: (e) async => await _handleSvcDone(e.projectId, emit),
+            await _handleSvcError(e.activityFacilityId, e.message, emit),
+        svcDone: (e) async => await _handleSvcDone(e.activityFacilityId, emit),
         orElse: () async {},
       );
     });
@@ -53,7 +53,8 @@ class AssetSubmissionBloc
       final msg = data?['message']?.toString();
       print('[BLoC] kEvtError stream received pid=$pid msg=$msg');
       if (pid != null) {
-        add(AssetSubmissionEvent.svcError(projectId: pid, message: msg));
+        add(AssetSubmissionEvent.svcError(
+            activityFacilityId: pid, message: msg));
       }
     });
 
@@ -62,7 +63,7 @@ class AssetSubmissionBloc
       final pid = data?['projectId'] as String?;
       print('[BLoC] kEvtDone stream received pid=$pid');
       if (pid != null) {
-        add(AssetSubmissionEvent.svcDone(projectId: pid));
+        add(AssetSubmissionEvent.svcDone(activityFacilityId: pid));
       }
     });
   }
@@ -102,29 +103,30 @@ class AssetSubmissionBloc
     emit(const AssetSubmissionState.loading());
     await upsertSyncRecord(event.userType);
 
-    final localEntries = await _isar.cacheUnsubmittedProjects
+    final localEntries = await _isar.cacheUnsubmittedActivityFacilitys
         .where()
         .filter()
         .userTypeEqualTo(event.userType)
         .findAll();
 
-    final projectIds = localEntries.map((e) => e.project.id).toList();
+    final activityFacilityIds =
+        localEntries.map((e) => e.activityFacility.id).toList();
 
     _isBatchMode = true;
-    _batchIds = projectIds;
-    _activeSingleProjectId = null;
+    _batchIds = activityFacilityIds;
+    _activeSingleActivityFacilityId = null;
 
-    if (projectIds.isEmpty) {
+    if (activityFacilityIds.isEmpty) {
       emit(const AssetSubmissionState.failure("No drafts to sync."));
       _isBatchMode = false;
       _batchIds = const [];
       return;
     }
 
-    for (final pid in projectIds) {
-      await _writeJobStatusUI(projectId: pid, status: 'queued');
+    for (final pid in activityFacilityIds) {
+      await _writeJobStatusUI(activityFacilityId: pid, status: 'queued');
       await BackgroundServiceController.I.enqueueSubmission(
-        projectId: pid,
+        activityFacilityId: pid,
         userType: event.userType,
         fromDraft: true,
       );
@@ -132,12 +134,12 @@ class AssetSubmissionBloc
 
     await _bulkJobsSub?.cancel();
     _bulkJobsSub = _isar.cacheSubmissionJobs.watchLazy().listen((_) async {
-      await _emitBulkProgress(projectIds: projectIds, emit: emit);
+      await _emitBulkProgress(projectIds: activityFacilityIds, emit: emit);
     });
 
     if (!emit.isDone) {
       emit(AssetSubmissionState.progress(
-          completed: 0, total: projectIds.length));
+          completed: 0, total: activityFacilityIds.length));
     }
   }
 
@@ -147,7 +149,7 @@ class AssetSubmissionBloc
   }) async {
     final jobs = await _isar.cacheSubmissionJobs
         .where()
-        .anyOf(projectIds, (q, pid) => q.projectIdEqualTo(pid))
+        .anyOf(projectIds, (q, pid) => q.activityFacilityIdEqualTo(pid))
         .findAll();
 
     final total = projectIds.length;
@@ -186,14 +188,14 @@ class AssetSubmissionBloc
     Emitter<AssetSubmissionState> emit,
   ) =>
       _handleSubmit(
-        projectId: event.projectId,
+        activityFacilityId: event.activityFacilityId,
         userType: event.userType,
         emit: emit,
         fromDraft: false,
       );
 
   Future<bool> _handleSubmit({
-    required String projectId,
+    required String activityFacilityId,
     required String userType,
     required Emitter<AssetSubmissionState> emit,
     required bool fromDraft,
@@ -202,15 +204,16 @@ class AssetSubmissionBloc
     _batchIds = const [];
 
     emit(const AssetSubmissionState.loading());
-    _activeSingleProjectId = fromDraft ? null : projectId;
+    _activeSingleActivityFacilityId = fromDraft ? null : activityFacilityId;
 
-    await _writeJobStatusUI(projectId: projectId, status: 'queued');
+    await _writeJobStatusUI(
+        activityFacilityId: activityFacilityId, status: 'queued');
 
     print(
-        '[BLoC] single submit firing for $projectId | _isBatchMode=$_isBatchMode | _activeSingleProjectId=$_activeSingleProjectId');
+        '[BLoC] single submit firing for $activityFacilityId | _isBatchMode=$_isBatchMode | _activeSingleActivityFacilityId=$_activeSingleActivityFacilityId');
 
     await BackgroundServiceController.I.enqueueSubmission(
-      projectId: projectId,
+      activityFacilityId: activityFacilityId,
       userType: userType,
       fromDraft: fromDraft,
     );
@@ -219,7 +222,7 @@ class AssetSubmissionBloc
       await _jobSub?.cancel();
       _jobSub = _isar.cacheSubmissionJobs
           .where()
-          .projectIdEqualTo(projectId)
+          .activityFacilityIdEqualTo(activityFacilityId)
           .watch(fireImmediately: true)
           .listen((rows) async {
         if (rows.isEmpty) return;
@@ -231,7 +234,7 @@ class AssetSubmissionBloc
 
           case 'success':
             if (!emit.isDone) emit(const AssetSubmissionState.success());
-            _activeSingleProjectId = null;
+            _activeSingleActivityFacilityId = null;
             await _jobSub?.cancel();
             _jobSub = null;
             await BackgroundServiceController.I.stopNow();
@@ -241,7 +244,7 @@ class AssetSubmissionBloc
             if (!emit.isDone) {
               emit(AssetSubmissionState.failure(job.error ?? 'Failed.'));
             }
-            _activeSingleProjectId = null;
+            _activeSingleActivityFacilityId = null;
             await _jobSub?.cancel();
             _jobSub = null;
             await BackgroundServiceController.I.stopNow();
@@ -258,21 +261,21 @@ class AssetSubmissionBloc
   }
 
   Future<void> _handleSvcError(
-    String projectId,
+    String activityFacilityId,
     String? message,
     Emitter<AssetSubmissionState> emit,
   ) async {
     await _writeJobStatusUI(
-      projectId: projectId,
+      activityFacilityId: activityFacilityId,
       status: 'failed',
       error: message,
     );
 
     if (!_isBatchMode &&
-        _activeSingleProjectId != null &&
-        _activeSingleProjectId == projectId) {
+        _activeSingleActivityFacilityId != null &&
+        _activeSingleActivityFacilityId == activityFacilityId) {
       emit(AssetSubmissionState.failure(message ?? 'Failed.'));
-      _activeSingleProjectId = null;
+      _activeSingleActivityFacilityId = null;
       await BackgroundServiceController.I.stopNow();
       return;
     }
@@ -285,11 +288,11 @@ class AssetSubmissionBloc
   }
 
   Future<void> _handleSvcDone(
-    String projectId,
+    String activityFacilityId,
     Emitter<AssetSubmissionState> emit,
   ) async {
     await _writeJobStatusUI(
-      projectId: projectId,
+      activityFacilityId: activityFacilityId,
       status: 'success',
     );
 
@@ -299,7 +302,7 @@ class AssetSubmissionBloc
       if (!emit.isDone) {
         emit(const AssetSubmissionState.success());
       }
-      _activeSingleProjectId = null;
+      _activeSingleActivityFacilityId = null;
       await BackgroundServiceController.I.stopNow();
       return;
     }
@@ -307,20 +310,22 @@ class AssetSubmissionBloc
   }
 
   Future<void> _writeJobStatusUI({
-    required String projectId,
+    required String activityFacilityId,
     required String status,
     String? error,
   }) async {
     await _isar.writeTxn(() async {
       final existing = await _isar.cacheSubmissionJobs
           .where()
-          .projectIdEqualTo(projectId)
+          .activityFacilityIdEqualTo(activityFacilityId)
           .findFirst();
 
       if (existing == null) {
         await _isar.cacheSubmissionJobs.put(
           CacheSubmissionJob(
-              projectId: projectId, status: status, error: error),
+              activityFacilityId: activityFacilityId,
+              status: status,
+              error: error),
         );
       } else {
         existing
@@ -335,7 +340,7 @@ class AssetSubmissionBloc
 @freezed
 class AssetSubmissionEvent with _$AssetSubmissionEvent {
   const factory AssetSubmissionEvent.submitAll({
-    required String projectId,
+    required String activityFacilityId,
     required String userType,
   }) = _SubmitAll;
 
@@ -344,12 +349,12 @@ class AssetSubmissionEvent with _$AssetSubmissionEvent {
   }) = _SubmitAllDrafts;
 
   const factory AssetSubmissionEvent.svcError({
-    required String projectId,
+    required String activityFacilityId,
     String? message,
   }) = _SvcError;
 
   const factory AssetSubmissionEvent.svcDone({
-    required String projectId,
+    required String activityFacilityId,
   }) = _SvcDone;
 }
 

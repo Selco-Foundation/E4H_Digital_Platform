@@ -12,12 +12,10 @@ import '../data/nosql/cache_asset_detail.dart';
 import '../data/nosql/cache_media_upload.dart';
 import '../data/nosql/cache_specification.dart';
 import '../data/remote_client.dart';
+import '../model/activity_facility_workflow/activity_facility_workflow.dart';
 import '../model/asset/asset.dart';
 import '../model/document/document.dart';
-import '../model/entities/project_facility.dart';
-import '../model/project_workflow/project_workflow.dart';
 import '../model/transaction/transaction.dart';
-import '../repositories/project_facility_repo.dart';
 import '../utils/envConfig.dart';
 import '../utils/utils.dart';
 import 'project_repo.dart';
@@ -58,7 +56,6 @@ class AssetRepository {
       }
     }
 
-    // Handle extension for files without one
     if (!fileName.contains('.')) {
       final ext = getExtensionFromMime(mimeType ?? 'application/octet-stream');
       fileName = '$fileName.$ext';
@@ -96,8 +93,6 @@ class AssetRepository {
     }
   }
 
-  /// Creates or updates an asset on the server, then writes back the returned
-  /// assetId into Isar and returns the server's canonical Asset model.
   Future<Asset> createOrUpdateAsset({
     required Asset asset,
     required Isar isar,
@@ -199,24 +194,20 @@ class AssetRepository {
   /// clearing only the matching CacheAddNewAsset per serialNumber,
   /// and wholesale-clearing media before re-inserting.
   Future<void> syncRemoteToLocal(
-      {required ProjectWorkflow project,
-      required String projectId,
+      {required ActivityFacilityWorkflow activityFacility,
+      required String activityFacilityId,
       required String userType,
       required Isar isar}) async {
     try {
-      final draft = await PrefilledProjectRepository(isar).exists(
-        projectId: projectId,
+      final draft = await PrefilledActivityFacilityRepository(isar).exists(
+        activityFacilityId: activityFacilityId,
         userType: userType,
       );
       if (draft) return;
 
       // 1) facilityId lookup
-      final facilityId = (await ProjectFacilityRepository().search(
-        ProjectFacilitySearchModel(projectId: [projectId]),
-        isar,
-      ))
-          .facilityId;
-      print("projectId $projectId");
+      final facilityId =
+          activityFacility.activityFacility?.facility?.facilityId;
       print("facilityId $facilityId");
 
       // 2) fetch JSON, parse into Asset models
@@ -265,7 +256,7 @@ class AssetRepository {
           print("countValue $countValue of ${entry.key}");
           var countEntry = await isar.cacheAssetCounts
               .where()
-              .projectIdEqualTo(projectId)
+              .activityFacilityIdEqualTo(activityFacilityId)
               .filter()
               .assetTypeEqualTo(type)
               .findFirst();
@@ -278,7 +269,7 @@ class AssetRepository {
           } else {
             await isar.cacheAssetCounts.put(
               CacheAssetCount(
-                projectId: projectId,
+                activityFacilityId: activityFacilityId,
                 assetType: type,
                 count: countValue,
               ),
@@ -289,7 +280,7 @@ class AssetRepository {
           final first = list.first;
           final det = first.assetDetails!;
           final spec = CacheSpecification(
-            projectId: projectId,
+            activityFacilityId: activityFacilityId,
             assetType: type,
             totalCapacity: det.totalCapacity ?? 0,
             totalCapacityUnit:
@@ -298,7 +289,7 @@ class AssetRepository {
           );
           var specEntry = await isar.cacheSpecifications
               .where()
-              .projectIdEqualTo(projectId)
+              .activityFacilityIdEqualTo(activityFacilityId)
               .filter()
               .assetTypeEqualTo(type)
               .findFirst();
@@ -315,7 +306,7 @@ class AssetRepository {
           }
 
           final detail = CacheAssetDetail(
-            projectId: projectId,
+            activityFacilityId: activityFacilityId,
             assetType: type,
             brand: first.brandID ?? '',
             model: first.modelNumber ?? '',
@@ -323,7 +314,7 @@ class AssetRepository {
           );
           var detailEntry = await isar.cacheAssetDetails
               .where()
-              .projectIdEqualTo(projectId)
+              .activityFacilityIdEqualTo(activityFacilityId)
               .filter()
               .assetTypeEqualTo(type)
               .findFirst();
@@ -345,7 +336,7 @@ class AssetRepository {
             // delete old by serial
             final oldList = await isar.cacheAddNewAssets
                 .where()
-                .projectIdEqualTo(projectId)
+                .activityFacilityIdEqualTo(activityFacilityId)
                 .filter()
                 .assetTypeEqualTo(type)
                 .and()
@@ -361,7 +352,7 @@ class AssetRepository {
                 await isar.cacheAddNewAssets.put(
                   CacheAddNewAsset(
                     assetId: asset.assetId,
-                    projectId: projectId,
+                    activityFacilityId: activityFacilityId,
                     assetType: type,
                     itemNumber:
                         asset.assetDetails?.inverterCapacity?.toString() ?? '',
@@ -388,10 +379,9 @@ class AssetRepository {
             }
           }
 
-          // — clear & re‑insert media uploads
           final oldMedia = await isar.cacheMediaUploads
               .where()
-              .projectIdEqualTo(projectId)
+              .activityFacilityIdEqualTo(activityFacilityId)
               .filter()
               .assetTypeEqualTo(type)
               .findAll();
@@ -400,9 +390,9 @@ class AssetRepository {
           }
         }
 
-        print("project.workflow ${project.workflow}");
-        print("Documents ${project.workflow?.documents}");
-        for (var doc in project.workflow?.documents ?? []) {
+        print("project.workflow ${activityFacility.workflow}");
+        print("Documents ${activityFacility.workflow?.documents}");
+        for (var doc in activityFacility.workflow?.documents ?? []) {
           if (doc.documentType != 'ASSET' &&
               doc.documentType != 'PHOTO' &&
               doc.documentType != 'INSTALLATION_REPORT') {
@@ -418,7 +408,7 @@ class AssetRepository {
             await isar.cacheMediaUploads.put(
               CacheMediaUpload(
                 userType: userType,
-                projectId: projectId,
+                activityFacilityId: activityFacilityId,
                 assetType: assetTypeFromDoc,
                 itemNumber: '',
                 itemType: itemTypeFromDoc ?? '',
@@ -505,7 +495,6 @@ class AssetRepository {
     return null;
   }
 
-// Optional: robust error-code extractor
   String? _errorCodeFromDio(DioException e) {
     try {
       final data = e.response?.data;

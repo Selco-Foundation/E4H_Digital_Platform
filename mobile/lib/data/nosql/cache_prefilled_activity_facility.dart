@@ -1,24 +1,24 @@
 import 'package:isar/isar.dart';
 
-part 'cache_prefilled_project.g.dart';
+part 'cache_prefilled_activity_facility.g.dart';
 
 @Collection()
-class CachePrefilledProject {
+class CachePrefilledActivityFacility {
   Id id = Isar.autoIncrement;
 
   @Index(
       composite: [CompositeIndex('userType')],
       unique: true,
       caseSensitive: true)
-  late String projectId;
+  late String activityFacilityId;
 
   late String userType;
 
   DateTime createdAt = DateTime.now();
   DateTime? updatedAt;
 
-  CachePrefilledProject({
-    required this.projectId,
+  CachePrefilledActivityFacility({
+    required this.activityFacilityId,
     required this.userType,
   });
 }

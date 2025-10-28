@@ -5,7 +5,7 @@ import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../blocs/project/project.dart';
+import '../blocs/activity_facility/activity_facility.dart';
 import '../blocs/report_type/report_type.dart';
 import '../blocs/user_type/user_type.dart';
 import '../router/app_router.dart';
@@ -35,8 +35,8 @@ class _InstallationReportPageState extends State<InstallationReportPage> {
             orElse: () => USER_TYPES.FIELD_STAFF.name,
           );
 
-      context.read<ProjectBloc>().add(
-            ProjectEvent.fetchAllReportCounts(userType: userType),
+      context.read<ActivityFacilityBloc>().add(
+            ActivityFacilityEvent.fetchAllReportCounts(userType: userType),
           );
     });
   }
@@ -46,7 +46,7 @@ class _InstallationReportPageState extends State<InstallationReportPage> {
     final theme = Theme.of(context);
     final textTheme = theme.digitTextTheme(context);
 
-    return BlocBuilder<ProjectBloc, ProjectState>(
+    return BlocBuilder<ActivityFacilityBloc, ActivityFacilityState>(
       builder: (context, state) {
         return Scaffold(
           body: ScrollableContent(

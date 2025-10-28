@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'cache_project_workflow.dart';
+part of 'cache_activity_facility_workflow.dart';
 
 // **************************************************************************
 // IsarCollectionGenerator
@@ -9,30 +9,30 @@ part of 'cache_project_workflow.dart';
 // coverage:ignore-file
 // ignore_for_file: duplicate_ignore, non_constant_identifier_names, constant_identifier_names, invalid_use_of_protected_member, unnecessary_cast, prefer_const_constructors, lines_longer_than_80_chars, require_trailing_commas, inference_failure_on_function_invocation, unnecessary_parenthesis, unnecessary_raw_strings, unnecessary_null_checks, join_return_with_assignment, prefer_final_locals, avoid_js_rounded_ints, avoid_positional_boolean_parameters, always_specify_types
 
-extension GetCacheProjectWorkflowCollection on Isar {
-  IsarCollection<CacheProjectWorkflow> get cacheProjectWorkflows =>
-      this.collection();
+extension GetCacheActivityFacilityWorkflowCollection on Isar {
+  IsarCollection<CacheActivityFacilityWorkflow>
+      get cacheActivityFacilityWorkflows => this.collection();
 }
 
-const CacheProjectWorkflowSchema = CollectionSchema(
-  name: r'CacheProjectWorkflow',
-  id: 1725801788843147865,
+const CacheActivityFacilityWorkflowSchema = CollectionSchema(
+  name: r'CacheActivityFacilityWorkflow',
+  id: 7629554972142841863,
   properties: {
-    r'createdAt': PropertySchema(
+    r'activityFacility': PropertySchema(
       id: 0,
+      name: r'activityFacility',
+      type: IsarType.object,
+      target: r'ActivityFacility',
+    ),
+    r'activityFacilityId': PropertySchema(
+      id: 1,
+      name: r'activityFacilityId',
+      type: IsarType.string,
+    ),
+    r'createdAt': PropertySchema(
+      id: 2,
       name: r'createdAt',
       type: IsarType.dateTime,
-    ),
-    r'project': PropertySchema(
-      id: 1,
-      name: r'project',
-      type: IsarType.object,
-      target: r'ProjectModel',
-    ),
-    r'projectId': PropertySchema(
-      id: 2,
-      name: r'projectId',
-      type: IsarType.string,
     ),
     r'status': PropertySchema(
       id: 3,
@@ -57,20 +57,20 @@ const CacheProjectWorkflowSchema = CollectionSchema(
       target: r'Workflow',
     )
   },
-  estimateSize: _cacheProjectWorkflowEstimateSize,
-  serialize: _cacheProjectWorkflowSerialize,
-  deserialize: _cacheProjectWorkflowDeserialize,
-  deserializeProp: _cacheProjectWorkflowDeserializeProp,
+  estimateSize: _cacheActivityFacilityWorkflowEstimateSize,
+  serialize: _cacheActivityFacilityWorkflowSerialize,
+  deserialize: _cacheActivityFacilityWorkflowDeserialize,
+  deserializeProp: _cacheActivityFacilityWorkflowDeserializeProp,
   idName: r'id',
   indexes: {
-    r'projectId': IndexSchema(
-      id: 3305656282123791113,
-      name: r'projectId',
+    r'activityFacilityId': IndexSchema(
+      id: -3740981522167357561,
+      name: r'activityFacilityId',
       unique: false,
       replace: false,
       properties: [
         IndexPropertySchema(
-          name: r'projectId',
+          name: r'activityFacilityId',
           type: IndexType.hash,
           caseSensitive: true,
         )
@@ -92,9 +92,8 @@ const CacheProjectWorkflowSchema = CollectionSchema(
   },
   links: {},
   embeddedSchemas: {
-    r'ProjectModel': ProjectModelSchema,
+    r'ActivityFacility': ActivityFacilitySchema,
     r'AddressModel': AddressModelSchema,
-    r'AdditionalDetails': AdditionalDetailsSchema,
     r'Facility': FacilitySchema,
     r'FacilityAddress': FacilityAddressSchema,
     r'FacilityDetails': FacilityDetailsSchema,
@@ -104,22 +103,22 @@ const CacheProjectWorkflowSchema = CollectionSchema(
     r'Transaction': TransactionSchema,
     r'Comment': CommentSchema
   },
-  getId: _cacheProjectWorkflowGetId,
-  getLinks: _cacheProjectWorkflowGetLinks,
-  attach: _cacheProjectWorkflowAttach,
+  getId: _cacheActivityFacilityWorkflowGetId,
+  getLinks: _cacheActivityFacilityWorkflowGetLinks,
+  attach: _cacheActivityFacilityWorkflowAttach,
   version: '3.1.0+1',
 );
 
-int _cacheProjectWorkflowEstimateSize(
-  CacheProjectWorkflow object,
+int _cacheActivityFacilityWorkflowEstimateSize(
+  CacheActivityFacilityWorkflow object,
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
 ) {
   var bytesCount = offsets.last;
   bytesCount += 3 +
-      ProjectModelSchema.estimateSize(
-          object.project, allOffsets[ProjectModel]!, allOffsets);
-  bytesCount += 3 + object.projectId.length * 3;
+      ActivityFacilitySchema.estimateSize(
+          object.activityFacility, allOffsets[ActivityFacility]!, allOffsets);
+  bytesCount += 3 + object.activityFacilityId.length * 3;
   bytesCount += 3 + object.status.length * 3;
   {
     final list = object.transactions;
@@ -145,20 +144,20 @@ int _cacheProjectWorkflowEstimateSize(
   return bytesCount;
 }
 
-void _cacheProjectWorkflowSerialize(
-  CacheProjectWorkflow object,
+void _cacheActivityFacilityWorkflowSerialize(
+  CacheActivityFacilityWorkflow object,
   IsarWriter writer,
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
 ) {
-  writer.writeDateTime(offsets[0], object.createdAt);
-  writer.writeObject<ProjectModel>(
-    offsets[1],
+  writer.writeObject<ActivityFacility>(
+    offsets[0],
     allOffsets,
-    ProjectModelSchema.serialize,
-    object.project,
+    ActivityFacilitySchema.serialize,
+    object.activityFacility,
   );
-  writer.writeString(offsets[2], object.projectId);
+  writer.writeString(offsets[1], object.activityFacilityId);
+  writer.writeDateTime(offsets[2], object.createdAt);
   writer.writeString(offsets[3], object.status);
   writer.writeObjectList<Transaction>(
     offsets[4],
@@ -175,20 +174,20 @@ void _cacheProjectWorkflowSerialize(
   );
 }
 
-CacheProjectWorkflow _cacheProjectWorkflowDeserialize(
+CacheActivityFacilityWorkflow _cacheActivityFacilityWorkflowDeserialize(
   Id id,
   IsarReader reader,
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
 ) {
-  final object = CacheProjectWorkflow(
-    project: reader.readObjectOrNull<ProjectModel>(
-          offsets[1],
-          ProjectModelSchema.deserialize,
+  final object = CacheActivityFacilityWorkflow(
+    activityFacility: reader.readObjectOrNull<ActivityFacility>(
+          offsets[0],
+          ActivityFacilitySchema.deserialize,
           allOffsets,
         ) ??
-        ProjectModel(),
-    projectId: reader.readString(offsets[2]),
+        ActivityFacility(),
+    activityFacilityId: reader.readString(offsets[1]),
     status: reader.readString(offsets[3]),
     transactions: reader.readObjectList<Transaction>(
       offsets[4],
@@ -202,13 +201,13 @@ CacheProjectWorkflow _cacheProjectWorkflowDeserialize(
       allOffsets,
     ),
   );
-  object.createdAt = reader.readDateTime(offsets[0]);
+  object.createdAt = reader.readDateTime(offsets[2]);
   object.id = id;
   object.updatedAt = reader.readDateTimeOrNull(offsets[5]);
   return object;
 }
 
-P _cacheProjectWorkflowDeserializeProp<P>(
+P _cacheActivityFacilityWorkflowDeserializeProp<P>(
   IsarReader reader,
   int propertyId,
   int offset,
@@ -216,16 +215,16 @@ P _cacheProjectWorkflowDeserializeProp<P>(
 ) {
   switch (propertyId) {
     case 0:
-      return (reader.readDateTime(offset)) as P;
-    case 1:
-      return (reader.readObjectOrNull<ProjectModel>(
+      return (reader.readObjectOrNull<ActivityFacility>(
             offset,
-            ProjectModelSchema.deserialize,
+            ActivityFacilitySchema.deserialize,
             allOffsets,
           ) ??
-          ProjectModel()) as P;
-    case 2:
+          ActivityFacility()) as P;
+    case 1:
       return (reader.readString(offset)) as P;
+    case 2:
+      return (reader.readDateTime(offset)) as P;
     case 3:
       return (reader.readString(offset)) as P;
     case 4:
@@ -248,34 +247,36 @@ P _cacheProjectWorkflowDeserializeProp<P>(
   }
 }
 
-Id _cacheProjectWorkflowGetId(CacheProjectWorkflow object) {
+Id _cacheActivityFacilityWorkflowGetId(CacheActivityFacilityWorkflow object) {
   return object.id;
 }
 
-List<IsarLinkBase<dynamic>> _cacheProjectWorkflowGetLinks(
-    CacheProjectWorkflow object) {
+List<IsarLinkBase<dynamic>> _cacheActivityFacilityWorkflowGetLinks(
+    CacheActivityFacilityWorkflow object) {
   return [];
 }
 
-void _cacheProjectWorkflowAttach(
-    IsarCollection<dynamic> col, Id id, CacheProjectWorkflow object) {
+void _cacheActivityFacilityWorkflowAttach(
+    IsarCollection<dynamic> col, Id id, CacheActivityFacilityWorkflow object) {
   object.id = id;
 }
 
-extension CacheProjectWorkflowQueryWhereSort
-    on QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow, QWhere> {
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow, QAfterWhere>
-      anyId() {
+extension CacheActivityFacilityWorkflowQueryWhereSort on QueryBuilder<
+    CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow, QWhere> {
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
+      QAfterWhere> anyId() {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(const IdWhereClause.any());
     });
   }
 }
 
-extension CacheProjectWorkflowQueryWhere
-    on QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow, QWhereClause> {
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow, QAfterWhereClause>
-      idEqualTo(Id id) {
+extension CacheActivityFacilityWorkflowQueryWhere on QueryBuilder<
+    CacheActivityFacilityWorkflow,
+    CacheActivityFacilityWorkflow,
+    QWhereClause> {
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
+      QAfterWhereClause> idEqualTo(Id id) {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(IdWhereClause.between(
         lower: id,
@@ -284,8 +285,8 @@ extension CacheProjectWorkflowQueryWhere
     });
   }
 
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow, QAfterWhereClause>
-      idNotEqualTo(Id id) {
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
+      QAfterWhereClause> idNotEqualTo(Id id) {
     return QueryBuilder.apply(this, (query) {
       if (query.whereSort == Sort.asc) {
         return query
@@ -307,8 +308,8 @@ extension CacheProjectWorkflowQueryWhere
     });
   }
 
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow, QAfterWhereClause>
-      idGreaterThan(Id id, {bool include = false}) {
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
+      QAfterWhereClause> idGreaterThan(Id id, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(
         IdWhereClause.greaterThan(lower: id, includeLower: include),
@@ -316,8 +317,8 @@ extension CacheProjectWorkflowQueryWhere
     });
   }
 
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow, QAfterWhereClause>
-      idLessThan(Id id, {bool include = false}) {
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
+      QAfterWhereClause> idLessThan(Id id, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(
         IdWhereClause.lessThan(upper: id, includeUpper: include),
@@ -325,8 +326,8 @@ extension CacheProjectWorkflowQueryWhere
     });
   }
 
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow, QAfterWhereClause>
-      idBetween(
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
+      QAfterWhereClause> idBetween(
     Id lowerId,
     Id upperId, {
     bool includeLower = true,
@@ -342,53 +343,54 @@ extension CacheProjectWorkflowQueryWhere
     });
   }
 
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow, QAfterWhereClause>
-      projectIdEqualTo(String projectId) {
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
+      QAfterWhereClause> activityFacilityIdEqualTo(String activityFacilityId) {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(IndexWhereClause.equalTo(
-        indexName: r'projectId',
-        value: [projectId],
+        indexName: r'activityFacilityId',
+        value: [activityFacilityId],
       ));
     });
   }
 
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow, QAfterWhereClause>
-      projectIdNotEqualTo(String projectId) {
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
+          QAfterWhereClause>
+      activityFacilityIdNotEqualTo(String activityFacilityId) {
     return QueryBuilder.apply(this, (query) {
       if (query.whereSort == Sort.asc) {
         return query
             .addWhereClause(IndexWhereClause.between(
-              indexName: r'projectId',
+              indexName: r'activityFacilityId',
               lower: [],
-              upper: [projectId],
+              upper: [activityFacilityId],
               includeUpper: false,
             ))
             .addWhereClause(IndexWhereClause.between(
-              indexName: r'projectId',
-              lower: [projectId],
+              indexName: r'activityFacilityId',
+              lower: [activityFacilityId],
               includeLower: false,
               upper: [],
             ));
       } else {
         return query
             .addWhereClause(IndexWhereClause.between(
-              indexName: r'projectId',
-              lower: [projectId],
+              indexName: r'activityFacilityId',
+              lower: [activityFacilityId],
               includeLower: false,
               upper: [],
             ))
             .addWhereClause(IndexWhereClause.between(
-              indexName: r'projectId',
+              indexName: r'activityFacilityId',
               lower: [],
-              upper: [projectId],
+              upper: [activityFacilityId],
               includeUpper: false,
             ));
       }
     });
   }
 
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow, QAfterWhereClause>
-      statusEqualTo(String status) {
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
+      QAfterWhereClause> statusEqualTo(String status) {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(IndexWhereClause.equalTo(
         indexName: r'status',
@@ -397,8 +399,8 @@ extension CacheProjectWorkflowQueryWhere
     });
   }
 
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow, QAfterWhereClause>
-      statusNotEqualTo(String status) {
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
+      QAfterWhereClause> statusNotEqualTo(String status) {
     return QueryBuilder.apply(this, (query) {
       if (query.whereSort == Sort.asc) {
         return query
@@ -433,9 +435,149 @@ extension CacheProjectWorkflowQueryWhere
   }
 }
 
-extension CacheProjectWorkflowQueryFilter on QueryBuilder<CacheProjectWorkflow,
-    CacheProjectWorkflow, QFilterCondition> {
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
+extension CacheActivityFacilityWorkflowQueryFilter on QueryBuilder<
+    CacheActivityFacilityWorkflow,
+    CacheActivityFacilityWorkflow,
+    QFilterCondition> {
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
+      QAfterFilterCondition> activityFacilityIdEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'activityFacilityId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
+      QAfterFilterCondition> activityFacilityIdGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'activityFacilityId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
+      QAfterFilterCondition> activityFacilityIdLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'activityFacilityId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
+      QAfterFilterCondition> activityFacilityIdBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'activityFacilityId',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
+      QAfterFilterCondition> activityFacilityIdStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'activityFacilityId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
+      QAfterFilterCondition> activityFacilityIdEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'activityFacilityId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
+          QAfterFilterCondition>
+      activityFacilityIdContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'activityFacilityId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
+          QAfterFilterCondition>
+      activityFacilityIdMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'activityFacilityId',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
+      QAfterFilterCondition> activityFacilityIdIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'activityFacilityId',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
+      QAfterFilterCondition> activityFacilityIdIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'activityFacilityId',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
       QAfterFilterCondition> createdAtEqualTo(DateTime value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
@@ -445,7 +587,7 @@ extension CacheProjectWorkflowQueryFilter on QueryBuilder<CacheProjectWorkflow,
     });
   }
 
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
       QAfterFilterCondition> createdAtGreaterThan(
     DateTime value, {
     bool include = false,
@@ -459,7 +601,7 @@ extension CacheProjectWorkflowQueryFilter on QueryBuilder<CacheProjectWorkflow,
     });
   }
 
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
       QAfterFilterCondition> createdAtLessThan(
     DateTime value, {
     bool include = false,
@@ -473,7 +615,7 @@ extension CacheProjectWorkflowQueryFilter on QueryBuilder<CacheProjectWorkflow,
     });
   }
 
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
       QAfterFilterCondition> createdAtBetween(
     DateTime lower,
     DateTime upper, {
@@ -491,7 +633,7 @@ extension CacheProjectWorkflowQueryFilter on QueryBuilder<CacheProjectWorkflow,
     });
   }
 
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
       QAfterFilterCondition> idEqualTo(Id value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
@@ -501,7 +643,7 @@ extension CacheProjectWorkflowQueryFilter on QueryBuilder<CacheProjectWorkflow,
     });
   }
 
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
       QAfterFilterCondition> idGreaterThan(
     Id value, {
     bool include = false,
@@ -515,7 +657,7 @@ extension CacheProjectWorkflowQueryFilter on QueryBuilder<CacheProjectWorkflow,
     });
   }
 
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
       QAfterFilterCondition> idLessThan(
     Id value, {
     bool include = false,
@@ -529,7 +671,7 @@ extension CacheProjectWorkflowQueryFilter on QueryBuilder<CacheProjectWorkflow,
     });
   }
 
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
       QAfterFilterCondition> idBetween(
     Id lower,
     Id upper, {
@@ -547,145 +689,7 @@ extension CacheProjectWorkflowQueryFilter on QueryBuilder<CacheProjectWorkflow,
     });
   }
 
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
-      QAfterFilterCondition> projectIdEqualTo(
-    String value, {
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'projectId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
-      QAfterFilterCondition> projectIdGreaterThan(
-    String value, {
-    bool include = false,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'projectId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
-      QAfterFilterCondition> projectIdLessThan(
-    String value, {
-    bool include = false,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'projectId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
-      QAfterFilterCondition> projectIdBetween(
-    String lower,
-    String upper, {
-    bool includeLower = true,
-    bool includeUpper = true,
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'projectId',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
-      QAfterFilterCondition> projectIdStartsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.startsWith(
-        property: r'projectId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
-      QAfterFilterCondition> projectIdEndsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.endsWith(
-        property: r'projectId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
-          QAfterFilterCondition>
-      projectIdContains(String value, {bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.contains(
-        property: r'projectId',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
-          QAfterFilterCondition>
-      projectIdMatches(String pattern, {bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.matches(
-        property: r'projectId',
-        wildcard: pattern,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
-      QAfterFilterCondition> projectIdIsEmpty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'projectId',
-        value: '',
-      ));
-    });
-  }
-
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
-      QAfterFilterCondition> projectIdIsNotEmpty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        property: r'projectId',
-        value: '',
-      ));
-    });
-  }
-
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
       QAfterFilterCondition> statusEqualTo(
     String value, {
     bool caseSensitive = true,
@@ -699,7 +703,7 @@ extension CacheProjectWorkflowQueryFilter on QueryBuilder<CacheProjectWorkflow,
     });
   }
 
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
       QAfterFilterCondition> statusGreaterThan(
     String value, {
     bool include = false,
@@ -715,7 +719,7 @@ extension CacheProjectWorkflowQueryFilter on QueryBuilder<CacheProjectWorkflow,
     });
   }
 
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
       QAfterFilterCondition> statusLessThan(
     String value, {
     bool include = false,
@@ -731,7 +735,7 @@ extension CacheProjectWorkflowQueryFilter on QueryBuilder<CacheProjectWorkflow,
     });
   }
 
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
       QAfterFilterCondition> statusBetween(
     String lower,
     String upper, {
@@ -751,7 +755,7 @@ extension CacheProjectWorkflowQueryFilter on QueryBuilder<CacheProjectWorkflow,
     });
   }
 
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
       QAfterFilterCondition> statusStartsWith(
     String value, {
     bool caseSensitive = true,
@@ -765,7 +769,7 @@ extension CacheProjectWorkflowQueryFilter on QueryBuilder<CacheProjectWorkflow,
     });
   }
 
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
       QAfterFilterCondition> statusEndsWith(
     String value, {
     bool caseSensitive = true,
@@ -779,7 +783,7 @@ extension CacheProjectWorkflowQueryFilter on QueryBuilder<CacheProjectWorkflow,
     });
   }
 
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
           QAfterFilterCondition>
       statusContains(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
@@ -791,7 +795,7 @@ extension CacheProjectWorkflowQueryFilter on QueryBuilder<CacheProjectWorkflow,
     });
   }
 
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
           QAfterFilterCondition>
       statusMatches(String pattern, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
@@ -803,7 +807,7 @@ extension CacheProjectWorkflowQueryFilter on QueryBuilder<CacheProjectWorkflow,
     });
   }
 
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
       QAfterFilterCondition> statusIsEmpty() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
@@ -813,7 +817,7 @@ extension CacheProjectWorkflowQueryFilter on QueryBuilder<CacheProjectWorkflow,
     });
   }
 
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
       QAfterFilterCondition> statusIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.greaterThan(
@@ -823,7 +827,7 @@ extension CacheProjectWorkflowQueryFilter on QueryBuilder<CacheProjectWorkflow,
     });
   }
 
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
       QAfterFilterCondition> transactionsIsNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(const FilterCondition.isNull(
@@ -832,7 +836,7 @@ extension CacheProjectWorkflowQueryFilter on QueryBuilder<CacheProjectWorkflow,
     });
   }
 
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
       QAfterFilterCondition> transactionsIsNotNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(const FilterCondition.isNotNull(
@@ -841,7 +845,7 @@ extension CacheProjectWorkflowQueryFilter on QueryBuilder<CacheProjectWorkflow,
     });
   }
 
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
       QAfterFilterCondition> transactionsLengthEqualTo(int length) {
     return QueryBuilder.apply(this, (query) {
       return query.listLength(
@@ -854,7 +858,7 @@ extension CacheProjectWorkflowQueryFilter on QueryBuilder<CacheProjectWorkflow,
     });
   }
 
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
       QAfterFilterCondition> transactionsIsEmpty() {
     return QueryBuilder.apply(this, (query) {
       return query.listLength(
@@ -867,7 +871,7 @@ extension CacheProjectWorkflowQueryFilter on QueryBuilder<CacheProjectWorkflow,
     });
   }
 
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
       QAfterFilterCondition> transactionsIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
       return query.listLength(
@@ -880,7 +884,7 @@ extension CacheProjectWorkflowQueryFilter on QueryBuilder<CacheProjectWorkflow,
     });
   }
 
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
       QAfterFilterCondition> transactionsLengthLessThan(
     int length, {
     bool include = false,
@@ -896,7 +900,7 @@ extension CacheProjectWorkflowQueryFilter on QueryBuilder<CacheProjectWorkflow,
     });
   }
 
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
       QAfterFilterCondition> transactionsLengthGreaterThan(
     int length, {
     bool include = false,
@@ -912,7 +916,7 @@ extension CacheProjectWorkflowQueryFilter on QueryBuilder<CacheProjectWorkflow,
     });
   }
 
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
       QAfterFilterCondition> transactionsLengthBetween(
     int lower,
     int upper, {
@@ -930,7 +934,7 @@ extension CacheProjectWorkflowQueryFilter on QueryBuilder<CacheProjectWorkflow,
     });
   }
 
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
       QAfterFilterCondition> updatedAtIsNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(const FilterCondition.isNull(
@@ -939,7 +943,7 @@ extension CacheProjectWorkflowQueryFilter on QueryBuilder<CacheProjectWorkflow,
     });
   }
 
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
       QAfterFilterCondition> updatedAtIsNotNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(const FilterCondition.isNotNull(
@@ -948,7 +952,7 @@ extension CacheProjectWorkflowQueryFilter on QueryBuilder<CacheProjectWorkflow,
     });
   }
 
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
       QAfterFilterCondition> updatedAtEqualTo(DateTime? value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
@@ -958,7 +962,7 @@ extension CacheProjectWorkflowQueryFilter on QueryBuilder<CacheProjectWorkflow,
     });
   }
 
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
       QAfterFilterCondition> updatedAtGreaterThan(
     DateTime? value, {
     bool include = false,
@@ -972,7 +976,7 @@ extension CacheProjectWorkflowQueryFilter on QueryBuilder<CacheProjectWorkflow,
     });
   }
 
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
       QAfterFilterCondition> updatedAtLessThan(
     DateTime? value, {
     bool include = false,
@@ -986,7 +990,7 @@ extension CacheProjectWorkflowQueryFilter on QueryBuilder<CacheProjectWorkflow,
     });
   }
 
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
       QAfterFilterCondition> updatedAtBetween(
     DateTime? lower,
     DateTime? upper, {
@@ -1004,7 +1008,7 @@ extension CacheProjectWorkflowQueryFilter on QueryBuilder<CacheProjectWorkflow,
     });
   }
 
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
       QAfterFilterCondition> workflowIsNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(const FilterCondition.isNull(
@@ -1013,7 +1017,7 @@ extension CacheProjectWorkflowQueryFilter on QueryBuilder<CacheProjectWorkflow,
     });
   }
 
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
       QAfterFilterCondition> workflowIsNotNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(const FilterCondition.isNotNull(
@@ -1023,23 +1027,25 @@ extension CacheProjectWorkflowQueryFilter on QueryBuilder<CacheProjectWorkflow,
   }
 }
 
-extension CacheProjectWorkflowQueryObject on QueryBuilder<CacheProjectWorkflow,
-    CacheProjectWorkflow, QFilterCondition> {
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
-      QAfterFilterCondition> project(FilterQuery<ProjectModel> q) {
+extension CacheActivityFacilityWorkflowQueryObject on QueryBuilder<
+    CacheActivityFacilityWorkflow,
+    CacheActivityFacilityWorkflow,
+    QFilterCondition> {
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
+      QAfterFilterCondition> activityFacility(FilterQuery<ActivityFacility> q) {
     return QueryBuilder.apply(this, (query) {
-      return query.object(q, r'project');
+      return query.object(q, r'activityFacility');
     });
   }
 
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
       QAfterFilterCondition> transactionsElement(FilterQuery<Transaction> q) {
     return QueryBuilder.apply(this, (query) {
       return query.object(q, r'transactions');
     });
   }
 
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow,
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
       QAfterFilterCondition> workflow(FilterQuery<Workflow> q) {
     return QueryBuilder.apply(this, (query) {
       return query.object(q, r'workflow');
@@ -1047,223 +1053,229 @@ extension CacheProjectWorkflowQueryObject on QueryBuilder<CacheProjectWorkflow,
   }
 }
 
-extension CacheProjectWorkflowQueryLinks on QueryBuilder<CacheProjectWorkflow,
-    CacheProjectWorkflow, QFilterCondition> {}
+extension CacheActivityFacilityWorkflowQueryLinks on QueryBuilder<
+    CacheActivityFacilityWorkflow,
+    CacheActivityFacilityWorkflow,
+    QFilterCondition> {}
 
-extension CacheProjectWorkflowQuerySortBy
-    on QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow, QSortBy> {
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow, QAfterSortBy>
-      sortByCreatedAt() {
+extension CacheActivityFacilityWorkflowQuerySortBy on QueryBuilder<
+    CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow, QSortBy> {
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
+      QAfterSortBy> sortByActivityFacilityId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'activityFacilityId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
+      QAfterSortBy> sortByActivityFacilityIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'activityFacilityId', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
+      QAfterSortBy> sortByCreatedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'createdAt', Sort.asc);
     });
   }
 
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow, QAfterSortBy>
-      sortByCreatedAtDesc() {
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
+      QAfterSortBy> sortByCreatedAtDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'createdAt', Sort.desc);
     });
   }
 
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow, QAfterSortBy>
-      sortByProjectId() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'projectId', Sort.asc);
-    });
-  }
-
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow, QAfterSortBy>
-      sortByProjectIdDesc() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'projectId', Sort.desc);
-    });
-  }
-
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow, QAfterSortBy>
-      sortByStatus() {
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
+      QAfterSortBy> sortByStatus() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'status', Sort.asc);
     });
   }
 
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow, QAfterSortBy>
-      sortByStatusDesc() {
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
+      QAfterSortBy> sortByStatusDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'status', Sort.desc);
     });
   }
 
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow, QAfterSortBy>
-      sortByUpdatedAt() {
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
+      QAfterSortBy> sortByUpdatedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'updatedAt', Sort.asc);
     });
   }
 
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow, QAfterSortBy>
-      sortByUpdatedAtDesc() {
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
+      QAfterSortBy> sortByUpdatedAtDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'updatedAt', Sort.desc);
     });
   }
 }
 
-extension CacheProjectWorkflowQuerySortThenBy
-    on QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow, QSortThenBy> {
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow, QAfterSortBy>
-      thenByCreatedAt() {
+extension CacheActivityFacilityWorkflowQuerySortThenBy on QueryBuilder<
+    CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow, QSortThenBy> {
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
+      QAfterSortBy> thenByActivityFacilityId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'activityFacilityId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
+      QAfterSortBy> thenByActivityFacilityIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'activityFacilityId', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
+      QAfterSortBy> thenByCreatedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'createdAt', Sort.asc);
     });
   }
 
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow, QAfterSortBy>
-      thenByCreatedAtDesc() {
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
+      QAfterSortBy> thenByCreatedAtDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'createdAt', Sort.desc);
     });
   }
 
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow, QAfterSortBy>
-      thenById() {
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
+      QAfterSortBy> thenById() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'id', Sort.asc);
     });
   }
 
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow, QAfterSortBy>
-      thenByIdDesc() {
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
+      QAfterSortBy> thenByIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'id', Sort.desc);
     });
   }
 
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow, QAfterSortBy>
-      thenByProjectId() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'projectId', Sort.asc);
-    });
-  }
-
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow, QAfterSortBy>
-      thenByProjectIdDesc() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'projectId', Sort.desc);
-    });
-  }
-
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow, QAfterSortBy>
-      thenByStatus() {
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
+      QAfterSortBy> thenByStatus() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'status', Sort.asc);
     });
   }
 
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow, QAfterSortBy>
-      thenByStatusDesc() {
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
+      QAfterSortBy> thenByStatusDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'status', Sort.desc);
     });
   }
 
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow, QAfterSortBy>
-      thenByUpdatedAt() {
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
+      QAfterSortBy> thenByUpdatedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'updatedAt', Sort.asc);
     });
   }
 
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow, QAfterSortBy>
-      thenByUpdatedAtDesc() {
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
+      QAfterSortBy> thenByUpdatedAtDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'updatedAt', Sort.desc);
     });
   }
 }
 
-extension CacheProjectWorkflowQueryWhereDistinct
-    on QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow, QDistinct> {
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow, QDistinct>
-      distinctByCreatedAt() {
+extension CacheActivityFacilityWorkflowQueryWhereDistinct on QueryBuilder<
+    CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow, QDistinct> {
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
+      QDistinct> distinctByActivityFacilityId({bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'activityFacilityId',
+          caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
+      QDistinct> distinctByCreatedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'createdAt');
     });
   }
 
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow, QDistinct>
-      distinctByProjectId({bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(r'projectId', caseSensitive: caseSensitive);
-    });
-  }
-
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow, QDistinct>
-      distinctByStatus({bool caseSensitive = true}) {
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
+      QDistinct> distinctByStatus({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'status', caseSensitive: caseSensitive);
     });
   }
 
-  QueryBuilder<CacheProjectWorkflow, CacheProjectWorkflow, QDistinct>
-      distinctByUpdatedAt() {
+  QueryBuilder<CacheActivityFacilityWorkflow, CacheActivityFacilityWorkflow,
+      QDistinct> distinctByUpdatedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'updatedAt');
     });
   }
 }
 
-extension CacheProjectWorkflowQueryProperty on QueryBuilder<
-    CacheProjectWorkflow, CacheProjectWorkflow, QQueryProperty> {
-  QueryBuilder<CacheProjectWorkflow, int, QQueryOperations> idProperty() {
+extension CacheActivityFacilityWorkflowQueryProperty on QueryBuilder<
+    CacheActivityFacilityWorkflow,
+    CacheActivityFacilityWorkflow,
+    QQueryProperty> {
+  QueryBuilder<CacheActivityFacilityWorkflow, int, QQueryOperations>
+      idProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'id');
     });
   }
 
-  QueryBuilder<CacheProjectWorkflow, DateTime, QQueryOperations>
+  QueryBuilder<CacheActivityFacilityWorkflow, ActivityFacility,
+      QQueryOperations> activityFacilityProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'activityFacility');
+    });
+  }
+
+  QueryBuilder<CacheActivityFacilityWorkflow, String, QQueryOperations>
+      activityFacilityIdProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'activityFacilityId');
+    });
+  }
+
+  QueryBuilder<CacheActivityFacilityWorkflow, DateTime, QQueryOperations>
       createdAtProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'createdAt');
     });
   }
 
-  QueryBuilder<CacheProjectWorkflow, ProjectModel, QQueryOperations>
-      projectProperty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addPropertyName(r'project');
-    });
-  }
-
-  QueryBuilder<CacheProjectWorkflow, String, QQueryOperations>
-      projectIdProperty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addPropertyName(r'projectId');
-    });
-  }
-
-  QueryBuilder<CacheProjectWorkflow, String, QQueryOperations>
+  QueryBuilder<CacheActivityFacilityWorkflow, String, QQueryOperations>
       statusProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'status');
     });
   }
 
-  QueryBuilder<CacheProjectWorkflow, List<Transaction>?, QQueryOperations>
-      transactionsProperty() {
+  QueryBuilder<CacheActivityFacilityWorkflow, List<Transaction>?,
+      QQueryOperations> transactionsProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'transactions');
     });
   }
 
-  QueryBuilder<CacheProjectWorkflow, DateTime?, QQueryOperations>
+  QueryBuilder<CacheActivityFacilityWorkflow, DateTime?, QQueryOperations>
       updatedAtProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'updatedAt');
     });
   }
 
-  QueryBuilder<CacheProjectWorkflow, Workflow?, QQueryOperations>
+  QueryBuilder<CacheActivityFacilityWorkflow, Workflow?, QQueryOperations>
       workflowProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'workflow');

@@ -8,8 +8,8 @@ import '../model/mdms/mdms.dart';
 import '../model/solution_design_type/solution_design_type.dart';
 import '../utils/utils.dart';
 
-class ProjectWorkflowRepository {
-  ProjectWorkflowRepository();
+class ActivityFacilityWorkflowRepository {
+  ActivityFacilityWorkflowRepository();
 
   Future<List<Document>> collectWorkflowMediaDocs({
     required Isar isar,
@@ -20,7 +20,7 @@ class ProjectWorkflowRepository {
     for (final type in types) {
       final media = await isar.cacheMediaUploads
           .where()
-          .projectIdEqualTo(projectId)
+          .activityFacilityIdEqualTo(projectId)
           .filter()
           .assetTypeEqualTo(type)
           .findAll();
@@ -28,7 +28,7 @@ class ProjectWorkflowRepository {
       print("[$type] found ${media.length} cached media uploads");
       for (var m in media) {
         print(
-            "    media id=${m.id} filePath='${m.filePath}' itemType='${m.itemType}' media id=${m.id} projectId='${m.projectId}'");
+            "    media id=${m.id} filePath='${m.filePath}' itemType='${m.itemType}' media id=${m.id} projectId='${m.activityFacilityId}'");
       }
 
       for (final m in media) {
@@ -49,9 +49,9 @@ class ProjectWorkflowRepository {
     return out;
   }
 
-  Future<String> getProjectSystem({
+  Future<String> getActivityFacilitySystem({
     required Isar isar,
-    required String projectId,
+    required String activityFacilityId,
     required List<Mdms<SolutionDesignType>> solutionDesignList,
     required String? facilitySolutionDesignCode,
   }) async {
@@ -59,7 +59,7 @@ class ProjectWorkflowRepository {
     String fallback = SYSTEM_TYPE.DC.name;
     final spec = await isar.cacheSpecifications
         .where()
-        .projectIdEqualTo(projectId)
+        .activityFacilityIdEqualTo(activityFacilityId)
         .findFirst(); // fast path; indexed query
 
     final saved = spec?.system.trim();

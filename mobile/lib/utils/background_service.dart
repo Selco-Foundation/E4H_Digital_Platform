@@ -16,14 +16,12 @@ import '../data/secure_storage/secureStore.dart';
 import '../model/asset/asset.dart';
 import '../model/audit_details/audit_details.dart';
 import '../model/document/document.dart';
-import '../model/entities/project_facility.dart';
 import '../model/transaction/transaction.dart';
+import '../repositories/activity_facility_workflow.dart';
 import '../repositories/app_init_Repo.dart'; // envConfig
 import '../repositories/assetRepo.dart';
 import '../repositories/bom_repo.dart';
-import '../repositories/project_facility_repo.dart';
 import '../repositories/project_repo.dart';
-import '../repositories/project_workflow.dart';
 import '../utils/utils.dart';
 import 'constants.dart';
 
@@ -112,14 +110,14 @@ Future<void> setupBackgroundService() async {
 
   _uiErrSub?.cancel();
   _uiErrSub = uiService.on(kEvtError).listen((data) async {
-    final pid = data?['projectId'] as String?;
+    final pid = data?['activityFacilityId'] as String?;
     final msg = data?['message']?.toString();
     debugPrint('[UI] kEvtError received: pid=$pid msg=$msg');
     if (pid == null) return;
     final uiIsar = await Constants().isar;
     await writeJobStatus(
       isar: uiIsar,
-      projectId: pid,
+      activityFacilityId: pid,
       status: 'failed',
       error: msg,
     );
@@ -127,31 +125,33 @@ Future<void> setupBackgroundService() async {
 
   _uiDoneSub?.cancel();
   _uiDoneSub = uiService.on(kEvtDone).listen((data) async {
-    final pid = data?['projectId'] as String?;
+    final pid = data?['activityFacilityId'] as String?;
     debugPrint('[UI] kEvtDone received: pid=$pid');
     if (pid == null) return;
     final uiIsar = await Constants().isar;
-    await writeJobStatus(isar: uiIsar, projectId: pid, status: 'success');
+    await writeJobStatus(
+        isar: uiIsar, activityFacilityId: pid, status: 'success');
   });
 
   _uiRejErrSub?.cancel();
   _uiRejErrSub = uiService.on(kEvtRejectError).listen((data) async {
-    final pid = data?['projectId'] as String?;
+    final pid = data?['activityFacilityId'] as String?;
     final msg = data?['message']?.toString();
     debugPrint('[UI] kEvtRejectError received: pid=$pid msg=$msg');
     if (pid == null) return;
     final uiIsar = await Constants().isar;
     await writeJobStatus(
-        isar: uiIsar, projectId: pid, status: 'failed', error: msg);
+        isar: uiIsar, activityFacilityId: pid, status: 'failed', error: msg);
   });
 
   _uiRejDoneSub?.cancel();
   _uiRejDoneSub = uiService.on(kEvtRejectDone).listen((data) async {
-    final pid = data?['projectId'] as String?;
+    final pid = data?['activityFacilityId'] as String?;
     debugPrint('[UI] kEvtRejectDone received: pid=$pid');
     if (pid == null) return;
     final uiIsar = await Constants().isar;
-    await writeJobStatus(isar: uiIsar, projectId: pid, status: 'success');
+    await writeJobStatus(
+        isar: uiIsar, activityFacilityId: pid, status: 'success');
   });
 
   debugPrint('[UI] setupBackgroundService complete: BG listeners bound');
@@ -167,7 +167,7 @@ class BackgroundServiceController {
   }
 
   Future<void> enqueueSubmission({
-    required String projectId,
+    required String activityFacilityId,
     required String userType,
     required bool fromDraft,
   }) async {
@@ -180,7 +180,7 @@ class BackgroundServiceController {
       service.invoke(kCmdForeground, {'content': 'Preparing…'});
 
       service.invoke(kMethodSubmit, {
-        'projectId': projectId,
+        'activityFacilityId': activityFacilityId,
         'userType': userType,
         'fromDraft': fromDraft,
       });
@@ -201,14 +201,14 @@ class BackgroundServiceController {
     }
 
     service.invoke(kMethodSubmit, {
-      'projectId': projectId,
+      'activityFacilityId': activityFacilityId,
       'userType': userType,
       'fromDraft': fromDraft,
     });
   }
 
   Future<void> enqueueRejection({
-    required String projectId,
+    required String activityFacilityId,
     required String userType,
     required List<Map<String, dynamic>> transactions, // serialize in BLoC
   }) async {
@@ -223,7 +223,7 @@ class BackgroundServiceController {
       service.invoke(kCmdForeground, {'content': 'Preparing rejection…'});
 
       service.invoke(kMethodReject, <String, dynamic>{
-        'projectId': projectId,
+        'activityFacilityId': activityFacilityId,
         'userType': userType,
         'transactions': transactions,
       });
@@ -247,7 +247,7 @@ class BackgroundServiceController {
     service.invoke(kCmdForeground, {'content': 'Preparing rejection…'});
 
     service.invoke(kMethodReject, <String, dynamic>{
-      'projectId': projectId,
+      'activityFacilityId': activityFacilityId,
       'userType': userType,
       'transactions': transactions,
     });
@@ -295,28 +295,37 @@ void onStart(ServiceInstance service) async {
   service.on(kMethodSubmit).listen((payload) async {
     debugPrint('[BG] submit received: $payload');
 
-    final projectId = payload?['projectId'] as String?;
+    final activityFacilityId = payload?['activityFacilityId'] as String?;
+    final facilityId = payload?['facilityId'] as String?;
     final userType = payload?['userType'] as String?;
-    if (projectId == null || userType == null) return;
+    if (activityFacilityId == null || userType == null) return;
 
     try {
-      await writeJobStatus(isar: isar, projectId: projectId, status: 'queued');
-      await writeJobStatus(isar: isar, projectId: projectId, status: 'running');
+      await writeJobStatus(
+          isar: isar, activityFacilityId: activityFacilityId, status: 'queued');
+      await writeJobStatus(
+          isar: isar,
+          activityFacilityId: activityFacilityId,
+          status: 'running');
 
       debugPrint('[BG] entering _performSubmissionForProject');
       await _performSubmissionForProject(
         isar: isar,
-        projectId: projectId,
+        activityFacilityId: activityFacilityId,
+        facilityId: facilityId!,
         userType: userType,
       );
       debugPrint('[BG] _performSubmissionForProject done');
 
-      await writeJobStatus(isar: isar, projectId: projectId, status: 'success');
+      await writeJobStatus(
+          isar: isar,
+          activityFacilityId: activityFacilityId,
+          status: 'success');
       service.invoke(kEvtProgress, {'completed': 1, 'total': 1});
 
       // Include projectId so UI can mirror status
-      debugPrint('[BG] invoke kEvtDone pid=$projectId');
-      service.invoke(kEvtDone, {'projectId': projectId});
+      debugPrint('[BG] invoke kEvtDone pid=$activityFacilityId');
+      service.invoke(kEvtDone, {'activityFacilityId': activityFacilityId});
 
       // DO NOT stop the service here; let UI stop it after consuming the event.
     } catch (e, st) {
@@ -325,50 +334,55 @@ void onStart(ServiceInstance service) async {
       final msg = _pretty(e);
       await writeJobStatus(
         isar: isar,
-        projectId: projectId!,
+        activityFacilityId: activityFacilityId!,
         status: 'failed',
         error: msg,
       );
 
       // Notify UI/BLoC (include projectId)
-      debugPrint('[BG] invoke kEvtError pid=$projectId');
-      service.invoke(kEvtError, {'projectId': projectId, 'message': msg});
+      debugPrint('[BG] invoke kEvtError pid=$activityFacilityId');
+      service.invoke(kEvtError,
+          {'activityFacilityId': activityFacilityId, 'message': msg});
 
       // DO NOT stop here; UI stops after it receives failure.
     }
   });
 
   service.on(kMethodReject).listen((payload) async {
-    final projectId = payload?['projectId'] as String?;
+    final activityFacilityId = payload?['activityFacilityId'] as String?;
     final userType = payload?['userType'] as String?;
     final txList = (payload?['transactions'] as List?)?.cast<Map>() ?? const [];
-    if (projectId == null || userType == null) return;
+    if (activityFacilityId == null || userType == null) return;
 
     try {
       // optional: reflect a “running” status in the same job table
-      await writeJobStatus(isar: isar, projectId: projectId, status: 'running');
+      await writeJobStatus(
+          isar: isar,
+          activityFacilityId: activityFacilityId,
+          status: 'running');
 
       await _performRejectionForProject(
         isar: isar,
-        projectId: projectId,
+        projectId: activityFacilityId,
         userType: userType,
         transactions: txList.map((m) => Map<String, dynamic>.from(m)).toList(),
       );
 
       // success -> notify UI
-      service.invoke(kEvtRejectDone, {'projectId': projectId});
+      service
+          .invoke(kEvtRejectDone, {'activityFacilityId': activityFacilityId});
     } catch (e, st) {
       debugPrint('[BG][REJECT] ERROR: $e\n$st');
 
       await writeJobStatus(
         isar: isar,
-        projectId: projectId!,
+        activityFacilityId: activityFacilityId,
         status: 'failed',
         error: _pretty(e),
       );
 
       service.invoke(kEvtRejectError, {
-        'projectId': projectId,
+        'activityFacilityId': activityFacilityId,
         'message': _pretty(e),
       });
     }
@@ -397,19 +411,19 @@ void onStart(ServiceInstance service) async {
 
 Future<void> writeJobStatus({
   required Isar isar,
-  required String projectId,
+  required String activityFacilityId,
   required String status,
   String? error,
 }) async {
   await isar.writeTxn(() async {
     final existing = await isar.cacheSubmissionJobs
         .where()
-        .projectIdEqualTo(projectId)
+        .activityFacilityIdEqualTo(activityFacilityId)
         .findFirst();
 
     if (existing == null) {
       final job = CacheSubmissionJob(
-        projectId: projectId,
+        activityFacilityId: activityFacilityId,
         status: status,
         error: error,
       );
@@ -425,23 +439,18 @@ Future<void> writeJobStatus({
 
 Future<void> _performSubmissionForProject({
   required Isar isar,
-  required String projectId,
+  required String activityFacilityId,
+  required String facilityId,
   required String userType,
 }) async {
   try {
-    final facilityId = (await ProjectFacilityRepository().search(
-      ProjectFacilitySearchModel(projectId: [projectId]),
-      isar,
-    ))
-        .facilityId;
-
     final repo = AssetRepository();
     const types = ['inverter', 'battery', 'panel'];
 
     for (final type in types) {
       final assets = await isar.cacheAddNewAssets
           .where()
-          .projectIdEqualTo(projectId)
+          .activityFacilityIdEqualTo(activityFacilityId)
           .filter()
           .assetTypeEqualTo(type)
           .findAll();
@@ -452,14 +461,14 @@ Future<void> _performSubmissionForProject({
 
       final spec = await isar.cacheSpecifications
           .where()
-          .projectIdEqualTo(projectId)
+          .activityFacilityIdEqualTo(activityFacilityId)
           .filter()
           .assetTypeEqualTo(type)
           .findFirst();
 
       final detail = await isar.cacheAssetDetails
           .where()
-          .projectIdEqualTo(projectId)
+          .activityFacilityIdEqualTo(activityFacilityId)
           .filter()
           .assetTypeEqualTo(type)
           .findFirst();
@@ -535,6 +544,7 @@ Future<void> _performSubmissionForProject({
         final assetModel = Asset(
           assetId: saved.assetId,
           tenantId: envConfig.variables.tenantId,
+          activityFacilityID: activityFacilityId,
           facilityID: facilityId,
           assetTypeID: type.toUpperCase(),
           system: spec.system,
@@ -559,21 +569,21 @@ Future<void> _performSubmissionForProject({
       }
     }
 
-    final remoteRepo = ProjectRemoteRepository();
+    final remoteRepo = ActivityFacilityRemoteRepository();
     final workflowDocuments = <Document>[];
 
     const typesForDocs = ['inverter', 'battery', 'panel'];
     final workflowDocumentFromCache =
-        await ProjectWorkflowRepository().collectWorkflowMediaDocs(
+        await ActivityFacilityWorkflowRepository().collectWorkflowMediaDocs(
       isar: isar,
-      projectId: projectId,
+      projectId: activityFacilityId,
       types: typesForDocs,
     );
     workflowDocuments.addAll(workflowDocumentFromCache);
 
     final completionReports = await isar.cacheCompletionReports
         .where()
-        .projectIdEqualTo(projectId)
+        .activityFacilityIdEqualTo(activityFacilityId)
         .findAll();
 
     final completionDocuments = <Document>[];
@@ -602,7 +612,7 @@ Future<void> _performSubmissionForProject({
       try {
         final bomFileStoreId = await BomRepository().generateBomPdf(
           isar: isar,
-          projectId: projectId,
+          activityFacilityId: activityFacilityId,
           userType: userType,
         );
 
@@ -617,7 +627,7 @@ Future<void> _performSubmissionForProject({
             documentType: "INSTALLATION_REPORT_BOM",
             fileStore: bomFileStoreId,
             documentUid:
-                "BOM-$projectId-${DateTime.now().millisecondsSinceEpoch}",
+                "BOM-$activityFacilityId-${DateTime.now().millisecondsSinceEpoch}",
             geoLocation: GeoLocation(latitude: lat, longitude: lon),
           ),
         );
@@ -632,7 +642,7 @@ Future<void> _performSubmissionForProject({
 
         await BomRepository().submitMergedForProject(
           isar: isar,
-          projectId: projectId,
+          activityFacilityId: activityFacilityId,
           tenantId: tenantId,
           facilityId: facilityId,
           assignUserUuid: assignUserUuid,
@@ -642,20 +652,24 @@ Future<void> _performSubmissionForProject({
       }
     }
 
-    await remoteRepo.updateProjectWorkflow(
-      projectId: projectId,
+    await remoteRepo.updateActivityFacilityWorkflow(
+      activityFacilityId: activityFacilityId,
       action: userType == USER_TYPES.FIELD_STAFF.name
           ? WORKFLOW_ACTIONS.SUBMIT_REPORT_A.name
           : WORKFLOW_ACTIONS.SUBMIT_REPORT_B.name,
       documents: [...workflowDocuments, ...completionDocuments],
     );
 
-    await UnsubmittedProjectRepository(isar).delete(projectId, userType);
-    await UnsubmittedProjectRepository(isar).deleteAddNewAsset(projectId);
-    await PrefilledProjectRepository(isar)
-        .delete(projectId: projectId, userType: userType);
-    await CompletionReportRepository(isar).delete(projectId: projectId);
-    await BomRepository().delete(isar: isar, projectId: projectId);
+    await UnsubmittedActivityFacilityRepository(isar)
+        .delete(activityFacilityId, userType);
+    await UnsubmittedActivityFacilityRepository(isar)
+        .deleteAddNewAsset(activityFacilityId);
+    await PrefilledActivityFacilityRepository(isar)
+        .delete(activityFacilityId: activityFacilityId, userType: userType);
+    await CompletionReportRepository(isar)
+        .delete(projectId: activityFacilityId);
+    await BomRepository()
+        .delete(isar: isar, activityFacilityId: activityFacilityId);
 
     return;
   } catch (e) {
@@ -674,7 +688,7 @@ Future<void> _performRejectionForProject({
     final workflowDocuments = <Document>[];
 
     final fromCache =
-        await ProjectWorkflowRepository().collectWorkflowMediaDocs(
+        await ActivityFacilityWorkflowRepository().collectWorkflowMediaDocs(
       isar: isar,
       projectId: projectId,
       types: types,
@@ -687,11 +701,12 @@ Future<void> _performRejectionForProject({
       documents: workflowDocuments,
     );
 
-    await UnsubmittedProjectRepository(isar).delete(projectId, userType);
-    await PrefilledProjectRepository(isar)
-        .delete(projectId: projectId, userType: userType);
+    await UnsubmittedActivityFacilityRepository(isar)
+        .delete(projectId, userType);
+    await PrefilledActivityFacilityRepository(isar)
+        .delete(activityFacilityId: projectId, userType: userType);
     await CompletionReportRepository(isar).delete(projectId: projectId);
-    await BomRepository().delete(isar: isar, projectId: projectId);
+    await BomRepository().delete(isar: isar, activityFacilityId: projectId);
   } catch (e) {
     throw PlainError(_pretty(e));
   }

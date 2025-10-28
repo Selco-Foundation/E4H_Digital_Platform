@@ -24,15 +24,15 @@ import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:recase/recase.dart';
-import 'package:selco/model/project_workflow/project_workflow.dart';
 
 import '../blocs/app_init/app_init.dart';
 import '../blocs/asset_type/asset_type.dart';
 import '../blocs/cache_add_new_asset/cache_add_new_asset.dart';
 import '../blocs/cache_asset_count/cache_asset_count.dart';
-import '../blocs/selected_project/selected_project.dart';
+import '../blocs/selected_activity_facility/selected_activity_facility.dart';
 import '../data/nosql/cache_add_new_asset.dart';
 import '../data/nosql/cache_asset_count.dart';
+import '../model/activity_facility_workflow/activity_facility_workflow.dart';
 import '../model/asset_type/asset_type.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
@@ -85,8 +85,8 @@ class AddNewAssetPage extends StatefulWidget {
 }
 
 class _AddNewAssetPageState extends State<AddNewAssetPage> {
-  String? _currentProjectId;
-  ProjectWorkflow? projectWorkflow;
+  String? _currentActivityFacilityId;
+  ActivityFacilityWorkflow? activityFacilityWorkflow;
   final List<AssetModel> _assets = [AssetModel(serialNumber: '')];
   String currentAssetType = "";
   late List<String> assetCapacity = [];
@@ -121,14 +121,15 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
             panel: () => 'panel',
           );
 
-      context.read<SelectedProjectBloc>().state.whenOrNull(selected: (proj) {
-        _currentProjectId = proj.project.id;
-        projectWorkflow = proj;
-        context
-            .read<CacheAssetCountBloc>()
-            .add(CacheAssetCountEvent.get(proj.project.id, currentAssetType));
+      context.read<SelectedActivityFacilityBloc>().state.whenOrNull(
+          selected: (proj) {
+        _currentActivityFacilityId = proj.activityFacility.id;
+        activityFacilityWorkflow = proj;
+        context.read<CacheAssetCountBloc>().add(CacheAssetCountEvent.get(
+            proj.activityFacility.id, currentAssetType));
         context.read<CacheAddNewAssetBloc>().add(
-              CacheAddNewAssetEvent.get(proj.project.id, currentAssetType),
+              CacheAddNewAssetEvent.get(
+                  proj.activityFacility.id, currentAssetType),
             );
       });
 
@@ -142,9 +143,8 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                       at.code.toUpperCase() == currentAssetType.toUpperCase())
                   .toList();
 
-              final selectedSolutionDesignCode = projectWorkflow
-                  ?.project
-                  .additionalDetails
+              final selectedSolutionDesignCode = activityFacilityWorkflow
+                  ?.activityFacility
                   ?.facility
                   ?.facilityDetails
                   ?.solar_solution_design_type;
@@ -395,9 +395,10 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
       ],
       child: BlocBuilder<AssetTypeBloc, AssetTypeState>(
         builder: (ctx, assetTypeState) {
-          if (_currentProjectId != null && currentAssetType.isNotEmpty) {
-            context.read<CacheAssetCountBloc>().add(
-                CacheAssetCountEvent.get(_currentProjectId!, currentAssetType));
+          if (_currentActivityFacilityId != null &&
+              currentAssetType.isNotEmpty) {
+            context.read<CacheAssetCountBloc>().add(CacheAssetCountEvent.get(
+                _currentActivityFacilityId!, currentAssetType));
           }
 
           return BlocSelector<CacheAssetCountBloc, CacheAssetCountState, int>(
@@ -429,7 +430,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                       if (isDisabled) return;
                       context.read<CacheAddNewAssetBloc>().add(
                           CacheAddNewAssetEvent.deleteAll(
-                              _currentProjectId!, currentAssetType));
+                              _currentActivityFacilityId!, currentAssetType));
 
                       // 2) await completion (either deleted or error)
                       await context
@@ -443,7 +444,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
 
                       for (final asset in _assets) {
                         final newAsset = CacheAddNewAsset(
-                          projectId: _currentProjectId!,
+                          activityFacilityId: _currentActivityFacilityId!,
                           assetType: currentAssetType,
                           itemNumber: asset.capacity,
                           serialNumber: asset.serialNumber,
@@ -466,11 +467,12 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                             .read<CacheAddNewAssetBloc>()
                             .add(CacheAddNewAssetEvent.add(newAsset));
                       }
-                      if (_currentProjectId != null) {
+                      if (_currentActivityFacilityId != null) {
                         context.read<CacheAssetCountBloc>().add(
                               CacheAssetCountEvent.update(
                                 CacheAssetCount(
-                                  projectId: _currentProjectId!,
+                                  activityFacilityId:
+                                      _currentActivityFacilityId!,
                                   assetType: currentAssetType,
                                   progress: 5,
                                 ),

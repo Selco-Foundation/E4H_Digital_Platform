@@ -3,7 +3,7 @@
 // ignore_for_file: type=lint
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
-part of 'cache_project_asset.dart';
+part of 'cache_activity_facility_asset.dart';
 
 // **************************************************************************
 // FreezedGenerator
@@ -15,71 +15,75 @@ final _privateConstructorUsedError = UnsupportedError(
     'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models');
 
 /// @nodoc
-mixin _$CacheProjectAssetEvent {
+mixin _$CacheActivityFacilityAssetEvent {
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function(String projectId) get,
-    required TResult Function(CacheProjectAsset entry) add,
-    required TResult Function(CacheProjectAsset entry) update,
+    required TResult Function(CacheActivityFacilityAsset entry) add,
+    required TResult Function(CacheActivityFacilityAsset entry) update,
     required TResult Function(int id) delete,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(String projectId)? get,
-    TResult? Function(CacheProjectAsset entry)? add,
-    TResult? Function(CacheProjectAsset entry)? update,
+    TResult? Function(CacheActivityFacilityAsset entry)? add,
+    TResult? Function(CacheActivityFacilityAsset entry)? update,
     TResult? Function(int id)? delete,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(String projectId)? get,
-    TResult Function(CacheProjectAsset entry)? add,
-    TResult Function(CacheProjectAsset entry)? update,
+    TResult Function(CacheActivityFacilityAsset entry)? add,
+    TResult Function(CacheActivityFacilityAsset entry)? update,
     TResult Function(int id)? delete,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(CacheProjectAssetEventGet value) get,
-    required TResult Function(CacheProjectAssetEventAdd value) add,
-    required TResult Function(CacheProjectAssetEventUpdate value) update,
-    required TResult Function(CacheProjectAssetEventDelete value) delete,
+    required TResult Function(CacheActivityFacilityAssetEventGet value) get,
+    required TResult Function(CacheActivityFacilityAssetEventAdd value) add,
+    required TResult Function(CacheActivityFacilityAssetEventUpdate value)
+        update,
+    required TResult Function(CacheActivityFacilityAssetEventDelete value)
+        delete,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(CacheProjectAssetEventGet value)? get,
-    TResult? Function(CacheProjectAssetEventAdd value)? add,
-    TResult? Function(CacheProjectAssetEventUpdate value)? update,
-    TResult? Function(CacheProjectAssetEventDelete value)? delete,
+    TResult? Function(CacheActivityFacilityAssetEventGet value)? get,
+    TResult? Function(CacheActivityFacilityAssetEventAdd value)? add,
+    TResult? Function(CacheActivityFacilityAssetEventUpdate value)? update,
+    TResult? Function(CacheActivityFacilityAssetEventDelete value)? delete,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(CacheProjectAssetEventGet value)? get,
-    TResult Function(CacheProjectAssetEventAdd value)? add,
-    TResult Function(CacheProjectAssetEventUpdate value)? update,
-    TResult Function(CacheProjectAssetEventDelete value)? delete,
+    TResult Function(CacheActivityFacilityAssetEventGet value)? get,
+    TResult Function(CacheActivityFacilityAssetEventAdd value)? add,
+    TResult Function(CacheActivityFacilityAssetEventUpdate value)? update,
+    TResult Function(CacheActivityFacilityAssetEventDelete value)? delete,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
 }
 
 /// @nodoc
-abstract class $CacheProjectAssetEventCopyWith<$Res> {
-  factory $CacheProjectAssetEventCopyWith(CacheProjectAssetEvent value,
-          $Res Function(CacheProjectAssetEvent) then) =
-      _$CacheProjectAssetEventCopyWithImpl<$Res, CacheProjectAssetEvent>;
+abstract class $CacheActivityFacilityAssetEventCopyWith<$Res> {
+  factory $CacheActivityFacilityAssetEventCopyWith(
+          CacheActivityFacilityAssetEvent value,
+          $Res Function(CacheActivityFacilityAssetEvent) then) =
+      _$CacheActivityFacilityAssetEventCopyWithImpl<$Res,
+          CacheActivityFacilityAssetEvent>;
 }
 
 /// @nodoc
-class _$CacheProjectAssetEventCopyWithImpl<$Res,
-        $Val extends CacheProjectAssetEvent>
-    implements $CacheProjectAssetEventCopyWith<$Res> {
-  _$CacheProjectAssetEventCopyWithImpl(this._value, this._then);
+class _$CacheActivityFacilityAssetEventCopyWithImpl<$Res,
+        $Val extends CacheActivityFacilityAssetEvent>
+    implements $CacheActivityFacilityAssetEventCopyWith<$Res> {
+  _$CacheActivityFacilityAssetEventCopyWithImpl(this._value, this._then);
 
   // ignore: unused_field
   final $Val _value;
@@ -88,23 +92,23 @@ class _$CacheProjectAssetEventCopyWithImpl<$Res,
 }
 
 /// @nodoc
-abstract class _$$CacheProjectAssetEventGetImplCopyWith<$Res> {
-  factory _$$CacheProjectAssetEventGetImplCopyWith(
-          _$CacheProjectAssetEventGetImpl value,
-          $Res Function(_$CacheProjectAssetEventGetImpl) then) =
-      __$$CacheProjectAssetEventGetImplCopyWithImpl<$Res>;
+abstract class _$$CacheActivityFacilityAssetEventGetImplCopyWith<$Res> {
+  factory _$$CacheActivityFacilityAssetEventGetImplCopyWith(
+          _$CacheActivityFacilityAssetEventGetImpl value,
+          $Res Function(_$CacheActivityFacilityAssetEventGetImpl) then) =
+      __$$CacheActivityFacilityAssetEventGetImplCopyWithImpl<$Res>;
   @useResult
   $Res call({String projectId});
 }
 
 /// @nodoc
-class __$$CacheProjectAssetEventGetImplCopyWithImpl<$Res>
-    extends _$CacheProjectAssetEventCopyWithImpl<$Res,
-        _$CacheProjectAssetEventGetImpl>
-    implements _$$CacheProjectAssetEventGetImplCopyWith<$Res> {
-  __$$CacheProjectAssetEventGetImplCopyWithImpl(
-      _$CacheProjectAssetEventGetImpl _value,
-      $Res Function(_$CacheProjectAssetEventGetImpl) _then)
+class __$$CacheActivityFacilityAssetEventGetImplCopyWithImpl<$Res>
+    extends _$CacheActivityFacilityAssetEventCopyWithImpl<$Res,
+        _$CacheActivityFacilityAssetEventGetImpl>
+    implements _$$CacheActivityFacilityAssetEventGetImplCopyWith<$Res> {
+  __$$CacheActivityFacilityAssetEventGetImplCopyWithImpl(
+      _$CacheActivityFacilityAssetEventGetImpl _value,
+      $Res Function(_$CacheActivityFacilityAssetEventGetImpl) _then)
       : super(_value, _then);
 
   @pragma('vm:prefer-inline')
@@ -112,7 +116,7 @@ class __$$CacheProjectAssetEventGetImplCopyWithImpl<$Res>
   $Res call({
     Object? projectId = null,
   }) {
-    return _then(_$CacheProjectAssetEventGetImpl(
+    return _then(_$CacheActivityFacilityAssetEventGetImpl(
       null == projectId
           ? _value.projectId
           : projectId // ignore: cast_nullable_to_non_nullable
@@ -123,22 +127,23 @@ class __$$CacheProjectAssetEventGetImplCopyWithImpl<$Res>
 
 /// @nodoc
 
-class _$CacheProjectAssetEventGetImpl implements CacheProjectAssetEventGet {
-  const _$CacheProjectAssetEventGetImpl(this.projectId);
+class _$CacheActivityFacilityAssetEventGetImpl
+    implements CacheActivityFacilityAssetEventGet {
+  const _$CacheActivityFacilityAssetEventGetImpl(this.projectId);
 
   @override
   final String projectId;
 
   @override
   String toString() {
-    return 'CacheProjectAssetEvent.get(projectId: $projectId)';
+    return 'CacheActivityFacilityAssetEvent.get(projectId: $projectId)';
   }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$CacheProjectAssetEventGetImpl &&
+            other is _$CacheActivityFacilityAssetEventGetImpl &&
             (identical(other.projectId, projectId) ||
                 other.projectId == projectId));
   }
@@ -149,16 +154,17 @@ class _$CacheProjectAssetEventGetImpl implements CacheProjectAssetEventGet {
   @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
-  _$$CacheProjectAssetEventGetImplCopyWith<_$CacheProjectAssetEventGetImpl>
-      get copyWith => __$$CacheProjectAssetEventGetImplCopyWithImpl<
-          _$CacheProjectAssetEventGetImpl>(this, _$identity);
+  _$$CacheActivityFacilityAssetEventGetImplCopyWith<
+          _$CacheActivityFacilityAssetEventGetImpl>
+      get copyWith => __$$CacheActivityFacilityAssetEventGetImplCopyWithImpl<
+          _$CacheActivityFacilityAssetEventGetImpl>(this, _$identity);
 
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function(String projectId) get,
-    required TResult Function(CacheProjectAsset entry) add,
-    required TResult Function(CacheProjectAsset entry) update,
+    required TResult Function(CacheActivityFacilityAsset entry) add,
+    required TResult Function(CacheActivityFacilityAsset entry) update,
     required TResult Function(int id) delete,
   }) {
     return get(projectId);
@@ -168,8 +174,8 @@ class _$CacheProjectAssetEventGetImpl implements CacheProjectAssetEventGet {
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(String projectId)? get,
-    TResult? Function(CacheProjectAsset entry)? add,
-    TResult? Function(CacheProjectAsset entry)? update,
+    TResult? Function(CacheActivityFacilityAsset entry)? add,
+    TResult? Function(CacheActivityFacilityAsset entry)? update,
     TResult? Function(int id)? delete,
   }) {
     return get?.call(projectId);
@@ -179,8 +185,8 @@ class _$CacheProjectAssetEventGetImpl implements CacheProjectAssetEventGet {
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(String projectId)? get,
-    TResult Function(CacheProjectAsset entry)? add,
-    TResult Function(CacheProjectAsset entry)? update,
+    TResult Function(CacheActivityFacilityAsset entry)? add,
+    TResult Function(CacheActivityFacilityAsset entry)? update,
     TResult Function(int id)? delete,
     required TResult orElse(),
   }) {
@@ -193,10 +199,12 @@ class _$CacheProjectAssetEventGetImpl implements CacheProjectAssetEventGet {
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(CacheProjectAssetEventGet value) get,
-    required TResult Function(CacheProjectAssetEventAdd value) add,
-    required TResult Function(CacheProjectAssetEventUpdate value) update,
-    required TResult Function(CacheProjectAssetEventDelete value) delete,
+    required TResult Function(CacheActivityFacilityAssetEventGet value) get,
+    required TResult Function(CacheActivityFacilityAssetEventAdd value) add,
+    required TResult Function(CacheActivityFacilityAssetEventUpdate value)
+        update,
+    required TResult Function(CacheActivityFacilityAssetEventDelete value)
+        delete,
   }) {
     return get(this);
   }
@@ -204,10 +212,10 @@ class _$CacheProjectAssetEventGetImpl implements CacheProjectAssetEventGet {
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(CacheProjectAssetEventGet value)? get,
-    TResult? Function(CacheProjectAssetEventAdd value)? add,
-    TResult? Function(CacheProjectAssetEventUpdate value)? update,
-    TResult? Function(CacheProjectAssetEventDelete value)? delete,
+    TResult? Function(CacheActivityFacilityAssetEventGet value)? get,
+    TResult? Function(CacheActivityFacilityAssetEventAdd value)? add,
+    TResult? Function(CacheActivityFacilityAssetEventUpdate value)? update,
+    TResult? Function(CacheActivityFacilityAssetEventDelete value)? delete,
   }) {
     return get?.call(this);
   }
@@ -215,10 +223,10 @@ class _$CacheProjectAssetEventGetImpl implements CacheProjectAssetEventGet {
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(CacheProjectAssetEventGet value)? get,
-    TResult Function(CacheProjectAssetEventAdd value)? add,
-    TResult Function(CacheProjectAssetEventUpdate value)? update,
-    TResult Function(CacheProjectAssetEventDelete value)? delete,
+    TResult Function(CacheActivityFacilityAssetEventGet value)? get,
+    TResult Function(CacheActivityFacilityAssetEventAdd value)? add,
+    TResult Function(CacheActivityFacilityAssetEventUpdate value)? update,
+    TResult Function(CacheActivityFacilityAssetEventDelete value)? delete,
     required TResult orElse(),
   }) {
     if (get != null) {
@@ -228,34 +236,36 @@ class _$CacheProjectAssetEventGetImpl implements CacheProjectAssetEventGet {
   }
 }
 
-abstract class CacheProjectAssetEventGet implements CacheProjectAssetEvent {
-  const factory CacheProjectAssetEventGet(final String projectId) =
-      _$CacheProjectAssetEventGetImpl;
+abstract class CacheActivityFacilityAssetEventGet
+    implements CacheActivityFacilityAssetEvent {
+  const factory CacheActivityFacilityAssetEventGet(final String projectId) =
+      _$CacheActivityFacilityAssetEventGetImpl;
 
   String get projectId;
   @JsonKey(ignore: true)
-  _$$CacheProjectAssetEventGetImplCopyWith<_$CacheProjectAssetEventGetImpl>
+  _$$CacheActivityFacilityAssetEventGetImplCopyWith<
+          _$CacheActivityFacilityAssetEventGetImpl>
       get copyWith => throw _privateConstructorUsedError;
 }
 
 /// @nodoc
-abstract class _$$CacheProjectAssetEventAddImplCopyWith<$Res> {
-  factory _$$CacheProjectAssetEventAddImplCopyWith(
-          _$CacheProjectAssetEventAddImpl value,
-          $Res Function(_$CacheProjectAssetEventAddImpl) then) =
-      __$$CacheProjectAssetEventAddImplCopyWithImpl<$Res>;
+abstract class _$$CacheActivityFacilityAssetEventAddImplCopyWith<$Res> {
+  factory _$$CacheActivityFacilityAssetEventAddImplCopyWith(
+          _$CacheActivityFacilityAssetEventAddImpl value,
+          $Res Function(_$CacheActivityFacilityAssetEventAddImpl) then) =
+      __$$CacheActivityFacilityAssetEventAddImplCopyWithImpl<$Res>;
   @useResult
-  $Res call({CacheProjectAsset entry});
+  $Res call({CacheActivityFacilityAsset entry});
 }
 
 /// @nodoc
-class __$$CacheProjectAssetEventAddImplCopyWithImpl<$Res>
-    extends _$CacheProjectAssetEventCopyWithImpl<$Res,
-        _$CacheProjectAssetEventAddImpl>
-    implements _$$CacheProjectAssetEventAddImplCopyWith<$Res> {
-  __$$CacheProjectAssetEventAddImplCopyWithImpl(
-      _$CacheProjectAssetEventAddImpl _value,
-      $Res Function(_$CacheProjectAssetEventAddImpl) _then)
+class __$$CacheActivityFacilityAssetEventAddImplCopyWithImpl<$Res>
+    extends _$CacheActivityFacilityAssetEventCopyWithImpl<$Res,
+        _$CacheActivityFacilityAssetEventAddImpl>
+    implements _$$CacheActivityFacilityAssetEventAddImplCopyWith<$Res> {
+  __$$CacheActivityFacilityAssetEventAddImplCopyWithImpl(
+      _$CacheActivityFacilityAssetEventAddImpl _value,
+      $Res Function(_$CacheActivityFacilityAssetEventAddImpl) _then)
       : super(_value, _then);
 
   @pragma('vm:prefer-inline')
@@ -263,33 +273,34 @@ class __$$CacheProjectAssetEventAddImplCopyWithImpl<$Res>
   $Res call({
     Object? entry = null,
   }) {
-    return _then(_$CacheProjectAssetEventAddImpl(
+    return _then(_$CacheActivityFacilityAssetEventAddImpl(
       null == entry
           ? _value.entry
           : entry // ignore: cast_nullable_to_non_nullable
-              as CacheProjectAsset,
+              as CacheActivityFacilityAsset,
     ));
   }
 }
 
 /// @nodoc
 
-class _$CacheProjectAssetEventAddImpl implements CacheProjectAssetEventAdd {
-  const _$CacheProjectAssetEventAddImpl(this.entry);
+class _$CacheActivityFacilityAssetEventAddImpl
+    implements CacheActivityFacilityAssetEventAdd {
+  const _$CacheActivityFacilityAssetEventAddImpl(this.entry);
 
   @override
-  final CacheProjectAsset entry;
+  final CacheActivityFacilityAsset entry;
 
   @override
   String toString() {
-    return 'CacheProjectAssetEvent.add(entry: $entry)';
+    return 'CacheActivityFacilityAssetEvent.add(entry: $entry)';
   }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$CacheProjectAssetEventAddImpl &&
+            other is _$CacheActivityFacilityAssetEventAddImpl &&
             (identical(other.entry, entry) || other.entry == entry));
   }
 
@@ -299,16 +310,17 @@ class _$CacheProjectAssetEventAddImpl implements CacheProjectAssetEventAdd {
   @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
-  _$$CacheProjectAssetEventAddImplCopyWith<_$CacheProjectAssetEventAddImpl>
-      get copyWith => __$$CacheProjectAssetEventAddImplCopyWithImpl<
-          _$CacheProjectAssetEventAddImpl>(this, _$identity);
+  _$$CacheActivityFacilityAssetEventAddImplCopyWith<
+          _$CacheActivityFacilityAssetEventAddImpl>
+      get copyWith => __$$CacheActivityFacilityAssetEventAddImplCopyWithImpl<
+          _$CacheActivityFacilityAssetEventAddImpl>(this, _$identity);
 
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function(String projectId) get,
-    required TResult Function(CacheProjectAsset entry) add,
-    required TResult Function(CacheProjectAsset entry) update,
+    required TResult Function(CacheActivityFacilityAsset entry) add,
+    required TResult Function(CacheActivityFacilityAsset entry) update,
     required TResult Function(int id) delete,
   }) {
     return add(entry);
@@ -318,8 +330,8 @@ class _$CacheProjectAssetEventAddImpl implements CacheProjectAssetEventAdd {
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(String projectId)? get,
-    TResult? Function(CacheProjectAsset entry)? add,
-    TResult? Function(CacheProjectAsset entry)? update,
+    TResult? Function(CacheActivityFacilityAsset entry)? add,
+    TResult? Function(CacheActivityFacilityAsset entry)? update,
     TResult? Function(int id)? delete,
   }) {
     return add?.call(entry);
@@ -329,8 +341,8 @@ class _$CacheProjectAssetEventAddImpl implements CacheProjectAssetEventAdd {
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(String projectId)? get,
-    TResult Function(CacheProjectAsset entry)? add,
-    TResult Function(CacheProjectAsset entry)? update,
+    TResult Function(CacheActivityFacilityAsset entry)? add,
+    TResult Function(CacheActivityFacilityAsset entry)? update,
     TResult Function(int id)? delete,
     required TResult orElse(),
   }) {
@@ -343,10 +355,12 @@ class _$CacheProjectAssetEventAddImpl implements CacheProjectAssetEventAdd {
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(CacheProjectAssetEventGet value) get,
-    required TResult Function(CacheProjectAssetEventAdd value) add,
-    required TResult Function(CacheProjectAssetEventUpdate value) update,
-    required TResult Function(CacheProjectAssetEventDelete value) delete,
+    required TResult Function(CacheActivityFacilityAssetEventGet value) get,
+    required TResult Function(CacheActivityFacilityAssetEventAdd value) add,
+    required TResult Function(CacheActivityFacilityAssetEventUpdate value)
+        update,
+    required TResult Function(CacheActivityFacilityAssetEventDelete value)
+        delete,
   }) {
     return add(this);
   }
@@ -354,10 +368,10 @@ class _$CacheProjectAssetEventAddImpl implements CacheProjectAssetEventAdd {
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(CacheProjectAssetEventGet value)? get,
-    TResult? Function(CacheProjectAssetEventAdd value)? add,
-    TResult? Function(CacheProjectAssetEventUpdate value)? update,
-    TResult? Function(CacheProjectAssetEventDelete value)? delete,
+    TResult? Function(CacheActivityFacilityAssetEventGet value)? get,
+    TResult? Function(CacheActivityFacilityAssetEventAdd value)? add,
+    TResult? Function(CacheActivityFacilityAssetEventUpdate value)? update,
+    TResult? Function(CacheActivityFacilityAssetEventDelete value)? delete,
   }) {
     return add?.call(this);
   }
@@ -365,10 +379,10 @@ class _$CacheProjectAssetEventAddImpl implements CacheProjectAssetEventAdd {
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(CacheProjectAssetEventGet value)? get,
-    TResult Function(CacheProjectAssetEventAdd value)? add,
-    TResult Function(CacheProjectAssetEventUpdate value)? update,
-    TResult Function(CacheProjectAssetEventDelete value)? delete,
+    TResult Function(CacheActivityFacilityAssetEventGet value)? get,
+    TResult Function(CacheActivityFacilityAssetEventAdd value)? add,
+    TResult Function(CacheActivityFacilityAssetEventUpdate value)? update,
+    TResult Function(CacheActivityFacilityAssetEventDelete value)? delete,
     required TResult orElse(),
   }) {
     if (add != null) {
@@ -378,34 +392,37 @@ class _$CacheProjectAssetEventAddImpl implements CacheProjectAssetEventAdd {
   }
 }
 
-abstract class CacheProjectAssetEventAdd implements CacheProjectAssetEvent {
-  const factory CacheProjectAssetEventAdd(final CacheProjectAsset entry) =
-      _$CacheProjectAssetEventAddImpl;
+abstract class CacheActivityFacilityAssetEventAdd
+    implements CacheActivityFacilityAssetEvent {
+  const factory CacheActivityFacilityAssetEventAdd(
+          final CacheActivityFacilityAsset entry) =
+      _$CacheActivityFacilityAssetEventAddImpl;
 
-  CacheProjectAsset get entry;
+  CacheActivityFacilityAsset get entry;
   @JsonKey(ignore: true)
-  _$$CacheProjectAssetEventAddImplCopyWith<_$CacheProjectAssetEventAddImpl>
+  _$$CacheActivityFacilityAssetEventAddImplCopyWith<
+          _$CacheActivityFacilityAssetEventAddImpl>
       get copyWith => throw _privateConstructorUsedError;
 }
 
 /// @nodoc
-abstract class _$$CacheProjectAssetEventUpdateImplCopyWith<$Res> {
-  factory _$$CacheProjectAssetEventUpdateImplCopyWith(
-          _$CacheProjectAssetEventUpdateImpl value,
-          $Res Function(_$CacheProjectAssetEventUpdateImpl) then) =
-      __$$CacheProjectAssetEventUpdateImplCopyWithImpl<$Res>;
+abstract class _$$CacheActivityFacilityAssetEventUpdateImplCopyWith<$Res> {
+  factory _$$CacheActivityFacilityAssetEventUpdateImplCopyWith(
+          _$CacheActivityFacilityAssetEventUpdateImpl value,
+          $Res Function(_$CacheActivityFacilityAssetEventUpdateImpl) then) =
+      __$$CacheActivityFacilityAssetEventUpdateImplCopyWithImpl<$Res>;
   @useResult
-  $Res call({CacheProjectAsset entry});
+  $Res call({CacheActivityFacilityAsset entry});
 }
 
 /// @nodoc
-class __$$CacheProjectAssetEventUpdateImplCopyWithImpl<$Res>
-    extends _$CacheProjectAssetEventCopyWithImpl<$Res,
-        _$CacheProjectAssetEventUpdateImpl>
-    implements _$$CacheProjectAssetEventUpdateImplCopyWith<$Res> {
-  __$$CacheProjectAssetEventUpdateImplCopyWithImpl(
-      _$CacheProjectAssetEventUpdateImpl _value,
-      $Res Function(_$CacheProjectAssetEventUpdateImpl) _then)
+class __$$CacheActivityFacilityAssetEventUpdateImplCopyWithImpl<$Res>
+    extends _$CacheActivityFacilityAssetEventCopyWithImpl<$Res,
+        _$CacheActivityFacilityAssetEventUpdateImpl>
+    implements _$$CacheActivityFacilityAssetEventUpdateImplCopyWith<$Res> {
+  __$$CacheActivityFacilityAssetEventUpdateImplCopyWithImpl(
+      _$CacheActivityFacilityAssetEventUpdateImpl _value,
+      $Res Function(_$CacheActivityFacilityAssetEventUpdateImpl) _then)
       : super(_value, _then);
 
   @pragma('vm:prefer-inline')
@@ -413,34 +430,34 @@ class __$$CacheProjectAssetEventUpdateImplCopyWithImpl<$Res>
   $Res call({
     Object? entry = null,
   }) {
-    return _then(_$CacheProjectAssetEventUpdateImpl(
+    return _then(_$CacheActivityFacilityAssetEventUpdateImpl(
       null == entry
           ? _value.entry
           : entry // ignore: cast_nullable_to_non_nullable
-              as CacheProjectAsset,
+              as CacheActivityFacilityAsset,
     ));
   }
 }
 
 /// @nodoc
 
-class _$CacheProjectAssetEventUpdateImpl
-    implements CacheProjectAssetEventUpdate {
-  const _$CacheProjectAssetEventUpdateImpl(this.entry);
+class _$CacheActivityFacilityAssetEventUpdateImpl
+    implements CacheActivityFacilityAssetEventUpdate {
+  const _$CacheActivityFacilityAssetEventUpdateImpl(this.entry);
 
   @override
-  final CacheProjectAsset entry;
+  final CacheActivityFacilityAsset entry;
 
   @override
   String toString() {
-    return 'CacheProjectAssetEvent.update(entry: $entry)';
+    return 'CacheActivityFacilityAssetEvent.update(entry: $entry)';
   }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$CacheProjectAssetEventUpdateImpl &&
+            other is _$CacheActivityFacilityAssetEventUpdateImpl &&
             (identical(other.entry, entry) || other.entry == entry));
   }
 
@@ -450,17 +467,17 @@ class _$CacheProjectAssetEventUpdateImpl
   @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
-  _$$CacheProjectAssetEventUpdateImplCopyWith<
-          _$CacheProjectAssetEventUpdateImpl>
-      get copyWith => __$$CacheProjectAssetEventUpdateImplCopyWithImpl<
-          _$CacheProjectAssetEventUpdateImpl>(this, _$identity);
+  _$$CacheActivityFacilityAssetEventUpdateImplCopyWith<
+          _$CacheActivityFacilityAssetEventUpdateImpl>
+      get copyWith => __$$CacheActivityFacilityAssetEventUpdateImplCopyWithImpl<
+          _$CacheActivityFacilityAssetEventUpdateImpl>(this, _$identity);
 
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function(String projectId) get,
-    required TResult Function(CacheProjectAsset entry) add,
-    required TResult Function(CacheProjectAsset entry) update,
+    required TResult Function(CacheActivityFacilityAsset entry) add,
+    required TResult Function(CacheActivityFacilityAsset entry) update,
     required TResult Function(int id) delete,
   }) {
     return update(entry);
@@ -470,8 +487,8 @@ class _$CacheProjectAssetEventUpdateImpl
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(String projectId)? get,
-    TResult? Function(CacheProjectAsset entry)? add,
-    TResult? Function(CacheProjectAsset entry)? update,
+    TResult? Function(CacheActivityFacilityAsset entry)? add,
+    TResult? Function(CacheActivityFacilityAsset entry)? update,
     TResult? Function(int id)? delete,
   }) {
     return update?.call(entry);
@@ -481,8 +498,8 @@ class _$CacheProjectAssetEventUpdateImpl
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(String projectId)? get,
-    TResult Function(CacheProjectAsset entry)? add,
-    TResult Function(CacheProjectAsset entry)? update,
+    TResult Function(CacheActivityFacilityAsset entry)? add,
+    TResult Function(CacheActivityFacilityAsset entry)? update,
     TResult Function(int id)? delete,
     required TResult orElse(),
   }) {
@@ -495,10 +512,12 @@ class _$CacheProjectAssetEventUpdateImpl
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(CacheProjectAssetEventGet value) get,
-    required TResult Function(CacheProjectAssetEventAdd value) add,
-    required TResult Function(CacheProjectAssetEventUpdate value) update,
-    required TResult Function(CacheProjectAssetEventDelete value) delete,
+    required TResult Function(CacheActivityFacilityAssetEventGet value) get,
+    required TResult Function(CacheActivityFacilityAssetEventAdd value) add,
+    required TResult Function(CacheActivityFacilityAssetEventUpdate value)
+        update,
+    required TResult Function(CacheActivityFacilityAssetEventDelete value)
+        delete,
   }) {
     return update(this);
   }
@@ -506,10 +525,10 @@ class _$CacheProjectAssetEventUpdateImpl
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(CacheProjectAssetEventGet value)? get,
-    TResult? Function(CacheProjectAssetEventAdd value)? add,
-    TResult? Function(CacheProjectAssetEventUpdate value)? update,
-    TResult? Function(CacheProjectAssetEventDelete value)? delete,
+    TResult? Function(CacheActivityFacilityAssetEventGet value)? get,
+    TResult? Function(CacheActivityFacilityAssetEventAdd value)? add,
+    TResult? Function(CacheActivityFacilityAssetEventUpdate value)? update,
+    TResult? Function(CacheActivityFacilityAssetEventDelete value)? delete,
   }) {
     return update?.call(this);
   }
@@ -517,10 +536,10 @@ class _$CacheProjectAssetEventUpdateImpl
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(CacheProjectAssetEventGet value)? get,
-    TResult Function(CacheProjectAssetEventAdd value)? add,
-    TResult Function(CacheProjectAssetEventUpdate value)? update,
-    TResult Function(CacheProjectAssetEventDelete value)? delete,
+    TResult Function(CacheActivityFacilityAssetEventGet value)? get,
+    TResult Function(CacheActivityFacilityAssetEventAdd value)? add,
+    TResult Function(CacheActivityFacilityAssetEventUpdate value)? update,
+    TResult Function(CacheActivityFacilityAssetEventDelete value)? delete,
     required TResult orElse(),
   }) {
     if (update != null) {
@@ -530,35 +549,37 @@ class _$CacheProjectAssetEventUpdateImpl
   }
 }
 
-abstract class CacheProjectAssetEventUpdate implements CacheProjectAssetEvent {
-  const factory CacheProjectAssetEventUpdate(final CacheProjectAsset entry) =
-      _$CacheProjectAssetEventUpdateImpl;
+abstract class CacheActivityFacilityAssetEventUpdate
+    implements CacheActivityFacilityAssetEvent {
+  const factory CacheActivityFacilityAssetEventUpdate(
+          final CacheActivityFacilityAsset entry) =
+      _$CacheActivityFacilityAssetEventUpdateImpl;
 
-  CacheProjectAsset get entry;
+  CacheActivityFacilityAsset get entry;
   @JsonKey(ignore: true)
-  _$$CacheProjectAssetEventUpdateImplCopyWith<
-          _$CacheProjectAssetEventUpdateImpl>
+  _$$CacheActivityFacilityAssetEventUpdateImplCopyWith<
+          _$CacheActivityFacilityAssetEventUpdateImpl>
       get copyWith => throw _privateConstructorUsedError;
 }
 
 /// @nodoc
-abstract class _$$CacheProjectAssetEventDeleteImplCopyWith<$Res> {
-  factory _$$CacheProjectAssetEventDeleteImplCopyWith(
-          _$CacheProjectAssetEventDeleteImpl value,
-          $Res Function(_$CacheProjectAssetEventDeleteImpl) then) =
-      __$$CacheProjectAssetEventDeleteImplCopyWithImpl<$Res>;
+abstract class _$$CacheActivityFacilityAssetEventDeleteImplCopyWith<$Res> {
+  factory _$$CacheActivityFacilityAssetEventDeleteImplCopyWith(
+          _$CacheActivityFacilityAssetEventDeleteImpl value,
+          $Res Function(_$CacheActivityFacilityAssetEventDeleteImpl) then) =
+      __$$CacheActivityFacilityAssetEventDeleteImplCopyWithImpl<$Res>;
   @useResult
   $Res call({int id});
 }
 
 /// @nodoc
-class __$$CacheProjectAssetEventDeleteImplCopyWithImpl<$Res>
-    extends _$CacheProjectAssetEventCopyWithImpl<$Res,
-        _$CacheProjectAssetEventDeleteImpl>
-    implements _$$CacheProjectAssetEventDeleteImplCopyWith<$Res> {
-  __$$CacheProjectAssetEventDeleteImplCopyWithImpl(
-      _$CacheProjectAssetEventDeleteImpl _value,
-      $Res Function(_$CacheProjectAssetEventDeleteImpl) _then)
+class __$$CacheActivityFacilityAssetEventDeleteImplCopyWithImpl<$Res>
+    extends _$CacheActivityFacilityAssetEventCopyWithImpl<$Res,
+        _$CacheActivityFacilityAssetEventDeleteImpl>
+    implements _$$CacheActivityFacilityAssetEventDeleteImplCopyWith<$Res> {
+  __$$CacheActivityFacilityAssetEventDeleteImplCopyWithImpl(
+      _$CacheActivityFacilityAssetEventDeleteImpl _value,
+      $Res Function(_$CacheActivityFacilityAssetEventDeleteImpl) _then)
       : super(_value, _then);
 
   @pragma('vm:prefer-inline')
@@ -566,7 +587,7 @@ class __$$CacheProjectAssetEventDeleteImplCopyWithImpl<$Res>
   $Res call({
     Object? id = null,
   }) {
-    return _then(_$CacheProjectAssetEventDeleteImpl(
+    return _then(_$CacheActivityFacilityAssetEventDeleteImpl(
       null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
@@ -577,23 +598,23 @@ class __$$CacheProjectAssetEventDeleteImplCopyWithImpl<$Res>
 
 /// @nodoc
 
-class _$CacheProjectAssetEventDeleteImpl
-    implements CacheProjectAssetEventDelete {
-  const _$CacheProjectAssetEventDeleteImpl(this.id);
+class _$CacheActivityFacilityAssetEventDeleteImpl
+    implements CacheActivityFacilityAssetEventDelete {
+  const _$CacheActivityFacilityAssetEventDeleteImpl(this.id);
 
   @override
   final int id;
 
   @override
   String toString() {
-    return 'CacheProjectAssetEvent.delete(id: $id)';
+    return 'CacheActivityFacilityAssetEvent.delete(id: $id)';
   }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$CacheProjectAssetEventDeleteImpl &&
+            other is _$CacheActivityFacilityAssetEventDeleteImpl &&
             (identical(other.id, id) || other.id == id));
   }
 
@@ -603,17 +624,17 @@ class _$CacheProjectAssetEventDeleteImpl
   @JsonKey(ignore: true)
   @override
   @pragma('vm:prefer-inline')
-  _$$CacheProjectAssetEventDeleteImplCopyWith<
-          _$CacheProjectAssetEventDeleteImpl>
-      get copyWith => __$$CacheProjectAssetEventDeleteImplCopyWithImpl<
-          _$CacheProjectAssetEventDeleteImpl>(this, _$identity);
+  _$$CacheActivityFacilityAssetEventDeleteImplCopyWith<
+          _$CacheActivityFacilityAssetEventDeleteImpl>
+      get copyWith => __$$CacheActivityFacilityAssetEventDeleteImplCopyWithImpl<
+          _$CacheActivityFacilityAssetEventDeleteImpl>(this, _$identity);
 
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function(String projectId) get,
-    required TResult Function(CacheProjectAsset entry) add,
-    required TResult Function(CacheProjectAsset entry) update,
+    required TResult Function(CacheActivityFacilityAsset entry) add,
+    required TResult Function(CacheActivityFacilityAsset entry) update,
     required TResult Function(int id) delete,
   }) {
     return delete(id);
@@ -623,8 +644,8 @@ class _$CacheProjectAssetEventDeleteImpl
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(String projectId)? get,
-    TResult? Function(CacheProjectAsset entry)? add,
-    TResult? Function(CacheProjectAsset entry)? update,
+    TResult? Function(CacheActivityFacilityAsset entry)? add,
+    TResult? Function(CacheActivityFacilityAsset entry)? update,
     TResult? Function(int id)? delete,
   }) {
     return delete?.call(id);
@@ -634,8 +655,8 @@ class _$CacheProjectAssetEventDeleteImpl
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(String projectId)? get,
-    TResult Function(CacheProjectAsset entry)? add,
-    TResult Function(CacheProjectAsset entry)? update,
+    TResult Function(CacheActivityFacilityAsset entry)? add,
+    TResult Function(CacheActivityFacilityAsset entry)? update,
     TResult Function(int id)? delete,
     required TResult orElse(),
   }) {
@@ -648,10 +669,12 @@ class _$CacheProjectAssetEventDeleteImpl
   @override
   @optionalTypeArgs
   TResult map<TResult extends Object?>({
-    required TResult Function(CacheProjectAssetEventGet value) get,
-    required TResult Function(CacheProjectAssetEventAdd value) add,
-    required TResult Function(CacheProjectAssetEventUpdate value) update,
-    required TResult Function(CacheProjectAssetEventDelete value) delete,
+    required TResult Function(CacheActivityFacilityAssetEventGet value) get,
+    required TResult Function(CacheActivityFacilityAssetEventAdd value) add,
+    required TResult Function(CacheActivityFacilityAssetEventUpdate value)
+        update,
+    required TResult Function(CacheActivityFacilityAssetEventDelete value)
+        delete,
   }) {
     return delete(this);
   }
@@ -659,10 +682,10 @@ class _$CacheProjectAssetEventDeleteImpl
   @override
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(CacheProjectAssetEventGet value)? get,
-    TResult? Function(CacheProjectAssetEventAdd value)? add,
-    TResult? Function(CacheProjectAssetEventUpdate value)? update,
-    TResult? Function(CacheProjectAssetEventDelete value)? delete,
+    TResult? Function(CacheActivityFacilityAssetEventGet value)? get,
+    TResult? Function(CacheActivityFacilityAssetEventAdd value)? add,
+    TResult? Function(CacheActivityFacilityAssetEventUpdate value)? update,
+    TResult? Function(CacheActivityFacilityAssetEventDelete value)? delete,
   }) {
     return delete?.call(this);
   }
@@ -670,10 +693,10 @@ class _$CacheProjectAssetEventDeleteImpl
   @override
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
-    TResult Function(CacheProjectAssetEventGet value)? get,
-    TResult Function(CacheProjectAssetEventAdd value)? add,
-    TResult Function(CacheProjectAssetEventUpdate value)? update,
-    TResult Function(CacheProjectAssetEventDelete value)? delete,
+    TResult Function(CacheActivityFacilityAssetEventGet value)? get,
+    TResult Function(CacheActivityFacilityAssetEventAdd value)? add,
+    TResult Function(CacheActivityFacilityAssetEventUpdate value)? update,
+    TResult Function(CacheActivityFacilityAssetEventDelete value)? delete,
     required TResult orElse(),
   }) {
     if (delete != null) {
@@ -683,26 +706,27 @@ class _$CacheProjectAssetEventDeleteImpl
   }
 }
 
-abstract class CacheProjectAssetEventDelete implements CacheProjectAssetEvent {
-  const factory CacheProjectAssetEventDelete(final int id) =
-      _$CacheProjectAssetEventDeleteImpl;
+abstract class CacheActivityFacilityAssetEventDelete
+    implements CacheActivityFacilityAssetEvent {
+  const factory CacheActivityFacilityAssetEventDelete(final int id) =
+      _$CacheActivityFacilityAssetEventDeleteImpl;
 
   int get id;
   @JsonKey(ignore: true)
-  _$$CacheProjectAssetEventDeleteImplCopyWith<
-          _$CacheProjectAssetEventDeleteImpl>
+  _$$CacheActivityFacilityAssetEventDeleteImplCopyWith<
+          _$CacheActivityFacilityAssetEventDeleteImpl>
       get copyWith => throw _privateConstructorUsedError;
 }
 
 /// @nodoc
-mixin _$CacheProjectAssetState {
+mixin _$CacheActivityFacilityAssetState {
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
-    required TResult Function(List<CacheProjectAsset> entries) loaded,
-    required TResult Function(CacheProjectAsset entry) added,
-    required TResult Function(CacheProjectAsset entry) updated,
+    required TResult Function(List<CacheActivityFacilityAsset> entries) loaded,
+    required TResult Function(CacheActivityFacilityAsset entry) added,
+    required TResult Function(CacheActivityFacilityAsset entry) updated,
     required TResult Function() deleted,
     required TResult Function() notFound,
     required TResult Function(String message) error,
@@ -712,9 +736,9 @@ mixin _$CacheProjectAssetState {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
-    TResult? Function(List<CacheProjectAsset> entries)? loaded,
-    TResult? Function(CacheProjectAsset entry)? added,
-    TResult? Function(CacheProjectAsset entry)? updated,
+    TResult? Function(List<CacheActivityFacilityAsset> entries)? loaded,
+    TResult? Function(CacheActivityFacilityAsset entry)? added,
+    TResult? Function(CacheActivityFacilityAsset entry)? updated,
     TResult? Function()? deleted,
     TResult? Function()? notFound,
     TResult? Function(String message)? error,
@@ -724,9 +748,9 @@ mixin _$CacheProjectAssetState {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
-    TResult Function(List<CacheProjectAsset> entries)? loaded,
-    TResult Function(CacheProjectAsset entry)? added,
-    TResult Function(CacheProjectAsset entry)? updated,
+    TResult Function(List<CacheActivityFacilityAsset> entries)? loaded,
+    TResult Function(CacheActivityFacilityAsset entry)? added,
+    TResult Function(CacheActivityFacilityAsset entry)? updated,
     TResult Function()? deleted,
     TResult Function()? notFound,
     TResult Function(String message)? error,
@@ -773,17 +797,19 @@ mixin _$CacheProjectAssetState {
 }
 
 /// @nodoc
-abstract class $CacheProjectAssetStateCopyWith<$Res> {
-  factory $CacheProjectAssetStateCopyWith(CacheProjectAssetState value,
-          $Res Function(CacheProjectAssetState) then) =
-      _$CacheProjectAssetStateCopyWithImpl<$Res, CacheProjectAssetState>;
+abstract class $CacheActivityFacilityAssetStateCopyWith<$Res> {
+  factory $CacheActivityFacilityAssetStateCopyWith(
+          CacheActivityFacilityAssetState value,
+          $Res Function(CacheActivityFacilityAssetState) then) =
+      _$CacheActivityFacilityAssetStateCopyWithImpl<$Res,
+          CacheActivityFacilityAssetState>;
 }
 
 /// @nodoc
-class _$CacheProjectAssetStateCopyWithImpl<$Res,
-        $Val extends CacheProjectAssetState>
-    implements $CacheProjectAssetStateCopyWith<$Res> {
-  _$CacheProjectAssetStateCopyWithImpl(this._value, this._then);
+class _$CacheActivityFacilityAssetStateCopyWithImpl<$Res,
+        $Val extends CacheActivityFacilityAssetState>
+    implements $CacheActivityFacilityAssetStateCopyWith<$Res> {
+  _$CacheActivityFacilityAssetStateCopyWithImpl(this._value, this._then);
 
   // ignore: unused_field
   final $Val _value;
@@ -800,7 +826,7 @@ abstract class _$$InitialImplCopyWith<$Res> {
 
 /// @nodoc
 class __$$InitialImplCopyWithImpl<$Res>
-    extends _$CacheProjectAssetStateCopyWithImpl<$Res, _$InitialImpl>
+    extends _$CacheActivityFacilityAssetStateCopyWithImpl<$Res, _$InitialImpl>
     implements _$$InitialImplCopyWith<$Res> {
   __$$InitialImplCopyWithImpl(
       _$InitialImpl _value, $Res Function(_$InitialImpl) _then)
@@ -814,7 +840,7 @@ class _$InitialImpl implements _Initial {
 
   @override
   String toString() {
-    return 'CacheProjectAssetState.initial()';
+    return 'CacheActivityFacilityAssetState.initial()';
   }
 
   @override
@@ -831,9 +857,9 @@ class _$InitialImpl implements _Initial {
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
-    required TResult Function(List<CacheProjectAsset> entries) loaded,
-    required TResult Function(CacheProjectAsset entry) added,
-    required TResult Function(CacheProjectAsset entry) updated,
+    required TResult Function(List<CacheActivityFacilityAsset> entries) loaded,
+    required TResult Function(CacheActivityFacilityAsset entry) added,
+    required TResult Function(CacheActivityFacilityAsset entry) updated,
     required TResult Function() deleted,
     required TResult Function() notFound,
     required TResult Function(String message) error,
@@ -846,9 +872,9 @@ class _$InitialImpl implements _Initial {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
-    TResult? Function(List<CacheProjectAsset> entries)? loaded,
-    TResult? Function(CacheProjectAsset entry)? added,
-    TResult? Function(CacheProjectAsset entry)? updated,
+    TResult? Function(List<CacheActivityFacilityAsset> entries)? loaded,
+    TResult? Function(CacheActivityFacilityAsset entry)? added,
+    TResult? Function(CacheActivityFacilityAsset entry)? updated,
     TResult? Function()? deleted,
     TResult? Function()? notFound,
     TResult? Function(String message)? error,
@@ -861,9 +887,9 @@ class _$InitialImpl implements _Initial {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
-    TResult Function(List<CacheProjectAsset> entries)? loaded,
-    TResult Function(CacheProjectAsset entry)? added,
-    TResult Function(CacheProjectAsset entry)? updated,
+    TResult Function(List<CacheActivityFacilityAsset> entries)? loaded,
+    TResult Function(CacheActivityFacilityAsset entry)? added,
+    TResult Function(CacheActivityFacilityAsset entry)? updated,
     TResult Function()? deleted,
     TResult Function()? notFound,
     TResult Function(String message)? error,
@@ -925,7 +951,7 @@ class _$InitialImpl implements _Initial {
   }
 }
 
-abstract class _Initial implements CacheProjectAssetState {
+abstract class _Initial implements CacheActivityFacilityAssetState {
   const factory _Initial() = _$InitialImpl;
 }
 
@@ -938,7 +964,7 @@ abstract class _$$LoadingImplCopyWith<$Res> {
 
 /// @nodoc
 class __$$LoadingImplCopyWithImpl<$Res>
-    extends _$CacheProjectAssetStateCopyWithImpl<$Res, _$LoadingImpl>
+    extends _$CacheActivityFacilityAssetStateCopyWithImpl<$Res, _$LoadingImpl>
     implements _$$LoadingImplCopyWith<$Res> {
   __$$LoadingImplCopyWithImpl(
       _$LoadingImpl _value, $Res Function(_$LoadingImpl) _then)
@@ -952,7 +978,7 @@ class _$LoadingImpl implements _Loading {
 
   @override
   String toString() {
-    return 'CacheProjectAssetState.loading()';
+    return 'CacheActivityFacilityAssetState.loading()';
   }
 
   @override
@@ -969,9 +995,9 @@ class _$LoadingImpl implements _Loading {
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
-    required TResult Function(List<CacheProjectAsset> entries) loaded,
-    required TResult Function(CacheProjectAsset entry) added,
-    required TResult Function(CacheProjectAsset entry) updated,
+    required TResult Function(List<CacheActivityFacilityAsset> entries) loaded,
+    required TResult Function(CacheActivityFacilityAsset entry) added,
+    required TResult Function(CacheActivityFacilityAsset entry) updated,
     required TResult Function() deleted,
     required TResult Function() notFound,
     required TResult Function(String message) error,
@@ -984,9 +1010,9 @@ class _$LoadingImpl implements _Loading {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
-    TResult? Function(List<CacheProjectAsset> entries)? loaded,
-    TResult? Function(CacheProjectAsset entry)? added,
-    TResult? Function(CacheProjectAsset entry)? updated,
+    TResult? Function(List<CacheActivityFacilityAsset> entries)? loaded,
+    TResult? Function(CacheActivityFacilityAsset entry)? added,
+    TResult? Function(CacheActivityFacilityAsset entry)? updated,
     TResult? Function()? deleted,
     TResult? Function()? notFound,
     TResult? Function(String message)? error,
@@ -999,9 +1025,9 @@ class _$LoadingImpl implements _Loading {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
-    TResult Function(List<CacheProjectAsset> entries)? loaded,
-    TResult Function(CacheProjectAsset entry)? added,
-    TResult Function(CacheProjectAsset entry)? updated,
+    TResult Function(List<CacheActivityFacilityAsset> entries)? loaded,
+    TResult Function(CacheActivityFacilityAsset entry)? added,
+    TResult Function(CacheActivityFacilityAsset entry)? updated,
     TResult Function()? deleted,
     TResult Function()? notFound,
     TResult Function(String message)? error,
@@ -1063,7 +1089,7 @@ class _$LoadingImpl implements _Loading {
   }
 }
 
-abstract class _Loading implements CacheProjectAssetState {
+abstract class _Loading implements CacheActivityFacilityAssetState {
   const factory _Loading() = _$LoadingImpl;
 }
 
@@ -1073,12 +1099,12 @@ abstract class _$$LoadedImplCopyWith<$Res> {
           _$LoadedImpl value, $Res Function(_$LoadedImpl) then) =
       __$$LoadedImplCopyWithImpl<$Res>;
   @useResult
-  $Res call({List<CacheProjectAsset> entries});
+  $Res call({List<CacheActivityFacilityAsset> entries});
 }
 
 /// @nodoc
 class __$$LoadedImplCopyWithImpl<$Res>
-    extends _$CacheProjectAssetStateCopyWithImpl<$Res, _$LoadedImpl>
+    extends _$CacheActivityFacilityAssetStateCopyWithImpl<$Res, _$LoadedImpl>
     implements _$$LoadedImplCopyWith<$Res> {
   __$$LoadedImplCopyWithImpl(
       _$LoadedImpl _value, $Res Function(_$LoadedImpl) _then)
@@ -1093,7 +1119,7 @@ class __$$LoadedImplCopyWithImpl<$Res>
       null == entries
           ? _value._entries
           : entries // ignore: cast_nullable_to_non_nullable
-              as List<CacheProjectAsset>,
+              as List<CacheActivityFacilityAsset>,
     ));
   }
 }
@@ -1101,12 +1127,12 @@ class __$$LoadedImplCopyWithImpl<$Res>
 /// @nodoc
 
 class _$LoadedImpl implements _Loaded {
-  const _$LoadedImpl(final List<CacheProjectAsset> entries)
+  const _$LoadedImpl(final List<CacheActivityFacilityAsset> entries)
       : _entries = entries;
 
-  final List<CacheProjectAsset> _entries;
+  final List<CacheActivityFacilityAsset> _entries;
   @override
-  List<CacheProjectAsset> get entries {
+  List<CacheActivityFacilityAsset> get entries {
     if (_entries is EqualUnmodifiableListView) return _entries;
     // ignore: implicit_dynamic_type
     return EqualUnmodifiableListView(_entries);
@@ -1114,7 +1140,7 @@ class _$LoadedImpl implements _Loaded {
 
   @override
   String toString() {
-    return 'CacheProjectAssetState.loaded(entries: $entries)';
+    return 'CacheActivityFacilityAssetState.loaded(entries: $entries)';
   }
 
   @override
@@ -1140,9 +1166,9 @@ class _$LoadedImpl implements _Loaded {
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
-    required TResult Function(List<CacheProjectAsset> entries) loaded,
-    required TResult Function(CacheProjectAsset entry) added,
-    required TResult Function(CacheProjectAsset entry) updated,
+    required TResult Function(List<CacheActivityFacilityAsset> entries) loaded,
+    required TResult Function(CacheActivityFacilityAsset entry) added,
+    required TResult Function(CacheActivityFacilityAsset entry) updated,
     required TResult Function() deleted,
     required TResult Function() notFound,
     required TResult Function(String message) error,
@@ -1155,9 +1181,9 @@ class _$LoadedImpl implements _Loaded {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
-    TResult? Function(List<CacheProjectAsset> entries)? loaded,
-    TResult? Function(CacheProjectAsset entry)? added,
-    TResult? Function(CacheProjectAsset entry)? updated,
+    TResult? Function(List<CacheActivityFacilityAsset> entries)? loaded,
+    TResult? Function(CacheActivityFacilityAsset entry)? added,
+    TResult? Function(CacheActivityFacilityAsset entry)? updated,
     TResult? Function()? deleted,
     TResult? Function()? notFound,
     TResult? Function(String message)? error,
@@ -1170,9 +1196,9 @@ class _$LoadedImpl implements _Loaded {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
-    TResult Function(List<CacheProjectAsset> entries)? loaded,
-    TResult Function(CacheProjectAsset entry)? added,
-    TResult Function(CacheProjectAsset entry)? updated,
+    TResult Function(List<CacheActivityFacilityAsset> entries)? loaded,
+    TResult Function(CacheActivityFacilityAsset entry)? added,
+    TResult Function(CacheActivityFacilityAsset entry)? updated,
     TResult Function()? deleted,
     TResult Function()? notFound,
     TResult Function(String message)? error,
@@ -1234,10 +1260,11 @@ class _$LoadedImpl implements _Loaded {
   }
 }
 
-abstract class _Loaded implements CacheProjectAssetState {
-  const factory _Loaded(final List<CacheProjectAsset> entries) = _$LoadedImpl;
+abstract class _Loaded implements CacheActivityFacilityAssetState {
+  const factory _Loaded(final List<CacheActivityFacilityAsset> entries) =
+      _$LoadedImpl;
 
-  List<CacheProjectAsset> get entries;
+  List<CacheActivityFacilityAsset> get entries;
   @JsonKey(ignore: true)
   _$$LoadedImplCopyWith<_$LoadedImpl> get copyWith =>
       throw _privateConstructorUsedError;
@@ -1249,12 +1276,12 @@ abstract class _$$AddedImplCopyWith<$Res> {
           _$AddedImpl value, $Res Function(_$AddedImpl) then) =
       __$$AddedImplCopyWithImpl<$Res>;
   @useResult
-  $Res call({CacheProjectAsset entry});
+  $Res call({CacheActivityFacilityAsset entry});
 }
 
 /// @nodoc
 class __$$AddedImplCopyWithImpl<$Res>
-    extends _$CacheProjectAssetStateCopyWithImpl<$Res, _$AddedImpl>
+    extends _$CacheActivityFacilityAssetStateCopyWithImpl<$Res, _$AddedImpl>
     implements _$$AddedImplCopyWith<$Res> {
   __$$AddedImplCopyWithImpl(
       _$AddedImpl _value, $Res Function(_$AddedImpl) _then)
@@ -1269,7 +1296,7 @@ class __$$AddedImplCopyWithImpl<$Res>
       null == entry
           ? _value.entry
           : entry // ignore: cast_nullable_to_non_nullable
-              as CacheProjectAsset,
+              as CacheActivityFacilityAsset,
     ));
   }
 }
@@ -1280,11 +1307,11 @@ class _$AddedImpl implements _Added {
   const _$AddedImpl(this.entry);
 
   @override
-  final CacheProjectAsset entry;
+  final CacheActivityFacilityAsset entry;
 
   @override
   String toString() {
-    return 'CacheProjectAssetState.added(entry: $entry)';
+    return 'CacheActivityFacilityAssetState.added(entry: $entry)';
   }
 
   @override
@@ -1309,9 +1336,9 @@ class _$AddedImpl implements _Added {
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
-    required TResult Function(List<CacheProjectAsset> entries) loaded,
-    required TResult Function(CacheProjectAsset entry) added,
-    required TResult Function(CacheProjectAsset entry) updated,
+    required TResult Function(List<CacheActivityFacilityAsset> entries) loaded,
+    required TResult Function(CacheActivityFacilityAsset entry) added,
+    required TResult Function(CacheActivityFacilityAsset entry) updated,
     required TResult Function() deleted,
     required TResult Function() notFound,
     required TResult Function(String message) error,
@@ -1324,9 +1351,9 @@ class _$AddedImpl implements _Added {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
-    TResult? Function(List<CacheProjectAsset> entries)? loaded,
-    TResult? Function(CacheProjectAsset entry)? added,
-    TResult? Function(CacheProjectAsset entry)? updated,
+    TResult? Function(List<CacheActivityFacilityAsset> entries)? loaded,
+    TResult? Function(CacheActivityFacilityAsset entry)? added,
+    TResult? Function(CacheActivityFacilityAsset entry)? updated,
     TResult? Function()? deleted,
     TResult? Function()? notFound,
     TResult? Function(String message)? error,
@@ -1339,9 +1366,9 @@ class _$AddedImpl implements _Added {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
-    TResult Function(List<CacheProjectAsset> entries)? loaded,
-    TResult Function(CacheProjectAsset entry)? added,
-    TResult Function(CacheProjectAsset entry)? updated,
+    TResult Function(List<CacheActivityFacilityAsset> entries)? loaded,
+    TResult Function(CacheActivityFacilityAsset entry)? added,
+    TResult Function(CacheActivityFacilityAsset entry)? updated,
     TResult Function()? deleted,
     TResult Function()? notFound,
     TResult Function(String message)? error,
@@ -1403,10 +1430,10 @@ class _$AddedImpl implements _Added {
   }
 }
 
-abstract class _Added implements CacheProjectAssetState {
-  const factory _Added(final CacheProjectAsset entry) = _$AddedImpl;
+abstract class _Added implements CacheActivityFacilityAssetState {
+  const factory _Added(final CacheActivityFacilityAsset entry) = _$AddedImpl;
 
-  CacheProjectAsset get entry;
+  CacheActivityFacilityAsset get entry;
   @JsonKey(ignore: true)
   _$$AddedImplCopyWith<_$AddedImpl> get copyWith =>
       throw _privateConstructorUsedError;
@@ -1418,12 +1445,12 @@ abstract class _$$UpdatedImplCopyWith<$Res> {
           _$UpdatedImpl value, $Res Function(_$UpdatedImpl) then) =
       __$$UpdatedImplCopyWithImpl<$Res>;
   @useResult
-  $Res call({CacheProjectAsset entry});
+  $Res call({CacheActivityFacilityAsset entry});
 }
 
 /// @nodoc
 class __$$UpdatedImplCopyWithImpl<$Res>
-    extends _$CacheProjectAssetStateCopyWithImpl<$Res, _$UpdatedImpl>
+    extends _$CacheActivityFacilityAssetStateCopyWithImpl<$Res, _$UpdatedImpl>
     implements _$$UpdatedImplCopyWith<$Res> {
   __$$UpdatedImplCopyWithImpl(
       _$UpdatedImpl _value, $Res Function(_$UpdatedImpl) _then)
@@ -1438,7 +1465,7 @@ class __$$UpdatedImplCopyWithImpl<$Res>
       null == entry
           ? _value.entry
           : entry // ignore: cast_nullable_to_non_nullable
-              as CacheProjectAsset,
+              as CacheActivityFacilityAsset,
     ));
   }
 }
@@ -1449,11 +1476,11 @@ class _$UpdatedImpl implements _Updated {
   const _$UpdatedImpl(this.entry);
 
   @override
-  final CacheProjectAsset entry;
+  final CacheActivityFacilityAsset entry;
 
   @override
   String toString() {
-    return 'CacheProjectAssetState.updated(entry: $entry)';
+    return 'CacheActivityFacilityAssetState.updated(entry: $entry)';
   }
 
   @override
@@ -1478,9 +1505,9 @@ class _$UpdatedImpl implements _Updated {
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
-    required TResult Function(List<CacheProjectAsset> entries) loaded,
-    required TResult Function(CacheProjectAsset entry) added,
-    required TResult Function(CacheProjectAsset entry) updated,
+    required TResult Function(List<CacheActivityFacilityAsset> entries) loaded,
+    required TResult Function(CacheActivityFacilityAsset entry) added,
+    required TResult Function(CacheActivityFacilityAsset entry) updated,
     required TResult Function() deleted,
     required TResult Function() notFound,
     required TResult Function(String message) error,
@@ -1493,9 +1520,9 @@ class _$UpdatedImpl implements _Updated {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
-    TResult? Function(List<CacheProjectAsset> entries)? loaded,
-    TResult? Function(CacheProjectAsset entry)? added,
-    TResult? Function(CacheProjectAsset entry)? updated,
+    TResult? Function(List<CacheActivityFacilityAsset> entries)? loaded,
+    TResult? Function(CacheActivityFacilityAsset entry)? added,
+    TResult? Function(CacheActivityFacilityAsset entry)? updated,
     TResult? Function()? deleted,
     TResult? Function()? notFound,
     TResult? Function(String message)? error,
@@ -1508,9 +1535,9 @@ class _$UpdatedImpl implements _Updated {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
-    TResult Function(List<CacheProjectAsset> entries)? loaded,
-    TResult Function(CacheProjectAsset entry)? added,
-    TResult Function(CacheProjectAsset entry)? updated,
+    TResult Function(List<CacheActivityFacilityAsset> entries)? loaded,
+    TResult Function(CacheActivityFacilityAsset entry)? added,
+    TResult Function(CacheActivityFacilityAsset entry)? updated,
     TResult Function()? deleted,
     TResult Function()? notFound,
     TResult Function(String message)? error,
@@ -1572,10 +1599,11 @@ class _$UpdatedImpl implements _Updated {
   }
 }
 
-abstract class _Updated implements CacheProjectAssetState {
-  const factory _Updated(final CacheProjectAsset entry) = _$UpdatedImpl;
+abstract class _Updated implements CacheActivityFacilityAssetState {
+  const factory _Updated(final CacheActivityFacilityAsset entry) =
+      _$UpdatedImpl;
 
-  CacheProjectAsset get entry;
+  CacheActivityFacilityAsset get entry;
   @JsonKey(ignore: true)
   _$$UpdatedImplCopyWith<_$UpdatedImpl> get copyWith =>
       throw _privateConstructorUsedError;
@@ -1590,7 +1618,7 @@ abstract class _$$DeletedImplCopyWith<$Res> {
 
 /// @nodoc
 class __$$DeletedImplCopyWithImpl<$Res>
-    extends _$CacheProjectAssetStateCopyWithImpl<$Res, _$DeletedImpl>
+    extends _$CacheActivityFacilityAssetStateCopyWithImpl<$Res, _$DeletedImpl>
     implements _$$DeletedImplCopyWith<$Res> {
   __$$DeletedImplCopyWithImpl(
       _$DeletedImpl _value, $Res Function(_$DeletedImpl) _then)
@@ -1604,7 +1632,7 @@ class _$DeletedImpl implements _Deleted {
 
   @override
   String toString() {
-    return 'CacheProjectAssetState.deleted()';
+    return 'CacheActivityFacilityAssetState.deleted()';
   }
 
   @override
@@ -1621,9 +1649,9 @@ class _$DeletedImpl implements _Deleted {
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
-    required TResult Function(List<CacheProjectAsset> entries) loaded,
-    required TResult Function(CacheProjectAsset entry) added,
-    required TResult Function(CacheProjectAsset entry) updated,
+    required TResult Function(List<CacheActivityFacilityAsset> entries) loaded,
+    required TResult Function(CacheActivityFacilityAsset entry) added,
+    required TResult Function(CacheActivityFacilityAsset entry) updated,
     required TResult Function() deleted,
     required TResult Function() notFound,
     required TResult Function(String message) error,
@@ -1636,9 +1664,9 @@ class _$DeletedImpl implements _Deleted {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
-    TResult? Function(List<CacheProjectAsset> entries)? loaded,
-    TResult? Function(CacheProjectAsset entry)? added,
-    TResult? Function(CacheProjectAsset entry)? updated,
+    TResult? Function(List<CacheActivityFacilityAsset> entries)? loaded,
+    TResult? Function(CacheActivityFacilityAsset entry)? added,
+    TResult? Function(CacheActivityFacilityAsset entry)? updated,
     TResult? Function()? deleted,
     TResult? Function()? notFound,
     TResult? Function(String message)? error,
@@ -1651,9 +1679,9 @@ class _$DeletedImpl implements _Deleted {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
-    TResult Function(List<CacheProjectAsset> entries)? loaded,
-    TResult Function(CacheProjectAsset entry)? added,
-    TResult Function(CacheProjectAsset entry)? updated,
+    TResult Function(List<CacheActivityFacilityAsset> entries)? loaded,
+    TResult Function(CacheActivityFacilityAsset entry)? added,
+    TResult Function(CacheActivityFacilityAsset entry)? updated,
     TResult Function()? deleted,
     TResult Function()? notFound,
     TResult Function(String message)? error,
@@ -1715,7 +1743,7 @@ class _$DeletedImpl implements _Deleted {
   }
 }
 
-abstract class _Deleted implements CacheProjectAssetState {
+abstract class _Deleted implements CacheActivityFacilityAssetState {
   const factory _Deleted() = _$DeletedImpl;
 }
 
@@ -1728,7 +1756,7 @@ abstract class _$$NotFoundImplCopyWith<$Res> {
 
 /// @nodoc
 class __$$NotFoundImplCopyWithImpl<$Res>
-    extends _$CacheProjectAssetStateCopyWithImpl<$Res, _$NotFoundImpl>
+    extends _$CacheActivityFacilityAssetStateCopyWithImpl<$Res, _$NotFoundImpl>
     implements _$$NotFoundImplCopyWith<$Res> {
   __$$NotFoundImplCopyWithImpl(
       _$NotFoundImpl _value, $Res Function(_$NotFoundImpl) _then)
@@ -1742,7 +1770,7 @@ class _$NotFoundImpl implements _NotFound {
 
   @override
   String toString() {
-    return 'CacheProjectAssetState.notFound()';
+    return 'CacheActivityFacilityAssetState.notFound()';
   }
 
   @override
@@ -1759,9 +1787,9 @@ class _$NotFoundImpl implements _NotFound {
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
-    required TResult Function(List<CacheProjectAsset> entries) loaded,
-    required TResult Function(CacheProjectAsset entry) added,
-    required TResult Function(CacheProjectAsset entry) updated,
+    required TResult Function(List<CacheActivityFacilityAsset> entries) loaded,
+    required TResult Function(CacheActivityFacilityAsset entry) added,
+    required TResult Function(CacheActivityFacilityAsset entry) updated,
     required TResult Function() deleted,
     required TResult Function() notFound,
     required TResult Function(String message) error,
@@ -1774,9 +1802,9 @@ class _$NotFoundImpl implements _NotFound {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
-    TResult? Function(List<CacheProjectAsset> entries)? loaded,
-    TResult? Function(CacheProjectAsset entry)? added,
-    TResult? Function(CacheProjectAsset entry)? updated,
+    TResult? Function(List<CacheActivityFacilityAsset> entries)? loaded,
+    TResult? Function(CacheActivityFacilityAsset entry)? added,
+    TResult? Function(CacheActivityFacilityAsset entry)? updated,
     TResult? Function()? deleted,
     TResult? Function()? notFound,
     TResult? Function(String message)? error,
@@ -1789,9 +1817,9 @@ class _$NotFoundImpl implements _NotFound {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
-    TResult Function(List<CacheProjectAsset> entries)? loaded,
-    TResult Function(CacheProjectAsset entry)? added,
-    TResult Function(CacheProjectAsset entry)? updated,
+    TResult Function(List<CacheActivityFacilityAsset> entries)? loaded,
+    TResult Function(CacheActivityFacilityAsset entry)? added,
+    TResult Function(CacheActivityFacilityAsset entry)? updated,
     TResult Function()? deleted,
     TResult Function()? notFound,
     TResult Function(String message)? error,
@@ -1853,7 +1881,7 @@ class _$NotFoundImpl implements _NotFound {
   }
 }
 
-abstract class _NotFound implements CacheProjectAssetState {
+abstract class _NotFound implements CacheActivityFacilityAssetState {
   const factory _NotFound() = _$NotFoundImpl;
 }
 
@@ -1868,7 +1896,7 @@ abstract class _$$ErrorImplCopyWith<$Res> {
 
 /// @nodoc
 class __$$ErrorImplCopyWithImpl<$Res>
-    extends _$CacheProjectAssetStateCopyWithImpl<$Res, _$ErrorImpl>
+    extends _$CacheActivityFacilityAssetStateCopyWithImpl<$Res, _$ErrorImpl>
     implements _$$ErrorImplCopyWith<$Res> {
   __$$ErrorImplCopyWithImpl(
       _$ErrorImpl _value, $Res Function(_$ErrorImpl) _then)
@@ -1898,7 +1926,7 @@ class _$ErrorImpl implements _Error {
 
   @override
   String toString() {
-    return 'CacheProjectAssetState.error(message: $message)';
+    return 'CacheActivityFacilityAssetState.error(message: $message)';
   }
 
   @override
@@ -1923,9 +1951,9 @@ class _$ErrorImpl implements _Error {
   TResult when<TResult extends Object?>({
     required TResult Function() initial,
     required TResult Function() loading,
-    required TResult Function(List<CacheProjectAsset> entries) loaded,
-    required TResult Function(CacheProjectAsset entry) added,
-    required TResult Function(CacheProjectAsset entry) updated,
+    required TResult Function(List<CacheActivityFacilityAsset> entries) loaded,
+    required TResult Function(CacheActivityFacilityAsset entry) added,
+    required TResult Function(CacheActivityFacilityAsset entry) updated,
     required TResult Function() deleted,
     required TResult Function() notFound,
     required TResult Function(String message) error,
@@ -1938,9 +1966,9 @@ class _$ErrorImpl implements _Error {
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function()? initial,
     TResult? Function()? loading,
-    TResult? Function(List<CacheProjectAsset> entries)? loaded,
-    TResult? Function(CacheProjectAsset entry)? added,
-    TResult? Function(CacheProjectAsset entry)? updated,
+    TResult? Function(List<CacheActivityFacilityAsset> entries)? loaded,
+    TResult? Function(CacheActivityFacilityAsset entry)? added,
+    TResult? Function(CacheActivityFacilityAsset entry)? updated,
     TResult? Function()? deleted,
     TResult? Function()? notFound,
     TResult? Function(String message)? error,
@@ -1953,9 +1981,9 @@ class _$ErrorImpl implements _Error {
   TResult maybeWhen<TResult extends Object?>({
     TResult Function()? initial,
     TResult Function()? loading,
-    TResult Function(List<CacheProjectAsset> entries)? loaded,
-    TResult Function(CacheProjectAsset entry)? added,
-    TResult Function(CacheProjectAsset entry)? updated,
+    TResult Function(List<CacheActivityFacilityAsset> entries)? loaded,
+    TResult Function(CacheActivityFacilityAsset entry)? added,
+    TResult Function(CacheActivityFacilityAsset entry)? updated,
     TResult Function()? deleted,
     TResult Function()? notFound,
     TResult Function(String message)? error,
@@ -2017,7 +2045,7 @@ class _$ErrorImpl implements _Error {
   }
 }
 
-abstract class _Error implements CacheProjectAssetState {
+abstract class _Error implements CacheActivityFacilityAssetState {
   const factory _Error(final String message) = _$ErrorImpl;
 
   String get message;

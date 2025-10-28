@@ -11,11 +11,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:selco/utils/utils.dart';
 
 import '../blocs/app_init/app_init.dart';
+import '../blocs/cache_activity_facility_asset/cache_activity_facility_asset.dart';
 import '../blocs/cache_asset_count/cache_asset_count.dart';
-import '../blocs/cache_project_asset/cache_project_asset.dart';
-import '../blocs/selected_project/selected_project.dart';
+import '../blocs/selected_activity_facility/selected_activity_facility.dart';
+import '../data/nosql/cache_activity_facility_asset.dart';
 import '../data/nosql/cache_asset_count.dart';
-import '../data/nosql/cache_project_asset.dart';
 import '../model/asset_count/asset_count.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
@@ -32,7 +32,7 @@ class AssetCountPage extends StatefulWidget {
 }
 
 class _AssetCountPageState extends State<AssetCountPage> {
-  String? _currentProjectId;
+  String? _currentActivityFacilityId;
   AssetCount? inverterData, batteryData, panelData;
 
   int _inverterCount = 0;
@@ -49,10 +49,10 @@ class _AssetCountPageState extends State<AssetCountPage> {
 
   void _setupInitial() {
     // Grab selected project and dispatch initial load
-    final sel = context.read<SelectedProjectBloc>().state;
+    final sel = context.read<SelectedActivityFacilityBloc>().state;
     sel.whenOrNull(selected: (proj) {
-      _currentProjectId = proj.project.id;
-      _dispatchInitialLoad(proj.project.id);
+      _currentActivityFacilityId = proj.activityFacility.id;
+      _dispatchInitialLoad(proj.activityFacility.id);
     });
 
     // Listen for loaded counts to seed local values
@@ -90,9 +90,10 @@ class _AssetCountPageState extends State<AssetCountPage> {
   }
 
   void _dispatchInitialLoad(String projectId) {
-    context.read<CacheProjectAssetBloc>().add(
-          CacheProjectAssetEvent.update(
-            CacheProjectAsset(projectId: projectId, progress: 1),
+    context.read<CacheActivityFacilityAssetBloc>().add(
+          CacheActivityFacilityAssetEvent.update(
+            CacheActivityFacilityAsset(
+                activityFacilityId: projectId, progress: 1),
           ),
         );
     context.read<CacheAssetCountBloc>().add(
@@ -146,9 +147,8 @@ class _AssetCountPageState extends State<AssetCountPage> {
                   await context.router
                       .push(const SelectAssetTypeRoute())
                       .then((_) {
-                    // this callback runs when SelectAssetTypeRoute is popped off to refresh the page for the counts
                     if (!mounted) return;
-                    _dispatchInitialLoad(_currentProjectId!);
+                    _dispatchInitialLoad(_currentActivityFacilityId!);
                   });
                 }
               },
@@ -188,11 +188,12 @@ class _AssetCountPageState extends State<AssetCountPage> {
                           onChange: (val) {
                             final c = int.tryParse(val) ?? 0;
                             setState(() => _inverterCount = c);
-                            if (_currentProjectId != null) {
+                            if (_currentActivityFacilityId != null) {
                               context
                                   .read<CacheAssetCountBloc>()
                                   .add(CacheAssetCountEventAdd(CacheAssetCount(
-                                    projectId: _currentProjectId!,
+                                    activityFacilityId:
+                                        _currentActivityFacilityId!,
                                     assetType: 'inverter',
                                     count: c,
                                   )));
@@ -218,11 +219,12 @@ class _AssetCountPageState extends State<AssetCountPage> {
                           onChange: (val) {
                             final c = int.tryParse(val) ?? 0;
                             setState(() => _batteryCount = c);
-                            if (_currentProjectId != null) {
+                            if (_currentActivityFacilityId != null) {
                               context
                                   .read<CacheAssetCountBloc>()
                                   .add(CacheAssetCountEventAdd(CacheAssetCount(
-                                    projectId: _currentProjectId!,
+                                    activityFacilityId:
+                                        _currentActivityFacilityId!,
                                     assetType: 'battery',
                                     count: c,
                                   )));
@@ -248,11 +250,12 @@ class _AssetCountPageState extends State<AssetCountPage> {
                           onChange: (val) {
                             final c = int.tryParse(val) ?? 0;
                             setState(() => _panelCount = c);
-                            if (_currentProjectId != null) {
+                            if (_currentActivityFacilityId != null) {
                               context
                                   .read<CacheAssetCountBloc>()
                                   .add(CacheAssetCountEventAdd(CacheAssetCount(
-                                    projectId: _currentProjectId!,
+                                    activityFacilityId:
+                                        _currentActivityFacilityId!,
                                     assetType: 'panel',
                                     count: c,
                                   )));

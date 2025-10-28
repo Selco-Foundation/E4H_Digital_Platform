@@ -18,26 +18,28 @@ final _privateConstructorUsedError = UnsupportedError(
 mixin _$AssetSubmissionEvent {
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(String projectId, String userType) submitAll,
+    required TResult Function(String activityFacilityId, String userType)
+        submitAll,
     required TResult Function(String userType) submitAllDrafts,
-    required TResult Function(String projectId, String? message) svcError,
-    required TResult Function(String projectId) svcDone,
+    required TResult Function(String activityFacilityId, String? message)
+        svcError,
+    required TResult Function(String activityFacilityId) svcDone,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(String projectId, String userType)? submitAll,
+    TResult? Function(String activityFacilityId, String userType)? submitAll,
     TResult? Function(String userType)? submitAllDrafts,
-    TResult? Function(String projectId, String? message)? svcError,
-    TResult? Function(String projectId)? svcDone,
+    TResult? Function(String activityFacilityId, String? message)? svcError,
+    TResult? Function(String activityFacilityId)? svcDone,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(String projectId, String userType)? submitAll,
+    TResult Function(String activityFacilityId, String userType)? submitAll,
     TResult Function(String userType)? submitAllDrafts,
-    TResult Function(String projectId, String? message)? svcError,
-    TResult Function(String projectId)? svcDone,
+    TResult Function(String activityFacilityId, String? message)? svcError,
+    TResult Function(String activityFacilityId)? svcDone,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -93,7 +95,7 @@ abstract class _$$SubmitAllImplCopyWith<$Res> {
           _$SubmitAllImpl value, $Res Function(_$SubmitAllImpl) then) =
       __$$SubmitAllImplCopyWithImpl<$Res>;
   @useResult
-  $Res call({String projectId, String userType});
+  $Res call({String activityFacilityId, String userType});
 }
 
 /// @nodoc
@@ -107,13 +109,13 @@ class __$$SubmitAllImplCopyWithImpl<$Res>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? projectId = null,
+    Object? activityFacilityId = null,
     Object? userType = null,
   }) {
     return _then(_$SubmitAllImpl(
-      projectId: null == projectId
-          ? _value.projectId
-          : projectId // ignore: cast_nullable_to_non_nullable
+      activityFacilityId: null == activityFacilityId
+          ? _value.activityFacilityId
+          : activityFacilityId // ignore: cast_nullable_to_non_nullable
               as String,
       userType: null == userType
           ? _value.userType
@@ -126,16 +128,17 @@ class __$$SubmitAllImplCopyWithImpl<$Res>
 /// @nodoc
 
 class _$SubmitAllImpl implements _SubmitAll {
-  const _$SubmitAllImpl({required this.projectId, required this.userType});
+  const _$SubmitAllImpl(
+      {required this.activityFacilityId, required this.userType});
 
   @override
-  final String projectId;
+  final String activityFacilityId;
   @override
   final String userType;
 
   @override
   String toString() {
-    return 'AssetSubmissionEvent.submitAll(projectId: $projectId, userType: $userType)';
+    return 'AssetSubmissionEvent.submitAll(activityFacilityId: $activityFacilityId, userType: $userType)';
   }
 
   @override
@@ -143,14 +146,14 @@ class _$SubmitAllImpl implements _SubmitAll {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _$SubmitAllImpl &&
-            (identical(other.projectId, projectId) ||
-                other.projectId == projectId) &&
+            (identical(other.activityFacilityId, activityFacilityId) ||
+                other.activityFacilityId == activityFacilityId) &&
             (identical(other.userType, userType) ||
                 other.userType == userType));
   }
 
   @override
-  int get hashCode => Object.hash(runtimeType, projectId, userType);
+  int get hashCode => Object.hash(runtimeType, activityFacilityId, userType);
 
   @JsonKey(ignore: true)
   @override
@@ -161,36 +164,38 @@ class _$SubmitAllImpl implements _SubmitAll {
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(String projectId, String userType) submitAll,
+    required TResult Function(String activityFacilityId, String userType)
+        submitAll,
     required TResult Function(String userType) submitAllDrafts,
-    required TResult Function(String projectId, String? message) svcError,
-    required TResult Function(String projectId) svcDone,
+    required TResult Function(String activityFacilityId, String? message)
+        svcError,
+    required TResult Function(String activityFacilityId) svcDone,
   }) {
-    return submitAll(projectId, userType);
+    return submitAll(activityFacilityId, userType);
   }
 
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(String projectId, String userType)? submitAll,
+    TResult? Function(String activityFacilityId, String userType)? submitAll,
     TResult? Function(String userType)? submitAllDrafts,
-    TResult? Function(String projectId, String? message)? svcError,
-    TResult? Function(String projectId)? svcDone,
+    TResult? Function(String activityFacilityId, String? message)? svcError,
+    TResult? Function(String activityFacilityId)? svcDone,
   }) {
-    return submitAll?.call(projectId, userType);
+    return submitAll?.call(activityFacilityId, userType);
   }
 
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(String projectId, String userType)? submitAll,
+    TResult Function(String activityFacilityId, String userType)? submitAll,
     TResult Function(String userType)? submitAllDrafts,
-    TResult Function(String projectId, String? message)? svcError,
-    TResult Function(String projectId)? svcDone,
+    TResult Function(String activityFacilityId, String? message)? svcError,
+    TResult Function(String activityFacilityId)? svcDone,
     required TResult orElse(),
   }) {
     if (submitAll != null) {
-      return submitAll(projectId, userType);
+      return submitAll(activityFacilityId, userType);
     }
     return orElse();
   }
@@ -235,10 +240,10 @@ class _$SubmitAllImpl implements _SubmitAll {
 
 abstract class _SubmitAll implements AssetSubmissionEvent {
   const factory _SubmitAll(
-      {required final String projectId,
+      {required final String activityFacilityId,
       required final String userType}) = _$SubmitAllImpl;
 
-  String get projectId;
+  String get activityFacilityId;
   String get userType;
   @JsonKey(ignore: true)
   _$$SubmitAllImplCopyWith<_$SubmitAllImpl> get copyWith =>
@@ -311,10 +316,12 @@ class _$SubmitAllDraftsImpl implements _SubmitAllDrafts {
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(String projectId, String userType) submitAll,
+    required TResult Function(String activityFacilityId, String userType)
+        submitAll,
     required TResult Function(String userType) submitAllDrafts,
-    required TResult Function(String projectId, String? message) svcError,
-    required TResult Function(String projectId) svcDone,
+    required TResult Function(String activityFacilityId, String? message)
+        svcError,
+    required TResult Function(String activityFacilityId) svcDone,
   }) {
     return submitAllDrafts(userType);
   }
@@ -322,10 +329,10 @@ class _$SubmitAllDraftsImpl implements _SubmitAllDrafts {
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(String projectId, String userType)? submitAll,
+    TResult? Function(String activityFacilityId, String userType)? submitAll,
     TResult? Function(String userType)? submitAllDrafts,
-    TResult? Function(String projectId, String? message)? svcError,
-    TResult? Function(String projectId)? svcDone,
+    TResult? Function(String activityFacilityId, String? message)? svcError,
+    TResult? Function(String activityFacilityId)? svcDone,
   }) {
     return submitAllDrafts?.call(userType);
   }
@@ -333,10 +340,10 @@ class _$SubmitAllDraftsImpl implements _SubmitAllDrafts {
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(String projectId, String userType)? submitAll,
+    TResult Function(String activityFacilityId, String userType)? submitAll,
     TResult Function(String userType)? submitAllDrafts,
-    TResult Function(String projectId, String? message)? svcError,
-    TResult Function(String projectId)? svcDone,
+    TResult Function(String activityFacilityId, String? message)? svcError,
+    TResult Function(String activityFacilityId)? svcDone,
     required TResult orElse(),
   }) {
     if (submitAllDrafts != null) {
@@ -399,7 +406,7 @@ abstract class _$$SvcErrorImplCopyWith<$Res> {
           _$SvcErrorImpl value, $Res Function(_$SvcErrorImpl) then) =
       __$$SvcErrorImplCopyWithImpl<$Res>;
   @useResult
-  $Res call({String projectId, String? message});
+  $Res call({String activityFacilityId, String? message});
 }
 
 /// @nodoc
@@ -413,13 +420,13 @@ class __$$SvcErrorImplCopyWithImpl<$Res>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? projectId = null,
+    Object? activityFacilityId = null,
     Object? message = freezed,
   }) {
     return _then(_$SvcErrorImpl(
-      projectId: null == projectId
-          ? _value.projectId
-          : projectId // ignore: cast_nullable_to_non_nullable
+      activityFacilityId: null == activityFacilityId
+          ? _value.activityFacilityId
+          : activityFacilityId // ignore: cast_nullable_to_non_nullable
               as String,
       message: freezed == message
           ? _value.message
@@ -432,16 +439,16 @@ class __$$SvcErrorImplCopyWithImpl<$Res>
 /// @nodoc
 
 class _$SvcErrorImpl implements _SvcError {
-  const _$SvcErrorImpl({required this.projectId, this.message});
+  const _$SvcErrorImpl({required this.activityFacilityId, this.message});
 
   @override
-  final String projectId;
+  final String activityFacilityId;
   @override
   final String? message;
 
   @override
   String toString() {
-    return 'AssetSubmissionEvent.svcError(projectId: $projectId, message: $message)';
+    return 'AssetSubmissionEvent.svcError(activityFacilityId: $activityFacilityId, message: $message)';
   }
 
   @override
@@ -449,13 +456,13 @@ class _$SvcErrorImpl implements _SvcError {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _$SvcErrorImpl &&
-            (identical(other.projectId, projectId) ||
-                other.projectId == projectId) &&
+            (identical(other.activityFacilityId, activityFacilityId) ||
+                other.activityFacilityId == activityFacilityId) &&
             (identical(other.message, message) || other.message == message));
   }
 
   @override
-  int get hashCode => Object.hash(runtimeType, projectId, message);
+  int get hashCode => Object.hash(runtimeType, activityFacilityId, message);
 
   @JsonKey(ignore: true)
   @override
@@ -466,36 +473,38 @@ class _$SvcErrorImpl implements _SvcError {
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(String projectId, String userType) submitAll,
+    required TResult Function(String activityFacilityId, String userType)
+        submitAll,
     required TResult Function(String userType) submitAllDrafts,
-    required TResult Function(String projectId, String? message) svcError,
-    required TResult Function(String projectId) svcDone,
+    required TResult Function(String activityFacilityId, String? message)
+        svcError,
+    required TResult Function(String activityFacilityId) svcDone,
   }) {
-    return svcError(projectId, message);
+    return svcError(activityFacilityId, message);
   }
 
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(String projectId, String userType)? submitAll,
+    TResult? Function(String activityFacilityId, String userType)? submitAll,
     TResult? Function(String userType)? submitAllDrafts,
-    TResult? Function(String projectId, String? message)? svcError,
-    TResult? Function(String projectId)? svcDone,
+    TResult? Function(String activityFacilityId, String? message)? svcError,
+    TResult? Function(String activityFacilityId)? svcDone,
   }) {
-    return svcError?.call(projectId, message);
+    return svcError?.call(activityFacilityId, message);
   }
 
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(String projectId, String userType)? submitAll,
+    TResult Function(String activityFacilityId, String userType)? submitAll,
     TResult Function(String userType)? submitAllDrafts,
-    TResult Function(String projectId, String? message)? svcError,
-    TResult Function(String projectId)? svcDone,
+    TResult Function(String activityFacilityId, String? message)? svcError,
+    TResult Function(String activityFacilityId)? svcDone,
     required TResult orElse(),
   }) {
     if (svcError != null) {
-      return svcError(projectId, message);
+      return svcError(activityFacilityId, message);
     }
     return orElse();
   }
@@ -540,10 +549,10 @@ class _$SvcErrorImpl implements _SvcError {
 
 abstract class _SvcError implements AssetSubmissionEvent {
   const factory _SvcError(
-      {required final String projectId,
+      {required final String activityFacilityId,
       final String? message}) = _$SvcErrorImpl;
 
-  String get projectId;
+  String get activityFacilityId;
   String? get message;
   @JsonKey(ignore: true)
   _$$SvcErrorImplCopyWith<_$SvcErrorImpl> get copyWith =>
@@ -556,7 +565,7 @@ abstract class _$$SvcDoneImplCopyWith<$Res> {
           _$SvcDoneImpl value, $Res Function(_$SvcDoneImpl) then) =
       __$$SvcDoneImplCopyWithImpl<$Res>;
   @useResult
-  $Res call({String projectId});
+  $Res call({String activityFacilityId});
 }
 
 /// @nodoc
@@ -570,12 +579,12 @@ class __$$SvcDoneImplCopyWithImpl<$Res>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? projectId = null,
+    Object? activityFacilityId = null,
   }) {
     return _then(_$SvcDoneImpl(
-      projectId: null == projectId
-          ? _value.projectId
-          : projectId // ignore: cast_nullable_to_non_nullable
+      activityFacilityId: null == activityFacilityId
+          ? _value.activityFacilityId
+          : activityFacilityId // ignore: cast_nullable_to_non_nullable
               as String,
     ));
   }
@@ -584,14 +593,14 @@ class __$$SvcDoneImplCopyWithImpl<$Res>
 /// @nodoc
 
 class _$SvcDoneImpl implements _SvcDone {
-  const _$SvcDoneImpl({required this.projectId});
+  const _$SvcDoneImpl({required this.activityFacilityId});
 
   @override
-  final String projectId;
+  final String activityFacilityId;
 
   @override
   String toString() {
-    return 'AssetSubmissionEvent.svcDone(projectId: $projectId)';
+    return 'AssetSubmissionEvent.svcDone(activityFacilityId: $activityFacilityId)';
   }
 
   @override
@@ -599,12 +608,12 @@ class _$SvcDoneImpl implements _SvcDone {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _$SvcDoneImpl &&
-            (identical(other.projectId, projectId) ||
-                other.projectId == projectId));
+            (identical(other.activityFacilityId, activityFacilityId) ||
+                other.activityFacilityId == activityFacilityId));
   }
 
   @override
-  int get hashCode => Object.hash(runtimeType, projectId);
+  int get hashCode => Object.hash(runtimeType, activityFacilityId);
 
   @JsonKey(ignore: true)
   @override
@@ -615,36 +624,38 @@ class _$SvcDoneImpl implements _SvcDone {
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(String projectId, String userType) submitAll,
+    required TResult Function(String activityFacilityId, String userType)
+        submitAll,
     required TResult Function(String userType) submitAllDrafts,
-    required TResult Function(String projectId, String? message) svcError,
-    required TResult Function(String projectId) svcDone,
+    required TResult Function(String activityFacilityId, String? message)
+        svcError,
+    required TResult Function(String activityFacilityId) svcDone,
   }) {
-    return svcDone(projectId);
+    return svcDone(activityFacilityId);
   }
 
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(String projectId, String userType)? submitAll,
+    TResult? Function(String activityFacilityId, String userType)? submitAll,
     TResult? Function(String userType)? submitAllDrafts,
-    TResult? Function(String projectId, String? message)? svcError,
-    TResult? Function(String projectId)? svcDone,
+    TResult? Function(String activityFacilityId, String? message)? svcError,
+    TResult? Function(String activityFacilityId)? svcDone,
   }) {
-    return svcDone?.call(projectId);
+    return svcDone?.call(activityFacilityId);
   }
 
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(String projectId, String userType)? submitAll,
+    TResult Function(String activityFacilityId, String userType)? submitAll,
     TResult Function(String userType)? submitAllDrafts,
-    TResult Function(String projectId, String? message)? svcError,
-    TResult Function(String projectId)? svcDone,
+    TResult Function(String activityFacilityId, String? message)? svcError,
+    TResult Function(String activityFacilityId)? svcDone,
     required TResult orElse(),
   }) {
     if (svcDone != null) {
-      return svcDone(projectId);
+      return svcDone(activityFacilityId);
     }
     return orElse();
   }
@@ -688,9 +699,10 @@ class _$SvcDoneImpl implements _SvcDone {
 }
 
 abstract class _SvcDone implements AssetSubmissionEvent {
-  const factory _SvcDone({required final String projectId}) = _$SvcDoneImpl;
+  const factory _SvcDone({required final String activityFacilityId}) =
+      _$SvcDoneImpl;
 
-  String get projectId;
+  String get activityFacilityId;
   @JsonKey(ignore: true)
   _$$SvcDoneImplCopyWith<_$SvcDoneImpl> get copyWith =>
       throw _privateConstructorUsedError;

@@ -15,8 +15,8 @@ import 'package:uuid/uuid.dart';
 import '../blocs/app_init/app_init.dart';
 import '../data/app_shared_preferences.dart';
 import '../data/nosql/cache_completion_report.dart';
+import '../model/activity_facility_workflow/activity_facility_workflow.dart';
 import '../model/document/document.dart';
-import '../model/project_workflow/project_workflow.dart';
 import '../repositories/app_init_Repo.dart';
 import '../repositories/assetRepo.dart';
 
@@ -476,11 +476,11 @@ String getExtensionFromMime(String mimeType) {
 Future<List<PlatformFile>> loadInitialCompletion({
   required Isar isar,
   required String projectId,
-  required ProjectWorkflow projectWorkflow,
+  required ActivityFacilityWorkflow activityFacilityWorkflow,
 }) async {
   final cachedList = await isar.cacheCompletionReports
       .where()
-      .projectIdEqualTo(projectId)
+      .activityFacilityIdEqualTo(projectId)
       .findAll();
 
   final localFiles = <PlatformFile>[];
@@ -498,7 +498,7 @@ Future<List<PlatformFile>> loadInitialCompletion({
     }
   }
 
-  final docs = projectWorkflow.workflow?.documents ?? [];
+  final docs = activityFacilityWorkflow.workflow?.documents ?? [];
 
   final serverFiles = <PlatformFile>[];
   for (final doc in docs) {

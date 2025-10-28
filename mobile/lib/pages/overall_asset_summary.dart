@@ -10,21 +10,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart' as p;
 
+import '../blocs/activity_facility/activity_facility.dart';
+import '../blocs/activity_facility_bom/activity_facility_bom.dart';
 import '../blocs/app_init/app_init.dart';
 import '../blocs/asset_submission/asset_submission.dart';
 import '../blocs/asset_type/asset_type.dart';
 import '../blocs/cache_asset/cache_asset.dart';
 import '../blocs/cache_completion_report/cache_completion_report.dart';
 import '../blocs/overall_asset_summary/overall_asset_summary.dart';
-import '../blocs/project/project.dart';
-import '../blocs/project_bom/project_bom.dart';
 import '../blocs/report_type/report_type.dart';
-import '../blocs/selected_project/selected_project.dart';
+import '../blocs/selected_activity_facility/selected_activity_facility.dart';
 import '../blocs/user_type/user_type.dart';
+import '../model/activity_facility_workflow/activity_facility_workflow.dart';
 import '../model/mdms/mdms.dart';
-import '../model/project_workflow/project_workflow.dart';
 import '../model/solution_design_type/solution_design_type.dart';
-import '../repositories/project_workflow.dart';
+import '../repositories/activity_facility_workflow.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
 import '../utils/i18_key_constants.dart' as i18;
@@ -47,7 +47,7 @@ class OverallAssetSummaryPage extends StatefulWidget {
 
 class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
   String? _currentProjectId;
-  ProjectWorkflow? projectWorkflow;
+  ActivityFacilityWorkflow? projectWorkflow;
   double? _latitude;
   double? _longitude;
   String? _system;
@@ -92,21 +92,22 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
           supervisor: () => USER_TYPES.SUPERVISOR.name,
           orElse: () => USER_TYPES.FIELD_STAFF.name,
         );
-    final selState = context.read<SelectedProjectBloc>().state;
+    final selState = context.read<SelectedActivityFacilityBloc>().state;
     selState.whenOrNull(selected: (project) {
-      _currentProjectId = project.project.id;
+      _currentProjectId = project.activityFacility.id;
       projectWorkflow = project;
       // _solutionDesignTypeCode = "DC";
-      context
-          .read<CacheAssetBloc>()
-          .add(CacheAssetEvent.start(project.project.id, userType, project));
+      context.read<CacheAssetBloc>().add(CacheAssetEvent.start(
+          project.activityFacility.id, userType, project));
 
       context.read<OverallAssetSummaryBloc>().add(
-            OverallAssetSummaryEvent.loadCounts(projectId: project.project.id),
+            OverallAssetSummaryEvent.loadCounts(
+                activityFacilityId: project.activityFacility.id),
           );
-      context.read<ProjectBomBloc>().add(
-            ProjectBomEvent.syncIfNeeded(
-              projectId: _currentProjectId!,
+      context.read<ActivityFacilityBomBloc>().add(
+            ActivityFacilityBomEvent.syncIfNeeded(
+              activityFacilityId: _currentProjectId!,
+              facilityId: project.activityFacility.facility?.facilityId ?? "",
               userType: userType,
             ),
           );
@@ -149,7 +150,7 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
     final combined = await loadInitialCompletion(
       isar: isar,
       projectId: _currentProjectId!,
-      projectWorkflow: projectWorkflow!,
+      activityFacilityWorkflow: projectWorkflow!,
     );
 
     if (!mounted) return;
@@ -178,7 +179,7 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
   Future<void> _loadProjectSystem() async {
     if (_currentProjectId == null) return;
 
-    final isar = context.read<ProjectBloc>().isar;
+    final isar = context.read<ActivityFacilityBloc>().isar;
 
     final initState = context.read<AppInitialization>().state;
     final solutionDesignList =
@@ -188,14 +189,15 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
       orElse: () => const [],
     );
 
-    final facilityCode = projectWorkflow?.project.additionalDetails?.facility
+    final facilityCode = projectWorkflow?.activityFacility.facility
         ?.facilityDetails?.solar_solution_design_type;
 
-    final sys = await ProjectWorkflowRepository().getProjectSystem(
-        isar: isar,
-        projectId: _currentProjectId!,
-        solutionDesignList: solutionDesignList,
-        facilitySolutionDesignCode: facilityCode);
+    final sys = await ActivityFacilityWorkflowRepository()
+        .getActivityFacilitySystem(
+            isar: isar,
+            activityFacilityId: _currentProjectId!,
+            solutionDesignList: solutionDesignList,
+            facilitySolutionDesignCode: facilityCode);
 
     if (!mounted) return;
     setState(() => _system = sys);
@@ -206,14 +208,14 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
     final theme = Theme.of(context);
     final textTheme = theme.digitTextTheme(context);
 
-    return BlocListener<ProjectBomBloc, ProjectBomState>(
+    return BlocListener<ActivityFacilityBomBloc, ActivityFacilityBomState>(
       listener: (context, state) {
         state.maybeWhen(
           loading: () {},
           success: (savedBomValues) async {
             context.read<OverallAssetSummaryBloc>().add(
                 OverallAssetSummaryEvent.loadCounts(
-                    projectId: _currentProjectId!));
+                    activityFacilityId: _currentProjectId!));
             await _loadInitialCompletion();
           },
           failure: (msg) {
@@ -226,7 +228,8 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
       },
       child: BlocBuilder<UserTypeBloc, UserTypeState>(
         builder: (context, userState) {
-          return BlocListener<SelectedProjectBloc, SelectedProjectState>(
+          return BlocListener<SelectedActivityFacilityBloc,
+              SelectedActivityFacilityState>(
             listenWhen: (prev, curr) =>
                 curr.maybeWhen(selected: (_) => true, orElse: () => false),
             listener: (context, state) {
@@ -356,13 +359,14 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                     await _ensureLocationLoaded();
 
                                     final selState = context
-                                        .read<SelectedProjectBloc>()
+                                        .read<SelectedActivityFacilityBloc>()
                                         .state;
                                     selState.whenOrNull(selected: (project) {
                                       print("It got here actually selState");
-                                      context.read<ProjectBloc>().add(
-                                            ProjectEvent.addUnSubmitted(
-                                                project, resolvedUserType),
+                                      context.read<ActivityFacilityBloc>().add(
+                                            ActivityFacilityEvent
+                                                .addUnSubmitted(
+                                                    project, resolvedUserType),
                                           );
 
                                       // final summaryState = context
@@ -431,7 +435,8 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                           "It got here actually loaded before submisison");
                                       context.read<AssetSubmissionBloc>().add(
                                             AssetSubmissionEvent.submitAll(
-                                              projectId: project.project.id,
+                                              activityFacilityId:
+                                                  project.activityFacility.id,
                                               userType: resolvedUserType,
                                             ),
                                           );
@@ -540,7 +545,8 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                               prefixIcon: Icons.refresh,
                                               onPressed: () {
                                                 final selState = context
-                                                    .read<SelectedProjectBloc>()
+                                                    .read<
+                                                        SelectedActivityFacilityBloc>()
                                                     .state;
                                                 selState.whenOrNull(
                                                     selected: (project) {
@@ -550,8 +556,10 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                                       .add(
                                                         OverallAssetSummaryEvent
                                                             .loadCounts(
-                                                          projectId: project
-                                                              .project.id,
+                                                          activityFacilityId:
+                                                              project
+                                                                  .activityFacility
+                                                                  .id,
                                                         ),
                                                       );
                                                 });

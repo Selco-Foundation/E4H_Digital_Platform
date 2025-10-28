@@ -7,9 +7,9 @@ import 'package:digit_ui_components/widgets/molecules/show_pop_up.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../blocs/activity_facility/activity_facility.dart';
 import '../blocs/asset_submission/asset_submission.dart';
 import '../blocs/cache_sync_record/cache_sync_record.dart';
-import '../blocs/project/project.dart';
 import '../blocs/user_type/user_type.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
@@ -43,8 +43,8 @@ class _HomePageState extends State<HomePage> {
             supervisor: () => USER_TYPES.SUPERVISOR.name,
             orElse: () => USER_TYPES.FIELD_STAFF.name,
           );
-      context.read<ProjectBloc>().add(
-            ProjectEvent.getNewlyAssigned(userType: _userType),
+      context.read<ActivityFacilityBloc>().add(
+            ActivityFacilityEvent.getNewlyAssigned(userType: _userType),
           );
       context
           .read<CacheSyncRecordBloc>()
@@ -307,7 +307,8 @@ class _HomePageState extends State<HomePage> {
                           },
                         ),
                         const SizedBox(height: spacer3),
-                        BlocBuilder<ProjectBloc, ProjectState>(
+                        BlocBuilder<ActivityFacilityBloc,
+                            ActivityFacilityState>(
                           builder: (context, state) {
                             assignedFacility = state.maybeWhen(
                               newlyAssignedLoaded: (count) => "$count",
