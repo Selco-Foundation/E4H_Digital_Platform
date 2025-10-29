@@ -429,14 +429,15 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                               files: inputs,
                                             ),
                                           );
-                                      // Proceed with submission
-
-                                      print(
-                                          "It got here actually loaded before submisison");
                                       context.read<AssetSubmissionBloc>().add(
                                             AssetSubmissionEvent.submitAll(
                                               activityFacilityId:
                                                   project.activityFacility.id,
+                                              facilityId: project
+                                                      .activityFacility
+                                                      .facility
+                                                      ?.facilityId ??
+                                                  "",
                                               userType: resolvedUserType,
                                             ),
                                           );

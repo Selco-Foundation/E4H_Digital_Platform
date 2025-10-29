@@ -485,7 +485,7 @@ mixin _$Asset {
   String? get assetId => throw _privateConstructorUsedError;
   @JsonKey(name: 'tenantId', fromJson: _anyToString)
   String? get tenantId => throw _privateConstructorUsedError;
-  @JsonKey(name: 'activityFacilityId', fromJson: _anyToString)
+  @JsonKey(name: 'activityFacilityID', fromJson: _anyToString)
   String? get activityFacilityID => throw _privateConstructorUsedError;
   @JsonKey(name: 'facilityID', fromJson: _anyToString)
   String? get facilityID => throw _privateConstructorUsedError;
@@ -524,7 +524,7 @@ abstract class $AssetCopyWith<$Res> {
   $Res call(
       {@JsonKey(name: 'assetId', fromJson: _anyToString) String? assetId,
       @JsonKey(name: 'tenantId', fromJson: _anyToString) String? tenantId,
-      @JsonKey(name: 'activityFacilityId', fromJson: _anyToString)
+      @JsonKey(name: 'activityFacilityID', fromJson: _anyToString)
       String? activityFacilityID,
       @JsonKey(name: 'facilityID', fromJson: _anyToString) String? facilityID,
       @JsonKey(name: 'system', fromJson: _anyToString) String? system,
@@ -686,7 +686,7 @@ abstract class _$$AssetImplCopyWith<$Res> implements $AssetCopyWith<$Res> {
   $Res call(
       {@JsonKey(name: 'assetId', fromJson: _anyToString) String? assetId,
       @JsonKey(name: 'tenantId', fromJson: _anyToString) String? tenantId,
-      @JsonKey(name: 'activityFacilityId', fromJson: _anyToString)
+      @JsonKey(name: 'activityFacilityID', fromJson: _anyToString)
       String? activityFacilityID,
       @JsonKey(name: 'facilityID', fromJson: _anyToString) String? facilityID,
       @JsonKey(name: 'system', fromJson: _anyToString) String? system,
@@ -820,7 +820,7 @@ class _$AssetImpl implements _Asset {
   const _$AssetImpl(
       {@JsonKey(name: 'assetId', fromJson: _anyToString) this.assetId,
       @JsonKey(name: 'tenantId', fromJson: _anyToString) this.tenantId,
-      @JsonKey(name: 'activityFacilityId', fromJson: _anyToString)
+      @JsonKey(name: 'activityFacilityID', fromJson: _anyToString)
       this.activityFacilityID,
       @JsonKey(name: 'facilityID', fromJson: _anyToString) this.facilityID,
       @JsonKey(name: 'system', fromJson: _anyToString) this.system,
@@ -850,7 +850,7 @@ class _$AssetImpl implements _Asset {
   @JsonKey(name: 'tenantId', fromJson: _anyToString)
   final String? tenantId;
   @override
-  @JsonKey(name: 'activityFacilityId', fromJson: _anyToString)
+  @JsonKey(name: 'activityFacilityID', fromJson: _anyToString)
   final String? activityFacilityID;
   @override
   @JsonKey(name: 'facilityID', fromJson: _anyToString)
@@ -981,7 +981,7 @@ abstract class _Asset implements Asset {
   const factory _Asset(
       {@JsonKey(name: 'assetId', fromJson: _anyToString) final String? assetId,
       @JsonKey(name: 'tenantId', fromJson: _anyToString) final String? tenantId,
-      @JsonKey(name: 'activityFacilityId', fromJson: _anyToString)
+      @JsonKey(name: 'activityFacilityID', fromJson: _anyToString)
       final String? activityFacilityID,
       @JsonKey(name: 'facilityID', fromJson: _anyToString)
       final String? facilityID,
@@ -1013,7 +1013,7 @@ abstract class _Asset implements Asset {
   @JsonKey(name: 'tenantId', fromJson: _anyToString)
   String? get tenantId;
   @override
-  @JsonKey(name: 'activityFacilityId', fromJson: _anyToString)
+  @JsonKey(name: 'activityFacilityID', fromJson: _anyToString)
   String? get activityFacilityID;
   @override
   @JsonKey(name: 'facilityID', fromJson: _anyToString)
