@@ -49,6 +49,11 @@
       background:#FEE4E2; border:1px solid #EF9CA3; color:#B42318;
       font:700 14px/18px Arial,Helvetica,sans-serif; text-align:center;
     }
+    .badge-orange {
+      display:inline-block; min-width:40px; padding:8px 12px; border-radius:12px;
+      background:#FFF3E8; border:1px solid #ff3d00; color:#ff3d00;
+      font:700 14px/18px Arial,Helvetica,sans-serif; text-align:center;
+    }
 
     /* Button */
     .btn { display:inline-block; background:#FFFFFF; color:hsl(25, 94%, 49%); border:1.5px solid hsl(23, 94%, 49%);
@@ -95,7 +100,7 @@
               <!-- Greeting -->
               <p class="text">Dear ${NAME},</p>
               <div class="sp-8"></div>
-              <p class="text">Please find below the summary of your tickets for <strong>${STATE_NAME}</strong> from Saura eMitra on <strong>${AS_OF_DATE}</strong>.</p>
+              <p class="text">${INTRO_LINE}</p>
 
               <div class="sp-20"></div>
 
