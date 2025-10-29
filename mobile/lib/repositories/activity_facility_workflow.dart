@@ -13,14 +13,14 @@ class ActivityFacilityWorkflowRepository {
 
   Future<List<Document>> collectWorkflowMediaDocs({
     required Isar isar,
-    required String projectId,
+    required String activityFacilityId,
     required List<String> types,
   }) async {
     final out = <Document>[];
     for (final type in types) {
       final media = await isar.cacheMediaUploads
           .where()
-          .activityFacilityIdEqualTo(projectId)
+          .activityFacilityIdEqualTo(activityFacilityId)
           .filter()
           .assetTypeEqualTo(type)
           .findAll();

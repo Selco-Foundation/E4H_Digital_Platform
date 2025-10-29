@@ -18,7 +18,8 @@ final _privateConstructorUsedError = UnsupportedError(
 mixin _$AssetSubmissionEvent {
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(String activityFacilityId, String userType)
+    required TResult Function(
+            String activityFacilityId, String facilityId, String userType)
         submitAll,
     required TResult Function(String userType) submitAllDrafts,
     required TResult Function(String activityFacilityId, String? message)
@@ -28,7 +29,9 @@ mixin _$AssetSubmissionEvent {
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(String activityFacilityId, String userType)? submitAll,
+    TResult? Function(
+            String activityFacilityId, String facilityId, String userType)?
+        submitAll,
     TResult? Function(String userType)? submitAllDrafts,
     TResult? Function(String activityFacilityId, String? message)? svcError,
     TResult? Function(String activityFacilityId)? svcDone,
@@ -36,7 +39,9 @@ mixin _$AssetSubmissionEvent {
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(String activityFacilityId, String userType)? submitAll,
+    TResult Function(
+            String activityFacilityId, String facilityId, String userType)?
+        submitAll,
     TResult Function(String userType)? submitAllDrafts,
     TResult Function(String activityFacilityId, String? message)? svcError,
     TResult Function(String activityFacilityId)? svcDone,
@@ -95,7 +100,7 @@ abstract class _$$SubmitAllImplCopyWith<$Res> {
           _$SubmitAllImpl value, $Res Function(_$SubmitAllImpl) then) =
       __$$SubmitAllImplCopyWithImpl<$Res>;
   @useResult
-  $Res call({String activityFacilityId, String userType});
+  $Res call({String activityFacilityId, String facilityId, String userType});
 }
 
 /// @nodoc
@@ -110,12 +115,17 @@ class __$$SubmitAllImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? activityFacilityId = null,
+    Object? facilityId = null,
     Object? userType = null,
   }) {
     return _then(_$SubmitAllImpl(
       activityFacilityId: null == activityFacilityId
           ? _value.activityFacilityId
           : activityFacilityId // ignore: cast_nullable_to_non_nullable
+              as String,
+      facilityId: null == facilityId
+          ? _value.facilityId
+          : facilityId // ignore: cast_nullable_to_non_nullable
               as String,
       userType: null == userType
           ? _value.userType
@@ -129,16 +139,20 @@ class __$$SubmitAllImplCopyWithImpl<$Res>
 
 class _$SubmitAllImpl implements _SubmitAll {
   const _$SubmitAllImpl(
-      {required this.activityFacilityId, required this.userType});
+      {required this.activityFacilityId,
+      required this.facilityId,
+      required this.userType});
 
   @override
   final String activityFacilityId;
+  @override
+  final String facilityId;
   @override
   final String userType;
 
   @override
   String toString() {
-    return 'AssetSubmissionEvent.submitAll(activityFacilityId: $activityFacilityId, userType: $userType)';
+    return 'AssetSubmissionEvent.submitAll(activityFacilityId: $activityFacilityId, facilityId: $facilityId, userType: $userType)';
   }
 
   @override
@@ -148,12 +162,15 @@ class _$SubmitAllImpl implements _SubmitAll {
             other is _$SubmitAllImpl &&
             (identical(other.activityFacilityId, activityFacilityId) ||
                 other.activityFacilityId == activityFacilityId) &&
+            (identical(other.facilityId, facilityId) ||
+                other.facilityId == facilityId) &&
             (identical(other.userType, userType) ||
                 other.userType == userType));
   }
 
   @override
-  int get hashCode => Object.hash(runtimeType, activityFacilityId, userType);
+  int get hashCode =>
+      Object.hash(runtimeType, activityFacilityId, facilityId, userType);
 
   @JsonKey(ignore: true)
   @override
@@ -164,38 +181,43 @@ class _$SubmitAllImpl implements _SubmitAll {
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(String activityFacilityId, String userType)
+    required TResult Function(
+            String activityFacilityId, String facilityId, String userType)
         submitAll,
     required TResult Function(String userType) submitAllDrafts,
     required TResult Function(String activityFacilityId, String? message)
         svcError,
     required TResult Function(String activityFacilityId) svcDone,
   }) {
-    return submitAll(activityFacilityId, userType);
+    return submitAll(activityFacilityId, facilityId, userType);
   }
 
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(String activityFacilityId, String userType)? submitAll,
+    TResult? Function(
+            String activityFacilityId, String facilityId, String userType)?
+        submitAll,
     TResult? Function(String userType)? submitAllDrafts,
     TResult? Function(String activityFacilityId, String? message)? svcError,
     TResult? Function(String activityFacilityId)? svcDone,
   }) {
-    return submitAll?.call(activityFacilityId, userType);
+    return submitAll?.call(activityFacilityId, facilityId, userType);
   }
 
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(String activityFacilityId, String userType)? submitAll,
+    TResult Function(
+            String activityFacilityId, String facilityId, String userType)?
+        submitAll,
     TResult Function(String userType)? submitAllDrafts,
     TResult Function(String activityFacilityId, String? message)? svcError,
     TResult Function(String activityFacilityId)? svcDone,
     required TResult orElse(),
   }) {
     if (submitAll != null) {
-      return submitAll(activityFacilityId, userType);
+      return submitAll(activityFacilityId, facilityId, userType);
     }
     return orElse();
   }
@@ -241,9 +263,11 @@ class _$SubmitAllImpl implements _SubmitAll {
 abstract class _SubmitAll implements AssetSubmissionEvent {
   const factory _SubmitAll(
       {required final String activityFacilityId,
+      required final String facilityId,
       required final String userType}) = _$SubmitAllImpl;
 
   String get activityFacilityId;
+  String get facilityId;
   String get userType;
   @JsonKey(ignore: true)
   _$$SubmitAllImplCopyWith<_$SubmitAllImpl> get copyWith =>
@@ -316,7 +340,8 @@ class _$SubmitAllDraftsImpl implements _SubmitAllDrafts {
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(String activityFacilityId, String userType)
+    required TResult Function(
+            String activityFacilityId, String facilityId, String userType)
         submitAll,
     required TResult Function(String userType) submitAllDrafts,
     required TResult Function(String activityFacilityId, String? message)
@@ -329,7 +354,9 @@ class _$SubmitAllDraftsImpl implements _SubmitAllDrafts {
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(String activityFacilityId, String userType)? submitAll,
+    TResult? Function(
+            String activityFacilityId, String facilityId, String userType)?
+        submitAll,
     TResult? Function(String userType)? submitAllDrafts,
     TResult? Function(String activityFacilityId, String? message)? svcError,
     TResult? Function(String activityFacilityId)? svcDone,
@@ -340,7 +367,9 @@ class _$SubmitAllDraftsImpl implements _SubmitAllDrafts {
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(String activityFacilityId, String userType)? submitAll,
+    TResult Function(
+            String activityFacilityId, String facilityId, String userType)?
+        submitAll,
     TResult Function(String userType)? submitAllDrafts,
     TResult Function(String activityFacilityId, String? message)? svcError,
     TResult Function(String activityFacilityId)? svcDone,
@@ -473,7 +502,8 @@ class _$SvcErrorImpl implements _SvcError {
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(String activityFacilityId, String userType)
+    required TResult Function(
+            String activityFacilityId, String facilityId, String userType)
         submitAll,
     required TResult Function(String userType) submitAllDrafts,
     required TResult Function(String activityFacilityId, String? message)
@@ -486,7 +516,9 @@ class _$SvcErrorImpl implements _SvcError {
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(String activityFacilityId, String userType)? submitAll,
+    TResult? Function(
+            String activityFacilityId, String facilityId, String userType)?
+        submitAll,
     TResult? Function(String userType)? submitAllDrafts,
     TResult? Function(String activityFacilityId, String? message)? svcError,
     TResult? Function(String activityFacilityId)? svcDone,
@@ -497,7 +529,9 @@ class _$SvcErrorImpl implements _SvcError {
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(String activityFacilityId, String userType)? submitAll,
+    TResult Function(
+            String activityFacilityId, String facilityId, String userType)?
+        submitAll,
     TResult Function(String userType)? submitAllDrafts,
     TResult Function(String activityFacilityId, String? message)? svcError,
     TResult Function(String activityFacilityId)? svcDone,
@@ -624,7 +658,8 @@ class _$SvcDoneImpl implements _SvcDone {
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(String activityFacilityId, String userType)
+    required TResult Function(
+            String activityFacilityId, String facilityId, String userType)
         submitAll,
     required TResult Function(String userType) submitAllDrafts,
     required TResult Function(String activityFacilityId, String? message)
@@ -637,7 +672,9 @@ class _$SvcDoneImpl implements _SvcDone {
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(String activityFacilityId, String userType)? submitAll,
+    TResult? Function(
+            String activityFacilityId, String facilityId, String userType)?
+        submitAll,
     TResult? Function(String userType)? submitAllDrafts,
     TResult? Function(String activityFacilityId, String? message)? svcError,
     TResult? Function(String activityFacilityId)? svcDone,
@@ -648,7 +685,9 @@ class _$SvcDoneImpl implements _SvcDone {
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(String activityFacilityId, String userType)? submitAll,
+    TResult Function(
+            String activityFacilityId, String facilityId, String userType)?
+        submitAll,
     TResult Function(String userType)? submitAllDrafts,
     TResult Function(String activityFacilityId, String? message)? svcError,
     TResult Function(String activityFacilityId)? svcDone,

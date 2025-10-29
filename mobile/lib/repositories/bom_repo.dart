@@ -234,6 +234,7 @@ class BomRepository {
           "tenantId": tenantId,
           "name": apiName,
           "facilityId": facilityId,
+          "activityFacilityId": activityFacilityId,
           "assignUser": assignUserUuid,
           "data": mergedKV,
           "isActive": true,
@@ -261,7 +262,8 @@ class BomRepository {
   }
 
   Future<Map<String, dynamic>> searchBom({
-    required List<String> facilityIds,
+    // required List<String> facilityIds,
+    required List<String> activityFacilityIds,
     int offset = 0,
     int limit = 100,
   }) async {
@@ -272,7 +274,8 @@ class BomRepository {
     Response response;
     final body = {
       "bom": {
-        "facilityIds": facilityIds,
+        // "facilityIds": facilityIds,
+        "activityFacilityIds": activityFacilityIds,
         "tenantId": tenantId,
       }
     };
@@ -295,7 +298,7 @@ class BomRepository {
         return (savedBomValues: false);
       }
 
-      final res = await searchBom(facilityIds: [facilityId]);
+      final res = await searchBom(activityFacilityIds: [activityFacilityId]);
       final boms = (res['bom'] as List?) ?? const [];
       print("bom $boms");
       if (boms.isEmpty) {

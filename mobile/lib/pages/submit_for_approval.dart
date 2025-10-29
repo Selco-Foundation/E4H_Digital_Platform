@@ -408,6 +408,9 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                             context.read<AssetSubmissionBloc>().add(
                                   AssetSubmissionEvent.submitAll(
                                       activityFacilityId: activityFacilityId,
+                                      facilityId: project.activityFacility
+                                              .facility?.facilityId ??
+                                          "",
                                       userType: userType),
                                 );
                           });

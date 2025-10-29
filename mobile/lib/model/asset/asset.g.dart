@@ -41,7 +41,7 @@ Map<String, dynamic> _$$AssetDetailsImplToJson(_$AssetDetailsImpl instance) =>
 _$AssetImpl _$$AssetImplFromJson(Map<String, dynamic> json) => _$AssetImpl(
       assetId: _anyToString(json['assetId']),
       tenantId: _anyToString(json['tenantId']),
-      activityFacilityID: _anyToString(json['activityFacilityId']),
+      activityFacilityID: _anyToString(json['activityFacilityID']),
       facilityID: _anyToString(json['facilityID']),
       system: _anyToString(json['system']),
       serialNumber: _anyToString(json['serialNumber']),
@@ -68,7 +68,7 @@ Map<String, dynamic> _$$AssetImplToJson(_$AssetImpl instance) =>
     <String, dynamic>{
       'assetId': instance.assetId,
       'tenantId': instance.tenantId,
-      'activityFacilityId': instance.activityFacilityID,
+      'activityFacilityID': instance.activityFacilityID,
       'facilityID': instance.facilityID,
       'system': instance.system,
       'serialNumber': instance.serialNumber,

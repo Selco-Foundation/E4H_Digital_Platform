@@ -123,10 +123,24 @@ class AssetSubmissionBloc
       return;
     }
 
-    for (final pid in activityFacilityIds) {
+    // for (final pid in activityFacilityIds) {
+    //   await _writeJobStatusUI(activityFacilityId: pid, status: 'queued');
+    //   await BackgroundServiceController.I.enqueueSubmission(
+    //     activityFacilityId: pid,
+    //     facilityId: event.facilityId,
+    //     userType: event.userType,
+    //     fromDraft: true,
+    //   );
+    // }
+
+    for (final entry in localEntries) {
+      final pid = entry.activityFacility.id;
+      final facilityId = entry.activityFacility.facility?.facilityId ?? "";
+
       await _writeJobStatusUI(activityFacilityId: pid, status: 'queued');
       await BackgroundServiceController.I.enqueueSubmission(
         activityFacilityId: pid,
+        facilityId: facilityId,
         userType: event.userType,
         fromDraft: true,
       );
@@ -134,7 +148,8 @@ class AssetSubmissionBloc
 
     await _bulkJobsSub?.cancel();
     _bulkJobsSub = _isar.cacheSubmissionJobs.watchLazy().listen((_) async {
-      await _emitBulkProgress(projectIds: activityFacilityIds, emit: emit);
+      await _emitBulkProgress(
+          activityFacilityIds: activityFacilityIds, emit: emit);
     });
 
     if (!emit.isDone) {
@@ -144,15 +159,16 @@ class AssetSubmissionBloc
   }
 
   Future<void> _emitBulkProgress({
-    required List<String> projectIds,
+    required List<String> activityFacilityIds,
     required Emitter<AssetSubmissionState> emit,
   }) async {
     final jobs = await _isar.cacheSubmissionJobs
         .where()
-        .anyOf(projectIds, (q, pid) => q.activityFacilityIdEqualTo(pid))
+        .anyOf(
+            activityFacilityIds, (q, pid) => q.activityFacilityIdEqualTo(pid))
         .findAll();
 
-    final total = projectIds.length;
+    final total = activityFacilityIds.length;
     final successes = jobs.where((j) => j.status == 'success').length;
     final anyFailed = jobs.any((j) => j.status == 'failed');
     final anyRunningOrQueued =
@@ -189,6 +205,7 @@ class AssetSubmissionBloc
   ) =>
       _handleSubmit(
         activityFacilityId: event.activityFacilityId,
+        facilityId: event.facilityId,
         userType: event.userType,
         emit: emit,
         fromDraft: false,
@@ -196,6 +213,7 @@ class AssetSubmissionBloc
 
   Future<bool> _handleSubmit({
     required String activityFacilityId,
+    required String facilityId,
     required String userType,
     required Emitter<AssetSubmissionState> emit,
     required bool fromDraft,
@@ -214,6 +232,7 @@ class AssetSubmissionBloc
 
     await BackgroundServiceController.I.enqueueSubmission(
       activityFacilityId: activityFacilityId,
+      facilityId: facilityId,
       userType: userType,
       fromDraft: fromDraft,
     );
@@ -341,6 +360,7 @@ class AssetSubmissionBloc
 class AssetSubmissionEvent with _$AssetSubmissionEvent {
   const factory AssetSubmissionEvent.submitAll({
     required String activityFacilityId,
+    required String facilityId,
     required String userType,
   }) = _SubmitAll;
 
