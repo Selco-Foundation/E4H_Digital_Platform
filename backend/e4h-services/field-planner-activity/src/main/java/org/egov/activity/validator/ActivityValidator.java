@@ -132,7 +132,7 @@ public class ActivityValidator {
             FieldPlan existingFieldPlan = getFieldPlanById(request.getRequestInfo(), activityAssignment.getFieldPlanId(), activityAssignment.getTenantId());
             if (existingFieldPlan == null) {
                 log.error("FieldPlan ID do not exist");
-                throw new CustomException("FieldPlan", "Project ID do not exist");
+                throw new CustomException("FieldPlan", "FieldPlan ID do not exist");
             }
 //             Check if fieldPlan dates are within project dates
             isActivityAsignmentWithinFieldPlan(existingFieldPlan, activityAssignment, errorMap);

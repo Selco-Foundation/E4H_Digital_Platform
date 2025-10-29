@@ -171,4 +171,10 @@ public class ActivityConfiguration {
 
     @Value("${egov.asset.update.url}")
     private String assetUpdateUrl;
+
+    @Value("${email.activity.assignment.subject}")
+    private String activityEmailSubject;
+
+    @Value("${email.activity.assignment.body}")
+    private String activityEmailBody;
 }

@@ -132,31 +132,19 @@ public class ActivityServiceUtil {
         return String.format("%d-%02d", startYear, endYear % 100);
     }
 
-    public List<String> getEmailIdsList(ActivityAssignmentBulkRequest request){
-        List<String> listEmail = null;
-        List<User> listUsers = null;
-        List<ActivityAssignment> activityAssignments = request.getActivityAssignments();
-        for (ActivityAssignment activityAssignment : activityAssignments) {
-            log.info("processing {} valid entities", activityAssignment);
-            if(activityAssignment.getAssignedTo() !=null && !activityAssignment.getAssignedTo().isEmpty()){
-                Employee employee =  activityValidator.getUserById(request, activityAssignment.getAssignedTo());
-                if(employee !=null){
-                    listUsers.add(employee.getUser());
-                }
-            }
-        }
-        listEmail = listUsers.stream().map(User::getEmailId).collect(Collectors.toList());
-        return listEmail;
+    public static String replaceActivityAssignmentEmailBody(String role, String fieldPlanName, String contenue){
+        return contenue.replace(":role",role )
+                .replace(":fieldPlanName", fieldPlanName);
     }
 
-    public void sendEmailViaKafka(List<String> emailIds, String subject, String body, String tenantId) {
+    public void sendEmailViaKafka(String emailId, String subject, String body, String tenantId) {
         try {
             // Create Email object following egov-notification-mail contract
             Map<String, Object> email = new HashMap<>();
-            email.put("emailTo", new HashSet<>(emailIds));  // Set<String>
+            email.put("emailTo", new HashSet<>(Arrays.asList(emailId)));  // Set<String>
             email.put("subject", subject);
             email.put("body", body);
-            email.put("isHTML", true);
+//            email.put("isHTML", true);
             email.put("tenantId", tenantId);
 
             // Note: CSV files are not attached as email attachments anymore
@@ -172,10 +160,10 @@ public class ActivityServiceUtil {
             kafkaTemplate.send(topic, emailRequest);
 
             log.info("Published email to Kafka topic: {} for user: {} (no attachments - download buttons used instead)",
-                    topic, emailIds);
+                    topic, emailId);
 
         } catch (Exception e) {
-            log.error("Error sending email via Kafka for user: {}", emailIds, e);
+            log.error("Error sending email via Kafka for user: {}", emailId, e);
             throw new RuntimeException("Failed to send email via Kafka", e);
         }
     }
