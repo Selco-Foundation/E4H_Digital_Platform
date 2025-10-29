@@ -206,8 +206,7 @@ class AssetRepository {
       if (draft) return;
 
       // 1) facilityId lookup
-      final facilityId =
-          activityFacility.activityFacility?.facility?.facilityId;
+      final facilityId = activityFacility.activityFacility.facility?.facilityId;
       print("facilityId $facilityId");
 
       // 2) fetch JSON, parse into Asset models
@@ -475,6 +474,8 @@ class AssetRepository {
         }
       },
     );
+
+    print("something went wrong here only ${resp.data}");
 
     if (resp.statusCode == 200 || resp.statusCode == 201) {
       final data = resp.data;

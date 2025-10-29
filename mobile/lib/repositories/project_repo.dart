@@ -33,7 +33,7 @@ class ActivityFacilityRemoteRepository {
       String searchPath = "activity/v1/activities/_search";
 
       if (envConfig.variables.envType == EnvType.dev) {
-        return _loadLocalActivityFacility();
+        // return _loadLocalActivityFacility();
       }
 
       response = await dio.post(
@@ -47,10 +47,15 @@ class ActivityFacilityRemoteRepository {
           'sort_direction': sortDirection
         },
         data: {
-          'ActivityFacility': body.toMap(),
-          'statuses': workflowStatuses,
+          'ActivityFacility': {
+            'statuses': workflowStatuses,
+            'tenantId': envConfig.variables.tenantId,
+            ...body.toMap(),
+          },
         },
       );
+
+      print("response.data ${response.data}");
 
       final responseMap = response.data['facility'];
 
@@ -61,6 +66,7 @@ class ActivityFacilityRemoteRepository {
       }
       return activityFacilityList;
     } catch (err) {
+      print("err ${err.toString()}");
       rethrow;
     }
   }
@@ -89,8 +95,11 @@ class ActivityFacilityRemoteRepository {
           'includeAncestors': false
         },
         data: {
-          'ActivityFacility': body.toMap(),
-          'statuses': workflowStatuses,
+          'ActivityFacility': {
+            'statuses': workflowStatuses,
+            'tenantId': envConfig.variables.tenantId,
+            ...body.toMap(),
+          },
         },
       );
 
@@ -211,7 +220,9 @@ class ActivityFacilityRepository {
         sortDirection: sortDirection,
       );
 
-      if (remoteList != null) {
+      print("remoteList $remoteList");
+
+      if (remoteList != null && remoteList.isNotEmpty) {
         await _replaceCache(workflowStatuses, remoteList);
         // Even if remote succeeds, exclude projects in cacheUnsubmittedProjects for this user + type(s)
         final excludedIds = await _excludedIdsFor(userTypes);

@@ -168,6 +168,7 @@ class BackgroundServiceController {
 
   Future<void> enqueueSubmission({
     required String activityFacilityId,
+    required String facilityId,
     required String userType,
     required bool fromDraft,
   }) async {
@@ -181,6 +182,7 @@ class BackgroundServiceController {
 
       service.invoke(kMethodSubmit, {
         'activityFacilityId': activityFacilityId,
+        'facilityId': facilityId,
         'userType': userType,
         'fromDraft': fromDraft,
       });
@@ -202,6 +204,7 @@ class BackgroundServiceController {
 
     service.invoke(kMethodSubmit, {
       'activityFacilityId': activityFacilityId,
+      'facilityId': facilityId,
       'userType': userType,
       'fromDraft': fromDraft,
     });
@@ -309,7 +312,7 @@ void onStart(ServiceInstance service) async {
           status: 'running');
 
       debugPrint('[BG] entering _performSubmissionForProject');
-      await _performSubmissionForProject(
+      await _performSubmissionForActivityFacility(
         isar: isar,
         activityFacilityId: activityFacilityId,
         facilityId: facilityId!,
@@ -361,9 +364,9 @@ void onStart(ServiceInstance service) async {
           activityFacilityId: activityFacilityId,
           status: 'running');
 
-      await _performRejectionForProject(
+      await _performRejectionForActivityFacility(
         isar: isar,
-        projectId: activityFacilityId,
+        activityFacilityId: activityFacilityId,
         userType: userType,
         transactions: txList.map((m) => Map<String, dynamic>.from(m)).toList(),
       );
@@ -437,7 +440,7 @@ Future<void> writeJobStatus({
   });
 }
 
-Future<void> _performSubmissionForProject({
+Future<void> _performSubmissionForActivityFacility({
   required Isar isar,
   required String activityFacilityId,
   required String facilityId,
@@ -576,7 +579,7 @@ Future<void> _performSubmissionForProject({
     final workflowDocumentFromCache =
         await ActivityFacilityWorkflowRepository().collectWorkflowMediaDocs(
       isar: isar,
-      projectId: activityFacilityId,
+      activityFacilityId: activityFacilityId,
       types: typesForDocs,
     );
     workflowDocuments.addAll(workflowDocumentFromCache);
@@ -673,13 +676,14 @@ Future<void> _performSubmissionForProject({
 
     return;
   } catch (e) {
+    print("e ${e.toString()}");
     throw PlainError(_pretty(e));
   }
 }
 
-Future<void> _performRejectionForProject({
+Future<void> _performRejectionForActivityFacility({
   required Isar isar,
-  required String projectId,
+  required String activityFacilityId,
   required String userType,
   required List<Map<String, dynamic>> transactions,
 }) async {
@@ -690,23 +694,25 @@ Future<void> _performRejectionForProject({
     final fromCache =
         await ActivityFacilityWorkflowRepository().collectWorkflowMediaDocs(
       isar: isar,
-      projectId: projectId,
+      activityFacilityId: activityFacilityId,
       types: types,
     );
     workflowDocuments.addAll(fromCache);
 
     await AssetRepository().submitRejection(
-      projectId: projectId,
+      projectId: activityFacilityId,
       transactions: transactions.map((m) => Transaction.fromJson(m)).toList(),
       documents: workflowDocuments,
     );
 
     await UnsubmittedActivityFacilityRepository(isar)
-        .delete(projectId, userType);
+        .delete(activityFacilityId, userType);
     await PrefilledActivityFacilityRepository(isar)
-        .delete(activityFacilityId: projectId, userType: userType);
-    await CompletionReportRepository(isar).delete(projectId: projectId);
-    await BomRepository().delete(isar: isar, activityFacilityId: projectId);
+        .delete(activityFacilityId: activityFacilityId, userType: userType);
+    await CompletionReportRepository(isar)
+        .delete(projectId: activityFacilityId);
+    await BomRepository()
+        .delete(isar: isar, activityFacilityId: activityFacilityId);
   } catch (e) {
     throw PlainError(_pretty(e));
   }
