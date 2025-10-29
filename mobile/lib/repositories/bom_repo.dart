@@ -274,7 +274,6 @@ class BomRepository {
     Response response;
     final body = {
       "bom": {
-        // "facilityIds": facilityIds,
         "activityFacilityIds": activityFacilityIds,
         "tenantId": tenantId,
       }
