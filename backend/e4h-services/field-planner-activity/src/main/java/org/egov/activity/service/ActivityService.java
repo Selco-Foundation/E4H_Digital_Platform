@@ -112,11 +112,18 @@ public class ActivityService {
             for (ActivityAssignment activityAssignment : activityAssignments) {
                 log.info("processing {} valid entities", activityAssignment);
                 activityEnrichment.enrichActivityAssignmentOnCreate(activityAssignment, request.getRequestInfo());
+                if(activityAssignment.getAssignedTo() !=null && !activityAssignment.getAssignedTo().isEmpty()){
+                    Employee employee =  activityValidator.getUserById(request, activityAssignment.getAssignedTo());
+                    FieldPlan existingFieldPlan = activityValidator.getFieldPlanById(request.getRequestInfo(), activityAssignment.getFieldPlanId(), activityAssignment.getTenantId());
+                    if(employee != null && existingFieldPlan != null ){
+                        String emailId = employee.getUser().getEmailId();
+                        String subject = activityConfiguration.getActivityEmailSubject();
+                        String body = activityServiceUtil.replaceActivityAssignmentEmailBody((String)activityAssignment.getRole().get("name"), existingFieldPlan.getName(), activityConfiguration.getActivityEmailBody());
+                        activityServiceUtil.sendEmailViaKafka(emailId, subject, body, "in");
+                    }
+                }
             }
             log.info("successfully created Activity Assignment");
-//            List<String> emailIds = activityServiceUtil.getEmailIdsList(request);
-            List<String> emailIds = List.of("babacar.n@beehyv.com");
-            activityServiceUtil.sendEmailViaKafka(emailIds, "Test Email", "Body Email", "in");
             producer.push(activityConfiguration.getCreateActivityAssignmentTopic(), request);
         } catch (Exception exception) {
             log.error("error occurred while creating Activity Assignment: {}", ExceptionUtils.getStackTrace(exception));
