@@ -22,7 +22,7 @@ import static org.egov.activity.util.ActivityConstants.DOT;
 @RequiredArgsConstructor
 public class BomQueryBuilder {
 
-    private static final String FETCH_BOM_QUERY = "SELECT bom.id as bom_bomId, bom.tenant_id as bom_tenantId, bom.facility_id as bom_facilityId, " +
+    private static final String FETCH_BOM_QUERY = "SELECT bom.id as bom_bomId, bom.tenant_id as bom_tenantId, bom.facility_id as bom_facilityId, bom.activity_facility_id as bom_activityFacilityId, " +
             "bom.name as bom_name, bom.data as bom_data, bom.is_active as bom_isActive, bom.assign_user as bom_assignedUser, bom.activity_facility_id as bom_activityFacilityId, " +
             "bom.additional_details as bom_additionalDetails, bom.created_time as bom_createdTime, " +
             "bom.last_modified_time as bom_lastModifiedTime " +

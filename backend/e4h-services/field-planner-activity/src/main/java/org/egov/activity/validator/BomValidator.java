@@ -264,7 +264,7 @@ public class BomValidator {
             throw new CustomException("TENANT_ID", "Tenant ID is mandatory");
         }
         if ((criteria.getIds()==null || criteria.getIds().isEmpty()) && (criteria.getFacilityId()==null || criteria.getFacilityId().isEmpty())
-                && (criteria.getName()==null || criteria.getName().isEmpty())
+                && (criteria.getName()==null || criteria.getName().isEmpty()) && (criteria.getActivityFacilityId()==null || criteria.getActivityFacilityId().isEmpty())
                 && StringUtils.isBlank(criteria.getAssignUser()))
         {
             log.error("Any one Activity search field is required for FieldPlan Search");
