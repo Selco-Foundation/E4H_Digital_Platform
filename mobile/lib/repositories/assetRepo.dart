@@ -150,7 +150,7 @@ class AssetRepository {
       print("Starting Duplicate Fetch and resending");
       if (isCreate && isDuplicate) {
         final remote = await _fetchAssetBySerial(
-          facilityId: facilityId,
+          activityFacilityId: asset.activityFacilityID! ?? '',
           serialNumber: asset.serialNumber ?? '',
         );
 
@@ -205,17 +205,13 @@ class AssetRepository {
       );
       if (draft) return;
 
-      // 1) facilityId lookup
-      final facilityId = activityFacility.activityFacility.facility?.facilityId;
-      print("facilityId $facilityId");
-
-      // 2) fetch JSON, parse into Asset models
+      // fetch JSON, parse into Asset models
       final resp = await _dio.post(
         '/asset-registry/v1/asset/_search?tenantId=${envConfig.variables.tenantId}',
         data: {
           'criteria': {
             'tenantId': envConfig.variables.tenantId,
-            'facilityID': facilityId,
+            'activityFacilityID': activityFacilityId,
           }
         },
       );
@@ -231,7 +227,7 @@ class AssetRepository {
           .map((m) => Asset.fromJson(m))
           .toList();
 
-      // 3) group by assetTypeID
+      // group by assetTypeID
       final byType = <String, List<Asset>>{};
       for (var asset in assets) {
         final type = asset.assetTypeID?.toLowerCase() ?? 'unknown';
@@ -240,7 +236,7 @@ class AssetRepository {
 
       print("byType $byType");
 
-      // 4) perform one big Isar transaction
+      // perform one big Isar transaction
       await isar.writeTxn(() async {
         for (var entry in byType.entries) {
           final type = entry.key;
@@ -461,7 +457,8 @@ class AssetRepository {
 
   // Add this helper to AssetRepository
   Future<Map<String, dynamic>?> _fetchAssetBySerial({
-    required String facilityId,
+    // required String facilityId,
+    required String activityFacilityId,
     required String serialNumber,
   }) async {
     final resp = await _dio.post(
@@ -469,7 +466,7 @@ class AssetRepository {
       data: {
         'criteria': {
           'tenantId': envConfig.variables.tenantId,
-          'facilityID': facilityId,
+          'activityFacilityID': activityFacilityId,
           'serialNumber': serialNumber,
         }
       },
