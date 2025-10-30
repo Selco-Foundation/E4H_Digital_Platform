@@ -86,29 +86,14 @@ public class SLABreachDetectionService {
             // The Elasticsearch query already filters for SLA breach and escalation exclusions
             // Only apply post-filtering for special cases like LEVEL_TWO aged tickets
             List<EscalationTicket> filteredTickets = new ArrayList<>();
-            int additionalFilterCount = 0;
-            long currentTime = System.currentTimeMillis();
             
             for (EscalationTicket ticket : breachTickets) {
-                // For LEVEL_TWO, apply additional age filtering (16+ hours breached)
-                if ("LEVEL_TWO".equals(escalationLevel)) {
-                    if (isTicketAgedBeyondBreach(ticket, currentTime, 16.0)) {
-                        filteredTickets.add(ticket);
-                        log.debug("Ticket {} included in LEVEL_TWO escalation - breached for more than 16 hours", 
-                            ticket.getIncidentId());
-                    } else {
-                        additionalFilterCount++;
-                        log.debug("Skipping ticket {} - not aged enough for LEVEL_TWO escalation", 
-                            ticket.getIncidentId());
-                    }
-                } else {
-                    // For LEVEL_ZERO and LEVEL_ONE, use tickets as returned by Elasticsearch
-                    filteredTickets.add(ticket);
-                }
+                // Follow MDMS-driven ES filter strictly for all levels including LEVEL_TWO
+                filteredTickets.add(ticket);
             }
             
-            log.info("Found {} tickets in SLA breach for tenant: {} with escalation level: {} ({} additional filters, {} final)", 
-                breachTickets.size(), tenantId, escalationLevel, additionalFilterCount, filteredTickets.size());
+            log.info("Found {} tickets in SLA breach for tenant: {} with escalation level: {} ({} final)", 
+                breachTickets.size(), tenantId, escalationLevel, filteredTickets.size());
             
             return filteredTickets;
             
@@ -282,14 +267,33 @@ public class SLABreachDetectionService {
         }
         
         // Build SLA filter based on calculation strategy from MDMS
-            Map<String, Object> slaFilter = buildSLAFilter(escalationLevel, escalationLevelConfig);
-            if (slaFilter != null) {
-                must.add(slaFilter);
+        Map<String, Object> slaFilter = buildSLAFilter(escalationLevel, escalationLevelConfig);
+        if (slaFilter != null) {
+            must.add(slaFilter);
             log.debug("Added SLA filter for {} using strategy: {} with threshold: {} hours / {}%", 
                 escalationLevel, 
                 escalationLevelConfig.getBreachCalculationStrategy(),
                 escalationLevelConfig.getBreachThresholdInHours(),
                 escalationLevelConfig.getBreachThresholdInPercentage());
+        }
+
+        // Prevent overlap: exclude tickets that qualify for higher levels
+        if ("LEVEL_ONE".equals(escalationLevel)) {
+            EscalationLevel l2Config = getEscalationLevelConfig("LEVEL_TWO", requestInfo);
+            if (l2Config != null && "number".equalsIgnoreCase(l2Config.getBreachCalculationStrategy())) {
+                Integer l2Hours = l2Config.getBreachThresholdInHours();
+                if (l2Hours != null) {
+                    long l2Ms = (long) l2Hours * 60 * 60 * 1000L;
+                    Map<String, Object> gtRange = new HashMap<>();
+                    Map<String, Object> gtRangeBody = new HashMap<>();
+                    gtRangeBody.put("gt", l2Ms); // include only > L2 threshold (i.e., not as overdue as L2)
+                    gtRange.put("Data.slaRemaining", gtRangeBody);
+                    Map<String, Object> range = new HashMap<>();
+                    range.put("range", gtRange);
+                    must.add(range);
+                    log.debug("Added anti-overlap filter for LEVEL_ONE: slaRemaining > {}ms", l2Ms);
+                }
+            }
         }
 
         // Exclude tickets already escalated to this recipient AND level
@@ -467,14 +471,33 @@ public class SLABreachDetectionService {
         }
         
         // Build SLA filter based on calculation strategy from MDMS
-            Map<String, Object> slaFilter = buildSLAFilter(escalationLevel, escalationLevelConfig);
-            if (slaFilter != null) {
-                must.add(slaFilter);
+        Map<String, Object> countrySlaFilter = buildSLAFilter(escalationLevel, escalationLevelConfig);
+        if (countrySlaFilter != null) {
+            must.add(countrySlaFilter);
             log.debug("Added SLA filter for {} (country level) using strategy: {} with threshold: {} hours / {}%", 
                 escalationLevel, 
                 escalationLevelConfig.getBreachCalculationStrategy(),
                 escalationLevelConfig.getBreachThresholdInHours(),
                 escalationLevelConfig.getBreachThresholdInPercentage());
+        }
+
+        // Prevent overlap for country level as well
+        if ("LEVEL_ONE".equals(escalationLevel)) {
+            EscalationLevel l2Config = getEscalationLevelConfig("LEVEL_TWO", requestInfo);
+            if (l2Config != null && "number".equalsIgnoreCase(l2Config.getBreachCalculationStrategy())) {
+                Integer l2Hours = l2Config.getBreachThresholdInHours();
+                if (l2Hours != null) {
+                    long l2Ms = (long) l2Hours * 60 * 60 * 1000L;
+                    Map<String, Object> gtRange = new HashMap<>();
+                    Map<String, Object> gtRangeBody = new HashMap<>();
+                    gtRangeBody.put("gt", l2Ms);
+                    gtRange.put("Data.slaRemaining", gtRangeBody);
+                    Map<String, Object> range = new HashMap<>();
+                    range.put("range", gtRange);
+                    must.add(range);
+                    log.debug("Added anti-overlap filter for LEVEL_ONE (country): slaRemaining > {}ms", l2Ms);
+                }
+            }
         }
         
         // Exclude tickets already escalated to this recipient AND level
