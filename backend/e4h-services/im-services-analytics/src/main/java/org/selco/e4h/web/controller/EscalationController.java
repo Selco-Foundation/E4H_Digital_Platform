@@ -268,7 +268,7 @@ public class EscalationController {
             // Build ONE consolidated CSV across all mapped states and upload to tenant "in"
             try {
                 String consolidatedCsv = generateConsolidatedWeeklyCsv(relevantTenantIds, requestInfo);
-                String consolidatedFileName = generateCsvFileName("consolidated");
+                String consolidatedFileName = generateCsvFileName();
                 String consolidatedFsId = uploadCsvToFileStore(consolidatedCsv, consolidatedFileName, "in", requestInfo);
                 if (consolidatedFsId != null) {
                     csvFileStoreIds.put("in", consolidatedFsId);
@@ -970,100 +970,14 @@ public class EscalationController {
     }
 
     /**
-     * Generate weekly report CSV content using Elasticsearch computed-sla-im-services-write index
-     */
-    private String generateWeeklyReportCsv(WeeklyReportData reportData, String tenantId) {
-        try {
-            log.info("Generating CSV for tenant: {}", tenantId);
-            StringBuilder csv = new StringBuilder();
-            
-            // CSV Header - Health Facility focused
-            csv.append("Facility Code,Facility Name,Facility Type,District,Block,System Status,Ticket ID,Comments,Application Status,Age in Days,State\n");
-            
-            // Query Elasticsearch computed-sla-im-services-write index for all tickets
-            List<Map<String, Object>> tickets = elasticSearchClient.fetchRequiredTickets(0, 10000, false);
-            log.info("Fetched {} tickets from Elasticsearch for CSV generation", tickets.size());
-            
-            try {
-                for (Map<String, Object> ticket : tickets) {
-                    Map<String, Object> data = (Map<String, Object>) ticket.get("Data");
-                    if (data != null) {
-                        // Filter by tenant
-                        String ticketTenantId = (String) data.get("tenantid");
-                        if (!tenantId.equals(ticketTenantId)) {
-                            continue;
-                        }
-                        csv.append(escapeCsvField(getStringValue(data, "tenantid"))).append(",");
-                        csv.append(escapeCsvField(getStringValue(data, "tenantid"))).append(",");
-                        csv.append(escapeCsvField(getStringValue(data, "phctype"))).append(",");
-                        csv.append(escapeCsvField(getStringValue(data, "district"))).append(",");
-                        csv.append(escapeCsvField(getStringValue(data, "block"))).append(",");
-                        csv.append(escapeCsvField(getStringValue(data, "systemfunctional"))).append(",");
-                        csv.append(escapeCsvField(getStringValue(data, "incidentid"))).append(",");
-                        csv.append(escapeCsvField(getStringValue(data, "comments"))).append(",");
-                        
-                        // Get application status from nested structure
-                        Map<String, Object> currentProcessInstance = (Map<String, Object>) data.get("currentProcessInstance");
-                        String applicationStatus = "N/A";
-                        if (currentProcessInstance != null) {
-                            Map<String, Object> state = (Map<String, Object>) currentProcessInstance.get("state");
-                            if (state != null) {
-                                applicationStatus = getStringValue(state, "applicationStatus");
-                            }
-                        }
-                        csv.append(escapeCsvField(applicationStatus)).append(",");
-                        
-                        // Calculate age in days
-                        Long filedDate = (Long) data.get("fileddate");
-                        String ageInDays = "";
-                        if (filedDate != null) {
-                            long ageInMillis = System.currentTimeMillis() - filedDate;
-                            long ageInDaysLong = ageInMillis / (1000 * 60 * 60 * 24);
-                            ageInDays = String.valueOf(ageInDaysLong);
-                        }
-                        csv.append(ageInDays).append(",");
-                        csv.append(escapeCsvField(commonUtility.getStateDisplayName(tenantId))).append("\n");
-                    }
-                }
-                
-                log.info("Generated CSV with {} tickets from Elasticsearch for tenant: {}", tickets.size(), tenantId);
-                
-            } catch (Exception e) {
-                log.error("Error processing Elasticsearch data for CSV generation for tenant: {}", tenantId, e);
-                // Fallback to summary data
-                csv.append("SUMMARY,Weekly Report Summary,ALL,ALL,ALL,");
-                if (reportData.getWeekEndMetrics() != null) {
-                    int endTotal = reportData.getWeekEndMetrics().getFunctionalCount() + reportData.getWeekEndMetrics().getNonFunctionalCount();
-                    double funcEndPct = endTotal > 0 ? (reportData.getWeekEndMetrics().getFunctionalCount() * 100.0 / endTotal) : 0;
-                    csv.append("Functional: ").append(reportData.getWeekEndMetrics().getFunctionalCount()).append(" (").append(String.format("%.1f", funcEndPct)).append("%),");
-                    csv.append("N/A,");
-                    csv.append("Summary data,");
-                    csv.append("N/A,");
-                    csv.append("N/A,");
-                    csv.append(tenantId).append("\n");
-                } else {
-                    csv.append("No data available,N/A,Summary data,N/A,N/A,");
-                    csv.append(tenantId).append("\n");
-                }
-            }
-            
-            return csv.toString();
-            
-        } catch (Exception e) {
-            log.error("Error generating weekly report CSV", e);
-            return "Error generating CSV content";
-        }
-    }
-
-    /**
      * Generate a single consolidated weekly CSV across all mapped state tenants.
      * The CSV includes both functional and non-functional facilities and is intended
      * to be uploaded under tenantId = "in".
      */
     private String generateConsolidatedWeeklyCsv(Set<String> stateTenantIds, RequestInfo requestInfo) {
         StringBuilder csv = new StringBuilder();
-        // Header: align with facility-centric report
-        csv.append("Health Facility,NIN OR HFR,Solar Working,State,District,Block,Health Facility Type,Mapped Vendor,No of Ticket,Open Ticket,Closed Ticket\n");
+        // Header: quote every label to avoid Excel splitting on spaces
+        csv.append("\"Health Facility\",\"NIN OR HFR\",\"Solar Working\",\"State\",\"District\",\"Block\",\"Health Facility Type\",\"Mapped Vendor\",\"No of Ticket\",\"Open Ticket\",\"Closed Ticket\"\r\n");
 
         try {
             // Fetch all tickets once
@@ -1077,23 +991,29 @@ public class EscalationController {
                 Map<String, Object> data = (Map<String, Object>) ticket.get("Data");
                 if (data == null) continue;
 
-                String ticketTenantId = getStringValue(data, "tenantid");
+                // Correct ES field names are camelCase
+                String ticketTenantId = getStringValue(data, "tenantId");
                 if (ticketTenantId == null || ticketTenantId.isEmpty()) continue;
 
                 boolean inScope = false;
                 for (String state : stateTenantIds) {
-                    if (ticketTenantId.equals(state) || ticketTenantId.startsWith(state + ".")) { inScope = true; break; }
+                    if (ticketTenantId.equalsIgnoreCase(state) || ticketTenantId.startsWith(state + ".")) { inScope = true; break; }
                 }
                 if (!inScope) continue;
 
                 // Facility identity (best-effort fields)
-                String facilityNameLocal = getStringValue(data, "tenantid_localized");
-                if (facilityNameLocal.isEmpty()) facilityNameLocal = getStringValue(data, "tenantid");
+                String facilityNameLocal = getStringValue(data, "tenantId_localized");
+                if (facilityNameLocal.isEmpty()) facilityNameLocal = getStringValue(data, "tenantId");
                 String ninOrHfr = getStringValue(data, "ninOrHfr");
                 String stateRoot = ticketTenantId.contains(".") ? ticketTenantId.substring(0, ticketTenantId.indexOf('.')) : ticketTenantId;
                 String district = getStringValue(data, "district");
                 String block = getStringValue(data, "block");
-                String hfType = getStringValue(data, "phctype");
+                // Type may exist under incident.phcSubType or data.phcType
+                String hfTypeLocal = getStringValue(data, "phcType");
+                if (hfTypeLocal.isEmpty()) {
+                    Map<String, Object> incForType = (Map<String, Object>) data.get("incident");
+                    if (incForType != null) hfTypeLocal = getStringValue(incForType, "phcSubType");
+                }
                 String vendorLocal = getStringValue(data, "mappedVendorName");
                 if (vendorLocal.isEmpty()) vendorLocal = getStringValue(data, "mappedVendorUserName");
 
@@ -1111,6 +1031,7 @@ public class EscalationController {
 
                 final String facilityName = facilityNameLocal;
                 final String vendor = vendorLocal;
+                final String hfType = hfTypeLocal;
                 String key = facilityName + "|" + district + "|" + block + "|" + stateRoot;
                 Map<String, Object> row = facilityAgg.computeIfAbsent(key, k -> {
                     Map<String, Object> m = new HashMap<>();
@@ -1139,7 +1060,7 @@ public class EscalationController {
                     row.put("open", open + 1);
                 }
 
-                String sysFunc = getStringValue(data, "systemfunctional");
+                String sysFunc = getStringValue(data, "systemFunctional");
                 if ("FUNCTIONAL".equalsIgnoreCase(sysFunc)) {
                     row.put("solarWorking", "Yes");
                 }
@@ -1157,7 +1078,7 @@ public class EscalationController {
                    .append(escapeCsvField((String) row.get("vendor"))).append(",")
                    .append(row.get("total")).append(",")
                    .append(row.get("open")).append(",")
-                   .append(row.get("closed")).append("\n");
+                   .append(row.get("closed")).append("\r\n");
             }
 
         } catch (Exception e) {
@@ -1190,12 +1111,12 @@ public class EscalationController {
     /**
      * Generate CSV filename for weekly report
      */
-    private String generateCsvFileName(String tenantId) {
+    private String generateCsvFileName() {
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd_HHmmss");
         dateFormat.setTimeZone(TimeZone.getTimeZone("Asia/Kolkata"));
         String timestamp = dateFormat.format(new Date());
         
-        return String.format("weekly_report_%s_%s.csv", tenantId, timestamp);
+        return String.format("weekly_report_%s.csv", timestamp);
     }
     
     /**

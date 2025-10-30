@@ -370,12 +370,12 @@ public class WeeklyReportService {
             // For functional systems: increase is good (green up), decrease is bad (red down)
             if (change > 0) {
                 return ArrowData.builder()
-                    .arrow("&#8593;") // ▲
+                    .arrow("&#9650") // ▲
                     .arrowClass("up")
                     .build();
             } else {
                 return ArrowData.builder()
-                    .arrow("&#8595;") // ▼
+                    .arrow("&#9660;") // ▼
                     .arrowClass("down")
                     .build();
             }
@@ -383,12 +383,12 @@ public class WeeklyReportService {
             // For non-functional systems: increase is bad (red up), decrease is good (green down)
             if (change > 0) {
                 return ArrowData.builder()
-                    .arrow("&#8593;") // ▲
+                    .arrow("&#9660;") // ▲
                     .arrowClass("down") // Red color
                     .build();
             } else {
                 return ArrowData.builder()
-                    .arrow("&#8595;") // ▼
+                    .arrow("&#9650") // ▼
                     .arrowClass("up") // Green color
                     .build();
             }
