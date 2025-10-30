@@ -23,7 +23,7 @@ const Filter = ({ t, fieldPlan, onFilterChange, projectQueryFilter, statusesList
   });
 
   const { isLoading, data } = useBoundary(
-    fieldPlan?.address?.boundary, "State"
+    fieldPlan?.stateBoundaryCode, "State"
   );
 
   useEffect(() => {

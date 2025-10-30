@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { TextInput, SubmitBar, LinkLabel, TickMark, DownloadIcon, SearchIconSvg, SearchIcon, Toast } from "@egovernments/digit-ui-react-components";
 import { DoneAll } from "@egovernments/digit-ui-svg-components";
-import { QCService } from "../../services/QC";
+import { ActivityService } from "../../services/Activity";
 
 const SearchActionCentre = ({ t, projectQueryFilter, mainCheckBox, selectedFacilities, onSearch, revalidateData, setUpdatingWorkflow }) => {
 
@@ -11,7 +11,7 @@ const SearchActionCentre = ({ t, projectQueryFilter, mainCheckBox, selectedFacil
   const handleSearch = (name) => {
     const facilitySearchQuery = {};
     if (name) {
-      facilitySearchQuery.name = [name];
+      facilitySearchQuery.name = name;
     }
 
     onSearch({
@@ -21,6 +21,14 @@ const SearchActionCentre = ({ t, projectQueryFilter, mainCheckBox, selectedFacil
       facilitySearchQuery
     })
   }
+
+  useEffect(()=>{
+    if(toast){
+      setTimeout(()=>{
+        setToast(null);
+      },2500)
+    }
+  },[toast])
 
   const handleClear = () => {
     setTextToSearch("");
@@ -44,7 +52,7 @@ const SearchActionCentre = ({ t, projectQueryFilter, mainCheckBox, selectedFacil
     setUpdatingWorkflow(true);
 
     try {
-      const response = await QCService.bulkApproveProjects(projectQueryFilter, mainCheckBox, selectedFacilities);
+      const response = await ActivityService.bulkApproveActivityFacilities(projectQueryFilter, mainCheckBox, selectedFacilities);
 
       if (response) {
         revalidateData();
