@@ -5,7 +5,7 @@ export const BoundaryService = {
   fetchBoundaryRelations : async (codes, boundaryType) => {
     const endpoint = "/boundary-service/boundary-relationships/_search";
     const params = {
-      tenantId : "in",
+      tenantId : Digit.ULBService.getCurrentTenantId(),
       includeChildren : true,
       includeParents : false,
       hierarchyType: "SELCO",
