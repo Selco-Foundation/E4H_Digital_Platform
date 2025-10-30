@@ -58,6 +58,46 @@ public class SLABreachDetectionService {
         return mustNot;
     }
 
+    // Reusable helpers to reduce duplication in query building
+    private void addSlaFilter(List<Map<String, Object>> must, String escalationLevel, RequestInfo requestInfo, boolean countryLevel) {
+        EscalationLevel levelConfig = getEscalationLevelConfig(escalationLevel, requestInfo);
+        if (levelConfig == null) {
+            String scope = countryLevel ? "(country level)" : "";
+            log.error("EscalationLevel config not found for {} {} - MDMS configuration is required", escalationLevel, scope);
+            throw new RuntimeException("EscalationLevel configuration not found for " + escalationLevel + ". Please ensure MDMS is properly configured.");
+        }
+
+        Map<String, Object> slaFilter = buildSLAFilter(escalationLevel, levelConfig);
+        if (slaFilter != null) {
+            must.add(slaFilter);
+            if (countryLevel) {
+                log.debug("Added SLA filter for {} (country level) using strategy: {} with threshold: {} hours / {}%", 
+                    escalationLevel, levelConfig.getBreachCalculationStrategy(), levelConfig.getBreachThresholdInHours(), levelConfig.getBreachThresholdInPercentage());
+            } else {
+                log.debug("Added SLA filter for {} using strategy: {} with threshold: {} hours / {}%", 
+                    escalationLevel, levelConfig.getBreachCalculationStrategy(), levelConfig.getBreachThresholdInHours(), levelConfig.getBreachThresholdInPercentage());
+            }
+        }
+    }
+
+    private void addL1AntiOverlapIfNeeded(List<Map<String, Object>> must, String escalationLevel, RequestInfo requestInfo) {
+        if (!"LEVEL_ONE".equals(escalationLevel)) return;
+        EscalationLevel l2Config = getEscalationLevelConfig("LEVEL_TWO", requestInfo);
+        if (l2Config == null || !"number".equalsIgnoreCase(l2Config.getBreachCalculationStrategy())) return;
+        Integer l2Hours = l2Config.getBreachThresholdInHours();
+        if (l2Hours == null) return;
+
+        long l2Ms = (long) l2Hours * 60 * 60 * 1000L;
+        Map<String, Object> gtRange = new HashMap<>();
+        Map<String, Object> gtRangeBody = new HashMap<>();
+        gtRangeBody.put("gt", l2Ms);
+        gtRange.put("Data.slaRemaining", gtRangeBody);
+        Map<String, Object> range = new HashMap<>();
+        range.put("range", gtRange);
+        must.add(range);
+        log.debug("Added anti-overlap filter for LEVEL_ONE: slaRemaining > {}ms", l2Ms);
+    }
+
     /**
      * Find tickets in SLA breach for a specific tenant, workflow states, and escalation level
      * that don't already have the specified escalation recipient ID
@@ -86,29 +126,14 @@ public class SLABreachDetectionService {
             // The Elasticsearch query already filters for SLA breach and escalation exclusions
             // Only apply post-filtering for special cases like LEVEL_TWO aged tickets
             List<EscalationTicket> filteredTickets = new ArrayList<>();
-            int additionalFilterCount = 0;
-            long currentTime = System.currentTimeMillis();
             
             for (EscalationTicket ticket : breachTickets) {
-                // For LEVEL_TWO, apply additional age filtering (16+ hours breached)
-                if ("LEVEL_TWO".equals(escalationLevel)) {
-                    if (isTicketAgedBeyondBreach(ticket, currentTime, 16.0)) {
-                        filteredTickets.add(ticket);
-                        log.debug("Ticket {} included in LEVEL_TWO escalation - breached for more than 16 hours", 
-                            ticket.getIncidentId());
-                    } else {
-                        additionalFilterCount++;
-                        log.debug("Skipping ticket {} - not aged enough for LEVEL_TWO escalation", 
-                            ticket.getIncidentId());
-                    }
-                } else {
-                    // For LEVEL_ZERO and LEVEL_ONE, use tickets as returned by Elasticsearch
-                    filteredTickets.add(ticket);
-                }
+                // Follow MDMS-driven ES filter strictly for all levels including LEVEL_TWO
+                filteredTickets.add(ticket);
             }
             
-            log.info("Found {} tickets in SLA breach for tenant: {} with escalation level: {} ({} additional filters, {} final)", 
-                breachTickets.size(), tenantId, escalationLevel, additionalFilterCount, filteredTickets.size());
+            log.info("Found {} tickets in SLA breach for tenant: {} with escalation level: {} ({} final)", 
+                breachTickets.size(), tenantId, escalationLevel, filteredTickets.size());
             
             return filteredTickets;
             
@@ -273,24 +298,9 @@ public class SLABreachDetectionService {
         statusFilter.put("terms", statusTerms);
         must.add(statusFilter);
 
-        // Filter by SLA breach based on escalation level configuration from MDMS
-        EscalationLevel escalationLevelConfig = getEscalationLevelConfig(escalationLevel, requestInfo);
-        
-        if (escalationLevelConfig == null) {
-            log.error("EscalationLevel config not found for {} - MDMS configuration is required", escalationLevel);
-            throw new RuntimeException("EscalationLevel configuration not found for " + escalationLevel + ". Please ensure MDMS is properly configured.");
-        }
-        
-        // Build SLA filter based on calculation strategy from MDMS
-            Map<String, Object> slaFilter = buildSLAFilter(escalationLevel, escalationLevelConfig);
-            if (slaFilter != null) {
-                must.add(slaFilter);
-            log.debug("Added SLA filter for {} using strategy: {} with threshold: {} hours / {}%", 
-                escalationLevel, 
-                escalationLevelConfig.getBreachCalculationStrategy(),
-                escalationLevelConfig.getBreachThresholdInHours(),
-                escalationLevelConfig.getBreachThresholdInPercentage());
-        }
+        // Add SLA filter and anti-overlap if needed
+        addSlaFilter(must, escalationLevel, requestInfo, false);
+        addL1AntiOverlapIfNeeded(must, escalationLevel, requestInfo);
 
         // Exclude tickets already escalated to this recipient AND level
         List<Map<String, Object>> mustNot = buildEscalationExclusionFilters(escalationRecipientId, escalationLevel);
@@ -458,24 +468,9 @@ public class SLABreachDetectionService {
         statusFilter.put("terms", statusTerms);
         must.add(statusFilter);
         
-        // Filter by SLA breach based on escalation level configuration from MDMS
-        EscalationLevel escalationLevelConfig = getEscalationLevelConfig(escalationLevel, requestInfo);
-        
-        if (escalationLevelConfig == null) {
-            log.error("EscalationLevel config not found for {} (country level) - MDMS configuration is required", escalationLevel);
-            throw new RuntimeException("EscalationLevel configuration not found for " + escalationLevel + ". Please ensure MDMS is properly configured.");
-        }
-        
-        // Build SLA filter based on calculation strategy from MDMS
-            Map<String, Object> slaFilter = buildSLAFilter(escalationLevel, escalationLevelConfig);
-            if (slaFilter != null) {
-                must.add(slaFilter);
-            log.debug("Added SLA filter for {} (country level) using strategy: {} with threshold: {} hours / {}%", 
-                escalationLevel, 
-                escalationLevelConfig.getBreachCalculationStrategy(),
-                escalationLevelConfig.getBreachThresholdInHours(),
-                escalationLevelConfig.getBreachThresholdInPercentage());
-        }
+        // Add SLA filter and anti-overlap (country level)
+        addSlaFilter(must, escalationLevel, requestInfo, true);
+        addL1AntiOverlapIfNeeded(must, escalationLevel, requestInfo);
         
         // Exclude tickets already escalated to this recipient AND level
         List<Map<String, Object>> mustNot = buildEscalationExclusionFilters(escalationRecipientId, escalationLevel);
