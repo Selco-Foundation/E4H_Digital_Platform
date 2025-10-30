@@ -260,25 +260,24 @@ public class EscalationController {
                     // Generate weekly report data for this tenant
                     WeeklyReportData reportData = weeklyReportService.generateWeeklyReportData(tenantId, requestInfo);
                     reportDataByTenant.put(tenantId, reportData);
-                    
-                    // Generate CSV for download only if there's data
-                    String csvContent = generateWeeklyReportCsv(reportData, tenantId);
-                    String csvFileName = generateCsvFileName(tenantId);
-                    log.info("Generated CSV content length: {} for tenant: {}", csvContent.length(), tenantId);
-                    
-                    // Always upload CSV (headers present even when no data)
-                    String csvFileStoreId = uploadCsvToFileStore(csvContent, csvFileName, tenantId, requestInfo);
-                    log.info("CSV upload result for tenant {}: {}", tenantId, csvFileStoreId);
-                    if (csvFileStoreId != null) {
-                        csvFileStoreIds.put(tenantId, csvFileStoreId);
-                        log.info("Added CSV fileStoreId {} for tenant {}", csvFileStoreId, tenantId);
-                    }
-                    
                 } catch (Exception e) {
                     log.error("Error generating weekly report data for tenant: {}", tenantId, e);
                 }
             }
-            
+
+            // Build ONE consolidated CSV across all mapped states and upload to tenant "in"
+            try {
+                String consolidatedCsv = generateConsolidatedWeeklyCsv(relevantTenantIds, requestInfo);
+                String consolidatedFileName = generateCsvFileName("consolidated");
+                String consolidatedFsId = uploadCsvToFileStore(consolidatedCsv, consolidatedFileName, "in", requestInfo);
+                if (consolidatedFsId != null) {
+                    csvFileStoreIds.put("in", consolidatedFsId);
+                    log.info("Uploaded consolidated weekly CSV with filestoreId {} under tenant 'in'", consolidatedFsId);
+                }
+            } catch (Exception e) {
+                log.error("Failed to generate/upload consolidated weekly CSV", e);
+            }
+
             // Send consolidated email with all states
             sendConsolidatedWeeklyReportEmail(requestInfo, emailId, reportDataByTenant, csvFileStoreIds);
             
@@ -1055,7 +1054,119 @@ public class EscalationController {
             return "Error generating CSV content";
         }
     }
-    
+
+    /**
+     * Generate a single consolidated weekly CSV across all mapped state tenants.
+     * The CSV includes both functional and non-functional facilities and is intended
+     * to be uploaded under tenantId = "in".
+     */
+    private String generateConsolidatedWeeklyCsv(Set<String> stateTenantIds, RequestInfo requestInfo) {
+        StringBuilder csv = new StringBuilder();
+        // Header: align with facility-centric report
+        csv.append("Health Facility,NIN OR HFR,Solar Working,State,District,Block,Health Facility Type,Mapped Vendor,No of Ticket,Open Ticket,Closed Ticket\n");
+
+        try {
+            // Fetch all tickets once
+            List<Map<String, Object>> tickets = elasticSearchClient.fetchRequiredTickets(0, 10000, false);
+            log.info("Consolidated CSV: fetched {} tickets from ES", tickets.size());
+
+            // Aggregate per facility
+            Map<String, Map<String, Object>> facilityAgg = new LinkedHashMap<>();
+
+            for (Map<String, Object> ticket : tickets) {
+                Map<String, Object> data = (Map<String, Object>) ticket.get("Data");
+                if (data == null) continue;
+
+                String ticketTenantId = getStringValue(data, "tenantid");
+                if (ticketTenantId == null || ticketTenantId.isEmpty()) continue;
+
+                boolean inScope = false;
+                for (String state : stateTenantIds) {
+                    if (ticketTenantId.equals(state) || ticketTenantId.startsWith(state + ".")) { inScope = true; break; }
+                }
+                if (!inScope) continue;
+
+                // Facility identity (best-effort fields)
+                String facilityNameLocal = getStringValue(data, "tenantid_localized");
+                if (facilityNameLocal.isEmpty()) facilityNameLocal = getStringValue(data, "tenantid");
+                String ninOrHfr = getStringValue(data, "ninOrHfr");
+                String stateRoot = ticketTenantId.contains(".") ? ticketTenantId.substring(0, ticketTenantId.indexOf('.')) : ticketTenantId;
+                String district = getStringValue(data, "district");
+                String block = getStringValue(data, "block");
+                String hfType = getStringValue(data, "phctype");
+                String vendorLocal = getStringValue(data, "mappedVendorName");
+                if (vendorLocal.isEmpty()) vendorLocal = getStringValue(data, "mappedVendorUserName");
+
+                // Status/close flags
+                Map<String, Object> cpi = (Map<String, Object>) data.get("currentProcessInstance");
+                String applicationStatus = "N/A";
+                if (cpi != null) {
+                    Map<String, Object> st = (Map<String, Object>) cpi.get("state");
+                    if (st != null) applicationStatus = getStringValue(st, "applicationStatus");
+                }
+                boolean isClosed = applicationStatus.equalsIgnoreCase("RESOLVED") ||
+                        applicationStatus.equalsIgnoreCase("CLOSED_AFTER_RESOLUTION") ||
+                        applicationStatus.equalsIgnoreCase("CLOSED_AFTER_REJECTION") ||
+                        applicationStatus.equalsIgnoreCase("REJECTED");
+
+                final String facilityName = facilityNameLocal;
+                final String vendor = vendorLocal;
+                String key = facilityName + "|" + district + "|" + block + "|" + stateRoot;
+                Map<String, Object> row = facilityAgg.computeIfAbsent(key, k -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("facility", facilityName);
+                    m.put("nin", ninOrHfr);
+                    m.put("state", commonUtility.getStateDisplayName(stateRoot));
+                    m.put("district", district);
+                    m.put("block", block);
+                    m.put("type", hfType);
+                    m.put("vendor", vendor);
+                    m.put("total", 0L);
+                    m.put("open", 0L);
+                    m.put("closed", 0L);
+                    // Track system working (functional) if any ticket says functional
+                    m.put("solarWorking", "No");
+                    return m;
+                });
+
+                long total = (long) row.get("total");
+                row.put("total", total + 1);
+                if (isClosed) {
+                    long closed = (long) row.get("closed");
+                    row.put("closed", closed + 1);
+                } else {
+                    long open = (long) row.get("open");
+                    row.put("open", open + 1);
+                }
+
+                String sysFunc = getStringValue(data, "systemfunctional");
+                if ("FUNCTIONAL".equalsIgnoreCase(sysFunc)) {
+                    row.put("solarWorking", "Yes");
+                }
+            }
+
+            // Emit rows
+            for (Map<String, Object> row : facilityAgg.values()) {
+                csv.append(escapeCsvField((String) row.get("facility"))).append(",")
+                   .append(escapeCsvField((String) row.get("nin"))).append(",")
+                   .append(escapeCsvField((String) row.get("solarWorking"))).append(",")
+                   .append(escapeCsvField((String) row.get("state"))).append(",")
+                   .append(escapeCsvField((String) row.get("district"))).append(",")
+                   .append(escapeCsvField((String) row.get("block"))).append(",")
+                   .append(escapeCsvField((String) row.get("type"))).append(",")
+                   .append(escapeCsvField((String) row.get("vendor"))).append(",")
+                   .append(row.get("total")).append(",")
+                   .append(row.get("open")).append(",")
+                   .append(row.get("closed")).append("\n");
+            }
+
+        } catch (Exception e) {
+            log.error("Error generating consolidated weekly CSV", e);
+        }
+
+        return csv.toString();
+    }
+
     
     /**
      * Helper method to safely get string value from map
