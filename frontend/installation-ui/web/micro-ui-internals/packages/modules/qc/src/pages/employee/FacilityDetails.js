@@ -16,8 +16,7 @@ const FacilityDetails = ({t}) => {
   const dispatch = useDispatch();
   const url = window.location.href;
   const activityAssignmentId = url.split("field-plan/")[1].split("/")[0];
-  const facilityAssignmentId = url.split("facilities/")[1].split("/")[0].split("?")[0];
-  const [facilityId, setFacilityId] = useState("");
+  const activityFacilityId = url.split("facilities/")[1].split("/")[0].split("?")[0];
   const [facilityDetails, setFacilityDetails] = useState({});
   const [auditTrail, setAuditTrail] = useState([]);
   const [aggregatedAssets, setAggregatedAssets] = useState({});
@@ -39,9 +38,9 @@ const FacilityDetails = ({t}) => {
     data: facilityData,
     revalidate: revalidateFacilityDetails,
     revalidateFacilities
-  } = useFacilityDetails(facilityAssignmentId);
+  } = useFacilityDetails(activityFacilityId);
 
-  const { isLoading, data: assetData } = useAsset(facilityId);
+  const { isLoading, data: assetData } = useAsset(activityFacilityId);
 
   useEffect(() => {
     if (assetData) {
@@ -57,7 +56,6 @@ const FacilityDetails = ({t}) => {
 
   useEffect(() => {
     if (facilityData) {
-      setFacilityId(facilityData.facilityId);
       setAuditTrail(facilityData.auditTrail);
       setFacilityDetails(facilityData.facilityDetails);
       setAggregatedAssets(facilityData.assetAggregation);

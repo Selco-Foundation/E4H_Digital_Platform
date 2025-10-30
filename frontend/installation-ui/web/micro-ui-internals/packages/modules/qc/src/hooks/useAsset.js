@@ -112,12 +112,12 @@ const fetchFacilityDetails = async (filter) => {
   return await formatData(facilityDetailsResponse);
 }
 
-const useAsset = (facilityId) => {
+const useAsset = (activityFacilityId) => {
 
   const filter = {
     criteria: {
       tenantId: Digit.ULBService.getCurrentTenantId(),
-      facilityID: facilityId
+      activityFacilityID: activityFacilityId,
     }
   }
 
