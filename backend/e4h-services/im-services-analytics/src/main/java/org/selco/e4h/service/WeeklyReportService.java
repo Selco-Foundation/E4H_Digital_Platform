@@ -50,7 +50,9 @@ public class WeeklyReportService {
                 if (data == null) return false;
                 
                 String ticketTenantId = (String) data.get("tenantId");
-                return tenantId.equals(ticketTenantId);
+                if (ticketTenantId == null) return false;
+
+                return ticketTenantId.equals(tenantId) || ticketTenantId.startsWith(tenantId + ".");
             })
             .collect(Collectors.toList());
     }
@@ -62,13 +64,48 @@ public class WeeklyReportService {
         Map<String, Object> data = (Map<String, Object>) ticket.get("Data");
         if (data == null) return null;
         
+        // Normalize filedDate from any of the possible locations and formats
+        Long filedDate = parseFiledDate(ticket.get("filedDate"));
         return TicketData.builder()
             .tenantId((String) data.get("tenantId"))
-            .filedDate((Long) data.get("filedDate"))
+            .filedDate(filedDate)
             .systemFunctional((String) data.get("systemFunctional"))
             .state((String) data.get("state"))
             .data(data)
             .build();
+    }
+
+    // Parse filedDate from number or formatted strings into epoch millis (IST)
+    private Long parseFiledDate(Object filedDateObj) {
+        if (filedDateObj == null) return null;
+        if (filedDateObj instanceof Number) {
+            long v = ((Number) filedDateObj).longValue();
+            return v == 0L ? null : v;
+        }
+        if (filedDateObj instanceof String s) {
+            String str = s.trim();
+            try {
+                long v = Long.parseLong(str);
+                return v == 0L ? null : v;
+            } catch (NumberFormatException ignored) { /* try date formats below */ }
+
+            String[] patterns = new String[] {
+                "yyyy-MM-dd HH:mm:ss z",            // 2025-07-02 17:09:24 IST
+                "yyyy-MM-dd'T'HH:mm:ss.SSSX",       // ISO with millis
+                "yyyy-MM-dd'T'HH:mm:ssX",           // ISO without millis
+                "MMM dd, yyyy @ HH:mm:ss.SSS",      // Jul 16, 2025 @ 13:52:56.626
+                "MMM dd, yyyy @ HH:mm:ss"           // Jul 16, 2025 @ 13:52:56
+            };
+            for (String p : patterns) {
+                try {
+                    java.text.SimpleDateFormat f = new java.text.SimpleDateFormat(p, java.util.Locale.ENGLISH);
+                    f.setTimeZone(java.util.TimeZone.getTimeZone("Asia/Kolkata"));
+                    java.util.Date d = f.parse(str);
+                    if (d != null) return d.getTime();
+                } catch (Exception ignored) {}
+            }
+        }
+        return null;
     }
     
     

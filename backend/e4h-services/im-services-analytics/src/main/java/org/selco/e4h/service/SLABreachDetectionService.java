@@ -117,6 +117,8 @@ public class SLABreachDetectionService {
             // Wrap inside a "query" map for Elasticsearch
             Map<String, Object> finalQuery = new HashMap<>();
             finalQuery.put("query", query);
+            finalQuery.put("size", 10000); // ensure we fetch enough docs beyond ES default 10
+            finalQuery.put("track_total_hits", true);
 
             log.info("Executing Elasticsearch query: {}", finalQuery);
             
@@ -161,8 +163,14 @@ public class SLABreachDetectionService {
             Map<String, Object> query = buildSLABreachQueryWithLevelForCountry(workflowStates, 
                 escalationRecipientId, escalationLevel, requestInfo);
             
+            // Wrap and add pagination settings
+            Map<String, Object> finalQuery = new HashMap<>();
+            finalQuery.put("query", query);
+            finalQuery.put("size", 10000);
+            finalQuery.put("track_total_hits", true);
+            
             // Execute query using ElasticsearchClient
-            List<EscalationTicket> breachTickets = elasticSearchClient.searchTickets(query);
+            List<EscalationTicket> breachTickets = elasticSearchClient.searchTickets(finalQuery);
             
             log.info("Found {} tickets in SLA breach for country level with escalation level: {}", 
                 breachTickets.size(), escalationLevel);
