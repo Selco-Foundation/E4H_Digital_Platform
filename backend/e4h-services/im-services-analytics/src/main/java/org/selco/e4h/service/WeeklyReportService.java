@@ -259,8 +259,7 @@ public class WeeklyReportService {
                 if ("NON_FUNCTIONAL".equals(ticketData.getSystemFunctional())) {
                     // Calculate age in days
                     if (ticketData.getFiledDate() != null) {
-                        long ageInMillis = System.currentTimeMillis() - ticketData.getFiledDate();
-                        int ageInDays = (int) (ageInMillis / (1000 * 60 * 60 * 24));
+                        int ageInDays = computeBusinessDays(ticketData.getFiledDate(), System.currentTimeMillis());
                         
                         // Age bucket logic as per Slack clarification:
                         // 1 Week: 8 ≤ age in days ≤ 30
@@ -317,8 +316,7 @@ public class WeeklyReportService {
                 if ("NON_FUNCTIONAL".equals(ticketData.getSystemFunctional())) {
                     // Calculate age in days
                     if (ticketData.getFiledDate() != null) {
-                        long ageInMillis = System.currentTimeMillis() - ticketData.getFiledDate();
-                        int ageInDays = (int) (ageInMillis / (1000 * 60 * 60 * 24));
+                        int ageInDays = computeBusinessDays(ticketData.getFiledDate(), System.currentTimeMillis());
 
                         String ticketTenantId = ticketData.getTenantId();
                         String rootTenantId = ticketTenantId != null && ticketTenantId.contains(".")
@@ -372,12 +370,12 @@ public class WeeklyReportService {
             // For functional systems: increase is good (green up), decrease is bad (red down)
             if (change > 0) {
                 return ArrowData.builder()
-                    .arrow("↑")
+                    .arrow("&#8593;") // ▲
                     .arrowClass("up")
                     .build();
             } else {
                 return ArrowData.builder()
-                    .arrow("↓")
+                    .arrow("&#8595;") // ▼
                     .arrowClass("down")
                     .build();
             }
@@ -385,12 +383,12 @@ public class WeeklyReportService {
             // For non-functional systems: increase is bad (red up), decrease is good (green down)
             if (change > 0) {
                 return ArrowData.builder()
-                    .arrow("↑")
+                    .arrow("&#8593;") // ▲
                     .arrowClass("down") // Red color
                     .build();
             } else {
                 return ArrowData.builder()
-                    .arrow("↓")
+                    .arrow("&#8595;") // ▼
                     .arrowClass("up") // Green color
                     .build();
             }
@@ -450,4 +448,34 @@ public class WeeklyReportService {
         return result;
     }
     
+    /**
+     * Compute business days between two instants using an 8-hour-per-day concept with Sunday off.
+     * We treat each non-Sunday calendar day as one business day. This aligns buckets to
+     * business-day counts rather than raw wall-clock days.
+     */
+    private int computeBusinessDays(long startMs, long endMs) {
+        if (endMs <= startMs) return 0;
+        TimeZone tz = TimeZone.getTimeZone("Asia/Kolkata");
+        Calendar startCal = Calendar.getInstance(tz);
+        Calendar endCal = Calendar.getInstance(tz);
+        startCal.setTimeInMillis(startMs);
+        endCal.setTimeInMillis(endMs);
+
+        // Normalize to start of day for iteration
+        startCal.set(Calendar.HOUR_OF_DAY, 0);
+        startCal.set(Calendar.MINUTE, 0);
+        startCal.set(Calendar.SECOND, 0);
+        startCal.set(Calendar.MILLISECOND, 0);
+
+        int days = 0;
+        while (startCal.getTimeInMillis() < endCal.getTimeInMillis()) {
+            int dow = startCal.get(Calendar.DAY_OF_WEEK);
+            if (dow != Calendar.SUNDAY) {
+                days++;
+            }
+            startCal.add(Calendar.DAY_OF_MONTH, 1);
+        }
+        return days;
+    }
+
 }

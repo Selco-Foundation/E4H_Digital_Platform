@@ -183,8 +183,8 @@ public class WeeklyReportEmailService {
             downloadButtonHtml = "<table role=\"presentation\" class=\"cta-outer\" cellspacing=\"0\" cellpadding=\"0\" border=\"0\" width=\"100%\" style=\"margin-top:18px;\">" +
                 "<tr><td align=\"center\">" +
                 "<table role=\"presentation\" class=\"cta-inner\" cellspacing=\"0\" cellpadding=\"0\" border=\"0\">" +
-                "<tr><td class=\"cta-cell\" align=\"center\">" +
-                "<a class=\"cta-link\" href=\"" + downloadUrl + "\" target=\"_blank\">Download HF's Open Ticket Details</a>" +
+                "<tr><td class=\"cta-cell\" align=\"center\" style=\"border-radius:30px;background:#6b21a8;\">" +
+                "<a class=\"cta-link\" href=\"" + downloadUrl + "\" target=\"_blank\" style=\"display:block;padding:16px 24px;font-size:16px;font-weight:700;line-height:16px;color:#ffffff;text-decoration:none;\">Download HF's Open Ticket Details</a>" +
                 "</td></tr></table></td></tr></table>";
         }
         
