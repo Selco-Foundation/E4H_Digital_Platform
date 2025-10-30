@@ -113,6 +113,9 @@ public class DynamicEmailTemplateService {
         
         // Generate state-specific dashboard URL
         variables.put("DASHBOARD_URL", commonUtility.generateStateDashboardUrl(tenantId));
+
+        // Role-specific intro line
+        variables.put("INTRO_LINE", generateIntroLine(recipientRole));
         
         return variables;
     }
@@ -156,11 +159,6 @@ public class DynamicEmailTemplateService {
         // Determine section title and subtext based on level and role
         String sectionTitle = getSectionTitle(level, recipientRole);
         
-        // Always show sections, even if title would be null
-        if (sectionTitle == null) {
-            sectionTitle = getDefaultSectionTitle(level, recipientRole);
-        }
-        
         // Handle empty tickets by showing sections with count 0
         if (tickets == null) {
             tickets = new ArrayList<>();
@@ -202,6 +200,14 @@ public class DynamicEmailTemplateService {
         return section.toString();
     }
 
+    private String generateIntroLine(String recipientRole) {
+        if ("STATE_POC".equals(recipientRole)) {
+            return "Please find below the daily summary of the issues reported in <strong>${STATE_NAME}</strong> on Saura-eMitra as of <strong>${AS_OF_DATE}</strong>.";
+        }
+        // Default/other roles
+        return "Please find below the daily summary of the issues escalated to you in <strong>${STATE_NAME}</strong> on Saura-eMitra as of <strong>${AS_OF_DATE}</strong>.";
+    }
+
     /**
      * Generate ticket rows grouped by workflow state
      */
@@ -232,7 +238,11 @@ public class DynamicEmailTemplateService {
                 rows.append("      <table role=\"presentation\" width=\"100%\">\n");
                 rows.append("        <tr>\n");
                 rows.append("          <td class=\"row label\" style=\"width:70%;\">").append(displayName).append("</td>\n");
-                rows.append("          <td class=\"row right\" style=\"width:30%;\"><span class=\"badge\">").append(count).append("</span></td>\n");
+                
+                // Use orange color for STATE_POC LEVEL_ZERO only, default color for others
+                String badgeClass = ("STATE_POC".equals(recipientRole) && "LEVEL_ZERO".equals(level)) ? "badge-orange" : "badge";
+                rows.append("          <td class=\"row right\" style=\"width:30%;\"><span class=\"").append(badgeClass).append("\">").append(count).append("</span></td>\n");
+                
                 rows.append("        </tr>\n");
                 rows.append("      </table>\n");
                 rows.append("    </td>\n");
@@ -302,25 +312,11 @@ public class DynamicEmailTemplateService {
      */
     private String getSectionTitle(String level, String recipientRole) {
         if ("LEVEL_ZERO".equals(level)) {
-            return "My Tickets";
+            return "Your Tickets";
         } else if ("LEVEL_ONE".equals(level)) {
-            return "L1 Escalation";
+            return "Escalated to You (First Level)";
         } else if ("LEVEL_TWO".equals(level)) {
-            return "L2 Escalation";
-        }
-        return level + " Escalation";
-    }
-    
-    /**
-     * Get default section title when the original title would be null
-     */
-    private String getDefaultSectionTitle(String level, String recipientRole) {
-        if ("LEVEL_ZERO".equals(level)) {
-            return "My Tickets";
-        } else if ("LEVEL_ONE".equals(level)) {
-            return "L1 Escalation";
-        } else if ("LEVEL_TWO".equals(level)) {
-            return "L2 Escalation";
+            return "Escalated to You (Second Level)";
         }
         return level + " Escalation";
     }
@@ -354,17 +350,11 @@ public class DynamicEmailTemplateService {
      */
     private String getSectionSubtext(String level, String recipientRole) {
         if ("LEVEL_ZERO".equals(level)) {
-            return "Number of tickets are nearing their SLA and are pending on you for action:";
+            return "Please find the tickets assigned to you that are nearing their SLA and awaiting your action.";
         } else if ("LEVEL_ONE".equals(level)) {
-            if ("CENTRAL_POC".equals(recipientRole)) {
-                return "Number of tickets are nearing their SLA and are pending on you for action:";
-            }
-            return "Number of tickets that have breached their SLA:";
+            return "Please find the tickets escalated to you as you are the first level after SLA breaching.";
         } else if ("LEVEL_TWO".equals(level)) {
-            if ("CENTRAL_ONM_PROJECT_MANAGER".equals(recipientRole)) {
-                return "Number of tickets that have breached their SLA and aged more than 2 business days:";
-            }
-            return "Number of tickets that have breached their SLA:";
+            return "Please find the tickets escalated to you as you are the second level after SLA breaching.";
         }
         return "Number of tickets requiring attention:";
     }
@@ -374,53 +364,47 @@ public class DynamicEmailTemplateService {
      */
     private String getCallToAction(String level, String recipientRole, String tenantId) {
         String sauraEmitraUrl = commonUtility.generateSauraEmitraUrl(tenantId);
-        String baseMessage = "";
-        
+
+        // Central Operations Lead (SPM)
         if ("CENTRAL_OPERATIONS_LEAD".equals(recipientRole)) {
-            // Central Operations Lead specific messages
             if ("LEVEL_TWO".equals(level)) {
-                return "Kindly take immediate action to ensure these tickets are resolved before they appear in the weekly report shared with the leadership team.";
-            } else {
-                baseMessage = "Kindly coordinate with the respective state POC to mitigate further escalation.";
+                return "Please resolve these tickets promptly, as they have been unresolved for too long. Thank you!";
             }
-        } else if ("CENTRAL_ONM_PROJECT_MANAGER".equals(recipientRole)) {
-            // Central OnM Project Manager specific messages
+            return "Please coordinate with the respective state POC to mitigate further escalation.";
+        }
+
+        // Central OnM Project Manager
+        if ("CENTRAL_ONM_PROJECT_MANAGER".equals(recipientRole)) {
             if ("LEVEL_TWO".equals(level)) {
-                return "Kindly coordinate with state CRM team at the earliest to mitigate further escalation.";
-            } else {
-                baseMessage = "Kindly coordinate with state CRM team at the earliest to mitigate further escalation.";
+                return "Please coordinate with the State CRM team to ensure these tickets are assigned ASAP. Thank you!";
             }
-        } else if ("CENTRAL_POC".equals(recipientRole)) {
-            // Central POC specific messages
+            return "Please coordinate with the State CRM team to ensure timely assignment.";
+        }
+
+        // Central POC
+        if ("CENTRAL_POC".equals(recipientRole)) {
             if ("LEVEL_ONE".equals(level)) {
-                return "Kindly take immediate action to prevent escalation to L2 stage (Central OnM Project Manager or Central Ops Lead).";
-            } else if ("LEVEL_TWO".equals(level)) {
-                return "Kindly take immediate action to ensure these tickets are resolved before they appear in the weekly report shared with the leadership team.";
-            } else {
-                baseMessage = "Kindly take immediate action on these tickets.";
+                return "Kindly take immediate action on these tickets to resolve the issues in the health centers. Thank you!";
             }
-        } else if ("STATE_POC".equals(recipientRole)) {
-            // State POC specific messages
+            if ("LEVEL_TWO".equals(level)) {
+                return "Please resolve these tickets promptly, as they have been unresolved for too long. Thank you!";
+            }
+            return "Kindly take immediate action on these tickets.";
+        }
+
+        // State POC
+        if ("STATE_POC".equals(recipientRole)) {
             if ("LEVEL_ZERO".equals(level)) {
                 return "Kindly go to <a href=\"" + sauraEmitraUrl + "\" target=\"_blank\" rel=\"noopener\" style=\"color: #f08400; text-decoration: underline;\">Saura eMitra</a> and take immediate action on these tickets before they escalate to the L1 (Central POC) stage.";
-            } else if ("LEVEL_ONE".equals(level)) {
-                return "Kindly take immediate action on these tickets to prevent escalation to Central OnM stage (L2).";
-            } else {
-                baseMessage = "Kindly coordinate with the respective teams to resolve these tickets promptly.";
             }
-        } else if ("LEVEL_TWO".equals(level)) {
-            baseMessage = "Kindly take immediate action to ensure these tickets are resolved before they appear in the weekly report shared with the leadership team.";
-        } else if ("LEVEL_ONE".equals(level)) {
-            // L1 Escalation should have a simple message without Saura eMitra link
-            return "Kindly take immediate action to prevent escalation to L2 stage (Central O&M Project Manager or Central Ops Lead).";
-        } else if ("LEVEL_ZERO".equals(level)) {
-            // Special message for State POC (LEVEL_ZERO) - standalone message with only "Saura eMitra" as link
-            return "Kindly go to <a href=\"" + sauraEmitraUrl + "\" target=\"_blank\" rel=\"noopener\" style=\"color: #f08400; text-decoration: underline;\">Saura eMitra</a> and take immediate action on these tickets before they escalate to the L1 (Central POC) stage";
-        } else {
-            baseMessage = "Kindly take immediate action on these tickets.";
+            if ("LEVEL_ONE".equals(level)) {
+                return "Kindly take immediate action on these tickets to resolve the issues in the health centers. Thank you!";
+            }
+            return "Kindly coordinate with the respective teams to resolve these tickets promptly.";
         }
-        
-        return baseMessage + " Kindly go to <a href=\"" + sauraEmitraUrl + "\" target=\"_blank\" rel=\"noopener\" style=\"color: #f08400; text-decoration: underline;\">Saura eMitra</a> and take immediate action on these tickets before they escalate to the L1 (Central POC) stage";
+
+        // Default fallback
+        return "Kindly take immediate action on these tickets.";
     }
 
     /**
@@ -478,16 +462,16 @@ public class DynamicEmailTemplateService {
         
         switch (recipientRole) {
             case "STATE_POC":
-                return String.format("Daily SLA Escalation — State POC — %s — %s", stateName, asOfDate);
+                return String.format("Saura-eMitra Daily Escalation - State POC — %s — %s", stateName, asOfDate);
             
             case "CENTRAL_POC":
-                return String.format("Central POC – Daily Escalation Email – %s – %s", stateName, asOfDate);
+                return String.format("Saura-eMitra Daily Escalation - Central POC — %s — %s", stateName, asOfDate);
             
             case "CENTRAL_ONM_PROJECT_MANAGER":
-                return String.format("Central OnM Project – Daily Escalation Email – %s – %s", stateName, asOfDate);
+                return String.format("Saura-eMitra Daily Escalation - Central O&M Project Manager — %s — %s", stateName, asOfDate);
             
             case "CENTRAL_OPERATIONS_LEAD":
-                return String.format("Daily SLA Escalation – %s – %s", stateName, asOfDate);
+                return String.format("Saura-eMitra Daily Escalation - SPM — %s — %s", stateName, asOfDate);
             
             default:
                 return String.format("Daily SLA Escalation Email – %s – %s", stateName, asOfDate);

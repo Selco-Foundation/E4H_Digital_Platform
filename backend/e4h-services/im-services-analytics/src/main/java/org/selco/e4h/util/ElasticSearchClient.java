@@ -170,9 +170,9 @@ public class ElasticSearchClient {
         HttpEntity<Object> entity = new HttpEntity<>(query, updateService.buildHeaders());
 
         try {
-            log.debug("Executing Elasticsearch query: {}", query);
-            ResponseEntity<Map> response = restTemplate.exchange(uri, HttpMethod.GET, entity, Map.class);
-            return parseEscalationTickets(response.getBody());
+            log.info("Executing Elasticsearch query: {}", query);
+            Map<String, Object> response = restTemplate.postForObject(uri, entity, Map.class);
+            return parseEscalationTickets(response);
         } catch (Exception e) {
             log.error("Failed to execute search query on index '{}'", INDEX_NAME, e);
             return Collections.emptyList();
