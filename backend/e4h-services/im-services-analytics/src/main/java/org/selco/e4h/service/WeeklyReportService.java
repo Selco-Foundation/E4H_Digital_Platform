@@ -319,8 +319,13 @@ public class WeeklyReportService {
                     if (ticketData.getFiledDate() != null) {
                         long ageInMillis = System.currentTimeMillis() - ticketData.getFiledDate();
                         int ageInDays = (int) (ageInMillis / (1000 * 60 * 60 * 24));
-                        
-                        WeeklyReportData.StateAgeBucketData stateBucket = stateData.computeIfAbsent(ticketData.getTenantId(), 
+
+                        String ticketTenantId = ticketData.getTenantId();
+                        String rootTenantId = ticketTenantId != null && ticketTenantId.contains(".")
+                            ? ticketTenantId.substring(0, ticketTenantId.indexOf('.'))
+                            : ticketTenantId;
+
+                        WeeklyReportData.StateAgeBucketData stateBucket = stateData.computeIfAbsent(rootTenantId, 
                             k -> WeeklyReportData.StateAgeBucketData.builder()
                                 .stateName(commonUtility.getStateDisplayName(k))
                                 .lt1Wk(0)
