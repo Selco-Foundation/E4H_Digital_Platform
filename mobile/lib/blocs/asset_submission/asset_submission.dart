@@ -49,7 +49,7 @@ class AssetSubmissionBloc
 
     _svcErrSub?.cancel();
     _svcErrSub = svc.on(kEvtError).listen((data) {
-      final pid = data?['projectId'] as String?;
+      final pid = data?['activityFacilityId'] as String?;
       final msg = data?['message']?.toString();
       print('[BLoC] kEvtError stream received pid=$pid msg=$msg');
       if (pid != null) {
@@ -60,7 +60,7 @@ class AssetSubmissionBloc
 
     _svcDoneSub?.cancel();
     _svcDoneSub = svc.on(kEvtDone).listen((data) {
-      final pid = data?['projectId'] as String?;
+      final pid = data?['activityFacilityId'] as String?;
       print('[BLoC] kEvtDone stream received pid=$pid');
       if (pid != null) {
         add(AssetSubmissionEvent.svcDone(activityFacilityId: pid));
