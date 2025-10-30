@@ -360,39 +360,20 @@ public class WeeklyReportService {
         
         if (Math.abs(change) < 0.1) {
             // No significant change
-            return ArrowData.builder()
-                .arrow("")
-                .arrowClass("")
-                .build();
+            return ArrowData.builder().arrow("").arrowClass("").build();
         }
-        
+
+        boolean increase = change > 0;
+        String arrow = increase ? "&#9650;" : "&#9660;"; // ▲ / ▼ (HTML entities)
+
+        String arrowClass;
         if (isFunctional) {
-            // For functional systems: increase is good (green up), decrease is bad (red down)
-            if (change > 0) {
-                return ArrowData.builder()
-                    .arrow("&#9650") // ▲
-                    .arrowClass("up")
-                    .build();
-            } else {
-                return ArrowData.builder()
-                    .arrow("&#9660;") // ▼
-                    .arrowClass("down")
-                    .build();
-            }
+            arrowClass = increase ? "up" : "down";
         } else {
-            // For non-functional systems: increase is bad (red up), decrease is good (green down)
-            if (change > 0) {
-                return ArrowData.builder()
-                    .arrow("&#9660;") // ▲
-                    .arrowClass("down") // Red color
-                    .build();
-            } else {
-                return ArrowData.builder()
-                    .arrow("&#9650") // ▼
-                    .arrowClass("up") // Green color
-                    .build();
-            }
+            arrowClass = increase ? "down" : "up";
         }
+
+        return ArrowData.builder().arrow(arrow).arrowClass(arrowClass).build();
     }
     
     /**
