@@ -73,9 +73,15 @@ public class SLABreachDetectionService {
             // Build Elasticsearch query for SLA breach tickets with escalation level threshold from MDMS
             Map<String, Object> query = buildSLABreachQueryWithLevel(tenantId, workflowStates, 
                 escalationRecipientId, escalationLevel, requestInfo);
+
+            // Wrap inside a "query" map for Elasticsearch
+            Map<String, Object> finalQuery = new HashMap<>();
+            finalQuery.put("query", query);
+
+            log.info("Executing Elasticsearch query: {}", finalQuery);
             
             // Execute query using ElasticsearchClient
-            List<EscalationTicket> breachTickets = elasticSearchClient.searchTickets(query);
+            List<EscalationTicket> breachTickets = elasticSearchClient.searchTickets(finalQuery);
             
             // The Elasticsearch query already filters for SLA breach and escalation exclusions
             // Only apply post-filtering for special cases like LEVEL_TWO aged tickets

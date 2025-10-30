@@ -197,26 +197,19 @@ public class CommonUtility {
                 return "Out of Warranty - Pending State POC";
 
             case "PENDINGFORASSIGNMENT":
-                // Different display based on role and escalation level
-                if ("CENTRAL_ONM_PROJECT_MANAGER".equals(recipientRole)) {
-                    return "Pending Assignment";
-                }
-                return "CRM - Pending Assignment";
+                return "Pending Assignment - with CRM";
 
             case "PENDING_ASSIGNMENT_SPARE_PART_NEEDED":
-                if ("CENTRAL_ONM_PROJECT_MANAGER".equals(recipientRole)) {
-                    return "Spare Part Change - Pending With CRM";
-                }
-                return "CRM - Spare Part Change";
+                return "Spare Part Change - with CRM";
 
             case "PENDING_RESOLUTION_SPARE_PART_NEEDED":
-                return "Vendor - Spare Part Change";
+                return "Spare Part Change - pending for resolution with Vendor";
 
             case "PENDINGRESOLUTION":
-                return "Vendor - Within Warranty";
+                return "Pending for Resolution - with Vendor";
 
             case "PENDING_RESOLUTION_OUT_OF_WARRANTY":
-                return "Vendor - Out of Warranty";
+                return "Out of Warranty - pending for resolution with Vendor";
 
             default:
                 // Don't show workflow states that are not configured in MDMS
