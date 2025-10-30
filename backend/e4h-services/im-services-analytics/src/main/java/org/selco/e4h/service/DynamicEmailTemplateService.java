@@ -114,8 +114,13 @@ public class DynamicEmailTemplateService {
         // Generate state-specific dashboard URL
         variables.put("DASHBOARD_URL", commonUtility.generateStateDashboardUrl(tenantId));
 
-        // Role-specific intro line
-        variables.put("INTRO_LINE", generateIntroLine(recipientRole));
+        // Role-specific intro line with resolved placeholders
+        String introLine = generateIntroLine(
+            recipientRole,
+            variables.get("STATE_NAME"),
+            variables.get("AS_OF_DATE")
+        );
+        variables.put("INTRO_LINE", introLine);
         
         return variables;
     }
@@ -200,12 +205,12 @@ public class DynamicEmailTemplateService {
         return section.toString();
     }
 
-    private String generateIntroLine(String recipientRole) {
+    private String generateIntroLine(String recipientRole, String stateName, String asOfDate) {
         if ("STATE_POC".equals(recipientRole)) {
-            return "Please find below the daily summary of the issues reported in <strong>${STATE_NAME}</strong> on Saura-eMitra as of <strong>${AS_OF_DATE}</strong>.";
+            return "Please find below the daily summary of the issues reported in <strong>" + stateName + "</strong> on Saura-eMitra as of <strong>" + asOfDate + "</strong>.";
         }
         // Default/other roles
-        return "Please find below the daily summary of the issues escalated to you in <strong>${STATE_NAME}</strong> on Saura-eMitra as of <strong>${AS_OF_DATE}</strong>.";
+        return "Please find below the daily summary of the issues escalated to you in <strong>" + stateName + "</strong> on Saura-eMitra as of <strong>" + asOfDate + "</strong>.";
     }
 
     /**
@@ -395,7 +400,7 @@ public class DynamicEmailTemplateService {
         // State POC
         if ("STATE_POC".equals(recipientRole)) {
             if ("LEVEL_ZERO".equals(level)) {
-                return "Kindly go to <a href=\"" + sauraEmitraUrl + "\" target=\"_blank\" rel=\"noopener\" style=\"color: #f08400; text-decoration: underline;\">Saura eMitra</a> and take immediate action on these tickets before they escalate to the L1 (Central POC) stage.";
+                return "Kindly go to <a href=\"" + sauraEmitraUrl + "\" target=\"_blank\" rel=\"noopener\" style=\"color: #f08400; text-decoration: underline;\">Saura eMitra</a> take immediate action on these tickets to help the health centers. Thank you.";
             }
             if ("LEVEL_ONE".equals(level)) {
                 return "Kindly take immediate action on these tickets to resolve the issues in the health centers. Thank you!";
