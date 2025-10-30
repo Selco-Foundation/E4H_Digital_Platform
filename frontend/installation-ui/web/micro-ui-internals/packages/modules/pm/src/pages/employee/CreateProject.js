@@ -678,7 +678,7 @@ const CreateProject = () => {
   }
 
   return (
-    <div style={{padding: mobileView ? "15px" : "0px"}}>
+    <div className={"create-project-wrapper"} style={{padding: mobileView ? "15px" : "0px"}}>
       {blockUI && (
         <div
           style={{
